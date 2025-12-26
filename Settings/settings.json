@@ -1,0 +1,38 @@
+{
+    "cfg_bool": true,
+    "cfg_bool_array": [
+        false,
+        false,
+        false,
+        true,
+        true,
+        true
+    ],
+    "cfg_double": 3.1415926,
+    "cfg_double_array": [
+        100.1,
+        200.1,
+        300.1,
+        400.1,
+        500.1,
+        600.1
+    ],
+    "cfg_int": 10086,
+    "cfg_int_array": [
+        1000,
+        2000,
+        3000,
+        4000,
+        5000,
+        6000
+    ],
+    "cfg_string": "1.0.3",
+    "cfg_string_array": [
+        "aa",
+        "bb",
+        "cc",
+        "dd",
+        "ee",
+        "ff"
+    ]
+}
