@@ -11,7 +11,7 @@ void YomkServerPrivate::addService(YomkService *srv)
     }
 }
 
-YomkRespond YomkServerPrivate::request(const std::string &srvName, const std::string &funcName, YomkPkgPtr pkg)
+YomkResponse YomkServerPrivate::request(const std::string &srvName, const std::string &funcName, YomkPkgPtr pkg)
 {
     std::shared_ptr<YomkService> srv;
     {
@@ -20,7 +20,7 @@ YomkRespond YomkServerPrivate::request(const std::string &srvName, const std::st
         if (iter == m_serviceMap.end())
         {
             std::cout << " [YomkServerPrivate::request] service not found. " << srvName << std::endl;
-            return YomkRespond(YomkRespond::eErr, " [YomkServerPrivate::request] service not found. ");
+            return YomkResponse(YomkResponse::eErr, " [YomkServerPrivate::request] service not found. ");
         }
         srv = iter->second;
     }

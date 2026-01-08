@@ -11,11 +11,11 @@ public:
 public:
     virtual int init() override;
 private:
-    YomkRespond start(YomkPkgPtr pkg);
-    YomkRespond stop(YomkPkgPtr pkg);
-    YomkRespond post(YomkPkgPtr pkg);
-    YomkRespond postWait(YomkPkgPtr pkg);
-    YomkRespond destroy(YomkPkgPtr pkg);
+    YomkResponse start(YomkPkgPtr pkg);
+    YomkResponse stop(YomkPkgPtr pkg);
+    YomkResponse post(YomkPkgPtr pkg);
+    YomkResponse postWait(YomkPkgPtr pkg);
+    YomkResponse destroy(YomkPkgPtr pkg);
 private:
     std::map<std::string, EventLoopPtr> m_eventLoop;
 };

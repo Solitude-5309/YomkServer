@@ -17685,7 +17685,7 @@ void grisu2(char* buf, int& len, int& decimal_exponent, FloatType value)
     // and since sprintf promotes floats to doubles, I think this is exactly what 'std::to_chars'
     // does.
     // On the other hand, the documentation for 'std::to_chars' requires that "parsing the
-    // representation using the corresponding std::from_chars function recovers value exactly". That
+    // representation using the corresponseing std::from_chars function recovers value exactly". That
     // indicates that single precision floating-point numbers should be recovered using
     // 'std::strtof'.
     //

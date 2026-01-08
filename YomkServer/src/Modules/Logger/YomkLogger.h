@@ -13,11 +13,11 @@ public:
 public:
     virtual int init();
 private:
-    YomkRespond createConsoleLogger(YomkPkgPtr pkg);
-    YomkRespond consoleLog(YomkPkgPtr pkg);
-    YomkRespond createFileLogger(YomkPkgPtr pkg);
-    YomkRespond fileLog(YomkPkgPtr pkg);
-    YomkRespond writeFileLog(YomkPkgPtr pkg);
+    YomkResponse createConsoleLogger(YomkPkgPtr pkg);
+    YomkResponse consoleLog(YomkPkgPtr pkg);
+    YomkResponse createFileLogger(YomkPkgPtr pkg);
+    YomkResponse fileLog(YomkPkgPtr pkg);
+    YomkResponse writeFileLog(YomkPkgPtr pkg);
 private:
     std::map<std::string, ConsoleLoggerPtr> m_consoleLoggers;
     std::map<std::string, FileLoggerPtr> m_fileLoggers;

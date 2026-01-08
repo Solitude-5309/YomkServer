@@ -23,21 +23,21 @@ int YomkLogger::init()
     return 0;
 }
 
-YomkRespond YomkLogger::createConsoleLogger(YomkPkgPtr pkg)
+YomkResponse YomkLogger::createConsoleLogger(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YString", YString, yStr);
+    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
     if(m_consoleLoggers.find(yStr->d) != m_consoleLoggers.end())
     {
-        return YomkRespond(YomkRespond::eErr, "logger name already exists.");
+        return YomkResponse(YomkResponse::eErr, "logger name already exists.");
     }
     m_consoleLoggers[yStr->d] = std::make_shared<ConsoleLogger>();
     m_consoleLoggers[yStr->d]->setName(yStr->d);
-    return YomkRespond();
+    return YomkResponse();
 }
 
-YomkRespond YomkLogger::consoleLog(YomkPkgPtr pkg)
+YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YLog", YLog, yLog)
+    YomkUnPackPkgresponse(pkg, "YLog", YLog, yLog)
 
     if(m_consoleLoggers.find(yLog->m_logger) == m_consoleLoggers.end())
     {
@@ -62,16 +62,16 @@ YomkRespond YomkLogger::consoleLog(YomkPkgPtr pkg)
         break;
     }
 
-    return {YomkRespond::eOk, "success."};
+    return {YomkResponse::eOk, "success."};
 }
 
-YomkRespond YomkLogger::createFileLogger(YomkPkgPtr pkg)
+YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YLogFile", YLogFile, yLogFile);
+    YomkUnPackPkgresponse(pkg, "YLogFile", YLogFile, yLogFile);
 
     if(m_fileLoggers.find(yLogFile->m_logger) != m_fileLoggers.end())
     {
-        return YomkRespond(YomkRespond::eErr, "logger name already exists.");
+        return YomkResponse(YomkResponse::eErr, "logger name already exists.");
     }
 
     m_fileLoggers[yLogFile->m_logger] = std::make_shared<FileLogger>();
@@ -79,16 +79,16 @@ YomkRespond YomkLogger::createFileLogger(YomkPkgPtr pkg)
     m_fileLoggers[yLogFile->m_logger]->setDir(yLogFile->m_dir);
     m_fileLoggers[yLogFile->m_logger]->init();
 
-    return YomkRespond();
+    return YomkResponse();
 }
 
-YomkRespond YomkLogger::fileLog(YomkPkgPtr pkg)
+YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YLog", YLog, yLog)
+    YomkUnPackPkgresponse(pkg, "YLog", YLog, yLog)
 
     if(m_fileLoggers.find(yLog->m_logger) == m_fileLoggers.end())
     {
-        return YomkRespond(YomkRespond::eErr, "logger not found.");
+        return YomkResponse(YomkResponse::eErr, "logger not found.");
     }
 
     switch (yLog->m_level)
@@ -109,16 +109,16 @@ YomkRespond YomkLogger::fileLog(YomkPkgPtr pkg)
         break;
     }
 
-    return YomkRespond(YomkRespond::eOk, "success.");
+    return YomkResponse(YomkResponse::eOk, "success.");
 }
 
-YomkRespond YomkLogger::writeFileLog(YomkPkgPtr pkg)
+YomkResponse YomkLogger::writeFileLog(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YString", YString, yStr);
+    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
     if(m_fileLoggers.find(yStr->d) == m_fileLoggers.end())
     {
-        return YomkRespond(YomkRespond::eErr, "logger not found.");
+        return YomkResponse(YomkResponse::eErr, "logger not found.");
     }
     m_fileLoggers[yStr->d]->write();
-    return YomkRespond(YomkRespond::eOk, "success.");
+    return YomkResponse(YomkResponse::eOk, "success.");
 }

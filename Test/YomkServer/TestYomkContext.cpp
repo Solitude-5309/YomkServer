@@ -28,8 +28,8 @@ int main(int argc, char *argv[])
         "/YomkFunctionPool", 
         "/YomkContext" });
     
-    YomkRespond respond = server.request("/YomkContext/create", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data")));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    YomkResponse response = server.request("/YomkContext/create", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data")));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "create context success" << std::endl;
     }
@@ -38,11 +38,11 @@ int main(int argc, char *argv[])
         std::cout << "create context failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/get", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_default")));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/get", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_default")));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "get context success" << std::endl;
-        YomkUnPackPkg(respond.m_data, "YString", YString, yStr);
+        YomkUnPackPkg(response.m_data, "YString", YString, yStr);
         std::cout << "ctx: " << yStr->d << std::endl;
     }
     else
@@ -50,8 +50,8 @@ int main(int argc, char *argv[])
         std::cout << "get context failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/set", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_set")));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/set", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_set")));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "set context success" << std::endl;
     }
@@ -60,11 +60,11 @@ int main(int argc, char *argv[])
         std::cout << "set context failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/get", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_default")));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/get", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_default")));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "get context success" << std::endl;
-        YomkUnPackPkg(respond.m_data, "YString", YString, yStr);
+        YomkUnPackPkg(response.m_data, "YString", YString, yStr);
         std::cout << "ctx: " << yStr->d << std::endl;
     }
     else
@@ -72,8 +72,8 @@ int main(int argc, char *argv[])
         std::cout << "get context failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/turn_on_checker");
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/turn_on_checker");
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "turn on checker success" << std::endl;
     }
@@ -82,8 +82,8 @@ int main(int argc, char *argv[])
         std::cout << "turn on checker failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/set_checker", YomkMkYContextSetCheckerPtr("ctx", checkerAcceptFunc));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/set_checker", YomkMkYContextSetCheckerPtr("ctx", checkerAcceptFunc));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "set checker success" << std::endl;
     }
@@ -92,8 +92,8 @@ int main(int argc, char *argv[])
         std::cout << "set checker failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/turn_on_monitor");
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/turn_on_monitor");
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "turn on monitor success" << std::endl;
     }
@@ -102,8 +102,8 @@ int main(int argc, char *argv[])
         std::cout << "turn on monitor failed" << std::endl;
     }
         
-    respond = server.request("/YomkContext/set_monitor", YomkMkYContextMonitorPtr("ctx", monitorFunc));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/set_monitor", YomkMkYContextMonitorPtr("ctx", monitorFunc));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "set monitor success" << std::endl;
     }
@@ -112,8 +112,8 @@ int main(int argc, char *argv[])
         std::cout << "set monitor failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/set", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_set_2")));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/set", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_set_2")));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "set context success" << std::endl;
     }
@@ -122,11 +122,11 @@ int main(int argc, char *argv[])
         std::cout << "set context failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/get", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_default")));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/get", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_default")));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "get context success" << std::endl;
-        YomkUnPackPkg(respond.m_data, "YString", YString, yStr);
+        YomkUnPackPkg(response.m_data, "YString", YString, yStr);
         std::cout << "ctx: " << yStr->d << std::endl;
     }
     else
@@ -134,8 +134,8 @@ int main(int argc, char *argv[])
         std::cout << "get context failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/set_checker", YomkMkYContextSetCheckerPtr("ctx", checkerRejectFunc));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/set_checker", YomkMkYContextSetCheckerPtr("ctx", checkerRejectFunc));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "set checker success" << std::endl;
     }
@@ -144,8 +144,8 @@ int main(int argc, char *argv[])
         std::cout << "set checker failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/set", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_set_3")));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/set", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_set_3")));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "set context success" << std::endl;
     }
@@ -154,11 +154,11 @@ int main(int argc, char *argv[])
         std::cout << "set context failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/get", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_default")));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/get", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_default")));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "get context success" << std::endl;
-        YomkUnPackPkg(respond.m_data, "YString", YString, yStr);
+        YomkUnPackPkg(response.m_data, "YString", YString, yStr);
         std::cout << "ctx: " << yStr->d << std::endl;
     }
     else
@@ -166,8 +166,8 @@ int main(int argc, char *argv[])
         std::cout << "get context failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/destroy", YomkMkYStringPtr("ctx"));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/destroy", YomkMkYStringPtr("ctx"));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "destroy context success" << std::endl;
     }
@@ -176,17 +176,17 @@ int main(int argc, char *argv[])
         std::cout << "destroy context failed" << std::endl;
     }
 
-    respond = server.request("/YomkContext/get", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_default")));
-    if(respond.m_resStatus == YomkRespond::eOk)
+    response = server.request("/YomkContext/get", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data_default")));
+    if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "get context success" << std::endl;
-        YomkUnPackPkg(respond.m_data, "YString", YString, yStr);
+        YomkUnPackPkg(response.m_data, "YString", YString, yStr);
         std::cout << "ctx: " << yStr->d << std::endl;
     }
     else
     {
         std::cout << "get context failed" << std::endl;
-        YomkUnPackPkg(respond.m_data, "YString", YString, yStr);
+        YomkUnPackPkg(response.m_data, "YString", YString, yStr);
         if(yStr != nullptr)
         {
             std::cout << "ctx default: " << yStr->d << std::endl;

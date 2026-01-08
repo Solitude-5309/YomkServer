@@ -64,42 +64,42 @@ void YomkServer::addService(YomkService *srv)
     m_p->addService(srv);
 }
 
-YomkRespond YomkServer::request(const std::string &url, YomkPkgPtr pkg)
+YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)
 {
-    if(!m_p) return YomkRespond();
+    if(!m_p) return YomkResponse();
 
     size_t posStart = url.find('/');
     if(posStart == std::string::npos)
     {
         std::cout << u8"[YomkServer::request] url parse error. " << std::endl;
-        return YomkRespond();
+        return YomkResponse();
     }
 
     size_t posEnd = url.find('/', posStart + 1);
     if(posEnd == std::string::npos)
     {
         std::cout << u8"[YomkServer::request] url parse error. " << std::endl;
-        return YomkRespond();
+        return YomkResponse();
     }
 
     std::string srvName = url.substr(posStart, posEnd - posStart);
     if(srvName.empty())
     {
         std::cout << u8"[YomkServer::request] url parse error: srv is empty. " << std::endl;
-        return YomkRespond();
+        return YomkResponse();
     }
 
     std::string tmpFuncName = url.substr(posEnd);
     if(tmpFuncName.empty())
     {
         std::cout << u8"[YomkServer::request] url parse error: func is empty" << std::endl;
-        return YomkRespond();
+        return YomkResponse();
     }
 
     return m_p->request(srvName, tmpFuncName, pkg);
 }
 
-void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespondFunc func)
+void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
 {
     if(!m_p) return ;
 

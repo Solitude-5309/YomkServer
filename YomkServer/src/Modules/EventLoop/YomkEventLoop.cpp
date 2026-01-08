@@ -17,82 +17,82 @@ int YomkEventLoop::init()
     return 0;
 }
 
-YomkRespond YomkEventLoop::start(YomkPkgPtr pkg)
+YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YString", YString, yStr);
+    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
 
     if(m_eventLoop.find(yStr->d) != m_eventLoop.end())
     {
         m_eventLoop[yStr->d]->start();
-        return YomkRespond(YomkRespond::eOk, "event loop start success");
+        return YomkResponse(YomkResponse::eOk, "event loop start success");
     }
 
     EventLoopPtr eventLoop = std::make_shared<EventLoop>();
     m_eventLoop[yStr->d] = eventLoop;
     eventLoop->start();
 
-    return YomkRespond(YomkRespond::eOk, "event loop start success");
+    return YomkResponse(YomkResponse::eOk, "event loop start success");
 }
 
-YomkRespond YomkEventLoop::stop(YomkPkgPtr pkg)
+YomkResponse YomkEventLoop::stop(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YString", YString, yStr);
+    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
 
     if(m_eventLoop.find(yStr->d) == m_eventLoop.end())
     {
-        return YomkRespond(YomkRespond::eErr, "event loop not exist");
+        return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
     
     m_eventLoop[yStr->d]->stop();
-    return YomkRespond(YomkRespond::eOk, "event loop stop success");
+    return YomkResponse(YomkResponse::eOk, "event loop stop success");
 }
 
-YomkRespond YomkEventLoop::post(YomkPkgPtr pkg)
+YomkResponse YomkEventLoop::post(YomkPkgPtr pkg)
 {
     YomkEventPtr eventPtr = std::dynamic_pointer_cast<YomkEvent>(pkg);
     if(!eventPtr)
     {
-        return YomkRespond(YomkRespond::eErr, "post pkg is not event");
+        return YomkResponse(YomkResponse::eErr, "post pkg is not event");
     }
 
     if(m_eventLoop.find(eventPtr->m_eventLoopName) == m_eventLoop.end())
     {
-        return YomkRespond(YomkRespond::eErr, "event loop not exist");
+        return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
 
     m_eventLoop[eventPtr->m_eventLoopName]->post(eventPtr);
 
-    return YomkRespond(YomkRespond::eOk, "event loop post success");
+    return YomkResponse(YomkResponse::eOk, "event loop post success");
 }
 
-YomkRespond YomkEventLoop::postWait(YomkPkgPtr pkg)
+YomkResponse YomkEventLoop::postWait(YomkPkgPtr pkg)
 {
     YomkEventPtr eventPtr = std::dynamic_pointer_cast<YomkEvent>(pkg);
     if(!eventPtr)
     {
-        return YomkRespond(YomkRespond::eErr, "post pkg is not event");
+        return YomkResponse(YomkResponse::eErr, "post pkg is not event");
     }
 
     if(m_eventLoop.find(eventPtr->m_eventLoopName) == m_eventLoop.end())
     {
-        return YomkRespond(YomkRespond::eErr, "event loop not exist");
+        return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
 
     m_eventLoop[eventPtr->m_eventLoopName]->postWait(eventPtr);
 
-    return YomkRespond(YomkRespond::eOk, "event loop post wait success", eventPtr);
+    return YomkResponse(YomkResponse::eOk, "event loop post wait success", eventPtr);
 }
 
-YomkRespond YomkEventLoop::destroy(YomkPkgPtr pkg)
+YomkResponse YomkEventLoop::destroy(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YString", YString, yStr);
+    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
 
     if(m_eventLoop.find(yStr->d) == m_eventLoop.end())
     {
-        return YomkRespond(YomkRespond::eErr, "event loop not exist");
+        return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
 
     m_eventLoop[yStr->d]->stop();
     m_eventLoop.erase(yStr->d);
-    return YomkRespond(YomkRespond::eOk, "event loop destroy success");
+    return YomkResponse(YomkResponse::eOk, "event loop destroy success");
 }

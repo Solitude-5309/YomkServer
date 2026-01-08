@@ -12,8 +12,8 @@ public:
 public:
     virtual int init() override;
 private:
-    YomkRespond registerFunction(YomkPkgPtr pkg);
-    YomkRespond callFunction(YomkPkgPtr pkg);
+    YomkResponse registerFunction(YomkPkgPtr pkg);
+    YomkResponse callFunction(YomkPkgPtr pkg);
 private:
     YomkServer* m_server;
     std::map<std::string, YomkFunction> m_functions;

@@ -30,8 +30,8 @@ public:
 public:
     int startService(std::vector<std::string> srvNames);
     void addService(YomkService* srv);
-    YomkRespond request(const std::string& url, YomkPkgPtr pkg = nullptr);
-    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkRespondFunc func = nullptr);
+    YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
+    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 private:
     std::shared_ptr<YomkServerPrivate> m_p;
 };

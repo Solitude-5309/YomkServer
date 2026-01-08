@@ -30,19 +30,19 @@ void YomkService::installFunc(const std::string &funcName, YomkServiceFunc func)
     m_p->installFunc(funcName, func);
 }
 
-YomkRespond YomkService::invoke(const std::string &funcName, YomkPkgPtr pkg)
+YomkResponse YomkService::invoke(const std::string &funcName, YomkPkgPtr pkg)
 {
-    if(!m_p) return YomkRespond();
+    if(!m_p) return YomkResponse();
     return m_p->invoke(funcName, pkg);
 }
 
-YomkRespond YomkService::request(const std::string &url, YomkPkgPtr pkg)
+YomkResponse YomkService::request(const std::string &url, YomkPkgPtr pkg)
 {
-    if(!m_p) return YomkRespond();
+    if(!m_p) return YomkResponse();
     return m_p->request(url, pkg);
 }
 
-void YomkService::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespondFunc func)
+void YomkService::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
 {
     if(!m_p) return ;
     m_p->asyncRequest(url, pkg, func);

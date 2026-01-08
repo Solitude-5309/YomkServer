@@ -37,7 +37,7 @@ public:
 };
 typedef std::shared_ptr<YomkEvent> YomkEventPtr;
 
-class YomkRespond : public YomkPkg
+class YomkResponse : public YomkPkg
 {
 public:
     enum EResStatus{
@@ -46,23 +46,23 @@ public:
         eErr = 1,
     };
 public:
-    YomkRespond() 
+    YomkResponse() 
         : m_resStatus(eInvalid)
         , m_data(nullptr) {  
-            m_name = "YomkRespond"; }
-    YomkRespond(
+            m_name = "YomkResponse"; }
+    YomkResponse(
         EResStatus status, 
         const std::string& msg="",
         std::shared_ptr<YomkPkg> d = nullptr ) 
         : m_resStatus(status)
         , m_msg(msg)
         , m_data(d) { 
-            m_name = "YomkRespond"; }
-    ~YomkRespond() {}
+            m_name = "YomkResponse"; }
+    ~YomkResponse() {}
 public:
     virtual std::shared_ptr<YomkPkg> clone() const
     {
-        YomkRespond* nd = new YomkRespond();
+        YomkResponse* nd = new YomkResponse();
         nd->m_name = m_name;
         nd->m_resStatus = m_resStatus;
         nd->m_data = m_data->clone();
@@ -76,11 +76,11 @@ public:
     std::string m_msg;
     std::shared_ptr<YomkPkg> m_data;
 };
-typedef std::shared_ptr<YomkRespond> YomkRespondPtr;
+typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 
-typedef std::function<YomkRespond (YomkPkgPtr pkg)> YomkServiceFunc;
-typedef std::function<void (YomkRespond respond)> YomkRespondFunc;
-typedef std::function<YomkRespond (YomkServer* server, YomkPkgPtr pkg)> YomkFunction;
+typedef std::function<YomkResponse (YomkPkgPtr pkg)> YomkServiceFunc;
+typedef std::function<void (YomkResponse response)> YomkResponseFunc;
+typedef std::function<YomkResponse (YomkServer* server, YomkPkgPtr pkg)> YomkFunction;
 
 class YResquestEvent : public YomkEvent
 {
@@ -107,9 +107,9 @@ public:
         nd->m_eventLoopName = m_eventLoopName;
         nd->m_eventHandleFinished = m_eventHandleFinished;
         nd->m_pkg = m_pkg->clone();
-        nd->m_respond.m_resStatus = m_respond.m_resStatus;
-        nd->m_respond.m_msg = m_respond.m_msg;
-        nd->m_respond.m_data = m_respond.m_data->clone();
+        nd->m_response.m_resStatus = m_response.m_resStatus;
+        nd->m_response.m_msg = m_response.m_msg;
+        nd->m_response.m_data = m_response.m_data->clone();
         nd->m_serviceFunc = m_serviceFunc;
         ptr.reset(nd);
         return ptr;
@@ -118,7 +118,7 @@ public:
     {
         if(m_serviceFunc)
         {
-            m_respond = m_serviceFunc(m_pkg);
+            m_response = m_serviceFunc(m_pkg);
         }
     }
     virtual void handleFinished(std::shared_ptr<YomkEvent> eventPtr)
@@ -130,7 +130,7 @@ public:
     }
 public:
     YomkPkgPtr m_pkg;
-    YomkRespond m_respond;
+    YomkResponse m_response;
     YomkServiceFunc m_serviceFunc;
 };
 typedef std::shared_ptr<YResquestEvent> YResquestEventPtr;

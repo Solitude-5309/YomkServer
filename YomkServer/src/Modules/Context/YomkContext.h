@@ -12,16 +12,16 @@ public:
 public:
     virtual int init() override;
 private:
-    YomkRespond create(YomkPkgPtr pkg);
-    YomkRespond destroy(YomkPkgPtr pkg);
-    YomkRespond get(YomkPkgPtr pkg);
-    YomkRespond set(YomkPkgPtr pkg);
-    YomkRespond turnOnChecker(YomkPkgPtr pkg);
-    YomkRespond turnOffChecker(YomkPkgPtr pkg);
-    YomkRespond turnOnMonitor(YomkPkgPtr pkg);
-    YomkRespond turnOffMonitor(YomkPkgPtr pkg);
-    YomkRespond setChecker(YomkPkgPtr pkg);
-    YomkRespond setMonitor(YomkPkgPtr pkg);
+    YomkResponse create(YomkPkgPtr pkg);
+    YomkResponse destroy(YomkPkgPtr pkg);
+    YomkResponse get(YomkPkgPtr pkg);
+    YomkResponse set(YomkPkgPtr pkg);
+    YomkResponse turnOnChecker(YomkPkgPtr pkg);
+    YomkResponse turnOffChecker(YomkPkgPtr pkg);
+    YomkResponse turnOnMonitor(YomkPkgPtr pkg);
+    YomkResponse turnOffMonitor(YomkPkgPtr pkg);
+    YomkResponse setChecker(YomkPkgPtr pkg);
+    YomkResponse setMonitor(YomkPkgPtr pkg);
 private:
     bool m_checkerEnabled;
     bool m_monitorEnabled;

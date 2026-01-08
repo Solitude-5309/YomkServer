@@ -12,10 +12,10 @@ public:
 public:
     virtual int init() override;
 private:
-    YomkRespond load(YomkPkgPtr pkg);
-    YomkRespond save(YomkPkgPtr pkg);
-    YomkRespond get(YomkPkgPtr pkg);
-    YomkRespond set(YomkPkgPtr pkg);
+    YomkResponse load(YomkPkgPtr pkg);
+    YomkResponse save(YomkPkgPtr pkg);
+    YomkResponse get(YomkPkgPtr pkg);
+    YomkResponse set(YomkPkgPtr pkg);
 private:
     nlohmann::json m_settings;
 };

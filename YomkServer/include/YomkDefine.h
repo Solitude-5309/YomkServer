@@ -20,15 +20,15 @@
     std::shared_ptr<ClassName> ptrName = nullptr; \
     if (pkg && pkg->name() == pkgName) { ptrName = std::dynamic_pointer_cast<ClassName>(pkg->clone()); } 
 
-#define YomkUnPackPkgRespond(pkg, pkgName, ClassName, ptrName) \
-    if (!pkg || pkg->name() != pkgName) return { YomkRespond::eErr, " pkg is null or pkg is not "#pkgName". " }; \
+#define YomkUnPackPkgresponse(pkg, pkgName, ClassName, ptrName) \
+    if (!pkg || pkg->name() != pkgName) return { YomkResponse::eErr, " pkg is null or pkg is not "#pkgName". " }; \
     std::shared_ptr<ClassName> ptrName = std::dynamic_pointer_cast<ClassName>(pkg); \
-    if(!ptrName) return { YomkRespond::eErr, " pkg["#pkgName"] is dynamic_pointer_cast failed. " };
+    if(!ptrName) return { YomkResponse::eErr, " pkg["#pkgName"] is dynamic_pointer_cast failed. " };
 
-#define YomkUnPackPkgCloneRespond(pkg, pkgName, ClassName, ptrName) \
-    if (!pkg || pkg->name() != pkgName) return { YomkRespond::eErr, " pkg is null or pkg is not "#pkgName". " }; \
+#define YomkUnPackPkgCloneresponse(pkg, pkgName, ClassName, ptrName) \
+    if (!pkg || pkg->name() != pkgName) return { YomkResponse::eErr, " pkg is null or pkg is not "#pkgName". " }; \
     std::shared_ptr<ClassName> ptrName = std::dynamic_pointer_cast<ClassName>(pkg->clone()); \
-    if(!ptrName) return { YomkRespond::eErr, " pkg["#pkgName"] is dynamic_pointer_cast failed. " };
+    if(!ptrName) return { YomkResponse::eErr, " pkg["#pkgName"] is dynamic_pointer_cast failed. " };
 
 #define YomkUnPackPkgVoid(pkg, pkgName, ClassName, ptrName) \
     if (!pkg || pkg->name() != pkgName) return ; \

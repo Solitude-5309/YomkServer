@@ -16,9 +16,9 @@ public:
     std::string name() { return m_name; }
 public:
     void installFunc(const std::string& funcName, YomkServiceFunc func);
-    YomkRespond invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
-    YomkRespond request(const std::string& url, YomkPkgPtr pkg = nullptr);
-    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkRespondFunc func = nullptr);
+    YomkResponse invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
+    YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
+    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 protected:
     YomkServer* m_server;
     std::string m_name;

@@ -14,40 +14,40 @@ int YomkFunctionPool::init()
     return 0;
 }
 
-YomkRespond YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
+YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YFunction", YFunction, yFunc);
+    YomkUnPackPkgresponse(pkg, "YFunction", YFunction, yFunc);
     
     if(yFunc->m_funcName.empty() || yFunc->m_func == nullptr)
     {
-        return YomkRespond(YomkRespond::eInvalid, "funcName or func is empty");
+        return YomkResponse(YomkResponse::eInvalid, "funcName or func is empty");
     }
 
     if(m_functions.find(yFunc->m_funcName) != m_functions.end())
     {
         m_functions[yFunc->m_funcName] = yFunc->m_func;
-        return YomkRespond(YomkRespond::eOk, "find function name is exist, and update it");
+        return YomkResponse(YomkResponse::eOk, "find function name is exist, and update it");
     }
     else
     {
         m_functions[yFunc->m_funcName] = yFunc->m_func;
     }
 
-    return {YomkRespond::eOk, "register function success"};
+    return {YomkResponse::eOk, "register function success"};
 }
 
-YomkRespond YomkFunctionPool::callFunction(YomkPkgPtr pkg)
+YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YCallFunction", YCallFunction, yCallFunc);
+    YomkUnPackPkgresponse(pkg, "YCallFunction", YCallFunction, yCallFunc);
     
     if(yCallFunc->m_funcName.empty())
     {
-        return YomkRespond(YomkRespond::eInvalid, "funcName is empty");
+        return YomkResponse(YomkResponse::eInvalid, "funcName is empty");
     }
 
     if(m_functions.find(yCallFunc->m_funcName) == m_functions.end())
     {
-        return YomkRespond(YomkRespond::eInvalid, "funcName is not register");
+        return YomkResponse(YomkResponse::eInvalid, "funcName is not register");
     }
 
     return m_functions[yCallFunc->m_funcName](m_server, yCallFunc->m_pkg);

@@ -23,69 +23,69 @@ int YomkContext::init()
     return 0;
 }
 
-YomkRespond YomkContext::create(YomkPkgPtr pkg)
+YomkResponse YomkContext::create(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YContext", YContext, yContext);
+    YomkUnPackPkgresponse(pkg, "YContext", YContext, yContext);
 
     if(yContext->m_key.empty())
     {
-        return YomkRespond(YomkRespond::eErr, "key is empty");
+        return YomkResponse(YomkResponse::eErr, "key is empty");
     }
     if(yContext->m_value == nullptr)
     {
-        return YomkRespond(YomkRespond::eErr, "value is empty");
+        return YomkResponse(YomkResponse::eErr, "value is empty");
     }
     if(m_contexts.find(yContext->m_key) != m_contexts.end())
     {
-        return YomkRespond(YomkRespond::eErr, "key is exist");
+        return YomkResponse(YomkResponse::eErr, "key is exist");
     }
 
     m_contexts[yContext->m_key] = yContext->m_value;
 
-    return YomkRespond(YomkRespond::eOk, "create context success");
+    return YomkResponse(YomkResponse::eOk, "create context success");
 }
 
-YomkRespond YomkContext::destroy(YomkPkgPtr pkg)
+YomkResponse YomkContext::destroy(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YString", YString, yStr);
+    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
 
     if(m_contexts.find(yStr->d) == m_contexts.end())
     {
-        return YomkRespond(YomkRespond::eErr, "key is not exist");
+        return YomkResponse(YomkResponse::eErr, "key is not exist");
     }
 
     m_contexts.erase(yStr->d);
 
-    return YomkRespond(YomkRespond::eOk, "destroy context success");
+    return YomkResponse(YomkResponse::eOk, "destroy context success");
 }
 
-YomkRespond YomkContext::get(YomkPkgPtr pkg)
+YomkResponse YomkContext::get(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YContext", YContext, yContext);
+    YomkUnPackPkgresponse(pkg, "YContext", YContext, yContext);
 
     if(yContext->m_key.empty())
     {
-        return YomkRespond(YomkRespond::eErr, "key is empty", yContext->m_value);
+        return YomkResponse(YomkResponse::eErr, "key is empty", yContext->m_value);
     }
     if(m_contexts.find(yContext->m_key) == m_contexts.end())
     {
-        return YomkRespond(YomkRespond::eErr, "key is not exist", yContext->m_value);
+        return YomkResponse(YomkResponse::eErr, "key is not exist", yContext->m_value);
     }
 
-    return {YomkRespond::eOk, "get context success", m_contexts[yContext->m_key]};
+    return {YomkResponse::eOk, "get context success", m_contexts[yContext->m_key]};
 }
 
-YomkRespond YomkContext::set(YomkPkgPtr pkg)
+YomkResponse YomkContext::set(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YContext", YContext, yContext);
+    YomkUnPackPkgresponse(pkg, "YContext", YContext, yContext);
 
     if(yContext->m_key.empty())
     {
-        return YomkRespond(YomkRespond::eErr, "key is empty");
+        return YomkResponse(YomkResponse::eErr, "key is empty");
     }
     if(m_contexts.find(yContext->m_key) == m_contexts.end())
     {
-        return YomkRespond(YomkRespond::eErr, "key is not exist");
+        return YomkResponse(YomkResponse::eErr, "key is not exist");
     }
 
     if(m_checkerEnabled)
@@ -95,7 +95,7 @@ YomkRespond YomkContext::set(YomkPkgPtr pkg)
             YContextSetChecker::ECheckStatus checkStatus = m_checkers[yContext->m_key](yContext->m_value);
             if(checkStatus == YContextSetChecker::eReject)
             {
-                return YomkRespond(YomkRespond::eErr, "checker reject set context");
+                return YomkResponse(YomkResponse::eErr, "checker reject set context");
             }
         }
     }
@@ -113,73 +113,73 @@ YomkRespond YomkContext::set(YomkPkgPtr pkg)
         }
     }
 
-    return YomkRespond(YomkRespond::eOk, "set context success");
+    return YomkResponse(YomkResponse::eOk, "set context success");
 }
 
-YomkRespond YomkContext::turnOnChecker(YomkPkgPtr pkg)
+YomkResponse YomkContext::turnOnChecker(YomkPkgPtr pkg)
 {
     m_checkerEnabled = true;
-    return YomkRespond(YomkRespond::eOk, "turn on checker success");
+    return YomkResponse(YomkResponse::eOk, "turn on checker success");
 }
 
-YomkRespond YomkContext::turnOffChecker(YomkPkgPtr pkg)
+YomkResponse YomkContext::turnOffChecker(YomkPkgPtr pkg)
 {
     m_checkerEnabled = false;
-    return YomkRespond(YomkRespond::eOk, "turn off checker success");
+    return YomkResponse(YomkResponse::eOk, "turn off checker success");
 }
 
-YomkRespond YomkContext::turnOnMonitor(YomkPkgPtr pkg)
+YomkResponse YomkContext::turnOnMonitor(YomkPkgPtr pkg)
 {
     m_monitorEnabled = true;
-    return YomkRespond(YomkRespond::eOk, "turn on monitor success");
+    return YomkResponse(YomkResponse::eOk, "turn on monitor success");
 }
 
-YomkRespond YomkContext::turnOffMonitor(YomkPkgPtr pkg)
+YomkResponse YomkContext::turnOffMonitor(YomkPkgPtr pkg)
 {
     m_monitorEnabled = false;
-    return YomkRespond(YomkRespond::eOk, "turn off monitor success");
+    return YomkResponse(YomkResponse::eOk, "turn off monitor success");
 }
 
-YomkRespond YomkContext::setChecker(YomkPkgPtr pkg)
+YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YContextSetChecker", YContextSetChecker, yChecker);
+    YomkUnPackPkgresponse(pkg, "YContextSetChecker", YContextSetChecker, yChecker);
 
     if(yChecker->m_key.empty())
     {
-        return YomkRespond(YomkRespond::eErr, "key is empty");
+        return YomkResponse(YomkResponse::eErr, "key is empty");
     }
     if(yChecker->m_checkFunc == nullptr)
     {
-        return YomkRespond(YomkRespond::eErr, "checkFunc is empty");
+        return YomkResponse(YomkResponse::eErr, "checkFunc is empty");
     }
     if(m_contexts.find(yChecker->m_key) == m_contexts.end())
     {
-        return YomkRespond(YomkRespond::eErr, "key is not exist");
+        return YomkResponse(YomkResponse::eErr, "key is not exist");
     }
 
     m_checkers[yChecker->m_key] = yChecker->m_checkFunc;
 
-    return YomkRespond(YomkRespond::eOk, "set checker success");
+    return YomkResponse(YomkResponse::eOk, "set checker success");
 }
 
-YomkRespond YomkContext::setMonitor(YomkPkgPtr pkg)
+YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgRespond(pkg, "YContextMonitor", YContextMonitor, yMonitor);
+    YomkUnPackPkgresponse(pkg, "YContextMonitor", YContextMonitor, yMonitor);
 
     if(yMonitor->m_key.empty())
     {
-        return YomkRespond(YomkRespond::eErr, "key is empty");
+        return YomkResponse(YomkResponse::eErr, "key is empty");
     }
     if(yMonitor->m_contextMonitorFunc == nullptr)
     {
-        return YomkRespond(YomkRespond::eErr, "context monitor function is empty");
+        return YomkResponse(YomkResponse::eErr, "context monitor function is empty");
     }
     if(m_contexts.find(yMonitor->m_key) == m_contexts.end())
     {
-        return YomkRespond(YomkRespond::eErr, "key is not exist");
+        return YomkResponse(YomkResponse::eErr, "key is not exist");
     }
 
     m_contextMonitors[yMonitor->m_key].push_back(yMonitor->m_contextMonitorFunc);
 
-    return YomkRespond(YomkRespond::eOk, "set context monitor success");
+    return YomkResponse(YomkResponse::eOk, "set context monitor success");
 }
