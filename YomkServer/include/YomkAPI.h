@@ -246,6 +246,80 @@ public:
         }
         return request("/YomkSettings/set", YomkMkYSettingStringArrayPtr(key, value));
     }
+// CONTEXT_API
+public:
+    static YomkResponse CONTEXT_CREATE(const std::string& ctx_name, YomkPkgPtr ctx){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/create", YomkMkYContextPtr(ctx_name, ctx));
+    }
+    template<typename T>
+    static std::shared_ptr<T> CONTEXT_GET(const std::string& ctx_name, std::shared_ptr<T> ctx_default){
+        if(!m_pServer){
+            std::cout << "YomkServer is not init" << std::endl;
+            return ctx_default;
+        }
+        YomkResponse response = request("/YomkContext/get", YomkMkYContextPtr(ctx_name, ctx_default));
+        if(response.m_resStatus == YomkResponse::eOk)
+        {
+            YomkUnPackPkg(response.m_data, ctx_default->name(), T, ctx_data);
+            return ctx_data;
+        }
+        else
+        {
+            std::cout << "get context failed" << std::endl;
+            return ctx_default;
+        }
+    }
+    static YomkResponse CONTEXT_SET(const std::string& ctx_name, YomkPkgPtr ctx){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/set", YomkMkYContextPtr(ctx_name, ctx));
+    }
+    static YomkResponse CONTEXT_ON_CHECHER(){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/turn_on_checker", nullptr);
+    }
+    static YomkResponse CONTEXT_OFF_CHECHER(){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/turn_off_checker", nullptr);
+    }
+    static YomkResponse CONTEXT_SET_CHECKER(const std::string& ctx_name, YContextSetChecker::YomkContextCheckFunc checker){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/set_checker", YomkMkYContextSetCheckerPtr(ctx_name, checker));
+    }
+    static YomkResponse CONTEXT_ON_MONITOR(){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/turn_on_monitor", nullptr);
+    }
+    static YomkResponse CONTEXT_OFF_MONITOR(){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/turn_off_monitor", nullptr);
+    }
+    static YomkResponse CONTEXT_SET_MONITOR(const std::string& ctx_name, YomkContextMonitorFunc monitor){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/set_monitor", YomkMkYContextMonitorPtr(ctx_name, monitor));
+    }
+    static YomkResponse CONTEXT_DESTROY(const std::string& ctx_name){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/destroy", YomkMkYStringPtr(ctx_name));
+    }
 private:
     static std::shared_ptr<YomkServer> m_pServer;
 };
@@ -279,3 +353,13 @@ std::shared_ptr<YomkServer> YomkAPI::m_pServer = nullptr;
 #define YOMK_SETTINGS_SET_STRING(...) YomkAPI::SETTINGS_SET_STRING(__VA_ARGS__)
 #define YOMK_SETTINGS_SET_STRING_ARRAY(...) YomkAPI::SETTINGS_SET_STRING_ARRAY(__VA_ARGS__)
 #define YOMK_SETTINGS_SAVE(...) YomkAPI::SETTINGS_SAVE(__VA_ARGS__)
+#define YOMK_CONTEXT_CREATE(...) YomkAPI::CONTEXT_CREATE(__VA_ARGS__)
+#define YOMK_CONTEXT_GET(ClassName, ...) YomkAPI::CONTEXT_GET<ClassName>(__VA_ARGS__)
+#define YOMK_CONTEXT_SET(...) YomkAPI::CONTEXT_SET(__VA_ARGS__)
+#define YOMK_CONTEXT_ON_CHECHER() YomkAPI::CONTEXT_ON_CHECHER()
+#define YOMK_CONTEXT_OFF_CHECHER() YomkAPI::CONTEXT_OFF_CHECHER()
+#define YOMK_CONTEXT_SET_CHECKER(...) YomkAPI::CONTEXT_SET_CHECKER(__VA_ARGS__)
+#define YOMK_CONTEXT_ON_MONITOR() YomkAPI::CONTEXT_ON_MONITOR()
+#define YOMK_CONTEXT_OFF_MONITOR() YomkAPI::CONTEXT_OFF_MONITOR()
+#define YOMK_CONTEXT_SET_MONITOR(...) YomkAPI::CONTEXT_SET_MONITOR(__VA_ARGS__)
+#define YOMK_CONTEXT_DESTROY(...) YomkAPI::CONTEXT_DESTROY(__VA_ARGS__)

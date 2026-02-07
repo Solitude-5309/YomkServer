@@ -100,6 +100,10 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         }
     }
 
+    if(m_contexts[yContext->m_key]->name() != yContext->m_value->name())
+    {
+        return YomkResponse(YomkResponse::eErr, "context type not match");
+    }
     m_contexts[yContext->m_key] = yContext->m_value;
 
     if(m_monitorEnabled)

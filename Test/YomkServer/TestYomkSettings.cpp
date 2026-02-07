@@ -29,33 +29,40 @@ int main(int argc, char *argv[])
     // get cfg_bool
     bool cfg_bool = YOMK_SETTINGS_GET_BOOL("cfg_bool");
     std::cout << "cfg_bool: " << cfg_bool << std::endl;
+
     // get cfg_bool_array
     std::vector<bool> cfg_bool_array = YOMK_SETTINGS_GET_BOOL_ARRAY("cfg_bool_array");
     for(int i = 0; i < cfg_bool_array.size(); i++)
     {
         std::cout << "cfg_bool_array[" << i << "] = " << cfg_bool_array[i] << std::endl;
     }
+
     // get cfg_double
     double cfg_double = YOMK_SETTINGS_GET_DOUBLE("cfg_double");
     std::cout << "cfg_double: " << cfg_double << std::endl;
+
     // get cfg_double_array
     std::vector<double> cfg_double_array = YOMK_SETTINGS_GET_DOUBLE_ARRAY("cfg_double_array");
     for(int i = 0; i < cfg_double_array.size(); i++)
     {
         std::cout << "cfg_double_array[" << i << "] = " << cfg_double_array[i] << std::endl;
     }
+
     // get cfg_int
     int64_t cfg_int = YOMK_SETTINGS_GET_INT("cfg_int");
     std::cout << "cfg_int: " << cfg_int << std::endl;
+
     // get cfg_int_array
     std::vector<int> cfg_int_array = YOMK_SETTINGS_GET_INT_ARRAY("cfg_int_array");
     for(int i = 0; i < cfg_int_array.size(); i++)
     {
         std::cout << "cfg_int_array[" << i << "] = " << cfg_int_array[i] << std::endl;
     }
+
     // get cfg_string
     std::string cfg_string = YOMK_SETTINGS_GET_STRING("cfg_string");
     std::cout << "cfg_string: " << cfg_string << std::endl;
+    
     // get cfg_string_array
     std::vector<std::string> cfg_string_array = YOMK_SETTINGS_GET_STRING_ARRAY("cfg_string_array");
     for(int i = 0; i < cfg_string_array.size(); i++)
