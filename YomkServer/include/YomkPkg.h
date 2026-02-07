@@ -528,7 +528,7 @@ public:
     YLog(
         ELogLevel level, 
         const std::string& log,
-        const std::string& logger = "") 
+        const std::string& logger = "MainLogger") 
         : m_logger(logger)
         , m_level(level)
         , m_log(log) { m_name = "YLog"; }

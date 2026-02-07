@@ -26,7 +26,10 @@ int main(int argc, char *argv[])
     server.startService({ 
         "/YomkSettings", 
         "/YomkFunctionPool", 
-        "/YomkContext" });
+        "/YomkContext",
+        "/YomkEventLoop",
+        "/YomkLogger"
+    });
     
     YomkResponse response = server.request("/YomkContext/create", YomkMkYContextPtr("ctx", YomkMkYStringPtr("ctx_data")));
     if(response.m_resStatus == YomkResponse::eOk)

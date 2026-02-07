@@ -7,7 +7,13 @@ int main(int argc, char *argv[])
     std::string settingsPath = argv[0] + std::string("/../../Settings/settings.json");
 
     YomkServer server;
-    server.startService({ "/YomkSettings" });
+    server.startService({ 
+        "/YomkSettings", 
+        "/YomkFunctionPool", 
+        "/YomkContext",
+        "/YomkEventLoop",
+        "/YomkLogger"
+    });
 
     // load settings
     YomkResponse response = server.request("/YomkSettings/load", YomkMkYStringPtr(settingsPath));

@@ -54,16 +54,16 @@ void FileLogger::log(ELogLevel logLevel, const std::string &log)
     switch(logLevel)
     {
         case eDebug:
-            m_logStream << timeStr.str() << " [Debug] [" << m_name << "] " << log << std::endl;
+            m_logStream << timeStr.str() << " [Debug] " << log << std::endl;
             break;
         case eInfo:
-            m_logStream << timeStr.str() << " [Info ] [" << m_name << "] " << log << std::endl;
+            m_logStream << timeStr.str() << " [Info ] " << log << std::endl;
             break;
         case eWarn:
-            m_logStream << timeStr.str() << " [Warn ] [" << m_name << "] " << log << std::endl;
+            m_logStream << timeStr.str() << " [Warn ] " << log << std::endl;
             break;
         case eError:
-            m_logStream << timeStr.str() << " [Error] [" << m_name << "] " << log << std::endl;
+            m_logStream << timeStr.str() << " [Error] " << log << std::endl;
             break;
         default:
             break;

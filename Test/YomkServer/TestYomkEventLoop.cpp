@@ -36,7 +36,13 @@ void eventHandleFinished(std::shared_ptr<YomkEvent> eventPtr)
 int main(int argc, char *argv[])
 {
     YomkServer server;
-    server.startService({ "/YomkSettings", "/YomkFunctionPool", "/YomkEventLoop" });
+    server.startService({ 
+        "/YomkSettings", 
+        "/YomkFunctionPool", 
+        "/YomkContext",
+        "/YomkEventLoop",
+        "/YomkLogger"
+    });
     
     YomkResponse response = server.request("/YomkEventLoop/start", YomkMkYStringPtr("event_loop_1"));
     if(response.m_resStatus == YomkResponse::eOk)
