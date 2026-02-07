@@ -1,7 +1,6 @@
 #include <iostream>
 #include <thread>
-#include "YomkServer.h"
-#include "YomkDefine.h"
+#include "YomkAPI.h"
 
 YomkResponse requestEventHandle(YomkPkgPtr pkg)
 {
@@ -35,16 +34,17 @@ void eventHandleFinished(std::shared_ptr<YomkEvent> eventPtr)
 
 int main(int argc, char *argv[])
 {
-    YomkServer server;
-    server.startService({ 
+    std::shared_ptr<YomkServer> server = std::make_shared<YomkServer>();
+    server->startService({ 
         "/YomkSettings", 
         "/YomkFunctionPool", 
         "/YomkContext",
         "/YomkEventLoop",
         "/YomkLogger"
     });
+    YOMK_INIT(server);
     
-    YomkResponse response = server.request("/YomkEventLoop/start", YomkMkYStringPtr("event_loop_1"));
+    YomkResponse response = YOMK_EVENTLOOP_START("event_loop_1");
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "start event_loop_1 success" << std::endl;
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
         std::cout << "start event_loop_1 failed: " << response.m_msg << std::endl;
     }
 
-    response = server.request("/YomkEventLoop/post", YomkMkYResquestEventPtr("event_loop_1", YomkMkYStringPtr("requestEventHandle_data"), requestEventHandle, eventHandleFinished));
+    response = YOMK_EVENTLOOP_POST("event_loop_1", YomkMkYStringPtr("requestEventHandle_data"), requestEventHandle, eventHandleFinished);
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "post to event_loop_1 success" << std::endl;
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
         std::cout << "post to event_loop_1 failed: " << response.m_msg << std::endl;
     }
 
-    response = server.request("/YomkEventLoop/post_wait", YomkMkYResquestEventPtr("event_loop_1", YomkMkYStringPtr("requestEventHandle_data_wait"), requestEventHandle, eventHandleFinished));
+    response = YOMK_EVENTLOOP_POST_WAIT("event_loop_1", YomkMkYStringPtr("requestEventHandle_data_wait"), requestEventHandle, eventHandleFinished);
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "post_wait to event_loop_1 success" << std::endl;
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     std::cout << "enter any key to stop event_loop_1" << std::endl;
     getchar();
     
-    response = server.request("/YomkEventLoop/stop", YomkMkYStringPtr("event_loop_1"));
+    response = YOMK_EVENTLOOP_STOP("event_loop_1");
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "stop event_loop_1 success" << std::endl;
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
     std::cout << "enter any key to destroy event_loop_1" << std::endl;
     getchar();
 
-    response = server.request("/YomkEventLoop/destroy", YomkMkYStringPtr("event_loop_1"));
+    response = YOMK_EVENTLOOP_DESTROY("event_loop_1");
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "destroy event_loop_1 success" << std::endl;

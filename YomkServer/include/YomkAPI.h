@@ -320,6 +320,38 @@ public:
         }
         return request("/YomkContext/destroy", YomkMkYStringPtr(ctx_name));
     }
+// EVENTLOOP_API
+public:
+    static YomkResponse EVENTLOOP_START(const std::string& event_loop_name){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkEventLoop/start", YomkMkYStringPtr(event_loop_name));
+    }
+    static YomkResponse EVENTLOOP_STOP(const std::string& event_loop_name){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkEventLoop/stop", YomkMkYStringPtr(event_loop_name));
+    }
+    static YomkResponse EVENTLOOP_POST(const std::string& event_loop_name, YomkPkgPtr event_data, YomkServiceFunc event_handle, std::function<void(std::shared_ptr<YomkEvent>)> event_handle_finished){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkEventLoop/post", YomkMkYResquestEventPtr(event_loop_name, event_data, event_handle, event_handle_finished));
+    }
+    static YomkResponse EVENTLOOP_POST_WAIT(const std::string& event_loop_name, YomkPkgPtr event_data, YomkServiceFunc event_handle, std::function<void(std::shared_ptr<YomkEvent>)> event_handle_finished){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkEventLoop/post_wait", YomkMkYResquestEventPtr(event_loop_name, event_data, event_handle, event_handle_finished));
+    }
+    static YomkResponse EVENTLOOP_DESTROY(const std::string& event_loop_name){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkEventLoop/destroy", YomkMkYStringPtr(event_loop_name));
+    }
 private:
     static std::shared_ptr<YomkServer> m_pServer;
 };
@@ -363,3 +395,8 @@ std::shared_ptr<YomkServer> YomkAPI::m_pServer = nullptr;
 #define YOMK_CONTEXT_OFF_MONITOR() YomkAPI::CONTEXT_OFF_MONITOR()
 #define YOMK_CONTEXT_SET_MONITOR(...) YomkAPI::CONTEXT_SET_MONITOR(__VA_ARGS__)
 #define YOMK_CONTEXT_DESTROY(...) YomkAPI::CONTEXT_DESTROY(__VA_ARGS__)
+#define YOMK_EVENTLOOP_START(...) YomkAPI::EVENTLOOP_START(__VA_ARGS__)
+#define YOMK_EVENTLOOP_STOP(...) YomkAPI::EVENTLOOP_STOP(__VA_ARGS__)
+#define YOMK_EVENTLOOP_POST(...) YomkAPI::EVENTLOOP_POST(__VA_ARGS__)
+#define YOMK_EVENTLOOP_POST_WAIT(...) YomkAPI::EVENTLOOP_POST_WAIT(__VA_ARGS__)
+#define YOMK_EVENTLOOP_DESTROY(...) YomkAPI::EVENTLOOP_DESTROY(__VA_ARGS__)
