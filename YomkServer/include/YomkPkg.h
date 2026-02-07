@@ -80,7 +80,6 @@ typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 
 typedef std::function<YomkResponse (YomkPkgPtr pkg)> YomkServiceFunc;
 typedef std::function<void (YomkResponse response)> YomkResponseFunc;
-typedef std::function<YomkResponse (YomkServer* server, YomkPkgPtr pkg)> YomkFunction;
 
 class YResquestEvent : public YomkEvent
 {
@@ -140,7 +139,7 @@ class YFunction : public YomkPkg
 {
 public:
     YFunction() { m_name = "YFunction"; }
-    YFunction(const std::string& funcName, YomkFunction func)
+    YFunction(const std::string& funcName, YomkServiceFunc func)
         : m_funcName(funcName)
         , m_func(func)
     {
@@ -160,7 +159,7 @@ public:
     }
 public:
     std::string m_funcName;
-    YomkFunction m_func;
+    YomkServiceFunc m_func;
 };
 typedef std::shared_ptr<YFunction> YFunctionPtr;
 #define YomkMkYFunctionPtr(funcName, func) std::make_shared<YFunction>(funcName, func)

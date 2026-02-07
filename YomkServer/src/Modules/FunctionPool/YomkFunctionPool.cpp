@@ -50,6 +50,6 @@ YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eInvalid, "funcName is not register");
     }
 
-    return m_functions[yCallFunc->m_funcName](m_server, yCallFunc->m_pkg);
+    return m_functions[yCallFunc->m_funcName](yCallFunc->m_pkg);
 }
 

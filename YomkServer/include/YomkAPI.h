@@ -352,6 +352,20 @@ public:
         }
         return request("/YomkEventLoop/destroy", YomkMkYStringPtr(event_loop_name));
     }
+// FUNCTIONPOOL_API
+public:
+    static YomkResponse FUNCTIONPOOL_REGISTER(const std::string& func_name, YomkServiceFunc func){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkFunctionPool/register", YomkMkYFunctionPtr(func_name, func));
+    }
+    static YomkResponse FUNCTIONPOOL_CALL(const std::string& func_name, YomkPkgPtr call_data){
+        if(!m_pServer){
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkFunctionPool/call", YomkMkYCallFunctionPtr(func_name, call_data));
+    }
 private:
     static std::shared_ptr<YomkServer> m_pServer;
 };
@@ -400,3 +414,5 @@ std::shared_ptr<YomkServer> YomkAPI::m_pServer = nullptr;
 #define YOMK_EVENTLOOP_POST(...) YomkAPI::EVENTLOOP_POST(__VA_ARGS__)
 #define YOMK_EVENTLOOP_POST_WAIT(...) YomkAPI::EVENTLOOP_POST_WAIT(__VA_ARGS__)
 #define YOMK_EVENTLOOP_DESTROY(...) YomkAPI::EVENTLOOP_DESTROY(__VA_ARGS__)
+#define YOMK_FUNCTIONPOOL_REGISTER(...) YomkAPI::FUNCTIONPOOL_REGISTER(__VA_ARGS__)
+#define YOMK_FUNCTIONPOOL_CALL(...) YomkAPI::FUNCTIONPOOL_CALL(__VA_ARGS__)

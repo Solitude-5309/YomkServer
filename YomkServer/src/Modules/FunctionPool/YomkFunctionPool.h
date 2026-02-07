@@ -16,5 +16,5 @@ private:
     YomkResponse callFunction(YomkPkgPtr pkg);
 private:
     YomkServer* m_server;
-    std::map<std::string, YomkFunction> m_functions;
+    std::map<std::string, YomkServiceFunc> m_functions;
 };
