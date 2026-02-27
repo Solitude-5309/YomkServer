@@ -9,18 +9,18 @@ public:
     static void init(std::shared_ptr<YomkServer> pServer){
         m_pServer = pServer;
     }
-    static void asyncRequest(const std::string& path, YomkPkgPtr pkg, YomkResponseFunc func){
+    static void asyncRequest(const std::string& url, YomkPkgPtr pkg, YomkResponseFunc func){
         if(!m_pServer){
             if(func) func(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
             return;
         }
-        return m_pServer->asyncRequest(path, pkg, func);
+        return m_pServer->asyncRequest(url, pkg, func);
     }
-    static YomkResponse request(const std::string& path, YomkPkgPtr pkg){
+    static YomkResponse request(const std::string& url, YomkPkgPtr pkg){
         if(!m_pServer){
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return m_pServer->request(path, pkg);
+        return m_pServer->request(url, pkg);
     }
 // LOG_API
 public:
@@ -373,6 +373,8 @@ private:
 std::shared_ptr<YomkServer> YomkAPI::m_pServer = nullptr;
 
 #define YOMK_INIT(...) YomkAPI::init(__VA_ARGS__)
+#define YOMK_REQUEST(...) YomkAPI::request(__VA_ARGS__)
+#define YOMK_ASYNC_REQUEST(...) YomkAPI::asyncRequest(__VA_ARGS__)
 #define YOMK_INFO(...) YomkAPI::CONSOLE_LOG_INFO(__VA_ARGS__)
 #define YOMK_WARN(...) YomkAPI::CONSOLE_LOG_WARN(__VA_ARGS__)
 #define YOMK_ERROR(...) YomkAPI::CONSOLE_LOG_ERROR(__VA_ARGS__)
