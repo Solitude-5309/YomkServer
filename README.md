@@ -78,6 +78,8 @@ YomkServer 采用两级模块化架构：
 
 ## 编译安装
 
+### ubuntu 编译安装
+
 mkdir build
 
 cd build
@@ -86,4 +88,12 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 
 sudo make install
 
+### windows 编译安装
 
+mkdir build
+
+cd build
+
+cmake -DCMAKE_BUILD_TYPE=Release ..
+
+cmake --build .

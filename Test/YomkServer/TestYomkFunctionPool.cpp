@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
         std::cout << "register func1 failed: " << response.m_msg << std::endl;
     }
 
-    response = YOMK_FUNCTIONPOOL_CALL("func1", YomkMkYStringPtr(settingsPath));
+    response = YOMK_FUNCTIONPOOL_CALL("func1", YomkMkYStringPtr(settingsPath.string()));
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "call func1 success" << std::endl;

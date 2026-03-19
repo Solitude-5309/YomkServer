@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     YOMK_INIT(server);
 
     // load settings
-    YomkResponse response = YOMK_SETTINGS_LOAD(settingsPath);
+    YomkResponse response = YOMK_SETTINGS_LOAD(settingsPath.string());
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "load success" << std::endl;
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     }
 
     // save settings
-    response = YOMK_SETTINGS_SAVE(settingsPath);
+    response = YOMK_SETTINGS_SAVE(settingsPath.string());
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "save success" << std::endl;

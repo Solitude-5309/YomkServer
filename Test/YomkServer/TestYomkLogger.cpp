@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     response = YOMK_ERROR("test new_console_logger log error. ", "new_console_logger"); 
     response = YOMK_DEBUG("test new_console_logger log debug. ", "new_console_logger");
     
-    response = YomkAPI::FILE_LOG_CREATE(logDir, "new_file_logger");
+    response = YomkAPI::FILE_LOG_CREATE(logDir.string(), "new_file_logger");
     
     response = YOMK_FILE_INFO("new_file_logger", "test new_file_logger log info. ");
     response = YOMK_FILE_WARN("new_file_logger", "test new_file_logger log warn. ");
