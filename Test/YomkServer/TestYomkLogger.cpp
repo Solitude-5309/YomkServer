@@ -1,9 +1,14 @@
 #include <iostream>
 #include "YomkAPI.h"
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
 int main(int argc, char *argv[])
 {
-    std::string logDir = argv[0] + std::string("/../YomkLog");
+    fs::path exePath = fs::canonical(argv[0]);
+    fs::path logDir = exePath.parent_path().parent_path() / "Test" / "YomkServer" / "YomkLog";
+    std::cout << "Log dir: " << logDir << std::endl;
 
     std::shared_ptr<YomkServer> server = std::make_shared<YomkServer>();
     server->startService({ 

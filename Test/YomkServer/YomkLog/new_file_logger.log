@@ -1,0 +1,4 @@
+[2026-03-18 19:50:13.011] [Info ] [MainLogger] test new_file_logger log info. 
+[2026-03-18 19:50:13.011] [Warn ] [MainLogger] test new_file_logger log warn. 
+[2026-03-18 19:50:13.011] [Error] [MainLogger] test new_file_logger log error. 
+[2026-03-18 19:50:13.011] [Debug] [MainLogger] test new_file_logger log debug. 

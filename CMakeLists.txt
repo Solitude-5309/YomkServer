@@ -1,11 +1,8 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(Yomk LANGUAGES CXX)
+project(Yomk VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
-# Qt Version
-set(Build_Qt_Version 6)
 
 # generate to dir
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY $<1:${CMAKE_BINARY_DIR}/../bin>)

@@ -1,6 +1,7 @@
 #include "YomkServerPrivate.h"
 #include "YomkServer.h"
 #include <iostream>
+#include <mutex>
 
 void YomkServerPrivate::addService(YomkService *srv)
 {

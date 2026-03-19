@@ -76,6 +76,14 @@ YomkServer 采用两级模块化架构：
 3. 运行时配置热更新能力
 4. 配置持久化和版本管理
 
+## 编译安装
 
+mkdir build
+
+cd build
+
+cmake -DCMAKE_BUILD_TYPE=Release ..
+
+sudo make install
 
 

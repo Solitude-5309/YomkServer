@@ -1,9 +1,12 @@
 #include <iostream>
 #include "YomkAPI.h"
-
+#include <filesystem>
+namespace fs = std::filesystem;
 int main(int argc, char *argv[])
 {
-    std::string settingsPath = argv[0] + std::string("/../../Settings/settings.json");
+    fs::path exePath = fs::canonical(argv[0]);
+    fs::path settingsPath = exePath.parent_path().parent_path() / "Test" / "YomkServer" / "Settings" / "settings.json";
+    std::cout << "Settings path: " << settingsPath << std::endl;
 
     std::shared_ptr<YomkServer> server = std::make_shared<YomkServer>();
     server->startService({ 

@@ -1,6 +1,7 @@
 #include "YomkServicePrivate.h"
 #include "YomkServer.h"
 #include <iostream>
+#include <mutex>
 
 void YomkServicePrivate::installFunc(const std::string &funcName, YomkServiceFunc func)
 {
