@@ -86,7 +86,7 @@ cmake ..
 
 cmake --build . --config Release
 
-cmake --install . --config Release
+sudo cmake --install . --config Release
 
 ## 链接使用
 
