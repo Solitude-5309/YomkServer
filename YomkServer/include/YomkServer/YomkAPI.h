@@ -1,8 +1,8 @@
 #pragma once
 #include "YomkServer.h"
 #include "YomkDefine.h"
-
-class YomkAPI
+#include <iostream>
+class YOMKSERVER_EXPORT YomkAPI
 {
 // REQ_API
 public:
@@ -369,8 +369,6 @@ public:
 private:
     static std::shared_ptr<YomkServer> m_pServer;
 };
-
-std::shared_ptr<YomkServer> YomkAPI::m_pServer = nullptr;
 
 #define YOMK_INIT(...) YomkAPI::init(__VA_ARGS__)
 #define YOMK_REQUEST(...) YomkAPI::request(__VA_ARGS__)

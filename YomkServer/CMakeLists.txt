@@ -12,6 +12,7 @@ include_directories(${YomkServer_INCLUDE})
 include_directories(${nlohmann_json_DIR})
 
 set(YomkServer_SOURCES 
+    ${YomkServer_SRC}/YomkAPI.cpp
     ${YomkServer_SRC}/YomkServer.cpp
     ${YomkServer_SRC}/YomkServerPrivate.cpp
     ${YomkServer_SRC}/YomkService.cpp
