@@ -322,11 +322,15 @@ public:
     }
 // EVENTLOOP_API
 public:
-    static YomkResponse EVENTLOOP_START(const std::string& event_loop_name){
+    static YomkResponse EVENTLOOP_START(
+        const std::string& event_loop_name,
+        YomkServiceFunc m_defaultServiceFunc = nullptr,
+        std::function<void(std::shared_ptr<YomkEvent> eventPtr)> m_defaultEventHandleFinishedFunc = nullptr
+    ){
         if(!m_pServer){
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkEventLoop/start", YomkMkYStringPtr(event_loop_name));
+        return request("/YomkEventLoop/start", YomkMkYEventloopPtr(event_loop_name, m_defaultServiceFunc, m_defaultEventHandleFinishedFunc));
     }
     static YomkResponse EVENTLOOP_STOP(const std::string& event_loop_name){
         if(!m_pServer){
@@ -334,17 +338,17 @@ public:
         }
         return request("/YomkEventLoop/stop", YomkMkYStringPtr(event_loop_name));
     }
-    static YomkResponse EVENTLOOP_POST(const std::string& event_loop_name, YomkPkgPtr event_data, YomkServiceFunc event_handle, std::function<void(std::shared_ptr<YomkEvent>)> event_handle_finished){
+    static YomkResponse EVENTLOOP_POST(const std::string& event_loop_name, YomkPkgPtr event_data, YomkServiceFunc event_handle = nullptr, std::function<void(std::shared_ptr<YomkEvent>)> event_handle_finished = nullptr){
         if(!m_pServer){
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkEventLoop/post", YomkMkYResquestEventPtr(event_loop_name, event_data, event_handle, event_handle_finished));
+        return request("/YomkEventLoop/post", YomkMkYomkEventPtr(event_loop_name, event_data, event_handle, event_handle_finished));
     }
-    static YomkResponse EVENTLOOP_POST_WAIT(const std::string& event_loop_name, YomkPkgPtr event_data, YomkServiceFunc event_handle, std::function<void(std::shared_ptr<YomkEvent>)> event_handle_finished){
+    static YomkResponse EVENTLOOP_POST_WAIT(const std::string& event_loop_name, YomkPkgPtr event_data, YomkServiceFunc event_handle = nullptr, std::function<void(std::shared_ptr<YomkEvent>)> event_handle_finished = nullptr){
         if(!m_pServer){
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkEventLoop/post_wait", YomkMkYResquestEventPtr(event_loop_name, event_data, event_handle, event_handle_finished));
+        return request("/YomkEventLoop/post_wait", YomkMkYomkEventPtr(event_loop_name, event_data, event_handle, event_handle_finished));
     }
     static YomkResponse EVENTLOOP_DESTROY(const std::string& event_loop_name){
         if(!m_pServer){

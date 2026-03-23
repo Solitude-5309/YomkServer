@@ -19,16 +19,18 @@ int YomkEventLoop::init()
 
 YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
+    YomkUnPackPkgresponse(pkg, "YEventloop", YEventloop, yEventloop);
 
-    if(m_eventLoop.find(yStr->d) != m_eventLoop.end())
+    if(m_eventLoop.find(yEventloop->m_eventloopName) != m_eventLoop.end())
     {
-        m_eventLoop[yStr->d]->start();
+        m_eventLoop[yEventloop->m_eventloopName]->start();
         return YomkResponse(YomkResponse::eOk, "event loop start success");
     }
 
     EventLoopPtr eventLoop = std::make_shared<EventLoop>();
-    m_eventLoop[yStr->d] = eventLoop;
+    eventLoop->setDefaultEventHandleFinishedFunc(yEventloop->m_defaultEventHandleFinishedFunc);
+    eventLoop->setDefaultServiceFunc(yEventloop->m_defaultServiceFunc);
+    m_eventLoop[yEventloop->m_eventloopName] = eventLoop;
     eventLoop->start();
 
     return YomkResponse(YomkResponse::eOk, "event loop start success");

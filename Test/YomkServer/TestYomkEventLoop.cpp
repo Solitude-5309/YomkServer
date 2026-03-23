@@ -2,9 +2,9 @@
 #include <thread>
 #include "YomkAPI.h"
 
-YomkResponse requestEventHandle(YomkPkgPtr pkg)
+YomkResponse eventHandle(YomkPkgPtr pkg)
 {
-    std::cout << "requestEventHandle called by thread: " << std::this_thread::get_id() << std::endl;
+    std::cout << "eventHandle called by thread: " << std::this_thread::get_id() << std::endl;
 
     YomkUnPackPkgresponse(pkg, "YString", YString, yString);
 
@@ -13,21 +13,21 @@ YomkResponse requestEventHandle(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eInvalid, "YString is null");
     }
 
-    std::cout << "requestEventHandle called with data: " << yString->d << std::endl;
+    std::cout << "eventHandle called with data: " << yString->d << std::endl;
 
-    return {YomkResponse::eOk, "requestEventHandle success. "};
+    return {YomkResponse::eOk, "eventHandle success. "};
 }
 
 void eventHandleFinished(std::shared_ptr<YomkEvent> eventPtr)
 {
     std::cout << "eventHandleFinished called by thread: " << std::this_thread::get_id() << std::endl;
 
-    if(eventPtr->name() == "YResquestEvent")
+    if(eventPtr->name() == "YomkEvent")
     {
-        YomkUnPackPkgVoid(eventPtr, "YResquestEvent", YResquestEvent, yResquestEvent);
-        if(yResquestEvent)
+        YomkUnPackPkgVoid(eventPtr, "YomkEvent", YomkEvent, yomkEvent);
+        if(yomkEvent)
         {
-            std::cout << "eventHandleFinished called with eventId: " << eventPtr->m_eventId << " eventLoopName: " << eventPtr->m_eventLoopName << " response: " << yResquestEvent->m_response.m_msg << std::endl;
+            std::cout << "eventHandleFinished called with eventId: " << eventPtr->m_eventId << " eventLoopName: " << eventPtr->m_eventLoopName << " response: " << yomkEvent->m_response.m_msg << std::endl;
         }
     }
 }
@@ -44,7 +44,10 @@ int main(int argc, char *argv[])
     });
     YOMK_INIT(server);
     
-    YomkResponse response = YOMK_EVENTLOOP_START("event_loop_1");
+    YomkResponse response = YOMK_EVENTLOOP_START(
+        "event_loop_1",
+        eventHandle,
+        eventHandleFinished);
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "start event_loop_1 success" << std::endl;
@@ -54,7 +57,7 @@ int main(int argc, char *argv[])
         std::cout << "start event_loop_1 failed: " << response.m_msg << std::endl;
     }
 
-    response = YOMK_EVENTLOOP_POST("event_loop_1", YomkMkYStringPtr("requestEventHandle_data"), requestEventHandle, eventHandleFinished);
+    response = YOMK_EVENTLOOP_POST("event_loop_1", YomkMkYStringPtr("requestEventHandle_data"));
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "post to event_loop_1 success" << std::endl;
@@ -64,14 +67,14 @@ int main(int argc, char *argv[])
         std::cout << "post to event_loop_1 failed: " << response.m_msg << std::endl;
     }
 
-    response = YOMK_EVENTLOOP_POST_WAIT("event_loop_1", YomkMkYStringPtr("requestEventHandle_data_wait"), requestEventHandle, eventHandleFinished);
+    response = YOMK_EVENTLOOP_POST_WAIT("event_loop_1", YomkMkYStringPtr("requestEventHandle_data_wait"));
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "post_wait to event_loop_1 success" << std::endl;
-        YomkUnPackPkg(response.m_data, "YResquestEvent", YResquestEvent, yResquestEvent);
-        if(yResquestEvent)
+        YomkUnPackPkg(response.m_data, "YomkEvent", YomkEvent, yomkEvent);
+        if(yomkEvent)
         {
-            std::cout << "post_wait response eventId: " << yResquestEvent->m_eventId << " eventLoopName: " << yResquestEvent->m_eventLoopName << " response: " << yResquestEvent->m_response.m_msg << std::endl;
+            std::cout << "post_wait response eventId: " << yomkEvent->m_eventId << " eventLoopName: " << yomkEvent->m_eventLoopName << " response: " << yomkEvent->m_response.m_msg << std::endl;
         }
     }
     else

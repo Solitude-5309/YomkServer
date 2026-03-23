@@ -14,6 +14,8 @@ public:
     int stop();
     int post(YomkEventPtr event);
     int postWait(YomkEventPtr event);
+    void setDefaultEventHandleFinishedFunc(std::function<void(std::shared_ptr<YomkEvent> eventPtr)> eventHandleFinishedFunc);
+    void setDefaultServiceFunc(YomkServiceFunc serviceFunc);
 private:
     std::queue<YomkEventPtr> m_eventQueue;
     std::mutex m_queueMutex;
@@ -21,5 +23,7 @@ private:
     std::thread m_worker;
     std::atomic<bool> m_running;
     std::uint64_t m_eventId;
+    std::function<void(std::shared_ptr<YomkEvent> eventPtr)> m_defaultEventHandleFinishedFunc;
+    YomkServiceFunc m_defaultServiceFunc;
 };
 typedef std::shared_ptr<EventLoop> EventLoopPtr;

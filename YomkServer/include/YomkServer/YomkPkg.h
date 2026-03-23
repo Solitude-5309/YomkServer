@@ -21,22 +21,6 @@ protected:
 };
 typedef std::shared_ptr<YomkPkg> YomkPkgPtr;
 
-class YomkEvent : public YomkPkg
-{
-public:
-    YomkEvent() { m_name = "YomkEvent"; m_eventHandleFinished = false; m_eventHandleFinishedFunc = nullptr; }
-    ~YomkEvent() {}
-public:
-    virtual void handle() = 0;
-    virtual void handleFinished(std::shared_ptr<YomkEvent> eventPtr) = 0;
-public:
-    std::uint64_t m_eventId;
-    std::string m_eventLoopName;
-    bool m_eventHandleFinished;
-    std::function<void(std::shared_ptr<YomkEvent> eventPtr)> m_eventHandleFinishedFunc;
-};
-typedef std::shared_ptr<YomkEvent> YomkEventPtr;
-
 class YomkResponse : public YomkPkg
 {
 public:
@@ -81,25 +65,28 @@ typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 typedef std::function<YomkResponse (YomkPkgPtr pkg)> YomkServiceFunc;
 typedef std::function<void (YomkResponse response)> YomkResponseFunc;
 
-class YResquestEvent : public YomkEvent
+class YomkEvent : public YomkPkg
 {
 public:
-    YResquestEvent() { m_name = "YResquestEvent"; }
-    YResquestEvent(
+    YomkEvent() { m_name = "YomkEvent"; }
+    YomkEvent(
         const std::string& eventLoopName,
         YomkPkgPtr pkg, 
         YomkServiceFunc serviceFunc,
         std::function<void(std::shared_ptr<YomkEvent> eventPtr)> eventHandleFinishedFunc)
         : m_pkg(pkg)
         , m_serviceFunc(serviceFunc){ 
-            m_name = "YResquestEvent";
+            m_name = "YomkEvent";
             m_eventLoopName = eventLoopName; 
-            m_eventHandleFinishedFunc = eventHandleFinishedFunc; }
-    ~YResquestEvent() {}
+            m_eventHandleFinishedFunc = eventHandleFinishedFunc; 
+            m_eventId = 0;
+            m_eventHandleFinished = false;
+        }
+    ~YomkEvent() {}
 public:
     virtual std::shared_ptr<YomkPkg> clone() const
     {
-        YResquestEvent* nd = new YResquestEvent();
+        YomkEvent* nd = new YomkEvent();
         std::shared_ptr<YomkPkg> ptr;
         nd->m_name = m_name;
         nd->m_eventId = m_eventId;
@@ -128,12 +115,17 @@ public:
         }
     }
 public:
+    std::uint64_t m_eventId;
+    std::string m_eventLoopName;
+    bool m_eventHandleFinished;
+    std::function<void(std::shared_ptr<YomkEvent> eventPtr)> m_eventHandleFinishedFunc;
     YomkPkgPtr m_pkg;
     YomkResponse m_response;
     YomkServiceFunc m_serviceFunc;
 };
-typedef std::shared_ptr<YResquestEvent> YResquestEventPtr;
-#define YomkMkYResquestEventPtr(eventLoopName, pkg, serviceFunc, eventHandleFinished) std::make_shared<YResquestEvent>(eventLoopName, pkg, serviceFunc, eventHandleFinished)
+typedef std::shared_ptr<YomkEvent> YomkEventPtr;
+#define YomkMkYomkEventPtr(eventLoopName, pkg, serviceFunc, eventHandleFinished) std::make_shared<YomkEvent>(eventLoopName, pkg, serviceFunc, eventHandleFinished)
+
 
 class YFunction : public YomkPkg
 {
@@ -621,3 +613,36 @@ public:
 };
 typedef std::shared_ptr<YBool> YBoolPtr;
 #define YomkMkYBoolPtr(b) std::make_shared<YBool>(b)
+
+class YEventloop : public YomkPkg
+{
+public:
+    YEventloop() { m_name = "YEventloop"; }
+    YEventloop(
+        const std::string& eventloopName,
+        YomkServiceFunc serviceFunc = nullptr,
+        std::function<void(std::shared_ptr<YomkEvent> eventPtr)> eventHandleFinishedFunc = nullptr
+    ) : m_eventloopName(eventloopName)
+        , m_defaultEventHandleFinishedFunc(eventHandleFinishedFunc)
+        , m_defaultServiceFunc(serviceFunc) { m_name = "YEventloop"; }
+    ~YEventloop() {}
+public:
+    virtual std::shared_ptr<YomkPkg> clone() const
+    {
+        YEventloop* nd = new YEventloop();
+        nd->m_name = m_name;
+        nd->m_eventloopName = m_eventloopName;
+        nd->m_defaultEventHandleFinishedFunc = m_defaultEventHandleFinishedFunc;
+        nd->m_defaultServiceFunc = m_defaultServiceFunc;
+        std::shared_ptr<YomkPkg> ptr;
+        ptr.reset(nd);
+        return ptr;
+    }
+public:
+    std::string m_eventloopName;
+    std::function<void(std::shared_ptr<YomkEvent> eventPtr)> m_defaultEventHandleFinishedFunc;
+    YomkServiceFunc m_defaultServiceFunc;
+};
+typedef std::shared_ptr<YEventloop> YEventloopPtr;
+#define YomkMkYEventloopPtr(eventloopName, ...) \
+    std::make_shared<YEventloop>(eventloopName, __VA_ARGS__)
