@@ -599,3 +599,25 @@ public:
 };
 typedef std::shared_ptr<YString> YStringPtr;
 #define YomkMkYStringPtr(d) std::make_shared<YString>(d)
+
+class YBool : public YomkPkg
+{
+public:
+    YBool() { m_name = "YBool"; }
+    YBool(bool b) : b(b) { m_name = "YBool"; }
+    ~YBool() {}
+public:
+    virtual std::shared_ptr<YomkPkg> clone() const
+    {
+        YBool* nd = new YBool();
+        nd->m_name = m_name;
+        nd->b = b;
+        std::shared_ptr<YomkPkg> ptr;
+        ptr.reset(nd);
+        return ptr;
+    }
+public:
+    bool b;
+};
+typedef std::shared_ptr<YBool> YBoolPtr;
+#define YomkMkYBoolPtr(b) std::make_shared<YBool>(b)
