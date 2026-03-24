@@ -90,6 +90,7 @@ void FileLogger::write()
         else 
         {
             std::cout << "open log file failed: " << m_dir + "/" + m_name + ".log" << std::endl;
+            return;
         }
         m_lineCount = 0;
         m_logStream.str("");

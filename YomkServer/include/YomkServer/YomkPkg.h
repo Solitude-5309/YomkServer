@@ -515,7 +515,7 @@ public:
         eError,
     };
 public:
-    YLog() { m_name = "YConsoleLog"; }
+    YLog() { m_name = "YLog"; }
     YLog(
         ELogLevel level, 
         const std::string& log,

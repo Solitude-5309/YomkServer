@@ -23,17 +23,20 @@ YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eInvalid, "funcName or func is empty");
     }
 
-    if(m_functions.find(yFunc->m_funcName) != m_functions.end())
+    
+    std::unique_lock<std::shared_mutex> lock(m_functionsMutex);
+
+    auto itFunc = m_functions.find(yFunc->m_funcName);
+    if(itFunc != m_functions.end())
     {
-        m_functions[yFunc->m_funcName] = yFunc->m_func;
+        itFunc->second = yFunc->m_func;
         return YomkResponse(YomkResponse::eOk, "find function name is exist, and update it");
     }
     else
     {
         m_functions[yFunc->m_funcName] = yFunc->m_func;
+        return {YomkResponse::eOk, "register function success"};
     }
-
-    return {YomkResponse::eOk, "register function success"};
 }
 
 YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
@@ -45,11 +48,17 @@ YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eInvalid, "funcName is empty");
     }
 
-    if(m_functions.find(yCallFunc->m_funcName) == m_functions.end())
+    YomkServiceFunc copyFunc;
     {
-        return YomkResponse(YomkResponse::eInvalid, "funcName is not register");
+        std::shared_lock<std::shared_mutex> lock(m_functionsMutex);
+        auto itFunc = m_functions.find(yCallFunc->m_funcName);
+        if(itFunc == m_functions.end())
+        {
+            return YomkResponse(YomkResponse::eInvalid, "funcName is not register");
+        }
+        copyFunc = itFunc->second;
     }
 
-    return m_functions[yCallFunc->m_funcName](yCallFunc->m_pkg);
+    return copyFunc(yCallFunc->m_pkg);
 }
 
