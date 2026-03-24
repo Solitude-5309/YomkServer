@@ -23,22 +23,27 @@ int main(int argc, char *argv[])
     
     YomkResponse response;
 
-    response = YOMK_INFO("test console log info. ");
-    response = YOMK_WARN("test console log warn. ");
-    response = YOMK_ERROR("test console log error. ");
-    response = YOMK_DEBUG("test console log debug. ");
+    response = YOMK_INFO("test", " console log info. ", 1);
+    response = YOMK_WARN("test", " console log warn. ", 2);
+    response = YOMK_ERROR("test", " console log error. ", 3);
+    response = YOMK_DEBUG("test", " console log debug. ", 4);
     
-    response = YOMK_INFO("test new_console_logger log info. ", "new_console_logger");
-    response = YOMK_WARN("test new_console_logger log warn. ", "new_console_logger");
-    response = YOMK_ERROR("test new_console_logger log error. ", "new_console_logger"); 
-    response = YOMK_DEBUG("test new_console_logger log debug. ", "new_console_logger");
+    response = YOMK_INFO_TAG("new_console_logger", "test", " new_console_logger log info. ", 1);
+    response = YOMK_WARN_TAG("new_console_logger", "test", " new_console_logger log warn. ", 2);
+    response = YOMK_ERROR_TAG("new_console_logger", "test", " new_console_logger log error. ", 3); 
+    response = YOMK_DEBUG_TAG("new_console_logger", "test", " new_console_logger log debug. ", 4);
     
     response = YomkAPI::FILE_LOG_CREATE(logDir.string(), "new_file_logger");
     
-    response = YOMK_FILE_INFO("new_file_logger", "test new_file_logger log info. ");
-    response = YOMK_FILE_WARN("new_file_logger", "test new_file_logger log warn. ");
-    response = YOMK_FILE_ERROR("new_file_logger", "test new_file_logger log error. ");
-    response = YOMK_FILE_DEBUG("new_file_logger", "test new_file_logger log debug. ");
+    response = YOMK_FILE_INFO("new_file_logger", "test", " new_file_logger log info. ", 1);
+    response = YOMK_FILE_WARN("new_file_logger", "test", " new_file_logger log warn. ", 2);
+    response = YOMK_FILE_ERROR("new_file_logger", "test", " new_file_logger log error. ", 3);
+    response = YOMK_FILE_DEBUG("new_file_logger", "test", " new_file_logger log debug. ", 4);
+
+    response = YOMK_FILE_INFO_TAG("new_file_logger", "TestLogger", "test", " new_file_logger log info. ", 1);
+    response = YOMK_FILE_WARN_TAG("new_file_logger", "TestLogger", "test", " new_file_logger log warn. ", 2);
+    response = YOMK_FILE_ERROR_TAG("new_file_logger", "TestLogger", "test", " new_file_logger log error. ", 3);
+    response = YOMK_FILE_DEBUG_TAG("new_file_logger", "TestLogger", "test", " new_file_logger log debug. ", 4);
 
     response = YomkAPI::FILE_LOG_WRITE("new_file_logger");
     

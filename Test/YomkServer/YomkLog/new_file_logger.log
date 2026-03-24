@@ -1,4 +1,8 @@
-[2026-03-18 19:50:13.011] [Info ] [MainLogger] test new_file_logger log info. 
-[2026-03-18 19:50:13.011] [Warn ] [MainLogger] test new_file_logger log warn. 
-[2026-03-18 19:50:13.011] [Error] [MainLogger] test new_file_logger log error. 
-[2026-03-18 19:50:13.011] [Debug] [MainLogger] test new_file_logger log debug. 
+[2026-03-24 17:08:04.236] [Info ] [ MainLogger ] test new_file_logger log info. 1
+[2026-03-24 17:08:04.236] [Warn ] [ MainLogger ] test new_file_logger log warn. 2
+[2026-03-24 17:08:04.236] [Error] [ MainLogger ] test new_file_logger log error. 3
+[2026-03-24 17:08:04.236] [Debug] [ MainLogger ] test new_file_logger log debug. 4
+[2026-03-24 17:08:04.236] [Info ] [ TestLogger ] test new_file_logger log info. 1
+[2026-03-24 17:08:04.236] [Warn ] [ TestLogger ] test new_file_logger log warn. 2
+[2026-03-24 17:08:04.236] [Error] [ TestLogger ] test new_file_logger log error. 3
+[2026-03-24 17:08:04.236] [Debug] [ TestLogger ] test new_file_logger log debug. 4
