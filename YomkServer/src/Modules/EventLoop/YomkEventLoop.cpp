@@ -21,9 +21,11 @@ YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
 {
     YomkUnPackPkgresponse(pkg, "YEventloop", YEventloop, yEventloop);
 
-    if(m_eventLoop.find(yEventloop->m_eventloopName) != m_eventLoop.end())
+    std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
+    auto itEventLoop = m_eventLoop.find(yEventloop->m_eventloopName);
+    if(itEventLoop != m_eventLoop.end())
     {
-        m_eventLoop[yEventloop->m_eventloopName]->start();
+        itEventLoop->second->start();
         return YomkResponse(YomkResponse::eOk, "event loop start success");
     }
 
@@ -40,12 +42,14 @@ YomkResponse YomkEventLoop::stop(YomkPkgPtr pkg)
 {
     YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
 
-    if(m_eventLoop.find(yStr->d) == m_eventLoop.end())
+    std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
+    auto itEventLoop = m_eventLoop.find(yStr->d);
+    if(itEventLoop == m_eventLoop.end())
     {
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
-    
-    m_eventLoop[yStr->d]->stop();
+    itEventLoop->second->stop();
+
     return YomkResponse(YomkResponse::eOk, "event loop stop success");
 }
 
@@ -57,12 +61,13 @@ YomkResponse YomkEventLoop::post(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eErr, "post pkg is not event");
     }
 
-    if(m_eventLoop.find(eventPtr->m_eventLoopName) == m_eventLoop.end())
+    std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
+    auto itEventLoop = m_eventLoop.find(eventPtr->m_eventLoopName);
+    if(itEventLoop == m_eventLoop.end())
     {
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
-
-    m_eventLoop[eventPtr->m_eventLoopName]->post(eventPtr);
+    itEventLoop->second->post(eventPtr);
 
     return YomkResponse(YomkResponse::eOk, "event loop post success");
 }
@@ -75,12 +80,13 @@ YomkResponse YomkEventLoop::postWait(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eErr, "post pkg is not event");
     }
 
-    if(m_eventLoop.find(eventPtr->m_eventLoopName) == m_eventLoop.end())
+    std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
+    auto itEventLoop = m_eventLoop.find(eventPtr->m_eventLoopName);
+    if(itEventLoop == m_eventLoop.end())
     {
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
-
-    m_eventLoop[eventPtr->m_eventLoopName]->postWait(eventPtr);
+    itEventLoop->second->postWait(eventPtr);
 
     return YomkResponse(YomkResponse::eOk, "event loop post wait success", eventPtr);
 }
@@ -89,12 +95,15 @@ YomkResponse YomkEventLoop::destroy(YomkPkgPtr pkg)
 {
     YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
 
-    if(m_eventLoop.find(yStr->d) == m_eventLoop.end())
+    std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
+    auto itEventLoop = m_eventLoop.find(yStr->d);
+    if(itEventLoop == m_eventLoop.end())
     {
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
 
-    m_eventLoop[yStr->d]->stop();
-    m_eventLoop.erase(yStr->d);
+    itEventLoop->second->stop();
+    m_eventLoop.erase(itEventLoop);
+    
     return YomkResponse(YomkResponse::eOk, "event loop destroy success");
 }

@@ -2,6 +2,8 @@
 #include "YomkDefine.h"
 #include "EventLoop.h"
 #include <map>
+#include <mutex>
+#include <shared_mutex>
 
 class YomkEventLoop : public YomkService
 {
@@ -18,4 +20,5 @@ private:
     YomkResponse destroy(YomkPkgPtr pkg);
 private:
     std::map<std::string, EventLoopPtr> m_eventLoop;
+    std::shared_mutex m_eventLoopMutex;
 };
