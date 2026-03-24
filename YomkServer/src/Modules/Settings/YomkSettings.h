@@ -3,6 +3,8 @@
 #include "YomkServer.h"
 #include "YomkDefine.h"
 #include "json.hpp"
+#include <mutex>
+#include <shared_mutex>
 
 class YomkSettings : public YomkService
 {
@@ -18,4 +20,5 @@ private:
     YomkResponse set(YomkPkgPtr pkg);
 private:
     nlohmann::json m_settings;
+    std::shared_mutex m_settingsMutex;
 };

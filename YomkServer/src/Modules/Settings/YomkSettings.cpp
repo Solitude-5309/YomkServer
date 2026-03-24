@@ -20,17 +20,23 @@ int YomkSettings::init()
 YomkResponse YomkSettings::load(YomkPkgPtr pkg)
 {
     YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
+    nlohmann::json tempSettings;
 
     try
     {
         std::ifstream file(yStr->d);
         if (!file.is_open()) return { YomkResponse::eErr, " [YomkSettings::load] cannot open file. " };
-        m_settings = nlohmann::json::parse(file);
+        tempSettings = nlohmann::json::parse(file);
         file.close();
     }
     catch (const std::exception &e)
     {
         return { YomkResponse::eErr, e.what() };
+    }
+
+    {
+        std::unique_lock<std::shared_mutex> lock(m_settingsMutex);
+        m_settings = std::move(tempSettings);
     }
 
     return { YomkResponse::eOk };
@@ -39,11 +45,27 @@ YomkResponse YomkSettings::load(YomkPkgPtr pkg)
 YomkResponse YomkSettings::save(YomkPkgPtr pkg)
 {
     YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
+    
+    std::string jsonData;
+    {
+        std::unique_lock<std::shared_mutex> lock(m_settingsMutex);
+        jsonData = m_settings.dump(4);
+    }
+
     try
     {
         std::ofstream file(yStr->d);
         if (!file.is_open()) return { YomkResponse::eErr, " [YomkSettings::save] cannot open file. " };
-        file << m_settings.dump(4);
+    
+        file << jsonData;
+        file.flush();
+        
+        if (file.fail())
+        {
+            file.close();
+            return { YomkResponse::eErr, "[YomkSettings::save] write failed." };
+        }
+
         file.close();
     }
     catch (const std::exception &e)
@@ -55,6 +77,8 @@ YomkResponse YomkSettings::save(YomkPkgPtr pkg)
 
 YomkResponse YomkSettings::get(YomkPkgPtr pkg)
 {
+    std::shared_lock<std::shared_mutex> lock(m_settingsMutex);
+
     YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
 
     if(!m_settings.contains(yStr->d))
@@ -172,6 +196,8 @@ YomkResponse YomkSettings::get(YomkPkgPtr pkg)
 
 YomkResponse YomkSettings::set(YomkPkgPtr pkg)
 {
+    std::unique_lock<std::shared_mutex> lock(m_settingsMutex);
+    
     if(pkg->name() == "YSettingString")
     {
         YomkUnPackPkgresponse(pkg, "YSettingString", YSettingString, ySetting);
