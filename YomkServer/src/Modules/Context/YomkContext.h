@@ -4,6 +4,10 @@
 #include "YomkDefine.h"
 #include <map>
 #include <set>
+#include <mutex>
+#include <shared_mutex>
+#include <atomic>
+
 class YomkContext : public YomkService
 {
 public:
@@ -23,9 +27,12 @@ private:
     YomkResponse setChecker(YomkPkgPtr pkg);
     YomkResponse setMonitor(YomkPkgPtr pkg);
 private:
-    bool m_checkerEnabled;
-    bool m_monitorEnabled;
+    std::atomic<bool> m_checkerEnabled;
+    std::atomic<bool> m_monitorEnabled;
     std::map<std::string, YomkPkgPtr> m_contexts;
+    std::shared_mutex m_contextsMutex;
     std::map<std::string, YContextSetChecker::YomkContextCheckFunc> m_checkers;
+    std::shared_mutex m_checkersMutex;
     std::map<std::string, std::vector<YomkContextMonitorFunc>> m_contextMonitors;
+    std::shared_mutex m_contextMonitorsMutex;
 };
