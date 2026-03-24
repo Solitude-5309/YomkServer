@@ -8,8 +8,6 @@ namespace fs = std::filesystem;
 
 FileLogger::FileLogger()
     : m_name("MainLogger")
-    , m_lineCount(0)
-    , m_maxLineCount(1000)
 {
 }
 
@@ -51,6 +49,7 @@ void FileLogger::log(ELogLevel logLevel, const std::string &log)
     timeStr << std::put_time(std::localtime(&in_time_t), "[%Y-%m-%d %H:%M:%S.");
     timeStr << std::setfill('0') << std::setw(3) << ms.count() << "]";
 
+    std::lock_guard<std::mutex> lock(m_logStreamMutex);
     switch(logLevel)
     {
         case eDebug:
@@ -68,17 +67,11 @@ void FileLogger::log(ELogLevel logLevel, const std::string &log)
         default:
             break;
     }
-
-    m_lineCount++;
-
-    if(m_lineCount > m_maxLineCount)
-    {
-        write();
-    }
 }
 
 void FileLogger::write()
 {
+    std::lock_guard<std::mutex> lock(m_logStreamMutex);
     if(m_logStream.str().size() > 0)
     {
         std::ofstream logFile(m_dir + "/" + m_name + ".log", std::ios_base::app);
@@ -92,7 +85,6 @@ void FileLogger::write()
             std::cout << "open log file failed: " << m_dir + "/" + m_name + ".log" << std::endl;
             return;
         }
-        m_lineCount = 0;
         m_logStream.str("");
     }
 }

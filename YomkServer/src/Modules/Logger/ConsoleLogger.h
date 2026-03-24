@@ -2,7 +2,7 @@
 #include <string>
 #include <map>
 #include <memory>
-
+#include <mutex>
 class ConsoleLogger
 {
 public:
@@ -22,5 +22,6 @@ public:
     void log(ELogLevel logLevel, const std::string& log);
 private:
     std::string m_name;
+    std::mutex m_mutex;
 };
 typedef std::shared_ptr<ConsoleLogger> ConsoleLoggerPtr;

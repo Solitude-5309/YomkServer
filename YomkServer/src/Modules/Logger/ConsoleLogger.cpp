@@ -22,6 +22,8 @@ void ConsoleLogger::log(ELogLevel logLevel, const std::string &log)
     timeStr << std::put_time(std::localtime(&in_time_t), "[%Y-%m-%d %H:%M:%S.");
     timeStr << std::setfill('0') << std::setw(3) << ms.count() << "]";
 
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     switch(logLevel)
     {
         case eDebug:

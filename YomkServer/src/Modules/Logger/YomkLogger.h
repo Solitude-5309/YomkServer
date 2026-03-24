@@ -4,6 +4,8 @@
 #include "ConsoleLogger.h"
 #include "FileLogger.h"
 #include <map>
+#include <shared_mutex>
+#include <mutex>
 
 class YomkLogger : public YomkService
 {
@@ -20,5 +22,7 @@ private:
     YomkResponse writeFileLog(YomkPkgPtr pkg);
 private:
     std::map<std::string, ConsoleLoggerPtr> m_consoleLoggers;
+    std::shared_mutex m_consoleLoggersMutex;
     std::map<std::string, FileLoggerPtr> m_fileLoggers;
+    std::shared_mutex m_fileLoggersMutex;
 };
