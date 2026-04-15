@@ -20,7 +20,7 @@ int EventLoop::start()
 {
     if(m_running.load())
     {
-        std::cout << "EventLoop already running" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop already running, please do not start it again" << std::endl;
         return 0;
     }
 
@@ -45,7 +45,7 @@ int EventLoop::start()
             }
             if(!event)
             {
-                std::cout << "EventLoop: event is null" << std::endl;
+                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop: event is null, please check event" << std::endl;
                 continue;
             }
 
@@ -61,7 +61,7 @@ int EventLoop::stop()
 {
     if(!m_running.load())
     {
-        std::cout << "EventLoop not running" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop not running, please do not stop it again" << std::endl;
         return 0;
     }
     m_running.store(false);
@@ -77,8 +77,14 @@ int EventLoop::post(YomkEventPtr event)
 {
     if(!m_running.load())
     {
-        std::cout << "EventLoop not running" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop not running, please start event loop." << std::endl;
         return 0;
+    }
+
+    if(!event)
+    {
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop: event is null, please check event" << std::endl;
+        return 1;
     }
 
     {
@@ -102,19 +108,15 @@ int EventLoop::postWait(YomkEventPtr event)
 {
     if(!m_running.load())
     {
-        std::cout << "EventLoop not running" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop not running, please start event loop." << std::endl;
         return 0;
     }
-
-    if(std::this_thread::get_id() == m_worker.get_id())
+    
+    if(!event)
     {
-        std::cout << "EventLoop deadlock: post wait in worker thread, is not allowed" << std::endl;
-        return 0;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop: event is null, please check event" << std::endl;
+        return 1;
     }
-
-    std::condition_variable tmpCv;
-    std::mutex tmpMtx;
-    std::unique_lock<std::mutex> lock(tmpMtx);
 
     if(!event->m_eventHandleFinishedFunc)
     {
@@ -124,6 +126,19 @@ int EventLoop::postWait(YomkEventPtr event)
     {
         event->m_serviceFunc = m_defaultServiceFunc;
     }
+
+    if(std::this_thread::get_id() == m_worker.get_id())
+    {
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve deadlock" << std::endl;
+        event->handle();
+        event->m_eventHandleFinished = true;
+        event->handleFinished(event);
+        return 0;
+    }
+
+    std::condition_variable tmpCv;
+    std::mutex tmpMtx;
+    std::unique_lock<std::mutex> lock(tmpMtx);
 
     std::function<void(std::shared_ptr<YomkEvent> eventPtr)> tmpEventHandleFinishedFunc = event->m_eventHandleFinishedFunc;
 
@@ -139,7 +154,7 @@ int EventLoop::postWait(YomkEventPtr event)
 
     tmpCv.wait(lock, [this, &event]()
     {
-        return event->m_eventHandleFinished;
+        return 0;
     });
 
     return 0;

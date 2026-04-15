@@ -5,11 +5,13 @@
 
 void YomkServerPrivate::addService(YomkService *srv)
 {
-    if(srv)
+    if(!srv)
     {
-        std::unique_lock<std::shared_mutex> lock(m_serviceMapMtx);
-        m_serviceMap[srv->name()].reset(srv);
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "service is null, please check the service." << std::endl;
+        return;
     }
+    std::unique_lock<std::shared_mutex> lock(m_serviceMapMtx);
+    m_serviceMap[srv->name()].reset(srv);
 }
 
 YomkResponse YomkServerPrivate::request(const std::string &srvName, const std::string &funcName, YomkPkgPtr pkg)
@@ -20,8 +22,8 @@ YomkResponse YomkServerPrivate::request(const std::string &srvName, const std::s
         auto iter = m_serviceMap.find(srvName);
         if (iter == m_serviceMap.end())
         {
-            std::cout << " [YomkServerPrivate::request] service not found. " << srvName << std::endl;
-            return YomkResponse(YomkResponse::eErr, " [YomkServerPrivate::request] service not found. ");
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "service not found. " << srvName << ", please start the service." << std::endl;
+            return YomkResponse(YomkResponse::eErr, "service not found: " + srvName);
         }
         srv = iter->second;
     }

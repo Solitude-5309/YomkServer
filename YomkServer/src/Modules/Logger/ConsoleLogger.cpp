@@ -39,6 +39,8 @@ void ConsoleLogger::log(ELogLevel logLevel, const std::string &log)
             std::cout << timeStr.str() << " [Error] [" << m_name << "] " << log << std::endl;
             break;
         default:
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Unknown log level: " << logLevel << ", using Info level instead." << std::endl;
+            std::cout << timeStr.str() << " [Info ] [" << m_name << "] " << log << std::endl;
             break;
     }
 }

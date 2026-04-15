@@ -31,12 +31,13 @@ void FileLogger::init()
     std::ofstream logFile(logFilePath);
     if (logFile.is_open()) 
     {
-        std::cout << "create log file success: " << logFilePath << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "create log file success: " << logFilePath << std::endl;
         logFile.close();
     } 
     else 
     {
-        std::cout << "create log file failed: " << logFilePath << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "create log file failed: " << logFilePath << std::endl;
+        logFile.close();
     }
 }
 
@@ -65,6 +66,8 @@ void FileLogger::log(ELogLevel logLevel, const std::string &log)
             m_logStream << timeStr.str() << " [Error] " << log << std::endl;
             break;
         default:
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Unknown log level: " << logLevel << ", using Info level instead." << std::endl;
+            m_logStream << timeStr.str() << " [Info ] " << log << std::endl;
             break;
     }
 }
@@ -82,7 +85,8 @@ void FileLogger::write()
         } 
         else 
         {
-            std::cout << "open log file failed: " << m_dir + "/" + m_name + ".log" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "open log file failed: " << m_dir + "/" + m_name + ".log" << std::endl;
+            logFile.close();
             return;
         }
         m_logStream.str("");
