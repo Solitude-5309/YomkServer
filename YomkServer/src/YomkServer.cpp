@@ -2,6 +2,8 @@
 #include "YomkServerPrivate.h"
 #include <iostream>
 #include <thread>
+#include <unordered_map>
+#include <functional>
 #include "Modules/Settings/YomkSettings.h"
 #include "Modules/FunctionPool/YomkFunctionPool.h"
 #include "Modules/Context/YomkContext.h"
@@ -16,35 +18,24 @@ YomkServer::YomkServer()
 
 int YomkServer::startService(std::vector<std::string> srvNames)
 {
+    static const std::unordered_map<std::string, std::function<YomkService*(YomkServer*)>> serviceCreators = {
+        {"/YomkSettings", [](YomkServer* server) { return new YomkSettings(server); }},
+        {"/YomkFunctionPool", [](YomkServer* server) { return new YomkFunctionPool(server); }},
+        {"/YomkContext", [](YomkServer* server) { return new YomkContext(server); }},
+        {"/YomkEventLoop", [](YomkServer* server) { return new YomkEventLoop(server); }},
+        {"/YomkLogger", [](YomkServer* server) { return new YomkLogger(server); }}
+    };
+
     for(auto& srvName : srvNames)
     {
-        YomkService* srv = nullptr;
-        if(srvName == "/YomkSettings")
-        {
-            srv = new YomkSettings(this);
-        }
-        else if(srvName == "/YomkFunctionPool")
-        {
-            srv = new YomkFunctionPool(this);
-        }
-        else if(srvName == "/YomkContext")
-        {
-            srv = new YomkContext(this);
-        }
-        else if(srvName == "/YomkEventLoop")
-        {
-            srv = new YomkEventLoop(this);
-        }
-        else if(srvName == "/YomkLogger")
-        {
-            srv = new YomkLogger(this);
-        }
-        else
+        auto it = serviceCreators.find(srvName);
+        if (it == serviceCreators.end())
         {
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "yomk does not support service: " << srvName << std::endl;
             continue;
         }
 
+        YomkService* srv = it->second(this);
         srv->name(srvName);
 
         if (srv->init() != 0)
