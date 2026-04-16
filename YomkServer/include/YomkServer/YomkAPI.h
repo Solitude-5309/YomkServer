@@ -10,6 +10,15 @@ public:
     static void init(std::shared_ptr<YomkServer> pServer){
         m_pServer = pServer;
     }
+    template<typename T>
+    static int newService(const std::string& srvName = "")
+    {
+        if(!m_pServer){
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
+            return -1;
+        }
+        return m_pServer->newService<T>(srvName);
+    }
     static void asyncRequest(const std::string& url, YomkPkgPtr pkg, YomkResponseFunc func){
         if(!m_pServer){
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
@@ -530,6 +539,7 @@ private:
 };
 
 #define YOMK_INIT(...) YomkAPI::init(__VA_ARGS__)
+#define YOMK_NEW_SERVICE(ClassName, srvName) YomkAPI::newService<ClassName>(srvName)
 #define YOMK_REQUEST(...) YomkAPI::request(__VA_ARGS__)
 #define YOMK_ASYNC_REQUEST(...) YomkAPI::asyncRequest(__VA_ARGS__)
 #define YOMK_INFO(...) YomkAPI::CONSOLE_LOG_INFO(__VA_ARGS__)
