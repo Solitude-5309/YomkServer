@@ -16,7 +16,7 @@ void YomkService::name(const std::string &name)
 {
     if(name.empty()) 
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "name is empty, set name failed, please check name" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "name is empty, set name failed, use default name" << std::endl;
         return;
     }
 
