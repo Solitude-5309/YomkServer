@@ -23,11 +23,22 @@ int main(int argc, char *argv[])
     
     YomkResponse response;
 
+    YOMK_OFF_CONSOLE_LOG_INFO();
+    YOMK_OFF_CONSOLE_LOG_WARN();
+    YOMK_OFF_CONSOLE_LOG_ERROR();
+    YOMK_OFF_CONSOLE_LOG_DEBUG();
     response = YOMK_INFO("test", " console log info. ", 1);
     response = YOMK_WARN("test", " console log warn. ", 2);
     response = YOMK_ERROR("test", " console log error. ", 3);
     response = YOMK_DEBUG("test", " console log debug. ", 4);
-    
+    YOMK_ON_CONSOLE_LOG_INFO();
+    YOMK_ON_CONSOLE_LOG_WARN();
+    YOMK_ON_CONSOLE_LOG_ERROR();
+    YOMK_ON_CONSOLE_LOG_DEBUG();
+    response = YOMK_INFO("test", " console log info. ", 5);
+    response = YOMK_WARN("test", " console log warn. ", 6);
+    response = YOMK_ERROR("test", " console log error. ", 7);
+    response = YOMK_DEBUG("test", " console log debug. ", 8);
     response = YOMK_INFO_TAG("new_console_logger", "test", " new_console_logger log info. ", 1);
     response = YOMK_WARN_TAG("new_console_logger", "test", " new_console_logger log warn. ", 2);
     response = YOMK_ERROR_TAG("new_console_logger", "test", " new_console_logger log error. ", 3); 

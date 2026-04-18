@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(Yomk VERSION 1.1.0 LANGUAGES CXX)
+project(Yomk VERSION 1.1.1 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 

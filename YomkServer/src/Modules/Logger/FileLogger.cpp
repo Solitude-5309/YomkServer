@@ -31,7 +31,6 @@ void FileLogger::init()
     std::ofstream logFile(logFilePath);
     if (logFile.is_open()) 
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "create log file success: " << logFilePath << std::endl;
         logFile.close();
     } 
     else 

@@ -218,6 +218,62 @@ public:
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/file_log", YomkMkYLogPtr(YLog::eDebug, "[ " + tag + " ] " + oss.str(), logFile));
     }
+    static YomkResponse ON_CONSOLE_LOG_DEBUG(){
+        if(!m_pServer){
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkLogger/on_console_log_by_level", YomkMkYLogPtr(YLog::eDebug));
+    }
+    static YomkResponse ON_CONSOLE_LOG_INFO(){
+        if(!m_pServer){
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkLogger/on_console_log_by_level", YomkMkYLogPtr(YLog::eInfo));
+    }
+    static YomkResponse ON_CONSOLE_LOG_WARN(){
+        if(!m_pServer){
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkLogger/on_console_log_by_level", YomkMkYLogPtr(YLog::eWarn));
+    }
+    static YomkResponse ON_CONSOLE_LOG_ERROR(){
+        if(!m_pServer){
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkLogger/on_console_log_by_level", YomkMkYLogPtr(YLog::eError));
+    }
+    static YomkResponse OFF_CONSOLE_LOG_DEBUG(){
+        if(!m_pServer){
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkLogger/off_console_log_by_level", YomkMkYLogPtr(YLog::eDebug));
+    }
+    static YomkResponse OFF_CONSOLE_LOG_INFO(){
+        if(!m_pServer){
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkLogger/off_console_log_by_level", YomkMkYLogPtr(YLog::eInfo));
+    }
+    static YomkResponse OFF_CONSOLE_LOG_WARN(){
+        if(!m_pServer){
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkLogger/off_console_log_by_level", YomkMkYLogPtr(YLog::eWarn));
+    }
+    static YomkResponse OFF_CONSOLE_LOG_ERROR(){
+        if(!m_pServer){
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkLogger/off_console_log_by_level", YomkMkYLogPtr(YLog::eError));
+    }
 // SETTINGS_API
 public:
     static YomkResponse SETTINGS_LOAD(const std::string& settingsPath){
@@ -542,6 +598,14 @@ private:
 #define YOMK_NEW_SERVICE(ClassName, srvName) YomkAPI::newService<ClassName>(srvName)
 #define YOMK_REQUEST(...) YomkAPI::request(__VA_ARGS__)
 #define YOMK_ASYNC_REQUEST(...) YomkAPI::asyncRequest(__VA_ARGS__)
+#define YOMK_ON_CONSOLE_LOG_INFO() YomkAPI::ON_CONSOLE_LOG_INFO()
+#define YOMK_ON_CONSOLE_LOG_WARN() YomkAPI::ON_CONSOLE_LOG_WARN()
+#define YOMK_ON_CONSOLE_LOG_ERROR() YomkAPI::ON_CONSOLE_LOG_ERROR()
+#define YOMK_ON_CONSOLE_LOG_DEBUG() YomkAPI::ON_CONSOLE_LOG_DEBUG()
+#define YOMK_OFF_CONSOLE_LOG_INFO() YomkAPI::OFF_CONSOLE_LOG_INFO()
+#define YOMK_OFF_CONSOLE_LOG_WARN() YomkAPI::OFF_CONSOLE_LOG_WARN()
+#define YOMK_OFF_CONSOLE_LOG_ERROR() YomkAPI::OFF_CONSOLE_LOG_ERROR()
+#define YOMK_OFF_CONSOLE_LOG_DEBUG() YomkAPI::OFF_CONSOLE_LOG_DEBUG()
 #define YOMK_INFO(...) YomkAPI::CONSOLE_LOG_INFO(__VA_ARGS__)
 #define YOMK_INFO_TAG(tag, ...) YomkAPI::CONSOLE_LOG_INFO_TAG(tag, __VA_ARGS__)
 #define YOMK_WARN(...) YomkAPI::CONSOLE_LOG_WARN(__VA_ARGS__)

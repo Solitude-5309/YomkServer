@@ -6,6 +6,10 @@ YomkLogger::YomkLogger(YomkServer *server)
 {
     name("/YomkLogger");
     m_consoleLoggers["MainLogger"] = std::make_shared<ConsoleLogger>();
+    m_showConsoleDebugLog.store(true);
+    m_showConsoleInfoLog.store(true);
+    m_showConsoleWarningLog.store(true);
+    m_showConsoleErrorLog.store(true);
 }
 
 YomkLogger::~YomkLogger()
@@ -20,7 +24,8 @@ int YomkLogger::init()
     YomkInstallFunc("/create_file_logger", YomkLogger::createFileLogger);
     YomkInstallFunc("/file_log", YomkLogger::fileLog);
     YomkInstallFunc("/write_file_log", YomkLogger::writeFileLog);
-
+    YomkInstallFunc("/off_console_log_by_level", YomkLogger::offConsoleLogByLevel);
+    YomkInstallFunc("/on_console_log_by_level", YomkLogger::onConsoleLogByLevel);
     return 0;
 }
 
@@ -62,20 +67,25 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
     switch (yLog->m_level)
     {
     case YLog::eInfo:
-        m_consoleLoggers[yLog->m_logger]->log(ConsoleLogger::eInfo, yLog->m_log);
+        if(m_showConsoleInfoLog.load())
+            m_consoleLoggers[yLog->m_logger]->log(ConsoleLogger::eInfo, yLog->m_log);
         break;
     case YLog::eWarn:
-        m_consoleLoggers[yLog->m_logger]->log(ConsoleLogger::eWarn, yLog->m_log);
+        if(m_showConsoleWarningLog.load())
+            m_consoleLoggers[yLog->m_logger]->log(ConsoleLogger::eWarn, yLog->m_log);
         break;
     case YLog::eError:
-        m_consoleLoggers[yLog->m_logger]->log(ConsoleLogger::eError, yLog->m_log);
+        if(m_showConsoleErrorLog.load())
+            m_consoleLoggers[yLog->m_logger]->log(ConsoleLogger::eError, yLog->m_log);
         break;
     case YLog::eDebug:
-        m_consoleLoggers[yLog->m_logger]->log(ConsoleLogger::eDebug, yLog->m_log);
+        if(m_showConsoleDebugLog.load())
+            m_consoleLoggers[yLog->m_logger]->log(ConsoleLogger::eDebug, yLog->m_log);
         break;
     default:
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown log level, use Info" << std::endl;
-        m_consoleLoggers[yLog->m_logger]->log(ConsoleLogger::eInfo, yLog->m_log);
+        if(m_showConsoleInfoLog.load())
+            m_consoleLoggers[yLog->m_logger]->log(ConsoleLogger::eInfo, yLog->m_log);
         break;
     }
 
@@ -160,5 +170,66 @@ YomkResponse YomkLogger::writeFileLog(YomkPkgPtr pkg)
     }
     fileLogger->second->write();
     
+    return YomkResponse(YomkResponse::eOk, "success.");
+}
+
+YomkResponse YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgresponse(pkg, "YLog", YLog, yLog)
+    if(!yLog)
+    {
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YLog is empty, please check YLog" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "YLog is empty");
+    }
+
+    switch (yLog->m_level)
+    {
+    case YLog::eInfo:
+        m_showConsoleInfoLog.store(false);
+        break;
+    case YLog::eWarn:
+        m_showConsoleWarningLog.store(false);
+        break;
+    case YLog::eError:
+        m_showConsoleErrorLog.store(false);
+        break;
+    case YLog::eDebug:
+        m_showConsoleDebugLog.store(false);
+        break;
+    default:
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown log level, turn off failed." << std::endl;
+        break;
+    }
+
+    return YomkResponse(YomkResponse::eOk, "success.");
+}
+
+YomkResponse YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgresponse(pkg, "YLog", YLog, yLog)
+    if(!yLog)
+    {
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YLog is empty, please check YLog" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "YLog is empty");
+    }
+
+    switch (yLog->m_level)
+    {
+    case YLog::eInfo:
+        m_showConsoleInfoLog.store(true);
+        break;
+    case YLog::eWarn:
+        m_showConsoleWarningLog.store(true);
+        break;
+    case YLog::eError:
+        m_showConsoleErrorLog.store(true);
+        break;
+    case YLog::eDebug:
+        m_showConsoleDebugLog.store(true);
+        break;
+    default:
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown log level, turn on failed." << std::endl;
+        break;
+    }   
     return YomkResponse(YomkResponse::eOk, "success.");
 }

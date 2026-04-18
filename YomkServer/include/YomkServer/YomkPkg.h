@@ -518,7 +518,7 @@ public:
     YLog() { m_name = "YLog"; }
     YLog(
         ELogLevel level, 
-        const std::string& log,
+        const std::string& log = "",
         const std::string& logger = "MainLogger") 
         : m_logger(logger)
         , m_level(level)
@@ -541,7 +541,7 @@ public:
     std::string m_log;
 };
 typedef std::shared_ptr<YLog> YLogPtr;
-#define YomkMkYLogPtr(level, log, ...) std::make_shared<YLog>(level, log, __VA_ARGS__)
+#define YomkMkYLogPtr(...) std::make_shared<YLog>(__VA_ARGS__)
 
 class YLogFile : public YomkPkg
 {
