@@ -31,7 +31,7 @@ YomkResponse YomkSettings::load(YomkPkgPtr pkg)
         std::ifstream file(yStr->d);
         if (!file.is_open()) 
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "cannot open file, please check file path" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "cannot open file, please check file path:" << yStr->d << std::endl;
             return { YomkResponse::eErr, "cannot open file, please check file path" };
         }
         tempSettings = nlohmann::json::parse(file);
@@ -39,7 +39,7 @@ YomkResponse YomkSettings::load(YomkPkgPtr pkg)
     }
     catch (const std::exception &e)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] load settings failed: " << e.what() << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] load settings from file: " << yStr->d << " failed: " << e.what() << std::endl;
         return { YomkResponse::eErr, e.what() };
     }
 
@@ -70,7 +70,7 @@ YomkResponse YomkSettings::save(YomkPkgPtr pkg)
         std::ofstream file(yStr->d);
         if (!file.is_open()) 
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "cannot open file, please check file path" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "cannot open file, please check file path:" << yStr->d << std::endl;
             return { YomkResponse::eErr, "cannot open file, please check file path" };
         }
     
@@ -80,7 +80,7 @@ YomkResponse YomkSettings::save(YomkPkgPtr pkg)
         if (file.fail())
         {
             file.close();
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "write failed, please check file path" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "write failed, please check file path:" << yStr->d << std::endl;
             return { YomkResponse::eErr, "write failed, please check file path" };
         }
 
@@ -88,7 +88,7 @@ YomkResponse YomkSettings::save(YomkPkgPtr pkg)
     }
     catch (const std::exception &e)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] save settings failed: " << e.what() << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] save settings to file: " << yStr->d << " failed: " << e.what() << std::endl;
         return { YomkResponse::eErr, e.what() };
     }
     return { YomkResponse::eOk };
@@ -106,7 +106,7 @@ YomkResponse YomkSettings::get(YomkPkgPtr pkg)
     }
     if(!m_settings.contains(yStr->d))
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting not found, please check setting name" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << yStr->d << " not found, please check setting name" << std::endl;
         return { YomkResponse::eErr, "setting not found" };
     }
 
@@ -135,7 +135,7 @@ YomkResponse YomkSettings::get(YomkPkgPtr pkg)
     {
         if(m_settings[yStr->d].size() == 0)
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "array is empty, set " << yStr->d << " failed, please check array." << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << yStr->d << " array is empty, set " << yStr->d << " failed, please check array." << std::endl;
             return { YomkResponse::eErr, "array is empty" };
         }
 
@@ -149,7 +149,7 @@ YomkResponse YomkSettings::get(YomkPkgPtr pkg)
                     std::shared_ptr<YSettingBoolArray> ySetting = std::make_shared<YSettingBoolArray>(yStr->d, boolArray);
                     return { YomkResponse::eOk, "success", ySetting };
                 }
-                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "boolean array is empty, set " << yStr->d << " failed, please check array." << std::endl;
+                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << yStr->d << " boolean array is empty, set " << yStr->d << " failed, please check array." << std::endl;
                 return { YomkResponse::eErr, "boolean array is empty" };
             }
             catch(const std::exception& e)
@@ -169,7 +169,7 @@ YomkResponse YomkSettings::get(YomkPkgPtr pkg)
                     std::shared_ptr<YSettingIntArray> ySetting = std::make_shared<YSettingIntArray>(yStr->d, intArray);
                     return { YomkResponse::eOk, "success", ySetting };
                 }
-                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "int array is empty, set " << yStr->d << " failed, please check array." << std::endl;
+                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << yStr->d << " int array is empty, set " << yStr->d << " failed, please check array." << std::endl;
                 return { YomkResponse::eErr, "int array is empty" };
             }
             catch(const std::exception& e)
@@ -188,7 +188,7 @@ YomkResponse YomkSettings::get(YomkPkgPtr pkg)
                     std::shared_ptr<YSettingDoubleArray> ySetting = std::make_shared<YSettingDoubleArray>(yStr->d, doubleArray);
                     return { YomkResponse::eOk, "success", ySetting };
                 }
-                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "double array is empty, set " << yStr->d << " failed, please check array." << std::endl;
+                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << yStr->d << " double array is empty, set " << yStr->d << " failed, please check array." << std::endl;
                 return { YomkResponse::eErr, "double array is empty" };
             }
             catch(const std::exception& e)
@@ -207,7 +207,7 @@ YomkResponse YomkSettings::get(YomkPkgPtr pkg)
                     std::shared_ptr<YSettingStringArray> ySetting = std::make_shared<YSettingStringArray>(yStr->d, stringArray);
                     return { YomkResponse::eOk, "success", ySetting };
                 }
-                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "string array is empty, set " << yStr->d << " failed, please check array." << std::endl;
+                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << yStr->d << " string array is empty, set " << yStr->d << " failed, please check array." << std::endl;
                 return { YomkResponse::eErr, " string array is empty. " };
             }
             catch(const std::exception& e)
@@ -218,13 +218,13 @@ YomkResponse YomkSettings::get(YomkPkgPtr pkg)
         }
         else
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown array type, set " << yStr->d << " failed, please check array." << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << yStr->d << " unknown array type, set " << yStr->d << " failed, please check array." << std::endl;
             return { YomkResponse::eErr, "unknown array type" };
         }
     }
     else
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown type, set " << yStr->d << " failed, please check type." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << yStr->d << " unknown type, set " << yStr->d << " failed, please check type." << std::endl;
         return { YomkResponse::eErr, "unknown type" };
     }
 }
@@ -243,7 +243,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         }
         if(!m_settings.contains(ySetting->m_key))
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting not found, please check setting name" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " not found, please check setting name" << std::endl;
             return { YomkResponse::eErr, "setting not found" };
         }
 
@@ -254,7 +254,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         } 
         else
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "type not match, please check type" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " type not match, please check type" << std::endl;
             return { YomkResponse::eErr, "type not match" };
         }
     }
@@ -268,7 +268,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         }
         if(!m_settings.contains(ySetting->m_key))
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting not found, please check setting name" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " not found, please check setting name" << std::endl;
             return { YomkResponse::eErr, "setting not found" };
         }
 
@@ -279,7 +279,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         } 
         else
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "type not match, please check type" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " type not match, please check type" << std::endl;
             return { YomkResponse::eErr, "type not match" };
         }
     }
@@ -293,7 +293,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         }
         if(!m_settings.contains(ySetting->m_key))
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting not found, please check setting name" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " not found, please check setting name" << std::endl;
             return { YomkResponse::eErr, "setting not found" };
         }
 
@@ -305,7 +305,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         } 
         else
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "type not match, please check type" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " type not match, please check type" << std::endl;
             return { YomkResponse::eErr, "type not match" };
         }
     }
@@ -319,7 +319,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         }
         if(!m_settings.contains(ySetting->m_key))
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting not found, please check setting name" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " not found, please check setting name" << std::endl;
             return { YomkResponse::eErr, "setting not found" };
         }
 
@@ -330,7 +330,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         } 
         else
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "type not match, please check type" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " type not match, please check type" << std::endl;
             return { YomkResponse::eErr, "type not match" };
         }
     }
@@ -344,7 +344,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         }
         if(!m_settings.contains(ySetting->m_key))
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting not found, please check setting name" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " not found, please check setting name" << std::endl;
             return { YomkResponse::eErr, "setting not found" };
         }
 
@@ -355,7 +355,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         } 
         else
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "type not match, please check type" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " type not match, please check type" << std::endl;
             return { YomkResponse::eErr, "type not match" };
         }
     }
@@ -369,7 +369,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         }
         if(!m_settings.contains(ySetting->m_key))
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting not found, please check setting name" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " not found, please check setting name" << std::endl;
             return { YomkResponse::eErr, "setting not found" };
         }
 
@@ -380,7 +380,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         } 
         else
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "type not match, please check type" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " type not match, please check type" << std::endl;
             return { YomkResponse::eErr, "type not match" };
         }
     }
@@ -395,7 +395,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         
         if(!m_settings.contains(ySetting->m_key))
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting not found, please check setting name" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " not found, please check setting name" << std::endl;
             return { YomkResponse::eErr, "setting not found" };
         }
 
@@ -406,7 +406,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         } 
         else
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "type not match, please check type" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " type not match, please check type" << std::endl;
             return { YomkResponse::eErr, "type not match" };
         }
     }
@@ -420,7 +420,7 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         }
         if(!m_settings.contains(ySetting->m_key))
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting not found, please check setting name" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " not found, please check setting name" << std::endl;
             return { YomkResponse::eErr, "setting not found" };
         }
 
@@ -431,13 +431,13 @@ YomkResponse YomkSettings::set(YomkPkgPtr pkg)
         } 
         else
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "type not match, please check type" << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "setting: " << ySetting->m_key << " type not match, please check type" << std::endl;
             return { YomkResponse::eErr, "type not match" };
         }
     }
     else
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown type, please check type" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown type: " << pkg->name() << ", please check type" << std::endl;
         return { YomkResponse::eErr, "unknown type" };
     }
 

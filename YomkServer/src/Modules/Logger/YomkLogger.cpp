@@ -60,7 +60,7 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
     
     if(m_consoleLoggers.find(yLog->m_logger) == m_consoleLoggers.end())
     {   
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger not found, use MainLogger" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger: " << yLog->m_logger << " not found, use MainLogger" << std::endl;
         yLog->m_logger = "MainLogger";
     }
 
@@ -126,7 +126,7 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
 
     if(m_fileLoggers.find(yLog->m_logger) == m_fileLoggers.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger not found." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger: " << yLog->m_logger << " not found." << std::endl;
         return YomkResponse(YomkResponse::eErr, "logger not found.");
     }
 
@@ -165,7 +165,7 @@ YomkResponse YomkLogger::writeFileLog(YomkPkgPtr pkg)
     auto fileLogger = m_fileLoggers.find(yStr->d);
     if(fileLogger == m_fileLoggers.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger not found." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger: " << yStr->d << " not found." << std::endl;
         return YomkResponse(YomkResponse::eErr, "logger not found.");
     }
     fileLogger->second->write();

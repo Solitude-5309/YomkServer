@@ -54,7 +54,7 @@ YomkResponse YomkEventLoop::stop(YomkPkgPtr pkg)
     auto itEventLoop = m_eventLoop.find(yStr->d);
     if(itEventLoop == m_eventLoop.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop not exist, please check event loop name" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << yStr->d << " not exist, please check event loop name" << std::endl;
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
     itEventLoop->second->stop();
@@ -75,7 +75,7 @@ YomkResponse YomkEventLoop::post(YomkPkgPtr pkg)
     auto itEventLoop = m_eventLoop.find(yEvent->m_eventLoopName);
     if(itEventLoop == m_eventLoop.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop not exist, please check event loop name" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << yEvent->m_eventLoopName << " not exist, please check event loop name" << std::endl;
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
     itEventLoop->second->post(yEvent);
@@ -96,7 +96,7 @@ YomkResponse YomkEventLoop::postWait(YomkPkgPtr pkg)
     auto itEventLoop = m_eventLoop.find(yEvent->m_eventLoopName);
     if(itEventLoop == m_eventLoop.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop not exist, please check event loop name" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << yEvent->m_eventLoopName << " not exist, please check event loop name" << std::endl;
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
     itEventLoop->second->postWait(yEvent);
@@ -116,7 +116,7 @@ YomkResponse YomkEventLoop::destroy(YomkPkgPtr pkg)
     auto itEventLoop = m_eventLoop.find(yStr->d);
     if(itEventLoop == m_eventLoop.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop not exist, please check event loop name" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << yStr->d << " not exist, please check event loop name" << std::endl;
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
 

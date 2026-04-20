@@ -43,7 +43,7 @@ YomkResponse YomkContext::create(YomkPkgPtr pkg)
         std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         if (m_contexts.find(yContext->m_key) != m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key already exists, please check YContext.m_key." << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << yContext->m_key << " already exists, please check YContext.m_key." << std::endl;
             return YomkResponse(YomkResponse::eErr, "key already exists");
         }
 
@@ -66,7 +66,7 @@ YomkResponse YomkContext::destroy(YomkPkgPtr pkg)
         auto itContext = m_contexts.find(yStr->d);
         if(itContext == m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key is not exist, please check key." << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << yStr->d << " is not exist, please check key." << std::endl;
             return YomkResponse(YomkResponse::eErr, "key is not exist");
         }
         m_contexts.erase(itContext); 
@@ -95,7 +95,7 @@ YomkResponse YomkContext::get(YomkPkgPtr pkg)
     auto itContext = m_contexts.find(yContext->m_key);
     if(itContext == m_contexts.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key is not exist, please check YContext.m_key." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << yContext->m_key << " is not exist, please check YContext.m_key." << std::endl;
         return YomkResponse(YomkResponse::eErr, "key is not exist", yContext->m_value);
     }
 
@@ -120,7 +120,7 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
     auto itContext = m_contexts.find(yContext->m_key);
     if(itContext == m_contexts.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key is not exist, please check YContext.m_key." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << yContext->m_key << " is not exist, please check YContext.m_key." << std::endl;
         return YomkResponse(YomkResponse::eErr, "key is not exist");
     }
 
@@ -141,7 +141,7 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
 
     if(itContext->second->name() != yContext->m_value->name())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "context type not match, please check YContext.m_value." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "context: " << yContext->m_key << " type not match, please check YContext.m_value." << std::endl;
         return YomkResponse(YomkResponse::eErr, "context type not match");
     }
     itContext->second = yContext->m_value;
@@ -211,7 +211,7 @@ YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         if(m_contexts.find(yChecker->m_key) == m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key is not exist, please check YContextSetChecker.m_key." << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << yChecker->m_key << " is not exist, please check YContextSetChecker.m_key." << std::endl;
             return YomkResponse(YomkResponse::eErr, "key is not exist");
         }
     }
@@ -247,7 +247,7 @@ YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         if(m_contexts.find(yMonitor->m_key) == m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key is not exist, please check YContextMonitor.m_key." << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << yMonitor->m_key << " is not exist, please check YContextMonitor.m_key." << std::endl;
             return YomkResponse(YomkResponse::eErr, "key is not exist");
         }
     }
