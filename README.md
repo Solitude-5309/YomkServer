@@ -82,7 +82,7 @@ mkdir build
 
 cd build
 
-cmake ..
+cmake .. -DCMAKE_INSTALL_PREFIX=~/YomkServer/install
 
 cmake --build . --config Release
 
