@@ -12,7 +12,7 @@ class YomkLogger : public YomkService
 {
 public:
     YomkLogger(YomkServer* server);
-    ~YomkLogger();
+    virtual ~YomkLogger();
 public:
     virtual int init();
 private:

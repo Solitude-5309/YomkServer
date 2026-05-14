@@ -9,7 +9,7 @@ class YomkEventLoop : public YomkService
 {
 public:
     YomkEventLoop(YomkServer* server);
-    ~YomkEventLoop() {}
+    virtual ~YomkEventLoop() {}
 public:
     virtual int init() override;
 private:

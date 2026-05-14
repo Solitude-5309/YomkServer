@@ -10,7 +10,7 @@ class YomkSettings : public YomkService
 {
 public:
     YomkSettings(YomkServer* server);
-    ~YomkSettings() {}
+    virtual ~YomkSettings() {}
 public:
     virtual int init() override;
 private:

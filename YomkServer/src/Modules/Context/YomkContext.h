@@ -12,7 +12,7 @@ class YomkContext : public YomkService
 {
 public:
     YomkContext(YomkServer* server);
-    ~YomkContext() {}
+    virtual ~YomkContext() {}
 public:
     virtual int init() override;
 private:

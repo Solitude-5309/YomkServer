@@ -10,7 +10,7 @@ class YomkFunctionPool : public YomkService
 {
 public:
     YomkFunctionPool(YomkServer* server);
-    ~YomkFunctionPool() {}
+    virtual ~YomkFunctionPool() {}
 public:
     virtual int init() override;
 private:

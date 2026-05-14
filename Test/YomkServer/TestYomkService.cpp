@@ -6,7 +6,7 @@ class MyServiceMsg : public YomkPkg
 public:
     MyServiceMsg() { m_name = "MyServiceMsg"; }
     MyServiceMsg(const std::string& msg) : msg(msg) { m_name = "MyServiceMsg"; }
-    ~MyServiceMsg() {}
+    virtual ~MyServiceMsg() {}
 public:
     // 克隆数据，深拷贝
     virtual std::shared_ptr<YomkPkg> clone() const
@@ -36,7 +36,7 @@ public:
         // 设置服务名称，服务名称在服务器中必须唯一
         name("/YomkServiceB");
     }
-    ~YomkServiceB() {}
+    virtual ~YomkServiceB() {}
 public:
     virtual int init()
     {
@@ -75,7 +75,7 @@ public:
         // 设置服务名称，服务名称在服务器中必须唯一
         name("/YomkServiceA");
     }
-    ~YomkServiceA() {}
+    virtual ~YomkServiceA() {}
 public:
     virtual int init()
     {
