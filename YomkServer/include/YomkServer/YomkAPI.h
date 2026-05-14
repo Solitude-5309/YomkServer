@@ -484,14 +484,14 @@ public:
         }
         return request("/YomkContext/set", YomkMkYContextPtr(ctx_name, ctx));
     }
-    static YomkResponse CONTEXT_ON_CHECHER(){
+    static YomkResponse CONTEXT_ON_CHECKER(){
         if(!m_pServer){
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
         return request("/YomkContext/turn_on_checker", nullptr);
     }
-    static YomkResponse CONTEXT_OFF_CHECHER(){
+    static YomkResponse CONTEXT_OFF_CHECKER(){
         if(!m_pServer){
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
@@ -643,8 +643,8 @@ private:
 #define YOMK_CONTEXT_CREATE(...) YomkAPI::CONTEXT_CREATE(__VA_ARGS__)
 #define YOMK_CONTEXT_GET(ClassName, ...) YomkAPI::CONTEXT_GET<ClassName>(__VA_ARGS__)
 #define YOMK_CONTEXT_SET(...) YomkAPI::CONTEXT_SET(__VA_ARGS__)
-#define YOMK_CONTEXT_ON_CHECHER() YomkAPI::CONTEXT_ON_CHECHER()
-#define YOMK_CONTEXT_OFF_CHECHER() YomkAPI::CONTEXT_OFF_CHECHER()
+#define YOMK_CONTEXT_ON_CHECKER() YomkAPI::CONTEXT_ON_CHECKER()
+#define YOMK_CONTEXT_OFF_CHECKER() YomkAPI::CONTEXT_OFF_CHECKER()
 #define YOMK_CONTEXT_SET_CHECKER(...) YomkAPI::CONTEXT_SET_CHECKER(__VA_ARGS__)
 #define YOMK_CONTEXT_ON_MONITOR() YomkAPI::CONTEXT_ON_MONITOR()
 #define YOMK_CONTEXT_OFF_MONITOR() YomkAPI::CONTEXT_OFF_MONITOR()

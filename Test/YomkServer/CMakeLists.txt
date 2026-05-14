@@ -6,6 +6,18 @@ set(YomkServerLib
 )
 
 # -------------sl TestYomkSettings ----------------
+set(TestYomkService_SOURCES 
+    ${TestYomkServer_DIR}/TestYomkService.cpp
+)
+add_executable(TestYomkService 
+    ${TestYomkService_SOURCES}
+)
+target_link_libraries(TestYomkService PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkSettings ----------------
+
+# -------------sl TestYomkSettings ----------------
 set(TestYomkSettings_SOURCES 
     ${TestYomkServer_DIR}/TestYomkSettings.cpp
 )
