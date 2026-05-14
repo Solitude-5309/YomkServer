@@ -7,8 +7,9 @@ class YOMKSERVER_EXPORT YomkAPI
 {
 // REQ_API
 public:
-    static void init(std::shared_ptr<YomkServer> pServer){
+    static void init(std::shared_ptr<YomkServer> pServer, std::vector<std::string> srvNames={}){
         m_pServer = pServer;
+        m_pServer->startService(srvNames);
     }
     template<typename T>
     static int newService(const std::string& srvName = "")

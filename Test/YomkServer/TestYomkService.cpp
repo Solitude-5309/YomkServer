@@ -118,18 +118,15 @@ private:
 };
 
 int main(int argc, char *argv[])
-{
-    std::shared_ptr<YomkServer> server = std::make_shared<YomkServer>();
-    server->startService({ 
+{    
+    // 全局宏，一个程序只能有一个服务器，用于初始化服务器
+    YOMK_INIT(std::make_shared<YomkServer>(), { 
         "/YomkSettings", 
         "/YomkFunctionPool", 
         "/YomkContext",
         "/YomkEventLoop",
         "/YomkLogger"
     });
-
-    // 全局宏，一个程序只能有一个服务器，用于初始化服务器
-    YOMK_INIT(server);
     // 创建服务A，实例化YomkServiceA，并调用init()方法
     YOMK_NEW_SERVICE(YomkServiceA, "/YomkServiceA");
     // 创建服务B，实例化YomkServiceB，并调用init()方法

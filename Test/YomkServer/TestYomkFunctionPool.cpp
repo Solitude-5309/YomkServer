@@ -36,15 +36,13 @@ int main(int argc, char *argv[])
     fs::path settingsPath = exePath.parent_path().parent_path() / "Test" / "YomkServer" / "Settings" / "settings.json";
     std::cout << "Settings path: " << settingsPath << std::endl;
     
-    std::shared_ptr<YomkServer> server = std::make_shared<YomkServer>();
-    server->startService({ 
+    YOMK_INIT(std::make_shared<YomkServer>(), { 
         "/YomkSettings", 
         "/YomkFunctionPool", 
         "/YomkContext",
         "/YomkEventLoop",
         "/YomkLogger"
     });
-    YOMK_INIT(server);
     
     YomkResponse response = YOMK_FUNCTIONPOOL_REGISTER("func1", func1);
     if(response.m_resStatus == YomkResponse::eOk)

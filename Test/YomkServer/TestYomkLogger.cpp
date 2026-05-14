@@ -10,16 +10,13 @@ int main(int argc, char *argv[])
     fs::path logDir = exePath.parent_path().parent_path() / "Test" / "YomkServer" / "YomkLog";
     std::cout << "Log dir: " << logDir << std::endl;
 
-    std::shared_ptr<YomkServer> server = std::make_shared<YomkServer>();
-    server->startService({ 
+    YOMK_INIT(std::make_shared<YomkServer>(), { 
         "/YomkSettings", 
         "/YomkFunctionPool", 
         "/YomkContext",
         "/YomkEventLoop",
         "/YomkLogger"
     });
-
-    YOMK_INIT(server);
     
     YomkResponse response;
 
