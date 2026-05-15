@@ -84,9 +84,7 @@ cd build
 
 cmake .. -DCMAKE_INSTALL_PREFIX=~/YomkServer/install
 
-cmake --build . --config Release
-
-sudo cmake --install . --config Release
+sudo cmake --build . --target install --config Release
 
 ## 链接使用
 

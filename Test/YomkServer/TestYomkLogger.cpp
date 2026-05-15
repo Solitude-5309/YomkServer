@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     response = YOMK_ERROR_TAG("new_console_logger", "test", " new_console_logger log error. ", 3); 
     response = YOMK_DEBUG_TAG("new_console_logger", "test", " new_console_logger log debug. ", 4);
     
-    response = YomkAPI::FILE_LOG_CREATE(logDir.string(), "new_file_logger");
+    response = YOMK_FILE_LOG_CREATE(logDir.string(), "new_file_logger");
     
     response = YOMK_FILE_INFO("new_file_logger", "test", " new_file_logger log info. ", 1);
     response = YOMK_FILE_WARN("new_file_logger", "test", " new_file_logger log warn. ", 2);
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     response = YOMK_FILE_ERROR_TAG("new_file_logger", "TestLogger", "test", " new_file_logger log error. ", 3);
     response = YOMK_FILE_DEBUG_TAG("new_file_logger", "TestLogger", "test", " new_file_logger log debug. ", 4);
 
-    response = YomkAPI::FILE_LOG_WRITE("new_file_logger");
+    response = YOMK_FILE_LOG_WRITE("new_file_logger");
     
     std::cout << "test YomkLogger completed, any key to continue..." << std::endl;
 

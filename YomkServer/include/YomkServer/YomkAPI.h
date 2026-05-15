@@ -615,6 +615,8 @@ private:
 #define YOMK_ERROR_TAG(tag, ...) YomkAPI::CONSOLE_LOG_ERROR_TAG(tag, __VA_ARGS__)
 #define YOMK_DEBUG(...) YomkAPI::CONSOLE_LOG_DEBUG(__VA_ARGS__)
 #define YOMK_DEBUG_TAG(tag, ...) YomkAPI::CONSOLE_LOG_DEBUG_TAG(tag, __VA_ARGS__)
+#define YOMK_FILE_LOG_CREATE(...) YomkAPI::FILE_LOG_CREATE(__VA_ARGS__)
+#define YOMK_FILE_LOG_WRITE(...) YomkAPI::FILE_LOG_WRITE(__VA_ARGS__)
 #define YOMK_FILE_INFO(...) YomkAPI::FILE_LOG_INFO(__VA_ARGS__)
 #define YOMK_FILE_INFO_TAG(tag, ...) YomkAPI::FILE_LOG_INFO_TAG(tag, __VA_ARGS__)
 #define YOMK_FILE_WARN(...) YomkAPI::FILE_LOG_WARN(__VA_ARGS__)
