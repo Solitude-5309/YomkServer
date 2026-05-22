@@ -545,7 +545,7 @@ public:
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkEventLoop/start", YomkMkYEventloopPtr(event_loop_name, m_defaultServiceFunc, m_defaultEventHandleFinishedFunc));
+        return request("/YomkEventLoop/start", YomkMsgPtr(Eventloop, Eventloop{event_loop_name, m_defaultEventHandleFinishedFunc, m_defaultServiceFunc}));
     }
     static YomkResponse EVENTLOOP_STOP(const std::string& event_loop_name){
         if(!m_pServer){

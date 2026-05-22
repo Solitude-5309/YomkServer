@@ -347,27 +347,6 @@ public:
 typedef std::shared_ptr<YString> YStringPtr;
 #define YomkMkYStringPtr(d) std::make_shared<YString>(d)
 
-class YEventloop : public YomkPkg
-{
-public:
-    YEventloop() { m_name = "YEventloop"; }
-    YEventloop(
-        const std::string& eventloopName,
-        YomkServiceFunc serviceFunc = nullptr,
-        std::function<void(std::shared_ptr<YomkEvent> eventPtr)> eventHandleFinishedFunc = nullptr
-    ) : m_eventloopName(eventloopName)
-        , m_defaultEventHandleFinishedFunc(eventHandleFinishedFunc)
-        , m_defaultServiceFunc(serviceFunc) { m_name = "YEventloop"; }
-    virtual ~YEventloop() {}
-public:
-    std::string m_eventloopName;
-    std::function<void(std::shared_ptr<YomkEvent> eventPtr)> m_defaultEventHandleFinishedFunc;
-    YomkServiceFunc m_defaultServiceFunc;
-};
-typedef std::shared_ptr<YEventloop> YEventloopPtr;
-#define YomkMkYEventloopPtr(eventloopName, ...) \
-    std::make_shared<YEventloop>(eventloopName, __VA_ARGS__)
-
 
 
 #define YomkMsg(IType, OType)                   \
@@ -406,3 +385,11 @@ struct CallFunction
     YomkPkgPtr m_pkg;
 };
 YomkMsg(CallFunction, CallFunction)
+
+struct Eventloop
+{
+    std::string m_eventloopName;
+    std::function<void(std::shared_ptr<YomkEvent> eventPtr)> m_defaultEventHandleFinishedFunc;
+    YomkServiceFunc m_defaultServiceFunc;
+};
+YomkMsg(Eventloop, Eventloop)

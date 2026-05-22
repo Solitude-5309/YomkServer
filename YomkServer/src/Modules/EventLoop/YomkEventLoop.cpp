@@ -19,14 +19,14 @@ int YomkEventLoop::init()
 
 YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YEventloop", YEventloop, yEventloop);
-    if(!yEventloop)
+    YomkUnPackPkgResponse(pkg, Eventloop, eventloop);
+    if(!eventloop)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YEventloop is empty, please check YEventloop" << std::endl;
-        return YomkResponse(YomkResponse::eErr, "YEventloop is empty");
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Eventloop is empty, please check Eventloop" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "Eventloop is empty");
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
-    auto itEventLoop = m_eventLoop.find(yEventloop->m_eventloopName);
+    auto itEventLoop = m_eventLoop.find(eventloop->d.m_eventloopName);
     if(itEventLoop != m_eventLoop.end())
     {
         itEventLoop->second->start();
@@ -34,9 +34,9 @@ YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
     }
 
     EventLoopPtr eventLoop = std::make_shared<EventLoop>();
-    eventLoop->setDefaultEventHandleFinishedFunc(yEventloop->m_defaultEventHandleFinishedFunc);
-    eventLoop->setDefaultServiceFunc(yEventloop->m_defaultServiceFunc);
-    m_eventLoop[yEventloop->m_eventloopName] = eventLoop;
+    eventLoop->setDefaultEventHandleFinishedFunc(eventloop->d.m_defaultEventHandleFinishedFunc);
+    eventLoop->setDefaultServiceFunc(eventloop->d.m_defaultServiceFunc);
+    m_eventLoop[eventloop->d.m_eventloopName] = eventLoop;
     eventLoop->start();
 
     return YomkResponse(YomkResponse::eOk, "event loop start success");
