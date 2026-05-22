@@ -14,8 +14,6 @@ public:
 public:
     void name(const std::string& name) { m_name = name; }
     std::string name() { return m_name; }
-public:
-    virtual std::shared_ptr<YomkPkg> clone() const = 0;
 protected:
     std::string m_name;
 };
@@ -43,18 +41,6 @@ public:
         , m_data(d) { 
             m_name = "YomkResponse"; }
     virtual ~YomkResponse() {}
-public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YomkResponse* nd = new YomkResponse();
-        nd->m_name = m_name;
-        nd->m_resStatus = m_resStatus;
-        nd->m_data = m_data->clone();
-        nd->m_msg = m_msg;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
 public:
     EResStatus m_resStatus;
     std::string m_msg;
@@ -84,22 +70,6 @@ public:
         }
     virtual ~YomkEvent() {}
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YomkEvent* nd = new YomkEvent();
-        std::shared_ptr<YomkPkg> ptr;
-        nd->m_name = m_name;
-        nd->m_eventId = m_eventId;
-        nd->m_eventLoopName = m_eventLoopName;
-        nd->m_eventHandleFinished = m_eventHandleFinished;
-        nd->m_pkg = m_pkg->clone();
-        nd->m_response.m_resStatus = m_response.m_resStatus;
-        nd->m_response.m_msg = m_response.m_msg;
-        nd->m_response.m_data = m_response.m_data->clone();
-        nd->m_serviceFunc = m_serviceFunc;
-        ptr.reset(nd);
-        return ptr;
-    }
     virtual void handle()
     {
         if(m_serviceFunc)
@@ -139,17 +109,6 @@ public:
     }
     virtual ~YFunction() {}
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YFunction* nd = new YFunction();
-        nd->m_name = m_name;
-        nd->m_funcName = m_funcName;
-        nd->m_func = m_func;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     std::string m_funcName;
     YomkServiceFunc m_func;
 };
@@ -168,17 +127,6 @@ public:
     }
     virtual ~YCallFunction() {}
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YCallFunction* nd = new YCallFunction();
-        nd->m_name = m_name;
-        nd->m_funcName = m_funcName;
-        nd->m_pkg = m_pkg;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     std::string m_funcName;
     YomkPkgPtr m_pkg;
 };
@@ -193,17 +141,6 @@ public:
         : m_key(key)
         , m_value(value) { m_name = "YContext"; }
     virtual ~YContext() {}
-public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YContext* nd = new YContext();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->m_value = m_value->clone();
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
 public:
     std::string m_key;
     YomkPkgPtr m_value;
@@ -220,17 +157,6 @@ public:
         : m_key(key)
         , m_contextMonitorFunc(contextMonitorFunc) { m_name = "YContextMonitor"; }
     virtual ~YContextMonitor() {}
-public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YContextMonitor* nd = new YContextMonitor();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->m_contextMonitorFunc = m_contextMonitorFunc;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
 public:
     std::string m_key;
     YomkContextMonitorFunc m_contextMonitorFunc;
@@ -256,17 +182,6 @@ public:
         , m_checkFunc(checkFunc) { m_name = "YContextSetChecker"; }
     virtual ~YContextSetChecker() {}
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YContextSetChecker* nd = new YContextSetChecker();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->m_checkFunc = m_checkFunc;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     std::string m_key;
     YomkContextCheckFunc m_checkFunc; 
 };
@@ -282,8 +197,6 @@ public:
         : m_key(key){ m_name = "YSetting"; }
     virtual ~YSetting() {}
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const = 0;
-public:
     std::string m_key;
 };
 typedef std::shared_ptr<YSetting> YSettingPtr;
@@ -298,17 +211,6 @@ public:
         : YSetting(key) 
         , d(value) { m_name = "YSettingString"; }
     virtual ~YSettingString() {}
-public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YSettingString* nd = new YSettingString();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->d = d;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
 public:
     std::string d;
 };
@@ -326,17 +228,6 @@ public:
         , d(value) { m_name = "YSettingDouble"; }
     virtual ~YSettingDouble() {}
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YSettingDouble* nd = new YSettingDouble();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->d = d;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     double d;
 };
 typedef std::shared_ptr<YSettingDouble> YSettingDoublePtr;
@@ -352,17 +243,6 @@ public:
         : YSetting(key) 
         , d(value) { m_name = "YSettingInt"; }
     virtual ~YSettingInt() {}
-public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YSettingInt* nd = new YSettingInt();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->d = d;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
 public:
     int64_t d;
 };
@@ -380,17 +260,6 @@ public:
         , d(value) { m_name = "YSettingBool"; }
     virtual ~YSettingBool() {}
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YSettingBool* nd = new YSettingBool();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->d = d;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     bool d;
 };
 typedef std::shared_ptr<YSettingBool> YSettingBoolPtr;
@@ -406,17 +275,6 @@ public:
         : YSetting(key) 
         , d(value) { m_name = "YSettingBoolArray"; }
     virtual ~YSettingBoolArray() {}
-public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YSettingBoolArray* nd = new YSettingBoolArray();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->d = d;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
 public:
     std::vector<bool> d;
 };
@@ -434,17 +292,6 @@ public:
         , d(value) { m_name = "YSettingIntArray"; }
     virtual ~YSettingIntArray() {}
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YSettingIntArray* nd = new YSettingIntArray();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->d = d;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     std::vector<int> d;
 };
 typedef std::shared_ptr<YSettingIntArray> YSettingIntArrayPtr;
@@ -461,17 +308,6 @@ public:
         , d(value) { m_name = "YSettingDoubleArray"; }
     virtual ~YSettingDoubleArray() {}
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YSettingDoubleArray* nd = new YSettingDoubleArray();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->d = d;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     std::vector<double> d;
 };
 typedef std::shared_ptr<YSettingDoubleArray> YSettingDoubleArrayPtr;
@@ -487,17 +323,6 @@ public:
         : YSetting(key) 
         , d(value) { m_name = "YSettingStringArray"; }
     virtual ~YSettingStringArray() {}
-public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YSettingStringArray* nd = new YSettingStringArray();
-        nd->m_name = m_name;
-        nd->m_key = m_key;
-        nd->d = d;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
 public:
     std::vector<std::string> d;
 };
@@ -524,18 +349,6 @@ public:
         , m_level(level)
         , m_log(log) { m_name = "YLog"; }
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YLog* nd = new YLog();
-        nd->m_name = m_name;
-        nd->m_log = m_log;
-        nd->m_level = m_level;
-        nd->m_logger = m_logger;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     std::string m_logger;
     ELogLevel m_level;
     std::string m_log;
@@ -553,17 +366,6 @@ public:
         : m_logger(logger)
         , m_dir(dir) { m_name = "YLogFile"; }
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YLogFile* nd = new YLogFile();
-        nd->m_name = m_name;
-        nd->m_dir = m_dir;
-        nd->m_logger = m_logger;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     std::string m_logger;
     std::string m_dir;
 };
@@ -577,16 +379,6 @@ public:
     YString(const std::string& d) : d(d) { m_name = "YString"; }
     virtual ~YString() {}
 public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YString* nd = new YString();
-        nd->m_name = m_name;
-        nd->d = d;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     std::string d;
 };
 typedef std::shared_ptr<YString> YStringPtr;
@@ -598,16 +390,6 @@ public:
     YBool() { m_name = "YBool"; }
     YBool(bool b) : b(b) { m_name = "YBool"; }
     virtual ~YBool() {}
-public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YBool* nd = new YBool();
-        nd->m_name = m_name;
-        nd->b = b;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
 public:
     bool b;
 };
@@ -626,18 +408,6 @@ public:
         , m_defaultEventHandleFinishedFunc(eventHandleFinishedFunc)
         , m_defaultServiceFunc(serviceFunc) { m_name = "YEventloop"; }
     virtual ~YEventloop() {}
-public:
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        YEventloop* nd = new YEventloop();
-        nd->m_name = m_name;
-        nd->m_eventloopName = m_eventloopName;
-        nd->m_defaultEventHandleFinishedFunc = m_defaultEventHandleFinishedFunc;
-        nd->m_defaultServiceFunc = m_defaultServiceFunc;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
 public:
     std::string m_eventloopName;
     std::function<void(std::shared_ptr<YomkEvent> eventPtr)> m_defaultEventHandleFinishedFunc;
