@@ -94,22 +94,22 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YLogFile", YLogFile, yLogFile);
-    if(!yLogFile)
+    YomkUnPackPkgResponse(pkg, LogFile, logFile);
+    if(!logFile)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YLogFile is empty, please check YLogFile" << std::endl;
-        return YomkResponse(YomkResponse::eErr, "YLogFile is empty");
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "LogFile is empty, please check LogFile" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "LogFile is empty");
     }
     std::unique_lock<std::shared_mutex> lock(m_fileLoggersMutex);
-    if(m_fileLoggers.find(yLogFile->m_logger) != m_fileLoggers.end())
+    if(m_fileLoggers.find(logFile->d.m_logger) != m_fileLoggers.end())
     {
         return YomkResponse(YomkResponse::eErr, "logger name already exists.");
     }
 
-    m_fileLoggers[yLogFile->m_logger] = std::make_shared<FileLogger>();
-    m_fileLoggers[yLogFile->m_logger]->setName(yLogFile->m_logger);
-    m_fileLoggers[yLogFile->m_logger]->setDir(yLogFile->m_dir);
-    m_fileLoggers[yLogFile->m_logger]->init();
+    m_fileLoggers[logFile->d.m_logger] = std::make_shared<FileLogger>();
+    m_fileLoggers[logFile->d.m_logger]->setName(logFile->d.m_logger);
+    m_fileLoggers[logFile->d.m_logger]->setDir(logFile->d.m_dir);
+    m_fileLoggers[logFile->d.m_logger]->init();
 
     return YomkResponse();
 }

@@ -319,22 +319,6 @@ public:
 typedef std::shared_ptr<YLog> YLogPtr;
 #define YomkMkYLogPtr(...) std::make_shared<YLog>(__VA_ARGS__)
 
-class YLogFile : public YomkPkg
-{
-public:
-    YLogFile() { m_name = "YLogFile"; }
-    YLogFile(
-        const std::string& dir,
-        const std::string& logger = "") 
-        : m_logger(logger)
-        , m_dir(dir) { m_name = "YLogFile"; }
-public:
-    std::string m_logger;
-    std::string m_dir;
-};
-typedef std::shared_ptr<YLogFile> YLogFilePtr;
-#define YomkMkYLogFilePtr(dir, ...) std::make_shared<YLogFile>(dir, __VA_ARGS__)
-
 class YString : public YomkPkg
 {
 public:
@@ -393,3 +377,10 @@ struct Eventloop
     YomkServiceFunc m_defaultServiceFunc;
 };
 YomkMsg(Eventloop, Eventloop)
+
+struct LogFile
+{
+    std::string m_logger;
+    std::string m_dir;
+};
+YomkMsg(LogFile, LogFile)

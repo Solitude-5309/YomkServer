@@ -130,7 +130,7 @@ public:
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkLogger/create_file_logger", YomkMkYLogFilePtr(logDir, logFile));
+        return request("/YomkLogger/create_file_logger", YomkMsgPtr(LogFile, LogFile{logFile, logDir}));
     }
     static YomkResponse FILE_LOG_WRITE(const std::string& logFile){
         if(!m_pServer){
