@@ -416,3 +416,44 @@ public:
 typedef std::shared_ptr<YEventloop> YEventloopPtr;
 #define YomkMkYEventloopPtr(eventloopName, ...) \
     std::make_shared<YEventloop>(eventloopName, __VA_ARGS__)
+
+
+namespace yomk
+{
+
+class YomkPkg
+{
+public:
+    YomkPkg() {}
+    virtual ~YomkPkg() {}
+public:
+    void name(const std::string& name) { m_name = name; }
+    std::string name() { return m_name; }
+protected:
+    std::string m_name;
+};
+typedef std::shared_ptr<YomkPkg> YomkPkgPtr;
+
+}
+
+#define YomkMsg(IType, OType)                   \
+namespace yomk                                  \
+{                                               \
+class OType##_ : public YomkPkg                 \
+{                                               \
+public:                                         \
+    OType##_() { m_name = #OType; }             \
+    OType##_(const IType& d)                    \
+        : d(d) { m_name = #OType; }             \
+    virtual ~OType##_() {}                      \
+public:                                         \
+    IType d;                                    \
+};                                              \
+typedef std::shared_ptr<OType##_> OType##Ptr;   \
+}
+
+#define YomkPtr(Type) yomk::Type##Ptr
+#define YomkMsgPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
+
+
+YomkMsg(std::string, string)
