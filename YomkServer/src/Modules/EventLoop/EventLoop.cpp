@@ -142,19 +142,21 @@ int EventLoop::postWait(YomkEventPtr event)
 
     std::function<void(std::shared_ptr<YomkEvent> eventPtr)> tmpEventHandleFinishedFunc = event->m_eventHandleFinishedFunc;
 
-    event->m_eventHandleFinishedFunc = [&tmpCv, &tmpEventHandleFinishedFunc](std::shared_ptr<YomkEvent> eventPtr){
+    std::uint64_t eventId;
+    event->m_eventHandleFinishedFunc = [&eventId, &tmpCv, &tmpEventHandleFinishedFunc](std::shared_ptr<YomkEvent> eventPtr){
         if(tmpEventHandleFinishedFunc)
         {
             tmpEventHandleFinishedFunc(eventPtr);
         }
+        eventId = eventPtr->m_eventId;
         tmpCv.notify_one();
     };
 
     post(event);
 
-    tmpCv.wait(lock, [this, &event]()
+    tmpCv.wait(lock, [&eventId, &event]()
     {
-        return 0;
+        return eventId == event->m_eventId;
     });
 
     return 0;
