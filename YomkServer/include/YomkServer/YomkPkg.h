@@ -347,18 +347,6 @@ public:
 typedef std::shared_ptr<YString> YStringPtr;
 #define YomkMkYStringPtr(d) std::make_shared<YString>(d)
 
-class YBool : public YomkPkg
-{
-public:
-    YBool() { m_name = "YBool"; }
-    YBool(bool b) : b(b) { m_name = "YBool"; }
-    virtual ~YBool() {}
-public:
-    bool b;
-};
-typedef std::shared_ptr<YBool> YBoolPtr;
-#define YomkMkYBoolPtr(b) std::make_shared<YBool>(b)
-
 class YEventloop : public YomkPkg
 {
 public:
