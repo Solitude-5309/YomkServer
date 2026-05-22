@@ -582,7 +582,7 @@ public:
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkFunctionPool/register", YomkMkYFunctionPtr(func_name, func));
+        return request("/YomkFunctionPool/register", YomkMsgPtr(Function, Function{func_name, func}));
     }
     static YomkResponse FUNCTIONPOOL_CALL(const std::string& func_name, YomkPkgPtr call_data){
         if(!m_pServer){

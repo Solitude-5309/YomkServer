@@ -96,25 +96,6 @@ public:
 typedef std::shared_ptr<YomkEvent> YomkEventPtr;
 #define YomkMkYomkEventPtr(eventLoopName, pkg, serviceFunc, eventHandleFinished) std::make_shared<YomkEvent>(eventLoopName, pkg, serviceFunc, eventHandleFinished)
 
-
-class YFunction : public YomkPkg
-{
-public:
-    YFunction() { m_name = "YFunction"; }
-    YFunction(const std::string& funcName, YomkServiceFunc func)
-        : m_funcName(funcName)
-        , m_func(func)
-    {
-        m_name = "YFunction";
-    }
-    virtual ~YFunction() {}
-public:
-    std::string m_funcName;
-    YomkServiceFunc m_func;
-};
-typedef std::shared_ptr<YFunction> YFunctionPtr;
-#define YomkMkYFunctionPtr(funcName, func) std::make_shared<YFunction>(funcName, func)
-
 class YCallFunction : public YomkPkg
 {
 public:
@@ -418,23 +399,6 @@ typedef std::shared_ptr<YEventloop> YEventloopPtr;
     std::make_shared<YEventloop>(eventloopName, __VA_ARGS__)
 
 
-namespace yomk
-{
-
-class YomkPkg
-{
-public:
-    YomkPkg() {}
-    virtual ~YomkPkg() {}
-public:
-    void name(const std::string& name) { m_name = name; }
-    std::string name() { return m_name; }
-protected:
-    std::string m_name;
-};
-typedef std::shared_ptr<YomkPkg> YomkPkgPtr;
-
-}
 
 #define YomkMsg(IType, OType)                   \
 namespace yomk                                  \
@@ -452,8 +416,17 @@ public:                                         \
 typedef std::shared_ptr<OType##_> OType##Ptr;   \
 }
 
+#define Yomk(Type) yomk::Type##_
 #define YomkPtr(Type) yomk::Type##Ptr
 #define YomkMsgPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
 
 
 YomkMsg(std::string, string)
+
+struct Function
+{
+    std::string m_funcName;
+    YomkServiceFunc m_func;
+};
+YomkMsg(Function, Function)
+

@@ -16,13 +16,13 @@ int YomkFunctionPool::init()
 
 YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YFunction", YFunction, yFunc);
+    YomkUnPackPkgResponse(pkg, Function, yFunc);
     if(!yFunc)
     {
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YFunction is empty, please check YFunction" << std::endl;
         return YomkResponse(YomkResponse::eInvalid, "YFunction is empty");
     }
-    if(yFunc->m_funcName.empty() || yFunc->m_func == nullptr)
+    if(yFunc->d.m_funcName.empty() || yFunc->d.m_func == nullptr)
     {
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "funcName or func is empty, please check YFunction.m_funcName" << std::endl;
         return YomkResponse(YomkResponse::eInvalid, "funcName or func is empty");
@@ -30,16 +30,16 @@ YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
     
     std::unique_lock<std::shared_mutex> lock(m_functionsMutex);
 
-    auto itFunc = m_functions.find(yFunc->m_funcName);
+    auto itFunc = m_functions.find(yFunc->d.m_funcName);
     if(itFunc != m_functions.end())
     {
-        itFunc->second = yFunc->m_func;
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "find function name: " << yFunc->m_funcName << " is exist, and update it" << std::endl;
+        itFunc->second = yFunc->d.m_func;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "find function name: " << yFunc->d.m_funcName << " is exist, and update it" << std::endl;
         return YomkResponse(YomkResponse::eOk, "find function name is exist, and update it");
     }
     else
     {
-        m_functions[yFunc->m_funcName] = yFunc->m_func;
+        m_functions[yFunc->d.m_funcName] = yFunc->d.m_func;
         return {YomkResponse::eOk, "register function success"};
     }
 }
