@@ -96,24 +96,6 @@ public:
 typedef std::shared_ptr<YomkEvent> YomkEventPtr;
 #define YomkMkYomkEventPtr(eventLoopName, pkg, serviceFunc, eventHandleFinished) std::make_shared<YomkEvent>(eventLoopName, pkg, serviceFunc, eventHandleFinished)
 
-class YCallFunction : public YomkPkg
-{
-public:
-    YCallFunction() { m_name = "YCallFunction"; }
-    YCallFunction(const std::string& funcName, YomkPkgPtr pkg)
-        : m_funcName(funcName)
-        , m_pkg(pkg)
-    {
-        m_name = "YCallFunction";
-    }
-    virtual ~YCallFunction() {}
-public:
-    std::string m_funcName;
-    YomkPkgPtr m_pkg;
-};
-typedef std::shared_ptr<YCallFunction> YCallFunctionPtr;
-#define YomkMkYCallFunctionPtr(funcName, pkg) std::make_shared<YCallFunction>(funcName, pkg)
-
 class YContext : public YomkPkg
 {
 public:
@@ -430,3 +412,9 @@ struct Function
 };
 YomkMsg(Function, Function)
 
+struct CallFunction
+{
+    std::string m_funcName;
+    YomkPkgPtr m_pkg;
+};
+YomkMsg(CallFunction, CallFunction)

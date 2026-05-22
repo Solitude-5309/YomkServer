@@ -589,7 +589,7 @@ public:
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkFunctionPool/call", YomkMkYCallFunctionPtr(func_name, call_data));
+        return request("/YomkFunctionPool/call", YomkMsgPtr(CallFunction, CallFunction{func_name, call_data}));
     }
 private:
     static std::shared_ptr<YomkServer> m_pServer;
