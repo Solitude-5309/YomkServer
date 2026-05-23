@@ -50,8 +50,7 @@ int EventLoop::start()
             }
 
             event->handle();
-            event->m_eventHandleFinished = true;
-            event->handleFinished(event);
+            eventHandleFinished(event->m_eventId);
         }
     });
     return 0;
@@ -90,10 +89,6 @@ int EventLoop::post(YomkEventPtr event)
     {
         std::lock_guard<std::mutex> lock(m_queueMutex);
         event->m_eventId = ++m_eventId;
-        if(!event->m_eventHandleFinishedFunc)
-        {
-            event->m_eventHandleFinishedFunc = m_defaultEventHandleFinishedFunc;
-        }
         if(!event->m_serviceFunc)
         {
             event->m_serviceFunc = m_defaultServiceFunc;
@@ -117,11 +112,6 @@ int EventLoop::postWait(YomkEventPtr event)
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop: event is null, please check event" << std::endl;
         return 1;
     }
-
-    if(!event->m_eventHandleFinishedFunc)
-    {
-        event->m_eventHandleFinishedFunc = m_defaultEventHandleFinishedFunc;
-    }
     if(!event->m_serviceFunc)
     {
         event->m_serviceFunc = m_defaultServiceFunc;
@@ -131,43 +121,28 @@ int EventLoop::postWait(YomkEventPtr event)
     {
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve deadlock" << std::endl;
         event->handle();
-        event->m_eventHandleFinished = true;
-        event->handleFinished(event);
         return 0;
     }
 
-    std::condition_variable tmpCv;
-    std::mutex tmpMtx;
-    std::unique_lock<std::mutex> lock(tmpMtx);
-
-    std::function<void(std::shared_ptr<YomkEvent> eventPtr)> tmpEventHandleFinishedFunc = event->m_eventHandleFinishedFunc;
-
-    std::uint64_t eventId;
-    event->m_eventHandleFinishedFunc = [&eventId, &tmpCv, &tmpEventHandleFinishedFunc](std::shared_ptr<YomkEvent> eventPtr){
-        if(tmpEventHandleFinishedFunc)
-        {
-            tmpEventHandleFinishedFunc(eventPtr);
-        }
-        eventId = eventPtr->m_eventId;
-        tmpCv.notify_one();
-    };
-
     post(event);
 
-    tmpCv.wait(lock, [&eventId, &event]()
+    std::unique_lock<std::mutex> lock(m_mtx);
+    m_cv.wait(lock, [this, &event]()
     {
-        return eventId == event->m_eventId;
+        return m_curFinishedEventId == event->m_eventId;
     });
 
     return 0;
 }
 
-void EventLoop::setDefaultEventHandleFinishedFunc(std::function<void(std::shared_ptr<YomkEvent> eventPtr)> eventHandleFinishedFunc)
-{
-    m_defaultEventHandleFinishedFunc = eventHandleFinishedFunc;
-}
-
 void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc)
 {
     m_defaultServiceFunc = serviceFunc;
+}
+
+void EventLoop::eventHandleFinished(uint64_t eventId)
+{
+    std::unique_lock<std::mutex> lock(m_mtx);
+    m_curFinishedEventId = eventId;
+    m_cv.notify_all();
 }

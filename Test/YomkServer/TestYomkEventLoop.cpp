@@ -18,12 +18,6 @@ YomkResponse eventHandle(YomkPkgPtr pkg)
     return {YomkResponse::eOk, "eventHandle success. "};
 }
 
-void eventHandleFinished(std::shared_ptr<YomkEvent> eventPtr)
-{
-    std::cout << "eventHandleFinished called by thread: " << std::this_thread::get_id() << std::endl;
-    std::cout << "eventHandleFinished called with eventId: " << eventPtr->m_eventId << " eventLoopName: " << eventPtr->m_eventLoopName << " response: " << eventPtr->m_response.m_msg << std::endl;
-}
-
 int main(int argc, char *argv[])
 {
     YOMK_INIT(std::make_shared<YomkServer>(), { 
@@ -35,8 +29,7 @@ int main(int argc, char *argv[])
     
     YomkResponse response = YOMK_EVENTLOOP_START(
         "event_loop_1",
-        eventHandle,
-        eventHandleFinished);
+        eventHandle);
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "start event_loop_1 success" << std::endl;

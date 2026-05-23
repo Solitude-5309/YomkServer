@@ -34,7 +34,6 @@ YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
     }
 
     EventLoopPtr eventLoop = std::make_shared<EventLoop>();
-    eventLoop->setDefaultEventHandleFinishedFunc(eventloop->d.m_defaultEventHandleFinishedFunc);
     eventLoop->setDefaultServiceFunc(eventloop->d.m_defaultServiceFunc);
     m_eventLoop[eventloop->d.m_eventloopName] = eventLoop;
     eventLoop->start();

@@ -58,15 +58,12 @@ public:
     YomkEvent(
         const std::string& eventLoopName,
         YomkPkgPtr pkg, 
-        YomkServiceFunc serviceFunc,
-        std::function<void(std::shared_ptr<YomkEvent> eventPtr)> eventHandleFinishedFunc)
+        YomkServiceFunc serviceFunc)
         : m_pkg(pkg)
         , m_serviceFunc(serviceFunc){ 
             m_name = "YomkEvent";
             m_eventLoopName = eventLoopName; 
-            m_eventHandleFinishedFunc = eventHandleFinishedFunc; 
             m_eventId = 0;
-            m_eventHandleFinished = false;
         }
     virtual ~YomkEvent() {}
 public:
@@ -77,24 +74,15 @@ public:
             m_response = m_serviceFunc(m_pkg);
         }
     }
-    virtual void handleFinished(std::shared_ptr<YomkEvent> eventPtr)
-    {
-        if(m_eventHandleFinishedFunc)
-        {
-            m_eventHandleFinishedFunc(eventPtr);
-        }
-    }
 public:
     std::uint64_t m_eventId;
     std::string m_eventLoopName;
-    bool m_eventHandleFinished;
-    std::function<void(std::shared_ptr<YomkEvent> eventPtr)> m_eventHandleFinishedFunc;
     YomkPkgPtr m_pkg;
     YomkResponse m_response;
     YomkServiceFunc m_serviceFunc;
 };
 typedef std::shared_ptr<YomkEvent> YomkEventPtr;
-#define YomkMkYomkEventPtr(eventLoopName, pkg, serviceFunc, eventHandleFinished) std::make_shared<YomkEvent>(eventLoopName, pkg, serviceFunc, eventHandleFinished)
+#define YomkMkYomkEventPtr(eventLoopName, pkg, serviceFunc) std::make_shared<YomkEvent>(eventLoopName, pkg, serviceFunc)
 
 #define YomkMsg(IType, OType)                   \
 namespace yomk                                  \
@@ -135,7 +123,6 @@ YomkMsg(CallFunction, CallFunction)
 struct Eventloop
 {
     std::string m_eventloopName;
-    std::function<void(std::shared_ptr<YomkEvent> eventPtr)> m_defaultEventHandleFinishedFunc;
     YomkServiceFunc m_defaultServiceFunc;
 };
 YomkMsg(Eventloop, Eventloop)
