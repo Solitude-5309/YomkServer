@@ -96,22 +96,6 @@ public:
 typedef std::shared_ptr<YomkEvent> YomkEventPtr;
 #define YomkMkYomkEventPtr(eventLoopName, pkg, serviceFunc, eventHandleFinished) std::make_shared<YomkEvent>(eventLoopName, pkg, serviceFunc, eventHandleFinished)
 
-class YContext : public YomkPkg
-{
-public:
-    YContext() { m_name = "YContext"; }
-    YContext(const std::string& key, YomkPkgPtr value)
-        : m_key(key)
-        , m_value(value) { m_name = "YContext"; }
-    virtual ~YContext() {}
-public:
-    std::string m_key;
-    YomkPkgPtr m_value;
-};
-typedef std::shared_ptr<YContext> YContextPtr;
-#define YomkMkYContextPtr(key, value) std::make_shared<YContext>(key, value)
-typedef std::function<void (YContextPtr ctx)> YomkContextMonitorFunc;
-
 class YSetting : public YomkPkg
 {
 public:
@@ -333,6 +317,14 @@ struct Log
     std::string m_logger;
 };
 YomkMsg(Log, Log)
+
+struct Context
+{
+    std::string m_key;
+    YomkPkgPtr m_value;
+};
+YomkMsg(Context, Context)
+typedef std::function<void (YomkPtr(Context) ctx)> YomkContextMonitorFunc;
 
 struct ContextChecker
 {

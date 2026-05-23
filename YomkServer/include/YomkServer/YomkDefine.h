@@ -37,3 +37,8 @@
     if (!pkg || pkg->name() != #ClassName) return { YomkResponse::eErr, " pkg is null or pkg is not "#ClassName". " }; \
     YomkPtr(ClassName) ptrName = std::dynamic_pointer_cast<Yomk(ClassName)>(pkg); \
     if(!ptrName) return { YomkResponse::eErr, " pkg["#ClassName"] is dynamic_pointer_cast failed. " };
+
+#define YomkUnPackPkgVoidN(pkg, ClassName, ptrName) \
+    if (!pkg || pkg->name() != #ClassName) return ; \
+    YomkPtr(ClassName) ptrName = std::dynamic_pointer_cast<Yomk(ClassName)>(pkg); \
+    if(!ptrName) return ;

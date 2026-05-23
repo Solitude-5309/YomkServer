@@ -458,7 +458,7 @@ public:
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkContext/create", YomkMkYContextPtr(ctx_name, ctx));
+        return request("/YomkContext/create", YomkMsgPtr(Context, Context{ctx_name, ctx}));
     }
     template<typename T>
     static std::shared_ptr<T> CONTEXT_GET(const std::string& ctx_name, std::shared_ptr<T> ctx_default){
@@ -466,7 +466,7 @@ public:
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return ctx_default;
         }
-        YomkResponse response = request("/YomkContext/get", YomkMkYContextPtr(ctx_name, ctx_default));
+        YomkResponse response = request("/YomkContext/get", YomkMsgPtr(Context, Context{ctx_name, ctx_default}));
         if(response.m_resStatus == YomkResponse::eOk)
         {
             YomkUnPackPkg(response.m_data, ctx_default->name(), T, ctx_data);
@@ -483,7 +483,7 @@ public:
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkContext/set", YomkMkYContextPtr(ctx_name, ctx));
+        return request("/YomkContext/set", YomkMsgPtr(Context, Context{ctx_name, ctx}));
     }
     static YomkResponse CONTEXT_ON_CHECKER(){
         if(!m_pServer){
