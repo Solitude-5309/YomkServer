@@ -499,12 +499,12 @@ public:
         }
         return request("/YomkContext/turn_off_checker", nullptr);
     }
-    static YomkResponse CONTEXT_SET_CHECKER(const std::string& ctx_name, YContextSetChecker::YomkContextCheckFunc checker){
+    static YomkResponse CONTEXT_SET_CHECKER(const std::string& ctx_name, ContextChecker::ContextCheckFunc checker){
         if(!m_pServer){
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkContext/set_checker", YomkMkYContextSetCheckerPtr(ctx_name, checker));
+        return request("/YomkContext/set_checker", YomkMsgPtr(ContextChecker, ContextChecker{ctx_name, checker}));
     }
     static YomkResponse CONTEXT_ON_MONITOR(){
         if(!m_pServer){

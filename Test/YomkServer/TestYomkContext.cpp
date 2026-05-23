@@ -2,17 +2,17 @@
 #include "YomkAPI.h"
 
 // CTX设置前进入check函数，用于CTX的创建者屏蔽非法操作，check函数接受才能真正的修改CTX
-YContextSetChecker::ECheckStatus checkerAcceptFunc(YomkPkgPtr pkg)
+ContextChecker::ECheckStatus checkerAcceptFunc(YomkPkgPtr pkg)
 {
     std::cout << "checker accept func called. " << std::endl;
-    return YContextSetChecker::eAccept;
+    return ContextChecker::eAccept;
 }
 
 // CTX设置前进入check函数，用于CTX的创建者屏蔽非法操作，check函数拒绝则不能修改CTX
-YContextSetChecker::ECheckStatus checkerRejectFunc(YomkPkgPtr pkg)
+ContextChecker::ECheckStatus checkerRejectFunc(YomkPkgPtr pkg)
 {
     std::cout << "checker reject func called. " << std::endl;
-    return YContextSetChecker::eReject;
+    return ContextChecker::eReject;
 }
 
 // CTX设置成功后进入monitor函数，用于CTX的监控者接收CTX的变化

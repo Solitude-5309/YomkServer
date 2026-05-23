@@ -127,30 +127,6 @@ public:
 typedef std::shared_ptr<YContextMonitor> YContextMonitorPtr;
 #define YomkMkYContextMonitorPtr(key, contextMonitorFunc) std::make_shared<YContextMonitor>(key, contextMonitorFunc)
 
-class YContextSetChecker : public YomkPkg
-{
-public:
-    enum ECheckStatus
-    {
-        eAccept,
-        eReject
-    };
-    typedef std::function<ECheckStatus (YomkPkgPtr pkg)> YomkContextCheckFunc;
-public:
-    YContextSetChecker() { m_name = "YContextSetChecker"; }
-    YContextSetChecker(
-        const std::string& key, 
-        YomkContextCheckFunc checkFunc)
-        : m_key(key)
-        , m_checkFunc(checkFunc) { m_name = "YContextSetChecker"; }
-    virtual ~YContextSetChecker() {}
-public:
-    std::string m_key;
-    YomkContextCheckFunc m_checkFunc; 
-};
-typedef std::shared_ptr<YContextSetChecker> YContextSetCheckerPtr;
-#define YomkMkYContextSetCheckerPtr(key, checkFunc) std::make_shared<YContextSetChecker>(key, checkFunc)
-
 class YSetting : public YomkPkg
 {
 public:
@@ -372,3 +348,16 @@ struct Log
     std::string m_logger;
 };
 YomkMsg(Log, Log)
+
+struct ContextChecker
+{
+    enum ECheckStatus
+    {
+        eAccept,
+        eReject
+    };
+    typedef std::function<ECheckStatus (YomkPkgPtr pkg)> ContextCheckFunc;
+    std::string m_key;
+    ContextCheckFunc m_checkFunc; 
+};
+YomkMsg(ContextChecker, ContextChecker)

@@ -130,10 +130,9 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         auto itChecker = m_checkers.find(yContext->m_key);
         if(itChecker != m_checkers.end())
         {
-            YContextSetChecker::ECheckStatus checkStatus = itChecker->second(yContext->m_value);
-            if(checkStatus == YContextSetChecker::eReject)
+            ContextChecker::ECheckStatus checkStatus = itChecker->second(yContext->m_value);
+            if(checkStatus == ContextChecker::eReject)
             {
-                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "checker reject set context, please check YContext.m_value." << std::endl;
                 return YomkResponse(YomkResponse::eErr, "checker reject set context");
             }
         }
@@ -189,36 +188,36 @@ YomkResponse YomkContext::turnOffMonitor(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YContextSetChecker", YContextSetChecker, yChecker);
-    if(!yChecker)
+    YomkUnPackPkgResponse(pkg, ContextChecker, checker)
+    if(!checker)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YContextSetChecker is empty, please check YContextSetChecker" << std::endl;
-        return YomkResponse(YomkResponse::eErr, "YContextSetChecker is empty");
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "ContextChecker is empty, please check ContextChecker" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "ContextChecker is empty");
     }
 
-    if(yChecker->m_key.empty())
+    if(checker->d.m_key.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check YContextSetChecker.m_key." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check ContextChecker.m_key." << std::endl;
         return YomkResponse(YomkResponse::eErr, "key is empty");
     }
-    if(yChecker->m_checkFunc == nullptr)
+    if(checker->d.m_checkFunc == nullptr)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "checkFunc is empty, please check YContextSetChecker.m_checkFunc." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "checkFunc is empty, please check ContextChecker.m_checkFunc." << std::endl;
         return YomkResponse(YomkResponse::eErr, "checkFunc is empty");
     }
 
     {
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
-        if(m_contexts.find(yChecker->m_key) == m_contexts.end())
+        if(m_contexts.find(checker->d.m_key) == m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << yChecker->m_key << " is not exist, please check YContextSetChecker.m_key." << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << checker->d.m_key << " is not exist, please check ContextChecker.m_key." << std::endl;
             return YomkResponse(YomkResponse::eErr, "key is not exist");
         }
     }
 
     {
         std::unique_lock<std::shared_mutex> checkerLock(m_checkersMutex);
-        m_checkers[yChecker->m_key] = yChecker->m_checkFunc;
+        m_checkers[checker->d.m_key] = checker->d.m_checkFunc;
     }
 
     return YomkResponse(YomkResponse::eOk, "set checker success");
