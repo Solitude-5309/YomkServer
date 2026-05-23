@@ -18,7 +18,7 @@ ContextChecker::ECheckStatus checkerRejectFunc(YomkPkgPtr pkg)
 // CTX设置成功后进入monitor函数，用于CTX的监控者接收CTX的变化
 void monitorFunc(YomkPtr(Context) ctx)
 {
-    YomkUnPackPkgVoidN(ctx->d.m_value, string, yStr);
+    YomkUnPackPkgVoid(ctx->d.m_value, string, yStr);
     std::cout << "monitor func called. ctx: " << yStr->d << std::endl;
 }
 

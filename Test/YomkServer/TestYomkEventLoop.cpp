@@ -21,15 +21,7 @@ YomkResponse eventHandle(YomkPkgPtr pkg)
 void eventHandleFinished(std::shared_ptr<YomkEvent> eventPtr)
 {
     std::cout << "eventHandleFinished called by thread: " << std::this_thread::get_id() << std::endl;
-
-    if(eventPtr->name() == "YomkEvent")
-    {
-        YomkUnPackPkgVoid(eventPtr, "YomkEvent", YomkEvent, yomkEvent);
-        if(yomkEvent)
-        {
-            std::cout << "eventHandleFinished called with eventId: " << eventPtr->m_eventId << " eventLoopName: " << eventPtr->m_eventLoopName << " response: " << yomkEvent->m_response.m_msg << std::endl;
-        }
-    }
+    std::cout << "eventHandleFinished called with eventId: " << eventPtr->m_eventId << " eventLoopName: " << eventPtr->m_eventLoopName << " response: " << eventPtr->m_response.m_msg << std::endl;
 }
 
 int main(int argc, char *argv[])
