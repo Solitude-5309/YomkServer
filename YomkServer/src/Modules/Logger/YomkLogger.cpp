@@ -31,20 +31,20 @@ int YomkLogger::init()
 
 YomkResponse YomkLogger::createConsoleLogger(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
-    if(!yStr)
+    YomkUnPackPkgResponse(pkg, string, str);
+    if(!str)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YString is empty, please check YString" << std::endl;
-        return YomkResponse(YomkResponse::eErr, "YString is empty");
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "string is empty, please check string" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "string is empty");
     }
     std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-    if(m_consoleLoggers.find(yStr->d) != m_consoleLoggers.end())
+    if(m_consoleLoggers.find(str->d) != m_consoleLoggers.end())
     {
         return YomkResponse(YomkResponse::eErr, "logger name already exists.");
     }
     std::shared_ptr<ConsoleLogger> consoleLogger = std::make_shared<ConsoleLogger>();
-    consoleLogger->setName(yStr->d);
-    m_consoleLoggers[yStr->d] = consoleLogger;
+    consoleLogger->setName(str->d);
+    m_consoleLoggers[str->d] = consoleLogger;
     return YomkResponse();
 }
 
@@ -155,17 +155,17 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::writeFileLog(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
-    if(!yStr)
+    YomkUnPackPkgResponse(pkg, string, str);
+    if(!str)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YString is empty, please check YString" << std::endl;
-        return YomkResponse(YomkResponse::eErr, "YString is empty");
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "string is empty, please check string" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "string is empty");
     }
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
-    auto fileLogger = m_fileLoggers.find(yStr->d);
+    auto fileLogger = m_fileLoggers.find(str->d);
     if(fileLogger == m_fileLoggers.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger: " << yStr->d << " not found." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger: " << str->d << " not found." << std::endl;
         return YomkResponse(YomkResponse::eErr, "logger not found.");
     }
     fileLogger->second->write();

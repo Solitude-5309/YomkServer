@@ -44,17 +44,17 @@ YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
 
 YomkResponse YomkEventLoop::stop(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
-    if(!yStr)
+    YomkUnPackPkgResponse(pkg, string, str);
+    if(!str)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YString is empty, please check YString" << std::endl;
-        return YomkResponse(YomkResponse::eErr, "YString is empty");
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "string is empty, please check string" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "string is empty");
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
-    auto itEventLoop = m_eventLoop.find(yStr->d);
+    auto itEventLoop = m_eventLoop.find(str->d);
     if(itEventLoop == m_eventLoop.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << yStr->d << " not exist, please check event loop name" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << str->d << " not exist, please check event loop name" << std::endl;
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
     itEventLoop->second->stop();
@@ -106,17 +106,17 @@ YomkResponse YomkEventLoop::postWait(YomkPkgPtr pkg)
 
 YomkResponse YomkEventLoop::destroy(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
-    if(!yStr)
+    YomkUnPackPkgResponse(pkg, string, str);
+    if(!str)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YString is empty, please check YString" << std::endl;
-        return YomkResponse(YomkResponse::eErr, "YString is empty");
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "string is empty, please check string" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "string is empty");
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
-    auto itEventLoop = m_eventLoop.find(yStr->d);
+    auto itEventLoop = m_eventLoop.find(str->d);
     if(itEventLoop == m_eventLoop.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << yStr->d << " not exist, please check event loop name" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << str->d << " not exist, please check event loop name" << std::endl;
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
 

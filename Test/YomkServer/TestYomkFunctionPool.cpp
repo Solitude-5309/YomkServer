@@ -4,14 +4,14 @@
 namespace fs = std::filesystem;
 YomkResponse func1(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YString", YString, yString);
+    YomkUnPackPkgResponse(pkg, string, str);
 
-    if(!yString)
+    if(!str)
     {
-        return YomkResponse(YomkResponse::eInvalid, "YString is null");
+        return YomkResponse(YomkResponse::eInvalid, "string is null");
     }
 
-    std::cout << "func1 called with data: " << yString->d << std::endl;
+    std::cout << "func1 called with data: " << str->d << std::endl;
 
     return {YomkResponse::eOk, "func1 success. "};
 }
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
         std::cout << "register func1 failed: " << response.m_msg << std::endl;
     }
 
-    response = YOMK_FUNCTIONPOOL_CALL("func1", YomkMkYStringPtr(settingsPath.string()));
+    response = YOMK_FUNCTIONPOOL_CALL("func1", YomkMkPtr(string, settingsPath.string()));
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "call func1 success" << std::endl;

@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     YomkResponse response;
 
     // 创建CTX
-    response = YOMK_CONTEXT_CREATE("ctx", YomkMkYStringPtr("ctx_data"));
+    response = YOMK_CONTEXT_CREATE("ctx", YomkMkPtr(string, "ctx_data"));
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "create context [ ctx = ctx_data ] success" << std::endl;
@@ -45,11 +45,11 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX
-    YStringPtr ctx_data = YOMK_CONTEXT_GET(YString, "ctx", YomkMkYStringPtr("ctx_data_default"));
+    YomkPtr(string) ctx_data = YOMK_CONTEXT_GET(Yomk(string), "ctx", YomkMkPtr(string, "ctx_data_default"));
     std::cout << "get ctx: " << ctx_data->d << std::endl;
 
     // 设置CTX
-    response = YOMK_CONTEXT_SET("ctx", YomkMkYStringPtr("ctx_data_set"));
+    response = YOMK_CONTEXT_SET("ctx", YomkMkPtr(string, "ctx_data_set"));
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "set context [ ctx = ctx_data_set ] success" << std::endl;
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX
-    ctx_data = YOMK_CONTEXT_GET(YString, "ctx", YomkMkYStringPtr("ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(Yomk(string), "ctx", YomkMkPtr(string, "ctx_data_default"));
     std::cout << "get ctx: " << ctx_data->d << std::endl;
 
     // 开启CTX检查，开启check后，才能在CTX设置前调用检查函数
@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
     }
 
     // 再次设置CTX，此时将会先进入检查函数，再真正设置CTX，最后进入CTX监控函数
-    response = YOMK_CONTEXT_SET("ctx", YomkMkYStringPtr("ctx_data_set_2"));
+    response = YOMK_CONTEXT_SET("ctx", YomkMkPtr(string, "ctx_data_set_2"));
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "set context [ ctx = ctx_data_set_2 ] success" << std::endl;
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX，更新后的CTX
-    ctx_data = YOMK_CONTEXT_GET(YString, "ctx", YomkMkYStringPtr("ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(Yomk(string), "ctx", YomkMkPtr(string, "ctx_data_default"));
     std::cout << "get ctx: " << ctx_data->d << std::endl;
 
     // 设置CTX检查函数为拒绝，此时设置CTX将被拒绝
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
     }
 
     // 再次设置CTX，此时将会被拒绝，无法设置成功，也无法进入监控函数
-    response = YOMK_CONTEXT_SET("ctx", YomkMkYStringPtr("ctx_data_set_3"));
+    response = YOMK_CONTEXT_SET("ctx", YomkMkPtr(string, "ctx_data_set_3"));
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "set context [ ctx = ctx_data_set_3 ] success" << std::endl;
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX，更新后的CTX，无法更新
-    ctx_data = YOMK_CONTEXT_GET(YString, "ctx", YomkMkYStringPtr("ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(Yomk(string), "ctx", YomkMkPtr(string, "ctx_data_default"));
     std::cout << "get ctx: " << ctx_data->d << std::endl;
 
     // 销毁CTX
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
     }
 
     // 再次获取CTX，此时CTX已销毁，将返回默认值
-    ctx_data = YOMK_CONTEXT_GET(YString, "ctx", YomkMkYStringPtr("ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(Yomk(string), "ctx", YomkMkPtr(string, "ctx_data_default"));
     std::cout << "get ctx: " << ctx_data->d << std::endl;
 
     std::cout << "test YomkContext completed, any key to continue..." << std::endl;

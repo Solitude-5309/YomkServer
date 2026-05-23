@@ -96,20 +96,6 @@ public:
 typedef std::shared_ptr<YomkEvent> YomkEventPtr;
 #define YomkMkYomkEventPtr(eventLoopName, pkg, serviceFunc, eventHandleFinished) std::make_shared<YomkEvent>(eventLoopName, pkg, serviceFunc, eventHandleFinished)
 
-class YString : public YomkPkg
-{
-public:
-    YString() { m_name = "YString"; }
-    YString(const std::string& d) : d(d) { m_name = "YString"; }
-    virtual ~YString() {}
-public:
-    std::string d;
-};
-typedef std::shared_ptr<YString> YStringPtr;
-#define YomkMkYStringPtr(d) std::make_shared<YString>(d)
-
-
-
 #define YomkMsg(IType, OType)                   \
 namespace yomk                                  \
 {                                               \
@@ -129,7 +115,6 @@ typedef std::shared_ptr<OType##_> OType##Ptr;   \
 #define Yomk(Type) yomk::Type##_
 #define YomkPtr(Type) yomk::Type##Ptr
 #define YomkMkPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
-
 
 YomkMsg(std::string, string)
 

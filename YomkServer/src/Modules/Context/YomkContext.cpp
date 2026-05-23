@@ -55,18 +55,18 @@ YomkResponse YomkContext::create(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::destroy(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YString", YString, yStr);
-    if(!yStr)
+    YomkUnPackPkgResponse(pkg, string, str);
+    if(!str)
     {
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check key." << std::endl;
         return YomkResponse(YomkResponse::eErr, "key is empty");
     }
     {
         std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
-        auto itContext = m_contexts.find(yStr->d);
+        auto itContext = m_contexts.find(str->d);
         if(itContext == m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << yStr->d << " is not exist, please check key." << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << str->d << " is not exist, please check key." << std::endl;
             return YomkResponse(YomkResponse::eErr, "key is not exist");
         }
         m_contexts.erase(itContext); 
