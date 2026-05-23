@@ -112,21 +112,6 @@ typedef std::shared_ptr<YContext> YContextPtr;
 #define YomkMkYContextPtr(key, value) std::make_shared<YContext>(key, value)
 typedef std::function<void (YContextPtr ctx)> YomkContextMonitorFunc;
 
-class YContextMonitor : public YomkPkg
-{
-public:
-    YContextMonitor() { m_name = "YContextMonitor"; }
-    YContextMonitor(const std::string& key, YomkContextMonitorFunc contextMonitorFunc)
-        : m_key(key)
-        , m_contextMonitorFunc(contextMonitorFunc) { m_name = "YContextMonitor"; }
-    virtual ~YContextMonitor() {}
-public:
-    std::string m_key;
-    YomkContextMonitorFunc m_contextMonitorFunc;
-};
-typedef std::shared_ptr<YContextMonitor> YContextMonitorPtr;
-#define YomkMkYContextMonitorPtr(key, contextMonitorFunc) std::make_shared<YContextMonitor>(key, contextMonitorFunc)
-
 class YSetting : public YomkPkg
 {
 public:
@@ -361,3 +346,10 @@ struct ContextChecker
     ContextCheckFunc m_checkFunc; 
 };
 YomkMsg(ContextChecker, ContextChecker)
+
+struct ContextMonitor
+{
+    std::string m_key;
+    YomkContextMonitorFunc m_contextMonitorFunc;
+};
+YomkMsg(ContextMonitor, ContextMonitor)

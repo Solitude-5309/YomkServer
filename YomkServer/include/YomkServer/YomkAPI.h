@@ -525,7 +525,7 @@ public:
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkContext/set_monitor", YomkMkYContextMonitorPtr(ctx_name, monitor));
+        return request("/YomkContext/set_monitor", YomkMsgPtr(ContextMonitor, ContextMonitor{ctx_name, monitor}));
     }
     static YomkResponse CONTEXT_DESTROY(const std::string& ctx_name){
         if(!m_pServer){

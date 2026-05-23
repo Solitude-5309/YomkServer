@@ -225,35 +225,35 @@ YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YContextMonitor", YContextMonitor, yMonitor);
-    if(!yMonitor)
+    YomkUnPackPkgResponse(pkg, ContextMonitor, monitor);
+    if(!monitor)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YContextMonitor is empty, please check YContextMonitor" << std::endl;
-        return YomkResponse(YomkResponse::eErr, "YContextMonitor is empty");
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "ContextMonitor is empty, please check ContextMonitor" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "ContextMonitor is empty");
     }
-    if(yMonitor->m_key.empty())
+    if(monitor->d.m_key.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check YContextMonitor.m_key." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check ContextMonitor.m_key." << std::endl;
         return YomkResponse(YomkResponse::eErr, "key is empty");
     }
-    if(yMonitor->m_contextMonitorFunc == nullptr)
+    if(monitor->d.m_contextMonitorFunc == nullptr)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "context monitor function is empty, please check YContextMonitor.m_contextMonitorFunc." << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "context monitor function is empty, please check ContextMonitor.m_contextMonitorFunc." << std::endl;
         return YomkResponse(YomkResponse::eErr, "context monitor function is empty");
     }
 
     {
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
-        if(m_contexts.find(yMonitor->m_key) == m_contexts.end())
+        if(m_contexts.find(monitor->d.m_key) == m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << yMonitor->m_key << " is not exist, please check YContextMonitor.m_key." << std::endl;
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << monitor->d.m_key << " is not exist, please check ContextMonitor.m_key." << std::endl;
             return YomkResponse(YomkResponse::eErr, "key is not exist");
         }
     }
 
     {
         std::unique_lock<std::shared_mutex> monitorLock(m_contextMonitorsMutex);
-        m_contextMonitors[yMonitor->m_key].push_back(yMonitor->m_contextMonitorFunc);
+        m_contextMonitors[monitor->d.m_key].push_back(monitor->d.m_contextMonitorFunc);
     }
     return YomkResponse(YomkResponse::eOk, "set context monitor success");
 }
