@@ -25,7 +25,6 @@ void monitorFunc(YomkPtr(Context) ctx)
 int main(int argc, char *argv[])
 {
     YOMK_INIT(std::make_shared<YomkServer>(), { 
-        "/YomkSettings", 
         "/YomkFunctionPool", 
         "/YomkContext",
         "/YomkEventLoop",

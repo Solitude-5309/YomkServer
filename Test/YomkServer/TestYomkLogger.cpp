@@ -11,7 +11,6 @@ int main(int argc, char *argv[])
     std::cout << "Log dir: " << logDir << std::endl;
 
     YOMK_INIT(std::make_shared<YomkServer>(), { 
-        "/YomkSettings", 
         "/YomkFunctionPool", 
         "/YomkContext",
         "/YomkEventLoop",

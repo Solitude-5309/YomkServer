@@ -13,20 +13,6 @@ YomkResponse func1(YomkPkgPtr pkg)
 
     std::cout << "func1 called with data: " << yString->d << std::endl;
 
-    YomkResponse response = YOMK_SETTINGS_LOAD(yString->d);
-    if(response.m_resStatus == YomkResponse::eOk)
-    {
-        std::cout << "load success" << std::endl;
-    }
-    else
-    {
-        std::cout << "load failed: " << response.m_msg << std::endl;
-    }
-
-    // get cfg_bool
-    bool cfg_Bool = YOMK_SETTINGS_GET_BOOL("cfg_bool");
-    std::cout << "cfg_bool: " << cfg_Bool << std::endl;
-
     return {YomkResponse::eOk, "func1 success. "};
 }
 
@@ -37,7 +23,6 @@ int main(int argc, char *argv[])
     std::cout << "Settings path: " << settingsPath << std::endl;
     
     YOMK_INIT(std::make_shared<YomkServer>(), { 
-        "/YomkSettings", 
         "/YomkFunctionPool", 
         "/YomkContext",
         "/YomkEventLoop",

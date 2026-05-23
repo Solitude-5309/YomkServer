@@ -120,8 +120,7 @@ private:
 int main(int argc, char *argv[])
 {    
     // 全局宏，一个程序只能有一个服务器，用于初始化服务器
-    YOMK_INIT(std::make_shared<YomkServer>(), { 
-        "/YomkSettings", 
+    YOMK_INIT(std::make_shared<YomkServer>(), {  
         "/YomkFunctionPool", 
         "/YomkContext",
         "/YomkEventLoop",

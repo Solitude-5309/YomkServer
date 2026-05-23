@@ -5,7 +5,7 @@ set(YomkServerLib
     YomkServer
 )
 
-# -------------sl TestYomkSettings ----------------
+# -------------sl TestYomkService ----------------
 set(TestYomkService_SOURCES 
     ${TestYomkServer_DIR}/TestYomkService.cpp
 )
@@ -15,19 +15,7 @@ add_executable(TestYomkService
 target_link_libraries(TestYomkService PRIVATE
     ${YomkServerLib}
 )
-# -------------el TestYomkSettings ----------------
-
-# -------------sl TestYomkSettings ----------------
-set(TestYomkSettings_SOURCES 
-    ${TestYomkServer_DIR}/TestYomkSettings.cpp
-)
-add_executable(TestYomkSettings 
-    ${TestYomkSettings_SOURCES}
-)
-target_link_libraries(TestYomkSettings PRIVATE
-    ${YomkServerLib}
-)
-# -------------el TestYomkSettings ----------------
+# -------------el TestYomkService ----------------
 
 # -------------sl TestYomkFunctionPool ----------------
 set(TestYomkFunctionPool_SOURCES 

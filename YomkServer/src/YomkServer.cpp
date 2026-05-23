@@ -4,7 +4,6 @@
 #include <thread>
 #include <unordered_map>
 #include <functional>
-#include "Modules/Settings/YomkSettings.h"
 #include "Modules/FunctionPool/YomkFunctionPool.h"
 #include "Modules/Context/YomkContext.h"
 #include "Modules/EventLoop/YomkEventLoop.h"
@@ -19,7 +18,6 @@ YomkServer::YomkServer()
 int YomkServer::startService(std::vector<std::string> srvNames)
 {
     static const std::unordered_map<std::string, std::function<YomkService*(YomkServer*)>> serviceCreators = {
-        {"/YomkSettings", [](YomkServer* server) { return new YomkSettings(server); }},
         {"/YomkFunctionPool", [](YomkServer* server) { return new YomkFunctionPool(server); }},
         {"/YomkContext", [](YomkServer* server) { return new YomkContext(server); }},
         {"/YomkEventLoop", [](YomkServer* server) { return new YomkEventLoop(server); }},

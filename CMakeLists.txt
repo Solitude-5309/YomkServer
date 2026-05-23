@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(Yomk VERSION 1.2.12 LANGUAGES CXX)
+project(Yomk VERSION 1.2.13 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -12,9 +12,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${CMAKE_BINARY_DIR}/../bin>)
 # CMake
 include(CMake/Cpp.cmake)
 message("-- env Cpp success.")
-
-# nlohmann_json
-set(nlohmann_json_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/nlohmann_json)
 
 # YomkServer
 set(YomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/YomkServer)
