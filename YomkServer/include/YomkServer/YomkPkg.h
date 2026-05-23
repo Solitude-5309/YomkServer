@@ -269,7 +269,7 @@ typedef std::shared_ptr<OType##_> OType##Ptr;   \
 
 #define Yomk(Type) yomk::Type##_
 #define YomkPtr(Type) yomk::Type##Ptr
-#define YomkMsgPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
+#define YomkMkPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
 
 
 YomkMsg(std::string, string)
