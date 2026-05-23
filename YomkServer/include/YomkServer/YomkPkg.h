@@ -292,33 +292,6 @@ public:
 typedef std::shared_ptr<YSettingStringArray> YSettingStringArrayPtr;
 #define YomkMkYSettingStringArrayPtr(key, ...) std::make_shared<YSettingStringArray>(key, std::vector<std::string>({__VA_ARGS__}))
 
-class YLog : public YomkPkg
-{
-public:
-    enum ELogLevel
-    {
-        eDebug,
-        eInfo,
-        eWarn,
-        eError,
-    };
-public:
-    YLog() { m_name = "YLog"; }
-    YLog(
-        ELogLevel level, 
-        const std::string& log = "",
-        const std::string& logger = "MainLogger") 
-        : m_logger(logger)
-        , m_level(level)
-        , m_log(log) { m_name = "YLog"; }
-public:
-    std::string m_logger;
-    ELogLevel m_level;
-    std::string m_log;
-};
-typedef std::shared_ptr<YLog> YLogPtr;
-#define YomkMkYLogPtr(...) std::make_shared<YLog>(__VA_ARGS__)
-
 class YString : public YomkPkg
 {
 public:
@@ -384,3 +357,18 @@ struct LogFile
     std::string m_dir;
 };
 YomkMsg(LogFile, LogFile)
+
+struct Log
+{
+    enum ELogLevel
+    {
+        eDebug,
+        eInfo,
+        eWarn,
+        eError,
+    };
+    ELogLevel m_level;
+    std::string m_log;
+    std::string m_logger;
+};
+YomkMsg(Log, Log)

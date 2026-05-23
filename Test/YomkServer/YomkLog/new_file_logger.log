@@ -1,8 +1,8 @@
-[2026-05-22 19:54:30.209] [Info ] [ MainLogger ] test new_file_logger log info. 1
-[2026-05-22 19:54:30.209] [Warn ] [ MainLogger ] test new_file_logger log warn. 2
-[2026-05-22 19:54:30.209] [Error] [ MainLogger ] test new_file_logger log error. 3
-[2026-05-22 19:54:30.209] [Debug] [ MainLogger ] test new_file_logger log debug. 4
-[2026-05-22 19:54:30.209] [Info ] [ TestLogger ] test new_file_logger log info. 1
-[2026-05-22 19:54:30.209] [Warn ] [ TestLogger ] test new_file_logger log warn. 2
-[2026-05-22 19:54:30.209] [Error] [ TestLogger ] test new_file_logger log error. 3
-[2026-05-22 19:54:30.209] [Debug] [ TestLogger ] test new_file_logger log debug. 4
+[2026-05-23 17:06:50.289] [Info ] [ MainLogger ] test new_file_logger log info. 1
+[2026-05-23 17:06:50.289] [Warn ] [ MainLogger ] test new_file_logger log warn. 2
+[2026-05-23 17:06:50.289] [Error] [ MainLogger ] test new_file_logger log error. 3
+[2026-05-23 17:06:50.289] [Debug] [ MainLogger ] test new_file_logger log debug. 4
+[2026-05-23 17:06:50.289] [Info ] [ TestLogger ] test new_file_logger log info. 1
+[2026-05-23 17:06:50.289] [Warn ] [ TestLogger ] test new_file_logger log warn. 2
+[2026-05-23 17:06:50.289] [Error] [ TestLogger ] test new_file_logger log error. 3
+[2026-05-23 17:06:50.289] [Debug] [ TestLogger ] test new_file_logger log debug. 4
