@@ -15,6 +15,13 @@ YomkResponse eventHandle(YomkPkgPtr pkg)
 
     std::cout << "eventHandle called with data: " << str->d << std::endl;
 
+    static int i = 0;
+
+    if(i++ < 3)
+    {
+        YOMK_EVENTLOOP_POST("event_loop_1", YomkMkPtr(string, "requestEventHandle_data_" + std::to_string(i)));
+    }
+
     return {YomkResponse::eOk, "eventHandle success. "};
 }
 

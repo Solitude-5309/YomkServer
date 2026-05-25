@@ -3,7 +3,8 @@
 
 EventLoop::EventLoop()
     : m_running(false)
-    , m_eventId(0)
+    , m_eventId(1)
+    , m_curFinishedEventId(0)
 {
     
 }
@@ -50,7 +51,10 @@ int EventLoop::start()
             }
 
             event->d.handle();
-            eventHandleFinished(event->d.m_eventId);
+            if(event->d.m_isWait)
+            {
+                eventHandleFinished(event->d.m_eventId);
+            }
         }
     });
     return 0;
@@ -116,6 +120,8 @@ int EventLoop::postWait(YomkPtr(Event) event)
     {
         event->d.m_serviceFunc = m_defaultServiceFunc;
     }
+
+    event->d.m_isWait = true;
 
     if(std::this_thread::get_id() == m_worker.get_id())
     {
