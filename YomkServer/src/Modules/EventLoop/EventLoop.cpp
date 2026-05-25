@@ -4,7 +4,6 @@
 EventLoop::EventLoop()
     : m_running(false)
     , m_eventId(1)
-    , m_curFinishedEventId(0)
 {
     
 }
@@ -51,9 +50,9 @@ int EventLoop::start()
             }
 
             event->d.handle();
-            if(event->d.m_isWait)
+            if(event->d.m_waitCallback)
             {
-                eventHandleFinished(event->d.m_eventId);
+                event->d.m_waitCallback();
             }
         }
     });
@@ -121,8 +120,6 @@ int EventLoop::postWait(YomkPtr(Event) event)
         event->d.m_serviceFunc = m_defaultServiceFunc;
     }
 
-    event->d.m_isWait = true;
-
     if(std::this_thread::get_id() == m_worker.get_id())
     {
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve deadlock" << std::endl;
@@ -130,13 +127,18 @@ int EventLoop::postWait(YomkPtr(Event) event)
         return 0;
     }
 
+    std::condition_variable tmpCv;
+    std::mutex tmpMtx;
+    std::unique_lock<std::mutex> lock(tmpMtx);
+
+    event->d.m_waitCallback = [&tmpCv]()
+    {
+        tmpCv.notify_all();
+    };
+
     post(event);
 
-    std::unique_lock<std::mutex> lock(m_mtx);
-    m_cv.wait(lock, [this, &event]()
-    {
-        return m_curFinishedEventId == event->d.m_eventId;
-    });
+    tmpCv.wait(lock);
 
     return 0;
 }
@@ -144,11 +146,4 @@ int EventLoop::postWait(YomkPtr(Event) event)
 void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc)
 {
     m_defaultServiceFunc = serviceFunc;
-}
-
-void EventLoop::eventHandleFinished(uint64_t eventId)
-{
-    std::unique_lock<std::mutex> lock(m_mtx);
-    m_curFinishedEventId = eventId;
-    m_cv.notify_all();
 }

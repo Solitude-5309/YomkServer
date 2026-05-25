@@ -90,19 +90,19 @@ struct Event
     YomkServiceFunc m_serviceFunc;
     std::uint64_t m_eventId;
     YomkResponse m_response;
-    bool m_isWait;
+    std::function<void()> m_waitCallback;
     Event()
         : m_eventLoopName("")
         , m_pkg(nullptr)
         , m_serviceFunc(nullptr)
-        , m_isWait(false){}
+        , m_waitCallback(nullptr){}
     Event(const std::string& eventLoopName
         , YomkPkgPtr pkg
         , YomkServiceFunc serviceFunc)
         : m_eventLoopName(eventLoopName)
         , m_pkg(pkg)
         , m_serviceFunc(serviceFunc)
-        , m_isWait(false){}
+        , m_waitCallback(nullptr){}
     virtual void handle()
     {
         if(m_serviceFunc)
