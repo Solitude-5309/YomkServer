@@ -115,10 +115,6 @@ int EventLoop::postWait(YomkPtr(Event) event)
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop: event is null, please check event" << std::endl;
         return 1;
     }
-    if(!event->d.m_serviceFunc)
-    {
-        event->d.m_serviceFunc = m_defaultServiceFunc;
-    }
 
     if(std::this_thread::get_id() == m_worker.get_id())
     {
