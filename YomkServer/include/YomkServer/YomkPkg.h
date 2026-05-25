@@ -51,39 +51,6 @@ typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 typedef std::function<YomkResponse (YomkPkgPtr pkg)> YomkServiceFunc;
 typedef std::function<void (YomkResponse response)> YomkResponseFunc;
 
-class YomkEvent : public YomkPkg
-{
-public:
-    YomkEvent() { m_name = "YomkEvent"; }
-    YomkEvent(
-        const std::string& eventLoopName,
-        YomkPkgPtr pkg, 
-        YomkServiceFunc serviceFunc)
-        : m_pkg(pkg)
-        , m_serviceFunc(serviceFunc){ 
-            m_name = "YomkEvent";
-            m_eventLoopName = eventLoopName; 
-            m_eventId = 0;
-        }
-    virtual ~YomkEvent() {}
-public:
-    virtual void handle()
-    {
-        if(m_serviceFunc)
-        {
-            m_response = m_serviceFunc(m_pkg);
-        }
-    }
-public:
-    std::uint64_t m_eventId;
-    std::string m_eventLoopName;
-    YomkPkgPtr m_pkg;
-    YomkResponse m_response;
-    YomkServiceFunc m_serviceFunc;
-};
-typedef std::shared_ptr<YomkEvent> YomkEventPtr;
-#define YomkMkYomkEventPtr(eventLoopName, pkg, serviceFunc) std::make_shared<YomkEvent>(eventLoopName, pkg, serviceFunc)
-
 #define YomkMsg(IType, OType)                   \
 namespace yomk                                  \
 {                                               \
@@ -119,6 +86,30 @@ struct CallFunction
     YomkPkgPtr m_pkg;
 };
 YomkMsg(CallFunction, CallFunction)
+
+struct Event
+{
+    std::string m_eventLoopName;
+    YomkPkgPtr m_pkg;
+    YomkServiceFunc m_serviceFunc;
+    std::uint64_t m_eventId;
+    YomkResponse m_response;
+    Event() {}
+    Event(const std::string& eventLoopName
+        , YomkPkgPtr pkg
+        , YomkServiceFunc serviceFunc)
+        : m_eventLoopName(eventLoopName)
+        , m_pkg(pkg)
+        , m_serviceFunc(serviceFunc){}
+    virtual void handle()
+    {
+        if(m_serviceFunc)
+        {
+            m_response = m_serviceFunc(m_pkg);
+        }
+    }
+};
+YomkMsg(Event, Event)
 
 struct Eventloop
 {

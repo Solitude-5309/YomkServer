@@ -53,10 +53,12 @@ int main(int argc, char *argv[])
     if(response.m_resStatus == YomkResponse::eOk)
     {
         std::cout << "post_wait to event_loop_1 success" << std::endl;
-        YomkUnPackPkg(response.m_data, "YomkEvent", YomkEvent, yomkEvent);
-        if(yomkEvent)
+        YomkUnPackPkg(response.m_data, Event, event);
+        if(event)
         {
-            std::cout << "post_wait response eventId: " << yomkEvent->m_eventId << " eventLoopName: " << yomkEvent->m_eventLoopName << " response: " << yomkEvent->m_response.m_msg << std::endl;
+            std::cout << "post_wait response eventId: " << event->d.m_eventId 
+                        << " eventLoopName: " << event->d.m_eventLoopName 
+                        << " response: " << event->d.m_response.m_msg << std::endl;
         }
     }
     else

@@ -63,44 +63,44 @@ YomkResponse YomkEventLoop::stop(YomkPkgPtr pkg)
 
 YomkResponse YomkEventLoop::post(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YomkEvent", YomkEvent, yEvent);
-    if(!yEvent)
+    YomkUnPackPkgResponse(pkg, Event, event);
+    if(!event)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkEvent is empty, please check YomkEvent" << std::endl;
-        return YomkResponse(YomkResponse::eErr, "YomkEvent is empty");
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Event is empty, please check Event" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "Event is empty");
     }
 
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
-    auto itEventLoop = m_eventLoop.find(yEvent->m_eventLoopName);
+    auto itEventLoop = m_eventLoop.find(event->d.m_eventLoopName);
     if(itEventLoop == m_eventLoop.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << yEvent->m_eventLoopName << " not exist, please check event loop name" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << event->d.m_eventLoopName << " not exist, please check event loop name" << std::endl;
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
-    itEventLoop->second->post(yEvent);
+    itEventLoop->second->post(event);
 
     return YomkResponse(YomkResponse::eOk, "event loop post success");
 }
 
 YomkResponse YomkEventLoop::postWait(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgresponse(pkg, "YomkEvent", YomkEvent, yEvent);
-    if(!yEvent)
+    YomkUnPackPkgResponse(pkg, Event, event);
+    if(!event)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkEvent is empty, please check YomkEvent" << std::endl;
-        return YomkResponse(YomkResponse::eErr, "YomkEvent is empty");
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Event is empty, please check Event" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "Event is empty");
     }
 
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
-    auto itEventLoop = m_eventLoop.find(yEvent->m_eventLoopName);
+    auto itEventLoop = m_eventLoop.find(event->d.m_eventLoopName);
     if(itEventLoop == m_eventLoop.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << yEvent->m_eventLoopName << " not exist, please check event loop name" << std::endl;
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "event loop: " << event->d.m_eventLoopName << " not exist, please check event loop name" << std::endl;
         return YomkResponse(YomkResponse::eErr, "event loop not exist");
     }
-    itEventLoop->second->postWait(yEvent);
+    itEventLoop->second->postWait(event);
 
-    return YomkResponse(YomkResponse::eOk, "event loop post wait success", yEvent);
+    return YomkResponse(YomkResponse::eOk, "event loop post wait success", event);
 }
 
 YomkResponse YomkEventLoop::destroy(YomkPkgPtr pkg)

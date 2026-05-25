@@ -19,10 +19,6 @@
 
 #define YomkInstallFunc(FuncName, Func) installFunc(FuncName, std::bind(&Func, this, std::placeholders::_1))
 
-#define YomkUnPackPkg(pkg, pkgName, ClassName, ptrName) \
-    std::shared_ptr<ClassName> ptrName = nullptr; \
-    if (pkg && pkg->name() == pkgName) { ptrName = std::dynamic_pointer_cast<ClassName>(pkg); } 
-
 #define YomkUnPackPkgresponse(pkg, pkgName, ClassName, ptrName) \
     if (!pkg || pkg->name() != pkgName) return { YomkResponse::eErr, " pkg is null or pkg is not "#pkgName". " }; \
     std::shared_ptr<ClassName> ptrName = std::dynamic_pointer_cast<ClassName>(pkg); \
@@ -37,3 +33,11 @@
     if (!pkg || pkg->name() != #ClassName) return ; \
     YomkPtr(ClassName) ptrName = std::dynamic_pointer_cast<Yomk(ClassName)>(pkg); \
     if(!ptrName) return ;
+
+#define YomkUnPackPkg(pkg, ClassName, ptrName) \
+    YomkPtr(ClassName) ptrName = nullptr; \
+    if (pkg && pkg->name() == #ClassName) { ptrName = std::dynamic_pointer_cast<Yomk(ClassName)>(pkg); } 
+
+#define YomkUnPackPkgT(pkg, pkgName, ClassName, ptrName) \
+    std::shared_ptr<ClassName> ptrName = nullptr; \
+    if (pkg && pkg->name() == pkgName) { ptrName = std::dynamic_pointer_cast<ClassName>(pkg); } 

@@ -12,12 +12,12 @@ public:
 public:
     int start();
     int stop();
-    int post(YomkEventPtr event);
-    int postWait(YomkEventPtr event);
+    int post(YomkPtr(Event) event);
+    int postWait(YomkPtr(Event) event);
     void setDefaultServiceFunc(YomkServiceFunc serviceFunc);
     void eventHandleFinished(uint64_t eventId);
 private:
-    std::queue<YomkEventPtr> m_eventQueue;
+    std::queue<YomkPtr(Event)> m_eventQueue;
     std::mutex m_queueMutex;
     std::condition_variable m_condition;
     std::thread m_worker;

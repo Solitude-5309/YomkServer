@@ -29,7 +29,7 @@ int EventLoop::start()
     {
         while(m_running.load())
         {
-            YomkEventPtr event;
+            YomkPtr(Event) event;
             {
                 std::unique_lock<std::mutex> lock(m_queueMutex);
                 m_condition.wait(lock, [this]()
@@ -49,8 +49,8 @@ int EventLoop::start()
                 continue;
             }
 
-            event->handle();
-            eventHandleFinished(event->m_eventId);
+            event->d.handle();
+            eventHandleFinished(event->d.m_eventId);
         }
     });
     return 0;
@@ -72,7 +72,7 @@ int EventLoop::stop()
     return 0;
 }
 
-int EventLoop::post(YomkEventPtr event)
+int EventLoop::post(YomkPtr(Event) event)
 {
     if(!m_running.load())
     {
@@ -88,10 +88,10 @@ int EventLoop::post(YomkEventPtr event)
 
     {
         std::lock_guard<std::mutex> lock(m_queueMutex);
-        event->m_eventId = ++m_eventId;
-        if(!event->m_serviceFunc)
+        event->d.m_eventId = ++m_eventId;
+        if(!event->d.m_serviceFunc)
         {
-            event->m_serviceFunc = m_defaultServiceFunc;
+            event->d.m_serviceFunc = m_defaultServiceFunc;
         }
         m_eventQueue.push(event);
     }
@@ -99,7 +99,7 @@ int EventLoop::post(YomkEventPtr event)
     return 0;
 }
 
-int EventLoop::postWait(YomkEventPtr event)
+int EventLoop::postWait(YomkPtr(Event) event)
 {
     if(!m_running.load())
     {
@@ -112,15 +112,15 @@ int EventLoop::postWait(YomkEventPtr event)
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop: event is null, please check event" << std::endl;
         return 1;
     }
-    if(!event->m_serviceFunc)
+    if(!event->d.m_serviceFunc)
     {
-        event->m_serviceFunc = m_defaultServiceFunc;
+        event->d.m_serviceFunc = m_defaultServiceFunc;
     }
 
     if(std::this_thread::get_id() == m_worker.get_id())
     {
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve deadlock" << std::endl;
-        event->handle();
+        event->d.handle();
         return 0;
     }
 
@@ -129,7 +129,7 @@ int EventLoop::postWait(YomkEventPtr event)
     std::unique_lock<std::mutex> lock(m_mtx);
     m_cv.wait(lock, [this, &event]()
     {
-        return m_curFinishedEventId == event->m_eventId;
+        return m_curFinishedEventId == event->d.m_eventId;
     });
 
     return 0;
