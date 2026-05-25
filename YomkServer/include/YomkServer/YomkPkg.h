@@ -19,7 +19,7 @@ protected:
 };
 typedef std::shared_ptr<YomkPkg> YomkPkgPtr;
 
-class YomkResponse : public YomkPkg
+class YomkResponse
 {
 public:
     enum EResStatus{
@@ -30,21 +30,19 @@ public:
 public:
     YomkResponse() 
         : m_resStatus(eInvalid)
-        , m_data(nullptr) {  
-            m_name = "YomkResponse"; }
+        , m_data(nullptr) {}
     YomkResponse(
         EResStatus status, 
         const std::string& msg="",
         std::shared_ptr<YomkPkg> d = nullptr ) 
         : m_resStatus(status)
         , m_msg(msg)
-        , m_data(d) { 
-            m_name = "YomkResponse"; }
+        , m_data(d) { }
     virtual ~YomkResponse() {}
 public:
     EResStatus m_resStatus;
     std::string m_msg;
-    std::shared_ptr<YomkPkg> m_data;
+    YomkPkgPtr m_data;
 };
 typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 
@@ -70,8 +68,6 @@ typedef std::shared_ptr<OType##_> OType##Ptr;   \
 #define Yomk(Type) yomk::Type##_
 #define YomkPtr(Type) yomk::Type##Ptr
 #define YomkMkPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
-
-YomkMsg(std::string, string)
 
 struct Function
 {
@@ -167,3 +163,5 @@ struct ContextMonitor
     YomkContextMonitorFunc m_contextMonitorFunc;
 };
 YomkMsg(ContextMonitor, ContextMonitor)
+
+YomkMsg(std::string, string)

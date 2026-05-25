@@ -1,30 +1,11 @@
 #include "YomkAPI.h"
 
 // 创建一个消息包，用于服务间通信
-class MyServiceMsg : public YomkPkg
+struct MyServiceMsg
 {
-public:
-    MyServiceMsg() { m_name = "MyServiceMsg"; }
-    MyServiceMsg(const std::string& msg) : msg(msg) { m_name = "MyServiceMsg"; }
-    virtual ~MyServiceMsg() {}
-public:
-    // 克隆数据，深拷贝
-    virtual std::shared_ptr<YomkPkg> clone() const
-    {
-        MyServiceMsg* nd = new MyServiceMsg();
-        nd->m_name = m_name;
-        nd->msg = msg;
-        std::shared_ptr<YomkPkg> ptr;
-        ptr.reset(nd);
-        return ptr;
-    }
-public:
     std::string msg;
 };
-// 智能指针
-typedef std::shared_ptr<MyServiceMsg> MyServiceMsgPtr;
-// 创建MyServiceMsg的智能指针
-#define YomkMkMyServiceMsgPtr(msg) std::make_shared<MyServiceMsg>(msg)
+YomkMsg(MyServiceMsg, MyServiceMsg)
 
 // 创建一个服务B，用于编写功能集合
 class YomkServiceB : public YomkService
@@ -50,7 +31,7 @@ private:
     YomkResponse callSkillB(YomkPkgPtr pkg)
     {
         // 解包数据
-        YomkUnPackPkgresponse(pkg, "MyServiceMsg", MyServiceMsg, myServiceMsg);
+        YomkUnPackPkgResponse(pkg, MyServiceMsg, myServiceMsg);
         if(!myServiceMsg)
         {
             YOMK_ERROR_TAG("YomkServiceB::callSkillB", name(), " myServiceMsg is empty");
@@ -58,7 +39,7 @@ private:
         }
 
         // 日志
-        YOMK_INFO_TAG("YomkServiceB::callSkillB", name(), " exec skill b, with msg: ", myServiceMsg->msg);
+        YOMK_INFO_TAG("YomkServiceB::callSkillB", name(), " exec skill b, with msg: ", myServiceMsg->d.msg);
 
         // 返回结果
         return YomkResponse(YomkResponse::eOk, name() + " exec skill b success");
@@ -89,7 +70,8 @@ private:
     YomkResponse callSkillA(YomkPkgPtr pkg)
     {
         // 解包数据
-        YomkUnPackPkgresponse(pkg, "MyServiceMsg", MyServiceMsg, myServiceMsg);
+        YomkUnPackPkgResponse(pkg, MyServiceMsg, myServiceMsg);
+
         if(!myServiceMsg)
         {
             YOMK_ERROR_TAG("YomkServiceA::callSkillA", name(), " myServiceMsg is empty");
@@ -97,10 +79,10 @@ private:
         }
 
         // 日志
-        YOMK_INFO_TAG("YomkServiceA::callSkillA", name(), " exec skill a, with msg: ", myServiceMsg->msg);
+        YOMK_INFO_TAG("YomkServiceA::callSkillA", name(), " exec skill a, with msg: ", myServiceMsg->d.msg);
 
         // 调用服务B中的方法
-        YomkResponse response = YOMK_REQUEST("/YomkServiceB/call_skill_b", YomkMkMyServiceMsgPtr("hello world b"));
+        YomkResponse response = YOMK_REQUEST("/YomkServiceB/call_skill_b", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world b"}));
 
         // 检查调用结果
         if(response.m_resStatus != YomkResponse::eOk)
@@ -132,7 +114,7 @@ int main(int argc, char *argv[])
     YOMK_NEW_SERVICE(YomkServiceB, "/YomkServiceB");
 
     // 同步调用服务A中的方法
-    YomkResponse response = YOMK_REQUEST("/YomkServiceA/call_skill_a", YomkMkMyServiceMsgPtr("hello world a"));
+    YomkResponse response = YOMK_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world a"}));
     if(response.m_resStatus == YomkResponse::eOk)
     {
         YOMK_INFO_TAG("main", "request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
@@ -145,7 +127,7 @@ int main(int argc, char *argv[])
     YOMK_INFO_TAG("main", "request /YomkServiceA/call_skill_a send finished.");
 
     // 异步调用服务A中的方法
-    YOMK_ASYNC_REQUEST("/YomkServiceA/call_skill_a", YomkMkMyServiceMsgPtr("hello world a"), [](YomkResponse response) {
+    YOMK_ASYNC_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world a"}), [](YomkResponse response) {
         if(response.m_resStatus == YomkResponse::eOk)
         {
             YOMK_INFO_TAG("main", "async request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
