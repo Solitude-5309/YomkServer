@@ -7,7 +7,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <atomic>
-
+using namespace yomk;
 class YomkContext : public YomkService
 {
 public:

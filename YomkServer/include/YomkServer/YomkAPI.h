@@ -3,6 +3,9 @@
 #include "YomkDefine.h"
 #include <iostream>
 #include <sstream>
+
+using namespace yomk;
+
 class YOMKSERVER_EXPORT YomkAPI
 {
 // REQ_API

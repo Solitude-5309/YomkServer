@@ -69,19 +69,21 @@ typedef std::shared_ptr<OType##_> OType##Ptr;   \
 #define YomkPtr(Type) yomk::Type##Ptr
 #define YomkMkPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
 
+
+namespace yomk
+{
+    
 struct Function
 {
     std::string m_funcName;
     YomkServiceFunc m_func;
 };
-YomkMsg(Function, Function)
 
 struct CallFunction
 {
     std::string m_funcName;
     YomkPkgPtr m_pkg;
 };
-YomkMsg(CallFunction, CallFunction)
 
 struct Event
 {
@@ -111,21 +113,18 @@ struct Event
         }
     }
 };
-YomkMsg(Event, Event)
 
 struct Eventloop
 {
     std::string m_eventloopName;
     YomkServiceFunc m_defaultServiceFunc;
 };
-YomkMsg(Eventloop, Eventloop)
 
 struct LogFile
 {
     std::string m_logger;
     std::string m_dir;
 };
-YomkMsg(LogFile, LogFile)
 
 struct Log
 {
@@ -140,15 +139,12 @@ struct Log
     std::string m_log;
     std::string m_logger;
 };
-YomkMsg(Log, Log)
 
 struct Context
 {
     std::string m_key;
     YomkPkgPtr m_value;
 };
-YomkMsg(Context, Context)
-typedef std::function<void (YomkPtr(Context) ctx)> YomkContextMonitorFunc;
 
 struct ContextChecker
 {
@@ -160,14 +156,25 @@ struct ContextChecker
     typedef std::function<ECheckStatus (YomkPkgPtr pkg)> ContextCheckFunc;
     std::string m_key;
     ContextCheckFunc m_checkFunc; 
-};
-YomkMsg(ContextChecker, ContextChecker)
+};  
 
 struct ContextMonitor
 {
     std::string m_key;
-    YomkContextMonitorFunc m_contextMonitorFunc;
+    std::function<void (Context ctx)> m_contextMonitorFunc;
 };
-YomkMsg(ContextMonitor, ContextMonitor)
 
+}
+
+YomkMsg(Function, Function)
+YomkMsg(CallFunction, CallFunction)
+YomkMsg(Event, Event)
+YomkMsg(Eventloop, Eventloop)
+YomkMsg(LogFile, LogFile)
+YomkMsg(Log, Log)
+YomkMsg(Context, Context)
+YomkMsg(ContextChecker, ContextChecker)
+YomkMsg(ContextMonitor, ContextMonitor)
 YomkMsg(std::string, string)
+
+typedef std::function<void (const yomk::Context& ctx)> YomkContextMonitorFunc;

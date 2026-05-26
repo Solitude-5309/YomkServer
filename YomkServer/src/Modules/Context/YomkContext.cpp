@@ -154,7 +154,7 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         {
             for(auto &monitorFunc : itMonitor->second)
             {
-                monitorFunc(context);
+                monitorFunc(context->d);
             }
         }
     }
