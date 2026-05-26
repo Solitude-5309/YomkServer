@@ -4,6 +4,47 @@
 #include <functional>
 #include <string>
 
+#define YomkInstallFunc(FuncName, Func) installFunc(FuncName, std::bind(&Func, this, std::placeholders::_1))
+
+#define YomkUnPackPkgResponse(pkg, ClassName, ptrName) \
+    if (!pkg || pkg->name() != #ClassName) return { YomkResponse::eErr, " pkg is null or pkg is not "#ClassName". " }; \
+    YomkPtr(ClassName) ptrName = std::dynamic_pointer_cast<Yomk(ClassName)>(pkg); \
+    if(!ptrName) return { YomkResponse::eErr, " pkg["#ClassName"] is dynamic_pointer_cast failed. " };
+
+#define YomkUnPackPkgVoid(pkg, ClassName, ptrName) \
+    if (!pkg || pkg->name() != #ClassName) return ; \
+    YomkPtr(ClassName) ptrName = std::dynamic_pointer_cast<Yomk(ClassName)>(pkg); \
+    if(!ptrName) return ;
+
+#define YomkUnPackPkg(pkg, ClassName, ptrName) \
+    YomkPtr(ClassName) ptrName = nullptr; \
+    if (pkg && pkg->name() == #ClassName) { ptrName = std::dynamic_pointer_cast<Yomk(ClassName)>(pkg); } 
+
+#define YomkUnPackPkgT(pkg, pkgName, ClassName, ptrName) \
+    std::shared_ptr<ClassName> ptrName = nullptr; \
+    if (pkg && pkg->name() == pkgName) { ptrName = std::dynamic_pointer_cast<ClassName>(pkg); } 
+
+
+#define YomkMsg(IType, OType)                   \
+namespace yomk                                  \
+{                                               \
+class OType##_ : public YomkPkg                 \
+{                                               \
+public:                                         \
+    OType##_() { m_name = #OType; }             \
+    OType##_(const IType& d)                    \
+        : d(d) { m_name = #OType; }             \
+    virtual ~OType##_() {}                      \
+public:                                         \
+    IType d;                                    \
+};                                              \
+typedef std::shared_ptr<OType##_> OType##Ptr;   \
+}
+
+#define Yomk(Type) yomk::Type##_
+#define YomkPtr(Type) yomk::Type##Ptr
+#define YomkMkPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
+
 class YomkServer;
 
 class YomkPkg
@@ -48,27 +89,6 @@ typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 
 typedef std::function<YomkResponse (YomkPkgPtr pkg)> YomkServiceFunc;
 typedef std::function<void (YomkResponse response)> YomkResponseFunc;
-
-#define YomkMsg(IType, OType)                   \
-namespace yomk                                  \
-{                                               \
-class OType##_ : public YomkPkg                 \
-{                                               \
-public:                                         \
-    OType##_() { m_name = #OType; }             \
-    OType##_(const IType& d)                    \
-        : d(d) { m_name = #OType; }             \
-    virtual ~OType##_() {}                      \
-public:                                         \
-    IType d;                                    \
-};                                              \
-typedef std::shared_ptr<OType##_> OType##Ptr;   \
-}
-
-#define Yomk(Type) yomk::Type##_
-#define YomkPtr(Type) yomk::Type##Ptr
-#define YomkMkPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
-
 
 namespace yomk
 {
@@ -178,3 +198,4 @@ YomkMsg(std::string, string)
 
 typedef std::function<void (const yomk::Context& ctx)> YomkContextMonitorFunc;
 typedef std::function<yomk::ContextChecker::ECheckStatus (YomkPkgPtr pkg)> YomkContextCheckFunc;
+
