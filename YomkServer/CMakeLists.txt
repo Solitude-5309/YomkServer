@@ -8,6 +8,9 @@ endif()
 set(YomkServer_INCLUDE ${YomkServer_DIR}/include/YomkServer)
 set(YomkServer_SRC ${YomkServer_DIR}/src)
 
+set(INCLUDE_INSTALL_DIR include)
+set(LIB_INSTALL_DIR lib)
+
 include_directories(${YomkServer_INCLUDE})
 include_directories(${nlohmann_json_DIR})
 
@@ -82,16 +85,38 @@ install(DIRECTORY ${YomkServer_INCLUDE}
 )
 
 if(UNIX AND NOT APPLE)
-    install(CODE "execute_process(
-        COMMAND ldconfig
-        RESULT_VARIABLE ldconfig_result
-        OUTPUT_VARIABLE ldconfig_output
-        ERROR_VARIABLE ldconfig_error
-    )
-    if(ldconfig_result EQUAL 0)
-        message(STATUS \"ldconfig 执行成功，系统库缓存已更新\")
-    else()
-        message(WARNING \"ldconfig 执行失败（权限不足）：${ldconfig_error}\")
-        message(WARNING \"请手动执行：sudo ldconfig\")
-    endif()")
+    install(CODE "
+        # 处理 DESTDIR（打包场景）
+        if (\"\$ENV{DESTDIR}\" STREQUAL \"\")
+            set(_prefix \"${CMAKE_INSTALL_PREFIX}\")
+        else()
+            set(_prefix \"\$ENV{DESTDIR}/${CMAKE_INSTALL_PREFIX}\")
+        endif()
+
+        # 判断是否系统目录
+        if (_prefix MATCHES \"^/(usr|usr/local|lib|lib64)$\"
+            OR _prefix MATCHES \"^/(usr|usr/local)/lib(64)?$\")
+
+            execute_process(
+                COMMAND ldconfig
+                RESULT_VARIABLE ldconfig_result
+                ERROR_VARIABLE ldconfig_error
+            )
+
+            if (ldconfig_result EQUAL 0)
+                message(STATUS \"ldconfig 执行成功，系统库缓存已更新\")
+            else()
+                message(WARNING \"ldconfig 执行失败（可能需要 root 权限）\")
+                message(WARNING \"请手动执行：sudo ldconfig\")
+            endif()
+        else()
+            message(STATUS \"非系统目录安装，跳过 ldconfig\")
+            message(WARNING
+                \"===========================================\\n\"
+                \"请将以下命令加入 ~/.bashrc 或 ~/.zshrc：\\n\"
+                \"export LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:\\\\\$LD_LIBRARY_PATH\\n\"
+                \"===========================================\"
+            )
+        endif()
+    ")
 endif()

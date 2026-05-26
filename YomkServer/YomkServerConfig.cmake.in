@@ -1,5 +1,17 @@
 @PACKAGE_INIT@
 
+# 引入 targets（最重要）
 include("${CMAKE_CURRENT_LIST_DIR}/YomkServerTargets.cmake")
 
+# 设置版本（可选但强烈推荐）
+set(YomkServer_VERSION @PROJECT_VERSION@)
+
+# 设置 include / lib 目录（兼容 find_package）
+set(YomkServer_INCLUDE_DIRS "@PACKAGE_INCLUDE_INSTALL_DIR@")
+set(YomkServer_LIB_DIR "@PACKAGE_LIB_INSTALL_DIR@")
+
+# 设置库别名（方便使用）
+set(YomkServer_LIBRARIES YomkServer::YomkServer)
+
+# 校验是否找到核心 target
 check_required_components(YomkServer)
