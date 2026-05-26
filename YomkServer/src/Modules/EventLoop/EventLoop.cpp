@@ -152,10 +152,7 @@ int EventLoop::postWait(YomkEventPtr event)
 
     post(event);
 
-    tmpCv.wait(lock, [this, &event]()
-    {
-        return 0;
-    });
+    tmpCv.wait(lock);
 
     return 0;
 }
