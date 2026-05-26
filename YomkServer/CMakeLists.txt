@@ -62,6 +62,9 @@ configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/YomkServer/YomkServerConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/YomkServer/YomkServerConfig.cmake"
     INSTALL_DESTINATION lib/cmake/YomkServer
+    PATH_VARS
+        INCLUDE_INSTALL_DIR
+        LIB_INSTALL_DIR
 )
 
 install(

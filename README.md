@@ -86,8 +86,12 @@ cmake --build . --target install --config Release
 
 **cmake 链接**
 
-find_package(YomkServer 1.0 REQUIRED CONFIG)  
-target_link_libraries(${PROJECT_NAME} PRIVATE YomkServer::YomkServer)  
+find_package(YomkServer REQUIRED)  
+target_link_libraries(${PROJECT_NAME} PRIVATE YomkServer)  
+message(STATUS "YomkServer version: ${YomkServer_VERSION}")
+message(STATUS "YomkServer include dirs: ${YomkServer_INCLUDE_DIRS}")
+message(STATUS "YomkServer lib dir: ${YomkServer_LIB_DIR}")
+message(STATUS "YomkServer libraries: ${YomkServer_LIBRARIES}")
 
 **库文件引入**
 
