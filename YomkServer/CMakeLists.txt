@@ -8,6 +8,9 @@ endif()
 set(YomkServer_INCLUDE ${YomkServer_DIR}/include/YomkServer)
 set(YomkServer_SRC ${YomkServer_DIR}/src)
 
+set(INCLUDE_INSTALL_DIR include)
+set(LIB_INSTALL_DIR lib)
+
 include_directories(${YomkServer_INCLUDE})
 
 set(YomkServer_SOURCES 
@@ -56,6 +59,9 @@ configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/YomkServer/YomkServerConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/YomkServer/YomkServerConfig.cmake"
     INSTALL_DESTINATION lib/cmake/YomkServer
+    PATH_VARS
+        INCLUDE_INSTALL_DIR
+        LIB_INSTALL_DIR
 )
 
 install(
