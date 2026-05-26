@@ -326,7 +326,7 @@ public:
         }
         return request("/YomkContext/turn_off_checker", nullptr);
     }
-    static YomkResponse CONTEXT_SET_CHECKER(const std::string& ctx_name, ContextChecker::ContextCheckFunc checker){
+    static YomkResponse CONTEXT_SET_CHECKER(const std::string& ctx_name, YomkContextCheckFunc checker){
         if(!m_pServer){
             std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");

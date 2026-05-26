@@ -1,7 +1,4 @@
 #pragma once
-#include <memory>
-#include <map>
-#include <functional>
 #include "YomkPkg.h"
 
 #if defined(_WIN32) || defined(_WIN64)

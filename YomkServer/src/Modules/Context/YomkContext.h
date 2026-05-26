@@ -31,7 +31,7 @@ private:
     std::atomic<bool> m_monitorEnabled;
     std::map<std::string, YomkPkgPtr> m_contexts;
     std::shared_mutex m_contextsMutex;
-    std::map<std::string, ContextChecker::ContextCheckFunc> m_checkers;
+    std::map<std::string, YomkContextCheckFunc> m_checkers;
     std::shared_mutex m_checkersMutex;
     std::map<std::string, std::vector<YomkContextMonitorFunc>> m_contextMonitors;
     std::shared_mutex m_contextMonitorsMutex;
