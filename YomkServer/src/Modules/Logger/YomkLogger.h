@@ -18,6 +18,7 @@ public:
 private:
     YomkResponse createConsoleLogger(YomkPkgPtr pkg);
     YomkResponse consoleLog(YomkPkgPtr pkg);
+    YomkResponse setConsoleLogProxy(YomkPkgPtr pkg);
     YomkResponse createFileLogger(YomkPkgPtr pkg);
     YomkResponse fileLog(YomkPkgPtr pkg);
     YomkResponse writeFileLog(YomkPkgPtr pkg);
@@ -32,4 +33,6 @@ private:
     std::atomic<bool> m_showConsoleInfoLog;
     std::atomic<bool> m_showConsoleWarningLog;
     std::atomic<bool> m_showConsoleErrorLog;
+    bool m_consoleLogProxy;
+    YomkConsoleLogProxyFunc m_consoleLogProxyFunc;
 };

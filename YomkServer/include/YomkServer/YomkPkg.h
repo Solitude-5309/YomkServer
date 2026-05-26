@@ -160,6 +160,11 @@ struct Log
     std::string m_logger;
 };
 
+struct ConsoleLogProxy
+{
+    std::function<bool (const Log& log)> m_consoleLogProxyFunc;
+};
+
 struct Context
 {
     std::string m_key;
@@ -191,6 +196,7 @@ YomkMsg(Event, Event)
 YomkMsg(Eventloop, Eventloop)
 YomkMsg(LogFile, LogFile)
 YomkMsg(Log, Log)
+YomkMsg(ConsoleLogProxy, ConsoleLogProxy)
 YomkMsg(Context, Context)
 YomkMsg(ContextChecker, ContextChecker)
 YomkMsg(ContextMonitor, ContextMonitor)
@@ -198,4 +204,5 @@ YomkMsg(std::string, string)
 
 typedef std::function<void (const yomk::Context& ctx)> YomkContextMonitorFunc;
 typedef std::function<yomk::ContextChecker::ECheckStatus (YomkPkgPtr pkg)> YomkContextCheckFunc;
+typedef std::function<bool (const yomk::Log& log)> YomkConsoleLogProxyFunc;
 
