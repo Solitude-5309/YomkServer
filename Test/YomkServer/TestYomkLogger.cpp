@@ -4,6 +4,28 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
+bool consoleLogProxy(const YLogPtr& log)
+{
+    switch (log->m_level)
+    {
+    case YLog::eInfo:
+        std::cout << "into console log proxy: [INFO ] " << "[" << log->m_logger << "]"<< log->m_log << std::endl;
+        break;
+    case YLog::eWarn:
+        std::cout << "into console log proxy: [WARN ] " << "[" << log->m_logger << "]"<< log->m_log << std::endl;
+        break;
+    case YLog::eError:
+        std::cout << "into console log proxy: [ERROR] " << "[" << log->m_logger << "]"<< log->m_log << std::endl;
+        break;
+    case YLog::eDebug:
+        std::cout << "into console log proxy: [DEBUG] " << "[" << log->m_logger << "]"<< log->m_log << std::endl;
+        break;
+    default:
+        break;
+    }
+    return true;
+}
+
 int main(int argc, char *argv[])
 {
     fs::path exePath = fs::canonical(argv[0]);
@@ -28,6 +50,7 @@ int main(int argc, char *argv[])
     response = YOMK_WARN("test", " console log warn. ", 2);
     response = YOMK_ERROR("test", " console log error. ", 3);
     response = YOMK_DEBUG("test", " console log debug. ", 4);
+    response = YOMK_SET_CONSOLE_LOG_PROXY(consoleLogProxy);
     YOMK_ON_CONSOLE_LOG_INFO();
     YOMK_ON_CONSOLE_LOG_WARN();
     YOMK_ON_CONSOLE_LOG_ERROR();

@@ -37,6 +37,13 @@ public:
     }
 // LOG_API
 public:
+    static YomkResponse SET_CONSOLE_LOG_PROXY(YomkConsoleLogProxyFunc func){
+        if(!m_pServer){
+            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkServer is not init" << std::endl;
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkLogger/set_console_log_proxy", YomkMkYLogProxyPtr(func));
+    }
     template<typename... Args>
     static YomkResponse CONSOLE_LOG_INFO(Args&&... args){
         if(!m_pServer){
@@ -599,6 +606,7 @@ private:
 #define YOMK_NEW_SERVICE(ClassName, srvName) YomkAPI::newService<ClassName>(srvName)
 #define YOMK_REQUEST(...) YomkAPI::request(__VA_ARGS__)
 #define YOMK_ASYNC_REQUEST(...) YomkAPI::asyncRequest(__VA_ARGS__)
+#define YOMK_SET_CONSOLE_LOG_PROXY(func) YomkAPI::SET_CONSOLE_LOG_PROXY(func)
 #define YOMK_ON_CONSOLE_LOG_INFO() YomkAPI::ON_CONSOLE_LOG_INFO()
 #define YOMK_ON_CONSOLE_LOG_WARN() YomkAPI::ON_CONSOLE_LOG_WARN()
 #define YOMK_ON_CONSOLE_LOG_ERROR() YomkAPI::ON_CONSOLE_LOG_ERROR()

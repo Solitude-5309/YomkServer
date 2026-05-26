@@ -542,6 +542,29 @@ public:
 };
 typedef std::shared_ptr<YLog> YLogPtr;
 #define YomkMkYLogPtr(...) std::make_shared<YLog>(__VA_ARGS__)
+typedef std::function<bool (const YLogPtr& log)> YomkConsoleLogProxyFunc;
+
+class YLogProxy : public YomkPkg
+{
+public:
+    YLogProxy() { m_name = "YLogProxy"; }
+    YLogProxy(YomkConsoleLogProxyFunc func) : m_proxyFunc(func) { m_name = "YLogProxy"; }
+    ~YLogProxy() {}
+public:
+    virtual std::shared_ptr<YomkPkg> clone() const
+    {
+        YLogProxy* nd = new YLogProxy();
+        nd->m_name = m_name;
+        nd->m_proxyFunc = m_proxyFunc;
+        std::shared_ptr<YomkPkg> ptr;
+        ptr.reset(nd);
+        return ptr;
+    }
+public:
+    YomkConsoleLogProxyFunc m_proxyFunc;
+};
+typedef std::shared_ptr<YLogProxy> YLogProxyPtr;
+#define YomkMkYLogProxyPtr(func) std::make_shared<YLogProxy>(func)
 
 class YLogFile : public YomkPkg
 {

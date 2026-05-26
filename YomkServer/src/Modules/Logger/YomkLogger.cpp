@@ -10,6 +10,7 @@ YomkLogger::YomkLogger(YomkServer *server)
     m_showConsoleInfoLog.store(true);
     m_showConsoleWarningLog.store(true);
     m_showConsoleErrorLog.store(true);
+    m_consoleLogProxyFunc = nullptr;
 }
 
 YomkLogger::~YomkLogger()
@@ -19,6 +20,7 @@ YomkLogger::~YomkLogger()
 
 int YomkLogger::init()
 {
+    YomkInstallFunc("/set_console_log_proxy", YomkLogger::setConsoleLogProxy);
     YomkInstallFunc("/create_console_logger", YomkLogger::createConsoleLogger);
     YomkInstallFunc("/console_log", YomkLogger::consoleLog);
     YomkInstallFunc("/create_file_logger", YomkLogger::createFileLogger);
@@ -48,6 +50,18 @@ YomkResponse YomkLogger::createConsoleLogger(YomkPkgPtr pkg)
     return YomkResponse();
 }
 
+YomkResponse YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgresponse(pkg, "YLogProxy", YLogProxy, yLogProxy);
+    if(!yLogProxy)
+    {
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YLogProxy is empty, please check YLogProxy" << std::endl;
+        return YomkResponse(YomkResponse::eErr, "YLogProxy is empty");
+    }
+    m_consoleLogProxyFunc = yLogProxy->m_proxyFunc;
+    return {YomkResponse::eOk, "success."};
+}
+
 YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
 {
     YomkUnPackPkgresponse(pkg, "YLog", YLog, yLog)
@@ -56,6 +70,12 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
         std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YLog is empty, please check YLog" << std::endl;
         return YomkResponse(YomkResponse::eErr, "YLog is empty");
     }
+    
+    if(m_consoleLogProxyFunc && !m_consoleLogProxyFunc(yLog))
+    {
+        return YomkResponse(YomkResponse::eOk, "console log proxy is success.");
+    }
+
     std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
     
     if(m_consoleLoggers.find(yLog->m_logger) == m_consoleLoggers.end())

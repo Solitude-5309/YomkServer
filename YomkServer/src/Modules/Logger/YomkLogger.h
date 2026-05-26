@@ -17,6 +17,7 @@ public:
     virtual int init();
 private:
     YomkResponse createConsoleLogger(YomkPkgPtr pkg);
+    YomkResponse setConsoleLogProxy(YomkPkgPtr pkg);
     YomkResponse consoleLog(YomkPkgPtr pkg);
     YomkResponse createFileLogger(YomkPkgPtr pkg);
     YomkResponse fileLog(YomkPkgPtr pkg);
@@ -32,4 +33,5 @@ private:
     std::atomic<bool> m_showConsoleInfoLog;
     std::atomic<bool> m_showConsoleWarningLog;
     std::atomic<bool> m_showConsoleErrorLog;
+    YomkConsoleLogProxyFunc m_consoleLogProxyFunc;
 };
