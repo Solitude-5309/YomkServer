@@ -1,5 +1,12 @@
 from readerwriterlock import rwlock
 from enum import Enum
+import logging
+
+logging.basicConfig(
+    format="[Yomk] [%(pathname)s:%(lineno)d] [%(funcName)s] %(message)s"
+)
+
+log = logging.getLogger(__name__)
 
 class ResStatus(Enum):
     eInvalid = -1
@@ -30,11 +37,18 @@ class YomkService:
     
     def install_func(self, name, function):
         with self.rwlock_functions.gen_wlock():
+            if (name in self.functions):
+                log.info(f"install function already exists -> {name}, update to current function")
             self.functions[name] = function
     
     def invoke(self, name, pkg):
+        func = None
         with self.rwlock_functions.gen_rlock():
-            return self.functions[name](pkg)
+            if (name not in self.functions):
+                log.error(f"function not found -> {name}, please use YomkInstallFunc to install this function.")
+                return YomkResponse(ResStatus.eErr, "function not found: " + name)
+            func = self.functions[name]
+        return func(pkg)
 
 class YomkServer:
     def __init__(self):
@@ -43,10 +57,13 @@ class YomkServer:
     
     def add_service(self, service):
         with self.rwlock_services.gen_wlock():
+            if (service.name in self.services):
+                log.info(f"add service already exists -> {service.name}, update to current service")
             self.services[service.name] = service
     
     def request(self, url, pkg):
         if not url.startswith("/"):
+            log.error(f"url parse error: {url}, please start with /")
             return YomkResponse(
                 ResStatus.eErr,
                 "url parse error: " + url + ", please start with /"
@@ -55,6 +72,7 @@ class YomkServer:
         pos_start = 0
         pos_end = url.find("/", pos_start + 1)
         if pos_end == -1:
+            log.error(f"url parse error: {url}, not found service name.")
             return YomkResponse(
                 ResStatus.eErr,
                 "url parse error: " + url + ", not found service name."
@@ -62,6 +80,7 @@ class YomkServer:
         
         srv_name = url[pos_start:pos_end]
         if not srv_name:
+            log.error(f"url parse error: srv is empty.")
             return YomkResponse(
                 ResStatus.eErr,
                 "url parse error: srv is empty."
@@ -69,11 +88,20 @@ class YomkServer:
         
         func_name = url[pos_end:]
         if not func_name:
+            log.error(f"url parse error: function name is empty")
             return YomkResponse(
                 ResStatus.eErr,
                 "url parse error: function name is empty"
             )        
         
+        service = None
         with self.rwlock_services.gen_rlock():
+            if (srv_name not in self.services):
+                log.error(f"service not found: {srv_name}, please start the service.")
+                return YomkResponse(
+                    ResStatus.eErr,
+                    "service not found: " + srv_name
+                )
             service = self.services[srv_name]
-            return service.invoke(func_name, pkg)
+        
+        return service.invoke(func_name, pkg)
