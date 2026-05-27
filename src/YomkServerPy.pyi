@@ -43,3 +43,9 @@ class YomkServer:
         url: str,
         pkg: Any
     ) -> Any: ...
+    def async_request(
+        self,
+        url: str,
+        pkg: Any,
+        callback: Callable[[Any], None]
+    ) -> None: ...

@@ -1,6 +1,7 @@
 from readerwriterlock import rwlock
 from enum import Enum
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(
     format="[Yomk] [%(pathname)s:%(lineno)d] [%(funcName)s] %(message)s"
@@ -51,9 +52,10 @@ class YomkService:
         return func(pkg)
 
 class YomkServer:
-    def __init__(self):
+    def __init__(self, max_thread=8):
         self.services = {}
         self.rwlock_services = rwlock.RWLockFair()
+        self.executor = ThreadPoolExecutor(max_thread)
     
     def add_service(self, service):
         with self.rwlock_services.gen_wlock():
@@ -105,3 +107,55 @@ class YomkServer:
             service = self.services[srv_name]
         
         return service.invoke(func_name, pkg)
+    
+    def async_request(self, url, pkg, callback):
+        if not url.startswith("/"):
+            log.error(f"url parse error: {url}, please start with /")
+            return YomkResponse(
+                ResStatus.eErr,
+                "url parse error: " + url + ", please start with /"
+            )
+        
+        pos_start = 0
+        pos_end = url.find("/", pos_start + 1)
+        if pos_end == -1:
+            log.error(f"url parse error: {url}, not found service name.")
+            return YomkResponse(
+                ResStatus.eErr,
+                "url parse error: " + url + ", not found service name."
+            )
+        
+        srv_name = url[pos_start:pos_end]
+        if not srv_name:
+            log.error(f"url parse error: srv is empty.")
+            return YomkResponse(
+                ResStatus.eErr,
+                "url parse error: srv is empty."
+            )
+        
+        func_name = url[pos_end:]
+        if not func_name:
+            log.error(f"url parse error: function name is empty")
+            return YomkResponse(
+                ResStatus.eErr,
+                "url parse error: function name is empty"
+            )        
+        
+        service = None
+        with self.rwlock_services.gen_rlock():
+            if (srv_name not in self.services):
+                log.error(f"service not found: {srv_name}, please start the service.")
+                return YomkResponse(
+                    ResStatus.eErr,
+                    "service not found: " + srv_name
+                )
+            service = self.services[srv_name]
+        
+        def task():
+            try:
+                result = service.invoke(func_name, pkg)
+                callback(result)
+            except Exception as e:
+                log.exception(e)
+
+        self.executor.submit(task)

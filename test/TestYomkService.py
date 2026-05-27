@@ -1,4 +1,5 @@
 import YomkApi
+import threading
 
 class YomkServiceA(YomkApi.YomkService):
     def __init__(self, server):
@@ -9,9 +10,21 @@ class YomkServiceA(YomkApi.YomkService):
         self.install_func("/skill_a", self.skill_a)
 
     def skill_a(self, pkg):
-        print("YomkServiceA::callSkillA", self.get_name(), "exec skill a, with msg:", pkg)
+        tid = threading.get_ident()
+        print(f"[thread {tid}] hello", "YomkServiceA::callSkillA", self.get_name(), "exec skill a, with msg:", pkg)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, self.get_name() + " exec skill a success")
 
+def callback(res):
+    tid = threading.get_ident()
+    print(f"[thread {tid}]", "async_request_res", res.msg)
+
+# 初始化YomkApi
 YomkApi.init(YomkApi.YomkServer())
+# 创建服务
 YomkApi.new_service(YomkServiceA, "/YomkServiceA")
+# 同步请求
 YomkApi.request("/YomkServiceA/skill_a", "hello")
+# 异步请求
+YomkApi.async_request("/YomkServiceA/skill_a", "hello", callback)
+tid = threading.get_ident()
+print(f"[thread {tid}]", "async_request: /YomkServiceA/skill_a finished. ")

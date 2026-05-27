@@ -21,3 +21,7 @@ def new_service(class_name, name):
 def request(url, pkg):
     global g_server
     return g_server.request(url, pkg)
+
+def async_request(url, pkg, callback):
+    global g_server
+    return g_server.async_request(url, pkg, callback)
