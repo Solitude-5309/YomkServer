@@ -57,6 +57,16 @@ class YomkServer:
         self.rwlock_services = rwlock.RWLockFair()
         self.executor = ThreadPoolExecutor(max_thread)
     
+    def start_service(self, srv_names):
+        for srv_name in srv_names:
+            if srv_name == "YomkContext":
+                srv = YomkContext(self)
+                srv.set_name("/YomkContext")
+                srv.init()
+                self.add_service(srv)
+            else:
+                log.info(f"yomk does not support service: {srv_name}")
+    
     def add_service(self, service):
         with self.rwlock_services.gen_wlock():
             if (service.name in self.services):
@@ -159,3 +169,71 @@ class YomkServer:
                 log.exception(e)
 
         self.executor.submit(task)
+
+# msg
+class Context:
+    def __init__(self, key="", value=None):
+        self.key = key
+        self.value = value
+
+# modules
+class YomkContext(YomkService):
+    def __init__(self, server):
+        super().__init__(server)
+        self.set_name("/YomkContext")
+        self.m_contexts = {}
+        self.m_contextsMutex = rwlock.RWLockFair()
+
+    def init(self):
+        self.install_func("/create", self.create)
+        self.install_func("/destroy", self.destroy)
+        self.install_func("/get", self.get)
+        self.install_func("/set", self.set)
+
+    def create(self, ctx):
+        if not ctx.key:
+            log.error("key is empty, please check Context.m_key.")
+            return YomkResponse(ResStatus.eErr, "key is empty")
+
+        with self.m_contextsMutex.gen_wlock():
+            if ctx.key in self.m_contexts:
+                log.error(f"key already exists: {ctx.key}, please check Context.m_key.")
+                return YomkResponse(ResStatus.eErr, "key already exists")
+            self.m_contexts[ctx.key] = ctx.value
+        return YomkResponse(ResStatus.eOk, "create context success")
+    
+    def destroy(self, key):
+        if not key:
+            log.error("key is empty, please check key.")
+            return YomkResponse(ResStatus.eErr, "key is empty")
+            
+        with self.m_contextsMutex.gen_wlock():
+            if key not in self.m_contexts:
+                log.error(f"key is not exist: {key}, please check key.")
+                return YomkResponse(ResStatus.eErr, "key is not exist")
+            del self.m_contexts[key]
+        return YomkResponse(ResStatus.eOk, "destroy context success")
+    
+    def get(self, ctx):
+        if not ctx.key:
+            log.error("key is empty, please check Context.m_key.")
+            return YomkResponse(ResStatus.eErr, "key is empty", ctx.value)
+        
+        with self.m_contextsMutex.gen_rlock():
+            if ctx.key not in self.m_contexts:
+                log.error(f"key is not exist: {ctx.key}, please check Context.m_key.")
+                return YomkResponse(ResStatus.eErr, "key is not exist", ctx.value)
+        
+        return YomkResponse(ResStatus.eOk, "get context success", self.m_contexts[ctx.key])
+    
+    def set(self, ctx):
+        if not ctx.key:
+            log.error("key is empty, please check Context.m_key.")
+            return YomkResponse(ResStatus.eErr, "key is empty")
+        
+        with self.m_contextsMutex.gen_wlock():
+            if ctx.key not in self.m_contexts:
+                log.error(f"key is not exist: {ctx.key}, please check Context.m_key.")
+                return YomkResponse(ResStatus.eErr, "key is not exist")
+            self.m_contexts[ctx.key] = ctx.value
+        return YomkResponse(ResStatus.eOk, "set context success")

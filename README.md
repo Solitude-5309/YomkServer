@@ -12,6 +12,7 @@ chmod +x build.sh
 1. export PYTHONPATH=$HOME/YomkServer/install/lib/python3.10/site-packages:$PYTHONPATH 【根据实际安装目录编写】
 2. cd YomkServerPy/test
 3. python3 TestYomkService.py
+4. python3 TestYomkContext.py
 
 ## 手动编译
 

@@ -49,3 +49,12 @@ class YomkServer:
         pkg: Any,
         callback: Callable[[Any], None]
     ) -> None: ...
+
+class Context:
+    key: str
+    value: Any
+    def __init__(
+        self,
+        key: str = "",
+        value: Any = None
+    ) -> None: ...
