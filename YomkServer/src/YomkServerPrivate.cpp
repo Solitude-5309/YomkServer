@@ -11,6 +11,10 @@ void YomkServerPrivate::addService(YomkService *srv)
         return;
     }
     std::unique_lock<std::shared_mutex> lock(m_serviceMapMtx);
+    if (m_serviceMap.find(srv->name()) != m_serviceMap.end())
+    {
+        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "install function already exists -> " << srv->name() << ", update to current function" << std::endl;
+    }
     m_serviceMap[srv->name()].reset(srv);
 }
 
