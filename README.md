@@ -29,4 +29,5 @@ pip install cython readerwriterlock
 
 ## TODO
 1. 强类型优化
+2. 日志优化
 

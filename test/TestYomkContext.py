@@ -23,8 +23,8 @@ print("context_get_ctx: key=ctx, value=", ctx_data)
 res = YomkApi.context_turn_on_checker()
 print("context_turn_on_checker", res.msg)
 
-def context_checker_reject(value):
-    print("check reject func called:", value)
+def context_checker_reject(ctx: YomkApi.Context)->YomkApi.CheckStatus:
+    print("check reject func called: ctx=", ctx.key, "value=", ctx.value)
     return YomkApi.CheckStatus.eReject
 
 # 设置上下文检查函数
@@ -35,7 +35,7 @@ print("context_set_checker_reject: key=ctx. checker=context_checker_reject", res
 res = YomkApi.context_turn_on_monitor()
 print("context_turn_on_monitor", res.msg)
 
-def context_monitor_func(ctx):
+def context_monitor_func(ctx: YomkApi.Context)->None:
     print("monitor func called: ctx=", ctx.key, "value=", ctx.value)   
 
 # 设置上下文监控函数
@@ -50,8 +50,8 @@ print("context_set_ctx: key=ctx, value=ctx_data_set_reject", res.msg)
 ctx_data = YomkApi.context_get("ctx", "ctx_data_default")
 print("context_get_ctx: key=ctx, value=", ctx_data)
 
-def context_checker_accept(value):
-    print("check accept func called:", value)
+def context_checker_accept(ctx: YomkApi.Context)->YomkApi.CheckStatus:
+    print("check accept func called: ctx=", ctx.key, "value=", ctx.value)
     return YomkApi.CheckStatus.eAccept
 
 # 设置上下文检查函数

@@ -15,16 +15,27 @@ class ResStatus(Enum):
     eErr = 1
 
 class YomkResponse:
-    def __init__(self, res_status=ResStatus.eInvalid, msg="", data=None):
+    def __init__(
+        self,
+        res_status: ResStatus = ResStatus.eInvalid,
+        msg: str = "",
+        data: Any = None,
+    ):
+        if not isinstance(res_status, ResStatus):
+            raise TypeError("res_status must be ResStatus")
+
+        if not isinstance(msg, str):
+            raise TypeError("msg must be str")
+
         self.res_status = res_status
         self.msg = msg
         self.data = data
 
 class YomkService:
-    def __init__(self, server):
-        self.name = ""
-        self.server = server
-        self.functions = {}
+    def __init__(self, server: "YomkServer"):
+        self.name: str = ""
+        self.server: "YomkServer" = server
+        self.functions: dict[str, Callable[[Any], YomkResponse]] = {}
         self.rwlock_functions = rwlock.RWLockFair()
     
     def get_name(self):
@@ -49,15 +60,18 @@ class YomkService:
                 log.error(f"function not found -> {name}, please use YomkInstallFunc to install this function.")
                 return YomkResponse(ResStatus.eErr, "function not found: " + name)
             func = self.functions[name]
-        return func(pkg)
+        result = func(pkg)
+        if not isinstance(result, YomkResponse):
+            raise RuntimeError("function must return YomkResponse")
+        return result
 
 class YomkServer:
     def __init__(self, max_thread=8):
-        self.services = {}
+        self.services: dict[str, YomkService] = {}
         self.rwlock_services = rwlock.RWLockFair()
         self.executor = ThreadPoolExecutor(max_thread)
     
-    def start_service(self, srv_names):
+    def start_service(self, srv_names: list[str]):
         for srv_name in srv_names:
             if srv_name == "YomkContext":
                 srv = YomkContext(self)
@@ -305,7 +319,7 @@ class YomkContext(YomkService):
             if self.m_checkerEnabled:
                 with self.m_checkersMutex.gen_rlock():
                     if ctx.key in self.m_checkers:
-                        if(self.m_checkers[ctx.key](ctx.value) == CheckStatus.eReject):
+                        if(self.m_checkers[ctx.key](ctx) == CheckStatus.eReject):
                             return YomkResponse(ResStatus.eErr, "check reject set context")
             
             self.m_contexts[ctx.key] = ctx.value
