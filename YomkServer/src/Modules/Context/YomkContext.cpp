@@ -130,7 +130,7 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         auto itChecker = m_checkers.find(context->d.m_key);
         if(itChecker != m_checkers.end())
         {
-            ContextChecker::ECheckStatus checkStatus = itChecker->second(context->d.m_value);
+            ContextChecker::ECheckStatus checkStatus = itChecker->second(context->d);
             if(checkStatus == ContextChecker::eReject)
             {
                 return YomkResponse(YomkResponse::eErr, "checker reject set context");

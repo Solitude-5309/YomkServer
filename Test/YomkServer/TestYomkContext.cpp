@@ -2,24 +2,41 @@
 #include "YomkAPI.h"
 
 // CTX设置前进入check函数，用于CTX的创建者屏蔽非法操作，check函数接受才能真正的修改CTX
-ContextChecker::ECheckStatus checkerAcceptFunc(YomkPkgPtr pkg)
+ContextChecker::ECheckStatus checkerAcceptFunc(const yomk::Context& ctx)
 {
-    std::cout << "checker accept func called. " << std::endl;
+    YomkUnPackPkg(ctx.m_value, string, str);
+    if(!str)
+    {
+        std::cout << "checker accept func called. value is null " << std::endl;
+        return ContextChecker::eReject;
+    }
+    std::cout << "checker accept func called. ctx: key = " << ctx.m_key << ", value = " << str->d << std::endl;
     return ContextChecker::eAccept;
 }
 
 // CTX设置前进入check函数，用于CTX的创建者屏蔽非法操作，check函数拒绝则不能修改CTX
-ContextChecker::ECheckStatus checkerRejectFunc(YomkPkgPtr pkg)
+ContextChecker::ECheckStatus checkerRejectFunc(const yomk::Context& ctx)
 {
-    std::cout << "checker reject func called. " << std::endl;
+    YomkUnPackPkg(ctx.m_value, string, str);
+    if(!str)
+    {
+        std::cout << "checker reject func called. value is null " << std::endl;
+        return ContextChecker::eReject;
+    }
+    std::cout << "checker reject func called. ctx: key = " << ctx.m_key << ", value = " << str->d << std::endl;
     return ContextChecker::eReject;
 }
 
 // CTX设置成功后进入monitor函数，用于CTX的监控者接收CTX的变化
 void monitorFunc(const yomk::Context& ctx)
 {
-    YomkUnPackPkgVoid(ctx.m_value, string, yStr);
-    std::cout << "monitor func called. ctx: " << yStr->d << std::endl;
+    YomkUnPackPkgVoid(ctx.m_value, string, str);
+    if(!str)
+    {
+        std::cout << "monitor func called. value is null " << std::endl;
+        return;
+    }
+    std::cout << "monitor func called. ctx: key= " << ctx.m_key << ", value = " << str->d << std::endl;
 }
 
 int main(int argc, char *argv[])

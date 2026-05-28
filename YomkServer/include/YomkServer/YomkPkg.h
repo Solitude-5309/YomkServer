@@ -179,7 +179,7 @@ struct ContextChecker
         eReject
     };
     std::string m_key;
-    std::function<ECheckStatus (YomkPkgPtr pkg)> m_checkFunc; 
+    std::function<ECheckStatus (const yomk::Context& ctx)> m_checkFunc; 
 };  
 
 struct ContextMonitor
@@ -203,6 +203,6 @@ YomkMsg(ContextMonitor, ContextMonitor)
 YomkMsg(std::string, string)
 
 typedef std::function<void (const yomk::Context& ctx)> YomkContextMonitorFunc;
-typedef std::function<yomk::ContextChecker::ECheckStatus (YomkPkgPtr pkg)> YomkContextCheckFunc;
+typedef std::function<yomk::ContextChecker::ECheckStatus (const yomk::Context& ctx)> YomkContextCheckFunc;
 typedef std::function<bool (const yomk::Log& log)> YomkConsoleLogProxyFunc;
 
