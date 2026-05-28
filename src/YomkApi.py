@@ -3,7 +3,9 @@ from YomkServerPy import (
     YomkService,
     YomkResponse,
     ResStatus,
-    Context
+    Context,
+    CheckStatus,
+    ContextChecker
 )
 
 g_server: YomkServer = None
@@ -43,3 +45,13 @@ def context_get(key, default_value):
 def context_set(key, default_value):
     ctx = Context(key, default_value)
     return g_server.request("/YomkContext/set", ctx)
+
+def context_turn_on_checker():
+    return g_server.request("/YomkContext/turn_on_checker", None)
+
+def context_turn_off_checker():
+    return g_server.request("/YomkContext/turn_off_checker", None)
+
+def context_set_checker(key, checker):
+    contextChecker = ContextChecker(key, checker)
+    return g_server.request("/YomkContext/set_checker", contextChecker)

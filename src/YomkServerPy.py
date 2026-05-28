@@ -176,6 +176,15 @@ class Context:
         self.key = key
         self.value = value
 
+class CheckStatus(Enum):
+    eAccept = 0,
+    eReject = 1
+
+class ContextChecker:
+    def __init__(self, key="", check_func=None):
+        self.key = key
+        self.check_func = check_func  
+
 # modules
 class YomkContext(YomkService):
     def __init__(self, server):
@@ -183,12 +192,37 @@ class YomkContext(YomkService):
         self.set_name("/YomkContext")
         self.m_contexts = {}
         self.m_contextsMutex = rwlock.RWLockFair()
+        self.m_checkerEnabled = False
+        self.m_checkers = {}
+        self.m_checkersMutex = rwlock.RWLockFair()
 
     def init(self):
         self.install_func("/create", self.create)
         self.install_func("/destroy", self.destroy)
         self.install_func("/get", self.get)
         self.install_func("/set", self.set)
+        self.install_func("/turn_on_checker", self.turn_on_checker)
+        self.install_func("/turn_off_checker", self.turn_off_checker)
+        self.install_func("/set_checker", self.set_checker)
+    
+    def set_checker(self, contextChecker):
+        with self.m_contextsMutex.gen_rlock(): 
+            if contextChecker.key not in self.m_contexts:
+                log.info(f"YomkContext key: {contextChecker.key} is not exist, please check ContextChecker.m_key.")
+                return YomkResponse(ResStatus.eErr, "key is not exist")
+        
+        with self.m_checkersMutex.gen_wlock():
+            self.m_checkers[contextChecker.key] = contextChecker.check_func
+        
+        return YomkResponse(ResStatus.eOk, "set checker success")
+            
+    def turn_on_checker(self, pkg):
+        self.m_checkerEnabled = True
+        return YomkResponse(ResStatus.eOk, "turn on checker success")
+
+    def turn_off_checker(self, pkg):
+        self.m_checkerEnabled = False
+        return YomkResponse(ResStatus.eOk, "turn off checker success")
 
     def create(self, ctx):
         if not ctx.key:
@@ -235,5 +269,12 @@ class YomkContext(YomkService):
             if ctx.key not in self.m_contexts:
                 log.error(f"key is not exist: {ctx.key}, please check Context.m_key.")
                 return YomkResponse(ResStatus.eErr, "key is not exist")
+            
+            if self.m_checkerEnabled:
+                with self.m_checkersMutex.gen_rlock():
+                    if ctx.key in self.m_checkers:
+                        if(self.m_checkers[ctx.key](ctx.value) == CheckStatus.eReject):
+                            return YomkResponse(ResStatus.eErr, "check reject set context")
+            
             self.m_contexts[ctx.key] = ctx.value
         return YomkResponse(ResStatus.eOk, "set context success")

@@ -6,6 +6,10 @@ class ResStatus(Enum):
     eInvalid: int = -1
     eOk: int = 0
     eErr: int = 1
+    
+class CheckStatus(Enum):
+    eAccept: int = 0,
+    eReject: int = 1
 
 class YomkResponse:
     res_status: ResStatus
@@ -58,3 +62,8 @@ class Context:
         key: str = "",
         value: Any = None
     ) -> None: ...
+    
+class ContextChecker:
+    key: str
+    check_func: Callable[[Any], CheckStatus]
+    def __init__(self, key="", check_func=None) -> None: ...

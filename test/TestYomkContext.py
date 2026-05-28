@@ -5,28 +5,64 @@ YomkApi.init(YomkApi.YomkServer(), ["YomkContext"])
 
 # 创建上下文
 res = YomkApi.context_create("ctx", "ctx_data")
-print("context_create_ctx", res.msg)
+print("context_create_ctx: key=ctx, value=ctx_data", res.msg)
 
 # 获取上下文数据
 ctx_data = YomkApi.context_get("ctx", "ctx_data_default")
-print("context_get_ctx", ctx_data)
+print("context_get_ctx: key=ctx, value=", ctx_data)
 
 # 设置上下文数据
 res = YomkApi.context_set("ctx", "ctx_data_set")
-print("context_set_ctx", res.msg)
+print("context_set_ctx: key=ctx, value=ctx_data_set", res.msg)
 
 # 获取上下文数据
 ctx_data = YomkApi.context_get("ctx", "ctx_data_default")
-print("context_get_ctx", ctx_data)
+print("context_get_ctx: key=ctx, value=", ctx_data)
+
+# 开启上下文检查
+res = YomkApi.context_turn_on_checker()
+print("context_turn_on_checker", res.msg)
+
+def context_checker_reject(value):
+    print("check reject func called:", value)
+    return YomkApi.CheckStatus.eReject
+
+# 设置上下文检查函数
+res = YomkApi.context_set_checker("ctx", context_checker_reject)
+print("context_set_checker_reject: key=ctx. checker=context_checker_reject", res.msg)
+
+# 设置上下文数据
+res = YomkApi.context_set("ctx", "ctx_data_set_reject")
+print("context_set_ctx: key=ctx, value=ctx_data_set_reject", res.msg)
+
+# 获取上下文数据
+ctx_data = YomkApi.context_get("ctx", "ctx_data_default")
+print("context_get_ctx: key=ctx, value=", ctx_data)
+
+def context_checker_accept(value):
+    print("check accept func called:", value)
+    return YomkApi.CheckStatus.eAccept
+
+# 设置上下文检查函数
+res = YomkApi.context_set_checker("ctx", context_checker_accept)
+print("context_set_checker_accept: key=ctx. checker=context_checker_accept", res.msg)
+
+# 设置上下文数据
+res = YomkApi.context_set("ctx", "ctx_data_set_accept")
+print("context_set_ctx: key=ctx, value=ctx_data_set_accept", res.msg)
+
+# 获取上下文数据
+ctx_data = YomkApi.context_get("ctx", "ctx_data_default")
+print("context_get_ctx: key=ctx, value=", ctx_data)
 
 # 删除上下文
 res = YomkApi.context_destroy("ctx")
-print("context_destroy_ctx", res.msg)
+print("context_destroy_ctx: key=ctx", res.msg)
 
 # 设置上下文数据
 res = YomkApi.context_set("ctx", "ctx_data_set")
-print("context_set_ctx", res.msg)
+print("context_set_ctx: key=ctx, value=ctx_data_set", res.msg)
 
 # 获取上下文数据
 ctx_data = YomkApi.context_get("ctx", "ctx_data_default")
-print("context_get_ctx", ctx_data)
+print("context_get_ctx: key=ctx, value=", ctx_data)
