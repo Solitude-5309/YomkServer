@@ -27,5 +27,6 @@ pip install cython readerwriterlock
 5. cmake --build . --target install --config Release
 
 
-
+## TODO
+1. 强类型优化
 

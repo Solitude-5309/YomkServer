@@ -31,6 +31,17 @@ def context_checker_reject(value):
 res = YomkApi.context_set_checker("ctx", context_checker_reject)
 print("context_set_checker_reject: key=ctx. checker=context_checker_reject", res.msg)
 
+# 开启上下文监控
+res = YomkApi.context_turn_on_monitor()
+print("context_turn_on_monitor", res.msg)
+
+def context_monitor_func(ctx):
+    print("monitor func called: ctx=", ctx.key, "value=", ctx.value)   
+
+# 设置上下文监控函数
+res = YomkApi.context_set_monitor("ctx", context_monitor_func)
+print("context_set_monitor: key=ctx, monitor=context_monitor_func", res.msg)  
+
 # 设置上下文数据
 res = YomkApi.context_set("ctx", "ctx_data_set_reject")
 print("context_set_ctx: key=ctx, value=ctx_data_set_reject", res.msg)

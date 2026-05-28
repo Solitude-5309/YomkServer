@@ -5,7 +5,8 @@ from YomkServerPy import (
     ResStatus,
     Context,
     CheckStatus,
-    ContextChecker
+    ContextChecker,
+    ContextMonitor
 )
 
 g_server: YomkServer = None
@@ -55,3 +56,13 @@ def context_turn_off_checker():
 def context_set_checker(key, checker):
     contextChecker = ContextChecker(key, checker)
     return g_server.request("/YomkContext/set_checker", contextChecker)
+
+def context_turn_on_monitor():
+    return g_server.request("/YomkContext/turn_on_monitor", None)
+
+def context_turn_off_monitor():
+    return g_server.request("/YomkContext/turn_off_monitor", None)
+
+def context_set_monitor(key, monitor):
+    contextMonitor = ContextMonitor(key, monitor)
+    return g_server.request("/YomkContext/set_monitor", contextMonitor)

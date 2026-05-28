@@ -67,3 +67,8 @@ class ContextChecker:
     key: str
     check_func: Callable[[Any], CheckStatus]
     def __init__(self, key="", check_func=None) -> None: ...
+
+class ContextMonitor:
+    key: str
+    monitor_func: Callable[[Any], None]
+    def __init__(self, key="", monitor_func=None) -> None: ...

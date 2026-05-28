@@ -185,6 +185,11 @@ class ContextChecker:
         self.key = key
         self.check_func = check_func  
 
+class ContextMonitor:
+    def __init__(self, key="", monitor_func=None):
+        self.key = key
+        self.monitor_func = monitor_func 
+
 # modules
 class YomkContext(YomkService):
     def __init__(self, server):
@@ -195,6 +200,9 @@ class YomkContext(YomkService):
         self.m_checkerEnabled = False
         self.m_checkers = {}
         self.m_checkersMutex = rwlock.RWLockFair()
+        self.m_monitorEnabled = False
+        self.m_monitors = {}
+        self.m_monitorsMutex = rwlock.RWLockFair()
 
     def init(self):
         self.install_func("/create", self.create)
@@ -204,6 +212,30 @@ class YomkContext(YomkService):
         self.install_func("/turn_on_checker", self.turn_on_checker)
         self.install_func("/turn_off_checker", self.turn_off_checker)
         self.install_func("/set_checker", self.set_checker)
+        self.install_func("/turn_on_monitor", self.turn_on_monitor)
+        self.install_func("/turn_off_monitor", self.turn_off_monitor)
+        self.install_func("/set_monitor", self.set_monitor)
+        
+    def turn_on_monitor(self, pkg):
+        self.m_monitorEnabled = True
+        return YomkResponse(ResStatus.eOk, "turn on monitor success")
+    
+    def turn_off_monitor(self, pkg):
+        self.m_monitorEnabled = False
+        return YomkResponse(ResStatus.eOk, "turn off monitor success")
+    
+    def set_monitor(self, contextMonitor):
+        with self.m_contextsMutex.gen_rlock(): 
+            if contextMonitor.key not in self.m_contexts:
+                log.info(f"YomkContext key: {contextMonitor.key} is not exist, please check ContextMonitor.m_key.")
+                return YomkResponse(ResStatus.eErr, "key is not exist")
+        
+        with self.m_monitorsMutex.gen_wlock():
+            self.m_monitors.setdefault(
+                contextMonitor.key, []
+            ).append(contextMonitor.monitor_func)
+        
+        return YomkResponse(ResStatus.eOk, "set monitor success")
     
     def set_checker(self, contextChecker):
         with self.m_contextsMutex.gen_rlock(): 
@@ -277,4 +309,11 @@ class YomkContext(YomkService):
                             return YomkResponse(ResStatus.eErr, "check reject set context")
             
             self.m_contexts[ctx.key] = ctx.value
+            
+            if self.m_monitorEnabled:
+                with self.m_monitorsMutex.gen_rlock():
+                    if ctx.key in self.m_monitors:
+                        for monitor in self.m_monitors[ctx.key]:
+                            monitor(ctx)
+                        
         return YomkResponse(ResStatus.eOk, "set context success")
