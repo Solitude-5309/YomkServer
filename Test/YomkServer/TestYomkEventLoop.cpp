@@ -4,7 +4,7 @@
 
 YomkResponse eventHandle(YomkPkgPtr pkg)
 {
-    std::cout << "eventHandle called by thread: " << std::this_thread::get_id() << std::endl;
+    YOMK_DEBUG_TAG("eventHandle", "eventHandle called by thread: ", std::this_thread::get_id());
 
     YomkUnPackPkgResponse(pkg, string, str);
 
@@ -13,7 +13,7 @@ YomkResponse eventHandle(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eInvalid, "string is null");
     }
 
-    std::cout << "eventHandle called with data: " << str->d << std::endl;
+    YOMK_DEBUG_TAG("eventHandle", "eventHandle called with data: ", str->d);
 
     static int i = 0;
 
@@ -39,67 +39,71 @@ int main(int argc, char *argv[])
         eventHandle);
     if(response.m_resStatus == YomkResponse::eOk)
     {
-        std::cout << "start event_loop_1 success" << std::endl;
+        YOMK_DEBUG_TAG("main", "start event_loop_1 success");
     }
     else
     {
-        std::cout << "start event_loop_1 failed: " << response.m_msg << std::endl;
+        YOMK_ERROR_TAG("main", "start event_loop_1 failed: ", response.m_msg);
     }
 
     response = YOMK_EVENTLOOP_POST("event_loop_1", YomkMkPtr(string, "requestEventHandle_data"));
     if(response.m_resStatus == YomkResponse::eOk)
     {
-        std::cout << "post to event_loop_1 success" << std::endl;
+        YOMK_DEBUG_TAG("main", "post to event_loop_1 success");
     }
     else
     {
-        std::cout << "post to event_loop_1 failed: " << response.m_msg << std::endl;
+        YOMK_ERROR_TAG("main", "post to event_loop_1 failed: ", response.m_msg);
     }
 
     response = YOMK_EVENTLOOP_POST_WAIT("event_loop_1", YomkMkPtr(string, "requestEventHandle_data_wait"));
     if(response.m_resStatus == YomkResponse::eOk)
     {
-        std::cout << "post_wait to event_loop_1 success" << std::endl;
+        YOMK_DEBUG_TAG("main", "post_wait to event_loop_1 success");
         YomkUnPackPkg(response.m_data, Event, event);
         if(event)
         {
-            std::cout << "post_wait response eventId: " << event->d.m_eventId 
-                        << " eventLoopName: " << event->d.m_eventLoopName 
-                        << " response: " << event->d.m_response.m_msg << std::endl;
+            YOMK_DEBUG_TAG(
+                "main", 
+                "post_wait response eventId: ", 
+                event->d.m_eventId,
+                " eventLoopName: " , 
+                event->d.m_eventLoopName,
+                " response: " , event->d.m_response.m_msg);
         }
     }
     else
     {
-        std::cout << "post_wait to event_loop_1 failed: " << response.m_msg << std::endl;
+        YOMK_ERROR_TAG("main", "post_wait to event_loop_1 failed: ", response.m_msg);
     }
 
-    std::cout << "enter any key to stop event_loop_1" << std::endl;
+    YOMK_DEBUG_TAG("main", "enter any key to stop event_loop_1");
     getchar();
     
     response = YOMK_EVENTLOOP_STOP("event_loop_1");
     if(response.m_resStatus == YomkResponse::eOk)
     {
-        std::cout << "stop event_loop_1 success" << std::endl;
+        YOMK_DEBUG_TAG("main", "stop event_loop_1 success");
     }
     else
     {
-        std::cout << "stop event_loop_1 failed: " << response.m_msg << std::endl;
+        YOMK_ERROR_TAG("main", "stop event_loop_1 failed: ", response.m_msg);
     }
 
-    std::cout << "enter any key to destroy event_loop_1" << std::endl;
+    YOMK_DEBUG_TAG("main", "enter any key to destroy event_loop_1");
     getchar();
 
     response = YOMK_EVENTLOOP_DESTROY("event_loop_1");
     if(response.m_resStatus == YomkResponse::eOk)
     {
-        std::cout << "destroy event_loop_1 success" << std::endl;
+        YOMK_DEBUG_TAG("main", "destroy event_loop_1 success");
     }
     else
     {
-        std::cout << "destroy event_loop_1 failed: " << response.m_msg << std::endl;
+        YOMK_ERROR_TAG("main", "destroy event_loop_1 failed: ", response.m_msg);
     }
     
-    std::cout << "test YomkEventLoop completed, any key to continue..." << std::endl;
+    YOMK_DEBUG_TAG("main", "test YomkEventLoop completed, any key to continue...");
 
     getchar();
 

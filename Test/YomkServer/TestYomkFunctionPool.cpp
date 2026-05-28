@@ -11,7 +11,7 @@ YomkResponse func1(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eInvalid, "string is null");
     }
 
-    std::cout << "func1 called with data: " << str->d << std::endl;
+    YOMK_DEBUG_TAG("func1", "func1 called with data: ", str->d);
 
     return {YomkResponse::eOk, "func1 success. "};
 }
@@ -32,24 +32,24 @@ int main(int argc, char *argv[])
     YomkResponse response = YOMK_FUNCTIONPOOL_REGISTER("func1", func1);
     if(response.m_resStatus == YomkResponse::eOk)
     {
-        std::cout << "register func1 success" << std::endl;
+        YOMK_DEBUG_TAG("main", "register func1 success");
     }
     else
     {
-        std::cout << "register func1 failed: " << response.m_msg << std::endl;
+        YOMK_ERROR_TAG("main", "register func1 failed: ", response.m_msg);
     }
 
     response = YOMK_FUNCTIONPOOL_CALL("func1", YomkMkPtr(string, settingsPath.string()));
     if(response.m_resStatus == YomkResponse::eOk)
     {
-        std::cout << "call func1 success" << std::endl;
+        YOMK_DEBUG_TAG("main", "call func1 success");
     }
     else
     {
-        std::cout << "call func1 failed: " << response.m_msg << std::endl;
+        YOMK_ERROR_TAG("main", "call func1 failed: ", response.m_msg);
     }
     
-    std::cout << "test YomkFunctionPool completed, any key to continue..." << std::endl;
+    YOMK_DEBUG_TAG("main", "test YomkFunctionPool completed, any key to continue...");
 
     getchar();
 

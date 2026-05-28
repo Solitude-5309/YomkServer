@@ -9,28 +9,29 @@ bool consoleLogProxy(const yomk::Log& log)
     switch (log.m_level)
     {
     case yomk::Log::eInfo:
-        std::cout << "into console log proxy: [INFO ] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
+        std::cout << "[LogProxy] [INFO ] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
         break;
     case yomk::Log::eWarn:
-        std::cout << "into console log proxy: [WARN ] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
+        std::cout << "[LogProxy] [WARN ] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
         break;
     case yomk::Log::eError:
-        std::cout << "into console log proxy: [ERROR] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
+        std::cout << "[LogProxy] [ERROR] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
         break;
     case yomk::Log::eDebug:
-        std::cout << "into console log proxy: [DEBUG] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
+        std::cout << "[LogProxy] [DEBUG] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
         break;
     default:
         break;
     }
-    return true;
+    // 返回true表示继续传递日志，返回false表示停止传递日志
+    return false;
 }
 
 int main(int argc, char *argv[])
 {
     fs::path exePath = fs::canonical(argv[0]);
     fs::path logDir = exePath.parent_path().parent_path() / "Test" / "YomkServer" / "YomkLog";
-    std::cout << "Log dir: " << logDir << std::endl;
+    YOMK_DEBUG_TAG("main", "Log dir: ", logDir);
 
     YOMK_INIT(std::make_shared<YomkServer>(), { 
         "/YomkFunctionPool", 
@@ -97,7 +98,7 @@ int main(int argc, char *argv[])
     // 写文件日志
     response = YOMK_FILE_LOG_WRITE("new_file_logger");
     
-    std::cout << "test YomkLogger completed, any key to continue..." << std::endl;
+    YOMK_DEBUG_TAG("main", "test YomkLogger completed, any key to continue...");
 
     getchar();
 
