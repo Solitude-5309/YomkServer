@@ -3,6 +3,7 @@
 #include <chrono>
 #include <sstream>
 #include <iomanip>
+#include "YomkDefine.h"
 
 ConsoleLogger::ConsoleLogger()
     : m_name("MainLogger")
@@ -39,7 +40,7 @@ void ConsoleLogger::log(ELogLevel logLevel, const std::string &log)
             std::cout << timeStr.str() << " [Error] [" << m_name << "] " << log << std::endl;
             break;
         default:
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Unknown log level: " << logLevel << ", using Info level instead." << std::endl;
+            YOMK_ERR_POS_LOG("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
             std::cout << timeStr.str() << " [Info ] [" << m_name << "] " << log << std::endl;
             break;
     }

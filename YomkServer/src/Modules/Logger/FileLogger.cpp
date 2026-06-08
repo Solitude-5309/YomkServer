@@ -1,4 +1,5 @@
 #include "FileLogger.h"
+#include "YomkDefine.h"
 #include <iostream>
 #include <chrono>
 #include <iomanip>
@@ -35,7 +36,7 @@ void FileLogger::init()
     } 
     else 
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "create log file failed: " << logFilePath << std::endl;
+        YOMK_ERR_POS_LOG("create log file failed: " + logFilePath);
         logFile.close();
     }
 }
@@ -65,7 +66,7 @@ void FileLogger::log(ELogLevel logLevel, const std::string &log)
             m_logStream << timeStr.str() << " [Error] " << log << std::endl;
             break;
         default:
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Unknown log level: " << logLevel << ", using Info level instead." << std::endl;
+            YOMK_ERR_POS_LOG("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
             m_logStream << timeStr.str() << " [Info ] " << log << std::endl;
             break;
     }
@@ -84,7 +85,7 @@ void FileLogger::write()
         } 
         else 
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "open log file failed: " << m_dir + "/" + m_name + ".log" << std::endl;
+            YOMK_ERR_POS_LOG("open log file failed: " + m_dir + "/" + m_name + ".log");
             logFile.close();
             return;
         }

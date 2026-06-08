@@ -28,8 +28,8 @@ int YomkServer::startService(std::vector<std::string> srvNames)
     {
         auto it = serviceCreators.find(srvName);
         if (it == serviceCreators.end())
-        {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "yomk does not support service: " << srvName << std::endl;
+        {   
+            YOMK_ERR_POS_LOG("yomk does not support service: " + srvName);  
             continue;
         }
 
@@ -51,7 +51,7 @@ void YomkServer::addService(YomkService *srv)
 {
     if(!m_p)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "server is null, please start the server." << std::endl;
+        YOMK_ERR_POS_LOG("server is null, please start the server.");  
         return;
     }
 
@@ -62,35 +62,35 @@ YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)
 {
     if(!m_p) 
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "server is null, please start the server."<<std::endl;
+        YOMK_ERR_POS_LOG("server is null, please start the server.");  
         return YomkResponse(YomkResponse::eErr, "server is null, please start the server.");
     }
 
     size_t posStart = url.find('/');
     if(posStart == std::string::npos)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "url parse error: " << url <<", please start with /" << std::endl;
+        YOMK_ERR_POS_LOG("url parse error: " + url + ", please start with /");
         return YomkResponse(YomkResponse::eErr, "url parse error: " + url + ", please start with /");
     }
 
     size_t posEnd = url.find('/', posStart + 1);
     if(posEnd == std::string::npos)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "url parse error: " << url <<", not found service name." << std::endl;
+        YOMK_ERR_POS_LOG("url parse error: " + url + ", not found service name.");
         return YomkResponse(YomkResponse::eErr, "url parse error: " + url + ", not found service name.");
     }
 
     std::string srvName = url.substr(posStart, posEnd - posStart);
     if(srvName.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "url parse error: srv is empty. " << std::endl;
+        YOMK_ERR_POS_LOG("url parse error: srv is empty. ");  
         return YomkResponse(YomkResponse::eErr, "url parse error: srv is empty. ");
     }
 
     std::string tmpFuncName = url.substr(posEnd);
     if(tmpFuncName.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "url parse error: function name is empty" << std::endl;
+        YOMK_ERR_POS_LOG("url parse error: function name is empty");
         return YomkResponse(YomkResponse::eErr, "url parse error: function name is empty");
     }
 
@@ -101,35 +101,35 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
 {
     if(!m_p) 
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "server is null, please start the server."<<std::endl;
+        YOMK_ERR_POS_LOG("server is null, please start the server.");  
         return;
     }
 
     size_t posStart = url.find('/');
     if(posStart == std::string::npos)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "url parse error: " << url <<", please start with /" << std::endl;
+        YOMK_ERR_POS_LOG("url parse error: " + url + ", please start with /");
         return;
     }
 
     size_t posEnd = url.find('/', posStart + 1);
     if(posEnd == std::string::npos)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "url parse error: " << url <<", not found service name." << std::endl;
+        YOMK_ERR_POS_LOG("url parse error: " + url + ", not found service name.");
         return;
     }
 
     std::string srvName = url.substr(posStart, posEnd - posStart);
     if(srvName.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "url parse error: srv is empty. " << std::endl;
+        YOMK_ERR_POS_LOG("url parse error: srv is empty. ");  
         return;
     }
 
     std::string tmpFuncName = url.substr(posEnd);
     if(tmpFuncName.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "url parse error: function name is empty" << std::endl;
+        YOMK_ERR_POS_LOG("url parse error: function name is empty");
         return;
     }
 

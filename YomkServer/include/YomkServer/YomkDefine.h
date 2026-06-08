@@ -12,3 +12,5 @@
 #else
     #define YOMKSERVER_EXPORT __attribute__((visibility("default")))
 #endif
+
+#define YOMK_ERR_POS_LOG(msg) std::cout << "[Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << msg << std::endl;

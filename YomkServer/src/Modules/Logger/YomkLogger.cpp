@@ -37,7 +37,7 @@ YomkResponse YomkLogger::createConsoleLogger(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, string, str);
     if(!str)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "string is empty, please check string" << std::endl;
+        YOMK_ERR_POS_LOG("string is empty, please check string");
         return YomkResponse(YomkResponse::eErr, "string is empty");
     }
     std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
@@ -56,7 +56,7 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, Log, log)
     if(!log)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Log is empty, please check Log" << std::endl;
+        YOMK_ERR_POS_LOG("Log is empty, please check Log");
         return YomkResponse(YomkResponse::eErr, "Log is empty");
     }
 
@@ -69,7 +69,7 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
     
     if(m_consoleLoggers.find(log->d.m_logger) == m_consoleLoggers.end())
     {   
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger: " << log->d.m_logger << " not found, use MainLogger" << std::endl;
+        YOMK_ERR_POS_LOG("logger: " + log->d.m_logger + " not found, use MainLogger");
         log->d.m_logger = "MainLogger";
     }
 
@@ -92,7 +92,7 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
             m_consoleLoggers[log->d.m_logger]->log(ConsoleLogger::eDebug, log->d.m_log);
         break;
     default:
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown log level, use Info" << std::endl;
+        YOMK_ERR_POS_LOG("unknown log level, use Info");
         if(m_showConsoleInfoLog.load())
             m_consoleLoggers[log->d.m_logger]->log(ConsoleLogger::eInfo, log->d.m_log);
         break;
@@ -106,7 +106,7 @@ YomkResponse YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, ConsoleLogProxy, consoleLogProxy);
     if(!consoleLogProxy)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "ConsoleLogProxy is empty, please check ConsoleLogProxy" << std::endl;
+        YOMK_ERR_POS_LOG("ConsoleLogProxy is empty, please check ConsoleLogProxy");
         return YomkResponse(YomkResponse::eErr, "ConsoleLogProxy is empty");
     }
     m_consoleLogProxy = true;
@@ -119,7 +119,7 @@ YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, LogFile, logFile);
     if(!logFile)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "LogFile is empty, please check LogFile" << std::endl;
+        YOMK_ERR_POS_LOG("LogFile is empty, please check LogFile");
         return YomkResponse(YomkResponse::eErr, "LogFile is empty");
     }
     std::unique_lock<std::shared_mutex> lock(m_fileLoggersMutex);
@@ -141,14 +141,14 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, Log, log)
     if(!log)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Log is empty, please check Log" << std::endl;
+        YOMK_ERR_POS_LOG("Log is empty, please check Log");
         return YomkResponse(YomkResponse::eErr, "Log is empty");
     }
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
 
     if(m_fileLoggers.find(log->d.m_logger) == m_fileLoggers.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger: " << log->d.m_logger << " not found." << std::endl;
+        YOMK_ERR_POS_LOG("logger: " + log->d.m_logger + " not found.");
         return YomkResponse(YomkResponse::eErr, "logger not found.");
     }
 
@@ -167,7 +167,7 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
         m_fileLoggers[log->d.m_logger]->log(FileLogger::eDebug, log->d.m_log);
         break;
     default:
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown log level, use Info" << std::endl;
+        YOMK_ERR_POS_LOG("unknown log level, use Info");
         m_fileLoggers[log->d.m_logger]->log(FileLogger::eInfo, log->d.m_log);
         break;
     }
@@ -180,14 +180,14 @@ YomkResponse YomkLogger::writeFileLog(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, string, str);
     if(!str)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "string is empty, please check string" << std::endl;
+        YOMK_ERR_POS_LOG("string is empty, please check string");
         return YomkResponse(YomkResponse::eErr, "string is empty");
     }
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
     auto fileLogger = m_fileLoggers.find(str->d);
     if(fileLogger == m_fileLoggers.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "logger: " << str->d << " not found." << std::endl;
+        YOMK_ERR_POS_LOG("logger: " + str->d + " not found.");
         return YomkResponse(YomkResponse::eErr, "logger not found.");
     }
     fileLogger->second->write();
@@ -200,7 +200,7 @@ YomkResponse YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, Log, log)
     if(!log)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Log is empty, please check Log" << std::endl;
+        YOMK_ERR_POS_LOG("Log is empty, please check Log");
         return YomkResponse(YomkResponse::eErr, "Log is empty");
     }
 
@@ -219,7 +219,7 @@ YomkResponse YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
         m_showConsoleDebugLog.store(false);
         break;
     default:
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown log level, turn off failed." << std::endl;
+        YOMK_ERR_POS_LOG("unknown log level, turn off failed.");
         break;
     }
 
@@ -231,7 +231,7 @@ YomkResponse YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, Log, log)
     if(!log)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Log is empty, please check Log" << std::endl;
+        YOMK_ERR_POS_LOG("Log is empty, please check Log");
         return YomkResponse(YomkResponse::eErr, "Log is empty");
     }
 
@@ -250,7 +250,7 @@ YomkResponse YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
         m_showConsoleDebugLog.store(true);
         break;
     default:
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "unknown log level, turn on failed." << std::endl;
+        YOMK_ERR_POS_LOG("unknown log level, turn on failed.");
         break;
     }   
     return YomkResponse(YomkResponse::eOk, "success.");

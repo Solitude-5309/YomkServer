@@ -7,13 +7,13 @@ void YomkServerPrivate::addService(YomkService *srv)
 {
     if(!srv)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "service is null, please check the service." << std::endl;
+        YOMK_ERR_POS_LOG("service is null, please check the service.");
         return;
     }
     std::unique_lock<std::shared_mutex> lock(m_serviceMapMtx);
     if (m_serviceMap.find(srv->name()) != m_serviceMap.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "install function already exists -> " << srv->name() << ", update to current function" << std::endl;
+        YOMK_ERR_POS_LOG("install function already exists -> " + srv->name() + ", update to current function");
     }
     m_serviceMap[srv->name()].reset(srv);
 }
@@ -26,7 +26,7 @@ YomkResponse YomkServerPrivate::request(const std::string &srvName, const std::s
         auto iter = m_serviceMap.find(srvName);
         if (iter == m_serviceMap.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "service not found. " << srvName << ", please start the service." << std::endl;
+            YOMK_ERR_POS_LOG("service not found. " + srvName + ", please start the service.");
             return YomkResponse(YomkResponse::eErr, "service not found: " + srvName);
         }
         srv = iter->second;

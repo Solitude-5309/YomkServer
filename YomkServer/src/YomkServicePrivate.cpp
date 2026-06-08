@@ -8,7 +8,7 @@ void YomkServicePrivate::installFunc(const std::string &funcName, YomkServiceFun
     std::unique_lock<std::shared_mutex> lock(m_funcMapMtx);
     if (m_funcMap.find(funcName) != m_funcMap.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "install function already exists -> " << funcName << ", update to current function" << std::endl;
+        YOMK_ERR_POS_LOG("install function already exists -> " + funcName + ", update to current function");
     }
     m_funcMap[funcName] = func;
 }
@@ -21,7 +21,7 @@ YomkResponse YomkServicePrivate::invoke(const std::string &funcName, YomkPkgPtr 
         auto iter = m_funcMap.find(funcName);
         if (iter == m_funcMap.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "function not found -> " << funcName << ", please use YomkInstallFunc to install this function." << std::endl;
+            YOMK_ERR_POS_LOG("function not found -> " + funcName + ", please use YomkInstallFunc to install this function.");
             return { YomkResponse::eErr, "function not found: " + funcName };
         }
         tmpFunc = iter->second;
@@ -33,7 +33,7 @@ YomkResponse YomkServicePrivate::request(const std::string &url, YomkPkgPtr pkg)
 {
     if(!m_server)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "server is null, please start the server." << std::endl;
+        YOMK_ERR_POS_LOG("server is null, please start the server.");
         return { YomkResponse::eErr, "server is null" };
     }
 
@@ -44,7 +44,7 @@ void YomkServicePrivate::asyncRequest(const std::string &url, YomkPkgPtr pkg, Yo
 {
     if(!m_server)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "server is null, please start the server." << std::endl;
+        YOMK_ERR_POS_LOG("server is null, please start the server.");
         return;
     }
     m_server->asyncRequest(url, pkg, func);

@@ -18,9 +18,8 @@ YomkResponse func1(YomkPkgPtr pkg)
 
 int main(int argc, char *argv[])
 {
-    fs::path exePath = fs::canonical(argv[0]);
+    fs::path exePath = fs::absolute(argv[0]);
     fs::path settingsPath = exePath.parent_path().parent_path() / "Test" / "YomkServer" / "Settings" / "settings.json";
-    std::cout << "Settings path: " << settingsPath << std::endl;
     
     YOMK_INIT(std::make_shared<YomkServer>(), { 
         "/YomkFunctionPool", 

@@ -18,13 +18,13 @@ YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, Function, yFunc);
     if(!yFunc)
-    {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Function is empty, please check Function" << std::endl;
+    {   
+        YOMK_ERR_POS_LOG("Function is empty, please check Function");
         return YomkResponse(YomkResponse::eInvalid, "Function is empty");
     }
     if(yFunc->d.m_funcName.empty() || yFunc->d.m_func == nullptr)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "funcName or func is empty, please check Function.m_funcName" << std::endl;
+        YOMK_ERR_POS_LOG("funcName or func is empty, please check Function.m_funcName");
         return YomkResponse(YomkResponse::eInvalid, "funcName or func is empty");
     }
     
@@ -34,7 +34,7 @@ YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
     if(itFunc != m_functions.end())
     {
         itFunc->second = yFunc->d.m_func;
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "find function name: " << yFunc->d.m_funcName << " is exist, and update it" << std::endl;
+        YOMK_ERR_POS_LOG("find function name: " + yFunc->d.m_funcName + " is exist, and update it");
         return YomkResponse(YomkResponse::eOk, "find function name is exist, and update it");
     }
     else
@@ -49,12 +49,12 @@ YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, CallFunction, yCallFunc);
     if(!yCallFunc)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "CallFunction is empty, please check CallFunction" << std::endl;
+        YOMK_ERR_POS_LOG("CallFunction is empty, please check CallFunction");
         return YomkResponse(YomkResponse::eInvalid, "CallFunction is empty");
     }
     if(yCallFunc->d.m_funcName.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "funcName is empty, please check CallFunction.m_funcName" << std::endl;
+        YOMK_ERR_POS_LOG("funcName is empty, please check CallFunction.m_funcName");
         return YomkResponse(YomkResponse::eInvalid, "funcName is empty");
     }
 
@@ -64,7 +64,7 @@ YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
         auto itFunc = m_functions.find(yCallFunc->d.m_funcName);
         if(itFunc == m_functions.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "funcName: " << yCallFunc->d.m_funcName << " is not register, please check CallFunction.m_funcName" << std::endl;
+            YOMK_ERR_POS_LOG("funcName: " + yCallFunc->d.m_funcName + " is not register, please check CallFunction.m_funcName");
             return YomkResponse(YomkResponse::eInvalid, "funcName is not register");
         }
         copyFunc = itFunc->second;

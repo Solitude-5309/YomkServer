@@ -30,12 +30,12 @@ YomkResponse YomkContext::create(YomkPkgPtr pkg)
 
     if(context->d.m_key.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check Context.m_key." << std::endl;
+        YOMK_ERR_POS_LOG("key is empty, please check Context.m_key.");
         return YomkResponse(YomkResponse::eErr, "key is empty");
     }
     if(context->d.m_value == nullptr)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "value is empty, please check Context.m_value." << std::endl;
+        YOMK_ERR_POS_LOG("value is empty, please check Context.m_value.");
         return YomkResponse(YomkResponse::eErr, "value is empty");
     }
 
@@ -43,7 +43,7 @@ YomkResponse YomkContext::create(YomkPkgPtr pkg)
         std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         if (m_contexts.find(context->d.m_key) != m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << context->d.m_key << " already exists, please check Context.m_key." << std::endl;
+            YOMK_ERR_POS_LOG("YomkContext key: " + context->d.m_key + " already exists, please check Context.m_key.");
             return YomkResponse(YomkResponse::eErr, "key already exists");
         }
 
@@ -58,7 +58,7 @@ YomkResponse YomkContext::destroy(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, string, str);
     if(!str)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check key." << std::endl;
+        YOMK_ERR_POS_LOG("key is empty, please check key.");
         return YomkResponse(YomkResponse::eErr, "key is empty");
     }
     {
@@ -66,7 +66,7 @@ YomkResponse YomkContext::destroy(YomkPkgPtr pkg)
         auto itContext = m_contexts.find(str->d);
         if(itContext == m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << str->d << " is not exist, please check key." << std::endl;
+            YOMK_ERR_POS_LOG("YomkContext key: " + str->d + " is not exist, please check key.");
             return YomkResponse(YomkResponse::eErr, "key is not exist");
         }
         m_contexts.erase(itContext); 
@@ -80,13 +80,13 @@ YomkResponse YomkContext::get(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, Context, context);
     if(!context)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Context is empty, please check Context" << std::endl;
+        YOMK_ERR_POS_LOG("Context is empty, please check Context");
         return YomkResponse(YomkResponse::eErr, "Context is empty");
     }
 
     if(context->d.m_key.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check Context.m_key." << std::endl;
+        YOMK_ERR_POS_LOG("key is empty, please check Context.m_key.");
         return YomkResponse(YomkResponse::eErr, "key is empty", context->d.m_value);
     }
 
@@ -95,7 +95,7 @@ YomkResponse YomkContext::get(YomkPkgPtr pkg)
     auto itContext = m_contexts.find(context->d.m_key);
     if(itContext == m_contexts.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << context->d.m_key << " is not exist, please check Context.m_key." << std::endl;
+        YOMK_ERR_POS_LOG("YomkContext key: " + context->d.m_key + " is not exist, please check Context.m_key.");
         return YomkResponse(YomkResponse::eErr, "key is not exist", context->d.m_value);
     }
 
@@ -107,12 +107,12 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, Context, context);
     if(!context)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "Context is empty, please check Context" << std::endl;
+        YOMK_ERR_POS_LOG("Context is empty, please check Context");
         return YomkResponse(YomkResponse::eErr, "Context is empty");
     }
     if(context->d.m_key.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check Context.m_key." << std::endl;
+        YOMK_ERR_POS_LOG("key is empty, please check Context.m_key.");
         return YomkResponse(YomkResponse::eErr, "key is empty");
     }
 
@@ -120,7 +120,7 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
     auto itContext = m_contexts.find(context->d.m_key);
     if(itContext == m_contexts.end())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << context->d.m_key << " is not exist, please check Context.m_key." << std::endl;
+        YOMK_ERR_POS_LOG("YomkContext key: " + context->d.m_key + " is not exist, please check Context.m_key.");
         return YomkResponse(YomkResponse::eErr, "key is not exist");
     }
 
@@ -140,7 +140,7 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
 
     if(itContext->second->name() != context->d.m_value->name())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "context: " << context->d.m_key << " type not match, please check Context.m_value." << std::endl;
+        YOMK_ERR_POS_LOG("context: " + context->d.m_key + " type not match, please check Context.m_value.");
         return YomkResponse(YomkResponse::eErr, "context type not match");
     }
     itContext->second = context->d.m_value;
@@ -191,18 +191,18 @@ YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, ContextChecker, checker)
     if(!checker)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "ContextChecker is empty, please check ContextChecker" << std::endl;
+        YOMK_ERR_POS_LOG("ContextChecker is empty, please check ContextChecker");
         return YomkResponse(YomkResponse::eErr, "ContextChecker is empty");
     }
 
     if(checker->d.m_key.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check ContextChecker.m_key." << std::endl;
+        YOMK_ERR_POS_LOG("key is empty, please check ContextChecker.m_key.");
         return YomkResponse(YomkResponse::eErr, "key is empty");
     }
     if(checker->d.m_checkFunc == nullptr)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "checkFunc is empty, please check ContextChecker.m_checkFunc." << std::endl;
+        YOMK_ERR_POS_LOG("checkFunc is empty, please check ContextChecker.m_checkFunc.");
         return YomkResponse(YomkResponse::eErr, "checkFunc is empty");
     }
 
@@ -210,7 +210,7 @@ YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         if(m_contexts.find(checker->d.m_key) == m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << checker->d.m_key << " is not exist, please check ContextChecker.m_key." << std::endl;
+            YOMK_ERR_POS_LOG("YomkContext key: " + checker->d.m_key + " is not exist, please check ContextChecker.m_key.");
             return YomkResponse(YomkResponse::eErr, "key is not exist");
         }
     }
@@ -228,17 +228,17 @@ YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, ContextMonitor, monitor);
     if(!monitor)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "ContextMonitor is empty, please check ContextMonitor" << std::endl;
+        YOMK_ERR_POS_LOG("ContextMonitor is empty, please check ContextMonitor");
         return YomkResponse(YomkResponse::eErr, "ContextMonitor is empty");
     }
     if(monitor->d.m_key.empty())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "key is empty, please check ContextMonitor.m_key." << std::endl;
+        YOMK_ERR_POS_LOG("key is empty, please check ContextMonitor.m_key.");
         return YomkResponse(YomkResponse::eErr, "key is empty");
     }
     if(monitor->d.m_contextMonitorFunc == nullptr)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "context monitor function is empty, please check ContextMonitor.m_contextMonitorFunc." << std::endl;
+        YOMK_ERR_POS_LOG("context monitor function is empty, please check ContextMonitor.m_contextMonitorFunc.");
         return YomkResponse(YomkResponse::eErr, "context monitor function is empty");
     }
 
@@ -246,7 +246,7 @@ YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         if(m_contexts.find(monitor->d.m_key) == m_contexts.end())
         {
-            std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "YomkContext key: " << monitor->d.m_key << " is not exist, please check ContextMonitor.m_key." << std::endl;
+            YOMK_ERR_POS_LOG("YomkContext key: " + monitor->d.m_key + " is not exist, please check ContextMonitor.m_key.");
             return YomkResponse(YomkResponse::eErr, "key is not exist");
         }
     }

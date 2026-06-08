@@ -1,5 +1,6 @@
 #include "EventLoop.h"
 #include <iostream>
+#include "YomkDefine.h"
 
 EventLoop::EventLoop()
     : m_running(false)
@@ -20,7 +21,7 @@ int EventLoop::start()
 {
     if(m_running.load())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop already running, please do not start it again" << std::endl;
+        YOMK_ERR_POS_LOG("EventLoop already running, please do not start it again");
         return 0;
     }
 
@@ -45,7 +46,7 @@ int EventLoop::start()
             }
             if(!event)
             {
-                std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop: event is null, please check event" << std::endl;
+                YOMK_ERR_POS_LOG("EventLoop: event is null, please check event");
                 continue;
             }
 
@@ -63,7 +64,7 @@ int EventLoop::stop()
 {
     if(!m_running.load())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop not running, please do not stop it again" << std::endl;
+        YOMK_ERR_POS_LOG("EventLoop not running, please do not stop it again");
         return 0;
     }
     m_running.store(false);
@@ -79,13 +80,13 @@ int EventLoop::post(YomkPtr(Event) event)
 {
     if(!m_running.load())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop not running, please start event loop." << std::endl;
+        YOMK_ERR_POS_LOG("EventLoop not running, please start event loop.");
         return 0;
     }
 
     if(!event)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop: event is null, please check event" << std::endl;
+        YOMK_ERR_POS_LOG("EventLoop: event is null, please check event");
         return 1;
     }
 
@@ -106,19 +107,19 @@ int EventLoop::postWait(YomkPtr(Event) event)
 {
     if(!m_running.load())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop not running, please start event loop." << std::endl;
+        YOMK_ERR_POS_LOG("EventLoop not running, please start event loop.");
         return 0;
     }
     
     if(!event)
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop: event is null, please check event" << std::endl;
+        YOMK_ERR_POS_LOG("EventLoop: event is null, please check event");
         return 1;
     }
 
     if(std::this_thread::get_id() == m_worker.get_id())
     {
-        std::cout << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__ << "] " << "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve deadlock" << std::endl;
+        YOMK_ERR_POS_LOG("EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve deadlock");
         event->d.handle();
         return 0;
     }
