@@ -188,6 +188,11 @@ struct ContextMonitor
     std::function<void (Context ctx)> m_contextMonitorFunc;
 };
 
+struct VoidPointer
+{
+    void* m_ptr;
+};
+
 }
 
 YomkMsg(Function, Function)
@@ -200,9 +205,44 @@ YomkMsg(ConsoleLogProxy, ConsoleLogProxy)
 YomkMsg(Context, Context)
 YomkMsg(ContextChecker, ContextChecker)
 YomkMsg(ContextMonitor, ContextMonitor)
-YomkMsg(std::string, string)
+YomkMsg(VoidPointer, VoidPointer)
 
 typedef std::function<void (const yomk::Context& ctx)> YomkContextMonitorFunc;
 typedef std::function<yomk::ContextChecker::ECheckStatus (const yomk::Context& ctx)> YomkContextCheckFunc;
 typedef std::function<bool (const yomk::Log& log)> YomkConsoleLogProxyFunc;
+
+// std msg
+YomkMsg(bool, bool)
+YomkMsg(std::vector<bool>, boolarray)
+YomkMsg(signed char, char)
+YomkMsg(std::vector<char>, chararray)
+YomkMsg(unsigned char, uchar)
+YomkMsg(std::vector<unsigned char>, uchararray)
+YomkMsg(unsigned char, byte)
+YomkMsg(std::vector<unsigned char>, bytearray)
+YomkMsg(signed char, int8)
+YomkMsg(std::vector<signed char>, int8array)
+YomkMsg(unsigned char, uint8)
+YomkMsg(std::vector<unsigned char>, uint8array)
+YomkMsg(signed short, int16)
+YomkMsg(std::vector<signed short>, int16array)
+YomkMsg(unsigned short, uint16)
+YomkMsg(std::vector<unsigned short>, uint16array)
+YomkMsg(signed int, int32)
+YomkMsg(std::vector<signed int>, int32array)
+YomkMsg(unsigned int, uint32)
+YomkMsg(std::vector<unsigned int>, uint32array)
+YomkMsg(signed long int, int64)
+YomkMsg(std::vector<signed long int>, int64array)
+YomkMsg(unsigned long int, uint64)
+YomkMsg(std::vector<unsigned long int>, uint64array)
+YomkMsg(float, float32)
+YomkMsg(std::vector<float>, float32array)
+YomkMsg(double, float64)
+YomkMsg(std::vector<double>, float64array)
+YomkMsg(std::string, string)
+YomkMsg(std::vector<std::string>, stringarray)
+
+
+
 
