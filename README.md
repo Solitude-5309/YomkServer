@@ -91,6 +91,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE YomkServer)
 
 ## 基于YomkServer编写的框架
 
+使用Qoder编程工具，将Skill拷贝到qoder下即可使用YomkServer编写更清晰简洁的项目
+
 ### BehaviorTree
 
 ### MicroServices
