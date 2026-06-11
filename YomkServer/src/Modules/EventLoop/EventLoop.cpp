@@ -24,39 +24,8 @@ int EventLoop::start()
         YOMK_ERR_POS_LOG("EventLoop already running, please do not start it again");
         return 0;
     }
-
     m_running.store(true);
-    m_worker = std::thread([this]()
-    {
-        while(m_running.load())
-        {
-            YomkPtr(Event) event;
-            {
-                std::unique_lock<std::mutex> lock(m_queueMutex);
-                m_condition.wait(lock, [this]()
-                {
-                    return !m_eventQueue.empty() || !m_running.load();
-                });
-                if(!m_running.load())
-                {
-                    break;
-                }
-                event = m_eventQueue.front();
-                m_eventQueue.pop();
-            }
-            if(!event)
-            {
-                YOMK_ERR_POS_LOG("EventLoop: event is null, please check event");
-                continue;
-            }
-
-            event->d.handle();
-            if(event->d.m_waitCallback)
-            {
-                event->d.m_waitCallback();
-            }
-        }
-    });
+    m_worker = std::thread(std::bind(&EventLoop::run, this));
     return 0;
 }
 
@@ -143,4 +112,43 @@ int EventLoop::postWait(YomkPtr(Event) event)
 void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc)
 {
     m_defaultServiceFunc = serviceFunc;
+}
+
+void EventLoop::run()
+{
+    while(m_running.load())
+    {
+        YomkPtr(Event) event;
+        {
+            std::unique_lock<std::mutex> lock(m_queueMutex);
+            m_condition.wait(lock, [this]()
+            {
+                return !m_eventQueue.empty() || !m_running.load();
+            });
+            if(!m_running.load())
+            {
+                break;
+            }
+            event = m_eventQueue.front();
+            m_eventQueue.pop();
+        }
+        if(!event)
+        {
+            YOMK_ERR_POS_LOG("EventLoop: event is null, please check event");
+            continue;
+        }
+
+        try 
+        {
+            event->d.handle();
+        } 
+        catch (const std::exception& e) 
+        {
+            YOMK_ERR_POS_LOG("EventLoop: " + event->d.m_eventLoopName + " exec event id: " + std::to_string(event->d.m_eventId) + " caught, what: " + std::string(e.what()));
+        }
+        if(event->d.m_waitCallback)
+        {
+            event->d.m_waitCallback();
+        }
+    }
 }

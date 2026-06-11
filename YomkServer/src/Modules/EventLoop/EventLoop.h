@@ -15,6 +15,7 @@ public:
     int post(YomkPtr(Event) event);
     int postWait(YomkPtr(Event) event);
     void setDefaultServiceFunc(YomkServiceFunc serviceFunc);
+    void run();
 private:
     std::queue<YomkPtr(Event)> m_eventQueue;
     std::mutex m_queueMutex;
