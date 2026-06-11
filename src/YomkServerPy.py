@@ -78,6 +78,11 @@ class YomkServer:
                 srv.set_name("/YomkContext")
                 srv.init()
                 self.add_service(srv)
+            elif srv_name == "YomkFunctionPool":
+                srv = YomkFunctionPool(self)
+                srv.set_name("/YomkFunctionPool")
+                srv.init()
+                self.add_service(srv)
             else:
                 log.info(f"yomk does not support service: {srv_name}")
     
@@ -203,6 +208,16 @@ class ContextMonitor:
     def __init__(self, key="", monitor_func=None):
         self.key = key
         self.monitor_func = monitor_func 
+
+class Function:
+    def __init__(self, name, func):
+        self.name = name
+        self.func = func
+
+class CallFunction:
+    def __init__(self, name, pkg):
+        self.name = name
+        self.pkg = pkg
 
 # modules
 class YomkContext(YomkService):
@@ -331,3 +346,38 @@ class YomkContext(YomkService):
                             monitor(ctx)
                         
         return YomkResponse(ResStatus.eOk, "set context success")
+
+class YomkFunctionPool(YomkService):
+    def __init__(self, server):
+        super().__init__(server)
+        self.set_name("/YomkFunctionPool")
+        self.m_functions = {}
+        self.m_functionsMutex = rwlock.RWLockFair()
+        
+    def init(self):
+        self.install_func("/register", self.registerFunction)
+        self.install_func("/call", self.callFunction)
+
+    def registerFunction(self, function: Function):
+        if function.name == "" or function.func is None:
+            log.error("funcName or func is empty, please check Function.m_funcName")
+            return YomkResponse(ResStatus.eInvalid, "funcName or func is empty")
+        with self.m_functionsMutex.gen_wlock():
+            if function.name not in self.m_functions:
+                self.m_functions[function.name] = function.func
+            else:
+                log.info(f"YomkFunctionPool function name: {function.name} is not exist, please check Function.m_funcName.")
+                self.m_functions[function.name] = function.func
+        return YomkResponse(ResStatus.eOk, "register function success")
+    
+    def callFunction(self, call_func: CallFunction):
+        if not call_func.name:
+            log.error("funcName is empty, please check CallFunction.m_funcName.")
+            return YomkResponse(ResStatus.eErr, "funcName is empty")
+        with self.m_functionsMutex.gen_rlock():
+            if call_func.name not in self.m_functions:
+                log.error(f"funcName is not exist: {call_func.name}, please check CallFunction.m_funcName.")
+                return YomkResponse(ResStatus.eErr, "funcName is not exist")
+            else:
+                func = self.m_functions[call_func.name]
+        return func(call_func.pkg)

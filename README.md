@@ -13,6 +13,7 @@ chmod +x build.sh
 2. cd YomkServerPy/test
 3. python3 TestYomkService.py
 4. python3 TestYomkContext.py
+5. python3 TestYomkFunctionPool.py
 
 ## 手动编译
 
