@@ -9,6 +9,8 @@ from YomkServerPy import (
     ContextMonitor,
     Function,
     CallFunction,
+    EventLoopPkg,
+    Event
 )
 from typing import Any, Callable
 
@@ -87,3 +89,23 @@ def function_pool_register(name: type[str], func: type[Callable[[Any], YomkRespo
 def function_pool_call(name: type[str], pkg: type[Any])->YomkResponse:
     global g_server
     return g_server.request("/YomkFunctionPool/call", CallFunction(name, pkg))
+
+def event_loop_start(event_loop_name: type[str], callback: type[Callable[[Any], YomkResponse]]=None)->YomkResponse:
+    global g_server
+    return g_server.request("/YomkEventLoop/start", EventLoopPkg(event_loop_name, callback))
+
+def event_loop_stop(event_loop_name: type[str])->YomkResponse:
+    global g_server
+    return g_server.request("/YomkEventLoop/stop", event_loop_name)
+
+def event_loop_destroy(event_loop_name: type[str])->YomkResponse:
+    global g_server
+    return g_server.request("/YomkEventLoop/destroy", event_loop_name)
+
+def event_loop_post(event_loop_name: type[str], pkg: type[Any], callback: type[Callable[[Any], YomkResponse]]=None)->YomkResponse:
+    global g_server
+    return g_server.request("/YomkEventLoop/post", Event(event_loop_name, pkg, callback))
+
+def event_loop_post_wait(event_loop_name: type[str], pkg: type[Any], callback: type[Callable[[Any], YomkResponse]]=None)->YomkResponse:
+    global g_server
+    return g_server.request("/YomkEventLoop/post_wait", Event(event_loop_name, pkg, callback))

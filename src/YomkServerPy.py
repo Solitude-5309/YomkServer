@@ -1,6 +1,8 @@
 from readerwriterlock import rwlock
 from enum import Enum
 import logging
+import queue
+import threading
 from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(
@@ -81,6 +83,11 @@ class YomkServer:
             elif srv_name == "YomkFunctionPool":
                 srv = YomkFunctionPool(self)
                 srv.set_name("/YomkFunctionPool")
+                srv.init()
+                self.add_service(srv)
+            elif srv_name == "YomkEventLoop":
+                srv = YomkEventLoop(self)
+                srv.set_name("/YomkEventLoop")
                 srv.init()
                 self.add_service(srv)
             else:
@@ -219,6 +226,24 @@ class CallFunction:
         self.name = name
         self.pkg = pkg
 
+class Event:
+    def __init__(self, event_loop_name="", pkg=None, func=None):
+        self.m_eventLoopName = event_loop_name
+        self.m_pkg = pkg
+        self.m_serviceFunc = func
+        self.m_eventId = 0
+        self.m_response = None
+        self.m_waitCallback = None
+    def handle(self):
+        if not self.m_serviceFunc:
+            return
+        self.m_response = self.m_serviceFunc(self.m_pkg)
+    
+class EventLoopPkg:
+    def __init__(self, event_loop_name="", default_service_func=None):
+        self.m_eventloopName = event_loop_name
+        self.m_defaultServiceFunc = default_service_func
+    
 # modules
 class YomkContext(YomkService):
     def __init__(self, server):
@@ -381,3 +406,167 @@ class YomkFunctionPool(YomkService):
             else:
                 func = self.m_functions[call_func.name]
         return func(call_func.pkg)
+
+class EventLoop:
+    def __init__(self):
+        self.m_event_queue = queue.Queue()
+        self.m_queueMutex = threading.Lock()
+        self.m_condition = threading.Condition(self.m_queueMutex)
+        self.m_thread = None
+        self.m_running = False
+        self.m_event_id = 1
+        self.m_defaultServiceFunc = None
+    def set_default_service_func(self, func):
+        self.m_defaultServiceFunc = func
+        
+    def run(self):
+        while self.m_running:
+            with self.m_queueMutex:
+                self.m_condition.wait_for(
+                        lambda: not self.m_event_queue.empty() or not self.m_running)
+                
+                if not self.m_running:
+                    break
+                
+                try:
+                    event = self.m_event_queue.get_nowait()
+                except queue.Empty:
+                    continue
+            
+            if not event:
+                log.info("EventLoop: event is null, please check event")
+                continue
+            try:
+                event.handle()
+                if event.m_waitCallback:
+                    event.m_waitCallback()
+            except Exception as e:
+                log.error(f"Event handling failed: {e}")
+    def start(self):
+        if self.m_running:
+            return
+        self.m_running = True
+        self.m_thread = threading.Thread(target=self.run)
+        self.m_thread.start()
+        return
+    
+    def stop(self):
+        if not self.m_running:
+            return
+        self.m_running = False
+        with self.m_queueMutex:
+            while not self.m_event_queue.empty():
+                self.m_event_queue.get_nowait()
+            self.m_condition.notify_all()
+        if self.m_thread and self.m_thread.is_alive():
+            self.m_thread.join()
+        return 0
+    
+    def post(self, event):
+        if not event:
+            log.warning("EventLoop: post event is null")
+            return 1
+        
+        if not self.m_running:
+            log.warning("EventLoop: event loop is not running")
+            return 1
+        
+        with self.m_queueMutex:
+            event.m_eventId = self.m_event_id
+            self.m_event_id += 1
+            if event.m_serviceFunc is None:
+                event.m_serviceFunc = self.m_defaultServiceFunc
+            self.m_event_queue.put(event)
+            self.m_condition.notify_all()
+        
+        return 0
+    
+    def post_wait(self, event):
+        if not event:
+            log.warning("EventLoop: post event is null")
+            return 1
+        
+        if not self.m_running:
+            log.warning("EventLoop: event loop is not running")
+            return 1
+        
+        if self.m_thread and threading.get_ident() == self.m_thread.ident:
+            log.warning("EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve deadlock")
+            event.handle()
+            return 0
+
+        tmp_mutex = threading.Lock()
+        tmp_condition = threading.Condition(tmp_mutex)
+        notified = [False]
+        
+        def callback():
+            with tmp_mutex:
+                notified[0] = True
+                tmp_condition.notify_all()
+            
+        with tmp_condition:
+            event.m_waitCallback = callback
+            self.post(event)
+            while not notified[0]:
+                tmp_condition.wait()
+        
+        return 0
+
+class YomkEventLoop(YomkService):
+    def __init__(self, server):
+        super().__init__(server)
+        self.set_name("/YomkEventLoop")
+        self.m_eventLoop = {str: EventLoop()}
+        self.m_eventLoopMutex = rwlock.RWLockFair()
+    
+    def init(self):
+        self.install_func("/start", self.start)
+        self.install_func("/stop", self.stop)
+        self.install_func("/destroy", self.destroy)
+        self.install_func("/post", self.post)
+        self.install_func("/post_wait", self.post_wait)
+    
+    def start(self, pkg: EventLoopPkg):
+        with self.m_eventLoopMutex.gen_wlock():
+            if pkg.m_eventloopName in self.m_eventLoop:
+                self.m_eventLoop[pkg.m_eventloopName].start()
+                return YomkResponse(ResStatus.eOk, "event loop start success")
+            else:
+                event_loop = EventLoop()
+                event_loop.set_default_service_func(pkg.m_defaultServiceFunc)
+                self.m_eventLoop[pkg.m_eventloopName] = event_loop
+                event_loop.start()
+                return YomkResponse(ResStatus.eOk, "event loop start success")
+    
+    def stop(self, pkg: Str):
+        with self.m_eventLoopMutex.gen_rlock():
+            if pkg in self.m_eventLoop:
+                self.m_eventLoop[pkg].stop()
+                return YomkResponse(ResStatus.eOk, "event loop stop success")
+            else:
+                return YomkResponse(ResStatus.eErr, "event loop not exist")
+
+    def destroy(self, pkg: Str):
+        with self.m_eventLoopMutex.gen_wlock():
+            if pkg in self.m_eventLoop:
+                self.m_eventLoop[pkg].stop()
+                del self.m_eventLoop[pkg]
+                return YomkResponse(ResStatus.eOk, "event loop destroy success")
+            else:
+                return YomkResponse(ResStatus.eErr, "event loop not exist")
+    
+    def post(self, pkg: Event):
+        with self.m_eventLoopMutex.gen_rlock():
+            if pkg.m_eventLoopName in self.m_eventLoop:
+                self.m_eventLoop[pkg.m_eventLoopName].post(pkg)
+                return YomkResponse(ResStatus.eOk, "event post success")
+            else:
+                return YomkResponse(ResStatus.eErr, "event loop not exist")
+    
+    def post_wait(self, pkg: Event):
+        with self.m_eventLoopMutex.gen_rlock():
+            if pkg.m_eventLoopName in self.m_eventLoop:
+                self.m_eventLoop[pkg.m_eventLoopName].post_wait(pkg)
+                return YomkResponse(ResStatus.eOk, "event post wait success", pkg)
+            else:
+                return YomkResponse(ResStatus.eErr, "event loop not exist")

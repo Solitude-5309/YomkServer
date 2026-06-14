@@ -14,6 +14,7 @@ chmod +x build.sh
 3. python3 TestYomkService.py
 4. python3 TestYomkContext.py
 5. python3 TestYomkFunctionPool.py
+6. python3 TestYomkEventLoop.py
 
 ## 手动编译
 
