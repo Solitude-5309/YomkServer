@@ -26,14 +26,14 @@ class YomkResponse:
 class YomkService:
     name: str
     server: Any
-    functions: Dict[str, Callable[[Any], Any]]
+    functions: Dict[str, Callable[[Any], YomkResponse]]
     rwlock_functions: rwlock.RWLockFair
 
     def __init__(self, server: Any) -> None: ...
     def get_name(self) -> str: ...
     def set_name(self, name: str) -> None: ...
     def init(self) -> None: ...
-    def install_func(self, name: str, function: Callable[[Any], Any]) -> None: ...
+    def install_func(self, name: str, function: Callable[[Any], YomkResponse]) -> None: ...
     def invoke(self, name: str, pkg: Any) -> Any: ...
 
 class YomkServer:
@@ -72,3 +72,24 @@ class ContextMonitor:
     key: str
     monitor_func: Callable[[Any], None]
     def __init__(self, key="", monitor_func=None) -> None: ...
+
+class Function:
+    name: str
+    func: Callable[[Any], YomkResponse]
+    def __init__(self, name="", func=None) -> None: ...
+    
+class CallFunction:
+    name: str
+    pkg: Any
+    def __init__(self, name="", pkg=None) -> None: ...
+
+class Event:
+    event_loop_name: str
+    pkg: Any
+    func: Callable[[Any], YomkResponse]
+    def __init__(self, event_loop_name="", pkg=None, func=None) -> None: ...
+    
+class EventLoopPkg:
+    event_loop_name: str
+    default_service_func: Callable[[Any], YomkResponse]
+    def __init__(self, event_loop_name="", default_service_func=None) -> None: ...
