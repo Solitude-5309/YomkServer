@@ -5,7 +5,7 @@ chmod +x build.sh
 ./build.sh
 
 ## build 交互
-安装目录：~/YomkRpc2/install  
+安装目录：~/YomkServer/install  
 编译类型：release
 
 ## 运行test
