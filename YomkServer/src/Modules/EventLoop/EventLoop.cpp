@@ -11,9 +11,20 @@ EventLoop::EventLoop()
 
 EventLoop::~EventLoop()
 {
-    if(m_running.load())
+    if(m_running.exchange(false))
     {
-        stop();
+        {
+            std::lock_guard<std::mutex> lock(m_queueMutex);
+            while(!m_eventQueue.empty())
+            {
+                m_eventQueue.pop();
+            }
+        }
+        m_condition.notify_all();
+        if(m_worker.joinable())
+        {
+            m_worker.join();
+        }
     }
 }
 
@@ -37,7 +48,16 @@ int EventLoop::stop()
         return 0;
     }
     m_running.store(false);
-    m_condition.notify_one();
+
+    {
+        std::lock_guard<std::mutex> lock(m_queueMutex);
+        while(!m_eventQueue.empty())
+        {
+            m_eventQueue.pop();
+        }
+    }
+
+    m_condition.notify_all();
     if(m_worker.joinable())
     {
         m_worker.join();
@@ -95,16 +115,21 @@ int EventLoop::postWait(YomkPtr(Event) event)
 
     std::condition_variable tmpCv;
     std::mutex tmpMtx;
+    bool notified = false;
     std::unique_lock<std::mutex> lock(tmpMtx);
 
-    event->d.m_waitCallback = [&tmpCv]()
+    event->d.m_waitCallback = [&tmpCv, &notified, &tmpMtx]()
     {
+        {
+            std::lock_guard<std::mutex> lk(tmpMtx);
+            notified = true;
+        }
         tmpCv.notify_all();
     };
 
     post(event);
 
-    tmpCv.wait(lock);
+    tmpCv.wait(lock, [&notified]() { return notified; });
 
     return 0;
 }
@@ -146,6 +171,11 @@ void EventLoop::run()
         {
             YOMK_ERR_POS_LOG("EventLoop: " + event->d.m_eventLoopName + " exec event id: " + std::to_string(event->d.m_eventId) + " caught, what: " + std::string(e.what()));
         }
+        catch (...)
+        {
+            YOMK_ERR_POS_LOG("EventLoop: unknown exception caught");
+        }
+        
         if(event->d.m_waitCallback)
         {
             event->d.m_waitCallback();
