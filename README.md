@@ -1,35 +1,52 @@
 # YomkServerPy 简介
 
-## 快速编译
+## linux
+
+### 快速编译
 chmod +x build.sh  
 ./build.sh
 
-## build 交互
+### build 交互
 安装目录：~/YomkServer/install  
 编译类型：release
 
-## 运行test
-1. export PYTHONPATH=$HOME/YomkServer/install/lib/python3.10/site-packages:$PYTHONPATH 【根据实际安装目录编写】
-2. cd YomkServerPy/test
-3. python3 TestYomkService.py
-4. python3 TestYomkContext.py
-5. python3 TestYomkFunctionPool.py
-6. python3 TestYomkEventLoop.py
+### 运行test
+export PYTHONPATH=$HOME/YomkServer/install/lib/python3.10/site-packages:$PYTHONPATH 【根据实际安装目录编写】  
+cd YomkServerPy/test  
+python3 TestYomkService.py  
+python3 TestYomkContext.py  
+python3 TestYomkFunctionPool.py  
+python3 TestYomkEventLoop.py  
 
-## 手动编译
+### 手动编译
 
-### 依赖
+#### 依赖
 sudo apt update && sudo apt install gcc python3-dev  
 pip install cython readerwriterlock
 
-### 编译YomkServerPy
-3. cd YomkServerPy
-3. mkdir build && cd build
-4. cmake .. -DCMAKE_INSTALL_PREFIX=~/YomkServer/install
-5. cmake --build . --target install --config Release
+#### 编译
+cd YomkServerPy  
+mkdir build && cd build  
+cmake .. -DCMAKE_INSTALL_PREFIX=~/YomkServer/install  
+cmake --build . --target install --config Release  
 
+## windows
 
-## TODO
-1. 强类型优化
-2. 日志优化
+### 依赖
+python3
+pip install cython readerwriterlock
+
+### 编译
+mkdir build  
+cd build  
+cmake .. -DCMAKE_INSTALL_PREFIX="C:/Users/solit/Env/YomkServer/install"  
+cmake --build . --target install --config Release  
+
+### 测试
+cd test  
+$env:PYTHONPATH = "C:/Users/solit/Env/YomkServer/install/lib/python3.12/site-packages;" + $env:PYTHONPATH   
+python TestYomkService.py  
+python3 TestYomkContext.py  
+python3 TestYomkFunctionPool.py  
+python3 TestYomkEventLoop.py  
 

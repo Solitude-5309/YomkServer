@@ -1,8 +1,13 @@
 ﻿cmake_minimum_required(VERSION 3.14)
-project(YomkServerPy VERSION 1.0.9 LANGUAGES C)
+project(YomkServerPy VERSION 1.0.10 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 find_package(Python REQUIRED COMPONENTS Development)
+
+string(REPLACE "." ";" PYTHON_VERSION_LIST ${Python_VERSION})
+list(GET PYTHON_VERSION_LIST 0 PYTHON_MAJOR)
+list(GET PYTHON_VERSION_LIST 1 PYTHON_MINOR)
+set(PYTHON_SITE_PACKAGES "lib/python${PYTHON_MAJOR}.${PYTHON_MINOR}/site-packages")
 
 # ---------- 2. 查找 Cython ----------
 find_program(CYTHON_EXECUTABLE cython REQUIRED)
@@ -22,7 +27,7 @@ add_custom_command(
     COMMENT "Running Cython to generate C source"
 )
 
-# ---------- 4. 编译为 .so ----------
+# ---------- 4. 编译为共享库 ----------
 add_library(${PROJECT_NAME} SHARED ${C_SOURCE})
 
 # ---------- 5. 头文件和链接 ----------
@@ -34,19 +39,43 @@ target_link_libraries(${PROJECT_NAME}
     ${Python_LIBRARIES}
 )
 
-# ---------- 6. 输出文件名 ----------
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    PREFIX ""
-    OUTPUT_NAME "${PROJECT_NAME}"
-    SUFFIX ".so"
-)
+# ---------- 6. 输出文件名（跨平台适配） ----------
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "${PROJECT_NAME}"
+        SUFFIX ".pyd"
+    )
+else()
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "${PROJECT_NAME}"
+        SUFFIX ".so"
+    )
+endif()
 
-# ---------- 7. 编译选项 ----------
-target_compile_options(${PROJECT_NAME} PRIVATE
-    -O3
-    -Wall
-)
+# ---------- 7. 编译选项（跨平台适配） ----------
+if(WIN32)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        /O2
+        /W3
+    )
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        -O3
+        -Wall
+    )
+endif()
 
+# ---------- 8. Windows 特殊处理 ----------
+if(WIN32)
+    # Windows 需要定义 DLL 导出宏
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        _hypot=hypot
+    )
+endif()
+
+# ---------- 9. 安装规则 ----------
 # 导出 targets
 install(EXPORT ${PROJECT_NAME}Targets
     FILE ${PROJECT_NAME}Targets.cmake
@@ -78,12 +107,12 @@ install(FILES
 install(FILES 
     "${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.pyi"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/YomkApi.py"
-    DESTINATION lib/python3.10/site-packages
+    DESTINATION ${PYTHON_SITE_PACKAGES}
 )
 
 install(TARGETS ${PROJECT_NAME}
     EXPORT ${PROJECT_NAME}Targets         
-    LIBRARY DESTINATION lib/python3.10/site-packages    
-    ARCHIVE DESTINATION lib/python3.10/site-packages
+    LIBRARY DESTINATION ${PYTHON_SITE_PACKAGES}    
+    ARCHIVE DESTINATION ${PYTHON_SITE_PACKAGES}
+    RUNTIME DESTINATION ${PYTHON_SITE_PACKAGES}
 )
-
