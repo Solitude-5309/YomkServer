@@ -4,21 +4,21 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-bool consoleLogProxy(const yomk::Log& log)
+bool consoleLogProxy(const yomk::Log &log)
 {
     switch (log.m_level)
     {
     case yomk::Log::eInfo:
-        std::cout << "[LogProxy] [INFO ] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
+        std::cout << "[LogProxy] [INFO ] " << "[" << log.m_logger << "]" << log.m_log << std::endl;
         break;
     case yomk::Log::eWarn:
-        std::cout << "[LogProxy] [WARN ] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
+        std::cout << "[LogProxy] [WARN ] " << "[" << log.m_logger << "]" << log.m_log << std::endl;
         break;
     case yomk::Log::eError:
-        std::cout << "[LogProxy] [ERROR] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
+        std::cout << "[LogProxy] [ERROR] " << "[" << log.m_logger << "]" << log.m_log << std::endl;
         break;
     case yomk::Log::eDebug:
-        std::cout << "[LogProxy] [DEBUG] " << "[" << log.m_logger << "]"<< log.m_log << std::endl;
+        std::cout << "[LogProxy] [DEBUG] " << "[" << log.m_logger << "]" << log.m_log << std::endl;
         break;
     default:
         break;
@@ -33,14 +33,7 @@ int main(int argc, char *argv[])
     fs::path logDir = exePath.parent_path().parent_path() / "Test" / "YomkServer" / "YomkLog";
     YOMK_DEBUG_TAG("main", "Log dir: ", logDir);
 
-    YOMK_INIT(std::make_shared<YomkServer>(), { 
-        "/YomkFunctionPool", 
-        "/YomkContext",
-        "/YomkEventLoop",
-        "/YomkLogger"
-    });
-    
-    YomkResponse response;
+    YOMK_INIT();
 
     // 关闭控制台INFO日志
     YOMK_OFF_CONSOLE_LOG_INFO();
@@ -51,6 +44,7 @@ int main(int argc, char *argv[])
     // 关闭控制台DEBUG日志
     YOMK_OFF_CONSOLE_LOG_DEBUG();
 
+    YomkResponse response;
     response = YOMK_INFO("test", " console log info. ", 1);
     response = YOMK_WARN("test", " console log warn. ", 2);
     response = YOMK_ERROR("test", " console log error. ", 3);
@@ -73,16 +67,16 @@ int main(int argc, char *argv[])
     response = YOMK_WARN("test", " console log warn. ", 6);
     response = YOMK_ERROR("test", " console log error. ", 7);
     response = YOMK_DEBUG("test", " console log debug. ", 8);
-    
+
     // 创建新的控制台日志器
     response = YOMK_INFO_TAG("new_console_logger", "test", " new_console_logger log info. ", 1);
     response = YOMK_WARN_TAG("new_console_logger", "test", " new_console_logger log warn. ", 2);
-    response = YOMK_ERROR_TAG("new_console_logger", "test", " new_console_logger log error. ", 3); 
+    response = YOMK_ERROR_TAG("new_console_logger", "test", " new_console_logger log error. ", 3);
     response = YOMK_DEBUG_TAG("new_console_logger", "test", " new_console_logger log debug. ", 4);
 
     // 创建新的文件日志器
     response = YOMK_FILE_LOG_CREATE(logDir.string(), "new_file_logger");
-    
+
     // 创建新的文件日志器
     response = YOMK_FILE_INFO("new_file_logger", "test", " new_file_logger log info. ", 1);
     response = YOMK_FILE_WARN("new_file_logger", "test", " new_file_logger log warn. ", 2);
@@ -97,7 +91,7 @@ int main(int argc, char *argv[])
 
     // 写文件日志
     response = YOMK_FILE_LOG_WRITE("new_file_logger");
-    
+
     YOMK_DEBUG_TAG("main", "test YomkLogger completed, any key to continue...");
 
     getchar();

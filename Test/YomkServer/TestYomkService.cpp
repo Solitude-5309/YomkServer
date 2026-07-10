@@ -7,17 +7,18 @@ struct MyServiceMsg
 };
 YomkMsg(MyServiceMsg, MyServiceMsg)
 
-// 创建一个服务B，用于编写功能集合
-class YomkServiceB : public YomkService
+    // 创建一个服务B，用于编写功能集合
+    class YomkServiceB : public YomkService
 {
 public:
-    YomkServiceB(YomkServer* server)
+    YomkServiceB(YomkServer *server)
         : YomkService(server)
     {
         // 设置服务名称，服务名称在服务器中必须唯一
         name("/YomkServiceB");
     }
     virtual ~YomkServiceB() {}
+
 public:
     virtual int init()
     {
@@ -27,12 +28,13 @@ public:
         YOMK_INFO_TAG("YomkServiceB::init", "install func [ /call_skill_b ] to", name());
         return 0;
     }
+
 private:
     YomkResponse callSkillB(YomkPkgPtr pkg)
     {
         // 解包数据
         YomkUnPackPkgResponse(pkg, MyServiceMsg, myServiceMsg);
-        if(!myServiceMsg)
+        if (!myServiceMsg)
         {
             YOMK_ERROR_TAG("YomkServiceB::callSkillB", name(), " myServiceMsg is empty");
             return YomkResponse(YomkResponse::eInvalid, name() + " MyServiceMsg is empty");
@@ -50,13 +52,14 @@ private:
 class YomkServiceA : public YomkService
 {
 public:
-    YomkServiceA(YomkServer* server)
+    YomkServiceA(YomkServer *server)
         : YomkService(server)
     {
         // 设置服务名称，服务名称在服务器中必须唯一
         name("/YomkServiceA");
     }
     virtual ~YomkServiceA() {}
+
 public:
     virtual int init()
     {
@@ -66,13 +69,14 @@ public:
         YOMK_INFO_TAG("YomkServiceA::init", "install func [ /call_skill_a ] to", name());
         return 0;
     }
+
 private:
     YomkResponse callSkillA(YomkPkgPtr pkg)
     {
         // 解包数据
         YomkUnPackPkgResponse(pkg, MyServiceMsg, myServiceMsg);
 
-        if(!myServiceMsg)
+        if (!myServiceMsg)
         {
             YOMK_ERROR_TAG("YomkServiceA::callSkillA", name(), " myServiceMsg is empty");
             return YomkResponse(YomkResponse::eInvalid, name() + " MyServiceMsg is empty");
@@ -85,7 +89,7 @@ private:
         YomkResponse response = YOMK_REQUEST("/YomkServiceB/call_skill_b", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world b"}));
 
         // 检查调用结果
-        if(response.m_resStatus != YomkResponse::eOk)
+        if (response.m_resStatus != YomkResponse::eOk)
         {
             YOMK_ERROR_TAG("YomkServiceA::callSkillA", name(), " call /YomkServiceB/call_skill_b, response: ", response.m_msg);
             return YomkResponse(YomkResponse::eErr, name() + " exec skill a failed");
@@ -100,22 +104,17 @@ private:
 };
 
 int main(int argc, char *argv[])
-{    
+{
     // 全局宏，一个程序只能有一个服务器，用于初始化服务器
-    YOMK_INIT(std::make_shared<YomkServer>(), {  
-        "/YomkFunctionPool", 
-        "/YomkContext",
-        "/YomkEventLoop",
-        "/YomkLogger"
-    });
+    YOMK_INIT();
     // 创建服务A，实例化YomkServiceA，并调用init()方法
-    YOMK_NEW_SERVICE(YomkServiceA, "/YomkServiceA");
+    YOMK_NEW_SERVICE(YomkServiceA);
     // 创建服务B，实例化YomkServiceB，并调用init()方法
-    YOMK_NEW_SERVICE(YomkServiceB, "/YomkServiceB");
+    YOMK_NEW_SERVICE(YomkServiceB);
 
     // 同步调用服务A中的方法
     YomkResponse response = YOMK_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world a"}));
-    if(response.m_resStatus == YomkResponse::eOk)
+    if (response.m_resStatus == YomkResponse::eOk)
     {
         YOMK_INFO_TAG("main", "request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
     }
@@ -127,7 +126,8 @@ int main(int argc, char *argv[])
     YOMK_INFO_TAG("main", "request /YomkServiceA/call_skill_a send finished.");
 
     // 异步调用服务A中的方法
-    YOMK_ASYNC_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world a"}), [](YomkResponse response) {
+    YOMK_ASYNC_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world a"}), [](YomkResponse response)
+                       {
         if(response.m_resStatus == YomkResponse::eOk)
         {
             YOMK_INFO_TAG("main", "async request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
@@ -135,8 +135,7 @@ int main(int argc, char *argv[])
         else
         {
             YOMK_ERROR_TAG("main", "async request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
-        }
-    });
+        } });
 
     YOMK_INFO_TAG("main", "async request /YomkServiceA/call_skill_a send finished.");
 
