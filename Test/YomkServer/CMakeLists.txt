@@ -1,5 +1,5 @@
 include_directories(${YomkServer_INCLUDE})
-include_directories(${TestYomkServer_DIR}/src)
+include_directories(${TestYomkServer_DIR})
 
 set(YomkServerLib 
     YomkServer
@@ -8,6 +8,9 @@ set(YomkServerLib
 # -------------sl TestYomkService ----------------
 set(TestYomkService_SOURCES 
     ${TestYomkServer_DIR}/TestYomkService.cpp
+    ${TestYomkServer_DIR}/boot/MyBoot.cpp
+    ${TestYomkServer_DIR}/services/YomkServiceA.cpp
+    ${TestYomkServer_DIR}/services/YomkServiceB.cpp
 )
 add_executable(TestYomkService 
     ${TestYomkService_SOURCES}

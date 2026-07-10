@@ -6,9 +6,17 @@
 
 using namespace yomk;
 
+class YOMKSERVER_EXPORT YomkBoot
+{
+public:
+    virtual int before() = 0;
+    virtual int start() = 0;
+    virtual int after() = 0;
+};
+
 class YOMKSERVER_EXPORT YomkAPI
 {
-    // REQ_API
+    // BOOT_API
 public:
     static std::shared_ptr<YomkServer> init()
     {
@@ -58,6 +66,42 @@ public:
         m_pServer->addService(srv);
         return 0;
     }
+    static int boot(YomkBoot *boot = nullptr)
+    {
+        init();
+        int ret = 0;
+        if (!boot)
+            return 0;
+
+        ret = boot->before();
+        if (ret != 0)
+        {
+            YOMK_ERR_POS_LOG("YomkBoot before failed! ");
+            delete boot;
+            return ret;
+        }
+
+        ret = boot->start();
+        if (ret != 0)
+        {
+            YOMK_ERR_POS_LOG("YomkBoot start failed! ");
+            delete boot;
+            return ret;
+        }
+
+        ret = boot->after();
+        if (ret != 0)
+        {
+            YOMK_ERR_POS_LOG("YomkBoot after failed! ");
+            delete boot;
+            return ret;
+        }
+
+        delete boot;
+        return 0;
+    }
+    // REQ_API
+public:
     static void asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
     {
         if (!m_pServer)
@@ -561,6 +605,7 @@ private:
 #define YOMK_SERVER_P YomkAPI::serverInstance().get()
 #define YOMK_NEW_SERVICE(ClassName, ...) YomkAPI::newService<ClassName>(__VA_ARGS__)
 #define YOMK_ADD_SERVICE(...) YomkAPI::addService(__VA_ARGS__)
+#define YOMK_BOOT(...) YomkAPI::boot(__VA_ARGS__)
 #define YOMK_REQUEST(...) YomkAPI::request(__VA_ARGS__)
 #define YOMK_ASYNC_REQUEST(...) YomkAPI::asyncRequest(__VA_ARGS__)
 #define YOMK_SET_CONSOLE_LOG_PROXY(func) YomkAPI::SET_CONSOLE_LOG_PROXY(func)
