@@ -21,9 +21,19 @@ def init():
     g_server.start_service(["YomkContext", "YomkFunctionPool", "YomkEventLoop"])
     return g_server
 
+def server():
+    global g_server
+    return g_server
+
 def new_service(class_name: type[YomkService], name: type[str] = ""):
     global g_server
     srv = class_name(g_server)
+    srv.set_name(name)
+    srv.init()
+    g_server.add_service(srv)
+    
+def add_service(srv: type[YomkService], name: type[str] = ""):
+    global g_server
     srv.set_name(name)
     srv.init()
     g_server.add_service(srv)

@@ -25,8 +25,8 @@ tid = threading.get_ident()
 # 初始化YomkApi
 YomkApi.init()
 
-# 创建服务
-YomkApi.new_service(YomkServiceA)
+# 创建服务 YomkApi.new_service(YomkServiceA)
+YomkApi.add_service(YomkServiceA(YomkApi.server()))
 
 # 同步请求
 res = YomkApi.request("/YomkServiceA/skill_a", "hello")
