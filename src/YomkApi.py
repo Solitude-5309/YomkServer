@@ -14,6 +14,24 @@ from YomkServerPy import (
 )
 from typing import Any, Callable
 
+from abc import ABC, abstractmethod
+
+class YomkBoot(ABC):
+    def __init__(self) -> None:
+        pass
+
+    @abstractmethod
+    def before(self) -> int:
+        pass
+
+    @abstractmethod
+    def start(self) -> int:
+        pass
+
+    @abstractmethod
+    def after(self) -> int:
+        pass
+
 g_server: YomkServer = YomkServer()
 
 def init():
@@ -37,6 +55,25 @@ def add_service(srv: type[YomkService], name: type[str] = ""):
     srv.set_name(name)
     srv.init()
     g_server.add_service(srv)
+    
+def boot(boot: type[YomkBoot] = None):
+    init()
+    if boot is None:
+        return -1
+    
+    ret = boot.before()
+    if ret != 0:
+        return ret
+    
+    ret = boot.start()
+    if ret != 0:
+        return ret
+    
+    boot.after()
+    if ret != 0:
+        return ret
+    
+    return 0
 
 def request(url: type[str], pkg: type[Any])->YomkResponse:
     global g_server
