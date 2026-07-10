@@ -11,7 +11,7 @@ def func1(pkg: Any)->YomkApi.YomkResponse:
 tid = threading.get_ident()
 
 # 初始化YomkApi
-YomkApi.init(YomkApi.YomkServer(), ["YomkContext", "YomkFunctionPool"])
+YomkApi.init()
 
 # 注册函数
 res = YomkApi.function_pool_register("func1", func1)

@@ -17,7 +17,7 @@ def event_handle(pkg: Any)->YomkApi.YomkResponse:
 tid = threading.get_ident()
 
 # 初始化YomkApi
-YomkApi.init(YomkApi.YomkServer(), ["YomkContext", "YomkFunctionPool", "YomkEventLoop"])
+YomkApi.init()
 
 # 开启事件循环
 res = YomkApi.event_loop_start("event_loop_1", event_handle)

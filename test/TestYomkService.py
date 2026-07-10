@@ -23,10 +23,10 @@ def callback(res: YomkApi.YomkResponse)->None:
 tid = threading.get_ident()
 
 # 初始化YomkApi
-YomkApi.init(YomkApi.YomkServer())
+YomkApi.init()
 
 # 创建服务
-YomkApi.new_service(YomkServiceA, "/YomkServiceA")
+YomkApi.new_service(YomkServiceA)
 
 # 同步请求
 res = YomkApi.request("/YomkServiceA/skill_a", "hello")

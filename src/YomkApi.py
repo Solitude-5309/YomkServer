@@ -14,14 +14,14 @@ from YomkServerPy import (
 )
 from typing import Any, Callable
 
-g_server: YomkServer = None
+g_server: YomkServer = YomkServer()
 
-def init(server: type[YomkServer], srv_names: type[list[str]] = []):
+def init():
     global g_server
-    g_server = server
-    g_server.start_service(srv_names)
+    g_server.start_service(["YomkContext", "YomkFunctionPool", "YomkEventLoop"])
+    return g_server
 
-def new_service(class_name: type[YomkService], name: type[str]):
+def new_service(class_name: type[YomkService], name: type[str] = ""):
     global g_server
     srv = class_name(g_server)
     srv.set_name(name)

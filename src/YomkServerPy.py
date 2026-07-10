@@ -44,7 +44,8 @@ class YomkService:
         return self.name
     
     def set_name(self, name):
-        self.name = name
+        if name:
+            self.name = name
     
     def init(self):
         pass

@@ -1,7 +1,7 @@
 import YomkApi
 
 # 初始化YomkApi
-YomkApi.init(YomkApi.YomkServer(), ["YomkContext"])
+YomkApi.init()
 
 # 创建上下文
 res = YomkApi.context_create("ctx", "ctx_data")
