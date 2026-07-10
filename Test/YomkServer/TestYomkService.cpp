@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
     // 创建服务A，实例化YomkServiceA，并调用init()方法
     YOMK_NEW_SERVICE(YomkServiceA);
     // 创建服务B，实例化YomkServiceB，并调用init()方法
-    YOMK_NEW_SERVICE(YomkServiceB);
+    YOMK_ADD_SERVICE(new YomkServiceB(YOMK_SERVER_P));
 
     // 同步调用服务A中的方法
     YomkResponse response = YOMK_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world a"}));

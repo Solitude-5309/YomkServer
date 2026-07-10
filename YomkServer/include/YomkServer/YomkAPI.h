@@ -19,6 +19,10 @@ public:
                                  "/YomkLogger"});
         return m_pServer;
     }
+    static std::shared_ptr<YomkServer> serverInstance()
+    {
+        return m_pServer;
+    }
     template <typename T>
     static int newService(const std::string &srvName = "")
     {
@@ -28,6 +32,31 @@ public:
             return -1;
         }
         return m_pServer->newService<T>(srvName);
+    }
+    static int addService(YomkService *srv = nullptr, const std::string &srvName = "")
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return -1;
+        }
+
+        if (!srv)
+        {
+            YOMK_ERR_POS_LOG("YomkService is null");
+            return -1;
+        }
+
+        if (srvName != "")
+            srv->name(srvName);
+
+        if (srv->init() != 0)
+        {
+            return -1;
+        }
+
+        m_pServer->addService(srv);
+        return 0;
     }
     static void asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
     {
@@ -528,7 +557,10 @@ private:
 };
 
 #define YOMK_INIT(...) YomkAPI::init(__VA_ARGS__)
+#define YOMK_SERVER_PTR YomkAPI::serverInstance()
+#define YOMK_SERVER_P YomkAPI::serverInstance().get()
 #define YOMK_NEW_SERVICE(ClassName, ...) YomkAPI::newService<ClassName>(__VA_ARGS__)
+#define YOMK_ADD_SERVICE(...) YomkAPI::addService(__VA_ARGS__)
 #define YOMK_REQUEST(...) YomkAPI::request(__VA_ARGS__)
 #define YOMK_ASYNC_REQUEST(...) YomkAPI::asyncRequest(__VA_ARGS__)
 #define YOMK_SET_CONSOLE_LOG_PROXY(func) YomkAPI::SET_CONSOLE_LOG_PROXY(func)
