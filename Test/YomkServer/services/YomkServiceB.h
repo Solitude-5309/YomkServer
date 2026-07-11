@@ -1,6 +1,6 @@
 #pragma once
 #include "YomkAPI.h"
-#include "msgs/YomkMsgDefine.h"
+#include "msgs/YomkMsgs.h"
 
 class YomkServiceB : public YomkService
 {

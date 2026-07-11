@@ -1,6 +1,6 @@
 #include "YomkAPI.h"
 #include "boot/MyBoot.h"
-#include "msgs/YomkMsgDefine.h"
+#include "msgs/YomkMsgs.h"
 
 int main(int argc, char *argv[])
 {

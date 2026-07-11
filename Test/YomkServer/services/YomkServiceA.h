@@ -1,6 +1,6 @@
 #pragma once
 #include "YomkAPI.h"
-#include "msgs/YomkMsgDefine.h"
+#include "msgs/YomkMsgs.h"
 
 // 创建一个服务A，用于编写功能集合
 class YomkServiceA : public YomkService
