@@ -110,7 +110,7 @@ cmake --build . --target install --config Release
 cd test  
 $env:PYTHONPATH = "C:/Users/solit/Env/YomkServer/install/lib/python3.12/site-packages;" + $env:PYTHONPATH   
 python TestYomkService.py  
-python3 TestYomkContext.py  
-python3 TestYomkFunctionPool.py  
-python3 TestYomkEventLoop.py  
+python TestYomkContext.py  
+python TestYomkFunctionPool.py  
+python TestYomkEventLoop.py  
 
