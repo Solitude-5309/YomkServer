@@ -6,7 +6,7 @@ current_dir = Path(__file__).resolve()
 sys.path.append(str(current_dir))
 
 from boot.MyBoot import MyBoot
-from msgs.YomkMsgDefine import MyServiceMsg
+from msgs.YomkMsgs import MyServiceMsg
 
 def callback(res: YomkApi.YomkResponse)->None:
     tid = threading.get_ident()
