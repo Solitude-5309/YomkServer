@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     YomkResponse response = YOMK_EVENTLOOP_START(
         "event_loop_1",
         eventHandle);
-    if (response.m_resStatus == YomkResponse::eOk)
+    if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "start event_loop_1 success");
     }
@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     }
 
     response = YOMK_EVENTLOOP_POST("event_loop_1", YomkMkPtr(string, "requestEventHandle_data"));
-    if (response.m_resStatus == YomkResponse::eOk)
+    if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "post to event_loop_1 success");
     }
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     }
 
     response = YOMK_EVENTLOOP_POST_WAIT("event_loop_1", YomkMkPtr(string, "requestEventHandle_data_wait"));
-    if (response.m_resStatus == YomkResponse::eOk)
+    if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "post_wait to event_loop_1 success");
         YomkUnPackPkg(response.m_data, Event, event);
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
     getchar();
 
     response = YOMK_EVENTLOOP_STOP("event_loop_1");
-    if (response.m_resStatus == YomkResponse::eOk)
+    if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "stop event_loop_1 success");
     }
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     getchar();
 
     response = YOMK_EVENTLOOP_DESTROY("event_loop_1");
-    if (response.m_resStatus == YomkResponse::eOk)
+    if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "destroy event_loop_1 success");
     }

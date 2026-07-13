@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 
     // 同步调用服务A中的方法
     YomkResponse response = YOMK_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world a"}));
-    if (response.m_resStatus == YomkResponse::eOk)
+    if (response.m_status == YomkResponse::eOk)
     {
         YOMK_INFO_TAG("main", "request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
     }
@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     // 异步调用服务A中的方法
     YOMK_ASYNC_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world a"}), [](YomkResponse response)
                        {
-        if(response.m_resStatus == YomkResponse::eOk)
+        if(response.m_status == YomkResponse::eOk)
         {
             YOMK_INFO_TAG("main", "async request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
         }

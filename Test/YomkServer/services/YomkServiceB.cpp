@@ -26,7 +26,7 @@ YomkResponse YomkServiceB::callSkillB(YomkPkgPtr pkg)
     }
 
     // 日志
-    YOMK_INFO_TAG("YomkServiceB::callSkillB", name(), " exec skill b, with msg: ", myServiceMsg->d.msg);
+    YOMK_INFO_TAG("YomkServiceB::callSkillB", name(), " exec skill b, with msg: ", myServiceMsg->serviceMsg.content);
 
     // 返回结果
     return YomkResponse(YomkResponse::eOk, name() + " exec skill b success");

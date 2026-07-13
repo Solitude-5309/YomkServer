@@ -443,7 +443,7 @@ public:
             return ctx_default;
         }
         YomkResponse response = request("/YomkContext/get", YomkMkPtr(Context, Context{ctx_name, ctx_default}));
-        if (response.m_resStatus == YomkResponse::eOk)
+        if (response.m_status == YomkResponse::eOk)
         {
             YomkUnPackPkgT(response.m_data, ctx_default->name(), T, ctx_data);
             return ctx_data;

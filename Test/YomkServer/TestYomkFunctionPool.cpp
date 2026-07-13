@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     YOMK_INIT();
 
     YomkResponse response = YOMK_FUNCTIONPOOL_REGISTER("func1", func1);
-    if (response.m_resStatus == YomkResponse::eOk)
+    if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "register func1 success");
     }
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     }
 
     response = YOMK_FUNCTIONPOOL_CALL("func1", YomkMkPtr(string, settingsPath.string()));
-    if (response.m_resStatus == YomkResponse::eOk)
+    if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "call func1 success");
     }

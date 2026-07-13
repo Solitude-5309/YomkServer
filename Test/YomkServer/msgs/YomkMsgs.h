@@ -4,6 +4,6 @@
 // 创建一个消息包，用于服务间通信
 struct MyServiceMsg
 {
-    std::string msg;
+    std::string content;
 };
-YomkMsg(MyServiceMsg, MyServiceMsg)
+YomkMsg(MyServiceMsg, MyServiceMsg, serviceMsg)
