@@ -19,17 +19,17 @@ class ResStatus(Enum):
 class YomkResponse:
     def __init__(
         self,
-        res_status: ResStatus = ResStatus.eInvalid,
+        status: ResStatus = ResStatus.eInvalid,
         msg: str = "",
         data: Any = None,
     ):
-        if not isinstance(res_status, ResStatus):
-            raise TypeError("res_status must be ResStatus")
+        if not isinstance(status, ResStatus):
+            raise TypeError("status must be ResStatus")
 
         if not isinstance(msg, str):
             raise TypeError("msg must be str")
 
-        self.res_status = res_status
+        self.status = status
         self.msg = msg
         self.data = data
 

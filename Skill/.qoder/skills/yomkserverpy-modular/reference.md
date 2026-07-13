@@ -79,8 +79,8 @@ YomkApi.event_loop_destroy("loop_name")
 ### YomkResponse — 响应对象
 ```python
 class YomkResponse:
-    def __init__(self, res_status: ResStatus, msg: str = "", data: Any = None):
-        self.res_status = res_status    # 响应状态枚举
+    def __init__(self, status: ResStatus, msg: str = "", data: Any = None):
+        self.status = status            # 响应状态枚举
         self.msg = msg                  # 响应消息
         self.data = data                # 响应数据
 ```
@@ -312,7 +312,7 @@ server.request("/YomkEventLoop/post",
 ```python
 resp = server.request("/YomkEventLoop/post_wait", 
     Event("worker_loop", pkg_data, handler_func))
-if resp.res_status == ResStatus.eOk:
+if resp.status == ResStatus.eOk:
     event = resp.data  # 返回包含结果的Event对象
     result = event.m_response
 ```
@@ -446,7 +446,7 @@ server.request("/YomkEventLoop/post", Event("worker_loop", pkg_data, None))
 # 投递事件（同步等待）
 resp = server.request("/YomkEventLoop/post_wait", 
     Event("worker_loop", pkg_data, None))
-if resp.res_status == ResStatus.eOk:
+if resp.status == ResStatus.eOk:
     event = resp.data
     result = event.m_response
 
@@ -477,7 +477,7 @@ event_loop.stop()
 ### 5. 异步请求模板
 ```python
 def callback(response: YomkApi.YomkResponse) -> None:
-    if response.res_status == YomkApi.ResStatus.eOk:
+    if response.status == YomkApi.ResStatus.eOk:
         print(f"Success: {response.msg}")
     else:
         print(f"Error: {response.msg}")

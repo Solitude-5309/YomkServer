@@ -12,13 +12,13 @@ class CheckStatus(Enum):
     eReject: int = 1
 
 class YomkResponse:
-    res_status: ResStatus
+    status: ResStatus
     msg: str
     data: Any
 
     def __init__(
         self,
-        res_status: ResStatus = ResStatus.eInvalid,
+        status: ResStatus = ResStatus.eInvalid,
         msg: str = "",
         data: Any = None
     ) -> None: ...

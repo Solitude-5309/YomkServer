@@ -82,7 +82,7 @@ class OrderService(YomkApi.YomkService):
         # 跨服务调用：调用公共函数验证
         valid_resp = YomkApi.function_pool_call("validate_amount", str(amount))
         
-        if valid_resp.res_status != YomkApi.ResStatus.eOk:
+        if valid_resp.status != YomkApi.ResStatus.eOk:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eErr, "amount validation failed")
         
         print(f"order created for user: {user_id} amount: {amount}")
@@ -149,7 +149,7 @@ def main():
     resp = YomkApi.request("/UserService/create_user",
         {"username": "alice", "email": "alice@example.com"})
     
-    if resp.res_status == YomkApi.ResStatus.eOk:
+    if resp.status == YomkApi.ResStatus.eOk:
         print(f"User created: {resp.msg}")
     
     YomkApi.request("/OrderService/create_order",
