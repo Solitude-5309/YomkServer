@@ -4,7 +4,7 @@
 // CTX设置前进入check函数，用于CTX的创建者屏蔽非法操作，check函数接受才能真正的修改CTX
 ContextChecker::ECheckStatus checkerAcceptFunc(const yomk::Context &ctx)
 {
-    YomkUnPackPkg(ctx.m_value, string, str);
+    YomkUnPackPkg(ctx.m_value, String, str);
     if (!str)
     {
         YOMK_ERROR_TAG("checkerAcceptFunc", "checker accept func called. value is null");
@@ -17,7 +17,7 @@ ContextChecker::ECheckStatus checkerAcceptFunc(const yomk::Context &ctx)
 // CTX设置前进入check函数，用于CTX的创建者屏蔽非法操作，check函数拒绝则不能修改CTX
 ContextChecker::ECheckStatus checkerRejectFunc(const yomk::Context &ctx)
 {
-    YomkUnPackPkg(ctx.m_value, string, str);
+    YomkUnPackPkg(ctx.m_value, String, str);
     if (!str)
     {
         YOMK_ERROR_TAG("checkerRejectFunc", "checker reject func called. value is null");
@@ -31,7 +31,7 @@ ContextChecker::ECheckStatus checkerRejectFunc(const yomk::Context &ctx)
 // CTX设置成功后进入monitor函数，用于CTX的监控者接收CTX的变化
 void monitorFunc(const yomk::Context &ctx)
 {
-    YomkUnPackPkgVoid(ctx.m_value, string, str);
+    YomkUnPackPkgVoid(ctx.m_value, String, str);
     if (!str)
     {
         YOMK_ERROR_TAG("monitorFunc", "monitor func called. value is null");
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
     YomkResponse response;
 
     // 创建CTX
-    response = YOMK_CONTEXT_CREATE("ctx", YomkMkPtr(string, "ctx_data"));
+    response = YOMK_CONTEXT_CREATE("ctx", YomkMkPtr(String, "ctx_data"));
     if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "create context [ ctx = ctx_data ] success");
@@ -58,11 +58,11 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX
-    YomkPtr(string) ctx_data = YOMK_CONTEXT_GET(Yomk(string), "ctx", YomkMkPtr(string, "ctx_data_default"));
+    YomkPtr(String) ctx_data = YOMK_CONTEXT_GET(Yomk(String), "ctx", YomkMkPtr(String, "ctx_data_default"));
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d);
 
     // 设置CTX
-    response = YOMK_CONTEXT_SET("ctx", YomkMkPtr(string, "ctx_data_set"));
+    response = YOMK_CONTEXT_SET("ctx", YomkMkPtr(String, "ctx_data_set"));
     if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "set context [ ctx = ctx_data_set ] success");
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX
-    ctx_data = YOMK_CONTEXT_GET(Yomk(string), "ctx", YomkMkPtr(string, "ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(Yomk(String), "ctx", YomkMkPtr(String, "ctx_data_default"));
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d);
 
     // 开启CTX检查，开启check后，才能在CTX设置前调用检查函数
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     }
 
     // 再次设置CTX，此时将会先进入检查函数，再真正设置CTX，最后进入CTX监控函数
-    response = YOMK_CONTEXT_SET("ctx", YomkMkPtr(string, "ctx_data_set_2"));
+    response = YOMK_CONTEXT_SET("ctx", YomkMkPtr(String, "ctx_data_set_2"));
     if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "set context [ ctx = ctx_data_set_2 ] success");
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX，更新后的CTX
-    ctx_data = YOMK_CONTEXT_GET(Yomk(string), "ctx", YomkMkPtr(string, "ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(Yomk(String), "ctx", YomkMkPtr(String, "ctx_data_default"));
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d);
 
     // 设置CTX检查函数为拒绝，此时设置CTX将被拒绝
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
     }
 
     // 再次设置CTX，此时将会被拒绝，无法设置成功，也无法进入监控函数
-    response = YOMK_CONTEXT_SET("ctx", YomkMkPtr(string, "ctx_data_set_3"));
+    response = YOMK_CONTEXT_SET("ctx", YomkMkPtr(String, "ctx_data_set_3"));
     if (response.m_status == YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("main", "set context [ ctx = ctx_data_set_3 ] success");
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX，更新后的CTX，无法更新
-    ctx_data = YOMK_CONTEXT_GET(Yomk(string), "ctx", YomkMkPtr(string, "ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(Yomk(String), "ctx", YomkMkPtr(String, "ctx_data_default"));
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d);
 
     // 销毁CTX
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
     }
 
     // 再次获取CTX，此时CTX已销毁，将返回默认值
-    ctx_data = YOMK_CONTEXT_GET(Yomk(string), "ctx", YomkMkPtr(string, "ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(Yomk(String), "ctx", YomkMkPtr(String, "ctx_data_default"));
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d);
 
     YOMK_DEBUG_TAG("main", "test YomkContext completed, any key to continue...");

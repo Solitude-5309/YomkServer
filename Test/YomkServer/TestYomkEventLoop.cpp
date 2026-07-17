@@ -6,7 +6,7 @@ YomkResponse eventHandle(YomkPkgPtr pkg)
 {
     YOMK_DEBUG_TAG("eventHandle", "eventHandle called by thread: ", std::this_thread::get_id());
 
-    YomkUnPackPkgResponse(pkg, string, str);
+    YomkUnPackPkgResponse(pkg, String, str);
 
     YOMK_DEBUG_TAG("eventHandle", "eventHandle called with data: ", str->d);
 
@@ -14,7 +14,7 @@ YomkResponse eventHandle(YomkPkgPtr pkg)
 
     if (i++ < 3)
     {
-        YOMK_EVENTLOOP_POST("event_loop_1", YomkMkPtr(string, "requestEventHandle_data_" + std::to_string(i)));
+        YOMK_EVENTLOOP_POST("event_loop_1", YomkMkPtr(String, "requestEventHandle_data_" + std::to_string(i)));
     }
 
     return {YomkResponse::eOk, "eventHandle success. "};
@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
         YOMK_ERROR_TAG("main", "start event_loop_1 failed: ", response.m_msg);
     }
 
-    response = YOMK_EVENTLOOP_POST("event_loop_1", YomkMkPtr(string, "requestEventHandle_data"));
+    response = YOMK_EVENTLOOP_POST("event_loop_1", YomkMkPtr(String, "requestEventHandle_data"));
     if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "post to event_loop_1 success");
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
         YOMK_ERROR_TAG("main", "post to event_loop_1 failed: ", response.m_msg);
     }
 
-    response = YOMK_EVENTLOOP_POST_WAIT("event_loop_1", YomkMkPtr(string, "requestEventHandle_data_wait"));
+    response = YOMK_EVENTLOOP_POST_WAIT("event_loop_1", YomkMkPtr(String, "requestEventHandle_data_wait"));
     if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "post_wait to event_loop_1 success");

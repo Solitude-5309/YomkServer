@@ -53,7 +53,7 @@ YomkResponse YomkContext::create(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::destroy(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, string, str);
+    YomkUnPackPkgResponse(pkg, String, str);
     {
         std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         auto itContext = m_contexts.find(str->d);

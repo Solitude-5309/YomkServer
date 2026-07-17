@@ -38,7 +38,7 @@ YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
 
 YomkResponse YomkEventLoop::stop(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, string, str);
+    YomkUnPackPkgResponse(pkg, String, str);
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
     if (itEventLoop == m_eventLoop.end())
@@ -83,7 +83,7 @@ YomkResponse YomkEventLoop::postWait(YomkPkgPtr pkg)
 
 YomkResponse YomkEventLoop::destroy(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, string, str);
+    YomkUnPackPkgResponse(pkg, String, str);
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
     if (itEventLoop == m_eventLoop.end())

@@ -141,7 +141,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        request("/YomkLogger/create_console_logger", YomkMkPtr(string, "MainLogger"));
+        request("/YomkLogger/create_console_logger", YomkMkPtr(String, "MainLogger"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, Log{Log::eInfo, oss.str(), "MainLogger"}));
@@ -154,7 +154,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        request("/YomkLogger/create_console_logger", YomkMkPtr(string, tag));
+        request("/YomkLogger/create_console_logger", YomkMkPtr(String, tag));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, Log{Log::eInfo, oss.str(), tag}));
@@ -167,7 +167,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        request("/YomkLogger/create_console_logger", YomkMkPtr(string, "MainLogger"));
+        request("/YomkLogger/create_console_logger", YomkMkPtr(String, "MainLogger"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, Log{Log::eWarn, oss.str(), "MainLogger"}));
@@ -180,7 +180,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        request("/YomkLogger/create_console_logger", YomkMkPtr(string, tag));
+        request("/YomkLogger/create_console_logger", YomkMkPtr(String, tag));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, Log{Log::eWarn, oss.str(), tag}));
@@ -193,7 +193,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        request("/YomkLogger/create_console_logger", YomkMkPtr(string, "MainLogger"));
+        request("/YomkLogger/create_console_logger", YomkMkPtr(String, "MainLogger"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, Log{Log::eError, oss.str(), "MainLogger"}));
@@ -206,7 +206,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        request("/YomkLogger/create_console_logger", YomkMkPtr(string, tag));
+        request("/YomkLogger/create_console_logger", YomkMkPtr(String, tag));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, Log{Log::eError, oss.str(), tag}));
@@ -219,7 +219,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        request("/YomkLogger/create_console_logger", YomkMkPtr(string, "MainLogger"));
+        request("/YomkLogger/create_console_logger", YomkMkPtr(String, "MainLogger"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, Log{Log::eDebug, oss.str(), "MainLogger"}));
@@ -232,7 +232,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        request("/YomkLogger/create_console_logger", YomkMkPtr(string, tag));
+        request("/YomkLogger/create_console_logger", YomkMkPtr(String, tag));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, Log{Log::eDebug, oss.str(), tag}));
@@ -253,7 +253,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkLogger/write_file_log", YomkMkPtr(string, logFile));
+        return request("/YomkLogger/write_file_log", YomkMkPtr(String, logFile));
     }
     template <typename... Args>
     static YomkResponse FILE_LOG_INFO(const std::string &logFile, Args &&...args)
@@ -527,7 +527,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkContext/destroy", YomkMkPtr(string, ctx_name));
+        return request("/YomkContext/destroy", YomkMkPtr(String, ctx_name));
     }
     // EVENTLOOP_API
 public:
@@ -549,7 +549,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkEventLoop/stop", YomkMkPtr(string, event_loop_name));
+        return request("/YomkEventLoop/stop", YomkMkPtr(String, event_loop_name));
     }
     static YomkResponse EVENTLOOP_POST(const std::string &event_loop_name, YomkPkgPtr event_data, YomkServiceFunc event_handle = nullptr)
     {
@@ -576,7 +576,7 @@ public:
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkEventLoop/destroy", YomkMkPtr(string, event_loop_name));
+        return request("/YomkEventLoop/destroy", YomkMkPtr(String, event_loop_name));
     }
     // FUNCTIONPOOL_API
 public:

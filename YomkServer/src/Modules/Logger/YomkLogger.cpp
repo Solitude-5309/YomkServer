@@ -33,7 +33,7 @@ int YomkLogger::init()
 
 YomkResponse YomkLogger::createConsoleLogger(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, string, str);
+    YomkUnPackPkgResponse(pkg, String, str);
     std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
     if (m_consoleLoggers.find(str->d) != m_consoleLoggers.end())
     {
@@ -150,7 +150,7 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::writeFileLog(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, string, str);
+    YomkUnPackPkgResponse(pkg, String, str);
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
     auto fileLogger = m_fileLoggers.find(str->d);
     if (fileLogger == m_fileLoggers.end())
