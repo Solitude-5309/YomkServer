@@ -6,11 +6,6 @@ YomkResponse func1(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, string, str);
 
-    if (!str)
-    {
-        return YomkResponse(YomkResponse::eInvalid, "string is null");
-    }
-
     YOMK_DEBUG_TAG("func1", "func1 called with data: ", str->d);
 
     return {YomkResponse::eOk, "func1 success. "};

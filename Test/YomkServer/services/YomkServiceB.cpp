@@ -18,15 +18,10 @@ int YomkServiceB::init()
 YomkResponse YomkServiceB::callSkillB(YomkPkgPtr pkg)
 {
     // 解包数据
-    YomkUnPackPkgResponse(pkg, MyServiceMsg, myServiceMsg);
-    if (!myServiceMsg)
-    {
-        YOMK_ERROR_TAG("YomkServiceB::callSkillB", name(), " myServiceMsg is empty");
-        return YomkResponse(YomkResponse::eInvalid, name() + " MyServiceMsg is empty");
-    }
+    YomkUnPackPkgResponse(pkg, YMyServiceMsg, myServiceMsg);
 
     // 日志
-    YOMK_INFO_TAG("YomkServiceB::callSkillB", name(), " exec skill b, with msg: ", myServiceMsg->serviceMsg.content);
+    YOMK_INFO_TAG("YomkServiceB::callSkillB", name(), " exec skill b, with msg: ", myServiceMsg->msg.content);
 
     // 返回结果
     return YomkResponse(YomkResponse::eOk, name() + " exec skill b success");

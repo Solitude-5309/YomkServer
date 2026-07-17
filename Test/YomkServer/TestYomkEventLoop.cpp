@@ -8,11 +8,6 @@ YomkResponse eventHandle(YomkPkgPtr pkg)
 
     YomkUnPackPkgResponse(pkg, string, str);
 
-    if (!str)
-    {
-        return YomkResponse(YomkResponse::eInvalid, "string is null");
-    }
-
     YOMK_DEBUG_TAG("eventHandle", "eventHandle called with data: ", str->d);
 
     static int i = 0;

@@ -6,4 +6,4 @@ struct MyServiceMsg
 {
     std::string content;
 };
-YomkMsg(MyServiceMsg, MyServiceMsg, serviceMsg)
+YomkMsg(MyServiceMsg, YMyServiceMsg, msg)

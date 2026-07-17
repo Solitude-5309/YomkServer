@@ -52,6 +52,7 @@
     }
 
 #define Yomk(Type) yomk::Type##_
+#define YomkMk(Type, ...) yomk::Type##_(__VA_ARGS__)
 #define YomkPtr(Type) yomk::Type##Ptr
 #define YomkMkPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
 
