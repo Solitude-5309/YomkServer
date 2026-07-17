@@ -6,23 +6,27 @@
 
 ### 工程目录结构
 ```
-src/
+MyProject/
 ├── main.cpp
-├── services/
-│   ├── UserService.h
-│   ├── UserService.cpp
-│   ├── OrderService.h
-│   ├── OrderService.cpp
-│   └── NotificationService.h
-│   └── NotificationService.cpp
-├── messages/
-│   └── Messages.h          // 所有消息包定义
-├── utils/
-│   └── CommonFunctions.h   // FunctionPool公共函数
+├── boot/
+│   ├── MyBoot.h              // 生命周期管理
+│   └── MyBoot.cpp
+├── msgs/
+│   └── YomkMsgs.h            // 所有消息包定义
+├── services/                 // 所有服务按类别分子目录存放
+│   ├── user/
+│   │   ├── UserService.h
+│   │   └── UserService.cpp
+│   ├── order/
+│   │   ├── OrderService.h
+│   │   └── OrderService.cpp
+│   └── notification/
+│       ├── NotificationService.h
+│       └── NotificationService.cpp
 └── CMakeLists.txt
 ```
 
-### Messages.h — 消息包定义
+### msgs/YomkMsgs.h — 消息包定义
 ```cpp
 #pragma once
 #include "YomkAPI.h"
@@ -33,13 +37,13 @@ struct UserCreateReq {
     std::string username;
     std::string email;
 };
-YomkMsg(UserCreateReq, UserCreateReq)
+YomkMsg(UserCreateReq, UserCreateReq, d)
 
 struct UserCreateResp {
     std::string userId;
     bool success;
 };
-YomkMsg(UserCreateResp, UserCreateResp)
+YomkMsg(UserCreateResp, UserCreateResp, d)
 
 // 订单相关消息
 struct OrderCreateReq {
@@ -47,20 +51,20 @@ struct OrderCreateReq {
     std::string product;
     double amount;
 };
-YomkMsg(OrderCreateReq, OrderCreateReq)
+YomkMsg(OrderCreateReq, OrderCreateReq, d)
 
 // 通知消息
 struct NotifyMsg {
     std::string target;
     std::string content;
 };
-YomkMsg(NotifyMsg, NotifyMsg)
+YomkMsg(NotifyMsg, NotifyMsg, d)
 ```
 
-### UserService.h — 用户服务
+### services/user/UserService.h — 用户服务
 ```cpp
 #pragma once
-#include "Messages.h"
+#include "msgs/YomkMsgs.h"
 
 class UserService : public YomkService
 {
@@ -75,24 +79,21 @@ public:
         YomkInstallFunc("/get_user", UserService::getUser);
 
         // 初始化用户计数Context
-        YOMK_CONTEXT_CREATE("user_count", YomkMkPtr(string, "0"));
+        YOMK_CONTEXT_CREATE("user_count", YomkMkPtr(String, "0"));
         YOMK_INFO_TAG("UserService::init", "UserService initialized");
         return 0;
     }
 
 private:
     YomkResponse createUser(YomkPkgPtr pkg) {
-        YomkUnPackPkgResponse(pkg, UserCreateReq, req);
-        if(!req) {
-            return YomkResponse(YomkResponse::eInvalid, "invalid request");
-        }
+        YomkUnPackPkgResponse(pkg, UserCreateReq, req); // 宏已自动判空
 
         YOMK_INFO_TAG("UserService::createUser", "creating user: ", req->d.username);
 
         // 更新用户计数（通过Context）
-        YomkPtr(string) count = YOMK_CONTEXT_GET(Yomk(string), "user_count", YomkMkPtr(string, "0"));
+        YomkPtr(String) count = YOMK_CONTEXT_GET(Yomk(String), "user_count", YomkMkPtr(String, "0"));
         int newCount = std::stoi(count->d) + 1;
-        YOMK_CONTEXT_SET("user_count", YomkMkPtr(string, std::to_string(newCount)));
+        YOMK_CONTEXT_SET("user_count", YomkMkPtr(String, std::to_string(newCount)));
 
         // 异步发送通知（通过EventLoop）
         YOMK_EVENTLOOP_POST("notification_loop",
@@ -109,10 +110,10 @@ private:
 };
 ```
 
-### OrderService.h — 订单服务（跨服务调用）
+### services/order/OrderService.h — 订单服务（跨服务调用）
 ```cpp
 #pragma once
-#include "Messages.h"
+#include "msgs/YomkMsgs.h"
 
 class OrderService : public YomkService
 {
@@ -130,16 +131,13 @@ public:
 
 private:
     YomkResponse createOrder(YomkPkgPtr pkg) {
-        YomkUnPackPkgResponse(pkg, OrderCreateReq, req);
-        if(!req) {
-            return YomkResponse(YomkResponse::eInvalid, "invalid request");
-        }
+        YomkUnPackPkgResponse(pkg, OrderCreateReq, req); // 宏已自动判空
 
         // 跨服务调用：调用公共函数验证
         YomkResponse validResp = YOMK_FUNCTIONPOOL_CALL("validate_amount",
-            YomkMkPtr(string, std::to_string(req->d.amount)));
-        if(validResp.m_resStatus != YomkResponse::eOk) {
-            return YomkResponse(YomkResponse::eErr, "amount validation failed");
+            YomkMkPtr(String, std::to_string(req->d.amount)));
+        if(validResp.m_status != YomkResponse::eOk) {
+            return YomkResponse(YomkResponse::eNo, "amount validation failed");
         }
 
         YOMK_INFO_TAG("OrderService::createOrder",
@@ -150,17 +148,16 @@ private:
 };
 ```
 
-### CommonFunctions.h — 公共函数池
+### boot/CommonFunctions.h — 公共函数池
 ```cpp
 #pragma once
 #include "YomkAPI.h"
 
 YomkResponse validateAmount(YomkPkgPtr pkg) {
-    YomkUnPackPkgResponse(pkg, string, amountStr);
-    if(!amountStr) return {YomkResponse::eInvalid, "null amount"};
+    YomkUnPackPkgResponse(pkg, String, amountStr); // 宏已自动判空
 
     double amount = std::stod(amountStr->d);
-    if(amount <= 0) return {YomkResponse::eErr, "invalid amount"};
+    if(amount <= 0) return {YomkResponse::eNo, "invalid amount"};
     return {YomkResponse::eOk, "valid"};
 }
 
@@ -171,26 +168,20 @@ void registerCommonFunctions() {
 
 ### main.cpp — 程序入口
 ```cpp
-#include "UserService.h"
-#include "OrderService.h"
-#include "CommonFunctions.h"
+#include "boot/CommonFunctions.h"
+#include "services/user/UserService.h"
+#include "services/order/OrderService.h"
 
 // 通知事件循环的默认处理函数
 YomkResponse notificationHandler(YomkPkgPtr pkg) {
-    YomkUnPackPkgResponse(pkg, NotifyMsg, msg);
-    if(!msg) return {YomkResponse::eInvalid, "null msg"};
+    YomkUnPackPkgResponse(pkg, NotifyMsg, msg); // 宏已自动判空
     YOMK_INFO_TAG("NotificationHandler", "notify to: ", msg->d.target, " content: ", msg->d.content);
     return {YomkResponse::eOk, "notified"};
 }
 
 int main(int argc, char* argv[]) {
-    // 1. 初始化服务器
-    YOMK_INIT(std::make_shared<YomkServer>(), {
-        "/YomkFunctionPool",
-        "/YomkContext",
-        "/YomkEventLoop",
-        "/YomkLogger"
-    });
+    // 1. 初始化服务器（自动启动全部内置服务）
+    YOMK_INIT();
 
     // 2. 注册公共函数
     registerCommonFunctions();
@@ -205,15 +196,15 @@ int main(int argc, char* argv[]) {
     // 5. 设置Context监控
     YOMK_CONTEXT_ON_MONITOR();
     YOMK_CONTEXT_SET_MONITOR("user_count", [](const yomk::Context& ctx) {
-        YomkUnPackPkgVoid(ctx.m_value, string, val);
-        if(val) YOMK_INFO_TAG("Monitor", "user_count changed to: ", val->d);
+        YomkUnPackPkgVoid(ctx.m_value, String, val); // 宏已自动判空，继续执行说明val有效
+        YOMK_INFO_TAG("Monitor", "user_count changed to: ", val->d);
     });
 
     // 6. 业务调用
     YomkResponse resp = YOMK_REQUEST("/UserService/create_user",
         YomkMkPtr(UserCreateReq, UserCreateReq{"alice", "alice@example.com"}));
 
-    if(resp.m_resStatus == YomkResponse::eOk) {
+    if(resp.m_status == YomkResponse::eOk) {
         YOMK_INFO("User created: ", resp.m_msg);
     }
 
@@ -268,7 +259,7 @@ pipelines:
             type: string
 ```
 
-### PipelineService.h
+### services/pipeline/PipelineService.h
 
 ```cpp
 #pragma once
@@ -288,7 +279,7 @@ public:
         YomkInstallFunc("/run", PipelineService::run);
 
         // ✅ 只创建服务内部必需的键
-        YOMK_CONTEXT_CREATE("pipeline:current", YomkMkPtr(string, ""));
+        YOMK_CONTEXT_CREATE("pipeline:current", YomkMkPtr(String, ""));
 
         YOMK_INFO_TAG("PipelineService::init", "installed /load, /run");
         return 0;
@@ -315,8 +306,7 @@ private:
     std::set<std::string> m_createdKeys;
 
     YomkResponse load(YomkPkgPtr pkg) {
-        YomkUnPackPkgResponse(pkg, string, pathPtr);
-        if (!pathPtr) return {YomkResponse::eInvalid, "no path"};
+        YomkUnPackPkgResponse(pkg, String, pathPtr); // 宏已自动判空
 
         // 解析配置文件，构建管道定义
         YAML::Node config = YAML::LoadFile(pathPtr->d);
@@ -339,7 +329,7 @@ private:
                     // ✅ 自动创建 Context 键（去重）
                     if (m_createdKeys.insert(it->first.as<std::string>()).second) {
                         YOMK_CONTEXT_CREATE(it->first.as<std::string>(),
-                            YomkMkPtr(string, def.value));
+                            YomkMkPtr(String, def.value));
                     }
                 }
 
@@ -354,18 +344,17 @@ private:
 
     YomkResponse run(YomkPkgPtr pkg) {
         // ✅ API 风格：通过 pkg 传递管道名
-        YomkUnPackPkgResponse(pkg, string, namePtr);
-        if (!namePtr) return {YomkResponse::eInvalid, "no pipeline name"};
+        YomkUnPackPkgResponse(pkg, String, namePtr); // 宏已自动判空
 
         auto it = m_pipelines.find(namePtr->d);
-        if (it == m_pipelines.end()) return {YomkResponse::eErr, "pipeline not found"};
+        if (it == m_pipelines.end()) return {YomkResponse::eNo, "pipeline not found"};
 
         // 执行管道步骤
         for (const auto& step : it->second.steps) {
             // 数据中转：业务键 → in: 键
             for (const auto& [portName, def] : step.input_ports) {
-                auto val = YOMK_CONTEXT_GET(Yomk(string), portName,
-                    YomkMkPtr(string, def.value));
+                auto val = YOMK_CONTEXT_GET(Yomk(String), portName,
+                    YomkMkPtr(String, def.value));
                 YOMK_CONTEXT_SET("in:" + portName, val);
             }
 
@@ -374,7 +363,7 @@ private:
 
             // 数据中转：out: 键 → 业务键
             for (const auto& [portName, def] : step.output_ports) {
-                auto val = YOMK_CONTEXT_GET(Yomk(string), "out:" + portName);
+                auto val = YOMK_CONTEXT_GET(Yomk(String), "out:" + portName);
                 YOMK_CONTEXT_SET(portName, val);
             }
         }
@@ -387,14 +376,10 @@ private:
 ### main.cpp
 
 ```cpp
-#include "PipelineService.h"
+#include "services/pipeline/PipelineService.h"
 
 int main() {
-    YOMK_INIT(std::make_shared<YomkServer>(), {
-        "/YomkFunctionPool",
-        "/YomkContext",
-        "/YomkLogger"
-    });
+    YOMK_INIT();
 
     // 注册回调函数
     YOMK_FUNCTIONPOOL_REGISTER("extract", extractData);
@@ -406,11 +391,11 @@ int main() {
 
     // ✅ 一行加载所有管道配置
     YOMK_REQUEST("/PipelineService/load",
-        YomkMkPtr(string, "config/pipeline.yaml"));
+        YomkMkPtr(String, "config/pipeline.yaml"));
 
     // ✅ API 风格执行管道
     YOMK_REQUEST("/PipelineService/run",
-        YomkMkPtr(string, "data_etl"));
+        YomkMkPtr(String, "data_etl"));
 
     getchar();
     return 0;
@@ -433,26 +418,26 @@ int main() {
 ```cpp
 // 检查函数：只允许非空字符串
 ContextChecker::ECheckStatus nonEmptyChecker(const yomk::Context& ctx) {
-    YomkUnPackPkg(ctx.m_value, string, val);
+    YomkUnPackPkg(ctx.m_value, String, val);
     if(!val || val->d.empty()) return ContextChecker::eReject;
     return ContextChecker::eAccept;
 }
 
 // 监控函数：记录所有变更
 void changeLogger(const yomk::Context& ctx) {
-    YomkUnPackPkgVoid(ctx.m_value, string, val);
-    YOMK_INFO_TAG("CtxMonitor", "key=", ctx.m_key, " new_value=", val ? val->d : "null");
+    YomkUnPackPkgVoid(ctx.m_value, String, val); // 宏已自动判空
+    YOMK_INFO_TAG("CtxMonitor", "key=", ctx.m_key, " new_value=", val->d);
 }
 
 // 使用
-YOMK_CONTEXT_CREATE("config", YomkMkPtr(string, "default"));
+YOMK_CONTEXT_CREATE("config", YomkMkPtr(String, "default"));
 YOMK_CONTEXT_ON_CHECKER();
 YOMK_CONTEXT_SET_CHECKER("config", nonEmptyChecker);
 YOMK_CONTEXT_ON_MONITOR();
 YOMK_CONTEXT_SET_MONITOR("config", changeLogger);
 
-YOMK_CONTEXT_SET("config", YomkMkPtr(string, "new_value")); // 通过检查并触发监控
-YOMK_CONTEXT_SET("config", YomkMkPtr(string, ""));          // 被检查器拒绝
+YOMK_CONTEXT_SET("config", YomkMkPtr(String, "new_value")); // 通过检查并触发监控
+YOMK_CONTEXT_SET("config", YomkMkPtr(String, ""));          // 被检查器拒绝
 ```
 
 ## 示例3：EventLoop 异步事件处理
@@ -460,7 +445,7 @@ YOMK_CONTEXT_SET("config", YomkMkPtr(string, ""));          // 被检查器拒�
 ```cpp
 // 事件处理函数
 YomkResponse taskHandler(YomkPkgPtr pkg) {
-    YomkUnPackPkgResponse(pkg, string, taskData);
+    YomkUnPackPkgResponse(pkg, String, taskData); // 宏已自动判空
     YOMK_DEBUG_TAG("TaskHandler", "processing in thread: ", std::this_thread::get_id());
     // 处理耗时任务...
     return {YomkResponse::eOk, "task done"};
@@ -470,11 +455,11 @@ YomkResponse taskHandler(YomkPkgPtr pkg) {
 YOMK_EVENTLOOP_START("worker_loop", taskHandler);
 
 // 异步投递（不等待结果）
-YOMK_EVENTLOOP_POST("worker_loop", YomkMkPtr(string, "task_1"));
+YOMK_EVENTLOOP_POST("worker_loop", YomkMkPtr(String, "task_1"));
 
 // 同步投递（等待结果）
-YomkResponse resp = YOMK_EVENTLOOP_POST_WAIT("worker_loop", YomkMkPtr(string, "task_2"));
-if(resp.m_resStatus == YomkResponse::eOk) {
+YomkResponse resp = YOMK_EVENTLOOP_POST_WAIT("worker_loop", YomkMkPtr(String, "task_2"));
+if(resp.m_status == YomkResponse::eOk) {
     YomkUnPackPkg(resp.m_data, Event, event);
     if(event) {
         YOMK_INFO("event result: ", event->d.m_response.m_msg);

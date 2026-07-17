@@ -15,11 +15,12 @@ typedef std::shared_ptr<YomkPkg> YomkPkgPtr;
 ```cpp
 class YomkResponse {
 public:
-    enum EResStatus { eInvalid = -1, eOk = 0, eErr = 1 };
-    EResStatus m_resStatus;
+    enum EResStatus { eInvalid = -1, eOk = 0, eNo = 1 };
+    EResStatus m_status;
     std::string m_msg;
     YomkPkgPtr m_data;
 };
+typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 ```
 
 ### YomkServiceFunc — 功能函数签名
@@ -31,29 +32,33 @@ typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 ## YomkMsg 宏 — 消息包注册
 
 ```cpp
-YomkMsg(InputType, OutputName)
+YomkMsg(IType, OType, VarName)
 ```
-生成 `yomk::OutputName_` 类和 `yomk::OutputName##Ptr` 类型别名。
+生成 `yomk::OType_` 类（继承 YomkPkg）和 `yomk::OType##Ptr` 类型别名。
+- `IType`：实际数据类型
+- `OType`：生成的包装类名后缀
+- `VarName`：数据成员变量名（用户自定义）
 
 **辅助宏：**
 ```cpp
 Yomk(Type)         // → yomk::Type##_        （类名）
 YomkPtr(Type)      // → yomk::Type##Ptr       （指针类型）
-YomkMkPtr(Type, ...)// → std::make_shared<yomk::Type##_>(...)  （创建实例）
+YomkMk(Type, ...)  // → yomk::Type##_(...)    （构造实例）
+YomkMkPtr(Type, ...)// → std::make_shared<yomk::Type##_>(...)  （创建共享指针）
 ```
 
 **解包宏：**
 ```cpp
-// 用于返回YomkResponse的函数，解包失败自动return错误响应
+// 用于返回YomkResponse的函数，解包失败自动return {eNo, "错误信息"}，后续代码无需判空
 YomkUnPackPkgResponse(pkg, ClassName, ptrName)
 
-// 用于void函数，解包失败自动return
+// 用于void函数，解包失败自动return，后续代码无需判空
 YomkUnPackPkgVoid(pkg, ClassName, ptrName)
 
 // 不解包失败不return，ptrName为nullptr需手动检查
 YomkUnPackPkg(pkg, ClassName, ptrName)
 
-// 按pkg->name()匹配解包
+// 按pkg->name()匹配解包，不解包失败不return，需手动检查
 YomkUnPackPkgT(pkg, pkgName, ClassName, ptrName)
 ```
 
@@ -75,6 +80,8 @@ namespace yomk {
         YomkServiceFunc m_serviceFunc;
         std::uint64_t m_eventId;
         YomkResponse m_response;
+        std::function<void()> m_waitCallback;
+        void handle();  // 调用 m_serviceFunc(m_pkg) 并将结果存入 m_response
     };
     struct Eventloop { std::string m_eventloopName; YomkServiceFunc m_defaultServiceFunc; };
     struct LogFile { std::string m_logger; std::string m_dir; };
@@ -87,7 +94,26 @@ namespace yomk {
         std::function<ECheckStatus(const Context&)> m_checkFunc;
     };
     struct ContextMonitor { std::string m_key; std::function<void(Context)> m_contextMonitorFunc; };
+    struct VoidPointer { void* m_ptr; };
 }
+```
+
+**内置标准类型消息包**（成员名均为 `d`）：
+```cpp
+// 基础类型
+Bool, Char, UChar/Byte, Int8, Uint8, Int16, Uint16,
+Int32, Uint32, Int64, Uint64, Float32, Float64, String
+// 数组类型
+BoolArray, CharArray, UCharArray/ByteArray, Int8Array, Uint8Array,
+Int16Array, Uint16Array, Int32Array, Uint32Array, Int64Array, Uint64Array,
+Float32Array, Float64Array, StringArray
+```
+
+**回调函数类型别名：**
+```cpp
+typedef std::function<void(const yomk::Context& ctx)> YomkContextMonitorFunc;
+typedef std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)> YomkContextCheckFunc;
+typedef std::function<bool(const yomk::Log& log)> YomkConsoleLogProxyFunc;
 ```
 
 ## YomkServer 类
@@ -96,8 +122,19 @@ namespace yomk {
 class YomkServer {
     template<typename T> int newService(const std::string& srvName = "");
     int startService(std::vector<std::string> srvNames);
+    void addService(YomkService* srv);
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+};
+```
+
+## YomkBoot 类 — 生命周期管理
+
+```cpp
+class YomkBoot {
+    virtual int before() = 0;  // 服务启动前：创建资源
+    virtual int start() = 0;   // 注册并启动服务
+    virtual int after() = 0;   // 服务启动后：初始化调用
 };
 ```
 
@@ -121,10 +158,14 @@ class YomkService {
 ### 请求通信
 | 宏 | 对应API | 说明 |
 |----|---------|------|
-| `YOMK_INIT(server, names)` | `YomkAPI::init(server, names)` | 初始化并启动内置服务 |
-| `YOMK_NEW_SERVICE(T, name)` | `YomkAPI::newService<T>(name)` | 注册自定义服务 |
+| `YOMK_INIT()` | `YomkAPI::init()` | 初始化并自动启动全部内置服务 |
+| `YOMK_BOOT(boot)` | `YomkAPI::boot(boot)` | 通过 YomkBoot 生命周期初始化 |
+| `YOMK_NEW_SERVICE(T, name)` | `YomkAPI::newService<T>(name)` | 注册自定义服务（模板方式） |
+| `YOMK_ADD_SERVICE(srv, name)` | `YomkAPI::addService(srv, name)` | 注册自定义服务（实例方式） |
 | `YOMK_REQUEST(url, pkg)` | `YomkAPI::request(url, pkg)` | 同步请求 |
 | `YOMK_ASYNC_REQUEST(url, pkg, cb)` | `YomkAPI::asyncRequest(url, pkg, cb)` | 异步请求 |
+| `YOMK_SERVER_P` | `YomkAPI::serverInstance().get()` | 获取 YomkServer 原始指针 |
+| `YOMK_SERVER_PTR` | `YomkAPI::serverInstance()` | 获取 YomkServer shared_ptr |
 
 ### Context 全局状态
 | 宏 | 说明 |
