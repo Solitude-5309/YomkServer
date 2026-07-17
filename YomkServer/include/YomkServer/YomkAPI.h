@@ -446,7 +446,10 @@ public:
         if (response.m_status == YomkResponse::eOk)
         {
             YomkUnPackPkgT(response.m_data, ctx_default->name(), T, ctx_data);
-            return ctx_data;
+            if (ctx_data)
+                return ctx_data;
+            else
+                return ctx_default;
         }
         else
         {
