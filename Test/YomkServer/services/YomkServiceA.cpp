@@ -30,7 +30,7 @@ YomkResponse YomkServiceA::callSkillA(YomkPkgPtr pkg)
     if (response.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("YomkServiceA::callSkillA", name(), " call /YomkServiceB/call_skill_b, response: ", response.m_msg);
-        return YomkResponse(YomkResponse::eErr, name() + " exec skill a failed");
+        return YomkResponse(YomkResponse::eNo, name() + " exec skill a failed");
     }
 
     // 日志

@@ -44,7 +44,7 @@ YomkResponse YomkEventLoop::stop(YomkPkgPtr pkg)
     if (itEventLoop == m_eventLoop.end())
     {
         YOMK_ERR_POS_LOG("event loop: " + str->d + " not exist, please check event loop name");
-        return YomkResponse(YomkResponse::eErr, "event loop not exist");
+        return YomkResponse(YomkResponse::eNo, "event loop not exist");
     }
     itEventLoop->second->stop();
 
@@ -59,7 +59,7 @@ YomkResponse YomkEventLoop::post(YomkPkgPtr pkg)
     if (itEventLoop == m_eventLoop.end())
     {
         YOMK_ERR_POS_LOG("event loop: " + event->d.m_eventLoopName + " not exist, please check event loop name");
-        return YomkResponse(YomkResponse::eErr, "event loop not exist");
+        return YomkResponse(YomkResponse::eNo, "event loop not exist");
     }
     itEventLoop->second->post(event);
 
@@ -74,7 +74,7 @@ YomkResponse YomkEventLoop::postWait(YomkPkgPtr pkg)
     if (itEventLoop == m_eventLoop.end())
     {
         YOMK_ERR_POS_LOG("event loop: " + event->d.m_eventLoopName + " not exist, please check event loop name");
-        return YomkResponse(YomkResponse::eErr, "event loop not exist");
+        return YomkResponse(YomkResponse::eNo, "event loop not exist");
     }
     itEventLoop->second->postWait(event);
 
@@ -89,7 +89,7 @@ YomkResponse YomkEventLoop::destroy(YomkPkgPtr pkg)
     if (itEventLoop == m_eventLoop.end())
     {
         YOMK_ERR_POS_LOG("event loop: " + str->d + " not exist, please check event loop name");
-        return YomkResponse(YomkResponse::eErr, "event loop not exist");
+        return YomkResponse(YomkResponse::eNo, "event loop not exist");
     }
 
     itEventLoop->second->stop();

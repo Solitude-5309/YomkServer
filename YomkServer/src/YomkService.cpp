@@ -5,7 +5,7 @@
 YomkService::YomkService(YomkServer *server)
     : m_p(nullptr)
 {
-    if(!server)
+    if (!server)
     {
         YOMK_ERR_POS_LOG("server is null");
     }
@@ -14,13 +14,13 @@ YomkService::YomkService(YomkServer *server)
 
 void YomkService::name(const std::string &name)
 {
-    if(name.empty()) 
+    if (name.empty())
     {
         YOMK_ERR_POS_LOG("name is empty, set name failed, use default name");
         return;
     }
 
-    if(!m_p) 
+    if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
         return;
@@ -30,7 +30,7 @@ void YomkService::name(const std::string &name)
 
 std::string YomkService::name()
 {
-    if(!m_p) 
+    if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
         return "";
@@ -40,7 +40,7 @@ std::string YomkService::name()
 
 void YomkService::installFunc(const std::string &funcName, YomkServiceFunc func)
 {
-    if(!m_p) 
+    if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
         return;
@@ -50,27 +50,27 @@ void YomkService::installFunc(const std::string &funcName, YomkServiceFunc func)
 
 YomkResponse YomkService::invoke(const std::string &funcName, YomkPkgPtr pkg)
 {
-    if(!m_p) 
+    if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
-        return YomkResponse(YomkResponse::eErr, "service is null");
+        return YomkResponse(YomkResponse::eNo, "service is null");
     }
     return m_p->invoke(funcName, pkg);
 }
 
 YomkResponse YomkService::request(const std::string &url, YomkPkgPtr pkg)
 {
-    if(!m_p) 
+    if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
-        return YomkResponse(YomkResponse::eErr, "service is null");
+        return YomkResponse(YomkResponse::eNo, "service is null");
     }
     return m_p->request(url, pkg);
 }
 
 void YomkService::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
 {
-    if(!m_p) 
+    if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
         return;

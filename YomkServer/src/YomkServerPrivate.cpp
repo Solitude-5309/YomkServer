@@ -5,7 +5,7 @@
 
 void YomkServerPrivate::addService(YomkService *srv)
 {
-    if(!srv)
+    if (!srv)
     {
         YOMK_ERR_POS_LOG("service is null, please check the service.");
         return;
@@ -27,7 +27,7 @@ YomkResponse YomkServerPrivate::request(const std::string &srvName, const std::s
         if (iter == m_serviceMap.end())
         {
             YOMK_ERR_POS_LOG("service not found. " + srvName + ", please start the service.");
-            return YomkResponse(YomkResponse::eErr, "service not found: " + srvName);
+            return YomkResponse(YomkResponse::eNo, "service not found: " + srvName);
         }
         srv = iter->second;
     }

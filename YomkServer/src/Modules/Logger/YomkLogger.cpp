@@ -37,7 +37,7 @@ YomkResponse YomkLogger::createConsoleLogger(YomkPkgPtr pkg)
     std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
     if (m_consoleLoggers.find(str->d) != m_consoleLoggers.end())
     {
-        return YomkResponse(YomkResponse::eErr, "logger name already exists.");
+        return YomkResponse(YomkResponse::eNo, "logger name already exists.");
     }
     std::shared_ptr<ConsoleLogger> consoleLogger = std::make_shared<ConsoleLogger>();
     consoleLogger->setName(str->d);
@@ -103,7 +103,7 @@ YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
     std::unique_lock<std::shared_mutex> lock(m_fileLoggersMutex);
     if (m_fileLoggers.find(logFile->d.m_logger) != m_fileLoggers.end())
     {
-        return YomkResponse(YomkResponse::eErr, "logger name already exists.");
+        return YomkResponse(YomkResponse::eNo, "logger name already exists.");
     }
 
     m_fileLoggers[logFile->d.m_logger] = std::make_shared<FileLogger>();
@@ -122,7 +122,7 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
     if (m_fileLoggers.find(log->d.m_logger) == m_fileLoggers.end())
     {
         YOMK_ERR_POS_LOG("logger: " + log->d.m_logger + " not found.");
-        return YomkResponse(YomkResponse::eErr, "logger not found.");
+        return YomkResponse(YomkResponse::eNo, "logger not found.");
     }
 
     switch (log->d.m_level)
@@ -156,7 +156,7 @@ YomkResponse YomkLogger::writeFileLog(YomkPkgPtr pkg)
     if (fileLogger == m_fileLoggers.end())
     {
         YOMK_ERR_POS_LOG("logger: " + str->d + " not found.");
-        return YomkResponse(YomkResponse::eErr, "logger not found.");
+        return YomkResponse(YomkResponse::eNo, "logger not found.");
     }
     fileLogger->second->write();
 

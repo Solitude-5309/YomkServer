@@ -22,7 +22,7 @@ YomkResponse YomkServicePrivate::invoke(const std::string &funcName, YomkPkgPtr 
         if (iter == m_funcMap.end())
         {
             YOMK_ERR_POS_LOG("function not found -> " + funcName + ", please use YomkInstallFunc to install this function.");
-            return { YomkResponse::eErr, "function not found: " + funcName };
+            return {YomkResponse::eNo, "function not found: " + funcName};
         }
         tmpFunc = iter->second;
     }
@@ -31,10 +31,10 @@ YomkResponse YomkServicePrivate::invoke(const std::string &funcName, YomkPkgPtr 
 
 YomkResponse YomkServicePrivate::request(const std::string &url, YomkPkgPtr pkg)
 {
-    if(!m_server)
+    if (!m_server)
     {
         YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return { YomkResponse::eErr, "server is null" };
+        return {YomkResponse::eNo, "server is null"};
     }
 
     return m_server->request(url, pkg);
@@ -42,7 +42,7 @@ YomkResponse YomkServicePrivate::request(const std::string &url, YomkPkgPtr pkg)
 
 void YomkServicePrivate::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
 {
-    if(!m_server)
+    if (!m_server)
     {
         YOMK_ERR_POS_LOG("server is null, please start the server.");
         return;

@@ -9,7 +9,6 @@
 #include "Modules/EventLoop/YomkEventLoop.h"
 #include "Modules/Logger/YomkLogger.h"
 
-
 YomkServer::YomkServer()
     : m_p(new YomkServerPrivate())
 {
@@ -17,23 +16,26 @@ YomkServer::YomkServer()
 
 int YomkServer::startService(std::vector<std::string> srvNames)
 {
-    static const std::unordered_map<std::string, std::function<YomkService*(YomkServer*)>> serviceCreators = {
-        {"/YomkFunctionPool", [](YomkServer* server) { return new YomkFunctionPool(server); }},
-        {"/YomkContext", [](YomkServer* server) { return new YomkContext(server); }},
-        {"/YomkEventLoop", [](YomkServer* server) { return new YomkEventLoop(server); }},
-        {"/YomkLogger", [](YomkServer* server) { return new YomkLogger(server); }}
-    };
+    static const std::unordered_map<std::string, std::function<YomkService *(YomkServer *)>> serviceCreators = {
+        {"/YomkFunctionPool", [](YomkServer *server)
+         { return new YomkFunctionPool(server); }},
+        {"/YomkContext", [](YomkServer *server)
+         { return new YomkContext(server); }},
+        {"/YomkEventLoop", [](YomkServer *server)
+         { return new YomkEventLoop(server); }},
+        {"/YomkLogger", [](YomkServer *server)
+         { return new YomkLogger(server); }}};
 
-    for(auto& srvName : srvNames)
+    for (auto &srvName : srvNames)
     {
         auto it = serviceCreators.find(srvName);
         if (it == serviceCreators.end())
-        {   
-            YOMK_ERR_POS_LOG("yomk does not support service: " + srvName);  
+        {
+            YOMK_ERR_POS_LOG("yomk does not support service: " + srvName);
             continue;
         }
 
-        YomkService* srv = it->second(this);
+        YomkService *srv = it->second(this);
         srv->name(srvName);
 
         if (srv->init() != 0)
@@ -49,9 +51,9 @@ int YomkServer::startService(std::vector<std::string> srvNames)
 
 void YomkServer::addService(YomkService *srv)
 {
-    if(!m_p)
+    if (!m_p)
     {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");  
+        YOMK_ERR_POS_LOG("server is null, please start the server.");
         return;
     }
 
@@ -60,38 +62,38 @@ void YomkServer::addService(YomkService *srv)
 
 YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)
 {
-    if(!m_p) 
+    if (!m_p)
     {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");  
-        return YomkResponse(YomkResponse::eErr, "server is null, please start the server.");
+        YOMK_ERR_POS_LOG("server is null, please start the server.");
+        return YomkResponse(YomkResponse::eNo, "server is null, please start the server.");
     }
 
     size_t posStart = url.find('/');
-    if(posStart == std::string::npos)
+    if (posStart == std::string::npos)
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", please start with /");
-        return YomkResponse(YomkResponse::eErr, "url parse error: " + url + ", please start with /");
+        return YomkResponse(YomkResponse::eNo, "url parse error: " + url + ", please start with /");
     }
 
     size_t posEnd = url.find('/', posStart + 1);
-    if(posEnd == std::string::npos)
+    if (posEnd == std::string::npos)
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", not found service name.");
-        return YomkResponse(YomkResponse::eErr, "url parse error: " + url + ", not found service name.");
+        return YomkResponse(YomkResponse::eNo, "url parse error: " + url + ", not found service name.");
     }
 
     std::string srvName = url.substr(posStart, posEnd - posStart);
-    if(srvName.empty())
+    if (srvName.empty())
     {
-        YOMK_ERR_POS_LOG("url parse error: srv is empty. ");  
-        return YomkResponse(YomkResponse::eErr, "url parse error: srv is empty. ");
+        YOMK_ERR_POS_LOG("url parse error: srv is empty. ");
+        return YomkResponse(YomkResponse::eNo, "url parse error: srv is empty. ");
     }
 
     std::string tmpFuncName = url.substr(posEnd);
-    if(tmpFuncName.empty())
+    if (tmpFuncName.empty())
     {
         YOMK_ERR_POS_LOG("url parse error: function name is empty");
-        return YomkResponse(YomkResponse::eErr, "url parse error: function name is empty");
+        return YomkResponse(YomkResponse::eNo, "url parse error: function name is empty");
     }
 
     return m_p->request(srvName, tmpFuncName, pkg);
@@ -99,41 +101,42 @@ YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)
 
 void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
 {
-    if(!m_p) 
+    if (!m_p)
     {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");  
+        YOMK_ERR_POS_LOG("server is null, please start the server.");
         return;
     }
 
     size_t posStart = url.find('/');
-    if(posStart == std::string::npos)
+    if (posStart == std::string::npos)
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", please start with /");
         return;
     }
 
     size_t posEnd = url.find('/', posStart + 1);
-    if(posEnd == std::string::npos)
+    if (posEnd == std::string::npos)
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", not found service name.");
         return;
     }
 
     std::string srvName = url.substr(posStart, posEnd - posStart);
-    if(srvName.empty())
+    if (srvName.empty())
     {
-        YOMK_ERR_POS_LOG("url parse error: srv is empty. ");  
+        YOMK_ERR_POS_LOG("url parse error: srv is empty. ");
         return;
     }
 
     std::string tmpFuncName = url.substr(posEnd);
-    if(tmpFuncName.empty())
+    if (tmpFuncName.empty())
     {
         YOMK_ERR_POS_LOG("url parse error: function name is empty");
         return;
     }
 
-    std::thread t([srvName, tmpFuncName, pkg, this, func](){
+    std::thread t([srvName, tmpFuncName, pkg, this, func]()
+                  {
         if(func)
         {
             func(m_p->request(srvName, tmpFuncName, pkg));
@@ -141,7 +144,6 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
         else
         {
             m_p->request(srvName, tmpFuncName, pkg);
-        }
-    });
+        } });
     t.detach();
 }
