@@ -29,11 +29,11 @@ bool consoleLogProxy(const yomk::Log &log)
 
 int main(int argc, char *argv[])
 {
+    YOMK_INIT();
+
     fs::path exePath = fs::canonical(argv[0]);
     fs::path logDir = exePath.parent_path().parent_path() / "Test" / "YomkServer" / "YomkLog";
     YOMK_DEBUG_TAG("main", "Log dir: ", logDir);
-
-    YOMK_INIT();
 
     // 关闭控制台INFO日志
     YOMK_OFF_CONSOLE_LOG_INFO();
