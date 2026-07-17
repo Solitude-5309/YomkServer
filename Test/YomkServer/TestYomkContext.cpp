@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX
-    YomkPtr(String) ctx_data = YOMK_CONTEXT_GET(Yomk(String), "ctx", YomkMkPtr(String, "ctx_data_default"));
+    YomkPtr(String) ctx_data = YOMK_CONTEXT_GET(String, "ctx", YomkMkPtr(String, "ctx_data_default"));
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d);
 
     // 设置CTX
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX
-    ctx_data = YOMK_CONTEXT_GET(Yomk(String), "ctx", YomkMkPtr(String, "ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(String, "ctx", YomkMkPtr(String, "ctx_data_default"));
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d);
 
     // 开启CTX检查，开启check后，才能在CTX设置前调用检查函数
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX，更新后的CTX
-    ctx_data = YOMK_CONTEXT_GET(Yomk(String), "ctx", YomkMkPtr(String, "ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(String, "ctx", YomkMkPtr(String, "ctx_data_default"));
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d);
 
     // 设置CTX检查函数为拒绝，此时设置CTX将被拒绝
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
     }
 
     // 获取CTX，更新后的CTX，无法更新
-    ctx_data = YOMK_CONTEXT_GET(Yomk(String), "ctx", YomkMkPtr(String, "ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(String, "ctx", YomkMkPtr(String, "ctx_data_default"));
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d);
 
     // 销毁CTX
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
     }
 
     // 再次获取CTX，此时CTX已销毁，将返回默认值
-    ctx_data = YOMK_CONTEXT_GET(Yomk(String), "ctx", YomkMkPtr(String, "ctx_data_default"));
+    ctx_data = YOMK_CONTEXT_GET(String, "ctx", YomkMkPtr(String, "ctx_data_default"));
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d);
 
     YOMK_DEBUG_TAG("main", "test YomkContext completed, any key to continue...");
