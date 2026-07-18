@@ -1,6 +1,6 @@
 ---
 name: yomkserver-modular
-description: 基于YomkServer框架的模块化C++17工程编程。核心理念“一切皆服务，一切皆请求”。用于创建YomkService功能模块、使用YomkContext全局状态管理、YomkEventLoop事件循环、YomkFunctionPool公共函数池和YomkLogger日志系统。当用户需要编写YomkServer模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数或搭建工程结构时使用。包含进阶实践：控制流与数据流分离、配置驱动、服务职责分离、Context键生命周期管理、FunctionPool回调函数无状态化等。
+description: 基于YomkServer框架的模块化C++17工程编程。核心理念"一切皆服务，一切皆请求"。用于创建YomkService功能模块、使用YomkContext全局状态管理、YomkEventLoop事件循环、YomkFunctionPool公共函数池和YomkLogger日志系统。当用户需要编写YomkServer模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数或搭建工程结构时使用。
 ---
 
 # YomkServer 模块化编程框架
@@ -62,7 +62,7 @@ cmake --build . --target install --config Release
 
 ### 1. 消息包定义（YomkMsg）
 
-每个服务间通信的数据结构必须用 `YomkMsg` 宏注册（3个参数：输入类型、输出类型名、数据成员变量名）：
+每个服务间通信的数据结构必须用 `YomkMsg` 宏注册（3个参数：自定义数据类、消息名称、数据成员变量名）：
 
 ```cpp
 // 1. 定义普通结构体
@@ -71,19 +71,19 @@ struct MyData {
     int field2;
 };
 // 2. 用YomkMsg宏注册为消息包（在命名空间外）
-// 参数：输入类型, 输出类型名, 数据成员变量名（用户自定义）
+// 参数：自定义数据类, 消息名称（用于框架类型识别和映射）, 数据成员变量名
 YomkMsg(MyData, MyData, d)
-// 访问: ptr->d.field1
+// 消息名称为 MyData，访问: ptr->d.field1
 
-// 也可以自定义输出类型名和成员名：
-// YomkMsg(MyData, YMyData, msg)  → 访问: ptr->msg.field1
+// 也可以自定义消息名称和成员名：
+// YomkMsg(MyData, YMyData, msg)  → 消息名称为 YMyData，访问: ptr->msg.field1
 ```
 
-注册后可用：
-- `YomkMkPtr(MyData, MyData{"val", 42})` — 创建消息包
-- `YomkUnPackPkgResponse(pkg, MyData, ptr)` — 解包（函数返回Response时使用，**宏已自动判空，失败自动返回eNo**）
-- `YomkUnPackPkgVoid(pkg, MyData, ptr)` — 解包（void函数时使用，**宏已自动判空，失败自动return**）
-- `YomkUnPackPkg(pkg, MyData, ptr)` — 解包（**不自动return**，ptr为nullptr需手动检查）
+注册后可用（**辅助宏均使用消息名称**）：
+- `YomkMkPtr(消息名称, 数据类实例)` — 创建消息包，如 `YomkMkPtr(YMyData, MyData{"val", 42})`
+- `YomkUnPackPkgResponse(pkg, 消息名称, ptr)` — 解包（函数返回Response时使用，**宏已自动判空，失败自动返回eNo**）
+- `YomkUnPackPkgVoid(pkg, 消息名称, ptr)` — 解包（void函数时使用，**宏已自动判空，失败自动return**）
+- `YomkUnPackPkg(pkg, 消息名称, ptr)` — 解包（**不自动return**，ptr为nullptr需手动检查）
 
 框架内置标准类型消息包（成员名均为 `d`）：
 - `String`(std::string), `Bool`, `Int32`, `Int64`, `Uint32`, `Uint64`, `Float32`, `Float64` 等
@@ -110,7 +110,8 @@ public:
 private:
     YomkResponse myFunc(YomkPkgPtr pkg) {
         // 1. 解包（宏已自动判空，失败自动返回 eNo）
-        YomkUnPackPkgResponse(pkg, MyData, data);
+        // 注意：这里使用消息名称 YMyData，而非数据类名 MyData
+        YomkUnPackPkgResponse(pkg, YMyData, data);
         // 2. 业务逻辑
         // ...
         // 3. 返回结果
@@ -130,11 +131,11 @@ int main(int argc, char* argv[]) {
     // 注册自定义服务
     YOMK_NEW_SERVICE(MyService, "/MyService");
 
-    // 同步请求
-    YomkResponse resp = YOMK_REQUEST("/MyService/my_func", YomkMkPtr(MyData, MyData{"hello", 1}));
+    // 同步请求（注意：YomkMkPtr 第一个参数是消息名称，第二个是数据类实例）
+    YomkResponse resp = YOMK_REQUEST("/MyService/my_func", YomkMkPtr(YMyData, MyData{"hello", 1}));
 
     // 异步请求
-    YOMK_ASYNC_REQUEST("/MyService/my_func", YomkMkPtr(MyData, MyData{"hello", 1}), [](YomkResponse resp) {
+    YOMK_ASYNC_REQUEST("/MyService/my_func", YomkMkPtr(YMyData, MyData{"hello", 1}), [](YomkResponse resp) {
         // 回调处理
     });
 
@@ -157,9 +158,11 @@ private:
 };
 
 // 2. 实现 start()：使用 YOMK_ADD_SERVICE 注册服务实例
+// 使用服务创建器映射表管理服务实例，同一个类可以注册多个实例
 int MyBoot::start() {
     static const std::map<std::string, std::function<YomkService*()>> creators = {
         {"/MyService", []() { return new MyService(YOMK_SERVER_P); }},
+        {"/MyServiceAA", []() { return new MyService(YOMK_SERVER_P); }},  // 同一个类可以注册多个实例
     };
     for (const auto& name : m_srvNames) {
         auto it = creators.find(name);
@@ -195,7 +198,7 @@ YOMK_SERVER_PTR                       // 获取 YomkServer shared_ptr
 ### Context 全局状态
 ```cpp
 YOMK_CONTEXT_CREATE(key, value)                    // 创建
-YOMK_CONTEXT_GET(Yomk(Type), key, default_value)   // 获取（模板）
+YOMK_CONTEXT_GET(MsgName, key, default_value)   // 获取（模板）
 YOMK_CONTEXT_SET(key, value)                       // 设置
 YOMK_CONTEXT_DESTROY(key)                          // 销毁
 YOMK_CONTEXT_ON_CHECKER() / YOMK_CONTEXT_OFF_CHECKER()  // 开关检查器
@@ -232,167 +235,6 @@ YOMK_FILE_INFO(file, ...)  / YOMK_FILE_INFO_TAG(file, tag, ...)
 YOMK_ON_CONSOLE_LOG_INFO()  / YOMK_OFF_CONSOLE_LOG_INFO()
 // 同理 WARN / ERROR / DEBUG
 YOMK_SET_CONSOLE_LOG_PROXY(proxyFunc)
-```
-
-## 进阶实践：YomkServer 设计理念深度理解
-
-### 1. API 风格 vs 状态风格：数据传递的层次选择
-
-YomkServer 支持多种数据传递方式，应根据场景选择最合适的层次：
-
-| 方式 | 适用场景 | 示例 |
-|------|----------|------|
-| **pkg 参数** | API 风格调用，一次性传递控制参数 | `YOMK_REQUEST("/process", YomkMkPtr(String, "task_id"))` |
-| **Context** | 共享状态、跨请求的数据流 | `YOMK_CONTEXT_SET("status", val)` |
-| **FunctionPool** | 无状态工具函数，热插拔 | `YOMK_FUNCTIONPOOL_CALL("validate", pkg)` |
-
-**设计原则：pkg 用于控制流（告诉系统"做什么"），Context 用于数据流（传递"用什么数据做"）。**
-
-```cpp
-// ✅ API 风格：通过 pkg 传控制参数
-YOMK_REQUEST("/TaskService/process", YomkMkPtr(String, "task_001"));
-
-// ✅ 状态风格：数据通过 Context 传递
-YomkPtr(String) status = YOMK_CONTEXT_GET(Yomk(String), "task_status");
-
-// ❌ 反模式：把控制参数塞进 Context
-YOMK_CONTEXT_SET("current_task_id", YomkMkPtr(String, "task_001"));  // 应该用 pkg
-```
-
-### 2. 服务职责分离：init() 只注册接口，业务逻辑延迟到请求时
-
-`init()` 是服务初始化阶段，应仅用于：
-- 注册功能函数（`YomkInstallFunc`）
-- 创建服务内部必需的 Context 键（如状态标识、计数器）
-- 启动依赖的事件循环
-
-**不应在 init() 中：**
-- 加载业务配置（应由独立的 `/create` 或 `/load` 接口处理）
-- 执行耗时操作（应通过 EventLoop 异步处理）
-- 注册业务数据键（应由配置驱动，按需创建）
-
-```cpp
-class TaskService : public YomkService {
-    virtual int init() override {
-        // ✅ 只注册接口
-        YomkInstallFunc("/load", TaskService::load);
-        YomkInstallFunc("/process", TaskService::process);
-
-        // ✅ 只创建服务内部必需的键
-        YOMK_CONTEXT_CREATE("task:current_id", YomkMkPtr(String, ""));
-        YOMK_CONTEXT_CREATE("task:counter", YomkMkPtr(String, "0"));
-
-        return 0;
-    }
-};
-```
-
-### 3. 配置驱动：用户修改配置，引擎自动响应
-
-当业务逻辑依赖可变配置时，应将创建逻辑移入服务，而非硬编码在 main.cpp：
-
-```cpp
-// ❌ 硬编码：每次改配置都要改代码
-YOMK_CONTEXT_CREATE("greeting", YomkMkPtr(String, "Hello"));
-YOMK_CONTEXT_CREATE("task_name", YomkMkPtr(String, "demo"));
-
-// ✅ 配置驱动：配置在 YAML/JSON 中，服务自动创建
-// main.cpp 中只需：
-YOMK_REQUEST("/TaskService/load", YomkMkPtr(String, "config/tasks.yaml"));
-```
-
-**服务加载配置的标准流程：**
-1. 解析配置文件（YAML/JSON）
-2. 根据配置定义创建 Context 键
-3. 构建服务内部数据结构（map、vector 等）
-4. 注册到服务内部状态
-
-### 4. Context 键生命周期管理：去重与命名空间隔离
-
-Context 是全局共享的，多模块加载时需防止重复创建和键冲突：
-
-```cpp
-// ✅ 使用集合去重
-if (m_createdKeys.insert(key).second) {
-    YOMK_CONTEXT_CREATE(key, defaultValue);
-}
-
-// ✅ 命名空间隔离：不同模块使用不同的键前缀
-YOMK_CONTEXT_CREATE("moduleA:data", val);
-YOMK_CONTEXT_CREATE("moduleB:data", val);
-```
-
-### 5. 接口设计的兼容性：新旧共存
-
-提供新接口时保留旧接口，通过内部统一实现降低维护成本：
-
-```cpp
-// 新接口：/load_batch 批量加载
-YomkResponse loadBatch(YomkPkgPtr pkg) {
-    YAML::Node config = YAML::LoadFile(batchPath);
-    for (const auto& item : config["items"]) {
-        loadSingle(item.as<std::string>(), "");
-    }
-}
-
-// 旧接口：/load_single 单个加载（向后兼容）
-YomkResponse loadSingle(YomkPkgPtr pkg) {
-    loadSingle(configPath, overrideName);
-}
-
-// 统一实现
-bool loadSingle(const std::string& path, const std::string& name);
-```
-
-### 6. FunctionPool 回调函数的数据契约
-
-通过 FunctionPool 注册的回调函数应该是**无状态的**，所有数据通过 pkg 参数或 Context 传递：
-
-```cpp
-// ✅ 回调函数从 pkg 或 Context 获取数据
-YomkResponse processData(YomkPkgPtr pkg) {
-    // 从 pkg 获取输入
-    YomkPtr(String) input = YOMK_CONTEXT_GET(Yomk(String), "in:data");
-    
-    // 纯业务逻辑
-    std::string result = transform(input->d);
-    
-    // 写入输出
-    YOMK_CONTEXT_SET("out:result", YomkMkPtr(String, result));
-    return {YomkResponse::eOk, "done"};
-}
-
-// ❌ 反模式：直接读写业务键（耦合配置）
-YomkPtr(String) data = YOMK_CONTEXT_GET(Yomk(String), "my_specific_data");
-```
-
-**调用方负责数据中转：**
-- 将业务键的值复制到 `in:` 前缀键
-- 回调函数读写 `in:`/`out:` 键
-- 将 `out:` 键的值写回业务键
-
-### 7. 渐进式复杂度：从简单到复杂的平滑演进
-
-YomkServer 支持从单体到多服务的平滑演进：
-
-```cpp
-// 阶段1：单体，直接调用
-int main() {
-    processData();  // 直接函数调用
-}
-
-// 阶段2：FunctionPool，支持热替换
-YOMK_FUNCTIONPOOL_REGISTER("process", processData);
-YOMK_FUNCTIONPOOL_CALL("process", pkg);
-
-// 阶段3：Service，独立模块
-class MyService : public YomkService { ... };
-YOMK_NEW_SERVICE(MyService, "/MyService");
-YOMK_REQUEST("/MyService/process", pkg);
-
-// 阶段4：多服务 + EventLoop，异步处理
-YOMK_EVENTLOOP_START("worker_loop", handler);
-YOMK_ASYNC_REQUEST("/MyService/process", pkg, callback);
 ```
 
 ## 模块化工程设计原则
@@ -440,12 +282,6 @@ MyProject/
 9. **消息定义集中 msgs/**：所有 `YomkMsg` 注册的消息结构体统一在 `msgs/YomkMsgs.h` 中定义
 10. **生命周期管理在 boot/**：通过 `YomkBoot` 子类管理 before/start/after 三阶段初始化
 11. **渐进式演进**：从单体应用平滑演进到复杂多服务系统，无需重构架构
-12. **控制流用 pkg，数据流用 Context**：API 参数通过 pkg 传递，共享状态通过 Context 传递
-13. **配置驱动而非硬编码**：业务配置通过配置文件定义，服务自动解析创建，main.cpp 保持极简
-14. **init() 只注册，不执行业务**：服务初始化仅注册接口和创建内部必需键，业务逻辑延迟到请求时
-15. **FunctionPool 回调函数无状态化**：回调函数只读写 `in:`/`out:` 标准键或从 pkg 获取数据，不直接读写业务键
-16. **Context 键去重管理**：多模块加载时使用集合跟踪已创建键，防止重复创建
-17. **接口向后兼容**：新接口通过内部统一实现复用旧逻辑，旧接口保留不破坏现有调用
 
 ## 详细参考
 

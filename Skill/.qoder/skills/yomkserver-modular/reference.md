@@ -32,34 +32,37 @@ typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 ## YomkMsg 宏 — 消息包注册
 
 ```cpp
-YomkMsg(IType, OType, VarName)
+YomkMsg(DataType, MsgName, VarName)
 ```
-生成 `yomk::OType_` 类（继承 YomkPkg）和 `yomk::OType##Ptr` 类型别名。
-- `IType`：实际数据类型
-- `OType`：生成的包装类名后缀
+将自定义数据类映射为 YomkMsg 消息包，生成 `yomk::MsgName_` 类（继承 YomkPkg）和 `yomk::MsgName##Ptr` 类型别名。
+- `DataType`：自定义数据类（实际的数据结构类型）
+- `MsgName`：消息名称（用于框架类型识别和映射，将自定义类映射到YomkMsg体系）
 - `VarName`：数据成员变量名（用户自定义）
 
-**辅助宏：**
+**辅助宏（均使用消息名称 MsgName）：**
 ```cpp
-Yomk(Type)         // → yomk::Type##_        （类名）
-YomkPtr(Type)      // → yomk::Type##Ptr       （指针类型）
-YomkMk(Type, ...)  // → yomk::Type##_(...)    （构造实例）
-YomkMkPtr(Type, ...)// → std::make_shared<yomk::Type##_>(...)  （创建共享指针）
+Yomk(MsgName)          // → yomk::MsgName##_        （类名）
+YomkPtr(MsgName)       // → yomk::MsgName##Ptr       （指针类型）
+YomkMk(MsgName, ...)   // → yomk::MsgName##_(__VA_ARGS__)    （构造实例）
+YomkMkPtr(MsgName, ...) // → std::make_shared<yomk::MsgName##_>(__VA_ARGS__)  （创建共享指针）
 ```
 
 **解包宏：**
 ```cpp
 // 用于返回YomkResponse的函数，解包失败自动return {eNo, "错误信息"}，后续代码无需判空
-YomkUnPackPkgResponse(pkg, ClassName, ptrName)
+// MsgName 会被字符串化（#MsgName）用于匹配 pkg->name()
+YomkUnPackPkgResponse(pkg, MsgName, ptrName)
 
 // 用于void函数，解包失败自动return，后续代码无需判空
-YomkUnPackPkgVoid(pkg, ClassName, ptrName)
+YomkUnPackPkgVoid(pkg, MsgName, ptrName)
 
 // 不解包失败不return，ptrName为nullptr需手动检查
-YomkUnPackPkg(pkg, ClassName, ptrName)
+YomkUnPackPkg(pkg, MsgName, ptrName)
 
-// 按pkg->name()匹配解包，不解包失败不return，需手动检查
-YomkUnPackPkgT(pkg, pkgName, ClassName, ptrName)
+// 与 YomkUnPackPkg 类似，但 MsgName 参数为运行时字符串（而非编译时字符串化）
+// 用于需要动态指定消息名称的场景，不自动return，需手动检查
+// ClassName 为实际 C++ 类型，MsgName 为运行时字符串
+YomkUnPackPkgT(pkg, MsgName, ClassName, ptrName)
 ```
 
 **YomkInstallFunc 宏：**
@@ -171,7 +174,7 @@ class YomkService {
 | 宏 | 说明 |
 |----|------|
 | `YOMK_CONTEXT_CREATE(key, val)` | 创建K-V，val为YomkPkgPtr |
-| `YOMK_CONTEXT_GET(Yomk(T), key, def)` | 获取值，返回`shared_ptr<T>`，不存在返回def |
+| `YOMK_CONTEXT_GET(MsgName, key, def)` | 获取值，返回`shared_ptr<Yomk(MsgName)>`，不存在返回def |
 | `YOMK_CONTEXT_SET(key, val)` | 设置值，若开启checker会先校验 |
 | `YOMK_CONTEXT_DESTROY(key)` | 销毁K-V |
 | `YOMK_CONTEXT_ON_CHECKER()` | 全局开启checker机制 |
