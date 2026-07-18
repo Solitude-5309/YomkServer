@@ -6,55 +6,55 @@
 
 #define YomkInstallFunc(FuncName, Func) installFunc(FuncName, std::bind(&Func, this, std::placeholders::_1))
 
-#define YomkUnPackPkgResponse(pkg, ClassName, ptrName)                             \
-    if (!pkg || pkg->name() != #ClassName)                                         \
-        return {YomkResponse::eNo, " pkg is null or pkg is not " #ClassName ". "}; \
-    YomkPtr(ClassName) ptrName = std::dynamic_pointer_cast<Yomk(ClassName)>(pkg);  \
+#define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                             \
+    if (!pkg || pkg->name() != #MsgName)                                         \
+        return {YomkResponse::eNo, " pkg is null or pkg is not " #MsgName ". "}; \
+    YomkPtr(MsgName) ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg);  \
     if (!ptrName)                                                                  \
-        return {YomkResponse::eNo, " pkg[" #ClassName "] is dynamic_pointer_cast failed. "};
+        return {YomkResponse::eNo, " pkg[" #MsgName "] is dynamic_pointer_cast failed. "};
 
-#define YomkUnPackPkgVoid(pkg, ClassName, ptrName)                                \
-    if (!pkg || pkg->name() != #ClassName)                                        \
-        return;                                                                   \
-    YomkPtr(ClassName) ptrName = std::dynamic_pointer_cast<Yomk(ClassName)>(pkg); \
-    if (!ptrName)                                                                 \
+#define YomkUnPackPkgVoid(pkg, MsgName, ptrName)                                \
+    if (!pkg || pkg->name() != #MsgName)                                        \
+        return;                                                                 \
+    YomkPtr(MsgName) ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg);   \
+    if (!ptrName)                                                               \
         return;
 
-#define YomkUnPackPkg(pkg, ClassName, ptrName)                     \
-    YomkPtr(ClassName) ptrName = nullptr;                          \
-    if (pkg && pkg->name() == #ClassName)                          \
-    {                                                              \
-        ptrName = std::dynamic_pointer_cast<Yomk(ClassName)>(pkg); \
+#define YomkUnPackPkg(pkg, MsgName, ptrName)                     \
+    YomkPtr(MsgName) ptrName = nullptr;                          \
+    if (pkg && pkg->name() == #MsgName)                          \
+    {                                                            \
+        ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg); \
     }
 
-#define YomkUnPackPkgT(pkg, pkgName, ClassName, ptrName)     \
+#define YomkUnPackPkgT(pkg, MsgName, ClassName, ptrName)     \
     std::shared_ptr<ClassName> ptrName = nullptr;            \
-    if (pkg && pkg->name() == pkgName)                       \
+    if (pkg && pkg->name() == MsgName)                       \
     {                                                        \
         ptrName = std::dynamic_pointer_cast<ClassName>(pkg); \
     }
 
-#define YomkMsg(IType, OType, VarName)                \
-    namespace yomk                                    \
-    {                                                 \
-        class OType##_ : public YomkPkg               \
-        {                                             \
-        public:                                       \
-            OType##_() { m_name = #OType; }           \
-            OType##_(const IType &value)              \
-                : VarName(value) { m_name = #OType; } \
-            virtual ~OType##_() {}                    \
-                                                      \
-        public:                                       \
-            IType VarName;                            \
-        };                                            \
-        typedef std::shared_ptr<OType##_> OType##Ptr; \
+#define YomkMsg(DataType, MsgName, VarName)                 \
+    namespace yomk                                          \
+    {                                                       \
+        class MsgName##_ : public YomkPkg                   \
+        {                                                   \
+        public:                                             \
+            MsgName##_() { m_name = #MsgName; }             \
+            MsgName##_(const DataType &value)               \
+                : VarName(value) { m_name = #MsgName; }     \
+            virtual ~MsgName##_() {}                        \
+                                                            \
+        public:                                             \
+            DataType VarName;                               \
+        };                                                  \
+        typedef std::shared_ptr<MsgName##_> MsgName##Ptr;   \
     }
 
-#define Yomk(Type) yomk::Type##_
-#define YomkMk(Type, ...) yomk::Type##_(__VA_ARGS__)
-#define YomkPtr(Type) yomk::Type##Ptr
-#define YomkMkPtr(Type, ...) std::make_shared<yomk::Type##_>(__VA_ARGS__)
+#define Yomk(MsgName) yomk::MsgName##_ 
+#define YomkMk(MsgName, ...) yomk::MsgName##_(__VA_ARGS__)
+#define YomkPtr(MsgName) yomk::MsgName##Ptr
+#define YomkMkPtr(MsgName, ...) std::make_shared<yomk::MsgName##_>(__VA_ARGS__)
 
 class YomkServer;
 
