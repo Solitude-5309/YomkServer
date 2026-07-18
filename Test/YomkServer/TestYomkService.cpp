@@ -1,27 +1,91 @@
-#include "YomkAPI.h"
-#include "boot/MyBoot.h"
-#include "msgs/YomkMsgs.h"
+/**
+ * @file TestYomkService.cpp
+ * @brief YomkServer 多服务工程示例
+ * 
+ * 演示内容：
+ * 1. 使用 YomkBoot 生命周期管理启动多个服务
+ * 2. 同步请求（YOMK_REQUEST）
+ * 3. 异步请求（YOMK_ASYNC_REQUEST）
+ * 4. 跨服务调用（服务A调用服务B）
+ * 
+ * 工程结构：
+ * - msgs/YomkMsgs.h: 消息包定义
+ * - services/YomkServiceA: 服务A（调用服务B）
+ * - services/YomkServiceB: 服务B（被调用）
+ * - boot/MyBoot: 生命周期管理
+ */
 
+#include "YomkAPI.h"          // YomkServer 框架 API
+#include "boot/MyBoot.h"      // 生命周期管理类
+#include "msgs/YomkMsgs.h"    // 消息包定义
+
+/**
+ * @brief 程序入口
+ * 
+ * 执行流程：
+ * 1. YOMK_BOOT: 初始化框架并按顺序执行 before() -> start() -> after()
+ * 2. 同步调用服务A
+ * 3. 异步调用服务A
+ * 4. 等待用户输入退出
+ */
 int main(int argc, char *argv[])
 {
+    /**
+     * 第一阶段：启动框架和服务
+     * 
+     * YOMK_BOOT 宏执行流程：
+     * 1. 调用 YOMK_INIT() 初始化框架（启动内置服务：FunctionPool、Context、EventLoop、Logger）
+     * 2. 调用 MyBoot::before() 创建启动前资源
+     * 3. 调用 MyBoot::start() 注册并启动服务（调用各服务的 init()）
+     * 4. 调用 MyBoot::after() 执行启动后操作
+     * 
+     * 参数：服务列表 {"/YomkServiceA", "/YomkServiceB"}
+     */
     YOMK_BOOT(new MyBoot({"/YomkServiceA", "/YomkServiceB"}));
 
-    // 同步调用服务A中的方法
+    /**
+     * 第二阶段：同步调用服务A
+     * 
+     * YOMK_REQUEST 同步请求：
+     * - URL: /YomkServiceA/call_skill_a
+     * - 参数: YomkMkPtr 创建消息包指针
+     * - 返回: YomkResponse 响应对象
+     * 
+     * 调用链路：main -> YomkServiceA::callSkillA -> YomkServiceB::callSkillB
+     */
     YomkResponse response = YOMK_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world a"}));
+    
+    // 检查响应状态：eOk 表示成功
     if (response.m_status == YomkResponse::eOk)
     {
+        // 日志：打印成功消息
         YOMK_INFO_TAG("main", "request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
     }
     else
     {
+        // 日志：打印错误消息
         YOMK_ERROR_TAG("main", "request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
     }
 
+    // 日志：标记同步请求完成
     YOMK_INFO_TAG("main", "request /YomkServiceA/call_skill_a send finished.");
 
-    // 异步调用服务A中的方法
+    /**
+     * 第三阶段：异步调用服务A
+     * 
+     * YOMK_ASYNC_REQUEST 异步请求：
+     * - URL: /YomkServiceA/call_skill_a
+     * - 参数: 消息包
+     * - 回调: lambda 函数处理响应
+     * 
+     * 特点：
+     * - 不阻塞主线程
+     * - 响应在回调函数中处理
+     * - 适合耗时操作
+     */
     YOMK_ASYNC_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world a"}), [](YomkResponse response)
                        {
+        // 异步回调函数：在请求完成后被调用
         if(response.m_status == YomkResponse::eOk)
         {
             YOMK_INFO_TAG("main", "async request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
@@ -31,8 +95,10 @@ int main(int argc, char *argv[])
             YOMK_ERROR_TAG("main", "async request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
         } });
 
+    // 日志：标记异步请求已发送（注意：此时回调可能还未执行）
     YOMK_INFO_TAG("main", "async request /YomkServiceA/call_skill_a send finished.");
 
+    // 等待用户输入，防止程序立即退出
     getchar();
 
     return 0;
