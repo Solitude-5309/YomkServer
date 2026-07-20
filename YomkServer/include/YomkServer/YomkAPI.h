@@ -435,7 +435,7 @@ public:
         return request("/YomkContext/create", YomkMkPtr(Context, Context{ctx_name, ctx}));
     }
     template <typename T>
-    static std::shared_ptr<T> CONTEXT_GET(const std::string &ctx_name, std::shared_ptr<T> ctx_default)
+    static std::shared_ptr<T> CONTEXT_GET(const std::string &msg_name, const std::string &ctx_name, std::shared_ptr<T> ctx_default)
     {
         if (!m_pServer)
         {
@@ -445,7 +445,7 @@ public:
         YomkResponse response = request("/YomkContext/get", YomkMkPtr(Context, Context{ctx_name, ctx_default}));
         if (response.m_status == YomkResponse::eOk)
         {
-            YomkUnPackPkgT(response.m_data, ctx_default->name(), T, ctx_data);
+            YomkUnPackPkgT(response.m_data, msg_name, T, ctx_data);
             if (ctx_data)
                 return ctx_data;
             else
@@ -639,7 +639,7 @@ private:
 #define YOMK_FILE_DEBUG(...) YomkAPI::FILE_LOG_DEBUG(__VA_ARGS__)
 #define YOMK_FILE_DEBUG_TAG(tag, ...) YomkAPI::FILE_LOG_DEBUG_TAG(tag, __VA_ARGS__)
 #define YOMK_CONTEXT_CREATE(...) YomkAPI::CONTEXT_CREATE(__VA_ARGS__)
-#define YOMK_CONTEXT_GET(MsgName, ...) YomkAPI::CONTEXT_GET<Yomk(MsgName)>(__VA_ARGS__)
+#define YOMK_CONTEXT_GET(MsgName, ...) YomkAPI::CONTEXT_GET<Yomk(MsgName)>(#MsgName, __VA_ARGS__)
 #define YOMK_CONTEXT_SET(...) YomkAPI::CONTEXT_SET(__VA_ARGS__)
 #define YOMK_CONTEXT_ON_CHECKER() YomkAPI::CONTEXT_ON_CHECKER()
 #define YOMK_CONTEXT_OFF_CHECKER() YomkAPI::CONTEXT_OFF_CHECKER()
