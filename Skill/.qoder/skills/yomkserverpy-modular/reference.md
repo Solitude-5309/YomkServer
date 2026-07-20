@@ -90,7 +90,7 @@ class YomkResponse:
 class ResStatus(Enum):
     eInvalid = -1   # 无效/错误
     eOk = 0         # 成功
-    eErr = 1        # 错误
+    eNo = 1        # 错误
 ```
 
 ### YomkServiceFunc — 功能函数签名

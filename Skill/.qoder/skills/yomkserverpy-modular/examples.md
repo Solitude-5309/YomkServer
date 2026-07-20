@@ -83,7 +83,7 @@ class OrderService(YomkApi.YomkService):
         valid_resp = YomkApi.function_pool_call("validate_amount", str(amount))
         
         if valid_resp.status != YomkApi.ResStatus.eOk:
-            return YomkApi.YomkResponse(YomkApi.ResStatus.eErr, "amount validation failed")
+            return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "amount validation failed")
         
         print(f"order created for user: {user_id} amount: {amount}")
         
@@ -99,7 +99,7 @@ def validate_amount(pkg: Any) -> YomkApi.YomkResponse:
     try:
         amount = float(pkg)
         if amount <= 0:
-            return YomkApi.YomkResponse(YomkApi.ResStatus.eErr, "invalid amount")
+            return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "invalid amount")
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "valid")
     except:
         return YomkApi.YomkResponse(YomkApi.ResStatus.eInvalid, "null amount")
@@ -280,7 +280,7 @@ class PipelineService(YomkApi.YomkService):
         pipeline_name = pkg
         
         if pipeline_name not in self.pipelines:
-            return YomkApi.YomkResponse(YomkApi.ResStatus.eErr, "pipeline not found")
+            return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "pipeline not found")
         
         pipeline = self.pipelines[pipeline_name]
         

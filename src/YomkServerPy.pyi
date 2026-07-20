@@ -5,7 +5,7 @@ from readerwriterlock import rwlock
 class ResStatus(Enum):
     eInvalid: int = -1
     eOk: int = 0
-    eErr: int = 1
+    eNo: int = 1
     
 class CheckStatus(Enum):
     eAccept: int = 0,

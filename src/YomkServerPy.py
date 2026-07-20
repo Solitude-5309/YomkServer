@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 class ResStatus(Enum):
     eInvalid = -1
     eOk = 0
-    eErr = 1
+    eNo = 1
 
 class YomkResponse:
     def __init__(
@@ -61,7 +61,7 @@ class YomkService:
         with self.rwlock_functions.gen_rlock():
             if (name not in self.functions):
                 log.error(f"function not found -> {name}, please use YomkInstallFunc to install this function.")
-                return YomkResponse(ResStatus.eErr, "function not found: " + name)
+                return YomkResponse(ResStatus.eNo, "function not found: " + name)
             func = self.functions[name]
         result = func(pkg)
         if not isinstance(result, YomkResponse):
@@ -104,7 +104,7 @@ class YomkServer:
         if not url.startswith("/"):
             log.error(f"url parse error: {url}, please start with /")
             return YomkResponse(
-                ResStatus.eErr,
+                ResStatus.eNo,
                 "url parse error: " + url + ", please start with /"
             )
         
@@ -113,7 +113,7 @@ class YomkServer:
         if pos_end == -1:
             log.error(f"url parse error: {url}, not found service name.")
             return YomkResponse(
-                ResStatus.eErr,
+                ResStatus.eNo,
                 "url parse error: " + url + ", not found service name."
             )
         
@@ -121,7 +121,7 @@ class YomkServer:
         if not srv_name:
             log.error(f"url parse error: srv is empty.")
             return YomkResponse(
-                ResStatus.eErr,
+                ResStatus.eNo,
                 "url parse error: srv is empty."
             )
         
@@ -129,7 +129,7 @@ class YomkServer:
         if not func_name:
             log.error(f"url parse error: function name is empty")
             return YomkResponse(
-                ResStatus.eErr,
+                ResStatus.eNo,
                 "url parse error: function name is empty"
             )        
         
@@ -138,7 +138,7 @@ class YomkServer:
             if (srv_name not in self.services):
                 log.error(f"service not found: {srv_name}, please start the service.")
                 return YomkResponse(
-                    ResStatus.eErr,
+                    ResStatus.eNo,
                     "service not found: " + srv_name
                 )
             service = self.services[srv_name]
@@ -149,7 +149,7 @@ class YomkServer:
         if not url.startswith("/"):
             log.error(f"url parse error: {url}, please start with /")
             return YomkResponse(
-                ResStatus.eErr,
+                ResStatus.eNo,
                 "url parse error: " + url + ", please start with /"
             )
         
@@ -158,7 +158,7 @@ class YomkServer:
         if pos_end == -1:
             log.error(f"url parse error: {url}, not found service name.")
             return YomkResponse(
-                ResStatus.eErr,
+                ResStatus.eNo,
                 "url parse error: " + url + ", not found service name."
             )
         
@@ -166,7 +166,7 @@ class YomkServer:
         if not srv_name:
             log.error(f"url parse error: srv is empty.")
             return YomkResponse(
-                ResStatus.eErr,
+                ResStatus.eNo,
                 "url parse error: srv is empty."
             )
         
@@ -174,7 +174,7 @@ class YomkServer:
         if not func_name:
             log.error(f"url parse error: function name is empty")
             return YomkResponse(
-                ResStatus.eErr,
+                ResStatus.eNo,
                 "url parse error: function name is empty"
             )        
         
@@ -183,7 +183,7 @@ class YomkServer:
             if (srv_name not in self.services):
                 log.error(f"service not found: {srv_name}, please start the service.")
                 return YomkResponse(
-                    ResStatus.eErr,
+                    ResStatus.eNo,
                     "service not found: " + srv_name
                 )
             service = self.services[srv_name]
@@ -283,7 +283,7 @@ class YomkContext(YomkService):
         with self.m_contextsMutex.gen_rlock(): 
             if contextMonitor.key not in self.m_contexts:
                 log.info(f"YomkContext key: {contextMonitor.key} is not exist, please check ContextMonitor.m_key.")
-                return YomkResponse(ResStatus.eErr, "key is not exist")
+                return YomkResponse(ResStatus.eNo, "key is not exist")
         
         with self.m_monitorsMutex.gen_wlock():
             self.m_monitors.setdefault(
@@ -296,7 +296,7 @@ class YomkContext(YomkService):
         with self.m_contextsMutex.gen_rlock(): 
             if contextChecker.key not in self.m_contexts:
                 log.info(f"YomkContext key: {contextChecker.key} is not exist, please check ContextChecker.m_key.")
-                return YomkResponse(ResStatus.eErr, "key is not exist")
+                return YomkResponse(ResStatus.eNo, "key is not exist")
         
         with self.m_checkersMutex.gen_wlock():
             self.m_checkers[contextChecker.key] = contextChecker.check_func
@@ -314,54 +314,54 @@ class YomkContext(YomkService):
     def create(self, ctx):
         if not ctx.key:
             log.error("key is empty, please check Context.m_key.")
-            return YomkResponse(ResStatus.eErr, "key is empty")
+            return YomkResponse(ResStatus.eNo, "key is empty")
 
         with self.m_contextsMutex.gen_wlock():
             if ctx.key in self.m_contexts:
                 log.error(f"key already exists: {ctx.key}, please check Context.m_key.")
-                return YomkResponse(ResStatus.eErr, "key already exists")
+                return YomkResponse(ResStatus.eNo, "key already exists")
             self.m_contexts[ctx.key] = ctx.value
         return YomkResponse(ResStatus.eOk, "create context success")
     
     def destroy(self, key):
         if not key:
             log.error("key is empty, please check key.")
-            return YomkResponse(ResStatus.eErr, "key is empty")
+            return YomkResponse(ResStatus.eNo, "key is empty")
             
         with self.m_contextsMutex.gen_wlock():
             if key not in self.m_contexts:
                 log.error(f"key is not exist: {key}, please check key.")
-                return YomkResponse(ResStatus.eErr, "key is not exist")
+                return YomkResponse(ResStatus.eNo, "key is not exist")
             del self.m_contexts[key]
         return YomkResponse(ResStatus.eOk, "destroy context success")
     
     def get(self, ctx):
         if not ctx.key:
             log.error("key is empty, please check Context.m_key.")
-            return YomkResponse(ResStatus.eErr, "key is empty", ctx.value)
+            return YomkResponse(ResStatus.eNo, "key is empty", ctx.value)
         
         with self.m_contextsMutex.gen_rlock():
             if ctx.key not in self.m_contexts:
                 log.error(f"key is not exist: {ctx.key}, please check Context.m_key.")
-                return YomkResponse(ResStatus.eErr, "key is not exist", ctx.value)
+                return YomkResponse(ResStatus.eNo, "key is not exist", ctx.value)
         
         return YomkResponse(ResStatus.eOk, "get context success", self.m_contexts[ctx.key])
     
     def set(self, ctx):
         if not ctx.key:
             log.error("key is empty, please check Context.m_key.")
-            return YomkResponse(ResStatus.eErr, "key is empty")
+            return YomkResponse(ResStatus.eNo, "key is empty")
         
         with self.m_contextsMutex.gen_wlock():
             if ctx.key not in self.m_contexts:
                 log.error(f"key is not exist: {ctx.key}, please check Context.m_key.")
-                return YomkResponse(ResStatus.eErr, "key is not exist")
+                return YomkResponse(ResStatus.eNo, "key is not exist")
             
             if self.m_checkerEnabled:
                 with self.m_checkersMutex.gen_rlock():
                     if ctx.key in self.m_checkers:
                         if(self.m_checkers[ctx.key](ctx) == CheckStatus.eReject):
-                            return YomkResponse(ResStatus.eErr, "check reject set context")
+                            return YomkResponse(ResStatus.eNo, "check reject set context")
             
             self.m_contexts[ctx.key] = ctx.value
             
@@ -399,11 +399,11 @@ class YomkFunctionPool(YomkService):
     def callFunction(self, call_func: CallFunction):
         if not call_func.name:
             log.error("funcName is empty, please check CallFunction.m_funcName.")
-            return YomkResponse(ResStatus.eErr, "funcName is empty")
+            return YomkResponse(ResStatus.eNo, "funcName is empty")
         with self.m_functionsMutex.gen_rlock():
             if call_func.name not in self.m_functions:
                 log.error(f"funcName is not exist: {call_func.name}, please check CallFunction.m_funcName.")
-                return YomkResponse(ResStatus.eErr, "funcName is not exist")
+                return YomkResponse(ResStatus.eNo, "funcName is not exist")
             else:
                 func = self.m_functions[call_func.name]
         return func(call_func.pkg)
@@ -545,7 +545,7 @@ class YomkEventLoop(YomkService):
                 self.m_eventLoop[pkg].stop()
                 return YomkResponse(ResStatus.eOk, "event loop stop success")
             else:
-                return YomkResponse(ResStatus.eErr, "event loop not exist")
+                return YomkResponse(ResStatus.eNo, "event loop not exist")
 
     def destroy(self, pkg: Str):
         with self.m_eventLoopMutex.gen_wlock():
@@ -554,7 +554,7 @@ class YomkEventLoop(YomkService):
                 del self.m_eventLoop[pkg]
                 return YomkResponse(ResStatus.eOk, "event loop destroy success")
             else:
-                return YomkResponse(ResStatus.eErr, "event loop not exist")
+                return YomkResponse(ResStatus.eNo, "event loop not exist")
     
     def post(self, pkg: Event):
         with self.m_eventLoopMutex.gen_rlock():
@@ -562,7 +562,7 @@ class YomkEventLoop(YomkService):
                 self.m_eventLoop[pkg.m_eventLoopName].post(pkg)
                 return YomkResponse(ResStatus.eOk, "event post success")
             else:
-                return YomkResponse(ResStatus.eErr, "event loop not exist")
+                return YomkResponse(ResStatus.eNo, "event loop not exist")
     
     def post_wait(self, pkg: Event):
         with self.m_eventLoopMutex.gen_rlock():
@@ -570,4 +570,4 @@ class YomkEventLoop(YomkService):
                 self.m_eventLoop[pkg.m_eventLoopName].post_wait(pkg)
                 return YomkResponse(ResStatus.eOk, "event post wait success", pkg)
             else:
-                return YomkResponse(ResStatus.eErr, "event loop not exist")
+                return YomkResponse(ResStatus.eNo, "event loop not exist")
