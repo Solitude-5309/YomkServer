@@ -1,9 +1,0 @@
-{
-    "server": {
-        "name": "/ConfigService",
-        "port": 8080
-    },
-    "log": {
-        "level": "info"
-    }
-}
