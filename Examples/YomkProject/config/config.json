@@ -1,0 +1,9 @@
+{
+    "server": {
+        "name": "YomkProject",
+        "port": 8080
+    },
+    "log": {
+        "level": "info"
+    }
+}

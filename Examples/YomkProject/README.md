@@ -30,6 +30,8 @@ YomkProject/
 ├── msgs/
 │   └── YomkMsgs.h          // 消息包定义
 ├── services/               // 服务实现（按业务类别分子目录）
+├── build.sh                // 一键编译脚本
+├── setup.bash.in           // 环境脚本模板
 └── CMakeLists.txt
 ```
 
@@ -39,16 +41,19 @@ YomkProject/
 | `msgs/` | 所有服务间通信的消息包定义集中管理 |
 | `services/` | 所有服务实现，按业务类别分子目录存放 |
 
-## 编译
+## Linux 编译与运行
 
 ```bash
-mkdir build && cd build
-cmake ..
-cmake --build . --config Release
+source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install 
+YomkProject
 ```
 
-> 若 YomkServer 安装在非默认路径，需指定：
-> `cmake .. -DCMAKE_PREFIX_PATH=/your/install/prefix`
+> 若 YomkServer 安装在非默认路径：
+> `source build.sh -DCMAKE_PREFIX_PATH=/your/install/prefix`
+
+`build.sh` 自动完成：创建 build 目录 → cmake 配置 → 编译安装 → 加载运行环境。
+
+安装到工程源码目录下的 `install/`，`setup.bash` 会自动配置 `PATH` 和 `LD_LIBRARY_PATH`。
 
 ## 生命周期说明
 

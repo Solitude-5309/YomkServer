@@ -38,6 +38,7 @@ Thumbs.db
 /.qmake.stash
 .qoder/
 !/Skill/.qoder/
+install/
 
 # qtcreator generated files
 *.pro.user*

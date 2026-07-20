@@ -1,0 +1,12 @@
+#!/bin/bash
+# YomkProject 环境配置脚本
+# 用法: source install/setup.bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+export PATH="${SCRIPT_DIR}/bin:$PATH"
+export LD_LIBRARY_PATH="@YomkServer_LIB_DIR@:$LD_LIBRARY_PATH"
+
+echo "YomkProject environment loaded."
+echo "  bin: ${SCRIPT_DIR}/bin"
+echo "  lib: @YomkServer_LIB_DIR@"
