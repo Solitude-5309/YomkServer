@@ -411,10 +411,9 @@ echo "  lib: @YomkServer_LIB_DIR@"
 
 ## 编译与运行
 
-```bash
-source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install
-ProjectName
-```
+source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install  
+ProjectName  
+
 
 ## 生命周期
 
