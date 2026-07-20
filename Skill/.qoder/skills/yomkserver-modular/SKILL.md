@@ -53,20 +53,51 @@ cmake --build . --target install --config Release
 
 ```cmake
 cmake_minimum_required(VERSION 3.14)
-project(MyProject LANGUAGES CXX)
+project(ProjectName LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 固定安装到工程源码目录下的 install/
+set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install" CACHE PATH "Install path" FORCE)
+
 find_package(YomkServer REQUIRED)
+find_package(nlohmann_json REQUIRED)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(${PROJECT_NAME}
     main.cpp
     boot/MyBoot.cpp
-    services/YomkServiceA.cpp
-    services/YomkServiceB.cpp
+    services/ConfigService.cpp
 )
-target_link_libraries(${PROJECT_NAME} PRIVATE YomkServer::YomkServer)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    YomkServer::YomkServer
+    nlohmann_json::nlohmann_json
+    $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
+)
+
+# 安装可执行文件
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin
+)
+
+# 安装配置文件
+install(DIRECTORY config/
+    DESTINATION config
+)
+
+# 生成 setup.bash
+get_target_property(YomkServer_LIB_DIR YomkServer::YomkServer LOCATION)
+get_filename_component(YomkServer_LIB_DIR ${YomkServer_LIB_DIR} DIRECTORY)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/setup.bash.in
+    ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
+    @ONLY
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
+    DESTINATION .
+)
 ```
 
 ### 头文件引入
@@ -78,14 +109,75 @@ using namespace yomk;             // 框架命名空间
 
 ### 编译独立工程
 
+推荐使用工程内 `build.sh` 一键编译：
 ```bash
-mkdir build && cd build
-cmake ..
-cmake --build . --config Release
+source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install
 ```
 
-> 若 YomkServer 安装在非默认路径，需指定：
-> `cmake .. -DCMAKE_PREFIX_PATH=/your/install/prefix`
+> 若 YomkServer 安装在默认路径（`/usr/local`），无需额外参数：
+> `source build.sh`
+
+`build.sh` 自动完成：创建 build 目录 → cmake 配置 → 编译安装 → 加载运行环境 → 保持原目录。
+
+## 标准工程模板（创建新工程时必须遵循）
+
+当用户要求创建基于 YomkServer 的工程时，**必须**按以下模板生成完整工程骨架。
+
+### 标准目录结构
+
+```
+ProjectName/
+├── main.cpp                // 程序入口
+├── boot/
+│   ├── MyBoot.h            // 生命周期管理
+│   └── MyBoot.cpp
+├── config/
+│   └── config.json         // 配置文件
+├── msgs/
+│   └── YomkMsgs.h          // 消息包定义
+├── services/               // 服务实现（按业务分子目录）
+│   └── ConfigService.h/.cpp
+├── typedefine/
+│   └── TypeDefine.h        // 公共常量/宏/类型定义
+├── build.sh                // 一键编译脚本
+├── setup.bash.in           // 环境脚本模板
+├── CMakeLists.txt
+└── README.md
+```
+
+### 目录职责
+
+| 目录 | 职责 |
+|------|------|
+| `boot/` | 程序生命周期管理（before/start/after），路径推导、Context 创建、按需启动服务 |
+| `config/` | 配置文件目录，安装后与 bin/ 同级 |
+| `msgs/` | 所有服务间通信的消息包定义集中管理 |
+| `services/` | 所有服务实现，按业务类别分子目录存放 |
+| `typedefine/` | 常量定义、宏定义、类型别名等公共定义 |
+
+### 关键设计约定
+
+1. **MyBoot** 接收 `argc, argv`，`before()` 中通过 `/proc/self/exe` 推导可执行文件绝对路径
+2. 配置文件路径存入 Context（`CTX_CONFIG_PATH`），服务通过 Context 获取，无需构造参数传递
+3. `start()` 使用服务创建器映射表 + `m_startSrvNames` 按需启动
+4. `after()` 调用服务接口做启动后初始化（如 `/ConfigService/load`）
+5. 安装固定到源码下 `install/`，结构为 `bin/ + config/ + setup.bash`
+6. `build.sh` 使用 `source` 执行，自动编译+安装+加载环境+保持原目录
+7. `build.sh` 和 `setup.bash.in` **不包含工程名**，仅输出通用成功/失败提示
+8. `README.md`、`CMakeLists.txt` 的 `project()`、`main.cpp` 日志中使用用户指定的工程名
+
+### 安装后目录结构
+
+```
+install/
+├── bin/ProjectName        <-- 可执行文件
+├── config/config.json     <-- 配置文件
+└── setup.bash             <-- 环境脚本
+```
+
+路径推导逻辑：`exe_path/../config/config.json`（即 `bin/` 的上级目录下的 `config/`）。
+
+完整模板文件内容参见：[examples.md](examples.md) 示例0。
 
 ## 编程规范
 
@@ -178,22 +270,32 @@ int main(int argc, char* argv[]) {
 // 1. 定义 Boot 类
 class MyBoot : public YomkBoot {
 public:
-    MyBoot(const std::vector<std::string>& srvNames) : m_srvNames(srvNames) {}
-    int before() override;  // 服务启动前：创建Context、EventLoop、注册FunctionPool等
+    MyBoot(int argc, char *argv[], const std::vector<std::string>& srvNames = {})
+        : m_argc(argc), m_argv(argv), m_startSrvNames(srvNames) {}
+    int before() override;  // 服务启动前：路径推导、创建Context、EventLoop、注册FunctionPool等
     int start() override;   // 注册并启动服务
     int after() override;   // 服务启动后：调用服务接口做初始化
 private:
-    std::vector<std::string> m_srvNames;
+    int m_argc;
+    char **m_argv;
+    std::vector<std::string> m_startSrvNames;
 };
 
-// 2. 实现 start()：使用 YOMK_ADD_SERVICE 注册服务实例
-// 使用服务创建器映射表管理服务实例，同一个类可以注册多个实例
+// 2. 实现 before()：通过 /proc/self/exe 推导配置文件路径并存入 Context
+int MyBoot::before() {
+    std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
+    std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.json";
+    YOMK_CONTEXT_CREATE(CTX_CONFIG_PATH, YomkMkPtr(String, configPath.string()));
+    return 0;
+}
+
+// 3. 实现 start()：使用服务创建器映射表 + 按需启动
 int MyBoot::start() {
     static const std::map<std::string, std::function<YomkService*()>> creators = {
+        {"/ConfigService", []() { return new ConfigService(YOMK_SERVER_P); }},
         {"/MyService", []() { return new MyService(YOMK_SERVER_P); }},
-        {"/MyServiceAA", []() { return new MyService(YOMK_SERVER_P); }},  // 同一个类可以注册多个实例
     };
-    for (const auto& name : m_srvNames) {
+    for (const auto& name : m_startSrvNames) {
         auto it = creators.find(name);
         if (it != creators.end()) {
             if (YOMK_ADD_SERVICE(it->second(), name) != 0) return -1;
@@ -202,9 +304,16 @@ int MyBoot::start() {
     return 0;
 }
 
-// 3. 入口
-int main() {
-    YOMK_BOOT(new MyBoot({"/MyService"}));
+// 4. 实现 after()：服务启动后调用接口初始化
+int MyBoot::after() {
+    YomkResponse resp = YOMK_REQUEST("/ConfigService/load", nullptr);
+    if (resp.m_status != YomkResponse::eOk) return -1;
+    return 0;
+}
+
+// 5. 入口
+int main(int argc, char* argv[]) {
+    YOMK_BOOT(new MyBoot(argc, argv, {"/ConfigService"}));
     getchar();
     return 0;
 }
@@ -271,32 +380,39 @@ YOMK_SET_CONSOLE_LOG_PROXY(proxyFunc)
 ### 推荐工程目录结构
 
 ```
-MyProject/
+ProjectName/
 ├── main.cpp                    // 程序入口
 ├── boot/
 │   ├── MyBoot.h                // 生命周期管理
 │   └── MyBoot.cpp
+├── config/
+│   └── config.json             // 配置文件
 ├── msgs/
 │   └── YomkMsgs.h              // 所有消息包定义
 ├── services/                   // 所有服务统一放在 services/ 下
+│   ├── ConfigService.h/.cpp    // 内置配置服务
 │   ├── user/                   // 按类别分类存放
 │   │   ├── UserService.h
 │   │   └── UserService.cpp
-│   ├── order/
-│   │   ├── OrderService.h
-│   │   └── OrderService.cpp
-│   └── notification/
-│       ├── NotificationService.h
-│       └── NotificationService.cpp
-└── CMakeLists.txt
+│   └── order/
+│       ├── OrderService.h
+│       └── OrderService.cpp
+├── typedefine/
+│   └── TypeDefine.h            // 公共常量/宏/类型定义
+├── build.sh                    // 一键编译脚本
+├── setup.bash.in               // 环境脚本模板
+├── CMakeLists.txt
+└── README.md
 ```
 
 **目录职责：**
 | 目录 | 职责 |
 |------|------|
 | `boot/` | 程序生命周期管理（before/start/after），负责资源初始化的编排 |
+| `config/` | 配置文件目录，安装后与 bin/ 同级 |
 | `msgs/` | 所有服务间通信的消息包定义集中管理 |
 | `services/` | 所有服务实现，按业务类别分子目录存放 |
+| `typedefine/` | 常量定义、宏定义、类型别名等公共定义 |
 
 ### 设计原则
 
@@ -310,7 +426,9 @@ MyProject/
 8. **服务统一存放 services/ 目录**：每个服务 `XxxService.h` + `XxxService.cpp`，按业务类别分子目录组织，支持并行开发
 9. **消息定义集中 msgs/**：所有 `YomkMsg` 注册的消息结构体统一在 `msgs/YomkMsgs.h` 中定义
 10. **生命周期管理在 boot/**：通过 `YomkBoot` 子类管理 before/start/after 三阶段初始化
-11. **渐进式演进**：从单体应用平滑演进到复杂多服务系统，无需重构架构
+11. **配置文件集中 config/**：配置文件统一放在 `config/` 目录，安装后与 `bin/` 同级，服务通过 Context 获取路径
+12. **公共定义集中 typedefine/**：常量、宏、类型别名等可复用公共定义统一在 `typedefine/TypeDefine.h` 中管理
+13. **渐进式演进**：从单体应用平滑演进到复杂多服务系统，无需重构架构
 
 ## 详细参考
 

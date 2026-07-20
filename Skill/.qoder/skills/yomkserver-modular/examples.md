@@ -1,5 +1,432 @@
 # YomkServer 完整工程示例
 
+## 示例0：标准空白工程模板（创建新工程时必须生成）
+
+当用户要求创建基于 YomkServer 的工程时，必须生成以下完整工程骨架。将 `ProjectName` 替换为用户指定的工程名。
+
+### 工程目录结构
+```
+ProjectName/
+├── main.cpp
+├── boot/
+│   ├── MyBoot.h
+│   └── MyBoot.cpp
+├── config/
+│   └── config.json
+├── msgs/
+│   └── YomkMsgs.h
+├── services/
+│   ├── ConfigService.h
+│   └── ConfigService.cpp
+├── typedefine/
+│   └── TypeDefine.h
+├── build.sh
+├── setup.bash.in
+├── CMakeLists.txt
+└── README.md
+```
+
+### main.cpp
+```cpp
+#include <YomkServer/YomkAPI.h>
+#include "boot/MyBoot.h"
+
+using namespace yomk;
+
+int main(int argc, char *argv[])
+{
+    YOMK_BOOT(new MyBoot(argc, argv, {"/ConfigService"}));
+
+    YOMK_INFO_TAG("main", "ProjectName is running, press Enter to exit.");
+    getchar();
+    return 0;
+}
+```
+
+### boot/MyBoot.h
+```cpp
+#pragma once
+#include <YomkServer/YomkAPI.h>
+
+using namespace yomk;
+
+class MyBoot : public YomkBoot
+{
+public:
+    MyBoot(int argc, char *argv[], const std::vector<std::string> &startSrvNames = {})
+        : m_argc(argc), m_argv(argv), m_startSrvNames(startSrvNames) {}
+    int before() override;
+    int start() override;
+    int after() override;
+
+private:
+    int m_argc;
+    char **m_argv;
+    std::vector<std::string> m_startSrvNames;
+};
+```
+
+### boot/MyBoot.cpp
+```cpp
+#include "MyBoot.h"
+#include "services/ConfigService.h"
+#include "typedefine/TypeDefine.h"
+
+#include <filesystem>
+
+int MyBoot::before()
+{
+    YOMK_INFO_TAG("MyBoot::before", "ProjectName starting...");
+
+    // 通过 /proc/self/exe 获取可执行文件绝对路径
+    std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
+    std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.json";
+    YOMK_CONTEXT_CREATE(CTX_CONFIG_PATH, YomkMkPtr(String, configPath.string()));
+    YOMK_INFO_TAG("MyBoot::before", "config path: ", configPath.string());
+    return 0;
+}
+
+int MyBoot::start()
+{
+    // 服务创建器映射表
+    static const std::map<std::string, std::function<YomkService *()>> serviceCreators = {
+        {"/ConfigService", []()
+         { return new ConfigService(YOMK_SERVER_P); }},
+    };
+
+    // 根据 m_startSrvNames 按需启动服务
+    for (const auto &srvName : m_startSrvNames)
+    {
+        auto it = serviceCreators.find(srvName);
+        if (it != serviceCreators.end())
+        {
+            if (YOMK_ADD_SERVICE(it->second(), srvName) != 0)
+                return -1;
+        }
+    }
+    return 0;
+}
+
+int MyBoot::after()
+{
+    // 服务启动后加载配置文件
+    YomkResponse resp = YOMK_REQUEST("/ConfigService/load", nullptr);
+    if (resp.m_status != YomkResponse::eOk)
+    {
+        YOMK_ERROR_TAG("MyBoot::after", "load config failed: ", resp.m_msg);
+        return -1;
+    }
+    YOMK_INFO_TAG("MyBoot::after", "ProjectName started successfully.");
+    return 0;
+}
+```
+
+### typedefine/TypeDefine.h
+```cpp
+#pragma once
+#include <string>
+
+/*
+ *  Type Define
+ *  统一存放常量定义、宏定义、类型定义等可复用公共定义
+ */
+
+// Context
+constexpr const char *const CTX_CONFIG_PATH = "config_path";
+```
+
+### msgs/YomkMsgs.h
+```cpp
+#pragma once
+#include <YomkServer/YomkAPI.h>
+
+// ConfigService 消息包
+// 配置键：用于 /get 和 /reload
+struct ConfigKey { std::string key; };
+YomkMsg(ConfigKey, YConfigKey, req)
+// 访问: ptr->req.key
+
+// 配置键值：用于 /set
+struct ConfigKeyValue { std::string key; std::string value; };
+YomkMsg(ConfigKeyValue, YConfigKeyValue, req)
+// 访问: ptr->req.key, ptr->req.value
+```
+
+### services/ConfigService.h
+```cpp
+#pragma once
+#include <YomkServer/YomkAPI.h>
+#include <nlohmann/json.hpp>
+#include "msgs/YomkMsgs.h"
+
+using namespace yomk;
+
+class ConfigService : public YomkService
+{
+public:
+    ConfigService(YomkServer *server);
+    virtual ~ConfigService() {}
+    virtual int init() override;
+
+private:
+    YomkResponse loadConfig(YomkPkgPtr pkg);
+    YomkResponse getConfig(YomkPkgPtr pkg);
+    YomkResponse setConfig(YomkPkgPtr pkg);
+    YomkResponse reloadConfig(YomkPkgPtr pkg);
+
+    std::string m_configPath;
+    nlohmann::json m_json;
+};
+```
+
+### services/ConfigService.cpp
+```cpp
+#include "ConfigService.h"
+#include <fstream>
+#include <sstream>
+#include "typedefine/TypeDefine.h"
+
+ConfigService::ConfigService(YomkServer *server)
+    : YomkService(server)
+{
+    name("/ConfigService");
+}
+
+int ConfigService::init()
+{
+    YomkInstallFunc("/load", ConfigService::loadConfig);
+    YomkInstallFunc("/get", ConfigService::getConfig);
+    YomkInstallFunc("/set", ConfigService::setConfig);
+    YomkInstallFunc("/reload", ConfigService::reloadConfig);
+    YOMK_INFO_TAG("ConfigService::init", "install func [ /load /get /set /reload ] to", name());
+    return 0;
+}
+
+YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
+{
+    auto ctxVal = YOMK_CONTEXT_GET(String, CTX_CONFIG_PATH, nullptr);
+    if (!ctxVal)
+        return YomkResponse(YomkResponse::eNo, "config_path not found in context");
+    m_configPath = ctxVal->d;
+
+    std::ifstream ifs(m_configPath);
+    if (!ifs.is_open())
+        return YomkResponse(YomkResponse::eNo, "failed to open: " + m_configPath);
+    m_json = nlohmann::json::parse(ifs);
+    ifs.close();
+    YOMK_INFO_TAG("ConfigService::loadConfig", "loaded: ", m_configPath);
+    return YomkResponse(YomkResponse::eOk, "ok");
+}
+
+YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, YConfigKey, data);
+
+    std::istringstream ss(data->req.key);
+    std::string token;
+    nlohmann::json *current = &m_json;
+    while (std::getline(ss, token, '.'))
+    {
+        if (!current->is_object() || !current->contains(token))
+            return YomkResponse(YomkResponse::eNo, "key not found: " + data->req.key);
+        current = &(*current)[token];
+    }
+
+    std::string value;
+    if (current->is_string())
+        value = current->get<std::string>();
+    else
+        value = current->dump();
+
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, value));
+}
+
+YomkResponse ConfigService::setConfig(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, YConfigKeyValue, data);
+
+    std::istringstream ss(data->req.key);
+    std::string token;
+    nlohmann::json *current = &m_json;
+    while (std::getline(ss, token, '.'))
+    {
+        if (!current->is_object())
+            return YomkResponse(YomkResponse::eNo, "invalid key path: " + data->req.key);
+        current = &(*current)[token];
+    }
+
+    *current = data->req.value;
+    YOMK_INFO_TAG("ConfigService::setConfig", "set ", data->req.key, " = ", data->req.value);
+    return YomkResponse(YomkResponse::eOk, "ok");
+}
+
+YomkResponse ConfigService::reloadConfig(YomkPkgPtr pkg)
+{
+    std::ifstream ifs(m_configPath);
+    if (!ifs.is_open())
+        return YomkResponse(YomkResponse::eNo, "failed to open config file: " + m_configPath);
+    m_json = nlohmann::json::parse(ifs);
+    ifs.close();
+    YOMK_INFO_TAG("ConfigService::reloadConfig", "reloaded config file: ", m_configPath);
+    return YomkResponse(YomkResponse::eOk, "ok");
+}
+```
+
+### config/config.json
+```json
+{
+    "server": {
+        "name": "ProjectName",
+        "port": 8080
+    },
+    "log": {
+        "level": "info"
+    }
+}
+```
+
+### CMakeLists.txt
+```cmake
+cmake_minimum_required(VERSION 3.14)
+project(ProjectName LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# 固定安装到工程源码目录下的 install/
+set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install" CACHE PATH "Install path" FORCE)
+
+find_package(YomkServer REQUIRED)
+find_package(nlohmann_json REQUIRED)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(${PROJECT_NAME}
+    main.cpp
+    boot/MyBoot.cpp
+    services/ConfigService.cpp
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    YomkServer::YomkServer
+    nlohmann_json::nlohmann_json
+    $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
+)
+
+# 安装可执行文件
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin
+)
+
+# 安装配置文件
+install(DIRECTORY config/
+    DESTINATION config
+)
+
+# 生成 setup.bash
+get_target_property(YomkServer_LIB_DIR YomkServer::YomkServer LOCATION)
+get_filename_component(YomkServer_LIB_DIR ${YomkServer_LIB_DIR} DIRECTORY)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/setup.bash.in
+    ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
+    @ONLY
+)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
+    DESTINATION .
+)
+```
+
+### build.sh
+```bash
+#!/bin/bash
+# 一键编译脚本
+# 用法: source build.sh [额外的cmake参数...]
+# 示例: source build.sh -DCMAKE_PREFIX_PATH=/path/to/YomkServer/install
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BUILD_DIR="${SCRIPT_DIR}/build"
+_ORIG_DIR="$(pwd)"
+
+mkdir -p "${BUILD_DIR}"
+cd "${BUILD_DIR}" || return 1
+
+cmake "${SCRIPT_DIR}" "$@"
+if [ $? -ne 0 ]; then
+    echo "[BUILD] cmake 配置失败"
+    cd "${_ORIG_DIR}"
+    return 1
+fi
+
+cmake --build . --config Release --target install
+if [ $? -ne 0 ]; then
+    echo "[BUILD] 编译失败"
+    cd "${_ORIG_DIR}"
+    return 1
+fi
+
+source "${SCRIPT_DIR}/install/setup.bash"
+
+cd "${_ORIG_DIR}"
+unset _ORIG_DIR
+
+echo "[BUILD] 编译完成"
+```
+
+### setup.bash.in
+```bash
+#!/bin/bash
+# 环境配置脚本
+# 用法: source install/setup.bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+export PATH="${SCRIPT_DIR}/bin:$PATH"
+export LD_LIBRARY_PATH="@YomkServer_LIB_DIR@:$LD_LIBRARY_PATH"
+
+echo "Environment loaded."
+echo "  bin: ${SCRIPT_DIR}/bin"
+echo "  lib: @YomkServer_LIB_DIR@"
+```
+
+### README.md
+```markdown
+# ProjectName
+
+基于 YomkServer 模块化框架的工程。
+
+## 前置条件
+
+- C++17 编译器
+- CMake >= 3.14
+- YomkServer 已安装到系统
+
+## 工程结构
+
+| 目录 | 职责 |
+|------|------|
+| `boot/` | 程序生命周期管理（before/start/after） |
+| `config/` | 配置文件 |
+| `msgs/` | 消息包定义 |
+| `services/` | 服务实现 |
+| `typedefine/` | 公共常量/宏/类型定义 |
+
+## 编译与运行
+
+```bash
+source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install
+ProjectName
+```
+
+## 生命周期
+
+| 阶段 | 方法 | 用途 |
+|------|------|------|
+| 启动前 | `before()` | 路径推导、创建 Context、EventLoop、注册 FunctionPool |
+| 启动中 | `start()` | 注册并启动服务 |
+| 启动后 | `after()` | 调用服务接口做初始化 |
+```
+
+---
+
 ## 示例1：模块化多服务工程（基于TestYomkServer）
 
 展示一个典型的模块化工程结构，包含多个Service协作、Boot生命周期管理、跨服务调用。

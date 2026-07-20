@@ -1,6 +1,6 @@
 # YomkProject
 
-基于 [YomkServer](https://github.com/YomkServer) 模块化框架的空白工程模板。
+基于 [YomkServer](https://github.com/Solitude-5309/YomkServer) 模块化框架的空白工程模板。
 
 YomkServer 是基于 C++17 的模块化高性能服务开发框架，核心设计理念：**「一切皆服务，一切皆请求」**。
 
