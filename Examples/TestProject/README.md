@@ -1,4 +1,4 @@
-# YomkProject
+# 工程文档
 
 基于 [YomkServer](https://github.com/Solitude-5309/YomkServer) 模块化框架的空白工程模板。
 
@@ -22,30 +22,38 @@ cmake --build . --target install --config Release
 ## 工程结构
 
 ```
-YomkProject/
+ProjectName/
 ├── main.cpp                // 程序入口
 ├── boot/
 │   ├── MyBoot.h            // 生命周期管理
 │   └── MyBoot.cpp
+├── config/
+│   └── config.json         // 配置文件
 ├── msgs/
 │   └── YomkMsgs.h          // 消息包定义
-├── services/               // 服务实现（按业务类别分子目录）
+├── services/               // 服务实现（按业务分子目录）
+│   └── ConfigService.h/.cpp
+├── typedefine/
+│   └── TypeDefine.h        // 公共常量/宏/类型定义
 ├── build.sh                // 一键编译脚本
 ├── setup.bash.in           // 环境脚本模板
-└── CMakeLists.txt
+├── CMakeLists.txt
+└── README.md
 ```
 
 | 目录 | 职责 |
 |------|------|
-| `boot/` | 程序生命周期管理（before/start/after），负责资源初始化的编排 |
+| `boot/` | 程序生命周期管理（before/start/after），路径推导、Context 创建、按需启动服务 |
+| `config/` | 配置文件目录，安装后与 bin/ 同级 |
 | `msgs/` | 所有服务间通信的消息包定义集中管理 |
 | `services/` | 所有服务实现，按业务类别分子目录存放 |
+| `typedefine/` | 常量定义、宏定义、类型别名等公共定义 |
 
 ## Linux 编译与运行
 
 ```bash
 source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install 
-YomkProject
+TestProject
 ```
 
 > 若 YomkServer 安装在非默认路径：

@@ -6,7 +6,7 @@
 
 int MyBoot::before()
 {
-    YOMK_INFO_TAG("MyBoot::before", "YomkProject starting...");
+    YOMK_INFO_TAG("MyBoot::before", "starting...");
 
     // 通过 /proc/self/exe 获取可执行文件绝对路径
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
@@ -46,6 +46,6 @@ int MyBoot::after()
         YOMK_ERROR_TAG("MyBoot::after", "load config failed: ", resp.m_msg);
         return -1;
     }
-    YOMK_INFO_TAG("MyBoot::after", "YomkProject started successfully.");
+    YOMK_INFO_TAG("MyBoot::after", "started successfully.");
     return 0;
 }

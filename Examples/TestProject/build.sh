@@ -1,5 +1,5 @@
 #!/bin/bash
-# YomkProject 一键编译脚本
+# 一键编译脚本
 # 用法: source build.sh [额外的cmake参数...]
 # 示例: source build.sh -DCMAKE_PREFIX_PATH=/path/to/YomkServer/install
 
@@ -14,7 +14,7 @@ cd "${BUILD_DIR}" || return 1
 # 配置
 cmake "${SCRIPT_DIR}" "$@"
 if [ $? -ne 0 ]; then
-    echo "[YomkProject] cmake 配置失败"
+    echo "cmake 配置失败"
     cd "${_ORIG_DIR}"
     return 1
 fi
@@ -22,7 +22,7 @@ fi
 # 编译并安装
 cmake --build . --config Release --target install
 if [ $? -ne 0 ]; then
-    echo "[YomkProject] 编译失败"
+    echo "编译失败"
     cd "${_ORIG_DIR}"
     return 1
 fi
@@ -34,4 +34,4 @@ source "${SCRIPT_DIR}/install/setup.bash"
 cd "${_ORIG_DIR}"
 unset _ORIG_DIR
 
-echo "[YomkProject] 编译完成，可直接运行: YomkProject"
+echo "编译完成"

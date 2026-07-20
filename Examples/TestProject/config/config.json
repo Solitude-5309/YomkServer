@@ -1,6 +1,6 @@
 {
     "server": {
-        "name": "YomkProject",
+        "name": "/ConfigService",
         "port": 8080
     },
     "log": {
