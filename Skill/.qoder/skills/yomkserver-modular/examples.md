@@ -24,7 +24,7 @@ MyProject/
 ### msgs/YomkMsgs.h — 消息包定义
 ```cpp
 #pragma once
-#include "YomkAPI.h"
+#include <YomkServer/YomkAPI.h>
 
 // 定义自定义数据类
 struct MyServiceMsg
@@ -41,7 +41,7 @@ YomkMsg(MyServiceMsg, YMyServiceMsg, msg)
 ### services/YomkServiceA.h — 服务A
 ```cpp
 #pragma once
-#include "YomkAPI.h"
+#include <YomkServer/YomkAPI.h>
 #include "msgs/YomkMsgs.h"
 
 // 创建一个服务A，用于编写功能集合
@@ -107,7 +107,7 @@ YomkResponse YomkServiceA::callSkillA(YomkPkgPtr pkg)
 ### services/YomkServiceB.h — 服务B
 ```cpp
 #pragma once
-#include "YomkAPI.h"
+#include <YomkServer/YomkAPI.h>
 #include "msgs/YomkMsgs.h"
 
 class YomkServiceB : public YomkService
@@ -159,7 +159,7 @@ YomkResponse YomkServiceB::callSkillB(YomkPkgPtr pkg)
 ### boot/MyBoot.h — 生命周期管理
 ```cpp
 #pragma once
-#include "YomkAPI.h"
+#include <YomkServer/YomkAPI.h>
 
 class MyBoot : public YomkBoot
 {
@@ -228,7 +228,7 @@ int MyBoot::after()
 
 ### main.cpp — 程序入口
 ```cpp
-#include "YomkAPI.h"
+#include <YomkServer/YomkAPI.h>
 #include "boot/MyBoot.h"
 #include "msgs/YomkMsgs.h"
 
@@ -271,27 +271,22 @@ int main(int argc, char *argv[])
 
 ### CMakeLists.txt — 构建配置
 ```cmake
-include_directories(${YomkServer_INCLUDE})
-include_directories(${MyProject_DIR})
+cmake_minimum_required(VERSION 3.14)
+project(MyProject LANGUAGES CXX)
 
-set(YomkServerLib 
-    YomkServer
-)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# -------------sl MyProject ----------------
-set(MyProject_SOURCES 
-    ${MyProject_DIR}/main.cpp
-    ${MyProject_DIR}/boot/MyBoot.cpp
-    ${MyProject_DIR}/services/YomkServiceA.cpp
-    ${MyProject_DIR}/services/YomkServiceB.cpp
+find_package(YomkServer REQUIRED)
+
+set(MyProject_SOURCES
+    main.cpp
+    boot/MyBoot.cpp
+    services/YomkServiceA.cpp
+    services/YomkServiceB.cpp
 )
-add_executable(MyProject 
-    ${MyProject_SOURCES}
-)
-target_link_libraries(MyProject PRIVATE
-    ${YomkServerLib}
-)
-# -------------el MyProject ----------------
+add_executable(MyProject ${MyProject_SOURCES})
+target_link_libraries(MyProject PRIVATE YomkServer::YomkServer)
 ```
 
 ## 示例2：Context Checker/Monitor 完整流程

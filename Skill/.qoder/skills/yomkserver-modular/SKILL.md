@@ -39,24 +39,53 @@ YomkServer 是基于 C++17 的模块化高性能服务开发框架，核心设�
 
 ## 工程构建与链接
 
-### CMake 链接
+### 前置条件：安装 YomkServer
+
+YomkServer 需先安装到系统（默认 `/usr/local`）：
+```bash
+# 在 YomkServer 源码目录下
+mkdir build && cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake --build . --target install --config Release
+```
+
+### 独立工程 CMakeLists.txt 模板
+
 ```cmake
+cmake_minimum_required(VERSION 3.14)
+project(MyProject LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 find_package(YomkServer REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE YomkServer)
+
+add_executable(${PROJECT_NAME}
+    main.cpp
+    boot/MyBoot.cpp
+    services/YomkServiceA.cpp
+    services/YomkServiceB.cpp
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE YomkServer::YomkServer)
 ```
 
 ### 头文件引入
+
 ```cpp
 #include <YomkServer/YomkAPI.h>  // 唯一需要引入的头文件
 using namespace yomk;             // 框架命名空间
 ```
 
-### 编译安装
+### 编译独立工程
+
 ```bash
 mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=~/YomkServer/install
-cmake --build . --target install --config Release
+cmake ..
+cmake --build . --config Release
 ```
+
+> 若 YomkServer 安装在非默认路径，需指定：
+> `cmake .. -DCMAKE_PREFIX_PATH=/your/install/prefix`
 
 ## 编程规范
 
