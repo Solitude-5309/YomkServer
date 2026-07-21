@@ -47,5 +47,36 @@ int MyBoot::after()
         return -1;
     }
     YOMK_INFO_TAG("MyBoot::after", "started successfully.");
+
+    resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(YConfigKey, ConfigKey{"name"}));
+    if (resp.m_status != YomkResponse::eOk)
+    {
+        YOMK_ERROR_TAG("MyBoot::after", "get config name failed: ", resp.m_msg);
+        return -1;
+    }
+
+    YomkUnPackPkg(resp.m_data, String, name);
+    YOMK_INFO_TAG("MyBoot::after", "config name: ", name->d);
+
+    resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(YConfigKey, ConfigKey{"version"}));
+    if (resp.m_status != YomkResponse::eOk)
+    {
+        YOMK_ERROR_TAG("MyBoot::after", "get config version failed: ", resp.m_msg);
+        return -1;
+    }
+
+    YomkUnPackPkg(resp.m_data, String, version);
+    YOMK_INFO_TAG("MyBoot::after", "config version: ", version->d);
+
+    resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(YConfigKey, ConfigKey{"description"}));
+    if (resp.m_status != YomkResponse::eOk)
+    {
+        YOMK_ERROR_TAG("MyBoot::after", "get config description failed: ", resp.m_msg);
+        return -1;
+    }
+
+    YomkUnPackPkg(resp.m_data, String, description);
+    YOMK_INFO_TAG("MyBoot::after", "config description: ", description->d);
+
     return 0;
 }
