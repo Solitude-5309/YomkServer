@@ -7,430 +7,148 @@ description: 基于YomkServer框架的模块化C++17工程编程。核心理念"
 
 ## 框架概述
 
-YomkServer 是基于 C++17 的模块化高性能服务开发框架，核心设计理念：**「一切皆服务，一切皆请求」**。
-通过标准化的 Request/Response 通信接口和灵活的模块机制，实现系统组件的高度解耦和动态组合。
+基于 C++17 的模块化服务框架，核心理念：**「一切皆服务，一切皆请求」**。
 
-### 设计哲学
+| 组件 | 职责 |
+|------|------|
+| **YomkServer** | 服务容器，管理生命周期 |
+| **YomkService** | 功能模块单元，通过 URL `/服务名/功能名` 访问 |
+| **YomkContext** | 全局 K-V 状态管理（Checker防非法迁移、Monitor监听变更） |
+| **YomkEventLoop** | 线程隔离事件循环（同循环顺序执行、不同循环并行） |
+| **YomkFunctionPool** | 动态函数池（运行时注册/热替换） |
+| **YomkLogger** | 多级别、多输出日志 |
 
-1. **关注点分离**：每个服务专注于单一职责
-2. **约定优于配置**：合理的默认值减少配置复杂度
-3. **渐进式复杂度**：从简单单体到复杂系统的平滑演进
-4. **开发者友好**：直观的API设计，开箱即用的基础组件
+唯一头文件：`#include <YomkServer/YomkAPI.h>`，命名空间：`using namespace yomk;`
 
-### 两级模块化模型
+## 任务一：生成工程模板
 
-| 层级 | 概念 | 说明 |
-|------|------|------|
-| **Service层** | YomkService | 基础服务模块，封装独立业务域或技术组件 |
-| **Function层** | Function | 服务内具体功能单元，通过唯一URL路径标识和访问 |
+当用户要求创建新工程时，**必须**生成完整可编译运行的工程骨架。
 
-### 基础服务组件
-
-| 组件 | 职责 | 核心特性 |
-|------|------|----------|
-| **YomkServer** | 服务容器，管理所有服务的生命周期 | 程序入口初始化 |
-| **YomkService** | 功能模块单元，注册功能函数 | 高内聚、松耦合、支持独立扩展 |
-| **YomkContext** | 全局K-V状态机 | 状态安全检查(防非法迁移)、变更监控、全生命周期管理 |
-| **YomkEventLoop** | 线程隔离的事件循环 | 独立线程运行、同循环内顺序执行、不同循环间并行、支持非阻塞/阻塞投递 |
-| **YomkFunctionPool** | 动态函数池 | 统一注册调度、支持运行时注册/更新/热替换、面向过程开发范式 |
-| **YomkLogger** | 可配置日志系统 | 多级别(INFO/DEBUG/WARN/ERROR)、多输出(文件+控制台) |
-
-所有组件通过统一的 **Request/Response 模型** 通信，URL格式：`/服务名/功能函数名`
-
-## 工程构建与链接
-
-### 前置条件：安装 YomkServer
-
-YomkServer 需先安装到系统（默认 `/usr/local`）：
-```bash
-# 在 YomkServer 源码目录下
-mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
-cmake --build . --target install --config Release
-```
-
-### 独立工程 CMakeLists.txt 模板
-
-```cmake
-cmake_minimum_required(VERSION 3.14)
-project(ProjectName LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# 固定安装到工程源码目录下的 install/
-set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install" CACHE PATH "Install path" FORCE)
-
-find_package(YomkServer REQUIRED)
-find_package(nlohmann_json REQUIRED)
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
-add_executable(${PROJECT_NAME}
-    main.cpp
-    boot/MyBoot.cpp
-    services/ConfigService.cpp
-)
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    YomkServer::YomkServer
-    nlohmann_json::nlohmann_json
-    $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
-)
-
-# 安装可执行文件
-install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin
-)
-
-# 安装配置文件
-install(DIRECTORY config/
-    DESTINATION config
-)
-
-# 生成 setup.bash
-get_target_property(YomkServer_LIB_DIR YomkServer::YomkServer LOCATION)
-get_filename_component(YomkServer_LIB_DIR ${YomkServer_LIB_DIR} DIRECTORY)
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/setup.bash.in
-    ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
-    @ONLY
-)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
-    DESTINATION .
-)
-```
-
-### 头文件引入
-
-```cpp
-#include <YomkServer/YomkAPI.h>  // 唯一需要引入的头文件
-using namespace yomk;             // 框架命名空间
-```
-
-### 编译独立工程
-
-推荐使用工程内 `build.sh` 一键编译：
-```bash
-source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install
-```
-
-> 若 YomkServer 安装在默认路径（`/usr/local`），无需额外参数：
-> `source build.sh`
-
-`build.sh` 自动完成：创建 build 目录 → cmake 配置 → 编译安装 → 加载运行环境 → 保持原目录。
-
-## 标准工程模板（创建新工程时必须遵循）
-
-当用户要求创建基于 YomkServer 的工程时，**必须**按以下模板生成完整工程骨架。
-
-### 标准目录结构
+### 目录结构
 
 ```
 ProjectName/
-├── main.cpp                // 程序入口
+├── main.cpp              // 入口：YOMK_BOOT 启动
 ├── boot/
-│   ├── MyBoot.h            // 生命周期管理
+│   ├── MyBoot.h          // 生命周期：before/start/after
 │   └── MyBoot.cpp
 ├── config/
-│   └── config.json         // 配置文件
+│   └── config.json       // 配置文件
 ├── msgs/
-│   └── YomkMsgs.h          // 消息包定义
-├── services/               // 服务实现（按业务分子目录）
-│   └── ConfigService.h/.cpp
+│   └── YomkMsgs.h        // 所有消息包定义
+├── services/
+│   └── ConfigService.h/.cpp  // 内置配置服务
 ├── typedefine/
-│   └── TypeDefine.h        // 公共常量/宏/类型定义
-├── build.sh                // 一键编译脚本
-├── setup.bash.in           // 环境脚本模板
+│   └── TypeDefine.h      // 公共常量/宏/类型
+├── build.sh              // 一键编译（source执行）
+├── setup.bash.in         // 环境脚本模板
 ├── CMakeLists.txt
 └── README.md
 ```
 
-### 目录职责
+### 关键约定
 
-| 目录 | 职责 |
-|------|------|
-| `boot/` | 程序生命周期管理（before/start/after），路径推导、Context 创建、按需启动服务 |
-| `config/` | 配置文件目录，安装后与 bin/ 同级 |
-| `msgs/` | 所有服务间通信的消息包定义集中管理 |
-| `services/` | 所有服务实现，按业务类别分子目录存放 |
-| `typedefine/` | 常量定义、宏定义、类型别名等公共定义 |
+1. `MyBoot.before()`：通过 `/proc/self/exe` 推导配置路径，存入 Context（`CTX_CONFIG_PATH`）
+2. `MyBoot.start()`：服务创建器映射表 + `m_startSrvNames` 按需启动
+3. `MyBoot.after()`：调用 `/ConfigService/load` 加载配置
+4. 安装固定到源码下 `install/`（`bin/ + config/ + setup.bash`）
+5. `build.sh` 用 `source` 执行，自动编译+安装+加载环境
+6. `build.sh`、`setup.bash.in` 不含工程名；`CMakeLists.txt`、`main.cpp`、`README.md` 使用用户指定工程名
 
-### 关键设计约定
+### 生成规则
 
-1. **MyBoot** 接收 `argc, argv`，`before()` 中通过 `/proc/self/exe` 推导可执行文件绝对路径
-2. 配置文件路径存入 Context（`CTX_CONFIG_PATH`），服务通过 Context 获取，无需构造参数传递
-3. `start()` 使用服务创建器映射表 + `m_startSrvNames` 按需启动
-4. `after()` 调用服务接口做启动后初始化（如 `/ConfigService/load`）
-5. 安装固定到源码下 `install/`，结构为 `bin/ + config/ + setup.bash`
-6. `build.sh` 使用 `source` 执行，自动编译+安装+加载环境+保持原目录
-7. `build.sh` 和 `setup.bash.in` **不包含工程名**，仅输出通用成功/失败提示
-8. `README.md`、`CMakeLists.txt` 的 `project()`、`main.cpp` 日志中使用用户指定的工程名
+- 完整文件内容参见 [examples.md](examples.md) 示例0
+- 将 `ProjectName` 替换为用户指定名称
+- 所有文件必须完整生成，确保 `source build.sh` 可直接编译运行
 
-### 安装后目录结构
+## 任务二：扩展业务服务
 
-```
-install/
-├── bin/ProjectName        <-- 可执行文件
-├── config/config.json     <-- 配置文件
-└── setup.bash             <-- 环境脚本
+在已有工程中添加新服务的标准步骤：
+
+### 步骤
+
+1. **定义消息包**（`msgs/YomkMsgs.h`）：
+```cpp
+struct MyData { std::string field1; int field2; };
+YomkMsg(MyData, YMyData, d)  // 参数：数据类, 消息名称, 成员变量名
 ```
 
-路径推导逻辑：`exe_path/../config/config.json`（即 `bin/` 的上级目录下的 `config/`）。
+2. **创建服务文件**（`services/XxxService.h` + `services/XxxService.cpp`）：
+```cpp
+// .h
+class XxxService : public YomkService {
+public:
+    XxxService(YomkServer *server);
+    virtual ~XxxService() {}
+    virtual int init() override;
+private:
+    YomkResponse myFunc(YomkPkgPtr pkg);
+};
 
-完整模板文件内容参见：[examples.md](examples.md) 示例0。
+// .cpp
+XxxService::XxxService(YomkServer *server) : YomkService(server) { name("/XxxService"); }
+int XxxService::init() {
+    YomkInstallFunc("/my_func", XxxService::myFunc);
+    YOMK_INFO_TAG("XxxService::init", "install func [ /my_func ] to", name());
+    return 0;
+}
+YomkResponse XxxService::myFunc(YomkPkgPtr pkg) {
+    YomkUnPackPkgResponse(pkg, YMyData, data);  // 解包（失败自动返回eNo）
+    // 业务逻辑...
+    return YomkResponse(YomkResponse::eOk, "success");
+}
+```
+
+3. **注册到 Boot**（`boot/MyBoot.cpp` 的 `start()` 映射表中添加）：
+```cpp
+{"/XxxService", []() { return new XxxService(YOMK_SERVER_P); }},
+```
+
+4. **启动列表添加**（`main.cpp` 的 `YOMK_BOOT` 参数中）：
+```cpp
+YOMK_BOOT(new MyBoot(argc, argv, {"/ConfigService", "/XxxService"}));
+```
+
+5. **CMakeLists.txt 添加源文件**：
+```cmake
+add_executable(${PROJECT_NAME}
+    ...
+    services/XxxService.cpp
+)
+```
+
+### 跨服务调用
+
+```cpp
+// 同步
+YomkResponse resp = YOMK_REQUEST("/XxxService/my_func", YomkMkPtr(YMyData, MyData{"hello", 1}));
+// 异步
+YOMK_ASYNC_REQUEST("/XxxService/my_func", YomkMkPtr(YMyData, MyData{"hello", 1}), [](YomkResponse resp) { });
+```
 
 ## 编程规范
 
-### 1. 消息包定义（YomkMsg）
-
-每个服务间通信的数据结构必须用 `YomkMsg` 宏注册（3个参数：自定义数据类、消息名称、数据成员变量名）：
+### YomkMsg 消息包
 
 ```cpp
-// 1. 定义普通结构体
-struct MyData {
-    std::string field1;
-    int field2;
-};
-// 2. 用YomkMsg宏注册为消息包（在命名空间外）
-// 参数：自定义数据类, 消息名称（用于框架类型识别和映射）, 数据成员变量名
-YomkMsg(MyData, MyData, d)
-// 消息名称为 MyData，访问: ptr->d.field1
-
-// 也可以自定义消息名称和成员名：
-// YomkMsg(MyData, YMyData, msg)  → 消息名称为 YMyData，访问: ptr->msg.field1
+YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 ```
+- `YomkMkPtr(消息名称, 数据类实例)` — 创建消息包
+- `YomkUnPackPkgResponse(pkg, 消息名称, ptr)` — 解包，失败自动返回 eNo
+- `YomkUnPackPkgVoid(pkg, 消息名称, ptr)` — 解包，失败自动 return
+- `YomkUnPackPkg(pkg, 消息名称, ptr)` — 解包，不自动 return，需手动判空
 
-注册后可用（**辅助宏均使用消息名称**）：
-- `YomkMkPtr(消息名称, 数据类实例)` — 创建消息包，如 `YomkMkPtr(YMyData, MyData{"val", 42})`
-- `YomkUnPackPkgResponse(pkg, 消息名称, ptr)` — 解包（函数返回Response时使用，**宏已自动判空，失败自动返回eNo**）
-- `YomkUnPackPkgVoid(pkg, 消息名称, ptr)` — 解包（void函数时使用，**宏已自动判空，失败自动return**）
-- `YomkUnPackPkg(pkg, 消息名称, ptr)` — 解包（**不自动return**，ptr为nullptr需手动检查）
-
-框架内置标准类型消息包（成员名均为 `d`）：
-- `String`(std::string), `Bool`, `Int32`, `Int64`, `Uint32`, `Uint64`, `Float32`, `Float64` 等
-- 对应数组类型：`StringArray`, `BoolArray`, `Int32Array` 等
-
-### 2. YomkService 编写模板
-
-```cpp
-class MyService : public YomkService
-{
-public:
-    MyService(YomkServer* server) : YomkService(server) {
-        name("/MyService");  // 服务名必须唯一，以/开头
-    }
-    virtual ~MyService() {}
-
-    virtual int init() {
-        // 安装功能函数
-        YomkInstallFunc("/my_func", MyService::myFunc);
-        YOMK_INFO_TAG("MyService::init", "install func [ /my_func ] to", name());
-        return 0;
-    }
-
-private:
-    YomkResponse myFunc(YomkPkgPtr pkg) {
-        // 1. 解包（宏已自动判空，失败自动返回 eNo）
-        // 注意：这里使用消息名称 YMyData，而非数据类名 MyData
-        YomkUnPackPkgResponse(pkg, YMyData, data);
-        // 2. 业务逻辑
-        // ...
-        // 3. 返回结果
-        return YomkResponse(YomkResponse::eOk, "success");
-    }
-};
-```
-
-### 3. 程序初始化模板
-
-**方式一：直接初始化（简单场景）**
-```cpp
-int main(int argc, char* argv[]) {
-    // 初始化服务器，自动启动全部内置服务
-    YOMK_INIT();
-
-    // 注册自定义服务
-    YOMK_NEW_SERVICE(MyService, "/MyService");
-
-    // 同步请求（注意：YomkMkPtr 第一个参数是消息名称，第二个是数据类实例）
-    YomkResponse resp = YOMK_REQUEST("/MyService/my_func", YomkMkPtr(YMyData, MyData{"hello", 1}));
-
-    // 异步请求
-    YOMK_ASYNC_REQUEST("/MyService/my_func", YomkMkPtr(YMyData, MyData{"hello", 1}), [](YomkResponse resp) {
-        // 回调处理
-    });
-
-    getchar();
-    return 0;
-}
-```
-
-**方式二：YomkBoot 生命周期管理（推荐，复杂场景）**
-```cpp
-// 1. 定义 Boot 类
-class MyBoot : public YomkBoot {
-public:
-    MyBoot(int argc, char *argv[], const std::vector<std::string>& srvNames = {})
-        : m_argc(argc), m_argv(argv), m_startSrvNames(srvNames) {}
-    int before() override;  // 服务启动前：路径推导、创建Context、EventLoop、注册FunctionPool等
-    int start() override;   // 注册并启动服务
-    int after() override;   // 服务启动后：调用服务接口做初始化
-private:
-    int m_argc;
-    char **m_argv;
-    std::vector<std::string> m_startSrvNames;
-};
-
-// 2. 实现 before()：通过 /proc/self/exe 推导配置文件路径并存入 Context
-int MyBoot::before() {
-    std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
-    std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.json";
-    YOMK_CONTEXT_CREATE(CTX_CONFIG_PATH, YomkMkPtr(String, configPath.string()));
-    return 0;
-}
-
-// 3. 实现 start()：使用服务创建器映射表 + 按需启动
-int MyBoot::start() {
-    static const std::map<std::string, std::function<YomkService*()>> creators = {
-        {"/ConfigService", []() { return new ConfigService(YOMK_SERVER_P); }},
-        {"/MyService", []() { return new MyService(YOMK_SERVER_P); }},
-    };
-    for (const auto& name : m_startSrvNames) {
-        auto it = creators.find(name);
-        if (it != creators.end()) {
-            if (YOMK_ADD_SERVICE(it->second(), name) != 0) return -1;
-        }
-    }
-    return 0;
-}
-
-// 4. 实现 after()：服务启动后调用接口初始化
-int MyBoot::after() {
-    YomkResponse resp = YOMK_REQUEST("/ConfigService/load", nullptr);
-    if (resp.m_status != YomkResponse::eOk) return -1;
-    return 0;
-}
-
-// 5. 入口
-int main(int argc, char* argv[]) {
-    YOMK_BOOT(new MyBoot(argc, argv, {"/ConfigService"}));
-    getchar();
-    return 0;
-}
-```
-
-## 宏API速查
-
-### 请求通信
-```cpp
-YOMK_INIT()                           // 初始化服务器（自动启动全部内置服务）
-YOMK_BOOT(boot)                       // 通过 YomkBoot 生命周期初始化
-YOMK_NEW_SERVICE(ClassName, srvName)  // 注册服务（模板方式）
-YOMK_ADD_SERVICE(srvPtr, srvName)     // 注册服务（实例方式）
-YOMK_REQUEST(url, pkg)                // 同步请求 → YomkResponse
-YOMK_ASYNC_REQUEST(url, pkg, callback)// 异步请求
-YOMK_SERVER_P                         // 获取 YomkServer 原始指针
-YOMK_SERVER_PTR                       // 获取 YomkServer shared_ptr
-```
-
-### Context 全局状态
-```cpp
-YOMK_CONTEXT_CREATE(key, value)                    // 创建
-YOMK_CONTEXT_GET(MsgName, key, default_value)   // 获取（模板）
-YOMK_CONTEXT_SET(key, value)                       // 设置
-YOMK_CONTEXT_DESTROY(key)                          // 销毁
-YOMK_CONTEXT_ON_CHECKER() / YOMK_CONTEXT_OFF_CHECKER()  // 开关检查器
-YOMK_CONTEXT_SET_CHECKER(key, checkFunc)            // 设置检查函数
-YOMK_CONTEXT_ON_MONITOR() / YOMK_CONTEXT_OFF_MONITOR()  // 开关监控器
-YOMK_CONTEXT_SET_MONITOR(key, monitorFunc)          // 设置监控函数
-```
-
-### EventLoop 事件循环
-```cpp
-YOMK_EVENTLOOP_START(name, defaultFunc)      // 启动
-YOMK_EVENTLOOP_STOP(name)                    // 停止
-YOMK_EVENTLOOP_POST(name, pkg, handleFunc)   // 投递事件（异步）
-YOMK_EVENTLOOP_POST_WAIT(name, pkg, handle)  // 投递事件（同步等待）
-YOMK_EVENTLOOP_DESTROY(name)                 // 销毁
-```
-
-### FunctionPool 函数池
-```cpp
-YOMK_FUNCTIONPOOL_REGISTER(funcName, func)  // 注册函数
-YOMK_FUNCTIONPOOL_CALL(funcName, pkg)       // 调用函数
-```
-
-### 日志
-```cpp
-YOMK_INFO(...)           / YOMK_INFO_TAG(tag, ...)
-YOMK_WARN(...)           / YOMK_WARN_TAG(tag, ...)
-YOMK_ERROR(...)          / YOMK_ERROR_TAG(tag, ...)
-YOMK_DEBUG(...)          / YOMK_DEBUG_TAG(tag, ...)
-YOMK_FILE_LOG_CREATE(dir, file)
-YOMK_FILE_LOG_WRITE(file)
-YOMK_FILE_INFO(file, ...)  / YOMK_FILE_INFO_TAG(file, tag, ...)
-// 同理 FILE_WARN / FILE_ERROR / FILE_DEBUG
-YOMK_ON_CONSOLE_LOG_INFO()  / YOMK_OFF_CONSOLE_LOG_INFO()
-// 同理 WARN / ERROR / DEBUG
-YOMK_SET_CONSOLE_LOG_PROXY(proxyFunc)
-```
-
-## 模块化工程设计原则
-
-### 推荐工程目录结构
-
-```
-ProjectName/
-├── main.cpp                    // 程序入口
-├── boot/
-│   ├── MyBoot.h                // 生命周期管理
-│   └── MyBoot.cpp
-├── config/
-│   └── config.json             // 配置文件
-├── msgs/
-│   └── YomkMsgs.h              // 所有消息包定义
-├── services/                   // 所有服务统一放在 services/ 下
-│   ├── ConfigService.h/.cpp    // 内置配置服务
-│   ├── user/                   // 按类别分类存放
-│   │   ├── UserService.h
-│   │   └── UserService.cpp
-│   └── order/
-│       ├── OrderService.h
-│       └── OrderService.cpp
-├── typedefine/
-│   └── TypeDefine.h            // 公共常量/宏/类型定义
-├── build.sh                    // 一键编译脚本
-├── setup.bash.in               // 环境脚本模板
-├── CMakeLists.txt
-└── README.md
-```
-
-**目录职责：**
-| 目录 | 职责 |
-|------|------|
-| `boot/` | 程序生命周期管理（before/start/after），负责资源初始化的编排 |
-| `config/` | 配置文件目录，安装后与 bin/ 同级 |
-| `msgs/` | 所有服务间通信的消息包定义集中管理 |
-| `services/` | 所有服务实现，按业务类别分子目录存放 |
-| `typedefine/` | 常量定义、宏定义、类型别名等公共定义 |
+内置标准类型（成员名均为 `d`）：`String`, `Bool`, `Int32`, `Int64`, `Float64` 及对应 Array 类型。
 
 ### 设计原则
 
-1. **一切皆服务，一切皆请求**：所有功能模块统一为Service，所有交互统一为Request/Response
-2. **两级模块化**：Service封装业务域，Function封装具体功能，URL路径唯一标识
-3. **关注点分离**：每个Service只负责一个领域的功能，服务间依赖最小化
-4. **服务间通过请求通信**：使用 `YOMK_REQUEST("/ServiceName/func", pkg)` 跨服务调用，支持同步与异步
-5. **共享状态用 Context**：避免全局变量，使用 YomkContext 管理共享状态，配合Checker防非法迁移、Monitor监听变更
-6. **耗时操作用 EventLoop**：IO密集型和高并发任务投递到独立事件循环，线程隔离保证顺序执行
-7. **公共函数用 FunctionPool**：无状态工具函数注册到函数池，支持运行时热替换
-8. **服务统一存放 services/ 目录**：每个服务 `XxxService.h` + `XxxService.cpp`，按业务类别分子目录组织，支持并行开发
-9. **消息定义集中 msgs/**：所有 `YomkMsg` 注册的消息结构体统一在 `msgs/YomkMsgs.h` 中定义
-10. **生命周期管理在 boot/**：通过 `YomkBoot` 子类管理 before/start/after 三阶段初始化
-11. **配置文件集中 config/**：配置文件统一放在 `config/` 目录，安装后与 `bin/` 同级，服务通过 Context 获取路径
-12. **公共定义集中 typedefine/**：常量、宏、类型别名等可复用公共定义统一在 `typedefine/TypeDefine.h` 中管理
-13. **渐进式演进**：从单体应用平滑演进到复杂多服务系统，无需重构架构
+1. 每个 Service 只负责单一业务域
+2. 服务间通过 `YOMK_REQUEST` 通信，不直接引用
+3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
+4. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）
+5. 配置路径通过 Context 传递，不用构造参数
 
 ## 详细参考
 
-- API详细参考：[reference.md](reference.md)
-- 完整工程示例：[examples.md](examples.md)
+- 完整工程代码：[examples.md](examples.md)
+- API 详细参考：[reference.md](reference.md)

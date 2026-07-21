@@ -1,10 +1,10 @@
-# YomkServer 完整工程示例
+# YomkServer 工程示例
 
-## 示例0：标准空白工程模板（创建新工程时必须生成）
+## 示例0：标准工程模板（创建新工程时必须生成）
 
-当用户要求创建基于 YomkServer 的工程时，必须生成以下完整工程骨架。将 `ProjectName` 替换为用户指定的工程名。
+将 `ProjectName` 替换为用户指定的工程名，所有文件必须完整生成。
 
-### 工程目录结构
+### 目录结构
 ```
 ProjectName/
 ├── main.cpp
@@ -78,7 +78,7 @@ int MyBoot::before()
 {
     YOMK_INFO_TAG("MyBoot::before", "ProjectName starting...");
 
-    // 通过 /proc/self/exe 获取可执行文件绝对路径
+    // 通过 /proc/self/exe 推导配置文件路径
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
     std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.json";
     YOMK_CONTEXT_CREATE(CTX_CONFIG_PATH, YomkMkPtr(String, configPath.string()));
@@ -94,7 +94,7 @@ int MyBoot::start()
          { return new ConfigService(YOMK_SERVER_P); }},
     };
 
-    // 根据 m_startSrvNames 按需启动服务
+    // 按需启动
     for (const auto &srvName : m_startSrvNames)
     {
         auto it = serviceCreators.find(srvName);
@@ -109,7 +109,6 @@ int MyBoot::start()
 
 int MyBoot::after()
 {
-    // 服务启动后加载配置文件
     YomkResponse resp = YOMK_REQUEST("/ConfigService/load", nullptr);
     if (resp.m_status != YomkResponse::eOk)
     {
@@ -126,12 +125,7 @@ int MyBoot::after()
 #pragma once
 #include <string>
 
-/*
- *  Type Define
- *  统一存放常量定义、宏定义、类型定义等可复用公共定义
- */
-
-// Context
+// Context Keys
 constexpr const char *const CTX_CONFIG_PATH = "config_path";
 ```
 
@@ -141,15 +135,11 @@ constexpr const char *const CTX_CONFIG_PATH = "config_path";
 #include <YomkServer/YomkAPI.h>
 
 // ConfigService 消息包
-// 配置键：用于 /get 和 /reload
 struct ConfigKey { std::string key; };
 YomkMsg(ConfigKey, YConfigKey, req)
-// 访问: ptr->req.key
 
-// 配置键值：用于 /set
 struct ConfigKeyValue { std::string key; std::string value; };
 YomkMsg(ConfigKeyValue, YConfigKeyValue, req)
-// 访问: ptr->req.key, ptr->req.value
 ```
 
 ### services/ConfigService.h
@@ -312,15 +302,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
 )
 
-# 安装可执行文件
-install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin
-)
-
-# 安装配置文件
-install(DIRECTORY config/
-    DESTINATION config
-)
+# 安装
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
+install(DIRECTORY config/ DESTINATION config)
 
 # 生成 setup.bash
 get_target_property(YomkServer_LIB_DIR YomkServer::YomkServer LOCATION)
@@ -330,15 +314,12 @@ configure_file(
     ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
     @ONLY
 )
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
-    DESTINATION .
-)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/setup.bash DESTINATION .)
 ```
 
 ### build.sh
 ```bash
 #!/bin/bash
-# 一键编译脚本
 # 用法: source build.sh [额外的cmake参数...]
 # 示例: source build.sh -DCMAKE_PREFIX_PATH=/path/to/YomkServer/install
 
@@ -351,14 +332,14 @@ cd "${BUILD_DIR}" || return 1
 
 cmake "${SCRIPT_DIR}" "$@"
 if [ $? -ne 0 ]; then
-    echo "[BUILD] cmake 配置失败"
+    echo "cmake 配置失败"
     cd "${_ORIG_DIR}"
     return 1
 fi
 
 cmake --build . --config Release --target install
 if [ $? -ne 0 ]; then
-    echo "[BUILD] 编译失败"
+    echo "编译失败"
     cd "${_ORIG_DIR}"
     return 1
 fi
@@ -368,13 +349,12 @@ source "${SCRIPT_DIR}/install/setup.bash"
 cd "${_ORIG_DIR}"
 unset _ORIG_DIR
 
-echo "[BUILD] 编译完成"
+echo "编译完成"
 ```
 
 ### setup.bash.in
 ```bash
 #!/bin/bash
-# 环境配置脚本
 # 用法: source install/setup.bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -382,7 +362,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PATH="${SCRIPT_DIR}/bin:$PATH"
 export LD_LIBRARY_PATH="@YomkServer_LIB_DIR@:$LD_LIBRARY_PATH"
 
-echo "Environment loaded."
+echo "environment loaded."
 echo "  bin: ${SCRIPT_DIR}/bin"
 echo "  lib: @YomkServer_LIB_DIR@"
 ```
@@ -391,331 +371,136 @@ echo "  lib: @YomkServer_LIB_DIR@"
 ```markdown
 # ProjectName
 
-基于 YomkServer 模块化框架的工程。
+基于 [YomkServer](https://github.com/Solitude-5309/YomkServer) 模块化框架的工程。  
+YomkServer 是基于 C++17 的模块化高性能服务开发框架，核心设计理念：**「一切皆服务，一切皆请求」**。
 
 ## 前置条件
 
 - C++17 编译器
 - CMake >= 3.14
-- YomkServer 已安装到系统
+- YomkServer 已安装
+
+## 编译与运行
+
+source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install
+ProjectName
 
 ## 工程结构
 
 | 目录 | 职责 |
 |------|------|
-| `boot/` | 程序生命周期管理（before/start/after） |
+| `boot/` | 生命周期管理（before/start/after） |
 | `config/` | 配置文件 |
 | `msgs/` | 消息包定义 |
 | `services/` | 服务实现 |
 | `typedefine/` | 公共常量/宏/类型定义 |
-
-## 编译与运行
-
-source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install  
-ProjectName  
-
-
-## 生命周期
-
-| 阶段 | 方法 | 用途 |
-|------|------|------|
-| 启动前 | `before()` | 路径推导、创建 Context、EventLoop、注册 FunctionPool |
-| 启动中 | `start()` | 注册并启动服务 |
-| 启动后 | `after()` | 调用服务接口做初始化 |
 ```
 
 ---
 
-## 示例1：模块化多服务工程（基于TestYomkServer）
+## 示例1：扩展业务服务（在已有工程中添加新服务）
 
-展示一个典型的模块化工程结构，包含多个Service协作、Boot生命周期管理、跨服务调用。
+演示在示例0基础上添加 `UserService`，展示完整的扩展流程。
 
-### 工程目录结构
-```
-MyProject/
-├── main.cpp
-├── boot/
-│   ├── MyBoot.h              // 生命周期管理
-│   └── MyBoot.cpp
-├── msgs/
-│   └── YomkMsgs.h            // 所有消息包定义
-├── services/                 // 所有服务按类别分子目录存放
-│   ├── YomkServiceA.h
-│   ├── YomkServiceA.cpp
-│   ├── YomkServiceB.h
-│   └── YomkServiceB.cpp
-└── CMakeLists.txt
-```
-
-### msgs/YomkMsgs.h — 消息包定义
+### 1. 添加消息包（msgs/YomkMsgs.h 追加）
 ```cpp
-#pragma once
-#include <YomkServer/YomkAPI.h>
+// UserService 消息包
+struct UserQuery { std::string userId; };
+YomkMsg(UserQuery, YUserQuery, req)
 
-// 定义自定义数据类
-struct MyServiceMsg
-{
-    std::string content;
-};
-// 将自定义数据类映射为消息包
-// 参数：自定义数据类, 消息名称, 数据成员变量名
-// 消息名称 YMyServiceMsg 用于框架类型识别，辅助宏均使用此名称
-YomkMsg(MyServiceMsg, YMyServiceMsg, msg)
-// 访问: ptr->msg.content
+struct UserInfo { std::string userId; std::string name; int age; };
+YomkMsg(UserInfo, YUserInfo, d)
 ```
 
-### services/YomkServiceA.h — 服务A
+### 2. 创建服务（services/UserService.h）
 ```cpp
 #pragma once
 #include <YomkServer/YomkAPI.h>
 #include "msgs/YomkMsgs.h"
 
-// 创建一个服务A，用于编写功能集合
-class YomkServiceA : public YomkService
+using namespace yomk;
+
+class UserService : public YomkService
 {
 public:
-    YomkServiceA(YomkServer *server);
-    virtual ~YomkServiceA() {}
-
-public:
-    virtual int init();
+    UserService(YomkServer *server);
+    virtual ~UserService() {}
+    virtual int init() override;
 
 private:
-    YomkResponse callSkillA(YomkPkgPtr pkg);
+    YomkResponse getUser(YomkPkgPtr pkg);
+    YomkResponse createUser(YomkPkgPtr pkg);
 };
 ```
 
-### services/YomkServiceA.cpp — 服务A实现
+### 3. 实现服务（services/UserService.cpp）
 ```cpp
-#include "YomkServiceA.h"
+#include "UserService.h"
 
-YomkServiceA::YomkServiceA(YomkServer *server)
+UserService::UserService(YomkServer *server)
     : YomkService(server)
 {
-    name("/YomkServiceA");
+    name("/UserService");
 }
 
-int YomkServiceA::init()
+int UserService::init()
 {
-    // 安装功能函数，功能函数名称在服务中必须唯一
-    YomkInstallFunc("/call_skill_a", YomkServiceA::callSkillA);
-    // 日志
-    YOMK_INFO_TAG("YomkServiceA::init", "install func [ /call_skill_a ] to", name());
+    YomkInstallFunc("/get_user", UserService::getUser);
+    YomkInstallFunc("/create_user", UserService::createUser);
+    YOMK_INFO_TAG("UserService::init", "install func [ /get_user /create_user ] to", name());
     return 0;
 }
 
-YomkResponse YomkServiceA::callSkillA(YomkPkgPtr pkg)
+YomkResponse UserService::getUser(YomkPkgPtr pkg)
 {
-    // 解包数据
-    YomkUnPackPkgResponse(pkg, YMyServiceMsg, myServiceMsg);
+    YomkUnPackPkgResponse(pkg, YUserQuery, query);
+    YOMK_INFO_TAG("UserService::getUser", "query user: ", query->req.userId);
 
-    // 日志
-    YOMK_INFO_TAG("YomkServiceA::callSkillA", name(), " exec skill a, with msg: ", myServiceMsg->msg.content);
+    // 业务逻辑...
+    UserInfo info{query->req.userId, "Alice", 25};
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(YUserInfo, info));
+}
 
-    // 调用服务B中的方法（跨服务调用）
-    YomkResponse response = YOMK_REQUEST("/YomkServiceB/call_skill_b", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world b"}));
+YomkResponse UserService::createUser(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, YUserInfo, user);
+    YOMK_INFO_TAG("UserService::createUser", "create user: ", user->d.name);
 
-    // 检查调用结果
-    if (response.m_status != YomkResponse::eOk)
-    {
-        YOMK_ERROR_TAG("YomkServiceA::callSkillA", name(), " call /YomkServiceB/call_skill_b, response: ", response.m_msg);
-        return YomkResponse(YomkResponse::eNo, name() + " exec skill a failed");
-    }
+    // 跨服务调用示例：读取配置
+    YomkResponse cfgResp = YOMK_REQUEST("/ConfigService/get",
+        YomkMkPtr(YConfigKey, ConfigKey{"server.name"}));
 
-    // 日志
-    YOMK_INFO_TAG("YomkServiceA::callSkillA", name(), " call /YomkServiceB/call_skill_b, response: ", response.m_msg);
-
-    // 返回结果
-    return YomkResponse(YomkResponse::eOk, name() + " exec skill a success");
+    return YomkResponse(YomkResponse::eOk, "user created");
 }
 ```
 
-### services/YomkServiceB.h — 服务B
+### 4. 注册到 Boot（boot/MyBoot.cpp 修改）
 ```cpp
-#pragma once
-#include <YomkServer/YomkAPI.h>
-#include "msgs/YomkMsgs.h"
+// 头部添加
+#include "services/UserService.h"
 
-class YomkServiceB : public YomkService
-{
-public:
-    YomkServiceB(YomkServer *server);
-    virtual ~YomkServiceB() {}
-
-public:
-    virtual int init();
-
-private:
-    YomkResponse callSkillB(YomkPkgPtr pkg);
-};
+// start() 映射表中添加
+{"/UserService", []() { return new UserService(YOMK_SERVER_P); }},
 ```
 
-### services/YomkServiceB.cpp — 服务B实现
+### 5. 启动列表（main.cpp 修改）
 ```cpp
-#include "YomkServiceB.h"
-
-YomkServiceB::YomkServiceB(YomkServer *server)
-    : YomkService(server)
-{
-    name("/YomkServiceB");
-}
-
-int YomkServiceB::init()
-{
-    // 安装功能函数，功能函数名称在服务中必须唯一
-    YomkInstallFunc("/call_skill_b", YomkServiceB::callSkillB);
-    // 日志
-    YOMK_INFO_TAG("YomkServiceB::init", "install func [ /call_skill_b ] to", name());
-    return 0;
-}
-
-YomkResponse YomkServiceB::callSkillB(YomkPkgPtr pkg)
-{
-    // 解包数据
-    YomkUnPackPkgResponse(pkg, YMyServiceMsg, myServiceMsg);
-
-    // 日志
-    YOMK_INFO_TAG("YomkServiceB::callSkillB", name(), " exec skill b, with msg: ", myServiceMsg->msg.content);
-
-    // 返回结果
-    return YomkResponse(YomkResponse::eOk, name() + " exec skill b success");
-}
+YOMK_BOOT(new MyBoot(argc, argv, {"/ConfigService", "/UserService"}));
 ```
 
-### boot/MyBoot.h — 生命周期管理
-```cpp
-#pragma once
-#include <YomkServer/YomkAPI.h>
-
-class MyBoot : public YomkBoot
-{
-public:
-    MyBoot(const std::vector<std::string> &startSrvNames = {}) : m_startSrvNames(startSrvNames) {}
-    int before();
-    int start();
-    int after();
-
-private:
-    std::vector<std::string> m_startSrvNames; // 将要启动的服务清单，实际业务按需启动
-};
-```
-
-### boot/MyBoot.cpp — 生命周期实现
-```cpp
-#include "MyBoot.h"
-#include "services/YomkServiceA.h"
-#include "services/YomkServiceB.h"
-
-int MyBoot::before()
-{
-    // 服务启动前的初始化操作
-    // 服务启动前创建CONTEXT，确保在服务启动时能够访问上下文
-    // 服务启动前创建EVENTLOOP，确保在服务启动时能够使用特定的事件循环
-    // 服务启动前注册功能函数到FUNCTION_POOL，确保在服务启动时能够访问功能函数
-    // 服务启动前创建YOMK_SET_CONSOLE_LOG_PROXY，确保在服务启动时能够触发日志代理
-    // 服务启动前创建其他必要的资源，确保在服务启动时能够使用
-    return 0;
-}
-
-int MyBoot::start()
-{
-    // 现有的全部服务清单
-    // 使用服务创建器映射表管理服务实例，同一个类可以注册多个实例
-    static const std::map<std::string, std::function<YomkService *()>> serviceCreators = {
-        {"/YomkServiceA", []()
-         { return new YomkServiceA(YOMK_SERVER_P); }},
-        {"/YomkServiceAA", []()
-         { return new YomkServiceA(YOMK_SERVER_P); }},  // 同一个类可以注册多个实例
-        {"/YomkServiceB", []()
-         { return new YomkServiceB(YOMK_SERVER_P); }},
-        {"/YomkServiceBB", []()
-         { return new YomkServiceB(YOMK_SERVER_P); }}};  // 同一个类可以注册多个实例
-
-    for (const auto &srvName : m_startSrvNames)
-    {
-        auto it = serviceCreators.find(srvName);
-        if (it != serviceCreators.end())
-        {
-            if (YOMK_ADD_SERVICE(it->second(), srvName) != 0)
-                return -1;
-        }
-    }
-    return 0;
-}
-
-int MyBoot::after()
-{
-    // 服务启动后的善后操作
-    // 调用服务接口进行服务内部初始化操作
-    // 调用服务接口自启动某个任务
-    return 0;
-}
-```
-
-### main.cpp — 程序入口
-```cpp
-#include <YomkServer/YomkAPI.h>
-#include "boot/MyBoot.h"
-#include "msgs/YomkMsgs.h"
-
-int main(int argc, char *argv[])
-{
-    YOMK_BOOT(new MyBoot({"/YomkServiceA", "/YomkServiceB"}));
-
-    // 同步调用服务A中的方法
-    YomkResponse response = YOMK_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world a"}));
-    if (response.m_status == YomkResponse::eOk)
-    {
-        YOMK_INFO_TAG("main", "request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
-    }
-    else
-    {
-        YOMK_ERROR_TAG("main", "request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
-    }
-
-    YOMK_INFO_TAG("main", "request /YomkServiceA/call_skill_a send finished.");
-
-    // 异步调用服务A中的方法
-    YOMK_ASYNC_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world a"}), [](YomkResponse response)
-                       {
-        if(response.m_status == YomkResponse::eOk)
-        {
-            YOMK_INFO_TAG("main", "async request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
-        }
-        else
-        {
-            YOMK_ERROR_TAG("main", "async request /YomkServiceA/call_skill_a, with response.msg: ", response.m_msg);
-        } });
-
-    YOMK_INFO_TAG("main", "async request /YomkServiceA/call_skill_a send finished.");
-
-    getchar();
-
-    return 0;
-}
-```
-
-### CMakeLists.txt — 构建配置
+### 6. CMakeLists.txt 添加源文件
 ```cmake
-cmake_minimum_required(VERSION 3.14)
-project(MyProject LANGUAGES CXX)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-find_package(YomkServer REQUIRED)
-
-set(MyProject_SOURCES
+add_executable(${PROJECT_NAME}
     main.cpp
     boot/MyBoot.cpp
-    services/YomkServiceA.cpp
-    services/YomkServiceB.cpp
+    services/ConfigService.cpp
+    services/UserService.cpp
 )
-add_executable(MyProject ${MyProject_SOURCES})
-target_link_libraries(MyProject PRIVATE YomkServer::YomkServer)
 ```
 
-## 示例2：Context Checker/Monitor 完整流程
+---
+
+## 示例2：Context Checker/Monitor
 
 ```cpp
 // 检查函数：只允许非空字符串
@@ -725,9 +510,9 @@ ContextChecker::ECheckStatus nonEmptyChecker(const yomk::Context& ctx) {
     return ContextChecker::eAccept;
 }
 
-// 监控函数：记录所有变更
+// 监控函数：记录变更
 void changeLogger(const yomk::Context& ctx) {
-    YomkUnPackPkgVoid(ctx.m_value, String, val); // 宏已自动判空
+    YomkUnPackPkgVoid(ctx.m_value, String, val);
     YOMK_INFO_TAG("CtxMonitor", "key=", ctx.m_key, " new_value=", val->d);
 }
 
@@ -739,7 +524,7 @@ YOMK_CONTEXT_ON_MONITOR();
 YOMK_CONTEXT_SET_MONITOR("config", changeLogger);
 
 YOMK_CONTEXT_SET("config", YomkMkPtr(String, "new_value")); // 通过检查并触发监控
-YOMK_CONTEXT_SET("config", YomkMkPtr(String, ""));          // 被检查器拒绝
+YOMK_CONTEXT_SET("config", YomkMkPtr(String, ""));          // 被拒绝
 ```
 
 ## 示例3：EventLoop 异步事件处理
@@ -747,25 +532,22 @@ YOMK_CONTEXT_SET("config", YomkMkPtr(String, ""));          // 被检查器拒�
 ```cpp
 // 事件处理函数
 YomkResponse taskHandler(YomkPkgPtr pkg) {
-    YomkUnPackPkgResponse(pkg, String, taskData); // 宏已自动判空
+    YomkUnPackPkgResponse(pkg, String, taskData);
     YOMK_DEBUG_TAG("TaskHandler", "processing in thread: ", std::this_thread::get_id());
-    // 处理耗时任务...
     return {YomkResponse::eOk, "task done"};
 }
 
 // 启动事件循环
 YOMK_EVENTLOOP_START("worker_loop", taskHandler);
 
-// 异步投递（不等待结果）
+// 异步投递
 YOMK_EVENTLOOP_POST("worker_loop", YomkMkPtr(String, "task_1"));
 
 // 同步投递（等待结果）
 YomkResponse resp = YOMK_EVENTLOOP_POST_WAIT("worker_loop", YomkMkPtr(String, "task_2"));
 if(resp.m_status == YomkResponse::eOk) {
     YomkUnPackPkg(resp.m_data, Event, event);
-    if(event) {
-        YOMK_INFO("event result: ", event->d.m_response.m_msg);
-    }
+    if(event) YOMK_INFO("event result: ", event->d.m_response.m_msg);
 }
 
 // 清理
@@ -778,36 +560,24 @@ YOMK_EVENTLOOP_DESTROY("worker_loop");
 ```cpp
 // 定义公共函数
 YomkResponse validateAmount(YomkPkgPtr pkg) {
-    YomkUnPackPkgResponse(pkg, String, amountStr); // 宏已自动判空
-    
+    YomkUnPackPkgResponse(pkg, String, amountStr);
     double amount = std::stod(amountStr->d);
     if(amount <= 0) return {YomkResponse::eNo, "invalid amount"};
     return {YomkResponse::eOk, "valid"};
 }
 
-// 注册到函数池
+// 注册 + 调用
 YOMK_FUNCTIONPOOL_REGISTER("validate_amount", validateAmount);
-
-// 调用函数
 YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("validate_amount", YomkMkPtr(String, "100.5"));
-if(resp.m_status == YomkResponse::eOk) {
-    YOMK_INFO("Amount is valid");
-}
 ```
 
-## 示例5：文件日志系统
+## 示例5：文件日志
 
 ```cpp
-// 创建文件日志
 YOMK_FILE_LOG_CREATE("/var/log/myapp", "app_log");
-
-// 写日志
 YOMK_FILE_INFO("app_log", "Application started");
-YOMK_FILE_WARN_TAG("app_log", "Security", "Suspicious activity detected");
-YOMK_FILE_ERROR("app_log", "Failed to connect: ", errorMsg);
-
-// 刷新到磁盘
-YOMK_FILE_LOG_WRITE("app_log");
+YOMK_FILE_WARN_TAG("app_log", "Security", "Suspicious activity");
+YOMK_FILE_LOG_WRITE("app_log");  // 刷新到磁盘
 
 // 自定义控制台日志代理
 bool myLogProxy(const yomk::Log& log) {
