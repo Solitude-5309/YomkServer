@@ -20,6 +20,8 @@ ProjectName/
 │   └── ConfigService.cpp
 ├── typedefine/
 │   └── TypeDefine.h
+├── test/
+├── scripts/
 ├── build.sh
 ├── setup.bash.in
 ├── CMakeLists.txt
@@ -421,6 +423,8 @@ ProjectName
 | `msgs/` | 消息包定义 |
 | `services/` | 服务实现 |
 | `typedefine/` | 公共常量/宏/类型定义 |
+| `test/` | 单元测试文件 |
+| `scripts/` | 项目辅助脚本 |
 ```
 
 ---
