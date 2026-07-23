@@ -24,3 +24,5 @@ python main.py
 | `msgs/` | 消息包定义 |
 | `services/` | 服务实现 |
 | `typedefine/` | 公共常量定义 |
+| `test/` | 单元测试脚本 |
+| `scripts/` | 项目辅助脚本 |

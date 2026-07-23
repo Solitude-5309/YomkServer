@@ -38,6 +38,8 @@ ProjectName/
 │   └── ConfigService.py  // 内置配置服务
 ├── typedefine/
 │   └── TypeDefine.py     // 公共常量定义
+├── test/                 // 单元测试脚本
+├── scripts/              // 项目辅助脚本
 └── README.md
 ```
 
