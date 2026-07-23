@@ -1,40 +1,59 @@
 import YomkApi
-import sys
 from pathlib import Path
-current_dir = Path(__file__).resolve()
-test_dir = current_dir.parent
-sys.path.append(str(test_dir))
-
-from services.YomkServiceA import YomkServiceA
+from typedefine.TypeDefine import CTX_CONFIG_PATH
+from services.ConfigService import ConfigService
+from msgs.YomkMsgs import *
 
 class MyBoot(YomkApi.YomkBoot):
     def __init__(self, srv_names):
         super().__init__()
         self.srv_names = srv_names
+
     def before(self):
-        print("MyBoot before")
-        # 服务启动前的初始化操作
-        # 服务启动前创建CONTEXT，确保在服务启动时能够访问上下文
-        # 服务启动前创建EVENTLOOP，确保在服务启动时能够使用特定的事件循环
-        # 服务启动前注册功能函数到FUNCTION_POOL，确保在服务启动时能够访问功能函数
-        # 服务启动前创建YOMK_SET_CONSOLE_LOG_PROXY，确保在服务启动时能够触发日志代理
-        # 服务启动前创建其他必要的资源，确保在服务启动时能够使用   
+        # 通过 __file__ 推导配置文件路径
+        project_dir = Path(__file__).resolve().parent.parent
+        config_path = str(project_dir / "config" / "config.json")
+        YomkApi.context_create(CTX_CONFIG_PATH, config_path)
+        print(f"MyBoot::before config path: {config_path}")
         return 0
+
     def start(self):
-        print("MyBoot start")
-        
+        # 服务创建器映射表
         cur_srvs = {
-            "/YomkServiceA": YomkServiceA(YomkApi.server()),
+            "/ConfigService": ConfigService(YomkApi.server()),
         }
-        
+
+        # 按需启动
         for srv_name in self.srv_names:
             if srv_name in cur_srvs:
                 YomkApi.add_service(cur_srvs[srv_name], srv_name)
-                
+                print(f"MyBoot::start service {srv_name} done")
+
         return 0
+
     def after(self):
-        print("MyBoot after")
-        # 服务启动后的善后操作
-        # 调用服务接口进行服务内部初始化操作
-        # 调用服务接口自启动某个任务
+        resp = YomkApi.request("/ConfigService/load", None)
+        if resp.status != YomkApi.ResStatus.eOk:
+            print(f"MyBoot::after load config failed: {resp.msg}")
+            return -1
+        print("MyBoot::after started successfully.")
+
+        resp = YomkApi.request("/ConfigService/get", ConfigKey("name"))
+        if resp.status != YomkApi.ResStatus.eOk:
+            print(f"MyBoot::after get config name failed: {resp.msg}")
+            return -1
+        print(f"MyBoot::after config name: {resp.data}")
+
+        resp = YomkApi.request("/ConfigService/get", ConfigKey("version"))
+        if resp.status != YomkApi.ResStatus.eOk:
+            print(f"MyBoot::after get config version failed: {resp.msg}")
+            return -1
+        print(f"MyBoot::after config version: {resp.data}")
+
+        resp = YomkApi.request("/ConfigService/get", ConfigKey("description"))
+        if resp.status != YomkApi.ResStatus.eOk:
+            print(f"MyBoot::after get config description failed: {resp.msg}")
+            return -1
+        print(f"MyBoot::after config description: {resp.data}")
+
         return 0

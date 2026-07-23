@@ -1,9 +1,5 @@
 {
-    "server": {
-        "name": "/ConfigService",
-        "port": 8080
-    },
-    "log": {
-        "level": "info"
-    }
+    "name": "TemplateProject",
+    "version": "2.2.9",
+    "description": "Create a new project based on YomkServerPy"
 }
