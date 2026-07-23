@@ -1,9 +1,8 @@
 import YomkApi
 import threading
-import sys
 from pathlib import Path
-current_dir = Path(__file__).resolve()
-sys.path.append(str(current_dir))
+import sys
+sys.path.append(Path.cwd())
 
 from boot.MyBoot import MyBoot
 from msgs.YomkMsgs import MyServiceMsg
