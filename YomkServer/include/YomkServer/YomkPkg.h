@@ -3,21 +3,22 @@
 #include <map>
 #include <functional>
 #include <string>
+#include <cstdint>
 
 #define YomkInstallFunc(FuncName, Func) installFunc(FuncName, std::bind(&Func, this, std::placeholders::_1))
 
 #define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                             \
     if (!pkg || pkg->name() != #MsgName)                                         \
         return {YomkResponse::eNo, " pkg is null or pkg is not " #MsgName ". "}; \
-    YomkPtr(MsgName) ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg);  \
-    if (!ptrName)                                                                  \
+    YomkPtr(MsgName) ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg);    \
+    if (!ptrName)                                                                \
         return {YomkResponse::eNo, " pkg[" #MsgName "] is dynamic_pointer_cast failed. "};
 
-#define YomkUnPackPkgVoid(pkg, MsgName, ptrName)                                \
-    if (!pkg || pkg->name() != #MsgName)                                        \
-        return;                                                                 \
-    YomkPtr(MsgName) ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg);   \
-    if (!ptrName)                                                               \
+#define YomkUnPackPkgVoid(pkg, MsgName, ptrName)                              \
+    if (!pkg || pkg->name() != #MsgName)                                      \
+        return;                                                               \
+    YomkPtr(MsgName) ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg); \
+    if (!ptrName)                                                             \
         return;
 
 #define YomkUnPackPkg(pkg, MsgName, ptrName)                     \
@@ -34,24 +35,24 @@
         ptrName = std::dynamic_pointer_cast<ClassName>(pkg); \
     }
 
-#define YomkMsg(DataType, MsgName, VarName)                 \
-    namespace yomk                                          \
-    {                                                       \
-        class MsgName##_ : public YomkPkg                   \
-        {                                                   \
-        public:                                             \
-            MsgName##_() { m_name = #MsgName; }             \
-            MsgName##_(const DataType &value)               \
-                : VarName(value) { m_name = #MsgName; }     \
-            virtual ~MsgName##_() {}                        \
-                                                            \
-        public:                                             \
-            DataType VarName;                               \
-        };                                                  \
-        typedef std::shared_ptr<MsgName##_> MsgName##Ptr;   \
+#define YomkMsg(DataType, MsgName, VarName)               \
+    namespace yomk                                        \
+    {                                                     \
+        class MsgName##_ : public YomkPkg                 \
+        {                                                 \
+        public:                                           \
+            MsgName##_() { m_name = #MsgName; }           \
+            MsgName##_(const DataType &value)             \
+                : VarName(value) { m_name = #MsgName; }   \
+            virtual ~MsgName##_() {}                      \
+                                                          \
+        public:                                           \
+            DataType VarName;                             \
+        };                                                \
+        typedef std::shared_ptr<MsgName##_> MsgName##Ptr; \
     }
 
-#define Yomk(MsgName) yomk::MsgName##_ 
+#define Yomk(MsgName) yomk::MsgName##_
 #define YomkMk(MsgName, ...) yomk::MsgName##_(__VA_ARGS__)
 #define YomkPtr(MsgName) yomk::MsgName##Ptr
 #define YomkMkPtr(MsgName, ...) std::make_shared<yomk::MsgName##_>(__VA_ARGS__)
@@ -225,22 +226,22 @@ YomkMsg(unsigned char, UChar, d)
 YomkMsg(std::vector<unsigned char>, UCharArray, d)
 YomkMsg(unsigned char, Byte, d)
 YomkMsg(std::vector<unsigned char>, ByteArray, d)
-YomkMsg(signed char, Int8, d)
+YomkMsg(std::int8_t, Int8, d)
 YomkMsg(std::vector<signed char>, Int8Array, d)
-YomkMsg(unsigned char, Uint8, d)
+YomkMsg(std::uint8_t, Uint8, d)
 YomkMsg(std::vector<unsigned char>, Uint8Array, d)
-YomkMsg(signed short, Int16, d)
-YomkMsg(std::vector<signed short>, Int16Array, d)
-YomkMsg(unsigned short, Uint16, d)
-YomkMsg(std::vector<unsigned short>, Uint16Array, d)
-YomkMsg(signed int, Int32, d)
-YomkMsg(std::vector<signed int>, Int32Array, d)
-YomkMsg(unsigned int, Uint32, d)
-YomkMsg(std::vector<unsigned int>, Uint32Array, d)
-YomkMsg(signed long int, Int64, d)
-YomkMsg(std::vector<signed long int>, Int64Array, d)
-YomkMsg(unsigned long int, Uint64, d)
-YomkMsg(std::vector<unsigned long int>, Uint64Array, d)
+YomkMsg(std::int16_t, Int16, d)
+YomkMsg(std::vector<std::int16_t>, Int16Array, d)
+YomkMsg(std::uint16_t, Uint16, d)
+YomkMsg(std::vector<std::uint16_t>, Uint16Array, d)
+YomkMsg(std::int32_t, Int32, d)
+YomkMsg(std::vector<std::int32_t>, Int32Array, d)
+YomkMsg(std::uint32_t, Uint32, d)
+YomkMsg(std::vector<std::uint32_t>, Uint32Array, d)
+YomkMsg(std::int64_t, Int64, d)
+YomkMsg(std::vector<std::int64_t>, Int64Array, d)
+YomkMsg(std::uint64_t, Uint64, d)
+YomkMsg(std::vector<std::uint64_t>, Uint64Array, d)
 YomkMsg(float, Float32, d)
 YomkMsg(std::vector<float>, Float32Array, d)
 YomkMsg(double, Float64, d)
