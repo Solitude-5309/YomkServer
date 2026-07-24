@@ -1,14 +1,14 @@
 /**
  * @file TestYomkLogger.cpp
  * @brief YomkLogger 日志系统示例
- * 
+ *
  * 演示内容：
  * 1. 控制台日志（INFO/WARN/ERROR/DEBUG）
  * 2. 日志级别控制（开启/关闭特定级别）
  * 3. 自定义日志代理
  * 4. 文件日志（创建、写入、刷新）
  * 5. 自定义 Tag 日志
- * 
+ *
  * Logger 特性：
  * - 多级别：DEBUG < INFO < WARN < ERROR
  * - 多输出：控制台 + 文件
@@ -24,10 +24,10 @@ namespace fs = std::filesystem;
 
 /**
  * @brief 自定义控制台日志代理函数
- * 
+ *
  * 当设置日志代理后，所有控制台日志都会先经过此函数
  * 可以自定义日志格式、输出到其他地方等
- * 
+ *
  * @param log 日志对象，包含级别、内容、标签等信息
  * @return true 继续传递给默认输出
  * @return false 停止传递（日志不再输出到控制台）
@@ -53,12 +53,12 @@ bool consoleLogProxy(const yomk::Log &log)
         break;
     }
     // 返回true表示继续传递日志，返回false表示停止传递日志
-    return false;  // 这里返回 false，表示不再传递给默认输出
+    return true; // 这里返回 false，表示不再传递给默认输出
 }
 
 /**
  * @brief 程序入口
- * 
+ *
  * 演示日志系统的完整使用：
  * 1. 关闭所有日志级别
  * 2. 开启所有日志级别
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤1：关闭所有控制台日志级别
-     * 
+     *
      * 用于演示日志级别控制
      * 关闭后，对应级别的日志不会输出
      */
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤2：尝试输出日志（此时全部被禁用）
-     * 
+     *
      * 由于所有级别都已关闭，这些日志不会输出到控制台
      */
     YomkResponse response;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤3：开启所有控制台日志级别
-     * 
+     *
      * 重新启用各级别日志输出
      */
     // 开启控制台INFO日志
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤4：设置自定义日志代理
-     * 
+     *
      * 设置后，所有日志会先经过 consoleLogProxy 函数
      * 可以在函数中自定义输出格式
      */
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤5：使用默认 Tag 输出日志
-     * 
+     *
      * 默认 Tag 为 "MainLogger"
      * 日志会通过自定义代理函数输出
      */
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤6：使用自定义 Tag 输出日志
-     * 
+     *
      * YOMK_INFO_TAG / YOMK_WARN_TAG 等宏允许指定自定义 Tag
      * Tag 会显示在日志中，便于区分不同模块的日志
      */
@@ -148,18 +148,18 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤7：创建文件日志
-     * 
+     *
      * YOMK_FILE_LOG_CREATE:
      * - 参数1: 日志目录路径
      * - 参数2: 日志文件名（不含扩展名）
-     * 
+     *
      * 创建后可使用 YOMK_FILE_INFO 等宏写入日志
      */
     response = YOMK_FILE_LOG_CREATE(logDir.string(), "new_file_logger");
 
     /**
      * 步骤8：写入文件日志（默认 Tag）
-     * 
+     *
      * YOMK_FILE_INFO / YOMK_FILE_WARN 等宏用于写入文件日志
      * 默认 Tag 为 "MainLogger"
      */
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤9：写入文件日志（自定义 Tag）
-     * 
+     *
      * YOMK_FILE_INFO_TAG 等宏允许指定自定义 Tag
      * Tag 会包含在日志内容中
      */
@@ -181,7 +181,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤10：刷新文件日志到磁盘
-     * 
+     *
      * YOMK_FILE_LOG_WRITE 将缓冲区中的日志写入磁盘
      * 建议：
      * - 程序退出前调用

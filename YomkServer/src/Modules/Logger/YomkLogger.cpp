@@ -41,13 +41,19 @@ YomkResponse YomkLogger::createConsoleLogger(YomkPkgPtr pkg)
     }
     std::shared_ptr<ConsoleLogger> consoleLogger = std::make_shared<ConsoleLogger>();
     consoleLogger->setName(str->d);
-    m_consoleLoggers[str->d] = consoleLogger;
+    m_consoleLoggers.emplace(str->d, consoleLogger);
     return YomkResponse(YomkResponse::eOk, "success.");
 }
 
 YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, Log, log);
+    if (log->d.m_logger.empty())
+    {
+        YOMK_ERR_POS_LOG("console logger name is empty, use MainLogger");
+        log->d.m_logger = "MainLogger";
+    }
+
     if (m_consoleLogProxy && m_consoleLogProxyFunc && !m_consoleLogProxyFunc(log->d))
     {
         return YomkResponse(YomkResponse::eOk, "console log proxy is success.");
@@ -55,9 +61,10 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
 
     std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
 
-    if (m_consoleLoggers.find(log->d.m_logger) == m_consoleLoggers.end())
+    auto itLogger = m_consoleLoggers.find(log->d.m_logger);
+    if (itLogger == m_consoleLoggers.end())
     {
-        YOMK_ERR_POS_LOG("logger: " + log->d.m_logger + " not found, use MainLogger");
+        YOMK_ERR_POS_LOG("console logger: " + log->d.m_logger + " not found, use MainLogger");
         log->d.m_logger = "MainLogger";
     }
 
@@ -106,10 +113,11 @@ YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eNo, "logger name already exists.");
     }
 
-    m_fileLoggers[logFile->d.m_logger] = std::make_shared<FileLogger>();
-    m_fileLoggers[logFile->d.m_logger]->setName(logFile->d.m_logger);
-    m_fileLoggers[logFile->d.m_logger]->setDir(logFile->d.m_dir);
-    m_fileLoggers[logFile->d.m_logger]->init();
+    std::shared_ptr<FileLogger> fileLogger = std::make_shared<FileLogger>();
+    fileLogger->setName(logFile->d.m_logger);
+    fileLogger->setDir(logFile->d.m_dir);
+    fileLogger->init();
+    m_fileLoggers.emplace(logFile->d.m_logger, fileLogger);
 
     return YomkResponse(YomkResponse::eOk, "success.");
 }
@@ -117,31 +125,39 @@ YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
 YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, Log, log);
+
+    if (log->d.m_logger.empty())
+    {
+        YOMK_ERR_POS_LOG("file logger name is empty.");
+        return YomkResponse(YomkResponse::eNo, "file logger name is empty.");
+    }
+
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
 
-    if (m_fileLoggers.find(log->d.m_logger) == m_fileLoggers.end())
+    auto itLogger = m_fileLoggers.find(log->d.m_logger);
+    if (itLogger == m_fileLoggers.end())
     {
-        YOMK_ERR_POS_LOG("logger: " + log->d.m_logger + " not found.");
-        return YomkResponse(YomkResponse::eNo, "logger not found.");
+        YOMK_ERR_POS_LOG("file logger: " + log->d.m_logger + " not found.");
+        return YomkResponse(YomkResponse::eNo, "file logger not found.");
     }
 
     switch (log->d.m_level)
     {
     case Log::eInfo:
-        m_fileLoggers[log->d.m_logger]->log(FileLogger::eInfo, log->d.m_log);
+        itLogger->second->log(FileLogger::eInfo, log->d.m_log);
         break;
     case Log::eWarn:
-        m_fileLoggers[log->d.m_logger]->log(FileLogger::eWarn, log->d.m_log);
+        itLogger->second->log(FileLogger::eWarn, log->d.m_log);
         break;
     case Log::eError:
-        m_fileLoggers[log->d.m_logger]->log(FileLogger::eError, log->d.m_log);
+        itLogger->second->log(FileLogger::eError, log->d.m_log);
         break;
     case Log::eDebug:
-        m_fileLoggers[log->d.m_logger]->log(FileLogger::eDebug, log->d.m_log);
+        itLogger->second->log(FileLogger::eDebug, log->d.m_log);
         break;
     default:
         YOMK_ERR_POS_LOG("unknown log level, use Info");
-        m_fileLoggers[log->d.m_logger]->log(FileLogger::eInfo, log->d.m_log);
+        itLogger->second->log(FileLogger::eInfo, log->d.m_log);
         break;
     }
 
