@@ -9,6 +9,7 @@ class EventLoop
 public:
     EventLoop();
     ~EventLoop();
+
 public:
     int start();
     int stop();
@@ -16,6 +17,7 @@ public:
     int postWait(YomkPtr(Event) event);
     void setDefaultServiceFunc(YomkServiceFunc serviceFunc);
     void run();
+
 private:
     std::queue<YomkPtr(Event)> m_eventQueue;
     std::mutex m_queueMutex;

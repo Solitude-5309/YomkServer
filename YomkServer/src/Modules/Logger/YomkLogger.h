@@ -11,10 +11,12 @@ using namespace yomk;
 class YomkLogger : public YomkService
 {
 public:
-    YomkLogger(YomkServer* server);
+    YomkLogger(YomkServer *server);
     virtual ~YomkLogger();
+
 public:
     virtual int init();
+
 private:
     YomkResponse createConsoleLogger(YomkPkgPtr pkg);
     YomkResponse consoleLog(YomkPkgPtr pkg);
@@ -24,6 +26,7 @@ private:
     YomkResponse writeFileLog(YomkPkgPtr pkg);
     YomkResponse offConsoleLogByLevel(YomkPkgPtr pkg);
     YomkResponse onConsoleLogByLevel(YomkPkgPtr pkg);
+
 private:
     std::map<std::string, ConsoleLoggerPtr> m_consoleLoggers;
     std::shared_mutex m_consoleLoggersMutex;

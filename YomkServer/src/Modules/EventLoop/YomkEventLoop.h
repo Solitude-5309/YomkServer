@@ -8,16 +8,19 @@
 class YomkEventLoop : public YomkService
 {
 public:
-    YomkEventLoop(YomkServer* server);
+    YomkEventLoop(YomkServer *server);
     virtual ~YomkEventLoop() {}
+
 public:
     virtual int init() override;
+
 private:
     YomkResponse start(YomkPkgPtr pkg);
     YomkResponse stop(YomkPkgPtr pkg);
     YomkResponse post(YomkPkgPtr pkg);
     YomkResponse postWait(YomkPkgPtr pkg);
     YomkResponse destroy(YomkPkgPtr pkg);
+
 private:
     std::map<std::string, EventLoopPtr> m_eventLoop;
     std::shared_mutex m_eventLoopMutex;
