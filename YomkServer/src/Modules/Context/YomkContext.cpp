@@ -45,7 +45,13 @@ YomkResponse YomkContext::create(YomkPkgPtr pkg)
             return YomkResponse(YomkResponse::eNo, "key already exists");
         }
 
-        m_contexts.emplace(context->d.m_key, context->d.m_value);
+        Context ctx;
+        ctx.key = context->d.m_key;
+        ctx.value = context->d.m_value;
+        ctx.checker = nullptr;
+        ctx.monitors = {};
+
+        m_contexts.emplace(context->d.m_key, ctx);
     }
 
     return YomkResponse(YomkResponse::eOk, "create context success");
@@ -87,7 +93,7 @@ YomkResponse YomkContext::get(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eNo, "key is not exist, return default value.", context->d.m_value);
     }
 
-    return {YomkResponse::eOk, "get context success", itContext->second};
+    return {YomkResponse::eOk, "get context success", itContext->second.value};
 }
 
 YomkResponse YomkContext::set(YomkPkgPtr pkg)
@@ -109,36 +115,27 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
 
     if (m_checkerEnabled.load())
     {
-        std::shared_lock<std::shared_mutex> checkerLock(m_checkersMutex);
-        auto itChecker = m_checkers.find(context->d.m_key);
-        if (itChecker != m_checkers.end())
+        ContextChecker::ECheckStatus checkStatus = itContext->second.checker(context->d);
+        if (checkStatus == ContextChecker::eReject)
         {
-            ContextChecker::ECheckStatus checkStatus = itChecker->second(context->d);
-            if (checkStatus == ContextChecker::eReject)
-            {
-                return YomkResponse(YomkResponse::eNo, "checker reject set context");
-            }
+            return YomkResponse(YomkResponse::eNo, "checker reject set context");
         }
     }
 
-    if (itContext->second->name() != context->d.m_value->name())
+    if (itContext->second.value->name() != context->d.m_value->name())
     {
         YOMK_ERR_POS_LOG("context: " + context->d.m_key + " type not match, please check Context.m_value.");
         return YomkResponse(YomkResponse::eNo, "context type not match");
     }
-    itContext->second = context->d.m_value;
+    itContext->second.value = context->d.m_value;
+    std::vector<YomkContextMonitorFunc> monitors = itContext->second.monitors;
     lockContexts.unlock();
 
     if (m_monitorEnabled.load())
     {
-        std::shared_lock<std::shared_mutex> monitorLock(m_contextMonitorsMutex);
-        auto itMonitor = m_contextMonitors.find(context->d.m_key);
-        if (itMonitor != m_contextMonitors.end())
+        for (auto &monitorFunc : monitors)
         {
-            for (auto &monitorFunc : itMonitor->second)
-            {
-                monitorFunc(context->d);
-            }
+            monitorFunc(context->d);
         }
     }
 
@@ -185,16 +182,14 @@ YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
 
     {
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
-        if (m_contexts.find(checker->d.m_key) == m_contexts.end())
+        auto itContext = m_contexts.find(checker->d.m_key);
+        if (itContext == m_contexts.end())
         {
             YOMK_ERR_POS_LOG("YomkContext key: " + checker->d.m_key + " is not exist, please check ContextChecker.m_key.");
             return YomkResponse(YomkResponse::eNo, "key is not exist");
         }
-    }
 
-    {
-        std::unique_lock<std::shared_mutex> checkerLock(m_checkersMutex);
-        m_checkers[checker->d.m_key] = checker->d.m_checkFunc;
+        itContext->second.checker = checker->d.m_checkFunc;
     }
 
     return YomkResponse(YomkResponse::eOk, "set checker success");
@@ -216,16 +211,13 @@ YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
 
     {
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
-        if (m_contexts.find(monitor->d.m_key) == m_contexts.end())
+        auto itContext = m_contexts.find(monitor->d.m_key);
+        if (itContext == m_contexts.end())
         {
             YOMK_ERR_POS_LOG("YomkContext key: " + monitor->d.m_key + " is not exist, please check ContextMonitor.m_key.");
             return YomkResponse(YomkResponse::eNo, "key is not exist");
         }
-    }
-
-    {
-        std::unique_lock<std::shared_mutex> monitorLock(m_contextMonitorsMutex);
-        m_contextMonitors[monitor->d.m_key].push_back(monitor->d.m_contextMonitorFunc);
+        itContext->second.monitors.push_back(monitor->d.m_contextMonitorFunc);
     }
     return YomkResponse(YomkResponse::eOk, "set context monitor success");
 }
