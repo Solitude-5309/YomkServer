@@ -5,11 +5,14 @@
 YomkService::YomkService(YomkServer *server)
     : m_p(nullptr)
 {
-    if (!server)
+    if (server)
+    {
+        m_p.reset(new YomkServicePrivate(server));
+    }
+    else
     {
         YOMK_ERR_POS_LOG("server is null");
     }
-    m_p.reset(new YomkServicePrivate(server));
 }
 
 void YomkService::name(const std::string &name)

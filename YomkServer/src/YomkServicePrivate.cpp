@@ -5,16 +5,29 @@
 
 void YomkServicePrivate::installFunc(const std::string &funcName, YomkServiceFunc func)
 {
+    if (funcName.empty() || funcName[0] != '/')
+    {
+        YOMK_ERR_POS_LOG("function name parse error: " + funcName + ", please start with /");
+        return;
+    }
+
     std::unique_lock<std::shared_mutex> lock(m_funcMapMtx);
     if (m_funcMap.find(funcName) != m_funcMap.end())
     {
         YOMK_ERR_POS_LOG("install function already exists -> " + funcName + ", update to current function");
     }
+
     m_funcMap[funcName] = func;
 }
 
 YomkResponse YomkServicePrivate::invoke(const std::string &funcName, YomkPkgPtr pkg)
 {
+    if (funcName.empty() || funcName[0] != '/')
+    {
+        YOMK_ERR_POS_LOG("function name parse error: " + funcName + ", please start with /");
+        return {YomkResponse::eNo, "function name parse error: " + funcName + ", please start with /"};
+    }
+
     YomkServiceFunc tmpFunc = nullptr;
     {
         std::shared_lock<std::shared_mutex> lock(m_funcMapMtx);
@@ -26,6 +39,7 @@ YomkResponse YomkServicePrivate::invoke(const std::string &funcName, YomkPkgPtr 
         }
         tmpFunc = iter->second;
     }
+
     return tmpFunc(pkg);
 }
 

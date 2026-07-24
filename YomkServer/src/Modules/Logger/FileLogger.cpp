@@ -23,18 +23,18 @@ void FileLogger::init()
 
     fs::path path(logFilePath);
     fs::path dir = path.parent_path();
-    
-    if (!dir.empty() && !fs::exists(dir)) 
+
+    if (!dir.empty() && !fs::exists(dir))
     {
         fs::create_directories(dir);
     }
 
     std::ofstream logFile(logFilePath);
-    if (logFile.is_open()) 
+    if (logFile.is_open())
     {
         logFile.close();
-    } 
-    else 
+    }
+    else
     {
         YOMK_ERR_POS_LOG("create log file failed: " + logFilePath);
         logFile.close();
@@ -44,46 +44,46 @@ void FileLogger::init()
 void FileLogger::log(ELogLevel logLevel, const std::string &log)
 {
     auto now = std::chrono::system_clock::now();
-    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+    auto nowTime = std::chrono::system_clock::to_time_t(now);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
     std::stringstream timeStr;
-    timeStr << std::put_time(std::localtime(&in_time_t), "[%Y-%m-%d %H:%M:%S.");
+    timeStr << std::put_time(std::localtime(&nowTime), "[%Y-%m-%d %H:%M:%S.");
     timeStr << std::setfill('0') << std::setw(3) << ms.count() << "]";
 
     std::lock_guard<std::mutex> lock(m_logStreamMutex);
-    switch(logLevel)
+    switch (logLevel)
     {
-        case eDebug:
-            m_logStream << timeStr.str() << " [Debug] " << log << std::endl;
-            break;
-        case eInfo:
-            m_logStream << timeStr.str() << " [Info ] " << log << std::endl;
-            break;
-        case eWarn:
-            m_logStream << timeStr.str() << " [Warn ] " << log << std::endl;
-            break;
-        case eError:
-            m_logStream << timeStr.str() << " [Error] " << log << std::endl;
-            break;
-        default:
-            YOMK_ERR_POS_LOG("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
-            m_logStream << timeStr.str() << " [Info ] " << log << std::endl;
-            break;
+    case eDebug:
+        m_logStream << timeStr.str() << " [Debug] " << log << std::endl;
+        break;
+    case eInfo:
+        m_logStream << timeStr.str() << " [Info ] " << log << std::endl;
+        break;
+    case eWarn:
+        m_logStream << timeStr.str() << " [Warn ] " << log << std::endl;
+        break;
+    case eError:
+        m_logStream << timeStr.str() << " [Error] " << log << std::endl;
+        break;
+    default:
+        YOMK_ERR_POS_LOG("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
+        m_logStream << timeStr.str() << " [Info ] " << log << std::endl;
+        break;
     }
 }
 
 void FileLogger::write()
 {
     std::lock_guard<std::mutex> lock(m_logStreamMutex);
-    if(m_logStream.str().size() > 0)
+    if (m_logStream.str().size() > 0)
     {
         std::ofstream logFile(m_dir + "/" + m_name + ".log", std::ios_base::app);
-        if (logFile.is_open()) 
+        if (logFile.is_open())
         {
             logFile << m_logStream.str();
             logFile.close();
-        } 
-        else 
+        }
+        else
         {
             YOMK_ERR_POS_LOG("open log file failed: " + m_dir + "/" + m_name + ".log");
             logFile.close();

@@ -75,7 +75,7 @@ YomkResponse YomkContext::get(YomkPkgPtr pkg)
     if (context->d.m_key.empty())
     {
         YOMK_ERR_POS_LOG("key is empty, please check Context.m_key.");
-        return YomkResponse(YomkResponse::eNo, "key is empty", context->d.m_value);
+        return YomkResponse(YomkResponse::eNo, "key is empty, return default value.", context->d.m_value);
     }
 
     std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
@@ -84,7 +84,7 @@ YomkResponse YomkContext::get(YomkPkgPtr pkg)
     if (itContext == m_contexts.end())
     {
         YOMK_ERR_POS_LOG("YomkContext key: " + context->d.m_key + " is not exist, please check Context.m_key.");
-        return YomkResponse(YomkResponse::eNo, "key is not exist", context->d.m_value);
+        return YomkResponse(YomkResponse::eNo, "key is not exist, return default value.", context->d.m_value);
     }
 
     return {YomkResponse::eOk, "get context success", itContext->second};

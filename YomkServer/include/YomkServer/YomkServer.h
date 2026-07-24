@@ -22,11 +22,6 @@ public:
         if (srvName != "")
             srv->name(srvName);
 
-        if (srv->init() != 0)
-        {
-            return 1;
-        }
-
         addService(srv);
         return 0;
     }

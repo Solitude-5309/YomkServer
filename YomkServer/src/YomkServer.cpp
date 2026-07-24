@@ -38,11 +38,6 @@ int YomkServer::startService(std::vector<std::string> srvNames)
         YomkService *srv = it->second(this);
         srv->name(srvName);
 
-        if (srv->init() != 0)
-        {
-            return 1;
-        }
-
         addService(srv);
     }
 
@@ -57,6 +52,12 @@ void YomkServer::addService(YomkService *srv)
         return;
     }
 
+    if (srv->init() != 0)
+    {
+        YOMK_ERR_POS_LOG("service init error: " + srv->name());
+        return;
+    }
+
     m_p->addService(srv);
 }
 
@@ -68,21 +69,20 @@ YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eNo, "server is null, please start the server.");
     }
 
-    size_t posStart = url.find('/');
-    if (posStart == std::string::npos)
+    if (url.empty() || url[0] != '/')
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", please start with /");
         return YomkResponse(YomkResponse::eNo, "url parse error: " + url + ", please start with /");
     }
 
-    size_t posEnd = url.find('/', posStart + 1);
+    size_t posEnd = url.find('/', 1);
     if (posEnd == std::string::npos)
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", not found service name.");
         return YomkResponse(YomkResponse::eNo, "url parse error: " + url + ", not found service name.");
     }
 
-    std::string srvName = url.substr(posStart, posEnd - posStart);
+    std::string srvName = url.substr(0, posEnd);
     if (srvName.empty())
     {
         YOMK_ERR_POS_LOG("url parse error: srv is empty. ");
@@ -107,21 +107,20 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
         return;
     }
 
-    size_t posStart = url.find('/');
-    if (posStart == std::string::npos)
+    if (url.empty() || url[0] != '/')
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", please start with /");
         return;
     }
 
-    size_t posEnd = url.find('/', posStart + 1);
+    size_t posEnd = url.find('/', 1);
     if (posEnd == std::string::npos)
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", not found service name.");
         return;
     }
 
-    std::string srvName = url.substr(posStart, posEnd - posStart);
+    std::string srvName = url.substr(0, posEnd);
     if (srvName.empty())
     {
         YOMK_ERR_POS_LOG("url parse error: srv is empty. ");

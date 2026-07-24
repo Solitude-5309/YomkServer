@@ -37,12 +37,12 @@ YomkResponse YomkLogger::createConsoleLogger(YomkPkgPtr pkg)
     std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
     if (m_consoleLoggers.find(str->d) != m_consoleLoggers.end())
     {
-        return YomkResponse(YomkResponse::eNo, "logger name already exists.");
+        return YomkResponse(YomkResponse::eOk, "logger name already exists.");
     }
     std::shared_ptr<ConsoleLogger> consoleLogger = std::make_shared<ConsoleLogger>();
     consoleLogger->setName(str->d);
     m_consoleLoggers[str->d] = consoleLogger;
-    return YomkResponse();
+    return YomkResponse(YomkResponse::eOk, "success.");
 }
 
 YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
@@ -111,7 +111,7 @@ YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
     m_fileLoggers[logFile->d.m_logger]->setDir(logFile->d.m_dir);
     m_fileLoggers[logFile->d.m_logger]->init();
 
-    return YomkResponse();
+    return YomkResponse(YomkResponse::eOk, "success.");
 }
 
 YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
