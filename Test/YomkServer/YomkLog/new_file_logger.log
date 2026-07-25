@@ -1,8 +1,8 @@
-[2026-07-24 20:19:23.886] [Info ] [ MainLogger ] test new_file_logger log info. 1
-[2026-07-24 20:19:23.886] [Warn ] [ MainLogger ] test new_file_logger log warn. 2
-[2026-07-24 20:19:23.886] [Error] [ MainLogger ] test new_file_logger log error. 3
-[2026-07-24 20:19:23.886] [Debug] [ MainLogger ] test new_file_logger log debug. 4
-[2026-07-24 20:19:23.886] [Info ] [ TestLogger ] test new_file_logger log info. 1
-[2026-07-24 20:19:23.886] [Warn ] [ TestLogger ] test new_file_logger log warn. 2
-[2026-07-24 20:19:23.886] [Error] [ TestLogger ] test new_file_logger log error. 3
-[2026-07-24 20:19:23.886] [Debug] [ TestLogger ] test new_file_logger log debug. 4
+[2026-07-25 13:39:58.133] [Info ] [ MainLogger ] test new_file_logger log info. 1
+[2026-07-25 13:39:58.133] [Warn ] [ MainLogger ] test new_file_logger log warn. 2
+[2026-07-25 13:39:58.133] [Error] [ MainLogger ] test new_file_logger log error. 3
+[2026-07-25 13:39:58.133] [Debug] [ MainLogger ] test new_file_logger log debug. 4
+[2026-07-25 13:39:58.133] [Info ] [ TestLogger ] test new_file_logger log info. 1
+[2026-07-25 13:39:58.133] [Warn ] [ TestLogger ] test new_file_logger log warn. 2
+[2026-07-25 13:39:58.133] [Error] [ TestLogger ] test new_file_logger log error. 3
+[2026-07-25 13:39:58.133] [Debug] [ TestLogger ] test new_file_logger log debug. 4

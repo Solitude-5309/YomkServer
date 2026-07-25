@@ -21,7 +21,6 @@ YomkLogger::~YomkLogger()
 int YomkLogger::init()
 {
     YomkInstallFunc("/set_console_log_proxy", YomkLogger::setConsoleLogProxy);
-    YomkInstallFunc("/create_console_logger", YomkLogger::createConsoleLogger);
     YomkInstallFunc("/console_log", YomkLogger::consoleLog);
     YomkInstallFunc("/create_file_logger", YomkLogger::createFileLogger);
     YomkInstallFunc("/file_log", YomkLogger::fileLog);
@@ -29,20 +28,6 @@ int YomkLogger::init()
     YomkInstallFunc("/off_console_log_by_level", YomkLogger::offConsoleLogByLevel);
     YomkInstallFunc("/on_console_log_by_level", YomkLogger::onConsoleLogByLevel);
     return 0;
-}
-
-YomkResponse YomkLogger::createConsoleLogger(YomkPkgPtr pkg)
-{
-    YomkUnPackPkgResponse(pkg, String, str);
-    std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-    if (m_consoleLoggers.find(str->d) != m_consoleLoggers.end())
-    {
-        return YomkResponse(YomkResponse::eOk, "logger name already exists.");
-    }
-    std::shared_ptr<ConsoleLogger> consoleLogger = std::make_shared<ConsoleLogger>();
-    consoleLogger->setName(str->d);
-    m_consoleLoggers.emplace(str->d, consoleLogger);
-    return YomkResponse(YomkResponse::eOk, "success.");
 }
 
 YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
@@ -64,32 +49,39 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
     auto itLogger = m_consoleLoggers.find(log->d.m_logger);
     if (itLogger == m_consoleLoggers.end())
     {
-        YOMK_ERR_POS_LOG("console logger: " + log->d.m_logger + " not found, use MainLogger");
-        log->d.m_logger = "MainLogger";
+        std::shared_ptr<ConsoleLogger> consoleLogger = std::make_shared<ConsoleLogger>();
+        consoleLogger->setName(log->d.m_logger);
+        auto result = m_consoleLoggers.emplace(log->d.m_logger, consoleLogger);
+        if (!result.second)
+        {
+            YOMK_ERR_POS_LOG("console logger: " + log->d.m_logger + " create failed.");
+            return YomkResponse(YomkResponse::eNo, "console logger: " + log->d.m_logger + " create failed.");
+        }
+        itLogger = result.first;
     }
 
     switch (log->d.m_level)
     {
     case Log::eInfo:
         if (m_showConsoleInfoLog.load())
-            m_consoleLoggers[log->d.m_logger]->log(ConsoleLogger::eInfo, log->d.m_log);
+            itLogger->second->log(ConsoleLogger::eInfo, log->d.m_log);
         break;
     case Log::eWarn:
         if (m_showConsoleWarningLog.load())
-            m_consoleLoggers[log->d.m_logger]->log(ConsoleLogger::eWarn, log->d.m_log);
+            itLogger->second->log(ConsoleLogger::eWarn, log->d.m_log);
         break;
     case Log::eError:
         if (m_showConsoleErrorLog.load())
-            m_consoleLoggers[log->d.m_logger]->log(ConsoleLogger::eError, log->d.m_log);
+            itLogger->second->log(ConsoleLogger::eError, log->d.m_log);
         break;
     case Log::eDebug:
         if (m_showConsoleDebugLog.load())
-            m_consoleLoggers[log->d.m_logger]->log(ConsoleLogger::eDebug, log->d.m_log);
+            itLogger->second->log(ConsoleLogger::eDebug, log->d.m_log);
         break;
     default:
         YOMK_ERR_POS_LOG("unknown log level, use Info");
         if (m_showConsoleInfoLog.load())
-            m_consoleLoggers[log->d.m_logger]->log(ConsoleLogger::eInfo, log->d.m_log);
+            itLogger->second->log(ConsoleLogger::eInfo, log->d.m_log);
         break;
     }
 

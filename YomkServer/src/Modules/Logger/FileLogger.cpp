@@ -90,5 +90,6 @@ void FileLogger::write()
             return;
         }
         m_logStream.str("");
+        m_logStream.clear();
     }
 }

@@ -18,7 +18,6 @@ public:
     virtual int init();
 
 private:
-    YomkResponse createConsoleLogger(YomkPkgPtr pkg);
     YomkResponse consoleLog(YomkPkgPtr pkg);
     YomkResponse setConsoleLogProxy(YomkPkgPtr pkg);
     YomkResponse createFileLogger(YomkPkgPtr pkg);
