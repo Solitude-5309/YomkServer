@@ -28,8 +28,8 @@ YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
     if (itFunc != m_functions.end())
     {
         itFunc->second = yFunc->d.m_func;
-        YOMK_ERR_POS_LOG("find function name: " + yFunc->d.m_funcName + " is already exist");
-        return YomkResponse(YomkResponse::eOk, "find function name is already exist");
+        YOMK_ERR_POS_LOG("function name: " + yFunc->d.m_funcName + " is already exist, update to current function");
+        return YomkResponse(YomkResponse::eOk, "find function name is already exist, update to current function");
     }
     m_functions.emplace(yFunc->d.m_funcName, yFunc->d.m_func);
     return {YomkResponse::eOk, "register function success"};
