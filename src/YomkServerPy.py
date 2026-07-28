@@ -440,8 +440,7 @@ class YomkFunctionPool(YomkService):
 
         with self.m_functionsMutex.gen_wlock():
             if function.name in self.m_functions:
-                log.info(f"YomkFunctionPool function name: {function.name} is already exist, please check Function.m_funcName.")
-                return YomkResponse(ResStatus.eNo, "funcName is already exist")
+                log.info(f"YomkFunctionPool function name: {function.name} is already exist, and update current function")
 
             self.m_functions[function.name] = function.func
 
