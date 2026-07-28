@@ -48,13 +48,13 @@ def new_service(class_name: type[YomkService], name: type[str] = ""):
     srv = class_name(g_server)
     srv.set_name(name)
     srv.init()
-    g_server.add_service(srv)
+    return g_server.add_service(srv)
     
 def add_service(srv: type[YomkService], name: type[str] = ""):
     global g_server
     srv.set_name(name)
     srv.init()
-    g_server.add_service(srv)
+    return g_server.add_service(srv)
     
 def boot(boot: type[YomkBoot] = None):
     init()
