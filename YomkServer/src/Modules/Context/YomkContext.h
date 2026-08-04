@@ -11,12 +11,17 @@ using namespace yomk;
 class YomkContext : public YomkService
 {
 public:
+    struct ContextMonitor
+    {
+        bool asyncMonitor;
+        YomkContextMonitorFunc contextMonitorFunc;
+    };
     struct Context
     {
         std::string key;
         YomkPkgPtr value;
         YomkContextCheckFunc checker;
-        std::vector<YomkContextMonitorFunc> monitors;
+        std::vector<ContextMonitor> monitors;
     };
 
 public:

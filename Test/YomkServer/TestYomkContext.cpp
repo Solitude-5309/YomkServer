@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
     /**
      * 步骤7：为键 "ctx" 设置 Monitor 函数
      */
-    response = YOMK_CONTEXT_SET_MONITOR("ctx", monitorFunc);
+    response = YOMK_CONTEXT_SET_MONITOR("ctx", monitorFunc, true);
     if (response.m_status == YomkResponse::eOk)
     {
         YOMK_DEBUG_TAG("main", "set monitor success");

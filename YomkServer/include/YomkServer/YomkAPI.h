@@ -500,14 +500,14 @@ public:
         }
         return request("/YomkContext/turn_off_monitor", nullptr);
     }
-    static YomkResponse CONTEXT_SET_MONITOR(const std::string &ctxName, YomkContextMonitorFunc monitor)
+    static YomkResponse CONTEXT_SET_MONITOR(const std::string &ctxName, YomkContextMonitorFunc monitor, bool async = false)
     {
         if (!m_pServer)
         {
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkContext/set_monitor", YomkMkPtr(ContextMonitor, ContextMonitor{ctxName, monitor}));
+        return request("/YomkContext/set_monitor", YomkMkPtr(ContextMonitor, ContextMonitor{ctxName, monitor, async}));
     }
     static YomkResponse CONTEXT_DESTROY(const std::string &ctxName)
     {

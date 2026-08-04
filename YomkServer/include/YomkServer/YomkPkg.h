@@ -192,6 +192,7 @@ namespace yomk
     {
         std::string m_key;
         std::function<void(Context ctx)> m_contextMonitorFunc;
+        bool m_asyncMonitor;
     };
 
     struct VoidPointer

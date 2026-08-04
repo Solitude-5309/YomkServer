@@ -552,7 +552,7 @@ YOMK_CONTEXT_CREATE("config", YomkMkPtr(String, "default"));
 YOMK_CONTEXT_ON_CHECKER();
 YOMK_CONTEXT_SET_CHECKER("config", nonEmptyChecker);
 YOMK_CONTEXT_ON_MONITOR();
-YOMK_CONTEXT_SET_MONITOR("config", changeLogger);
+YOMK_CONTEXT_SET_MONITOR("config", changeLogger, true);
 
 YOMK_CONTEXT_SET("config", YomkMkPtr(String, "new_value")); // 通过检查并触发监控
 YOMK_CONTEXT_SET("config", YomkMkPtr(String, ""));          // 被拒绝

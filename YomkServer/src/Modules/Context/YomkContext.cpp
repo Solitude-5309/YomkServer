@@ -1,5 +1,6 @@
 #include "YomkContext.h"
 #include <iostream>
+#include <thread>
 
 YomkContext::YomkContext(YomkServer *server)
     : YomkService(server), m_checkerEnabled(false), m_monitorEnabled(false)
@@ -128,14 +129,22 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eNo, "context type not match");
     }
     itContext->second.value = context->d.m_value;
-    std::vector<YomkContextMonitorFunc> monitors = itContext->second.monitors;
+    std::vector<ContextMonitor> monitors = itContext->second.monitors;
     lockContexts.unlock();
 
     if (m_monitorEnabled.load())
     {
-        for (auto &monitorFunc : monitors)
+        for (auto &monitor : monitors)
         {
-            monitorFunc(context->d);
+            if (!monitor.asyncMonitor)
+            {
+                monitor.contextMonitorFunc(context->d);
+            }
+            else
+            {
+                std::thread t(monitor.contextMonitorFunc, context->d);
+                t.detach();
+            }
         }
     }
 
@@ -217,7 +226,10 @@ YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
             YOMK_ERR_POS_LOG("YomkContext key: " + monitor->d.m_key + " is not exist, please check ContextMonitor.m_key.");
             return YomkResponse(YomkResponse::eNo, "key is not exist");
         }
-        itContext->second.monitors.push_back(monitor->d.m_contextMonitorFunc);
+        ContextMonitor contextMonitor;
+        contextMonitor.contextMonitorFunc = monitor->d.m_contextMonitorFunc;
+        contextMonitor.asyncMonitor = monitor->d.m_asyncMonitor;
+        itContext->second.monitors.push_back(contextMonitor);
     }
     return YomkResponse(YomkResponse::eOk, "set context monitor success");
 }

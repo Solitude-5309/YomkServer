@@ -60,7 +60,7 @@ namespace yomk {
         enum ECheckStatus{eAccept, eReject};
         std::string m_key; std::function<ECheckStatus(const Context&)> m_checkFunc;
     };
-    struct ContextMonitor { std::string m_key; std::function<void(Context)> m_contextMonitorFunc; };
+    struct ContextMonitor { std::string m_key; std::function<void(Context)> m_contextMonitorFunc; bool m_asyncMonitor; };
 }
 ```
 
@@ -125,7 +125,7 @@ class YomkService {
 | `YOMK_CONTEXT_ON/OFF_CHECKER()` | 开关检查器 |
 | `YOMK_CONTEXT_SET_CHECKER(key, func)` | 设置检查函数 |
 | `YOMK_CONTEXT_ON/OFF_MONITOR()` | 开关监控器 |
-| `YOMK_CONTEXT_SET_MONITOR(key, func)` | 设置监控函数 |
+| `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async=true异步回调监控函数） |
 
 ### EventLoop
 | 宏 | 说明 |
