@@ -224,9 +224,10 @@ class ContextChecker:
         self.check_func = check_func  
 
 class ContextMonitor:
-    def __init__(self, key="", monitor_func=None):
+    def __init__(self, key="", monitor_func=None, async_monitor_func=False):
         self.key = key
         self.monitor_func = monitor_func 
+        self.async_monitor_func = async_monitor_func
 
 class Function:
     def __init__(self, name, func):
@@ -255,7 +256,11 @@ class EventLoopPkg:
     def __init__(self, event_loop_name="", default_service_func=None):
         self.m_eventloopName = event_loop_name
         self.m_defaultServiceFunc = default_service_func
-    
+
+class Monitor:
+    def __init__(self, monitor_func=None, async_monitor_func=False):
+        self.monitor_func = monitor_func 
+        self.async_monitor_func = async_monitor_func
 # modules
 class YomkContext(YomkService):
     def __init__(self, server):
@@ -310,7 +315,7 @@ class YomkContext(YomkService):
         with self.m_monitorsMutex.gen_wlock():
             self.m_monitors.setdefault(
                 contextMonitor.key, []
-            ).append(contextMonitor.monitor_func)
+            ).append(Monitor(contextMonitor.monitor_func, contextMonitor.async_monitor_func))
         
         return YomkResponse(ResStatus.eOk, "set monitor success")
     
@@ -411,7 +416,11 @@ class YomkContext(YomkService):
             with self.m_monitorsMutex.gen_rlock():
                 if ctx.key in self.m_monitors:
                     for monitor in self.m_monitors[ctx.key]:
-                        monitor(ctx)
+                        if(monitor.async_monitor_func):
+                            t = threading.Thread(target=monitor.monitor_func, args=(ctx,))
+                            t.start()
+                        else:
+                            monitor.monitor_func(ctx)
                         
         return YomkResponse(ResStatus.eOk, "set context success")
 

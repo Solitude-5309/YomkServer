@@ -124,9 +124,9 @@ def context_turn_off_monitor()->YomkResponse:
     global g_server
     return g_server.request("/YomkContext/turn_off_monitor", None)
 
-def context_set_monitor(key: type[str], monitor: type[Callable[[Context], None]])->YomkResponse:
+def context_set_monitor(key: type[str], monitor: type[Callable[[Context], None]], async_monitor: type[bool]=False)->YomkResponse:
     global g_server
-    contextMonitor = ContextMonitor(key, monitor)
+    contextMonitor = ContextMonitor(key, monitor, async_monitor)
     return g_server.request("/YomkContext/set_monitor", contextMonitor)
 
 def function_pool_register(name: type[str], func: type[Callable[[Any], YomkResponse]])->YomkResponse:

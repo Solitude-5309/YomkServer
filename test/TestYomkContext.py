@@ -1,4 +1,5 @@
 import YomkApi
+import time
 
 # 初始化YomkApi
 YomkApi.init()
@@ -36,10 +37,11 @@ res = YomkApi.context_turn_on_monitor()
 print("context_turn_on_monitor", res.msg)
 
 def context_monitor_func(ctx: YomkApi.Context)->None:
+    time.sleep(1)
     print("monitor func called: ctx=", ctx.key, "value=", ctx.value)   
 
 # 设置上下文监控函数
-res = YomkApi.context_set_monitor("ctx", context_monitor_func)
+res = YomkApi.context_set_monitor("ctx", context_monitor_func, True)
 print("context_set_monitor: key=ctx, monitor=context_monitor_func", res.msg)  
 
 # 设置上下文数据

@@ -50,7 +50,7 @@ class ContextChecker:
     def __init__(self, key="", check_func=None)   # check_func: (Context) -> CheckStatus
 
 class ContextMonitor:
-    def __init__(self, key="", monitor_func=None) # monitor_func: (Context) -> None
+    def __init__(self, key="", monitor_func=None, async_monitor_func=False) # monitor_func: (Context) -> None
 
 class Function:
     def __init__(self, name="", func=None)        # func: (Any) -> YomkResponse
@@ -99,7 +99,7 @@ class EventLoopPkg:
 | `YomkApi.context_set_checker(key, func)` | 设置检查函数 |
 | `YomkApi.context_turn_on_monitor()` | 开启监控器 |
 | `YomkApi.context_turn_off_monitor()` | 关闭监控器 |
-| `YomkApi.context_set_monitor(key, func)` | 设置监控函数 |
+| `YomkApi.context_set_monitor(key, func, async=False)` | 设置监控函数（async=True异步回调监控函数） |
 
 ### EventLoop
 | API | 说明 |
