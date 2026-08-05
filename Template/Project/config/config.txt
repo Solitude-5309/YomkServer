@@ -1,0 +1,3 @@
+name: TemplateProject
+version: 2.2.11
+description: Create a new project based on YomkServer

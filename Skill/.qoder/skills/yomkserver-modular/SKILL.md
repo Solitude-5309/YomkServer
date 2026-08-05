@@ -33,7 +33,7 @@ ProjectName/
 │   ├── MyBoot.h          // 生命周期：before/start/after
 │   └── MyBoot.cpp
 ├── config/
-│   └── config.json       // 配置文件
+│   └── config.txt        // 配置文件（纯文本 key: value 格式）
 ├── msgs/
 │   └── YomkMsgs.h        // 所有消息包定义
 ├── services/

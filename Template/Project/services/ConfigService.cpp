@@ -1,7 +1,17 @@
 #include "ConfigService.h"
 #include <fstream>
-#include <sstream>
+#include <algorithm>
 #include "typedefine/TypeDefine.h"
+
+// 去除首尾空白符
+static std::string trim(const std::string &str)
+{
+    auto first = str.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos)
+        return "";
+    auto last = str.find_last_not_of(" \t\r\n");
+    return str.substr(first, last - first + 1);
+}
 
 ConfigService::ConfigService(YomkServer *server)
     : YomkService(server)
@@ -28,11 +38,25 @@ YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eNo, "config_path not found in context");
     m_configPath = ctxVal->d;
 
-    // 加载配置文件
+    // 加载配置文件（纯文本 key: value 格式）
     std::ifstream ifs(m_configPath);
     if (!ifs.is_open())
         return YomkResponse(YomkResponse::eNo, "failed to open: " + m_configPath);
-    m_json = nlohmann::json::parse(ifs);
+
+    std::string line;
+    while (std::getline(ifs, line))
+    {
+        if (line.empty())
+            continue;
+        // 按第一个冒号分割 key:value
+        auto colonPos = line.find(':');
+        if (colonPos == std::string::npos)
+            continue;
+        std::string key = trim(line.substr(0, colonPos));
+        std::string value = trim(line.substr(colonPos + 1));
+        if (!key.empty())
+            m_configMap[key] = value;
+    }
     ifs.close();
     YOMK_INFO_TAG("ConfigService::loadConfig", "loaded: ", m_configPath);
     return YomkResponse(YomkResponse::eOk, "ok");
@@ -42,60 +66,26 @@ YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, YConfigKey, data);
 
-    // 按点分路径逐层访问
-    std::istringstream ss(data->req.key);
-    std::string token;
-    nlohmann::json *current = &m_json;
-    while (std::getline(ss, token, '.'))
+    auto it = m_configMap.find(data->req.key);
+    if (it == m_configMap.end())
     {
-        if (!current->is_object() || !current->contains(token))
-        {
-            return YomkResponse(YomkResponse::eNo, "key not found: " + data->req.key);
-        }
-        current = &(*current)[token];
+        return YomkResponse(YomkResponse::eNo, "key not found: " + data->req.key);
     }
 
-    // 将值转为字符串返回
-    std::string value;
-    if (current->is_string())
-        value = current->get<std::string>();
-    else
-        value = current->dump();
-
-    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, value));
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, it->second));
 }
 
 YomkResponse ConfigService::setConfig(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, YConfigKeyValue, data);
 
-    // 按点分路径逐层访问
-    std::istringstream ss(data->req.key);
-    std::string token;
-    nlohmann::json *current = &m_json;
-    while (std::getline(ss, token, '.'))
-    {
-        if (!current->is_object())
-        {
-            return YomkResponse(YomkResponse::eNo, "invalid key path: " + data->req.key);
-        }
-        current = &(*current)[token];
-    }
-
-    *current = data->req.value;
+    m_configMap[data->req.key] = data->req.value;
     YOMK_INFO_TAG("ConfigService::setConfig", "set ", data->req.key, " = ", data->req.value);
     return YomkResponse(YomkResponse::eOk, "ok");
 }
 
 YomkResponse ConfigService::reloadConfig(YomkPkgPtr pkg)
 {
-    std::ifstream ifs(m_configPath);
-    if (!ifs.is_open())
-    {
-        return YomkResponse(YomkResponse::eNo, "failed to open config file: " + m_configPath);
-    }
-    m_json = nlohmann::json::parse(ifs);
-    ifs.close();
-    YOMK_INFO_TAG("ConfigService::reloadConfig", "reloaded config file: ", m_configPath);
-    return YomkResponse(YomkResponse::eOk, "ok");
+    m_configMap.clear();
+    return loadConfig(nullptr);
 }

@@ -1,6 +1,6 @@
 #pragma once
 #include <YomkServer/YomkAPI.h>
-#include <nlohmann/json.hpp>
+#include <unordered_map>
 #include "msgs/YomkMsgs.h"
 
 using namespace yomk;
@@ -19,5 +19,5 @@ private:
     YomkResponse reloadConfig(YomkPkgPtr pkg);
 
     std::string m_configPath;
-    nlohmann::json m_json;
+    std::unordered_map<std::string, std::string> m_configMap;
 };

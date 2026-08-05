@@ -12,7 +12,7 @@ ProjectName/
 │   ├── MyBoot.h
 │   └── MyBoot.cpp
 ├── config/
-│   └── config.json
+│   └── config.txt
 ├── msgs/
 │   └── YomkMsgs.h
 ├── services/
@@ -82,7 +82,7 @@ int MyBoot::before()
 
     // 通过 /proc/self/exe 推导配置文件路径
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
-    std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.json";
+    std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.txt";
     YOMK_CONTEXT_CREATE(CTX_CONFIG_PATH, YomkMkPtr(String, configPath.string()));
     YOMK_INFO_TAG("MyBoot::before", "config path: ", configPath.string());
     return 0;
@@ -179,7 +179,7 @@ YomkMsg(ConfigKeyValue, YConfigKeyValue, req)
 ```cpp
 #pragma once
 #include <YomkServer/YomkAPI.h>
-#include <nlohmann/json.hpp>
+#include <unordered_map>
 #include "msgs/YomkMsgs.h"
 
 using namespace yomk;
@@ -198,7 +198,7 @@ private:
     YomkResponse reloadConfig(YomkPkgPtr pkg);
 
     std::string m_configPath;
-    nlohmann::json m_json;
+    std::unordered_map<std::string, std::string> m_configMap;
 };
 ```
 
@@ -206,8 +206,16 @@ private:
 ```cpp
 #include "ConfigService.h"
 #include <fstream>
-#include <sstream>
+#include <algorithm>
 #include "typedefine/TypeDefine.h"
+
+// 去除首尾空白符
+static std::string trim(const std::string &str) {
+    auto first = str.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) return "";
+    auto last = str.find_last_not_of(" \t\r\n");
+    return str.substr(first, last - first + 1);
+}
 
 ConfigService::ConfigService(YomkServer *server)
     : YomkService(server)
@@ -232,10 +240,23 @@ YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eNo, "config_path not found in context");
     m_configPath = ctxVal->d;
 
+    // 加载配置文件（纯文本 key: value 格式）
     std::ifstream ifs(m_configPath);
     if (!ifs.is_open())
         return YomkResponse(YomkResponse::eNo, "failed to open: " + m_configPath);
-    m_json = nlohmann::json::parse(ifs);
+
+    std::string line;
+    while (std::getline(ifs, line))
+    {
+        if (line.empty()) continue;
+        // 按第一个冒号分割 key:value
+        auto colonPos = line.find(':');
+        if (colonPos == std::string::npos) continue;
+        std::string key = trim(line.substr(0, colonPos));
+        std::string value = trim(line.substr(colonPos + 1));
+        if (!key.empty())
+            m_configMap[key] = value;
+    }
     ifs.close();
     YOMK_INFO_TAG("ConfigService::loadConfig", "loaded: ", m_configPath);
     return YomkResponse(YomkResponse::eOk, "ok");
@@ -245,64 +266,35 @@ YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, YConfigKey, data);
 
-    std::istringstream ss(data->req.key);
-    std::string token;
-    nlohmann::json *current = &m_json;
-    while (std::getline(ss, token, '.'))
-    {
-        if (!current->is_object() || !current->contains(token))
-            return YomkResponse(YomkResponse::eNo, "key not found: " + data->req.key);
-        current = &(*current)[token];
-    }
+    auto it = m_configMap.find(data->req.key);
+    if (it == m_configMap.end())
+        return YomkResponse(YomkResponse::eNo, "key not found: " + data->req.key);
 
-    std::string value;
-    if (current->is_string())
-        value = current->get<std::string>();
-    else
-        value = current->dump();
-
-    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, value));
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, it->second));
 }
 
 YomkResponse ConfigService::setConfig(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, YConfigKeyValue, data);
 
-    std::istringstream ss(data->req.key);
-    std::string token;
-    nlohmann::json *current = &m_json;
-    while (std::getline(ss, token, '.'))
-    {
-        if (!current->is_object())
-            return YomkResponse(YomkResponse::eNo, "invalid key path: " + data->req.key);
-        current = &(*current)[token];
-    }
-
-    *current = data->req.value;
+    m_configMap[data->req.key] = data->req.value;
     YOMK_INFO_TAG("ConfigService::setConfig", "set ", data->req.key, " = ", data->req.value);
     return YomkResponse(YomkResponse::eOk, "ok");
 }
 
 YomkResponse ConfigService::reloadConfig(YomkPkgPtr pkg)
 {
-    std::ifstream ifs(m_configPath);
-    if (!ifs.is_open())
-        return YomkResponse(YomkResponse::eNo, "failed to open config file: " + m_configPath);
-    m_json = nlohmann::json::parse(ifs);
-    ifs.close();
-    YOMK_INFO_TAG("ConfigService::reloadConfig", "reloaded config file: ", m_configPath);
-    return YomkResponse(YomkResponse::eOk, "ok");
+    m_configMap.clear();
+    return loadConfig(nullptr);
 }
 ```
 
-### config/config.json
-```json
-{
-    "name": "ProjectName",
-    "version": "2.2.9",
-    "description": "Create a new project based on YomkServer"
-}
+### config/config.txt
 ```
+name: ProjectName
+version: 2.2.9
+description: Create a new project based on YomkServer
+
 
 ### CMakeLists.txt
 ```cmake
@@ -316,7 +308,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/install" CACHE PATH "Install path" FORCE)
 
 find_package(YomkServer REQUIRED)
-find_package(nlohmann_json REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -327,7 +318,6 @@ add_executable(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE
     YomkServer::YomkServer
-    nlohmann_json::nlohmann_json
     $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>
 )
 
