@@ -128,6 +128,50 @@ YomkResponse resp = YOMK_REQUEST("/XxxService/my_func", YomkMkPtr(YMyData, MyDat
 YOMK_ASYNC_REQUEST("/XxxService/my_func", YomkMkPtr(YMyData, MyData{"hello", 1}), [](YomkResponse resp) { });
 ```
 
+## 任务三：创建扩展库
+
+当用户要求创建独立扩展时，**必须**生成完整可编译运行的扩展骨架。扩展编译为共享库（`.so`），支持 CMake `find_package()` 被其他工程引用。
+
+### 目录结构
+
+```
+ExtensionName/
+├── include/
+│   └── XxxService.h        // 服务头文件（消息包 + 类声明）
+├── src/
+│   └── XxxService.cpp      // 服务实现
+├── test/
+│   ├── CMakeLists.txt      // 测试程序构建
+│   └── TestXxx.cpp         // 测试程序
+├── cmake/
+│   └── ProjectConfig.cmake.in  // CMake 导出配置模板
+├── build.sh                // 一键编译（支持编译测试）
+├── CMakeLists.txt
+└── README.md
+```
+
+### 关键约定
+
+1. 编译为 `SHARED` 库，头文件放 `include/`，实现放 `src/`
+2. CMake 使用 `configure_package_config_file` + `install(EXPORT ...)` 导出配置
+3. 安装后其他工程可通过 `find_package(ExtensionName)` 引用
+4. `build.sh` 支持可选编译测试程序（`test/` 有独立 CMakeLists）
+5. 测试程序通过 `YOMK_NEW_SERVICE` 注册服务并验证功能
+
+### 生成规则
+
+- 完整文件内容参见 [examples.md](examples.md) 示例6
+- 将 `ExtensionName` 替换为用户指定名称
+- 所有文件必须完整生成，确保 `source build.sh` 可直接编译运行
+
+### 继续扩展
+
+在已有扩展中添加新功能：
+
+1. **头文件添加消息包 + 方法声明**（`include/XxxService.h`）
+2. **实现添加功能函数**（`src/XxxService.cpp`）：`YomkInstallFunc` + 实现
+3. **测试程序添加测试用例**（`test/TestXxx.cpp`）
+
 ## 编程规范
 
 ### YomkMsg 消息包

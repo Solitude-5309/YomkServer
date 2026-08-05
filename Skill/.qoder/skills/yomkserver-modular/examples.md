@@ -617,3 +617,451 @@ bool myLogProxy(const yomk::Log& log) {
 }
 YOMK_SET_CONSOLE_LOG_PROXY(myLogProxy);
 ```
+
+---
+
+## 示例6：标准扩展模板（创建新扩展时必须生成）
+
+将 `ExtensionName` 替换为用户指定的扩展名，所有文件必须完整生成。
+
+### 目录结构
+```
+ExtensionName/
+├── include/
+│   └── XxxService.h
+├── src/
+│   └── XxxService.cpp
+├── test/
+│   ├── CMakeLists.txt
+│   └── TestExtensionName.cpp
+├── cmake/
+│   └── ProjectConfig.cmake.in
+├── build.sh
+├── CMakeLists.txt
+└── README.md
+```
+
+### include/XxxService.h
+```cpp
+#pragma once
+#include <YomkServer/YomkAPI.h>
+
+using namespace yomk;
+
+// 请求消息包
+struct ExtOp { std::string op; double a; double b; };
+YomkMsg(ExtOp, YExtOp, req)
+
+class XxxService : public YomkService
+{
+public:
+    XxxService(YomkServer *server);
+    virtual ~XxxService() {}
+    virtual int init() override;
+
+private:
+    YomkResponse add(YomkPkgPtr pkg);
+    YomkResponse sub(YomkPkgPtr pkg);
+    YomkResponse mul(YomkPkgPtr pkg);
+    YomkResponse div(YomkPkgPtr pkg);
+};
+```
+
+### src/XxxService.cpp
+```cpp
+#include "XxxService.h"
+
+XxxService::XxxService(YomkServer *server)
+    : YomkService(server)
+{
+    name("/XxxService");
+}
+
+int XxxService::init()
+{
+    YomkInstallFunc("/add", XxxService::add);
+    YomkInstallFunc("/sub", XxxService::sub);
+    YomkInstallFunc("/mul", XxxService::mul);
+    YomkInstallFunc("/div", XxxService::div);
+    YOMK_INFO_TAG("XxxService::init", "install func [ /add /sub /mul /div ] to", name());
+    return 0;
+}
+
+YomkResponse XxxService::add(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, YExtOp, data);
+    double result = data->req.a + data->req.b;
+    YOMK_INFO_TAG("XxxService::add", data->req.a, " + ", data->req.b, " = ", result);
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(Float64, result));
+}
+
+YomkResponse XxxService::sub(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, YExtOp, data);
+    double result = data->req.a - data->req.b;
+    YOMK_INFO_TAG("XxxService::sub", data->req.a, " - ", data->req.b, " = ", result);
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(Float64, result));
+}
+
+YomkResponse XxxService::mul(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, YExtOp, data);
+    double result = data->req.a * data->req.b;
+    YOMK_INFO_TAG("XxxService::mul", data->req.a, " * ", data->req.b, " = ", result);
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(Float64, result));
+}
+
+YomkResponse XxxService::div(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, YExtOp, data);
+    if (data->req.b == 0.0)
+    {
+        YOMK_ERROR_TAG("XxxService::div", "division by zero");
+        return YomkResponse(YomkResponse::eNo, "division by zero");
+    }
+    double result = data->req.a / data->req.b;
+    YOMK_INFO_TAG("XxxService::div", data->req.a, " / ", data->req.b, " = ", result);
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(Float64, result));
+}
+```
+
+### test/CMakeLists.txt
+```cmake
+cmake_minimum_required(VERSION 3.14)
+project(TestExtensionName LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(EXT_NAME ExtensionName)
+
+find_package(YomkServer REQUIRED)
+find_package(${EXT_NAME} REQUIRED)
+
+message(STATUS "${EXT_NAME} version: ${${EXT_NAME}_VERSION}")
+message(STATUS "${EXT_NAME} include dirs: ${${EXT_NAME}_INCLUDE_DIRS}")
+message(STATUS "${EXT_NAME} lib dir: ${${EXT_NAME}_LIB_DIR}")
+message(STATUS "${EXT_NAME} libraries: ${${EXT_NAME}_LIBRARIES}")
+
+add_executable(${PROJECT_NAME} TestExtensionName.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${EXT_NAME}::${EXT_NAME} YomkServer::YomkServer)
+```
+
+### test/TestExtensionName.cpp
+```cpp
+#include <YomkServer/YomkAPI.h>
+#include <ExtensionName/XxxService.h>
+#include <iostream>
+#include <cmath>
+
+using namespace yomk;
+
+static int g_pass = 0;
+static int g_fail = 0;
+
+void check(const char *name, double actual, double expected)
+{
+    if (std::abs(actual - expected) < 1e-9)
+    {
+        std::cout << "[PASS] " << name << ": " << actual << std::endl;
+        g_pass++;
+    }
+    else
+    {
+        std::cout << "[FAIL] " << name << ": expected " << expected << ", got " << actual << std::endl;
+        g_fail++;
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    YOMK_INIT();
+    YOMK_NEW_SERVICE(XxxService);
+
+    // 测试加法
+    YomkResponse resp = YOMK_REQUEST("/XxxService/add", YomkMkPtr(YExtOp, ExtOp{"add", 10.5, 3.2}));
+    if (resp.m_status == YomkResponse::eOk)
+    {
+        YomkUnPackPkg(resp.m_data, Float64, result);
+        check("add(10.5, 3.2)", result->d, 13.7);
+    }
+    else
+    {
+        std::cout << "[FAIL] add request failed: " << resp.m_msg << std::endl;
+        g_fail++;
+    }
+
+    // 测试减法
+    resp = YOMK_REQUEST("/XxxService/sub", YomkMkPtr(YExtOp, ExtOp{"sub", 10.5, 3.2}));
+    if (resp.m_status == YomkResponse::eOk)
+    {
+        YomkUnPackPkg(resp.m_data, Float64, result);
+        check("sub(10.5, 3.2)", result->d, 7.3);
+    }
+    else
+    {
+        std::cout << "[FAIL] sub request failed: " << resp.m_msg << std::endl;
+        g_fail++;
+    }
+
+    // 测试乘法
+    resp = YOMK_REQUEST("/XxxService/mul", YomkMkPtr(YExtOp, ExtOp{"mul", 10.5, 3.2}));
+    if (resp.m_status == YomkResponse::eOk)
+    {
+        YomkUnPackPkg(resp.m_data, Float64, result);
+        check("mul(10.5, 3.2)", result->d, 33.6);
+    }
+    else
+    {
+        std::cout << "[FAIL] mul request failed: " << resp.m_msg << std::endl;
+        g_fail++;
+    }
+
+    // 测试除法
+    resp = YOMK_REQUEST("/XxxService/div", YomkMkPtr(YExtOp, ExtOp{"div", 10.0, 2.0}));
+    if (resp.m_status == YomkResponse::eOk)
+    {
+        YomkUnPackPkg(resp.m_data, Float64, result);
+        check("div(10.0, 2.0)", result->d, 5.0);
+    }
+    else
+    {
+        std::cout << "[FAIL] div request failed: " << resp.m_msg << std::endl;
+        g_fail++;
+    }
+
+    // 测试除零
+    resp = YOMK_REQUEST("/XxxService/div", YomkMkPtr(YExtOp, ExtOp{"div", 10.0, 0.0}));
+    if (resp.m_status == YomkResponse::eNo)
+    {
+        std::cout << "[PASS] div(10.0, 0.0) correctly returned error" << std::endl;
+        g_pass++;
+    }
+    else
+    {
+        std::cout << "[FAIL] div(10.0, 0.0) should return error" << std::endl;
+        g_fail++;
+    }
+
+    std::cout << "\n========== Test Summary ==========" << std::endl;
+    std::cout << "PASS: " << g_pass << std::endl;
+    std::cout << "FAIL: " << g_fail << std::endl;
+
+    return g_fail > 0 ? 1 : 0;
+}
+```
+
+### cmake/ProjectConfig.cmake.in
+```cmake
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(YomkServer)
+
+include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+
+set_and_check(@PROJECT_NAME@_INCLUDE_DIRS "@PACKAGE_INCLUDE_INSTALL_DIR@")
+set_and_check(@PROJECT_NAME@_LIB_DIR "@PACKAGE_LIB_INSTALL_DIR@")
+set(@PROJECT_NAME@_LIBRARIES @PROJECT_NAME@::@PROJECT_NAME@)
+set(@PROJECT_NAME@_VERSION "@PROJECT_VERSION@")
+```
+
+### build.sh
+```bash
+#!/bin/bash
+# 用法: source build.sh [额外的cmake参数...]
+# 示例: source build.sh -DCMAKE_PREFIX_PATH=/path/to/YomkServer/install
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_NAME="ExtensionName"
+BUILD_DIR="${SCRIPT_DIR}/build"
+INSTALL_DIR="${SCRIPT_DIR}/install"
+TEST_DIR="${SCRIPT_DIR}/test"
+TEST_BUILD_DIR="${TEST_DIR}/build"
+_ORIG_DIR="$(pwd)"
+
+# 询问是否编译 test
+read -p "编译测试程序? [Y/n]: " BUILD_TEST
+BUILD_TEST=${BUILD_TEST:-y}
+if [[ "${BUILD_TEST}" =~ ^[Yy]$ ]]; then
+    BUILD_TEST="ON"
+else
+    BUILD_TEST="OFF"
+fi
+
+# 编译安装主库
+mkdir -p "${BUILD_DIR}"
+cd "${BUILD_DIR}" || return 1
+
+cmake "${SCRIPT_DIR}" -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" "$@"
+if [ $? -ne 0 ]; then
+    echo "cmake 配置失败"
+    cd "${_ORIG_DIR}"
+    return 1
+fi
+
+cmake --build . --config Release --target install
+if [ $? -ne 0 ]; then
+    echo "编译失败"
+    cd "${_ORIG_DIR}"
+    return 1
+fi
+
+# 编译测试程序
+if [ "${BUILD_TEST}" = "ON" ]; then
+    mkdir -p "${TEST_BUILD_DIR}"
+    cd "${TEST_BUILD_DIR}" || return 1
+
+    # 获取 YomkServer 路径
+    YOMK_SERVER_PATH=""
+    for arg in "$@"; do
+        if [[ "${arg}" == -DCMAKE_PREFIX_PATH=* ]]; then
+            YOMK_SERVER_PATH="${arg#-DCMAKE_PREFIX_PATH=}"
+        fi
+    done
+
+    CMAKE_PREFIX_ARGS="-DCMAKE_PREFIX_PATH=${INSTALL_DIR}"
+    if [ -n "${YOMK_SERVER_PATH}" ]; then
+        CMAKE_PREFIX_ARGS="-DCMAKE_PREFIX_PATH=${INSTALL_DIR};${YOMK_SERVER_PATH}"
+    fi
+
+    cmake "${TEST_DIR}" ${CMAKE_PREFIX_ARGS}
+    if [ $? -ne 0 ]; then
+        echo "测试程序 cmake 配置失败"
+        cd "${_ORIG_DIR}"
+        return 1
+    fi
+
+    cmake --build . --config Release
+    if [ $? -ne 0 ]; then
+        echo "测试程序编译失败"
+        cd "${_ORIG_DIR}"
+        return 1
+    fi
+
+    # 设置临时环境变量
+    YOMKSERVER_LIB_DIR=$(find "${YOMK_SERVER_PATH:-${INSTALL_DIR}/..}" -name "libYomkServer.so" 2>/dev/null | head -1 | xargs dirname 2>/dev/null)
+    if [ -z "${YOMKSERVER_LIB_DIR}" ]; then
+        YOMKSERVER_LIB_DIR="${INSTALL_DIR}/../YomkServer/install/lib"
+    fi
+
+    export LD_LIBRARY_PATH="${INSTALL_DIR}/lib:${YOMKSERVER_LIB_DIR}:${LD_LIBRARY_PATH}"
+    export PATH="${TEST_BUILD_DIR}:${PATH}"
+fi
+
+cd "${_ORIG_DIR}"
+unset _ORIG_DIR
+
+echo "编译完成"
+```
+
+### CMakeLists.txt
+```cmake
+cmake_minimum_required(VERSION 3.14)
+project(ExtensionName VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(YomkServer REQUIRED)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# 编译为动态库
+add_library(${PROJECT_NAME} SHARED
+    src/XxxService.cpp
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE YomkServer::YomkServer)
+
+# 安装规则
+set(INCLUDE_INSTALL_DIR "include/${PROJECT_NAME}")
+set(LIB_INSTALL_DIR "lib")
+
+install(TARGETS ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}Targets
+    LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+)
+install(DIRECTORY include/ DESTINATION ${INCLUDE_INSTALL_DIR})
+
+# CMake export 导出配置
+include(CMakePackageConfigHelpers)
+
+install(EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ProjectConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}
+    PATH_VARS INCLUDE_INSTALL_DIR LIB_INSTALL_DIR
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+```
+
+### README.md
+```markdown
+# ExtensionName 扩展
+
+基于 [YomkServer](https://github.com/Solitude-5309/YomkServer) 框架的扩展服务。
+
+## 功能
+
+| URL | 功能 | 说明 |
+|-----|------|------|
+| `/XxxService/add` | 加法 | 返回 a + b |
+| `/XxxService/sub` | 减法 | 返回 a - b |
+| `/XxxService/mul` | 乘法 | 返回 a * b |
+| `/XxxService/div` | 除法 | 返回 a / b，除数为零时返回错误 |
+
+## 前置条件
+
+- C++17 编译器
+- CMake >= 3.14
+- YomkServer 已安装
+
+## 编译
+
+source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install
+
+## 工程结构
+
+```
+ExtensionName/
+├── include/
+│   └── XxxService.h        # 服务头文件（消息包 + 类声明）
+├── src/
+│   └── XxxService.cpp      # 服务实现
+├── test/
+│   ├── CMakeLists.txt      # 测试程序构建
+│   └── TestExtensionName.cpp # 测试程序
+├── cmake/
+│   └── ProjectConfig.cmake.in  # CMake 导出配置模板
+├── build.sh
+├── CMakeLists.txt
+└── README.md
+```
+
+## 使用示例
+
+```cpp
+YomkResponse resp = YOMK_REQUEST("/XxxService/add", YomkMkPtr(YExtOp, ExtOp{"add", 10.5, 3.2}));
+if (resp.m_status == YomkResponse::eOk) {
+    YomkUnPackPkg(resp.m_data, Float64, result);
+    // result->d == 13.7
+}
+```
+```
