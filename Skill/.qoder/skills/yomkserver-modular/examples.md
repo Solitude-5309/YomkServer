@@ -638,7 +638,7 @@ ExtensionName/
 
 using namespace yomk;
 
-// 请求消息包
+// 请求消息包：运算符 + 两个操作数
 struct ExtOp { std::string op; double a; double b; };
 YomkMsg(ExtOp, YExtOp, req)
 
@@ -1025,29 +1025,31 @@ install(FILES
 
 ## 编译
 
-source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install
+```bash
+# 默认安装到 ExtensionName/install/
+source ExtensionName/build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install
+
+# 自定义安装目录
+source ExtensionName/build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install -DCMAKE_INSTALL_PREFIX=~/YomkServer/install
+```
 
 ## 工程结构
 
 ```
 ExtensionName/
 ├── include/
-│   └── XxxService.h        # 服务头文件（消息包 + 类声明）
+│   └── XxxService.h        # 服务头文件（消息包定义 + 类声明）
 ├── src/
 │   └── XxxService.cpp      # 服务实现
-├── test/
-│   ├── CMakeLists.txt      # 测试程序构建
-│   └── TestExtensionName.cpp # 测试程序
-├── cmake/
-│   └── ProjectConfig.cmake.in  # CMake 导出配置模板
-├── build.sh
-├── CMakeLists.txt
+├── CMakeLists.txt            # CMake 构建配置
+├── build.sh                  # 一键编译脚本
 └── README.md
 ```
 
 ## 使用示例
 
 ```cpp
+// 加法请求
 YomkResponse resp = YOMK_REQUEST("/XxxService/add", YomkMkPtr(YExtOp, ExtOp{"add", 10.5, 3.2}));
 if (resp.m_status == YomkResponse::eOk) {
     YomkUnPackPkg(resp.m_data, Float64, result);

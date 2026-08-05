@@ -1,6 +1,6 @@
 ---
 name: yomkserver-modular
-description: 基于YomkServer框架的模块化C++17工程编程。核心理念"一切皆服务，一切皆请求"。用于创建YomkService功能模块、使用YomkContext全局状态管理、YomkEventLoop事件循环、YomkFunctionPool公共函数池和YomkLogger日志系统。当用户需要编写YomkServer模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数或搭建工程结构时使用。
+description: 基于YomkServer框架的模块化C++17工程编程。核心理念"一切皆服务，一切皆请求"。用于创建YomkService功能模块、使用YomkContext全局状态管理、YomkEventLoop事件循环、YomkFunctionPool公共函数池和YomkLogger日志系统。当用户需要编写YomkServer模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数或搭建工程结构时使用。**当用户提到"创建工程"、"新建项目"、"create project"等关键词时，必须立即使用示例0生成完整可编译的工程骨架，不要先询问需求。**
 ---
 
 # YomkServer 模块化编程框架
@@ -22,7 +22,25 @@ description: 基于YomkServer框架的模块化C++17工程编程。核心理念"
 
 ## 任务一：生成工程模板
 
-当用户要求创建新工程时，**必须**生成完整可编译运行的工程骨架。
+**触发条件**：当用户说"创建工程"、"新建项目"、"create a project"等任何与创建工程相关的请求时。
+
+**强制行为**：**立即**使用示例0生成完整可编译的工程骨架，**不要询问需求**、**不要列选项**、**不要讨论方案**。
+
+### 步骤
+
+1. **确认工程名**：
+   - 如果用户指定了名称（如"创建Yomk工程"），使用该名称
+   - 如果用户未指定，使用 `MyProject` 作为默认名
+
+2. **生成完整工程**：
+   - 按照下方目录结构生成所有文件
+   - 将 `ProjectName` 替换为用户指定的名称（或 `MyProject`）
+   - 所有文件必须完整生成，确保 `source build.sh` 可直接编译运行
+
+3. **告知用户**：
+   - 工程已生成在当前位置的 `ProjectName/` 目录下
+   - 如何编译：`source ProjectName/build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install`
+   - 如何启动：进入 `build/` 目录运行 `./ProjectName`
 
 ### 目录结构
 
@@ -157,6 +175,7 @@ ExtensionName/
 3. 安装后其他工程可通过 `find_package(ExtensionName)` 引用
 4. `build.sh` 支持可选编译测试程序（`test/` 有独立 CMakeLists）
 5. 测试程序通过 `YOMK_NEW_SERVICE` 注册服务并验证功能
+6. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
 
 ### 生成规则
 
@@ -193,6 +212,7 @@ YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
 4. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）
 5. 配置路径通过 Context 传递，不用构造参数
+6. 扩展库只负责处理逻辑，不关心数据来源，所有外部数据必须通过请求参数传入
 
 ## 详细参考
 
