@@ -38,16 +38,16 @@ bool consoleLogProxy(const yomk::Log &log)
     switch (log.m_level)
     {
     case yomk::Log::eInfo:
-        std::cout << "[LogProxy] [INFO ] " << "[" << log.m_logger << "]" << log.m_log << std::endl;
+        std::cout << "[LogProxy] [INFO ] " << "[" << log.m_logger << "] " << log.m_log << std::endl;
         break;
     case yomk::Log::eWarn:
-        std::cout << "[LogProxy] [WARN ] " << "[" << log.m_logger << "]" << log.m_log << std::endl;
+        std::cout << "[LogProxy] [WARN ] " << "[" << log.m_logger << "] " << log.m_log << std::endl;
         break;
     case yomk::Log::eError:
-        std::cout << "[LogProxy] [ERROR] " << "[" << log.m_logger << "]" << log.m_log << std::endl;
+        std::cout << "[LogProxy] [ERROR] " << "[" << log.m_logger << "] " << log.m_log << std::endl;
         break;
     case yomk::Log::eDebug:
-        std::cout << "[LogProxy] [DEBUG] " << "[" << log.m_logger << "]" << log.m_log << std::endl;
+        std::cout << "[LogProxy] [DEBUG] " << "[" << log.m_logger << "] " << log.m_log << std::endl;
         break;
     default:
         break;
