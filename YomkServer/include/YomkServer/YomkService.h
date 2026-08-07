@@ -11,7 +11,7 @@ class YOMKSERVER_EXPORT YomkService
 {
 public:
     YomkService(YomkServer *server);
-    ~YomkService() {}
+    virtual ~YomkService() {}
 
 public:
     void name(const std::string &name);

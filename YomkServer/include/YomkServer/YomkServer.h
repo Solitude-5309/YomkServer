@@ -11,7 +11,7 @@ class YOMKSERVER_EXPORT YomkServer
 {
 public:
     YomkServer();
-    ~YomkServer() {}
+    virtual ~YomkServer() {}
 
 public:
     template <typename T>
