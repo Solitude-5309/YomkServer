@@ -71,6 +71,11 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 ## 编译安装
 
 ### linux
+
+#### 自动安装
+./build_ubuntu.sh
+
+#### 手动安装
 mkdir build && cd build  
 cmake .. -DCMAKE_INSTALL_PREFIX=~/YomkServer/install  
 cmake --build . --target install --config Release  

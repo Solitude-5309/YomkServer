@@ -67,3 +67,13 @@ target_link_libraries(TestYomkLogger PRIVATE
     ${YomkServerLib}
 )
 # -------------el TestYomkLogger ----------------
+
+# 安装测试可执行文件到 <prefix>/bin，供用户在任意终端运行验证安装
+install(TARGETS
+    TestYomkService
+    TestYomkFunctionPool
+    TestYomkContext
+    TestYomkEventLoop
+    TestYomkLogger
+    RUNTIME DESTINATION bin
+)
