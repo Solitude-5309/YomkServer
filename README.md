@@ -72,8 +72,19 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 
 ### linux
 
-#### 自动安装
+#### 自动安装到YOMK_PREFIX_PATH
 ./build_ubuntu.sh
+
+脚本运行流程：  
+1. 自动检查编译依赖（cmake / g++ / make），缺失时可选自动安装  
+2. 交互输入安装路径（默认 /opt/yomk，支持 ~ 与相对路径），完成配置、编译、安装  
+3. 自动创建环境变量 YOMK_PREFIX_PATH 指向安装路径，并将其 bin/ 加入 PATH  
+4. 将安装路径/lib 注册到系统动态库搜索路径（ldconfig）  
+
+安装完成后新开任意终端即可直接使用（无需手动 source）：  
+- echo $YOMK_PREFIX_PATH 查看安装路径  
+- 直接运行 TestYomkService 等测试程序验证安装  
+- 当前终端立即生效：source /etc/profile.d/yomk.sh  
 
 #### 手动安装
 mkdir build && cd build  

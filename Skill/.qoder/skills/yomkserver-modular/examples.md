@@ -428,7 +428,7 @@ echo "  lib: @YomkServer_LIB_DIR@"
 ```
 
 ### README.md
-```markdown
+````markdown
 # ProjectName
 
 基于 [YomkServer](https://github.com/Solitude-5309/YomkServer) 模块化框架的工程。  
@@ -442,8 +442,10 @@ YomkServer 是基于 C++17 的模块化高性能服务开发框架，核心设�
 
 ## 编译与运行
 
+```bash
 source build_ubuntu.sh
 ProjectName
+```
 
 ## 工程结构
 
@@ -456,7 +458,7 @@ ProjectName
 | `typedefine/` | 公共常量/宏/类型定义 |
 | `test/` | 单元测试文件 |
 | `scripts/` | 项目辅助脚本 |
-```
+````
 
 ---
 
@@ -999,7 +1001,7 @@ install(FILES
 ```
 
 ### README.md
-```markdown
+````markdown
 # ExtensionName 扩展
 
 基于 [YomkServer](https://github.com/Solitude-5309/YomkServer) 框架的扩展服务。
@@ -1047,4 +1049,4 @@ if (resp.m_status == YomkResponse::eOk) {
     // version->d == "ExtensionName v0.0.1 (WIP)"
 }
 ```
-```
+````
