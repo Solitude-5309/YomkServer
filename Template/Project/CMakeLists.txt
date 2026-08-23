@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(TemplateProject LANGUAGES CXX)
+project(TemplateProject VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,6 +16,8 @@ add_executable(${PROJECT_NAME}
     boot/MyBoot.cpp
     services/ConfigService.cpp
 )
+# 编译期注入工程版本号（对应 project() 定义的 VERSION），供 /ConfigService/version 接口返回
+target_compile_definitions(${PROJECT_NAME} PRIVATE APP_VERSION="${PROJECT_VERSION}")
 target_link_libraries(${PROJECT_NAME} PRIVATE
     YomkServer::YomkServer
     $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>

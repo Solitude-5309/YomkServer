@@ -17,6 +17,7 @@ private:
     YomkResponse getConfig(YomkPkgPtr pkg);
     YomkResponse setConfig(YomkPkgPtr pkg);
     YomkResponse reloadConfig(YomkPkgPtr pkg);
+    YomkResponse version(YomkPkgPtr pkg);
 
     std::string m_configPath;
     std::unordered_map<std::string, std::string> m_configMap;

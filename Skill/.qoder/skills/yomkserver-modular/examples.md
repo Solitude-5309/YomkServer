@@ -38,7 +38,6 @@ using namespace yomk;
 int main(int argc, char *argv[])
 {
     YOMK_BOOT(new MyBoot(argc, argv, {"/ConfigService"}));
-
     YOMK_INFO_TAG("main", "ProjectName is running, press Enter to exit.");
     getchar();
     return 0;
@@ -129,15 +128,16 @@ int MyBoot::after()
     YomkUnPackPkg(resp.m_data, String, name);
     YOMK_INFO_TAG("MyBoot::after", "config name: ", name->d);
 
-    resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(YConfigKey, ConfigKey{"version"}));
+    // 测试版本号接口：获取并输出工程版本号（来自 CMake project() 定义的 VERSION，编译期注入）
+    resp = YOMK_REQUEST("/ConfigService/version", nullptr);
     if (resp.m_status != YomkResponse::eOk)
     {
-        YOMK_ERROR_TAG("MyBoot::after", "get config version failed: ", resp.m_msg);
+        YOMK_ERROR_TAG("MyBoot::after", "get version failed: ", resp.m_msg);
         return -1;
     }
 
     YomkUnPackPkg(resp.m_data, String, version);
-    YOMK_INFO_TAG("MyBoot::after", "config version: ", version->d);
+    YOMK_INFO_TAG("MyBoot::after", "project version: ", version->d);
 
     resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(YConfigKey, ConfigKey{"description"}));
     if (resp.m_status != YomkResponse::eOk)
@@ -206,6 +206,7 @@ private:
     YomkResponse getConfig(YomkPkgPtr pkg);
     YomkResponse setConfig(YomkPkgPtr pkg);
     YomkResponse reloadConfig(YomkPkgPtr pkg);
+    YomkResponse version(YomkPkgPtr pkg);
 
     std::string m_configPath;
     std::unordered_map<std::string, std::string> m_configMap;
@@ -239,7 +240,8 @@ int ConfigService::init()
     YomkInstallFunc("/get", ConfigService::getConfig);
     YomkInstallFunc("/set", ConfigService::setConfig);
     YomkInstallFunc("/reload", ConfigService::reloadConfig);
-    YOMK_INFO_TAG("ConfigService::init", "install func [ /load /get /set /reload ] to", name());
+    YomkInstallFunc("/version", ConfigService::version);
+    YOMK_INFO_TAG("ConfigService::init", "install func [ /load /get /set /reload /version ] to", name());
     return 0;
 }
 
@@ -297,19 +299,24 @@ YomkResponse ConfigService::reloadConfig(YomkPkgPtr pkg)
     m_configMap.clear();
     return loadConfig(nullptr);
 }
+
+YomkResponse ConfigService::version(YomkPkgPtr pkg)
+{
+    // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, std::string(APP_VERSION)));
+}
 ```
 
 ### config/config.txt
 ```
 name: ProjectName
-version: 2.2.9
 description: Create a new project based on YomkServer
-
+```
 
 ### CMakeLists.txt
 ```cmake
 cmake_minimum_required(VERSION 3.14)
-project(ProjectName VERSION 2.2.9 LANGUAGES CXX)
+project(ProjectName VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -326,7 +333,7 @@ add_executable(${PROJECT_NAME}
     boot/MyBoot.cpp
     services/ConfigService.cpp
 )
-target_compile_definitions(${PROJECT_NAME} PRIVATE APP_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(${PROJECT_NAME} PRIVATE APP_VERSION="${PROJECT_VERSION}")  # 编译期注入工程版本号，供 /ConfigService/version 接口返回
 target_link_libraries(${PROJECT_NAME} PRIVATE
     YomkServer::YomkServer
     $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_LESS:$<CXX_COMPILER_VERSION>,9.0>>:stdc++fs>

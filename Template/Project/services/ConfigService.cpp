@@ -26,7 +26,8 @@ int ConfigService::init()
     YomkInstallFunc("/get", ConfigService::getConfig);
     YomkInstallFunc("/set", ConfigService::setConfig);
     YomkInstallFunc("/reload", ConfigService::reloadConfig);
-    YOMK_INFO_TAG("ConfigService::init", "install func [ /load /get /set /reload ] to", name());
+    YomkInstallFunc("/version", ConfigService::version);
+    YOMK_INFO_TAG("ConfigService::init", "install func [ /load /get /set /reload /version ] to", name());
     return 0;
 }
 
@@ -88,4 +89,10 @@ YomkResponse ConfigService::reloadConfig(YomkPkgPtr pkg)
 {
     m_configMap.clear();
     return loadConfig(nullptr);
+}
+
+YomkResponse ConfigService::version(YomkPkgPtr pkg)
+{
+    // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, std::string(APP_VERSION)));
 }

@@ -74,7 +74,7 @@ ProjectName/
 4. 安装固定到源码下 `install/`（`bin/ + config/ + setup.bash`）
 5. `build_ubuntu.sh` 用 `source` 执行，交互式询问前置路径（默认 `YOMK_PREFIX_PATH`），自动编译+安装+加载环境
 6. `build_ubuntu.sh`、`setup.bash.in` 不含工程名；`CMakeLists.txt`、`main.cpp`、`README.md` 使用用户指定工程名
-7. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE APP_VERSION="${PROJECT_VERSION}")` 编译期注入，启动日志中以字符串拼接输出，如 `"ProjectName v" APP_VERSION " starting..."`
+7. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE APP_VERSION="${PROJECT_VERSION}")` 编译期注入，由 `ConfigService` 的 `/version` 接口返回（不放 config.txt），`MyBoot.after()` 与 `main()` 请求该接口并输出版本号
 
 ### 生成规则
 
