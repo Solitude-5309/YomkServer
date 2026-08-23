@@ -20,12 +20,11 @@
 ## 编译
 
 ```bash
-# 默认安装到 YomkMath/install/
-source YomkMath/build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install
-
-# 自定义安装目录
-source YomkMath/build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install -DCMAKE_INSTALL_PREFIX=~/YomkServer/install
+source build_ubuntu.sh     # 交互式，前置路径与安装路径默认均取 $YOMK_PREFIX_PATH，可交互修改
 ```
+
+> 扩展库需与 YomkServer 安装到一起：导出 target 不含 include 路径，头文件由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供。
+> 若未配置 `YOMK_PREFIX_PATH` 环境变量，脚本会提示警告，此时手动输入路径即可。
 
 ## 工程结构
 
@@ -36,7 +35,7 @@ YomkMath/
 ├── src/
 │   └── MathService.cpp      # 服务实现
 ├── CMakeLists.txt            # CMake 构建配置
-├── build.sh                  # 一键编译脚本
+├── build_ubuntu.sh           # 一键编译脚本（交互式）
 └── README.md
 ```
 

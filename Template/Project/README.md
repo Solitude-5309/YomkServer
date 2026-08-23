@@ -13,11 +13,11 @@ YomkServer 是基于 C++17 的模块化高性能服务开发框架，核心设�
 ### 安装 YomkServer
 
 ```bash
-# 在 YomkServer 源码目录下
-mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
-cmake --build . --target install --config Release
+# 在 YomkServer 源码目录下，一键编译安装（默认安装到 /opt/yomk，可交互自定义路径）
+./build_ubuntu.sh
 ```
+
+安装后会自动配置环境变量 `YOMK_PREFIX_PATH` 指向安装路径，并将安装路径暴露到系统（任意终端可找到 `libYomkServer.so`）。
 
 ## 工程结构
 
@@ -35,7 +35,7 @@ ProjectName/
 │   └── ConfigService.h/.cpp
 ├── typedefine/
 │   └── TypeDefine.h        // 公共常量/宏/类型定义
-├── build.sh                // 一键编译脚本
+├── build_ubuntu.sh         // 一键编译脚本（交互式）
 ├── setup.bash.in           // 环境脚本模板
 ├── CMakeLists.txt
 └── README.md
@@ -52,14 +52,13 @@ ProjectName/
 ## Linux 编译与运行
 
 ```bash
-source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install 
+source build_ubuntu.sh     # 交互式，前置路径默认取 $YOMK_PREFIX_PATH，可交互修改
 TemplateProject
 ```
 
-> 若 YomkServer 安装在非默认路径：
-> `source build.sh -DCMAKE_PREFIX_PATH=/your/install/prefix`
+> 若未配置 `YOMK_PREFIX_PATH` 环境变量，脚本会提示警告，此时手动输入 YomkServer 安装路径即可。
 
-`build.sh` 自动完成：创建 build 目录 → cmake 配置 → 编译安装 → 加载运行环境。
+`build_ubuntu.sh` 自动完成：询问前置路径 → 创建 build 目录 → cmake 配置 → 编译安装 → 加载运行环境。
 
 安装到工程源码目录下的 `install/`，`setup.bash` 会自动配置 `PATH` 和 `LD_LIBRARY_PATH`。
 

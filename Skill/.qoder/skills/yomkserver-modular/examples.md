@@ -22,7 +22,7 @@ ProjectName/
 │   └── TypeDefine.h
 ├── test/
 ├── scripts/
-├── build.sh
+├── build_ubuntu.sh
 ├── setup.bash.in
 ├── CMakeLists.txt
 └── README.md
@@ -347,20 +347,43 @@ configure_file(
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/setup.bash DESTINATION .)
 ```
 
-### build.sh
+### build_ubuntu.sh
 ```bash
 #!/bin/bash
-# 用法: source build.sh [额外的cmake参数...]
-# 示例: source build.sh -DCMAKE_PREFIX_PATH=/path/to/YomkServer/install
+# 一键编译脚本（交互式）
+# 用法: source build_ubuntu.sh
+# 交互询问 YomkServer 安装路径（前置路径），默认取环境变量 YOMK_PREFIX_PATH，可修改
+# 安装路径固定为工程源码目录下的 install/（CMakeLists.txt 已强制）
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/build"
 _ORIG_DIR="$(pwd)"
 
+# 交互询问 YomkServer 安装路径（前置路径），默认取环境变量 YOMK_PREFIX_PATH
+if [ -z "${YOMK_PREFIX_PATH}" ]; then
+    echo "警告: 未检测到环境变量 YOMK_PREFIX_PATH，可能未通过 build_ubuntu.sh 安装 YomkServer，请手动输入安装路径"
+fi
+read -r -p "请输入 YomkServer 安装路径 [默认: ${YOMK_PREFIX_PATH:-无}]: " _INPUT_PREFIX
+YOMK_SERVER_PATH="${_INPUT_PREFIX:-${YOMK_PREFIX_PATH}}"
+unset _INPUT_PREFIX
+
+# 展开路径开头的 ~
+YOMK_SERVER_PATH="${YOMK_SERVER_PATH/#\~/$HOME}"
+# 非绝对路径自动补全为基于当前目录的绝对路径
+if [[ -n "${YOMK_SERVER_PATH}" && "${YOMK_SERVER_PATH}" != /* ]]; then
+    YOMK_SERVER_PATH="$(pwd)/${YOMK_SERVER_PATH}"
+fi
+
+if [ -z "${YOMK_SERVER_PATH}" ]; then
+    echo "错误: 未指定 YomkServer 安装路径"
+    return 1
+fi
+echo "-- YomkServer 安装路径: ${YOMK_SERVER_PATH}"
+
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}" || return 1
 
-cmake "${SCRIPT_DIR}" "$@"
+cmake "${SCRIPT_DIR}" -DCMAKE_PREFIX_PATH="${YOMK_SERVER_PATH}"
 if [ $? -ne 0 ]; then
     echo "cmake 配置失败"
     cd "${_ORIG_DIR}"
@@ -408,11 +431,11 @@ YomkServer 是基于 C++17 的模块化高性能服务开发框架，核心设�
 
 - C++17 编译器
 - CMake >= 3.14
-- YomkServer 已安装
+- YomkServer 已安装（通过 `build_ubuntu.sh` 安装后会自动配置环境变量 `YOMK_PREFIX_PATH` 指向安装路径）
 
 ## 编译与运行
 
-source build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install
+source build_ubuntu.sh
 ProjectName
 
 ## 工程结构
@@ -649,7 +672,7 @@ ExtensionName/
 │   └── TestExtensionName.cpp
 ├── cmake/
 │   └── ProjectConfig.cmake.in
-├── build.sh
+├── build_ubuntu.sh
 ├── CMakeLists.txt
 └── README.md
 ```
@@ -786,43 +809,53 @@ set(@PROJECT_NAME@_LIBRARIES @PROJECT_NAME@::@PROJECT_NAME@)
 set(@PROJECT_NAME@_VERSION "@PROJECT_VERSION@")
 ```
 
-### build.sh
+### build_ubuntu.sh
 ```bash
 #!/bin/bash
-# 用法: source build.sh [额外的cmake参数...]
-# 示例: source build.sh -DCMAKE_PREFIX_PATH=/path/to/YomkServer/install
+# 一键编译脚本（交互式）
+# 用法: source build_ubuntu.sh
+# 依次交互询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取环境变量 YOMK_PREFIX_PATH，可修改
+# 扩展库与 YomkServer 安装到一起（头文件由 YomkServer::YomkServer 的 INTERFACE include 统一提供）
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_NAME="ExtensionName"
 BUILD_DIR="${SCRIPT_DIR}/build"
-INSTALL_DIR="${SCRIPT_DIR}/install"
 TEST_DIR="${SCRIPT_DIR}/test"
 TEST_BUILD_DIR="${TEST_DIR}/build"
 _ORIG_DIR="$(pwd)"
 
-# 解析用户传入的 cmake 参数
-YOMK_SERVER_PATH=""
-USER_INSTALL_PREFIX=""
-for arg in "$@"; do
-    if [[ "${arg}" == -DCMAKE_PREFIX_PATH=* ]]; then
-        YOMK_SERVER_PATH="${arg#-DCMAKE_PREFIX_PATH=}"
-    elif [[ "${arg}" == -DCMAKE_INSTALL_PREFIX=* ]]; then
-        USER_INSTALL_PREFIX="${arg#-DCMAKE_INSTALL_PREFIX=}"
+# 路径规范化：展开 ~ 、相对路径补全
+_normalize_path() {
+    local p="$1"
+    p="${p/#\~/$HOME}"
+    if [[ -n "${p}" && "${p}" != /* ]]; then
+        p="$(pwd)/${p}"
     fi
-done
+    echo "${p}"
+}
 
-# 展开路径开头的 ~（bash 不会展开 -DXXX=~/path 中的 ~）
-if [[ "${USER_INSTALL_PREFIX}" == "~"* ]]; then
-    USER_INSTALL_PREFIX="${HOME}${USER_INSTALL_PREFIX#\~}"
-fi
-if [[ "${YOMK_SERVER_PATH}" == "~"* ]]; then
-    YOMK_SERVER_PATH="${HOME}${YOMK_SERVER_PATH#\~}"
+if [ -z "${YOMK_PREFIX_PATH}" ]; then
+    echo "警告: 未检测到环境变量 YOMK_PREFIX_PATH，可能未通过 build_ubuntu.sh 安装 YomkServer，请手动输入安装路径"
 fi
 
-# 用户指定了安装目录时，以用户指定的为准（否则后续环境变量会指向错误目录）
-if [ -n "${USER_INSTALL_PREFIX}" ]; then
-    INSTALL_DIR="${USER_INSTALL_PREFIX}"
+# 交互询问 YomkServer 安装路径（前置路径），默认取环境变量 YOMK_PREFIX_PATH
+read -r -p "请输入 YomkServer 安装路径 [默认: ${YOMK_PREFIX_PATH:-无}]: " _INPUT_PREFIX
+YOMK_SERVER_PATH="$(_normalize_path "${_INPUT_PREFIX:-${YOMK_PREFIX_PATH}}")"
+if [ -z "${YOMK_SERVER_PATH}" ]; then
+    echo "错误: 未指定 YomkServer 安装路径"
+    return 1
 fi
+echo "-- YomkServer 安装路径: ${YOMK_SERVER_PATH}"
+
+# 交互询问扩展安装路径，默认装入 YomkServer 安装目录（与 YomkServer 安装到一起）
+read -r -p "请输入扩展安装路径 [默认: ${YOMK_PREFIX_PATH:-无}]: " _INPUT_INSTALL
+INSTALL_DIR="$(_normalize_path "${_INPUT_INSTALL:-${YOMK_PREFIX_PATH}}")"
+unset _INPUT_PREFIX _INPUT_INSTALL
+if [ -z "${INSTALL_DIR}" ]; then
+    echo "错误: 未指定扩展安装路径"
+    return 1
+fi
+echo "-- 扩展安装路径: ${INSTALL_DIR}"
 
 # 询问是否编译 test
 read -p "编译测试程序? [Y/n]: " BUILD_TEST
@@ -837,7 +870,7 @@ fi
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}" || return 1
 
-cmake "${SCRIPT_DIR}" -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" "$@"
+cmake "${SCRIPT_DIR}" -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" -DCMAKE_PREFIX_PATH="${YOMK_SERVER_PATH}"
 if [ $? -ne 0 ]; then
     echo "cmake 配置失败"
     cd "${_ORIG_DIR}"
@@ -856,12 +889,7 @@ if [ "${BUILD_TEST}" = "ON" ]; then
     mkdir -p "${TEST_BUILD_DIR}"
     cd "${TEST_BUILD_DIR}" || return 1
 
-    CMAKE_PREFIX_ARGS="-DCMAKE_PREFIX_PATH=${INSTALL_DIR}"
-    if [ -n "${YOMK_SERVER_PATH}" ]; then
-        CMAKE_PREFIX_ARGS="-DCMAKE_PREFIX_PATH=${INSTALL_DIR};${YOMK_SERVER_PATH}"
-    fi
-
-    cmake "${TEST_DIR}" ${CMAKE_PREFIX_ARGS}
+    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}"
     if [ $? -ne 0 ]; then
         echo "测试程序 cmake 配置失败"
         cd "${_ORIG_DIR}"
@@ -875,13 +903,8 @@ if [ "${BUILD_TEST}" = "ON" ]; then
         return 1
     fi
 
-    # 设置临时环境变量：安装目录 lib + YomkServer lib（含第三方间接依赖）
-    # 注意：不能用硬编码的 ${SCRIPT_DIR}/install，必须与实际安装目录 INSTALL_DIR 一致
-    LD_LIBRARY_PATH="${INSTALL_DIR}/lib:${LD_LIBRARY_PATH}"
-    if [ -n "${YOMK_SERVER_PATH}" ]; then
-        LD_LIBRARY_PATH="${YOMK_SERVER_PATH}/lib:${LD_LIBRARY_PATH}"
-    fi
-    export LD_LIBRARY_PATH
+    # 设置临时环境变量：扩展 lib + YomkServer lib
+    export LD_LIBRARY_PATH="${INSTALL_DIR}/lib:${YOMK_SERVER_PATH}/lib:${LD_LIBRARY_PATH}"
     export PATH="${TEST_BUILD_DIR}:${PATH}"
 fi
 
@@ -894,7 +917,7 @@ echo "编译完成"
 ### CMakeLists.txt
 ```cmake
 cmake_minimum_required(VERSION 3.14)
-project(ExtensionName VERSION 1.0.0 LANGUAGES CXX)
+project(ExtensionName VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -971,15 +994,15 @@ install(FILES
 
 - C++17 编译器
 - CMake >= 3.14
-- YomkServer 已安装
+- YomkServer 已安装（通过 `build_ubuntu.sh` 安装后会自动配置环境变量 `YOMK_PREFIX_PATH` 指向安装路径）
 
 ## 编译
 
 ```bash
-source ExtensionName/build.sh -DCMAKE_PREFIX_PATH=~/YomkServer/install -DCMAKE_INSTALL_PREFIX=~/YomkServer/install
+source build_ubuntu.sh
 ```
 
-> 每次编译必须同时指定 `-DCMAKE_PREFIX_PATH` 与 `-DCMAKE_INSTALL_PREFIX`，将扩展安装进 YomkServer 的 install 目录。
+> 交互式编译：依次询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取 `$YOMK_PREFIX_PATH`，可修改。扩展库与 YomkServer 安装到一起（头文件由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供）。
 
 ## 工程结构
 
@@ -990,7 +1013,7 @@ ExtensionName/
 ├── src/
 │   └── XxxService.cpp      # 服务实现
 ├── CMakeLists.txt            # CMake 构建配置
-├── build.sh                  # 一键编译脚本
+├── build_ubuntu.sh           # 一键编译脚本（交互式）
 └── README.md
 ```
 
@@ -1001,7 +1024,7 @@ ExtensionName/
 YomkResponse resp = YOMK_REQUEST("/XxxService/version", nullptr);
 if (resp.m_status == YomkResponse::eOk) {
     YomkUnPackPkg(resp.m_data, String, version);
-    // version->d == "ExtensionName v1.0.0 (WIP)"
+    // version->d == "ExtensionName v0.0.1 (WIP)"
 }
 ```
 ```
