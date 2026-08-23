@@ -172,20 +172,21 @@ ExtensionName/
 ### 关键约定
 
 1. 编译为 `SHARED` 库，头文件放 `include/`，实现放 `src/`
-2. CMake 使用 `configure_package_config_file` + `install(EXPORT ...)` 导出配置。**Config 模板防污染**：`ProjectConfig.cmake.in` 必须在 `find_dependency()` **之前**用 `@PACKAGE_INCLUDE_INSTALL_DIR@`/`@PACKAGE_LIB_INSTALL_DIR@` 把路径固化到私有变量，路径检查用内联 `foreach` 而非 `set_and_check` 宏——否则依赖包配置会覆盖全局 `PACKAGE_PREFIX_DIR` 与同名宏，导致 `find_package` 报路径不存在或静默指向错误前缀（模板见 examples.md 示例6）
+2. CMake 使用 `configure_package_config_file` + `install(EXPORT ...)` 导出配置。**Config 模板防污染**：`ProjectConfig.cmake.in` 必须在 `find_dependency()` **之前**用 `@PACKAGE_INCLUDE_INSTALL_DIR@`/`@PACKAGE_LIB_INSTALL_DIR@` 把路径固化到私有变量，路径检查用内联 `foreach` 而非 `set_and_check` 宏——否则依赖包配置会覆盖全局 `PACKAGE_PREFIX_DIR` 与同名宏，导致 `find_package` 报路径不存在或静默指向错误前缀（模板见 examples.md 示例6）。**第三方依赖传递**：若扩展以 PUBLIC 链接了额外第三方库（导出接口中仅记录裸名），模板必须在 `find_dependency(YomkServer)` 后追加 `find_dependency(<第三方包>)`，否则下游链接扩展 target 时会因找不到库而失败；无导出包的伴生库（裸库名链接）由测试工程用 `link_directories(${ExtensionName_LIB_DIR})` 补 -L
 3. 安装后其他工程可通过 `find_package(ExtensionName)` 引用。**编译验证必须用 README 中的命令**：`source build_ubuntu.sh`（交互式询问前置路径与安装路径，默认均取 `$YOMK_PREFIX_PATH`，把扩展安装进 YomkServer 的安装目录）——导出 target 不含 include 路径是设计如此，头文件路径由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供；若把扩展安装到扩展自己的 install/，测试程序会因 `#include <ExtensionName/XxxService.h>` 找不到头文件而编译失败。README 编译章节只保留这条交互式命令，不得提供非交互式的单路径安装命令
 4. `build_ubuntu.sh` 支持可选编译测试程序（`test/` 有独立 CMakeLists）
-5. 测试程序通过 `YOMK_NEW_SERVICE` 注册服务并验证功能
-6. **测试程序随扩展安装**：测试程序必须随扩展一并安装到 `<安装路径>/bin`（test/CMakeLists.txt 添加 install 规则，build_ubuntu.sh 以 `--target install` 构建 test），用户安装后可在任意终端直接运行测试程序验证扩展是否安装成功。install 规则必须**显式列出全部测试目标名**（测试程序可能有多个，且目标名不一定等于项目名），禁止使用 `${PROJECT_NAME}` 占位，写法参照 `Test/YomkServer/CMakeLists.txt`：
+5. **扩展库注册系统动态库缓存**：`build_ubuntu.sh` 安装完成后必须将 `${INSTALL_DIR}/lib` 幂等注册到 `/etc/ld.so.conf.d/yomk.conf`（扩展属于 yomk，复用同一 conf 文件，`grep -qxF` 判重后追加）并执行 `sudo ldconfig` 刷新缓存——新增的 so 不会自动进入 ld.so.cache，不刷新则新开任意终端都找不到扩展 so；禁止只用会话级 `export LD_LIBRARY_PATH` 代替（新终端即失效）；写 `/etc` 与 `ldconfig` 永远需要 sudo，与 `INSTALL_DIR` 是否可写无关
+6. 测试程序通过 `YOMK_NEW_SERVICE` 注册服务并验证功能
+7. **测试程序随扩展安装**：测试程序必须随扩展一并安装到 `<安装路径>/bin`（test/CMakeLists.txt 添加 install 规则，build_ubuntu.sh 以 `--target install` 构建 test），用户安装后可在任意终端直接运行测试程序验证扩展是否安装成功。install 规则必须**显式列出全部测试目标名**（测试程序可能有多个，且目标名不一定等于项目名），禁止使用 `${PROJECT_NAME}` 占位，写法参照 `Test/YomkServer/CMakeLists.txt`：
    ```cmake
    install(TARGETS
        TestExtensionName
        RUNTIME DESTINATION bin
    )
    ```
-7. **模板接口最小化**：模板服务默认只包含一个 `/version` 接口（方法名为 `version`，不带 `get` 前缀），不生成任何示例业务接口（如加减乘除）；业务功能通过「继续扩展」添加
-8. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
-9. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回，如 `"YomkRpc v" YOMKRPC_VERSION " (WIP)"`
+8. **模板接口最小化**：模板服务默认只包含一个 `/version` 接口（方法名为 `version`，不带 `get` 前缀），不生成任何示例业务接口（如加减乘除）；业务功能通过「继续扩展」添加
+9. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
+10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回，如 `"YomkRpc v" YOMKRPC_VERSION " (WIP)"`
 
 ### 生成规则
 

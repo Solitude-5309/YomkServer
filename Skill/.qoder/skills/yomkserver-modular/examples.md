@@ -737,18 +737,16 @@ project(TestExtensionName LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(EXT_NAME ExtensionName)
-
 find_package(YomkServer REQUIRED)
-find_package(${EXT_NAME} REQUIRED)
+find_package(ExtensionName REQUIRED)
 
-message(STATUS "${EXT_NAME} version: ${${EXT_NAME}_VERSION}")
-message(STATUS "${EXT_NAME} include dirs: ${${EXT_NAME}_INCLUDE_DIRS}")
-message(STATUS "${EXT_NAME} lib dir: ${${EXT_NAME}_LIB_DIR}")
-message(STATUS "${EXT_NAME} libraries: ${${EXT_NAME}_LIBRARIES}")
+message(STATUS "ExtensionName version: ${ExtensionName_VERSION}")
+message(STATUS "ExtensionName include dirs: ${ExtensionName_INCLUDE_DIRS}")
+message(STATUS "ExtensionName lib dir: ${ExtensionName_LIB_DIR}")
+message(STATUS "ExtensionName libraries: ${ExtensionName_LIBRARIES}")
 
 add_executable(TestExtensionName TestExtensionName.cpp)
-target_link_libraries(TestExtensionName PRIVATE ${EXT_NAME}::${EXT_NAME} YomkServer::YomkServer)
+target_link_libraries(TestExtensionName PRIVATE ExtensionName::ExtensionName YomkServer::YomkServer)
 
 # 测试程序随扩展一并安装到 <安装路径>/bin，供用户在任意终端直接运行验证
 # 测试程序可能有多个，此处显式列出全部测试目标名（不能用 ${PROJECT_NAME} 占位）
@@ -825,6 +823,8 @@ set(@PROJECT_NAME@_LIBRARIES @PROJECT_NAME@::@PROJECT_NAME@)
 set(@PROJECT_NAME@_VERSION "@PROJECT_VERSION@")
 ```
 
+> **补充第三方依赖**：模板默认只有 YomkServer 一个依赖。若扩展以 PUBLIC 链接了额外第三方库（导出接口中仅记录裸名），必须在 `find_dependency(YomkServer)` 之后（同样处于路径固化之后的区域）追加 `find_dependency(<第三方包>)`，使下游的裸名解析为带全路径的导入 target，否则任何下游工程链接 `ExtensionName::ExtensionName` 都会因找不到库而失败；无导出包的伴生库（fastddsgen 生成库等，测试工程以裸库名链接）则由测试工程用 `link_directories(${ExtensionName_LIB_DIR})` 补 -L 搜索路径。
+
 ### build_ubuntu.sh
 ```bash
 #!/bin/bash
@@ -832,6 +832,7 @@ set(@PROJECT_NAME@_VERSION "@PROJECT_VERSION@")
 # 用法: source build_ubuntu.sh
 # 依次交互询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取环境变量 YOMK_PREFIX_PATH，可修改
 # 扩展库与 YomkServer 安装到一起（头文件由 YomkServer::YomkServer 的 INTERFACE include 统一提供）
+# 安装后将扩展 lib 注册到系统动态库搜索路径（复用 yomk.conf）并刷新 ldconfig 缓存，新开任意终端即可找到扩展 so
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_NAME="ExtensionName"
@@ -906,6 +907,21 @@ if [ $? -ne 0 ]; then
     return 1
 fi
 
+# 注册扩展库路径到系统动态库搜索路径（扩展属于 yomk，复用 yomk.conf，幂等追加）
+YOMK_LDCONF_FILE="/etc/ld.so.conf.d/yomk.conf"
+if ! grep -qxF "${INSTALL_DIR}/lib" "${YOMK_LDCONF_FILE}" 2>/dev/null; then
+    echo "-- 注册动态库搜索路径: ${YOMK_LDCONF_FILE}"
+    echo "${INSTALL_DIR}/lib" | sudo tee -a "${YOMK_LDCONF_FILE}" >/dev/null
+fi
+# 刷新动态库缓存：新增的 so 不会自动进入 ld.so.cache，必须重新执行 ldconfig
+echo "-- 刷新动态库缓存 (ldconfig)..."
+sudo ldconfig
+if [ $? -ne 0 ]; then
+    echo "ldconfig 执行失败"
+    cd "${_ORIG_DIR}"
+    return 1
+fi
+
 # 编译测试程序
 if [ "${BUILD_TEST}" = "ON" ]; then
     mkdir -p "${TEST_BUILD_DIR}"
@@ -924,16 +940,16 @@ if [ "${BUILD_TEST}" = "ON" ]; then
         cd "${_ORIG_DIR}"
         return 1
     fi
-
-    # 设置临时环境变量：扩展 lib + YomkServer lib
-    export LD_LIBRARY_PATH="${INSTALL_DIR}/lib:${YOMK_SERVER_PATH}/lib:${LD_LIBRARY_PATH}"
-    export PATH="${TEST_BUILD_DIR}:${PATH}"
 fi
 
 cd "${_ORIG_DIR}"
 unset _ORIG_DIR
 
-echo "编译完成"
+echo "编译完成，扩展库已注册到系统动态库缓存，新开任意终端即可使用"
+ldconfig -p | grep -i "${PROJECT_NAME}" || true
+if [ "${BUILD_TEST}" = "ON" ]; then
+    echo "测试程序已安装到 ${INSTALL_DIR}/bin，可直接运行 TestExtensionName 验证"
+fi
 ```
 
 ### CMakeLists.txt
