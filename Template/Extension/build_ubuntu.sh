@@ -5,7 +5,7 @@
 # 扩展库与 YomkServer 安装到一起（头文件由 YomkServer::YomkServer 的 INTERFACE include 统一提供）
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_NAME="YomkMath"
+PROJECT_NAME="YomkExtension"
 BUILD_DIR="${SCRIPT_DIR}/build"
 TEST_DIR="${SCRIPT_DIR}/test"
 TEST_BUILD_DIR="${TEST_DIR}/build"
@@ -44,6 +44,12 @@ if [ -z "${INSTALL_DIR}" ]; then
 fi
 echo "-- 扩展安装路径: ${INSTALL_DIR}"
 
+# 安装目录不可写时（如 /opt/yomk）使用 sudo 执行安装
+SUDO=""
+if [ ! -w "${INSTALL_DIR}" ]; then
+    SUDO="sudo"
+fi
+
 # 询问是否编译 test
 read -p "编译测试程序? [Y/n]: " BUILD_TEST
 BUILD_TEST=${BUILD_TEST:-y}
@@ -64,7 +70,7 @@ if [ $? -ne 0 ]; then
     return 1
 fi
 
-cmake --build . --config Release --target install
+${SUDO} cmake --build . --config Release --target install
 if [ $? -ne 0 ]; then
     echo "编译失败"
     cd "${_ORIG_DIR}"
@@ -76,14 +82,14 @@ if [ "${BUILD_TEST}" = "ON" ]; then
     mkdir -p "${TEST_BUILD_DIR}"
     cd "${TEST_BUILD_DIR}" || return 1
 
-    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}"
+    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}" -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}"
     if [ $? -ne 0 ]; then
         echo "测试程序 cmake 配置失败"
         cd "${_ORIG_DIR}"
         return 1
     fi
 
-    cmake --build . --config Release
+    ${SUDO} cmake --build . --config Release --target install
     if [ $? -ne 0 ]; then
         echo "测试程序编译失败"
         cd "${_ORIG_DIR}"
@@ -99,3 +105,6 @@ cd "${_ORIG_DIR}"
 unset _ORIG_DIR
 
 echo "编译完成"
+if [ "${BUILD_TEST}" = "ON" ]; then
+    echo "测试程序已安装到 ${INSTALL_DIR}/bin，可直接运行 TestYomkExtension 验证"
+fi

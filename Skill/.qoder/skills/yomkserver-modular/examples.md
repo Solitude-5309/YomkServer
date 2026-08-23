@@ -738,8 +738,15 @@ message(STATUS "${EXT_NAME} include dirs: ${${EXT_NAME}_INCLUDE_DIRS}")
 message(STATUS "${EXT_NAME} lib dir: ${${EXT_NAME}_LIB_DIR}")
 message(STATUS "${EXT_NAME} libraries: ${${EXT_NAME}_LIBRARIES}")
 
-add_executable(${PROJECT_NAME} TestExtensionName.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${EXT_NAME}::${EXT_NAME} YomkServer::YomkServer)
+add_executable(TestExtensionName TestExtensionName.cpp)
+target_link_libraries(TestExtensionName PRIVATE ${EXT_NAME}::${EXT_NAME} YomkServer::YomkServer)
+
+# 测试程序随扩展一并安装到 <安装路径>/bin，供用户在任意终端直接运行验证
+# 测试程序可能有多个，此处显式列出全部测试目标名（不能用 ${PROJECT_NAME} 占位）
+install(TARGETS
+    TestExtensionName
+    RUNTIME DESTINATION bin
+)
 ```
 
 ### test/TestExtensionName.cpp
@@ -857,6 +864,12 @@ if [ -z "${INSTALL_DIR}" ]; then
 fi
 echo "-- 扩展安装路径: ${INSTALL_DIR}"
 
+# 安装目录不可写时（如 /opt/yomk）使用 sudo 执行安装
+SUDO=""
+if [ ! -w "${INSTALL_DIR}" ]; then
+    SUDO="sudo"
+fi
+
 # 询问是否编译 test
 read -p "编译测试程序? [Y/n]: " BUILD_TEST
 BUILD_TEST=${BUILD_TEST:-y}
@@ -877,7 +890,7 @@ if [ $? -ne 0 ]; then
     return 1
 fi
 
-cmake --build . --config Release --target install
+${SUDO} cmake --build . --config Release --target install
 if [ $? -ne 0 ]; then
     echo "编译失败"
     cd "${_ORIG_DIR}"
@@ -889,14 +902,14 @@ if [ "${BUILD_TEST}" = "ON" ]; then
     mkdir -p "${TEST_BUILD_DIR}"
     cd "${TEST_BUILD_DIR}" || return 1
 
-    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}"
+    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}" -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}"
     if [ $? -ne 0 ]; then
         echo "测试程序 cmake 配置失败"
         cd "${_ORIG_DIR}"
         return 1
     fi
 
-    cmake --build . --config Release
+    ${SUDO} cmake --build . --config Release --target install
     if [ $? -ne 0 ]; then
         echo "测试程序编译失败"
         cd "${_ORIG_DIR}"
@@ -1002,7 +1015,7 @@ install(FILES
 source build_ubuntu.sh
 ```
 
-> 交互式编译：依次询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取 `$YOMK_PREFIX_PATH`，可修改。扩展库与 YomkServer 安装到一起（头文件由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供）。
+> 交互式编译：依次询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取 `$YOMK_PREFIX_PATH`，可修改。扩展库与 YomkServer 安装到一起（头文件由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供）。测试程序随扩展安装到 `<安装路径>/bin`，安装后可直接运行 `TestExtensionName` 验证。
 
 ## 工程结构
 

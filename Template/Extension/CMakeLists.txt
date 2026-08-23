@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(YomkMath VERSION 1.0.0 LANGUAGES CXX)
+project(YomkExtension VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,9 +10,10 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # 编译为动态库
 add_library(${PROJECT_NAME} SHARED
-    src/MathService.cpp
+    src/ExtensionService.cpp
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE YomkServer::YomkServer)
+target_compile_definitions(${PROJECT_NAME} PRIVATE EXTENSION_VERSION="${PROJECT_VERSION}")
 
 # 安装规则
 set(INCLUDE_INSTALL_DIR "include")
