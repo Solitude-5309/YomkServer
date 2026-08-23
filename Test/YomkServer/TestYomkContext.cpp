@@ -81,6 +81,9 @@ int main(int argc, char *argv[])
     // 初始化框架
     YOMK_INIT();
 
+    // 测试 YOMK_VERSION：获取并输出框架版本号（对应 project(Yomk VERSION x.x.x) 定义的 VERSION）
+    YOMK_INFO_TAG("main", "YomkServer version: ", YOMK_VERSION);
+
     YomkResponse response;
 
     /**

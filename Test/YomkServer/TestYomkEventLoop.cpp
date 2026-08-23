@@ -1,13 +1,13 @@
 /**
  * @file TestYomkEventLoop.cpp
  * @brief YomkEventLoop 事件循环示例
- * 
+ *
  * 演示内容：
  * 1. 启动事件循环（YOMK_EVENTLOOP_START）
  * 2. 异步投递事件（YOMK_EVENTLOOP_POST）
  * 3. 同步投递事件并等待（YOMK_EVENTLOOP_POST_WAIT）
  * 4. 停止和销毁事件循环
- * 
+ *
  * EventLoop 特性：
  * - 独立线程运行
  * - 同循环内事件顺序执行
@@ -21,10 +21,10 @@
 
 /**
  * @brief 事件处理函数
- * 
+ *
  * 当投递事件到事件循环时，此函数会被调用处理事件
  * 可以设置为默认处理函数（启动时指定）或临时处理函数（投递时指定）
- * 
+ *
  * @param pkg 事件数据
  * @return YomkResponse 处理结果
  */
@@ -53,7 +53,7 @@ YomkResponse eventHandle(YomkPkgPtr pkg)
 
 /**
  * @brief 程序入口
- * 
+ *
  * 演示 EventLoop 的完整生命周期：
  * 启动 -> 投递事件 -> 同步等待 -> 停止 -> 销毁
  */
@@ -62,13 +62,16 @@ int main(int argc, char *argv[])
     // 初始化框架
     YOMK_INIT();
 
+    // 测试 YOMK_VERSION：获取并输出框架版本号（对应 project(Yomk VERSION x.x.x) 定义的 VERSION）
+    YOMK_INFO_TAG("main", "YomkServer version: ", YOMK_VERSION);
+
     /**
      * 步骤1：启动事件循环
-     * 
+     *
      * 参数：
      * - "event_loop_1": 事件循环名称（全局唯一）
      * - eventHandle: 默认事件处理函数
-     * 
+     *
      * 启动后会在独立线程中运行，等待事件投递
      */
     YomkResponse response = YOMK_EVENTLOOP_START(
@@ -85,7 +88,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤2：异步投递事件（不等待结果）
-     * 
+     *
      * YOMK_EVENTLOOP_POST:
      * - 将事件投递到事件循环队列
      * - 立即返回，不阻塞
@@ -103,12 +106,12 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤3：同步投递事件并等待结果
-     * 
+     *
      * YOMK_EVENTLOOP_POST_WAIT:
      * - 将事件投递到事件循环队列
      * - 阻塞等待事件处理完成
      * - 返回处理结果
-     * 
+     *
      * 响应中的 m_data 包含 Event 对象，可获取：
      * - m_eventId: 事件ID
      * - m_eventLoopName: 处理事件的事件循环名称
@@ -143,7 +146,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤4：停止事件循环
-     * 
+     *
      * 停止后不再接受新的事件投递，但已投递的事件会继续处理完成
      */
     response = YOMK_EVENTLOOP_STOP("event_loop_1");
@@ -162,7 +165,7 @@ int main(int argc, char *argv[])
 
     /**
      * 步骤5：销毁事件循环
-     * 
+     *
      * 彻底销毁事件循环，释放资源
      */
     response = YOMK_EVENTLOOP_DESTROY("event_loop_1");

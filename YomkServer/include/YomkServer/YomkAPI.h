@@ -19,6 +19,10 @@ public:
 
 class YOMKSERVER_EXPORT YomkAPI
 {
+    // VERSION_API
+public:
+    // 获取框架版本号（对应顶层 project(Yomk VERSION x.x.x) 定义的 VERSION）
+    static std::string version();
     // BOOT_API
 public:
     static std::shared_ptr<YomkServer> init()
@@ -497,6 +501,7 @@ private:
 };
 #define STRINGIFY(x) #x
 #define TO_STRING(x) STRINGIFY(x)
+#define YOMK_VERSION YomkAPI::version()
 #define YOMK_INIT(...) YomkAPI::init(__VA_ARGS__)
 #define YOMK_SERVER_PTR YomkAPI::serverInstance()
 #define YOMK_SERVER_P YomkAPI::serverInstance().get()

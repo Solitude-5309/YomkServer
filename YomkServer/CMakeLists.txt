@@ -34,6 +34,9 @@ add_library(YomkServer SHARED
 
 target_compile_definitions(YomkServer PRIVATE YOMKSERVER_LIBRARY)
 
+# 编译期注入框架版本号（对应顶层 project(Yomk VERSION x.x.x) 定义的 VERSION），供 YOMK_VERSION 获取
+target_compile_definitions(YomkServer PRIVATE YOMKSERVER_VERSION="${PROJECT_VERSION}")
+
 # 导出头文件
 target_include_directories(YomkServer
     PUBLIC
