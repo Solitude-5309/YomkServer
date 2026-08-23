@@ -187,6 +187,7 @@ ExtensionName/
 8. **模板接口最小化**：模板服务默认只包含一个 `/version` 接口（方法名为 `version`，不带 `get` 前缀），不生成任何示例业务接口（如加减乘除）；业务功能通过「继续扩展」添加
 9. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
 10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回，如 `"YomkRpc v" YOMKRPC_VERSION " (WIP)"`
+11. **README 使用示例完整可复制**：README 使用示例必须提供完整的 main.cpp（含 include、`YOMK_INIT()`、`YOMK_NEW_SERVICE` 注册扩展服务、请求与输出），用户复制后即可编译运行；不得只提供请求代码片段
 
 ### 生成规则
 

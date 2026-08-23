@@ -44,11 +44,30 @@ YomkExtension/
 
 ## 使用示例
 
+将以下完整程序拷贝为 main.cpp，安装扩展后可直接编译运行：
+
 ```cpp
-// 版本查询请求
-YomkResponse resp = YOMK_REQUEST("/ExtensionService/version", nullptr);
-if (resp.m_status == YomkResponse::eOk) {
-    YomkUnPackPkg(resp.m_data, String, version);
-    // version->d == "YomkExtension v0.0.1"
+#include <YomkServer/YomkAPI.h>
+#include <YomkExtension/ExtensionService.h>
+#include <iostream>
+
+using namespace yomk;
+
+int main(int argc, char *argv[])
+{
+    YOMK_INIT();
+
+    // 注册 ExtensionService（扩展服务需先注册才能使用）
+    YOMK_NEW_SERVICE(ExtensionService);
+
+    // 版本查询请求
+    YomkResponse resp = YOMK_REQUEST("/ExtensionService/version", nullptr);
+    if (resp.m_status == YomkResponse::eOk)
+    {
+        YomkUnPackPkg(resp.m_data, String, version);
+        std::cout << "version: " << version->d << std::endl; // 输出: YomkExtension v0.0.1
+    }
+
+    return 0;
 }
 ```

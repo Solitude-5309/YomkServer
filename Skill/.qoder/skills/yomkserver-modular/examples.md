@@ -1057,12 +1057,31 @@ ExtensionName/
 
 ## 使用示例
 
+将以下完整程序拷贝为 main.cpp，安装扩展后可直接编译运行：
+
 ```cpp
-// 版本查询请求
-YomkResponse resp = YOMK_REQUEST("/XxxService/version", nullptr);
-if (resp.m_status == YomkResponse::eOk) {
-    YomkUnPackPkg(resp.m_data, String, version);
-    // version->d == "ExtensionName v0.0.1 (WIP)"
+#include <YomkServer/YomkAPI.h>
+#include <ExtensionName/XxxService.h>
+#include <iostream>
+
+using namespace yomk;
+
+int main(int argc, char *argv[])
+{
+    YOMK_INIT();
+
+    // 注册 XxxService（扩展服务需先注册才能使用）
+    YOMK_NEW_SERVICE(XxxService);
+
+    // 版本查询请求
+    YomkResponse resp = YOMK_REQUEST("/XxxService/version", nullptr);
+    if (resp.m_status == YomkResponse::eOk)
+    {
+        YomkUnPackPkg(resp.m_data, String, version);
+        std::cout << "version: " << version->d << std::endl; // 输出: ExtensionName v0.0.1 (WIP)
+    }
+
+    return 0;
 }
 ```
 ````
