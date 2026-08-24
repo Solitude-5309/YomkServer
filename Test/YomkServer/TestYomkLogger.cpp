@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
     // 获取可执行文件路径，用于构造日志文件目录
     fs::path exePath = fs::canonical(argv[0]);
-    fs::path logDir = exePath.parent_path().parent_path() / "Test" / "YomkServer" / "YomkLog";
+    fs::path logDir = exePath.parent_path() / "YomkLog";
     YOMK_DEBUG_TAG("main", "Log dir: ", logDir);
 
     /**
