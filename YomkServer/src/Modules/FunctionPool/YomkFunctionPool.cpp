@@ -1,7 +1,7 @@
 #include "YomkFunctionPool.h"
 #include <iostream>
 YomkFunctionPool::YomkFunctionPool(YomkServer *server)
-    : YomkService(server), m_server(server)
+    : YomkService(server)
 {
     name("YomkFunctionPool");
 }

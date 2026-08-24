@@ -52,13 +52,32 @@ void YomkServer::addService(YomkService *srv)
         return;
     }
 
-    if (srv->init() != 0)
+    if (!srv)
     {
-        YOMK_ERR_POS_LOG("service init error: " + srv->name());
+        YOMK_ERR_POS_LOG("service is null, please check the service.");
         return;
     }
 
+    // 先入表取得 shared_ptr 所有权，保证 init() 内 weak_from_this() 有效
     m_p->addService(srv);
+
+    if (srv->init() != 0)
+    {
+        YOMK_ERR_POS_LOG("service init error: " + srv->name());
+        m_p->delService(srv->name());
+        return;
+    }
+}
+
+int YomkServer::delService(const std::string &srvName)
+{
+    if (!m_p)
+    {
+        YOMK_ERR_POS_LOG("server is null, please start the server.");
+        return -1;
+    }
+
+    return m_p->delService(srvName);
 }
 
 YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)
@@ -134,15 +153,17 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
         return;
     }
 
-    std::thread t([srvName, tmpFuncName, pkg, this, func]()
+    // 按值捕获 shared_ptr，避免 detach 线程内访问已析构的 this
+    std::shared_ptr<YomkServerPrivate> p = m_p;
+    std::thread t([srvName, tmpFuncName, pkg, p, func]()
                   {
         if(func)
         {
-            func(m_p->request(srvName, tmpFuncName, pkg));
+            func(p->request(srvName, tmpFuncName, pkg));
         }
         else
         {
-            m_p->request(srvName, tmpFuncName, pkg);
+            p->request(srvName, tmpFuncName, pkg);
         } });
     t.detach();
 }

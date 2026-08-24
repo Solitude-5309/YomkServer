@@ -14,6 +14,7 @@ public:
 
 public:
     void addService(YomkService *srv);
+    int delService(const std::string &srvName);
     YomkResponse request(const std::string &srvName, const std::string &funcName, YomkPkgPtr pkg = nullptr);
 
 private:

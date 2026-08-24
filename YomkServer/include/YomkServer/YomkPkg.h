@@ -5,7 +5,12 @@
 #include <string>
 #include <cstdint>
 
-#define YomkInstallFunc(FuncName, Func) installFunc(FuncName, std::bind(&Func, this, std::placeholders::_1))
+// 弱绑定服务成员函数：回调触发时先 lock() 判活，服务已删除则安全丢弃
+// 供注册到外部子系统（功能函数、FunctionPool、EventLoop、Context、异步响应）的回调使用
+#define YomkBindWeakSelf(Func) weakFunc(std::bind(&Func, this, std::placeholders::_1))
+
+// 弱绑定服务成员函数并装入本服务 funcMap
+#define YomkInstallFunc(FuncName, Func) installFunc(FuncName, YomkBindWeakSelf(Func))
 
 #define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                             \
     if (!pkg || pkg->name() != #MsgName)                                         \

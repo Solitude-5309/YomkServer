@@ -7,7 +7,7 @@
 #include "YomkService.h"
 
 class YomkServerPrivate;
-class YOMKSERVER_EXPORT YomkServer
+class YOMKSERVER_EXPORT YomkServer : public std::enable_shared_from_this<YomkServer>
 {
 public:
     YomkServer();
@@ -29,6 +29,7 @@ public:
 public:
     int startService(std::vector<std::string> srvNames);
     void addService(YomkService *srv);
+    int delService(const std::string &srvName);
     YomkResponse request(const std::string &url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 

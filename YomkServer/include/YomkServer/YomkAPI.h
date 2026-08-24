@@ -71,6 +71,22 @@ public:
         m_pServer->addService(srv);
         return 0;
     }
+    static int delService(const std::string &srvName = "")
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return -1;
+        }
+
+        if (srvName.empty())
+        {
+            YOMK_ERR_POS_LOG("service name is empty");
+            return -1;
+        }
+
+        return m_pServer->delService(srvName);
+    }
     static int boot(YomkBoot *boot = nullptr)
     {
         init();
@@ -507,6 +523,7 @@ private:
 #define YOMK_SERVER_P YomkAPI::serverInstance().get()
 #define YOMK_NEW_SERVICE(ClassName, ...) YomkAPI::newService<ClassName>(__VA_ARGS__)
 #define YOMK_ADD_SERVICE(...) YomkAPI::addService(__VA_ARGS__)
+#define YOMK_DEL_SERVICE(...) YomkAPI::delService(__VA_ARGS__)
 #define YOMK_BOOT(...) YomkAPI::boot(__VA_ARGS__)
 #define YOMK_REQUEST(...) YomkAPI::request(__VA_ARGS__)
 #define YOMK_ASYNC_REQUEST(...) YomkAPI::asyncRequest(__VA_ARGS__)

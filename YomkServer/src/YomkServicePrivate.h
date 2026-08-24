@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <map>
+#include <memory>
 #include <shared_mutex>
 #include "YomkDefine.h"
 #include "YomkPkg.h"
@@ -9,7 +10,7 @@ class YomkServer;
 class YomkServicePrivate
 {
 public:
-    YomkServicePrivate(YomkServer *server) : m_server(server) {}
+    YomkServicePrivate(std::weak_ptr<YomkServer> server) : m_weakServer(server) {}
     ~YomkServicePrivate() {}
 
 public:
@@ -23,7 +24,7 @@ public:
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
 protected:
-    YomkServer *m_server;
+    std::weak_ptr<YomkServer> m_weakServer;
     std::string m_name;
     std::map<std::string, YomkServiceFunc> m_funcMap;
     std::shared_mutex m_funcMapMtx;

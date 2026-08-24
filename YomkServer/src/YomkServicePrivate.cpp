@@ -45,21 +45,23 @@ YomkResponse YomkServicePrivate::invoke(const std::string &funcName, YomkPkgPtr 
 
 YomkResponse YomkServicePrivate::request(const std::string &url, YomkPkgPtr pkg)
 {
-    if (!m_server)
+    auto server = m_weakServer.lock();
+    if (!server)
     {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return {YomkResponse::eNo, "server is null"};
+        YOMK_ERR_POS_LOG("server has been destroyed, request ignored.");
+        return {YomkResponse::eNo, "server has been destroyed"};
     }
 
-    return m_server->request(url, pkg);
+    return server->request(url, pkg);
 }
 
 void YomkServicePrivate::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
 {
-    if (!m_server)
+    auto server = m_weakServer.lock();
+    if (!server)
     {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");
+        YOMK_ERR_POS_LOG("server has been destroyed, async request ignored.");
         return;
     }
-    m_server->asyncRequest(url, pkg, func);
+    server->asyncRequest(url, pkg, func);
 }
