@@ -9,6 +9,7 @@ YomkFunctionPool::YomkFunctionPool(YomkServer *server)
 int YomkFunctionPool::init()
 {
     YomkInstallFunc("/register", YomkFunctionPool::registerFunction);
+    YomkInstallFunc("/unregister", YomkFunctionPool::unRegisterFunction);
     YomkInstallFunc("/call", YomkFunctionPool::callFunction);
     return 0;
 }
@@ -33,6 +34,26 @@ YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
     }
     m_functions.emplace(yFunc->d.m_funcName, yFunc->d.m_func);
     return {YomkResponse::eOk, "register function success"};
+}
+
+YomkResponse YomkFunctionPool::unRegisterFunction(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, String, yFuncName);
+    if (yFuncName->d.empty())
+    {
+        YOMK_ERR_POS_LOG("funcName is empty, please check String");
+        return YomkResponse(YomkResponse::eInvalid, "funcName is empty");
+    }
+
+    std::unique_lock<std::shared_mutex> lock(m_functionsMutex);
+    auto itFunc = m_functions.find(yFuncName->d);
+    if (itFunc == m_functions.end())
+    {
+        YOMK_ERR_POS_LOG("funcName: " + yFuncName->d + " is not register, can not unregister");
+        return YomkResponse(YomkResponse::eInvalid, "funcName is not register");
+    }
+    m_functions.erase(itFunc);
+    return {YomkResponse::eOk, "unregister function success"};
 }
 
 YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)

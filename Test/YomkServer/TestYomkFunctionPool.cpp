@@ -5,6 +5,8 @@
  * 演示内容：
  * 1. 注册公共函数到函数池（YOMK_FUNCTIONPOOL_REGISTER）
  * 2. 调用已注册的函数（YOMK_FUNCTIONPOOL_CALL）
+ * 3. 注销函数池中的函数（YOMK_FUNCTIONPOOL_UNREGISTER）
+ * 4. 注销后调用/重复注销的异常分支验证
  *
  * FunctionPool 特性：
  * - 统一的函数注册和调度机制
@@ -52,6 +54,7 @@ YomkResponse func1(YomkPkgPtr pkg)
  * 1. 初始化框架
  * 2. 注册公共函数
  * 3. 调用公共函数
+ * 4. 注销公共函数，并验证注销后调用/重复注销均被拒绝
  */
 int main(int argc, char *argv[])
 {
@@ -102,6 +105,54 @@ int main(int argc, char *argv[])
     else
     {
         YOMK_ERROR_TAG("main", "call func1 failed: ", response.m_msg);
+    }
+
+    /**
+     * 步骤3：注销公共函数
+     *
+     * YOMK_FUNCTIONPOOL_UNREGISTER:
+     * - 参数: 函数名称（必须与注册时一致）
+     *
+     * 注销后该函数名不可再被调用
+     */
+    response = YOMK_FUNCTIONPOOL_UNREGISTER("func1");
+    if (response.m_status == YomkResponse::eOk)
+    {
+        YOMK_DEBUG_TAG("main", "unregister func1 success");
+    }
+    else
+    {
+        YOMK_ERROR_TAG("main", "unregister func1 failed: ", response.m_msg);
+    }
+
+    /**
+     * 步骤4：注销后调用（预期失败）
+     *
+     * 函数已注销，调用应返回 eInvalid（funcName is not register）
+     */
+    response = YOMK_FUNCTIONPOOL_CALL("func1", YomkMkPtr(String, settingsPath.string()));
+    if (response.m_status != YomkResponse::eOk)
+    {
+        YOMK_DEBUG_TAG("main", "call after unregister rejected as expected: ", response.m_msg);
+    }
+    else
+    {
+        YOMK_ERROR_TAG("main", "call after unregister should have been rejected");
+    }
+
+    /**
+     * 步骤5：重复注销（预期失败）
+     *
+     * 函数已不在函数池中，重复注销应返回 eInvalid
+     */
+    response = YOMK_FUNCTIONPOOL_UNREGISTER("func1");
+    if (response.m_status != YomkResponse::eOk)
+    {
+        YOMK_DEBUG_TAG("main", "unregister again rejected as expected: ", response.m_msg);
+    }
+    else
+    {
+        YOMK_ERROR_TAG("main", "unregister again should have been rejected");
     }
 
     YOMK_DEBUG_TAG("main", "test YomkFunctionPool completed, any key to continue...");

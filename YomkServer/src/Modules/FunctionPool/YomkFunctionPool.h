@@ -17,6 +17,7 @@ public:
 
 private:
     YomkResponse registerFunction(YomkPkgPtr pkg);
+    YomkResponse unRegisterFunction(YomkPkgPtr pkg);
     YomkResponse callFunction(YomkPkgPtr pkg);
 
 private:

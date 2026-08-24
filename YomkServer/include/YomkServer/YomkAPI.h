@@ -502,6 +502,15 @@ public:
         }
         return request("/YomkFunctionPool/register", YomkMkPtr(Function, Function{funcName, func}));
     }
+    static YomkResponse FUNCTIONPOOL_UNREGISTER(const std::string &funcName)
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkFunctionPool/unregister", YomkMkPtr(String, funcName));
+    }
     static YomkResponse FUNCTIONPOOL_CALL(const std::string &funcName, YomkPkgPtr callData)
     {
         if (!m_pServer)
@@ -570,4 +579,5 @@ private:
 #define YOMK_EVENTLOOP_POST_WAIT(...) YomkAPI::EVENTLOOP_POST_WAIT(__VA_ARGS__)
 #define YOMK_EVENTLOOP_DESTROY(...) YomkAPI::EVENTLOOP_DESTROY(__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_REGISTER(...) YomkAPI::FUNCTIONPOOL_REGISTER(__VA_ARGS__)
+#define YOMK_FUNCTIONPOOL_UNREGISTER(...) YomkAPI::FUNCTIONPOOL_UNREGISTER(__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_CALL(...) YomkAPI::FUNCTIONPOOL_CALL(__VA_ARGS__)
