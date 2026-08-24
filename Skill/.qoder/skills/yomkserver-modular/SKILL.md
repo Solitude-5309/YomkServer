@@ -147,6 +147,34 @@ YomkResponse resp = YOMK_REQUEST("/XxxService/my_func", YomkMkPtr(YMyData, MyDat
 YOMK_ASYNC_REQUEST("/XxxService/my_func", YomkMkPtr(YMyData, MyData{"hello", 1}), [](YomkResponse resp) { });
 ```
 
+### 服务删除与弱绑定回调
+
+```cpp
+// 删除服务：后续请求返回 service not found，在途请求安全执行完毕后才析构
+int ret = YOMK_DEL_SERVICE("/XxxService");
+```
+
+服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时，**必须**用 `YomkBindWeakSelf` 弱绑定，否则服务删除后回调悬垂 this 崩溃。`weakFunc` 是泛型模板，返回的泛型 lambda 按调用处目标 `std::function` 类型隐式转换，同一个宏自动适配全部回调签名：
+
+```cpp
+int XxxService::init() {
+    YomkInstallFunc("/my_func", XxxService::myFunc);  // 本服务 funcMap 已自动弱绑定
+    // 注册到 FunctionPool：弱绑定，服务删除后回调自动失效
+    YOMK_FUNCTIONPOOL_REGISTER("my_work", YomkBindWeakSelf(XxxService::myFunc));
+    // Context checker/monitor 签名不同，同一个宏自动适配：
+    // 服务删除后 checker 默认放行（eAccept），monitor 丢弃
+    YOMK_CONTEXT_SET_CHECKER("key", YomkBindWeakSelf(XxxService::myCheck));
+    YOMK_CONTEXT_SET_MONITOR("key", YomkBindWeakSelf(XxxService::myMonitor));
+    // 异步响应回调同样适用
+    YOMK_ASYNC_REQUEST("/OtherService/func", pkg, YomkBindWeakSelf(XxxService::onResp));
+    return 0;
+}
+```
+
+服务删除后的丢弃语义：功能函数/FunctionPool 返回 `{eNo, "service has been deleted, callback ignored."}`，Context checker 默认放行 `eAccept`，void 回调（monitor/异步响应）直接丢弃。
+
+需要停止自身线程/注销外部资源的服务覆写 `virtual void deinit()`，删除服务时由框架自动调用。
+
 ## 任务三：创建扩展库
 
 当用户要求创建独立扩展时，**必须**生成完整可编译运行的扩展骨架。扩展编译为共享库（`.so`），支持 CMake `find_package()` 被其他工程引用。
@@ -222,9 +250,10 @@ YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 1. 每个 Service 只负责单一业务域
 2. 服务间通过 `YOMK_REQUEST` 通信，不直接引用
 3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
-4. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）
-5. 配置路径通过 Context 传递，不用构造参数
-6. 扩展库只负责处理逻辑，不关心数据来源，所有外部数据必须通过请求参数传入
+4. 服务成员函数注册到外部子系统（FunctionPool/EventLoop/Context checker·monitor/异步响应）必须用 `YomkBindWeakSelf` 弱绑定，服务删除后回调自动失效；本服务 funcMap（`YomkInstallFunc`）已自动弱绑定
+5. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）
+6. 配置路径通过 Context 传递，不用构造参数
+7. 扩展库只负责处理逻辑，不关心数据来源，所有外部数据必须通过请求参数传入
 
 ## 详细参考
 

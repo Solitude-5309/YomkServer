@@ -6,7 +6,9 @@
 #include <cstdint>
 
 // 弱绑定服务成员函数：回调触发时先 lock() 判活，服务已删除则安全丢弃
-// 供注册到外部子系统（功能函数、FunctionPool、EventLoop、Context、异步响应）的回调使用
+// 供注册到外部子系统（功能函数、FunctionPool、EventLoop、Context checker/monitor、异步响应）的回调使用
+// weakFunc 为泛型模板，返回的泛型 lambda 按调用处目标 std::function 类型隐式转换，
+// 同一个宏自动适配全部回调签名，无需按签名区分宏
 #define YomkBindWeakSelf(Func) weakFunc(std::bind(&Func, this, std::placeholders::_1))
 
 // 弱绑定服务成员函数并装入本服务 funcMap

@@ -40,9 +40,16 @@ YomkUnPackPkg(pkg, MsgName, ptr)          // 不自动 return，需手动判空
 YomkUnPackPkgT(pkg, MsgName, ClassName, ptr) // MsgName为运行时字符串
 ```
 
-**YomkInstallFunc：**
+**YomkInstallFunc / YomkBindWeakSelf：**
 ```cpp
-YomkInstallFunc(FuncName, Func)  // 展开为 installFunc(FuncName, bind(&Func, this, _1))
+YomkInstallFunc(FuncName, Func)  // 弱绑定成员函数并装入本服务 funcMap
+YomkBindWeakSelf(Func)           // 弱绑定成员函数（不装入 funcMap），供注册到外部子系统使用
+// 两者均展开为 weakFunc(bind(&Func, this, _1))：回调触发时先 weak_ptr.lock() 判活，
+// 服务已删除则安全丢弃，不会悬垂 this 崩溃。
+// weakFunc 是泛型模板，返回的泛型 lambda 按调用处目标 std::function 类型隐式转换，
+// 同一个宏自动适配全部回调签名：功能函数/FunctionPool/EventLoop（YomkResponse(YomkPkgPtr)，
+// 删除后返回 eNo）、异步响应（void(YomkResponse)，丢弃）、Context checker
+// （ECheckStatus(const Context&)，删除后默认放行 eAccept）、Context monitor（void，丢弃）。
 ```
 
 ## 内置数据结构
@@ -81,6 +88,7 @@ class YomkServer {
     template<typename T> int newService(const std::string& srvName = "");
     int startService(std::vector<std::string> srvNames);
     void addService(YomkService* srv);
+    int delService(const std::string& srvName);  // 删除服务（锁外调 deinit 后析构）
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 };
@@ -96,6 +104,9 @@ class YomkService {
     void name(const std::string& name);
     std::string name();
     virtual int init() = 0;
+    virtual void deinit() {}  // 删除服务时由框架在锁外调用，覆写用于停线程/注销外部资源
+    template<typename Func> auto weakFunc(Func func);  // 泛型弱绑定守卫：泛型 lambda 按目标 std::function 隐式转换，
+                                                       // 覆盖功能函数/FunctionPool/EventLoop/异步响应/Context checker·monitor
     void installFunc(const std::string& funcName, YomkServiceFunc func);
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
@@ -111,6 +122,7 @@ class YomkService {
 | `YOMK_BOOT(boot)` | Boot 生命周期初始化 |
 | `YOMK_NEW_SERVICE(T, name)` | 注册服务（模板） |
 | `YOMK_ADD_SERVICE(srv, name)` | 注册服务（实例） |
+| `YOMK_DEL_SERVICE(name)` | 删除服务（后续请求返回 service not found，外流弱绑定回调自动失效） |
 | `YOMK_REQUEST(url, pkg)` | 同步请求 |
 | `YOMK_ASYNC_REQUEST(url, pkg, cb)` | 异步请求 |
 | `YOMK_SERVER_P` / `YOMK_SERVER_PTR` | 获取 Server 指针 |
@@ -140,6 +152,7 @@ class YomkService {
 | 宏 | 说明 |
 |----|------|
 | `YOMK_FUNCTIONPOOL_REGISTER(name, func)` | 注册 |
+| `YOMK_FUNCTIONPOOL_UNREGISTER(name)` | 注销（未注册返回 eInvalid） |
 | `YOMK_FUNCTIONPOOL_CALL(name, pkg)` | 调用 |
 
 ### 日志

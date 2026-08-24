@@ -21,44 +21,6 @@ YomkService::YomkService(YomkServer *server)
     }
 }
 
-YomkServiceFunc YomkService::weakFunc(YomkServiceFunc func)
-{
-    std::weak_ptr<YomkService> weakSelf = weak_from_this();
-    if (weakSelf.expired())
-    {
-        YOMK_ERR_POS_LOG("weakFunc called before service is owned by server (in constructor?), callback will never fire!");
-    }
-    return [weakSelf, func](YomkPkgPtr pkg) -> YomkResponse
-    {
-        auto self = weakSelf.lock();
-        if (!self)
-        {
-            YOMK_ERR_POS_LOG("service has been deleted, callback ignored.");
-            return YomkResponse(YomkResponse::eNo, "service has been deleted, callback ignored.");
-        }
-        return func(pkg);
-    };
-}
-
-YomkResponseFunc YomkService::weakFunc(YomkResponseFunc func)
-{
-    std::weak_ptr<YomkService> weakSelf = weak_from_this();
-    if (weakSelf.expired())
-    {
-        YOMK_ERR_POS_LOG("weakFunc called before service is owned by server (in constructor?), callback will never fire!");
-    }
-    return [weakSelf, func](YomkResponse response)
-    {
-        auto self = weakSelf.lock();
-        if (!self)
-        {
-            YOMK_ERR_POS_LOG("service has been deleted, response callback ignored.");
-            return;
-        }
-        func(response);
-    };
-}
-
 void YomkService::name(const std::string &name)
 {
     if (name.empty())
