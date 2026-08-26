@@ -752,6 +752,28 @@ resp = YOMK_EVENTLOOP_INFO_ALL();
 
 注意：自动生成的事件 id 对用户无意义，内省不展示；内省只读，`stop()` 会清空队列，观察排队 tag 需保持循环运行。完整验证见 `Test/YomkServer/TestYomkEventLoopInfo.cpp`。
 
+### FunctionPool 模块内省
+
+`/YomkFunctionPool` 服务自身提供注册表级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）。注册时可用三参宏声明期望消息类型（与 `YomkInstallFunc` 同款，字符串化后仅作内省元数据，不参与运行时校验）：
+
+```cpp
+YOMK_FUNCTIONPOOL_REGISTER("func_a", funcA, String);  // 声明期望类型，内省可见 [String]
+YOMK_FUNCTIONPOOL_REGISTER("func_b", funcB);          // 两参旧写法零改动，内省无括号后缀
+
+// 注册函数名列表（返回 StringArray）
+YomkResponse resp = YOMK_FUNCTIONPOOL_INFO_NAMES();    // arr->d: ["func_a", "func_b"]
+
+// 单函数存在性查询：命中 eOk 且 msg 为 funcName [类型名]，未注册 eNo
+resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_a");           // eOk, msg: "func_a [String]"
+resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_b");           // eOk, msg: "func_b"
+resp = YOMK_FUNCTIONPOOL_INFO_NAME("not_exist");        // eNo
+
+// 全量 dump：首行 functions:N，其余每行 funcName [类型名]
+resp = YOMK_FUNCTIONPOOL_INFO_ALL();
+```
+
+注意：内省只读；注销后函数立即从内省结果中消失。完整验证见 `Test/YomkServer/TestYomkFunctionPoolInfo.cpp`。
+
 ## 示例6：文件日志
 
 ```cpp

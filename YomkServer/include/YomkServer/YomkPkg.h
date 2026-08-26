@@ -130,6 +130,7 @@ namespace yomk
     {
         std::string m_funcName;
         YomkServiceFunc m_func;
+        std::string m_msgName;
     };
 
     struct CallFunction

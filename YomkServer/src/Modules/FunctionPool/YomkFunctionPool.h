@@ -19,8 +19,19 @@ private:
     YomkResponse registerFunction(YomkPkgPtr pkg);
     YomkResponse unRegisterFunction(YomkPkgPtr pkg);
     YomkResponse callFunction(YomkPkgPtr pkg);
+    YomkResponse funcNames(YomkPkgPtr pkg);
+    YomkResponse funcInfo(YomkPkgPtr pkg);
+    YomkResponse listAll(YomkPkgPtr pkg);
 
 private:
-    std::map<std::string, YomkServiceFunc> m_functions;
+    // 池中函数条目：函数本体 + 期望消息类型名（内省元数据，可为空）
+    struct PoolFuncInfo
+    {
+        YomkServiceFunc m_func;
+        std::string m_msgName;
+    };
+
+private:
+    std::map<std::string, PoolFuncInfo> m_functions;
     std::shared_mutex m_functionsMutex;
 };

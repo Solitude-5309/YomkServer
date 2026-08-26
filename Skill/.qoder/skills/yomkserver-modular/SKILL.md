@@ -195,7 +195,7 @@ resp = YOMK_SERVER_INFO_FUNCTION("/XxxService/my_func");
 resp = YOMK_SERVER_INFO_ALL();
 ```
 
-服务器层内省之外，模块内层内省由模块自身实现：YomkContext 已提供 `YOMK_CONTEXT_INFO_KEYS()`（key 列表）、`YOMK_CONTEXT_INFO_KEY(key)`（单 key 元信息：`key [类型名] checker:on|off monitors:N(async:M)`）、`YOMK_CONTEXT_INFO_ALL()`（全量 dump）；YomkEventLoop 已提供 `YOMK_EVENTLOOP_INFO_LOOPS()`（循环名列表）、`YOMK_EVENTLOOP_INFO_LOOP(name)` / `(name, n)`（单循环元信息：`name running:on|off pending:N defaultFunc:on|off nextNEventTag(n): tag1, ...`，Event 可携带 tag 标记）、`YOMK_EVENTLOOP_INFO_ALL()`（全量 dump）。FunctionPool / Logger 的模块内省尚未实现，后续沿用同一模式补齐；。
+服务器层内省之外，模块内层内省由模块自身实现：YomkContext 已提供 `YOMK_CONTEXT_INFO_KEYS()`（key 列表）、`YOMK_CONTEXT_INFO_KEY(key)`（单 key 元信息：`key [类型名] checker:on|off monitors:N(async:M)`）、`YOMK_CONTEXT_INFO_ALL()`（全量 dump）；YomkEventLoop 已提供 `YOMK_EVENTLOOP_INFO_LOOPS()`（循环名列表）、`YOMK_EVENTLOOP_INFO_LOOP(name)` / `(name, n)`（单循环元信息：`name running:on|off pending:N defaultFunc:on|off nextNEventTag(n): tag1, ...`，Event 可携带 tag 标记）、`YOMK_EVENTLOOP_INFO_ALL()`（全量 dump）；YomkFunctionPool 已提供 `YOMK_FUNCTIONPOOL_INFO_NAMES()`（注册函数名列表）、`YOMK_FUNCTIONPOOL_INFO_NAME(name)`（单函数存在性查询，命中 msg 为函数名）、`YOMK_FUNCTIONPOOL_INFO_ALL()`（全量 dump，首行 `functions:N`）。Logger 的模块内省尚未实现，后续沿用同一模式补齐。
 
 ## 任务三：创建扩展库
 
