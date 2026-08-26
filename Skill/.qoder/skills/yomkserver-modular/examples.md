@@ -729,19 +729,21 @@ resp = YOMK_CONTEXT_INFO_ALL();
 
 ### EventLoop 模块内省
 
-`/YomkEventLoop` 服务自身提供循环级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）。Event 可携带 tag 标记（POST 末位可选参数，缺省空，旧调用零改动）：
+`/YomkEventLoop` 服务自身提供循环级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）。Event 可携带 tag 标记（POST 末位可选参数，缺省空，旧调用零改动）；启动时也可用三参宏声明默认处理函数期望的消息类型：
 
 ```cpp
 YOMK_EVENTLOOP_START("loop_a", nullptr);
+YOMK_EVENTLOOP_START("loop_b", defaultHandle, String);  // 声明默认处理函数期望类型，内省可见 [String]
 
 // 投递事件时可选打 tag（tag 仅作内省标记，不参与路由/处理）
 YOMK_EVENTLOOP_POST("loop_a", YomkMkPtr(String, "data"), myHandle, "tag1");
 YOMK_EVENTLOOP_POST("loop_a", YomkMkPtr(String, "data"), myHandle);  // 不打 tag，旧写法直接编译
 
 // 循环名列表（返回 StringArray）
-YomkResponse resp = YOMK_EVENTLOOP_INFO_LOOPS();   // arr->d: ["loop_a"]
+YomkResponse resp = YOMK_EVENTLOOP_INFO_LOOPS();   // arr->d: ["loop_a", "loop_b"]
 
-// 单循环元信息：name running:on|off pending:N defaultFunc:on|off nextNEventTag(n): tag1, ...
+// 单循环元信息：name running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(n): tag1, ...
+// 默认处理函数声明过类型时附加 [类型名]，未声明无括号后缀
 resp = YOMK_EVENTLOOP_INFO_LOOP("loop_a");          // n 缺省 3
 resp = YOMK_EVENTLOOP_INFO_LOOP("loop_a", 5);       // 队列不足 5 个时全部列出，空 tag 显示 -
 resp = YOMK_EVENTLOOP_INFO_LOOP("not_exist");       // eNo

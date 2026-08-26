@@ -158,13 +158,13 @@ class YomkService {
 ### EventLoop
 | 宏 | 说明 |
 |----|------|
-| `YOMK_EVENTLOOP_START(name, defaultFunc)` | 启动 |
+| `YOMK_EVENTLOOP_START(name, defaultFunc)` / `(name, defaultFunc, MsgName)` | 启动（可选末位 MsgName 声明默认处理函数期望的消息类型，字符串化后仅作内省元数据，一参/两参旧调用零改动） |
 | `YOMK_EVENTLOOP_STOP(name)` | 停止 |
 | `YOMK_EVENTLOOP_POST(name, pkg, handle, tag="")` | 异步投递（handle/tag 均可省略，tag 仅作内省标记） |
 | `YOMK_EVENTLOOP_POST_WAIT(name, pkg, handle, tag="")` | 同步投递（tag 同上） |
 | `YOMK_EVENTLOOP_DESTROY(name)` | 销毁 |
 | `YOMK_EVENTLOOP_INFO_LOOPS()` | 内省：事件循环名列表（返回 StringArray） |
-| `YOMK_EVENTLOOP_INFO_LOOP(name)` / `(name, n)` | 内省：单循环元信息（msg 格式 `name running:on\|off pending:N defaultFunc:on\|off nextNEventTag(n): tag1, tag2, ...`，n 缺省 3，队列不足 n 时全部列出，空 tag 显示 `-`） |
+| `YOMK_EVENTLOOP_INFO_LOOP(name)` / `(name, n)` | 内省：单循环元信息（msg 格式 `name running:on\|off pending:N defaultFunc:on\|off [类型名] nextNEventTag(n): tag1, tag2, ...`，默认处理函数声明过类型时附加 `[类型名]`，n 缺省 3，队列不足 n 时全部列出，空 tag 显示 `-`） |
 | `YOMK_EVENTLOOP_INFO_ALL()` | 内省：全量 dump（每行同单循环元信息格式） |
 
 ### FunctionPool

@@ -167,6 +167,7 @@ namespace yomk
     {
         std::string m_eventloopName;
         YomkServiceFunc m_defaultServiceFunc;
+        std::string m_msgName; // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
     };
 
     struct LogFile

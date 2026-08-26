@@ -501,14 +501,15 @@ public:
 public:
     static YomkResponse EVENTLOOP_START(
         const std::string &eventLoopName,
-        YomkServiceFunc m_defaultServiceFunc = nullptr)
+        YomkServiceFunc m_defaultServiceFunc = nullptr,
+        const std::string &msgName = "")
     {
         if (!m_pServer)
         {
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkEventLoop/start", YomkMkPtr(Eventloop, Eventloop{eventLoopName, m_defaultServiceFunc}));
+        return request("/YomkEventLoop/start", YomkMkPtr(Eventloop, Eventloop{eventLoopName, m_defaultServiceFunc, msgName}));
     }
     static YomkResponse EVENTLOOP_STOP(const std::string &eventLoopName)
     {
@@ -735,7 +736,12 @@ private:
 #define YOMK_CONTEXT_INFO_KEYS() YomkAPI::CONTEXT_INFO_KEYS()
 #define YOMK_CONTEXT_INFO_KEY(...) YomkAPI::CONTEXT_INFO_KEY(__VA_ARGS__)
 #define YOMK_CONTEXT_INFO_ALL() YomkAPI::CONTEXT_INFO_ALL()
-#define YOMK_EVENTLOOP_START(...) YomkAPI::EVENTLOOP_START(__VA_ARGS__)
+// 可选末位 MsgName 声明默认处理函数期望的消息类型（字符串化后仅作内省元数据，不参与运行时校验），一参/两参旧调用零改动
+#define YOMK_EVENTLOOP_START_SELECT(_1, _2, _3, NAME, ...) NAME
+#define YOMK_EVENTLOOP_START(...) YOMK_EVENTLOOP_START_SELECT(__VA_ARGS__, YOMK_EVENTLOOP_START_3, YOMK_EVENTLOOP_START_2, YOMK_EVENTLOOP_START_1)(__VA_ARGS__)
+#define YOMK_EVENTLOOP_START_1(eventLoopName) YomkAPI::EVENTLOOP_START(eventLoopName)
+#define YOMK_EVENTLOOP_START_2(eventLoopName, defaultServiceFunc) YomkAPI::EVENTLOOP_START(eventLoopName, defaultServiceFunc)
+#define YOMK_EVENTLOOP_START_3(eventLoopName, defaultServiceFunc, MsgName) YomkAPI::EVENTLOOP_START(eventLoopName, defaultServiceFunc, #MsgName)
 #define YOMK_EVENTLOOP_STOP(...) YomkAPI::EVENTLOOP_STOP(__VA_ARGS__)
 #define YOMK_EVENTLOOP_POST(...) YomkAPI::EVENTLOOP_POST(__VA_ARGS__)
 #define YOMK_EVENTLOOP_POST_WAIT(...) YomkAPI::EVENTLOOP_POST_WAIT(__VA_ARGS__)

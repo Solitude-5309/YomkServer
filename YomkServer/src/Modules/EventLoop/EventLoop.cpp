@@ -133,24 +133,27 @@ int EventLoop::postWait(YomkPtr(Event) event)
     return 0;
 }
 
-void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc)
+void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc, const std::string &msgName)
 {
     m_defaultServiceFunc = serviceFunc;
+    m_defaultMsgName = msgName;
 }
 
-// 内省元信息行：name running:on|off pending:N defaultFunc:on|off nextNEventTag(N): tag1, tag2, ...
-// 队首最多列出 tagCount 个事件 tag，队列不足则全部列出，空 tag 显示 - 占位
+// 内省元信息行：name running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(N): tag1, tag2, ...
+// 队首最多列出 tagCount 个事件 tag，队列不足则全部列出，空 tag 显示 - 占位；默认处理函数声明过类型时附加 [类型名]
 std::string EventLoop::infoLine(const std::string &loopName, size_t tagCount)
 {
     bool running = false;
     size_t pending = 0;
     bool defaultFunc = false;
+    std::string defaultMsgName;
     std::vector<std::string> tags;
     {
         std::lock_guard<std::mutex> lock(m_queueMutex);
         running = m_running.load();
         pending = m_eventQueue.size();
         defaultFunc = static_cast<bool>(m_defaultServiceFunc);
+        defaultMsgName = m_defaultMsgName;
         std::queue<YomkPtr(Event)> queueCopy = m_eventQueue;
         while (!queueCopy.empty() && tags.size() < tagCount)
         {
@@ -174,6 +177,7 @@ std::string EventLoop::infoLine(const std::string &loopName, size_t tagCount)
            (running ? " running:on" : " running:off") +
            " pending:" + std::to_string(pending) +
            (defaultFunc ? " defaultFunc:on" : " defaultFunc:off") +
+           (defaultFunc && !defaultMsgName.empty() ? " [" + defaultMsgName + "]" : "") +
            " nextNEventTag(" + std::to_string(tagCount) + "): " + tagList;
 }
 

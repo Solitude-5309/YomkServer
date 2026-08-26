@@ -93,14 +93,14 @@ int main(int argc, char *argv[])
 
     int failed = 0;
 
-    // 准备数据：loop_a 无默认处理函数，loop_b 设置默认处理函数
+    // 准备数据：loop_a 无默认处理函数，loop_b 设置默认处理函数并用三参宏声明期望类型
     YomkResponse response = YOMK_EVENTLOOP_START("loop_a", nullptr);
     if (response.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("main", "start loop_a failed: ", response.m_msg);
         ++failed;
     }
-    response = YOMK_EVENTLOOP_START("loop_b", defaultHandle);
+    response = YOMK_EVENTLOOP_START("loop_b", defaultHandle, String);
     if (response.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("main", "start loop_b failed: ", response.m_msg);
@@ -138,7 +138,8 @@ int main(int argc, char *argv[])
         }
 
         resp = YOMK_EVENTLOOP_INFO_LOOP("loop_b");
-        if (resp.m_status != YomkResponse::eOk || !msgContains(resp, "defaultFunc:on"))
+        if (resp.m_status != YomkResponse::eOk || !msgContains(resp, "defaultFunc:on") ||
+            !msgContains(resp, "defaultFunc:on [String]"))
         {
             YOMK_ERROR_TAG("main", "EVENTLOOP_INFO_LOOP loop_b check failed, msg: ", resp.m_msg);
             ++failed;
