@@ -727,6 +727,31 @@ resp = YOMK_CONTEXT_INFO_ALL();
 
 注意：`YOMK_CONTEXT_CREATE(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YOMK_CONTEXT_GET`。完整验证见 `Test/YomkServer/TestYomkContextInfo.cpp`。
 
+### EventLoop 模块内省
+
+`/YomkEventLoop` 服务自身提供循环级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）。Event 可携带 tag 标记（POST 末位可选参数，缺省空，旧调用零改动）：
+
+```cpp
+YOMK_EVENTLOOP_START("loop_a", nullptr);
+
+// 投递事件时可选打 tag（tag 仅作内省标记，不参与路由/处理）
+YOMK_EVENTLOOP_POST("loop_a", YomkMkPtr(String, "data"), myHandle, "tag1");
+YOMK_EVENTLOOP_POST("loop_a", YomkMkPtr(String, "data"), myHandle);  // 不打 tag，旧写法直接编译
+
+// 循环名列表（返回 StringArray）
+YomkResponse resp = YOMK_EVENTLOOP_INFO_LOOPS();   // arr->d: ["loop_a"]
+
+// 单循环元信息：name running:on|off pending:N defaultFunc:on|off nextNEventTag(n): tag1, ...
+resp = YOMK_EVENTLOOP_INFO_LOOP("loop_a");          // n 缺省 3
+resp = YOMK_EVENTLOOP_INFO_LOOP("loop_a", 5);       // 队列不足 5 个时全部列出，空 tag 显示 -
+resp = YOMK_EVENTLOOP_INFO_LOOP("not_exist");       // eNo
+
+// 全量 dump：每行同单循环元信息格式
+resp = YOMK_EVENTLOOP_INFO_ALL();
+```
+
+注意：自动生成的事件 id 对用户无意义，内省不展示；内省只读，`stop()` 会清空队列，观察排队 tag 需保持循环运行。完整验证见 `Test/YomkServer/TestYomkEventLoopInfo.cpp`。
+
 ## 示例6：文件日志
 
 ```cpp

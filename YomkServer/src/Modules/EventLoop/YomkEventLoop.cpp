@@ -1,5 +1,6 @@
 #include "YomkEventLoop.h"
 #include <iostream>
+#include <vector>
 
 YomkEventLoop::YomkEventLoop(YomkServer *server)
     : YomkService(server)
@@ -9,11 +10,15 @@ YomkEventLoop::YomkEventLoop(YomkServer *server)
 
 int YomkEventLoop::init()
 {
-    YomkInstallFunc("/start", YomkEventLoop::start);
-    YomkInstallFunc("/stop", YomkEventLoop::stop);
-    YomkInstallFunc("/post", YomkEventLoop::post);
-    YomkInstallFunc("/post_wait", YomkEventLoop::postWait);
-    YomkInstallFunc("/destroy", YomkEventLoop::destroy);
+    YomkInstallFunc("/start", YomkEventLoop::start, Eventloop);
+    YomkInstallFunc("/stop", YomkEventLoop::stop, String);
+    YomkInstallFunc("/post", YomkEventLoop::post, Event);
+    YomkInstallFunc("/post_wait", YomkEventLoop::postWait, Event);
+    YomkInstallFunc("/destroy", YomkEventLoop::destroy, String);
+    // 调试内省接口，端点挂在本服务 funcMap
+    YomkInstallFunc("/loops", YomkEventLoop::loops);
+    YomkInstallFunc("/loop", YomkEventLoop::loopInfo, String);
+    YomkInstallFunc("/all", YomkEventLoop::listAll);
     return 0;
 }
 
@@ -96,4 +101,73 @@ YomkResponse YomkEventLoop::destroy(YomkPkgPtr pkg)
     m_eventLoop.erase(itEventLoop);
 
     return YomkResponse(YomkResponse::eOk, "event loop destroy success");
+}
+
+// 内省：列出全部事件循环名
+YomkResponse YomkEventLoop::loops(YomkPkgPtr pkg)
+{
+    std::vector<std::string> loopNames;
+    {
+        std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
+        for (auto &item : m_eventLoop)
+        {
+            loopNames.push_back(item.first);
+        }
+    }
+    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, loopNames)};
+}
+
+// 内省：单个事件循环元信息，入参 String 格式：循环名 或 循环名 N（N 缺省 3）
+YomkResponse YomkEventLoop::loopInfo(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, String, str);
+    std::string input = str->d;
+    std::string loopName = input;
+    size_t tagCount = 3;
+    size_t spacePos = input.rfind(' ');
+    if (spacePos != std::string::npos)
+    {
+        std::string countStr = input.substr(spacePos + 1);
+        if (!countStr.empty() && countStr.find_first_not_of("0123456789") == std::string::npos)
+        {
+            loopName = input.substr(0, spacePos);
+            tagCount = static_cast<size_t>(std::stoul(countStr));
+        }
+    }
+
+    EventLoopPtr eventLoop;
+    {
+        std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
+        auto itEventLoop = m_eventLoop.find(loopName);
+        if (itEventLoop == m_eventLoop.end())
+        {
+            YOMK_ERR_POS_LOG("event loop: " + loopName + " not exist, please check event loop name");
+            return YomkResponse(YomkResponse::eNo, "event loop not exist");
+        }
+        eventLoop = itEventLoop->second;
+    }
+
+    return YomkResponse(YomkResponse::eOk, eventLoop->infoLine(loopName, tagCount));
+}
+
+// 内省：全部事件循环元信息，每行一个循环
+YomkResponse YomkEventLoop::listAll(YomkPkgPtr pkg)
+{
+    std::vector<EventLoopPtr> eventLoops;
+    std::vector<std::string> loopNames;
+    {
+        std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
+        for (auto &item : m_eventLoop)
+        {
+            loopNames.push_back(item.first);
+            eventLoops.push_back(item.second);
+        }
+    }
+
+    std::vector<std::string> lines;
+    for (size_t i = 0; i < eventLoops.size(); ++i)
+    {
+        lines.push_back(eventLoops[i]->infoLine(loopNames[i], 3));
+    }
+    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
 }

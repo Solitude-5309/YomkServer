@@ -20,6 +20,9 @@ private:
     YomkResponse post(YomkPkgPtr pkg);
     YomkResponse postWait(YomkPkgPtr pkg);
     YomkResponse destroy(YomkPkgPtr pkg);
+    YomkResponse loops(YomkPkgPtr pkg);
+    YomkResponse loopInfo(YomkPkgPtr pkg);
+    YomkResponse listAll(YomkPkgPtr pkg);
 
 private:
     std::map<std::string, EventLoopPtr> m_eventLoop;

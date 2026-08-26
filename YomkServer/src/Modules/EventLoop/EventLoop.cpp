@@ -1,5 +1,6 @@
 #include "EventLoop.h"
 #include <iostream>
+#include <vector>
 #include "YomkDefine.h"
 
 EventLoop::EventLoop()
@@ -135,6 +136,45 @@ int EventLoop::postWait(YomkPtr(Event) event)
 void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc)
 {
     m_defaultServiceFunc = serviceFunc;
+}
+
+// 内省元信息行：name running:on|off pending:N defaultFunc:on|off nextNEventTag(N): tag1, tag2, ...
+// 队首最多列出 tagCount 个事件 tag，队列不足则全部列出，空 tag 显示 - 占位
+std::string EventLoop::infoLine(const std::string &loopName, size_t tagCount)
+{
+    bool running = false;
+    size_t pending = 0;
+    bool defaultFunc = false;
+    std::vector<std::string> tags;
+    {
+        std::lock_guard<std::mutex> lock(m_queueMutex);
+        running = m_running.load();
+        pending = m_eventQueue.size();
+        defaultFunc = static_cast<bool>(m_defaultServiceFunc);
+        std::queue<YomkPtr(Event)> queueCopy = m_eventQueue;
+        while (!queueCopy.empty() && tags.size() < tagCount)
+        {
+            auto event = queueCopy.front();
+            queueCopy.pop();
+            tags.push_back(event && !event->d.m_tag.empty() ? event->d.m_tag : "-");
+        }
+    }
+
+    std::string tagList;
+    for (size_t i = 0; i < tags.size(); ++i)
+    {
+        if (i > 0)
+        {
+            tagList += ", ";
+        }
+        tagList += tags[i];
+    }
+
+    return loopName +
+           (running ? " running:on" : " running:off") +
+           " pending:" + std::to_string(pending) +
+           (defaultFunc ? " defaultFunc:on" : " defaultFunc:off") +
+           " nextNEventTag(" + std::to_string(tagCount) + "): " + tagList;
 }
 
 void EventLoop::run()

@@ -2,6 +2,7 @@
 #include <queue>
 #include <condition_variable>
 #include <atomic>
+#include <string>
 #include "YomkPkg.h"
 
 class EventLoop
@@ -16,6 +17,7 @@ public:
     int post(YomkPtr(Event) event);
     int postWait(YomkPtr(Event) event);
     void setDefaultServiceFunc(YomkServiceFunc serviceFunc);
+    std::string infoLine(const std::string &loopName, size_t tagCount);
     void run();
 
 private:

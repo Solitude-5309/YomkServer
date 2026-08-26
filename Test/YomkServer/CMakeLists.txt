@@ -92,6 +92,18 @@ target_link_libraries(TestYomkContextInfo PRIVATE
 )
 # -------------el TestYomkContextInfo ----------------
 
+# -------------sl TestYomkEventLoopInfo ----------------
+set(TestYomkEventLoopInfo_SOURCES 
+    ${TestYomkServer_DIR}/TestYomkEventLoopInfo.cpp
+)
+add_executable(TestYomkEventLoopInfo 
+    ${TestYomkEventLoopInfo_SOURCES}
+)
+target_link_libraries(TestYomkEventLoopInfo PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkEventLoopInfo ----------------
+
 # 安装测试可执行文件到 <prefix>/bin，供用户在任意终端运行验证安装
 install(TARGETS
     TestYomkService
@@ -101,5 +113,6 @@ install(TARGETS
     TestYomkLogger
     TestYomkServerInfo
     TestYomkContextInfo
+    TestYomkEventLoopInfo
     RUNTIME DESTINATION bin
 )

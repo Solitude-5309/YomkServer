@@ -146,10 +146,13 @@ namespace yomk
         std::uint64_t m_eventId;
         YomkResponse m_response;
         std::function<void()> m_waitCallback;
+        std::string m_tag;
         Event()
-            : m_eventLoopName(""), m_pkg(nullptr), m_serviceFunc(nullptr), m_waitCallback(nullptr) {}
+            : m_eventLoopName(""), m_pkg(nullptr), m_serviceFunc(nullptr), m_waitCallback(nullptr), m_tag("") {}
         Event(const std::string &eventLoopName, YomkPkgPtr pkg, YomkServiceFunc serviceFunc)
-            : m_eventLoopName(eventLoopName), m_pkg(pkg), m_serviceFunc(serviceFunc), m_waitCallback(nullptr) {}
+            : m_eventLoopName(eventLoopName), m_pkg(pkg), m_serviceFunc(serviceFunc), m_waitCallback(nullptr), m_tag("") {}
+        Event(const std::string &eventLoopName, YomkPkgPtr pkg, YomkServiceFunc serviceFunc, const std::string &tag)
+            : m_eventLoopName(eventLoopName), m_pkg(pkg), m_serviceFunc(serviceFunc), m_waitCallback(nullptr), m_tag(tag) {}
         virtual void handle()
         {
             if (m_serviceFunc)

@@ -492,23 +492,23 @@ public:
         }
         return request("/YomkEventLoop/stop", YomkMkPtr(String, eventLoopName));
     }
-    static YomkResponse EVENTLOOP_POST(const std::string &eventLoopName, YomkPkgPtr eventData, YomkServiceFunc eventHandle = nullptr)
+    static YomkResponse EVENTLOOP_POST(const std::string &eventLoopName, YomkPkgPtr eventData, YomkServiceFunc eventHandle = nullptr, const std::string &tag = "")
     {
         if (!m_pServer)
         {
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkEventLoop/post", YomkMkPtr(Event, Event{eventLoopName, eventData, eventHandle}));
+        return request("/YomkEventLoop/post", YomkMkPtr(Event, Event(eventLoopName, eventData, eventHandle, tag)));
     }
-    static YomkResponse EVENTLOOP_POST_WAIT(const std::string &eventLoopName, YomkPkgPtr eventData, YomkServiceFunc eventHandle = nullptr)
+    static YomkResponse EVENTLOOP_POST_WAIT(const std::string &eventLoopName, YomkPkgPtr eventData, YomkServiceFunc eventHandle = nullptr, const std::string &tag = "")
     {
         if (!m_pServer)
         {
             YOMK_ERR_POS_LOG("YomkServer is not init");
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
-        return request("/YomkEventLoop/post_wait", YomkMkPtr(Event, Event{eventLoopName, eventData, eventHandle}));
+        return request("/YomkEventLoop/post_wait", YomkMkPtr(Event, Event(eventLoopName, eventData, eventHandle, tag)));
     }
     static YomkResponse EVENTLOOP_DESTROY(const std::string &eventLoopName)
     {
@@ -518,6 +518,42 @@ public:
             return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
         }
         return request("/YomkEventLoop/destroy", YomkMkPtr(String, eventLoopName));
+    }
+    static YomkResponse EVENTLOOP_INFO_LOOPS()
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkEventLoop/loops", nullptr);
+    }
+    static YomkResponse EVENTLOOP_INFO_LOOP(const std::string &eventLoopName)
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkEventLoop/loop", YomkMkPtr(String, eventLoopName));
+    }
+    static YomkResponse EVENTLOOP_INFO_LOOP(const std::string &eventLoopName, size_t tagCount)
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkEventLoop/loop", YomkMkPtr(String, eventLoopName + " " + std::to_string(tagCount)));
+    }
+    static YomkResponse EVENTLOOP_INFO_ALL()
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkEventLoop/all", nullptr);
     }
     // FUNCTIONPOOL_API
 public:
@@ -647,6 +683,9 @@ private:
 #define YOMK_EVENTLOOP_POST(...) YomkAPI::EVENTLOOP_POST(__VA_ARGS__)
 #define YOMK_EVENTLOOP_POST_WAIT(...) YomkAPI::EVENTLOOP_POST_WAIT(__VA_ARGS__)
 #define YOMK_EVENTLOOP_DESTROY(...) YomkAPI::EVENTLOOP_DESTROY(__VA_ARGS__)
+#define YOMK_EVENTLOOP_INFO_LOOPS() YomkAPI::EVENTLOOP_INFO_LOOPS()
+#define YOMK_EVENTLOOP_INFO_LOOP(...) YomkAPI::EVENTLOOP_INFO_LOOP(__VA_ARGS__)
+#define YOMK_EVENTLOOP_INFO_ALL() YomkAPI::EVENTLOOP_INFO_ALL()
 #define YOMK_FUNCTIONPOOL_REGISTER(...) YomkAPI::FUNCTIONPOOL_REGISTER(__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_UNREGISTER(...) YomkAPI::FUNCTIONPOOL_UNREGISTER(__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_CALL(...) YomkAPI::FUNCTIONPOOL_CALL(__VA_ARGS__)

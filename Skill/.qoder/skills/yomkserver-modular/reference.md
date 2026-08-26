@@ -32,6 +32,8 @@ YomkPtr(MsgName)          // → yomk::MsgName##Ptr（指针类型）
 YomkMk(MsgName, ...)      // → 构造实例
 ```
 
+> **命名约定**：消息类型名是“宏词汇”而非“类型词汇”——只能在 `Yomk()` / `YomkPtr()` / `YomkMkPtr()` / `YomkUnPackPkg*` / `YomkInstallFunc` 第三参等宏的参数位置出现，不能当裸类型名使用。`YomkMsg` 展开生成的真实类型是 `yomk::MsgName_`（类）与 `yomk::MsgNamePtr`（指针），裸写 `MsgName` 会报 `'MsgName' has not been declared`。
+
 **解包宏：**
 ```cpp
 YomkUnPackPkgResponse(pkg, MsgName, ptr)  // 失败自动 return {eNo, ...}
@@ -67,6 +69,7 @@ namespace yomk {
         std::string m_eventLoopName; YomkPkgPtr m_pkg;
         YomkServiceFunc m_serviceFunc; std::uint64_t m_eventId;
         YomkResponse m_response; std::function<void()> m_waitCallback;
+        std::string m_tag; // 用户事件标记，POST 时可选传入，仅用于内省展示
     };
     struct Log { enum ELogLevel{eDebug,eInfo,eWarn,eError}; ELogLevel m_level; std::string m_log; std::string m_logger; };
     struct Context { std::string m_key; YomkPkgPtr m_value; };
@@ -157,9 +160,12 @@ class YomkService {
 |----|------|
 | `YOMK_EVENTLOOP_START(name, defaultFunc)` | 启动 |
 | `YOMK_EVENTLOOP_STOP(name)` | 停止 |
-| `YOMK_EVENTLOOP_POST(name, pkg, handle)` | 异步投递 |
-| `YOMK_EVENTLOOP_POST_WAIT(name, pkg, handle)` | 同步投递 |
+| `YOMK_EVENTLOOP_POST(name, pkg, handle, tag="")` | 异步投递（handle/tag 均可省略，tag 仅作内省标记） |
+| `YOMK_EVENTLOOP_POST_WAIT(name, pkg, handle, tag="")` | 同步投递（tag 同上） |
 | `YOMK_EVENTLOOP_DESTROY(name)` | 销毁 |
+| `YOMK_EVENTLOOP_INFO_LOOPS()` | 内省：事件循环名列表（返回 StringArray） |
+| `YOMK_EVENTLOOP_INFO_LOOP(name)` / `(name, n)` | 内省：单循环元信息（msg 格式 `name running:on\|off pending:N defaultFunc:on\|off nextNEventTag(n): tag1, tag2, ...`，n 缺省 3，队列不足 n 时全部列出，空 tag 显示 `-`） |
+| `YOMK_EVENTLOOP_INFO_ALL()` | 内省：全量 dump（每行同单循环元信息格式） |
 
 ### FunctionPool
 | 宏 | 说明 |

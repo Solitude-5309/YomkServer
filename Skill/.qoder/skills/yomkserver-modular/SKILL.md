@@ -195,7 +195,7 @@ resp = YOMK_SERVER_INFO_FUNCTION("/XxxService/my_func");
 resp = YOMK_SERVER_INFO_ALL();
 ```
 
-服务器层内省之外，模块内层内省由模块自身实现：YomkContext 已提供 `YOMK_CONTEXT_INFO_KEYS()`（key 列表）、`YOMK_CONTEXT_INFO_KEY(key)`（单 key 元信息：`key [类型名] checker:on|off monitors:N(async:M)`）、`YOMK_CONTEXT_INFO_ALL()`（全量 dump）。FunctionPool / EventLoop / Logger 的模块内省尚未实现，后续沿用同一模式补齐；注意：ROS2 仅作类比参考，代码与注释中不得出现任何 ROS2 相关内容。
+服务器层内省之外，模块内层内省由模块自身实现：YomkContext 已提供 `YOMK_CONTEXT_INFO_KEYS()`（key 列表）、`YOMK_CONTEXT_INFO_KEY(key)`（单 key 元信息：`key [类型名] checker:on|off monitors:N(async:M)`）、`YOMK_CONTEXT_INFO_ALL()`（全量 dump）；YomkEventLoop 已提供 `YOMK_EVENTLOOP_INFO_LOOPS()`（循环名列表）、`YOMK_EVENTLOOP_INFO_LOOP(name)` / `(name, n)`（单循环元信息：`name running:on|off pending:N defaultFunc:on|off nextNEventTag(n): tag1, ...`，Event 可携带 tag 标记）、`YOMK_EVENTLOOP_INFO_ALL()`（全量 dump）。FunctionPool / Logger 的模块内省尚未实现，后续沿用同一模式补齐；。
 
 ## 任务三：创建扩展库
 
@@ -264,6 +264,8 @@ YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 - `YomkUnPackPkgResponse(pkg, 消息名称, ptr)` — 解包，失败自动返回 eNo
 - `YomkUnPackPkgVoid(pkg, 消息名称, ptr)` — 解包，失败自动 return
 - `YomkUnPackPkg(pkg, 消息名称, ptr)` — 解包，不自动 return，需手动判空
+
+注意：消息名称是“宏词汇”而非“类型词汇”——只能在 `Yomk()` / `YomkPtr()` / `YomkMkPtr()` / `YomkUnPackPkg*` / `YomkInstallFunc` 第三参等宏的参数位置出现，不能当裸类型名使用（`YomkMsg` 展开生成的真实类型是带后缀的 `yomk::消息名称_` 与 `yomk::消息名称Ptr`，裸写消息名会报 not declared）。
 
 内置标准类型（成员名均为 `d`）：`String`, `Bool`, `Int32`, `Int64`, `Float64` 及对应 Array 类型。
 
