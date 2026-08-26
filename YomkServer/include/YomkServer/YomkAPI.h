@@ -443,6 +443,33 @@ public:
         }
         return request("/YomkContext/destroy", YomkMkPtr(String, ctxName));
     }
+    static YomkResponse CONTEXT_INFO_KEYS()
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/keys", nullptr);
+    }
+    static YomkResponse CONTEXT_INFO_KEY(const std::string &ctxName)
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/key", YomkMkPtr(String, ctxName));
+    }
+    static YomkResponse CONTEXT_INFO_ALL()
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkContext/all", nullptr);
+    }
     // EVENTLOOP_API
 public:
     static YomkResponse EVENTLOOP_START(
@@ -612,6 +639,9 @@ private:
 #define YOMK_CONTEXT_OFF_MONITOR() YomkAPI::CONTEXT_OFF_MONITOR()
 #define YOMK_CONTEXT_SET_MONITOR(...) YomkAPI::CONTEXT_SET_MONITOR(__VA_ARGS__)
 #define YOMK_CONTEXT_DESTROY(...) YomkAPI::CONTEXT_DESTROY(__VA_ARGS__)
+#define YOMK_CONTEXT_INFO_KEYS() YomkAPI::CONTEXT_INFO_KEYS()
+#define YOMK_CONTEXT_INFO_KEY(...) YomkAPI::CONTEXT_INFO_KEY(__VA_ARGS__)
+#define YOMK_CONTEXT_INFO_ALL() YomkAPI::CONTEXT_INFO_ALL()
 #define YOMK_EVENTLOOP_START(...) YomkAPI::EVENTLOOP_START(__VA_ARGS__)
 #define YOMK_EVENTLOOP_STOP(...) YomkAPI::EVENTLOOP_STOP(__VA_ARGS__)
 #define YOMK_EVENTLOOP_POST(...) YomkAPI::EVENTLOOP_POST(__VA_ARGS__)

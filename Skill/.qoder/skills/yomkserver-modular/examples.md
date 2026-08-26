@@ -703,7 +703,29 @@ resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/not_exist");  // eNo
 resp = YOMK_SERVER_INFO_ALL();
 ```
 
-说明：FunctionPool 动态注册的函数无类型信息，内省显示为空；仅覆盖服务器层内省，Modules 内部状态由各模块自行内省。完整验证见 `Test/YomkServer/TestYomkServerInfo.cpp`。
+说明：FunctionPool 动态注册的函数无类型信息，内省显示为空；模块内层内省由各模块自行实现（Context 已完成，见下）。完整验证见 `Test/YomkServer/TestYomkServerInfo.cpp`。
+
+### Context 模块内省
+
+`/YomkContext` 服务自身提供 key 级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）：
+
+```cpp
+YOMK_CONTEXT_CREATE("str_key", YomkMkPtr(String, "v1"));
+YOMK_CONTEXT_SET_CHECKER("str_key", myChecker);
+YOMK_CONTEXT_SET_MONITOR("str_key", myMonitor, true);
+
+// key 列表（返回 StringArray）
+YomkResponse resp = YOMK_CONTEXT_INFO_KEYS();   // arr->d: ["str_key"]
+
+// 单 key 元信息：key [类型名] checker:on|off monitors:N(async:M)
+resp = YOMK_CONTEXT_INFO_KEY("str_key");        // eOk, msg: "str_key [String] checker:on monitors:1(async:1)"
+resp = YOMK_CONTEXT_INFO_KEY("not_exist");      // eNo
+
+// 全量 dump：每行同单 key 元信息格式
+resp = YOMK_CONTEXT_INFO_ALL();
+```
+
+注意：`YOMK_CONTEXT_CREATE(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YOMK_CONTEXT_GET`。完整验证见 `Test/YomkServer/TestYomkContextInfo.cpp`。
 
 ## 示例6：文件日志
 

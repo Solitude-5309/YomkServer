@@ -42,6 +42,9 @@ private:
     YomkResponse turnOffMonitor(YomkPkgPtr pkg);
     YomkResponse setChecker(YomkPkgPtr pkg);
     YomkResponse setMonitor(YomkPkgPtr pkg);
+    YomkResponse keys(YomkPkgPtr pkg);
+    YomkResponse keyInfo(YomkPkgPtr pkg);
+    YomkResponse listAll(YomkPkgPtr pkg);
 
 private:
     std::atomic<bool> m_checkerEnabled;

@@ -10,17 +10,37 @@ YomkContext::YomkContext(YomkServer *server)
 
 int YomkContext::init()
 {
-    YomkInstallFunc("/create", YomkContext::create);
-    YomkInstallFunc("/destroy", YomkContext::destroy);
-    YomkInstallFunc("/get", YomkContext::get);
-    YomkInstallFunc("/set", YomkContext::set);
+    YomkInstallFunc("/create", YomkContext::create, Context);
+    YomkInstallFunc("/destroy", YomkContext::destroy, String);
+    YomkInstallFunc("/get", YomkContext::get, Context);
+    YomkInstallFunc("/set", YomkContext::set, Context);
     YomkInstallFunc("/turn_on_checker", YomkContext::turnOnChecker);
     YomkInstallFunc("/turn_off_checker", YomkContext::turnOffChecker);
     YomkInstallFunc("/turn_on_monitor", YomkContext::turnOnMonitor);
     YomkInstallFunc("/turn_off_monitor", YomkContext::turnOffMonitor);
-    YomkInstallFunc("/set_checker", YomkContext::setChecker);
-    YomkInstallFunc("/set_monitor", YomkContext::setMonitor);
+    YomkInstallFunc("/set_checker", YomkContext::setChecker, ContextChecker);
+    YomkInstallFunc("/set_monitor", YomkContext::setMonitor, ContextMonitor);
+    YomkInstallFunc("/keys", YomkContext::keys);
+    YomkInstallFunc("/key", YomkContext::keyInfo, String);
+    YomkInstallFunc("/all", YomkContext::listAll);
     return 0;
+}
+
+// 组装单个 key 的元信息行：key [类型名] checker:on|off monitors:N(async:M)
+// 类型名取 value 的消息类型，value 为空时防御显示空类型
+static std::string contextInfoLine(const YomkContext::Context &ctx)
+{
+    std::string typeName = ctx.value ? ctx.value->name() : "";
+    size_t asyncCount = 0;
+    for (auto &monitor : ctx.monitors)
+    {
+        if (monitor.asyncMonitor)
+        {
+            ++asyncCount;
+        }
+    }
+    return ctx.key + " [" + typeName + "] " + (ctx.checker ? "checker:on" : "checker:off") +
+           " monitors:" + std::to_string(ctx.monitors.size()) + "(async:" + std::to_string(asyncCount) + ")";
 }
 
 YomkResponse YomkContext::create(YomkPkgPtr pkg)
@@ -232,4 +252,49 @@ YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
         itContext->second.monitors.push_back(contextMonitor);
     }
     return YomkResponse(YomkResponse::eOk, "set context monitor success");
+}
+
+YomkResponse YomkContext::keys(YomkPkgPtr pkg)
+{
+    std::vector<std::string> keyList;
+    {
+        std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
+        for (auto &iter : m_contexts)
+        {
+            keyList.push_back(iter.first);
+        }
+    }
+    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, keyList)};
+}
+
+YomkResponse YomkContext::keyInfo(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, String, str);
+    if (str->d.empty())
+    {
+        YOMK_ERR_POS_LOG("key is empty, please check String.d.");
+        return YomkResponse(YomkResponse::eNo, "key is empty");
+    }
+
+    std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
+    auto itContext = m_contexts.find(str->d);
+    if (itContext == m_contexts.end())
+    {
+        YOMK_ERR_POS_LOG("YomkContext key: " + str->d + " is not exist, please check key.");
+        return YomkResponse(YomkResponse::eNo, "key is not exist");
+    }
+    return {YomkResponse::eOk, contextInfoLine(itContext->second)};
+}
+
+YomkResponse YomkContext::listAll(YomkPkgPtr pkg)
+{
+    std::vector<std::string> lines;
+    {
+        std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
+        for (auto &iter : m_contexts)
+        {
+            lines.push_back(contextInfoLine(iter.second));
+        }
+    }
+    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
 }

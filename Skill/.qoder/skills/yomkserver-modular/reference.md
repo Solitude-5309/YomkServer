@@ -148,6 +148,9 @@ class YomkService {
 | `YOMK_CONTEXT_SET_CHECKER(key, func)` | 设置检查函数 |
 | `YOMK_CONTEXT_ON/OFF_MONITOR()` | 开关监控器 |
 | `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async=true异步回调监控函数） |
+| `YOMK_CONTEXT_INFO_KEYS()` | 内省：key 列表（返回 StringArray） |
+| `YOMK_CONTEXT_INFO_KEY(key)` | 内省：单 key 元信息（msg 格式 `key [类型名] checker:on\|off monitors:N(async:M)`） |
+| `YOMK_CONTEXT_INFO_ALL()` | 内省：全量 dump（每行同单 key 元信息格式） |
 
 ### EventLoop
 | 宏 | 说明 |

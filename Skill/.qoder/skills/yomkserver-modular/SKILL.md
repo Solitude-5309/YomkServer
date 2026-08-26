@@ -195,7 +195,7 @@ resp = YOMK_SERVER_INFO_FUNCTION("/XxxService/my_func");
 resp = YOMK_SERVER_INFO_ALL();
 ```
 
-仅覆盖服务器层内省；Modules 内部状态（FunctionPool 注册表、Context keys 等）属模块自身职责，由各模块自行实现。
+服务器层内省之外，模块内层内省由模块自身实现：YomkContext 已提供 `YOMK_CONTEXT_INFO_KEYS()`（key 列表）、`YOMK_CONTEXT_INFO_KEY(key)`（单 key 元信息：`key [类型名] checker:on|off monitors:N(async:M)`）、`YOMK_CONTEXT_INFO_ALL()`（全量 dump）。FunctionPool / EventLoop / Logger 的模块内省尚未实现，后续沿用同一模式补齐；注意：ROS2 仅作类比参考，代码与注释中不得出现任何 ROS2 相关内容。
 
 ## 任务三：创建扩展库
 
