@@ -39,9 +39,9 @@ int YomkServiceB::init()
  */
 YomkResponse YomkServiceB::callSkillB(YomkPkgPtr pkg)
 {
-    // 解包数据：将 YomkPkgPtr 转换为 YMyServiceMsg 类型
+    // 解包数据：将 YomkPkgPtr 转换为 MyServiceMsg 类型
     // 解包后可通过 myServiceMsg->msg.content 访问数据
-    YomkUnPackPkgResponse(pkg, YMyServiceMsg, myServiceMsg);
+    YomkUnPackPkgResponse(pkg, MyServiceMsg, myServiceMsg);
 
     // 日志：打印收到的消息内容
     YOMK_INFO_TAG("YomkServiceB::callSkillB", name(), " exec skill b, with msg: ", myServiceMsg->msg.content);

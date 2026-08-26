@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
      *
      * 调用链路：main -> YomkServiceA::callSkillA -> YomkServiceB::callSkillB
      */
-    YomkResponse response = YOMK_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world a"}));
+    YomkResponse response = YOMK_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world a"}));
 
     // 检查响应状态：eOk 表示成功
     if (response.m_status == YomkResponse::eOk)
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
      * - 响应在回调函数中处理
      * - 适合耗时操作
      */
-    YOMK_ASYNC_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world a"}), [](YomkResponse response)
+    YOMK_ASYNC_REQUEST("/YomkServiceA/call_skill_a", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world a"}), [](YomkResponse response)
                        {
         // 异步回调函数：在请求完成后被调用
         if(response.m_status == YomkResponse::eOk)
@@ -111,8 +111,8 @@ int main(int argc, char *argv[])
      * 3. 删除后再请求 -> 返回 service not found（eNo），不崩溃
      * 4. 删除后再调 FunctionPool 中弱绑定的成员回调 -> 返回 service has been deleted，不崩溃
      */
-    YomkResponse delRespBefore = YOMK_REQUEST("/YomkServiceB/call_skill_b", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world b"}));
-    YomkResponse poolRespBefore = YOMK_FUNCTIONPOOL_CALL("service_b_work", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world b"}));
+    YomkResponse delRespBefore = YOMK_REQUEST("/YomkServiceB/call_skill_b", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world b"}));
+    YomkResponse poolRespBefore = YOMK_FUNCTIONPOOL_CALL("service_b_work", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world b"}));
     if (delRespBefore.m_status == YomkResponse::eOk && poolRespBefore.m_status == YomkResponse::eOk)
     {
         YOMK_INFO_TAG("main", "before delete: request and functionpool call both ok.");
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     YOMK_INFO_TAG("main", "YOMK_DEL_SERVICE ret: ", delRet);
 
     // 删除后请求：应返回 eNo，不崩溃
-    YomkResponse delRespAfter = YOMK_REQUEST("/YomkServiceB/call_skill_b", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world b"}));
+    YomkResponse delRespAfter = YOMK_REQUEST("/YomkServiceB/call_skill_b", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world b"}));
     if (delRespAfter.m_status == YomkResponse::eNo)
     {
         YOMK_INFO_TAG("main", "after delete: request rejected as expected, msg: ", delRespAfter.m_msg);
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
     }
 
     // 删除后调用 FunctionPool 中弱绑定的回调：应返回 eNo，不崩溃
-    YomkResponse poolRespAfter = YOMK_FUNCTIONPOOL_CALL("service_b_work", YomkMkPtr(YMyServiceMsg, MyServiceMsg{"hello world b"}));
+    YomkResponse poolRespAfter = YOMK_FUNCTIONPOOL_CALL("service_b_work", YomkMkPtr(MyServiceMsg, MyServiceMsg{"hello world b"}));
     if (poolRespAfter.m_status == YomkResponse::eNo)
     {
         YOMK_INFO_TAG("main", "after delete: weak bound callback rejected as expected, msg: ", poolRespAfter.m_msg);

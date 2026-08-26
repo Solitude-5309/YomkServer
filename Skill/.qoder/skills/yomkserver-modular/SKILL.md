@@ -91,7 +91,7 @@ ProjectName/
 1. **定义消息包**（`msgs/YomkMsgs.h`）：
 ```cpp
 struct MyData { std::string field1; int field2; };
-YomkMsg(MyData, YMyData, d)  // 参数：数据类, 消息名称, 成员变量名
+YomkMsg(MyData, MyData, d)  // 参数：数据类, 消息名称, 成员变量名
 ```
 
 2. **创建服务文件**（`services/XxxService.h` + `services/XxxService.cpp`）：
@@ -114,7 +114,7 @@ int XxxService::init() {
     return 0;
 }
 YomkResponse XxxService::myFunc(YomkPkgPtr pkg) {
-    YomkUnPackPkgResponse(pkg, YMyData, data);  // 解包（失败自动返回eNo）
+    YomkUnPackPkgResponse(pkg, MyData, data);  // 解包（失败自动返回eNo）
     // 业务逻辑...
     return YomkResponse(YomkResponse::eOk, "success");
 }
@@ -142,9 +142,9 @@ add_executable(${PROJECT_NAME}
 
 ```cpp
 // 同步
-YomkResponse resp = YOMK_REQUEST("/XxxService/my_func", YomkMkPtr(YMyData, MyData{"hello", 1}));
+YomkResponse resp = YOMK_REQUEST("/XxxService/my_func", YomkMkPtr(MyData, MyData{"hello", 1}));
 // 异步
-YOMK_ASYNC_REQUEST("/XxxService/my_func", YomkMkPtr(YMyData, MyData{"hello", 1}), [](YomkResponse resp) { });
+YOMK_ASYNC_REQUEST("/XxxService/my_func", YomkMkPtr(MyData, MyData{"hello", 1}), [](YomkResponse resp) { });
 ```
 
 ### 服务删除与弱绑定回调
@@ -181,7 +181,7 @@ int XxxService::init() {
 
 ```cpp
 int XxxService::init() {
-    YomkInstallFunc("/my_func", XxxService::myFunc, YMyData);  // 内省可见类型 YMyData
+    YomkInstallFunc("/my_func", XxxService::myFunc, MyData);  // 内省可见类型 MyData
     return 0;
 }
 
@@ -260,6 +260,7 @@ ExtensionName/
 ```cpp
 YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 ```
+消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名（如 `YomkMsg(MyData, MyData, d)`）。
 - `YomkMkPtr(消息名称, 数据类实例)` — 创建消息包
 - `YomkUnPackPkgResponse(pkg, 消息名称, ptr)` — 解包，失败自动返回 eNo
 - `YomkUnPackPkgVoid(pkg, 消息名称, ptr)` — 解包，失败自动 return

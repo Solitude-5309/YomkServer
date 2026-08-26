@@ -118,7 +118,7 @@ int MyBoot::after()
     }
     YOMK_INFO_TAG("MyBoot::after", "ProjectName started successfully.");
 
-    resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(YConfigKey, ConfigKey{"name"}));
+    resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(ConfigKey, ConfigKey{"name"}));
     if (resp.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config name failed: ", resp.m_msg);
@@ -139,7 +139,7 @@ int MyBoot::after()
     YomkUnPackPkg(resp.m_data, String, version);
     YOMK_INFO_TAG("MyBoot::after", "project version: ", version->d);
 
-    resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(YConfigKey, ConfigKey{"description"}));
+    resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(ConfigKey, ConfigKey{"description"}));
     if (resp.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config description failed: ", resp.m_msg);
@@ -181,8 +181,8 @@ struct ConfigKeyValue
 };
 
 // clang-format off
-YomkMsg(ConfigKey, YConfigKey, req)
-YomkMsg(ConfigKeyValue, YConfigKeyValue, req)
+YomkMsg(ConfigKey, ConfigKey, req)
+YomkMsg(ConfigKeyValue, ConfigKeyValue, req)
 ```
 
 ### services/ConfigService.h
@@ -276,7 +276,7 @@ YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
 
 YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, YConfigKey, data);
+    YomkUnPackPkgResponse(pkg, ConfigKey, data);
 
     auto it = m_configMap.find(data->req.key);
     if (it == m_configMap.end())
@@ -287,7 +287,7 @@ YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
 
 YomkResponse ConfigService::setConfig(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, YConfigKeyValue, data);
+    YomkUnPackPkgResponse(pkg, ConfigKeyValue, data);
 
     m_configMap[data->req.key] = data->req.value;
     YOMK_INFO_TAG("ConfigService::setConfig", "set ", data->req.key, " = ", data->req.value);
@@ -484,8 +484,8 @@ struct UserInfo
 };
 
 // clang-format off
-YomkMsg(UserQuery, YUserQuery, req)
-YomkMsg(UserInfo, YUserInfo, d)
+YomkMsg(UserQuery, UserQuery, req)
+YomkMsg(UserInfo, UserInfo, d)
 ```
 
 ### 2. 创建服务（services/UserService.h）
@@ -529,22 +529,22 @@ int UserService::init()
 
 YomkResponse UserService::getUser(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, YUserQuery, query);
+    YomkUnPackPkgResponse(pkg, UserQuery, query);
     YOMK_INFO_TAG("UserService::getUser", "query user: ", query->req.userId);
 
     // 业务逻辑...
     UserInfo info{query->req.userId, "Alice", 25};
-    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(YUserInfo, info));
+    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(UserInfo, info));
 }
 
 YomkResponse UserService::createUser(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, YUserInfo, user);
+    YomkUnPackPkgResponse(pkg, UserInfo, user);
     YOMK_INFO_TAG("UserService::createUser", "create user: ", user->d.name);
 
     // 跨服务调用示例：读取配置
     YomkResponse cfgResp = YOMK_REQUEST("/ConfigService/get",
-        YomkMkPtr(YConfigKey, ConfigKey{"server.name"}));
+        YomkMkPtr(ConfigKey, ConfigKey{"server.name"}));
 
     return YomkResponse(YomkResponse::eOk, "user created");
 }
