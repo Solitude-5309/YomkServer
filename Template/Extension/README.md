@@ -29,7 +29,7 @@ source build_ubuntu.sh     # 交互式，前置路径与安装路径默认均取
 ```
 YomkExtension/
 ├── include/
-│   └── ExtensionService.h   # 服务头文件（类声明）
+│   └── ExtensionService.h   # 对外接口头文件（服务类声明；内部头文件放 src/）
 ├── src/
 │   └── ExtensionService.cpp # 服务实现
 ├── test/

@@ -839,6 +839,8 @@ ExtensionName/
 └── README.md
 ```
 
+头文件分层（推荐规则，默认遵循，不强制）：`include/` 只放导出给下游的对外接口头文件（服务类声明）；内部头文件（辅助类、内部数据结构等实现细节）直接放 `src/`，`install(DIRECTORY include/ ...)` 只安装 `include/` 内容，内部头文件天然不安装、对下游不可见。
+
 ### include/XxxService.h
 ```cpp
 #pragma once
@@ -1200,7 +1202,7 @@ source build_ubuntu.sh
 ```
 ExtensionName/
 ├── include/
-│   └── XxxService.h        # 服务头文件（类声明）
+│   └── XxxService.h        # 对外接口头文件（服务类声明；内部头文件放 src/）
 ├── src/
 │   └── XxxService.cpp      # 服务实现
 ├── CMakeLists.txt            # CMake 构建配置
