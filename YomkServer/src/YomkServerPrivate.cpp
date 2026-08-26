@@ -53,3 +53,30 @@ YomkResponse YomkServerPrivate::request(const std::string &srvName, const std::s
     }
     return srv->invoke(funcName, pkg);
 }
+
+std::vector<std::string> YomkServerPrivate::serviceNames()
+{
+    std::vector<std::string> names;
+    std::shared_lock<std::shared_mutex> lock(m_serviceMapMtx);
+    for (auto &iter : m_serviceMap)
+    {
+        names.push_back(iter.first);
+    }
+    return names;
+}
+
+std::map<std::string, YomkFuncInfo> YomkServerPrivate::serviceFuncInfos(const std::string &srvName)
+{
+    std::shared_ptr<YomkService> srv;
+    {
+        std::shared_lock<std::shared_mutex> lock(m_serviceMapMtx);
+        auto iter = m_serviceMap.find(srvName);
+        if (iter == m_serviceMap.end())
+        {
+            YOMK_ERR_POS_LOG("service not found. " + srvName + ", please start the service.");
+            return {};
+        }
+        srv = iter->second;
+    }
+    return srv->funcInfos();
+}

@@ -18,8 +18,9 @@ public:
     std::string name() { return m_name; }
 
 public:
-    void installFunc(const std::string &funcName, YomkServiceFunc func);
+    void installFunc(const std::string &funcName, YomkServiceFunc func, const std::string &msgName = "");
     YomkResponse invoke(const std::string &funcName, YomkPkgPtr pkg = nullptr);
+    std::map<std::string, YomkFuncInfo> funcInfos();
     YomkResponse request(const std::string &url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
@@ -27,5 +28,6 @@ protected:
     std::weak_ptr<YomkServer> m_weakServer;
     std::string m_name;
     std::map<std::string, YomkServiceFunc> m_funcMap;
+    std::map<std::string, std::string> m_funcMsgMap;
     std::shared_mutex m_funcMapMtx;
 };

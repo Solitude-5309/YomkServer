@@ -148,7 +148,7 @@ echo "-- 校验安装结果..."
 [ -f "${INSTALL_PREFIX}/lib/libYomkServer.so" ] \
     || fail "未找到 ${INSTALL_PREFIX}/lib/libYomkServer.so"
 
-TEST_TARGETS=(TestYomkService TestYomkFunctionPool TestYomkContext TestYomkEventLoop TestYomkLogger)
+TEST_TARGETS=(TestYomkService TestYomkFunctionPool TestYomkContext TestYomkEventLoop TestYomkLogger TestYomkServerInfo)
 for t in "${TEST_TARGETS[@]}"; do
     [ -f "${INSTALL_PREFIX}/bin/${t}" ] \
         || fail "未找到测试程序 ${INSTALL_PREFIX}/bin/${t}"
@@ -162,6 +162,10 @@ echo " 安装路径:       ${INSTALL_PREFIX}"
 echo " YOMK_PREFIX_PATH: ${YOMK_PREFIX_PATH}"
 echo " 动态库缓存:"
 ldconfig -p | grep -i YomkServer || true
+echo " 测试程序列表（安装于 ${INSTALL_PREFIX}/bin）:"
+for t in "${TEST_TARGETS[@]}"; do
+    echo "   - ${t}"
+done
 echo "==========================================="
 echo ""
 echo "新开任意终端即可直接使用（无需手动 source）:"

@@ -3,7 +3,7 @@
 #include <iostream>
 #include <mutex>
 
-void YomkServicePrivate::installFunc(const std::string &funcName, YomkServiceFunc func)
+void YomkServicePrivate::installFunc(const std::string &funcName, YomkServiceFunc func, const std::string &msgName)
 {
     if (funcName.empty() || funcName[0] != '/')
     {
@@ -18,6 +18,28 @@ void YomkServicePrivate::installFunc(const std::string &funcName, YomkServiceFun
     }
 
     m_funcMap[funcName] = func;
+    if (!msgName.empty())
+    {
+        m_funcMsgMap[funcName] = msgName;
+    }
+}
+
+std::map<std::string, YomkFuncInfo> YomkServicePrivate::funcInfos()
+{
+    std::map<std::string, YomkFuncInfo> infos;
+    std::shared_lock<std::shared_mutex> lock(m_funcMapMtx);
+    for (auto &iter : m_funcMap)
+    {
+        YomkFuncInfo info;
+        info.m_funcName = iter.first;
+        auto itMsg = m_funcMsgMap.find(iter.first);
+        if (itMsg != m_funcMsgMap.end())
+        {
+            info.m_msgName = itMsg->second;
+        }
+        infos.emplace(iter.first, info);
+    }
+    return infos;
 }
 
 YomkResponse YomkServicePrivate::invoke(const std::string &funcName, YomkPkgPtr pkg)

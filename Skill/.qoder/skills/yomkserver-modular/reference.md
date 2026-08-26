@@ -42,7 +42,9 @@ YomkUnPackPkgT(pkg, MsgName, ClassName, ptr) // MsgName为运行时字符串
 
 **YomkInstallFunc / YomkBindWeakSelf：**
 ```cpp
-YomkInstallFunc(FuncName, Func)  // 弱绑定成员函数并装入本服务 funcMap
+YomkInstallFunc(FuncName, Func)             // 弱绑定成员函数并装入本服务 funcMap
+YomkInstallFunc(FuncName, Func, MsgName)    // 同上，额外声明期望消息类型（字符串化后仅作内省元数据，
+                                            // 不参与运行时校验；可选末位参数，两参旧调用零改动）
 YomkBindWeakSelf(Func)           // 弱绑定成员函数（不装入 funcMap），供注册到外部子系统使用
 // 两者均展开为 weakFunc(bind(&Func, this, _1))：回调触发时先 weak_ptr.lock() 判活，
 // 服务已删除则安全丢弃，不会悬垂 this 崩溃。
@@ -50,6 +52,11 @@ YomkBindWeakSelf(Func)           // 弱绑定成员函数（不装入 funcMap）
 // 同一个宏自动适配全部回调签名：功能函数/FunctionPool/EventLoop（YomkResponse(YomkPkgPtr)，
 // 删除后返回 eNo）、异步响应（void(YomkResponse)，丢弃）、Context checker
 // （ECheckStatus(const Context&)，删除后默认放行 eAccept）、Context monitor（void，丢弃）。
+
+struct YomkFuncInfo {  // 功能函数元信息（调试内省用），预留扩展（如安全性校验）
+    std::string m_funcName;  // 功能函数名（/开头）
+    std::string m_msgName;   // 期望消息类型名（YomkInstallFunc 三参声明，可为空）
+};
 ```
 
 ## 内置数据结构
@@ -89,6 +96,8 @@ class YomkServer {
     int startService(std::vector<std::string> srvNames);
     void addService(YomkService* srv);
     int delService(const std::string& srvName);  // 删除服务（锁外调 deinit 后析构）
+    std::vector<std::string> serviceNames();  // 内省：全部服务名
+    std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string& srvName);  // 内省：指定服务的函数元信息
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 };
@@ -107,7 +116,8 @@ class YomkService {
     virtual void deinit() {}  // 删除服务时由框架在锁外调用，覆写用于停线程/注销外部资源
     template<typename Func> auto weakFunc(Func func);  // 泛型弱绑定守卫：泛型 lambda 按目标 std::function 隐式转换，
                                                        // 覆盖功能函数/FunctionPool/EventLoop/异步响应/Context checker·monitor
-    void installFunc(const std::string& funcName, YomkServiceFunc func);
+    void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "");
+    std::map<std::string, YomkFuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 };
@@ -154,6 +164,14 @@ class YomkService {
 | `YOMK_FUNCTIONPOOL_REGISTER(name, func)` | 注册 |
 | `YOMK_FUNCTIONPOOL_UNREGISTER(name)` | 注销（未注册返回 eInvalid） |
 | `YOMK_FUNCTIONPOOL_CALL(name, pkg)` | 调用 |
+
+### ServerInfo（调试内省）
+| 宏 | 说明 |
+|----|------|
+| `YOMK_SERVER_INFO_SERVICES()` | 服务列表（返回 StringArray） |
+| `YOMK_SERVER_INFO_FUNCTIONS(srvName)` | 指定服务的函数列表（每行 `funcName [msgName]`） |
+| `YOMK_SERVER_INFO_FUNCTION(url)` | 单函数类型查询（入参 `/srvName/funcName`，命中返回 msg 为类型名，未声明为空串） |
+| `YOMK_SERVER_INFO_ALL()` | 全量 dump：服务名行 + 缩进函数行 |
 
 ### 日志
 | 宏 | 说明 |

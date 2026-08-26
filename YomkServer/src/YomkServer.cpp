@@ -8,6 +8,7 @@
 #include "Modules/Context/YomkContext.h"
 #include "Modules/EventLoop/YomkEventLoop.h"
 #include "Modules/Logger/YomkLogger.h"
+#include "Modules/ServerInfo/YomkServerInfo.h"
 
 YomkServer::YomkServer()
     : m_p(new YomkServerPrivate())
@@ -24,7 +25,9 @@ int YomkServer::startService(std::vector<std::string> srvNames)
         {"/YomkEventLoop", [](YomkServer *server)
          { return new YomkEventLoop(server); }},
         {"/YomkLogger", [](YomkServer *server)
-         { return new YomkLogger(server); }}};
+         { return new YomkLogger(server); }},
+        {"/YomkServerInfo", [](YomkServer *server)
+         { return new YomkServerInfo(server); }}};
 
     for (auto &srvName : srvNames)
     {
@@ -78,6 +81,26 @@ int YomkServer::delService(const std::string &srvName)
     }
 
     return m_p->delService(srvName);
+}
+
+std::vector<std::string> YomkServer::serviceNames()
+{
+    if (!m_p)
+    {
+        YOMK_ERR_POS_LOG("server is null, please start the server.");
+        return {};
+    }
+    return m_p->serviceNames();
+}
+
+std::map<std::string, YomkFuncInfo> YomkServer::serviceFuncInfos(const std::string &srvName)
+{
+    if (!m_p)
+    {
+        YOMK_ERR_POS_LOG("server is null, please start the server.");
+        return {};
+    }
+    return m_p->serviceFuncInfos(srvName);
 }
 
 YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)

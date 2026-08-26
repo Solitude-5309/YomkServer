@@ -26,6 +26,7 @@ set(YomkServer_SOURCES
     ${YomkServer_SRC}/Modules/Logger/YomkLogger.cpp
     ${YomkServer_SRC}/Modules/Logger/ConsoleLogger.cpp
     ${YomkServer_SRC}/Modules/Logger/FileLogger.cpp
+    ${YomkServer_SRC}/Modules/ServerInfo/YomkServerInfo.cpp
 )
 
 add_library(YomkServer SHARED

@@ -47,14 +47,24 @@ std::string YomkService::name()
     return m_p->name();
 }
 
-void YomkService::installFunc(const std::string &funcName, YomkServiceFunc func)
+void YomkService::installFunc(const std::string &funcName, YomkServiceFunc func, const std::string &msgName)
 {
     if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
         return;
     }
-    m_p->installFunc(funcName, func);
+    m_p->installFunc(funcName, func, msgName);
+}
+
+std::map<std::string, YomkFuncInfo> YomkService::funcInfos()
+{
+    if (!m_p)
+    {
+        YOMK_ERR_POS_LOG("service is null, please check service");
+        return {};
+    }
+    return m_p->funcInfos();
 }
 
 YomkResponse YomkService::invoke(const std::string &funcName, YomkPkgPtr pkg)

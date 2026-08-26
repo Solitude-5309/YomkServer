@@ -68,6 +68,18 @@ target_link_libraries(TestYomkLogger PRIVATE
 )
 # -------------el TestYomkLogger ----------------
 
+# -------------sl TestYomkServerInfo ----------------
+set(TestYomkServerInfo_SOURCES 
+    ${TestYomkServer_DIR}/TestYomkServerInfo.cpp
+)
+add_executable(TestYomkServerInfo 
+    ${TestYomkServerInfo_SOURCES}
+)
+target_link_libraries(TestYomkServerInfo PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkServerInfo ----------------
+
 # 安装测试可执行文件到 <prefix>/bin，供用户在任意终端运行验证安装
 install(TARGETS
     TestYomkService
@@ -75,5 +87,6 @@ install(TARGETS
     TestYomkContext
     TestYomkEventLoop
     TestYomkLogger
+    TestYomkServerInfo
     RUNTIME DESTINATION bin
 )

@@ -12,7 +12,12 @@
 #define YomkBindWeakSelf(Func) weakFunc(std::bind(&Func, this, std::placeholders::_1))
 
 // 弱绑定服务成员函数并装入本服务 funcMap
-#define YomkInstallFunc(FuncName, Func) installFunc(FuncName, YomkBindWeakSelf(Func))
+// 两参形式等价旧行为；三参形式的 MsgName 声明该函数期望的消息类型（字符串化后仅作内省元数据，
+// 不参与运行时校验，预留后续扩展安全性校验）；通过参数个数分发实现可选末位参数，两参旧调用零改动
+#define YOMK_INSTALL_FUNC_SELECT(_1, _2, _3, NAME, ...) NAME
+#define YomkInstallFunc(...) YOMK_INSTALL_FUNC_SELECT(__VA_ARGS__, YOMK_INSTALL_FUNC_3, YOMK_INSTALL_FUNC_2)(__VA_ARGS__)
+#define YOMK_INSTALL_FUNC_2(FuncName, Func) installFunc(FuncName, YomkBindWeakSelf(Func))
+#define YOMK_INSTALL_FUNC_3(FuncName, Func, MsgName) installFunc(FuncName, YomkBindWeakSelf(Func), #MsgName)
 
 #define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                             \
     if (!pkg || pkg->name() != #MsgName)                                         \
@@ -110,6 +115,13 @@ typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 
 typedef std::function<YomkResponse(YomkPkgPtr pkg)> YomkServiceFunc;
 typedef std::function<void(YomkResponse response)> YomkResponseFunc;
+
+// 功能函数元信息（调试内省用），预留扩展（如安全性校验信息）
+struct YomkFuncInfo
+{
+    std::string m_funcName; // 功能函数名（/开头）
+    std::string m_msgName;  // 期望消息类型名（YomkInstallFunc 三参声明，可为空）
+};
 
 namespace yomk
 {

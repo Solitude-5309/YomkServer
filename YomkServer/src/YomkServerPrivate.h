@@ -3,6 +3,7 @@
 #include <map>
 #include <memory>
 #include <shared_mutex>
+#include <vector>
 #include "YomkPkg.h"
 
 class YomkService;
@@ -16,6 +17,8 @@ public:
     void addService(YomkService *srv);
     int delService(const std::string &srvName);
     YomkResponse request(const std::string &srvName, const std::string &funcName, YomkPkgPtr pkg = nullptr);
+    std::vector<std::string> serviceNames();
+    std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string &srvName);
 
 private:
     std::map<std::string, std::shared_ptr<YomkService>> m_serviceMap;

@@ -34,7 +34,8 @@ public:
             m_pServer->startService({"/YomkFunctionPool",
                                      "/YomkContext",
                                      "/YomkEventLoop",
-                                     "/YomkLogger"}); });
+                                     "/YomkLogger",
+                                     "/YomkServerInfo"}); });
         return m_pServer;
     }
     static std::shared_ptr<YomkServer> serverInstance()
@@ -520,6 +521,44 @@ public:
         }
         return request("/YomkFunctionPool/call", YomkMkPtr(CallFunction, CallFunction{funcName, callData}));
     }
+    // SERVER_INFO_API
+public:
+    static YomkResponse SERVER_INFO_SERVICES()
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkServerInfo/services", nullptr);
+    }
+    static YomkResponse SERVER_INFO_FUNCTIONS(const std::string &srvName)
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkServerInfo/functions", YomkMkPtr(String, srvName));
+    }
+    static YomkResponse SERVER_INFO_FUNCTION(const std::string &url)
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkServerInfo/function", YomkMkPtr(String, url));
+    }
+    static YomkResponse SERVER_INFO_ALL()
+    {
+        if (!m_pServer)
+        {
+            YOMK_ERR_POS_LOG("YomkServer is not init");
+            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
+        }
+        return request("/YomkServerInfo/all", nullptr);
+    }
 
 private:
     static std::shared_ptr<YomkServer> m_pServer;
@@ -581,3 +620,7 @@ private:
 #define YOMK_FUNCTIONPOOL_REGISTER(...) YomkAPI::FUNCTIONPOOL_REGISTER(__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_UNREGISTER(...) YomkAPI::FUNCTIONPOOL_UNREGISTER(__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_CALL(...) YomkAPI::FUNCTIONPOOL_CALL(__VA_ARGS__)
+#define YOMK_SERVER_INFO_SERVICES() YomkAPI::SERVER_INFO_SERVICES()
+#define YOMK_SERVER_INFO_FUNCTIONS(...) YomkAPI::SERVER_INFO_FUNCTIONS(__VA_ARGS__)
+#define YOMK_SERVER_INFO_FUNCTION(...) YomkAPI::SERVER_INFO_FUNCTION(__VA_ARGS__)
+#define YOMK_SERVER_INFO_ALL() YomkAPI::SERVER_INFO_ALL()

@@ -3,6 +3,7 @@
 #include <memory>
 #include <map>
 #include <functional>
+#include <vector>
 
 #include "YomkService.h"
 
@@ -30,6 +31,8 @@ public:
     int startService(std::vector<std::string> srvNames);
     void addService(YomkService *srv);
     int delService(const std::string &srvName);
+    std::vector<std::string> serviceNames();
+    std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string &srvName);
     YomkResponse request(const std::string &url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 

@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <utility>
 #include <iostream>
+#include <map>
 
 #include "YomkPkg.h"
 #include "YomkDefine.h"
@@ -56,7 +57,8 @@ public:
             return func(std::forward<decltype(args)>(args)...);
         };
     }
-    void installFunc(const std::string &funcName, YomkServiceFunc func);
+    void installFunc(const std::string &funcName, YomkServiceFunc func, const std::string &msgName = "");
+    std::map<std::string, YomkFuncInfo> funcInfos();
     YomkResponse invoke(const std::string &funcName, YomkPkgPtr pkg = nullptr);
     YomkResponse request(const std::string &url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);

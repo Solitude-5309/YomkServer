@@ -674,7 +674,38 @@ void MyService::deinit() {
 }
 ```
 
-## 示例5：文件日志
+## 示例5：服务内省（调试）
+
+内省类型元数据由 `YomkInstallFunc` 三参形式声明（不参与运行时校验，两参旧写法零改动）：
+
+```cpp
+int DemoService::init()
+{
+    YomkInstallFunc("/with_type", DemoService::withType, String);  // 内省可见类型 String
+    YomkInstallFunc("/no_type", DemoService::noType);              // 旧写法兼容，内省无类型
+    return 0;
+}
+
+// 服务列表（返回 StringArray）
+YomkResponse resp = YOMK_SERVER_INFO_SERVICES();
+YomkUnPackPkg(resp.m_data, StringArray, arr);  // arr->d: ["/DemoService", "/YomkServerInfo", ...]
+
+// 指定服务的函数列表（每行 "funcName [msgName]"）
+resp = YOMK_SERVER_INFO_FUNCTIONS("/DemoService");
+// arr->d: ["/no_type", "/with_type [String]"]
+
+// 单函数类型查询（service type）
+resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_type");  // eOk, msg = "String"
+resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/no_type");    // eOk, msg 为空串（未声明）
+resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/not_exist");  // eNo
+
+// 全量 dump：服务名行 + 缩进的 "srvName + funcName [msgName]" 行
+resp = YOMK_SERVER_INFO_ALL();
+```
+
+说明：FunctionPool 动态注册的函数无类型信息，内省显示为空；仅覆盖服务器层内省，Modules 内部状态由各模块自行内省。完整验证见 `Test/YomkServer/TestYomkServerInfo.cpp`。
+
+## 示例6：文件日志
 
 ```cpp
 YOMK_FILE_LOG_CREATE("/var/log/myapp", "app_log");
@@ -692,7 +723,7 @@ YOMK_SET_CONSOLE_LOG_PROXY(myLogProxy);
 
 ---
 
-## 示例6：标准扩展模板（创建新扩展时必须生成）
+## 示例7：标准扩展模板（创建新扩展时必须生成）
 
 将 `ExtensionName` 替换为用户指定的扩展名，所有文件必须完整生成。
 
