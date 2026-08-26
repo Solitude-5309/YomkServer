@@ -195,3 +195,6 @@ class YomkService {
 | `YOMK_FILE_LOG_WRITE(file)` | 刷新到磁盘 |
 | `YOMK_ON/OFF_CONSOLE_LOG_INFO()` | 开关控制台级别 |
 | `YOMK_SET_CONSOLE_LOG_PROXY(func)` | 日志代理 |
+| `YOMK_LOGGER_INFO_LOGGERS()` | 内省：日志器列表（返回 StringArray，控制台行 `name [console]`，文件行 `name [file] dir:路径`） |
+| `YOMK_LOGGER_INFO_LOGGER(name)` | 内省：单日志器元信息（msg 同上格式，未注册 eNo） |
+| `YOMK_LOGGER_INFO_ALL()` | 内省：全量 dump（首行 `console:debug:on\|off info:... warn:... error:... proxy:on\|off`，其余为日志器行） |

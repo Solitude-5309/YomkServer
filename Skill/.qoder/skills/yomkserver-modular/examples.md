@@ -703,7 +703,7 @@ resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/not_exist");  // eNo
 resp = YOMK_SERVER_INFO_ALL();
 ```
 
-说明：FunctionPool 动态注册的函数无类型信息，内省显示为空；模块内层内省由各模块自行实现（Context 已完成，见下）。完整验证见 `Test/YomkServer/TestYomkServerInfo.cpp`。
+说明：FunctionPool 动态注册的函数无类型信息，内省显示为空；模块内层内省由各模块自行实现（四个内置模块均已完成，见下）。完整验证见 `Test/YomkServer/TestYomkServerInfo.cpp`。
 
 ### Context 模块内省
 
@@ -773,6 +773,30 @@ resp = YOMK_FUNCTIONPOOL_INFO_ALL();
 ```
 
 注意：内省只读；注销后函数立即从内省结果中消失。完整验证见 `Test/YomkServer/TestYomkFunctionPoolInfo.cpp`。
+
+### Logger 模块内省
+
+`/YomkLogger` 服务自身提供日志器级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）：
+
+```cpp
+YOMK_FILE_LOG_CREATE("/tmp", "info_logger");                          // 创建文件日志器
+YomkAPI::CONSOLE_LOG_INFO_TAG("auto_logger", "hello");                // 按需自动创建控制台日志器
+
+// 日志器列表（返回 StringArray，控制台在前、文件在后）
+YomkResponse resp = YOMK_LOGGER_INFO_LOGGERS();
+// arr->d: ["MainLogger [console]", "auto_logger [console]", "info_logger [file] dir:/tmp"]
+
+// 单日志器元信息：命中 eOk 且 msg 为元信息行，未注册 eNo
+resp = YOMK_LOGGER_INFO_LOGGER("MainLogger");      // eOk, msg: "MainLogger [console]"
+resp = YOMK_LOGGER_INFO_LOGGER("info_logger");     // eOk, msg: "info_logger [file] dir:/tmp"
+resp = YOMK_LOGGER_INFO_LOGGER("not_exist");       // eNo
+
+// 全量 dump：首行为控制台级别开关与代理状态，其余为日志器行
+resp = YOMK_LOGGER_INFO_ALL();
+// 首行: "console:debug:on info:on warn:on error:on proxy:off"
+```
+
+注意：内省只读；`YOMK_INFO_TAG(tag, ...)` 宏的 tag 会追加行号后缀，按需创建的控制台日志器名为 `tag:行号`；级别开关用既有 `YOMK_ON/OFF_CONSOLE_LOG_*()` 切换后立即在 `/all` 首行生效。完整验证见 `Test/YomkServer/TestYomkLoggerInfo.cpp`。
 
 ## 示例6：文件日志
 

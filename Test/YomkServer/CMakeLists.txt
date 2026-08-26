@@ -116,6 +116,18 @@ target_link_libraries(TestYomkFunctionPoolInfo PRIVATE
 )
 # -------------el TestYomkFunctionPoolInfo ----------------
 
+# -------------sl TestYomkLoggerInfo ----------------
+set(TestYomkLoggerInfo_SOURCES 
+    ${TestYomkServer_DIR}/TestYomkLoggerInfo.cpp
+)
+add_executable(TestYomkLoggerInfo 
+    ${TestYomkLoggerInfo_SOURCES}
+)
+target_link_libraries(TestYomkLoggerInfo PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkLoggerInfo ----------------
+
 # 安装测试可执行文件到 <prefix>/bin，供用户在任意终端运行验证安装
 install(TARGETS
     TestYomkService
@@ -127,5 +139,6 @@ install(TARGETS
     TestYomkContextInfo
     TestYomkEventLoopInfo
     TestYomkFunctionPoolInfo
+    TestYomkLoggerInfo
     RUNTIME DESTINATION bin
 )

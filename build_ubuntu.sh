@@ -148,7 +148,7 @@ echo "-- 校验安装结果..."
 [ -f "${INSTALL_PREFIX}/lib/libYomkServer.so" ] \
     || fail "未找到 ${INSTALL_PREFIX}/lib/libYomkServer.so"
 
-TEST_TARGETS=(TestYomkService TestYomkFunctionPool TestYomkContext TestYomkEventLoop TestYomkLogger TestYomkServerInfo TestYomkContextInfo TestYomkEventLoopInfo TestYomkFunctionPoolInfo)
+TEST_TARGETS=(TestYomkService TestYomkFunctionPool TestYomkContext TestYomkEventLoop TestYomkLogger TestYomkServerInfo TestYomkContextInfo TestYomkEventLoopInfo TestYomkFunctionPoolInfo TestYomkLoggerInfo)
 for t in "${TEST_TARGETS[@]}"; do
     [ -f "${INSTALL_PREFIX}/bin/${t}" ] \
         || fail "未找到测试程序 ${INSTALL_PREFIX}/bin/${t}"

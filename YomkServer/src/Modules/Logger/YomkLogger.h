@@ -27,6 +27,12 @@ private:
     YomkResponse onConsoleLogByLevel(YomkPkgPtr pkg);
 
 private:
+    YomkResponse loggers(YomkPkgPtr pkg);
+    YomkResponse loggerInfo(YomkPkgPtr pkg);
+    YomkResponse listAll(YomkPkgPtr pkg);
+    std::string consoleLevelLine();
+
+private:
     std::map<std::string, ConsoleLoggerPtr> m_consoleLoggers;
     std::shared_mutex m_consoleLoggersMutex;
     std::map<std::string, FileLoggerPtr> m_fileLoggers;

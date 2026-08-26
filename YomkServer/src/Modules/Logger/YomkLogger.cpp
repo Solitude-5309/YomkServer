@@ -20,13 +20,16 @@ YomkLogger::~YomkLogger()
 
 int YomkLogger::init()
 {
-    YomkInstallFunc("/set_console_log_proxy", YomkLogger::setConsoleLogProxy);
-    YomkInstallFunc("/console_log", YomkLogger::consoleLog);
-    YomkInstallFunc("/create_file_logger", YomkLogger::createFileLogger);
-    YomkInstallFunc("/file_log", YomkLogger::fileLog);
-    YomkInstallFunc("/write_file_log", YomkLogger::writeFileLog);
-    YomkInstallFunc("/off_console_log_by_level", YomkLogger::offConsoleLogByLevel);
-    YomkInstallFunc("/on_console_log_by_level", YomkLogger::onConsoleLogByLevel);
+    YomkInstallFunc("/set_console_log_proxy", YomkLogger::setConsoleLogProxy, ConsoleLogProxy);
+    YomkInstallFunc("/console_log", YomkLogger::consoleLog, Log);
+    YomkInstallFunc("/create_file_logger", YomkLogger::createFileLogger, LogFile);
+    YomkInstallFunc("/file_log", YomkLogger::fileLog, Log);
+    YomkInstallFunc("/write_file_log", YomkLogger::writeFileLog, String);
+    YomkInstallFunc("/off_console_log_by_level", YomkLogger::offConsoleLogByLevel, Log);
+    YomkInstallFunc("/on_console_log_by_level", YomkLogger::onConsoleLogByLevel, Log);
+    YomkInstallFunc("/loggers", YomkLogger::loggers);
+    YomkInstallFunc("/logger", YomkLogger::loggerInfo, String);
+    YomkInstallFunc("/all", YomkLogger::listAll);
     return 0;
 }
 
@@ -220,4 +223,72 @@ YomkResponse YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
         break;
     }
     return YomkResponse(YomkResponse::eOk, "success.");
+}
+
+std::string YomkLogger::consoleLevelLine()
+{
+    std::string line = "console:debug:";
+    line += m_showConsoleDebugLog.load() ? "on" : "off";
+    line += " info:";
+    line += m_showConsoleInfoLog.load() ? "on" : "off";
+    line += " warn:";
+    line += m_showConsoleWarningLog.load() ? "on" : "off";
+    line += " error:";
+    line += m_showConsoleErrorLog.load() ? "on" : "off";
+    line += " proxy:";
+    line += m_consoleLogProxy ? "on" : "off";
+    return line;
+}
+
+YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
+{
+    (void)pkg;
+    std::vector<std::string> lines;
+    {
+        std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
+        for (auto &iter : m_consoleLoggers)
+            lines.push_back(iter.first + " [console]");
+    }
+    {
+        std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
+        for (auto &iter : m_fileLoggers)
+            lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
+    }
+    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
+}
+
+YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, String, yName);
+    {
+        std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
+        if (m_consoleLoggers.find(yName->d) != m_consoleLoggers.end())
+            return {YomkResponse::eOk, yName->d + " [console]"};
+    }
+    {
+        std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
+        auto itLogger = m_fileLoggers.find(yName->d);
+        if (itLogger != m_fileLoggers.end())
+            return {YomkResponse::eOk, yName->d + " [file] dir:" + itLogger->second->getDir()};
+    }
+    YOMK_ERR_POS_LOG("logger: " + yName->d + " not found.");
+    return YomkResponse(YomkResponse::eNo, "logger not found.");
+}
+
+YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
+{
+    (void)pkg;
+    std::vector<std::string> lines;
+    lines.push_back(consoleLevelLine());
+    {
+        std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
+        for (auto &iter : m_consoleLoggers)
+            lines.push_back(iter.first + " [console]");
+    }
+    {
+        std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
+        for (auto &iter : m_fileLoggers)
+            lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
+    }
+    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
 }
