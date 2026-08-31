@@ -95,10 +95,12 @@ typedef std::function<bool(const yomk::Log& log)> YomkConsoleLogProxyFunc;
 
 ```cpp
 class YomkServer {
+    static std::shared_ptr<YomkServer> create();  // 唯一构造入口，必须 shared_ptr 持有（栈/裸 new 编译期拒绝）
     template<typename T> int newService(const std::string& srvName = "");
     int startService(std::vector<std::string> srvNames);
     void addService(YomkService* srv);
     int delService(const std::string& srvName);  // 删除服务（锁外调 deinit 后析构）
+    void shutdown();  // 优雅关闭：停异步池（拒新->排空->join）后锁外逐个 deinit，幂等
     std::vector<std::string> serviceNames();  // 内省：全部服务名
     std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string& srvName);  // 内省：指定服务的函数元信息
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);

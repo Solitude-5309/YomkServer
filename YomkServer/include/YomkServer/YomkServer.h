@@ -11,7 +11,12 @@ class YomkServerPrivate;
 class YOMKSERVER_EXPORT YomkServer : public std::enable_shared_from_this<YomkServer>
 {
 public:
-    YomkServer();
+    // 唯一构造入口：YomkServer 必须由 shared_ptr 持有（enable_shared_from_this 契约，
+    // YomkService 构造依赖 weak_from_this()）；栈构造/裸 new 在编译期被拒绝
+    static std::shared_ptr<YomkServer> create()
+    {
+        return std::shared_ptr<YomkServer>(new YomkServer());
+    }
     virtual ~YomkServer() {}
 
 public:
@@ -39,5 +44,6 @@ public:
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
 private:
+    YomkServer();
     std::shared_ptr<YomkServerPrivate> m_p;
 };

@@ -30,7 +30,7 @@ public:
         static std::once_flag initFlag;
         std::call_once(initFlag, []()
                        {
-            auto server = std::make_shared<YomkServer>();
+            auto server = YomkServer::create();
             server->startService({"/YomkFunctionPool",
                                   "/YomkContext",
                                   "/YomkEventLoop",

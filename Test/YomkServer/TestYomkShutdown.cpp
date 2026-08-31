@@ -13,8 +13,9 @@
  * 8. 同名替换（第五轮）：覆盖注册同名服务时旧服务被锁外 deinit 恰好一次
  * 9. 并发回归防点（第六轮）：单例高频快照读与 YOMK_SHUTDOWN 并发无竞态
  * 10. 注册后禁改名（第七轮）：入表后改名被拒绝，服务名与 service map 键保持一致
+ * 11. 构造契约（第八轮）：YomkServer 构造函数私有，仅可经 YomkServer::create() 以 shared_ptr 持有
  *
- * 独立实例用例使用 std::make_shared<YomkServer>()，避免污染 YomkAPI 单例状态
+ * 独立实例用例使用 YomkServer::create()，避免污染 YomkAPI 单例状态
  */
 
 #include <atomic>
@@ -23,6 +24,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <thread>
+#include <type_traits>
 #include <vector>
 #include "YomkAPI.h"
 
@@ -35,6 +37,11 @@
     else
         YOMK_ERR_POS_LOG("macro safety check: false branch.");
 }
+
+// 编译契约防点：YomkServer 必须由 shared_ptr 持有，构造函数私有（第八轮）；
+// 若构造函数回退为 public，此断言立即编译失败
+static_assert(!std::is_constructible<YomkServer>::value,
+              "YomkServer must be created via YomkServer::create() (shared_ptr ownership)");
 
 // 记录 ThreadedService::deinit 被调用的次数（独立实例用例与析构兜底用例共用）
 static std::atomic<int> g_deinitCount{0};
@@ -112,7 +119,7 @@ int main(int argc, char *argv[])
 
     // 用例 1/2/3：独立实例显式 shutdown —— deinit 生效、幂等、关闭后拒绝请求
     {
-        auto server = std::make_shared<YomkServer>();
+        auto server = YomkServer::create();
         server->newService<ThreadedService>("/ThreadedService");
 
         // 关闭前：服务在表中可见
@@ -172,7 +179,7 @@ int main(int argc, char *argv[])
     // 用例 4：析构兜底 —— 未显式 shutdown，直接销毁服务器也应先 deinit
     {
         int before = g_deinitCount.load();
-        auto server = std::make_shared<YomkServer>();
+        auto server = YomkServer::create();
         server->newService<ThreadedService>("/ThreadedService");
         server.reset(); // 未调用 shutdown，走 ~YomkServerPrivate 兜底
 
@@ -189,7 +196,7 @@ int main(int argc, char *argv[])
 
     // 用例 5：异常防护 —— 回调抛异常不终止进程，其后任务仍正常执行（独立实例）
     {
-        auto server = std::make_shared<YomkServer>();
+        auto server = YomkServer::create();
         server->newService<PingService>("/PingService");
 
         std::atomic<bool> afterOk{false};
@@ -218,7 +225,7 @@ int main(int argc, char *argv[])
 
     // 用例 6：排空验证 + 关闭后拒绝 —— 100 个异步请求在 shutdown 返回前全部完成，关闭后提交被拒绝
     {
-        auto server = std::make_shared<YomkServer>();
+        auto server = YomkServer::create();
         server->newService<PingService>("/PingService");
 
         std::atomic<int> doneCount{0};
@@ -258,7 +265,7 @@ int main(int argc, char *argv[])
 
     // 用例 7：并发有界 —— 同时执行的任务数不超过池线程数（硬件并发数一半向上取整，兜底 2）
     {
-        auto server = std::make_shared<YomkServer>();
+        auto server = YomkServer::create();
         server->newService<PingService>("/PingService");
 
         std::atomic<int> concurrent{0};
@@ -292,7 +299,7 @@ int main(int argc, char *argv[])
 
     // 用例 8：关闭期嵌套拒绝 —— 排空阶段内嵌套发起的异步请求被拒绝，排空不死循环
     {
-        auto server = std::make_shared<YomkServer>();
+        auto server = YomkServer::create();
         server->newService<PingService>("/PingService");
 
         std::atomic<bool> nestedExecuted{false};
@@ -367,7 +374,7 @@ int main(int argc, char *argv[])
 
     // 用例 10：同名替换 —— 旧服务被锁外 deinit 恰好一次，新服务在表可用（第五轮）
     {
-        auto server = std::make_shared<YomkServer>();
+        auto server = YomkServer::create();
         int base = g_deinitCount.load();
         server->newService<ThreadedService>("/ThreadedService");
         server->newService<ThreadedService>("/ThreadedService"); // 同名替换：旧服务应被 deinit
@@ -397,7 +404,7 @@ int main(int argc, char *argv[])
 
     // 用例 11：注册后禁改名 —— 改名尝试被拒绝，服务名与表键保持一致（第七轮）
     {
-        auto server = std::make_shared<YomkServer>();
+        auto server = YomkServer::create();
         auto *srv = new PingService(server.get());
         srv->name("/PingService");
         server->addService(srv); // 入表后服务名被锁定（srv 所有权归框架，勿手动 delete）
