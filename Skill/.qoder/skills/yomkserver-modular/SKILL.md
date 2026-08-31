@@ -185,7 +185,7 @@ int XxxService::init() {
 YOMK_SHUTDOWN();
 ```
 
-- `deinit()` 的三个触发时机：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、忘记关闭时服务器析构兜底（避免服务持有的 joinable 线程随析构触发 `std::terminate`）
+- `deinit()` 的四个触发时机：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、忘记关闭时服务器析构兜底（避免服务持有的 joinable 线程随析构触发 `std::terminate`）、同名服务被 `YOMK_ADD_SERVICE` 替换（旧服务先被锁外 `deinit`，再安装新服务）
 - 关闭时先排空在途异步请求（`YOMK_ASYNC_REQUEST` 由内部线程池执行，并发有界）再逐服务 `deinit`：`shutdown` 返回后无任何异步任务在执行；关闭后再提交的异步请求被拒绝并记日志；异步回调抛异常被框架捕获记日志，不会终止进程
 - 覆写了 `deinit()` 的服务需保证幂等语义友好（重复触发只来自异常使用，但停止线程/释放资源应可重复执行不崩溃）
 

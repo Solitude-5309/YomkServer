@@ -134,7 +134,7 @@ class YomkService {
 | `YOMK_INIT()` | 初始化（自动启动内置服务） |
 | `YOMK_BOOT(boot)` | Boot 生命周期初始化 |
 | `YOMK_NEW_SERVICE(T, name)` | 注册服务（模板） |
-| `YOMK_ADD_SERVICE(srv, name)` | 注册服务（实例） |
+| `YOMK_ADD_SERVICE(srv, name)` | 注册服务（实例）；同名替换时旧服务先被锁外 deinit 再安装新服务 |
 | `YOMK_DEL_SERVICE(name)` | 删除服务（后续请求返回 service not found，外流弱绑定回调自动失效） |
 | `YOMK_SHUTDOWN()` | 关闭服务器：先排空在途异步请求（拒新 -> 存量执行完 -> join 工作线程），再逐个服务调用 deinit() 并清空服务表、释放单例；幂等，关闭后不支持二次初始化 |
 | `YOMK_REQUEST(url, pkg)` | 同步请求 |

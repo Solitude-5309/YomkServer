@@ -10,12 +10,24 @@ void YomkServerPrivate::addService(YomkService *srv)
         YOMK_ERR_POS_LOG("service is null, please check the service.");
         return;
     }
-    std::unique_lock<std::shared_mutex> lock(m_serviceMapMtx);
-    if (m_serviceMap.find(srv->name()) != m_serviceMap.end())
+    std::shared_ptr<YomkService> oldSrv;
     {
-        YOMK_ERR_POS_LOG("service already exists -> " + srv->name() + ", update to current service");
+        std::unique_lock<std::shared_mutex> lock(m_serviceMapMtx);
+        auto iter = m_serviceMap.find(srv->name());
+        if (iter != m_serviceMap.end())
+        {
+            YOMK_ERR_POS_LOG("service already exists -> " + srv->name() + ", update to current service");
+            oldSrv = std::move(iter->second);
+        }
+        m_serviceMap[srv->name()].reset(srv);
     }
-    m_serviceMap[srv->name()].reset(srv);
+
+    // 同名替换：锁外对旧服务 deinit，与 delService 一致；在途请求持有的 shared_ptr 副本保证不与 invoke 并发析构。
+    // 顺序为旧服务先 deinit，新服务随后由 YomkServer::addService 调 init()，同名服务任意时刻至多一次活跃生命周期
+    if (oldSrv)
+    {
+        oldSrv->deinit();
+    }
 }
 
 int YomkServerPrivate::delService(const std::string &srvName)

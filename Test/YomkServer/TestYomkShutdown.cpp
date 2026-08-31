@@ -10,6 +10,7 @@
  * 5. YOMK_SHUTDOWN 宏路径：单例关闭后 serverInstance() 为空
  * 6. 异步线程池（第二轮）：排空验证、并发有界、关闭后拒绝、异常防护、关闭期嵌套拒绝
  * 7. 编译回归防点（第四轮）：YOMK_ERR_POS_LOG 语句宏可在无大括号 if/else 中安全使用
+ * 8. 同名替换（第五轮）：覆盖注册同名服务时旧服务被锁外 deinit 恰好一次
  *
  * 独立实例用例使用 std::make_shared<YomkServer>()，避免污染 YomkAPI 单例状态
  */
@@ -333,6 +334,36 @@ int main(int argc, char *argv[])
         // 幂等：重复关闭不崩溃
         YOMK_SHUTDOWN();
         std::cout << "[OK] YOMK_SHUTDOWN is idempotent." << std::endl;
+    }
+
+    // 用例 10：同名替换 —— 旧服务被锁外 deinit 恰好一次，新服务在表可用（第五轮）
+    {
+        auto server = std::make_shared<YomkServer>();
+        int base = g_deinitCount.load();
+        server->newService<ThreadedService>("/ThreadedService");
+        server->newService<ThreadedService>("/ThreadedService"); // 同名替换：旧服务应被 deinit
+
+        if (g_deinitCount.load() - base != 1 || server->serviceNames().size() != 1)
+        {
+            std::cout << "[FAIL] replace: old service deinit not exactly once or table size != 1." << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] replace: old service deinited exactly once, new service in table." << std::endl;
+        }
+
+        // 关闭再 deinit 新服务一次，累计 2；重复关闭不增长（幂等已在用例 2 验证）
+        server->shutdown();
+        if (g_deinitCount.load() - base != 2)
+        {
+            std::cout << "[FAIL] replace: shutdown after replace should deinit new service once." << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] replace: shutdown deinited new service once." << std::endl;
+        }
     }
 
     std::cout << (failed == 0 ? "TestYomkShutdown PASS" : "TestYomkShutdown FAIL") << std::endl;
