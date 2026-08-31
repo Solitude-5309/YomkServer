@@ -11,6 +11,7 @@
  * 6. 异步线程池（第二轮）：排空验证、并发有界、关闭后拒绝、异常防护、关闭期嵌套拒绝
  * 7. 编译回归防点（第四轮）：YOMK_ERR_POS_LOG 语句宏可在无大括号 if/else 中安全使用
  * 8. 同名替换（第五轮）：覆盖注册同名服务时旧服务被锁外 deinit 恰好一次
+ * 9. 并发回归防点（第六轮）：单例高频快照读与 YOMK_SHUTDOWN 并发无竞态
  *
  * 独立实例用例使用 std::make_shared<YomkServer>()，避免污染 YomkAPI 单例状态
  */
@@ -20,6 +21,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <thread>
+#include <vector>
 #include "YomkAPI.h"
 
 // 编译回归防点：语句宏须可在无大括号 if/else 中安全使用（仅编译验证，不调用）；
@@ -311,7 +313,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    // 用例 9：YOMK_SHUTDOWN 宏路径 —— 单例关闭后 serverInstance 为空
+    // 用例 9：YOMK_SHUTDOWN 宏路径 —— 单例关闭后 serverInstance 为空（含并发快照读回归防点，第六轮）
     {
         YOMK_INIT();
         if (!YOMK_SERVER_PTR)
@@ -320,7 +322,32 @@ int main(int argc, char *argv[])
             failed++;
         }
 
+        // 并发回归防点：4 线程高频取单例快照并使用，主线程随后 YOMK_SHUTDOWN；
+        // 修复前该阶段为对同一 shared_ptr 的无同步读写（UB），互斥快照后安全
+        std::atomic<bool> stop{false};
+        std::vector<std::thread> readers;
+        for (int i = 0; i < 4; ++i)
+        {
+            readers.emplace_back([&stop]()
+                                 {
+                while (!stop.load())
+                {
+                    auto s = YOMK_SERVER_PTR;
+                    if (s)
+                    {
+                        s->serviceNames();
+                    }
+                } });
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
         YOMK_SHUTDOWN();
+        stop.store(true);
+        for (auto &t : readers)
+        {
+            t.join();
+        }
+        std::cout << "[OK] concurrent snapshot reads survived YOMK_SHUTDOWN." << std::endl;
         if (YOMK_SERVER_PTR)
         {
             std::cout << "[FAIL] server instance should be null after YOMK_SHUTDOWN." << std::endl;
