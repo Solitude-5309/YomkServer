@@ -14,6 +14,7 @@
  * 9. 并发回归防点（第六轮）：单例高频快照读与 YOMK_SHUTDOWN 并发无竞态
  * 10. 注册后禁改名（第七轮）：入表后改名被拒绝，服务名与 service map 键保持一致
  * 11. 构造契约（第八轮）：YomkServer 构造函数私有，仅可经 YomkServer::create() 以 shared_ptr 持有
+ * 12. URL 解析去重（第九轮）：统一解析路径对非法 URL 均拒绝并返回 eNo
  *
  * 独立实例用例使用 YomkServer::create()，避免污染 YomkAPI 单例状态
  */
@@ -428,6 +429,32 @@ int main(int argc, char *argv[])
         {
             std::cout << "[FAIL] request by original name failed after rename attempt." << std::endl;
             failed++;
+        }
+        server->shutdown();
+    }
+
+    // 用例 12：非法 URL 回归 —— 去重后的统一解析路径对三种非法形态均拒绝（第九轮）
+    {
+        auto server = YomkServer::create();
+        server->newService<PingService>("/PingService");
+
+        bool allRejected = true;
+        for (const std::string &badUrl : std::vector<std::string>{"", "no_slash", "/OnlyServiceName"})
+        {
+            YomkResponse response = server->request(badUrl, nullptr);
+            if (response.m_status != YomkResponse::eNo)
+            {
+                allRejected = false;
+            }
+        }
+        if (!allRejected)
+        {
+            std::cout << "[FAIL] invalid url should be rejected with eNo." << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] invalid url rejected by unified parse path." << std::endl;
         }
         server->shutdown();
     }
