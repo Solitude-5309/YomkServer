@@ -9,6 +9,7 @@
  * 4. 析构兜底：未显式 shutdown 直接销毁服务器，服务 deinit 仍被调用且不崩溃
  * 5. YOMK_SHUTDOWN 宏路径：单例关闭后 serverInstance() 为空
  * 6. 异步线程池（第二轮）：排空验证、并发有界、关闭后拒绝、异常防护、关闭期嵌套拒绝
+ * 7. 编译回归防点（第四轮）：YOMK_ERR_POS_LOG 语句宏可在无大括号 if/else 中安全使用
  *
  * 独立实例用例使用 std::make_shared<YomkServer>()，避免污染 YomkAPI 单例状态
  */
@@ -19,6 +20,16 @@
 #include <stdexcept>
 #include <thread>
 #include "YomkAPI.h"
+
+// 编译回归防点：语句宏须可在无大括号 if/else 中安全使用（仅编译验证，不调用）；
+// 未包裹 do-while(0) 的裸语句宏在此写法下产生悬垂 else，编译失败
+[[maybe_unused]] static void macroSafetyCheck(bool cond)
+{
+    if (cond)
+        YOMK_ERR_POS_LOG("macro safety check: true branch.");
+    else
+        YOMK_ERR_POS_LOG("macro safety check: false branch.");
+}
 
 // 记录 ThreadedService::deinit 被调用的次数（独立实例用例与析构兜底用例共用）
 static std::atomic<int> g_deinitCount{0};
