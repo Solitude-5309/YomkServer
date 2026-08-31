@@ -15,6 +15,7 @@
  * 10. 注册后禁改名（第七轮）：入表后改名被拒绝，服务名与 service map 键保持一致
  * 11. 构造契约（第八轮）：YomkServer 构造函数私有，仅可经 YomkServer::create() 以 shared_ptr 持有
  * 12. URL 解析去重（第九轮）：统一解析路径对非法 URL 均拒绝并返回 eNo
+ * 13. 错误传播（第十轮）：init 失败的服务注册返回非 0 并自动回滚，同名后续可正常注册
  *
  * 独立实例用例使用 YomkServer::create()，避免污染 YomkAPI 单例状态
  */
@@ -111,6 +112,22 @@ private:
     YomkResponse ping(YomkPkgPtr pkg)
     {
         return {YomkResponse::eOk, "pong"};
+    }
+};
+
+// init 恒失败的服务：验证注册失败错误传播（第十轮）
+class FailingService : public YomkService
+{
+public:
+    FailingService(YomkServer *server)
+        : YomkService(server)
+    {
+    }
+
+public:
+    virtual int init() override
+    {
+        return -1;
     }
 };
 
@@ -455,6 +472,31 @@ int main(int argc, char *argv[])
         else
         {
             std::cout << "[OK] invalid url rejected by unified parse path." << std::endl;
+        }
+        server->shutdown();
+    }
+
+    // 用例 13：错误传播 —— init 失败的服务注册返回非 0、不入表，同名后续正常服务可注册（第十轮）
+    {
+        auto server = YomkServer::create();
+        int ret = server->newService<FailingService>("/FailingService");
+        auto names = server->serviceNames();
+        bool absent = std::find(names.begin(), names.end(), "/FailingService") == names.end();
+        if (ret == 0 || !absent)
+        {
+            std::cout << "[FAIL] failing service should be rejected and rolled back." << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] failing service rejected, rollback keeps table clean." << std::endl;
+        }
+
+        // 回滚后同名可正常注册
+        if (server->newService<PingService>("/FailingService") != 0)
+        {
+            std::cout << "[FAIL] same name should be registerable after rollback." << std::endl;
+            failed++;
         }
         server->shutdown();
     }

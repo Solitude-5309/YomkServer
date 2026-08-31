@@ -28,13 +28,13 @@ public:
         if (srvName != "")
             srv->name(srvName);
 
-        addService(srv);
-        return 0;
+        return addService(srv); // 传播注册失败（如 init() 返回非 0）
     }
 
 public:
     int startService(std::vector<std::string> srvNames);
-    void addService(YomkService *srv);
+    // 注册服务：成功返回 0；服务器/服务为空、服务 init() 失败（自动回滚）返回 -1
+    int addService(YomkService *srv);
     int delService(const std::string &srvName);
     // 关闭后不支持重新注册/启动服务（框架单例依赖 std::call_once 初始化）
     void shutdown();

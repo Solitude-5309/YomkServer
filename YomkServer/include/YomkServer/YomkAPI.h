@@ -85,8 +85,7 @@ public:
         if (srvName != "")
             srv->name(srvName);
 
-        server->addService(srv);
-        return 0;
+        return server->addService(srv);
     }
     static int delService(const std::string &srvName = "")
     {

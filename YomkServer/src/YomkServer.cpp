@@ -84,18 +84,18 @@ int YomkServer::startService(std::vector<std::string> srvNames)
     return 0;
 }
 
-void YomkServer::addService(YomkService *srv)
+int YomkServer::addService(YomkService *srv)
 {
     if (!m_p)
     {
         YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return;
+        return -1;
     }
 
     if (!srv)
     {
         YOMK_ERR_POS_LOG("service is null, please check the service.");
-        return;
+        return -1;
     }
 
     // 先入表取得 shared_ptr 所有权，保证 init() 内 weak_from_this() 有效
@@ -105,8 +105,9 @@ void YomkServer::addService(YomkService *srv)
     {
         YOMK_ERR_POS_LOG("service init error: " + srv->name());
         m_p->delService(srv->name());
-        return;
+        return -1; // 回滚后向调用方传播失败
     }
+    return 0;
 }
 
 int YomkServer::delService(const std::string &srvName)
