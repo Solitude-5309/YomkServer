@@ -42,6 +42,17 @@ public:
     {
         return m_pServer;
     }
+    // 关闭服务器并释放单例：逐个服务执行 deinit() 后 reset 服务器；幂等，假定在主线程调用。
+    // 注意：init() 依赖 std::call_once，shutdown() 后不支持二次初始化（单进程单次初始化）
+    static void shutdown()
+    {
+        if (!m_pServer)
+        {
+            return;
+        }
+        m_pServer->shutdown();
+        m_pServer.reset();
+    }
     template <typename T>
     static int newService(const std::string &srvName = "")
     {
@@ -685,6 +696,7 @@ private:
 #define TO_STRING(x) STRINGIFY(x)
 #define YOMK_VERSION YomkAPI::version()
 #define YOMK_INIT(...) YomkAPI::init(__VA_ARGS__)
+#define YOMK_SHUTDOWN(...) YomkAPI::shutdown(__VA_ARGS__)
 #define YOMK_SERVER_PTR YomkAPI::serverInstance()
 #define YOMK_SERVER_P YomkAPI::serverInstance().get()
 #define YOMK_NEW_SERVICE(ClassName, ...) YomkAPI::newService<ClassName>(__VA_ARGS__)

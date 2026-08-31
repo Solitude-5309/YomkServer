@@ -83,6 +83,17 @@ int YomkServer::delService(const std::string &srvName)
     return m_p->delService(srvName);
 }
 
+void YomkServer::shutdown()
+{
+    if (!m_p)
+    {
+        YOMK_ERR_POS_LOG("server is null, please start the server.");
+        return;
+    }
+
+    m_p->shutdown();
+}
+
 std::vector<std::string> YomkServer::serviceNames()
 {
     if (!m_p)

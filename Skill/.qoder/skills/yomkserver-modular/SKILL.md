@@ -175,6 +175,17 @@ int XxxService::init() {
 
 需要停止自身线程/注销外部资源的服务覆写 `virtual void deinit()`，删除服务时由框架自动调用。
 
+### 优雅关闭（shutdown）
+
+```cpp
+// 退出前关闭服务器：逐个服务调用 deinit() 并清空服务表、释放单例，幂等，假定在主线程调用；
+// 关闭后请求返回 service not found，且不支持二次初始化（init 依赖 std::call_once）
+YOMK_SHUTDOWN();
+```
+
+- `deinit()` 的三个触发时机：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、忘记关闭时服务器析构兜底（避免服务持有的 joinable 线程随析构触发 `std::terminate`）
+- 覆写了 `deinit()` 的服务需保证幂等语义友好（重复触发只来自异常使用，但停止线程/释放资源应可重复执行不崩溃）
+
 ### 服务内省（调试）
 
 框架内置 `/YomkServerInfo` 服务（随 `YOMK_INIT` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时用三参宏声明期望消息类型（仅作内省元数据，不参与运行时校验；两参旧写法零改动）：

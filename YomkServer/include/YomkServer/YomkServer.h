@@ -31,6 +31,8 @@ public:
     int startService(std::vector<std::string> srvNames);
     void addService(YomkService *srv);
     int delService(const std::string &srvName);
+    // 关闭后不支持重新注册/启动服务（框架单例依赖 std::call_once 初始化）
+    void shutdown();
     std::vector<std::string> serviceNames();
     std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string &srvName);
     YomkResponse request(const std::string &url, YomkPkgPtr pkg = nullptr);

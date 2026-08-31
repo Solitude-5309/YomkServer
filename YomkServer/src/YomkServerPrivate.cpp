@@ -38,6 +38,32 @@ int YomkServerPrivate::delService(const std::string &srvName)
     return 0;
 }
 
+void YomkServerPrivate::shutdown()
+{
+    // 幂等：重复调用直接返回，析构兜底与显式 YOMK_SHUTDOWN 不会双重 deinit
+    if (m_shutdown.exchange(true))
+    {
+        return;
+    }
+
+    std::vector<std::shared_ptr<YomkService>> srvs;
+    {
+        std::unique_lock<std::shared_mutex> lock(m_serviceMapMtx);
+        srvs.reserve(m_serviceMap.size());
+        for (auto &iter : m_serviceMap)
+        {
+            srvs.push_back(std::move(iter.second));
+        }
+        m_serviceMap.clear();
+    }
+
+    // 锁外逐个 deinit，与 delService 保持一致的锁外清理模式，避免阻塞其他请求路径
+    for (auto &srv : srvs)
+    {
+        srv->deinit();
+    }
+}
+
 YomkResponse YomkServerPrivate::request(const std::string &srvName, const std::string &funcName, YomkPkgPtr pkg)
 {
     std::shared_ptr<YomkService> srv;

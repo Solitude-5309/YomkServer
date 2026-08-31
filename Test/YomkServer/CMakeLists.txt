@@ -128,6 +128,18 @@ target_link_libraries(TestYomkLoggerInfo PRIVATE
 )
 # -------------el TestYomkLoggerInfo ----------------
 
+# -------------sl TestYomkShutdown ----------------
+set(TestYomkShutdown_SOURCES 
+    ${TestYomkServer_DIR}/TestYomkShutdown.cpp
+)
+add_executable(TestYomkShutdown 
+    ${TestYomkShutdown_SOURCES}
+)
+target_link_libraries(TestYomkShutdown PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkShutdown ----------------
+
 # 安装测试可执行文件到 <prefix>/bin，供用户在任意终端运行验证安装
 install(TARGETS
     TestYomkService
@@ -140,5 +152,6 @@ install(TARGETS
     TestYomkEventLoopInfo
     TestYomkFunctionPoolInfo
     TestYomkLoggerInfo
+    TestYomkShutdown
     RUNTIME DESTINATION bin
 )
