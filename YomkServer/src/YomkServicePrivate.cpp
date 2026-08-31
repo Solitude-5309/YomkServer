@@ -22,6 +22,11 @@ void YomkServicePrivate::installFunc(const std::string &funcName, YomkServiceFun
     {
         m_funcMsgMap[funcName] = msgName;
     }
+    else
+    {
+        // 两参覆盖安装时清除残留的旧类型元数据，保持内省与注册一致
+        m_funcMsgMap.erase(funcName);
+    }
 }
 
 std::map<std::string, YomkFuncInfo> YomkServicePrivate::funcInfos()

@@ -173,6 +173,8 @@ int XxxService::init() {
 
 服务删除后的丢弃语义：功能函数/FunctionPool 返回 `{eNo, "service has been deleted, callback ignored."}`，Context checker 默认放行 `eAccept`，void 回调（monitor/异步响应）直接丢弃。
 
+**异步响应回调的生命周期要求**：`YOMK_ASYNC_REQUEST` 的 `func` 是裸回调，框架**不**自动弱绑定（区别于 `YomkInstallFunc` 的 funcMap 自动弱绑定）；回调由内部线程池执行，相对提交时刻可能延后。推荐优先用服务成员函数配合 `YomkBindWeakSelf` 作为异步回调（见上例）：服务对象由框架管理生命周期，服务删除后回调自动丢弃，无需人工管理捕获对象；若必须用普通 lambda，捕获的对象生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据。
+
 需要停止自身线程/注销外部资源的服务覆写 `virtual void deinit()`，删除服务时由框架自动调用。
 
 ### 优雅关闭（shutdown）
