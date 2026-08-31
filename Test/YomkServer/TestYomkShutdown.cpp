@@ -12,12 +12,14 @@
  * 7. 编译回归防点（第四轮）：YOMK_ERR_POS_LOG 语句宏可在无大括号 if/else 中安全使用
  * 8. 同名替换（第五轮）：覆盖注册同名服务时旧服务被锁外 deinit 恰好一次
  * 9. 并发回归防点（第六轮）：单例高频快照读与 YOMK_SHUTDOWN 并发无竞态
+ * 10. 注册后禁改名（第七轮）：入表后改名被拒绝，服务名与 service map 键保持一致
  *
  * 独立实例用例使用 std::make_shared<YomkServer>()，避免污染 YomkAPI 单例状态
  */
 
 #include <atomic>
 #include <chrono>
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 #include <thread>
@@ -391,6 +393,36 @@ int main(int argc, char *argv[])
         {
             std::cout << "[OK] replace: shutdown deinited new service once." << std::endl;
         }
+    }
+
+    // 用例 11：注册后禁改名 —— 改名尝试被拒绝，服务名与表键保持一致（第七轮）
+    {
+        auto server = std::make_shared<YomkServer>();
+        auto *srv = new PingService(server.get());
+        srv->name("/PingService");
+        server->addService(srv); // 入表后服务名被锁定（srv 所有权归框架，勿手动 delete）
+
+        srv->name("/Renamed"); // 应被拒绝并记日志
+        auto names = server->serviceNames();
+        bool renamedAbsent = std::find(names.begin(), names.end(), "/Renamed") == names.end();
+        bool originalPresent = std::find(names.begin(), names.end(), "/PingService") != names.end();
+        if (srv->name() != "/PingService" || !renamedAbsent || !originalPresent)
+        {
+            std::cout << "[FAIL] rename after registration should be rejected." << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] rename after registration rejected, table key consistent." << std::endl;
+        }
+
+        YomkResponse response = server->request("/PingService/ping", nullptr);
+        if (response.m_status != YomkResponse::eOk)
+        {
+            std::cout << "[FAIL] request by original name failed after rename attempt." << std::endl;
+            failed++;
+        }
+        server->shutdown();
     }
 
     std::cout << (failed == 0 ? "TestYomkShutdown PASS" : "TestYomkShutdown FAIL") << std::endl;

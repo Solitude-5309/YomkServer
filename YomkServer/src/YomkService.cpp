@@ -37,6 +37,16 @@ void YomkService::name(const std::string &name)
     m_p->name(name);
 }
 
+void YomkService::markRegistered()
+{
+    if (!m_p)
+    {
+        YOMK_ERR_POS_LOG("service is null, please check service");
+        return;
+    }
+    m_p->markRegistered();
+}
+
 std::string YomkService::name()
 {
     if (!m_p)

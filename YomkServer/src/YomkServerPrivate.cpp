@@ -20,6 +20,8 @@ void YomkServerPrivate::addService(YomkService *srv)
             oldSrv = std::move(iter->second);
         }
         m_serviceMap[srv->name()].reset(srv);
+        // 入表即锁定服务名：注册后改名被拒绝，保证服务名与 service map 键一致
+        srv->markRegistered();
     }
 
     // 同名替换：锁外对旧服务 deinit，与 delService 一致；在途请求持有的 shared_ptr 副本保证不与 invoke 并发析构。

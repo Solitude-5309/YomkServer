@@ -14,8 +14,10 @@ public:
     ~YomkServicePrivate() {}
 
 public:
-    void name(const std::string &name) { m_name = name; }
+    void name(const std::string &name);
     std::string name() { return m_name; }
+    // 框架内部使用：入表注册后锁定服务名，此后 name() 改名被拒绝（保证与 service map 键一致）
+    void markRegistered() { m_registered = true; }
 
 public:
     void installFunc(const std::string &funcName, YomkServiceFunc func, const std::string &msgName = "");
@@ -27,6 +29,8 @@ public:
 protected:
     std::weak_ptr<YomkServer> m_weakServer;
     std::string m_name;
+    // 入表注册后为 true，锁定服务名避免与 service map 键不一致
+    bool m_registered = false;
     std::map<std::string, YomkServiceFunc> m_funcMap;
     std::map<std::string, std::string> m_funcMsgMap;
     std::shared_mutex m_funcMapMtx;

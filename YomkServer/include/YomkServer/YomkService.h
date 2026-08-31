@@ -18,16 +18,22 @@ public:
     virtual ~YomkService() {}
 
 public:
+    // 设置服务名：须在注册（addService）前调用，注册后改名将被拒绝（保证与 service map 键一致）
     void name(const std::string &name);
     std::string name();
+    // 框架内部使用（addService 入表后调用）：锁定服务名，用户代码不应调用
+    void markRegistered();
 
 public:
     virtual int init() = 0;
     virtual void deinit() {}
 
 public:
-    // 弱绑定守卫（泛型模板）：回调触发时先 lock() 判活，服务已删除则安全丢弃，
-    // 供外流回调（功能函数/FunctionPool/EventLoop/Context checker·monitor/异步响应）使用。
+    // 弱绑定守卫（泛型模板），供外流回调（功能函数/FunctionPool/EventLoop/Context checker·monitor/异步响应）使用。
+    // 判活基于引用计数（weak_from_this().lock()），仅在服务对象被销毁（引用归零）时丢弃；
+    // 语义边界：YOMK_DEL_SERVICE / YOMK_SHUTDOWN 把服务移出表后，在途请求与异步任务仍持 shared_ptr 副本，
+    // 其回调可在 deinit() 之后继续执行（删除即停不成立）；子类须在 deinit() 中停止回调生产者（线程/定时器/外部注册），
+    // 并容忍成员函数在 deinit() 后被迟到调用。
     // 返回的泛型 lambda 按调用处目标 std::function 类型隐式转换，一个模板覆盖全部回调签名：
     // YomkResponse 返回 eNo，Context checker 默认放行 eAccept，void 直接丢弃，其余返回默认值
     template <typename Func>

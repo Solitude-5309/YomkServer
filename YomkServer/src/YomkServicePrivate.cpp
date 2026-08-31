@@ -3,6 +3,16 @@
 #include <iostream>
 #include <mutex>
 
+void YomkServicePrivate::name(const std::string &name)
+{
+    if (m_registered)
+    {
+        YOMK_ERR_POS_LOG("service is registered, rename is not allowed -> " + name);
+        return;
+    }
+    m_name = name;
+}
+
 void YomkServicePrivate::installFunc(const std::string &funcName, YomkServiceFunc func, const std::string &msgName)
 {
     if (funcName.empty() || funcName[0] != '/')
