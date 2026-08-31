@@ -19,6 +19,7 @@ set(YomkServer_SOURCES
     ${YomkServer_SRC}/YomkServerPrivate.cpp
     ${YomkServer_SRC}/YomkService.cpp
     ${YomkServer_SRC}/YomkServicePrivate.cpp
+    ${YomkServer_SRC}/YomkSimpleThreadPool.cpp
     ${YomkServer_SRC}/Modules/FunctionPool/YomkFunctionPool.cpp
     ${YomkServer_SRC}/Modules/Context/YomkContext.cpp
     ${YomkServer_SRC}/Modules/EventLoop/EventLoop.cpp

@@ -8,6 +8,7 @@
  * 3. shutdown() 后 request 返回 service not found、serviceNames() 为空
  * 4. 析构兜底：未显式 shutdown 直接销毁服务器，服务 deinit 仍被调用且不崩溃
  * 5. YOMK_SHUTDOWN 宏路径：单例关闭后 serverInstance() 为空
+ * 6. 异步线程池（第二轮）：排空验证、并发有界、关闭后拒绝、异常防护、关闭期嵌套拒绝
  *
  * 独立实例用例使用 std::make_shared<YomkServer>()，避免污染 YomkAPI 单例状态
  */
@@ -15,6 +16,7 @@
 #include <atomic>
 #include <chrono>
 #include <iostream>
+#include <stdexcept>
 #include <thread>
 #include "YomkAPI.h"
 
@@ -61,6 +63,31 @@ public:
 private:
     std::atomic<bool> m_stop{false};
     std::thread m_worker;
+};
+
+/**
+ * @brief 轻量测试服务：提供 /ping 供异步请求打到真实功能函数，避免 service not found 日志噪声
+ */
+class PingService : public YomkService
+{
+public:
+    PingService(YomkServer *server)
+        : YomkService(server)
+    {
+    }
+
+public:
+    virtual int init() override
+    {
+        YomkInstallFunc("/ping", PingService::ping);
+        return 0;
+    }
+
+private:
+    YomkResponse ping(YomkPkgPtr pkg)
+    {
+        return {YomkResponse::eOk, "pong"};
+    }
 };
 
 int main(int argc, char *argv[])
@@ -144,7 +171,135 @@ int main(int argc, char *argv[])
         }
     }
 
-    // 用例 5：YOMK_SHUTDOWN 宏路径 —— 单例关闭后 serverInstance 为空
+    // 用例 5：异常防护 —— 回调抛异常不终止进程，其后任务仍正常执行（独立实例）
+    {
+        auto server = std::make_shared<YomkServer>();
+        server->newService<PingService>("/PingService");
+
+        std::atomic<bool> afterOk{false};
+        server->asyncRequest("/PingService/ping", nullptr, [](YomkResponse response)
+                             { throw std::runtime_error("test exception in async callback"); });
+        // 留出时间让抛异常任务先被执行，再提交后续任务验证池未被异常拖死
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        server->asyncRequest("/PingService/ping", nullptr, [&afterOk](YomkResponse response)
+                             { afterOk.store(true); });
+        for (int i = 0; i < 100 && !afterOk.load(); ++i)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        if (!afterOk.load())
+        {
+            std::cout << "[FAIL] task after throwing callback did not execute." << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] callback exception caught, following tasks still execute." << std::endl;
+        }
+        server->shutdown();
+    }
+
+    // 用例 6：排空验证 + 关闭后拒绝 —— 100 个异步请求在 shutdown 返回前全部完成，关闭后提交被拒绝
+    {
+        auto server = std::make_shared<YomkServer>();
+        server->newService<PingService>("/PingService");
+
+        std::atomic<int> doneCount{0};
+        for (int i = 0; i < 100; ++i)
+        {
+            server->asyncRequest("/PingService/ping", nullptr, [&doneCount](YomkResponse response)
+                                 {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                doneCount.fetch_add(1); });
+        }
+        server->shutdown();
+        if (doneCount.load() != 100)
+        {
+            std::cout << "[FAIL] drain incomplete on shutdown return, done: " << doneCount.load() << "/100" << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] all 100 async requests drained before shutdown returned." << std::endl;
+        }
+
+        // 关闭后提交：回调永不执行，无崩溃
+        std::atomic<bool> lateCalled{false};
+        server->asyncRequest("/PingService/ping", nullptr, [&lateCalled](YomkResponse response)
+                             { lateCalled.store(true); });
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        if (lateCalled.load())
+        {
+            std::cout << "[FAIL] async request after shutdown should be rejected." << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] async request after shutdown rejected." << std::endl;
+        }
+    }
+
+    // 用例 7：并发有界 —— 同时执行的任务数不超过池线程数（硬件并发数一半向上取整，兜底 2）
+    {
+        auto server = std::make_shared<YomkServer>();
+        server->newService<PingService>("/PingService");
+
+        std::atomic<int> concurrent{0};
+        std::atomic<int> peak{0};
+        for (int i = 0; i < 50; ++i)
+        {
+            server->asyncRequest("/PingService/ping", nullptr, [&concurrent, &peak](YomkResponse response)
+                                 {
+                int cur = concurrent.fetch_add(1) + 1;
+                int p = peak.load();
+                while (cur > p && !peak.compare_exchange_weak(p, cur))
+                {
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                concurrent.fetch_sub(1); });
+        }
+        server->shutdown();
+
+        unsigned int hw = std::thread::hardware_concurrency();
+        int expectMax = (hw == 0) ? 2 : static_cast<int>((hw + 1) / 2);
+        if (peak.load() > expectMax)
+        {
+            std::cout << "[FAIL] concurrent peak " << peak.load() << " exceeds pool size " << expectMax << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] async concurrency bounded, peak: " << peak.load() << " <= pool size: " << expectMax << std::endl;
+        }
+    }
+
+    // 用例 8：关闭期嵌套拒绝 —— 排空阶段内嵌套发起的异步请求被拒绝，排空不死循环
+    {
+        auto server = std::make_shared<YomkServer>();
+        server->newService<PingService>("/PingService");
+
+        std::atomic<bool> nestedExecuted{false};
+        server->asyncRequest("/PingService/ping", nullptr, [&server, &nestedExecuted](YomkResponse response)
+                             {
+            // 睡到 shutdown 已置位 m_shutdown 后再嵌套发起，预期被拒绝（回调不会执行）
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            server->asyncRequest("/PingService/ping", nullptr, [&nestedExecuted](YomkResponse response2)
+                                 { nestedExecuted.store(true); }); });
+        server->shutdown();
+
+        if (nestedExecuted.load())
+        {
+            std::cout << "[FAIL] nested async request during shutdown should be rejected." << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] nested async request during shutdown rejected, drain no infinite loop." << std::endl;
+        }
+    }
+
+    // 用例 9：YOMK_SHUTDOWN 宏路径 —— 单例关闭后 serverInstance 为空
     {
         YOMK_INIT();
         if (!YOMK_SERVER_PTR)

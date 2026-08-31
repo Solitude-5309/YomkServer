@@ -1,7 +1,6 @@
 #include "YomkServer.h"
 #include "YomkServerPrivate.h"
 #include <iostream>
-#include <thread>
 #include <unordered_map>
 #include <functional>
 #include "Modules/FunctionPool/YomkFunctionPool.h"
@@ -187,10 +186,11 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
         return;
     }
 
-    // 按值捕获 shared_ptr，避免 detach 线程内访问已析构的 this
+    // 投递到内部线程池（有界工作线程），任务生命周期由池队列管理；
+    // 按值捕获 shared_ptr，shutdown 排空阶段任务仍可安全执行，关闭后投递被拒绝
     std::shared_ptr<YomkServerPrivate> p = m_p;
-    std::thread t([srvName, tmpFuncName, pkg, p, func]()
-                  {
+    if (!m_p->postAsyncTask([srvName, tmpFuncName, pkg, p, func]()
+                            {
         if(func)
         {
             func(p->request(srvName, tmpFuncName, pkg));
@@ -198,6 +198,8 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
         else
         {
             p->request(srvName, tmpFuncName, pkg);
-        } });
-    t.detach();
+        } }))
+    {
+        YOMK_ERR_POS_LOG("server is shutting down, async request ignored.");
+    }
 }
