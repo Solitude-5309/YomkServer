@@ -16,6 +16,9 @@
 #include <iostream>
 #include "YomkAPI.h"
 
+// 定点引入所需类型，避免在头文件中 using namespace（第十一轮）
+using yomk::ContextChecker;
+
 /**
  * @brief Checker 函数 - 接受模式
  *

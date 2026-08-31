@@ -13,7 +13,9 @@ class YomkService;
 class YomkServerPrivate
 {
 public:
-    YomkServerPrivate() {}
+    // asyncThreadCount：异步线程池线程数，0 时由 YomkSimpleThreadPool 取默认值
+    explicit YomkServerPrivate(std::size_t asyncThreadCount = 0)
+        : m_asyncPool(asyncThreadCount) {}
     ~YomkServerPrivate()
     {
         if (!m_shutdown)

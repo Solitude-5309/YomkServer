@@ -95,7 +95,7 @@ typedef std::function<bool(const yomk::Log& log)> YomkConsoleLogProxyFunc;
 
 ```cpp
 class YomkServer {
-    static std::shared_ptr<YomkServer> create();  // 唯一构造入口，必须 shared_ptr 持有（栈/裸 new 编译期拒绝）
+    static std::shared_ptr<YomkServer> create();  // 唯一构造入口，必须 shared_ptr 持有（栈/裸 new 编译期拒绝）；可选参数：异步线程池线程数（0 取默认）
     template<typename T> int newService(const std::string& srvName = "");  // 返回注册结果（0 成功 / -1 失败）
     int startService(std::vector<std::string> srvNames);
     int addService(YomkService* srv);  // init 失败返回 -1 并自动回滚
@@ -133,7 +133,7 @@ class YomkService {
 ### 请求通信
 | 宏 | 说明 |
 |----|------|
-| `YOMK_INIT()` | 初始化（自动启动内置服务） |
+| `YOMK_INIT()` | 初始化（自动启动内置服务）；可选参数透传至 `init(asyncThreadCount)` 配置异步线程池大小 |
 | `YOMK_BOOT(boot)` | Boot 生命周期初始化 |
 | `YOMK_NEW_SERVICE(T, name)` | 注册服务（模板）；返回 0 成功 / -1 失败（如 init 失败自动回滚） |
 | `YOMK_ADD_SERVICE(srv, name)` | 注册服务（实例）；同名替换时旧服务先被锁外 deinit 再安装新服务；返回 0 成功 / -1 失败（如 init 失败自动回滚） |

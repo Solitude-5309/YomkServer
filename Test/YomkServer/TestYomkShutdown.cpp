@@ -16,6 +16,7 @@
  * 11. 构造契约（第八轮）：YomkServer 构造函数私有，仅可经 YomkServer::create() 以 shared_ptr 持有
  * 12. URL 解析去重（第九轮）：统一解析路径对非法 URL 均拒绝并返回 eNo
  * 13. 错误传播（第十轮）：init 失败的服务注册返回非 0 并自动回滚，同名后续可正常注册
+ * 14. 线程池可配置（第十一轮）：create(4) 后峰值并发受 4 约束且可达 4
  *
  * 独立实例用例使用 YomkServer::create()，避免污染 YomkAPI 单例状态
  */
@@ -499,6 +500,38 @@ int main(int argc, char *argv[])
             failed++;
         }
         server->shutdown();
+    }
+
+    // 用例 14：线程池大小可配置 —— create(4) 后峰值并发受 4 约束且可达 4（第十一轮）
+    {
+        auto server = YomkServer::create(4);
+        server->newService<PingService>("/PingService");
+
+        std::atomic<int> concurrent{0};
+        std::atomic<int> peak{0};
+        for (int i = 0; i < 40; ++i)
+        {
+            server->asyncRequest("/PingService/ping", nullptr, [&concurrent, &peak](YomkResponse response)
+                                 {
+                int cur = concurrent.fetch_add(1) + 1;
+                int p = peak.load();
+                while (cur > p && !peak.compare_exchange_weak(p, cur))
+                {
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                concurrent.fetch_sub(1); });
+        }
+        server->shutdown();
+
+        if (peak.load() != 4)
+        {
+            std::cout << "[FAIL] configured pool size 4 not honored, peak: " << peak.load() << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] configured pool size 4 honored." << std::endl;
+        }
     }
 
     std::cout << (failed == 0 ? "TestYomkShutdown PASS" : "TestYomkShutdown FAIL") << std::endl;

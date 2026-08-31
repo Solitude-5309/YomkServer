@@ -12,6 +12,9 @@
 #include <algorithm>
 #include "YomkAPI.h"
 
+// 定点引入所需类型，避免在头文件中 using namespace（第十一轮）
+using yomk::ContextChecker;
+
 // checker：接受所有设置（内省仅关心 checker 是否已设置）
 ContextChecker::ECheckStatus infoChecker(const yomk::Context &ctx)
 {

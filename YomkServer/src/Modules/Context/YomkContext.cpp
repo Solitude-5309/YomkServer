@@ -2,6 +2,9 @@
 #include <iostream>
 #include <thread>
 
+// 定点引入所需类型，避免在头文件中 using namespace（第十一轮）
+using yomk::ContextChecker;
+
 YomkContext::YomkContext(YomkServer *server)
     : YomkService(server), m_checkerEnabled(false), m_monitorEnabled(false)
 {

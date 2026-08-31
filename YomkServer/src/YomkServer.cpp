@@ -9,8 +9,8 @@
 #include "Modules/Logger/YomkLogger.h"
 #include "Modules/ServerInfo/YomkServerInfo.h"
 
-YomkServer::YomkServer()
-    : m_p(new YomkServerPrivate())
+YomkServer::YomkServer(std::size_t asyncThreadCount)
+    : m_p(new YomkServerPrivate(asyncThreadCount))
 {
 }
 

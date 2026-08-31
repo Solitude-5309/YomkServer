@@ -12,10 +12,11 @@ class YOMKSERVER_EXPORT YomkServer : public std::enable_shared_from_this<YomkSer
 {
 public:
     // 唯一构造入口：YomkServer 必须由 shared_ptr 持有（enable_shared_from_this 契约，
-    // YomkService 构造依赖 weak_from_this()）；栈构造/裸 new 在编译期被拒绝
-    static std::shared_ptr<YomkServer> create()
+    // YomkService 构造依赖 weak_from_this()）；栈构造/裸 new 在编译期被拒绝；
+    // asyncThreadCount 为异步线程池线程数：0 取默认（硬件并发数一半向上取整，兜底 2）
+    static std::shared_ptr<YomkServer> create(std::size_t asyncThreadCount = 0)
     {
-        return std::shared_ptr<YomkServer>(new YomkServer());
+        return std::shared_ptr<YomkServer>(new YomkServer(asyncThreadCount));
     }
     virtual ~YomkServer() {}
 
@@ -44,6 +45,6 @@ public:
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
 private:
-    YomkServer();
+    YomkServer(std::size_t asyncThreadCount);
     std::shared_ptr<YomkServerPrivate> m_p;
 };
