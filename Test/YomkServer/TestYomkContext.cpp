@@ -6,6 +6,7 @@
  * 1. Context 的创建、获取、设置、销毁
  * 2. Checker 机制：在设置前校验，防止非法修改
  * 3. Monitor 机制：在设置成功后监控，接收变更通知，设置失败，则不会发出变更通知
+ * 4. 同步 Monitor 异常防护：回调抛异常被框架吞掉记日志，不影响 set 结果与后续 monitor（第十七轮）
  *
  * Context 是全局共享的 K-V 状态机，用于：
  * - 跨服务共享状态
@@ -14,6 +15,7 @@
  */
 
 #include <iostream>
+#include <stdexcept>
 #include "YomkAPI.h"
 
 // 定点引入所需类型，避免在头文件中 using namespace（第十一轮）
@@ -71,6 +73,24 @@ void monitorFunc(const yomk::Context &ctx)
     YomkUnPackPkgVoid(ctx.m_value, String, str);
     // 打印变更的 key 和新值
     YOMK_DEBUG_TAG("monitorFunc", "monitor func called. ctx: key= ", ctx.m_key, ", value = ", str->d);
+}
+
+/**
+ * @brief 抛异常的 Monitor 函数（第十七轮）
+ *
+ * 验证同步 monitor 异常防护：异常必须被框架吞掉记日志，
+ * 不击穿 set 调用链，也不影响后续 monitor 执行
+ */
+void monitorThrowFunc(const yomk::Context & /*ctx*/)
+{
+    throw std::runtime_error("monitor boom");
+}
+
+// 计数型 monitor（第十七轮）：验证前置回调抛异常后后续 monitor 仍照常执行
+static int monitorCallCount = 0;
+void monitorCountFunc(const yomk::Context & /*ctx*/)
+{
+    ++monitorCallCount;
 }
 
 /**
@@ -253,7 +273,39 @@ int main(int argc, char *argv[])
     YOMK_DEBUG_TAG("main", "get ctx: ", ctx_data->d); // 输出: ctx_data_set_2（未变）
 
     /**
-     * 步骤11：销毁 Context
+     * 步骤11：同步 Monitor 异常防护（第十七轮）
+     *
+     * 注册两个同步 monitor（async 缺省即同步）：
+     * 1. monitorThrowFunc：调用即抛异常，必须被框架吞掉，不影响 set 返回值与后续 monitor
+     * 2. monitorCountFunc：计数，验证前置回调异常后后续 monitor 仍执行
+     *
+     * 先恢复 accept checker，确保本次 set 成功并触发 monitor 链
+     */
+    response = YOMK_CONTEXT_SET_CHECKER("ctx", checkerAcceptFunc);
+    response = YOMK_CONTEXT_SET_MONITOR("ctx", monitorThrowFunc);
+    response = YOMK_CONTEXT_SET_MONITOR("ctx", monitorCountFunc);
+    if (response.m_status == YomkResponse::eOk)
+    {
+        YOMK_DEBUG_TAG("main", "set sync monitors (throw + count) success");
+    }
+    else
+    {
+        YOMK_ERROR_TAG("main", "set sync monitors failed");
+    }
+
+    // 异常 monitor 先注册（先执行）：异常被吞，set 仍返回 eOk，计数 monitor 照常执行一次
+    response = YOMK_CONTEXT_SET("ctx", YomkMkPtr(String, "ctx_data_set_4"));
+    if (response.m_status == YomkResponse::eOk && monitorCallCount == 1)
+    {
+        YOMK_INFO_TAG("main", "case: sync monitor exception swallowed, set returns eOk and later monitor still executed. [OK]");
+    }
+    else
+    {
+        YOMK_ERROR_TAG("main", "case: sync monitor exception protection failed");
+    }
+
+    /**
+     * 步骤12：销毁 Context
      *
      * 删除键 "ctx" 及其值
      */
@@ -268,7 +320,7 @@ int main(int argc, char *argv[])
     }
 
     /**
-     * 步骤12：获取已销毁的 Context
+     * 步骤13：获取已销毁的 Context
      *
      * 键已不存在，返回默认值 "ctx_data_default"
      */

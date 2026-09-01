@@ -155,7 +155,7 @@ class YomkService {
 | `YOMK_CONTEXT_ON/OFF_CHECKER()` | 开关检查器 |
 | `YOMK_CONTEXT_SET_CHECKER(key, func)` | 设置检查函数 |
 | `YOMK_CONTEXT_ON/OFF_MONITOR()` | 开关监控器 |
-| `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async=true 异步回调监控函数，异步分支投内部线程池，`YOMK_SHUTDOWN` 排空后返回，第十二轮） |
+| `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async 可省略，默认 false）。同步（默认）：锁外内联执行、及时通知；回调异常被框架吞掉记日志，不影响 set 结果与后续 monitor（第十七轮）。异步（async=true）：投内部线程池的**延迟事件通知**，回调收到 set 时刻的**数据快照**；事件顺序保证（单线程池 FIFO），时效不保证，适合耗时回调解耦；`YOMK_SHUTDOWN` 排空后返回（第十二轮）。**基于当前状态做判断的监控必须用同步** |
 | `YOMK_CONTEXT_INFO_KEYS()` | 内省：key 列表（返回 StringArray） |
 | `YOMK_CONTEXT_INFO_KEY(key)` | 内省：单 key 元信息（msg 格式 `key [类型名] checker:on\|off monitors:N(async:M)`） |
 | `YOMK_CONTEXT_INFO_ALL()` | 内省：全量 dump（每行同单 key 元信息格式） |

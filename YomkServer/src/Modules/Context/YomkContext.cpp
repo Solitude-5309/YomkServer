@@ -1,4 +1,5 @@
 #include "YomkContext.h"
+#include <exception>
 #include <iostream>
 
 // 定点引入所需类型，避免在头文件中 using namespace（第十一轮）
@@ -160,7 +161,20 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         {
             if (!monitor.asyncMonitor)
             {
-                monitor.contextMonitorFunc(context->d);
+                // 同步 monitor 异常防护（第十七轮）：用户回调异常记日志吞掉，不击穿 set 调用链，
+                // 与异步路径线程池兜底对齐；单个回调异常不影响后续 monitor 执行
+                try
+                {
+                    monitor.contextMonitorFunc(context->d);
+                }
+                catch (const std::exception &e)
+                {
+                    YOMK_ERR_POS_LOG("sync monitor threw exception: " + std::string(e.what()) + ", ignored.");
+                }
+                catch (...)
+                {
+                    YOMK_ERR_POS_LOG("sync monitor threw unknown exception, ignored.");
+                }
             }
             else
             {
