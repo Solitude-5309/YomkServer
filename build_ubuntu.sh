@@ -3,7 +3,7 @@
 # 用法: ./build_ubuntu.sh
 # 功能:
 #   1. 检查编译依赖(cmake/g++/make)，缺失时可选自动安装
-#   2. 交互输入安装路径(默认 /opt/yomk)，编译并安装
+#   2. 交互输入安装路径(默认 /opt/yomk)，交互询问是否编译内部测试（默认不编译，输入 Y 才编译；测试仅编译，不安装），编译并安装（库 + Examples 示例）
 #   3. 安装后创建环境变量 YOMK_PREFIX_PATH 记录安装路径
 #   4. 将安装路径暴露到系统:
 #      - /etc/profile.d/yomk.sh: 登录 shell（ssh/console）生效
@@ -97,11 +97,27 @@ INSTALL_PREFIX="${INSTALL_PREFIX%/}"
 echo "-- 安装路径: ${INSTALL_PREFIX}"
 # -------------el 2. 交互确定安装路径 ----------------
 
+# -------------sl 2.5 交互确定是否编译内部测试 ----------------
+# 非交互环境无法询问，默认不编译测试
+if [ ! -t 0 ]; then
+    BUILD_TESTS=OFF
+    echo "-- 非交互环境，默认不编译内部测试"
+else
+    read -r -p "是否编译框架内部测试？输入 Y 编译，直接回车默认不编译 [y/N]: " answer
+    case "${answer}" in
+        [yY]*) BUILD_TESTS=ON ;;
+        *) BUILD_TESTS=OFF ;;
+    esac
+fi
+echo "-- 编译内部测试: ${BUILD_TESTS}"
+# -------------el 2.5 交互确定是否编译内部测试 ----------------
+
 # -------------sl 3. 配置、编译、安装 ----------------
 echo "-- 开始配置..."
 cmake -S "${SCRIPT_DIR}" -B "${BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+    -DYOMK_BUILD_TESTS="${BUILD_TESTS}" \
     || fail "cmake 配置失败"
 
 echo "-- 开始编译..."
@@ -148,10 +164,10 @@ echo "-- 校验安装结果..."
 [ -f "${INSTALL_PREFIX}/lib/libYomkServer.so" ] \
     || fail "未找到 ${INSTALL_PREFIX}/lib/libYomkServer.so"
 
-TEST_TARGETS=(TestYomkService TestYomkFunctionPool TestYomkContext TestYomkEventLoop TestYomkLogger TestYomkServerInfo TestYomkContextInfo TestYomkEventLoopInfo TestYomkFunctionPoolInfo TestYomkLoggerInfo TestYomkShutdown)
-for t in "${TEST_TARGETS[@]}"; do
+EXAMPLE_TARGETS=(ExampleYomkService ExampleYomkFunctionPool ExampleYomkContext ExampleYomkEventLoop ExampleYomkLogger)
+for t in "${EXAMPLE_TARGETS[@]}"; do
     [ -f "${INSTALL_PREFIX}/bin/${t}" ] \
-        || fail "未找到测试程序 ${INSTALL_PREFIX}/bin/${t}"
+        || fail "未找到示例程序 ${INSTALL_PREFIX}/bin/${t}"
 done
 
 echo ""
@@ -162,14 +178,17 @@ echo " 安装路径:       ${INSTALL_PREFIX}"
 echo " YOMK_PREFIX_PATH: ${YOMK_PREFIX_PATH}"
 echo " 动态库缓存:"
 ldconfig -p | grep -i YomkServer || true
-echo " 测试程序列表（安装于 ${INSTALL_PREFIX}/bin）:"
-for t in "${TEST_TARGETS[@]}"; do
+echo " 示例程序列表（安装于 ${INSTALL_PREFIX}/bin）:"
+for t in "${EXAMPLE_TARGETS[@]}"; do
     echo "   - ${t}"
 done
 echo "==========================================="
 echo ""
 echo "新开任意终端即可直接使用（无需手动 source）:"
 echo "  - echo \$YOMK_PREFIX_PATH 查看安装路径"
-echo "  - 直接运行 TestYomkService 等命令验证安装"
+echo "  - 直接运行 ExampleYomkService 等命令验证安装"
+if [ "${BUILD_TESTS}" = "ON" ]; then
+    echo "内部测试程序已编译于 ${SCRIPT_DIR}/bin（仅供开发验证，不随安装部署）"
+fi
 echo "当前终端立即生效请执行: source ${PROFILE_SCRIPT}"
 # -------------el 6. 安装校验与完成提示 ----------------

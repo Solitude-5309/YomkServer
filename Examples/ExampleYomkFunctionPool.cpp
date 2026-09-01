@@ -1,5 +1,5 @@
 /**
- * @file TestYomkFunctionPool.cpp
+ * @file ExampleYomkFunctionPool.cpp
  * @brief YomkFunctionPool 公共函数池示例
  *
  * 演示内容：
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     // 获取可执行文件路径，用于构造配置文件路径
     fs::path exePath = fs::absolute(argv[0]);
     // 构造 settings.json 的路径
-    fs::path settingsPath = exePath.parent_path().parent_path() / "Test" / "YomkServer" / "Settings" / "settings.json";
+    fs::path settingsPath = exePath.parent_path().parent_path() / "Examples" / "YomkServer" / "Settings" / "settings.json";
 
     // 初始化框架
     YOMK_INIT();

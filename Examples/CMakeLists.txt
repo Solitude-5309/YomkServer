@@ -1,79 +1,79 @@
 include_directories(${YomkServer_INCLUDE})
-include_directories(${TestYomkServer_DIR})
+include_directories(${ExamplesYomkServer_DIR})
 
 set(YomkServerLib 
     YomkServer
 )
 
-# -------------sl TestYomkService ----------------
-set(TestYomkService_SOURCES 
-    ${TestYomkServer_DIR}/TestYomkService.cpp
-    ${TestYomkServer_DIR}/boot/MyBoot.cpp
-    ${TestYomkServer_DIR}/services/YomkServiceA.cpp
-    ${TestYomkServer_DIR}/services/YomkServiceB.cpp
+# -------------sl ExampleYomkService ----------------
+set(ExampleYomkService_SOURCES 
+    ${ExamplesYomkServer_DIR}/ExampleYomkService.cpp
+    ${ExamplesYomkServer_DIR}/boot/MyBoot.cpp
+    ${ExamplesYomkServer_DIR}/services/YomkServiceA.cpp
+    ${ExamplesYomkServer_DIR}/services/YomkServiceB.cpp
 )
-add_executable(TestYomkService 
-    ${TestYomkService_SOURCES}
+add_executable(ExampleYomkService 
+    ${ExampleYomkService_SOURCES}
 )
-target_link_libraries(TestYomkService PRIVATE
+target_link_libraries(ExampleYomkService PRIVATE
     ${YomkServerLib}
 )
-# -------------el TestYomkService ----------------
+# -------------el ExampleYomkService ----------------
 
-# -------------sl TestYomkFunctionPool ----------------
-set(TestYomkFunctionPool_SOURCES 
-    ${TestYomkServer_DIR}/TestYomkFunctionPool.cpp
+# -------------sl ExampleYomkFunctionPool ----------------
+set(ExampleYomkFunctionPool_SOURCES 
+    ${ExamplesYomkServer_DIR}/ExampleYomkFunctionPool.cpp
 )
-add_executable(TestYomkFunctionPool 
-    ${TestYomkFunctionPool_SOURCES}
+add_executable(ExampleYomkFunctionPool 
+    ${ExampleYomkFunctionPool_SOURCES}
 )
-target_link_libraries(TestYomkFunctionPool PRIVATE
+target_link_libraries(ExampleYomkFunctionPool PRIVATE
     ${YomkServerLib}
 )
-# -------------el TestYomkFunctionPool ----------------
+# -------------el ExampleYomkFunctionPool ----------------
 
-# -------------sl TestYomkContext ----------------
-set(TestYomkContext_SOURCES 
-    ${TestYomkServer_DIR}/TestYomkContext.cpp
+# -------------sl ExampleYomkContext ----------------
+set(ExampleYomkContext_SOURCES 
+    ${ExamplesYomkServer_DIR}/ExampleYomkContext.cpp
 )
-add_executable(TestYomkContext 
-    ${TestYomkContext_SOURCES}
+add_executable(ExampleYomkContext 
+    ${ExampleYomkContext_SOURCES}
 )
-target_link_libraries(TestYomkContext PRIVATE
+target_link_libraries(ExampleYomkContext PRIVATE
     ${YomkServerLib}
 )
-# -------------el TestYomkContext ----------------
+# -------------el ExampleYomkContext ----------------
 
-# -------------sl TestYomkEventLoop ----------------
-set(TestYomkEventLoop_SOURCES 
-    ${TestYomkServer_DIR}/TestYomkEventLoop.cpp
+# -------------sl ExampleYomkEventLoop ----------------
+set(ExampleYomkEventLoop_SOURCES 
+    ${ExamplesYomkServer_DIR}/ExampleYomkEventLoop.cpp
 )
-add_executable(TestYomkEventLoop 
-    ${TestYomkEventLoop_SOURCES}
+add_executable(ExampleYomkEventLoop 
+    ${ExampleYomkEventLoop_SOURCES}
 )
-target_link_libraries(TestYomkEventLoop PRIVATE
+target_link_libraries(ExampleYomkEventLoop PRIVATE
     ${YomkServerLib}
 )
-# -------------el TestYomkEventLoop ----------------
+# -------------el ExampleYomkEventLoop ----------------
 
-# -------------sl TestYomkLogger ----------------
-set(TestYomkLogger_SOURCES 
-    ${TestYomkServer_DIR}/TestYomkLogger.cpp
+# -------------sl ExampleYomkLogger ----------------
+set(ExampleYomkLogger_SOURCES 
+    ${ExamplesYomkServer_DIR}/ExampleYomkLogger.cpp
 )
-add_executable(TestYomkLogger 
-    ${TestYomkLogger_SOURCES}
+add_executable(ExampleYomkLogger 
+    ${ExampleYomkLogger_SOURCES}
 )
-target_link_libraries(TestYomkLogger PRIVATE
+target_link_libraries(ExampleYomkLogger PRIVATE
     ${YomkServerLib}
 )
-# -------------el TestYomkLogger ----------------
+# -------------el ExampleYomkLogger ----------------
 
-# 安装测试可执行文件到 <prefix>/bin，供用户在任意终端运行验证安装
+# 安装示例可执行文件到 <prefix>/bin，供用户在任意终端运行验证安装
 install(TARGETS
-    TestYomkService
-    TestYomkFunctionPool
-    TestYomkContext
-    TestYomkEventLoop
-    TestYomkLogger
+    ExampleYomkService
+    ExampleYomkFunctionPool
+    ExampleYomkContext
+    ExampleYomkEventLoop
+    ExampleYomkLogger
     RUNTIME DESTINATION bin
 )

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(Yomk VERSION 2.3.32 LANGUAGES CXX)
+project(Yomk VERSION 2.3.33 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -18,7 +18,15 @@ set(YomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/YomkServer)
 include(${YomkServer_DIR}/CMakeLists.txt)
 message("-- YomkServer success.")
 
-# TestYomkServer
-set(TestYomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Test)
-include(${TestYomkServer_DIR}/CMakeLists.txt)
-message("-- TestYomkServer success.")
+# ExamplesYomkServer（用户教程示例，默认编译并安装）
+set(ExamplesYomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Examples)
+include(${ExamplesYomkServer_DIR}/CMakeLists.txt)
+message("-- ExamplesYomkServer success.")
+
+# TestYomkServer（框架内部全面测试，可选编译，不安装）
+option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
+if(YOMK_BUILD_TESTS)
+    set(TestYomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Test)
+    include(${TestYomkServer_DIR}/CMakeLists.txt)
+    message("-- TestYomkServer success.")
+endif()

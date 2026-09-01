@@ -1,5 +1,5 @@
 /**
- * @file TestYomkLogger.cpp
+ * @file ExampleYomkLogger.cpp
  * @brief YomkLogger 日志系统示例
  *
  * 演示内容：
@@ -177,10 +177,10 @@ int main(int argc, char *argv[])
      * YOMK_FILE_INFO_TAG 等宏允许指定自定义 Tag
      * Tag 会包含在日志内容中
      */
-    response = YOMK_FILE_INFO_TAG("new_file_logger", "TestLogger", "test", " new_file_logger log info. ", 1);
-    response = YOMK_FILE_WARN_TAG("new_file_logger", "TestLogger", "test", " new_file_logger log warn. ", 2);
-    response = YOMK_FILE_ERROR_TAG("new_file_logger", "TestLogger", "test", " new_file_logger log error. ", 3);
-    response = YOMK_FILE_DEBUG_TAG("new_file_logger", "TestLogger", "test", " new_file_logger log debug. ", 4);
+    response = YOMK_FILE_INFO_TAG("new_file_logger", "ExampleLogger", "example", " new_file_logger log info. ", 1);
+    response = YOMK_FILE_WARN_TAG("new_file_logger", "ExampleLogger", "example", " new_file_logger log warn. ", 2);
+    response = YOMK_FILE_ERROR_TAG("new_file_logger", "ExampleLogger", "example", " new_file_logger log error. ", 3);
+    response = YOMK_FILE_DEBUG_TAG("new_file_logger", "ExampleLogger", "example", " new_file_logger log debug. ", 4);
 
     /**
      * 步骤10：刷新文件日志到磁盘
@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
      */
     response = YOMK_FILE_LOG_WRITE("new_file_logger");
 
-    YOMK_DEBUG_TAG("main", "test YomkLogger completed, any key to continue...");
+    YOMK_DEBUG_TAG("main", "example YomkLogger completed, any key to continue...");
 
     getchar();
 
