@@ -25,9 +25,11 @@ void YomkServerPrivate::addService(YomkService *srv)
     }
 
     // 同名替换：锁外对旧服务 deinit，与 delService 一致；在途请求持有的 shared_ptr 副本保证不与 invoke 并发析构。
-    // 顺序为旧服务先 deinit，新服务随后由 YomkServer::addService 调 init()，同名服务任意时刻至多一次活跃生命周期
+    // 顺序为旧服务先 deinit，新服务随后由 YomkServer::addService 调 init()，同名服务任意时刻至多一次活跃生命周期。
+    // 替换前先置位注销标志（第十六轮）：旧服务的弱绑定回调立即失效，删除即停语义与 delService 一致
     if (oldSrv)
     {
+        oldSrv->markDeleted();
         oldSrv->deinit();
     }
 }
@@ -47,7 +49,10 @@ int YomkServerPrivate::delService(const std::string &srvName)
         m_serviceMap.erase(iter);
     }
 
-    // 锁外执行 deinit 与析构：在途请求持有的 shared_ptr 副本保证不会与 invoke 并发析构
+    // 锁外执行 deinit 与析构：在途请求持有的 shared_ptr 副本保证不会与 invoke 并发析构。
+    // 先置位注销标志（第十六轮）：删除即停，弱绑定回调立即丢弃，不等到引用归零；
+    // shutdown 路径不置位（排空语义，排空期回调照常执行）
+    srv->markDeleted();
     srv->deinit();
     return 0;
 }

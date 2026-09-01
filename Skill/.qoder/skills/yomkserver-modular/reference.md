@@ -139,7 +139,7 @@ class YomkService {
 | `YOMK_BOOT(boot)` | Boot 生命周期初始化 |
 | `YOMK_NEW_SERVICE(T, name)` | 注册服务（模板）；返回 0 成功 / -1 失败（如 init 失败自动回滚） |
 | `YOMK_ADD_SERVICE(srv, name)` | 注册服务（实例）；服务指针所有权移交框架（注册成功后以 shared_ptr 持有），同一指针禁止重复注册（双重释放）；同名替换时旧服务先被锁外 deinit 再安装新服务；返回 0 成功 / -1 失败（如 init 失败自动回滚） |
-| `YOMK_DEL_SERVICE(name)` | 删除服务（后续请求返回 service not found，外流弱绑定回调自动失效） |
+| `YOMK_DEL_SERVICE(name)` | 删除服务（后续请求返回 service not found，外流弱绑定回调立即失效：置位注销标志后即使强引用未归零也丢弃，同名替换同语义；YOMK_SHUTDOWN 走排空语义不置位） |
 | `YOMK_SHUTDOWN()` | 关闭服务器：先排空在途异步请求（拒新 -> 存量执行完 -> join 工作线程），再逐个服务调用 deinit() 并清空服务表、释放单例；幂等，关闭后不支持二次初始化；未显式调用时退出清理经 atexit 兜底（锁内置空快照、锁外释放，永生单例锁保证在途任务安全取空返回，无挂起/段错误） |
 | `YOMK_REQUEST(url, pkg)` | 同步请求 |
 | `YOMK_ASYNC_REQUEST(url, pkg, cb)` | 异步请求（内部线程池执行，并发有界；回调异常被框架捕获记日志；`YOMK_SHUTDOWN` 后提交被拒绝） |

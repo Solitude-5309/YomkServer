@@ -47,6 +47,25 @@ void YomkService::markRegistered()
     m_p->markRegistered();
 }
 
+void YomkService::markDeleted()
+{
+    if (!m_p)
+    {
+        YOMK_ERR_POS_LOG("service is null, please check service");
+        return;
+    }
+    m_p->markDeleted();
+}
+
+bool YomkService::deleted() const
+{
+    if (!m_p)
+    {
+        return true; // 无实现体视同已失效，弱绑定回调一律丢弃（第十六轮）
+    }
+    return m_p->deleted();
+}
+
 std::string YomkService::name()
 {
     if (!m_p)

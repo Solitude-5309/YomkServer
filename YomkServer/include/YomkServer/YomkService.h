@@ -23,6 +23,10 @@ public:
     std::string name();
     // 框架内部使用（addService 入表后调用）：锁定服务名，用户代码不应调用
     void markRegistered();
+    // 框架内部使用（第十六轮）：服务被删除/同名替换时置位注销标志，弱绑定回调据此立即失效；
+    // 用户代码不应调用；deleted() 供判活查询（删除/替换后为 true，shutdown 排空语义不置位）
+    void markDeleted();
+    bool deleted() const;
 
 public:
     virtual int init() = 0;
@@ -30,10 +34,10 @@ public:
 
 public:
     // 弱绑定守卫（泛型模板），供外流回调（功能函数/FunctionPool/EventLoop/Context checker·monitor/异步响应）使用。
-    // 判活基于引用计数（weak_from_this().lock()），仅在服务对象被销毁（引用归零）时丢弃；
-    // 语义边界：YOMK_DEL_SERVICE / YOMK_SHUTDOWN 把服务移出表后，在途请求与异步任务仍持 shared_ptr 副本，
-    // 其回调可在 deinit() 之后继续执行（删除即停不成立）；子类须在 deinit() 中停止回调生产者（线程/定时器/外部注册），
-    // 并容忍成员函数在 deinit() 后被迟到调用。
+    // 判活双层（第十六轮）：引用计数（weak_from_this().lock()）+ 注销标志（deleted()）。
+    // 删除即停：YOMK_DEL_SERVICE / 同名替换置位注销标志后，即使在途请求仍持 shared_ptr 副本，
+    // 弱绑定回调也立即丢弃（不再等到引用归零）；YOMK_SHUTDOWN 走排空语义不置位，排空期回调照常执行。
+    // 子类仍须在 deinit() 中停止非弱绑定路径的生产者（线程/定时器/外部注册）。
     // 返回的泛型 lambda 按调用处目标 std::function 类型隐式转换，一个模板覆盖全部回调签名：
     // YomkResponse 返回 eNo，Context checker 默认放行 eAccept，void 直接丢弃，其余返回默认值
     template <typename Func>
@@ -48,13 +52,13 @@ public:
         {
             using Ret = decltype(func(args...));
             auto self = weakSelf.lock();
-            if (!self)
+            if (!self || self->deleted())
             {
-                YOMK_ERR_POS_LOG("service has been deleted, callback ignored.");
+                YOMK_ERR_POS_LOG("service has been deleted or unregistered, callback ignored.");
                 if constexpr (std::is_void_v<Ret>)
                     return;
                 else if constexpr (std::is_same_v<Ret, YomkResponse>)
-                    return YomkResponse{YomkResponse::eNo, "service has been deleted, callback ignored."};
+                    return YomkResponse{YomkResponse::eNo, "service has been deleted or unregistered, callback ignored."};
                 else if constexpr (std::is_same_v<Ret, yomk::ContextChecker::ECheckStatus>)
                     return yomk::ContextChecker::eAccept;
                 else

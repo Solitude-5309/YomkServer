@@ -8,6 +8,7 @@
  * 3. 异步请求（YOMK_ASYNC_REQUEST）
  * 4. 跨服务调用（服务A调用服务B）
  * 5. 服务删除安全验证（YOMK_DEL_SERVICE + 弱绑定回调）
+ * 6. 注销标志删除即停验证（强引用未归零时弱绑定回调立即失效，问题 4B）
  *
  * 工程结构：
  * - msgs/YomkMsgs.h: 消息包定义
@@ -16,9 +17,10 @@
  * - boot/MyBoot: 生命周期管理
  */
 
-#include "YomkAPI.h"       // YomkServer 框架 API
-#include "boot/MyBoot.h"   // 生命周期管理类
-#include "msgs/YomkMsgs.h" // 消息包定义
+#include "YomkAPI.h"               // YomkServer 框架 API
+#include "boot/MyBoot.h"           // 生命周期管理类
+#include "msgs/YomkMsgs.h"         // 消息包定义
+#include "services/YomkServiceB.h" // 服务B（用例 16 直接构造验证注销标志）
 
 /**
  * @brief 程序入口
@@ -146,6 +148,40 @@ int main(int argc, char *argv[])
     else
     {
         YOMK_ERROR_TAG("main", "after delete: unexpected functionpool status: ", poolRespAfter.m_status);
+    }
+
+    /**
+     * 第五阶段：注销标志删除即停验证（问题 4B，第十六轮）
+     *
+     * 与第四阶段的差异：此处服务对象的强引用未归零（测试持有 srv），
+     * 仅置位注销标志（框架在 delService/同名替换的 deinit 前调用），
+     * 验证弱绑定回调不再等引用归零、立即失效：
+     * 1. 注销前调用弱绑定回调：正常执行（计数 +1，eOk）
+     * 2. markDeleted() 后再调用：被丢弃（计数不增，eNo），服务对象仍存活
+     */
+    {
+        auto srv = std::make_shared<YomkServiceB>(YOMK_SERVER_P);
+        int callCount = 0;
+        YomkServiceFunc weakCb = srv->weakFunc([&callCount](YomkPkgPtr)
+                                                   -> YomkResponse
+                                               {
+            callCount++;
+            return YomkResponse(YomkResponse::eOk, "4b alive"); });
+
+        YomkResponse respBefore = weakCb(nullptr);
+        srv->markDeleted();
+        YomkResponse respAfter = weakCb(nullptr);
+
+        if (respBefore.m_status == YomkResponse::eOk && callCount == 1 &&
+            respAfter.m_status == YomkResponse::eNo && callCount == 1)
+        {
+            YOMK_INFO_TAG("main", "case 16: weak callback stopped immediately after unregister while ref alive. [OK]");
+        }
+        else
+        {
+            YOMK_ERROR_TAG("main", "case 16: unexpected, callCount=", callCount,
+                           " before=", respBefore.m_status, " after=", respAfter.m_status);
+        }
     }
 
     // 等待用户输入，防止程序立即退出
