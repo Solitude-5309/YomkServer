@@ -18,6 +18,23 @@ public:
     virtual int after() = 0;
 };
 
+// YomkAPI 内部守卫宏（第十五轮）：单例未初始化时记日志并以 ret 提前返回，
+// 收敛约 45 处重复判空样板；仅供本文件内部使用（宏内含 return，仅用于函数体开头），不属于公共宏接口。
+// GET_SERVER 变体额外声明快照变量供后续使用（宏内含变量声明，同一函数内不可重复展开同名变量）
+#define YOMK_API_REQUIRE_SERVER(ret)                \
+    if (!serverSnapshot())                          \
+    {                                               \
+        YOMK_ERR_POS_LOG("YomkServer is not init"); \
+        return ret;                                 \
+    }
+#define YOMK_API_GET_SERVER_OR(ret, server)         \
+    auto server = serverSnapshot();                 \
+    if (!server)                                    \
+    {                                               \
+        YOMK_ERR_POS_LOG("YomkServer is not init"); \
+        return ret;                                 \
+    }
+
 class YOMKSERVER_EXPORT YomkAPI
 {
     // VERSION_API
@@ -67,23 +84,13 @@ public:
     template <typename T>
     static int newService(const std::string &srvName = "")
     {
-        auto server = serverSnapshot();
-        if (!server)
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return -1;
-        }
+        YOMK_API_GET_SERVER_OR(-1, server);
         return server->newService<T>(srvName);
     }
     // 所有权移交：注册成功后框架以 shared_ptr 持有该服务；禁止同一指针重复传入（双重释放）（第十四轮）
     static int addService(YomkService *srv = nullptr, const std::string &srvName = "")
     {
-        auto server = serverSnapshot();
-        if (!server)
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return -1;
-        }
+        YOMK_API_GET_SERVER_OR(-1, server);
 
         if (!srv)
         {
@@ -98,12 +105,7 @@ public:
     }
     static int delService(const std::string &srvName = "")
     {
-        auto server = serverSnapshot();
-        if (!server)
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return -1;
-        }
+        YOMK_API_GET_SERVER_OR(-1, server);
 
         if (srvName.empty())
         {
@@ -149,43 +151,25 @@ public:
 public:
     static void asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
     {
-        auto server = serverSnapshot();
-        if (!server)
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return;
-        }
+        YOMK_API_GET_SERVER_OR((void)0, server);
         return server->asyncRequest(url, pkg, func);
     }
     static YomkResponse request(const std::string &url, YomkPkgPtr pkg)
     {
-        auto server = serverSnapshot();
-        if (!server)
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_GET_SERVER_OR(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"), server);
         return server->request(url, pkg);
     }
     // LOG_API
 public:
     static YomkResponse SET_CONSOLE_LOG_PROXY(YomkConsoleLogProxyFunc func)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/set_console_log_proxy", YomkMkPtr(ConsoleLogProxy, yomk::ConsoleLogProxy{func}));
     }
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_INFO_TAG(const std::string &tag, Args &&...args)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, oss.str(), tag}));
@@ -193,11 +177,7 @@ public:
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_WARN_TAG(const std::string &tag, Args &&...args)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, oss.str(), tag}));
@@ -205,11 +185,7 @@ public:
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_ERROR_TAG(const std::string &tag, Args &&...args)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, oss.str(), tag}));
@@ -217,41 +193,25 @@ public:
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_DEBUG_TAG(const std::string &tag, Args &&...args)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, oss.str(), tag}));
     }
     static YomkResponse FILE_LOG_CREATE(const std::string &logDir, const std::string &logFile)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/create_file_logger", YomkMkPtr(LogFile, yomk::LogFile{logFile, logDir}));
     }
     static YomkResponse FILE_LOG_WRITE(const std::string &logFile)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/write_file_log", YomkMkPtr(String, logFile));
     }
     template <typename... Args>
     static YomkResponse FILE_LOG_INFO_TAG(const std::string &logFile, const std::string &tag, Args &&...args)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "[" + tag + "] " + oss.str(), logFile}));
@@ -259,11 +219,7 @@ public:
     template <typename... Args>
     static YomkResponse FILE_LOG_WARN_TAG(const std::string &logFile, const std::string &tag, Args &&...args)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, "[" + tag + "] " + oss.str(), logFile}));
@@ -271,11 +227,7 @@ public:
     template <typename... Args>
     static YomkResponse FILE_LOG_ERROR_TAG(const std::string &logFile, const std::string &tag, Args &&...args)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, "[" + tag + "] " + oss.str(), logFile}));
@@ -283,133 +235,77 @@ public:
     template <typename... Args>
     static YomkResponse FILE_LOG_DEBUG_TAG(const std::string &logFile, const std::string &tag, Args &&...args)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         (oss << ... << std::forward<Args>(args));
         return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, "[" + tag + "] " + oss.str(), logFile}));
     }
     static YomkResponse ON_CONSOLE_LOG_DEBUG()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/on_console_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug}));
     }
     static YomkResponse ON_CONSOLE_LOG_INFO()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/on_console_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo}));
     }
     static YomkResponse ON_CONSOLE_LOG_WARN()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/on_console_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn}));
     }
     static YomkResponse ON_CONSOLE_LOG_ERROR()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/on_console_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eError}));
     }
     static YomkResponse OFF_CONSOLE_LOG_DEBUG()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/off_console_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug}));
     }
     static YomkResponse OFF_CONSOLE_LOG_INFO()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/off_console_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo}));
     }
     static YomkResponse OFF_CONSOLE_LOG_WARN()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/off_console_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn}));
     }
     static YomkResponse OFF_CONSOLE_LOG_ERROR()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/off_console_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eError}));
     }
     static YomkResponse LOGGER_INFO_LOGGERS()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/loggers", nullptr);
     }
     static YomkResponse LOGGER_INFO_LOGGER(const std::string &loggerName)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/logger", YomkMkPtr(String, loggerName));
     }
     static YomkResponse LOGGER_INFO_ALL()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/all", nullptr);
     }
     // CONTEXT_API
 public:
     static YomkResponse CONTEXT_CREATE(const std::string &ctxName, YomkPkgPtr ctx)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/create", YomkMkPtr(Context, yomk::Context{ctxName, ctx}));
     }
     template <typename T>
     static std::shared_ptr<T> CONTEXT_GET(const std::string &msgName, const std::string &ctxName, std::shared_ptr<T> ctxDefault)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return ctxDefault;
-        }
+        YOMK_API_REQUIRE_SERVER(ctxDefault);
         YomkResponse response = request("/YomkContext/get", YomkMkPtr(Context, yomk::Context{ctxName, ctxDefault}));
         if (response.m_status == YomkResponse::eOk)
         {
@@ -427,101 +323,57 @@ public:
     }
     static YomkResponse CONTEXT_SET(const std::string &ctxName, YomkPkgPtr ctx)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/set", YomkMkPtr(Context, yomk::Context{ctxName, ctx}));
     }
     static YomkResponse CONTEXT_ON_CHECKER()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/turn_on_checker", nullptr);
     }
     static YomkResponse CONTEXT_OFF_CHECKER()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/turn_off_checker", nullptr);
     }
     static YomkResponse CONTEXT_SET_CHECKER(const std::string &ctxName, YomkContextCheckFunc checker)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/set_checker", YomkMkPtr(ContextChecker, yomk::ContextChecker{ctxName, checker}));
     }
     static YomkResponse CONTEXT_ON_MONITOR()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/turn_on_monitor", nullptr);
     }
     static YomkResponse CONTEXT_OFF_MONITOR()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/turn_off_monitor", nullptr);
     }
     static YomkResponse CONTEXT_SET_MONITOR(const std::string &ctxName, YomkContextMonitorFunc monitor, bool async = false)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/set_monitor", YomkMkPtr(ContextMonitor, yomk::ContextMonitor{ctxName, monitor, async}));
     }
     static YomkResponse CONTEXT_DESTROY(const std::string &ctxName)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/destroy", YomkMkPtr(String, ctxName));
     }
     static YomkResponse CONTEXT_INFO_KEYS()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/keys", nullptr);
     }
     static YomkResponse CONTEXT_INFO_KEY(const std::string &ctxName)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/key", YomkMkPtr(String, ctxName));
     }
     static YomkResponse CONTEXT_INFO_ALL()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/all", nullptr);
     }
     // EVENTLOOP_API
@@ -531,177 +383,101 @@ public:
         YomkServiceFunc m_defaultServiceFunc = nullptr,
         const std::string &msgName = "")
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/start", YomkMkPtr(Eventloop, yomk::Eventloop{eventLoopName, m_defaultServiceFunc, msgName}));
     }
     static YomkResponse EVENTLOOP_STOP(const std::string &eventLoopName)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/stop", YomkMkPtr(String, eventLoopName));
     }
     static YomkResponse EVENTLOOP_POST(const std::string &eventLoopName, YomkPkgPtr eventData, YomkServiceFunc eventHandle = nullptr, const std::string &tag = "")
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/post", YomkMkPtr(Event, yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     static YomkResponse EVENTLOOP_POST_WAIT(const std::string &eventLoopName, YomkPkgPtr eventData, YomkServiceFunc eventHandle = nullptr, const std::string &tag = "")
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/post_wait", YomkMkPtr(Event, yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     static YomkResponse EVENTLOOP_DESTROY(const std::string &eventLoopName)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/destroy", YomkMkPtr(String, eventLoopName));
     }
     static YomkResponse EVENTLOOP_INFO_LOOPS()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/loops", nullptr);
     }
     static YomkResponse EVENTLOOP_INFO_LOOP(const std::string &eventLoopName)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/loop", YomkMkPtr(String, eventLoopName));
     }
     static YomkResponse EVENTLOOP_INFO_LOOP(const std::string &eventLoopName, size_t tagCount)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/loop", YomkMkPtr(String, eventLoopName + " " + std::to_string(tagCount)));
     }
     static YomkResponse EVENTLOOP_INFO_ALL()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/all", nullptr);
     }
     // FUNCTIONPOOL_API
 public:
     static YomkResponse FUNCTIONPOOL_REGISTER(const std::string &funcName, YomkServiceFunc func, const std::string &msgName = "")
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/register", YomkMkPtr(Function, yomk::Function{funcName, func, msgName}));
     }
     static YomkResponse FUNCTIONPOOL_UNREGISTER(const std::string &funcName)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/unregister", YomkMkPtr(String, funcName));
     }
     static YomkResponse FUNCTIONPOOL_CALL(const std::string &funcName, YomkPkgPtr callData)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/call", YomkMkPtr(CallFunction, yomk::CallFunction{funcName, callData}));
     }
     static YomkResponse FUNCTIONPOOL_INFO_NAMES()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/names", nullptr);
     }
     static YomkResponse FUNCTIONPOOL_INFO_NAME(const std::string &funcName)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/name", YomkMkPtr(String, funcName));
     }
     static YomkResponse FUNCTIONPOOL_INFO_ALL()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/all", nullptr);
     }
     // SERVER_INFO_API
 public:
     static YomkResponse SERVER_INFO_SERVICES()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkServerInfo/services", nullptr);
     }
     static YomkResponse SERVER_INFO_FUNCTIONS(const std::string &srvName)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkServerInfo/functions", YomkMkPtr(String, srvName));
     }
     static YomkResponse SERVER_INFO_FUNCTION(const std::string &url)
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkServerInfo/function", YomkMkPtr(String, url));
     }
     static YomkResponse SERVER_INFO_ALL()
     {
-        if (!serverSnapshot())
-        {
-            YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::eInvalid, "YomkServer is not init");
-        }
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkServerInfo/all", nullptr);
     }
 
