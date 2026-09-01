@@ -106,3 +106,13 @@ void YomkService::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespo
     }
     m_p->asyncRequest(url, pkg, func);
 }
+
+bool YomkService::postAsyncTask(std::function<void()> task)
+{
+    if (!m_p)
+    {
+        YOMK_ERR_POS_LOG("service is null, please check service");
+        return false;
+    }
+    return m_p->postAsyncTask(std::move(task));
+}

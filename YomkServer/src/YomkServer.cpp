@@ -204,3 +204,13 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
         YOMK_ERR_POS_LOG("server is shutting down, async request ignored.");
     }
 }
+
+bool YomkServer::postAsyncTask(std::function<void()> task)
+{
+    if (!m_p)
+    {
+        YOMK_ERR_POS_LOG("server is null, please start the server.");
+        return false;
+    }
+    return m_p->postAsyncTask(std::move(task));
+}

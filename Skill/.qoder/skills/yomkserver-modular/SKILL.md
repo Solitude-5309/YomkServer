@@ -186,7 +186,7 @@ YOMK_SHUTDOWN();
 ```
 
 - `deinit()` 的四个触发时机：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、忘记关闭时服务器析构兜底（避免服务持有的 joinable 线程随析构触发 `std::terminate`）、同名服务被 `YOMK_ADD_SERVICE` 替换（旧服务先被锁外 `deinit`，再安装新服务）
-- 关闭时先排空在途异步请求（`YOMK_ASYNC_REQUEST` 由内部线程池执行，并发有界）再逐服务 `deinit`：`shutdown` 返回后无任何异步任务在执行；关闭后再提交的异步请求被拒绝并记日志；异步回调抛异常被框架捕获记日志，不会终止进程。线程池大小默认 `hardware_concurrency()/2` 向上取整（兜底 2），可经 `YOMK_INIT(n)` / `YomkServer::create(n)` 配置，仅首次初始化生效
+- 关闭时先排空在途异步请求（`YOMK_ASYNC_REQUEST` 由内部线程池执行，并发有界）再逐服务 `deinit`：`shutdown` 返回后无任何异步任务在执行；关闭后再提交的异步请求被拒绝并记日志；异步回调抛异常被框架捕获记日志，不会终止进程。Context 异步 monitor（`YOMK_CONTEXT_SET_MONITOR` async=true）与异步请求共用同一内部线程池（第十二轮）：关闭时同样排空后才返回，不再有退出期裸线程竞态；异步任务应保持轻量，重活经 EventLoop 或业务自建线程处理。线程池大小默认 `hardware_concurrency()/2` 向上取整（兜底 2），可经 `YOMK_INIT(n)` / `YomkServer::create(n)` 配置，仅首次初始化生效（第十三轮）：单例锁与持有器改为永生对象（堆分配不析构），退出清理经 `atexit` 注册：先在锁内置空快照、锁外再释放服务器，避免持锁触发池排空时与在途任务的快照读互锁；极端时序下最后引用在池任务内释放时，`stop()` 自检测避免自 join 崩溃，未显式 `YOMK_SHUTDOWN` 的进程也能安全退出
 - 覆写了 `deinit()` 的服务需保证幂等语义友好（重复触发只来自异常使用，但停止线程/释放资源应可重复执行不崩溃）
 
 ### 服务内省（调试）

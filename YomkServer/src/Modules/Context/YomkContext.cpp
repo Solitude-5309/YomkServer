@@ -1,6 +1,5 @@
 #include "YomkContext.h"
 #include <iostream>
-#include <thread>
 
 // 定点引入所需类型，避免在头文件中 using namespace（第十一轮）
 using yomk::ContextChecker;
@@ -165,8 +164,15 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
             }
             else
             {
-                std::thread t(monitor.contextMonitorFunc, context->d);
-                t.detach();
+                // 异步 monitor 投内部线程池（排空式停止），不再 detach 裸线程（第十二轮）；
+                // 值捕获回调与数据副本，任务执行期自包含，关闭后投递被拒绝并记日志丢弃
+                auto monitorFunc = monitor.contextMonitorFunc;
+                yomk::Context data = context->d;
+                if (!postAsyncTask([monitorFunc, data]()
+                                   { monitorFunc(data); }))
+                {
+                    YOMK_ERR_POS_LOG("server is shutting down, async monitor ignored.");
+                }
             }
         }
     }

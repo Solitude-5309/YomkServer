@@ -17,6 +17,7 @@
  * 12. URL 解析去重（第九轮）：统一解析路径对非法 URL 均拒绝并返回 eNo
  * 13. 错误传播（第十轮）：init 失败的服务注册返回非 0 并自动回滚，同名后续可正常注册
  * 14. 线程池可配置（第十一轮）：create(4) 后峰值并发受 4 约束且可达 4
+ * 15. 异步 monitor 池化（第十二轮）：异步 monitor 投内部线程池，shutdown 排空返回前必已执行
  *
  * 独立实例用例使用 YomkServer::create()，避免污染 YomkAPI 单例状态
  */
@@ -531,6 +532,42 @@ int main(int argc, char *argv[])
         else
         {
             std::cout << "[OK] configured pool size 4 honored." << std::endl;
+        }
+    }
+
+    // 用例 15：异步 monitor 池化排空 —— 独立实例 + /YomkContext，shutdown 返回前异步 monitor 必已执行（第十二轮）；
+    // 修复前异步 monitor 走 detach 裸线程，退出期与进程销毁竞态（概率性段错误）；池化后排空语义保证确定性执行。
+    // 注：用独立实例而非 YOMK_INIT（用例 9 已关闭单例且 call_once 不支持二次初始化），经 startService 注册模块服务走完整分发链。
+    {
+        auto server = YomkServer::create();
+        server->startService({"/YomkContext"});
+
+        std::atomic<int> monitorCount{0};
+        YomkResponse createResp = server->request("/YomkContext/create",
+                                                  YomkMkPtr(Context, yomk::Context{"mon_key", YomkMkPtr(String, "v0")}));
+        server->request("/YomkContext/turn_on_monitor", nullptr);
+        server->request("/YomkContext/set_monitor",
+                        YomkMkPtr(ContextMonitor, yomk::ContextMonitor{"mon_key",
+                                                                       [&monitorCount](yomk::Context)
+                                                                       { monitorCount.fetch_add(1); }, true}));
+        YomkResponse setResp = server->request("/YomkContext/set",
+                                               YomkMkPtr(Context, yomk::Context{"mon_key", YomkMkPtr(String, "v1")}));
+        if (createResp.m_status != YomkResponse::eOk || setResp.m_status != YomkResponse::eOk)
+        {
+            std::cout << "[FAIL] context create/set dispatch failed." << std::endl;
+            failed++;
+        }
+
+        server->shutdown(); // 排空语义：返回时池内任务（含异步 monitor）已全部执行
+
+        if (monitorCount.load() != 1)
+        {
+            std::cout << "[FAIL] async monitor not drained before shutdown, count: " << monitorCount.load() << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] async monitor drained before shutdown returned." << std::endl;
         }
     }
 

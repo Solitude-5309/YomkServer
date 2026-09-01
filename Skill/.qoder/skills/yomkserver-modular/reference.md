@@ -105,6 +105,7 @@ class YomkServer {
     std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string& srvName);  // 内省：指定服务的函数元信息
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    bool postAsyncTask(std::function<void()> task);  // 投递任意任务到内部异步线程池：已关闭/池已停止返回 false（第十二轮）
 };
 
 class YomkBoot {
@@ -125,6 +126,7 @@ class YomkService {
     std::map<std::string, YomkFuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    bool postAsyncTask(std::function<void()> task);  // 转发到服务器内部异步线程池；服务器已销毁/已关闭返回 false（第十二轮）
 };
 ```
 
@@ -138,7 +140,7 @@ class YomkService {
 | `YOMK_NEW_SERVICE(T, name)` | 注册服务（模板）；返回 0 成功 / -1 失败（如 init 失败自动回滚） |
 | `YOMK_ADD_SERVICE(srv, name)` | 注册服务（实例）；同名替换时旧服务先被锁外 deinit 再安装新服务；返回 0 成功 / -1 失败（如 init 失败自动回滚） |
 | `YOMK_DEL_SERVICE(name)` | 删除服务（后续请求返回 service not found，外流弱绑定回调自动失效） |
-| `YOMK_SHUTDOWN()` | 关闭服务器：先排空在途异步请求（拒新 -> 存量执行完 -> join 工作线程），再逐个服务调用 deinit() 并清空服务表、释放单例；幂等，关闭后不支持二次初始化 |
+| `YOMK_SHUTDOWN()` | 关闭服务器：先排空在途异步请求（拒新 -> 存量执行完 -> join 工作线程），再逐个服务调用 deinit() 并清空服务表、释放单例；幂等，关闭后不支持二次初始化；未显式调用时退出清理经 atexit 兜底（锁内置空快照、锁外释放，永生单例锁保证在途任务安全取空返回，无挂起/段错误） |
 | `YOMK_REQUEST(url, pkg)` | 同步请求 |
 | `YOMK_ASYNC_REQUEST(url, pkg, cb)` | 异步请求（内部线程池执行，并发有界；回调异常被框架捕获记日志；`YOMK_SHUTDOWN` 后提交被拒绝） |
 | `YOMK_SERVER_P` / `YOMK_SERVER_PTR` | 获取 Server 指针 |
@@ -153,7 +155,7 @@ class YomkService {
 | `YOMK_CONTEXT_ON/OFF_CHECKER()` | 开关检查器 |
 | `YOMK_CONTEXT_SET_CHECKER(key, func)` | 设置检查函数 |
 | `YOMK_CONTEXT_ON/OFF_MONITOR()` | 开关监控器 |
-| `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async=true异步回调监控函数） |
+| `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async=true 异步回调监控函数，异步分支投内部线程池，`YOMK_SHUTDOWN` 排空后返回，第十二轮） |
 | `YOMK_CONTEXT_INFO_KEYS()` | 内省：key 列表（返回 StringArray） |
 | `YOMK_CONTEXT_INFO_KEY(key)` | 内省：单 key 元信息（msg 格式 `key [类型名] checker:on\|off monitors:N(async:M)`） |
 | `YOMK_CONTEXT_INFO_ALL()` | 内省：全量 dump（每行同单 key 元信息格式） |

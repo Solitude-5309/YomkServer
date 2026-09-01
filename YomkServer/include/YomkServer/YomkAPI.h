@@ -6,6 +6,9 @@
 #include <iostream>
 #include <sstream>
 #include <mutex>
+#include <cstdlib>
+#include <new>
+#include <type_traits>
 
 class YOMKSERVER_EXPORT YomkBoot
 {
@@ -36,7 +39,12 @@ public:
                                   "/YomkEventLoop",
                                   "/YomkLogger",
                                   "/YomkServerInfo"});
-            setServer(server); });
+            setServer(server);
+            // 退出清理经 atexit 注册（晚于库内普通静态析构执行）：置空快照后释放服务器，
+            // 锁与持有器本体永不析构，在途池任务的迟到快照读永远拿到可用锁与空快照，
+            // 根除静态析构窗口内对已销毁锁加锁的挂起与对控制块的并发拷贝段错误（第十三轮）
+            std::atexit([]()
+                        { holder().destroy(); }); });
         return serverSnapshot();
     }
     static std::shared_ptr<YomkServer> serverInstance()
@@ -699,16 +707,48 @@ public:
 private:
     static std::shared_ptr<YomkServer> serverSnapshot()
     {
-        std::lock_guard<std::mutex> lock(m_serverMtx);
-        return m_pServer;
+        std::lock_guard<std::mutex> lock(mtx());
+        return holder().server;
     }
     static void setServer(std::shared_ptr<YomkServer> server)
     {
-        std::lock_guard<std::mutex> lock(m_serverMtx);
-        m_pServer = std::move(server);
+        std::lock_guard<std::mutex> lock(mtx());
+        holder().server = std::move(server);
     }
-    static std::shared_ptr<YomkServer> m_pServer;
-    static std::mutex m_serverMtx;
+    // 单例持有器（第十二轮引入，第十三轮改永生）：destroy() 先置空快照再释放服务器——
+    // 置空后在途池任务（如异步 monitor 回调发起的迟到快照读）取空返回，
+    // 避免释放路径（触发池排空）与任务并发拷贝同一 shared_ptr（段错误）。
+    struct ServerHolder
+    {
+        void destroy()
+        {
+            // 锁内仅置空并取出快照，锁外再释放（第十三轮）：
+            // 释放可能触发 dispose → 池排空 → join，期间在途任务会取快照（抢同一把锁），
+            // 若持锁释放则与任务互锁挂起（实证：worker 卡于 serverSnapshot 的 pthread_mutex_lock）
+            std::shared_ptr<YomkServer> local;
+            {
+                std::lock_guard<std::mutex> lock(YomkAPI::mtx());
+                local = std::move(YomkAPI::holder().server);
+            }
+            local.reset();
+        }
+        std::shared_ptr<YomkServer> server;
+    };
+    // 永生存储（第十三轮）：锁与持有器经堆分配故意泄漏，不注册析构，进程退出前始终有效。
+    // 背景：常规静态成员在退出期析构后，在途池任务再取快照会对已销毁的锁加锁（挂起，
+    // worker 栈实证卡于 serverSnapshot 内 pthread_mutex_lock）；静态跨线程销毁窗口无法靠定义顺序根治。
+    // 函数局部 static 保证首次使用即构造（未 init 时调用也安全，C++11 magic statics 线程安全），
+    // atexit 注册的 holder().destroy() 提供退出清理，幂等（显式 shutdown 后再调仅空转）。
+    static std::mutex &mtx()
+    {
+        static std::mutex *m = new std::mutex;
+        return *m;
+    }
+    static ServerHolder &holder()
+    {
+        static ServerHolder *h = new ServerHolder;
+        return *h;
+    }
 };
 #define STRINGIFY(x) #x
 #define TO_STRING(x) STRINGIFY(x)
