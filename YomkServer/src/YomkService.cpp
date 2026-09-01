@@ -61,7 +61,7 @@ bool YomkService::deleted() const
 {
     if (!m_p)
     {
-        return true; // 无实现体视同已失效，弱绑定回调一律丢弃（第十六轮）
+        return true; // 无实现体视同已失效，弱绑定回调一律丢弃
     }
     return m_p->deleted();
 }

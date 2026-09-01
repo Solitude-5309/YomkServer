@@ -26,7 +26,7 @@ void YomkServerPrivate::addService(YomkService *srv)
 
     // 同名替换：锁外对旧服务 deinit，与 delService 一致；在途请求持有的 shared_ptr 副本保证不与 invoke 并发析构。
     // 顺序为旧服务先 deinit，新服务随后由 YomkServer::addService 调 init()，同名服务任意时刻至多一次活跃生命周期。
-    // 替换前先置位注销标志（第十六轮）：旧服务的弱绑定回调立即失效，删除即停语义与 delService 一致
+    // 替换前先置位注销标志：旧服务的弱绑定回调立即失效，删除即停语义与 delService 一致
     if (oldSrv)
     {
         oldSrv->markDeleted();
@@ -50,7 +50,7 @@ int YomkServerPrivate::delService(const std::string &srvName)
     }
 
     // 锁外执行 deinit 与析构：在途请求持有的 shared_ptr 副本保证不会与 invoke 并发析构。
-    // 先置位注销标志（第十六轮）：删除即停，弱绑定回调立即丢弃，不等到引用归零；
+    // 先置位注销标志：删除即停，弱绑定回调立即丢弃，不等到引用归零；
     // shutdown 路径不置位（排空语义，排空期回调照常执行）
     srv->markDeleted();
     srv->deinit();
@@ -67,7 +67,7 @@ void YomkServerPrivate::shutdown()
 
     // 先停异步请求池（拒新 -> 排空 -> join）：服务 deinit 前保证无任何异步请求在执行，
     // 消除回调打到已 deinit 服务的功能性竞态；排空中嵌套发起的 asyncRequest 因 m_shutdown 已置位被拒绝，不会无限排空。
-    // 请求池排空期触发的迟到异步监控任务投给尚存活的 Context 监控池，随后由 YomkContext::deinit 排空停止（第十九轮）
+    // 请求池排空期触发的迟到异步监控任务投给尚存活的 Context 监控池，随后由 YomkContext::deinit 排空停止
     m_requestPool.stop();
 
     std::vector<std::shared_ptr<YomkService>> srvs;

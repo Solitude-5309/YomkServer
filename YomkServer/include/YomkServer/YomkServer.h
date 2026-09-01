@@ -11,10 +11,9 @@ class YomkServerPrivate;
 class YOMKSERVER_EXPORT YomkServer : public std::enable_shared_from_this<YomkServer>
 {
 public:
-    // 唯一构造入口：YomkServer 必须由 shared_ptr 持有（enable_shared_from_this 契约，
-    // YomkService 构造依赖 weak_from_this()）；栈构造/裸 new 在编译期被拒绝；
+    // 唯一构造入口：YomkServer 必须由 shared_ptr 持有，栈构造/裸 new 在编译期被拒绝。
     // asyncThreadCount 为异步请求池线程数：0 取默认（硬件并发数一半向上取整，兜底 2）；
-    // 异步监控池归 Context 模块自持（固定单线程保事件顺序，第十九轮）；线程池仅框架内部使用，不对用户暴露
+    // 线程池仅框架内部使用，不对用户暴露。
     static std::shared_ptr<YomkServer> create(std::size_t asyncThreadCount = 0)
     {
         return std::shared_ptr<YomkServer>(new YomkServer(asyncThreadCount));
@@ -30,16 +29,16 @@ public:
         if (srvName != "")
             srv->name(srvName);
 
-        return addService(srv); // 传播注册失败（如 init() 返回非 0）
+        return addService(srv);
     }
 
 public:
     int startService(std::vector<std::string> srvNames);
     // 注册服务：成功返回 0；服务器/服务为空、服务 init() 失败（自动回滚）返回 -1。
-    // 所有权移交：注册成功后框架以 shared_ptr 持有该服务；禁止同一指针重复传入（会产生两个控制块，双重释放）
+    // 所有权移交：注册成功后框架以 shared_ptr 持有该服务；禁止同一指针重复传入（双重释放）
     int addService(YomkService *srv);
     int delService(const std::string &srvName);
-    // 关闭后不支持重新注册/启动服务（框架单例依赖 std::call_once 初始化）
+    // 关闭服务器并逐服务调用 deinit()；关闭后不支持重新注册/启动服务（单进程单次初始化）
     void shutdown();
     std::vector<std::string> serviceNames();
     std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string &srvName);
@@ -48,6 +47,5 @@ public:
 
 private:
     YomkServer(std::size_t asyncThreadCount);
-    // 构造即初始化且全库无 reset，恒非空（构造私有化契约），成员函数不再重复判空（第十四轮）
     std::shared_ptr<YomkServerPrivate> m_p;
 };

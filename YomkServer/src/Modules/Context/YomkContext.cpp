@@ -2,7 +2,7 @@
 #include <exception>
 #include <iostream>
 
-// 定点引入所需类型，避免在头文件中 using namespace（第十一轮）
+// 定点引入所需类型，避免在头文件中 using namespace
 using yomk::ContextChecker;
 
 YomkContext::YomkContext(YomkServer *server)
@@ -13,7 +13,7 @@ YomkContext::YomkContext(YomkServer *server)
 
 int YomkContext::init()
 {
-    // 重建监控池（第十九轮）：池 stop 后不可复用，重建支持服务删除后重新注册；固定单线程保事件顺序
+    // 重建监控池：池 stop 后不可复用，重建支持服务删除后重新注册；固定单线程保事件顺序
     YomkInstallFunc("/create", YomkContext::create, Context);
     YomkInstallFunc("/destroy", YomkContext::destroy, String);
     YomkInstallFunc("/get", YomkContext::get, Context);
@@ -34,7 +34,7 @@ int YomkContext::init()
 void YomkContext::deinit()
 {
     // 排空式停止（拒新 -> 排空 -> join）：返回前存量异步监控任务已全部执行；
-    // stop 幂等，重复 deinit 安全（第十九轮）
+    // stop 幂等，重复 deinit 安全
     if (m_monitorPool)
     {
         m_monitorPool->stop();
@@ -173,7 +173,7 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         {
             if (!monitor.asyncMonitor)
             {
-                // 同步 monitor 异常防护（第十七轮）：用户回调异常记日志吞掉，不击穿 set 调用链，
+                // 同步 monitor 异常防护：用户回调异常记日志吞掉，不击穿 set 调用链，
                 // 与异步路径线程池兜底对齐；单个回调异常不影响后续 monitor 执行
                 try
                 {
@@ -190,7 +190,7 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
             }
             else
             {
-                // 异步 monitor 投 Context 模块自持的监控池（固定单线程保事件顺序，排空式停止，第十九轮）；
+                // 异步 monitor 投 Context 模块自持的监控池（固定单线程保事件顺序，排空式停止）；
                 // 值捕获回调与数据副本，任务执行期自包含，池已停止时投递被拒绝并记日志丢弃
                 auto monitorFunc = monitor.contextMonitorFunc;
                 yomk::Context data = context->d;

@@ -95,7 +95,7 @@ typedef std::function<bool(const yomk::Log& log)> YomkConsoleLogProxyFunc;
 
 ```cpp
 class YomkServer {
-    static std::shared_ptr<YomkServer> create();  // 唯一构造入口，必须 shared_ptr 持有（栈/裸 new 编译期拒绝）；可选参数：异步请求池线程数（0 取默认），异步监控池归 Context 模块自持（固定单线程保序），线程池仅内部使用不对用户暴露（第十九轮）
+    static std::shared_ptr<YomkServer> create();  // 唯一构造入口，必须 shared_ptr 持有（栈/裸 new 编译期拒绝）；可选参数：异步请求池线程数（0 取默认），异步监控池归 Context 模块自持（固定单线程保序），线程池仅内部使用不对用户暴露
     template<typename T> int newService(const std::string& srvName = "");  // 返回注册结果（0 成功 / -1 失败）
     int startService(std::vector<std::string> srvNames);
     int addService(YomkService* srv);  // init 失败返回 -1 并自动回滚
@@ -153,7 +153,7 @@ class YomkService {
 | `YOMK_CONTEXT_ON/OFF_CHECKER()` | 开关检查器 |
 | `YOMK_CONTEXT_SET_CHECKER(key, func)` | 设置检查函数 |
 | `YOMK_CONTEXT_ON/OFF_MONITOR()` | 开关监控器 |
-| `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async 可省略，默认 false）。同步（默认）：锁外内联执行、及时通知；回调异常被框架吞掉记日志，不影响 set 结果与后续 monitor（第十七轮）。异步（async=true）：投 Context 模块自持监控池的**延迟事件通知**，回调收到 set 时刻的**数据快照**；监控池固定单线程，事件顺序保证无条件成立（第十八轮），随 Context 服务 deinit 排空停止（第十九轮），时效不保证，适合耗时回调解耦；`YOMK_SHUTDOWN` 排空后返回（第十二轮）。**基于当前状态做判断的监控必须用同步** |
+| `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async 可省略，默认 false）。同步（默认）：锁外内联执行、及时通知；回调异常被框架吞掉记日志，不影响 set 结果与后续 monitor。异步（async=true）：投 Context 模块自持监控池的**延迟事件通知**，回调收到 set 时刻的**数据快照**；监控池固定单线程，事件顺序保证无条件成立，随 Context 服务 deinit 排空停止，时效不保证，适合耗时回调解耦；`YOMK_SHUTDOWN` 排空后返回。**基于当前状态做判断的监控必须用同步** |
 | `YOMK_CONTEXT_INFO_KEYS()` | 内省：key 列表（返回 StringArray） |
 | `YOMK_CONTEXT_INFO_KEY(key)` | 内省：单 key 元信息（msg 格式 `key [类型名] checker:on\|off monitors:N(async:M)`） |
 | `YOMK_CONTEXT_INFO_ALL()` | 内省：全量 dump（每行同单 key 元信息格式） |

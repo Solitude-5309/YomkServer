@@ -5,20 +5,21 @@
 #include <string>
 #include <cstdint>
 
-// 弱绑定服务成员函数：回调触发时先 lock() 判活，服务已删除则安全丢弃
-// 供注册到外部子系统（功能函数、FunctionPool、EventLoop、Context checker/monitor、异步响应）的回调使用
-// weakFunc 为泛型模板，返回的泛型 lambda 按调用处目标 std::function 类型隐式转换，
-// 同一个宏自动适配全部回调签名，无需按签名区分宏
+// 弱绑定服务成员函数：把服务成员函数注册到外部子系统（功能函数、FunctionPool、
+// EventLoop、Context checker/monitor、异步响应）的回调时必须使用。
+// 服务被删除后回调自动安全丢弃，不会悬垂 this 崩溃；同一个宏适配全部回调签名，无需按签名区分。
 #define YomkBindWeakSelf(Func) weakFunc(std::bind(&Func, this, std::placeholders::_1))
 
-// 弱绑定服务成员函数并装入本服务 funcMap
-// 两参形式等价旧行为；三参形式的 MsgName 声明该函数期望的消息类型（字符串化后仅作内省元数据，
-// 不参与运行时校验，预留后续扩展安全性校验）；通过参数个数分发实现可选末位参数，两参旧调用零改动
+// 弱绑定服务成员函数并装入本服务 funcMap（推荐在 init() 中使用）：
+// 两参形式 YomkInstallFunc(FuncName, Func)；
+// 三参形式 YomkInstallFunc(FuncName, Func, MsgName) 额外声明该函数期望的消息类型，
+// 字符串化后仅作内省元数据（/YomkServerInfo 可见），不参与运行时校验。
 #define YOMK_INSTALL_FUNC_SELECT(_1, _2, _3, NAME, ...) NAME
 #define YomkInstallFunc(...) YOMK_INSTALL_FUNC_SELECT(__VA_ARGS__, YOMK_INSTALL_FUNC_3, YOMK_INSTALL_FUNC_2)(__VA_ARGS__)
 #define YOMK_INSTALL_FUNC_2(FuncName, Func) installFunc(FuncName, YomkBindWeakSelf(Func))
 #define YOMK_INSTALL_FUNC_3(FuncName, Func, MsgName) installFunc(FuncName, YomkBindWeakSelf(Func), #MsgName)
 
+// 解包：校验消息类型并转为具体消息指针，失败自动 return {eNo, ...}（用于返回 YomkResponse 的函数）
 #define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                             \
     if (!pkg || pkg->name() != #MsgName)                                         \
         return {YomkResponse::eNo, " pkg is null or pkg is not " #MsgName ". "}; \
@@ -26,6 +27,7 @@
     if (!ptrName)                                                                \
         return {YomkResponse::eNo, " pkg[" #MsgName "] is dynamic_pointer_cast failed. "};
 
+// 解包：校验消息类型并转为具体消息指针，失败自动 return（用于 void 函数）
 #define YomkUnPackPkgVoid(pkg, MsgName, ptrName)                              \
     if (!pkg || pkg->name() != #MsgName)                                      \
         return;                                                               \
@@ -33,6 +35,7 @@
     if (!ptrName)                                                             \
         return;
 
+// 解包：校验消息类型并转为具体消息指针，失败不 return（指针为空），需手动判空
 #define YomkUnPackPkg(pkg, MsgName, ptrName)                     \
     YomkPtr(MsgName) ptrName = nullptr;                          \
     if (pkg && pkg->name() == #MsgName)                          \
@@ -40,6 +43,7 @@
         ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg); \
     }
 
+// 解包：按运行时字符串名匹配消息类型（供框架内部使用）
 #define YomkUnPackPkgT(pkg, MsgName, ClassName, ptrName)     \
     std::shared_ptr<ClassName> ptrName = nullptr;            \
     if (pkg && pkg->name() == MsgName)                       \
@@ -47,6 +51,10 @@
         ptrName = std::dynamic_pointer_cast<ClassName>(pkg); \
     }
 
+// 定义消息包：为数据类 DataType 生成可传输的消息类型，建议放在命名空间外、所有结构体定义之后统一声明：
+// 生成类型 yomk::MsgName_（类）与 yomk::MsgNamePtr（shared_ptr），
+// 消息名只能出现在 Yomk/YomkPtr/YomkMkPtr/YomkUnPackPkg* 等宏的参数位置，不能当裸类型名使用；
+// VarName 为消息包中携带数据的成员变量名，取数据时经 ptr->VarName 访问
 #define YomkMsg(DataType, MsgName, VarName)               \
     namespace yomk                                        \
     {                                                     \
@@ -64,6 +72,7 @@
         typedef std::shared_ptr<MsgName##_> MsgName##Ptr; \
     }
 
+// 消息包辅助宏：消息名 → 类型 / 指针类型 / 构造实例 / 创建消息包 shared_ptr（请求入参常用 YomkMkPtr）
 #define Yomk(MsgName) yomk::MsgName##_
 #define YomkMk(MsgName, ...) yomk::MsgName##_(__VA_ARGS__)
 #define YomkPtr(MsgName) yomk::MsgName##Ptr
@@ -116,11 +125,11 @@ typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 typedef std::function<YomkResponse(YomkPkgPtr pkg)> YomkServiceFunc;
 typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 
-// 功能函数元信息（调试内省用），预留扩展（如安全性校验信息）
+// 功能函数元信息（调试内省用）
 struct YomkFuncInfo
 {
     std::string m_funcName; // 功能函数名（/开头）
-    std::string m_msgName;  // 期望消息类型名（YomkInstallFunc 三参声明，可为空）
+    std::string m_msgName;  // 期望消息类型名（三参宏声明，可为空）
 };
 
 namespace yomk
@@ -242,7 +251,7 @@ typedef std::function<void(const yomk::Context &ctx)> YomkContextMonitorFunc;
 typedef std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context &ctx)> YomkContextCheckFunc;
 typedef std::function<bool(const yomk::Log &log)> YomkConsoleLogProxyFunc;
 
-// std msg
+// 内置标准类型消息包（成员名均为 d）
 YomkMsg(bool, Bool, d)
 YomkMsg(std::vector<bool>, BoolArray, d)
 YomkMsg(signed char, Char, d)

@@ -51,7 +51,7 @@ void YomkSimpleThreadPool::stop()
     {
         if (worker.joinable())
         {
-            // 自 join 防护（第十三轮）：最后引用若在池任务内释放（任务持有快照副本），
+            // 自 join 防护：最后引用若在池任务内释放（任务持有快照副本），
             // dispose 会落在工作线程上，此时 join 自身触发 resource_deadlock 终止，
             // 改为分离自己：进程已在退出路径，残余工作线程随进程终止回收。
             if (worker.get_id() == std::this_thread::get_id())
