@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(Yomk VERSION 2.3.31 LANGUAGES CXX)
+project(Yomk VERSION 2.3.32 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -19,6 +19,6 @@ include(${YomkServer_DIR}/CMakeLists.txt)
 message("-- YomkServer success.")
 
 # TestYomkServer
-set(TestYomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Test/YomkServer)
+set(TestYomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Test)
 include(${TestYomkServer_DIR}/CMakeLists.txt)
 message("-- TestYomkServer success.")
