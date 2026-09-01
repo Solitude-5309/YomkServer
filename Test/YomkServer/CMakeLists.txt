@@ -27,4 +27,16 @@ target_link_libraries(TestYomkService PRIVATE
 )
 # -------------el TestYomkService ----------------
 
+# -------------sl TestYomkWeakFunc ----------------
+set(TestYomkWeakFunc_SOURCES 
+    ${TestYomkServer_DIR}/YomkServer/TestYomkWeakFunc.cpp
+)
+add_executable(TestYomkWeakFunc 
+    ${TestYomkWeakFunc_SOURCES}
+)
+target_link_libraries(TestYomkWeakFunc PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkWeakFunc ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install
