@@ -72,8 +72,6 @@ public:
     YomkResponse invoke(const std::string &funcName, YomkPkgPtr pkg = nullptr);
     YomkResponse request(const std::string &url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
-    // 投递任意任务到服务器内部异步线程池：成功返回 true；服务器已销毁/已关闭/池已停止返回 false
-    bool postAsyncTask(std::function<void()> task);
 
 private:
     std::shared_ptr<YomkServicePrivate> m_p;

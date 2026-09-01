@@ -102,14 +102,3 @@ void YomkServicePrivate::asyncRequest(const std::string &url, YomkPkgPtr pkg, Yo
     }
     server->asyncRequest(url, pkg, func);
 }
-
-bool YomkServicePrivate::postAsyncTask(std::function<void()> task)
-{
-    auto server = m_weakServer.lock();
-    if (!server)
-    {
-        YOMK_ERR_POS_LOG("server has been destroyed, async task ignored.");
-        return false;
-    }
-    return server->postAsyncTask(std::move(task));
-}

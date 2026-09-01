@@ -18,6 +18,7 @@
  * 13. 错误传播（第十轮）：init 失败的服务注册返回非 0 并自动回滚，同名后续可正常注册
  * 14. 线程池可配置（第十一轮）：create(4) 后峰值并发受 4 约束且可达 4
  * 15. 异步 monitor 池化（第十二轮）：异步 monitor 投内部线程池，shutdown 排空返回前必已执行
+ * 16. 双独立池（第十八轮）：异步监控池固定单线程，监控事件严格按 set 顺序到达（FIFO）
  *
  * 独立实例用例使用 YomkServer::create()，避免污染 YomkAPI 单例状态
  */
@@ -568,6 +569,43 @@ int main(int argc, char *argv[])
         else
         {
             std::cout << "[OK] async monitor drained before shutdown returned." << std::endl;
+        }
+    }
+
+    // 用例 16：双独立池保序 —— 异步监控池固定单线程，连续 3 次 set 的监控事件严格按序到达（第十八轮）；
+    // 第十一轮线程数可配置后共享池多线程时顺序承诺不成立，独立监控池后无条件成立；排空语义同用例 15。
+    {
+        auto server = YomkServer::create();
+        server->startService({"/YomkContext"});
+
+        std::vector<std::string> seen;
+        server->request("/YomkContext/create",
+                        YomkMkPtr(Context, yomk::Context{"seq_key", YomkMkPtr(String, "v0")}));
+        server->request("/YomkContext/turn_on_monitor", nullptr);
+        server->request("/YomkContext/set_monitor",
+                        YomkMkPtr(ContextMonitor, yomk::ContextMonitor{"seq_key",
+                                                                       [&seen](yomk::Context ctx)
+                                                                       {
+                                                                           YomkUnPackPkgVoid(ctx.m_value, String, str);
+                                                                           seen.push_back(str->d);
+                                                                       },
+                                                                       true}));
+        for (const std::string &v : {"v1", "v2", "v3"})
+        {
+            server->request("/YomkContext/set",
+                            YomkMkPtr(Context, yomk::Context{"seq_key", YomkMkPtr(String, v)}));
+        }
+
+        server->shutdown(); // 排空语义：返回时监控池内事件已全部按序执行
+        std::vector<std::string> expected{"v1", "v2", "v3"};
+        if (seen != expected)
+        {
+            std::cout << "[FAIL] async monitor events out of order, got: " << seen.size() << " events." << std::endl;
+            failed++;
+        }
+        else
+        {
+            std::cout << "[OK] async monitor events arrived in set order (single-thread monitor pool)." << std::endl;
         }
     }
 

@@ -30,8 +30,6 @@ public:
     std::map<std::string, YomkFuncInfo> funcInfos();
     YomkResponse request(const std::string &url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
-    // 投递任意任务到服务器内部异步线程池：服务器已销毁/已关闭/池已停止返回 false
-    bool postAsyncTask(std::function<void()> task);
 
 protected:
     std::weak_ptr<YomkServer> m_weakServer;

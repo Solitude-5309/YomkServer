@@ -147,11 +147,11 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
         return;
     }
 
-    // 投递到内部线程池（有界工作线程），任务生命周期由池队列管理；
+    // 投递到异步请求池（有界工作线程），任务生命周期由池队列管理；
     // 按值捕获 shared_ptr，shutdown 排空阶段任务仍可安全执行，关闭后投递被拒绝
     std::shared_ptr<YomkServerPrivate> p = m_p;
-    if (!m_p->postAsyncTask([srvName, tmpFuncName, pkg, p, func]()
-                            {
+    if (!m_p->postRequestTask([srvName, tmpFuncName, pkg, p, func]()
+                              {
         if(func)
         {
             func(p->request(srvName, tmpFuncName, pkg));
@@ -163,9 +163,4 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
     {
         YOMK_ERR_POS_LOG("server is shutting down, async request ignored.");
     }
-}
-
-bool YomkServer::postAsyncTask(std::function<void()> task)
-{
-    return m_p->postAsyncTask(std::move(task));
 }

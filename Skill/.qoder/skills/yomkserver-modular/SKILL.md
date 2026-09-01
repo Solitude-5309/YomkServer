@@ -173,7 +173,7 @@ int XxxService::init() {
 
 服务删除后的丢弃语义：功能函数/FunctionPool 返回 `{eNo, "service has been deleted or unregistered, callback ignored."}`，Context checker 默认放行 `eAccept`，void 回调（monitor/异步响应）直接丢弃。弱绑定判活双层：**引用计数** + **注销标志**：`YOMK_DEL_SERVICE`/同名替换置位注销标志后，即使在途请求/异步任务仍持 `shared_ptr` 副本，弱绑定回调也立即丢弃（删除即停成立）；`YOMK_SHUTDOWN` 走排空语义不置位，排空期回调照常执行。子类仍须在 `deinit()` 停止非弱绑定路径的生产者（线程/定时器/外部注册）。
 
-**异步响应回调的生命周期要求**：`YOMK_ASYNC_REQUEST` 的 `func` 是裸回调，框架**不**自动弱绑定（区别于 `YomkInstallFunc` 的 funcMap 自动弱绑定）；回调由内部线程池执行，相对提交时刻可能延后。推荐优先用服务成员函数配合 `YomkBindWeakSelf` 作为异步回调（见上例）：服务对象由框架管理生命周期，服务删除后回调自动丢弃，无需人工管理捕获对象；若必须用普通 lambda，捕获的对象生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据。
+**异步响应回调的生命周期要求**：`YOMK_ASYNC_REQUEST` 的 `func` 是裸回调，框架**不**自动弱绑定（区别于 `YomkInstallFunc` 的 funcMap 自动弱绑定）；回调由异步请求池执行，相对提交时刻可能延后。推荐优先用服务成员函数配合 `YomkBindWeakSelf` 作为异步回调（见上例）：服务对象由框架管理生命周期，服务删除后回调自动丢弃，无需人工管理捕获对象；若必须用普通 lambda，捕获的对象生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据。
 
 需要停止自身线程/注销外部资源的服务覆写 `virtual void deinit()`，删除服务时由框架自动调用。
 
@@ -186,7 +186,7 @@ YOMK_SHUTDOWN();
 ```
 
 - `deinit()` 的四个触发时机：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、忘记关闭时服务器析构兜底（避免服务持有的 joinable 线程随析构触发 `std::terminate`）、同名服务被 `YOMK_ADD_SERVICE` 替换（旧服务先被锁外 `deinit`，再安装新服务）
-- 关闭时先排空在途异步请求（`YOMK_ASYNC_REQUEST` 由内部线程池执行，并发有界）再逐服务 `deinit`：`shutdown` 返回后无任何异步任务在执行；关闭后再提交的异步请求被拒绝并记日志；异步回调抛异常被框架捕获记日志，不会终止进程。Context 异步 monitor（`YOMK_CONTEXT_SET_MONITOR` async=true）与异步请求共用同一内部线程池（第十二轮）：关闭时同样排空后才返回，不再有退出期裸线程竞态；异步任务应保持轻量，重活经 EventLoop 或业务自建线程处理。线程池大小默认 `hardware_concurrency()/2` 向上取整（兜底 2），可经 `YOMK_INIT(n)` / `YomkServer::create(n)` 配置，仅首次初始化生效（第十三轮）：单例锁与持有器改为永生对象（堆分配不析构），退出清理经 `atexit` 注册：先在锁内置空快照、锁外再释放服务器，避免持锁触发池排空时与在途任务的快照读互锁；极端时序下最后引用在池任务内释放时，`stop()` 自检测避免自 join 崩溃，未显式 `YOMK_SHUTDOWN` 的进程也能安全退出
+- 关闭时先排空在途异步请求（`YOMK_ASYNC_REQUEST` 由异步请求池执行，并发有界）再逐服务 `deinit`：`shutdown` 返回后无任何异步任务在执行；关闭后再提交的异步请求被拒绝并记日志；异步回调抛异常被框架捕获记日志，不会终止进程。双池按归属分离（第十八/十九轮）：异步请求走服务器请求池（线程数可配置），Context 异步 monitor（`YOMK_CONTEXT_SET_MONITOR` async=true）走 Context 模块自持的监控池（固定单线程，事件顺序无条件保证，随 Context 服务 `deinit` 排空停止）；关闭时先停请求池，再逐服务 `deinit`（请求池排空期触发的迟到监控事件由尚存活的监控池收留并随后排空），不再有退出期裸线程竞态；异步任务应保持轻量，重活经 EventLoop 或业务自建线程处理。线程池仅框架内部使用，不对用户暴露：请求池大小默认 `hardware_concurrency()/2` 向上取整（兜底 2），可经 `YOMK_INIT(n)` / `YomkServer::create(n)` 配置，仅首次初始化生效（第十三轮）：单例锁与持有器改为永生对象（堆分配不析构），退出清理经 `atexit` 注册：先在锁内置空快照、锁外再释放服务器，避免持锁触发池排空时与在途任务的快照读互锁；极端时序下最后引用在池任务内释放时，`stop()` 自检测避免自 join 崩溃，未显式 `YOMK_SHUTDOWN` 的进程也能安全退出
 - 覆写了 `deinit()` 的服务需保证幂等语义友好（重复触发只来自异常使用，但停止线程/释放资源应可重复执行不崩溃）
 
 ### 服务内省（调试）

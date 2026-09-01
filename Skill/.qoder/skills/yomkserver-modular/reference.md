@@ -95,17 +95,16 @@ typedef std::function<bool(const yomk::Log& log)> YomkConsoleLogProxyFunc;
 
 ```cpp
 class YomkServer {
-    static std::shared_ptr<YomkServer> create();  // 唯一构造入口，必须 shared_ptr 持有（栈/裸 new 编译期拒绝）；可选参数：异步线程池线程数（0 取默认）
+    static std::shared_ptr<YomkServer> create();  // 唯一构造入口，必须 shared_ptr 持有（栈/裸 new 编译期拒绝）；可选参数：异步请求池线程数（0 取默认），异步监控池归 Context 模块自持（固定单线程保序），线程池仅内部使用不对用户暴露（第十九轮）
     template<typename T> int newService(const std::string& srvName = "");  // 返回注册结果（0 成功 / -1 失败）
     int startService(std::vector<std::string> srvNames);
     int addService(YomkService* srv);  // init 失败返回 -1 并自动回滚
     int delService(const std::string& srvName);  // 删除服务（锁外调 deinit 后析构）
-    void shutdown();  // 优雅关闭：停异步池（拒新->排空->join）后锁外逐个 deinit，幂等
+    void shutdown();  // 优雅关闭：停请求池（拒新->排空->join）后锁外逐个 deinit（Context 在其中自停监控池），幂等
     std::vector<std::string> serviceNames();  // 内省：全部服务名
     std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string& srvName);  // 内省：指定服务的函数元信息
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
-    bool postAsyncTask(std::function<void()> task);  // 投递任意任务到内部异步线程池：已关闭/池已停止返回 false（第十二轮）
 };
 
 class YomkBoot {
@@ -126,7 +125,6 @@ class YomkService {
     std::map<std::string, YomkFuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
-    bool postAsyncTask(std::function<void()> task);  // 转发到服务器内部异步线程池；服务器已销毁/已关闭返回 false（第十二轮）
 };
 ```
 
@@ -142,7 +140,7 @@ class YomkService {
 | `YOMK_DEL_SERVICE(name)` | 删除服务（后续请求返回 service not found，外流弱绑定回调立即失效：置位注销标志后即使强引用未归零也丢弃，同名替换同语义；YOMK_SHUTDOWN 走排空语义不置位） |
 | `YOMK_SHUTDOWN()` | 关闭服务器：先排空在途异步请求（拒新 -> 存量执行完 -> join 工作线程），再逐个服务调用 deinit() 并清空服务表、释放单例；幂等，关闭后不支持二次初始化；未显式调用时退出清理经 atexit 兜底（锁内置空快照、锁外释放，永生单例锁保证在途任务安全取空返回，无挂起/段错误） |
 | `YOMK_REQUEST(url, pkg)` | 同步请求 |
-| `YOMK_ASYNC_REQUEST(url, pkg, cb)` | 异步请求（内部线程池执行，并发有界；回调异常被框架捕获记日志；`YOMK_SHUTDOWN` 后提交被拒绝） |
+| `YOMK_ASYNC_REQUEST(url, pkg, cb)` | 异步请求（异步请求池执行，并发有界；回调异常被框架捕获记日志；`YOMK_SHUTDOWN` 后提交被拒绝） |
 | `YOMK_SERVER_P` / `YOMK_SERVER_PTR` | 获取 Server 指针 |
 
 ### Context
@@ -155,7 +153,7 @@ class YomkService {
 | `YOMK_CONTEXT_ON/OFF_CHECKER()` | 开关检查器 |
 | `YOMK_CONTEXT_SET_CHECKER(key, func)` | 设置检查函数 |
 | `YOMK_CONTEXT_ON/OFF_MONITOR()` | 开关监控器 |
-| `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async 可省略，默认 false）。同步（默认）：锁外内联执行、及时通知；回调异常被框架吞掉记日志，不影响 set 结果与后续 monitor（第十七轮）。异步（async=true）：投内部线程池的**延迟事件通知**，回调收到 set 时刻的**数据快照**；事件顺序保证（单线程池 FIFO），时效不保证，适合耗时回调解耦；`YOMK_SHUTDOWN` 排空后返回（第十二轮）。**基于当前状态做判断的监控必须用同步** |
+| `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async 可省略，默认 false）。同步（默认）：锁外内联执行、及时通知；回调异常被框架吞掉记日志，不影响 set 结果与后续 monitor（第十七轮）。异步（async=true）：投 Context 模块自持监控池的**延迟事件通知**，回调收到 set 时刻的**数据快照**；监控池固定单线程，事件顺序保证无条件成立（第十八轮），随 Context 服务 deinit 排空停止（第十九轮），时效不保证，适合耗时回调解耦；`YOMK_SHUTDOWN` 排空后返回（第十二轮）。**基于当前状态做判断的监控必须用同步** |
 | `YOMK_CONTEXT_INFO_KEYS()` | 内省：key 列表（返回 StringArray） |
 | `YOMK_CONTEXT_INFO_KEY(key)` | 内省：单 key 元信息（msg 格式 `key [类型名] checker:on\|off monitors:N(async:M)`） |
 | `YOMK_CONTEXT_INFO_ALL()` | 内省：全量 dump（每行同单 key 元信息格式） |

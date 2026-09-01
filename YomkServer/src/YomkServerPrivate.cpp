@@ -65,9 +65,10 @@ void YomkServerPrivate::shutdown()
         return;
     }
 
-    // 先停异步任务池（拒新 -> 排空 -> join）：服务 deinit 前保证无任何异步任务在执行，
-    // 消除回调打到已 deinit 服务的功能性竞态；排空中嵌套发起的 asyncRequest 因 m_shutdown 已置位被拒绝，不会无限排空
-    m_asyncPool.stop();
+    // 先停异步请求池（拒新 -> 排空 -> join）：服务 deinit 前保证无任何异步请求在执行，
+    // 消除回调打到已 deinit 服务的功能性竞态；排空中嵌套发起的 asyncRequest 因 m_shutdown 已置位被拒绝，不会无限排空。
+    // 请求池排空期触发的迟到异步监控任务投给尚存活的 Context 监控池，随后由 YomkContext::deinit 排空停止（第十九轮）
+    m_requestPool.stop();
 
     std::vector<std::shared_ptr<YomkService>> srvs;
     {
@@ -87,14 +88,14 @@ void YomkServerPrivate::shutdown()
     }
 }
 
-bool YomkServerPrivate::postAsyncTask(std::function<void()> task)
+bool YomkServerPrivate::postRequestTask(std::function<void()> task)
 {
     // 服务器已关闭直接拒绝，池已停止时 post 同样返回 false
     if (m_shutdown.load())
     {
         return false;
     }
-    return m_asyncPool.post(std::move(task));
+    return m_requestPool.post(std::move(task));
 }
 
 YomkResponse YomkServerPrivate::request(const std::string &srvName, const std::string &funcName, YomkPkgPtr pkg)

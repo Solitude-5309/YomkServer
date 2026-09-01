@@ -13,6 +13,7 @@ YomkContext::YomkContext(YomkServer *server)
 
 int YomkContext::init()
 {
+    // 重建监控池（第十九轮）：池 stop 后不可复用，重建支持服务删除后重新注册；固定单线程保事件顺序
     YomkInstallFunc("/create", YomkContext::create, Context);
     YomkInstallFunc("/destroy", YomkContext::destroy, String);
     YomkInstallFunc("/get", YomkContext::get, Context);
@@ -26,7 +27,18 @@ int YomkContext::init()
     YomkInstallFunc("/keys", YomkContext::keys);
     YomkInstallFunc("/key", YomkContext::keyInfo, String);
     YomkInstallFunc("/all", YomkContext::listAll);
+    m_monitorPool = std::make_unique<YomkSimpleThreadPool>(1);
     return 0;
+}
+
+void YomkContext::deinit()
+{
+    // 排空式停止（拒新 -> 排空 -> join）：返回前存量异步监控任务已全部执行；
+    // stop 幂等，重复 deinit 安全（第十九轮）
+    if (m_monitorPool)
+    {
+        m_monitorPool->stop();
+    }
 }
 
 // 组装单个 key 的元信息行：key [类型名] checker:on|off monitors:N(async:M)
@@ -178,14 +190,14 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
             }
             else
             {
-                // 异步 monitor 投内部线程池（排空式停止），不再 detach 裸线程（第十二轮）；
-                // 值捕获回调与数据副本，任务执行期自包含，关闭后投递被拒绝并记日志丢弃
+                // 异步 monitor 投 Context 模块自持的监控池（固定单线程保事件顺序，排空式停止，第十九轮）；
+                // 值捕获回调与数据副本，任务执行期自包含，池已停止时投递被拒绝并记日志丢弃
                 auto monitorFunc = monitor.contextMonitorFunc;
                 yomk::Context data = context->d;
-                if (!postAsyncTask([monitorFunc, data]()
-                                   { monitorFunc(data); }))
+                if (!(m_monitorPool && m_monitorPool->post([monitorFunc, data]()
+                                                           { monitorFunc(data); })))
                 {
-                    YOMK_ERR_POS_LOG("server is shutting down, async monitor ignored.");
+                    YOMK_ERR_POS_LOG("context monitor pool is stopped, async monitor ignored.");
                 }
             }
         }
