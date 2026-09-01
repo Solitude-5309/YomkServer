@@ -9,9 +9,8 @@
 #else
 #define YOMKSERVER_EXPORT __declspec(dllimport)
 #endif
-#elif defined(__linux__)
-#define YOMKSERVER_EXPORT __attribute__((visibility("default")))
 #else
+// Linux 及其他平台（第十四轮：合并原 __linux__ 与 #else 两个相同分支）
 #define YOMKSERVER_EXPORT __attribute__((visibility("default")))
 #endif
 

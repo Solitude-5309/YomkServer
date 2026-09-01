@@ -34,7 +34,8 @@ public:
 
 public:
     int startService(std::vector<std::string> srvNames);
-    // 注册服务：成功返回 0；服务器/服务为空、服务 init() 失败（自动回滚）返回 -1
+    // 注册服务：成功返回 0；服务器/服务为空、服务 init() 失败（自动回滚）返回 -1。
+    // 所有权移交：注册成功后框架以 shared_ptr 持有该服务；禁止同一指针重复传入（会产生两个控制块，双重释放）
     int addService(YomkService *srv);
     int delService(const std::string &srvName);
     // 关闭后不支持重新注册/启动服务（框架单例依赖 std::call_once 初始化）
@@ -48,5 +49,6 @@ public:
 
 private:
     YomkServer(std::size_t asyncThreadCount);
+    // 构造即初始化且全库无 reset，恒非空（构造私有化契约），成员函数不再重复判空（第十四轮）
     std::shared_ptr<YomkServerPrivate> m_p;
 };

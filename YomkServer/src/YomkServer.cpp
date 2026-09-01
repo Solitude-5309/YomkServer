@@ -86,12 +86,6 @@ int YomkServer::startService(std::vector<std::string> srvNames)
 
 int YomkServer::addService(YomkService *srv)
 {
-    if (!m_p)
-    {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return -1;
-    }
-
     if (!srv)
     {
         YOMK_ERR_POS_LOG("service is null, please check the service.");
@@ -112,54 +106,26 @@ int YomkServer::addService(YomkService *srv)
 
 int YomkServer::delService(const std::string &srvName)
 {
-    if (!m_p)
-    {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return -1;
-    }
-
     return m_p->delService(srvName);
 }
 
 void YomkServer::shutdown()
 {
-    if (!m_p)
-    {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return;
-    }
-
     m_p->shutdown();
 }
 
 std::vector<std::string> YomkServer::serviceNames()
 {
-    if (!m_p)
-    {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return {};
-    }
     return m_p->serviceNames();
 }
 
 std::map<std::string, YomkFuncInfo> YomkServer::serviceFuncInfos(const std::string &srvName)
 {
-    if (!m_p)
-    {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return {};
-    }
     return m_p->serviceFuncInfos(srvName);
 }
 
 YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)
 {
-    if (!m_p)
-    {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return YomkResponse(YomkResponse::eNo, "server is null, please start the server.");
-    }
-
     std::string srvName;
     std::string tmpFuncName;
     std::string errMsg;
@@ -173,12 +139,6 @@ YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)
 
 void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
 {
-    if (!m_p)
-    {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return;
-    }
-
     std::string srvName;
     std::string tmpFuncName;
     std::string errMsg;
@@ -207,10 +167,5 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
 
 bool YomkServer::postAsyncTask(std::function<void()> task)
 {
-    if (!m_p)
-    {
-        YOMK_ERR_POS_LOG("server is null, please start the server.");
-        return false;
-    }
     return m_p->postAsyncTask(std::move(task));
 }

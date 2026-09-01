@@ -75,6 +75,7 @@ public:
         }
         return server->newService<T>(srvName);
     }
+    // 所有权移交：注册成功后框架以 shared_ptr 持有该服务；禁止同一指针重复传入（双重释放）（第十四轮）
     static int addService(YomkService *srv = nullptr, const std::string &srvName = "")
     {
         auto server = serverSnapshot();
