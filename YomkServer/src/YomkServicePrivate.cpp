@@ -21,6 +21,13 @@ void YomkServicePrivate::installFunc(const std::string &funcName, YomkServiceFun
         return;
     }
 
+    // 空函数对象拒绝安装：否则 invoke 命中后执行空 std::function 抛 bad_function_call 终止进程
+    if (!func)
+    {
+        YOMK_ERR_POS_LOG("function is null, install function refused -> " + funcName);
+        return;
+    }
+
     std::unique_lock<std::shared_mutex> lock(m_funcMapMtx);
     if (m_funcMap.find(funcName) != m_funcMap.end())
     {
