@@ -63,4 +63,40 @@ target_link_libraries(TestYomkShutdownSeq PRIVATE
 )
 # -------------el TestYomkShutdownSeq ----------------
 
+# -------------sl TestYomkAPINotInit ----------------
+set(TestYomkAPINotInit_SOURCES 
+    ${TestYomkServer_DIR}/YomkServer/TestYomkAPINotInit.cpp
+)
+add_executable(TestYomkAPINotInit 
+    ${TestYomkAPINotInit_SOURCES}
+)
+target_link_libraries(TestYomkAPINotInit PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkAPINotInit ----------------
+
+# -------------sl TestYomkAPILifecycle ----------------
+set(TestYomkAPILifecycle_SOURCES 
+    ${TestYomkServer_DIR}/YomkServer/TestYomkAPILifecycle.cpp
+)
+add_executable(TestYomkAPILifecycle 
+    ${TestYomkAPILifecycle_SOURCES}
+)
+target_link_libraries(TestYomkAPILifecycle PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkAPILifecycle ----------------
+
+# -------------sl TestYomkBoot ----------------
+set(TestYomkBoot_SOURCES 
+    ${TestYomkServer_DIR}/YomkServer/TestYomkBoot.cpp
+)
+add_executable(TestYomkBoot 
+    ${TestYomkBoot_SOURCES}
+)
+target_link_libraries(TestYomkBoot PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkBoot ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install

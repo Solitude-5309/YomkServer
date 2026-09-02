@@ -13,6 +13,8 @@
 class YOMKSERVER_EXPORT YomkBoot
 {
 public:
+    // 虚析构：boot() 内以 unique_ptr<YomkBoot> 接管指针，析构须经基类指针正确调用派生类析构
+    virtual ~YomkBoot() {}
     virtual int before() = 0;
     virtual int start() = 0;
     virtual int after() = 0;
