@@ -3,6 +3,25 @@
 # 引用非导出内部头（如 YomkSimpleThreadPool.h）需要源码目录
 include_directories(${YomkServer_DIR}/src)
 
+# MC8：sanitizer 开关（off/asan/tsan），选项通过 PUBLIC 附加到 YomkServer 库，
+# 依赖方（Examples、旧测试、新测试）自动继承，避免逐个目标设置
+set(YOMK_TEST_SANITIZER off CACHE STRING "Sanitizer for tests: off/asan/tsan")
+set_property(CACHE YOMK_TEST_SANITIZER PROPERTY STRINGS off asan tsan)
+
+if(NOT YOMK_TEST_SANITIZER STREQUAL "off")
+    if(YOMK_TEST_SANITIZER STREQUAL "asan")
+        set(_YOMK_SAN_FLAGS -fsanitize=address,undefined -fno-omit-frame-pointer -g -O1)
+    elseif(YOMK_TEST_SANITIZER STREQUAL "tsan")
+        set(_YOMK_SAN_FLAGS -fsanitize=thread -fno-omit-frame-pointer -g -O1)
+    else()
+        message(FATAL_ERROR "Unknown YOMK_TEST_SANITIZER=${YOMK_TEST_SANITIZER}, expected off/asan/tsan")
+    endif()
+
+    target_compile_options(YomkServer PUBLIC ${_YOMK_SAN_FLAGS})
+    target_link_options(YomkServer PUBLIC ${_YOMK_SAN_FLAGS})
+    message(STATUS "YOMK_TEST_SANITIZER=${YOMK_TEST_SANITIZER}, flags=${_YOMK_SAN_FLAGS}")
+endif()
+
 # -------------sl TestYomkSimpleThreadPool ----------------
 set(TestYomkSimpleThreadPool_SOURCES 
     ${TestYomkServer_DIR}/YomkServer/TestYomkSimpleThreadPool.cpp

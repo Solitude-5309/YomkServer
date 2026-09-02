@@ -14,6 +14,14 @@ YomkServer::YomkServer(std::size_t asyncThreadCount)
 {
 }
 
+YomkServer::~YomkServer()
+{
+    // 析构时显式关闭：确保异步请求池在 m_p 仍被 shared_ptr 持有时完成排空，
+    // 使池中任务通过 weak_ptr.lock() 仍能安全访问 YomkServerPrivate。
+    if (m_p)
+        m_p->shutdown();
+}
+
 // 解析请求 url 为服务名与函数名（/ServiceName/func_name）；
 // 失败时记录日志并填充错误消息，返回 false（供 request 构造响应，供 asyncRequest 直接丢弃）
 static bool parseRequestUrl(const std::string &url, std::string &srvName, std::string &funcName, std::string &errMsg)
@@ -165,18 +173,24 @@ void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkRespon
     }
 
     // 投递到异步请求池（有界工作线程），任务生命周期由池队列管理；
-    // 按值捕获 shared_ptr，shutdown 排空阶段任务仍可安全执行，关闭后投递被拒绝
-    std::shared_ptr<YomkServerPrivate> p = m_p;
-    if (!m_p->postRequestTask([srvName, tmpFuncName, pkg, p, func]()
-                              {
-        if(func)
+    // 使用 weak_ptr 捕获，避免任务持有 shared_ptr 形成 pool->task->YomkServerPrivate
+    // 的循环引用；lambda 执行前 lock() 判活，确保 YomkServerPrivate 仍在。
+    std::weak_ptr<YomkServerPrivate> weakP = m_p;
+    auto callback = [srvName, tmpFuncName, pkg, weakP, func]()
+    {
+        auto p = weakP.lock();
+        if (!p)
+            return;
+        if (func)
         {
             func(p->request(srvName, tmpFuncName, pkg));
         }
         else
         {
             p->request(srvName, tmpFuncName, pkg);
-        } }))
+        }
+    };
+    if (!m_p->postRequestTask(callback))
     {
         YOMK_ERR_POS_LOG("server is shutting down, async request ignored.");
     }

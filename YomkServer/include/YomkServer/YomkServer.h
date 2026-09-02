@@ -18,7 +18,7 @@ public:
     {
         return std::shared_ptr<YomkServer>(new YomkServer(asyncThreadCount));
     }
-    virtual ~YomkServer() {}
+    virtual ~YomkServer();
 
 public:
     template <typename T>

@@ -1,0 +1,4 @@
+# YomkAPI 永生单例：mtx()/holder() 堆分配故意泄漏，避免静态析构窗口问题
+# 详见 YomkServer/src/YomkAPI.cpp 实现说明第 2 节
+leak:YomkAPI::mtx()
+leak:YomkAPI::holder()
