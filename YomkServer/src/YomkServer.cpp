@@ -95,7 +95,24 @@ int YomkServer::addService(YomkService *srv)
     // 先入表取得 shared_ptr 所有权，保证 init() 内 weak_from_this() 有效
     m_p->addService(srv);
 
-    if (srv->init() != 0)
+    // init 抛异常视同失败：捕获后走统一回滚，避免半初始化服务残留在表
+    int initRet = 0;
+    try
+    {
+        initRet = srv->init();
+    }
+    catch (const std::exception &e)
+    {
+        YOMK_ERR_POS_LOG("service init exception: " + srv->name() + ", what: " + e.what());
+        initRet = -1;
+    }
+    catch (...)
+    {
+        YOMK_ERR_POS_LOG("service init unknown exception: " + srv->name());
+        initRet = -1;
+    }
+
+    if (initRet != 0)
     {
         YOMK_ERR_POS_LOG("service init error: " + srv->name());
         m_p->delService(srv->name());
