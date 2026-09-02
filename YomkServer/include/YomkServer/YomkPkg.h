@@ -67,7 +67,7 @@
             virtual ~MsgName##_() {}                      \
                                                           \
         public:                                           \
-            DataType VarName;                             \
+            DataType VarName{};                           \
         };                                                \
         typedef std::shared_ptr<MsgName##_> MsgName##Ptr; \
     }
@@ -150,10 +150,11 @@ namespace yomk
 
     struct Event
     {
+        virtual ~Event() = default;
         std::string m_eventLoopName;
         YomkPkgPtr m_pkg;
         YomkServiceFunc m_serviceFunc;
-        std::uint64_t m_eventId;
+        std::uint64_t m_eventId = 0;
         YomkResponse m_response;
         std::function<void()> m_waitCallback;
         std::string m_tag;
@@ -225,12 +226,12 @@ namespace yomk
     {
         std::string m_key;
         std::function<void(Context ctx)> m_contextMonitorFunc;
-        bool m_asyncMonitor;
+        bool m_asyncMonitor = false;
     };
 
     struct VoidPointer
     {
-        void *m_ptr;
+        void *m_ptr = nullptr;
     };
 
 }

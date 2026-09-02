@@ -503,12 +503,12 @@ private:
     };
     static std::mutex &mtx()
     {
-        static std::mutex *m = new std::mutex;
+        static std::mutex *const m = new std::mutex;
         return *m;
     }
     static ServerHolder &holder()
     {
-        static ServerHolder *h = new ServerHolder;
+        static ServerHolder *const h = new ServerHolder;
         return *h;
     }
 };

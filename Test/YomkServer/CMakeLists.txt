@@ -22,6 +22,64 @@ if(NOT YOMK_TEST_SANITIZER STREQUAL "off")
     message(STATUS "YOMK_TEST_SANITIZER=${YOMK_TEST_SANITIZER}, flags=${_YOMK_SAN_FLAGS}")
 endif()
 
+# MC9：静态代码分析开关（OFF/ON），默认 OFF，不污染默认构建
+set(YOMK_TEST_STATIC_ANALYZE OFF CACHE BOOL "Enable clang-tidy/cppcheck static analysis targets")
+if(YOMK_TEST_STATIC_ANALYZE)
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/static-analysis)
+
+    # 被测范围：非 Modules 的 YomkServer 源文件与公共头
+    file(GLOB _YOMK_SA_SRCS
+        ${YomkServer_DIR}/src/*.cpp
+        ${YomkServer_DIR}/src/*.h
+        ${YomkServer_DIR}/include/YomkServer/*.h
+    )
+
+    # clang-tidy 目标：依赖 compile_commands.json
+    find_program(CLANG_TIDY_EXE NAMES clang-tidy)
+    if(CLANG_TIDY_EXE)
+        set(_YOMK_TIDY_CHECKS
+            "-checks=bugprone-*,-bugprone-macro-parentheses,-bugprone-easily-swappable-parameters,cppcoreguidelines-*,-cppcoreguidelines-owning-memory,-cppcoreguidelines-macro-usage,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-special-member-functions,-cppcoreguidelines-explicit-virtual-functions,-cppcoreguidelines-non-private-member-variables-in-classes,-cppcoreguidelines-avoid-non-const-global-variables,clang-analyzer-*,performance-*,-performance-unnecessary-value-param,portability-*"
+        )
+        add_custom_target(YomkServer-clang-tidy
+            COMMAND ${CLANG_TIDY_EXE}
+                ${_YOMK_TIDY_CHECKS}
+                -header-filter=${YomkServer_DIR}
+                -p=${CMAKE_BINARY_DIR}
+                ${_YOMK_SA_SRCS}
+                > ${CMAKE_BINARY_DIR}/static-analysis/clang-tidy.log 2>&1
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Running clang-tidy on YomkServer non-Modules sources"
+        )
+    else()
+        message(STATUS "clang-tidy not found, YomkServer-clang-tidy target disabled")
+    endif()
+
+    # Cppcheck 目标
+    find_program(CPPCHECK_EXE NAMES cppcheck)
+    if(CPPCHECK_EXE)
+        add_custom_target(YomkServer-cppcheck
+            COMMAND ${CPPCHECK_EXE}
+                --language=c++
+                --std=c++17
+                --enable=warning,style,performance,portability,information
+                --suppress=missingInclude
+                --suppress=noExplicitConstructor
+                --suppress=useStlAlgorithm
+                --inline-suppr
+                --template=gcc
+                --error-exitcode=0
+                -I ${YomkServer_DIR}/include
+                -I ${YomkServer_DIR}/src
+                ${_YOMK_SA_SRCS}
+                > ${CMAKE_BINARY_DIR}/static-analysis/cppcheck.log 2>&1
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Running cppcheck on YomkServer non-Modules sources"
+        )
+    else()
+        message(STATUS "cppcheck not found, YomkServer-cppcheck target disabled")
+    endif()
+endif()
+
 # -------------sl TestYomkSimpleThreadPool ----------------
 set(TestYomkSimpleThreadPool_SOURCES 
     ${TestYomkServer_DIR}/YomkServer/TestYomkSimpleThreadPool.cpp

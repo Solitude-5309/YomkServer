@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(Yomk VERSION 2.4.8 LANGUAGES CXX)
+# 测试构建默认导出 compile_commands.json，供 clang-tidy 解析包含路径与宏
+option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
+if(YOMK_BUILD_TESTS AND NOT DEFINED CMAKE_EXPORT_COMPILE_COMMANDS)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
+project(Yomk VERSION 2.4.9 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -30,7 +36,6 @@ include(${ExamplesYomkServer_DIR}/CMakeLists.txt)
 message("-- ExamplesYomkServer success.")
 
 # TestYomkServer（框架内部全面测试，可选编译，不安装）
-option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 if(YOMK_BUILD_TESTS)
     set(TestYomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Test)
     include(${TestYomkServer_DIR}/CMakeLists.txt)
