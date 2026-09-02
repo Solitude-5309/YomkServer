@@ -51,4 +51,16 @@ target_link_libraries(TestYomkServer PRIVATE
 )
 # -------------el TestYomkServer ----------------
 
+# -------------sl TestYomkShutdownSeq ----------------
+set(TestYomkShutdownSeq_SOURCES 
+    ${TestYomkServer_DIR}/YomkServer/TestYomkShutdownSeq.cpp
+)
+add_executable(TestYomkShutdownSeq 
+    ${TestYomkShutdownSeq_SOURCES}
+)
+target_link_libraries(TestYomkShutdownSeq PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkShutdownSeq ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install
