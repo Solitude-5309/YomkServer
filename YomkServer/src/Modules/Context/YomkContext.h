@@ -15,7 +15,7 @@ class YomkContext : public YomkService
 public:
     struct ContextMonitor
     {
-        bool asyncMonitor;
+        bool asyncMonitor = false;
         YomkContextMonitorFunc contextMonitorFunc;
     };
     struct Context

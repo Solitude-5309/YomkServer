@@ -78,6 +78,48 @@ if(YOMK_TEST_STATIC_ANALYZE)
     else()
         message(STATUS "cppcheck not found, YomkServer-cppcheck target disabled")
     endif()
+
+    # MC6：Context 模块静态分析范围（src/Modules/Context），复用上方已探测的工具与调优检查集
+    file(GLOB _YOMK_CONTEXT_SA_SRCS
+        ${YomkServer_DIR}/src/Modules/Context/*.cpp
+        ${YomkServer_DIR}/src/Modules/Context/*.h
+    )
+
+    # YomkContext-clang-tidy：-header-filter 限定仅报 Context 头，屏蔽 YomkPkg/YomkAPI 等已处理头噪音
+    if(CLANG_TIDY_EXE)
+        add_custom_target(YomkContext-clang-tidy
+            COMMAND ${CLANG_TIDY_EXE}
+                ${_YOMK_TIDY_CHECKS}
+                -header-filter=${YomkServer_DIR}/src/Modules/Context
+                -p=${CMAKE_BINARY_DIR}
+                ${_YOMK_CONTEXT_SA_SRCS}
+                > ${CMAKE_BINARY_DIR}/static-analysis/clang-tidy-context.log 2>&1
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Running clang-tidy on YomkServer Context module sources"
+        )
+    endif()
+
+    # YomkContext-cppcheck：参数与 MC9 非 Modules 扫描一致
+    if(CPPCHECK_EXE)
+        add_custom_target(YomkContext-cppcheck
+            COMMAND ${CPPCHECK_EXE}
+                --language=c++
+                --std=c++17
+                --enable=warning,style,performance,portability,information
+                --suppress=missingInclude
+                --suppress=noExplicitConstructor
+                --suppress=useStlAlgorithm
+                --inline-suppr
+                --template=gcc
+                --error-exitcode=0
+                -I ${YomkServer_DIR}/include
+                -I ${YomkServer_DIR}/src
+                ${_YOMK_CONTEXT_SA_SRCS}
+                > ${CMAKE_BINARY_DIR}/static-analysis/cppcheck-context.log 2>&1
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Running cppcheck on YomkServer Context module sources"
+        )
+    endif()
 endif()
 
 # -------------sl TestYomkSimpleThreadPool ----------------
