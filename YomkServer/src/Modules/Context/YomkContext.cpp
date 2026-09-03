@@ -247,7 +247,8 @@ YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
     }
 
     {
-        std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
+        // 写 checker 字段须持排他锁：与 keyInfo/listAll 的 shared_lock 读及并发 setChecker 互斥，避免数据竞争
+        std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         auto itContext = m_contexts.find(checker->d.m_key);
         if (itContext == m_contexts.end())
         {
@@ -276,7 +277,8 @@ YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
     }
 
     {
-        std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
+        // push_back monitors 为写操作须持排他锁：并发 setMonitor 或读 monitors 否则数据竞争甚至 vector 扩容损坏
+        std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         auto itContext = m_contexts.find(monitor->d.m_key);
         if (itContext == m_contexts.end())
         {

@@ -43,4 +43,16 @@ target_link_libraries(TestYomkContextLifecycle PRIVATE
 )
 # -------------el TestYomkContextLifecycle ----------------
 
+# -------------sl TestYomkContextConcurrency ----------------
+set(TestYomkContextConcurrency_SOURCES 
+    ${TestYomkContext_DIR}/YomkContext/TestYomkContextConcurrency.cpp
+)
+add_executable(TestYomkContextConcurrency 
+    ${TestYomkContextConcurrency_SOURCES}
+)
+target_link_libraries(TestYomkContextConcurrency PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkContextConcurrency ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install
