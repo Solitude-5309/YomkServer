@@ -149,7 +149,9 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eNo, "key is not exist");
     }
 
-    if (m_checkerEnabled.load())
+    // checker 全局开关开启且该 key 设置了 checker 才校验；未设 checker 视为放行（accept），
+    // 避免对空 std::function 调用抛 std::bad_function_call 击穿 set 调用链
+    if (m_checkerEnabled.load() && itContext->second.checker)
     {
         ContextChecker::ECheckStatus checkStatus = itContext->second.checker(context->d);
         if (checkStatus == ContextChecker::eReject)
