@@ -13,7 +13,8 @@
  * 8. 未运行幂等 / 停止态拒收（post/postWait 返回 2）/ 默认处理函数 / infoLine 分支（defaultFunc:on [类型名]、
  *    空 tag "-" 占位、tagCount=0 与超队列长度）
  * 9. API 层路径：YOMK_EVENTLOOP_* 宏下停止保留 / 重启续跑 / 销毁移除 / POST_WAIT 同步 / 不存在名 eNo /
- *    停止态投递 eNo / INFO_LOOP 数字路径与越界回退 / INFO_ALL / 空循环名与超长循环名边界
+ *    停止态投递 eNo / INFO_LOOP 数字路径与越界回退 / INFO_LOOPS 存活列表与销毁后移除 / INFO_ALL /
+ *    空循环名与超长循环名边界（ELC6 覆盖率回填：loops() 遍历路径需在 map 非空时调用）
  * 10. postWait×destroy 等待者释放：销毁清空队列时触发被丢弃事件的等待回调，等待者不永久挂起（看门狗）
  *
  * 说明：白盒段直连内部类 EventLoop（include Modules/EventLoop/EventLoop.h，CMake 已追加 src 目录），
@@ -517,6 +518,23 @@ int main()
               "类型化重载解析 tagCount=7");
         CHECK(YOMK_EVENTLOOP_INFO_LOOP("api_loop 1000000").m_msg.find("nextNEventTag(1000000)") != std::string::npos,
               "大数值 tagCount 正常解析（合法范围内）");
+
+        // INFO_LOOPS：api_loop 存活时列表包含其名（loops() 遍历路径；销毁后移除验证见段尾）
+        auto loopsAliveResp = YOMK_EVENTLOOP_INFO_LOOPS();
+        CHECK(loopsAliveResp.m_status == YomkResponse::eOk, "INFO_LOOPS 返回 eOk");
+        YomkUnPackPkg(loopsAliveResp.m_data, StringArray, loopsAliveArr);
+        bool loopsFound = false;
+        if (loopsAliveArr)
+        {
+            for (const auto &n : loopsAliveArr->d)
+            {
+                if (n == "api_loop")
+                {
+                    loopsFound = true;
+                }
+            }
+        }
+        CHECK(loopsAliveArr != nullptr && loopsFound, "INFO_LOOPS 列表包含 api_loop");
 
         // INFO_ALL：列表包含 api_loop 信息行
         auto allResp = YOMK_EVENTLOOP_INFO_ALL();
