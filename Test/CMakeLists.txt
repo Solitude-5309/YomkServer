@@ -9,6 +9,10 @@ set(YomkServerLib
 set(TestYomkContext_DIR ${TestYomkServer_DIR})
 include(${TestYomkContext_DIR}/YomkContext/CMakeLists.txt)
 
+# Test/YomkEventLoop：EventLoop 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
+set(TestYomkEventLoop_DIR ${TestYomkServer_DIR})
+include(${TestYomkEventLoop_DIR}/YomkEventLoop/CMakeLists.txt)
+
 # Test/YomkServer：YomkServer 非 Modules 源文件的正式全面覆盖测试（顶层按被测模块分目录组织）
 include(${TestYomkServer_DIR}/YomkServer/CMakeLists.txt)
 

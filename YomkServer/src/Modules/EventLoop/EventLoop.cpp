@@ -111,12 +111,12 @@ int EventLoop::postWait(YomkPtr(Event) event)
     bool notified = false;
     std::unique_lock<std::mutex> lock(tmpMtx);
 
+    // notify 在持锁内进行：若在锁外 notify，等待方从 wait 醒来（notified=true）后析构 tmpCv，
+    // 与本线程锁外的 notify_all 无 happens-before 边，构成 destroy-vs-notify 竞态（POSIX UB，TSan 如实报告）
     event->d.m_waitCallback = [&tmpCv, &notified, &tmpMtx]()
     {
-        {
-            std::lock_guard<std::mutex> lk(tmpMtx);
-            notified = true;
-        }
+        std::lock_guard<std::mutex> lk(tmpMtx);
+        notified = true;
         tmpCv.notify_all();
     };
 
