@@ -14,7 +14,8 @@
  * 9. 同步 monitor 异常吞掉（std::exception 与非 std::exception）
  * 10. 多同步 monitor 按注册顺序触发
  * 11. 异步 monitor 触发与顺序（单线程池保序）
- * 12. 异步 monitor 排空（deinit）：shutdown 前排空全部异步任务
+ * 12. 并发 set 异步保序：锁内入队 ⇒ 末条异步通知收敛到最终值（C1 回归）
+ * 13. 异步 monitor 排空（deinit）：shutdown 前排空全部异步任务
  *
  * 说明：全程使用 YOMK_INIT 单例拉起内置 /YomkContext；异步排空用例置于末尾并调用 YOMK_SHUTDOWN
  *       （call_once 约束，shutdown 后不可再初始化）；服务删除后重新注册/池重建归 MC3
@@ -347,7 +348,66 @@ int main()
         YOMK_CONTEXT_OFF_MONITOR();
     }
 
-    // ============ Section 12: 异步 monitor 排空（deinit），末尾调用 shutdown ============
+    // ============ Section 12: 并发 set 异步保序（末条收敛真值，C1 回归）============
+    {
+        YOMK_CONTEXT_ON_MONITOR();
+        auto cr = YOMK_CONTEXT_CREATE("mon_conc", YomkMkPtr(String, std::string("c_init")));
+        CHECK(cr.m_status == YomkResponse::eOk, "创建 mon_conc 成功");
+
+        g_asyncCalls.store(0);
+        {
+            std::lock_guard<std::mutex> lk(g_asyncMutex);
+            g_asyncOrder.clear();
+        }
+        YOMK_CONTEXT_SET_MONITOR("mon_conc", [](const yomk::Context &ctx)
+                                 {
+            std::string v = contextStringValue(ctx);
+            {
+                std::lock_guard<std::mutex> lk(g_asyncMutex);
+                g_asyncOrder.push_back(v);
+            }
+            ++g_asyncCalls; }, /*async=*/true);
+
+        // N 个线程并发 set（各值可辨识）；C1 下异步入队在写锁内完成 ⇒ 入队序=提交序，
+        // 单线程 FIFO 池 ⇒ 末条异步通知 = 最后一次提交的值 = 最终 CONTEXT_GET 值。
+        // 旧实现（post 在解锁后）可能倒挂：先提交者后入队 ⇒ 末条 ≠ 终值。
+        const int kThreads = 8;
+        const int kIters = 20;
+        std::vector<std::thread> workers;
+        workers.reserve(kThreads);
+        for (int t = 0; t < kThreads; ++t)
+        {
+            workers.emplace_back([t, kIters]()
+                                 {
+                for (int i = 0; i < kIters; ++i)
+                {
+                    std::string v = "t" + std::to_string(t) + "_i" + std::to_string(i);
+                    YOMK_CONTEXT_SET("mon_conc", YomkMkPtr(String, v));
+                } });
+        }
+        for (auto &w : workers)
+        {
+            w.join();
+        }
+
+        const int kTotal = kThreads * kIters;
+        bool reached = waitForCount(g_asyncCalls, kTotal, 15000);
+        CHECK(reached, "并发 set 后异步 monitor 在等待窗口内全部触发（计数 == 总提交数）");
+
+        // 所有写线程已 join，CONTEXT_GET 终值稳定
+        auto finalVal = YOMK_CONTEXT_GET(String, "mon_conc", YomkMkPtr(String, std::string("default")));
+        CHECK(finalVal && !finalVal->d.empty(), "读取 mon_conc 终值成功");
+
+        {
+            std::lock_guard<std::mutex> lk(g_asyncMutex);
+            CHECK(g_asyncOrder.size() == static_cast<size_t>(kTotal), "异步顺序记录条数 == 总提交数");
+            CHECK(!g_asyncOrder.empty() && finalVal && g_asyncOrder.back() == finalVal->d,
+                  "并发 set 下异步末条 == 最终值（锁内入队 ⇒ 末条收敛真值）");
+        }
+        YOMK_CONTEXT_OFF_MONITOR();
+    }
+
+    // ============ Section 13: 异步 monitor 排空（deinit），末尾调用 shutdown ============
     {
         YOMK_CONTEXT_ON_MONITOR();
         auto cr = YOMK_CONTEXT_CREATE("mon_drain", YomkMkPtr(String, std::string("d0")));

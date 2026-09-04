@@ -298,6 +298,8 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/create", YomkMkPtr(Context, yomk::Context{ctxName, ctx}));
     }
+    // 获取上下文值，不存在或类型不匹配时返回传入的默认值。
+    // 返回值对象一经 set 发布即只读：改动请构造新对象再 CONTEXT_SET，勿原地修改（否则与并发读竞争、可能崩溃）。
     template <typename T>
     static std::shared_ptr<T> CONTEXT_GET(const std::string &msgName, const std::string &ctxName, std::shared_ptr<T> ctxDefault)
     {
@@ -332,6 +334,8 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/turn_off_checker", nullptr);
     }
+    // 校验回调：set 写值前调用，返回 eAccept 放行 / eReject 拒绝（拒绝则该次 set 失败、值不变）；用于门控写入，事后通知请用 CONTEXT_SET_MONITOR。
+    // 回调内禁止再调用任何 Context API（checker 在写锁内执行，重入会死锁）。
     static YomkResponse CONTEXT_SET_CHECKER(const std::string &ctxName, YomkContextCheckFunc checker)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
@@ -347,6 +351,9 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/turn_off_monitor", nullptr);
     }
+    // 监控回调：仅通知发生了一次 set 事件，并回传该次 set 的键值快照——不保证快照实时性；顺序上异步恒按 set 提交序送达、同步在并发 set 下不保证跨线程序。
+    // async=false（默认）同步：set 返回前内联调用；async=true 异步：写锁内入单线程监控池、按提交序延迟调用，适合耗时回调。
+    // 快照仅回调期有效（需留存请拷贝 ctx）；值对象只读——改动请新建对象再 set、勿原地改 ctx.m_value；需最新值请在回调内 CONTEXT_GET 重读；校验/拒绝请用 CONTEXT_SET_CHECKER。
     static YomkResponse CONTEXT_SET_MONITOR(const std::string &ctxName, YomkContextMonitorFunc monitor, bool async = false)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));

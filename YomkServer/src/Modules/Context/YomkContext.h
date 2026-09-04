@@ -56,7 +56,8 @@ private:
     std::atomic<bool> m_monitorEnabled;
     std::map<std::string, Context> m_contexts;
     std::shared_mutex m_contextsMutex;
-    // 异步监控池：Context 模块自持，固定单线程保证监控事件按 set 顺序到达；
+    // 异步监控池：Context 模块自持，固定单线程 FIFO；post 在 set 写锁内完成 ⇒ 入队序=提交序 ⇒ 异步通知恒按 set 提交序送达（并发 set 亦然），drain-on-stop 不丢；
+    // 锁序不变量 m_contextsMutex -> pool.m_mtx 单向：worker 弹出任务即释放池锁再锁外执行、deinit 不持 contexts 锁调 stop、stop 不持池锁 join，无反向同时持有故无 ABBA；
     // init 重建（池 stop 后不可复用，重建支持服务删除后重新注册），deinit 排空停止
     std::unique_ptr<YomkSimpleThreadPool> m_monitorPool;
 };

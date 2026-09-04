@@ -149,6 +149,12 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eNo, "key is not exist");
     }
 
+    if (itContext->second.value->name() != context->d.m_value->name())
+    {
+        YOMK_ERR_POS_LOG("context: " + context->d.m_key + " type not match, please check Context.m_value.");
+        return YomkResponse(YomkResponse::eNo, "context type not match");
+    }
+
     // checker 全局开关开启且该 key 设置了 checker 才校验；未设 checker 视为放行（accept），
     // 避免对空 std::function 调用抛 std::bad_function_call 击穿 set 调用链
     if (m_checkerEnabled.load() && itContext->second.checker)
@@ -160,16 +166,35 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         }
     }
 
-    if (itContext->second.value->name() != context->d.m_value->name())
-    {
-        YOMK_ERR_POS_LOG("context: " + context->d.m_key + " type not match, please check Context.m_value.");
-        return YomkResponse(YomkResponse::eNo, "context type not match");
-    }
-    itContext->second.value = context->d.m_value;
+    itContext->second.value = context->d.m_value; // 整体替换值对象（非原地改）：旧对象不动，先前 get/monitor 持有者即冻结为快照
     std::vector<ContextMonitor> monitors = itContext->second.monitors;
+
+    // 异步入队在写锁内完成：入队序 = 提交序；配合单线程 FIFO 池 ⇒ 异步通知恒按 set 提交序送达（并发 set 亦然）。
+    // 锁序 m_contextsMutex -> pool.m_mtx 单向安全：worker 弹出任务即释放池锁再锁外执行、deinit 不持本锁调 stop、stop 不持池锁 join，无反向同时持有。
+    const bool monitorEnabled = m_monitorEnabled.load();
+    if (monitorEnabled)
+    {
+        for (auto &monitor : monitors)
+        {
+            if (monitor.asyncMonitor)
+            {
+                // 值捕获回调与数据副本（context->d = 本次提交的临时快照），任务执行期自包含；池已停止时投递被拒绝并记日志丢弃
+                auto monitorFunc = monitor.contextMonitorFunc;
+                yomk::Context data = context->d;
+                if (!(m_monitorPool && m_monitorPool->post([monitorFunc, data]()
+                                                           { monitorFunc(data); })))
+                {
+                    YOMK_ERR_POS_LOG("context monitor pool is stopped, async monitor ignored.");
+                }
+            }
+        }
+    }
     lockContexts.unlock();
 
-    if (m_monitorEnabled.load())
+    // 后端细节：monitors 已在锁内拷贝；同步回调锁外执行——回调收到本次 set 的键值快照（context->d），与 m_contexts 后续变更无关，
+    // 故不保证实时性；锁外执行使回调内重入 get/keys 安全，但同步回调内重入 set 会递归（不收敛长链栈溢出），
+    // 状态机/级联回写应改用异步 monitor（池线程迭代执行、平栈不溢出、按提交序保序）。
+    if (monitorEnabled)
     {
         for (auto &monitor : monitors)
         {
@@ -188,18 +213,6 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
                 catch (...)
                 {
                     YOMK_ERR_POS_LOG("sync monitor threw unknown exception, ignored.");
-                }
-            }
-            else
-            {
-                // 异步 monitor 投 Context 模块自持的监控池（固定单线程保事件顺序，排空式停止）；
-                // 值捕获回调与数据副本，任务执行期自包含，池已停止时投递被拒绝并记日志丢弃
-                auto monitorFunc = monitor.contextMonitorFunc;
-                yomk::Context data = context->d;
-                if (!(m_monitorPool && m_monitorPool->post([monitorFunc, data]()
-                                                           { monitorFunc(data); })))
-                {
-                    YOMK_ERR_POS_LOG("context monitor pool is stopped, async monitor ignored.");
                 }
             }
         }
