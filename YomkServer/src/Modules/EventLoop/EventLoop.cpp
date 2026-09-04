@@ -44,15 +44,27 @@ int EventLoop::stop()
 }
 
 // 销毁：先停止退出工作线程，再清空未执行的排队事件（不可续跑）；
+// 清空前逐个触发被丢弃事件的等待回调，释放 postWait 等待者（否则丢弃后其永久挂起）；
+// 回调在锁外调用（与 run() 一致）——若持 m_queueMutex 调回调（内部锁 postWait 的 tmpMtx），
+// 与 postWait 持 tmpMtx 调 post()（内部锁 m_queueMutex）构成 ABBA 死锁；
 // 停止态下调用幂等（stop 早退 + 空队列清空为无害空操作），析构与显式销毁可重复进入
 int EventLoop::destroy()
 {
     stop();
+    std::vector<YomkPtr(Event)> discarded;
     {
         std::lock_guard<std::mutex> lock(m_queueMutex);
         while (!m_eventQueue.empty())
         {
+            discarded.push_back(m_eventQueue.front());
             m_eventQueue.pop();
+        }
+    }
+    for (auto &event : discarded)
+    {
+        if (event && event->d.m_waitCallback)
+        {
+            event->d.m_waitCallback();
         }
     }
     return 0;
@@ -63,7 +75,7 @@ int EventLoop::post(YomkPtr(Event) event)
     if (!m_running.load())
     {
         YOMK_ERR_POS_LOG("EventLoop not running, please start event loop.");
-        return 0;
+        return 2; // 循环未运行投递被拒，与入队成功(0)/事件为空(1)区分，供上层映射错误码
     }
 
     if (!event)
@@ -90,7 +102,7 @@ int EventLoop::postWait(YomkPtr(Event) event)
     if (!m_running.load())
     {
         YOMK_ERR_POS_LOG("EventLoop not running, please start event loop.");
-        return 0;
+        return 2; // 循环未运行投递被拒，与入队成功(0)/事件为空(1)区分
     }
 
     if (!event)
@@ -120,7 +132,13 @@ int EventLoop::postWait(YomkPtr(Event) event)
         tmpCv.notify_all();
     };
 
-    post(event);
+    // 仅在实际入队成功后才等待：检查与入队之间循环被停止/销毁时 post 返回非零，
+    // 直接返回避免等待一个永不被执行/触发的回调（TOCTOU 分支）
+    int rc = post(event);
+    if (rc != 0)
+    {
+        return rc;
+    }
 
     tmpCv.wait(lock, [&notified]()
                { return notified; });

@@ -2,7 +2,7 @@
  * @file TestYomkEventLoopLifecycle.cpp
  * @brief EventLoop 三段语义（start 重启续跑 / stop 保留队列 / destroy 停后清空）白盒回归测试
  *
- * 覆盖内容（ELC1 补强后 9 个 Section）：
+ * 覆盖内容（ELC2 缺陷修复后 10 个 Section）：
  * 1. stop 保留性：停止仅退出工作线程，未执行事件保留在队列（不执行、pending 不减）
  * 2. start 续跑性：对已停止未销毁的循环再次 start，积压按原 FIFO 顺序续跑（事件不丢失）
  * 3. destroy 清空性：销毁先停止退出线程再清空队列——排队事件永不执行、重启后无任何执行（不可续跑）
@@ -10,10 +10,11 @@
  * 5. postWait 同步语义：返回即事件已执行完（响应已填充、eventId 已赋）；null 事件返回 1
  * 6. worker 内 postWait 死锁防护：防护路径直接执行内层事件，不自等待
  * 7. run() 异常吞噬与存活：handler 抛 std::exception/未知异常被隔离，循环存活、postWait 不挂
- * 8. 未运行幂等 / 停止态拒收 / 默认处理函数 / infoLine 分支（defaultFunc:on [类型名]、空 tag "-" 占位、
- *    tagCount=0 与超队列长度）
+ * 8. 未运行幂等 / 停止态拒收（post/postWait 返回 2）/ 默认处理函数 / infoLine 分支（defaultFunc:on [类型名]、
+ *    空 tag "-" 占位、tagCount=0 与超队列长度）
  * 9. API 层路径：YOMK_EVENTLOOP_* 宏下停止保留 / 重启续跑 / 销毁移除 / POST_WAIT 同步 / 不存在名 eNo /
- *    INFO_LOOP 数字路径 / INFO_ALL / 空循环名与超长循环名边界
+ *    停止态投递 eNo / INFO_LOOP 数字路径与越界回退 / INFO_ALL / 空循环名与超长循环名边界
+ * 10. postWait×destroy 等待者释放：销毁清空队列时触发被丢弃事件的等待回调，等待者不永久挂起（看门狗）
  *
  * 说明：白盒段直连内部类 EventLoop（include Modules/EventLoop/EventLoop.h，CMake 已追加 src 目录），
  *       不触 YOMK_INIT（类级测试与请求路由无关）；API 段使用 YOMK_INIT 单例拉起内置 /YomkEventLoop，
@@ -23,8 +24,8 @@
  *       阻塞门与观测变量全部为文件级（同 g_asyncMutex 既有 TSan-clean 风格）：阻塞门用原子自旋实现，
  *       规避 std::condition_variable::wait_for 在 TSan 下的已知误报路径与各 section 局部互斥量
  *       栈槽地址复用导致的元数据串扰；工作线程自旋以 1ms 粒度休眠，开销可忽略。
- *       已知缺陷不固化（留缺陷修复闭环后回归）：不断言"向已停止循环投递"的返回码（post 假成功）；
- *       不测越界数字 tagCount 的 INFO_LOOP（stoul 越界崩溃）；不测 postWait 与 destroy 并发（等待者挂起）。
+ *       ELC2 已修复并回归：停止态投递可区分返回码（类 API 返回 2 / 宏层 eNo）、越界数字 tagCount 回退默认 3、
+ *       postWait×destroy 等待者释放。
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
@@ -385,11 +386,13 @@ int main()
         CHECK(loop.stop() == 0, "未启动时 stop 返回 0（幂等早退）");
         CHECK(loop.destroy() == 0, "未启动时 destroy 返回 0（幂等早退）");
 
-        // 停止态拒收：stop 后投递的事件不入队不执行（返回码不固化——已知缺陷留修复闭环）
+        // 停止态拒收：stop 后投递被拒（返回码 2，与入队成功 0/事件为空 1 区分），事件不入队不执行
         CHECK(loop.start() == 0, "start 返回 0");
         loop.stop();
         auto rejected = YomkMkPtr(Event, yomk::Event("wb", nullptr, countingHandler("rej"), "rej"));
-        loop.post(rejected); // 仅验证行为：事件不被执行
+        CHECK(loop.post(rejected) == 2, "停止态 post 返回 2（投递被拒）");
+        auto rejected2 = YomkMkPtr(Event, yomk::Event("wb", nullptr, countingHandler("rej2"), "rej2"));
+        CHECK(loop.postWait(rejected2) == 2, "停止态 postWait 返回 2（被拒且不等待）");
         CHECK(loop.start() == 0, "重启返回 0");
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
         CHECK(orderSnapshot().empty(), "停止态投递的事件重启后仍未执行（停止期间投递被拒）");
@@ -465,6 +468,19 @@ int main()
         std::string line = lineOf();
         CHECK(line.find("running:off") != std::string::npos, "API 停止后 running:off");
         CHECK(line.find("pending:2") != std::string::npos, "API 停止后 pending:2（未执行事件保留）");
+
+        // 停止态投递被拒（契约回归）：服务层映射 eNo，调用方可区分"已入队"与"被拒"
+        CHECK(YOMK_EVENTLOOP_POST("api_loop", YomkMkPtr(String, std::string("rx")), countingHandler("rx"), "rx").m_status == YomkResponse::eNo,
+              "停止态 POST 返回 eNo（投递被拒）");
+        CHECK(YOMK_EVENTLOOP_POST_WAIT("api_loop", YomkMkPtr(String, std::string("rx2")), countingHandler("rx2"), "rx2").m_status == YomkResponse::eNo,
+              "停止态 POST_WAIT 返回 eNo（被拒且不等待）");
+        CHECK(lineOf().find("pending:2") != std::string::npos, "被拒投递未入队（pending 仍为 2）");
+
+        // 越界数字 tagCount（D3 回归）：stoul 越界不再崩溃，回退默认 3
+        auto oob = YOMK_EVENTLOOP_INFO_LOOP("api_loop 99999999999999999999");
+        CHECK(oob.m_status == YomkResponse::eOk, "越界数字 tagCount 返回 eOk（不崩溃）");
+        CHECK(oob.m_msg.find("nextNEventTag(3)") != std::string::npos, "越界数字 tagCount 回退默认 3");
+        CHECK(oob.m_msg.find("99999999999999999999") == std::string::npos, "越界数字串不出现在回显中");
 
         // 重启续跑：服务层 START 命中已存在条目即重启，积压按 FIFO 续跑
         CHECK(YOMK_EVENTLOOP_START("api_loop", nullptr).m_status == YomkResponse::eOk, "再次 START 返回 eOk（重启）");
@@ -557,6 +573,66 @@ int main()
         CHECK(loopsArr != nullptr && removed, "销毁后 INFO_LOOPS 不再包含 api_loop");
 
         YOMK_SHUTDOWN();
+    }
+
+    // ============ Section 10: postWait×destroy 释放等待者（白盒，看门狗防挂起）============
+    {
+        resetOrder();
+        resetGate();
+        EventLoop loop;
+        CHECK(loop.start() == 0, "start 返回 0");
+
+        // g1 占住工作线程，制造确定性排队窗口
+        auto g1 = YomkMkPtr(Event, yomk::Event("wb", nullptr, gateHandler(), "g1"));
+        CHECK(loop.post(g1) == 0, "post 阻塞事件 g1 返回 0");
+        CHECK(waitGateStarted(2000), "g1 已进入执行（阻塞占住工作线程）");
+
+        // T1：postWait 计数事件 e2——入队成功（rc1 将为 0）后阻塞等待；e2 排队不执行
+        std::atomic<int> rc1{0};
+        std::atomic<bool> t1done{false};
+        auto e2 = YomkMkPtr(Event, yomk::Event("wb", nullptr, countingHandler("e2"), "e2"));
+        std::thread waiter([&loop, &rc1, &t1done, &e2]
+                           {
+            rc1 = loop.postWait(e2);
+            t1done = true; });
+        CHECK(waitUntil([&loop]
+                        { return loop.infoLine("wb", 3).find("pending:1") != std::string::npos; },
+                        2000),
+              "e2 已入队（pending:1，T1 进入等待）");
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 确保 T1 已进入 wait（谓词式 wait 对早触发亦免疫，此处确定性覆盖"唤醒"分支）
+
+        // T2：destroy——stop 置位后 join 等待 g1 收尾，需主线程确认停止置位再释放 gate
+        std::thread destroyer([&loop]
+                              { loop.destroy(); });
+        CHECK(waitUntil([&loop]
+                        { return loop.infoLine("wb", 3).find("running:off") != std::string::npos; },
+                        2000),
+              "destroy 过程中观察到 running:off（先停止）");
+
+        // 释放 g1：worker 退出 -> destroy 清队列丢弃 e2 并触发其等待回调 -> T1 解除阻塞
+        openGate();
+
+        bool released = waitUntil([&t1done]
+                                  { return t1done.load(); },
+                                  3000);
+        CHECK(released, "postWait 等待者被 destroy 释放（3s 看门狗内返回，不挂起）");
+        CHECK(rc1.load() == 0, "被丢弃事件入队时已成功（rc1==0，丢弃不改变入队结果）");
+
+        waiter.join();
+        destroyer.join();
+
+        bool e2executed = false;
+        for (const auto &tag : orderSnapshot())
+        {
+            if (tag == "e2")
+            {
+                e2executed = true;
+            }
+        }
+        CHECK(!e2executed, "被丢弃事件 e2 未执行");
+        CHECK(loop.infoLine("wb", 3).find("pending:0") != std::string::npos, "destroy 后 pending:0（队列已清空）");
+
+        loop.destroy(); // 幂等收尾（空队列再清一次无害）
     }
 
     if (g_failed == 0)

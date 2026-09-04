@@ -101,7 +101,8 @@ int main()
 
     std::cout << "===== 5. 模块 API 守卫代表（每种返回值形态一个代表，其余同宏展开书面豁免） =====" << std::endl;
     {
-        // YomkResponse 形态代表（LOG/CONTEXT/EVENTLOOP/FUNCTIONPOOL/SERVER_INFO 各模块取代表）
+        // YomkResponse 形态代表（LOG/CONTEXT/FUNCTIONPOOL/SERVER_INFO 各模块取代表；
+        // 当前被测模块 EventLoop 取全量守卫（7 宏 8 入口），其余仍按形态代表豁免）
         CHECK(YomkAPI::SET_CONSOLE_LOG_PROXY(nullptr).m_status == YomkResponse::eInvalid,
               "SET_CONSOLE_LOG_PROXY 未初始化返回 eInvalid");
         YomkResponse logResp = YomkAPI::CONSOLE_LOG_INFO_TAG("tag", "hello");
@@ -117,6 +118,22 @@ int main()
               "CONTEXT_CREATE 未初始化返回 eInvalid");
         CHECK(YomkAPI::EVENTLOOP_START("/guard_loop").m_status == YomkResponse::eInvalid,
               "EVENTLOOP_START 未初始化返回 eInvalid");
+        CHECK(YomkAPI::EVENTLOOP_STOP("/guard_loop").m_status == YomkResponse::eInvalid,
+              "EVENTLOOP_STOP 未初始化返回 eInvalid");
+        CHECK(YomkAPI::EVENTLOOP_POST("/guard_loop", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eInvalid,
+              "EVENTLOOP_POST 未初始化返回 eInvalid");
+        CHECK(YomkAPI::EVENTLOOP_POST_WAIT("/guard_loop", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eInvalid,
+              "EVENTLOOP_POST_WAIT 未初始化返回 eInvalid");
+        CHECK(YomkAPI::EVENTLOOP_DESTROY("/guard_loop").m_status == YomkResponse::eInvalid,
+              "EVENTLOOP_DESTROY 未初始化返回 eInvalid");
+        CHECK(YomkAPI::EVENTLOOP_INFO_LOOPS().m_status == YomkResponse::eInvalid,
+              "EVENTLOOP_INFO_LOOPS 未初始化返回 eInvalid");
+        CHECK(YomkAPI::EVENTLOOP_INFO_LOOP("/guard_loop").m_status == YomkResponse::eInvalid,
+              "EVENTLOOP_INFO_LOOP(name) 未初始化返回 eInvalid");
+        CHECK(YomkAPI::EVENTLOOP_INFO_LOOP("/guard_loop", 5).m_status == YomkResponse::eInvalid,
+              "EVENTLOOP_INFO_LOOP(name, n) 未初始化返回 eInvalid");
+        CHECK(YomkAPI::EVENTLOOP_INFO_ALL().m_status == YomkResponse::eInvalid,
+              "EVENTLOOP_INFO_ALL 未初始化返回 eInvalid");
         CHECK(YomkAPI::FUNCTIONPOOL_REGISTER("/guard_func", nullptr).m_status == YomkResponse::eInvalid,
               "FUNCTIONPOOL_REGISTER 未初始化返回 eInvalid");
         CHECK(YomkAPI::SERVER_INFO_ALL().m_status == YomkResponse::eInvalid,

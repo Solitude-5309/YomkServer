@@ -1,5 +1,6 @@
 #include "YomkEventLoop.h"
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 
 YomkEventLoop::YomkEventLoop(YomkServer *server)
@@ -66,7 +67,12 @@ YomkResponse YomkEventLoop::post(YomkPkgPtr pkg)
         YOMK_ERR_POS_LOG("event loop: " + event->d.m_eventLoopName + " not exist, please check event loop name");
         return YomkResponse(YomkResponse::eNo, "event loop not exist");
     }
-    itEventLoop->second->post(event);
+    // 内层返回码映射：0 成功；其余（实际仅 2=循环未运行被拒，事件为空不可达——API 宏总构造有效事件）统一 eNo
+    int rc = itEventLoop->second->post(event);
+    if (rc != 0)
+    {
+        return YomkResponse(YomkResponse::eNo, "event loop not running, post rejected");
+    }
 
     return YomkResponse(YomkResponse::eOk, "event loop post success");
 }
@@ -81,7 +87,12 @@ YomkResponse YomkEventLoop::postWait(YomkPkgPtr pkg)
         YOMK_ERR_POS_LOG("event loop: " + event->d.m_eventLoopName + " not exist, please check event loop name");
         return YomkResponse(YomkResponse::eNo, "event loop not exist");
     }
-    itEventLoop->second->postWait(event);
+    // 内层返回码映射：0 成功（回传 event 携带执行结果）；其余统一 eNo（未入队未执行，不回传）
+    int rc = itEventLoop->second->postWait(event);
+    if (rc != 0)
+    {
+        return YomkResponse(YomkResponse::eNo, "event loop not running, post wait rejected");
+    }
 
     return YomkResponse(YomkResponse::eOk, "event loop post wait success", event);
 }
@@ -131,7 +142,16 @@ YomkResponse YomkEventLoop::loopInfo(YomkPkgPtr pkg)
         if (!countStr.empty() && countStr.find_first_not_of("0123456789") == std::string::npos)
         {
             loopName = input.substr(0, spacePos);
-            tagCount = static_cast<size_t>(std::stoul(countStr));
+            // 纯数字但超过无符号范围时 stoul 抛 out_of_range（invalid_argument 不可达：
+            // 纯数字且非空已过滤），捕获回退默认 tagCount=3，避免异常穿透同步调用方崩溃
+            try
+            {
+                tagCount = static_cast<size_t>(std::stoul(countStr));
+            }
+            catch (const std::out_of_range &)
+            {
+                tagCount = 3;
+            }
         }
     }
 
