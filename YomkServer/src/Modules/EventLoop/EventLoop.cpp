@@ -21,12 +21,20 @@ int EventLoop::start()
         return 0;
     }
     m_running.store(true);
-    m_worker = std::thread(std::bind(&EventLoop::run, this));
+    // 持队列锁创建并赋值线程句柄：postWait 的自 join 防护读取 m_worker.get_id()，
+    // 与本处 move-assign 若无互斥则构成对 std::thread 对象的并发读写（UB）；
+    // 新 worker 的 run() 入口需先等锁释放，持锁创建无死锁
+    {
+        std::lock_guard<std::mutex> lock(m_queueMutex);
+        m_worker = std::thread(std::bind(&EventLoop::run, this));
+    }
     return 0;
 }
 
 // 停止：仅退出工作线程，不清空队列——未执行事件保留，待下次 start 续跑（事件不丢失）；
-// 不触碰 m_queueMutex，与 worker 锁外执行 handle() 无交叉、join 无锁交互
+// notify 必须持队列锁：若在锁外，worker 可能持锁评估完谓词（读到 running=true）但尚未入睡，
+// 本线程的 store+notify 从旁边穿过——通知落在等待开始前不被 pending，worker 睡死（丢失唤醒）；
+// 持锁后 notify 与谓词检查互斥串行，两个时序方向均安全
 int EventLoop::stop()
 {
     if (!m_running.load())
@@ -35,7 +43,10 @@ int EventLoop::stop()
     }
     m_running.store(false);
 
-    m_condition.notify_all();
+    {
+        std::lock_guard<std::mutex> lock(m_queueMutex);
+        m_condition.notify_all();
+    }
     if (m_worker.joinable())
     {
         m_worker.join();
@@ -111,7 +122,13 @@ int EventLoop::postWait(YomkPtr(Event) event)
         return 1;
     }
 
-    if (std::this_thread::get_id() == m_worker.get_id())
+    // 自 join 防护读取持队列锁：与 start() 持锁 move-assign m_worker 互斥串行，避免无锁并发读写
+    bool inWorkerThread = false;
+    {
+        std::lock_guard<std::mutex> lock(m_queueMutex);
+        inWorkerThread = (std::this_thread::get_id() == m_worker.get_id());
+    }
+    if (inWorkerThread)
     {
         YOMK_ERR_POS_LOG("EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve deadlock");
         event->d.handle();

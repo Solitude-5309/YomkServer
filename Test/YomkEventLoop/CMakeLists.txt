@@ -19,4 +19,16 @@ target_link_libraries(TestYomkEventLoopLifecycle PRIVATE
 )
 # -------------el TestYomkEventLoopLifecycle ----------------
 
+# -------------sl TestYomkEventLoopConcurrency ----------------
+set(TestYomkEventLoopConcurrency_SOURCES 
+    ${TestYomkEventLoop_DIR}/YomkEventLoop/TestYomkEventLoopConcurrency.cpp
+)
+add_executable(TestYomkEventLoopConcurrency 
+    ${TestYomkEventLoopConcurrency_SOURCES}
+)
+target_link_libraries(TestYomkEventLoopConcurrency PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkEventLoopConcurrency ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install
