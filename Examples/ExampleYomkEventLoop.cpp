@@ -147,7 +147,8 @@ int main(int argc, char *argv[])
     /**
      * 步骤4：停止事件循环
      *
-     * 停止后不再接受新的事件投递，但已投递的事件会继续处理完成
+     * 停止后不再接受新的事件投递；未执行的排队事件保留在队列中，
+     * 再次 START 可重启续跑（事件不丢失）
      */
     response = YOMK_EVENTLOOP_STOP("event_loop_1");
     if (response.m_status == YomkResponse::eOk)
@@ -166,7 +167,7 @@ int main(int argc, char *argv[])
     /**
      * 步骤5：销毁事件循环
      *
-     * 彻底销毁事件循环，释放资源
+     * 先停止退出工作线程，再清空未执行的排队事件（不可续跑），彻底释放资源
      */
     response = YOMK_EVENTLOOP_DESTROY("event_loop_1");
     if (response.m_status == YomkResponse::eOk)

@@ -641,8 +641,10 @@ if(resp.m_status == YomkResponse::eOk) {
     if(event) YOMK_INFO("event result: ", event->d.m_response.m_msg);
 }
 
-// 清理
+// 停止：仅退出工作线程，未执行的排队事件保留在队列（再次 START 重启续跑，事件不丢失）
 YOMK_EVENTLOOP_STOP("worker_loop");
+
+// 销毁：先停止退出工作线程、再清空未执行的排队事件（不可续跑），彻底释放
 YOMK_EVENTLOOP_DESTROY("worker_loop");
 ```
 

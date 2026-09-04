@@ -97,7 +97,7 @@ YomkResponse YomkEventLoop::destroy(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eNo, "event loop not exist");
     }
 
-    itEventLoop->second->stop();
+    itEventLoop->second->destroy();
     m_eventLoop.erase(itEventLoop);
 
     return YomkResponse(YomkResponse::eOk, "event loop destroy success");

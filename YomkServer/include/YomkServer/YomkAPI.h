@@ -381,6 +381,7 @@ public:
     }
     // EVENTLOOP_API
 public:
+    // 启动事件循环：运行中再调用为幂等（不新建线程）；对已停止未销毁的循环即重启——新开工作线程按 FIFO 续跑上次停止保留的积压事件，事件不丢失。
     static YomkResponse EVENTLOOP_START(
         const std::string &eventLoopName,
         YomkServiceFunc m_defaultServiceFunc = nullptr,
@@ -389,6 +390,7 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/start", YomkMkPtr(Eventloop, yomk::Eventloop{eventLoopName, m_defaultServiceFunc, msgName}));
     }
+    // 停止事件循环：仅退出工作线程、不清空队列——未执行事件保留待下次 START 续跑；停止期间投递被拒。
     static YomkResponse EVENTLOOP_STOP(const std::string &eventLoopName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
@@ -404,6 +406,7 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/post_wait", YomkMkPtr(Event, yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
+    // 销毁事件循环：先停止退出工作线程、再清空未执行的排队事件（不可续跑），并移除循环条目。
     static YomkResponse EVENTLOOP_DESTROY(const std::string &eventLoopName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));

@@ -13,7 +13,8 @@ public:
 
 public:
     int start();
-    int stop();
+    int stop();    // 停止：仅退出工作线程、不清空队列——未执行事件保留待下次 start 续跑
+    int destroy(); // 销毁：先停止退出工作线程，再清空未执行的排队事件（不可续跑）
     int post(YomkPtr(Event) event);
     int postWait(YomkPtr(Event) event);
     void setDefaultServiceFunc(YomkServiceFunc serviceFunc, const std::string &msgName);

@@ -10,21 +10,7 @@ EventLoop::EventLoop()
 
 EventLoop::~EventLoop()
 {
-    if (m_running.exchange(false))
-    {
-        {
-            std::lock_guard<std::mutex> lock(m_queueMutex);
-            while (!m_eventQueue.empty())
-            {
-                m_eventQueue.pop();
-            }
-        }
-        m_condition.notify_all();
-        if (m_worker.joinable())
-        {
-            m_worker.join();
-        }
-    }
+    destroy();
 }
 
 int EventLoop::start()
@@ -39,6 +25,8 @@ int EventLoop::start()
     return 0;
 }
 
+// 停止：仅退出工作线程，不清空队列——未执行事件保留，待下次 start 续跑（事件不丢失）；
+// 不触碰 m_queueMutex，与 worker 锁外执行 handle() 无交叉、join 无锁交互
 int EventLoop::stop()
 {
     if (!m_running.load())
@@ -47,18 +35,25 @@ int EventLoop::stop()
     }
     m_running.store(false);
 
+    m_condition.notify_all();
+    if (m_worker.joinable())
+    {
+        m_worker.join();
+    }
+    return 0;
+}
+
+// 销毁：先停止退出工作线程，再清空未执行的排队事件（不可续跑）；
+// 停止态下调用幂等（stop 早退 + 空队列清空为无害空操作），析构与显式销毁可重复进入
+int EventLoop::destroy()
+{
+    stop();
     {
         std::lock_guard<std::mutex> lock(m_queueMutex);
         while (!m_eventQueue.empty())
         {
             m_eventQueue.pop();
         }
-    }
-
-    m_condition.notify_all();
-    if (m_worker.joinable())
-    {
-        m_worker.join();
     }
     return 0;
 }
