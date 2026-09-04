@@ -136,6 +136,16 @@ int main()
               "EVENTLOOP_INFO_ALL 未初始化返回 eInvalid");
         CHECK(YomkAPI::FUNCTIONPOOL_REGISTER("/guard_func", nullptr).m_status == YomkResponse::eInvalid,
               "FUNCTIONPOOL_REGISTER 未初始化返回 eInvalid");
+        CHECK(YomkAPI::FUNCTIONPOOL_UNREGISTER("/guard_func").m_status == YomkResponse::eInvalid,
+              "FUNCTIONPOOL_UNREGISTER 未初始化返回 eInvalid");
+        CHECK(YomkAPI::FUNCTIONPOOL_CALL("/guard_func", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eInvalid,
+              "FUNCTIONPOOL_CALL 未初始化返回 eInvalid");
+        CHECK(YomkAPI::FUNCTIONPOOL_INFO_NAMES().m_status == YomkResponse::eInvalid,
+              "FUNCTIONPOOL_INFO_NAMES 未初始化返回 eInvalid");
+        CHECK(YomkAPI::FUNCTIONPOOL_INFO_NAME("/guard_func").m_status == YomkResponse::eInvalid,
+              "FUNCTIONPOOL_INFO_NAME 未初始化返回 eInvalid");
+        CHECK(YomkAPI::FUNCTIONPOOL_INFO_ALL().m_status == YomkResponse::eInvalid,
+              "FUNCTIONPOOL_INFO_ALL 未初始化返回 eInvalid");
         CHECK(YomkAPI::SERVER_INFO_ALL().m_status == YomkResponse::eInvalid,
               "SERVER_INFO_ALL 未初始化返回 eInvalid");
 
