@@ -120,6 +120,50 @@ if(YOMK_TEST_STATIC_ANALYZE)
             COMMENT "Running cppcheck on YomkServer Context module sources"
         )
     endif()
+    # ELC5：EventLoop 模块静态分析范围（src/Modules/EventLoop），复用上方已探测的工具与调优检查集
+    file(GLOB _YOMK_EVENTLOOP_SA_SRCS
+        ${YomkServer_DIR}/src/Modules/EventLoop/*.cpp
+        ${YomkServer_DIR}/src/Modules/EventLoop/*.h
+    )
+
+    # YomkEventLoop-clang-tidy：-header-filter 限定仅报 EventLoop 头，屏蔽 YomkPkg/YomkAPI 等已处理头噪音
+    if(CLANG_TIDY_EXE)
+        add_custom_target(YomkEventLoop-clang-tidy
+            COMMAND ${CLANG_TIDY_EXE}
+                ${_YOMK_TIDY_CHECKS}
+                -header-filter=${YomkServer_DIR}/src/Modules/EventLoop
+                -p=${CMAKE_BINARY_DIR}
+                ${_YOMK_EVENTLOOP_SA_SRCS}
+                > ${CMAKE_BINARY_DIR}/static-analysis/clang-tidy-eventloop.log 2>&1
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Running clang-tidy on YomkServer EventLoop module sources"
+        )
+    endif()
+
+    # YomkEventLoop-cppcheck：参数与 MC9/MC6 扫描一致；额外补 include/YomkServer（真实构建的
+    # YomkServer_INCLUDE 路径，见 YomkServer/CMakeLists.txt）——EventLoop 头用裸 "YomkPkg.h" 包含，
+    # 缺此路径时包含解析失败被 missingInclude 抑制掩盖，YomkPtr 宏未定义触发 unknownMacro 且分析降级
+    if(CPPCHECK_EXE)
+        add_custom_target(YomkEventLoop-cppcheck
+            COMMAND ${CPPCHECK_EXE}
+                --language=c++
+                --std=c++17
+                --enable=warning,style,performance,portability,information
+                --suppress=missingInclude
+                --suppress=noExplicitConstructor
+                --suppress=useStlAlgorithm
+                --inline-suppr
+                --template=gcc
+                --error-exitcode=0
+                -I ${YomkServer_DIR}/include
+                -I ${YomkServer_DIR}/src
+                -I ${YomkServer_DIR}/include/YomkServer
+                ${_YOMK_EVENTLOOP_SA_SRCS}
+                > ${CMAKE_BINARY_DIR}/static-analysis/cppcheck-eventloop.log 2>&1
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Running cppcheck on YomkServer EventLoop module sources"
+        )
+    endif()
 endif()
 
 # -------------sl TestYomkSimpleThreadPool ----------------

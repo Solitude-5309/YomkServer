@@ -138,6 +138,9 @@ int EventLoop::postWait(YomkPtr(Event) event)
     std::condition_variable tmpCv;
     std::mutex tmpMtx;
     bool notified = false;
+    // 误报豁免：tmpMtx 同时被 m_waitCallback 内的 lock_guard 跨线程加锁（lambda 引用捕获，工作线程执行，
+    // cppcheck 同域启发式未跟踪），承担 wait 谓词同步与 destroy-vs-notify 防护，非"同域无效锁"
+    // cppcheck-suppress localMutex
     std::unique_lock<std::mutex> lock(tmpMtx);
 
     // notify 在持锁内进行：若在锁外 notify，等待方从 wait 醒来（notified=true）后析构 tmpCv，
