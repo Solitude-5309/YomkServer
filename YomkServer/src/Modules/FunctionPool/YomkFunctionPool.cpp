@@ -56,7 +56,8 @@ YomkResponse YomkFunctionPool::unRegisterFunction(YomkPkgPtr pkg)
     if (itFunc == m_functions.end())
     {
         YOMK_ERR_POS_LOG("funcName: " + yFuncName->d + " is not register, can not unregister");
-        return YomkResponse(YomkResponse::eInvalid, "funcName is not register");
+        // 名字有效但未注册：eNo（与 funcInfo/Context/EventLoop 的 not-found 惯例一致；eInvalid 仅用于参数无效）
+        return YomkResponse(YomkResponse::eNo, "funcName is not register");
     }
     m_functions.erase(itFunc);
     return {YomkResponse::eOk, "unregister function success"};
@@ -78,7 +79,8 @@ YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
         if (itFunc == m_functions.end())
         {
             YOMK_ERR_POS_LOG("funcName: " + yCallFunc->d.m_funcName + " is not register, please check CallFunction.m_funcName");
-            return YomkResponse(YomkResponse::eInvalid, "funcName is not register");
+            // 名字有效但未注册：eNo（not-found 框架惯例；eInvalid 仅用于参数无效）
+            return YomkResponse(YomkResponse::eNo, "funcName is not register");
         }
         copyFunc = itFunc->second.m_func;
     }

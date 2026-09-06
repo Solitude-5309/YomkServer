@@ -10,15 +10,16 @@
  * 5. 内省：INFO_NAMES 存活列表包含注册名（空表陷阱教训）/ INFO_NAME 命中 "名 [类型]" 与
  *    无类型两种格式、未注册 eNo、空名 eInvalid / INFO_ALL "functions:N" 首行相对计数与行格式
  * 6. 宏分发：YOMK_FUNCTIONPOOL_REGISTER 2 参（无类型）与 3 参（#MsgName 字符串化为类型名）
- * 7. 异常契约（P2 现状固化）：CALL 链（request→invoke→callFunction→用户函数）无任何 try/catch，
+ * 7. 异常契约：CALL 链（request→invoke→callFunction→用户函数）无任何 try/catch，
  *    用户函数抛 std::exception 异常穿透直达调用方——测试侧捕获 what 验证；随后正常 CALL 验证池存活
  * 8. 超长名：65536 字符函数名全生命周期（REGISTER/CALL/INFO_NAME/UNREGISTER）eOk 且完整回显
  *
  * 说明：YomkFunctionPool 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
  *       YOMK_INIT 单例白盒直连；全部经 API 宏测试，同时覆盖 invoke 路由链，无覆盖损失。
- *       测试装置为文件级原子计数（TSan-clean 既有模式）。FPC1 源码零改动：P1（not-found 错误码
- *       unregister/call=eInvalid vs funcInfo=eNo 不一致）与 P2（异常穿透）仅按现状固化断言并登记，
- *       处置留 FPC2。
+ *       测试装置为文件级原子计数（TSan-clean 既有模式）。源码零改动：FPC1 审计登记的 P1
+ *       （not-found 错误码不一致：unregister/call=eInvalid vs funcInfo=eNo）与 P2（异常穿透）
+ *       已于 FPC2 处置——P1 修复为统一 eNo（与 Context/EventLoop/路由层惯例一致），本文件断言
+ *       同步回填；P2 文档化为显式契约（S7 固化行为不变）。
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
@@ -128,8 +129,8 @@ int main()
         CHECK(echoMsg != nullptr && echoMsg->d == "hello_fp", "CALL 回传消息解包一致（echo 语义）");
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_echo").m_status == YomkResponse::eOk,
               "UNREGISTER 注销函数返回 eOk");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_echo", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eInvalid,
-              "注销后 CALL 返回 eInvalid（现状契约 P1）");
+        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_echo", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eNo,
+              "注销后 CALL 返回 eNo（FPC2 契约：not-found 统一 eNo）");
     }
 
     // ============ Section 2: 注册边界与重复注册更新语义 ============
@@ -156,16 +157,16 @@ int main()
     {
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("").m_status == YomkResponse::eInvalid,
               "UNREGISTER 空函数名返回 eInvalid");
-        CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_never_registered").m_status == YomkResponse::eInvalid,
-              "UNREGISTER 未注册名返回 eInvalid（现状契约 P1）");
+        CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_never_registered").m_status == YomkResponse::eNo,
+              "UNREGISTER 未注册名返回 eNo（FPC2 契约：not-found 统一 eNo）");
     }
 
     // ============ Section 4: 调用边界与 m_pkg=nullptr 透传 ============
     {
         CHECK(YOMK_FUNCTIONPOOL_CALL("", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eInvalid,
               "CALL 空函数名返回 eInvalid");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_never_registered", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eInvalid,
-              "CALL 未注册名返回 eInvalid（现状契约 P1）");
+        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_never_registered", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eNo,
+              "CALL 未注册名返回 eNo（FPC2 契约：not-found 统一 eNo）");
 
         g_nullPkgSeen.store(0);
         CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_probe", nullProbeFunc).m_status == YomkResponse::eOk,
@@ -204,7 +205,7 @@ int main()
         CHECK(infoResp.m_status == YomkResponse::eOk, "INFO_NAME 已注册名返回 eOk");
         CHECK(infoResp.m_msg == "fp_plain", "INFO_NAME 无类型函数消息为纯名（无括号后缀）");
         CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("fp_never_registered").m_status == YomkResponse::eNo,
-              "INFO_NAME 未注册名返回 eNo（与 unregister/call 的 eInvalid 不一致——P1 登记项）");
+              "INFO_NAME 未注册名返回 eNo（与 unregister/call 一致——FPC2 后全接口统一）");
         CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("").m_status == YomkResponse::eInvalid,
               "INFO_NAME 空函数名返回 eInvalid");
 
@@ -251,13 +252,13 @@ int main()
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_three").m_status == YomkResponse::eOk, "清理 fp_three");
     }
 
-    // ============ Section 7: CALL 异常穿透契约（P2 现状固化）============
+    // ============ Section 7: CALL 异常穿透契约（FPC2 已文档化为显式契约）============
     {
         CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_throw", throwFunc).m_status == YomkResponse::eOk,
               "REGISTER 抛异常函数返回 eOk");
 
         // CALL 链五层（request→invoke→callFunction→用户函数）无 try/catch：
-        // 异常穿透直达调用方（区别于 EventLoop run() 的吞噬设计）
+        // 异常穿透直达调用方（区别于 EventLoop run() 的吞噬设计）——FPC2 契约文档化
         bool caught = false;
         try
         {
@@ -267,7 +268,7 @@ int main()
         {
             caught = (std::string(e.what()) == "fp_boom");
         }
-        CHECK(caught, "用户函数异常穿透 CALL 链直达调用方（what 一致）——P2 现状契约");
+        CHECK(caught, "用户函数异常穿透 CALL 链直达调用方（what 一致）——契约行为");
 
         // 穿透后池存活：正常注册与调用不受影响
         CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_alive", aliveFunc).m_status == YomkResponse::eOk,

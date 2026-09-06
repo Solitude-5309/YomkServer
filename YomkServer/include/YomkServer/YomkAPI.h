@@ -435,17 +435,23 @@ public:
         return request("/YomkEventLoop/all", nullptr);
     }
     // FUNCTIONPOOL_API
+    // 注册函数入池：函数名或函数体为空返回 eInvalid；同名重复注册为更新语义（旧函数被替换，
+    // 三参形式声明的期望消息类型仅作内省元数据，不参与运行时校验）
 public:
     static YomkResponse FUNCTIONPOOL_REGISTER(const std::string &funcName, YomkServiceFunc func, const std::string &msgName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/register", YomkMkPtr(Function, yomk::Function{funcName, func, msgName}));
     }
+    // 注销函数：空名 eInvalid；名字有效但未注册返回 eNo（not-found 框架惯例）
     static YomkResponse FUNCTIONPOOL_UNREGISTER(const std::string &funcName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/unregister", YomkMkPtr(String, funcName));
     }
+    // 调用已注册函数（同步）：空名 eInvalid；未注册 eNo；入参 pkg 原样透传（可为 nullptr）。
+    // 用户函数抛出的异常原样穿透到调用方（调用链无 try/catch），需自行 try/catch——
+    // 区别于 EventLoop 异步执行的异常吞噬设计（同步调用语义下穿透让调用方保留错误处理能力）
     static YomkResponse FUNCTIONPOOL_CALL(const std::string &funcName, YomkPkgPtr callData)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));

@@ -174,8 +174,8 @@ class YomkService {
 | 宏 | 说明 |
 |----|------|
 | `YOMK_FUNCTIONPOOL_REGISTER(name, func)` / `(name, func, MsgName)` | 注册（三参形式声明期望消息类型，字符串化后仅作内省元数据，不参与运行时校验；两参旧调用零改动） |
-| `YOMK_FUNCTIONPOOL_UNREGISTER(name)` | 注销（未注册返回 eInvalid） |
-| `YOMK_FUNCTIONPOOL_CALL(name, pkg)` | 调用 |
+| `YOMK_FUNCTIONPOOL_UNREGISTER(name)` | 注销（未注册返回 eNo，空名 eInvalid） |
+| `YOMK_FUNCTIONPOOL_CALL(name, pkg)` | 调用（未注册 eNo，空名 eInvalid；pkg 原样透传可为 nullptr；用户函数异常原样穿透到调用方，需自行 try/catch） |
 | `YOMK_FUNCTIONPOOL_INFO_NAMES()` | 内省：注册函数名列表（返回 StringArray） |
 | `YOMK_FUNCTIONPOOL_INFO_NAME(name)` | 内省：单函数存在性查询（命中 eOk 且 msg 为 `funcName [类型名]`，未声明类型时无括号后缀，未注册 eNo） |
 | `YOMK_FUNCTIONPOOL_INFO_ALL()` | 内省：全量 dump（首行 `functions:N`，其余每行 `funcName [类型名]`） |
