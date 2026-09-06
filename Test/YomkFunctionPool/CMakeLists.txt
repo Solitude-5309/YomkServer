@@ -14,4 +14,16 @@ target_link_libraries(TestYomkFunctionPoolLifecycle PRIVATE
 )
 # -------------el TestYomkFunctionPoolLifecycle ----------------
 
+# -------------sl TestYomkFunctionPoolConcurrency ----------------
+set(TestYomkFunctionPoolConcurrency_SOURCES 
+    ${TestYomkFunctionPool_DIR}/YomkFunctionPool/TestYomkFunctionPoolConcurrency.cpp
+)
+add_executable(TestYomkFunctionPoolConcurrency 
+    ${TestYomkFunctionPoolConcurrency_SOURCES}
+)
+target_link_libraries(TestYomkFunctionPoolConcurrency PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkFunctionPoolConcurrency ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install
