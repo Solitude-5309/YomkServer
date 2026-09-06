@@ -34,7 +34,9 @@ public:
 private:
     std::string m_name;
     std::string m_dir;
-    std::stringstream m_logStream;
-    std::mutex m_logStreamMutex;
+    // P4-a（LG4 修复）：缓冲由 std::stringstream 改为 std::string，write() 可直接把成员缓冲
+    // 交给 ofstream，彻底消除 str() 的 MB 级全量拷贝与瞬时大块分配（详见 write() 注释）
+    std::string m_logBuffer;
+    std::mutex m_logBufferMutex;
 };
 typedef std::shared_ptr<FileLogger> FileLoggerPtr;

@@ -291,6 +291,14 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/all", nullptr);
     }
+    // 删除日志器：同时清理 console/file 两张表（命中数写入 msg "deleted console:c file:f"）；
+    // 空名 eInvalid，两表均未命中 eNo（not-found 框架惯例）；
+    // 文件日志器移除时由 ~FileLogger 自动落盘，但不删除磁盘上的 .log 文件（清理归调用方）
+    static YomkResponse LOGGER_DELETE(const std::string &loggerName)
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/delete_logger", YomkMkPtr(String, loggerName));
+    }
     // CONTEXT_API
 public:
     static YomkResponse CONTEXT_CREATE(const std::string &ctxName, YomkPkgPtr ctx)
@@ -573,6 +581,7 @@ private:
 #define YOMK_LOGGER_INFO_LOGGERS() YomkAPI::LOGGER_INFO_LOGGERS()
 #define YOMK_LOGGER_INFO_LOGGER(...) YomkAPI::LOGGER_INFO_LOGGER(__VA_ARGS__)
 #define YOMK_LOGGER_INFO_ALL() YomkAPI::LOGGER_INFO_ALL()
+#define YOMK_LOGGER_DELETE(...) YomkAPI::LOGGER_DELETE(__VA_ARGS__)
 #define YOMK_CONTEXT_CREATE(...) YomkAPI::CONTEXT_CREATE(__VA_ARGS__)
 #define YOMK_CONTEXT_GET(MsgName, ...) YomkAPI::CONTEXT_GET<Yomk(MsgName)>(#MsgName, __VA_ARGS__)
 #define YOMK_CONTEXT_SET(...) YomkAPI::CONTEXT_SET(__VA_ARGS__)

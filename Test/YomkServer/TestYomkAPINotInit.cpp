@@ -7,8 +7,8 @@
  * 2. 未初始化守卫默认值：serverInstance() 为空、shutdown() 安全空转（幂等）；
  *    request 返回 eInvalid + 契约消息 "YomkServer is not init"；asyncRequest 静默返回
  *    回调不触发；newService/addService/delService 返回 -1
- * 3. 模块 API 守卫：EventLoop/FunctionPool/Logger 三模块全量守卫（Logger 19 入口，
- *    LG2 补齐）；其余模块每种返回值形态取代表（YomkResponse 形态 → eInvalid；
+ * 3. 模块 API 守卫：EventLoop/FunctionPool/Logger 三模块全量守卫（Logger 23 入口，
+ *    LG2 补齐原 19 项计数，LG4 新增 LOGGER_DELETE）；其余模块每种返回值形态取代表（YomkResponse 形态 → eInvalid；
  *    CONTEXT_GET 形态 → 原样返回调用方默认值），同一守卫宏展开书面豁免
  *
  * 说明：call_once 不可逆，未初始化态须独占进程（本程序全程不调 init）；addService 传裸指针
@@ -103,7 +103,7 @@ int main()
       std::cout << "===== 5. 模块 API 守卫（EventLoop/FunctionPool/Logger 全量，其余形态代表） =====" << std::endl;
       {
             // YomkResponse 形态（LOG/CONTEXT/SERVER_INFO 取代表；EventLoop/FunctionPool/
-            // Logger 三模块全量守卫，Logger 19 入口于 LG2 补齐）
+            // Logger 三模块全量守卫，Logger 23 入口，LG4 补 LOGGER_DELETE）
             CHECK(YomkAPI::SET_CONSOLE_LOG_PROXY(nullptr).m_status == YomkResponse::eInvalid,
                   "SET_CONSOLE_LOG_PROXY 未初始化返回 eInvalid");
             YomkResponse logResp = YomkAPI::CONSOLE_LOG_INFO_TAG("tag", "hello");
@@ -149,6 +149,8 @@ int main()
                   "LOGGER_INFO_LOGGER 未初始化返回 eInvalid");
             CHECK(YomkAPI::LOGGER_INFO_ALL().m_status == YomkResponse::eInvalid,
                   "LOGGER_INFO_ALL 未初始化返回 eInvalid");
+            CHECK(YomkAPI::LOGGER_DELETE("guard_logger").m_status == YomkResponse::eInvalid,
+                  "LOGGER_DELETE 未初始化返回 eInvalid");
             CHECK(YomkAPI::CONTEXT_CREATE("guard_key", nullptr).m_status == YomkResponse::eInvalid,
                   "CONTEXT_CREATE 未初始化返回 eInvalid");
             CHECK(YomkAPI::EVENTLOOP_START("/guard_loop").m_status == YomkResponse::eInvalid,

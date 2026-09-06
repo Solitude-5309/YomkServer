@@ -40,4 +40,16 @@ target_link_libraries(TestYomkLoggerConcurrency PRIVATE
 )
 # -------------el TestYomkLoggerConcurrency ----------------
 
+# -------------sl TestYomkLoggerStress ----------------
+set(TestYomkLoggerStress_SOURCES 
+    ${TestYomkLogger_DIR}/YomkLogger/TestYomkLoggerStress.cpp
+)
+add_executable(TestYomkLoggerStress 
+    ${TestYomkLoggerStress_SOURCES}
+)
+target_link_libraries(TestYomkLoggerStress PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkLoggerStress ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install

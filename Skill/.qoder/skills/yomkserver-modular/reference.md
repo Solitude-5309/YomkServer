@@ -201,3 +201,4 @@ class YomkService {
 | `YOMK_LOGGER_INFO_LOGGERS()` | 内省：日志器列表（返回 StringArray，控制台行 `name [console]`，文件行 `name [file] dir:路径`） |
 | `YOMK_LOGGER_INFO_LOGGER(name)` | 内省：单日志器元信息（msg 同上格式，未注册 eNo） |
 | `YOMK_LOGGER_INFO_ALL()` | 内省：全量 dump（首行 `console:debug:on\|off info:... warn:... error:... proxy:on\|off`，其余为日志器行） |
+| `YOMK_LOGGER_DELETE(name)` | 删除日志器（同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 eNo；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |

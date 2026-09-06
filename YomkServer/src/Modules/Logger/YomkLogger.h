@@ -23,6 +23,7 @@ private:
     YomkResponse createFileLogger(YomkPkgPtr pkg);
     YomkResponse fileLog(YomkPkgPtr pkg);
     YomkResponse writeFileLog(YomkPkgPtr pkg);
+    YomkResponse deleteLogger(YomkPkgPtr pkg);
     YomkResponse offConsoleLogByLevel(YomkPkgPtr pkg);
     YomkResponse onConsoleLogByLevel(YomkPkgPtr pkg);
 

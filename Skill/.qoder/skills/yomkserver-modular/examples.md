@@ -815,6 +815,13 @@ YOMK_FILE_INFO("app_log", "Application started");
 YOMK_FILE_WARN_TAG("app_log", "Security", "Suspicious activity");
 YOMK_FILE_LOG_WRITE("app_log");  // 刷新到磁盘
 
+// 删除日志器：单端点同时清理 console/file 两表；文件日志器移除时析构自动落盘
+// （未 flush 的缓冲内容不丢），但不删除磁盘上的 .log 文件（数据保全，清理归调用方）
+YomkResponse del = YOMK_LOGGER_DELETE("app_log");
+// eOk, msg: "deleted console:0 file:1"
+YOMK_LOGGER_DELETE("app_log");   // eNo, msg: "logger not found."（已删除）
+// 注："MainLogger" 无特殊保护，删除后下次写控制台日志会惰性重建
+
 // 自定义控制台日志代理
 bool myLogProxy(const yomk::Log& log) {
     std::cout << "[" << log.m_logger << "] " << log.m_log << std::endl;

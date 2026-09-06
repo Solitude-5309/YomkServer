@@ -1002,7 +1002,7 @@ int main()
         uint64_t sinkLines = countLines(sinkContent);
         CHECK(sinkLines == kSinkTotal,
               "S4c: 落盘总行数 == " + std::to_string(kSinkTotal) + "（实际 " + std::to_string(sinkLines) +
-                  "）——log/write 共用 m_logStreamMutex，缓冲交接不丢行不切行");
+                  "）——log/write 共用 m_logBufferMutex（P4-a 后缓冲为 std::string），缓冲交接不丢行不切行");
 
         auto sinkMarkers = collectTailMarkers(sinkContent, "lg3s4c_t");
         CHECK(sinkMarkers.size() == kSinkTotal,

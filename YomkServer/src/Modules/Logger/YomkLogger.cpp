@@ -25,6 +25,7 @@ int YomkLogger::init()
     YomkInstallFunc("/create_file_logger", YomkLogger::createFileLogger, LogFile);
     YomkInstallFunc("/file_log", YomkLogger::fileLog, Log);
     YomkInstallFunc("/write_file_log", YomkLogger::writeFileLog, String);
+    YomkInstallFunc("/delete_logger", YomkLogger::deleteLogger, String);
     YomkInstallFunc("/off_console_log_by_level", YomkLogger::offConsoleLogByLevel, Log);
     YomkInstallFunc("/on_console_log_by_level", YomkLogger::onConsoleLogByLevel, Log);
     YomkInstallFunc("/loggers", YomkLogger::loggers);
@@ -220,6 +221,54 @@ YomkResponse YomkLogger::writeFileLog(YomkPkgPtr pkg)
     return YomkResponse(YomkResponse::eOk, "success.");
 }
 
+YomkResponse YomkLogger::deleteLogger(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, String, yName);
+
+    // 空名校验与 createFileLogger 同惯例（P2-a）：拒绝 "" key
+    if (yName->d.empty())
+    {
+        YOMK_ERR_POS_LOG("logger name is empty.");
+        return YomkResponse(YomkResponse::eInvalid, "logger name is empty.");
+    }
+
+    // 分段独占、不嵌套：删除不需要跨表原子快照（"只存在于其中一张表"本就是合法状态），
+    // 而同时持两把写锁会把全部日志写入挡在整个删除过程之外。此处不嵌套持有，
+    // 故与 P3-a 的锁序约定无冲突（该约定只约束"同时持有两把锁"的内省快照场景）
+    size_t deletedConsole = 0;
+    {
+        std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
+        deletedConsole = m_consoleLoggers.erase(yName->d);
+    }
+
+    // 锁内拷出指针、锁外析构（沿用 P1-b 范式）：~FileLogger 会调 write() 落盘，
+    // 若让最后一个引用在写锁内释放，该文件 I/O 将阻塞所有 file 日志写入
+    size_t deletedFile = 0;
+    FileLoggerPtr removedFile;
+    {
+        std::unique_lock<std::shared_mutex> lock(m_fileLoggersMutex);
+        auto itLogger = m_fileLoggers.find(yName->d);
+        if (itLogger != m_fileLoggers.end())
+        {
+            removedFile = itLogger->second;
+            m_fileLoggers.erase(itLogger);
+            deletedFile = 1;
+        }
+    }
+
+    if (deletedConsole == 0 && deletedFile == 0)
+    {
+        YOMK_ERR_POS_LOG("logger: " + yName->d + " not found.");
+        return YomkResponse(YomkResponse::eNo, "logger not found.");
+    }
+
+    // 不删除磁盘上的 .log 文件（数据保全，清理归调用方）；"MainLogger" 无特殊保护，
+    // 删除后下次控制台日志按 consoleLog 的双检锁惰性重建
+    return YomkResponse(YomkResponse::eOk,
+                        "deleted console:" + std::to_string(deletedConsole) +
+                            " file:" + std::to_string(deletedFile));
+}
+
 YomkResponse YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, Log, log);
@@ -301,6 +350,10 @@ YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
     // LOGGERS 违例 8 个、ALL 违例 7 个）
     std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
     std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
+    // P4-c（LG4 修复）：取到两把读锁后立即预分配，避免万级条目下 vector<string> 反复扩容
+    // 搬移，缩短双锁快照窗口——该窗口会阻塞 createFileLogger 的独占锁。
+    // 不改变 P3-a 的嵌套双锁原子性语义（LG3 S5 判别式仍须为 0 违例）
+    lines.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
     for (auto &iter : m_consoleLoggers)
         lines.push_back(iter.first + " [console]");
     for (auto &iter : m_fileLoggers)
@@ -336,6 +389,8 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
     // P3-a（LG3 修复）：同 loggers，行数快照按锁序 console -> file 嵌套取，跨段原子
     std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
     std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
+    // P4-c（LG4 修复）：同 loggers，预分配缩短双锁快照窗口（+1 为首行状态行）
+    lines.reserve(m_consoleLoggers.size() + m_fileLoggers.size() + 1);
     for (auto &iter : m_consoleLoggers)
         lines.push_back(iter.first + " [console]");
     for (auto &iter : m_fileLoggers)
