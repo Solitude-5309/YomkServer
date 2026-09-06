@@ -26,4 +26,16 @@ target_link_libraries(TestYomkFunctionPoolConcurrency PRIVATE
 )
 # -------------el TestYomkFunctionPoolConcurrency ----------------
 
+# -------------sl TestYomkFunctionPoolStress ----------------
+set(TestYomkFunctionPoolStress_SOURCES 
+    ${TestYomkFunctionPool_DIR}/YomkFunctionPool/TestYomkFunctionPoolStress.cpp
+)
+add_executable(TestYomkFunctionPoolStress 
+    ${TestYomkFunctionPoolStress_SOURCES}
+)
+target_link_libraries(TestYomkFunctionPoolStress PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkFunctionPoolStress ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install
