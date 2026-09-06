@@ -295,16 +295,16 @@ YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
 {
     (void)pkg;
     std::vector<std::string> lines;
-    {
-        std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-        for (auto &iter : m_consoleLoggers)
-            lines.push_back(iter.first + " [console]");
-    }
-    {
-        std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
-        for (auto &iter : m_fileLoggers)
-            lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
-    }
+    // P3-a（LG3 修复）：按锁序 console -> file 嵌套持有两把读锁，使 console 段与 file 段
+    // 成为同一时刻的原子快照。原分段持锁时 file 段的读取时刻晚于 console 段，并发创建
+    // logger 会返回从未真实存在过的行数组合（LG3 S5 判别式实测：1800 对成对创建下
+    // LOGGERS 违例 8 个、ALL 违例 7 个）
+    std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
+    std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
+    for (auto &iter : m_consoleLoggers)
+        lines.push_back(iter.first + " [console]");
+    for (auto &iter : m_fileLoggers)
+        lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
     return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
 }
 
@@ -330,16 +330,15 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
 {
     (void)pkg;
     std::vector<std::string> lines;
+    // 状态行在双锁之外取：m_consoleLogProxyMutex 是叶子锁，且四个级别开关为独立 atomic，
+    // 其组合本就无原子快照保证（既有设计，不在 P3-a 范围）
     lines.push_back(consoleLevelLine());
-    {
-        std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-        for (auto &iter : m_consoleLoggers)
-            lines.push_back(iter.first + " [console]");
-    }
-    {
-        std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
-        for (auto &iter : m_fileLoggers)
-            lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
-    }
+    // P3-a（LG3 修复）：同 loggers，行数快照按锁序 console -> file 嵌套取，跨段原子
+    std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
+    std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
+    for (auto &iter : m_consoleLoggers)
+        lines.push_back(iter.first + " [console]");
+    for (auto &iter : m_fileLoggers)
+        lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
     return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
 }

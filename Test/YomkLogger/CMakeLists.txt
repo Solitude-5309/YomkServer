@@ -28,4 +28,16 @@ target_link_libraries(TestYomkLoggerDirect PRIVATE
 )
 # -------------el TestYomkLoggerDirect ----------------
 
+# -------------sl TestYomkLoggerConcurrency ----------------
+set(TestYomkLoggerConcurrency_SOURCES 
+    ${TestYomkLogger_DIR}/YomkLogger/TestYomkLoggerConcurrency.cpp
+)
+add_executable(TestYomkLoggerConcurrency 
+    ${TestYomkLoggerConcurrency_SOURCES}
+)
+target_link_libraries(TestYomkLoggerConcurrency PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkLoggerConcurrency ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install
