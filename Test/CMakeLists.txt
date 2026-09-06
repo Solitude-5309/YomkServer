@@ -17,6 +17,10 @@ include(${TestYomkEventLoop_DIR}/YomkEventLoop/CMakeLists.txt)
 set(TestYomkFunctionPool_DIR ${TestYomkServer_DIR})
 include(${TestYomkFunctionPool_DIR}/YomkFunctionPool/CMakeLists.txt)
 
+# Test/YomkLogger：Logger 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
+set(TestYomkLogger_DIR ${TestYomkServer_DIR})
+include(${TestYomkLogger_DIR}/YomkLogger/CMakeLists.txt)
+
 # Test/YomkServer：YomkServer 非 Modules 源文件的正式全面覆盖测试（顶层按被测模块分目录组织）
 include(${TestYomkServer_DIR}/YomkServer/CMakeLists.txt)
 
