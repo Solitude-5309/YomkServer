@@ -42,49 +42,73 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
         log->d.m_logger = "MainLogger";
     }
 
-    if (m_consoleLogProxy && m_consoleLogProxyFunc && !m_consoleLogProxyFunc(log->d))
+    // P1-b（LG2 修复）：proxy 字段在专属锁内拷贝快照，回调在锁外调用，
+    // 与 setConsoleLogProxy 的写互斥，且避免用户回调持锁重入
+    bool proxyEnabled = false;
+    YomkConsoleLogProxyFunc proxyFunc;
+    {
+        std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
+        proxyEnabled = m_consoleLogProxy;
+        proxyFunc = m_consoleLogProxyFunc;
+    }
+    if (proxyEnabled && proxyFunc && !proxyFunc(log->d))
     {
         return YomkResponse(YomkResponse::eOk, "console log proxy is success.");
     }
 
-    std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-
-    auto itLogger = m_consoleLoggers.find(log->d.m_logger);
-    if (itLogger == m_consoleLoggers.end())
+    // P1-a（LG2 修复）：双检锁——shared_lock 只读查找，miss 后升级 unique_lock
+    // 并二次查找（其他线程可能已创建），写 map 仅在独占锁下进行；
+    // 拷贝 logger 指针后离开锁作用域，级别 switch 在锁外执行
+    ConsoleLoggerPtr consoleLogger;
     {
-        std::shared_ptr<ConsoleLogger> consoleLogger = std::make_shared<ConsoleLogger>();
-        consoleLogger->setName(log->d.m_logger);
-        auto result = m_consoleLoggers.emplace(log->d.m_logger, consoleLogger);
-        if (!result.second)
+        std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
+        auto itLogger = m_consoleLoggers.find(log->d.m_logger);
+        if (itLogger != m_consoleLoggers.end())
         {
-            YOMK_ERR_POS_LOG("console logger: " + log->d.m_logger + " create failed.");
-            return YomkResponse(YomkResponse::eNo, "console logger: " + log->d.m_logger + " create failed.");
+            consoleLogger = itLogger->second;
         }
-        itLogger = result.first;
+    }
+    if (!consoleLogger)
+    {
+        std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
+        auto itLogger = m_consoleLoggers.find(log->d.m_logger);
+        if (itLogger == m_consoleLoggers.end())
+        {
+            std::shared_ptr<ConsoleLogger> newLogger = std::make_shared<ConsoleLogger>();
+            newLogger->setName(log->d.m_logger);
+            auto result = m_consoleLoggers.emplace(log->d.m_logger, newLogger);
+            if (!result.second)
+            {
+                YOMK_ERR_POS_LOG("console logger: " + log->d.m_logger + " create failed.");
+                return YomkResponse(YomkResponse::eNo, "console logger: " + log->d.m_logger + " create failed.");
+            }
+            itLogger = result.first;
+        }
+        consoleLogger = itLogger->second;
     }
 
     switch (log->d.m_level)
     {
     case Log::eInfo:
         if (m_showConsoleInfoLog.load())
-            itLogger->second->log(ConsoleLogger::eInfo, log->d.m_log);
+            consoleLogger->log(ConsoleLogger::eInfo, log->d.m_log);
         break;
     case Log::eWarn:
         if (m_showConsoleWarningLog.load())
-            itLogger->second->log(ConsoleLogger::eWarn, log->d.m_log);
+            consoleLogger->log(ConsoleLogger::eWarn, log->d.m_log);
         break;
     case Log::eError:
         if (m_showConsoleErrorLog.load())
-            itLogger->second->log(ConsoleLogger::eError, log->d.m_log);
+            consoleLogger->log(ConsoleLogger::eError, log->d.m_log);
         break;
     case Log::eDebug:
         if (m_showConsoleDebugLog.load())
-            itLogger->second->log(ConsoleLogger::eDebug, log->d.m_log);
+            consoleLogger->log(ConsoleLogger::eDebug, log->d.m_log);
         break;
     default:
         YOMK_ERR_POS_LOG("unknown log level, use Info");
         if (m_showConsoleInfoLog.load())
-            itLogger->second->log(ConsoleLogger::eInfo, log->d.m_log);
+            consoleLogger->log(ConsoleLogger::eInfo, log->d.m_log);
         break;
     }
 
@@ -94,6 +118,8 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
 YomkResponse YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, ConsoleLogProxy, consoleLogProxy);
+    // P1-b（LG2 修复）：与 consoleLog 的读互斥
+    std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
     m_consoleLogProxy = true;
     m_consoleLogProxyFunc = consoleLogProxy->d.m_consoleLogProxyFunc;
     return {YomkResponse::eOk, "success."};
@@ -102,6 +128,20 @@ YomkResponse YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
 YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, LogFile, logFile);
+
+    // P2-a（LG2 修复）：空名/空目录校验，拒绝 "" key 注册与 "/.log" 相对路径回退
+    // （对齐 FunctionPool registerFunction 空名 eInvalid 惯例）
+    if (logFile->d.m_logger.empty())
+    {
+        YOMK_ERR_POS_LOG("logger name is empty.");
+        return YomkResponse(YomkResponse::eInvalid, "logger name is empty.");
+    }
+    if (logFile->d.m_dir.empty())
+    {
+        YOMK_ERR_POS_LOG("logger dir is empty.");
+        return YomkResponse(YomkResponse::eInvalid, "logger dir is empty.");
+    }
+
     std::unique_lock<std::shared_mutex> lock(m_fileLoggersMutex);
     if (m_fileLoggers.find(logFile->d.m_logger) != m_fileLoggers.end())
     {
@@ -111,7 +151,13 @@ YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
     std::shared_ptr<FileLogger> fileLogger = std::make_shared<FileLogger>();
     fileLogger->setName(logFile->d.m_logger);
     fileLogger->setDir(logFile->d.m_dir);
-    fileLogger->init();
+    // P2-b（LG2 修复）：init 失败（目录不可建/文件不可开）不再异常穿透，
+    // 且不注册幽灵 logger
+    if (!fileLogger->init())
+    {
+        YOMK_ERR_POS_LOG("init file logger failed: " + logFile->d.m_logger);
+        return YomkResponse(YomkResponse::eNo, "init file logger failed.");
+    }
     m_fileLoggers.emplace(logFile->d.m_logger, fileLogger);
 
     return YomkResponse(YomkResponse::eOk, "success.");
@@ -236,7 +282,12 @@ std::string YomkLogger::consoleLevelLine()
     line += " error:";
     line += m_showConsoleErrorLog.load() ? "on" : "off";
     line += " proxy:";
-    line += m_consoleLogProxy ? "on" : "off";
+    // P1-b（LG2 修复）：内省读侧同样需与 setConsoleLogProxy 的写互斥
+    // （叶子锁：调用方 listAll 在本函数外不持任何锁，无嵌套无死锁风险）
+    {
+        std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
+        line += m_consoleLogProxy ? "on" : "off";
+    }
     return line;
 }
 

@@ -1,25 +1,27 @@
 /**
  * @file TestYomkLoggerDirect.cpp
- * @brief Logger 模块 ConsoleLogger/FileLogger 类直连白盒测试（LG1）
+ * @brief Logger 模块 ConsoleLogger/FileLogger 类直连白盒测试（LG1 新建，LG2 回填）
  *
- * 覆盖内容（2 个类，12 组用例 17 断言）：
+ * 覆盖内容（2 个类，14 组用例 26 断言）：
  * ConsoleLogger：
  * 1. 默认名 "MainLogger"、setName/getName
  * 2. 四级别输出（级别标签 [Debug]/[Info ]/[Warn ]/[Error] + [名] + 内容）
- * 3. 非法级别 default 分支经 UBSan 实证为 UB 死分支（P2-c 登记，不注入）
+ * 3. 非法级别 default 降级（P2-c 修复后回填）：log(ELogLevel(99)) →
+ *    "Unknown log level: 99" 提示 + 降级 Info 输出
  * 4. 时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]
  * 5. 超长名（4096）与空内容
  * FileLogger：
  * 6. 默认名、setName/setDir/getDir
- * 7. init 建多级目录 + 空日志文件
- * 8. log 四级别入缓冲（write 前不落盘）
+ * 7. init 建多级目录 + 空日志文件，返回 true（P2-b 修复后 bool 语义）
+ * 8. log 四级别入缓冲（write 前不落盘）；非法级别 default 降级 Info 入缓冲（P2-c 回填）
  * 9. write 追加落盘后清空流（二次 write 文件不增长）
  * 10. 空流 write 不触碰文件；空内容 log 仍成行；1MB 超长内容往返
  * 11. 析构自动 write（缓冲落盘）
  * 12. write 打不开文件分支（dir 为普通文件路径）：错误提示 + 流保留不丢，
  *     setDir 恢复有效目录后补写成功
- * 13. P2-b 现状固化：init 对不可创建目录（/proc 下嵌套路径）fs 异常穿透
- *     （try/catch 捕获验证，LG2 处置为错误码/日志化）
+ * 13. P2-b 处置验证（LG2 回填）：init 对不可创建目录（/proc 下嵌套路径）
+ *     返回 false 不抛异常，错误提示含 fs error 信息；dir 为普通文件时
+ *     走 ofstream 打开失败分支（false + create log file failed）
  *
  * 说明：ConsoleLogger/FileLogger 为库内部实现类，符号已从 libYomkServer.so 导出
  *       （nm -D 核实），测试侧经源码模块 include 路径直连构造，不经框架单例
@@ -27,10 +29,11 @@
  *       rdbuf 捕获"。异常安全说明：两类无裸资源（string/stringstream/mutex
  *       自管理），bad_alloc 注入书面豁免（见 LG1 计划第 1 节）。
  *
- * LG1 审计登记：P1-c（log 内 std::localtime 线程不安全，LG2 改 localtime_r）、
- * P2-b（init fs 异常穿透，本文件固化）、P2-c（ELogLevel 无固定底层类型，值域仅
- * 0..3，加载 99 即 UB——两类 log() 的 default 分支不可合法触达，不得注入非法值
- * 测试；LG2 处置：枚举加 : int 后回填降级 Info 断言或删除死分支）——处置均留 LG2。
+ * LG1 审计登记 → LG2 处置状态（本文件断言已同步回填）：
+ * P1-c（log 内 std::localtime → 已改 localtime_r/_WIN32 localtime_s，时间戳格式断言不变）、
+ * P2-b（init fs 异常穿透 → 已改 bool 返回 + 异常捕获，用例 13 回填）、
+ * P2-c（ELogLevel 无固定底层类型 → 三处枚举已加 : int，99 为合法值，
+ * 两类 log() 的 default 降级分支转活，用例 3/8 回填注入断言）。
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
@@ -161,8 +164,20 @@ int main()
             CHECK(checkTimeFormat(out), "控制台行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]");
         }
 
-        // 非法级别 default 分支：不注入（P2-c）——ELogLevel 无固定底层类型，
-        // 加载 99 即 UB（UBSan 实证），default 为死分支，LG2 处置后回填
+        // 非法级别 default 降级（P2-c 修复后回填）：枚举已加 : int，99 合法非 UB；
+        // YOMK_ERR_POS_LOG 直写 cout 可被捕获（CHECK 须在捕获作用域外）
+        {
+            std::string out;
+            {
+                CoutCapture cap;
+                logger.log(static_cast<ConsoleLogger::ELogLevel>(99), "lg1_dc_badlevel_marker");
+                out = cap.str();
+            }
+            CHECK(out.find("Unknown log level: 99") != std::string::npos,
+                  "非法级别 99 走 default 错误提示（P2-c 修复后活分支）");
+            CHECK(out.find("[Info ] [lg1_direct_console] lg1_dc_badlevel_marker") != std::string::npos,
+                  "非法级别降级 Info 输出 marker");
+        }
 
         // 超长名（4096）与空内容
         {
@@ -187,20 +202,32 @@ int main()
         CHECK(fl.getName() == "lg1_direct_file" && fl.getDir() == (tmpDir / "fl_basic").string(),
               "setName/setDir/getDir 往返一致");
 
-        // init：多级目录 + 空日志文件
-        fl.init();
+        // init：多级目录 + 空日志文件，返回 true（P2-b 修复后 bool 语义）
+        CHECK(fl.init(), "init 成功返回 true（P2-b 修复后 bool 语义）");
         fs::path logFile = tmpDir / "fl_basic" / "lg1_direct_file.log";
         CHECK(fs::exists(tmpDir / "fl_basic") && fs::exists(logFile) && fs::file_size(logFile, ec) == 0,
               "init 建多级目录与空日志文件");
 
-        // log 四级别：入缓冲不落盘（非法级别不注入，P2-c）
+        // log 四级别：入缓冲不落盘
         fl.log(FileLogger::eDebug, "lg1_df_debug_marker");
         fl.log(FileLogger::eInfo, "lg1_df_info_marker");
         fl.log(FileLogger::eWarn, "lg1_df_warn_marker");
         fl.log(FileLogger::eError, "lg1_df_error_marker");
+        // 非法级别 default 降级 Info 入缓冲（P2-c 修复后回填，随下方 write 一并落盘；
+        // CHECK 须在捕获作用域外，否则断言输出被 rdbuf 重定向吞没）
+        {
+            std::string outBad;
+            {
+                CoutCapture cap;
+                fl.log(static_cast<FileLogger::ELogLevel>(99), "lg1_df_badlevel_marker");
+                outBad = cap.str();
+            }
+            CHECK(outBad.find("Unknown log level: 99") != std::string::npos,
+                  "FileLogger 非法级别 99 走 default 错误提示（P2-c 修复后活分支）");
+        }
         CHECK(fs::file_size(logFile, ec) == 0, "write 前缓冲内容不落盘（文件仍空）");
 
-        // write：4 行落盘（四级别各一），行格式与时间戳
+        // write：5 行落盘（四级别各一 + 非法级别降级 Info 一行），行格式与时间戳
         fl.write();
         bool readOk = false;
         std::string content = readFile(logFile, readOk);
@@ -210,6 +237,8 @@ int main()
                content.find("[Warn ] lg1_df_warn_marker") != std::string::npos &&
                content.find("[Error] lg1_df_error_marker") != std::string::npos),
               "四级别行格式（时间戳+[级别]+内容）落盘");
+        CHECK(content.find("[Info ] lg1_df_badlevel_marker") != std::string::npos,
+              "非法级别降级 Info 行落盘（P2-c 回填）");
         CHECK(checkTimeFormat(content), "文件日志行首时间戳格式");
 
         // 流已清空：二次 write 文件不增长
@@ -244,13 +273,16 @@ int main()
             failFl.setName("lg1_writefail");
             failFl.setDir(regularFile.string()); // <普通文件>/lg1_writefail.log 无法打开
             failFl.log(FileLogger::eInfo, "lg1_df_writefail_marker");
+            // CHECK 须在捕获作用域外（否则断言输出被 rdbuf 重定向吞没）
+            std::string outFail;
             {
                 CoutCapture cap;
                 failFl.write();
-                CHECK(cap.str().find("open log file failed: " + regularFile.string() +
-                                     "/lg1_writefail.log") != std::string::npos,
-                      "write 打不开文件走错误提示分支");
+                outFail = cap.str();
             }
+            CHECK(outFail.find("open log file failed: " + regularFile.string() +
+                               "/lg1_writefail.log") != std::string::npos,
+                  "write 打不开文件走错误提示分支");
             // 流保留：恢复有效目录后补写成功（内容不丢）
             fs::path recoverDir = tmpDir / "fl_recover";
             fs::create_directories(recoverDir, ec);
@@ -280,22 +312,43 @@ int main()
                   "析构自动 write，缓冲内容落盘");
         }
 
-        // P2-b 现状固化：init 对不可创建目录 fs 异常穿透（LG2 处置）
-        // /proc 下嵌套新目录：非 root create_directories 必抛 fs_error（EACCES/EPERM）
+        // P2-b 处置验证（LG2 回填）：init 对不可创建目录返回 false 不抛异常
+        // /proc 下嵌套新目录：非 root create_directories 必抛 fs_error（EACCES/EPERM），
+        // 修复后被 init 内部捕获并转 false + 错误提示（CHECK 在捕获作用域外）
         {
             FileLogger badFl;
             badFl.setName("lg1_badinit");
             badFl.setDir("/proc/lg1_impossible_dir/sub");
-            bool thrown = false;
-            try
+            bool initRet = true;
+            std::string out;
             {
-                badFl.init();
+                CoutCapture cap;
+                initRet = badFl.init();
+                out = cap.str();
             }
-            catch (const fs::filesystem_error &)
+            CHECK(!initRet, "init 不可创建目录返回 false（P2-b 已处置，异常不穿透）");
+            CHECK(out.find("init file logger fs error") != std::string::npos,
+                  "init 失败错误提示含 fs error 信息");
+        }
+
+        // P2-b 第二条失败路径：dir 为普通文件（exists 为 true 不走 create_directories，
+        // 但 ofstream 打开 <普通文件>/<名>.log 必失败 ENOTDIR）→ false + create log file failed
+        {
+            fs::path regularDir = tmpDir / "fl_init_regular";
+            std::ofstream(regularDir.string()) << "x";
+            FileLogger regFl;
+            regFl.setName("lg1_initfail");
+            regFl.setDir(regularDir.string());
+            bool initRet = true;
+            std::string out;
             {
-                thrown = true;
+                CoutCapture cap;
+                initRet = regFl.init();
+                out = cap.str();
             }
-            CHECK(thrown, "init 不可创建目录时 fs 异常穿透调用方（P2-b 现状固化，LG2 处置）");
+            CHECK(!initRet, "init 目录为普通文件时返回 false（ofstream 打开失败分支）");
+            CHECK(out.find("create log file failed: " + regularDir.string() + "/lg1_initfail.log") != std::string::npos,
+                  "init 打开失败错误提示含完整日志文件路径");
         }
     }
 

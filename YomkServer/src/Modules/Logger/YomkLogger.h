@@ -41,6 +41,9 @@ private:
     std::atomic<bool> m_showConsoleInfoLog;
     std::atomic<bool> m_showConsoleWarningLog;
     std::atomic<bool> m_showConsoleErrorLog;
+    // proxy 字段专属锁（LG2/P1-b）：setConsoleLogProxy 写与 consoleLog 读均持锁，
+    // 回调在锁外执行（锁内拷贝、锁外调用，避免持锁重入）
+    std::mutex m_consoleLogProxyMutex;
     bool m_consoleLogProxy;
     YomkConsoleLogProxyFunc m_consoleLogProxyFunc;
 };

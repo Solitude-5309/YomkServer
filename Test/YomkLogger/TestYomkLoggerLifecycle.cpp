@@ -1,22 +1,28 @@
 /**
  * @file TestYomkLoggerLifecycle.cpp
- * @brief Logger 模块生命周期与契约基线测试（LG1，从零新建——模块此前零专属覆盖）
+ * @brief Logger 模块生命周期与契约基线测试（LG1 从零新建，LG2 审计处置后回填）
  *
- * 覆盖内容（7 个 Section，60 断言）：
+ * 覆盖内容（7 个 Section + 1 个前置注入段，74 断言）：
  * 1. 控制台日志基线：四级别宏输出格式（时间戳+[级别]+[MainLogger:行号] tag）；
  *    级别开关 OFF→无输出仍 eOk→ON→恢复输出，四级别全覆盖
  * 2. 自定义 tag：新 tag 自动创建 console logger；65536 超长 tag；空内容日志
+ * 2.5 非法级别 default 降级（P2-c 修复后）：proxy 设置前 raw 注入 level=99 →
+ *    console_log default 降级 Info 输出 + eOk（S3 后 proxy 拦截一切 console_log，
+ *    该 default 分支仅在此窗口可触达）
  * 3. proxy 契约：SET_CONSOLE_LOG_PROXY 拦截（false→eOk+"console log proxy is success."+无输出）
  *    与穿透（true→默认输出）；原子计数验证；all 内省 proxy:on
  * 4. 文件日志闭环：CREATE 建空文件→四级别入缓冲（write 前文件仍空）→WRITE 落盘读回断言
  *    行数与行格式（含 FILE_INFO_TAG 自定义 tag 变体）；重复创建 eNo；未创建 logger 的
- *    FILE_LOG/WRITE eNo；空名+空 dir 创建（P2-a 现状固化："/.log" 路径 + 状态污染实证）
+ *    FILE_LOG/WRITE eNo；P2-a/P2-b 处置验证（空名/空 dir eInvalid、不可建 dir eNo
+ *    且不注册幽灵 logger、失败后同名重试成功）
  * 5. 内省三端点：LOGGERS 列表行格式 / LOGGER(name) console/file 两格式与未注册 eNo /
  *    ALL 首行 consoleLevelLine 精确格式与开关翻转联动
  * 6. 边界值：变参 fold 传 INT_MAX/INT_MIN/0/-1/NaN/Inf/-Inf/-0.0；1MB 超大内容 console+file
- *    双路径；非法级别 default 分支经 UBSan 实证为 UB 死分支（P2-c 登记，不注入）
+ *    双路径；非法级别注入回填（P2-c 修复后 99 合法）：file_log/off/on 三处 default
+ *    降级与无副作用实证
  * 7. 异常路径：console_log 收 nullptr 包 / 错类型包（String）均 eNo；console_log 空
- *    logger 名回退 MainLogger / file_log 空名 eNo（raw 注入触达）；未知端点 eNo
+ *    logger 名回退 MainLogger / file_log 空名 eNo（raw 注入触达）；LOGGER 空名 eNo
+ *    （LG2 堵死空名注册后回填）；未知端点 eNo
  *
  * 说明：YomkLogger 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
  *       YOMK_INIT 单例白盒直连；全部经 API 宏/raw request 测试，同时覆盖 invoke 路由链，
@@ -24,19 +30,19 @@
  *       控制台输出断言采用"唯一 marker + cout rdbuf 捕获"（框架自身日志构成背景噪声，
  *       正向断言查 marker 命中、负向断言查 marker 缺席，均不受噪声影响）。
  *
- * LG1 审计登记（现状固化断言，处置留 LG2）：
- * - P1-a consoleLog 持 shared_lock 执行 m_consoleLoggers.emplace（并发新 tag 必 race）
- * - P1-b setConsoleLogProxy 无锁写 m_consoleLogProxy/m_consoleLogProxyFunc（与读侧 race）
- * - P1-c ConsoleLogger/FileLogger::log 用线程不安全 std::localtime（应为 localtime_r）
- * - P2-a createFileLogger 空 logger 名/空 dir 无校验（S4 固化：空名+空 dir eOk 且拼 "/.log"，
- *   "" key 占用后重名拦截与 LOGGER("") 内省污染同步实证）
- * - P2-b FileLogger::init 的 fs::create_directories 异常可穿透（Direct 测试固化）
- * - P2-c 非法级别 default 分支不可合法触达（UBSan 实证）：Log::ELogLevel 等三处枚举
- *   无固定底层类型，值域仅 0..3（最小位宽 2 bit），加载 99 即 UB（LG1 在 build-asan
- *   下实测报 "load of value 99, which is not a valid value for type 'ELogLevel'"）；
- *   因此 console_log/file_log/off/on 四处 switch default 与 ConsoleLogger/FileLogger::log
- *   的 default 均为 UB 死分支——不得以非法值注入测试；LG2 处置：枚举加 : int 底层类型
- *   使 default 可合法触达后回填降级 Info 断言，或删除死分支（gcov 100% 分支目标同步处置）
+ * LG1 审计登记 → LG2 处置状态（本文件断言已同步回填）：
+ * - P1-a consoleLog 持 shared_lock emplace → 已修复：双检锁（shared 查找 miss 后升级
+ *   unique 二次查找），写 map 仅在独占锁下；并发竞态验证归 LG3
+ * - P1-b setConsoleLogProxy 无锁写 proxy 字段 → 已修复：专属 m_consoleLogProxyMutex，
+ *   读侧锁内拷贝快照、锁外调用回调
+ * - P1-c std::localtime 线程不安全 → 已修复：localtime_r（_WIN32 分支 localtime_s）
+ * - P2-a createFileLogger 空名/空 dir 无校验 → 已修复：两者均 eInvalid（"logger name is
+ *   empty."/"logger dir is empty."），"" key 幽灵注册与 "/.log" 根路径拼接彻底堵死（S4 回填）
+ * - P2-b FileLogger::init fs 异常穿透 → 已修复：init 改 bool 返回，异常捕获后 false，
+ *   createFileLogger 对失败 eNo 且不注册（S4 回填；Direct 测试同步改写）
+ * - P2-c ELogLevel 枚举无固定底层类型（注入 99 即 UB，6 处 default 为死分支）→
+ *   已修复：三处枚举加 : int，非法值注入合法化，default 降级 Info 分支转活
+ *   （S2.5/S6 回填注入断言；console_log 的 default 因 proxy 不可撤销仅能在 S3 前触达）
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
@@ -168,10 +174,6 @@ int main()
     auto server = YOMK_INIT(1);
     CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
 
-    // 预检 /.log 是否既存（P2-a 空名+空 dir 用例在 root 下会真实创建该文件，
-    // 预先存在则跳过存在性断言与清理，避免误删非本测试产物）
-    const bool rootDotLogPreexists = fs::exists("/.log");
-
     // 临时目录（收尾 remove_all）
     fs::path tmpDir = fs::temp_directory_path() / ("yomk_logger_lg1_" + std::to_string(::getpid()));
     std::error_code ec;
@@ -300,6 +302,26 @@ int main()
         }
     }
 
+    // ============ Section 2.5: 非法级别 default 降级（P2-c 修复后回填，须在 S3 设置 proxy 前） ============
+    {
+        // proxy 一旦设置即拦截一切 console_log（进程内不可撤销），console_log 的 switch
+        // default 分支仅在此窗口可触达；枚举已加 : int 底层类型，99 为合法值非 UB
+        std::string out;
+        YomkResponse r(YomkResponse::eInvalid);
+        {
+            CoutCapture cap;
+            r = YOMK_REQUEST("/YomkLogger/console_log",
+                             YomkMkPtr(Log, yomk::Log{static_cast<yomk::Log::ELogLevel>(99),
+                                                      "lg1_s2p5_badlevel_marker", "MainLogger"}));
+            out = cap.str();
+        }
+        CHECK(r.m_status == YomkResponse::eOk, "非法级别 99 console_log 返回 eOk（P2-c 修复后 default 活分支）");
+        CHECK(out.find("unknown log level, use Info") != std::string::npos,
+              "console_log default 分支错误提示（降级 Info）");
+        CHECK(out.find("[Info ] [MainLogger] lg1_s2p5_badlevel_marker") != std::string::npos,
+              "非法级别降级 Info 输出 marker");
+    }
+
     // ============ Section 3: proxy 契约（设置后进程内不可撤销，S4-S7 保持穿透态） ============
     {
         // 设置前 all 内省 proxy:off
@@ -422,28 +444,30 @@ int main()
         CHECK(noWrite.m_status == YomkResponse::eNo, "FILE_LOG_WRITE 未创建 logger 返回 eNo");
         CHECK(noWrite.m_msg == "logger not found.", "FILE_LOG_WRITE not-found 契约消息");
 
-        // P2-a 现状固化（主形态：空 logger 名 + 空 dir → 路径拼为 "/.log"）：
-        // 非 root 下 ofstream 打开失败仅走 YOMK_ERR_POS_LOG 分支（init 失败不反馈），
-        // 仍 emplace "" key 并返回 eOk；root 下会真实创建 /.log（断言后清理）。
-        // 注：单进程内 "" key 仅能被占用一次，dir 有值的空名形态（生成 <dir>/.log）
-        // 无法同进程共存，其路径拼接逻辑由 Direct 测试 init 用例覆盖
+        // P2-a 处置验证（LG2 回填）：空名/空 dir 一律 eInvalid，"" key 注册与
+        // "/.log" 根路径拼接彻底堵死
         auto emptyBoth = YOMK_FILE_LOG_CREATE("", "");
-        CHECK(emptyBoth.m_status == YomkResponse::eOk,
-              "空名+空 dir 创建返回 eOk（P2-a 现状固化：无校验且 init 失败不影响返回码，LG2 改 eNo）");
-        if (!rootDotLogPreexists && fs::exists("/.log"))
-        {
-            CHECK(true, "root 环境下空名+空 dir 实际创建 /.log（P2-a 危险路径证据，已清理）");
-            fs::remove("/.log", ec);
-        }
+        CHECK((emptyBoth.m_status == YomkResponse::eInvalid && emptyBoth.m_msg == "logger name is empty."),
+              "空名+空 dir 创建返回 eInvalid + logger name is empty.（P2-a 已处置）");
+        auto emptyName = YOMK_FILE_LOG_CREATE(tmpDir.string(), "");
+        CHECK((emptyName.m_status == YomkResponse::eInvalid && emptyName.m_msg == "logger name is empty."),
+              "空名+有效 dir 创建返回 eInvalid（P2-a 已处置）");
+        auto emptyDir = YOMK_FILE_LOG_CREATE("", "lg1_empty_dir_name");
+        CHECK((emptyDir.m_status == YomkResponse::eInvalid && emptyDir.m_msg == "logger dir is empty."),
+              "有效名+空 dir 创建返回 eInvalid + logger dir is empty.（P2-a 已处置）");
 
-        // P2-a 状态污染实证："" key 已被占用 → 后续任意空名创建被重名检查拦截 eNo，
-        // 且 LOGGER("") 内省命中该幽灵 logger（S7 同步固化）
-        auto emptyDup = YOMK_FILE_LOG_CREATE(tmpDir.string(), "");
-        CHECK((emptyDup.m_status == YomkResponse::eNo && emptyDup.m_msg == "logger name already exists."),
-              "空名重复创建被重名检查拦截 eNo（空 key 已占用——P2-a 状态污染证据）");
-        auto emptyInfo = YOMK_LOGGER_INFO_LOGGER("");
-        CHECK((emptyInfo.m_status == YomkResponse::eOk && emptyInfo.m_msg == " [file] dir:"),
-              "LOGGER 空名命中 P2-a 注册的空名 logger（dir 为空——内省污染实证）");
+        // P2-b 处置验证（LG2 回填）：不可创建 dir → init 返回 false → eNo 且不注册幽灵 logger
+        auto badDir = YOMK_FILE_LOG_CREATE("/proc/lg1_impossible/sub", "lg1_bad_dir_logger");
+        CHECK((badDir.m_status == YomkResponse::eNo && badDir.m_msg == "init file logger failed."),
+              "不可创建 dir 返回 eNo + init file logger failed.（P2-b 已处置，异常不穿透）");
+        auto ghostInfo = YOMK_LOGGER_INFO_LOGGER("lg1_bad_dir_logger");
+        CHECK((ghostInfo.m_status == YomkResponse::eNo && ghostInfo.m_msg == "logger not found."),
+              "init 失败的 logger 未注册（无幽灵 key，内省 not found）");
+        // init 失败不占用名字：同名换有效 dir 重试应成功
+        fs::path retryDir = tmpDir / "s4_retry";
+        auto retry = YOMK_FILE_LOG_CREATE(retryDir.string(), "lg1_bad_dir_logger");
+        CHECK((retry.m_status == YomkResponse::eOk && fs::exists(retryDir / "lg1_bad_dir_logger.log")),
+              "init 失败后同名换有效 dir 重试成功（名字未被幽灵占用）");
     }
 
     // ============ Section 5: 内省三端点 ============
@@ -566,9 +590,64 @@ int main()
                   "1MB 内容完整落盘");
         }
 
-        // 非法级别 default 分支：不注入（P2-c）——无固定底层类型枚举加载 99 即 UB，
-        // UBSan 实证 "load of value 99 ... not a valid value for type 'ELogLevel'"，
-        // 四处 switch default（console_log/file_log/off/on）为 UB 死分支，LG2 处置后回填
+        // 非法级别注入回填（P2-c 修复后）：枚举已加 : int，99 为合法值；
+        // file_log/off/on 三处 default 降级与无副作用实证
+        // （console_log 的 default 已在 S2.5 于 proxy 设置前触达）
+        {
+            fs::path badLevelDir = tmpDir / "s6_badlevel";
+            fs::create_directories(badLevelDir, ec);
+            CHECK(YOMK_FILE_LOG_CREATE(badLevelDir.string(), "lg1_s6_badlevel").m_status == YomkResponse::eOk,
+                  "非法级别注入用 file logger 创建 eOk");
+            std::string out;
+            YomkResponse r(YomkResponse::eInvalid);
+            {
+                CoutCapture cap;
+                r = YOMK_REQUEST("/YomkLogger/file_log",
+                                 YomkMkPtr(Log, yomk::Log{static_cast<yomk::Log::ELogLevel>(99),
+                                                          "lg1_s6_badlevel_marker", "lg1_s6_badlevel"}));
+                out = cap.str();
+            }
+            CHECK((r.m_status == YomkResponse::eOk && r.m_msg == "success."),
+                  "file_log 非法级别 99 返回 eOk（P2-c 修复后 default 活分支）");
+            CHECK(out.find("unknown log level, use Info") != std::string::npos,
+                  "file_log default 分支错误提示（降级 Info）");
+            CHECK(YOMK_FILE_LOG_WRITE("lg1_s6_badlevel").m_status == YomkResponse::eOk,
+                  "非法级别落盘 WRITE eOk");
+            bool readOk = false;
+            std::string content = readFile(badLevelDir / "lg1_s6_badlevel.log", readOk);
+            CHECK((readOk && countLines(content) == 1 &&
+                   content.find("[Info ] lg1_s6_badlevel_marker") != std::string::npos),
+                  "非法级别降级 Info 落盘恰 1 行");
+
+            // off/on 非法级别：default 仅记录错误，无副作用仍 eOk，开关状态不变
+            std::string outOff;
+            YomkResponse rOff(YomkResponse::eInvalid);
+            {
+                CoutCapture cap;
+                rOff = YOMK_REQUEST("/YomkLogger/off_console_log_by_level",
+                                    YomkMkPtr(Log, yomk::Log{static_cast<yomk::Log::ELogLevel>(99), "", ""}));
+                outOff = cap.str();
+            }
+            CHECK((rOff.m_status == YomkResponse::eOk &&
+                   outOff.find("unknown log level, turn off failed.") != std::string::npos),
+                  "off 非法级别 eOk + 错误提示（default 活分支）");
+            std::string outOn;
+            YomkResponse rOn(YomkResponse::eInvalid);
+            {
+                CoutCapture cap;
+                rOn = YOMK_REQUEST("/YomkLogger/on_console_log_by_level",
+                                   YomkMkPtr(Log, yomk::Log{static_cast<yomk::Log::ELogLevel>(99), "", ""}));
+                outOn = cap.str();
+            }
+            CHECK((rOn.m_status == YomkResponse::eOk &&
+                   outOn.find("unknown log level, turn on failed.") != std::string::npos),
+                  "on 非法级别 eOk + 错误提示（default 活分支）");
+            auto allResp = YOMK_LOGGER_INFO_ALL();
+            YomkUnPackPkg(allResp.m_data, StringArray, allArr);
+            CHECK((allArr != nullptr && !allArr->d.empty() &&
+                   allArr->d.front() == "console:debug:on info:on warn:on error:on proxy:on"),
+                  "非法级别 off/on 无副作用（ALL 首行仍全 on）");
+        }
     }
 
     // ============ Section 7: 异常路径（空包 / 错类型包 / 未知端点） ============
@@ -628,11 +707,11 @@ int main()
             CHECK(out.find("file logger name is empty.") != std::string::npos,
                   "file_log 空名错误提示");
         }
-        // LOGGER_INFO_LOGGER 空名 → 命中 S4 P2-a 注册的空名 file logger 返回 eOk（现状固化；
-        // 干净状态下应为 eNo not found，LG2 堵死空名注册后回填 eNo 断言）
-        auto emptyName = YOMK_LOGGER_INFO_LOGGER("");
-        CHECK((emptyName.m_status == YomkResponse::eOk && emptyName.m_msg == " [file] dir:"),
-              "LOGGER 空名命中空名 logger 返回 eOk（P2-a 污染现状固化）");
+        // LOGGER_INFO_LOGGER 空名 → eNo（LG2 堵死空名注册后回填；
+        // LG1 时为 P2-a 幽灵 logger 命中 eOk 的现状固化）
+        auto emptyNameInfo = YOMK_LOGGER_INFO_LOGGER("");
+        CHECK((emptyNameInfo.m_status == YomkResponse::eNo && emptyNameInfo.m_msg == "logger not found."),
+              "LOGGER 空名返回 eNo + logger not found.（P2-a 处置后无幽灵 key）");
         // 未知端点 → invoke 路由层 eNo（服务前缀被路由剥离，消息仅含端点名）
         auto unknown = YOMK_REQUEST("/YomkLogger/no_such_func", nullptr);
         CHECK(unknown.m_status == YomkResponse::eNo, "未知端点返回 eNo（invoke not found）");
