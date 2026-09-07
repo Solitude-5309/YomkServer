@@ -171,35 +171,39 @@ public:
         return request("/YomkLogger/set_console_log_proxy", YomkMkPtr(ConsoleLogProxy, yomk::ConsoleLogProxy{func}));
     }
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_INFO_TAG(const std::string &tag, Args &&...args)
+    static YomkResponse CONSOLE_LOG_INFO_TAG(const std::string &tag, const std::string &fileLine, Args &&...args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
-        (oss << ... << std::forward<Args>(args));
+        oss << fileLine;
+        ((oss << " " << std::forward<Args>(args)), ...);
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, oss.str(), tag}));
     }
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_WARN_TAG(const std::string &tag, Args &&...args)
+    static YomkResponse CONSOLE_LOG_WARN_TAG(const std::string &tag, const std::string &fileLine, Args &&...args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
-        (oss << ... << std::forward<Args>(args));
+        oss << fileLine;
+        ((oss << " " << std::forward<Args>(args)), ...);
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, oss.str(), tag}));
     }
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_ERROR_TAG(const std::string &tag, Args &&...args)
+    static YomkResponse CONSOLE_LOG_ERROR_TAG(const std::string &tag, const std::string &fileLine, Args &&...args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
-        (oss << ... << std::forward<Args>(args));
+        oss << fileLine;
+        ((oss << " " << std::forward<Args>(args)), ...);
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, oss.str(), tag}));
     }
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_DEBUG_TAG(const std::string &tag, Args &&...args)
+    static YomkResponse CONSOLE_LOG_DEBUG_TAG(const std::string &tag, const std::string &fileLine, Args &&...args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
-        (oss << ... << std::forward<Args>(args));
+        oss << fileLine;
+        ((oss << " " << std::forward<Args>(args)), ...);
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, oss.str(), tag}));
     }
     static YomkResponse FILE_LOG_CREATE(const std::string &logDir, const std::string &logFile)
@@ -213,35 +217,39 @@ public:
         return request("/YomkLogger/write_file_log", YomkMkPtr(String, logFile));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_INFO_TAG(const std::string &logFile, const std::string &tag, Args &&...args)
+    static YomkResponse FILE_LOG_INFO_TAG(const std::string &logFile, const std::string &tag, const std::string &fileLine, Args &&...args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
-        (oss << ... << std::forward<Args>(args));
+        oss << fileLine;
+        ((oss << " " << std::forward<Args>(args)), ...);
         return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "[" + tag + "] " + oss.str(), logFile}));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_WARN_TAG(const std::string &logFile, const std::string &tag, Args &&...args)
+    static YomkResponse FILE_LOG_WARN_TAG(const std::string &logFile, const std::string &tag, const std::string &fileLine, Args &&...args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
-        (oss << ... << std::forward<Args>(args));
+        oss << fileLine;
+        ((oss << " " << std::forward<Args>(args)), ...);
         return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, "[" + tag + "] " + oss.str(), logFile}));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_ERROR_TAG(const std::string &logFile, const std::string &tag, Args &&...args)
+    static YomkResponse FILE_LOG_ERROR_TAG(const std::string &logFile, const std::string &tag, const std::string &fileLine, Args &&...args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
-        (oss << ... << std::forward<Args>(args));
+        oss << fileLine;
+        ((oss << " " << std::forward<Args>(args)), ...);
         return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, "[" + tag + "] " + oss.str(), logFile}));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_DEBUG_TAG(const std::string &logFile, const std::string &tag, Args &&...args)
+    static YomkResponse FILE_LOG_DEBUG_TAG(const std::string &logFile, const std::string &tag, const std::string &fileLine, Args &&...args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
-        (oss << ... << std::forward<Args>(args));
+        oss << fileLine;
+        ((oss << " " << std::forward<Args>(args)), ...);
         return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, "[" + tag + "] " + oss.str(), logFile}));
     }
     static YomkResponse ON_CONSOLE_LOG_DEBUG()
@@ -570,24 +578,24 @@ private:
 #define YOMK_OFF_CONSOLE_LOG_WARN() YomkAPI::OFF_CONSOLE_LOG_WARN()
 #define YOMK_OFF_CONSOLE_LOG_ERROR() YomkAPI::OFF_CONSOLE_LOG_ERROR()
 #define YOMK_OFF_CONSOLE_LOG_DEBUG() YomkAPI::OFF_CONSOLE_LOG_DEBUG()
-#define YOMK_INFO(...) YomkAPI::CONSOLE_LOG_INFO_TAG("MainLogger:" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_INFO_TAG(tag, ...) YomkAPI::CONSOLE_LOG_INFO_TAG(tag ":" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_WARN(...) YomkAPI::CONSOLE_LOG_WARN_TAG("MainLogger:" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_WARN_TAG(tag, ...) YomkAPI::CONSOLE_LOG_WARN_TAG(tag ":" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_ERROR(...) YomkAPI::CONSOLE_LOG_ERROR_TAG("MainLogger:" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_ERROR_TAG(tag, ...) YomkAPI::CONSOLE_LOG_ERROR_TAG(tag ":" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_DEBUG(...) YomkAPI::CONSOLE_LOG_DEBUG_TAG("MainLogger:" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_DEBUG_TAG(tag, ...) YomkAPI::CONSOLE_LOG_DEBUG_TAG(tag ":" TO_STRING(__LINE__), __VA_ARGS__)
+#define YOMK_INFO(...) YomkAPI::CONSOLE_LOG_INFO_TAG("MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_INFO_TAG(tag, ...) YomkAPI::CONSOLE_LOG_INFO_TAG(tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_WARN(...) YomkAPI::CONSOLE_LOG_WARN_TAG("MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_WARN_TAG(tag, ...) YomkAPI::CONSOLE_LOG_WARN_TAG(tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_ERROR(...) YomkAPI::CONSOLE_LOG_ERROR_TAG("MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_ERROR_TAG(tag, ...) YomkAPI::CONSOLE_LOG_ERROR_TAG(tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_DEBUG(...) YomkAPI::CONSOLE_LOG_DEBUG_TAG("MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_DEBUG_TAG(tag, ...) YomkAPI::CONSOLE_LOG_DEBUG_TAG(tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_LOG_CREATE(...) YomkAPI::FILE_LOG_CREATE(__VA_ARGS__)
 #define YOMK_FILE_LOG_WRITE(...) YomkAPI::FILE_LOG_WRITE(__VA_ARGS__)
-#define YOMK_FILE_INFO(file, ...) YomkAPI::FILE_LOG_INFO_TAG(file, "MainLogger:" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_FILE_INFO_TAG(file, tag, ...) YomkAPI::FILE_LOG_INFO_TAG(file, tag ":" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_FILE_WARN(file, ...) YomkAPI::FILE_LOG_WARN_TAG(file, "MainLogger:" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_FILE_WARN_TAG(file, tag, ...) YomkAPI::FILE_LOG_WARN_TAG(file, tag ":" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_FILE_ERROR(file, ...) YomkAPI::FILE_LOG_ERROR_TAG(file, "MainLogger:" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_FILE_ERROR_TAG(file, tag, ...) YomkAPI::FILE_LOG_ERROR_TAG(file, tag ":" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_FILE_DEBUG(file, ...) YomkAPI::FILE_LOG_DEBUG_TAG(file, "MainLogger:" TO_STRING(__LINE__), __VA_ARGS__)
-#define YOMK_FILE_DEBUG_TAG(file, tag, ...) YomkAPI::FILE_LOG_DEBUG_TAG(file, tag ":" TO_STRING(__LINE__), __VA_ARGS__)
+#define YOMK_FILE_INFO(file, ...) YomkAPI::FILE_LOG_INFO_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_INFO_TAG(file, tag, ...) YomkAPI::FILE_LOG_INFO_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_WARN(file, ...) YomkAPI::FILE_LOG_WARN_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_WARN_TAG(file, tag, ...) YomkAPI::FILE_LOG_WARN_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_ERROR(file, ...) YomkAPI::FILE_LOG_ERROR_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_ERROR_TAG(file, tag, ...) YomkAPI::FILE_LOG_ERROR_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_DEBUG(file, ...) YomkAPI::FILE_LOG_DEBUG_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_DEBUG_TAG(file, tag, ...) YomkAPI::FILE_LOG_DEBUG_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_LOGGER_INFO_LOGGERS() YomkAPI::LOGGER_INFO_LOGGERS()
 #define YOMK_LOGGER_INFO_LOGGER(...) YomkAPI::LOGGER_INFO_LOGGER(__VA_ARGS__)
 #define YOMK_LOGGER_INFO_ALL() YomkAPI::LOGGER_INFO_ALL()

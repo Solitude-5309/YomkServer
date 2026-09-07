@@ -79,12 +79,12 @@ int main(int argc, char *argv[])
     YOMK_INIT();
 
     // 测试 YOMK_VERSION：获取并输出框架版本号（对应 project(Yomk VERSION x.x.x) 定义的 VERSION）
-    YOMK_INFO_TAG("main", "YomkServer version: ", YOMK_VERSION);
+    YOMK_INFO_TAG("main", "YomkServer version:", YOMK_VERSION);
 
     // 获取可执行文件路径，用于构造日志文件目录
     fs::path exePath = fs::canonical(argv[0]);
     fs::path logDir = exePath.parent_path() / "YomkLog";
-    YOMK_DEBUG_TAG("main", "Log dir: ", logDir);
+    YOMK_DEBUG_TAG("main", "Log dir:", logDir);
 
     /**
      * 步骤1：关闭所有控制台日志级别
@@ -107,10 +107,10 @@ int main(int argc, char *argv[])
      * 由于所有级别都已关闭，这些日志不会输出到控制台
      */
     YomkResponse response;
-    response = YOMK_INFO("test", " console log info. ", 1);   // 不会输出
-    response = YOMK_WARN("test", " console log warn. ", 2);   // 不会输出
-    response = YOMK_ERROR("test", " console log error. ", 3); // 不会输出
-    response = YOMK_DEBUG("test", " console log debug. ", 4); // 不会输出
+    response = YOMK_INFO("test", "console log info.", 1);   // 不会输出
+    response = YOMK_WARN("test", "console log warn.", 2);   // 不会输出
+    response = YOMK_ERROR("test", "console log error.", 3); // 不会输出
+    response = YOMK_DEBUG("test", "console log debug.", 4); // 不会输出
 
     /**
      * 步骤3：开启所有控制台日志级别
@@ -140,10 +140,10 @@ int main(int argc, char *argv[])
      * 默认 Tag 为 "MainLogger"
      * 日志会通过自定义代理函数输出
      */
-    response = YOMK_INFO("test", " console log info. ", 5);
-    response = YOMK_WARN("test", " console log warn. ", 6);
-    response = YOMK_ERROR("test", " console log error. ", 7);
-    response = YOMK_DEBUG("test", " console log debug. ", 8);
+    response = YOMK_INFO("test", "console log info.", 5);
+    response = YOMK_WARN("test", "console log warn.", 6);
+    response = YOMK_ERROR("test", "console log error.", 7);
+    response = YOMK_DEBUG("test", "console log debug.", 8);
 
     /**
      * 步骤6：使用自定义 Tag 输出日志
@@ -151,10 +151,10 @@ int main(int argc, char *argv[])
      * YOMK_INFO_TAG / YOMK_WARN_TAG 等宏允许指定自定义 Tag
      * Tag 会显示在日志中，便于区分不同模块的日志
      */
-    response = YOMK_INFO_TAG("new_console_logger", "test", " new_console_logger log info. ", 1);
-    response = YOMK_WARN_TAG("new_console_logger", "test", " new_console_logger log warn. ", 2);
-    response = YOMK_ERROR_TAG("new_console_logger", "test", " new_console_logger log error. ", 3);
-    response = YOMK_DEBUG_TAG("new_console_logger", "test", " new_console_logger log debug. ", 4);
+    response = YOMK_INFO_TAG("new_console_logger", "test", "new_console_logger log info.", 1);
+    response = YOMK_WARN_TAG("new_console_logger", "test", "new_console_logger log warn.", 2);
+    response = YOMK_ERROR_TAG("new_console_logger", "test", "new_console_logger log error.", 3);
+    response = YOMK_DEBUG_TAG("new_console_logger", "test", "new_console_logger log debug.", 4);
 
     /**
      * 步骤7：创建文件日志
@@ -173,10 +173,10 @@ int main(int argc, char *argv[])
      * YOMK_FILE_INFO / YOMK_FILE_WARN 等宏用于写入文件日志
      * 默认 Tag 为 "MainLogger"
      */
-    response = YOMK_FILE_INFO("new_file_logger", "test", " new_file_logger log info. ", 1);
-    response = YOMK_FILE_WARN("new_file_logger", "test", " new_file_logger log warn. ", 2);
-    response = YOMK_FILE_ERROR("new_file_logger", "test", " new_file_logger log error. ", 3);
-    response = YOMK_FILE_DEBUG("new_file_logger", "test", " new_file_logger log debug. ", 4);
+    response = YOMK_FILE_INFO("new_file_logger", "test", "new_file_logger log info.", 1);
+    response = YOMK_FILE_WARN("new_file_logger", "test", "new_file_logger log warn.", 2);
+    response = YOMK_FILE_ERROR("new_file_logger", "test", "new_file_logger log error.", 3);
+    response = YOMK_FILE_DEBUG("new_file_logger", "test", "new_file_logger log debug.", 4);
 
     /**
      * 步骤9：写入文件日志（自定义 Tag）
@@ -184,10 +184,10 @@ int main(int argc, char *argv[])
      * YOMK_FILE_INFO_TAG 等宏允许指定自定义 Tag
      * Tag 会包含在日志内容中
      */
-    response = YOMK_FILE_INFO_TAG("new_file_logger", "ExampleLogger", "example", " new_file_logger log info. ", 1);
-    response = YOMK_FILE_WARN_TAG("new_file_logger", "ExampleLogger", "example", " new_file_logger log warn. ", 2);
-    response = YOMK_FILE_ERROR_TAG("new_file_logger", "ExampleLogger", "example", " new_file_logger log error. ", 3);
-    response = YOMK_FILE_DEBUG_TAG("new_file_logger", "ExampleLogger", "example", " new_file_logger log debug. ", 4);
+    response = YOMK_FILE_INFO_TAG("new_file_logger", "ExampleLogger", "example", "new_file_logger log info.", 1);
+    response = YOMK_FILE_WARN_TAG("new_file_logger", "ExampleLogger", "example", "new_file_logger log warn.", 2);
+    response = YOMK_FILE_ERROR_TAG("new_file_logger", "ExampleLogger", "example", "new_file_logger log error.", 3);
+    response = YOMK_FILE_DEBUG_TAG("new_file_logger", "ExampleLogger", "example", "new_file_logger log debug.", 4);
 
     /**
      * 步骤10：刷新文件日志到磁盘
