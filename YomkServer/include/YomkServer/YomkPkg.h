@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 #include <cstdint>
+#include <utility>
 
 // 弱绑定服务成员函数：把服务成员函数注册到外部子系统（功能函数、FunctionPool、
 // EventLoop、Context checker/monitor、异步响应）的回调时必须使用。
@@ -55,21 +56,33 @@
 // 生成类型 yomk::MsgName_（类）与 yomk::MsgNamePtr（shared_ptr），
 // 消息名只能出现在 Yomk/YomkPtr/YomkMkPtr/YomkUnPackPkg* 等宏的参数位置，不能当裸类型名使用；
 // VarName 为消息包中携带数据的成员变量名，取数据时经 ptr->VarName 访问
-#define YomkMsg(DataType, MsgName, VarName)               \
-    namespace yomk                                        \
-    {                                                     \
-        class MsgName##_ : public YomkPkg                 \
-        {                                                 \
-        public:                                           \
-            MsgName##_() { m_name = #MsgName; }           \
-            MsgName##_(const DataType &value)             \
-                : VarName(value) { m_name = #MsgName; }   \
-            virtual ~MsgName##_() {}                      \
-                                                          \
-        public:                                           \
-            DataType VarName{};                           \
-        };                                                \
-        typedef std::shared_ptr<MsgName##_> MsgName##Ptr; \
+// LG6（P4-g）：新增右值构造重载，使 YomkMkPtr(Msg, std::move(data)) 真正移动入包。此前只有
+// const& 版本，传 std::move(data) 会静默绑定到 const& 而退化为拷贝（move 无效却无任何告警），
+// 内省端点在 21 万条目下因此每次多一份 vector<string> 全量拷贝。
+// 向后兼容：左值实参仍逐字选中 const& 版本（重载决议偏好精确匹配），既有调用点行为不变；
+// 需要 move 语义时显式写 std::move 即可，两种入包方式对全部包类型与其下游用户同等可用。
+// 已知的路径变化（非缺陷）：需用户定义转换的实参——全仓 19 处 YomkMkPtr(String, "字面量")
+// 一类——按 [over.ics.rank]/3.2.6 的 tie-breaker 改选右值版本（两候选用同一转换构造函数，
+// 而 const std::string& 比 std::string&& 更 cv-qualified，故右值版本更优），即构造临时后移动
+// 而非拷贝：成员值逐字相同，仅省一次拷贝，不构成重载歧义。
+// 本宏生成全仓 41 种包类型，故该重载集的变更须以全量重编 + 全部测试与示例回归为判据。
+#define YomkMsg(DataType, MsgName, VarName)                        \
+    namespace yomk                                                 \
+    {                                                              \
+        class MsgName##_ : public YomkPkg                          \
+        {                                                          \
+        public:                                                    \
+            MsgName##_() { m_name = #MsgName; }                    \
+            MsgName##_(const DataType &value)                      \
+                : VarName(value) { m_name = #MsgName; }            \
+            MsgName##_(DataType &&value)                           \
+                : VarName(std::move(value)) { m_name = #MsgName; } \
+            virtual ~MsgName##_() {}                               \
+                                                                   \
+        public:                                                    \
+            DataType VarName{};                                    \
+        };                                                         \
+        typedef std::shared_ptr<MsgName##_> MsgName##Ptr;          \
     }
 
 // 消息包辅助宏：消息名 → 类型 / 指针类型 / 构造实例 / 创建消息包 shared_ptr（请求入参常用 YomkMkPtr）

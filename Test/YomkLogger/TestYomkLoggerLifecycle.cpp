@@ -1,16 +1,19 @@
 /**
  * @file TestYomkLoggerLifecycle.cpp
- * @brief Logger 模块生命周期与契约基线测试（LG1 从零新建，LG2 审计处置后回填，LG4 补删除接口）
+ * @brief Logger 模块生命周期与契约基线测试（LG1 从零新建，LG2 审计处置后回填，LG4 补删除接口，LG6 补 proxy 卸载）
  *
- * 覆盖内容（8 个 Section + 1 个前置注入段，113 断言）：
+ * 覆盖内容（8 个 Section + 1 个前置注入段，123 断言）：
  * 1. 控制台日志基线：四级别宏输出格式（时间戳+[级别]+[MainLogger:行号] tag）；
  *    级别开关 OFF→无输出仍 eOk→ON→恢复输出，四级别全覆盖
  * 2. 自定义 tag：新 tag 自动创建 console logger；65536 超长 tag；空内容日志
  * 2.5 非法级别 default 降级（P2-c 修复后）：proxy 设置前 raw 注入 level=99 →
- *    console_log default 降级 Info 输出 + eOk（S3 后 proxy 拦截一切 console_log，
- *    该 default 分支仅在此窗口可触达）
+ *    console_log default 降级 Info 输出 + eOk（S3 的 proxy 处于拦截态时会短路一切
+ *    console_log，故该 default 分支在本窗口触达）
  * 3. proxy 契约：SET_CONSOLE_LOG_PROXY 拦截（false→eOk+"console log proxy is success."+无输出）
- *    与穿透（true→默认输出）；原子计数验证；all 内省 proxy:on
+ *    与穿透（true→默认输出）；原子计数验证；all 内省 proxy:on；
+ *    卸载（LG6/P4-e）：传 nullptr → eOk、all 首行回 proxy:off、恢复框架默认输出、
+ *    代理不再被调用（原子命中数不增）；重装可逆。用例末尾重装并回到穿透态，
+ *    以维持 S4-S7 依赖的「proxy:on + 穿透」不变量
  * 4. 文件日志闭环：CREATE 建空文件→四级别入缓冲（write 前文件仍空）→WRITE 落盘读回断言
  *    行数与行格式（含 FILE_INFO_TAG 自定义 tag 变体）；重复创建 eNo；未创建 logger 的
  *    FILE_LOG/WRITE eNo；P2-a/P2-b 处置验证（空名/空 dir eInvalid、不可建 dir eNo
@@ -49,7 +52,7 @@
  *   createFileLogger 对失败 eNo 且不注册（S4 回填；Direct 测试同步改写）
  * - P2-c ELogLevel 枚举无固定底层类型（注入 99 即 UB，6 处 default 为死分支）→
  *   已修复：三处枚举加 : int，非法值注入合法化，default 降级 Info 分支转活
- *   （S2.5/S6 回填注入断言；console_log 的 default 因 proxy 不可撤销仅能在 S3 前触达）
+ *   （S2.5/S6 回填注入断言；console_log 的 default 由 S2.5 在 S3 安装代理之前触达）
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
@@ -323,8 +326,9 @@ int main()
 
       // ============ Section 2.5: 非法级别 default 降级（P2-c 修复后回填，须在 S3 设置 proxy 前） ============
       {
-            // proxy 一旦设置即拦截一切 console_log（进程内不可撤销），console_log 的 switch
-            // default 分支仅在此窗口可触达；枚举已加 : int 底层类型，99 为合法值非 UB
+            // proxy 处于拦截态时会短路一切 console_log（含 switch 的 default 分支），故本节置于
+            // S3 安装代理之前，与代理后续处于何种态无关；LG6/P4-e 起代理可传 nullptr 卸载，
+            // 但本节顺序保持不变。枚举已加 : int 底层类型，99 为合法值非 UB
             std::string out;
             YomkResponse r(YomkResponse::eInvalid);
             {
@@ -341,7 +345,7 @@ int main()
                   "非法级别降级 Info 输出 marker");
       }
 
-      // ============ Section 3: proxy 契约（设置后进程内不可撤销，S4-S7 保持穿透态） ============
+      // ============ Section 3: proxy 契约（含 LG6/P4-e 卸载；末尾重装复位，S4-S7 仍为穿透态） ============
       {
             // 设置前 all 内省 proxy:off
             {
@@ -392,6 +396,67 @@ int main()
                   CHECK((arr != nullptr && !arr->d.empty() &&
                          arr->d.front().find("proxy:on") != std::string::npos),
                         "proxy 设置后 ALL 首行 proxy:on");
+            }
+
+            // ---- LG6（P4-e）：proxy 可卸载 ----
+            // 卸载前先把代理切回拦截态，确认它确实在链路上——否则「卸载后恢复默认输出」
+            // 与「本来就是穿透态」无从区分
+            {
+                  g_proxyIntercept.store(true);
+                  std::string out;
+                  YomkResponse r(YomkResponse::eInvalid);
+                  {
+                        CoutCapture cap;
+                        r = YOMK_INFO("lg6_s3_pre_unload_marker");
+                        out = cap.str();
+                  }
+                  CHECK((r.m_status == YomkResponse::eOk && r.m_msg == "console log proxy is success."),
+                        "卸载前拦截态契约消息（代理确实在链路上）");
+                  CHECK(out.find("lg6_s3_pre_unload_marker") == std::string::npos,
+                        "卸载前拦截态无默认控制台输出");
+            }
+
+            // 卸载：传 nullptr（等价于空 std::function）
+            {
+                  CHECK(YOMK_SET_CONSOLE_LOG_PROXY(nullptr).m_status == YomkResponse::eOk,
+                        "SET_CONSOLE_LOG_PROXY(nullptr) 卸载返回 eOk");
+                  auto allResp = YOMK_LOGGER_INFO_ALL();
+                  YomkUnPackPkg(allResp.m_data, StringArray, arr);
+                  CHECK((arr != nullptr && !arr->d.empty() &&
+                         arr->d.front().find("proxy:off") != std::string::npos),
+                        "卸载后 ALL 首行回到 proxy:off（P4-e 前恒报 proxy:on）");
+            }
+
+            // 卸载后：恢复框架默认输出，且代理不再被调用
+            {
+                  const long hitsBefore = g_proxyHits.load();
+                  std::string out;
+                  YomkResponse r(YomkResponse::eInvalid);
+                  {
+                        CoutCapture cap;
+                        r = YOMK_INFO("lg6_s3_post_unload_marker");
+                        out = cap.str();
+                  }
+                  CHECK((r.m_status == YomkResponse::eOk && r.m_msg == "success."),
+                        "卸载后 console_log 返回 eOk + success.（走默认路径而非代理短路）");
+                  CHECK(out.find("lg6_s3_post_unload_marker") != std::string::npos,
+                        "卸载后恢复框架默认控制台输出");
+                  CHECK(out.find("[Info ] [MainLogger:") != std::string::npos,
+                        "卸载后输出为框架默认格式 <时间戳> [Info ] [logger] msg");
+                  CHECK(g_proxyHits.load() == hitsBefore,
+                        "卸载后代理不再被调用（原子命中数不增）");
+            }
+
+            // 复位：重装同一代理并回到穿透态，维持 S4-S7 依赖的「proxy:on + 穿透」不变量
+            {
+                  g_proxyIntercept.store(false);
+                  CHECK(YOMK_SET_CONSOLE_LOG_PROXY(proxy).m_status == YomkResponse::eOk,
+                        "重装代理返回 eOk（卸载可逆）");
+                  auto allResp = YOMK_LOGGER_INFO_ALL();
+                  YomkUnPackPkg(allResp.m_data, StringArray, arr);
+                  CHECK((arr != nullptr && !arr->d.empty() &&
+                         arr->d.front().find("proxy:on") != std::string::npos),
+                        "重装后 ALL 首行恢复 proxy:on（S4-S7 不变量已复位）");
             }
       }
 
@@ -755,7 +820,7 @@ int main()
                   YomkResponse r(YomkResponse::eOk);
                   {
                         CoutCapture cap;
-                        r = YOMK_LOGGER_DELETE("");
+                        r = YOMK_FILE_LOG_DELETE("");
                         out = cap.str();
                   }
                   CHECK((r.m_status == YomkResponse::eInvalid && r.m_msg == "logger name is empty."),
@@ -770,7 +835,7 @@ int main()
                   YomkResponse r(YomkResponse::eOk);
                   {
                         CoutCapture cap;
-                        r = YOMK_LOGGER_DELETE("lg1_s8_never_created");
+                        r = YOMK_FILE_LOG_DELETE("lg1_s8_never_created");
                         out = cap.str();
                   }
                   CHECK((r.m_status == YomkResponse::eNo && r.m_msg == "logger not found."),
@@ -787,7 +852,7 @@ int main()
                   CHECK(YOMK_LOGGER_INFO_LOGGER(name).m_status == YomkResponse::eOk,
                         "S8: 创建后单查命中 eOk");
 
-                  auto del = YOMK_LOGGER_DELETE(name);
+                  auto del = YOMK_FILE_LOG_DELETE(name);
                   CHECK((del.m_status == YomkResponse::eOk && del.m_msg == "deleted console:1 file:0"),
                         "S8: console-only 删除 eOk + msg 计数: " + del.m_msg);
                   CHECK(YOMK_LOGGER_INFO_LOGGER(name).m_status == YomkResponse::eNo,
@@ -797,7 +862,7 @@ int main()
                         "S8: 删除后同名再写 eOk（惰性重建）");
                   CHECK(YOMK_LOGGER_INFO_LOGGER(name).m_status == YomkResponse::eOk,
                         "S8: 惰性重建后单查恢复 eOk");
-                  CHECK(YOMK_LOGGER_DELETE(name).m_status == YomkResponse::eOk,
+                  CHECK(YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk,
                         "S8: 清理重建 logger eOk");
             }
 
@@ -818,7 +883,7 @@ int main()
                   CHECK((okBefore && contentBefore.empty()),
                         "S8: 删除前未 flush，文件仍为空");
 
-                  auto del = YOMK_LOGGER_DELETE(name);
+                  auto del = YOMK_FILE_LOG_DELETE(name);
                   CHECK((del.m_status == YomkResponse::eOk && del.m_msg == "deleted console:0 file:1"),
                         "S8: file-only 删除 eOk + msg 计数: " + del.m_msg);
                   bool okAfter = false;
@@ -842,7 +907,7 @@ int main()
                   CHECK(YOMK_FILE_LOG_CREATE(dir.string(), name).m_status == YomkResponse::eOk,
                         "S8: 双表用例 file 侧创建 eOk");
 
-                  auto del = YOMK_LOGGER_DELETE(name);
+                  auto del = YOMK_FILE_LOG_DELETE(name);
                   CHECK((del.m_status == YomkResponse::eOk && del.m_msg == "deleted console:1 file:1"),
                         "S8: 同名双表一次删除 eOk + msg 计数: " + del.m_msg);
                   CHECK(YOMK_LOGGER_INFO_LOGGER(name).m_status == YomkResponse::eNo,
@@ -851,7 +916,7 @@ int main()
                   YomkResponse del2(YomkResponse::eOk);
                   {
                         CoutCapture cap;
-                        del2 = YOMK_LOGGER_DELETE(name);
+                        del2 = YOMK_FILE_LOG_DELETE(name);
                         out2 = cap.str();
                   }
                   CHECK((del2.m_status == YomkResponse::eNo && del2.m_msg == "logger not found."),
@@ -872,7 +937,7 @@ int main()
                         "S8: 计数用例 file 侧创建 eOk");
                   CHECK(unpackLines(YOMK_LOGGER_INFO_LOGGERS()).size() == before + 2,
                         "S8: 双表各建一个 → LOGGERS 行数 +2");
-                  CHECK(YOMK_LOGGER_DELETE(name).m_status == YomkResponse::eOk, "S8: 计数用例删除 eOk");
+                  CHECK(YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk, "S8: 计数用例删除 eOk");
                   CHECK(unpackLines(YOMK_LOGGER_INFO_LOGGERS()).size() == before,
                         "S8: 删除后 LOGGERS 行数回落（递减守恒）");
                   auto allLines = unpackLines(YOMK_LOGGER_INFO_ALL());
@@ -882,7 +947,7 @@ int main()
 
                   // MainLogger 无特殊保护：可删；重建须走"空 logger 名回退"路径
                   // （YOMK_INFO 宏把 "MainLogger:行号" 作为 logger 名，并不会重建裸 MainLogger）
-                  CHECK(YOMK_LOGGER_DELETE("MainLogger").m_status == YomkResponse::eOk,
+                  CHECK(YOMK_FILE_LOG_DELETE("MainLogger").m_status == YomkResponse::eOk,
                         "S8: MainLogger 可删除 eOk（无特殊保护）");
                   CHECK(YOMK_LOGGER_INFO_LOGGER("MainLogger").m_status == YomkResponse::eNo,
                         "S8: MainLogger 删除后单查 eNo");

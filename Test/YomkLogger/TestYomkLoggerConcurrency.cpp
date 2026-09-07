@@ -26,18 +26,20 @@
  *   v1Hits + v2Hits == log 总数（无 torn std::function）；TSan 构建下本二进制与
  *   Logger 其余两个二进制 + TestYomkConcurrency 均 0 race。
  *
- * P3-b（观察项，留 LG6 处置）：consoleLog 的 !result.second 防御分支（YomkLogger.cpp
+ * P3-b（LG3 观察项 → LG6 已处置）：consoleLog 的 !result.second 防御分支（原 YomkLogger.cpp
  *   L82-83）——双检锁下进入独占锁后已二次查找确认 key 不存在，emplace 必成功，S2a/S2b
  *   的最大争用是其唯一可能触达场景。实测结论：在 S2a（1600 次争用同一新 tag）+
  *   S2b（8 个新 tag）+ S5（1800 个新 console logger 并发创建）全覆盖后，gcov 仍显示
- *   L82-83 为 #####（未执行）→ 确证为不可达的防御性死代码，处置（删除或书面豁免）留 LG6。
- *   本闭环不改源码（保持并发闭环变更面最小）。
+ *   L82-83 为 #####（未执行）→ 确证为不可达的防御性死代码。LG6 已删除该 4 行（现为
+ *   itLogger = m_consoleLoggers.emplace(...).first，仍复用 emplace 返回的迭代器，控制流拓扑
+ *   与修复前逐字对应），双检锁本身与本文件的并发用例语义均不变。
  *
  * 设计边界（契约内使用，非缺陷）：
- * - Logger 无 destroy/erase 端点（console/file logger 创建后进程内常驻）→ 不存在
- *   FPC3-S3 那类"注销 × 在途调用"竞态，等价风险面由 S4a"同名创建争用"+ S4c"并发
- *   写入 × 落盘交接"覆盖；
- * - proxy 一旦设置进程内不可撤销 → S3 置于 S1/S2 之后，且 v1/v2 均恒返回 true（穿透态），
+ * - 本测试全程不调用 /delete_logger（LG4 新增的删除端点由 Lifecycle S8 与 Stress S5
+ *   覆盖）→ 不存在 FPC3-S3 那类"注销 × 在途调用"竞态，等价风险面由 S4a"同名创建争用"
+ *   + S4c"并发写入 × 落盘交接"覆盖；
+ * - proxy 安装后本测试全程不卸载（LG6/P4-e 起可传 nullptr 卸载，卸载语义由 Lifecycle S3
+ *   覆盖）→ S3 置于 S1/S2 之后，且 v1/v2 均恒返回 true（穿透态），
  *   不影响 S4/S5 的输出与落盘断言；
  * - ALL 首行的 4 个级别开关是独立 atomic，其组合快照无原子保证（既有设计）→ S5 仅断言
  *   其格式合法与收尾精确串，不断言开关组合的瞬时原子性；
@@ -691,12 +693,12 @@ int main()
         }
         CHECK(allSpreadHit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 格式");
 
-        // ---- S2c：P3-b 判定登记 ----
+        // ---- S2c：P3-b 判定登记（LG6 已收口）----
         // S2a（同一新 tag 8 线程争用）与 S2b（8 个新 tag 并发创建）是 consoleLog 中
-        // !result.second 防御分支的唯一可能触达场景；双检锁在独占锁内已二次查找确认
-        // key 不存在，emplace 必成功 → 该分支预期仍不可达。gcov 复查结果见 V5，
-        // 处置（删除或书面豁免）留 LG6 收官。
-        std::cout << "[INFO] S2c: P3-b(!result.second) 最大争用场景已覆盖，判定依据 gcov 复查（留 LG6）"
+        // !result.second 防御分支的唯一可能触达场景；双检锁在独占锁内已二次查找确认 key 不存在，
+        // emplace 必成功 → 该分支不可达，LG6 已删除该 4 行死代码，gcov 复查印证 YomkLogger.cpp 的
+        // ##### 洞由 2 归零；本组 S2a/S2b 即该删除的行为学佐证（删前删后均全绿、无 eNo 返回）。
+        std::cout << "[INFO] S2c: P3-b(!result.second) 最大争用场景已覆盖，该死分支已于 LG6 删除"
                   << std::endl;
     }
 

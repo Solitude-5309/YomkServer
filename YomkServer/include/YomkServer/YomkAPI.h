@@ -157,6 +157,14 @@ public:
     }
     // LOG_API
 public:
+    // 安装/卸载控制台日志代理：func 类型为 YomkConsoleLogProxyFunc
+    // （即 std::function<bool(const yomk::Log &)>）。回调返回 false 表示该条日志已由代理拦截
+    // 消费——框架立即返回 eOk + msg "console log proxy is success." 且不做默认输出；返回 true
+    // 则放行，继续走框架默认的控制台输出路径（与 Lifecycle 测试 doc 头的 proxy 契约一致）。
+    // LG6（P4-e）：传 nullptr 或空 std::function 即卸载代理，卸载后内省 proxy:off 且恢复框架
+    // 默认输出——此前安装后进程内不可卸载（传空回调仍谎报 proxy:on，实际却因回调为空而短路，
+    // 行为等同未安装）。签名与包结构均不变：ConsoleLogProxy{func} 可从空 std::function 构造，
+    // 故卸载复用同一入口、无需新增接口。已初始化时返回恒 eOk，未初始化按框架惯例 eInvalid。
     static YomkResponse SET_CONSOLE_LOG_PROXY(YomkConsoleLogProxyFunc func)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
@@ -294,7 +302,9 @@ public:
     // 删除日志器：同时清理 console/file 两张表（命中数写入 msg "deleted console:c file:f"）；
     // 空名 eInvalid，两表均未命中 eNo（not-found 框架惯例）；
     // 文件日志器移除时由 ~FileLogger 自动落盘，但不删除磁盘上的 .log 文件（清理归调用方）
-    static YomkResponse LOGGER_DELETE(const std::string &loggerName)
+    // LG6：由 LOGGER_DELETE / YOMK_LOGGER_DELETE 改名而来，与 FILE_LOG_CREATE / FILE_LOG_WRITE
+    // 归入同族命名；名字含 FILE 但作用域覆盖两张表，见首行说明
+    static YomkResponse FILE_LOG_DELETE(const std::string &loggerName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/delete_logger", YomkMkPtr(String, loggerName));
@@ -581,7 +591,7 @@ private:
 #define YOMK_LOGGER_INFO_LOGGERS() YomkAPI::LOGGER_INFO_LOGGERS()
 #define YOMK_LOGGER_INFO_LOGGER(...) YomkAPI::LOGGER_INFO_LOGGER(__VA_ARGS__)
 #define YOMK_LOGGER_INFO_ALL() YomkAPI::LOGGER_INFO_ALL()
-#define YOMK_LOGGER_DELETE(...) YomkAPI::LOGGER_DELETE(__VA_ARGS__)
+#define YOMK_FILE_LOG_DELETE(...) YomkAPI::FILE_LOG_DELETE(__VA_ARGS__)
 #define YOMK_CONTEXT_CREATE(...) YomkAPI::CONTEXT_CREATE(__VA_ARGS__)
 #define YOMK_CONTEXT_GET(MsgName, ...) YomkAPI::CONTEXT_GET<Yomk(MsgName)>(#MsgName, __VA_ARGS__)
 #define YOMK_CONTEXT_SET(...) YomkAPI::CONTEXT_SET(__VA_ARGS__)

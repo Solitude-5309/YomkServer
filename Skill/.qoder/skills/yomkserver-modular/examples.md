@@ -817,9 +817,9 @@ YOMK_FILE_LOG_WRITE("app_log");  // 刷新到磁盘
 
 // 删除日志器：单端点同时清理 console/file 两表；文件日志器移除时析构自动落盘
 // （未 flush 的缓冲内容不丢），但不删除磁盘上的 .log 文件（数据保全，清理归调用方）
-YomkResponse del = YOMK_LOGGER_DELETE("app_log");
+YomkResponse del = YOMK_FILE_LOG_DELETE("app_log");
 // eOk, msg: "deleted console:0 file:1"
-YOMK_LOGGER_DELETE("app_log");   // eNo, msg: "logger not found."（已删除）
+YOMK_FILE_LOG_DELETE("app_log");   // eNo, msg: "logger not found."（已删除）
 // 注："MainLogger" 无特殊保护，删除后下次写控制台日志会惰性重建
 
 // 自定义控制台日志代理
@@ -828,6 +828,9 @@ bool myLogProxy(const yomk::Log& log) {
     return false; // 不再传递给默认输出
 }
 YOMK_SET_CONSOLE_LOG_PROXY(myLogProxy);
+// 卸载代理（LG6/P4-e）：传 nullptr 或空 std::function 即恢复框架默认控制台输出，
+// YOMK_LOGGER_INFO_ALL() 首行随之由 proxy:on 回到 proxy:off
+YOMK_SET_CONSOLE_LOG_PROXY(nullptr);
 ```
 
 ---

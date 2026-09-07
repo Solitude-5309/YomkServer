@@ -137,12 +137,44 @@
  *   丢失位置互不重复、不可二分定位（只跑 Lifecycle 时 L109/L110 恒为 1，增量追加后续
  *   二进制也不擦除）→ 覆盖率结论须以“未执行行明细可解释 + 可复现”为准，不能只看单次
  *   百分比，出现单点 ##### 时应先重跑再定性。
- * - P4-d（登记不修，留 LG6）：两张表为 std::map，10 万条目下查找 O(log n) 字符串比较退化
- *   （S1-E 热 tag、S4-C 单查为其量化口径；但 S4-C 仅 1000 次、总耗时 0.6-1.2 ms，低于计时
- *   分辨率，860123 → 1626783 ops/s 不可解读）；改 unordered_map 会改变内省输出顺序，需单独决策。
- * - P4-e（登记不修，留 LG6）：setConsoleLogProxy 恒置 m_consoleLogProxy = true，proxy 一旦
- *   安装进程内不可卸载 → 本测试把 proxy 短路相置于 S1 Phase D，其后由测试侧 g_proxyReturn
- *   恒返回 true 穿透；S1-D 之后的各 Section 只断言响应码与落盘内容，不校验 console 输出。
+ * - P4-d（LG6 实测否决，两张表保持 std::map）：LG4 的登记意图是把两张表改为
+ *   std::unordered_map，以消除 10 万条目下 O(log n) 次字符串比较的查找退化。LG6 先把 S4-C 的
+ *   probes 由 N/100 提升为 N（原口径 @N=100000 仅 1000 次、总耗时 0.6-1.2 ms，低于计时分辨率，
+ *   故 860123 → 1626783 ops/s 不可解读；新口径单次采样进入十毫秒量级，N=20000 修复前实测
+ *   11.3-11.9 ms、三次方差 ±2.3%），使 S4-C 成为两张表查找热路径的可解读量化口径（loggerInfo
+ *   先取 console 表 shared_lock 查找、miss 后再取 file 表 shared_lock 查找），再实施
+ *   unordered_map + loggers/listAll 锁外分段排序（排序置于双锁作用域之外以免重新拉长 P4-c
+ *   缩短的快照窗口；分段而非整体排序以保住 console 段字典序在前、file 段在后的既有可读契约），
+ *   随后以四方消融实测否决并回退。
+ *   消融设计：A=map 无 move（修复前）、D'=map+move、E=unordered_map+move 无排序、
+ *   B=unordered_map+move+排序（LG6 中间态全量）；每变体独立构建 .so 并以 LD_LIBRARY_PATH 隔离
+ *   —— worktree 二进制的 RUNPATH 硬编码指向各自 build/bin，把二进制拷到别处运行会静默加载原
+ *   目录的 .so 而使消融结论全部作废，故逐变体用 ldd 验证实际解析路径并以 md5sum 确认 4 个 .so
+ *   互异，同时把每次运行解析到的 .so 路径打进日志留证。N=20000 四轮拉丁方交错，各变体内部方差 <15%。
+ *   结论（中位数）：仅换容器（D'→E）即令 S4A_loggers 3.05 → 6.60 ms（+116%）、S5B_delete_all
+ *   1534050 → 919038 ops/s（-40%）、S5A_mixed_churn 4702 → 1976 ops/s（-58%）；再叠加保序排序
+ *   （E→B）S4A_loggers 达 12.48 ms、S1A_scan_ALL@20001 0.90 → 3.71 ms、S4C 约 1.55M → 约 1.20M
+ *   ops/s（-10.6%，未过 V2 主判据「不慢于修复前」）。N=100000 三方同向且更剧烈（S4A_loggers
+ *   22.7 → 90.0 ms、S4C 66 → 105/118 ms）。而 S4_VmHWM/S5_VmHWM 与 S1A/S1B/S1E/S1D/S2A/S3A
+ *   六条热路径在换容器前后差异均在噪声内 —— O(log n) → O(1) 摊还的理论收益，在本模块的实际
+ *   规模与访问模式下换不到任何可测收益，却付出内省与删除路径数倍退化，故回退。退化机制未在
+ *   本闭环内进一步定位（消融已排除「排序是唯一因素」：不排序时仍慢约 2 倍），YomkLogger.h 的
+ *   容器选型注释同批登记。
+ *   口径不可比警告：probes 由 N/100 改为 N 后 S4 阶段的分配行为随之改变，故本批 A 侧
+ *   S4_VmHWM=256516 kB / S5_VmHWM=526444 kB（N=100000）高于上方 LG4 登记的修复前值
+ *   209004 / 491308 kB，两组绝对值不可直接比对；LG6 的一切 VmHWM 结论均取同批交错的 A/F 对照。
+ * - P4-e（LG6 已修复）：setConsoleLogProxy 原恒置 m_consoleLogProxy = true，proxy 一旦安装进程内
+ *   不可卸载 —— YOMK_SET_CONSOLE_LOG_PROXY(nullptr) 仍报 proxy:on，而 m_consoleLogProxyFunc 为空使
+ *   consoleLog 的三重条件短路，行为等同未安装却在内省里谎报 proxy:on。LG6 改为
+ *   m_consoleLogProxy = (m_consoleLogProxyFunc != nullptr)，两字段由同一把叶子锁内一致更新，传空
+ *   回调即卸载并恢复框架默认控制台输出（签名与包结构均未改，ConsoleLogProxy{func} 可从空
+ *   std::function 构造）。实测：Lifecycle 新增卸载用例 11 条断言全绿（含「卸载后 ALL 首行回到
+ *   proxy:off」「卸载后 console 日志恢复框架默认输出且非空」「重装可逆」），全量 28 二进制绿；
+ *   既有 proxy:on 断言（Lifecycle 5 处、Concurrency 3 处、本测试 S1 Phase D 1 处）均在安装之后且
+ *   不调用卸载，未受影响。V2 侧 S1D_console_proxy_shortcut 修复前后 2593300 → 2801100 ops/s
+ *   （+8.0%），即开关由恒 true 改为按回调判定未给短路路径带来可测代价。本测试仍把 proxy 短路相
+ *   置于 S1 Phase D、其后由测试侧 g_proxyReturn 恒返回 true 穿透；S1-D 之后的各 Section 只断言
+ *   响应码与落盘内容、不校验 console 输出，该编排无需随本修复调整。
  * - P4-f（LG5 已修复）：localTimeFormatted() 原为 ConsoleLogger.cpp 与 FileLogger.cpp 中两处
  *   逐字同构的 static 实现（LG4 修 P4-b 时被迫两处同改，即重复代码的真实维护成本），LG5 抽取为
  *   模块内部头 YomkServer/src/Modules/Logger/YomkLogTime.h 的单一 inline 实现
@@ -162,12 +194,66 @@
  *   FileLogger.cpp 的 <iomanip>、FileLogger.h 的 <sstream>+<map>、ConsoleLogger.h 的 <map>
  *   （两个 .h 自身均未用 map，而包含它们的 YomkLogger.h 自带 <map>）。每项以「移除后全量
  *   0 warning + 28/28 绿」为唯一判据，实测无一处暴露间接依赖、无一回退。
- * - P4-g（本闭环新发现，登记留 LG6）：内省端点在 21 万条目下每次调用存在三重拷贝——
- *   listAll 的 vector<string> → StringArray 包 → 测试侧 unpackLines 再拷一份，单次 ALL 的
- *   瞬时分配达数十 MB；S5-A 的 8 线程并发内省使 VmHWM 由 S4 末的 210 MB 冲到 492 MB
- *   （修复前 539 MB，-8.7%，该改善来自 P4-a/c 而非内存问题的解决）。返回路径 move 化 /
- *   流式分页需改 YomkResponse 与包结构，超出 LG4 范围 → 留 LG6 决策。
- * - P3-b（延续登记，留 LG6）：YomkLogger::consoleLog 的 !result.second 防御分支不可达（死代码）。
+ * - P4-g（LG6 已修复）：内省端点原在 21 万条目下每次调用存在三重拷贝 —— listAll 的
+ *   vector<string> → StringArray 包 → 测试侧 unpackLines 再拷一份，单次 ALL 的瞬时分配达数十 MB。
+ *   LG6 两处收口：① YomkPkg.h 的 YomkMsg 宏补右值构造重载（向后兼容，左值实参仍逐字选中
+ *   const& 版本，既有调用点行为不变），使 YomkMkPtr(Msg, std::move(data)) 真正移动入包而非静默
+ *   退化为拷贝；YomkLogger::loggers 与 listAll 的返回语句改为 std::move(lines)。② 本测试
+ *   unpackLines 的 lines = arr->d 改为 std::move(arr->d)，消除第三重拷贝（resp.m_data 是
+ *   shared_ptr，其 const 不约束所指对象，故此处有意掏空包内 vector；11 个调用点已逐一核实
+ *   解包后不再复用同一 resp 的数据段）。流式分页需改 YomkResponse 与包结构，LG6 未采纳。
+ *   V2 实测（N=20000；A=修复前、F=LG6 最终，各 n=18 两批交错中位；同批另设 G=F 仅移除右值
+ *   构造，用于把收益归因到 ① 本身）：
+ *     S4_VmHWM   55400 → 39504 kB（-28.7%），G=49996（-9.8%）→ 降幅主体来自右值构造；
+ *     S5_VmHWM  131304 → 77540 kB（-40.9%），G=125922（-4.1%）→ 同上；
+ *     S1_VmHWM   14590 → 13070 kB（-10.4%）、S2_VmHWM 30218 → 24830 kB（-17.8%）、
+ *     S3_VmHWM   30218 → 26758 kB（-11.5%）；
+ *     S4A_loggers  6.162 → 3.829 ms（-37.9%），G=5.814（-5.6%）；
+ *     S4A_all      5.604 → 3.520 ms（-37.2%），G=5.671（+1.2%）→ 内省提速几乎全部来自右值构造；
+ *     S1A_scan_ALL@1001/10001/20001  0.0745/1.080/2.492 → 0.0380/0.379/0.927 ms（-49.0%/-64.9%/-62.8%）；
+ *     S5A_mixed_churn 2320 → 3066 ops/s（+32.2%）、S4C 1357600 → 1418600 ops/s（+4.5%）。
+ *   N=100000（A/F 各 n=3）同向：S4_VmHWM 256516 → 177136 kB（-30.9%）、S5_VmHWM
+ *   526444 → 366684 kB（-30.3%）、S4A_loggers 30.485 → 23.665 ms（-22.4%）、S4A_all
+ *   25.019 → 23.024 ms（-8.0%）、S1A_scan_ALL@100001 13.928 → 6.626 ms（-52.4%）、
+ *   S5A 2344 → 3607 ops/s（+53.9%）、S4C 1361670 → 1504480 ops/s（+10.5%）、
+ *   S1E 1127600 → 1274850 ops/s（+13.1%）。VmHWM 属资源竞争无关量（本文档上方已论证该类量
+ *   跨环境精确吻合），故 -28.7% 与 -30.9% 在两个规模上一致即为强证据。对比上方 LG4 登记的
+ *   「S5-A 使 VmHWM 由 S4 末的 210 MB 冲到 492 MB」，LG6 后同口径为 177 MB → 367 MB，既降了
+ *   绝对值也降了 S4→S5 的涨幅（原本 +134%，现 +107%）；剩余部分为 vector<string> 本身的必要驻留。
+ *   采样环境（[ENV]，如实登记）：N=20000 池化 54 次均 cpu=2，loadavg1 最低 0.27 / 中位 2.23 /
+ *   峰值 7.44，memAvail 最低 255400 / 中位 1626388 / 最高 2238120 kB；N=100000 三次为
+ *   cpu=2 loadavg=0.17/0.61/0.58 memAvail=1820504 kB 至 loadavg=2.74/1.28/0.81 memAvail=1664696 kB。
+ *   本机仅 2 核 / 4 GB，loadavg1 中位 2.23 即已达满载，峰值 7.44 为 3.7 倍超载且已触发换页
+ *   （SwapCached 278432 kB）—— 此环境直接决定了下方 S1A 未定项的可判定下限。
+ * - S1A 反向数据点（LG6 如实登记，未定项）：S1A_console_create_unique_tag 修复前后
+ *   864960 → 798390 ops/s（-7.7%，N=20000 n=18 交错中位；另两批独立交错为 -10.2% 与 -14.4%，
+ *   N=100000 n=3 为 833854 → 672791 即 -19.3%），未过 V2 主判据「不慢于修复前」。已排除语义性
+ *   退化，三条独立证据：① 归因变体 G（F 仅移除右值构造）在同批反而比 A 快 +6.9%、比 F 快
+ *   +15.8%，即「加右值构造变慢」与「不加就变快」两个方向都无机制可解释（P3-b 只省一个必然
+ *   可预测的分支，move 只会比 copy 便宜）；② 静态汇编对照（同一最小复现 TU 只切换 YomkPkg.h
+ *   是否含右值构造，-O3 -S，免疫于机器噪声）：含右值构造版 memcpy/memmove 调用 5 → 3、
+ *   call 指令 143 → 136、汇编 2462 → 2353 行、operator new 恒为 5，即该改动使这条路径严格少做
+ *   2 次字符串拷贝，只可能更快；③ 同一份从未修改的 A 二进制跨批中位数漂移
+ *   909125 → 948986 → 864960（±9%），即 S1A 在本机的可复现极限就在 ±10% 量级，-7.7% 落在其中。
+ *   结论：登记为代码布局层面的未定项，不回退右值构造（回退将连带失去上述内省 -37% 与
+ *   VmHWM -28.7%/-40.9% 的全部收益，而 G 列已证明那些收益正是它带来的）。同批其余热路径无
+ *   一致方向：S1B -4.9%、S1C -6.0%、S3A -3.2%、S5B -1.6% 均在 ±10% 内，而 S1E +18.5%、
+ *   S2A +13.6%、S1D +8.0%、S4C +4.5%、S5A +32.2% 同向改善；N=100000 下除 S1A（见下条）外
+ *   仅 S1B -3.5% 为反向，其余六项均同向改善。
+ *   本条与上方 LG4 登记的 S1-A 扫描@100001 反向数据点同属一类：均在 2 核 VM 上测得、均无可
+ *   解释的语义机制、均以「如实登记 + 不回退」收口。
+ * - P3-b（LG6 已修复）：YomkLogger::consoleLog 的 if (!result.second) 防御分支不可达（死代码）
+ *   —— 该块持 m_consoleLoggersMutex 独占锁，且上方 find 已确认 key 为 miss，容器 emplace 在
+ *   「独占 + key 确认不存在」下必然插入成功。LG4/LG5 的 gcov 实测印证：那两行是 YomkLogger.cpp
+ *   中仅有的 ##### 零计数可执行行。LG6 删除该 4 行，控制流拓扑保持与修复前逐字对应（块外仍
+ *   统一 consoleLogger = itLogger->second，未按原计划改为 if/else 两路径各自赋值 —— 实测那样会凭空
+ *   新增一个 28 二进制累积后计数恒为 0 的 ##### 洞，旧版根本无 else 分支）。修复后 V9 复测：
+ *   YomkLogger.cpp 的 ##### 洞由 2 归零、===== 仍仅 1 处（consoleLevelLine 末尾 } 的异常清理
+ *   伪洞）、行覆盖 98.87% → 99.61%（未执行行由 3 降至 1）、never-executed 分支 88 → 66（死分支
+ *   自带的异常隐藏分支随删缩减）；FileLogger.cpp 洞集合与 LG5 逐位相同（===== L56/L58/L59/L60、
+ *   24 个 never-executed 分支全在 L58）；ConsoleLogger.cpp 100%/100%；YomkLogTime.h 经
+ *   ConsoleLogger TU 100%/100%、经 FileLogger TU 0.00%（COMDAT 折叠，非覆盖洞）。
+ *   新增的 move 行（loggers/listAll 的 return）均有计数（522 / 1046）。
  * - 与本次修复无关的对照：S2-A 文件建器吞吐修复前 26887 → 修复后 28561/27782/23658 ops/s
  *   （跨次波动 ±10%，无系统性变化）——该路径由 create_directories + ofstream 的真实文件
  *   系统开销主导，不是三项修复的目标；S2 均摊耗时修复前 sharded 37.2 us vs singledir
@@ -198,6 +284,7 @@
 #include <sstream>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include <unistd.h>
@@ -456,6 +543,11 @@ static std::string makeName(const char *prefix, uint64_t index)
 }
 
 // 解包 LOGGERS/ALL 的 StringArray；失败返回空 vector
+// LG6：消除内省数据链路上的第三重拷贝（第一重在服务端建 lines、第二重是 lines 入包——
+// 已由 P4-g 降为移动，第三重就是此处的出包）。resp.m_data 是 shared_ptr，其 const 只约束
+// 指针本身、不约束所指对象，故此处有意掏空包内 vector；调用方不得在解包后复用同一 resp
+// 的数据段（11 个调用点已逐一核实：8 处传就地临时对象，3 处传变量者在解包前只读
+// m_status、解包后不再触及该 resp）
 static std::vector<std::string> unpackLines(const YomkResponse &resp)
 {
     std::vector<std::string> lines;
@@ -466,7 +558,7 @@ static std::vector<std::string> unpackLines(const YomkResponse &resp)
     YomkUnPackPkg(resp.m_data, StringArray, arr);
     if (arr)
     {
-        lines = arr->d;
+        lines = std::move(arr->d);
     }
     return lines;
 }
@@ -708,7 +800,8 @@ static void resetGate()
 
 // ============================================================================
 // S1 Phase D 用 proxy：命中计数，返回值由 g_proxyReturn 控制
-// （P4-e：proxy 一旦安装进程内不可卸载，故此后恒置 true 穿透，不影响后续 Section）
+// （P4-e：proxy 安装后本测试全程不卸载，故此后恒置 true 穿透，不影响后续 Section；
+//  LG6/P4-e 起可传 nullptr 卸载，卸载语义由 Lifecycle S3 覆盖）
 // ============================================================================
 static bool lg4Proxy(const yomk::Log & /*log*/)
 {
@@ -942,7 +1035,8 @@ int main()
         CHECK(okC == N, "S1C: 级别 OFF 短路仍 eOk 守恒 " + std::to_string(okC) + "/" + std::to_string(N));
         CHECK(YOMK_ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: 恢复 ON info 返回 eOk");
 
-        // ---- Phase D：proxy 短路（置于 console 末相：proxy 不可卸载，P4-e）----
+        // ---- Phase D：proxy 短路（置于 console 末相：本测试安装后不卸载，靠恒置 true 穿透
+        // 避免影响后续 Section；P4-e 的卸载语义由 Lifecycle S3 覆盖）----
         CHECK(YOMK_SET_CONSOLE_LOG_PROXY(lg4Proxy).m_status == YomkResponse::eOk,
               "S1D: 安装计数 proxy 返回 eOk");
         g_proxyReturn.store(false);
@@ -1282,8 +1376,17 @@ int main()
         }
         CHECK(identical, "S4B: ALL 数据段与 LOGGERS 逐行一致（嵌套双锁原子快照）");
 
-        // ---- Phase C：单查 N/100 次（偶数查 console 名、奇数查 file 名；P4-d 量化点）----
-        const uint64_t probes = (N / 100 == 0) ? 1 : N / 100;
+        // ---- Phase C：单查 N 次（偶数查 console 名、奇数查 file 名；两表查找热路径量化点）----
+        // LG6（P4-d 量化口径修正）：原 probes = N/100，@N=100000 仅 1000 次、总耗时 0.6-1.2 ms，
+        // 低于计时分辨率（doc 头已登记其 860123 → 1626783 ops/s 不可解读）。提升为 N 次后单次
+        // 采样进入十毫秒量级（N=20000 修复前实测 11.3-11.9 ms、三次方差 ±2.3%，已远高于计时
+        // 分辨率），S4C 遂成为两张表查找热路径的可解读量化口径（LG6 正是以它实测否决了
+        // P4-d 的 std::map → std::unordered_map，详见 doc 头与 YomkLogger.h 容器选型注释）：
+        // loggerInfo 先取 console 表 shared_lock 查找、miss 后再取 file 表 shared_lock 查找，
+        // 恰是两张表的查找热路径。名字域校验：偶数 i 的 lg4s1_tag_i 由 S1A 创建（i ∈ 0..N-1）、
+        // 奇数 i 的 lg4s2_fl_i 由 S2A 创建（i ∈ 0..N-1），故 probes 提升到 N 后仍全部命中，
+        // CHECK(okProbe == probes) 的守恒语义不变。口径变更须与修复前基线同批采样才可比。
+        const uint64_t probes = N;
         uint64_t okProbe = 0;
         double elapsedProbe = 0.0;
         {
@@ -1460,7 +1563,7 @@ int main()
                         }
 
                         // 同名同时命中两表：单端点一次删除 console + file
-                        auto rd = YOMK_LOGGER_DELETE(name);
+                        auto rd = YOMK_FILE_LOG_DELETE(name);
                         if (rd.m_status == YomkResponse::eOk)
                             g_s5DeleteOk.fetch_add(1, std::memory_order_relaxed);
                         else if (!isLegalStatus(rd))
@@ -1522,7 +1625,7 @@ int main()
             auto recycle = [&delConsoleOk, &delFileOk, &delBad](const std::string &name,
                                                                 bool expectFile)
             {
-                auto r = YOMK_LOGGER_DELETE(name);
+                auto r = YOMK_FILE_LOG_DELETE(name);
                 if (r.m_status == YomkResponse::eOk)
                 {
                     if (expectFile)
@@ -1581,7 +1684,7 @@ int main()
                     {
                         continue;
                     }
-                    if (YOMK_LOGGER_DELETE(name).m_status == YomkResponse::eOk)
+                    if (YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk)
                     {
                         ++residualDeleted;
                     }

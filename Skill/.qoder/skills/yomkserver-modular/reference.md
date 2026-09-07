@@ -32,6 +32,8 @@ YomkPtr(MsgName)          // → yomk::MsgName##Ptr（指针类型）
 YomkMk(MsgName, ...)      // → 构造实例
 ```
 
+> **入包语义**：`YomkMkPtr` 生成的包类型同时提供 `const DataType &` 与 `DataType &&` 两种构造，传 `std::move(data)` 即移动入包（LG6/P4-g；此前只有 `const&` 版本，写 `std::move` 会静默退化为拷贝）；传左值时重载决议仍选中 `const&` 版本，行为与既往逐字一致。
+
 > **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。消息类型名是“宏词汇”而非“类型词汇”——只能在 `Yomk()` / `YomkPtr()` / `YomkMkPtr()` / `YomkUnPackPkg*` / `YomkInstallFunc` 第三参等宏的参数位置出现，不能当裸类型名使用。`YomkMsg` 展开生成的真实类型是 `yomk::MsgName_`（类）与 `yomk::MsgNamePtr`（指针），裸写 `MsgName` 会报 `'MsgName' has not been declared`。
 
 **解包宏：**
@@ -192,13 +194,14 @@ class YomkService {
 | 宏 | 说明 |
 |----|------|
 | `YOMK_INFO/WARN/ERROR/DEBUG(...)` | 控制台日志 |
-| `YOMK_INFO_TAG(tag, ...)` | 自定义 tag 日志 |
+| `YOMK_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(tag, ...)` | 自定义 tag 日志 |
 | `YOMK_FILE_LOG_CREATE(dir, file)` | 创建文件日志 |
-| `YOMK_FILE_INFO(file, ...)` | 文件日志 |
+| `YOMK_FILE_INFO/WARN/ERROR/DEBUG(file, ...)` | 文件日志 |
+| `YOMK_FILE_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(file, tag, ...)` | 文件日志自定义 tag |
 | `YOMK_FILE_LOG_WRITE(file)` | 刷新到磁盘 |
-| `YOMK_ON/OFF_CONSOLE_LOG_INFO()` | 开关控制台级别 |
-| `YOMK_SET_CONSOLE_LOG_PROXY(func)` | 日志代理 |
+| `YOMK_ON/OFF_CONSOLE_LOG_INFO/WARN/ERROR/DEBUG()` | 开关控制台级别 |
+| `YOMK_SET_CONSOLE_LOG_PROXY(func)` | 日志代理（回调返回 false 拦截该条日志、框架不做默认输出，返回 true 则放行；传 nullptr 或空 std::function 即卸载代理、恢复框架默认输出，内省首行随之显示 `proxy:off`） |
 | `YOMK_LOGGER_INFO_LOGGERS()` | 内省：日志器列表（返回 StringArray，控制台行 `name [console]`，文件行 `name [file] dir:路径`） |
 | `YOMK_LOGGER_INFO_LOGGER(name)` | 内省：单日志器元信息（msg 同上格式，未注册 eNo） |
 | `YOMK_LOGGER_INFO_ALL()` | 内省：全量 dump（首行 `console:debug:on\|off info:... warn:... error:... proxy:on\|off`，其余为日志器行） |
-| `YOMK_LOGGER_DELETE(name)` | 删除日志器（同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 eNo；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |
+| `YOMK_FILE_LOG_DELETE(name)` | 删除日志器（LG6 由 `YOMK_LOGGER_DELETE` 改名；同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 eNo；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |

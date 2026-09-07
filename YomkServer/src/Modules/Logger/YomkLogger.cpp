@@ -83,13 +83,18 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
         {
             std::shared_ptr<ConsoleLogger> newLogger = std::make_shared<ConsoleLogger>();
             newLogger->setName(log->d.m_logger);
-            auto result = m_consoleLoggers.emplace(log->d.m_logger, newLogger);
-            if (!result.second)
-            {
-                YOMK_ERR_POS_LOG("console logger: " + log->d.m_logger + " create failed.");
-                return YomkResponse(YomkResponse::eNo, "console logger: " + log->d.m_logger + " create failed.");
-            }
-            itLogger = result.first;
+            // P3-b（LG6 修复）：原此处有 if (!result.second) 防御分支（emplace 失败则记错并
+            // 返回 eNo），该分支不可达——本块持 m_consoleLoggersMutex 的独占锁，且上方 find 已
+            // 确认 key 为 miss，容器 emplace 在「独占 + key 确认不存在」下必然插入成功
+            // （result.second 恒 true）。LG4/LG5 的 gcov 实测印证：那两行是 YomkLogger.cpp 中
+            // 仅有的 ##### 零计数可执行行（LG6/V9 复核陈旧 .gcov 逐位确认，##### 恰为这两行）。
+            // 删除后取 emplace 免费返回的迭代器，省掉 auto result 与 if 判断两行。
+            // 控制流拓扑刻意与修复前保持一致：不新增 else 分支，仍由块外统一 itLogger->second
+            // 赋值。LG6/V9 实测否决了「两条路径各自赋值」的写法——那样会新增一个 else 分支，
+            // 而该分支只在双检锁竞争窗口（其他线程在 shared_lock 释放与 unique_lock 获取之间
+            // 建好同名 logger）才执行，28 个二进制累积 .gcda 后从未撞中，等于用一个 ##### 洞
+            // 换掉原来的两个；块外统一赋值则恒有计数，且两条路径共用一行、语义与修复前逐字相同。
+            itLogger = m_consoleLoggers.emplace(log->d.m_logger, newLogger).first;
         }
         consoleLogger = itLogger->second;
     }
@@ -127,8 +132,14 @@ YomkResponse YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
     YomkUnPackPkgResponse(pkg, ConsoleLogProxy, consoleLogProxy);
     // P1-b（LG2 修复）：与 consoleLog 的读互斥
     std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
-    m_consoleLogProxy = true;
     m_consoleLogProxyFunc = consoleLogProxy->d.m_consoleLogProxyFunc;
+    // P4-e（LG6 修复）：开关不再恒置 true，而由回调是否为空决定——传空回调即卸载 proxy、
+    // 恢复框架默认的控制台输出。原实现安装后进程内不可卸载：YOMK_SET_CONSOLE_LOG_PROXY(nullptr)
+    // 仍置 proxy:on，而 m_consoleLogProxyFunc 为空使 consoleLog 的三重条件短路，行为等同未安装
+    // 却在内省里谎报 proxy:on。两字段现由同一把叶子锁内一致更新（该字段的三个访问点为
+    // setConsoleLogProxy 写、consoleLog 读并回调、consoleLevelLine 内省汇总，后两者早已持锁），
+    // 卸载后 consoleLog 的 proxyEnabled 为 false，直接走默认输出路径。
+    m_consoleLogProxy = (m_consoleLogProxyFunc != nullptr);
     return {YomkResponse::eOk, "success."};
 }
 
@@ -350,21 +361,30 @@ YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
 {
     (void)pkg;
     std::vector<std::string> lines;
-    // P3-a（LG3 修复）：按锁序 console -> file 嵌套持有两把读锁，使 console 段与 file 段
-    // 成为同一时刻的原子快照。原分段持锁时 file 段的读取时刻晚于 console 段，并发创建
-    // logger 会返回从未真实存在过的行数组合（LG3 S5 判别式实测：1800 对成对创建下
-    // LOGGERS 违例 8 个、ALL 违例 7 个）
-    std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
-    std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
-    // P4-c（LG4 修复）：取到两把读锁后立即预分配，避免万级条目下 vector<string> 反复扩容
-    // 搬移，缩短双锁快照窗口——该窗口会阻塞 createFileLogger 的独占锁。
-    // 不改变 P3-a 的嵌套双锁原子性语义（LG3 S5 判别式仍须为 0 违例）
-    lines.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
-    for (auto &iter : m_consoleLoggers)
-        lines.push_back(iter.first + " [console]");
-    for (auto &iter : m_fileLoggers)
-        lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
+    {
+        // P3-a（LG3 修复）：按锁序 console -> file 嵌套持有两把读锁，使 console 段与 file 段
+        // 成为同一时刻的原子快照。原分段持锁时 file 段的读取时刻晚于 console 段，并发创建
+        // logger 会返回从未真实存在过的行数组合（LG3 S5 判别式实测：1800 对成对创建下
+        // LOGGERS 违例 8 个、ALL 违例 7 个）
+        std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
+        std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
+        // P4-c（LG4 修复）：取到两把读锁后立即预分配，避免万级条目下 vector<string> 反复扩容
+        // 搬移，缩短双锁快照窗口——该窗口会阻塞 createFileLogger 的独占锁。
+        // 不改变 P3-a 的嵌套双锁原子性语义（LG3 S5 判别式仍须为 0 违例）
+        lines.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
+        for (auto &iter : m_consoleLoggers)
+            lines.push_back(iter.first + " [console]");
+        for (auto &iter : m_fileLoggers)
+            lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
+    }
+    // P4-d（LG6 实测否决）：两表保持 std::map，中序遍历天然字典序，故此处无需排序即满足内省
+    // 输出的既有可读契约（console 段字典序在前、file 段字典序在后）。曾按 LG4 登记意图改为
+    // std::unordered_map + 锁外分段排序，四方消融实测使本端点由 3.05 ms 退化至 12.48 ms
+    // （N=20000，四轮交错中位）、S4C 单查 -10.6%，而六条热路径与 VmHWM 零收益，已回退；
+    // 完整数据与理由详见 YomkLogger.h 的容器选型注释。
+    // P4-g（LG6 修复）：move 入包，消除 vector<string> 的一次全量拷贝（YomkMsg 宏已补右值
+    // 构造重载，详见 YomkPkg.h）。21 万条目下该拷贝是单次内省数十 MB 瞬时分配的主因之一
+    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, std::move(lines))};
 }
 
 YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
@@ -392,14 +412,19 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
     // 状态行在双锁之外取：m_consoleLogProxyMutex 是叶子锁，且四个级别开关为独立 atomic，
     // 其组合本就无原子快照保证（既有设计，不在 P3-a 范围）
     lines.push_back(consoleLevelLine());
-    // P3-a（LG3 修复）：同 loggers，行数快照按锁序 console -> file 嵌套取，跨段原子
-    std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
-    std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
-    // P4-c（LG4 修复）：同 loggers，预分配缩短双锁快照窗口（+1 为首行状态行）
-    lines.reserve(m_consoleLoggers.size() + m_fileLoggers.size() + 1);
-    for (auto &iter : m_consoleLoggers)
-        lines.push_back(iter.first + " [console]");
-    for (auto &iter : m_fileLoggers)
-        lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
+    {
+        // P3-a（LG3 修复）：同 loggers，行数快照按锁序 console -> file 嵌套取，跨段原子
+        std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
+        std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
+        // P4-c（LG4 修复）：同 loggers，预分配缩短双锁快照窗口（+1 为首行状态行）
+        lines.reserve(m_consoleLoggers.size() + m_fileLoggers.size() + 1);
+        for (auto &iter : m_consoleLoggers)
+            lines.push_back(iter.first + " [console]");
+        for (auto &iter : m_fileLoggers)
+            lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
+    }
+    // P4-d（LG6 实测否决）：同 loggers，两表保持 std::map 故无需排序；首行状态行不是日志器行，
+    // 天然不参与两段字典序。回退理由与数据详见 loggers() 与 YomkLogger.h。
+    // P4-g（LG6 修复）：同 loggers，move 入包消除一次全量拷贝
+    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, std::move(lines))};
 }
