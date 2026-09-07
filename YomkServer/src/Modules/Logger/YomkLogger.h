@@ -15,7 +15,11 @@ public:
     virtual ~YomkLogger();
 
 public:
-    virtual int init();
+    // LG5：补 override。基类 YomkService::init() 为纯虚（YomkService.h:31），本函数是其覆盖；
+    // FunctionPool/Context/EventLoop/ServerInfo 四个同级模块均已写 override，Logger 是唯一例外，
+    // 故 cppcheck 的 missingOverride 仅在 Logger 模块报出。override 是纯编译期检查、零行为变化，
+    // 补齐后 Logger 与其余模块的 cppcheck 告警口径一致（均为 0）。
+    virtual int init() override;
 
 private:
     YomkResponse consoleLog(YomkPkgPtr pkg);

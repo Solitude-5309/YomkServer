@@ -1,17 +1,23 @@
 #include "YomkLogger.h"
 #include <iostream>
 
+// LG5（静态分析清零）：4 个级别开关与 2 个 proxy 字段原在构造函数体内赋值，触发
+// cppcoreguidelines-pro-type-member-init（std::atomic 默认构造不初始化值）与
+// cppcoreguidelines-prefer-member-initializer ×2 → 全部移入成员初始化列表。
+// 列表顺序严格按 YomkLogger.h 的声明序（四个 atomic 在前、proxy 两个在后，中间的
+// m_consoleLogProxyMutex 默认构造即可、无需显式列出），否则触发 -Wreorder 违反零告警门禁。
+// 语义等价：构造期对象尚未暴露给任何线程，atomic 的直接构造与 .store(true) 同为
+// seq_cst 且值相同；顺序变化仅体现为 atomic/proxy 现在先于函数体的 map 赋值完成
+// （原为反序），而 ConsoleLogger 构造不读这些字段 → 无副作用。
 YomkLogger::YomkLogger(YomkServer *server)
-    : YomkService(server)
+    : YomkService(server), m_showConsoleDebugLog(true) // 声明序 YomkLogger.h:50-53，四个 atomic 不得相互调换
+      ,
+      m_showConsoleInfoLog(true), m_showConsoleWarningLog(true), m_showConsoleErrorLog(true), m_consoleLogProxy(false) // 声明序 YomkLogger.h:57-58
+      ,
+      m_consoleLogProxyFunc(nullptr)
 {
     name("/YomkLogger");
     m_consoleLoggers["MainLogger"] = std::make_shared<ConsoleLogger>();
-    m_showConsoleDebugLog.store(true);
-    m_showConsoleInfoLog.store(true);
-    m_showConsoleWarningLog.store(true);
-    m_showConsoleErrorLog.store(true);
-    m_consoleLogProxy = false;
-    m_consoleLogProxyFunc = nullptr;
 }
 
 YomkLogger::~YomkLogger()

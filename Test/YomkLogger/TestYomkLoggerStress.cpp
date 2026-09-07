@@ -46,9 +46,26 @@
  * 因此：**下文绝对值仅在当时采样环境内有效，不可跨环境直接复现；作为 V2 判据的是
  * “修复前/修复后”背靠背同环境采样的比值**（每组 3 次、方差 ±3-6%，说明当时负载稳定）。
  * 原始日志已按用户“测试完把临时文件全部清理干净”的口径删除，故竞争成因无法进一步取证。
- * 后续闭环如需跨环境可比的绝对值，应在空闲机器上单进程采样并记录 nproc/loadavg/free；
- * 该环境快照打印（hardware_concurrency + /proc/loadavg + MemAvailable，随 [BASELINE] 一同输出）
- * 已评估并经决策留 LG5、与 P4-f 的 <sstream>/<iomanip> 无用包含清理同批实施，本闭环不动测试代码。
+ * 后续闭环如需跨环境可比的绝对值，应在空闲机器上单进程采样并记录 nproc/loadavg/free。
+ * 【LG5 已实施】该环境快照已落地为 readEnvSnapshot()：输出 hardware_concurrency +
+ * /proc/loadavg 前三值 + /proc/meminfo 的 MemAvailable，在 main 开头以一行 [ENV] 先于一切
+ * [BASELINE] 打印，使每次采样自带环境标注、无需事后归因；纯信息行非断言，不影响断言计数，
+ * 非 Linux 分支降级为 n/a。LG5 的 V2 实测（N=20000、共 3 次采样；第 3 次为 §1.3 初始化
+ * 列表改回计划的多行形态后的最终二进制，前 2 次为其单行形态，两者目标码等价）：
+ *   第 1 次 [ENV] cpu=2 loadavg=0.17/0.26/0.35 memAvail=1917000 kB
+ *           S1B 1260413 ops/s、S3A 1312613 ops/s
+ *   第 2 次 [ENV] cpu=2 loadavg=0.54/0.50/0.40 memAvail=1849648 kB
+ *           S1B 1303704 ops/s、S3A 1350544 ops/s
+ *   第 3 次 [ENV] cpu=2 loadavg=0.60/0.46/0.45 memAvail=1964596 kB
+ *           S1B 1362453 ops/s、S3A 1351815 ops/s
+ * 对照上文 LG4 空闲环境复测区间（S1B 1.14-1.30 M、S3A 1.12-1.32 M）：三次 S1B 落在
+ * 1.26-1.36 M、S3A 落在 1.31-1.35 M，即区间内或高出上界 5.2%/2.5% 以内。V2 判据是
+ * 「同量级」且只防抽取致慢，偏高不构成回归 → 通过，即 P4-f 的 inline 抽取零开销
+ * （另由 objdump 实证：Release/-O3 下 yomkLogLocalTimeFormatted 在 libYomkServer.so 中出现
+ * 0 次 —— 完全内联、无 call 无 PLT，故调用点开销与原 static 逐指令等价）。
+ * 方法论收获：三次里 loadavg 最高的第 3 次（0.60）反而 S1B 最快（1.362 M），说明该量级下
+ * ±5% 的次间波动并非由负载单独决定，这正是把 [ENV] 与数据同记的价值 —— 可当场判定
+ * 各次采样是否同环境，而不必事后猜测。
  * - P4-a（本闭环修复）：FileLogger 的缓冲成员由 std::stringstream 改为 std::string。
  *   原实现落盘必须 m_logStream.str() 取快照、且取了 2 次（.size() 判空 + << 写盘）= 2 次
  *   全量拷贝；改后判空与写盘直接复用成员本体 → 落盘路径零拷贝、零大块瞬时分配。
@@ -126,10 +143,25 @@
  * - P4-e（登记不修，留 LG6）：setConsoleLogProxy 恒置 m_consoleLogProxy = true，proxy 一旦
  *   安装进程内不可卸载 → 本测试把 proxy 短路相置于 S1 Phase D，其后由测试侧 g_proxyReturn
  *   恒返回 true 穿透；S1-D 之后的各 Section 只断言响应码与落盘内容，不校验 console 输出。
- * - P4-f（登记留 LG5）：localTimeFormatted() 在两文件重复实现，本次两处同改；抽取公共内部头
- *   留 LG5。同批处理项：P4-b 之后 ConsoleLogger.cpp / FileLogger.cpp 的 <sstream> 与 <iomanip>
- *   已成无用包含（仅在注释中作为“原实现”被提及），本闭环为把 V9 的 diff 范围收敛在计划
- *   §1.1-1.5 列出的改动内而刻意不动包含块，留 LG5 与抽取公共头一并清理。
+ * - P4-f（LG5 已修复）：localTimeFormatted() 原为 ConsoleLogger.cpp 与 FileLogger.cpp 中两处
+ *   逐字同构的 static 实现（LG4 修 P4-b 时被迫两处同改，即重复代码的真实维护成本），LG5 抽取为
+ *   模块内部头 YomkServer/src/Modules/Logger/YomkLogTime.h 的单一 inline 实现
+ *   yomkLogLocalTimeFormatted()：函数体逐字搬迁未改一行；用 inline 而非 static 是为跨 TU 的
+ *   单一定义（ODR），两 .cpp 各自内联展开 → 调用点开销与原 static 等价，且不新增编译单元
+ *   （无需改 YomkServer/CMakeLists.txt 的源列表）；因 Logger 类均在全局命名空间而 inline 具
+ *   外部链接，函数名加 yomkLog 前缀避免符号冲突。等价性由 V3 的 6 处 checkTimeFormat 调用点
+ *   （Lifecycle:220/445、Direct:164/242、Concurrency:549、本测试 S1-A2 的 :847）+ V2 吞吐同量级
+ *   共同兜底。注：LG5 计划沿用 LG4 的行号记为「4 处」，实测调用点为 6 处；其中 Lifecycle:220
+ *   与 Direct:164 位于 CoutCapture 作用域内，CHECK 的 [ OK ] 行被写进捕获缓冲而不出现在
+ *   终端（Direct.cpp:167-168 的注释已说明此性质），故这两处只能由整体 0 failed 佐证。
+ *   同批的无用包含清理亦已完成，并**纠正 LG4 本条目的登记错误**：LG4 写作「ConsoleLogger.cpp /
+ *   FileLogger.cpp 的 <sstream> 与 <iomanip>」，实测 FileLogger.cpp 从无 <sstream> —— P4-a 前
+ *   它由 FileLogger.h 为 std::stringstream 成员提供，P4-a 改成员为 std::string 后失效并残留在
+ *   FileLogger.h。LG5 实际移除 14 行 include：8 行随抽取迁入 YomkLogTime.h（<chrono>/<cstdio>/
+ *   <ctime>/<array> 各 2 份），6 行为纯无用包含 —— ConsoleLogger.cpp 的 <sstream>+<iomanip>、
+ *   FileLogger.cpp 的 <iomanip>、FileLogger.h 的 <sstream>+<map>、ConsoleLogger.h 的 <map>
+ *   （两个 .h 自身均未用 map，而包含它们的 YomkLogger.h 自带 <map>）。每项以「移除后全量
+ *   0 warning + 28/28 绿」为唯一判据，实测无一处暴露间接依赖、无一回退。
  * - P4-g（本闭环新发现，登记留 LG6）：内省端点在 21 万条目下每次调用存在三重拷贝——
  *   listAll 的 vector<string> → StringArray 包 → 测试侧 unpackLines 再拷一份，单次 ALL 的
  *   瞬时分配达数十 MB；S5-A 的 8 线程并发内省使 VmHWM 由 S4 末的 210 MB 冲到 492 MB
@@ -273,6 +305,58 @@ static std::string readVmHWM()
 #else
     return " n/a";
 #endif
+}
+
+// LG5：采样环境快照（兑现 LG4 doc 头登记的约定）。LG4 的 V2 绝对值因采样期存在并发
+// 负载而不可跨环境复现，退化倍数与相位的资源类型强相关，而原始日志已按用户口径清理
+// → 事后无法取证。本函数把 CPU 核数、系统负载、可用内存随每次运行一同打印，使
+// [BASELINE] 数据自带环境标注，后续闭环可直接判定“两次采样是否同环境”。
+// 纯信息行、非断言：读不到时降级为 "n/a"，任何情况下都不影响测试结果与断言计数。
+static std::string readEnvSnapshot()
+{
+    std::string env = "cpu=" + std::to_string(std::thread::hardware_concurrency());
+#ifdef __linux__
+    // /proc/loadavg 前三列为 1/5/15 分钟平均 runnable 数，远超 cpu 数即表明采样期存在
+    // 资源竞争；按原始文本提取（不经 double 转换）以保留精度
+    std::string load = "n/a";
+    {
+        std::ifstream ifs("/proc/loadavg");
+        std::string line;
+        if (std::getline(ifs, line))
+        {
+            std::istringstream iss(line);
+            std::string l1;
+            std::string l5;
+            std::string l15;
+            if (iss >> l1 >> l5 >> l15)
+                load = l1 + "/" + l5 + "/" + l15;
+        }
+    }
+    env += " loadavg=" + load;
+    // MemAvailable 是内核对“可供新分配用”的估计（含可回收缓存），比 MemFree 更能
+    // 反映真实内存压力（本测试全规模 VmHWM 达 491 MB，可用内存直接决定缺页频率）
+    std::string memAvail = "n/a";
+    {
+        std::ifstream ifs("/proc/meminfo");
+        std::string line;
+        while (std::getline(ifs, line))
+        {
+            if (line.size() > 13 && line.compare(0, 13, "MemAvailable:") == 0)
+            {
+                // /proc/meminfo 的数值列是右对齐的，冒号后带若干前导空格；跳过它们才是
+                // 可直接写进 doc 头的干净值。找不到非空白字符时保持 "n/a" 降级
+                const size_t valuePos = line.find_first_not_of(" \t", 13);
+                if (valuePos != std::string::npos)
+                    memAvail = line.substr(valuePos);
+                break;
+            }
+        }
+    }
+    env += " memAvail=" + memAvail;
+#else
+    env += " loadavg=n/a memAvail=n/a";
+#endif
+    return env;
 }
 
 // ============================================================================
@@ -641,6 +725,8 @@ int main()
 
     const uint64_t N = stressScale();
     std::cout << "[CONFIG] YOMK_TEST_STRESS_SCALE = " << N << std::endl;
+    // LG5：环境标注先于一切 [BASELINE] 输出，使本次所有性能数据可按环境归因
+    std::cout << "[ENV] " << readEnvSnapshot() << std::endl;
 
     auto server = YOMK_INIT(1);
     CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");

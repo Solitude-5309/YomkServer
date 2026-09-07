@@ -1,8 +1,6 @@
 #pragma once
 #include <string>
-#include <map>
 #include <memory>
-#include <sstream>
 #include <mutex>
 class FileLogger
 {

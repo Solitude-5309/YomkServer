@@ -208,6 +208,51 @@ if(YOMK_TEST_STATIC_ANALYZE)
             COMMENT "Running cppcheck on YomkServer FunctionPool module sources"
         )
     endif()
+
+    # LG5：Logger 模块静态分析范围（src/Modules/Logger），复用上方已探测的工具与调优检查集
+    # （此前 4 组接线独缺 Logger 与 ServerInfo；按 LG5 决策只补 Logger，ServerInfo 另排完整闭环）
+    file(GLOB _YOMK_LOGGER_SA_SRCS
+        ${YomkServer_DIR}/src/Modules/Logger/*.cpp
+        ${YomkServer_DIR}/src/Modules/Logger/*.h
+    )
+
+    # YomkLogger-clang-tidy：-header-filter 限定仅报 Logger 头（含 LG5 新增的内部头 YomkLogTime.h）
+    if(CLANG_TIDY_EXE)
+        add_custom_target(YomkLogger-clang-tidy
+            COMMAND ${CLANG_TIDY_EXE}
+                ${_YOMK_TIDY_CHECKS}
+                -header-filter=${YomkServer_DIR}/src/Modules/Logger
+                -p=${CMAKE_BINARY_DIR}
+                ${_YOMK_LOGGER_SA_SRCS}
+                > ${CMAKE_BINARY_DIR}/static-analysis/clang-tidy-logger.log 2>&1
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Running clang-tidy on YomkServer Logger module sources"
+        )
+    endif()
+
+    # YomkLogger-cppcheck：含 -I include/YomkServer 真实路径（同 ELC5 教训：
+    # YomkLogger.h 用裸 #include "YomkServer.h"，缺此路径时包含解析失败 → 宏未定义 → 分析降级）
+    if(CPPCHECK_EXE)
+        add_custom_target(YomkLogger-cppcheck
+            COMMAND ${CPPCHECK_EXE}
+                --language=c++
+                --std=c++17
+                --enable=warning,style,performance,portability,information
+                --suppress=missingInclude
+                --suppress=noExplicitConstructor
+                --suppress=useStlAlgorithm
+                --inline-suppr
+                --template=gcc
+                --error-exitcode=0
+                -I ${YomkServer_DIR}/include
+                -I ${YomkServer_DIR}/src
+                -I ${YomkServer_DIR}/include/YomkServer
+                ${_YOMK_LOGGER_SA_SRCS}
+                > ${CMAKE_BINARY_DIR}/static-analysis/cppcheck-logger.log 2>&1
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "Running cppcheck on YomkServer Logger module sources"
+        )
+    endif()
 endif()
 
 # -------------sl TestYomkSimpleThreadPool ----------------
