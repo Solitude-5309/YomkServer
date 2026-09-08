@@ -1,5 +1,6 @@
 #include "YomkServerPrivate.h"
 #include "YomkServer.h"
+#include "YomkServicePrivate.h"
 #include <iostream>
 #include <mutex>
 
@@ -21,7 +22,10 @@ void YomkServerPrivate::addService(YomkService *srv)
         }
         m_serviceMap[srv->name()].reset(srv);
         // 入表即锁定服务名：注册后改名被拒绝，保证服务名与 service map 键一致
-        srv->markRegistered();
+        if (srv->m_p)
+        {
+            srv->m_p->markRegistered();
+        }
     }
 
     // 同名替换：锁外对旧服务 deinit，与 delService 一致；在途请求持有的 shared_ptr 副本保证不与 invoke 并发析构。

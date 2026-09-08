@@ -10,11 +10,14 @@
 #include "YomkDefine.h"
 
 class YomkServer;
+class YomkServerPrivate;
 class YomkServicePrivate;
 
 // 服务基类
 class YOMKSERVER_EXPORT YomkService : public std::enable_shared_from_this<YomkService>
 {
+    friend class YomkServerPrivate;
+
 public:
     YomkService(YomkServer *server);
     virtual ~YomkService() {}
@@ -23,7 +26,6 @@ public:
     // 设置与获取服务名（URL 前缀）
     void name(const std::string &name);
     std::string name();
-    void markRegistered();
     void markDeleted();
     // 检查服务是否已标记注销
     bool deleted() const;

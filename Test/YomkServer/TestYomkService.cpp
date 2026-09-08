@@ -229,7 +229,6 @@ static void testNullServerGuards()
 {
     NullSrv srv;
     srv.name("x");        // 不应崩溃（空实现分支）
-    srv.markRegistered(); // 不应崩溃
     srv.markDeleted();    // 不应崩溃
     srv.installFunc("/x", [](YomkPkgPtr pkg)
                     { return YomkResponse{}; }); // 不应崩溃
