@@ -10,7 +10,7 @@
  * 4. funcInfos 内省
  * 5. invoke：命中（自身响应 + pkg 透传回显）、非法名/未安装返回 eNo 契约消息
  * 6. 空服务器守卫：server==nullptr 构造后全部 !m_p 分支
- * 7. markDeleted/deleted 标志位语义（弱绑定回调丢弃语义归 MC3）
+ * 7. deleted 标志位语义（写侧置位归框架，弱绑定回调丢弃语义归 MC3）
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
@@ -117,7 +117,7 @@ public:
 };
 
 /**
- * @brief 标志位服务：有效构造但不注册（栈对象），验证 markDeleted/deleted
+ * @brief 标志位服务：验证 deleted 判活（写侧置位归框架）
  */
 class FlagSrv : public YomkService
 {
@@ -228,8 +228,7 @@ static void testInvoke(DemoService *demo)
 static void testNullServerGuards()
 {
     NullSrv srv;
-    srv.name("x");        // 不应崩溃（空实现分支）
-    srv.markDeleted();    // 不应崩溃
+    srv.name("x"); // 不应崩溃（空实现分支）
     srv.installFunc("/x", [](YomkPkgPtr pkg)
                     { return YomkResponse{}; }); // 不应崩溃
     srv.asyncRequest("/SomeService/func");       // 不应崩溃
@@ -246,13 +245,17 @@ static void testNullServerGuards()
           "空实现 request 返回 eNo + service is null");
 }
 
-// 7. markDeleted/deleted 标志位语义（弱绑定回调语义归 MC3）
+// 7. deleted 标志位语义（写侧置位归框架，弱绑定回调丢弃语义归 MC3）
 static void testDeletedFlag()
 {
-    FlagSrv srv(YOMK_SERVER_P);
-    CHECK(srv.deleted() == false, "新构造服务 deleted() 初始为 false");
-    srv.markDeleted();
-    CHECK(srv.deleted() == true, "markDeleted() 置位后 deleted() 为 true");
+    auto *raw = new FlagSrv(YOMK_SERVER_P);
+    CHECK(YOMK_ADD_SERVICE(raw, "/FlagDemo") == 0, "注册成功返回 0");
+    // 经 shared_from_this 与框架共享所有权：删除后本副本使服务对象仍存活
+    std::shared_ptr<YomkService> srv = raw->shared_from_this();
+    CHECK(srv->deleted() == false, "新构造服务 deleted() 初始为 false");
+    // 框架删除在 deinit 前置位注销标志，本副本保持引用未归零
+    CHECK(YOMK_DEL_SERVICE("/FlagDemo") == 0, "删除成功返回 0");
+    CHECK(srv->deleted() == true, "框架删除后 deleted() 为 true（标志层独立于引用计数）");
 }
 
 int main()

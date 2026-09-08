@@ -37,16 +37,6 @@ void YomkService::name(const std::string &name)
     m_p->name(name);
 }
 
-void YomkService::markDeleted()
-{
-    if (!m_p)
-    {
-        YOMK_ERR_POS_LOG("service is null, please check service");
-        return;
-    }
-    m_p->markDeleted();
-}
-
 bool YomkService::deleted() const
 {
     if (!m_p)

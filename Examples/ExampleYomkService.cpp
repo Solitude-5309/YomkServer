@@ -151,16 +151,19 @@ int main(int argc, char *argv[])
     }
 
     /**
-     * 第五阶段：注销标志删除即停验证（问题 4B，第十六轮）
+     * 第五阶段：注销标志删除即停验证
      *
-     * 与第四阶段的差异：此处服务对象的强引用未归零（测试持有 srv），
-     * 仅置位注销标志（框架在 delService/同名替换的 deinit 前调用），
-     * 验证弱绑定回调不再等引用归零、立即失效：
+     * 与第四阶段的差异：此处经框架删除服务（YOMK_DEL_SERVICE 在 deinit 前置位注销标志），
+     * 本例持有 srv 强引用副本使服务对象存活，
+     * 验证弱绑定回调不再等引用归零、置位后立即失效：
      * 1. 注销前调用弱绑定回调：正常执行（计数 +1，eOk）
-     * 2. markDeleted() 后再调用：被丢弃（计数不增，eNo），服务对象仍存活
+     * 2. 框架删除后再调用：被丢弃（计数不增，eNo），服务对象仍存活
      */
     {
-        auto srv = std::make_shared<YomkServiceB>(YOMK_SERVER_P);
+        auto *srv = new YomkServiceB(YOMK_SERVER_P);
+        YOMK_ADD_SERVICE(srv, "/DelStopDemo");
+        // 经 shared_from_this 与框架共享所有权：删除后本副本使服务对象仍存活
+        std::shared_ptr<YomkService> held = srv->shared_from_this();
         int callCount = 0;
         YomkServiceFunc weakCb = srv->weakFunc([&callCount](YomkPkgPtr)
                                                    -> YomkResponse
@@ -169,7 +172,7 @@ int main(int argc, char *argv[])
             return YomkResponse(YomkResponse::eOk, "4b alive"); });
 
         YomkResponse respBefore = weakCb(nullptr);
-        srv->markDeleted();
+        YOMK_DEL_SERVICE("/DelStopDemo");
         YomkResponse respAfter = weakCb(nullptr);
 
         if (respBefore.m_status == YomkResponse::eOk && callCount == 1 &&

@@ -6,7 +6,7 @@
  * 1. 存活路径：服务存活时四种返回值回调均真实执行（weakFunc lambda 与 YomkBindWeakSelf 成员绑定两种方式）
  * 2. 销毁丢弃（引用计数路径）：服务析构后回调丢弃——void 不执行、YomkResponse 返回 eNo+契约消息、
  *    ECheckStatus 默认放行 eAccept、其他类型返回 Ret{} 默认值
- * 3. 删除即停（注销标志路径）：持 shared_ptr 不释放仅 markDeleted，回调同样立即丢弃（双层判活标志层独立生效）
+ * 3. 删除即停（注销标志路径）：持 shared_ptr 不释放经框架删除置位注销标志，回调同样立即丢弃（双层判活标志层独立生效）
  * 4. YomkInstallFunc 自动弱绑定串联：注销后 invoke 返回丢弃契约消息（真实功能函数路径）
  * 5. 构造期告警分支：构造期内调用 weakFunc（weak_from_this 未生效），绑定永久失效、回调永不执行
  * 6. 丢弃不执行实证：所有丢弃用例均以副作用计数未变化断言，而非仅看返回值
@@ -203,14 +203,16 @@ static void testDestroyDiscard(YomkServer *server)
           "销毁：YomkBindWeakSelf 绑定回调丢弃");
 }
 
-// 3. 删除即停（注销标志路径）：持引用不释放仅 markDeleted，回调与自动弱绑定 invoke 立即丢弃
+// 3. 删除即停（注销标志路径）：持引用不释放经框架删除置位注销标志，回调与自动弱绑定 invoke 立即丢弃
 static void testMarkDeletedDiscard(YomkServer *server)
 {
     std::atomic<int> voidCount{0};
     std::atomic<int> respCount{0};
 
-    auto srv = std::make_shared<BindSrv>(server);
-    srv->init(); // 安装 /installed（YomkInstallFunc 自动弱绑定）
+    auto *rawSrv = new BindSrv(server);
+    CHECK(server->addService(rawSrv) == 0, "注册成功（框架 init 安装 /installed）");
+    // 经 shared_from_this 与框架共享所有权：删除后本副本使服务对象仍存活
+    std::shared_ptr<YomkService> srv = rawSrv->shared_from_this();
 
     // 注销前：自动弱绑定 invoke 命中执行
     YomkResponse aliveResp = srv->invoke("/installed");
@@ -224,18 +226,19 @@ static void testMarkDeletedDiscard(YomkServer *server)
         respCount.fetch_add(1);
         return YomkResponse{YomkResponse::eOk, "alive"}; });
 
-    srv->markDeleted(); // 持 shared_ptr 不释放，仅置位注销标志（双层判活标志层）
+    // 持 shared_ptr 不释放，经框架删除置位注销标志（双层判活标志层独立于引用计数）
+    CHECK(server->delService("/BindSrv") == 0, "框架删除成功");
 
     cbVoid();
     YomkResponse resp = cbResp(nullptr);
     YomkResponse invokeResp = srv->invoke("/installed");
 
-    CHECK(voidCount.load() == 0, "markDeleted：void 回调立即丢弃，副作用计数未变化");
+    CHECK(voidCount.load() == 0, "删除即停：void 回调立即丢弃，副作用计数未变化");
     CHECK(respCount.load() == 0 && resp.m_status == YomkResponse::eNo &&
               resp.m_msg.find(DISCARD_MSG) != std::string::npos,
-          "markDeleted：YomkResponse 回调立即丢弃（删除即停）");
+          "删除即停：YomkResponse 回调立即丢弃（删除即停）");
     CHECK(invokeResp.m_status == YomkResponse::eNo && invokeResp.m_msg.find(DISCARD_MSG) != std::string::npos,
-          "markDeleted：自动弱绑定 invoke 返回丢弃契约消息");
+          "删除即停：自动弱绑定 invoke 返回丢弃契约消息");
 }
 
 // 4. 构造期告警分支：构造期捕获的绑定永久失效，回调永不执行

@@ -33,7 +33,10 @@ void YomkServerPrivate::addService(YomkService *srv)
     // 替换前先置位注销标志：旧服务的弱绑定回调立即失效，删除即停语义与 delService 一致
     if (oldSrv)
     {
-        oldSrv->markDeleted();
+        if (oldSrv->m_p)
+        {
+            oldSrv->m_p->markDeleted();
+        }
         oldSrv->deinit();
     }
 }
@@ -56,7 +59,10 @@ int YomkServerPrivate::delService(const std::string &srvName)
     // 锁外执行 deinit 与析构：在途请求持有的 shared_ptr 副本保证不会与 invoke 并发析构。
     // 先置位注销标志：删除即停，弱绑定回调立即丢弃，不等到引用归零；
     // shutdown 路径不置位（排空语义，排空期回调照常执行）
-    srv->markDeleted();
+    if (srv->m_p)
+    {
+        srv->m_p->markDeleted();
+    }
     srv->deinit();
     return 0;
 }

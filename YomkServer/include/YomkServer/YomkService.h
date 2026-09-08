@@ -26,7 +26,6 @@ public:
     // 设置与获取服务名（URL 前缀）
     void name(const std::string &name);
     std::string name();
-    void markDeleted();
     // 检查服务是否已标记注销
     bool deleted() const;
 
