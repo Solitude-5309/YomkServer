@@ -3,10 +3,6 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
-// P4-f（LG5 修复）：时间戳实现抽取至模块内部头，本文件不再持有重复副本；
-// 随之迁走 <chrono>/<cstdio>/<ctime>/<array>，并清除 P4-b 后已无用的 <iomanip>。
-// 本文件从无 <sstream>：P4-a 前它由 FileLogger.h 为 std::stringstream 成员提供，
-// P4-a 改成员为 std::string 后该包含已在头文件侧失效，本次一并清除
 #include "YomkLogTime.h"
 namespace fs = std::filesystem;
 
@@ -24,8 +20,6 @@ bool FileLogger::init()
 {
     std::string logFilePath = m_dir + "/" + m_name + ".log";
 
-    // P2-b（LG2 修复）：fs 异常不再穿透调用链，失败一律返回 false
-    // 由 createFileLogger 转为 eNo 响应且不注册幽灵 logger
     try
     {
         fs::path path(logFilePath);
@@ -66,9 +60,6 @@ void FileLogger::log(ELogLevel logLevel, const std::string &log)
     std::string timeStr = yomkLogLocalTimeFormatted();
 
     std::lock_guard<std::mutex> lock(m_logBufferMutex);
-    // P4-a（LG4 修复）：逐行追加到 std::string 成员缓冲。与原
-    // m_logStream << timeStr << " [Info ] " << log << std::endl 逐字节等价
-    // （std::endl 对字符串流仅追加 '\n'，其 flush 对 stringstream 无意义）
     auto appendLine = [this, &timeStr, &log](const char *levelTag)
     {
         m_logBuffer += timeStr;
@@ -100,12 +91,7 @@ void FileLogger::log(ELogLevel logLevel, const std::string &log)
 void FileLogger::write()
 {
     std::lock_guard<std::mutex> lock(m_logBufferMutex);
-    // P4-a（LG4 修复）：原实现用 std::stringstream 缓冲，落盘必须 m_logStream.str() 取快照，
-    // 且取了 2 次（先 .size() 判空、再 << 写盘）= 2 次全量拷贝。改为 std::string 成员缓冲后，
-    // 判空与写盘直接复用成员本体：落盘路径零拷贝、零大块瞬时分配。
-    // 为何不能只把 2 次 str() 减为 1 次：str() 产生的 MB 级临时串超 glibc mmap 阈值，
-    // 走 mmap → 逐页缺页 + 释放时 munmap，该开销远大于拷贝本身；进程内首次 flush 实测
-    // （LG4 微基准，2.05MB 缓冲）：原 2 次拷贝 9.26 ms / 单次快照 5.25 ms / 本实现 1.02 ms
+    // 直接落盘成员缓冲：避免 str() 全量拷贝——MB 级临时串走 mmap 逐页缺页，开销远大于拷贝本身
     if (m_logBuffer.empty())
     {
         return;
@@ -121,6 +107,5 @@ void FileLogger::write()
     logFile << m_logBuffer;
     logFile.close();
 
-    // 清空缓冲内容（等价原 m_logStream.str("")），下一次填充重新累积
     m_logBuffer.clear();
 }

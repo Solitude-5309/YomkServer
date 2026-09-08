@@ -11,6 +11,8 @@
 
 class YomkServer;
 class YomkServicePrivate;
+
+// 服务基类
 class YOMKSERVER_EXPORT YomkService : public std::enable_shared_from_this<YomkService>
 {
 public:
@@ -18,25 +20,22 @@ public:
     virtual ~YomkService() {}
 
 public:
-    // 设置服务名（建议以 / 开头，如 "/MyService"）：须在注册（addService）前调用，注册后改名将被拒绝
+    // 设置与获取服务名（URL 前缀）
     void name(const std::string &name);
     std::string name();
-    // 框架内部接口，用户代码不应调用
     void markRegistered();
-    // 框架内部接口，用户代码不应调用；deleted() 可查询服务是否已被删除/同名替换（供判活）
     void markDeleted();
+    // 检查服务是否已标记注销
     bool deleted() const;
 
 public:
+    // 服务初始化（在其中注册功能函数），返回 0 成功
     virtual int init() = 0;
+    // 服务注销与资源释放
     virtual void deinit() {}
 
 public:
-    // 弱绑定守卫（泛型模板），供外流回调（功能函数/FunctionPool/EventLoop/Context checker·monitor/异步响应）使用。
-    // 服务被删除（YOMK_DEL_SERVICE/同名替换）后回调立即安全丢弃，无需等待引用归零：
-    // YomkResponse 返回 eNo，Context checker 默认放行 eAccept，void 回调直接丢弃，其余返回默认值；
-    // YOMK_SHUTDOWN 走排空语义，排空期回调照常执行。
-    // 子类仍须在 deinit() 中停止非弱绑定路径的生产者（线程/定时器/外部注册）。
+    // 包装成员函数为 weak_ptr 安全回调，服务注销后自动忽略调用
     template <typename Func>
     auto weakFunc(Func func)
     {
@@ -64,10 +63,15 @@ public:
             return func(std::forward<decltype(args)>(args)...);
         };
     }
+    // 注册功能函数
     void installFunc(const std::string &funcName, YomkServiceFunc func, const std::string &msgName = "");
+    // 获取本服务已注册功能函数元信息
     std::map<std::string, YomkFuncInfo> funcInfos();
+    // 直接调用本服务的功能函数
     YomkResponse invoke(const std::string &funcName, YomkPkgPtr pkg = nullptr);
+    // 发起同步请求
     YomkResponse request(const std::string &url, YomkPkgPtr pkg = nullptr);
+    // 发起异步请求
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
 private:

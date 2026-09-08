@@ -5,8 +5,6 @@
 class ConsoleLogger
 {
 public:
-    // P2-c（LG2 修复）：固定底层类型，使外部注入任意 int 值不再是 UB，
-    // switch default 降级分支转为可合法触达的活分支
     enum ELogLevel : int
     {
         eDebug,

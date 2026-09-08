@@ -6,21 +6,16 @@
 #include <cstdint>
 #include <utility>
 
-// 弱绑定服务成员函数：把服务成员函数注册到外部子系统（功能函数、FunctionPool、
-// EventLoop、Context checker/monitor、异步响应）的回调时必须使用。
-// 服务被删除后回调自动安全丢弃，不会悬垂 this 崩溃；同一个宏适配全部回调签名，无需按签名区分。
+// 弱绑定服务成员函数，用于安全挂接外部回调
 #define YomkBindWeakSelf(Func) weakFunc(std::bind(&Func, this, std::placeholders::_1))
 
-// 弱绑定服务成员函数并装入本服务 funcMap（推荐在 init() 中使用）：
-// 两参形式 YomkInstallFunc(FuncName, Func)；
-// 三参形式 YomkInstallFunc(FuncName, Func, MsgName) 额外声明该函数期望的消息类型，
-// 字符串化后仅作内省元数据（/YomkServerInfo 可见），不参与运行时校验。
+// 注册服务成员功能函数（支持可选 MsgName 参数声明期望消息类型）
 #define YOMK_INSTALL_FUNC_SELECT(_1, _2, _3, NAME, ...) NAME
 #define YomkInstallFunc(...) YOMK_INSTALL_FUNC_SELECT(__VA_ARGS__, YOMK_INSTALL_FUNC_3, YOMK_INSTALL_FUNC_2)(__VA_ARGS__)
 #define YOMK_INSTALL_FUNC_2(FuncName, Func) installFunc(FuncName, YomkBindWeakSelf(Func))
 #define YOMK_INSTALL_FUNC_3(FuncName, Func, MsgName) installFunc(FuncName, YomkBindWeakSelf(Func), #MsgName)
 
-// 解包：校验消息类型并转为具体消息指针，失败自动 return {eNo, ...}（用于返回 YomkResponse 的函数）
+// 校验消息类型并解包，类型不匹配时直接返回 YomkResponse::eNo
 #define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                             \
     if (!pkg || pkg->name() != #MsgName)                                         \
         return {YomkResponse::eNo, " pkg is null or pkg is not " #MsgName ". "}; \
@@ -28,7 +23,7 @@
     if (!ptrName)                                                                \
         return {YomkResponse::eNo, " pkg[" #MsgName "] is dynamic_pointer_cast failed. "};
 
-// 解包：校验消息类型并转为具体消息指针，失败自动 return（用于 void 函数）
+// 校验消息类型并解包，类型不匹配时直接 return void
 #define YomkUnPackPkgVoid(pkg, MsgName, ptrName)                              \
     if (!pkg || pkg->name() != #MsgName)                                      \
         return;                                                               \
@@ -36,7 +31,7 @@
     if (!ptrName)                                                             \
         return;
 
-// 解包：校验消息类型并转为具体消息指针，失败不 return（指针为空），需手动判空
+// 校验消息类型并解包，类型不匹配时不提前返回（指针为 nullptr）
 #define YomkUnPackPkg(pkg, MsgName, ptrName)                     \
     YomkPtr(MsgName) ptrName = nullptr;                          \
     if (pkg && pkg->name() == #MsgName)                          \
@@ -44,7 +39,7 @@
         ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg); \
     }
 
-// 解包：按运行时字符串名匹配消息类型（供框架内部使用）
+// 按运行时类型名解包（框架内部使用）
 #define YomkUnPackPkgT(pkg, MsgName, ClassName, ptrName)     \
     std::shared_ptr<ClassName> ptrName = nullptr;            \
     if (pkg && pkg->name() == MsgName)                       \
@@ -52,20 +47,7 @@
         ptrName = std::dynamic_pointer_cast<ClassName>(pkg); \
     }
 
-// 定义消息包：为数据类 DataType 生成可传输的消息类型，建议放在命名空间外、所有结构体定义之后统一声明：
-// 生成类型 yomk::MsgName_（类）与 yomk::MsgNamePtr（shared_ptr），
-// 消息名只能出现在 Yomk/YomkPtr/YomkMkPtr/YomkUnPackPkg* 等宏的参数位置，不能当裸类型名使用；
-// VarName 为消息包中携带数据的成员变量名，取数据时经 ptr->VarName 访问
-// LG6（P4-g）：新增右值构造重载，使 YomkMkPtr(Msg, std::move(data)) 真正移动入包。此前只有
-// const& 版本，传 std::move(data) 会静默绑定到 const& 而退化为拷贝（move 无效却无任何告警），
-// 内省端点在 21 万条目下因此每次多一份 vector<string> 全量拷贝。
-// 向后兼容：左值实参仍逐字选中 const& 版本（重载决议偏好精确匹配），既有调用点行为不变；
-// 需要 move 语义时显式写 std::move 即可，两种入包方式对全部包类型与其下游用户同等可用。
-// 已知的路径变化（非缺陷）：需用户定义转换的实参——全仓 19 处 YomkMkPtr(String, "字面量")
-// 一类——按 [over.ics.rank]/3.2.6 的 tie-breaker 改选右值版本（两候选用同一转换构造函数，
-// 而 const std::string& 比 std::string&& 更 cv-qualified，故右值版本更优），即构造临时后移动
-// 而非拷贝：成员值逐字相同，仅省一次拷贝，不构成重载歧义。
-// 本宏生成全仓 41 种包类型，故该重载集的变更须以全量重编 + 全部测试与示例回归为判据。
+// 消息包类型定义宏
 #define YomkMsg(DataType, MsgName, VarName)                        \
     namespace yomk                                                 \
     {                                                              \
@@ -85,7 +67,7 @@
         typedef std::shared_ptr<MsgName##_> MsgName##Ptr;          \
     }
 
-// 消息包辅助宏：消息名 → 类型 / 指针类型 / 构造实例 / 创建消息包 shared_ptr（请求入参常用 YomkMkPtr）
+// 消息包构造与类型辅助宏
 #define Yomk(MsgName) yomk::MsgName##_
 #define YomkMk(MsgName, ...) yomk::MsgName##_(__VA_ARGS__)
 #define YomkPtr(MsgName) yomk::MsgName##Ptr
@@ -93,6 +75,7 @@
 
 class YomkServer;
 
+// 消息包基类
 class YomkPkg
 {
 public:
@@ -108,6 +91,7 @@ protected:
 };
 typedef std::shared_ptr<YomkPkg> YomkPkgPtr;
 
+// 请求调用结果对象
 class YomkResponse
 {
 public:
@@ -135,7 +119,9 @@ public:
 };
 typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 
+// 功能函数签名：入参为请求消息包（可为 nullptr），返回 YomkResponse
 typedef std::function<YomkResponse(YomkPkgPtr pkg)> YomkServiceFunc;
+// 异步响应回调签名：request 完成后回传结果
 typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 
 // 功能函数元信息（调试内省用）
@@ -201,8 +187,6 @@ namespace yomk
 
     struct Log
     {
-        // P2-c（LG2 修复）：固定底层类型，使外部注入任意 int 值不再是 UB，
-        // 服务端 switch default 降级分支转为可合法触达的活分支
         enum ELogLevel : int
         {
             eDebug,

@@ -37,6 +37,8 @@ Thumbs.db
 /.qmake.cache
 /.qmake.stash
 .qoder/
+.trae/
+.claude/
 !/Skill/.qoder/
 install/
 

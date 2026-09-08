@@ -1,7 +1,5 @@
 #include "ConsoleLogger.h"
 #include <iostream>
-// P4-f（LG5 修复）：时间戳实现抽取至模块内部头，本文件不再持有重复副本；
-// 随之迁走 <chrono>/<cstdio>/<ctime>/<array>，并清除 P4-b 后已无用的 <sstream>/<iomanip>
 #include "YomkLogTime.h"
 #include "YomkDefine.h"
 

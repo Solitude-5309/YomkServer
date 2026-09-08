@@ -11,9 +11,7 @@ class YomkServerPrivate;
 class YOMKSERVER_EXPORT YomkServer : public std::enable_shared_from_this<YomkServer>
 {
 public:
-    // 唯一构造入口：YomkServer 必须由 shared_ptr 持有，栈构造/裸 new 在编译期被拒绝。
-    // asyncThreadCount 为异步请求池线程数：0 取默认（硬件并发数一半向上取整，兜底 2）；
-    // 线程池仅框架内部使用，不对用户暴露。
+    // 创建 YomkServer 实例（由 shared_ptr 管理），asyncThreadCount 为异步请求线程池大小
     static std::shared_ptr<YomkServer> create(std::size_t asyncThreadCount = 0)
     {
         return std::shared_ptr<YomkServer>(new YomkServer(asyncThreadCount));
@@ -21,6 +19,7 @@ public:
     virtual ~YomkServer();
 
 public:
+    // 创建并注册指定类型的服务
     template <typename T>
     int newService(const std::string &srvName = "")
     {
@@ -33,16 +32,21 @@ public:
     }
 
 public:
+    // 启动指定服务
     int startService(std::vector<std::string> srvNames);
-    // 注册服务：成功返回 0；服务器/服务为空、服务 init() 失败（自动回滚）返回 -1。
-    // 所有权移交：注册成功后框架以 shared_ptr 持有该服务；禁止同一指针重复传入（双重释放）
+    // 注册服务实例（所有权移交给框架）
     int addService(YomkService *srv);
+    // 按服务名注销服务
     int delService(const std::string &srvName);
-    // 关闭服务器并逐服务调用 deinit()；关闭后不支持重新注册/启动服务（单进程单次初始化）
+    // 关闭服务器并停止所有服务
     void shutdown();
+    // 获取全部服务名称列表
     std::vector<std::string> serviceNames();
+    // 获取指定服务的功能函数元信息
     std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string &srvName);
+    // 同步请求服务功能函数（URL: "/服务名/函数名"）
     YomkResponse request(const std::string &url, YomkPkgPtr pkg = nullptr);
+    // 异步请求服务功能函数
     void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
 private:
