@@ -161,26 +161,34 @@ int main()
 支持跨服务存储与共享强类型键值状态，内置安全校验门控（Checker）与变更监控（Monitor）：
 
 ```cpp
-// 1. 创建与设置上下文键值
+// 1. 创建与设置上下文键值（key 已存在返回 eNo=1；值类型须与现值一致，否则 eNo "context type not match"）
 YOMK_CONTEXT_CREATE("config", YomkMkPtr(String, "init_value"));
 YOMK_CONTEXT_SET("config", YomkMkPtr(String, "new_value"));
 
-// 2. 读取上下文（只读快照）
+// 2. 读取上下文（只读快照；key 不存在时返回兜底默认值，调用方永不拿到空指针）
 auto val = YOMK_CONTEXT_GET(String, "config", nullptr);
 
-// 3. 注册变更前校验门控（Checker：在写锁内门控，重入会死锁）
+// 3. 注册变更前校验门控（Checker：全局开关 ON 且该 key 已设置时才生效；在写锁内门控，回调内重入 set 会死锁）
 YOMK_CONTEXT_SET_CHECKER("config", [](const yomk::Context &ctx) {
-    // 返回 eAccept 放行修改，返回 eReject 拦截并拒绝写入
+    // 返回 eAccept 放行修改；返回 eReject 拦截（set 返回 eNo=1 "checker reject set context"，monitor 不触发）
     return yomk::ContextChecker::eAccept;
 });
-YOMK_CONTEXT_ON_CHECKER(); // 开启全局校验器
+YOMK_CONTEXT_ON_CHECKER();  // 开启全局校验器；YOMK_CONTEXT_OFF_CHECKER() 关闭（checker 保留但不生效）
 
-// 4. 注册变更后监听器（Monitor）
+// 4. 注册变更后监听器（Monitor：追加式可注册多个；async=false 锁外即时执行，async=true 单线程池按提交序送达）
 YOMK_CONTEXT_SET_MONITOR("config", [](const yomk::Context &ctx) {
-    // 收到变更通知（支持同步通知或异步通知池）
+    // 收到变更通知（本次 set 的键值快照）
 }, /*async=*/false);
-YOMK_CONTEXT_ON_MONITOR(); // 开启全局监控
+YOMK_CONTEXT_ON_MONITOR();  // 开启全局监控；YOMK_CONTEXT_OFF_MONITOR() 关闭（monitor 保留但不执行）
+
+// 5. 运行期自省与销毁
+YOMK_CONTEXT_INFO_KEYS();        // 全部键名清单
+YOMK_CONTEXT_INFO_KEY("config"); // 单键状态："config [String] checker:on monitors:1(async:0)"
+YOMK_CONTEXT_INFO_ALL();         // 全量状态（每键一行）
+YOMK_CONTEXT_DESTROY("config");  // 删除键；删除后操作返回 eNo=1（key is not exist）
 ```
+
+完整可运行演示见 `Examples/ExampleYomkContext.cpp`（8 步覆盖全部上下文 API，读运行输出即可理解每个调用）。
 
 ### 5. 线程隔离事件循环 (YomkEventLoop)
 
@@ -240,7 +248,7 @@ YOMK_FUNCTIONPOOL_UNREGISTER("calcSum");
 
 - **服务自省**：`YOMK_SERVER_INFO_SERVICES()`、`YOMK_SERVER_INFO_FUNCTIONS("/MyService")`、`YOMK_SERVER_INFO_ALL()`
 - **日志自省**：`YOMK_LOGGER_INFO_LOGGERS()`、`YOMK_LOGGER_INFO_LOGGER("app")`、`YOMK_LOGGER_INFO_ALL()`
-- **上下文自省**：`YOMK_CONTEXT_INFO_KEYS()`、`YOMK_CONTEXT_INFO_ALL()`
+- **上下文自省**：`YOMK_CONTEXT_INFO_KEYS()`、`YOMK_CONTEXT_INFO_KEY("config")`、`YOMK_CONTEXT_INFO_ALL()`
 - **事件循环自省**：`YOMK_EVENTLOOP_INFO_LOOPS()`、`YOMK_EVENTLOOP_INFO_LOOP("TaskLoop")`、`YOMK_EVENTLOOP_INFO_ALL()`
 - **函数池自省**：`YOMK_FUNCTIONPOOL_INFO_NAMES()`、`YOMK_FUNCTIONPOOL_INFO_NAME("calcSum")`、`YOMK_FUNCTIONPOOL_INFO_ALL()`
 
