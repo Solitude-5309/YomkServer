@@ -211,14 +211,22 @@ YOMK_EVENTLOOP_DESTROY("TaskLoop");
 用于跨服务、动态注册与调用的扁平函数中心：
 
 ```cpp
-// 注册函数
+// 注册函数（第三个参数可选：声明期望的消息类型名，仅作内省元数据）
 YOMK_FUNCTIONPOOL_REGISTER("calcSum", [](YomkPkgPtr pkg) {
     return YomkResponse{YomkResponse::eOk, "result"};
 });
 
-// 调用函数
+// 调用函数（返回值即函数返回值；未注册的名字返回 eNo=1）
 YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("calcSum", nullptr);
+
+// 同名重复注册即运行时热替换，无需注销
+YOMK_FUNCTIONPOOL_REGISTER("calcSum", newFunc);
+
+// 注销（按名字从函数表移除）
+YOMK_FUNCTIONPOOL_UNREGISTER("calcSum");
 ```
+
+完整可运行演示见 `Examples/ExampleYomkFunctionPool.cpp`（6 步覆盖全部函数池 API，读运行输出即可理解每个调用）。
 
 ### 7. 运行期自省 API
 
@@ -228,7 +236,7 @@ YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("calcSum", nullptr);
 - **日志自省**：`YOMK_LOGGER_INFO_LOGGERS()`、`YOMK_LOGGER_INFO_LOGGER("app")`、`YOMK_LOGGER_INFO_ALL()`
 - **上下文自省**：`YOMK_CONTEXT_INFO_KEYS()`、`YOMK_CONTEXT_INFO_ALL()`
 - **事件循环自省**：`YOMK_EVENTLOOP_INFO_LOOPS()`、`YOMK_EVENTLOOP_INFO_ALL()`
-- **函数池自省**：`YOMK_FUNCTIONPOOL_INFO_NAMES()`、`YOMK_FUNCTIONPOOL_INFO_ALL()`
+- **函数池自省**：`YOMK_FUNCTIONPOOL_INFO_NAMES()`、`YOMK_FUNCTIONPOOL_INFO_NAME("calcSum")`、`YOMK_FUNCTIONPOOL_INFO_ALL()`
 
 ---
 
