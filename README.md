@@ -130,25 +130,31 @@ int main()
   YOMK_DEBUG("trace id:", 12345);
   // 指定 Tag：
   YOMK_INFO_TAG("Network", "connected to remote host");
+  // 输出格式：[时间] [级别] [tag] [行号] 内容；tag 即控制台日志器名，首次使用自动创建
   ```
 - **开关指定日志级别**：
   ```cpp
   YOMK_OFF_CONSOLE_LOG_DEBUG();
   YOMK_ON_CONSOLE_LOG_DEBUG();
+  // 级别开关为框架全局，只影响控制台输出；文件日志四级全记
   ```
 - **文件日志**：
   ```cpp
   YOMK_FILE_LOG_CREATE("./logs", "app"); // 创建日志器
   YOMK_FILE_INFO("app", "app started");  // 写入内存缓冲
   YOMK_FILE_LOG_WRITE("app");            // 显式刷盘（日志器释放时亦会自动落盘）
+  YOMK_FILE_LOG_DELETE("app");           // 删除日志器（同名清 console+file 两表；不删磁盘 .log）
   ```
 - **控制台日志拦截/代理**：
   ```cpp
   YOMK_SET_CONSOLE_LOG_PROXY([](const yomk::Log &log) {
-      // 返回 false 表示消费此日志不再默认输出；返回 true 则继续走框架默认打印
-      return false;
+      if (log.m_level == yomk::Log::eDebug)
+          return false; // 返回 false 表示消费此日志，不再默认输出
+      return true;      // 返回 true 则继续走框架默认打印
   });
+  YOMK_SET_CONSOLE_LOG_PROXY(nullptr); // 传 nullptr 卸载代理，恢复默认输出
   ```
+  完整可运行演示见 `Examples/ExampleYomkLogger.cpp`（8 步覆盖全部日志 API，读运行输出即可理解每个调用）。
 
 ### 4. 共享上下文 (YomkContext)
 
@@ -219,7 +225,7 @@ YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("calcSum", nullptr);
 框架提供内置自省接口，方便在运行时查询拓扑和调试：
 
 - **服务自省**：`YOMK_SERVER_INFO_SERVICES()`、`YOMK_SERVER_INFO_FUNCTIONS("/MyService")`、`YOMK_SERVER_INFO_ALL()`
-- **日志自省**：`YOMK_LOGGER_INFO_LOGGERS()`、`YOMK_LOGGER_INFO_ALL()`
+- **日志自省**：`YOMK_LOGGER_INFO_LOGGERS()`、`YOMK_LOGGER_INFO_LOGGER("app")`、`YOMK_LOGGER_INFO_ALL()`
 - **上下文自省**：`YOMK_CONTEXT_INFO_KEYS()`、`YOMK_CONTEXT_INFO_ALL()`
 - **事件循环自省**：`YOMK_EVENTLOOP_INFO_LOOPS()`、`YOMK_EVENTLOOP_INFO_ALL()`
 - **函数池自省**：`YOMK_FUNCTIONPOOL_INFO_NAMES()`、`YOMK_FUNCTIONPOOL_INFO_ALL()`
