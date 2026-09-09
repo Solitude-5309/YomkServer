@@ -8,9 +8,9 @@ set(YomkServerLib
 # -------------sl ExampleYomkService ----------------
 set(ExampleYomkService_SOURCES 
     ${ExamplesYomkServer_DIR}/ExampleYomkService.cpp
-    ${ExamplesYomkServer_DIR}/boot/MyBoot.cpp
-    ${ExamplesYomkServer_DIR}/services/YomkServiceA.cpp
-    ${ExamplesYomkServer_DIR}/services/YomkServiceB.cpp
+    ${ExamplesYomkServer_DIR}/boot/DemoBoot.cpp
+    ${ExamplesYomkServer_DIR}/services/AuditService.cpp
+    ${ExamplesYomkServer_DIR}/services/CalcService.cpp
 )
 add_executable(ExampleYomkService 
     ${ExampleYomkService_SOURCES}
