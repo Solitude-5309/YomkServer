@@ -184,27 +184,33 @@ YOMK_CONTEXT_ON_MONITOR(); // 开启全局监控
 
 ### 5. 线程隔离事件循环 (YomkEventLoop)
 
-为特定业务提供单线程 FIFO 执行队列，避免锁竞争：
+为特定业务提供单线程 FIFO 执行队列，避免锁竞争。同一循环内事件按入队顺序在专用线程中执行，不同循环之间彼此并行：
 
 ```cpp
-// 启动事件循环
+// 启动事件循环（可带默认处理函数与消息类型名元数据；对已存在名称再次 START 为幂等重启）
 YOMK_EVENTLOOP_START("TaskLoop");
 
-// 非阻塞投递异步任务
+// 非阻塞投递异步任务（tag 可选：仅内省可见，用于观察队列）
 YOMK_EVENTLOOP_POST("TaskLoop", YomkMkPtr(String, "task1"), [](YomkPkgPtr pkg) {
     // 在 TaskLoop 专用线程中顺序执行
     return YomkResponse{YomkResponse::eOk};
-});
+}, "billing");
 
 // 阻塞投递任务（等待任务在循环中执行完毕返回结果）
 YomkResponse resp = YOMK_EVENTLOOP_POST_WAIT("TaskLoop", nullptr, [](YomkPkgPtr) {
     return YomkResponse{YomkResponse::eOk, "done"};
 });
 
-// 停止与销毁
+// 查询循环状态与队列积压（第二个参数可选：列出队首 N 个事件的 tag）
+YOMK_EVENTLOOP_INFO_LOOP("TaskLoop");  // msg 如 "TaskLoop running:on pending:0 defaultFunc:on nextNEventTag(3): "
+
+// 停止（停线程但保留队列事件，再次 START 续跑）与销毁（停线程并清空队列、移出循环表，不可续跑）
 YOMK_EVENTLOOP_STOP("TaskLoop");
 YOMK_EVENTLOOP_DESTROY("TaskLoop");
+// 注意：停止后投递返回 eNo=1（event loop not running）；销毁后操作返回 eNo=1（event loop not exist）
 ```
+
+完整可运行演示见 `Examples/ExampleYomkEventLoop.cpp`（8 步覆盖全部事件循环 API，读运行输出即可理解每个调用）。
 
 ### 6. 动态函数池 (YomkFunctionPool)
 
@@ -235,7 +241,7 @@ YOMK_FUNCTIONPOOL_UNREGISTER("calcSum");
 - **服务自省**：`YOMK_SERVER_INFO_SERVICES()`、`YOMK_SERVER_INFO_FUNCTIONS("/MyService")`、`YOMK_SERVER_INFO_ALL()`
 - **日志自省**：`YOMK_LOGGER_INFO_LOGGERS()`、`YOMK_LOGGER_INFO_LOGGER("app")`、`YOMK_LOGGER_INFO_ALL()`
 - **上下文自省**：`YOMK_CONTEXT_INFO_KEYS()`、`YOMK_CONTEXT_INFO_ALL()`
-- **事件循环自省**：`YOMK_EVENTLOOP_INFO_LOOPS()`、`YOMK_EVENTLOOP_INFO_ALL()`
+- **事件循环自省**：`YOMK_EVENTLOOP_INFO_LOOPS()`、`YOMK_EVENTLOOP_INFO_LOOP("TaskLoop")`、`YOMK_EVENTLOOP_INFO_ALL()`
 - **函数池自省**：`YOMK_FUNCTIONPOOL_INFO_NAMES()`、`YOMK_FUNCTIONPOOL_INFO_NAME("calcSum")`、`YOMK_FUNCTIONPOOL_INFO_ALL()`
 
 ---
