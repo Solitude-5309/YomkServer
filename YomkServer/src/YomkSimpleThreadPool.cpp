@@ -1,6 +1,8 @@
 #include "YomkSimpleThreadPool.h"
-#include "YomkDefine.h"
+
 #include <iostream>
+
+#include "YomkDefine.h"
 
 YomkSimpleThreadPool::YomkSimpleThreadPool(std::size_t threadCount)
 {
@@ -47,7 +49,7 @@ void YomkSimpleThreadPool::stop()
     }
 
     m_cv.notify_all();
-    for (auto &worker : m_workers)
+    for (auto& worker : m_workers)
     {
         if (worker.joinable())
         {
@@ -71,8 +73,7 @@ void YomkSimpleThreadPool::workerLoop()
         std::function<void()> task;
         {
             std::unique_lock<std::mutex> lock(m_mtx);
-            m_cv.wait(lock, [this]()
-                      { return m_stop.load() || !m_queue.empty(); });
+            m_cv.wait(lock, [this]() { return m_stop.load() || !m_queue.empty(); });
 
             // 停止后仍排空存量队列：队列空且已停止才退出
             if (m_queue.empty())
@@ -89,7 +90,7 @@ void YomkSimpleThreadPool::workerLoop()
         {
             task();
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
             YOMK_ERR_POS_LOG("async task exception caught: " + std::string(e.what()));
         }

@@ -18,7 +18,7 @@
 class AuditService : public YomkService
 {
 public:
-    explicit AuditService(YomkServer *server);
+    explicit AuditService(YomkServer* server);
     ~AuditService() override;
 
     int init() override;
@@ -28,6 +28,6 @@ public:
     YomkResponse audit(YomkPkgPtr pkg);
 
 private:
-    int m_id;              // 本实例编号：日志用它自证"同名替换"动的是不同实例
-    static int s_instance; // 实例计数：构造 +1、析构 -1
+    int m_id;               // 本实例编号：日志用它自证"同名替换"动的是不同实例
+    static int s_instance;  // 实例计数：构造 +1、析构 -1
 };

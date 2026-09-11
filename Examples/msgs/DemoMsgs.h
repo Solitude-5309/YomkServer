@@ -30,5 +30,4 @@ struct AddResp
 // 注册后即可使用：
 // - 创建：YomkMkPtr(AddReq, AddReq{1, 2})
 // - 解包：YomkUnPackPkgResponse(pkg, AddReq, ptr)，通过 ptr->req.a 访问
-YomkMsg(AddReq, AddReq, req)
-YomkMsg(AddResp, AddResp, resp)
+YomkMsg(AddReq, AddReq, req) YomkMsg(AddResp, AddResp, resp)

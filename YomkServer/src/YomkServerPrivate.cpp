@@ -1,10 +1,12 @@
 #include "YomkServerPrivate.h"
-#include "YomkServer.h"
-#include "YomkServicePrivate.h"
+
 #include <iostream>
 #include <mutex>
 
-void YomkServerPrivate::addService(YomkService *srv)
+#include "YomkServer.h"
+#include "YomkServicePrivate.h"
+
+void YomkServerPrivate::addService(YomkService* srv)
 {
     if (!srv)
     {
@@ -41,7 +43,7 @@ void YomkServerPrivate::addService(YomkService *srv)
     }
 }
 
-int YomkServerPrivate::delService(const std::string &srvName)
+int YomkServerPrivate::delService(const std::string& srvName)
 {
     std::shared_ptr<YomkService> srv;
     {
@@ -84,7 +86,7 @@ void YomkServerPrivate::shutdown()
     {
         std::unique_lock<std::shared_mutex> lock(m_serviceMapMtx);
         srvs.reserve(m_serviceMap.size());
-        for (auto &iter : m_serviceMap)
+        for (auto& iter : m_serviceMap)
         {
             srvs.push_back(std::move(iter.second));
         }
@@ -92,7 +94,7 @@ void YomkServerPrivate::shutdown()
     }
 
     // 锁外逐个 deinit，与 delService 保持一致的锁外清理模式，避免阻塞其他请求路径
-    for (auto &srv : srvs)
+    for (auto& srv : srvs)
     {
         srv->deinit();
     }
@@ -108,7 +110,7 @@ bool YomkServerPrivate::postRequestTask(std::function<void()> task)
     return m_requestPool.post(std::move(task));
 }
 
-YomkResponse YomkServerPrivate::request(const std::string &srvName, const std::string &funcName, YomkPkgPtr pkg)
+YomkResponse YomkServerPrivate::request(const std::string& srvName, const std::string& funcName, YomkPkgPtr pkg)
 {
     std::shared_ptr<YomkService> srv;
     {
@@ -128,14 +130,14 @@ std::vector<std::string> YomkServerPrivate::serviceNames()
 {
     std::vector<std::string> names;
     std::shared_lock<std::shared_mutex> lock(m_serviceMapMtx);
-    for (auto &iter : m_serviceMap)
+    for (auto& iter : m_serviceMap)
     {
         names.push_back(iter.first);
     }
     return names;
 }
 
-std::map<std::string, YomkFuncInfo> YomkServerPrivate::serviceFuncInfos(const std::string &srvName)
+std::map<std::string, YomkFuncInfo> YomkServerPrivate::serviceFuncInfos(const std::string& srvName)
 {
     std::shared_ptr<YomkService> srv;
     {

@@ -38,14 +38,14 @@
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
 
+#include <unistd.h>
+
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
-
-#include <unistd.h>
 
 #include "ConsoleLogger.h"
 #include "FileLogger.h"
@@ -78,11 +78,11 @@ public:
 
 private:
     std::stringstream m_ss;
-    std::streambuf *m_old;
+    std::streambuf* m_old;
 };
 
 // 读取文件全部内容；打开失败以 ok 出参标记
-static std::string readFile(const fs::path &path, bool &ok)
+static std::string readFile(const fs::path& path, bool& ok)
 {
     std::ifstream ifs(path);
     ok = ifs.is_open();
@@ -92,10 +92,9 @@ static std::string readFile(const fs::path &path, bool &ok)
 }
 
 // 时间戳格式粗校验："[dddd-dd-dd dd:dd:dd.ddd]"（不锁定具体日期值）
-static bool checkTimeFormat(const std::string &line)
+static bool checkTimeFormat(const std::string& line)
 {
-    auto isDigit = [](char c)
-    { return c >= '0' && c <= '9'; };
+    auto isDigit = [](char c) { return c >= '0' && c <= '9'; };
     if (line.size() < 25 || line[0] != '[' || line[24] != ']')
     {
         return false;
@@ -104,28 +103,28 @@ static bool checkTimeFormat(const std::string &line)
     {
         switch (i)
         {
-        case 5:
-        case 8:
-            if (line[i] != '-')
-                return false;
-            break;
-        case 11:
-            if (line[i] != ' ')
-                return false;
-            break;
-        case 14:
-        case 17:
-            if (line[i] != ':')
-                return false;
-            break;
-        case 20:
-            if (line[i] != '.')
-                return false;
-            break;
-        default:
-            if (!isDigit(line[i]))
-                return false;
-            break;
+            case 5:
+            case 8:
+                if (line[i] != '-')
+                    return false;
+                break;
+            case 11:
+                if (line[i] != ' ')
+                    return false;
+                break;
+            case 14:
+            case 17:
+                if (line[i] != ':')
+                    return false;
+                break;
+            case 20:
+                if (line[i] != '.')
+                    return false;
+                break;
+            default:
+                if (!isDigit(line[i]))
+                    return false;
+                break;
         }
     }
     return true;
@@ -153,14 +152,13 @@ int main()
             logger.log(ConsoleLogger::eWarn, "lg1_dc_warn_marker");
             logger.log(ConsoleLogger::eError, "lg1_dc_error_marker");
             std::string out = cap.str();
-            CHECK(out.find("[Debug] [lg1_direct_console] lg1_dc_debug_marker") != std::string::npos,
-                  "eDebug 输出行格式（[Debug] [名] 内容）");
-            CHECK(out.find("[Info ] [lg1_direct_console] lg1_dc_info_marker") != std::string::npos,
-                  "eInfo 输出行格式");
-            CHECK(out.find("[Warn ] [lg1_direct_console] lg1_dc_warn_marker") != std::string::npos,
-                  "eWarn 输出行格式");
-            CHECK(out.find("[Error] [lg1_direct_console] lg1_dc_error_marker") != std::string::npos,
-                  "eError 输出行格式");
+            CHECK(
+                out.find("[Debug] [lg1_direct_console] lg1_dc_debug_marker") != std::string::npos,
+                "eDebug 输出行格式（[Debug] [名] 内容）");
+            CHECK(out.find("[Info ] [lg1_direct_console] lg1_dc_info_marker") != std::string::npos, "eInfo 输出行格式");
+            CHECK(out.find("[Warn ] [lg1_direct_console] lg1_dc_warn_marker") != std::string::npos, "eWarn 输出行格式");
+            CHECK(
+                out.find("[Error] [lg1_direct_console] lg1_dc_error_marker") != std::string::npos, "eError 输出行格式");
             CHECK(checkTimeFormat(out), "控制台行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]");
         }
 
@@ -173,10 +171,12 @@ int main()
                 logger.log(static_cast<ConsoleLogger::ELogLevel>(99), "lg1_dc_badlevel_marker");
                 out = cap.str();
             }
-            CHECK(out.find("Unknown log level: 99") != std::string::npos,
-                  "非法级别 99 走 default 错误提示（P2-c 修复后活分支）");
-            CHECK(out.find("[Info ] [lg1_direct_console] lg1_dc_badlevel_marker") != std::string::npos,
-                  "非法级别降级 Info 输出 marker");
+            CHECK(
+                out.find("Unknown log level: 99") != std::string::npos,
+                "非法级别 99 走 default 错误提示（P2-c 修复后活分支）");
+            CHECK(
+                out.find("[Info ] [lg1_direct_console] lg1_dc_badlevel_marker") != std::string::npos,
+                "非法级别降级 Info 输出 marker");
         }
 
         // 超长名（4096）与空内容
@@ -187,8 +187,7 @@ int main()
             CHECK(longLogger.getName() == longName, "4096 字符超长名 setName/getName 一致");
             CoutCapture cap;
             longLogger.log(ConsoleLogger::eInfo, "");
-            CHECK(cap.str().find("[Info ] [" + longName + "] ") != std::string::npos,
-                  "超长名 + 空内容日志正常输出");
+            CHECK(cap.str().find("[Info ] [" + longName + "] ") != std::string::npos, "超长名 + 空内容日志正常输出");
         }
     }
 
@@ -199,14 +198,16 @@ int main()
         CHECK(fl.getName() == "MainLogger", "FileLogger 默认名 MainLogger");
         fl.setName("lg1_direct_file");
         fl.setDir((tmpDir / "fl_basic").string());
-        CHECK(fl.getName() == "lg1_direct_file" && fl.getDir() == (tmpDir / "fl_basic").string(),
-              "setName/setDir/getDir 往返一致");
+        CHECK(
+            fl.getName() == "lg1_direct_file" && fl.getDir() == (tmpDir / "fl_basic").string(),
+            "setName/setDir/getDir 往返一致");
 
         // init：多级目录 + 空日志文件，返回 true（P2-b 修复后 bool 语义）
         CHECK(fl.init(), "init 成功返回 true（P2-b 修复后 bool 语义）");
         fs::path logFile = tmpDir / "fl_basic" / "lg1_direct_file.log";
-        CHECK(fs::exists(tmpDir / "fl_basic") && fs::exists(logFile) && fs::file_size(logFile, ec) == 0,
-              "init 建多级目录与空日志文件");
+        CHECK(
+            fs::exists(tmpDir / "fl_basic") && fs::exists(logFile) && fs::file_size(logFile, ec) == 0,
+            "init 建多级目录与空日志文件");
 
         // log 四级别：入缓冲不落盘
         fl.log(FileLogger::eDebug, "lg1_df_debug_marker");
@@ -222,8 +223,9 @@ int main()
                 fl.log(static_cast<FileLogger::ELogLevel>(99), "lg1_df_badlevel_marker");
                 outBad = cap.str();
             }
-            CHECK(outBad.find("Unknown log level: 99") != std::string::npos,
-                  "FileLogger 非法级别 99 走 default 错误提示（P2-c 修复后活分支）");
+            CHECK(
+                outBad.find("Unknown log level: 99") != std::string::npos,
+                "FileLogger 非法级别 99 走 default 错误提示（P2-c 修复后活分支）");
         }
         CHECK(fs::file_size(logFile, ec) == 0, "write 前缓冲内容不落盘（文件仍空）");
 
@@ -232,13 +234,15 @@ int main()
         bool readOk = false;
         std::string content = readFile(logFile, readOk);
         CHECK(readOk, "write 后日志文件可读");
-        CHECK((content.find("[Debug] lg1_df_debug_marker") != std::string::npos &&
-               content.find("[Info ] lg1_df_info_marker") != std::string::npos &&
-               content.find("[Warn ] lg1_df_warn_marker") != std::string::npos &&
-               content.find("[Error] lg1_df_error_marker") != std::string::npos),
-              "四级别行格式（时间戳+[级别]+内容）落盘");
-        CHECK(content.find("[Info ] lg1_df_badlevel_marker") != std::string::npos,
-              "非法级别降级 Info 行落盘（P2-c 回填）");
+        CHECK(
+            (content.find("[Debug] lg1_df_debug_marker") != std::string::npos &&
+             content.find("[Info ] lg1_df_info_marker") != std::string::npos &&
+             content.find("[Warn ] lg1_df_warn_marker") != std::string::npos &&
+             content.find("[Error] lg1_df_error_marker") != std::string::npos),
+            "四级别行格式（时间戳+[级别]+内容）落盘");
+        CHECK(
+            content.find("[Info ] lg1_df_badlevel_marker") != std::string::npos,
+            "非法级别降级 Info 行落盘（P2-c 回填）");
         CHECK(checkTimeFormat(content), "文件日志行首时间戳格式");
 
         // 流已清空：二次 write 文件不增长
@@ -251,9 +255,9 @@ int main()
         fl.write();
         bool readOk2 = false;
         std::string content2 = readFile(logFile, readOk2);
-        CHECK(readOk2 && content2.size() > sizeAfter &&
-                  content2.substr(sizeAfter).find("[Info ] ") != std::string::npos,
-              "空内容日志追加成行（[Info ] 空内容）");
+        CHECK(
+            readOk2 && content2.size() > sizeAfter && content2.substr(sizeAfter).find("[Info ] ") != std::string::npos,
+            "空内容日志追加成行（[Info ] 空内容）");
 
         // 1MB 超长内容往返
         {
@@ -271,7 +275,7 @@ int main()
             std::ofstream(regularFile.string()) << "x";
             FileLogger failFl;
             failFl.setName("lg1_writefail");
-            failFl.setDir(regularFile.string()); // <普通文件>/lg1_writefail.log 无法打开
+            failFl.setDir(regularFile.string());  // <普通文件>/lg1_writefail.log 无法打开
             failFl.log(FileLogger::eInfo, "lg1_df_writefail_marker");
             // CHECK 须在捕获作用域外（否则断言输出被 rdbuf 重定向吞没）
             std::string outFail;
@@ -280,9 +284,10 @@ int main()
                 failFl.write();
                 outFail = cap.str();
             }
-            CHECK(outFail.find("open log file failed: " + regularFile.string() +
-                               "/lg1_writefail.log") != std::string::npos,
-                  "write 打不开文件走错误提示分支");
+            CHECK(
+                outFail.find("open log file failed: " + regularFile.string() + "/lg1_writefail.log") !=
+                    std::string::npos,
+                "write 打不开文件走错误提示分支");
             // 流保留：恢复有效目录后补写成功（内容不丢）
             fs::path recoverDir = tmpDir / "fl_recover";
             fs::create_directories(recoverDir, ec);
@@ -290,8 +295,9 @@ int main()
             failFl.write();
             bool readOk4 = false;
             std::string content4 = readFile(recoverDir / "lg1_writefail.log", readOk4);
-            CHECK(readOk4 && content4.find("lg1_df_writefail_marker") != std::string::npos,
-                  "write 失败后流保留，恢复目录补写内容不丢");
+            CHECK(
+                readOk4 && content4.find("lg1_df_writefail_marker") != std::string::npos,
+                "write 失败后流保留，恢复目录补写内容不丢");
         }
 
         // 析构自动 write：缓冲内容落盘
@@ -308,8 +314,7 @@ int main()
             }
             bool readOk5 = false;
             std::string content5 = readFile(dtorDir / "lg1_dtor.log", readOk5);
-            CHECK(readOk5 && content5.find("lg1_df_dtor_marker") != std::string::npos,
-                  "析构自动 write，缓冲内容落盘");
+            CHECK(readOk5 && content5.find("lg1_df_dtor_marker") != std::string::npos, "析构自动 write，缓冲内容落盘");
         }
 
         // P2-b 处置验证（LG2 回填）：init 对不可创建目录返回 false 不抛异常
@@ -327,8 +332,7 @@ int main()
                 out = cap.str();
             }
             CHECK(!initRet, "init 不可创建目录返回 false（P2-b 已处置，异常不穿透）");
-            CHECK(out.find("init file logger fs error") != std::string::npos,
-                  "init 失败错误提示含 fs error 信息");
+            CHECK(out.find("init file logger fs error") != std::string::npos, "init 失败错误提示含 fs error 信息");
         }
 
         // P2-b 第二条失败路径：dir 为普通文件（exists 为 true 不走 create_directories，
@@ -347,8 +351,9 @@ int main()
                 out = cap.str();
             }
             CHECK(!initRet, "init 目录为普通文件时返回 false（ofstream 打开失败分支）");
-            CHECK(out.find("create log file failed: " + regularDir.string() + "/lg1_initfail.log") != std::string::npos,
-                  "init 打开失败错误提示含完整日志文件路径");
+            CHECK(
+                out.find("create log file failed: " + regularDir.string() + "/lg1_initfail.log") != std::string::npos,
+                "init 打开失败错误提示含完整日志文件路径");
         }
     }
 

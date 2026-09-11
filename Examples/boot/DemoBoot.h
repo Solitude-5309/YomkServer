@@ -16,13 +16,12 @@
 class DemoBoot : public YomkBoot
 {
 public:
-    explicit DemoBoot(const std::vector<std::string> &startSrvNames = {})
-        : m_startSrvNames(startSrvNames) {}
+    explicit DemoBoot(const std::vector<std::string>& startSrvNames = {}) : m_startSrvNames(startSrvNames) {}
 
     int before() override;
     int start() override;
     int after() override;
 
 private:
-    std::vector<std::string> m_startSrvNames; // 本次要启动的服务清单
+    std::vector<std::string> m_startSrvNames;  // 本次要启动的服务清单
 };

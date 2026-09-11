@@ -1,12 +1,12 @@
 #pragma once
 
-#include "YomkServer.h"
 #include "YomkDefine.h"
+#include "YomkServer.h"
 
 class YomkServerInfo : public YomkService
 {
 public:
-    YomkServerInfo(YomkServer *server);
+    YomkServerInfo(YomkServer* server);
     virtual ~YomkServerInfo() {}
 
 public:

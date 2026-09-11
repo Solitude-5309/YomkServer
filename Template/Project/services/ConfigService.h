@@ -1,6 +1,8 @@
 #pragma once
 #include <YomkServer/YomkAPI.h>
+
 #include <unordered_map>
+
 #include "msgs/YomkMsgs.h"
 
 using namespace yomk;
@@ -8,7 +10,7 @@ using namespace yomk;
 class ConfigService : public YomkService
 {
 public:
-    ConfigService(YomkServer *server);
+    ConfigService(YomkServer* server);
     virtual ~ConfigService() {}
     virtual int init() override;
 

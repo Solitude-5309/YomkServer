@@ -1,14 +1,15 @@
 #pragma once
 
-#include "YomkServer.h"
-#include "YomkDefine.h"
-#include "../../YomkSimpleThreadPool.h"
+#include <atomic>
 #include <map>
 #include <memory>
-#include <set>
 #include <mutex>
+#include <set>
 #include <shared_mutex>
-#include <atomic>
+
+#include "../../YomkSimpleThreadPool.h"
+#include "YomkDefine.h"
+#include "YomkServer.h"
 using namespace yomk;
 class YomkContext : public YomkService
 {
@@ -27,7 +28,7 @@ public:
     };
 
 public:
-    YomkContext(YomkServer *server);
+    YomkContext(YomkServer* server);
     virtual ~YomkContext() {}
 
 public:

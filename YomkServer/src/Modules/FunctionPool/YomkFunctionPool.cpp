@@ -1,8 +1,8 @@
 #include "YomkFunctionPool.h"
+
 #include <iostream>
 #include <vector>
-YomkFunctionPool::YomkFunctionPool(YomkServer *server)
-    : YomkService(server)
+YomkFunctionPool::YomkFunctionPool(YomkServer* server) : YomkService(server)
 {
     name("/YomkFunctionPool");
 }
@@ -78,7 +78,8 @@ YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
         auto itFunc = m_functions.find(yCallFunc->d.m_funcName);
         if (itFunc == m_functions.end())
         {
-            YOMK_ERR_POS_LOG("funcName: " + yCallFunc->d.m_funcName + " is not register, please check CallFunction.m_funcName");
+            YOMK_ERR_POS_LOG(
+                "funcName: " + yCallFunc->d.m_funcName + " is not register, please check CallFunction.m_funcName");
             // 名字有效但未注册：eNo（not-found 框架惯例；eInvalid 仅用于参数无效）
             return YomkResponse(YomkResponse::eNo, "funcName is not register");
         }
@@ -94,7 +95,7 @@ YomkResponse YomkFunctionPool::funcNames(YomkPkgPtr pkg)
     std::vector<std::string> funcNames;
     {
         std::shared_lock<std::shared_mutex> lock(m_functionsMutex);
-        for (auto &iter : m_functions)
+        for (auto& iter : m_functions)
         {
             funcNames.push_back(iter.first);
         }
@@ -119,7 +120,7 @@ YomkResponse YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
         YOMK_ERR_POS_LOG("funcName: " + yFuncName->d + " is not register, please check funcName");
         return YomkResponse(YomkResponse::eNo, "funcName is not register");
     }
-    const std::string &msgName = itFunc->second.m_msgName;
+    const std::string& msgName = itFunc->second.m_msgName;
     return {YomkResponse::eOk, yFuncName->d + (msgName.empty() ? "" : " [" + msgName + "]")};
 }
 
@@ -130,9 +131,9 @@ YomkResponse YomkFunctionPool::listAll(YomkPkgPtr pkg)
     {
         std::shared_lock<std::shared_mutex> lock(m_functionsMutex);
         lines.push_back("functions:" + std::to_string(m_functions.size()));
-        for (auto &iter : m_functions)
+        for (auto& iter : m_functions)
         {
-            const std::string &msgName = iter.second.m_msgName;
+            const std::string& msgName = iter.second.m_msgName;
             lines.push_back(iter.first + (msgName.empty() ? "" : " [" + msgName + "]"));
         }
     }

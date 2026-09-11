@@ -30,8 +30,8 @@
 #include <thread>
 #include <vector>
 
-#include "YomkAPI.h"
 #include "Modules/EventLoop/EventLoop.h"
+#include "YomkAPI.h"
 
 static int g_failed = 0;
 
@@ -52,7 +52,7 @@ static int g_failed = 0;
 // 压力规模：环境变量 YOMK_TEST_STRESS_SCALE（TSan 轨道守门降规模用），缺省 10 万，clamp 下限 1000
 static size_t stressScale()
 {
-    const char *env = std::getenv("YOMK_TEST_STRESS_SCALE");
+    const char* env = std::getenv("YOMK_TEST_STRESS_SCALE");
     if (env == nullptr || *env == '\0')
     {
         return 100000;
@@ -119,7 +119,7 @@ static void openGate()
 }
 
 // 轮询等待谓词成立，超时返回最终谓词值
-static bool waitUntil(const std::function<bool()> &pred, int timeoutMs)
+static bool waitUntil(const std::function<bool()>& pred, int timeoutMs)
 {
     for (int i = 0; i < timeoutMs; ++i)
     {
@@ -133,7 +133,7 @@ static bool waitUntil(const std::function<bool()> &pred, int timeoutMs)
 }
 
 // 基线记录（仅打印，不断言）：耗时(ms) 与吞吐(ops/s)
-static void recordBaseline(const std::string &tag, size_t ops, long long elapsedMs)
+static void recordBaseline(const std::string& tag, size_t ops, long long elapsedMs)
 {
     double qps = elapsedMs > 0 ? static_cast<double>(ops) * 1000.0 / static_cast<double>(elapsedMs) : 0.0;
     std::cout << "[BASELINE] " << tag << " ops=" << ops << " elapsed_ms=" << elapsedMs
@@ -157,17 +157,21 @@ int main()
             loop.post(YomkMkPtr(Event, yomk::Event("st1", nullptr, countHandler(), "")));
         }
         auto t1 = std::chrono::steady_clock::now();
-        bool drained = waitUntil([&loop, N]
-                                 { return g_execCount.load() == static_cast<long>(N) && loop.infoLine("st1", 0).find("pending:0") != std::string::npos; },
-                                 30000);
+        bool drained = waitUntil(
+            [&loop, N]
+            {
+                return g_execCount.load() == static_cast<long>(N) &&
+                       loop.infoLine("st1", 0).find("pending:0") != std::string::npos;
+            },
+            30000);
         auto t2 = std::chrono::steady_clock::now();
 
         CHECK(drained, "S1 drain 完成（30s 看门狗）");
         CHECK(g_execCount.load() == static_cast<long>(N), "S1 计数守恒（N/N，无丢失无重复）");
-        recordBaseline("S1 single-thread post", N,
-                       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
-        recordBaseline("S1 single-thread drain", N,
-                       std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
+        recordBaseline(
+            "S1 single-thread post", N, std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
+        recordBaseline(
+            "S1 single-thread drain", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
 
         loop.destroy();
     }
@@ -184,30 +188,35 @@ int main()
             size_t perThread = N / 8;
             for (int t = 0; t < 8; ++t)
             {
-                posters.emplace_back([&loop, perThread]()
-                                     {
-                    for (size_t k = 0; k < perThread; ++k)
+                posters.emplace_back(
+                    [&loop, perThread]()
                     {
-                        loop.post(YomkMkPtr(Event, yomk::Event("st2", nullptr, countHandler(), "")));
-                    } });
+                        for (size_t k = 0; k < perThread; ++k)
+                        {
+                            loop.post(YomkMkPtr(Event, yomk::Event("st2", nullptr, countHandler(), "")));
+                        }
+                    });
             }
-            for (auto &th : posters)
+            for (auto& th : posters)
             {
                 th.join();
             }
         }
         auto t1 = std::chrono::steady_clock::now();
-        bool drained = waitUntil([&loop, N]
-                                 { return g_execCount.load() == static_cast<long>(N) && loop.infoLine("st2", 0).find("pending:0") != std::string::npos; },
-                                 30000);
+        bool drained = waitUntil(
+            [&loop, N]
+            {
+                return g_execCount.load() == static_cast<long>(N) &&
+                       loop.infoLine("st2", 0).find("pending:0") != std::string::npos;
+            },
+            30000);
         auto t2 = std::chrono::steady_clock::now();
 
         CHECK(drained, "S2 drain 完成（30s 看门狗）");
         CHECK(g_execCount.load() == static_cast<long>(N), "S2 并发计数守恒（8 线程 N/N）");
-        recordBaseline("S2 8-thread concurrent post", N,
-                       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
-        recordBaseline("S2 8-thread drain", N,
-                       std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
+        recordBaseline(
+            "S2 8-thread concurrent post", N, std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
+        recordBaseline("S2 8-thread drain", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
 
         loop.destroy();
     }
@@ -220,8 +229,9 @@ int main()
         CHECK(loop.start() == 0, "S3 start 返回 0");
 
         // gate 占住 worker：投递速率与消费速率解耦，纯测 post + 无界队列大规模增长/重分配
-        CHECK(loop.post(YomkMkPtr(Event, yomk::Event("st3", nullptr, gateHandler(), "gate"))) == 0,
-              "S3 post gate 事件返回 0");
+        CHECK(
+            loop.post(YomkMkPtr(Event, yomk::Event("st3", nullptr, gateHandler(), "gate"))) == 0,
+            "S3 post gate 事件返回 0");
         CHECK(waitGateStarted(2000), "S3 gate 已占住工作线程");
 
         auto t0 = std::chrono::steady_clock::now();
@@ -232,21 +242,30 @@ int main()
         auto t1 = std::chrono::steady_clock::now();
 
         std::string line = loop.infoLine("st3", 0);
-        CHECK(line.find("pending:" + std::to_string(N)) != std::string::npos,
-              "S3 积压确认（pending:N==" + std::to_string(N) + "，无界队列大规模增长无崩溃）");
+        CHECK(
+            line.find("pending:" + std::to_string(N)) != std::string::npos,
+            "S3 积压确认（pending:N==" + std::to_string(N) + "，无界队列大规模增长无崩溃）");
 
         openGate();
-        bool drained = waitUntil([&loop, N]
-                                 { return g_execCount.load() == static_cast<long>(N) && loop.infoLine("st3", 0).find("pending:0") != std::string::npos; },
-                                 30000);
+        bool drained = waitUntil(
+            [&loop, N]
+            {
+                return g_execCount.load() == static_cast<long>(N) &&
+                       loop.infoLine("st3", 0).find("pending:0") != std::string::npos;
+            },
+            30000);
         auto t2 = std::chrono::steady_clock::now();
 
         CHECK(drained, "S3 释放后 drain 完成（30s 看门狗）");
         CHECK(g_execCount.load() == static_cast<long>(N), "S3 积压后计数守恒（N/N）");
-        recordBaseline("S3 backlog-only post (gate held)", N,
-                       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
-        recordBaseline("S3 backlog drain after release", N,
-                       std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
+        recordBaseline(
+            "S3 backlog-only post (gate held)",
+            N,
+            std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
+        recordBaseline(
+            "S3 backlog drain after release",
+            N,
+            std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
 
         loop.destroy();
     }
@@ -267,18 +286,23 @@ int main()
             loop.post(YomkMkPtr(Event, yomk::Event("st4", nullptr, countHandler(), bigTag)));
         }
         auto t1 = std::chrono::steady_clock::now();
-        bool drained = waitUntil([&loop, count]
-                                 { return g_execCount.load() == static_cast<long>(count) && loop.infoLine("st4", 0).find("pending:0") != std::string::npos; },
-                                 30000);
+        bool drained = waitUntil(
+            [&loop, count]
+            {
+                return g_execCount.load() == static_cast<long>(count) &&
+                       loop.infoLine("st4", 0).find("pending:0") != std::string::npos;
+            },
+            30000);
         auto t2 = std::chrono::steady_clock::now();
 
         CHECK(drained, "S4 drain 完成（30s 看门狗）");
         CHECK(g_execCount.load() == static_cast<long>(count), "S4 大数据量计数守恒（无崩溃无丢失）");
-        recordBaseline("S4 big-tag post (" + std::to_string(count) + " x " + std::to_string(tagLen) + "B)",
-                       count,
-                       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
-        recordBaseline("S4 big-tag drain", count,
-                       std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
+        recordBaseline(
+            "S4 big-tag post (" + std::to_string(count) + " x " + std::to_string(tagLen) + "B)",
+            count,
+            std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
+        recordBaseline(
+            "S4 big-tag drain", count, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
 
         loop.destroy();
     }
@@ -296,17 +320,17 @@ int main()
             YOMK_EVENTLOOP_POST("stress_loop", YomkMkPtr(String, std::string("payload")), countHandler(), "");
         }
         auto t1 = std::chrono::steady_clock::now();
-        bool drained = waitUntil([N]
-                                 { return g_execCount.load() == static_cast<long>(N); },
-                                 30000);
+        bool drained = waitUntil([N] { return g_execCount.load() == static_cast<long>(N); }, 30000);
         auto t2 = std::chrono::steady_clock::now();
 
         CHECK(drained, "S5 drain 完成（30s 看门狗）");
         CHECK(g_execCount.load() == static_cast<long>(N), "S5 API 层计数守恒（N/N，路由+解包路径不丢失）");
-        recordBaseline("S5 API-level post (YOMK_EVENTLOOP_POST)", N,
-                       std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
-        recordBaseline("S5 API-level end-to-end", N,
-                       std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t0).count());
+        recordBaseline(
+            "S5 API-level post (YOMK_EVENTLOOP_POST)",
+            N,
+            std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
+        recordBaseline(
+            "S5 API-level end-to-end", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t0).count());
 
         CHECK(YOMK_EVENTLOOP_DESTROY("stress_loop").m_status == YomkResponse::eOk, "S5 DESTROY 返回 eOk");
         YOMK_SHUTDOWN();

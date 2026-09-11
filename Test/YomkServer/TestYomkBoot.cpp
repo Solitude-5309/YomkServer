@@ -37,14 +37,14 @@ static int g_failed = 0;
     } while (0)
 
 // ---- 文件级观测变量（boot 全程主线程调用，无并发访问） ----
-static int g_beforeRet = 0;              // before() 注入返回值（0 成功）
-static int g_startRet = 0;               // start() 注入返回值
-static int g_afterRet = 0;               // after() 注入返回值
-static int g_beforeCount = 0;            // before 真实执行次数
-static int g_startCount = 0;             // start 真实执行次数
-static int g_afterCount = 0;             // after 真实执行次数
-static int g_bootDtorCount = 0;          // boot 对象析构计数（所有权实证）
-static std::vector<std::string> g_order; // 三段执行序记录
+static int g_beforeRet = 0;               // before() 注入返回值（0 成功）
+static int g_startRet = 0;                // start() 注入返回值
+static int g_afterRet = 0;                // after() 注入返回值
+static int g_beforeCount = 0;             // before 真实执行次数
+static int g_startCount = 0;              // start 真实执行次数
+static int g_afterCount = 0;              // after 真实执行次数
+static int g_bootDtorCount = 0;           // boot 对象析构计数（所有权实证）
+static std::vector<std::string> g_order;  // 三段执行序记录
 
 static void resetGlobals()
 {
@@ -118,8 +118,8 @@ int main()
         g_afterRet = -3;
         int ret = YomkAPI::boot(new BootRecorder);
         CHECK(ret == -3, "after 失败返回原值 -3");
-        CHECK(g_beforeCount == 1 && g_startCount == 1 && g_afterCount == 1,
-              "三段各执行 1 次（after 为末段无短路语义）");
+        CHECK(
+            g_beforeCount == 1 && g_startCount == 1 && g_afterCount == 1, "三段各执行 1 次（after 为末段无短路语义）");
         CHECK(g_bootDtorCount == 1, "boot 对象用后即析构（所有权接管）");
     }
 
@@ -128,8 +128,9 @@ int main()
         resetGlobals();
         int ret = YomkAPI::boot(new BootRecorder);
         CHECK(ret == 0, "三段全部成功返回 0");
-        CHECK(g_order.size() == 3 && g_order[0] == "before" && g_order[1] == "start" && g_order[2] == "after",
-              "执行序严格 before -> start -> after");
+        CHECK(
+            g_order.size() == 3 && g_order[0] == "before" && g_order[1] == "start" && g_order[2] == "after",
+            "执行序严格 before -> start -> after");
         CHECK(g_bootDtorCount == 1, "boot 对象用后即析构（所有权接管）");
     }
 

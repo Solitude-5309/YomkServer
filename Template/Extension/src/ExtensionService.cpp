@@ -1,7 +1,6 @@
 #include "ExtensionService.h"
 
-ExtensionService::ExtensionService(YomkServer *server)
-    : YomkService(server)
+ExtensionService::ExtensionService(YomkServer* server) : YomkService(server)
 {
     name("/ExtensionService");
 }

@@ -1,18 +1,15 @@
 #include "ConsoleLogger.h"
+
 #include <iostream>
-#include "YomkLogTime.h"
+
 #include "YomkDefine.h"
+#include "YomkLogTime.h"
 
-ConsoleLogger::ConsoleLogger()
-    : m_name("MainLogger")
-{
-}
+ConsoleLogger::ConsoleLogger() : m_name("MainLogger") {}
 
-ConsoleLogger::~ConsoleLogger()
-{
-}
+ConsoleLogger::~ConsoleLogger() {}
 
-void ConsoleLogger::log(ELogLevel logLevel, const std::string &log)
+void ConsoleLogger::log(ELogLevel logLevel, const std::string& log)
 {
     std::string timeStr = yomkLogLocalTimeFormatted();
 
@@ -20,21 +17,21 @@ void ConsoleLogger::log(ELogLevel logLevel, const std::string &log)
 
     switch (logLevel)
     {
-    case eDebug:
-        std::cout << timeStr << " [Debug] [" << m_name << "] " << log << std::endl;
-        break;
-    case eInfo:
-        std::cout << timeStr << " [Info ] [" << m_name << "] " << log << std::endl;
-        break;
-    case eWarn:
-        std::cout << timeStr << " [Warn ] [" << m_name << "] " << log << std::endl;
-        break;
-    case eError:
-        std::cout << timeStr << " [Error] [" << m_name << "] " << log << std::endl;
-        break;
-    default:
-        YOMK_ERR_POS_LOG("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
-        std::cout << timeStr << " [Info ] [" << m_name << "] " << log << std::endl;
-        break;
+        case eDebug:
+            std::cout << timeStr << " [Debug] [" << m_name << "] " << log << std::endl;
+            break;
+        case eInfo:
+            std::cout << timeStr << " [Info ] [" << m_name << "] " << log << std::endl;
+            break;
+        case eWarn:
+            std::cout << timeStr << " [Warn ] [" << m_name << "] " << log << std::endl;
+            break;
+        case eError:
+            std::cout << timeStr << " [Error] [" << m_name << "] " << log << std::endl;
+            break;
+        default:
+            YOMK_ERR_POS_LOG("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
+            std::cout << timeStr << " [Info ] [" << m_name << "] " << log << std::endl;
+            break;
     }
 }

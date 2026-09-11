@@ -50,7 +50,7 @@ static int g_total = 0;
 // ============================================================================
 static uint64_t stressScale()
 {
-    const char *env = std::getenv("YOMK_TEST_STRESS_SCALE");
+    const char* env = std::getenv("YOMK_TEST_STRESS_SCALE");
     uint64_t n = env ? std::strtoull(env, nullptr, 10) : 100000;
     return n < 1000 ? 1000 : n;
 }
@@ -58,13 +58,11 @@ static uint64_t stressScale()
 // ============================================================================
 // [BASELINE] 记录辅助
 // ============================================================================
-static void recordBaseline(const char *section, uint64_t ops, double elapsedMs)
+static void recordBaseline(const char* section, uint64_t ops, double elapsedMs)
 {
     double opsPerSec = (elapsedMs > 0.0) ? (ops / (elapsedMs / 1000.0)) : 0.0;
-    std::cout << "[BASELINE] " << section << ": "
-              << std::fixed << std::setprecision(0) << opsPerSec << " ops/s ("
-              << ops << " ops in " << std::setprecision(1) << elapsedMs << " ms)"
-              << std::endl;
+    std::cout << "[BASELINE] " << section << ": " << std::fixed << std::setprecision(0) << opsPerSec << " ops/s ("
+              << ops << " ops in " << std::setprecision(1) << elapsedMs << " ms)" << std::endl;
 }
 
 // ============================================================================
@@ -89,7 +87,7 @@ static YomkResponse stressCountFunc(YomkPkgPtr /*pkg*/)
 // ============================================================================
 // 辅助：生成带零填充的唯一函数名
 // ============================================================================
-static std::string makeName(const char *prefix, uint64_t index)
+static std::string makeName(const char* prefix, uint64_t index)
 {
     return std::string(prefix) + std::to_string(index);
 }
@@ -97,7 +95,7 @@ static std::string makeName(const char *prefix, uint64_t index)
 // ============================================================================
 // main
 // ============================================================================
-int main(int /*argc*/, char ** /*argv*/)
+int main(int /*argc*/, char** /*argv*/)
 {
     std::cout << "=== TestYomkFunctionPoolStress (FPC4) ===" << std::endl;
 
@@ -124,8 +122,7 @@ int main(int /*argc*/, char ** /*argv*/)
         double regMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
         recordBaseline("S1_register", N, regMs);
 
-        CHECK(regOk == N,
-              "S1: register 守恒 " + std::to_string(regOk) + "/" + std::to_string(N));
+        CHECK(regOk == N, "S1: register 守恒 " + std::to_string(regOk) + "/" + std::to_string(N));
 
         // Phase B: call one pre-registered hot function N times
         uint64_t callOk = 0;
@@ -140,8 +137,7 @@ int main(int /*argc*/, char ** /*argv*/)
         double callMs = std::chrono::duration<double, std::milli>(t3 - t2).count();
         recordBaseline("S1_call_hotpath", N, callMs);
 
-        CHECK(callOk == N,
-              "S1: call 热路径守恒 " + std::to_string(callOk) + "/" + std::to_string(N));
+        CHECK(callOk == N, "S1: call 热路径守恒 " + std::to_string(callOk) + "/" + std::to_string(N));
 
         // Phase C: unregister N unique names
         uint64_t unregOk = 0;
@@ -156,8 +152,7 @@ int main(int /*argc*/, char ** /*argv*/)
         double unregMs = std::chrono::duration<double, std::milli>(t5 - t4).count();
         recordBaseline("S1_unregister", N, unregMs);
 
-        CHECK(unregOk == N,
-              "S1: unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(N));
+        CHECK(unregOk == N, "S1: unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(N));
     }
 
     // ========================================================================
@@ -177,22 +172,24 @@ int main(int /*argc*/, char ** /*argv*/)
         workers.reserve(kThreads);
         for (int t = 0; t < kThreads; ++t)
         {
-            workers.emplace_back([perThread]()
-                                 {
-                for (uint64_t i = 0; i < perThread; ++i)
+            workers.emplace_back(
+                [perThread]()
                 {
-                    YOMK_FUNCTIONPOOL_CALL("s2_hot", nullptr);
-                } });
+                    for (uint64_t i = 0; i < perThread; ++i)
+                    {
+                        YOMK_FUNCTIONPOOL_CALL("s2_hot", nullptr);
+                    }
+                });
         }
-        for (auto &th : workers)
+        for (auto& th : workers)
             th.join();
         auto t1 = std::chrono::steady_clock::now();
         double elapsed = std::chrono::duration<double, std::milli>(t1 - t0).count();
         recordBaseline("S2_concurrent_call", totalCalls, elapsed);
 
-        CHECK(g_s2ExecCount.load() == totalCalls,
-              "S2: 并发 call 守恒 " + std::to_string(g_s2ExecCount.load()) +
-                  "/" + std::to_string(totalCalls));
+        CHECK(
+            g_s2ExecCount.load() == totalCalls,
+            "S2: 并发 call 守恒 " + std::to_string(g_s2ExecCount.load()) + "/" + std::to_string(totalCalls));
 
         YOMK_FUNCTIONPOOL_UNREGISTER("s2_hot");
     }
@@ -232,7 +229,7 @@ int main(int /*argc*/, char ** /*argv*/)
     // ========================================================================
     std::cout << "\n--- S4: 超大函数名压力 ---" << std::endl;
     {
-        const uint64_t rounds = N / 100; // 降低轮次避免 OOM
+        const uint64_t rounds = N / 100;  // 降低轮次避免 OOM
         const std::string bigName(65536, 'X');
 
         uint64_t regOk = 0, callOk = 0, unregOk = 0;
@@ -251,16 +248,12 @@ int main(int /*argc*/, char ** /*argv*/)
         double elapsed = std::chrono::duration<double, std::milli>(t1 - t0).count();
         recordBaseline("S4_bigname_3ops", rounds * 3, elapsed);
 
-        CHECK(regOk == rounds,
-              "S4: 大名 register 守恒 " + std::to_string(regOk) + "/" + std::to_string(rounds));
-        CHECK(callOk == rounds,
-              "S4: 大名 call 守恒 " + std::to_string(callOk) + "/" + std::to_string(rounds));
-        CHECK(unregOk == rounds,
-              "S4: 大名 unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(rounds));
+        CHECK(regOk == rounds, "S4: 大名 register 守恒 " + std::to_string(regOk) + "/" + std::to_string(rounds));
+        CHECK(callOk == rounds, "S4: 大名 call 守恒 " + std::to_string(callOk) + "/" + std::to_string(rounds));
+        CHECK(unregOk == rounds, "S4: 大名 unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(rounds));
 
         // 最终确认已清理
-        CHECK(YOMK_FUNCTIONPOOL_CALL(bigName, nullptr).m_status == YomkResponse::eNo,
-              "S4: 大名最终已注销（eNo）");
+        CHECK(YOMK_FUNCTIONPOOL_CALL(bigName, nullptr).m_status == YomkResponse::eNo, "S4: 大名最终已注销（eNo）");
     }
 
     // ========================================================================
@@ -309,16 +302,18 @@ int main(int /*argc*/, char ** /*argv*/)
         recordBaseline("S5_mixed_32ops_per_group", groups * 32, elapsed);
 
         const uint64_t expectedPerType = groups * kGroupSize;
-        CHECK(regOk == expectedPerType,
-              "S5: 混合 register 守恒 " + std::to_string(regOk) + "/" + std::to_string(expectedPerType));
-        CHECK(callOk == expectedPerType,
-              "S5: 混合 call 守恒 " + std::to_string(callOk) + "/" + std::to_string(expectedPerType));
-        CHECK(infoNamesOk == groups,
-              "S5: INFO_NAMES 守恒 " + std::to_string(infoNamesOk) + "/" + std::to_string(groups));
-        CHECK(infoAllOk == groups,
-              "S5: INFO_ALL 守恒 " + std::to_string(infoAllOk) + "/" + std::to_string(groups));
-        CHECK(unregOk == expectedPerType,
-              "S5: 混合 unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(expectedPerType));
+        CHECK(
+            regOk == expectedPerType,
+            "S5: 混合 register 守恒 " + std::to_string(regOk) + "/" + std::to_string(expectedPerType));
+        CHECK(
+            callOk == expectedPerType,
+            "S5: 混合 call 守恒 " + std::to_string(callOk) + "/" + std::to_string(expectedPerType));
+        CHECK(
+            infoNamesOk == groups, "S5: INFO_NAMES 守恒 " + std::to_string(infoNamesOk) + "/" + std::to_string(groups));
+        CHECK(infoAllOk == groups, "S5: INFO_ALL 守恒 " + std::to_string(infoAllOk) + "/" + std::to_string(groups));
+        CHECK(
+            unregOk == expectedPerType,
+            "S5: 混合 unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(expectedPerType));
     }
 
     // ========================================================================
@@ -326,7 +321,7 @@ int main(int /*argc*/, char ** /*argv*/)
     // ========================================================================
     YOMK_SHUTDOWN();
 
-    std::cout << "\n=== Result: " << (g_total - g_failed) << "/" << g_total
-              << " passed, " << g_failed << " failed ===" << std::endl;
+    std::cout << "\n=== Result: " << (g_total - g_failed) << "/" << g_total << " passed, " << g_failed
+              << " failed ===" << std::endl;
     return g_failed == 0 ? 0 : 1;
 }

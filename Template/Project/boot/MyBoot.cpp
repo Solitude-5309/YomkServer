@@ -1,8 +1,9 @@
 #include "MyBoot.h"
-#include "services/ConfigService.h"
-#include "typedefine/TypeDefine.h"
 
 #include <filesystem>
+
+#include "services/ConfigService.h"
+#include "typedefine/TypeDefine.h"
 
 int MyBoot::before()
 {
@@ -19,13 +20,12 @@ int MyBoot::before()
 int MyBoot::start()
 {
     // 服务创建器映射表
-    static const std::map<std::string, std::function<YomkService *()>> serviceCreators = {
-        {"/ConfigService", []()
-         { return new ConfigService(YOMK_SERVER_P); }},
+    static const std::map<std::string, std::function<YomkService*()>> serviceCreators = {
+        {"/ConfigService", []() { return new ConfigService(YOMK_SERVER_P); }},
     };
 
     // 根据 m_startSrvNames 按需启动服务
-    for (const auto &srvName : m_startSrvNames)
+    for (const auto& srvName : m_startSrvNames)
     {
         auto it = serviceCreators.find(srvName);
         if (it != serviceCreators.end())

@@ -1,17 +1,18 @@
 #pragma once
-#include "YomkServer.h"
-#include "YomkDefine.h"
+#include <atomic>
+#include <map>
+#include <mutex>
+#include <shared_mutex>
+
 #include "ConsoleLogger.h"
 #include "FileLogger.h"
-#include <map>
-#include <shared_mutex>
-#include <mutex>
-#include <atomic>
+#include "YomkDefine.h"
+#include "YomkServer.h"
 using namespace yomk;
 class YomkLogger : public YomkService
 {
 public:
-    YomkLogger(YomkServer *server);
+    YomkLogger(YomkServer* server);
     virtual ~YomkLogger();
 
 public:

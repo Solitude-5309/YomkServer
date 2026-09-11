@@ -1,10 +1,10 @@
 #include "YomkEventLoop.h"
+
 #include <iostream>
 #include <stdexcept>
 #include <vector>
 
-YomkEventLoop::YomkEventLoop(YomkServer *server)
-    : YomkService(server)
+YomkEventLoop::YomkEventLoop(YomkServer* server) : YomkService(server)
 {
     name("/YomkEventLoop");
 }
@@ -120,7 +120,7 @@ YomkResponse YomkEventLoop::loops(YomkPkgPtr pkg)
     std::vector<std::string> loopNames;
     {
         std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
-        for (auto &item : m_eventLoop)
+        for (auto& item : m_eventLoop)
         {
             loopNames.push_back(item.first);
         }
@@ -148,7 +148,7 @@ YomkResponse YomkEventLoop::loopInfo(YomkPkgPtr pkg)
             {
                 tagCount = static_cast<size_t>(std::stoul(countStr));
             }
-            catch (const std::out_of_range &)
+            catch (const std::out_of_range&)
             {
                 tagCount = 3;
             }
@@ -177,7 +177,7 @@ YomkResponse YomkEventLoop::listAll(YomkPkgPtr pkg)
     std::vector<std::string> loopNames;
     {
         std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
-        for (auto &item : m_eventLoop)
+        for (auto& item : m_eventLoop)
         {
             loopNames.push_back(item.first);
             eventLoops.push_back(item.second);

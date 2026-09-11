@@ -26,10 +26,9 @@
  *   删除：  YOMK_FILE_LOG_DELETE
  */
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
-
-#include <filesystem>
 namespace fs = std::filesystem;
 
 #include "YomkAPI.h"
@@ -40,21 +39,20 @@ namespace fs = std::filesystem;
 // 这样"被吞掉的日志"才能被解释。
 // ---------------------------------------------------------------------------
 
-static void printStep(int n, const std::string &title, const std::string &explain)
+static void printStep(int n, const std::string& title, const std::string& explain)
 {
     std::cout << "\n====== 步骤" << n << "：" << title << " ======" << std::endl;
     std::cout << ">> " << explain << std::endl;
 }
 
-static void printResp(const std::string &prefix, const YomkResponse &resp)
+static void printResp(const std::string& prefix, const YomkResponse& resp)
 {
     // YomkResponse 三态：eOk=0 成功；eNo=1 不存在或被拒绝；eInvalid=-1 参数无效或未初始化
-    std::cout << "[" << prefix << "] status=" << resp.m_status << ", msg=\"" << resp.m_msg << "\""
-              << std::endl;
+    std::cout << "[" << prefix << "] status=" << resp.m_status << ", msg=\"" << resp.m_msg << "\"" << std::endl;
 }
 
 // 解包并打印内省返回的 StringArray（YomkLoggerInfoLoggers / All 的返回形态）
-static void dumpLines(const std::string &prefix, const YomkResponse &resp)
+static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
     YomkUnPackPkg(resp.m_data, StringArray, arr);
@@ -63,7 +61,7 @@ static void dumpLines(const std::string &prefix, const YomkResponse &resp)
         std::cout << ">> (no data)" << std::endl;
         return;
     }
-    for (const auto &line : arr->d)
+    for (const auto& line : arr->d)
     {
         std::cout << ">> | " << line << std::endl;
     }
@@ -76,7 +74,7 @@ static void dumpLines(const std::string &prefix, const YomkResponse &resp)
  * - 返回 false：日志被"消费"，框架不再默认输出（可据此接入外部日志库、上报系统等）；
  * - 返回 true ：放行，日志继续走框架默认输出（本代理额外加前缀演示）。
  */
-bool consoleLogProxy(const yomk::Log &log)
+bool consoleLogProxy(const yomk::Log& log)
 {
     // 演示"消费"：DEBUG 日志被代理吞掉，不再出现在控制台
     if (log.m_level == yomk::Log::eDebug)
@@ -88,7 +86,7 @@ bool consoleLogProxy(const yomk::Log &log)
     return true;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     // 初始化框架（自动启动内置 Logger 服务）
     YOMK_INIT();
@@ -108,8 +106,8 @@ int main(int argc, char *argv[])
      * 例如：[2026-09-08 17:54:59.165] [Info ] [MainLogger] [95] hello
      * 宏会自动把 "[行号]" 拼到内容开头，方便定位调用处。
      */
-    printStep(1, "控制台日志四级别（默认 tag）",
-              "下面 4 条按 DEBUG/INFO/WARN/ERROR 输出，注意级别字段与 [行号] 定位。");
+    printStep(
+        1, "控制台日志四级别（默认 tag）", "下面 4 条按 DEBUG/INFO/WARN/ERROR 输出，注意级别字段与 [行号] 定位。");
     printResp("YOMK_INFO", YOMK_INFO("hello yomk logger, this is", "info"));
     printResp("YOMK_WARN", YOMK_WARN("low disk space, free=", 1024));
     printResp("YOMK_ERROR", YOMK_ERROR("connect refused, code=", -1));
@@ -122,8 +120,7 @@ int main(int argc, char *argv[])
      * 首次使用时框架自动创建同名日志器（无需手动注册）。
      * 用内省 LOGGERS 清单自证：能看到 "MainLogger [console]" 和 "user.service [console]"。
      */
-    printStep(2, "自定义 Tag",
-              "tag 即控制台日志器名，首次使用自动创建；随后打印日志器清单自证。");
+    printStep(2, "自定义 Tag", "tag 即控制台日志器名，首次使用自动创建；随后打印日志器清单自证。");
     printResp("YOMK_INFO_TAG", YOMK_INFO_TAG("user.service", "user login, id=", 7));
     printResp("YOMK_WARN_TAG", YOMK_WARN_TAG("user.service", "retry count=", 2));
     printResp("YOMK_ERROR_TAG", YOMK_ERROR_TAG("user.service", "session expired"));
@@ -137,8 +134,7 @@ int main(int argc, char *argv[])
      * 不区分日志器；关闭后对应的日志调用仍返回 eOk，只是不再打印。
      * 文件日志不受影响（步骤6 会回指这一点）。
      */
-    printStep(3, "级别开关（全局，只影响控制台）",
-              "先全关：接下来 4 条日志一行都不会出现（调用仍成功返回 eOk）。");
+    printStep(3, "级别开关（全局，只影响控制台）", "先全关：接下来 4 条日志一行都不会出现（调用仍成功返回 eOk）。");
     printResp("OFF_INFO", YOMK_OFF_CONSOLE_LOG_INFO());
     printResp("OFF_WARN", YOMK_OFF_CONSOLE_LOG_WARN());
     printResp("OFF_ERROR", YOMK_OFF_CONSOLE_LOG_ERROR());
@@ -169,8 +165,8 @@ int main(int argc, char *argv[])
      * - 其余被加 [LogProxy] 前缀后 return true 放行——正常输出。
      * 内省 ALL 首行 proxy:on 标记代理已安装。
      */
-    printStep(4, "控制台日志代理",
-              "代理消费 DEBUG（不再输出）、放行其他级别（加 [LogProxy] 前缀）；观察下面 4 条的差异。");
+    printStep(
+        4, "控制台日志代理", "代理消费 DEBUG（不再输出）、放行其他级别（加 [LogProxy] 前缀）；观察下面 4 条的差异。");
     printResp("SET_PROXY", YOMK_SET_CONSOLE_LOG_PROXY(consoleLogProxy));
     std::cout << ">> DEBUG 这条将被代理吞掉，不会出现；其余 3 条带 [LogProxy] 前缀" << std::endl;
     printResp("YOMK_INFO(代理放行)", YOMK_INFO("passed through proxy"));
@@ -197,8 +193,10 @@ int main(int argc, char *argv[])
      * 再用 FILE 系列宏写入内存缓冲，最后 WRITE 显式刷盘到 dir/name.log。
      * 注意：级别开关只管控制台——即使步骤3 全关过，文件日志四级全记。
      */
-    printStep(6, "文件日志",
-              "创建 app 日志器，写 8 条（默认 tag + 自定义 tag），刷盘后回读文件验证；文件日志不受级别开关影响。");
+    printStep(
+        6,
+        "文件日志",
+        "创建 app 日志器，写 8 条（默认 tag + 自定义 tag），刷盘后回读文件验证；文件日志不受级别开关影响。");
     printResp("FILE_LOG_CREATE", YOMK_FILE_LOG_CREATE(logDir.string(), "app"));
     // 默认 tag：内容为 "[行号] 内容"
     printResp("YOMK_FILE_INFO", YOMK_FILE_INFO("app", "file log info, order=", 1));
@@ -231,8 +229,7 @@ int main(int argc, char *argv[])
      * LOGGER(name)：单查，命中返回元信息行，未注册返回 eNo=1；
      * ALL：全量状态，首行为控制台级别与代理开关。
      */
-    printStep(7, "内省三件套",
-              "清单看全部、单查看一个、ALL 看总状态；单查一个从未创建的名字演示 eNo 惯例。");
+    printStep(7, "内省三件套", "清单看全部、单查看一个、ALL 看总状态；单查一个从未创建的名字演示 eNo 惯例。");
     dumpLines("YOMK_LOGGER_INFO_LOGGERS", YOMK_LOGGER_INFO_LOGGERS());
     printResp("LOGGER_INFO_LOGGER(app)", YOMK_LOGGER_INFO_LOGGER("app"));
     printResp("LOGGER_INFO_LOGGER(ghost)", YOMK_LOGGER_INFO_LOGGER("ghost"));
@@ -248,8 +245,8 @@ int main(int argc, char *argv[])
      * - "ghost" 两表均未命中 → eNo=1；
      * - "MainLogger" 可删（console:1 file:0），删除后再写日志会自动重建。
      */
-    printStep(8, "删除日志器",
-              "删除 app / ghost / MainLogger 观察返回值；删除后磁盘 .log 仍在，MainLogger 再写自动重建。");
+    printStep(
+        8, "删除日志器", "删除 app / ghost / MainLogger 观察返回值；删除后磁盘 .log 仍在，MainLogger 再写自动重建。");
     printResp("FILE_LOG_DELETE(app)", YOMK_FILE_LOG_DELETE("app"));
     printResp("FILE_LOG_DELETE(ghost)", YOMK_FILE_LOG_DELETE("ghost"));
     printResp("FILE_LOG_DELETE(MainLogger)", YOMK_FILE_LOG_DELETE("MainLogger"));

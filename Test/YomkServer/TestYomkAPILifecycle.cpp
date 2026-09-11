@@ -39,7 +39,7 @@ static int g_failed = 0;
         }                                                                         \
     } while (0)
 
-static bool nameIn(const std::vector<std::string> &names, const std::string &name)
+static bool nameIn(const std::vector<std::string>& names, const std::string& name)
 {
     return std::find(names.begin(), names.end(), name) != names.end();
 }
@@ -50,8 +50,7 @@ static bool nameIn(const std::vector<std::string> &names, const std::string &nam
 class DummySrv : public YomkService
 {
 public:
-    explicit DummySrv(YomkServer *server = nullptr)
-        : YomkService(server) {}
+    explicit DummySrv(YomkServer* server = nullptr) : YomkService(server) {}
     int init() override { return 0; }
 };
 
@@ -63,8 +62,9 @@ int main()
         CHECK(first != nullptr, "首次 init(1) 返回非空单例");
 
         std::shared_ptr<YomkServer> second = YomkAPI::init(4);
-        CHECK(second != nullptr && second.get() == first.get(),
-              "二次 init(4) 返回同一实例（asyncThreadCount 仅首次生效）");
+        CHECK(
+            second != nullptr && second.get() == first.get(),
+            "二次 init(4) 返回同一实例（asyncThreadCount 仅首次生效）");
 
         std::shared_ptr<YomkServer> inst = YomkAPI::serverInstance();
         CHECK(inst.get() == first.get(), "serverInstance() 与 init 返回一致");
@@ -88,8 +88,9 @@ int main()
 
     std::cout << "===== 4. API 层增删往返 =====" << std::endl;
     {
-        CHECK(YomkAPI::addService(new DummySrv(YomkAPI::serverInstance().get()), "/ApiSrv") == 0,
-              "addService 两参形式改名注册成功");
+        CHECK(
+            YomkAPI::addService(new DummySrv(YomkAPI::serverInstance().get()), "/ApiSrv") == 0,
+            "addService 两参形式改名注册成功");
         CHECK(YomkAPI::delService("/ApiSrv") == 0, "delService 已注册服务返回 0");
         CHECK(YomkAPI::delService("/ApiSrv") == -1, "重复删除已删服务返回 -1");
 

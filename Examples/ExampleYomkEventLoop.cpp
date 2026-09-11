@@ -42,14 +42,14 @@
 // 横幅走 std::cout 而非框架日志，保证叙事在任何日志开关状态下可见。
 // ---------------------------------------------------------------------------
 
-static void printStep(int n, const std::string &title, const std::string &explain)
+static void printStep(int n, const std::string& title, const std::string& explain)
 {
     std::cout << "\n====== 步骤" << n << "：" << title << " ======" << std::endl;
     std::cout << ">> " << explain << std::endl;
 }
 
 // 打印 YomkResponse 三要素：status/msg/m_data，展示调用契约
-static void printResp(const std::string &prefix, const YomkResponse &resp)
+static void printResp(const std::string& prefix, const YomkResponse& resp)
 {
     // 三态：eOk=0 成功；eNo=1 名字不存在或被拒绝；eInvalid=-1 参数无效或未初始化
     std::cout << "[" << prefix << "] status=" << resp.m_status << ", msg=\"" << resp.m_msg << "\"";
@@ -65,7 +65,7 @@ static void printResp(const std::string &prefix, const YomkResponse &resp)
 }
 
 // 解包并打印内省返回的 StringArray（INFO_LOOPS / INFO_ALL 的返回形态）
-static void dumpLines(const std::string &prefix, const YomkResponse &resp)
+static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
     YomkUnPackPkg(resp.m_data, StringArray, arr);
@@ -74,21 +74,21 @@ static void dumpLines(const std::string &prefix, const YomkResponse &resp)
         std::cout << ">> (no data)" << std::endl;
         return;
     }
-    for (const auto &line : arr->d)
+    for (const auto& line : arr->d)
     {
         std::cout << ">> | " << line << std::endl;
     }
 }
 
 // INFO_LOOP 的状态行放在 msg 里，追加一行清单式展示便于对齐阅读
-static void dumpInfo(const std::string &prefix, const YomkResponse &resp)
+static void dumpInfo(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
     std::cout << ">> | " << resp.m_msg << std::endl;
 }
 
 // 解包 POST_WAIT 回传的 Event 包，打印 eventId/loopName/response 三要素
-static void printEvent(const YomkResponse &resp)
+static void printEvent(const YomkResponse& resp)
 {
     YomkUnPackPkg(resp.m_data, Event, event);
     if (!event)
@@ -96,9 +96,8 @@ static void printEvent(const YomkResponse &resp)
         std::cout << ">> (no event data)" << std::endl;
         return;
     }
-    std::cout << ">> | eventId=" << event->d.m_eventId
-              << ", loopName=" << event->d.m_eventLoopName
-              << ", response=\"" << event->d.m_response.m_msg << "\"" << std::endl;
+    std::cout << ">> | eventId=" << event->d.m_eventId << ", loopName=" << event->d.m_eventLoopName << ", response=\""
+              << event->d.m_response.m_msg << "\"" << std::endl;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +120,8 @@ YomkResponse workHandle(YomkPkgPtr pkg)
     {
         for (int i = 1; i <= 3; ++i)
         {
-            YOMK_EVENTLOOP_POST("workLoop", YomkMkPtr(String, "followup" + std::to_string(i)), nullptr, "followup" + std::to_string(i));
+            YOMK_EVENTLOOP_POST(
+                "workLoop", YomkMkPtr(String, "followup" + std::to_string(i)), nullptr, "followup" + std::to_string(i));
         }
         YOMK_INFO_TAG("loop.work", "task1 posted 3 followup events to queue tail");
     }
@@ -129,7 +129,7 @@ YomkResponse workHandle(YomkPkgPtr pkg)
     return {YomkResponse::eOk, "eventHandle success. "};
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     // 初始化框架（事件循环服务 /YomkEventLoop 随之自动启动）
     YOMK_INIT();
@@ -143,8 +143,10 @@ int main(int argc, char *argv[])
      * START 为该名称新建一条专用线程；默认处理函数处理所有未指定函数的事件；
      * MsgName 仅作内省元数据。对已存在的名称再次 START 是幂等重启。
      */
-    printStep(1, "启动事件循环",
-              "START(workLoop, workHandle, String) 新建专用线程并注册默认处理函数；INFO_LOOP 查看循环状态。");
+    printStep(
+        1,
+        "启动事件循环",
+        "START(workLoop, workHandle, String) 新建专用线程并注册默认处理函数；INFO_LOOP 查看循环状态。");
     printResp("START(workLoop)", YOMK_EVENTLOOP_START("workLoop", workHandle, String));
     dumpInfo("INFO_LOOP(workLoop)", YOMK_EVENTLOOP_INFO_LOOP("workLoop"));
 
@@ -154,16 +156,19 @@ int main(int argc, char *argv[])
      * POST 把事件放进循环队列后立即返回，不阻塞当前线程；
      * tag 仅内省可见，用于观察队列；同循环内事件按入队顺序执行。
      */
-    printStep(2, "异步投递与队列观察",
-              "连续 POST 5 条任务（每条处理 200ms）：POST 立即返回不阻塞；tag 用于观察队列积压。");
+    printStep(
+        2, "异步投递与队列观察", "连续 POST 5 条任务（每条处理 200ms）：POST 立即返回不阻塞；tag 用于观察队列积压。");
     for (int i = 1; i <= 5; ++i)
     {
-        printResp("POST(task" + std::to_string(i) + ")",
-                  YOMK_EVENTLOOP_POST("workLoop", YomkMkPtr(String, "task" + std::to_string(i)), nullptr, "task" + std::to_string(i)));
+        printResp(
+            "POST(task" + std::to_string(i) + ")",
+            YOMK_EVENTLOOP_POST(
+                "workLoop", YomkMkPtr(String, "task" + std::to_string(i)), nullptr, "task" + std::to_string(i)));
     }
     std::cout << ">> 立即内省：正在执行的事件不计入 pending，队首列出的是待处理任务的 tag" << std::endl;
     dumpInfo("INFO_LOOP(workLoop,5)", YOMK_EVENTLOOP_INFO_LOOP("workLoop", 5));
-    std::cout << ">> 等待队列排空，观察 loop.work 日志的消费顺序：task2..task5 之后才是 followup1..3（FIFO）" << std::endl;
+    std::cout << ">> 等待队列排空，观察 loop.work 日志的消费顺序：task2..task5 之后才是 followup1..3（FIFO）"
+              << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(1800));
     dumpInfo("INFO_LOOP(workLoop,5)", YOMK_EVENTLOOP_INFO_LOOP("workLoop", 5));
 
@@ -173,8 +178,10 @@ int main(int argc, char *argv[])
      * 阻塞直到该事件在循环线程中执行完毕，返回的 m_data 是 Event 包：
      * m_eventId（单调递增）、m_eventLoopName、m_response（处理函数返回值）。
      */
-    printStep(3, "同步投递（POST_WAIT）",
-              "syncTask 排到队尾等待执行完毕才返回；Event 三要素证明同步等待排在已投递任务之后。");
+    printStep(
+        3,
+        "同步投递（POST_WAIT）",
+        "syncTask 排到队尾等待执行完毕才返回；Event 三要素证明同步等待排在已投递任务之后。");
     YomkResponse resp = YOMK_EVENTLOOP_POST_WAIT("workLoop", YomkMkPtr(String, "syncTask"));
     printResp("POST_WAIT(syncTask)", resp);
     printEvent(resp);
@@ -184,14 +191,10 @@ int main(int argc, char *argv[])
      *
      * 投递时指定 eventHandle 则优先于默认处理函数，同一循环可混用两种来源。
      */
-    printStep(4, "临时处理函数",
-              "tempTask 投递时指定临时函数：返回临时函数的结果而非默认函数的结果。");
+    printStep(4, "临时处理函数", "tempTask 投递时指定临时函数：返回临时函数的结果而非默认函数的结果。");
     // lambda 先赋给具名变量再传宏：返回值构造含逗号时，
     // 直接内联进宏会让预处理器把逗号误当实参分隔符
-    YomkServiceFunc tempHandle = [](YomkPkgPtr) -> YomkResponse
-    {
-        return {YomkResponse::eOk, "tempHandle result"};
-    };
+    YomkServiceFunc tempHandle = [](YomkPkgPtr) -> YomkResponse { return {YomkResponse::eOk, "tempHandle result"}; };
     resp = YOMK_EVENTLOOP_POST_WAIT("workLoop", YomkMkPtr(String, "tempTask"), tempHandle);
     printResp("POST_WAIT(tempTask,tempHandle)", resp);
     printEvent(resp);
@@ -201,8 +204,8 @@ int main(int argc, char *argv[])
      *
      * STOP 只停线程、保留队列事件；停止后投递被拒；再次 START 续跑保留事件。
      */
-    printStep(5, "停止与续跑",
-              "POST 两条积压任务后 STOP：线程停止但队列保留；停止后投递被拒；START 续跑消化保留事件。");
+    printStep(
+        5, "停止与续跑", "POST 两条积压任务后 STOP：线程停止但队列保留；停止后投递被拒；START 续跑消化保留事件。");
     printResp("POST(hold1)", YOMK_EVENTLOOP_POST("workLoop", YomkMkPtr(String, "hold1"), nullptr, "hold1"));
     printResp("POST(hold2)", YOMK_EVENTLOOP_POST("workLoop", YomkMkPtr(String, "hold2"), nullptr, "hold2"));
     printResp("STOP(workLoop)", YOMK_EVENTLOOP_STOP("workLoop"));
@@ -221,8 +224,7 @@ int main(int argc, char *argv[])
      * DESTROY 停线程并清空队列、把循环移出循环表，不可续跑；
      * 对已销毁循环的一切操作均返回 eNo（not-found 惯例）。
      */
-    printStep(6, "销毁与 not-found",
-              "DESTROY 后循环表不再含 workLoop；POST/STOP/INFO_LOOP 三连操作均 eNo。");
+    printStep(6, "销毁与 not-found", "DESTROY 后循环表不再含 workLoop；POST/STOP/INFO_LOOP 三连操作均 eNo。");
     dumpLines("INFO_LOOPS", YOMK_EVENTLOOP_INFO_LOOPS());
     printResp("DESTROY(workLoop)", YOMK_EVENTLOOP_DESTROY("workLoop"));
     dumpLines("INFO_LOOPS(销毁后)", YOMK_EVENTLOOP_INFO_LOOPS());

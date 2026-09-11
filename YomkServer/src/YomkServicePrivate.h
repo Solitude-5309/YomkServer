@@ -1,9 +1,10 @@
 #pragma once
-#include <string>
+#include <atomic>
 #include <map>
 #include <memory>
-#include <atomic>
 #include <shared_mutex>
+#include <string>
+
 #include "YomkDefine.h"
 #include "YomkPkg.h"
 
@@ -15,7 +16,7 @@ public:
     ~YomkServicePrivate() {}
 
 public:
-    void name(const std::string &name);
+    void name(const std::string& name);
     std::string name() { return m_name; }
     // 框架内部使用：入表注册后锁定服务名，此后 name() 改名被拒绝（保证与 service map 键一致）
     void markRegistered() { m_registered = true; }
@@ -27,11 +28,11 @@ public:
     bool deleted() const { return m_deleted.load(); }
 
 public:
-    void installFunc(const std::string &funcName, YomkServiceFunc func, const std::string &msgName = "");
-    YomkResponse invoke(const std::string &funcName, YomkPkgPtr pkg = nullptr);
+    void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "");
+    YomkResponse invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
     std::map<std::string, YomkFuncInfo> funcInfos();
-    YomkResponse request(const std::string &url, YomkPkgPtr pkg = nullptr);
-    void asyncRequest(const std::string &url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
+    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
 protected:
     std::weak_ptr<YomkServer> m_weakServer;

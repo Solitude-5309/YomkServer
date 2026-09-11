@@ -66,6 +66,8 @@
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
 
+#include <unistd.h>
+
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -77,8 +79,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-
-#include <unistd.h>
 
 #include "YomkAPI.h"
 
@@ -126,7 +126,7 @@ class ThreadSafeCoutCapture
             }
             return ch;
         }
-        std::streamsize xsputn(const char *s, std::streamsize n) override
+        std::streamsize xsputn(const char* s, std::streamsize n) override
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_text.append(s, static_cast<size_t>(n));
@@ -141,13 +141,13 @@ class ThreadSafeCoutCapture
 public:
     ThreadSafeCoutCapture() : m_old(std::cout.rdbuf(&m_buf)) {}
     ~ThreadSafeCoutCapture() { std::cout.rdbuf(m_old); }
-    ThreadSafeCoutCapture(const ThreadSafeCoutCapture &) = delete;
-    ThreadSafeCoutCapture &operator=(const ThreadSafeCoutCapture &) = delete;
+    ThreadSafeCoutCapture(const ThreadSafeCoutCapture&) = delete;
+    ThreadSafeCoutCapture& operator=(const ThreadSafeCoutCapture&) = delete;
     std::string str() { return m_buf.take(); }
 
 private:
     Buf m_buf;
-    std::streambuf *m_old;
+    std::streambuf* m_old;
 };
 
 // ============================================================================
@@ -191,19 +191,19 @@ static std::atomic<uint64_t> g_s5FileOk{0};
 static std::atomic<uint64_t> g_s5WriteOk{0};
 static std::atomic<uint64_t> g_s5SwitchOk{0};
 static std::atomic<uint64_t> g_s5IntrospectOk{0};
-static std::atomic<uint64_t> g_s5BadStatus{0};           // 状态码不属于 {eOk,eNo,eInvalid} 的次数
-static std::atomic<uint64_t> g_s5AtomicityViolations{0}; // P3-a 判别式违例（F > C）计数
-static std::atomic<uint64_t> g_s5BadLevelLine{0};        // ALL 首行格式非法计数
-static std::atomic<bool> g_s5Stop{false};                // 内省线程停止门（churn 完成后置位）
+static std::atomic<uint64_t> g_s5BadStatus{0};            // 状态码不属于 {eOk,eNo,eInvalid} 的次数
+static std::atomic<uint64_t> g_s5AtomicityViolations{0};  // P3-a 判别式违例（F > C）计数
+static std::atomic<uint64_t> g_s5BadLevelLine{0};         // ALL 首行格式非法计数
+static std::atomic<bool> g_s5Stop{false};                 // 内省线程停止门（churn 完成后置位）
 
 // 内省快照收集（S5）
 struct IntrospectSnapshot
 {
-    uint64_t consoleLines; // LOGGERS 中 " [console]" 结尾行数
-    uint64_t fileLines;    // LOGGERS 中含 " [file] dir:" 行数
-    uint64_t allLines;     // ALL 返回总行数（首行 + console 段 + file 段）
-    uint64_t allConsole;   // ALL 中 console 段行数
-    uint64_t allFile;      // ALL 中 file 段行数
+    uint64_t consoleLines;  // LOGGERS 中 " [console]" 结尾行数
+    uint64_t fileLines;     // LOGGERS 中含 " [file] dir:" 行数
+    uint64_t allLines;      // ALL 返回总行数（首行 + console 段 + file 段）
+    uint64_t allConsole;    // ALL 中 console 段行数
+    uint64_t allFile;       // ALL 中 file 段行数
 };
 static std::mutex g_s5SnapMutex;
 static std::vector<std::vector<IntrospectSnapshot>> g_s5SnapsByThread;
@@ -213,7 +213,7 @@ static std::vector<std::vector<IntrospectSnapshot>> g_s5SnapsByThread;
 // ============================================================================
 
 // 统计非空行数
-static size_t countLines(const std::string &text)
+static size_t countLines(const std::string& text)
 {
     size_t lines = 0;
     std::istringstream iss(text);
@@ -230,8 +230,7 @@ static size_t countLines(const std::string &text)
 
 // 统计文本中"行尾最后一段"（末个空格之后）等于 prefix 开头的 marker 出现次数
 // 用途：console 捕获文本 / file 落盘文本的 marker 守恒（不丢不重）判定
-static std::map<std::string, uint64_t> collectTailMarkers(const std::string &text,
-                                                          const std::string &prefix)
+static std::map<std::string, uint64_t> collectTailMarkers(const std::string& text, const std::string& prefix)
 {
     std::map<std::string, uint64_t> markers;
     std::istringstream iss(text);
@@ -253,10 +252,10 @@ static std::map<std::string, uint64_t> collectTailMarkers(const std::string &tex
 }
 
 // 统计 markers 中出现次数 != 1 的条目数（0 即"不丢不重"）
-static uint64_t countBadOccurrence(const std::map<std::string, uint64_t> &markers)
+static uint64_t countBadOccurrence(const std::map<std::string, uint64_t>& markers)
 {
     uint64_t bad = 0;
-    for (const auto &item : markers)
+    for (const auto& item : markers)
     {
         if (item.second != 1)
         {
@@ -267,10 +266,9 @@ static uint64_t countBadOccurrence(const std::map<std::string, uint64_t> &marker
 }
 
 // 时间戳格式粗校验："dddd-dd-dd dd:dd:dd.ddd]"（不锁定具体日期值）
-static bool checkTimeFormat(const std::string &line)
+static bool checkTimeFormat(const std::string& line)
 {
-    auto isDigit = [](char c)
-    { return c >= '0' && c <= '9'; };
+    auto isDigit = [](char c) { return c >= '0' && c <= '9'; };
     if (line.size() < 25 || line[0] != '[')
     {
         return false;
@@ -279,42 +277,42 @@ static bool checkTimeFormat(const std::string &line)
     {
         switch (i)
         {
-        case 5:
-        case 8:
-            if (line[i] != '-')
-                return false;
-            break;
-        case 11:
-            if (line[i] != ' ')
-                return false;
-            break;
-        case 14:
-        case 17:
-            if (line[i] != ':')
-                return false;
-            break;
-        case 20:
-            if (line[i] != '.')
-                return false;
-            break;
-        case 24:
-            if (line[i] != ']')
-                return false;
-            break;
-        default:
-            if (!isDigit(line[i]))
-                return false;
-            break;
+            case 5:
+            case 8:
+                if (line[i] != '-')
+                    return false;
+                break;
+            case 11:
+                if (line[i] != ' ')
+                    return false;
+                break;
+            case 14:
+            case 17:
+                if (line[i] != ':')
+                    return false;
+                break;
+            case 20:
+                if (line[i] != '.')
+                    return false;
+                break;
+            case 24:
+                if (line[i] != ']')
+                    return false;
+                break;
+            default:
+                if (!isDigit(line[i]))
+                    return false;
+                break;
         }
     }
     return true;
 }
 
 // 统计含指定子串的行数（用于 LOGGERS 中某 tag 的实例行数判定）
-static uint64_t countLinesContaining(const std::vector<std::string> &lines, const std::string &needle)
+static uint64_t countLinesContaining(const std::vector<std::string>& lines, const std::string& needle)
 {
     uint64_t count = 0;
-    for (const auto &line : lines)
+    for (const auto& line : lines)
     {
         if (line.find(needle) != std::string::npos)
         {
@@ -325,7 +323,7 @@ static uint64_t countLinesContaining(const std::vector<std::string> &lines, cons
 }
 
 // 解包 LOGGERS/ALL 的 StringArray；失败返回空 vector
-static std::vector<std::string> unpackLines(const YomkResponse &resp)
+static std::vector<std::string> unpackLines(const YomkResponse& resp)
 {
     std::vector<std::string> lines;
     if (resp.m_status != YomkResponse::eOk || !resp.m_data)
@@ -341,12 +339,11 @@ static std::vector<std::string> unpackLines(const YomkResponse &resp)
 }
 
 // 统计 LOGGERS 行中的 console/file 段行数
-static void countLoggerLines(const std::vector<std::string> &lines, uint64_t &consoleLines,
-                             uint64_t &fileLines)
+static void countLoggerLines(const std::vector<std::string>& lines, uint64_t& consoleLines, uint64_t& fileLines)
 {
     consoleLines = 0;
     fileLines = 0;
-    for (const auto &line : lines)
+    for (const auto& line : lines)
     {
         static const std::string kConsoleSuffix = " [console]";
         if (line.size() >= kConsoleSuffix.size() &&
@@ -363,9 +360,9 @@ static void countLoggerLines(const std::vector<std::string> &lines, uint64_t &co
 }
 
 // 校验 ALL 首行格式：console:debug:(on|off) info:(on|off) warn:(on|off) error:(on|off) proxy:(on|off)
-static bool checkLevelLineFormat(const std::string &line)
+static bool checkLevelLineFormat(const std::string& line)
 {
-    auto matchField = [&line](size_t &pos, const std::string &key) -> bool
+    auto matchField = [&line](size_t& pos, const std::string& key) -> bool
     {
         if (line.compare(pos, key.size(), key) != 0)
         {
@@ -412,10 +409,9 @@ static bool checkLevelLineFormat(const std::string &line)
 }
 
 // 状态码是否属于框架合法集合 {eInvalid, eOk, eNo}
-static bool isLegalStatus(const YomkResponse &resp)
+static bool isLegalStatus(const YomkResponse& resp)
 {
-    return resp.m_status == YomkResponse::eInvalid ||
-           resp.m_status == YomkResponse::eOk ||
+    return resp.m_status == YomkResponse::eInvalid || resp.m_status == YomkResponse::eOk ||
            resp.m_status == YomkResponse::eNo;
 }
 
@@ -452,13 +448,13 @@ static void resetGate()
 // ============================================================================
 // S3 用 proxy 函数（v1/v2 交替，均恒返回 true 穿透态）
 // ============================================================================
-static bool s3ProxyV1(const yomk::Log & /*log*/)
+static bool s3ProxyV1(const yomk::Log& /*log*/)
 {
     g_s3V1Hits.fetch_add(1, std::memory_order_relaxed);
-    return true; // 穿透：继续走默认控制台输出，不影响后续 Section
+    return true;  // 穿透：继续走默认控制台输出，不影响后续 Section
 }
 
-static bool s3ProxyV2(const yomk::Log & /*log*/)
+static bool s3ProxyV2(const yomk::Log& /*log*/)
 {
     g_s3V2Hits.fetch_add(1, std::memory_order_relaxed);
     return true;
@@ -493,8 +489,9 @@ int main()
         g_s1OkCount.store(0);
 
         // 预热：主线程先创建该 tag 的 console logger，使并发段全部走 shared_lock 命中路径
-        CHECK(YomkAPI::CONSOLE_LOG_INFO_TAG(kTag, "lg3s1_warmup").m_status == YomkResponse::eOk,
-              "S1: 预热创建 console logger " + kTag);
+        CHECK(
+            YomkAPI::CONSOLE_LOG_INFO_TAG(kTag, "lg3s1_warmup").m_status == YomkResponse::eOk,
+            "S1: 预热创建 console logger " + kTag);
 
         std::string out;
         {
@@ -504,37 +501,41 @@ int main()
             workers.reserve(kThreads);
             for (int t = 0; t < kThreads; ++t)
             {
-                workers.emplace_back([t, &kTag]()
-                                     {
-                    waitGate(kThreads);
-                    for (int i = 0; i < kLogsPerThread; ++i)
+                workers.emplace_back(
+                    [t, &kTag]()
                     {
-                        auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
-                            kTag, "lg3s1_t" + std::to_string(t) + "_i" + std::to_string(i));
-                        if (resp.m_status == YomkResponse::eOk)
+                        waitGate(kThreads);
+                        for (int i = 0; i < kLogsPerThread; ++i)
                         {
-                            g_s1OkCount.fetch_add(1, std::memory_order_relaxed);
+                            auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
+                                kTag, "lg3s1_t" + std::to_string(t) + "_i" + std::to_string(i));
+                            if (resp.m_status == YomkResponse::eOk)
+                            {
+                                g_s1OkCount.fetch_add(1, std::memory_order_relaxed);
+                            }
                         }
-                    } });
+                    });
             }
             releaseGate(kThreads);
-            for (auto &th : workers)
+            for (auto& th : workers)
             {
                 th.join();
             }
             out = cap.str();
         }
 
-        CHECK(g_s1OkCount.load() == kTotal,
-              "S1: 响应守恒 eOk == " + std::to_string(kTotal) + "（实际 " +
-                  std::to_string(g_s1OkCount.load()) + "）");
+        CHECK(
+            g_s1OkCount.load() == kTotal,
+            "S1: 响应守恒 eOk == " + std::to_string(kTotal) + "（实际 " + std::to_string(g_s1OkCount.load()) + "）");
 
         auto markers = collectTailMarkers(out, "lg3s1_t");
-        CHECK(markers.size() == kTotal,
-              "S1: 唯一 marker 数 == " + std::to_string(kTotal) + "（实际 " +
-                  std::to_string(markers.size()) + "）——并发输出不丢");
-        CHECK(countBadOccurrence(markers) == 0,
-              "S1: 全部 marker 恰出现 1 次（无重复、无撕裂）——ConsoleLogger::m_mutex 整行互斥");
+        CHECK(
+            markers.size() == kTotal,
+            "S1: 唯一 marker 数 == " + std::to_string(kTotal) + "（实际 " + std::to_string(markers.size()) +
+                "）——并发输出不丢");
+        CHECK(
+            countBadOccurrence(markers) == 0,
+            "S1: 全部 marker 恰出现 1 次（无重复、无撕裂）——ConsoleLogger::m_mutex 整行互斥");
 
         // 行完整性：同一 logger 的每一行均满足时间戳 + 级别 + tag 前缀格式（无跨行撕裂）
         uint64_t intactLines = 0;
@@ -546,7 +547,7 @@ int main()
             {
                 if (line.find("lg3s1_t") == std::string::npos)
                 {
-                    continue; // 框架自身噪声行不参与判定
+                    continue;  // 框架自身噪声行不参与判定
                 }
                 if (checkTimeFormat(line) && line.find("[Info ] [" + kTag + "]") != std::string::npos)
                 {
@@ -558,16 +559,18 @@ int main()
                 }
             }
         }
-        CHECK(brokenLines == 0,
-              "S1: 含 marker 的行全部完整（时间戳+[Info ]+[tag] 格式，撕裂行 " +
-                  std::to_string(brokenLines) + " 条）");
-        CHECK(intactLines == kTotal,
-              "S1: 完整行数 == " + std::to_string(kTotal) + "（实际 " + std::to_string(intactLines) + "）");
+        CHECK(
+            brokenLines == 0,
+            "S1: 含 marker 的行全部完整（时间戳+[Info ]+[tag] 格式，撕裂行 " + std::to_string(brokenLines) + " 条）");
+        CHECK(
+            intactLines == kTotal,
+            "S1: 完整行数 == " + std::to_string(kTotal) + "（实际 " + std::to_string(intactLines) + "）");
 
         // 同一 tag 仅一个 logger 实例（并发命中路径不重复创建）
         auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
-        CHECK(countLinesContaining(loggersLines, kTag + " [console]") == 1,
-              "S1: LOGGERS 中 " + kTag + " 恰 1 行（无重复实例）");
+        CHECK(
+            countLinesContaining(loggersLines, kTag + " [console]") == 1,
+            "S1: LOGGERS 中 " + kTag + " 恰 1 行（无重复实例）");
     }
 
     // ========================================================================
@@ -591,44 +594,50 @@ int main()
             workers.reserve(kThreads);
             for (int t = 0; t < kThreads; ++t)
             {
-                workers.emplace_back([t, &kRaceTag]()
-                                     {
-                    waitGate(kThreads); // 屏障对齐：8 线程同时 miss → 同时升级独占锁
-                    for (int i = 0; i < kLogsPerThread; ++i)
+                workers.emplace_back(
+                    [t, &kRaceTag]()
                     {
-                        auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
-                            kRaceTag, "lg3s2a_t" + std::to_string(t) + "_i" + std::to_string(i));
-                        if (resp.m_status == YomkResponse::eOk)
+                        waitGate(kThreads);  // 屏障对齐：8 线程同时 miss → 同时升级独占锁
+                        for (int i = 0; i < kLogsPerThread; ++i)
                         {
-                            g_s2aOkCount.fetch_add(1, std::memory_order_relaxed);
+                            auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
+                                kRaceTag, "lg3s2a_t" + std::to_string(t) + "_i" + std::to_string(i));
+                            if (resp.m_status == YomkResponse::eOk)
+                            {
+                                g_s2aOkCount.fetch_add(1, std::memory_order_relaxed);
+                            }
                         }
-                    } });
+                    });
             }
             releaseGate(kThreads);
-            for (auto &th : workers)
+            for (auto& th : workers)
             {
                 th.join();
             }
             out = cap.str();
         }
 
-        CHECK(g_s2aOkCount.load() == kTotal,
-              "S2a: 争用创建全部 eOk == " + std::to_string(kTotal) + "（实际 " +
-                  std::to_string(g_s2aOkCount.load()) + "）");
+        CHECK(
+            g_s2aOkCount.load() == kTotal,
+            "S2a: 争用创建全部 eOk == " + std::to_string(kTotal) + "（实际 " + std::to_string(g_s2aOkCount.load()) +
+                "）");
 
         auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
-        CHECK(countLinesContaining(loggersLines, kRaceTag + " [console]") == 1,
-              "S2a: LOGGERS 中 " + kRaceTag + " 恰 1 行——双检锁下并发 miss 仅创建一个实例");
+        CHECK(
+            countLinesContaining(loggersLines, kRaceTag + " [console]") == 1,
+            "S2a: LOGGERS 中 " + kRaceTag + " 恰 1 行——双检锁下并发 miss 仅创建一个实例");
 
         auto raceMarkers = collectTailMarkers(out, "lg3s2a_t");
-        CHECK(raceMarkers.size() == kTotal,
-              "S2a: 唯一 marker 数 == " + std::to_string(kTotal) + "（实际 " +
-                  std::to_string(raceMarkers.size()) + "）——同一实例被并发复用无丢失");
+        CHECK(
+            raceMarkers.size() == kTotal,
+            "S2a: 唯一 marker 数 == " + std::to_string(kTotal) + "（实际 " + std::to_string(raceMarkers.size()) +
+                "）——同一实例被并发复用无丢失");
         CHECK(countBadOccurrence(raceMarkers) == 0, "S2a: 全部 marker 恰出现 1 次（不丢不重）");
 
         auto raceInfo = YOMK_LOGGER_INFO_LOGGER(kRaceTag);
-        CHECK((raceInfo.m_status == YomkResponse::eOk && raceInfo.m_msg == kRaceTag + " [console]"),
-              "S2a: LOGGER(" + kRaceTag + ") 命中 console 格式");
+        CHECK(
+            (raceInfo.m_status == YomkResponse::eOk && raceInfo.m_msg == kRaceTag + " [console]"),
+            "S2a: LOGGER(" + kRaceTag + ") 命中 console 格式");
 
         // ---- S2b：分散创建——8 线程各自唯一 tag ----
         constexpr int kSpreadThreads = 8;
@@ -647,38 +656,42 @@ int main()
             workers.reserve(kSpreadThreads);
             for (int t = 0; t < kSpreadThreads; ++t)
             {
-                workers.emplace_back([t]()
-                                     {
-                    std::string tag = "lg3_s2_t" + std::to_string(t);
-                    waitGate(kSpreadThreads);
-                    for (int i = 0; i < kSpreadPerThread; ++i)
+                workers.emplace_back(
+                    [t]()
                     {
-                        auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
-                            tag, "lg3s2b_t" + std::to_string(t) + "_i" + std::to_string(i));
-                        if (resp.m_status == YomkResponse::eOk)
+                        std::string tag = "lg3_s2_t" + std::to_string(t);
+                        waitGate(kSpreadThreads);
+                        for (int i = 0; i < kSpreadPerThread; ++i)
                         {
-                            g_s2bOkCount.fetch_add(1, std::memory_order_relaxed);
+                            auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
+                                tag, "lg3s2b_t" + std::to_string(t) + "_i" + std::to_string(i));
+                            if (resp.m_status == YomkResponse::eOk)
+                            {
+                                g_s2bOkCount.fetch_add(1, std::memory_order_relaxed);
+                            }
                         }
-                    } });
+                    });
             }
             releaseGate(kSpreadThreads);
-            for (auto &th : workers)
+            for (auto& th : workers)
             {
                 th.join();
             }
         }
 
-        CHECK(g_s2bOkCount.load() == kSpreadTotal,
-              "S2b: 分散创建全部 eOk == " + std::to_string(kSpreadTotal) + "（实际 " +
-                  std::to_string(g_s2bOkCount.load()) + "）");
+        CHECK(
+            g_s2bOkCount.load() == kSpreadTotal,
+            "S2b: 分散创建全部 eOk == " + std::to_string(kSpreadTotal) + "（实际 " +
+                std::to_string(g_s2bOkCount.load()) + "）");
 
         uint64_t consoleAfter = 0;
         uint64_t fileAfter = 0;
         auto spreadLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
         countLoggerLines(spreadLines, consoleAfter, fileAfter);
-        CHECK(consoleAfter - consoleBefore == kSpreadThreads,
-              "S2b: console logger 新增恰 " + std::to_string(kSpreadThreads) + " 个（实际新增 " +
-                  std::to_string(consoleAfter - consoleBefore) + "）");
+        CHECK(
+            consoleAfter - consoleBefore == kSpreadThreads,
+            "S2b: console logger 新增恰 " + std::to_string(kSpreadThreads) + " 个（实际新增 " +
+                std::to_string(consoleAfter - consoleBefore) + "）");
         CHECK(fileAfter == fileBefore, "S2b: file logger 数量未受影响");
 
         bool allSpreadHit = true;
@@ -698,8 +711,7 @@ int main()
         // !result.second 防御分支的唯一可能触达场景；双检锁在独占锁内已二次查找确认 key 不存在，
         // emplace 必成功 → 该分支不可达，LG6 已删除该 4 行死代码，gcov 复查印证 YomkLogger.cpp 的
         // ##### 洞由 2 归零；本组 S2a/S2b 即该删除的行为学佐证（删前删后均全绿、无 eNo 返回）。
-        std::cout << "[INFO] S2c: P3-b(!result.second) 最大争用场景已覆盖，该死分支已于 LG6 删除"
-                  << std::endl;
+        std::cout << "[INFO] S2c: P3-b(!result.second) 最大争用场景已覆盖，该死分支已于 LG6 删除" << std::endl;
     }
 
     // ========================================================================
@@ -721,28 +733,31 @@ int main()
         g_s3Stop.store(false);
 
         // 首次设置为 v1（此后进程内 proxy 恒为 on，v1/v2 交替更新 func）
-        CHECK(YOMK_SET_CONSOLE_LOG_PROXY(s3ProxyV1).m_status == YomkResponse::eOk,
-              "S3: SET_CONSOLE_LOG_PROXY(v1) 返回 eOk");
+        CHECK(
+            YOMK_SET_CONSOLE_LOG_PROXY(s3ProxyV1).m_status == YomkResponse::eOk,
+            "S3: SET_CONSOLE_LOG_PROXY(v1) 返回 eOk");
 
         // caller 线程：持续 console_log 直到 g_s3Stop
         std::vector<std::thread> callers;
         callers.reserve(kCallerThreads);
         for (int t = 0; t < kCallerThreads; ++t)
         {
-            callers.emplace_back([t, &kTag]()
-                                 {
-                int i = 0;
-                while (!g_s3Stop.load(std::memory_order_acquire))
+            callers.emplace_back(
+                [t, &kTag]()
                 {
-                    auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
-                        kTag, "lg3s3_t" + std::to_string(t) + "_i" + std::to_string(i));
-                    g_s3LogTotal.fetch_add(1, std::memory_order_relaxed);
-                    if (resp.m_status == YomkResponse::eOk)
+                    int i = 0;
+                    while (!g_s3Stop.load(std::memory_order_acquire))
                     {
-                        g_s3LogOk.fetch_add(1, std::memory_order_relaxed);
+                        auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
+                            kTag, "lg3s3_t" + std::to_string(t) + "_i" + std::to_string(i));
+                        g_s3LogTotal.fetch_add(1, std::memory_order_relaxed);
+                        if (resp.m_status == YomkResponse::eOk)
+                        {
+                            g_s3LogOk.fetch_add(1, std::memory_order_relaxed);
+                        }
+                        ++i;
                     }
-                    ++i;
-                } });
+                });
         }
 
         // 内省线程：并发轮询 ALL，校验首行格式（proxy:on 恒定 + 无撕裂）
@@ -750,28 +765,30 @@ int main()
         introspectors.reserve(kIntrospectThreads);
         for (int t = 0; t < kIntrospectThreads; ++t)
         {
-            introspectors.emplace_back([]()
-                                       {
-                while (!g_s3Stop.load(std::memory_order_acquire))
+            introspectors.emplace_back(
+                []()
                 {
-                    auto lines = unpackLines(YOMK_LOGGER_INFO_ALL());
-                    if (!lines.empty())
+                    while (!g_s3Stop.load(std::memory_order_acquire))
                     {
-                        if (!checkLevelLineFormat(lines.front()) ||
-                            lines.front().find("proxy:on") == std::string::npos)
+                        auto lines = unpackLines(YOMK_LOGGER_INFO_ALL());
+                        if (!lines.empty())
                         {
-                            g_s5BadLevelLine.fetch_add(1, std::memory_order_relaxed);
+                            if (!checkLevelLineFormat(lines.front()) ||
+                                lines.front().find("proxy:on") == std::string::npos)
+                            {
+                                g_s5BadLevelLine.fetch_add(1, std::memory_order_relaxed);
+                            }
                         }
+                        std::this_thread::sleep_for(std::chrono::microseconds(200));
                     }
-                    std::this_thread::sleep_for(std::chrono::microseconds(200));
-                } });
+                });
         }
 
         // 主线程：50 轮交替 SET v1/v2（写侧与 caller 的读侧并发交错）
         for (int round = 0; round < kSetRounds; ++round)
         {
-            auto resp = (round % 2 == 0) ? YOMK_SET_CONSOLE_LOG_PROXY(s3ProxyV2)
-                                         : YOMK_SET_CONSOLE_LOG_PROXY(s3ProxyV1);
+            auto resp =
+                (round % 2 == 0) ? YOMK_SET_CONSOLE_LOG_PROXY(s3ProxyV2) : YOMK_SET_CONSOLE_LOG_PROXY(s3ProxyV1);
             if (resp.m_status == YomkResponse::eOk)
             {
                 g_s3SetOk.fetch_add(1, std::memory_order_relaxed);
@@ -780,11 +797,11 @@ int main()
         }
 
         g_s3Stop.store(true, std::memory_order_release);
-        for (auto &th : callers)
+        for (auto& th : callers)
         {
             th.join();
         }
-        for (auto &th : introspectors)
+        for (auto& th : introspectors)
         {
             th.join();
         }
@@ -793,23 +810,23 @@ int main()
         uint64_t v2 = g_s3V2Hits.load();
         uint64_t total = g_s3LogTotal.load();
 
-        CHECK(g_s3SetOk.load() == kSetRounds,
-              "S3: SET 交替 " + std::to_string(kSetRounds) + " 轮全部 eOk");
-        CHECK(v1 + v2 == total,
-              "S3: 写读交错守恒 v1(" + std::to_string(v1) + ") + v2(" + std::to_string(v2) +
-                  ") == log 总数(" + std::to_string(total) + ")——无 torn std::function（锁内拷贝快照生效）");
+        CHECK(g_s3SetOk.load() == kSetRounds, "S3: SET 交替 " + std::to_string(kSetRounds) + " 轮全部 eOk");
+        CHECK(
+            v1 + v2 == total,
+            "S3: 写读交错守恒 v1(" + std::to_string(v1) + ") + v2(" + std::to_string(v2) + ") == log 总数(" +
+                std::to_string(total) + ")——无 torn std::function（锁内拷贝快照生效）");
         CHECK(v1 > 0, "S3: v1 实现被观测到");
         CHECK(v2 > 0, "S3: v2 实现被观测到（更新确实生效）");
         CHECK(total > 0, "S3: caller 线程确实执行了日志调用");
-        CHECK(g_s3LogOk.load() == total,
-              "S3: 全部 console_log 返回 eOk（穿透态不影响响应码）");
-        CHECK(g_s5BadLevelLine.load() == 0,
-              "S3: 并发内省 ALL 首行格式全部合法且含 proxy:on（非法 " +
-                  std::to_string(g_s5BadLevelLine.load()) + " 次）");
+        CHECK(g_s3LogOk.load() == total, "S3: 全部 console_log 返回 eOk（穿透态不影响响应码）");
+        CHECK(
+            g_s5BadLevelLine.load() == 0,
+            "S3: 并发内省 ALL 首行格式全部合法且含 proxy:on（非法 " + std::to_string(g_s5BadLevelLine.load()) +
+                " 次）");
     }
 
     // 读文件全部内容（S4/S5 落盘守恒断言共用；main 作用域 lambda）
-    auto readFile = [](const fs::path &path) -> std::string
+    auto readFile = [](const fs::path& path) -> std::string
     {
         std::ifstream ifs(path);
         std::ostringstream ss;
@@ -840,44 +857,47 @@ int main()
             workers.reserve(kThreads);
             for (int t = 0; t < kThreads; ++t)
             {
-                workers.emplace_back([&sameDir, &kSameName]()
-                                     {
-                    waitGate(kThreads); // 屏障对齐：8 线程同时争抢 unique_lock
-                    auto resp = YOMK_FILE_LOG_CREATE(sameDir.string(), kSameName);
-                    if (!isLegalStatus(resp))
+                workers.emplace_back(
+                    [&sameDir, &kSameName]()
                     {
-                        g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
-                    }
-                    if (resp.m_status == YomkResponse::eOk)
-                    {
-                        g_s4aCreateOk.fetch_add(1, std::memory_order_relaxed);
-                    }
-                    else if (resp.m_status == YomkResponse::eNo &&
-                             resp.m_msg == "logger name already exists.")
-                    {
-                        g_s4aCreateNo.fetch_add(1, std::memory_order_relaxed);
-                    } });
+                        waitGate(kThreads);  // 屏障对齐：8 线程同时争抢 unique_lock
+                        auto resp = YOMK_FILE_LOG_CREATE(sameDir.string(), kSameName);
+                        if (!isLegalStatus(resp))
+                        {
+                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                        }
+                        if (resp.m_status == YomkResponse::eOk)
+                        {
+                            g_s4aCreateOk.fetch_add(1, std::memory_order_relaxed);
+                        }
+                        else if (resp.m_status == YomkResponse::eNo && resp.m_msg == "logger name already exists.")
+                        {
+                            g_s4aCreateNo.fetch_add(1, std::memory_order_relaxed);
+                        }
+                    });
             }
             releaseGate(kThreads);
-            for (auto &th : workers)
+            for (auto& th : workers)
             {
                 th.join();
             }
         }
 
-        CHECK(g_s4aCreateOk.load() == 1,
-              "S4a: 8 线程并发同名创建恰 1 个 eOk（实际 " + std::to_string(g_s4aCreateOk.load()) + "）");
-        CHECK(g_s4aCreateNo.load() == kThreads - 1,
-              "S4a: 其余 " + std::to_string(kThreads - 1) + " 个 eNo \"logger name already exists.\"（实际 " +
-                  std::to_string(g_s4aCreateNo.load()) + "）——unique_lock 互斥下重名检查守恒");
+        CHECK(
+            g_s4aCreateOk.load() == 1,
+            "S4a: 8 线程并发同名创建恰 1 个 eOk（实际 " + std::to_string(g_s4aCreateOk.load()) + "）");
+        CHECK(
+            g_s4aCreateNo.load() == kThreads - 1,
+            "S4a: 其余 " + std::to_string(kThreads - 1) + " 个 eNo \"logger name already exists.\"（实际 " +
+                std::to_string(g_s4aCreateNo.load()) + "）——unique_lock 互斥下重名检查守恒");
         CHECK(fs::exists(sameDir / (kSameName + ".log")), "S4a: 胜出者日志文件已落盘");
 
         uint64_t fileAfterA = 0;
         uint64_t consoleAfterA = 0;
         countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), consoleAfterA, fileAfterA);
-        CHECK(fileAfterA - fileBeforeA == 1,
-              "S4a: file logger 仅新增 1 个（无重复注册，实际新增 " +
-                  std::to_string(fileAfterA - fileBeforeA) + "）");
+        CHECK(
+            fileAfterA - fileBeforeA == 1,
+            "S4a: file logger 仅新增 1 个（无重复注册，实际新增 " + std::to_string(fileAfterA - fileBeforeA) + "）");
         CHECK(consoleAfterA == consoleBeforeA, "S4a: console logger 数量未受影响");
 
         // ---- S4b：异名并发——全部 eOk ----
@@ -890,35 +910,39 @@ int main()
             workers.reserve(kThreads);
             for (int t = 0; t < kThreads; ++t)
             {
-                workers.emplace_back([t, &spreadDir]()
-                                     {
-                    waitGate(kThreads);
-                    auto resp = YOMK_FILE_LOG_CREATE(spreadDir.string(), "lg3_s4_t" + std::to_string(t));
-                    if (!isLegalStatus(resp))
+                workers.emplace_back(
+                    [t, &spreadDir]()
                     {
-                        g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
-                    }
-                    if (resp.m_status == YomkResponse::eOk)
-                    {
-                        g_s4bCreateOk.fetch_add(1, std::memory_order_relaxed);
-                    } });
+                        waitGate(kThreads);
+                        auto resp = YOMK_FILE_LOG_CREATE(spreadDir.string(), "lg3_s4_t" + std::to_string(t));
+                        if (!isLegalStatus(resp))
+                        {
+                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                        }
+                        if (resp.m_status == YomkResponse::eOk)
+                        {
+                            g_s4bCreateOk.fetch_add(1, std::memory_order_relaxed);
+                        }
+                    });
             }
             releaseGate(kThreads);
-            for (auto &th : workers)
+            for (auto& th : workers)
             {
                 th.join();
             }
         }
 
-        CHECK(g_s4bCreateOk.load() == kThreads,
-              "S4b: 8 线程异名并发创建全部 eOk（实际 " + std::to_string(g_s4bCreateOk.load()) + "）");
+        CHECK(
+            g_s4bCreateOk.load() == kThreads,
+            "S4b: 8 线程异名并发创建全部 eOk（实际 " + std::to_string(g_s4bCreateOk.load()) + "）");
 
         uint64_t fileAfterB = 0;
         uint64_t consoleAfterB = 0;
         countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), consoleAfterB, fileAfterB);
-        CHECK(fileAfterB - fileAfterA == kThreads,
-              "S4b: file logger 新增恰 " + std::to_string(kThreads) + " 个（实际新增 " +
-                  std::to_string(fileAfterB - fileAfterA) + "）");
+        CHECK(
+            fileAfterB - fileAfterA == kThreads,
+            "S4b: file logger 新增恰 " + std::to_string(kThreads) + " 个（实际新增 " +
+                std::to_string(fileAfterB - fileAfterA) + "）");
 
         // ---- S4c：并发写入 × 并发落盘守恒（2000 行不丢不重）----
         constexpr int kLogThreads = 8;
@@ -932,30 +956,33 @@ int main()
         g_s4cWriteOk.store(0);
         g_s4cStop.store(false);
 
-        CHECK(YOMK_FILE_LOG_CREATE(sinkDir.string(), kSinkName).m_status == YomkResponse::eOk,
-              "S4c: 创建 sink file logger 成功");
+        CHECK(
+            YOMK_FILE_LOG_CREATE(sinkDir.string(), kSinkName).m_status == YomkResponse::eOk,
+            "S4c: 创建 sink file logger 成功");
 
         resetGate();
         std::vector<std::thread> logWorkers;
         logWorkers.reserve(kLogThreads);
         for (int t = 0; t < kLogThreads; ++t)
         {
-            logWorkers.emplace_back([t, &kSinkName]()
-                                    {
-                waitGate(kLogThreads);
-                for (int i = 0; i < kLogsPerThread; ++i)
+            logWorkers.emplace_back(
+                [t, &kSinkName]()
                 {
-                    auto resp = YomkAPI::FILE_LOG_INFO_TAG(
-                        kSinkName, "lg3s4c", "lg3s4c_t" + std::to_string(t) + "_i" + std::to_string(i));
-                    if (!isLegalStatus(resp))
+                    waitGate(kLogThreads);
+                    for (int i = 0; i < kLogsPerThread; ++i)
                     {
-                        g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                        auto resp = YomkAPI::FILE_LOG_INFO_TAG(
+                            kSinkName, "lg3s4c", "lg3s4c_t" + std::to_string(t) + "_i" + std::to_string(i));
+                        if (!isLegalStatus(resp))
+                        {
+                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                        }
+                        if (resp.m_status == YomkResponse::eOk)
+                        {
+                            g_s4cLogOk.fetch_add(1, std::memory_order_relaxed);
+                        }
                     }
-                    if (resp.m_status == YomkResponse::eOk)
-                    {
-                        g_s4cLogOk.fetch_add(1, std::memory_order_relaxed);
-                    }
-                } });
+                });
         }
 
         // writer 线程：log 进行中持续 WRITE（缓冲交接竞态窗口）
@@ -963,30 +990,32 @@ int main()
         writers.reserve(kWriterThreads);
         for (int t = 0; t < kWriterThreads; ++t)
         {
-            writers.emplace_back([&kSinkName]()
-                                 {
-                while (!g_s4cStop.load(std::memory_order_acquire))
+            writers.emplace_back(
+                [&kSinkName]()
                 {
-                    auto resp = YOMK_FILE_LOG_WRITE(kSinkName);
-                    if (!isLegalStatus(resp))
+                    while (!g_s4cStop.load(std::memory_order_acquire))
                     {
-                        g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                        auto resp = YOMK_FILE_LOG_WRITE(kSinkName);
+                        if (!isLegalStatus(resp))
+                        {
+                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                        }
+                        if (resp.m_status == YomkResponse::eOk)
+                        {
+                            g_s4cWriteOk.fetch_add(1, std::memory_order_relaxed);
+                        }
+                        std::this_thread::sleep_for(std::chrono::microseconds(200));
                     }
-                    if (resp.m_status == YomkResponse::eOk)
-                    {
-                        g_s4cWriteOk.fetch_add(1, std::memory_order_relaxed);
-                    }
-                    std::this_thread::sleep_for(std::chrono::microseconds(200));
-                } });
+                });
         }
 
         releaseGate(kLogThreads);
-        for (auto &th : logWorkers)
+        for (auto& th : logWorkers)
         {
             th.join();
         }
         g_s4cStop.store(true, std::memory_order_release);
-        for (auto &th : writers)
+        for (auto& th : writers)
         {
             th.join();
         }
@@ -994,24 +1023,27 @@ int main()
         // 收尾：把残余缓冲全部落盘
         CHECK(YOMK_FILE_LOG_WRITE(kSinkName).m_status == YomkResponse::eOk, "S4c: 收尾 WRITE 返回 eOk");
 
-        CHECK(g_s4cLogOk.load() == kSinkTotal,
-              "S4c: 并发写入响应守恒 eOk == " + std::to_string(kSinkTotal) + "（实际 " +
-                  std::to_string(g_s4cLogOk.load()) + "）");
-        CHECK(g_s4cWriteOk.load() > 0,
-              "S4c: writer 线程确实执行了落盘（" + std::to_string(g_s4cWriteOk.load()) + " 次 eOk）");
+        CHECK(
+            g_s4cLogOk.load() == kSinkTotal,
+            "S4c: 并发写入响应守恒 eOk == " + std::to_string(kSinkTotal) + "（实际 " +
+                std::to_string(g_s4cLogOk.load()) + "）");
+        CHECK(
+            g_s4cWriteOk.load() > 0,
+            "S4c: writer 线程确实执行了落盘（" + std::to_string(g_s4cWriteOk.load()) + " 次 eOk）");
 
         std::string sinkContent = readFile(sinkDir / (kSinkName + ".log"));
         uint64_t sinkLines = countLines(sinkContent);
-        CHECK(sinkLines == kSinkTotal,
-              "S4c: 落盘总行数 == " + std::to_string(kSinkTotal) + "（实际 " + std::to_string(sinkLines) +
-                  "）——log/write 共用 m_logBufferMutex（P4-a 后缓冲为 std::string），缓冲交接不丢行不切行");
+        CHECK(
+            sinkLines == kSinkTotal,
+            "S4c: 落盘总行数 == " + std::to_string(kSinkTotal) + "（实际 " + std::to_string(sinkLines) +
+                "）——log/write 共用 m_logBufferMutex（P4-a 后缓冲为 std::string），缓冲交接不丢行不切行");
 
         auto sinkMarkers = collectTailMarkers(sinkContent, "lg3s4c_t");
-        CHECK(sinkMarkers.size() == kSinkTotal,
-              "S4c: 落盘唯一 marker 数 == " + std::to_string(kSinkTotal) + "（实际 " +
-                  std::to_string(sinkMarkers.size()) + "）");
-        CHECK(countBadOccurrence(sinkMarkers) == 0,
-              "S4c: 全部 marker 恰落盘 1 次（不丢不重）——并发写落盘守恒核心证明");
+        CHECK(
+            sinkMarkers.size() == kSinkTotal,
+            "S4c: 落盘唯一 marker 数 == " + std::to_string(kSinkTotal) + "（实际 " +
+                std::to_string(sinkMarkers.size()) + "）");
+        CHECK(countBadOccurrence(sinkMarkers) == 0, "S4c: 全部 marker 恰落盘 1 次（不丢不重）——并发写落盘守恒核心证明");
 
         // ---- S4d：多写者并发 WRITE（缓冲清空后幂等，无重复落盘）----
         constexpr int kWriterThreadsD = 4;
@@ -1022,8 +1054,9 @@ int main()
 
         g_s4dWriteOk.store(0);
 
-        CHECK(YOMK_FILE_LOG_CREATE(multiDir.string(), kMultiName).m_status == YomkResponse::eOk,
-              "S4d: 创建 multi file logger 成功");
+        CHECK(
+            YOMK_FILE_LOG_CREATE(multiDir.string(), kMultiName).m_status == YomkResponse::eOk,
+            "S4d: 创建 multi file logger 成功");
         for (uint64_t i = 0; i < kMultiLines; ++i)
         {
             YomkAPI::FILE_LOG_INFO_TAG(kMultiName, "lg3s4d", "lg3s4d_i" + std::to_string(i));
@@ -1035,37 +1068,41 @@ int main()
             workers.reserve(kWriterThreadsD);
             for (int t = 0; t < kWriterThreadsD; ++t)
             {
-                workers.emplace_back([&kMultiName]()
-                                     {
-                    waitGate(kWriterThreadsD);
-                    for (int r = 0; r < kWriteRoundsD; ++r)
+                workers.emplace_back(
+                    [&kMultiName]()
                     {
-                        auto resp = YOMK_FILE_LOG_WRITE(kMultiName);
-                        if (!isLegalStatus(resp))
+                        waitGate(kWriterThreadsD);
+                        for (int r = 0; r < kWriteRoundsD; ++r)
                         {
-                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                            auto resp = YOMK_FILE_LOG_WRITE(kMultiName);
+                            if (!isLegalStatus(resp))
+                            {
+                                g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                            }
+                            if (resp.m_status == YomkResponse::eOk)
+                            {
+                                g_s4dWriteOk.fetch_add(1, std::memory_order_relaxed);
+                            }
                         }
-                        if (resp.m_status == YomkResponse::eOk)
-                        {
-                            g_s4dWriteOk.fetch_add(1, std::memory_order_relaxed);
-                        }
-                    } });
+                    });
             }
             releaseGate(kWriterThreadsD);
-            for (auto &th : workers)
+            for (auto& th : workers)
             {
                 th.join();
             }
         }
 
-        CHECK(g_s4dWriteOk.load() == kWriterThreadsD * kWriteRoundsD,
-              "S4d: " + std::to_string(kWriterThreadsD) + " 线程 × " + std::to_string(kWriteRoundsD) +
-                  " 轮并发 WRITE 全部 eOk（实际 " + std::to_string(g_s4dWriteOk.load()) + "）");
+        CHECK(
+            g_s4dWriteOk.load() == kWriterThreadsD * kWriteRoundsD,
+            "S4d: " + std::to_string(kWriterThreadsD) + " 线程 × " + std::to_string(kWriteRoundsD) +
+                " 轮并发 WRITE 全部 eOk（实际 " + std::to_string(g_s4dWriteOk.load()) + "）");
 
         std::string multiContent = readFile(multiDir / (kMultiName + ".log"));
-        CHECK(countLines(multiContent) == kMultiLines,
-              "S4d: 落盘行数 == " + std::to_string(kMultiLines) + "（实际 " +
-                  std::to_string(countLines(multiContent)) + "）——缓冲清空后 WRITE 幂等，无重复落盘");
+        CHECK(
+            countLines(multiContent) == kMultiLines,
+            "S4d: 落盘行数 == " + std::to_string(kMultiLines) + "（实际 " + std::to_string(countLines(multiContent)) +
+                "）——缓冲清空后 WRITE 幂等，无重复落盘");
         auto multiMarkers = collectTailMarkers(multiContent, "lg3s4d_i");
         CHECK(countBadOccurrence(multiMarkers) == 0, "S4d: 全部 marker 恰落盘 1 次（多写者无撕裂）");
     }
@@ -1082,7 +1119,7 @@ int main()
         // console map 提到 1800+ 项后 W 与 G 同量级，违例成为可稳定观测的事件
         // （实测违例数：120 对 → 0（假阴性），900 对 → 2，1800 对 → LOGGERS 8 + ALL 7）
         constexpr int kChurnRounds = 600;
-        constexpr uint64_t kPairTotal = kChurnThreads * kChurnRounds; // 1800 对 logger
+        constexpr uint64_t kPairTotal = kChurnThreads * kChurnRounds;  // 1800 对 logger
         constexpr int kIntrospectThreads = 2;
         constexpr int kSwitchThreads = 2;
         constexpr int kSwitchRounds = 100;
@@ -1096,32 +1133,32 @@ int main()
         const std::string kFileSink = "lg3_s5_sink_file";
 
         // 四级别调用分发（级别号 0=debug 1=info 2=warn 3=error）
-        auto consoleLevel = [](int level, const std::string &tag, const std::string &msg) -> YomkResponse
+        auto consoleLevel = [](int level, const std::string& tag, const std::string& msg) -> YomkResponse
         {
             switch (level)
             {
-            case 0:
-                return YomkAPI::CONSOLE_LOG_DEBUG_TAG(tag, msg);
-            case 1:
-                return YomkAPI::CONSOLE_LOG_INFO_TAG(tag, msg);
-            case 2:
-                return YomkAPI::CONSOLE_LOG_WARN_TAG(tag, msg);
-            default:
-                return YomkAPI::CONSOLE_LOG_ERROR_TAG(tag, msg);
+                case 0:
+                    return YomkAPI::CONSOLE_LOG_DEBUG_TAG(tag, msg);
+                case 1:
+                    return YomkAPI::CONSOLE_LOG_INFO_TAG(tag, msg);
+                case 2:
+                    return YomkAPI::CONSOLE_LOG_WARN_TAG(tag, msg);
+                default:
+                    return YomkAPI::CONSOLE_LOG_ERROR_TAG(tag, msg);
             }
         };
-        auto fileLevel = [](int level, const std::string &name, const std::string &msg) -> YomkResponse
+        auto fileLevel = [](int level, const std::string& name, const std::string& msg) -> YomkResponse
         {
             switch (level)
             {
-            case 0:
-                return YomkAPI::FILE_LOG_DEBUG_TAG(name, "lg3s5", msg);
-            case 1:
-                return YomkAPI::FILE_LOG_INFO_TAG(name, "lg3s5", msg);
-            case 2:
-                return YomkAPI::FILE_LOG_WARN_TAG(name, "lg3s5", msg);
-            default:
-                return YomkAPI::FILE_LOG_ERROR_TAG(name, "lg3s5", msg);
+                case 0:
+                    return YomkAPI::FILE_LOG_DEBUG_TAG(name, "lg3s5", msg);
+                case 1:
+                    return YomkAPI::FILE_LOG_INFO_TAG(name, "lg3s5", msg);
+                case 2:
+                    return YomkAPI::FILE_LOG_WARN_TAG(name, "lg3s5", msg);
+                default:
+                    return YomkAPI::FILE_LOG_ERROR_TAG(name, "lg3s5", msg);
             }
         };
         auto switchLevel = [](int level, bool turnOn) -> YomkResponse
@@ -1130,42 +1167,45 @@ int main()
             {
                 switch (level)
                 {
-                case 0:
-                    return YOMK_ON_CONSOLE_LOG_DEBUG();
-                case 1:
-                    return YOMK_ON_CONSOLE_LOG_INFO();
-                case 2:
-                    return YOMK_ON_CONSOLE_LOG_WARN();
-                default:
-                    return YOMK_ON_CONSOLE_LOG_ERROR();
+                    case 0:
+                        return YOMK_ON_CONSOLE_LOG_DEBUG();
+                    case 1:
+                        return YOMK_ON_CONSOLE_LOG_INFO();
+                    case 2:
+                        return YOMK_ON_CONSOLE_LOG_WARN();
+                    default:
+                        return YOMK_ON_CONSOLE_LOG_ERROR();
                 }
             }
             switch (level)
             {
-            case 0:
-                return YOMK_OFF_CONSOLE_LOG_DEBUG();
-            case 1:
-                return YOMK_OFF_CONSOLE_LOG_INFO();
-            case 2:
-                return YOMK_OFF_CONSOLE_LOG_WARN();
-            default:
-                return YOMK_OFF_CONSOLE_LOG_ERROR();
+                case 0:
+                    return YOMK_OFF_CONSOLE_LOG_DEBUG();
+                case 1:
+                    return YOMK_OFF_CONSOLE_LOG_INFO();
+                case 2:
+                    return YOMK_OFF_CONSOLE_LOG_WARN();
+                default:
+                    return YOMK_OFF_CONSOLE_LOG_ERROR();
             }
         };
 
         // 预热 sink：churn 之外的所有日志调用一律使用已存在 logger，
         // 确保新 logger 只由 churn 线程“先 console 后 file”成对产生（判别式前提）
-        CHECK(YomkAPI::CONSOLE_LOG_INFO_TAG(kConsoleSink, "lg3s5_warmup").m_status == YomkResponse::eOk,
-              "S5: 预热 console sink logger 成功");
-        CHECK(YOMK_FILE_LOG_CREATE(pairDir.string(), kFileSink).m_status == YomkResponse::eOk,
-              "S5: 预热 file sink logger 成功");
+        CHECK(
+            YomkAPI::CONSOLE_LOG_INFO_TAG(kConsoleSink, "lg3s5_warmup").m_status == YomkResponse::eOk,
+            "S5: 预热 console sink logger 成功");
+        CHECK(
+            YOMK_FILE_LOG_CREATE(pairDir.string(), kFileSink).m_status == YomkResponse::eOk,
+            "S5: 预热 file sink logger 成功");
 
         // 基线快照
         uint64_t baseC = 0;
         uint64_t baseF = 0;
         countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), baseC, baseF);
-        CHECK((baseC > 0 && baseF > 0),
-              "S5: 基线非空（console " + std::to_string(baseC) + " / file " + std::to_string(baseF) + "）");
+        CHECK(
+            (baseC > 0 && baseF > 0),
+            "S5: 基线非空（console " + std::to_string(baseC) + " / file " + std::to_string(baseF) + "）");
 
         g_s5PairConsoleOk.store(0);
         g_s5PairFileOk.store(0);
@@ -1193,35 +1233,37 @@ int main()
             churnThreads.reserve(kChurnThreads);
             for (int t = 0; t < kChurnThreads; ++t)
             {
-                churnThreads.emplace_back([t, &pairDir]()
-                                          {
-                    for (int r = 0; r < kChurnRounds; ++r)
+                churnThreads.emplace_back(
+                    [t, &pairDir]()
                     {
-                        std::string name = "lg3_s5_pair_t" + std::to_string(t) + "_r" + std::to_string(r);
-                        auto consoleResp = YomkAPI::CONSOLE_LOG_INFO_TAG(name, "lg3s5_pair");
-                        if (!isLegalStatus(consoleResp))
+                        for (int r = 0; r < kChurnRounds; ++r)
                         {
-                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                            std::string name = "lg3_s5_pair_t" + std::to_string(t) + "_r" + std::to_string(r);
+                            auto consoleResp = YomkAPI::CONSOLE_LOG_INFO_TAG(name, "lg3s5_pair");
+                            if (!isLegalStatus(consoleResp))
+                            {
+                                g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                            }
+                            if (consoleResp.m_status == YomkResponse::eOk)
+                            {
+                                g_s5PairConsoleOk.fetch_add(1, std::memory_order_relaxed);
+                            }
+                            // 成对语义：console 先于 file（任意真实时刻 C(T) >= F(T)）
+                            auto fileResp = YOMK_FILE_LOG_CREATE(pairDir.string(), name);
+                            if (!isLegalStatus(fileResp))
+                            {
+                                g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                            }
+                            if (fileResp.m_status == YomkResponse::eOk)
+                            {
+                                g_s5PairFileOk.fetch_add(1, std::memory_order_relaxed);
+                            }
+                            else if (fileResp.m_status == YomkResponse::eNo)
+                            {
+                                g_s5PairFileNo.fetch_add(1, std::memory_order_relaxed);
+                            }
                         }
-                        if (consoleResp.m_status == YomkResponse::eOk)
-                        {
-                            g_s5PairConsoleOk.fetch_add(1, std::memory_order_relaxed);
-                        }
-                        // 成对语义：console 先于 file（任意真实时刻 C(T) >= F(T)）
-                        auto fileResp = YOMK_FILE_LOG_CREATE(pairDir.string(), name);
-                        if (!isLegalStatus(fileResp))
-                        {
-                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
-                        }
-                        if (fileResp.m_status == YomkResponse::eOk)
-                        {
-                            g_s5PairFileOk.fetch_add(1, std::memory_order_relaxed);
-                        }
-                        else if (fileResp.m_status == YomkResponse::eNo)
-                        {
-                            g_s5PairFileNo.fetch_add(1, std::memory_order_relaxed);
-                        }
-                    } });
+                    });
             }
 
             // 内省线程：紧密轮询 LOGGERS/ALL 直到 churn 完成（采样贯穿整个变更窗口）
@@ -1229,39 +1271,41 @@ int main()
             introspectThreads.reserve(kIntrospectThreads);
             for (int t = 0; t < kIntrospectThreads; ++t)
             {
-                introspectThreads.emplace_back([t]()
-                                               {
-                    std::vector<IntrospectSnapshot> local;
-                    while (!g_s5Stop.load(std::memory_order_acquire))
+                introspectThreads.emplace_back(
+                    [t]()
                     {
-                        IntrospectSnapshot snap{};
-                        auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
-                        countLoggerLines(loggersLines, snap.consoleLines, snap.fileLines);
+                        std::vector<IntrospectSnapshot> local;
+                        while (!g_s5Stop.load(std::memory_order_acquire))
+                        {
+                            IntrospectSnapshot snap{};
+                            auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
+                            countLoggerLines(loggersLines, snap.consoleLines, snap.fileLines);
 
-                        auto allResp = YOMK_LOGGER_INFO_ALL();
-                        if (!isLegalStatus(allResp))
-                        {
-                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
-                        }
-                        auto allLines = unpackLines(allResp);
-                        if (!allLines.empty())
-                        {
-                            if (!checkLevelLineFormat(allLines.front()) ||
-                                allLines.front().find("proxy:on") == std::string::npos)
+                            auto allResp = YOMK_LOGGER_INFO_ALL();
+                            if (!isLegalStatus(allResp))
                             {
-                                g_s5BadLevelLine.fetch_add(1, std::memory_order_relaxed);
+                                g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            snap.allLines = allLines.size();
-                            countLoggerLines(allLines, snap.allConsole, snap.allFile);
-                            g_s5IntrospectOk.fetch_add(1, std::memory_order_relaxed);
-                            local.push_back(snap);
+                            auto allLines = unpackLines(allResp);
+                            if (!allLines.empty())
+                            {
+                                if (!checkLevelLineFormat(allLines.front()) ||
+                                    allLines.front().find("proxy:on") == std::string::npos)
+                                {
+                                    g_s5BadLevelLine.fetch_add(1, std::memory_order_relaxed);
+                                }
+                                snap.allLines = allLines.size();
+                                countLoggerLines(allLines, snap.allConsole, snap.allFile);
+                                g_s5IntrospectOk.fetch_add(1, std::memory_order_relaxed);
+                                local.push_back(snap);
+                            }
+                            std::this_thread::sleep_for(std::chrono::microseconds(10));
                         }
-                        std::this_thread::sleep_for(std::chrono::microseconds(10));
-                    }
-                    {
-                        std::lock_guard<std::mutex> lock(g_s5SnapMutex);
-                        g_s5SnapsByThread[static_cast<size_t>(t)] = std::move(local);
-                    } });
+                        {
+                            std::lock_guard<std::mutex> lock(g_s5SnapMutex);
+                            g_s5SnapsByThread[static_cast<size_t>(t)] = std::move(local);
+                        }
+                    });
             }
 
             // 级别开关翻转线程
@@ -1269,23 +1313,25 @@ int main()
             switchThreads.reserve(kSwitchThreads);
             for (int t = 0; t < kSwitchThreads; ++t)
             {
-                switchThreads.emplace_back([t, &switchLevel]()
-                                           {
-                    for (int r = 0; r < kSwitchRounds; ++r)
+                switchThreads.emplace_back(
+                    [t, &switchLevel]()
                     {
-                        int level = (r + t) % 4;
-                        bool turnOn = ((r / 4) % 2) == 1;
-                        auto resp = switchLevel(level, turnOn);
-                        if (!isLegalStatus(resp))
+                        for (int r = 0; r < kSwitchRounds; ++r)
                         {
-                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                            int level = (r + t) % 4;
+                            bool turnOn = ((r / 4) % 2) == 1;
+                            auto resp = switchLevel(level, turnOn);
+                            if (!isLegalStatus(resp))
+                            {
+                                g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                            }
+                            if (resp.m_status == YomkResponse::eOk)
+                            {
+                                g_s5SwitchOk.fetch_add(1, std::memory_order_relaxed);
+                            }
+                            std::this_thread::sleep_for(std::chrono::microseconds(50));
                         }
-                        if (resp.m_status == YomkResponse::eOk)
-                        {
-                            g_s5SwitchOk.fetch_add(1, std::memory_order_relaxed);
-                        }
-                        std::this_thread::sleep_for(std::chrono::microseconds(50));
-                    } });
+                    });
             }
 
             // console 日志线程（四级别轮转，已存在 sink tag）
@@ -1293,21 +1339,23 @@ int main()
             consoleThreads.reserve(kConsoleThreads);
             for (int t = 0; t < kConsoleThreads; ++t)
             {
-                consoleThreads.emplace_back([t, &kConsoleSink, &consoleLevel]()
-                                            {
-                    for (int r = 0; r < kConsoleRounds; ++r)
+                consoleThreads.emplace_back(
+                    [t, &kConsoleSink, &consoleLevel]()
                     {
-                        auto resp = consoleLevel((r + t) % 4, kConsoleSink,
-                                                 "lg3s5_c" + std::to_string(t) + "_r" + std::to_string(r));
-                        if (!isLegalStatus(resp))
+                        for (int r = 0; r < kConsoleRounds; ++r)
                         {
-                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                            auto resp = consoleLevel(
+                                (r + t) % 4, kConsoleSink, "lg3s5_c" + std::to_string(t) + "_r" + std::to_string(r));
+                            if (!isLegalStatus(resp))
+                            {
+                                g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                            }
+                            if (resp.m_status == YomkResponse::eOk)
+                            {
+                                g_s5ConsoleOk.fetch_add(1, std::memory_order_relaxed);
+                            }
                         }
-                        if (resp.m_status == YomkResponse::eOk)
-                        {
-                            g_s5ConsoleOk.fetch_add(1, std::memory_order_relaxed);
-                        }
-                    } });
+                    });
             }
 
             // file 日志线程（四级别轮转 + 周期性 WRITE）
@@ -1315,54 +1363,56 @@ int main()
             fileThreads.reserve(kFileThreads);
             for (int t = 0; t < kFileThreads; ++t)
             {
-                fileThreads.emplace_back([t, &kFileSink, &fileLevel]()
-                                         {
-                    for (int r = 0; r < kFileRounds; ++r)
+                fileThreads.emplace_back(
+                    [t, &kFileSink, &fileLevel]()
                     {
-                        auto resp = fileLevel((r + t) % 4, kFileSink,
-                                              "lg3s5_f" + std::to_string(t) + "_r" + std::to_string(r));
-                        if (!isLegalStatus(resp))
+                        for (int r = 0; r < kFileRounds; ++r)
                         {
-                            g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
-                        }
-                        if (resp.m_status == YomkResponse::eOk)
-                        {
-                            g_s5FileOk.fetch_add(1, std::memory_order_relaxed);
-                        }
-                        if (r % 20 == 19)
-                        {
-                            auto writeResp = YOMK_FILE_LOG_WRITE(kFileSink);
-                            if (!isLegalStatus(writeResp))
+                            auto resp = fileLevel(
+                                (r + t) % 4, kFileSink, "lg3s5_f" + std::to_string(t) + "_r" + std::to_string(r));
+                            if (!isLegalStatus(resp))
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            if (writeResp.m_status == YomkResponse::eOk)
+                            if (resp.m_status == YomkResponse::eOk)
                             {
-                                g_s5WriteOk.fetch_add(1, std::memory_order_relaxed);
+                                g_s5FileOk.fetch_add(1, std::memory_order_relaxed);
+                            }
+                            if (r % 20 == 19)
+                            {
+                                auto writeResp = YOMK_FILE_LOG_WRITE(kFileSink);
+                                if (!isLegalStatus(writeResp))
+                                {
+                                    g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
+                                }
+                                if (writeResp.m_status == YomkResponse::eOk)
+                                {
+                                    g_s5WriteOk.fetch_add(1, std::memory_order_relaxed);
+                                }
                             }
                         }
-                    } });
+                    });
             }
 
             // churn 先结束，再停内省线程（保证采样贯穿整个变更窗口）
-            for (auto &th : churnThreads)
+            for (auto& th : churnThreads)
             {
                 th.join();
             }
             g_s5Stop.store(true, std::memory_order_release);
-            for (auto &th : introspectThreads)
+            for (auto& th : introspectThreads)
             {
                 th.join();
             }
-            for (auto &th : switchThreads)
+            for (auto& th : switchThreads)
             {
                 th.join();
             }
-            for (auto &th : consoleThreads)
+            for (auto& th : consoleThreads)
             {
                 th.join();
             }
-            for (auto &th : fileThreads)
+            for (auto& th : fileThreads)
             {
                 th.join();
             }
@@ -1381,18 +1431,18 @@ int main()
         countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), finalC, finalF);
         const uint64_t finalTotal = finalC + finalF;
 
-        uint64_t loggersViolations = 0; // LOGGERS 端点 F > C 违例
-        uint64_t allViolations = 0;     // ALL 端点 F > C 违例
-        uint64_t nonMonotonic = 0;      // 同线程快照序列总行数递减违例
-        uint64_t exceedFinal = 0;       // 快照行数超过最终值违例
+        uint64_t loggersViolations = 0;  // LOGGERS 端点 F > C 违例
+        uint64_t allViolations = 0;      // ALL 端点 F > C 违例
+        uint64_t nonMonotonic = 0;       // 同线程快照序列总行数递减违例
+        uint64_t exceedFinal = 0;        // 快照行数超过最终值违例
         uint64_t snapshotCount = 0;
         {
             std::lock_guard<std::mutex> lock(g_s5SnapMutex);
-            for (const auto &snaps : g_s5SnapsByThread)
+            for (const auto& snaps : g_s5SnapsByThread)
             {
                 uint64_t prevTotal = 0;
                 bool first = true;
-                for (const auto &snap : snaps)
+                for (const auto& snap : snaps)
                 {
                     ++snapshotCount;
                     int64_t deltaC = static_cast<int64_t>(snap.consoleLines) - static_cast<int64_t>(baseC);
@@ -1423,69 +1473,81 @@ int main()
         }
         g_s5AtomicityViolations.store(loggersViolations + allViolations);
 
-        CHECK(snapshotCount > 0,
-              "S5: 收集到 " + std::to_string(snapshotCount) + " 个内省快照");
-        CHECK(loggersViolations == 0,
-              "S5: LOGGERS 快照 C>=F 恒成立（违例 " + std::to_string(loggersViolations) +
-                  " 个）——P3-a 嵌套双锁原子快照实证（分段锁下 file 段晚于 console 段会产生 F>C）");
-        CHECK(allViolations == 0,
-              "S5: ALL 快照 C>=F 恒成立（违例 " + std::to_string(allViolations) + " 个）——listAll 同为原子快照");
-        CHECK(nonMonotonic == 0,
-              "S5: 同线程快照序列总行数单调不减（递减 " + std::to_string(nonMonotonic) +
-                  " 次）——logger 只增不减且快照不丢行");
-        CHECK(exceedFinal == 0,
-              "S5: 全部快照行数 <= 最终值 " + std::to_string(finalTotal) + "（超出 " +
-                  std::to_string(exceedFinal) + " 次）——无幻觉行");
-        CHECK(g_s5BadLevelLine.load() == 0,
-              "S5: 并发下 ALL 首行格式全部合法且含 proxy:on（非法 " +
-                  std::to_string(g_s5BadLevelLine.load()) + " 次）");
-        CHECK(g_s5BadStatus.load() == 0,
-              "S5: 全部响应码属于 {eInvalid,eOk,eNo}（非法状态码 " +
-                  std::to_string(g_s5BadStatus.load()) + " 次）");
+        CHECK(snapshotCount > 0, "S5: 收集到 " + std::to_string(snapshotCount) + " 个内省快照");
+        CHECK(
+            loggersViolations == 0,
+            "S5: LOGGERS 快照 C>=F 恒成立（违例 " + std::to_string(loggersViolations) +
+                " 个）——P3-a 嵌套双锁原子快照实证（分段锁下 file 段晚于 console 段会产生 F>C）");
+        CHECK(
+            allViolations == 0,
+            "S5: ALL 快照 C>=F 恒成立（违例 " + std::to_string(allViolations) + " 个）——listAll 同为原子快照");
+        CHECK(
+            nonMonotonic == 0,
+            "S5: 同线程快照序列总行数单调不减（递减 " + std::to_string(nonMonotonic) +
+                " 次）——logger 只增不减且快照不丢行");
+        CHECK(
+            exceedFinal == 0,
+            "S5: 全部快照行数 <= 最终值 " + std::to_string(finalTotal) + "（超出 " + std::to_string(exceedFinal) +
+                " 次）——无幻觉行");
+        CHECK(
+            g_s5BadLevelLine.load() == 0,
+            "S5: 并发下 ALL 首行格式全部合法且含 proxy:on（非法 " + std::to_string(g_s5BadLevelLine.load()) + " 次）");
+        CHECK(
+            g_s5BadStatus.load() == 0,
+            "S5: 全部响应码属于 {eInvalid,eOk,eNo}（非法状态码 " + std::to_string(g_s5BadStatus.load()) + " 次）");
 
         // ---- churn 守恒 ----
-        CHECK(g_s5PairConsoleOk.load() == kPairTotal,
-              "S5: 成对创建 console 侧守恒 eOk == " + std::to_string(kPairTotal) + "（实际 " +
-                  std::to_string(g_s5PairConsoleOk.load()) + "）");
-        CHECK(g_s5PairFileOk.load() == kPairTotal,
-              "S5: 成对创建 file 侧守恒 eOk == " + std::to_string(kPairTotal) + "（实际 " +
-                  std::to_string(g_s5PairFileOk.load()) + "）");
+        CHECK(
+            g_s5PairConsoleOk.load() == kPairTotal,
+            "S5: 成对创建 console 侧守恒 eOk == " + std::to_string(kPairTotal) + "（实际 " +
+                std::to_string(g_s5PairConsoleOk.load()) + "）");
+        CHECK(
+            g_s5PairFileOk.load() == kPairTotal,
+            "S5: 成对创建 file 侧守恒 eOk == " + std::to_string(kPairTotal) + "（实际 " +
+                std::to_string(g_s5PairFileOk.load()) + "）");
         CHECK(g_s5PairFileNo.load() == 0, "S5: 成对创建无重名失败（唯一名设计）");
-        CHECK(finalC - baseC == kPairTotal,
-              "S5: console logger 最终新增 == " + std::to_string(kPairTotal) + "（实际 " +
-                  std::to_string(finalC - baseC) + "）——并发创建无丢失");
-        CHECK(finalF - baseF == kPairTotal + 0,
-              "S5: file logger 最终新增 == " + std::to_string(kPairTotal) + "（实际 " +
-                  std::to_string(finalF - baseF) + "）——并发创建无丢失");
+        CHECK(
+            finalC - baseC == kPairTotal,
+            "S5: console logger 最终新增 == " + std::to_string(kPairTotal) + "（实际 " +
+                std::to_string(finalC - baseC) + "）——并发创建无丢失");
+        CHECK(
+            finalF - baseF == kPairTotal + 0,
+            "S5: file logger 最终新增 == " + std::to_string(kPairTotal) + "（实际 " + std::to_string(finalF - baseF) +
+                "）——并发创建无丢失");
 
-        CHECK(g_s5ConsoleOk.load() == kConsoleThreads * kConsoleRounds,
-              "S5: console 日志守恒 eOk == " + std::to_string(kConsoleThreads * kConsoleRounds) +
-                  "（实际 " + std::to_string(g_s5ConsoleOk.load()) + "）——级别开关并发翻转不影响响应码");
-        CHECK(g_s5FileOk.load() == kFileThreads * kFileRounds,
-              "S5: file 日志守恒 eOk == " + std::to_string(kFileThreads * kFileRounds) + "（实际 " +
-                  std::to_string(g_s5FileOk.load()) + "）");
-        CHECK(g_s5SwitchOk.load() == kSwitchThreads * kSwitchRounds,
-              "S5: 级别开关翻转守恒 eOk == " + std::to_string(kSwitchThreads * kSwitchRounds) +
-                  "（实际 " + std::to_string(g_s5SwitchOk.load()) + "）");
-        CHECK(g_s5WriteOk.load() > 0,
-              "S5: 周期性 WRITE 确实执行（" + std::to_string(g_s5WriteOk.load()) + " 次 eOk）");
-        CHECK(g_s5IntrospectOk.load() > 0,
-              "S5: 内省线程确实观测到 ALL（" + std::to_string(g_s5IntrospectOk.load()) + " 次）");
+        CHECK(
+            g_s5ConsoleOk.load() == kConsoleThreads * kConsoleRounds,
+            "S5: console 日志守恒 eOk == " + std::to_string(kConsoleThreads * kConsoleRounds) + "（实际 " +
+                std::to_string(g_s5ConsoleOk.load()) + "）——级别开关并发翻转不影响响应码");
+        CHECK(
+            g_s5FileOk.load() == kFileThreads * kFileRounds,
+            "S5: file 日志守恒 eOk == " + std::to_string(kFileThreads * kFileRounds) + "（实际 " +
+                std::to_string(g_s5FileOk.load()) + "）");
+        CHECK(
+            g_s5SwitchOk.load() == kSwitchThreads * kSwitchRounds,
+            "S5: 级别开关翻转守恒 eOk == " + std::to_string(kSwitchThreads * kSwitchRounds) + "（实际 " +
+                std::to_string(g_s5SwitchOk.load()) + "）");
+        CHECK(g_s5WriteOk.load() > 0, "S5: 周期性 WRITE 确实执行（" + std::to_string(g_s5WriteOk.load()) + " 次 eOk）");
+        CHECK(
+            g_s5IntrospectOk.load() > 0,
+            "S5: 内省线程确实观测到 ALL（" + std::to_string(g_s5IntrospectOk.load()) + " 次）");
 
         // ---- 最终一致性：ALL 首行精确串 + 行数跨端点一致 + file sink 落盘守恒 ----
         auto finalAll = unpackLines(YOMK_LOGGER_INFO_ALL());
-        CHECK((!finalAll.empty() &&
-               finalAll.front() == "console:debug:on info:on warn:on error:on proxy:on"),
-              "S5: 收尾四级别全 ON 后 ALL 首行为精确串（含 S3 已设的 proxy:on）");
-        CHECK(finalAll.size() == finalTotal + 1,
-              "S5: ALL 行数 == LOGGERS 行数 + 1 首行（" + std::to_string(finalAll.size()) + " vs " +
-                  std::to_string(finalTotal + 1) + "）——跨端点最终一致");
+        CHECK(
+            (!finalAll.empty() && finalAll.front() == "console:debug:on info:on warn:on error:on proxy:on"),
+            "S5: 收尾四级别全 ON 后 ALL 首行为精确串（含 S3 已设的 proxy:on）");
+        CHECK(
+            finalAll.size() == finalTotal + 1,
+            "S5: ALL 行数 == LOGGERS 行数 + 1 首行（" + std::to_string(finalAll.size()) + " vs " +
+                std::to_string(finalTotal + 1) + "）——跨端点最终一致");
 
         std::string sinkContent = readFile(pairDir / (kFileSink + ".log"));
         uint64_t sinkLines = countLines(sinkContent);
-        CHECK(sinkLines == kFileThreads * kFileRounds,
-              "S5: file sink 落盘行数 == " + std::to_string(kFileThreads * kFileRounds) + "（实际 " +
-                  std::to_string(sinkLines) + "）——级别翻转与并发 WRITE 下不丢不重");
+        CHECK(
+            sinkLines == kFileThreads * kFileRounds,
+            "S5: file sink 落盘行数 == " + std::to_string(kFileThreads * kFileRounds) + "（实际 " +
+                std::to_string(sinkLines) + "）——级别翻转与并发 WRITE 下不丢不重");
     }
 
     YOMK_SHUTDOWN();
@@ -1493,7 +1555,7 @@ int main()
     std::error_code rmEc;
     fs::remove_all(tmpDir, rmEc);
 
-    std::cout << "\n=== Result: " << (g_total - g_failed) << "/" << g_total
-              << " passed, " << g_failed << " failed ===" << std::endl;
+    std::cout << "\n=== Result: " << (g_total - g_failed) << "/" << g_total << " passed, " << g_failed
+              << " failed ===" << std::endl;
     return g_failed == 0 ? 0 : 1;
 }

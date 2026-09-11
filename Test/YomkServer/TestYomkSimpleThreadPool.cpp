@@ -40,13 +40,12 @@ static int g_failed = 0;
     } while (0)
 
 // 辅助：向未停止的池投递 taskCount 个自增任务后 stop，返回实际执行数（排空后统计）
-static std::size_t runBatchAndDrain(YomkSimpleThreadPool &pool, std::size_t taskCount)
+static std::size_t runBatchAndDrain(YomkSimpleThreadPool& pool, std::size_t taskCount)
 {
     std::atomic<std::size_t> counter{0};
     for (std::size_t i = 0; i < taskCount; ++i)
     {
-        pool.post([&counter]()
-                  { counter.fetch_add(1); });
+        pool.post([&counter]() { counter.fetch_add(1); });
     }
     pool.stop();
     return counter.load();
@@ -56,7 +55,7 @@ static std::size_t runBatchAndDrain(YomkSimpleThreadPool &pool, std::size_t task
 static void testConstruction()
 {
     {
-        YomkSimpleThreadPool pool; // threadCount=0 走默认值路径
+        YomkSimpleThreadPool pool;  // threadCount=0 走默认值路径
         CHECK(runBatchAndDrain(pool, 32) == 32, "threadCount=0 默认构造，任务全部执行");
     }
     {
@@ -78,8 +77,7 @@ static void testPostAndDrain()
     bool allAccepted = true;
     for (std::size_t i = 0; i < taskCount; ++i)
     {
-        if (!pool.post([&counter]()
-                       { counter.fetch_add(1); }))
+        if (!pool.post([&counter]() { counter.fetch_add(1); }))
         {
             allAccepted = false;
         }
@@ -104,11 +102,10 @@ static void testStopIdempotent()
     std::atomic<std::size_t> counter{0};
     for (int i = 0; i < 10; ++i)
     {
-        pool.post([&counter]()
-                  { counter.fetch_add(1); });
+        pool.post([&counter]() { counter.fetch_add(1); });
     }
     pool.stop();
-    pool.stop(); // 第二次调用应直接返回，不二次 join
+    pool.stop();  // 第二次调用应直接返回，不二次 join
     CHECK(counter.load() == 10, "重复 stop 幂等，排空结果不受影响");
 }
 
@@ -120,8 +117,7 @@ static void testDestructorWithoutStop()
         YomkSimpleThreadPool pool(2);
         for (int i = 0; i < 50; ++i)
         {
-            pool.post([&counter]()
-                      { counter.fetch_add(1); });
+            pool.post([&counter]() { counter.fetch_add(1); });
         }
         // 不调用 stop，交由析构兜底
     }
@@ -131,14 +127,11 @@ static void testDestructorWithoutStop()
 // 6. 异常捕获：任务抛异常被捕获记日志，进程不终止，后续任务继续执行
 static void testExceptionCaught()
 {
-    YomkSimpleThreadPool pool(1); // 单线程保证执行顺序
+    YomkSimpleThreadPool pool(1);  // 单线程保证执行顺序
     std::atomic<bool> afterRan{false};
-    pool.post([]()
-              { throw std::runtime_error("std::exception test"); });
-    pool.post([]()
-              { throw 42; }); // 非 std::exception 异常
-    pool.post([&afterRan]()
-              { afterRan.store(true); });
+    pool.post([]() { throw std::runtime_error("std::exception test"); });
+    pool.post([]() { throw 42; });  // 非 std::exception 异常
+    pool.post([&afterRan]() { afterRan.store(true); });
     pool.stop();
     CHECK(afterRan.load(), "任务抛异常被捕获，进程不终止且后续任务继续执行");
 }
@@ -154,21 +147,22 @@ static void testConcurrentPostWithStop()
     std::vector<std::thread> posters;
     for (int t = 0; t < 8; ++t)
     {
-        posters.emplace_back([&pool, &accepted, &executed]()
-                             {
-            for (int i = 0; i < 500; ++i)
+        posters.emplace_back(
+            [&pool, &accepted, &executed]()
             {
-                if (pool.post([&executed]()
-                              { executed.fetch_add(1); }))
+                for (int i = 0; i < 500; ++i)
                 {
-                    accepted.fetch_add(1);
+                    if (pool.post([&executed]() { executed.fetch_add(1); }))
+                    {
+                        accepted.fetch_add(1);
+                    }
                 }
-            } });
+            });
     }
     // 让投递与停止并发交叠
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
     pool.stop();
-    for (auto &t : posters)
+    for (auto& t : posters)
     {
         t.join();
     }
@@ -184,8 +178,7 @@ static void testLargeVolume()
     bool allAccepted = true;
     for (std::size_t i = 0; i < taskCount; ++i)
     {
-        if (!pool.post([&counter]()
-                       { counter.fetch_add(1); }))
+        if (!pool.post([&counter]() { counter.fetch_add(1); }))
         {
             allAccepted = false;
             break;

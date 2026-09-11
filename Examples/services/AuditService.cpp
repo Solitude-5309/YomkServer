@@ -2,10 +2,9 @@
 
 int AuditService::s_instance = 0;
 
-AuditService::AuditService(YomkServer *server)
-    : YomkService(server), m_id(++s_instance)
+AuditService::AuditService(YomkServer* server) : YomkService(server), m_id(++s_instance)
 {
-    name("/AuditService"); // 服务名：URL 前缀，全局唯一
+    name("/AuditService");  // 服务名：URL 前缀，全局唯一
     YOMK_INFO_TAG("svc.audit", "audit instance #", m_id, " created");
 }
 
@@ -34,7 +33,7 @@ void AuditService::deinit()
 
 YomkResponse AuditService::audit(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str); // String 为框架内置消息类型
+    YomkUnPackPkgResponse(pkg, String, str);  // String 为框架内置消息类型
     YOMK_INFO_TAG("svc.audit", name(), " audit recorded: ", (str ? str->d : "(null)"));
     return {YomkResponse::eOk, "audit recorded"};
 }

@@ -1,12 +1,10 @@
 cmake_minimum_required(VERSION 3.14)
 
-# 测试构建默认导出 compile_commands.json，供 clang-tidy 解析包含路径与宏
+# 导出 compile_commands.json，供 IDE（clangd）/clang-tidy 按真实编译参数解析
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
-if(YOMK_BUILD_TESTS AND NOT DEFINED CMAKE_EXPORT_COMPILE_COMMANDS)
-    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-endif()
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 2.5.5 LANGUAGES CXX)
+project(Yomk VERSION 2.5.6 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 

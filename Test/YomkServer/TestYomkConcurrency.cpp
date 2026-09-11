@@ -46,12 +46,12 @@ static int g_failed = 0;
     } while (0)
 
 // ---- 文件级观测变量（每节首重置） ----
-static std::atomic<int> g_hit{0};                        // 用户函数体真实执行计数
-static std::atomic<int> g_fired{0};                      // 异步回调到达计数
-static std::atomic<int> g_rejected{0};                   // 删除后弱绑定丢弃回调计数
-static std::atomic<int> g_illegal{0};                    // 非法返回值计数
-static std::atomic<int> g_posted{0};                     // 异步投递调用计数
-static std::function<YomkResponse(YomkPkgPtr)> g_weakCb; // 服务 init 时存下的弱绑定回调
+static std::atomic<int> g_hit{0};                         // 用户函数体真实执行计数
+static std::atomic<int> g_fired{0};                       // 异步回调到达计数
+static std::atomic<int> g_rejected{0};                    // 删除后弱绑定丢弃回调计数
+static std::atomic<int> g_illegal{0};                     // 非法返回值计数
+static std::atomic<int> g_posted{0};                      // 异步投递调用计数
+static std::function<YomkResponse(YomkPkgPtr)> g_weakCb;  // 服务 init 时存下的弱绑定回调
 
 static void resetGlobals()
 {
@@ -63,7 +63,7 @@ static void resetGlobals()
     g_weakCb = nullptr;
 }
 
-static bool waitFor(std::function<bool()> pred, int timeoutMs, const std::string &desc)
+static bool waitFor(std::function<bool()> pred, int timeoutMs, const std::string& desc)
 {
     for (int i = 0; i < timeoutMs / 10; ++i)
     {
@@ -81,8 +81,7 @@ static bool waitFor(std::function<bool()> pred, int timeoutMs, const std::string
 class ConcSrv : public YomkService
 {
 public:
-    explicit ConcSrv(YomkServer *server = nullptr)
-        : YomkService(server) {}
+    explicit ConcSrv(YomkServer* server = nullptr) : YomkService(server) {}
 
     int init() override
     {
@@ -106,14 +105,14 @@ public:
     }
 };
 
-static int registerConcSrv(std::shared_ptr<YomkServer> server, const std::string &name)
+static int registerConcSrv(std::shared_ptr<YomkServer> server, const std::string& name)
 {
-    ConcSrv *srv = new ConcSrv(server.get());
+    ConcSrv* srv = new ConcSrv(server.get());
     srv->name(name);
     return server->addService(srv);
 }
 
-static bool isExpectedNoResponse(const YomkResponse &r)
+static bool isExpectedNoResponse(const YomkResponse& r)
 {
     if (r.m_status != YomkResponse::eNo)
         return false;
@@ -138,25 +137,27 @@ int main()
         std::vector<std::thread> workers;
         for (int t = 0; t < kThreads; ++t)
         {
-            workers.emplace_back([&]
-                                 {
-                for (int i = 0; i < kPerThread; ++i)
+            workers.emplace_back(
+                [&]
                 {
-                    if (i % 2 == 0)
+                    for (int i = 0; i < kPerThread; ++i)
                     {
-                        auto r = server->request("/PingSrv/ping");
-                        if (r.m_status == YomkResponse::eOk && r.m_msg == "pong")
-                            ++okCount;
+                        if (i % 2 == 0)
+                        {
+                            auto r = server->request("/PingSrv/ping");
+                            if (r.m_status == YomkResponse::eOk && r.m_msg == "pong")
+                                ++okCount;
+                        }
+                        else
+                        {
+                            auto r = server->request("/PingSrv/echo", YomkMkPtr(String, "x"));
+                            if (r.m_status == YomkResponse::eOk && r.m_msg == "x")
+                                ++okCount;
+                        }
                     }
-                    else
-                    {
-                        auto r = server->request("/PingSrv/echo", YomkMkPtr(String, "x"));
-                        if (r.m_status == YomkResponse::eOk && r.m_msg == "x")
-                            ++okCount;
-                    }
-                } });
+                });
         }
-        for (auto &th : workers)
+        for (auto& th : workers)
             th.join();
 
         CHECK(okCount.load() == kThreads * kPerThread, "1.2 concurrent sync request all eOk");
@@ -175,23 +176,26 @@ int main()
         std::vector<std::thread> workers;
         for (int t = 0; t < kThreads; ++t)
         {
-            workers.emplace_back([&]
-                                 {
-                for (int i = 0; i < kPerThread; ++i)
+            workers.emplace_back(
+                [&]
                 {
-                    server->asyncRequest("/AsyncSrv/echo", YomkMkPtr(String, "a"),
-                                         [](YomkResponse r) {
-                                             if (r.m_status == YomkResponse::eOk)
-                                                 ++g_fired;
-                                         });
-                } });
+                    for (int i = 0; i < kPerThread; ++i)
+                    {
+                        server->asyncRequest(
+                            "/AsyncSrv/echo",
+                            YomkMkPtr(String, "a"),
+                            [](YomkResponse r)
+                            {
+                                if (r.m_status == YomkResponse::eOk)
+                                    ++g_fired;
+                            });
+                    }
+                });
         }
-        for (auto &th : workers)
+        for (auto& th : workers)
             th.join();
 
-        bool ok = waitFor([&]
-                          { return g_fired.load() == kThreads * kPerThread; }, 5000,
-                          "async callbacks all fired");
+        bool ok = waitFor([&] { return g_fired.load() == kThreads * kPerThread; }, 5000, "async callbacks all fired");
         CHECK(ok, "2.2 all async callbacks fired after join (no loss/dup)");
         server->shutdown();
     }
@@ -208,17 +212,19 @@ int main()
         std::vector<std::thread> workers;
         for (int t = 0; t < kReqThreads; ++t)
         {
-            workers.emplace_back([&]
-                                 {
-                while (!stop.load())
+            workers.emplace_back(
+                [&]
                 {
-                    auto r = server->request("/PingSrv/ping");
-                    if (r.m_status == YomkResponse::eOk)
-                        ++okCount;
-                    else if (!isExpectedNoResponse(r))
-                        ++g_illegal;
-                    std::this_thread::sleep_for(std::chrono::microseconds(100));
-                } });
+                    while (!stop.load())
+                    {
+                        auto r = server->request("/PingSrv/ping");
+                        if (r.m_status == YomkResponse::eOk)
+                            ++okCount;
+                        else if (!isExpectedNoResponse(r))
+                            ++g_illegal;
+                        std::this_thread::sleep_for(std::chrono::microseconds(100));
+                    }
+                });
         }
 
         for (int round = 0; round < 20; ++round)
@@ -229,7 +235,7 @@ int main()
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         stop.store(true);
-        for (auto &th : workers)
+        for (auto& th : workers)
             th.join();
 
         CHECK(g_illegal.load() == 0, "3.2 no illegal responses during add/del concurrency");
@@ -241,7 +247,7 @@ int main()
     {
         resetGlobals();
         auto server = YomkServer::create(4);
-        ConcSrv *echoSrv = new ConcSrv(server.get());
+        ConcSrv* echoSrv = new ConcSrv(server.get());
         echoSrv->name("/EchoSrv");
         CHECK(server->addService(echoSrv) == 0, "4.1 register /EchoSrv");
 
@@ -251,29 +257,29 @@ int main()
         std::vector<std::thread> workers;
         for (int t = 0; t < kReqThreads; ++t)
         {
-            workers.emplace_back([&]
-                                 {
-                while (!stop.load())
+            workers.emplace_back(
+                [&]
                 {
-                    auto r = server->request("/EchoSrv/echo", YomkMkPtr(String, "loop"));
-                    if (r.m_status == YomkResponse::eOk && r.m_msg == "loop")
-                        ++okCount;
-                    else
-                        ++g_illegal;
-                    std::this_thread::sleep_for(std::chrono::microseconds(100));
-                } });
+                    while (!stop.load())
+                    {
+                        auto r = server->request("/EchoSrv/echo", YomkMkPtr(String, "loop"));
+                        if (r.m_status == YomkResponse::eOk && r.m_msg == "loop")
+                            ++okCount;
+                        else
+                            ++g_illegal;
+                        std::this_thread::sleep_for(std::chrono::microseconds(100));
+                    }
+                });
         }
 
         for (int round = 0; round < 200; ++round)
         {
-            echoSrv->installFunc("/echo",
-                                 echoSrv->weakFunc(std::bind(&ConcSrv::echo, echoSrv, std::placeholders::_1)),
-                                 "String");
-            echoSrv->installFunc("/echo",
-                                 echoSrv->weakFunc(std::bind(&ConcSrv::echo, echoSrv, std::placeholders::_1)));
+            echoSrv->installFunc(
+                "/echo", echoSrv->weakFunc(std::bind(&ConcSrv::echo, echoSrv, std::placeholders::_1)), "String");
+            echoSrv->installFunc("/echo", echoSrv->weakFunc(std::bind(&ConcSrv::echo, echoSrv, std::placeholders::_1)));
         }
         stop.store(true);
-        for (auto &th : workers)
+        for (auto& th : workers)
             th.join();
 
         CHECK(g_illegal.load() == 0, "4.2 no illegal responses during installFunc concurrency");
@@ -285,24 +291,28 @@ int main()
     {
         resetGlobals();
         auto server = YomkServer::create(4);
-        CHECK(registerConcSrv(server, "/ShutdownAsyncSrv") == 0,
-              "5.1 register /ShutdownAsyncSrv");
+        CHECK(registerConcSrv(server, "/ShutdownAsyncSrv") == 0, "5.1 register /ShutdownAsyncSrv");
 
         g_posted.store(0);
         g_fired.store(0);
         std::atomic<bool> shutdownDone{false};
-        std::thread poster([&]
-                           {
-            while (!shutdownDone.load())
+        std::thread poster(
+            [&]
             {
-                server->asyncRequest("/ShutdownAsyncSrv/echo", YomkMkPtr(String, "s"),
-                                     [](YomkResponse r) {
-                                         if (r.m_status == YomkResponse::eOk)
-                                             ++g_fired;
-                                     });
-                ++g_posted;
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            } });
+                while (!shutdownDone.load())
+                {
+                    server->asyncRequest(
+                        "/ShutdownAsyncSrv/echo",
+                        YomkMkPtr(String, "s"),
+                        [](YomkResponse r)
+                        {
+                            if (r.m_status == YomkResponse::eOk)
+                                ++g_fired;
+                        });
+                    ++g_posted;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+            });
 
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
         server->shutdown();
@@ -319,19 +329,22 @@ int main()
                 last = cur;
                 return false;
             },
-            5000, "async fired stable after shutdown");
+            5000,
+            "async fired stable after shutdown");
         CHECK(stable, "5.2 async callbacks stable after shutdown (drain complete)");
         CHECK(g_fired.load() <= g_posted.load(), "5.3 no duplicate async execution");
 
         int before = g_fired.load();
         for (int i = 0; i < 100; ++i)
         {
-            server->asyncRequest("/ShutdownAsyncSrv/echo", YomkMkPtr(String, "s"),
-                                 [](YomkResponse r)
-                                 {
-                                     if (r.m_status == YomkResponse::eOk)
-                                         ++g_fired;
-                                 });
+            server->asyncRequest(
+                "/ShutdownAsyncSrv/echo",
+                YomkMkPtr(String, "s"),
+                [](YomkResponse r)
+                {
+                    if (r.m_status == YomkResponse::eOk)
+                        ++g_fired;
+                });
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
         CHECK(g_fired.load() == before, "5.4 post-shutdown async requests rejected");
@@ -349,19 +362,21 @@ int main()
         g_rejected.store(0);
         g_hit.store(0);
         std::atomic<bool> afterDel{false};
-        std::thread worker([&]
-                           {
-            while (!afterDel.load())
+        std::thread worker(
+            [&]
             {
-                YomkResponse r = g_weakCb(nullptr);
-                if (r.m_status == YomkResponse::eOk && r.m_msg == "pong")
-                    ++g_fired;
-                else if (r.m_status == YomkResponse::eNo &&
-                         r.m_msg.find("deleted or unregistered") != std::string::npos)
-                    ++g_rejected;
-                ++g_posted;
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            } });
+                while (!afterDel.load())
+                {
+                    YomkResponse r = g_weakCb(nullptr);
+                    if (r.m_status == YomkResponse::eOk && r.m_msg == "pong")
+                        ++g_fired;
+                    else if (
+                        r.m_status == YomkResponse::eNo && r.m_msg.find("deleted or unregistered") != std::string::npos)
+                        ++g_rejected;
+                    ++g_posted;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+            });
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         server->delService("/StopSrv");
@@ -381,7 +396,8 @@ int main()
                 lastHit = cur;
                 return false;
             },
-            5000, "user hit count stable after delService");
+            5000,
+            "user hit count stable after delService");
         CHECK(stable, "6.3 user function hit count stable after del (in-flight finished)");
         CHECK(g_rejected.load() > 0, "6.4 post-del weak callbacks discarded with contract message");
         server->shutdown();
@@ -400,8 +416,10 @@ int main()
         const int kThreadsPerServer = 4;
         const int kOpsPerThread = 12500;
 
-        auto worker = [&](std::shared_ptr<YomkServer> server, std::atomic<int> *posted,
-                          std::atomic<int> *fired, std::atomic<int> *ok)
+        auto worker = [&](std::shared_ptr<YomkServer> server,
+                          std::atomic<int>* posted,
+                          std::atomic<int>* fired,
+                          std::atomic<int>* ok)
         {
             for (int i = 0; i < kOpsPerThread; ++i)
             {
@@ -414,12 +432,14 @@ int main()
                 }
                 else if (mod == 1)
                 {
-                    server->asyncRequest("/StressSrv/echo", YomkMkPtr(String, "stress"),
-                                         [fired](YomkResponse r)
-                                         {
-                                             if (r.m_status == YomkResponse::eOk)
-                                                 ++(*fired);
-                                         });
+                    server->asyncRequest(
+                        "/StressSrv/echo",
+                        YomkMkPtr(String, "stress"),
+                        [fired](YomkResponse r)
+                        {
+                            if (r.m_status == YomkResponse::eOk)
+                                ++(*fired);
+                        });
                     ++(*posted);
                 }
                 else
@@ -435,36 +455,39 @@ int main()
             workers.emplace_back(worker, server1, &posted1, &fired1, &ok1);
             workers.emplace_back(worker, server2, &posted2, &fired2, &ok2);
         }
-        std::thread shutdownThread([&]
-                                   {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            server2->shutdown();
-            server2->shutdown(); // 并发幂等顺带验证
-            shutdown2Done.store(true); });
+        std::thread shutdownThread(
+            [&]
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                server2->shutdown();
+                server2->shutdown();  // 并发幂等顺带验证
+                shutdown2Done.store(true);
+            });
 
-        for (auto &th : workers)
+        for (auto& th : workers)
             th.join();
         shutdownThread.join();
 
         // server1 未 shutdown，等待所有 async 回调完成
-        CHECK(waitFor([&]
-                      { return fired1.load() == posted1.load(); }, 10000,
-                      "server1 async callbacks complete"),
-              "7.3 server1 async callbacks all fired");
+        CHECK(
+            waitFor([&] { return fired1.load() == posted1.load(); }, 10000, "server1 async callbacks complete"),
+            "7.3 server1 async callbacks all fired");
 
         // server2 已 shutdown，等待回调数稳定（可能小于 posted2）
         int last2 = fired2.load();
-        CHECK(waitFor(
-                  [&]
-                  {
-                      int cur = fired2.load();
-                      if (cur == last2)
-                          return true;
-                      last2 = cur;
-                      return false;
-                  },
-                  10000, "server2 async callbacks stable after shutdown"),
-              "7.4 server2 async callbacks stable after shutdown");
+        CHECK(
+            waitFor(
+                [&]
+                {
+                    int cur = fired2.load();
+                    if (cur == last2)
+                        return true;
+                    last2 = cur;
+                    return false;
+                },
+                10000,
+                "server2 async callbacks stable after shutdown"),
+            "7.4 server2 async callbacks stable after shutdown");
 
         CHECK(ok1.load() > 0, "7.5 server1 stress requests got eOk");
         CHECK(fired1.load() <= posted1.load(), "7.6 server1 async no duplicate execution");

@@ -1,17 +1,20 @@
 #pragma once
-#include <memory>
-#include <map>
-#include <functional>
-#include <string>
 #include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 // 弱绑定服务成员函数，用于安全挂接外部回调
 #define YomkBindWeakSelf(Func) weakFunc(std::bind(&Func, this, std::placeholders::_1))
 
 // 注册服务成员功能函数（支持可选 MsgName 参数声明期望消息类型）
 #define YOMK_INSTALL_FUNC_SELECT(_1, _2, _3, NAME, ...) NAME
-#define YomkInstallFunc(...) YOMK_INSTALL_FUNC_SELECT(__VA_ARGS__, YOMK_INSTALL_FUNC_3, YOMK_INSTALL_FUNC_2)(__VA_ARGS__)
+#define YomkInstallFunc(...)                                                        \
+    YOMK_INSTALL_FUNC_SELECT(__VA_ARGS__, YOMK_INSTALL_FUNC_3, YOMK_INSTALL_FUNC_2) \
+    (__VA_ARGS__)
 #define YOMK_INSTALL_FUNC_2(FuncName, Func) installFunc(FuncName, YomkBindWeakSelf(Func))
 #define YOMK_INSTALL_FUNC_3(FuncName, Func, MsgName) installFunc(FuncName, YomkBindWeakSelf(Func), #MsgName)
 
@@ -48,23 +51,21 @@
     }
 
 // 消息包类型定义宏
-#define YomkMsg(DataType, MsgName, VarName)                        \
-    namespace yomk                                                 \
-    {                                                              \
-        class MsgName##_ : public YomkPkg                          \
-        {                                                          \
-        public:                                                    \
-            MsgName##_() { m_name = #MsgName; }                    \
-            MsgName##_(const DataType &value)                      \
-                : VarName(value) { m_name = #MsgName; }            \
-            MsgName##_(DataType &&value)                           \
-                : VarName(std::move(value)) { m_name = #MsgName; } \
-            virtual ~MsgName##_() {}                               \
-                                                                   \
-        public:                                                    \
-            DataType VarName{};                                    \
-        };                                                         \
-        typedef std::shared_ptr<MsgName##_> MsgName##Ptr;          \
+#define YomkMsg(DataType, MsgName, VarName)                                             \
+    namespace yomk                                                                      \
+    {                                                                                   \
+    class MsgName##_ : public YomkPkg                                                   \
+    {                                                                                   \
+    public:                                                                             \
+        MsgName##_() { m_name = #MsgName; }                                             \
+        MsgName##_(const DataType& value) : VarName(value) { m_name = #MsgName; }       \
+        MsgName##_(DataType&& value) : VarName(std::move(value)) { m_name = #MsgName; } \
+        virtual ~MsgName##_() {}                                                        \
+                                                                                        \
+    public:                                                                             \
+        DataType VarName{};                                                             \
+    };                                                                                  \
+    typedef std::shared_ptr<MsgName##_> MsgName##Ptr;                                   \
     }
 
 // 消息包构造与类型辅助宏
@@ -83,7 +84,7 @@ public:
     virtual ~YomkPkg() {}
 
 public:
-    void name(const std::string &name) { m_name = name; }
+    void name(const std::string& name) { m_name = name; }
     std::string name() { return m_name; }
 
 protected:
@@ -103,13 +104,11 @@ public:
     };
 
 public:
-    YomkResponse()
-        : m_status(eInvalid), m_data(nullptr) {}
-    YomkResponse(
-        EResStatus status,
-        const std::string &msg = "",
-        std::shared_ptr<YomkPkg> d = nullptr)
-        : m_status(status), m_msg(msg), m_data(d) {}
+    YomkResponse() : m_status(eInvalid), m_data(nullptr) {}
+    YomkResponse(EResStatus status, const std::string& msg = "", std::shared_ptr<YomkPkg> d = nullptr)
+        : m_status(status), m_msg(msg), m_data(d)
+    {
+    }
     virtual ~YomkResponse() {}
 
 public:
@@ -127,113 +126,117 @@ typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 // 功能函数元信息（调试内省用）
 struct YomkFuncInfo
 {
-    std::string m_funcName; // 功能函数名（/开头）
-    std::string m_msgName;  // 期望消息类型名（三参宏声明，可为空）
+    std::string m_funcName;  // 功能函数名（/开头）
+    std::string m_msgName;   // 期望消息类型名（三参宏声明，可为空）
 };
 
 namespace yomk
 {
 
-    struct Function
-    {
-        std::string m_funcName;
-        YomkServiceFunc m_func;
-        std::string m_msgName;
-    };
+struct Function
+{
+    std::string m_funcName;
+    YomkServiceFunc m_func;
+    std::string m_msgName;
+};
 
-    struct CallFunction
-    {
-        std::string m_funcName;
-        YomkPkgPtr m_pkg;
-    };
+struct CallFunction
+{
+    std::string m_funcName;
+    YomkPkgPtr m_pkg;
+};
 
-    struct Event
+struct Event
+{
+    virtual ~Event() = default;
+    std::string m_eventLoopName;
+    YomkPkgPtr m_pkg;
+    YomkServiceFunc m_serviceFunc;
+    std::uint64_t m_eventId = 0;
+    YomkResponse m_response;
+    std::function<void()> m_waitCallback;
+    std::string m_tag;
+    Event() : m_eventLoopName(""), m_pkg(nullptr), m_serviceFunc(nullptr), m_waitCallback(nullptr), m_tag("") {}
+    Event(const std::string& eventLoopName, YomkPkgPtr pkg, YomkServiceFunc serviceFunc)
+        : m_eventLoopName(eventLoopName), m_pkg(pkg), m_serviceFunc(serviceFunc), m_waitCallback(nullptr), m_tag("")
     {
-        virtual ~Event() = default;
-        std::string m_eventLoopName;
-        YomkPkgPtr m_pkg;
-        YomkServiceFunc m_serviceFunc;
-        std::uint64_t m_eventId = 0;
-        YomkResponse m_response;
-        std::function<void()> m_waitCallback;
-        std::string m_tag;
-        Event()
-            : m_eventLoopName(""), m_pkg(nullptr), m_serviceFunc(nullptr), m_waitCallback(nullptr), m_tag("") {}
-        Event(const std::string &eventLoopName, YomkPkgPtr pkg, YomkServiceFunc serviceFunc)
-            : m_eventLoopName(eventLoopName), m_pkg(pkg), m_serviceFunc(serviceFunc), m_waitCallback(nullptr), m_tag("") {}
-        Event(const std::string &eventLoopName, YomkPkgPtr pkg, YomkServiceFunc serviceFunc, const std::string &tag)
-            : m_eventLoopName(eventLoopName), m_pkg(pkg), m_serviceFunc(serviceFunc), m_waitCallback(nullptr), m_tag(tag) {}
-        virtual void handle()
+    }
+    Event(const std::string& eventLoopName, YomkPkgPtr pkg, YomkServiceFunc serviceFunc, const std::string& tag)
+        : m_eventLoopName(eventLoopName), m_pkg(pkg), m_serviceFunc(serviceFunc), m_waitCallback(nullptr), m_tag(tag)
+    {
+    }
+    virtual void handle()
+    {
+        if (m_serviceFunc)
         {
-            if (m_serviceFunc)
-            {
-                m_response = m_serviceFunc(m_pkg);
-            }
+            m_response = m_serviceFunc(m_pkg);
         }
-    };
+    }
+};
 
-    struct Eventloop
+struct Eventloop
+{
+    std::string m_eventloopName;
+    YomkServiceFunc m_defaultServiceFunc;
+    std::string m_msgName;  // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
+};
+
+struct LogFile
+{
+    std::string m_logger;
+    std::string m_dir;
+};
+
+struct Log
+{
+    enum ELogLevel : int
     {
-        std::string m_eventloopName;
-        YomkServiceFunc m_defaultServiceFunc;
-        std::string m_msgName; // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
+        eDebug,
+        eInfo,
+        eWarn,
+        eError,
     };
+    ELogLevel m_level;
+    std::string m_log;
+    std::string m_logger;
+};
 
-    struct LogFile
+struct ConsoleLogProxy
+{
+    std::function<bool(const Log& log)> m_consoleLogProxyFunc;
+};
+
+struct Context
+{
+    std::string m_key;
+    YomkPkgPtr m_value;
+};
+
+struct ContextChecker
+{
+    enum ECheckStatus
     {
-        std::string m_logger;
-        std::string m_dir;
+        eAccept,
+        eReject
     };
+    std::string m_key;
+    std::function<ECheckStatus(const yomk::Context& ctx)> m_checkFunc;
+};
 
-    struct Log
-    {
-        enum ELogLevel : int
-        {
-            eDebug,
-            eInfo,
-            eWarn,
-            eError,
-        };
-        ELogLevel m_level;
-        std::string m_log;
-        std::string m_logger;
-    };
+struct ContextMonitor
+{
+    std::string m_key;
+    std::function<void(Context ctx)> m_contextMonitorFunc;
+    bool m_asyncMonitor = false;
+};
 
-    struct ConsoleLogProxy
-    {
-        std::function<bool(const Log &log)> m_consoleLogProxyFunc;
-    };
+struct VoidPointer
+{
+    void* m_ptr = nullptr;
+};
 
-    struct Context
-    {
-        std::string m_key;
-        YomkPkgPtr m_value;
-    };
+}  // namespace yomk
 
-    struct ContextChecker
-    {
-        enum ECheckStatus
-        {
-            eAccept,
-            eReject
-        };
-        std::string m_key;
-        std::function<ECheckStatus(const yomk::Context &ctx)> m_checkFunc;
-    };
-
-    struct ContextMonitor
-    {
-        std::string m_key;
-        std::function<void(Context ctx)> m_contextMonitorFunc;
-        bool m_asyncMonitor = false;
-    };
-
-    struct VoidPointer
-    {
-        void *m_ptr = nullptr;
-    };
-
-}
 // clang-format off
 YomkMsg(Function, Function, d)
 YomkMsg(CallFunction, CallFunction, d)

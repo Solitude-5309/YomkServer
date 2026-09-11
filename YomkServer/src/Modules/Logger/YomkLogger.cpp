@@ -1,21 +1,22 @@
 #include "YomkLogger.h"
+
 #include <iostream>
 
 // 初始化列表须按 YomkLogger.h 声明序书写（-Wreorder）
-YomkLogger::YomkLogger(YomkServer *server)
-    : YomkService(server), m_showConsoleDebugLog(true)
-      ,
-      m_showConsoleInfoLog(true), m_showConsoleWarningLog(true), m_showConsoleErrorLog(true), m_consoleLogProxy(false)
-      ,
+YomkLogger::YomkLogger(YomkServer* server)
+    : YomkService(server),
+      m_showConsoleDebugLog(true),
+      m_showConsoleInfoLog(true),
+      m_showConsoleWarningLog(true),
+      m_showConsoleErrorLog(true),
+      m_consoleLogProxy(false),
       m_consoleLogProxyFunc(nullptr)
 {
     name("/YomkLogger");
     m_consoleLoggers["MainLogger"] = std::make_shared<ConsoleLogger>();
 }
 
-YomkLogger::~YomkLogger()
-{
-}
+YomkLogger::~YomkLogger() {}
 
 int YomkLogger::init()
 {
@@ -80,27 +81,27 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
 
     switch (log->d.m_level)
     {
-    case Log::eInfo:
-        if (m_showConsoleInfoLog.load())
-            consoleLogger->log(ConsoleLogger::eInfo, log->d.m_log);
-        break;
-    case Log::eWarn:
-        if (m_showConsoleWarningLog.load())
-            consoleLogger->log(ConsoleLogger::eWarn, log->d.m_log);
-        break;
-    case Log::eError:
-        if (m_showConsoleErrorLog.load())
-            consoleLogger->log(ConsoleLogger::eError, log->d.m_log);
-        break;
-    case Log::eDebug:
-        if (m_showConsoleDebugLog.load())
-            consoleLogger->log(ConsoleLogger::eDebug, log->d.m_log);
-        break;
-    default:
-        YOMK_ERR_POS_LOG("unknown log level, use Info");
-        if (m_showConsoleInfoLog.load())
-            consoleLogger->log(ConsoleLogger::eInfo, log->d.m_log);
-        break;
+        case Log::eInfo:
+            if (m_showConsoleInfoLog.load())
+                consoleLogger->log(ConsoleLogger::eInfo, log->d.m_log);
+            break;
+        case Log::eWarn:
+            if (m_showConsoleWarningLog.load())
+                consoleLogger->log(ConsoleLogger::eWarn, log->d.m_log);
+            break;
+        case Log::eError:
+            if (m_showConsoleErrorLog.load())
+                consoleLogger->log(ConsoleLogger::eError, log->d.m_log);
+            break;
+        case Log::eDebug:
+            if (m_showConsoleDebugLog.load())
+                consoleLogger->log(ConsoleLogger::eDebug, log->d.m_log);
+            break;
+        default:
+            YOMK_ERR_POS_LOG("unknown log level, use Info");
+            if (m_showConsoleInfoLog.load())
+                consoleLogger->log(ConsoleLogger::eInfo, log->d.m_log);
+            break;
     }
 
     return {YomkResponse::eOk, "success."};
@@ -173,22 +174,22 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
 
     switch (log->d.m_level)
     {
-    case Log::eInfo:
-        itLogger->second->log(FileLogger::eInfo, log->d.m_log);
-        break;
-    case Log::eWarn:
-        itLogger->second->log(FileLogger::eWarn, log->d.m_log);
-        break;
-    case Log::eError:
-        itLogger->second->log(FileLogger::eError, log->d.m_log);
-        break;
-    case Log::eDebug:
-        itLogger->second->log(FileLogger::eDebug, log->d.m_log);
-        break;
-    default:
-        YOMK_ERR_POS_LOG("unknown log level, use Info");
-        itLogger->second->log(FileLogger::eInfo, log->d.m_log);
-        break;
+        case Log::eInfo:
+            itLogger->second->log(FileLogger::eInfo, log->d.m_log);
+            break;
+        case Log::eWarn:
+            itLogger->second->log(FileLogger::eWarn, log->d.m_log);
+            break;
+        case Log::eError:
+            itLogger->second->log(FileLogger::eError, log->d.m_log);
+            break;
+        case Log::eDebug:
+            itLogger->second->log(FileLogger::eDebug, log->d.m_log);
+            break;
+        default:
+            YOMK_ERR_POS_LOG("unknown log level, use Info");
+            itLogger->second->log(FileLogger::eInfo, log->d.m_log);
+            break;
     }
 
     return YomkResponse(YomkResponse::eOk, "success.");
@@ -248,9 +249,9 @@ YomkResponse YomkLogger::deleteLogger(YomkPkgPtr pkg)
     }
 
     // 不删除磁盘上的 .log 文件（清理归调用方）
-    return YomkResponse(YomkResponse::eOk,
-                        "deleted console:" + std::to_string(deletedConsole) +
-                            " file:" + std::to_string(deletedFile));
+    return YomkResponse(
+        YomkResponse::eOk,
+        "deleted console:" + std::to_string(deletedConsole) + " file:" + std::to_string(deletedFile));
 }
 
 YomkResponse YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
@@ -259,21 +260,21 @@ YomkResponse YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
 
     switch (log->d.m_level)
     {
-    case Log::eInfo:
-        m_showConsoleInfoLog.store(false);
-        break;
-    case Log::eWarn:
-        m_showConsoleWarningLog.store(false);
-        break;
-    case Log::eError:
-        m_showConsoleErrorLog.store(false);
-        break;
-    case Log::eDebug:
-        m_showConsoleDebugLog.store(false);
-        break;
-    default:
-        YOMK_ERR_POS_LOG("unknown log level, turn off failed.");
-        break;
+        case Log::eInfo:
+            m_showConsoleInfoLog.store(false);
+            break;
+        case Log::eWarn:
+            m_showConsoleWarningLog.store(false);
+            break;
+        case Log::eError:
+            m_showConsoleErrorLog.store(false);
+            break;
+        case Log::eDebug:
+            m_showConsoleDebugLog.store(false);
+            break;
+        default:
+            YOMK_ERR_POS_LOG("unknown log level, turn off failed.");
+            break;
     }
 
     return YomkResponse(YomkResponse::eOk, "success.");
@@ -285,21 +286,21 @@ YomkResponse YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
 
     switch (log->d.m_level)
     {
-    case Log::eInfo:
-        m_showConsoleInfoLog.store(true);
-        break;
-    case Log::eWarn:
-        m_showConsoleWarningLog.store(true);
-        break;
-    case Log::eError:
-        m_showConsoleErrorLog.store(true);
-        break;
-    case Log::eDebug:
-        m_showConsoleDebugLog.store(true);
-        break;
-    default:
-        YOMK_ERR_POS_LOG("unknown log level, turn on failed.");
-        break;
+        case Log::eInfo:
+            m_showConsoleInfoLog.store(true);
+            break;
+        case Log::eWarn:
+            m_showConsoleWarningLog.store(true);
+            break;
+        case Log::eError:
+            m_showConsoleErrorLog.store(true);
+            break;
+        case Log::eDebug:
+            m_showConsoleDebugLog.store(true);
+            break;
+        default:
+            YOMK_ERR_POS_LOG("unknown log level, turn on failed.");
+            break;
     }
     return YomkResponse(YomkResponse::eOk, "success.");
 }
@@ -333,9 +334,9 @@ YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
         std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
         // 预分配避免扩容，缩短双锁窗口
         lines.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
-        for (auto &iter : m_consoleLoggers)
+        for (auto& iter : m_consoleLoggers)
             lines.push_back(iter.first + " [console]");
-        for (auto &iter : m_fileLoggers)
+        for (auto& iter : m_fileLoggers)
             lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
     }
     // 两表为 std::map，中序遍历天然字典序，无需排序（选型见 YomkLogger.h）
@@ -373,9 +374,9 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
         std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
         // 同 loggers：预分配缩短双锁窗口（+1 为首行状态行）
         lines.reserve(m_consoleLoggers.size() + m_fileLoggers.size() + 1);
-        for (auto &iter : m_consoleLoggers)
+        for (auto& iter : m_consoleLoggers)
             lines.push_back(iter.first + " [console]");
-        for (auto &iter : m_fileLoggers)
+        for (auto& iter : m_fileLoggers)
             lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
     }
     // 同 loggers：std::map 天然字典序，move 入包消除拷贝

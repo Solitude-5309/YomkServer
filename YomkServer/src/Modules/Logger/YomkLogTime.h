@@ -23,8 +23,7 @@ inline std::string yomkLogLocalTimeFormatted()
 
     auto now = std::chrono::system_clock::now();
     std::time_t nowTime = std::chrono::system_clock::to_time_t(now);
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) %
-              kMillisPerSecond;
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % kMillisPerSecond;
     std::tm tmBuf{};
 #ifdef _WIN32
     localtime_s(&tmBuf, &nowTime);
@@ -34,8 +33,16 @@ inline std::string yomkLogLocalTimeFormatted()
     std::array<char, kTimeBufSize> buf{};
     // 格式串为编译期字面量（无注入）、定长缓冲显式传 size()（无越界），vararg 受控且必要
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-    std::snprintf(buf.data(), buf.size(), "[%04d-%02d-%02d %02d:%02d:%02d.%03d]",
-                  tmBuf.tm_year + kTmYearBase, tmBuf.tm_mon + kTmMonBase, tmBuf.tm_mday,
-                  tmBuf.tm_hour, tmBuf.tm_min, tmBuf.tm_sec, static_cast<int>(ms.count()));
+    std::snprintf(
+        buf.data(),
+        buf.size(),
+        "[%04d-%02d-%02d %02d:%02d:%02d.%03d]",
+        tmBuf.tm_year + kTmYearBase,
+        tmBuf.tm_mon + kTmMonBase,
+        tmBuf.tm_mday,
+        tmBuf.tm_hour,
+        tmBuf.tm_min,
+        tmBuf.tm_sec,
+        static_cast<int>(ms.count()));
     return std::string(buf.data());
 }

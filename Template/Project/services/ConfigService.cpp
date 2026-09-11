@@ -1,10 +1,12 @@
 #include "ConfigService.h"
-#include <fstream>
+
 #include <algorithm>
+#include <fstream>
+
 #include "typedefine/TypeDefine.h"
 
 // 去除首尾空白符
-static std::string trim(const std::string &str)
+static std::string trim(const std::string& str)
 {
     auto first = str.find_first_not_of(" \t\r\n");
     if (first == std::string::npos)
@@ -13,8 +15,7 @@ static std::string trim(const std::string &str)
     return str.substr(first, last - first + 1);
 }
 
-ConfigService::ConfigService(YomkServer *server)
-    : YomkService(server)
+ConfigService::ConfigService(YomkServer* server) : YomkService(server)
 {
     name("/ConfigService");
 }

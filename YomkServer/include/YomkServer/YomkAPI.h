@@ -1,14 +1,15 @@
 #pragma once
-#include "YomkServer.h"
-#include "YomkDefine.h"
-#include "YomkService.h"
-#include "YomkPkg.h"
-#include <iostream>
-#include <sstream>
-#include <mutex>
 #include <cstdlib>
+#include <iostream>
+#include <mutex>
 #include <new>
+#include <sstream>
 #include <type_traits>
+
+#include "YomkDefine.h"
+#include "YomkPkg.h"
+#include "YomkServer.h"
+#include "YomkService.h"
 
 // 启动编排接口：按 before -> start -> after 顺序执行
 class YOMKSERVER_EXPORT YomkBoot
@@ -47,24 +48,20 @@ public:
     static std::shared_ptr<YomkServer> init(std::size_t asyncThreadCount = 0)
     {
         static std::once_flag initFlag;
-        std::call_once(initFlag, [asyncThreadCount]()
-                       {
-            auto server = YomkServer::create(asyncThreadCount);
-            server->startService({"/YomkFunctionPool",
-                                  "/YomkContext",
-                                  "/YomkEventLoop",
-                                  "/YomkLogger",
-                                  "/YomkServerInfo"});
-            setServer(server);
-            std::atexit([]()
-                        { holder().destroy(); }); });
+        std::call_once(
+            initFlag,
+            [asyncThreadCount]()
+            {
+                auto server = YomkServer::create(asyncThreadCount);
+                server->startService(
+                    {"/YomkFunctionPool", "/YomkContext", "/YomkEventLoop", "/YomkLogger", "/YomkServerInfo"});
+                setServer(server);
+                std::atexit([]() { holder().destroy(); });
+            });
         return serverSnapshot();
     }
     // 获取全局单例，未初始化返回 nullptr
-    static std::shared_ptr<YomkServer> serverInstance()
-    {
-        return serverSnapshot();
-    }
+    static std::shared_ptr<YomkServer> serverInstance() { return serverSnapshot(); }
     // 关闭服务器并释放所有服务
     static void shutdown()
     {
@@ -78,13 +75,13 @@ public:
     }
     // 创建并注册指定类型的服务
     template <typename T>
-    static int newService(const std::string &srvName = "")
+    static int newService(const std::string& srvName = "")
     {
         YOMK_API_GET_SERVER_OR(-1, server);
         return server->newService<T>(srvName);
     }
     // 注册已有服务实例（所有权移交给框架）
-    static int addService(YomkService *srv = nullptr, const std::string &srvName = "")
+    static int addService(YomkService* srv = nullptr, const std::string& srvName = "")
     {
         YOMK_API_GET_SERVER_OR(-1, server);
 
@@ -100,7 +97,7 @@ public:
         return server->addService(srv);
     }
     // 按名称注销服务
-    static int delService(const std::string &srvName = "")
+    static int delService(const std::string& srvName = "")
     {
         YOMK_API_GET_SERVER_OR(-1, server);
 
@@ -113,7 +110,7 @@ public:
         return server->delService(srvName);
     }
     // 初始化并执行启动编排流程
-    static int boot(YomkBoot *boot = nullptr)
+    static int boot(YomkBoot* boot = nullptr)
     {
         init();
 
@@ -148,13 +145,13 @@ public:
     // REQ_API
 public:
     // 异步请求服务功能函数
-    static void asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
+    static void asyncRequest(const std::string& url, YomkPkgPtr pkg, YomkResponseFunc func)
     {
         YOMK_API_GET_SERVER_OR((void)0, server);
         return server->asyncRequest(url, pkg, func);
     }
     // 同步请求服务功能函数
-    static YomkResponse request(const std::string &url, YomkPkgPtr pkg)
+    static YomkResponse request(const std::string& url, YomkPkgPtr pkg)
     {
         YOMK_API_GET_SERVER_OR(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"), server);
         return server->request(url, pkg);
@@ -169,7 +166,7 @@ public:
     }
     // 控制台日志输出
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_INFO_TAG(const std::string &tag, const std::string &fileLine, Args &&...args)
+    static YomkResponse CONSOLE_LOG_INFO_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
@@ -178,7 +175,7 @@ public:
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, oss.str(), tag}));
     }
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_WARN_TAG(const std::string &tag, const std::string &fileLine, Args &&...args)
+    static YomkResponse CONSOLE_LOG_WARN_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
@@ -187,7 +184,7 @@ public:
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, oss.str(), tag}));
     }
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_ERROR_TAG(const std::string &tag, const std::string &fileLine, Args &&...args)
+    static YomkResponse CONSOLE_LOG_ERROR_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
@@ -196,7 +193,7 @@ public:
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, oss.str(), tag}));
     }
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_DEBUG_TAG(const std::string &tag, const std::string &fileLine, Args &&...args)
+    static YomkResponse CONSOLE_LOG_DEBUG_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
@@ -205,52 +202,62 @@ public:
         return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, oss.str(), tag}));
     }
     // 创建文件日志器
-    static YomkResponse FILE_LOG_CREATE(const std::string &logDir, const std::string &logFile)
+    static YomkResponse FILE_LOG_CREATE(const std::string& logDir, const std::string& logFile)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/create_file_logger", YomkMkPtr(LogFile, yomk::LogFile{logFile, logDir}));
     }
     // 将指定日志器的缓冲落盘
-    static YomkResponse FILE_LOG_WRITE(const std::string &logFile)
+    static YomkResponse FILE_LOG_WRITE(const std::string& logFile)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/write_file_log", YomkMkPtr(String, logFile));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_INFO_TAG(const std::string &logFile, const std::string &tag, const std::string &fileLine, Args &&...args)
+    static YomkResponse FILE_LOG_INFO_TAG(
+        const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "[" + tag + "] " + oss.str(), logFile}));
+        return request(
+            "/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "[" + tag + "] " + oss.str(), logFile}));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_WARN_TAG(const std::string &logFile, const std::string &tag, const std::string &fileLine, Args &&...args)
+    static YomkResponse FILE_LOG_WARN_TAG(
+        const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, "[" + tag + "] " + oss.str(), logFile}));
+        return request(
+            "/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, "[" + tag + "] " + oss.str(), logFile}));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_ERROR_TAG(const std::string &logFile, const std::string &tag, const std::string &fileLine, Args &&...args)
+    static YomkResponse FILE_LOG_ERROR_TAG(
+        const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, "[" + tag + "] " + oss.str(), logFile}));
+        return request(
+            "/YomkLogger/file_log",
+            YomkMkPtr(Log, yomk::Log{yomk::Log::eError, "[" + tag + "] " + oss.str(), logFile}));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_DEBUG_TAG(const std::string &logFile, const std::string &tag, const std::string &fileLine, Args &&...args)
+    static YomkResponse FILE_LOG_DEBUG_TAG(
+        const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, "[" + tag + "] " + oss.str(), logFile}));
+        return request(
+            "/YomkLogger/file_log",
+            YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, "[" + tag + "] " + oss.str(), logFile}));
     }
     // 开关各级别控制台日志
     static YomkResponse ON_CONSOLE_LOG_DEBUG()
@@ -300,7 +307,7 @@ public:
         return request("/YomkLogger/loggers", nullptr);
     }
     // 查询指定日志器状态
-    static YomkResponse LOGGER_INFO_LOGGER(const std::string &loggerName)
+    static YomkResponse LOGGER_INFO_LOGGER(const std::string& loggerName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/logger", YomkMkPtr(String, loggerName));
@@ -312,7 +319,7 @@ public:
         return request("/YomkLogger/all", nullptr);
     }
     // 删除指定日志器
-    static YomkResponse FILE_LOG_DELETE(const std::string &loggerName)
+    static YomkResponse FILE_LOG_DELETE(const std::string& loggerName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/delete_logger", YomkMkPtr(String, loggerName));
@@ -320,14 +327,15 @@ public:
     // CONTEXT_API
 public:
     // 创建上下文键值
-    static YomkResponse CONTEXT_CREATE(const std::string &ctxName, YomkPkgPtr ctx)
+    static YomkResponse CONTEXT_CREATE(const std::string& ctxName, YomkPkgPtr ctx)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/create", YomkMkPtr(Context, yomk::Context{ctxName, ctx}));
     }
     // 获取上下文值（只读快照），改动请构造新对象再 CONTEXT_SET，勿原地修改（否则与并发读竞争、可能崩溃）
     template <typename T>
-    static std::shared_ptr<T> CONTEXT_GET(const std::string &msgName, const std::string &ctxName, std::shared_ptr<T> ctxDefault)
+    static std::shared_ptr<T> CONTEXT_GET(
+        const std::string& msgName, const std::string& ctxName, std::shared_ptr<T> ctxDefault)
     {
         YOMK_API_REQUIRE_SERVER(ctxDefault);
         YomkResponse response = request("/YomkContext/get", YomkMkPtr(Context, yomk::Context{ctxName, ctxDefault}));
@@ -346,7 +354,7 @@ public:
         }
     }
     // 设置上下文值（整体替换）
-    static YomkResponse CONTEXT_SET(const std::string &ctxName, YomkPkgPtr ctx)
+    static YomkResponse CONTEXT_SET(const std::string& ctxName, YomkPkgPtr ctx)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/set", YomkMkPtr(Context, yomk::Context{ctxName, ctx}));
@@ -363,7 +371,7 @@ public:
         return request("/YomkContext/turn_off_checker", nullptr);
     }
     // 设置上下文校验门控回调
-    static YomkResponse CONTEXT_SET_CHECKER(const std::string &ctxName, YomkContextCheckFunc checker)
+    static YomkResponse CONTEXT_SET_CHECKER(const std::string& ctxName, YomkContextCheckFunc checker)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/set_checker", YomkMkPtr(ContextChecker, yomk::ContextChecker{ctxName, checker}));
@@ -380,13 +388,15 @@ public:
         return request("/YomkContext/turn_off_monitor", nullptr);
     }
     // 设置上下文变更监听回调（async=true 为异步通知），仅通知发生了一次 set 事件，并回传该次 set 的键值快照——不保证快照实时性；顺序上异步恒按 set 提交序送达、同步在并发 set 下不保证跨线程序。
-    static YomkResponse CONTEXT_SET_MONITOR(const std::string &ctxName, YomkContextMonitorFunc monitor, bool async = false)
+    static YomkResponse CONTEXT_SET_MONITOR(
+        const std::string& ctxName, YomkContextMonitorFunc monitor, bool async = false)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/set_monitor", YomkMkPtr(ContextMonitor, yomk::ContextMonitor{ctxName, monitor, async}));
+        return request(
+            "/YomkContext/set_monitor", YomkMkPtr(ContextMonitor, yomk::ContextMonitor{ctxName, monitor, async}));
     }
     // 销毁指定上下文键
-    static YomkResponse CONTEXT_DESTROY(const std::string &ctxName)
+    static YomkResponse CONTEXT_DESTROY(const std::string& ctxName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/destroy", YomkMkPtr(String, ctxName));
@@ -398,7 +408,7 @@ public:
         return request("/YomkContext/keys", nullptr);
     }
     // 查询指定上下文键状态
-    static YomkResponse CONTEXT_INFO_KEY(const std::string &ctxName)
+    static YomkResponse CONTEXT_INFO_KEY(const std::string& ctxName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/key", YomkMkPtr(String, ctxName));
@@ -413,33 +423,45 @@ public:
 public:
     // 启动指定事件循环
     static YomkResponse EVENTLOOP_START(
-        const std::string &eventLoopName,
+        const std::string& eventLoopName,
         YomkServiceFunc m_defaultServiceFunc = nullptr,
-        const std::string &msgName = "")
+        const std::string& msgName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkEventLoop/start", YomkMkPtr(Eventloop, yomk::Eventloop{eventLoopName, m_defaultServiceFunc, msgName}));
+        return request(
+            "/YomkEventLoop/start",
+            YomkMkPtr(Eventloop, yomk::Eventloop{eventLoopName, m_defaultServiceFunc, msgName}));
     }
     // 停止事件循环线程（保留未执行事件）
-    static YomkResponse EVENTLOOP_STOP(const std::string &eventLoopName)
+    static YomkResponse EVENTLOOP_STOP(const std::string& eventLoopName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/stop", YomkMkPtr(String, eventLoopName));
     }
     // 异步投递事件
-    static YomkResponse EVENTLOOP_POST(const std::string &eventLoopName, YomkPkgPtr eventData, YomkServiceFunc eventHandle = nullptr, const std::string &tag = "")
+    static YomkResponse EVENTLOOP_POST(
+        const std::string& eventLoopName,
+        YomkPkgPtr eventData,
+        YomkServiceFunc eventHandle = nullptr,
+        const std::string& tag = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkEventLoop/post", YomkMkPtr(Event, yomk::Event(eventLoopName, eventData, eventHandle, tag)));
+        return request(
+            "/YomkEventLoop/post", YomkMkPtr(Event, yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 同步投递事件（阻塞等待执行完成）
-    static YomkResponse EVENTLOOP_POST_WAIT(const std::string &eventLoopName, YomkPkgPtr eventData, YomkServiceFunc eventHandle = nullptr, const std::string &tag = "")
+    static YomkResponse EVENTLOOP_POST_WAIT(
+        const std::string& eventLoopName,
+        YomkPkgPtr eventData,
+        YomkServiceFunc eventHandle = nullptr,
+        const std::string& tag = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkEventLoop/post_wait", YomkMkPtr(Event, yomk::Event(eventLoopName, eventData, eventHandle, tag)));
+        return request(
+            "/YomkEventLoop/post_wait", YomkMkPtr(Event, yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 销毁事件循环并清空队列
-    static YomkResponse EVENTLOOP_DESTROY(const std::string &eventLoopName)
+    static YomkResponse EVENTLOOP_DESTROY(const std::string& eventLoopName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/destroy", YomkMkPtr(String, eventLoopName));
@@ -451,12 +473,12 @@ public:
         return request("/YomkEventLoop/loops", nullptr);
     }
     // 查询指定事件循环状态与事件积压数
-    static YomkResponse EVENTLOOP_INFO_LOOP(const std::string &eventLoopName)
+    static YomkResponse EVENTLOOP_INFO_LOOP(const std::string& eventLoopName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/loop", YomkMkPtr(String, eventLoopName));
     }
-    static YomkResponse EVENTLOOP_INFO_LOOP(const std::string &eventLoopName, size_t tagCount)
+    static YomkResponse EVENTLOOP_INFO_LOOP(const std::string& eventLoopName, size_t tagCount)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkEventLoop/loop", YomkMkPtr(String, eventLoopName + " " + std::to_string(tagCount)));
@@ -470,19 +492,20 @@ public:
     // FUNCTIONPOOL_API
 public:
     // 注册函数到全局函数池
-    static YomkResponse FUNCTIONPOOL_REGISTER(const std::string &funcName, YomkServiceFunc func, const std::string &msgName = "")
+    static YomkResponse FUNCTIONPOOL_REGISTER(
+        const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/register", YomkMkPtr(Function, yomk::Function{funcName, func, msgName}));
     }
     // 从函数池注销函数
-    static YomkResponse FUNCTIONPOOL_UNREGISTER(const std::string &funcName)
+    static YomkResponse FUNCTIONPOOL_UNREGISTER(const std::string& funcName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/unregister", YomkMkPtr(String, funcName));
     }
     // 调用函数池中注册的函数
-    static YomkResponse FUNCTIONPOOL_CALL(const std::string &funcName, YomkPkgPtr callData)
+    static YomkResponse FUNCTIONPOOL_CALL(const std::string& funcName, YomkPkgPtr callData)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/call", YomkMkPtr(CallFunction, yomk::CallFunction{funcName, callData}));
@@ -494,7 +517,7 @@ public:
         return request("/YomkFunctionPool/names", nullptr);
     }
     // 查询单个已注册函数元信息
-    static YomkResponse FUNCTIONPOOL_INFO_NAME(const std::string &funcName)
+    static YomkResponse FUNCTIONPOOL_INFO_NAME(const std::string& funcName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkFunctionPool/name", YomkMkPtr(String, funcName));
@@ -514,13 +537,13 @@ public:
         return request("/YomkServerInfo/services", nullptr);
     }
     // 查询指定服务的全部功能函数
-    static YomkResponse SERVER_INFO_FUNCTIONS(const std::string &srvName)
+    static YomkResponse SERVER_INFO_FUNCTIONS(const std::string& srvName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkServerInfo/functions", YomkMkPtr(String, srvName));
     }
     // 查询指定功能函数元信息
-    static YomkResponse SERVER_INFO_FUNCTION(const std::string &url)
+    static YomkResponse SERVER_INFO_FUNCTION(const std::string& url)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkServerInfo/function", YomkMkPtr(String, url));
@@ -556,14 +579,14 @@ private:
         }
         std::shared_ptr<YomkServer> server;
     };
-    static std::mutex &mtx()
+    static std::mutex& mtx()
     {
-        static std::mutex *const m = new std::mutex;
+        static std::mutex* const m = new std::mutex;
         return *m;
     }
-    static ServerHolder &holder()
+    static ServerHolder& holder()
     {
-        static ServerHolder *const h = new ServerHolder;
+        static ServerHolder* const h = new ServerHolder;
         return *h;
     }
 };
@@ -599,14 +622,22 @@ private:
 #define YOMK_DEBUG_TAG(tag, ...) YomkAPI::CONSOLE_LOG_DEBUG_TAG(tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_LOG_CREATE(...) YomkAPI::FILE_LOG_CREATE(__VA_ARGS__)
 #define YOMK_FILE_LOG_WRITE(...) YomkAPI::FILE_LOG_WRITE(__VA_ARGS__)
-#define YOMK_FILE_INFO(file, ...) YomkAPI::FILE_LOG_INFO_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_FILE_INFO_TAG(file, tag, ...) YomkAPI::FILE_LOG_INFO_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_FILE_WARN(file, ...) YomkAPI::FILE_LOG_WARN_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_FILE_WARN_TAG(file, tag, ...) YomkAPI::FILE_LOG_WARN_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_FILE_ERROR(file, ...) YomkAPI::FILE_LOG_ERROR_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_FILE_ERROR_TAG(file, tag, ...) YomkAPI::FILE_LOG_ERROR_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_FILE_DEBUG(file, ...) YomkAPI::FILE_LOG_DEBUG_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_FILE_DEBUG_TAG(file, tag, ...) YomkAPI::FILE_LOG_DEBUG_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_INFO(file, ...) \
+    YomkAPI::FILE_LOG_INFO_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_INFO_TAG(file, tag, ...) \
+    YomkAPI::FILE_LOG_INFO_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_WARN(file, ...) \
+    YomkAPI::FILE_LOG_WARN_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_WARN_TAG(file, tag, ...) \
+    YomkAPI::FILE_LOG_WARN_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_ERROR(file, ...) \
+    YomkAPI::FILE_LOG_ERROR_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_ERROR_TAG(file, tag, ...) \
+    YomkAPI::FILE_LOG_ERROR_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_DEBUG(file, ...) \
+    YomkAPI::FILE_LOG_DEBUG_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_FILE_DEBUG_TAG(file, tag, ...) \
+    YomkAPI::FILE_LOG_DEBUG_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_LOGGER_INFO_LOGGERS() YomkAPI::LOGGER_INFO_LOGGERS()
 #define YOMK_LOGGER_INFO_LOGGER(...) YomkAPI::LOGGER_INFO_LOGGER(__VA_ARGS__)
 #define YOMK_LOGGER_INFO_ALL() YomkAPI::LOGGER_INFO_ALL()
@@ -625,10 +656,14 @@ private:
 #define YOMK_CONTEXT_INFO_KEY(...) YomkAPI::CONTEXT_INFO_KEY(__VA_ARGS__)
 #define YOMK_CONTEXT_INFO_ALL() YomkAPI::CONTEXT_INFO_ALL()
 #define YOMK_EVENTLOOP_START_SELECT(_1, _2, _3, NAME, ...) NAME
-#define YOMK_EVENTLOOP_START(...) YOMK_EVENTLOOP_START_SELECT(__VA_ARGS__, YOMK_EVENTLOOP_START_3, YOMK_EVENTLOOP_START_2, YOMK_EVENTLOOP_START_1)(__VA_ARGS__)
+#define YOMK_EVENTLOOP_START(...)                                                                                    \
+    YOMK_EVENTLOOP_START_SELECT(__VA_ARGS__, YOMK_EVENTLOOP_START_3, YOMK_EVENTLOOP_START_2, YOMK_EVENTLOOP_START_1) \
+    (__VA_ARGS__)
 #define YOMK_EVENTLOOP_START_1(eventLoopName) YomkAPI::EVENTLOOP_START(eventLoopName)
-#define YOMK_EVENTLOOP_START_2(eventLoopName, defaultServiceFunc) YomkAPI::EVENTLOOP_START(eventLoopName, defaultServiceFunc)
-#define YOMK_EVENTLOOP_START_3(eventLoopName, defaultServiceFunc, MsgName) YomkAPI::EVENTLOOP_START(eventLoopName, defaultServiceFunc, #MsgName)
+#define YOMK_EVENTLOOP_START_2(eventLoopName, defaultServiceFunc) \
+    YomkAPI::EVENTLOOP_START(eventLoopName, defaultServiceFunc)
+#define YOMK_EVENTLOOP_START_3(eventLoopName, defaultServiceFunc, MsgName) \
+    YomkAPI::EVENTLOOP_START(eventLoopName, defaultServiceFunc, #MsgName)
 #define YOMK_EVENTLOOP_STOP(...) YomkAPI::EVENTLOOP_STOP(__VA_ARGS__)
 #define YOMK_EVENTLOOP_POST(...) YomkAPI::EVENTLOOP_POST(__VA_ARGS__)
 #define YOMK_EVENTLOOP_POST_WAIT(...) YomkAPI::EVENTLOOP_POST_WAIT(__VA_ARGS__)
@@ -637,7 +672,9 @@ private:
 #define YOMK_EVENTLOOP_INFO_LOOP(...) YomkAPI::EVENTLOOP_INFO_LOOP(__VA_ARGS__)
 #define YOMK_EVENTLOOP_INFO_ALL() YomkAPI::EVENTLOOP_INFO_ALL()
 #define YOMK_FUNCTIONPOOL_REGISTER_SELECT(_1, _2, _3, NAME, ...) NAME
-#define YOMK_FUNCTIONPOOL_REGISTER(...) YOMK_FUNCTIONPOOL_REGISTER_SELECT(__VA_ARGS__, YOMK_FUNCTIONPOOL_REGISTER_3, YOMK_FUNCTIONPOOL_REGISTER_2)(__VA_ARGS__)
+#define YOMK_FUNCTIONPOOL_REGISTER(...)                                                                        \
+    YOMK_FUNCTIONPOOL_REGISTER_SELECT(__VA_ARGS__, YOMK_FUNCTIONPOOL_REGISTER_3, YOMK_FUNCTIONPOOL_REGISTER_2) \
+    (__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_REGISTER_2(funcName, func) YomkAPI::FUNCTIONPOOL_REGISTER(funcName, func)
 #define YOMK_FUNCTIONPOOL_REGISTER_3(funcName, func, MsgName) YomkAPI::FUNCTIONPOOL_REGISTER(funcName, func, #MsgName)
 #define YOMK_FUNCTIONPOOL_UNREGISTER(...) YomkAPI::FUNCTIONPOOL_UNREGISTER(__VA_ARGS__)

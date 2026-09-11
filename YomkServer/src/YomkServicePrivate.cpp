@@ -1,9 +1,11 @@
 #include "YomkServicePrivate.h"
-#include "YomkServer.h"
+
 #include <iostream>
 #include <mutex>
 
-void YomkServicePrivate::name(const std::string &name)
+#include "YomkServer.h"
+
+void YomkServicePrivate::name(const std::string& name)
 {
     if (m_registered)
     {
@@ -13,7 +15,7 @@ void YomkServicePrivate::name(const std::string &name)
     m_name = name;
 }
 
-void YomkServicePrivate::installFunc(const std::string &funcName, YomkServiceFunc func, const std::string &msgName)
+void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName)
 {
     if (funcName.empty() || funcName[0] != '/')
     {
@@ -50,7 +52,7 @@ std::map<std::string, YomkFuncInfo> YomkServicePrivate::funcInfos()
 {
     std::map<std::string, YomkFuncInfo> infos;
     std::shared_lock<std::shared_mutex> lock(m_funcMapMtx);
-    for (auto &iter : m_funcMap)
+    for (auto& iter : m_funcMap)
     {
         YomkFuncInfo info;
         info.m_funcName = iter.first;
@@ -64,7 +66,7 @@ std::map<std::string, YomkFuncInfo> YomkServicePrivate::funcInfos()
     return infos;
 }
 
-YomkResponse YomkServicePrivate::invoke(const std::string &funcName, YomkPkgPtr pkg)
+YomkResponse YomkServicePrivate::invoke(const std::string& funcName, YomkPkgPtr pkg)
 {
     if (funcName.empty() || funcName[0] != '/')
     {
@@ -78,7 +80,8 @@ YomkResponse YomkServicePrivate::invoke(const std::string &funcName, YomkPkgPtr 
         auto iter = m_funcMap.find(funcName);
         if (iter == m_funcMap.end())
         {
-            YOMK_ERR_POS_LOG("function not found -> " + funcName + ", please use YomkInstallFunc to install this function.");
+            YOMK_ERR_POS_LOG(
+                "function not found -> " + funcName + ", please use YomkInstallFunc to install this function.");
             return {YomkResponse::eNo, "function not found: " + funcName};
         }
         tmpFunc = iter->second;
@@ -87,7 +90,7 @@ YomkResponse YomkServicePrivate::invoke(const std::string &funcName, YomkPkgPtr 
     return tmpFunc(pkg);
 }
 
-YomkResponse YomkServicePrivate::request(const std::string &url, YomkPkgPtr pkg)
+YomkResponse YomkServicePrivate::request(const std::string& url, YomkPkgPtr pkg)
 {
     auto server = m_weakServer.lock();
     if (!server)
@@ -99,7 +102,7 @@ YomkResponse YomkServicePrivate::request(const std::string &url, YomkPkgPtr pkg)
     return server->request(url, pkg);
 }
 
-void YomkServicePrivate::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
+void YomkServicePrivate::asyncRequest(const std::string& url, YomkPkgPtr pkg, YomkResponseFunc func)
 {
     auto server = m_weakServer.lock();
     if (!server)

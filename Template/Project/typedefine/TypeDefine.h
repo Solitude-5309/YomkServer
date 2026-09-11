@@ -7,4 +7,4 @@
  */
 
 // Context
-constexpr const char *const CTX_CONFIG_PATH = "config_path";
+constexpr const char* const CTX_CONFIG_PATH = "config_path";

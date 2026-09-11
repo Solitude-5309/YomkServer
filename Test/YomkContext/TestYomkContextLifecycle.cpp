@@ -27,8 +27,8 @@
 #include <thread>
 #include <vector>
 
-#include "YomkAPI.h"
 #include "Modules/Context/YomkContext.h"
+#include "YomkAPI.h"
 
 static int g_failed = 0;
 
@@ -52,17 +52,14 @@ class ThrowContext : public YomkContext
 {
 public:
     using YomkContext::YomkContext;
-    int init() override
-    {
-        throw std::bad_alloc();
-    }
+    int init() override { throw std::bad_alloc(); }
 };
 
 // ---- 文件级观测变量 ----
-static std::atomic<int> g_asyncCalls{0}; // 异步 monitor 被调用次数
+static std::atomic<int> g_asyncCalls{0};  // 异步 monitor 被调用次数
 
 // 轮询等待原子计数达到 target，超时返回是否达标
-static bool waitForCount(std::atomic<int> &counter, int target, int timeoutMs)
+static bool waitForCount(std::atomic<int>& counter, int target, int timeoutMs)
 {
     for (int i = 0; i < timeoutMs; ++i)
     {
@@ -76,7 +73,7 @@ static bool waitForCount(std::atomic<int> &counter, int target, int timeoutMs)
 }
 
 // 判断服务名列表中是否包含指定名字
-static bool hasService(const std::vector<std::string> &names, const std::string &target)
+static bool hasService(const std::vector<std::string>& names, const std::string& target)
 {
     return std::find(names.begin(), names.end(), target) != names.end();
 }
@@ -102,8 +99,8 @@ int main()
         CHECK(cr.m_status == YomkResponse::eOk, "创建 life_base 成功");
 
         g_asyncCalls.store(0);
-        YOMK_CONTEXT_SET_MONITOR("life_base", [](const yomk::Context &)
-                                 { ++g_asyncCalls; }, /*async=*/true);
+        YOMK_CONTEXT_SET_MONITOR(
+            "life_base", [](const yomk::Context&) { ++g_asyncCalls; }, /*async=*/true);
 
         YOMK_CONTEXT_SET("life_base", YomkMkPtr(String, std::string("b1")));
         YOMK_CONTEXT_SET("life_base", YomkMkPtr(String, std::string("b2")));
@@ -120,8 +117,8 @@ int main()
         CHECK(cr.m_status == YomkResponse::eOk, "创建 life_drain 成功");
 
         g_asyncCalls.store(0);
-        YOMK_CONTEXT_SET_MONITOR("life_drain", [](const yomk::Context &)
-                                 { ++g_asyncCalls; }, /*async=*/true);
+        YOMK_CONTEXT_SET_MONITOR(
+            "life_drain", [](const yomk::Context&) { ++g_asyncCalls; }, /*async=*/true);
 
         const int N = 50;
         for (int i = 0; i < N; ++i)
@@ -163,8 +160,8 @@ int main()
         CHECK(cr.m_status == YomkResponse::eOk, "重新注册后创建 life_rebuild 成功");
 
         g_asyncCalls.store(0);
-        YOMK_CONTEXT_SET_MONITOR("life_rebuild", [](const yomk::Context &)
-                                 { ++g_asyncCalls; }, /*async=*/true);
+        YOMK_CONTEXT_SET_MONITOR(
+            "life_rebuild", [](const yomk::Context&) { ++g_asyncCalls; }, /*async=*/true);
 
         YOMK_CONTEXT_SET("life_rebuild", YomkMkPtr(String, std::string("r1")));
         YOMK_CONTEXT_SET("life_rebuild", YomkMkPtr(String, std::string("r2")));

@@ -1,15 +1,14 @@
 #include "FileLogger.h"
-#include "YomkDefine.h"
-#include <iostream>
-#include <fstream>
+
 #include <filesystem>
+#include <fstream>
+#include <iostream>
+
+#include "YomkDefine.h"
 #include "YomkLogTime.h"
 namespace fs = std::filesystem;
 
-FileLogger::FileLogger()
-    : m_name("MainLogger")
-{
-}
+FileLogger::FileLogger() : m_name("MainLogger") {}
 
 FileLogger::~FileLogger()
 {
@@ -42,12 +41,12 @@ bool FileLogger::init()
             return false;
         }
     }
-    catch (const fs::filesystem_error &e)
+    catch (const fs::filesystem_error& e)
     {
         YOMK_ERR_POS_LOG("init file logger fs error: " + logFilePath + ", " + e.what());
         return false;
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
         YOMK_ERR_POS_LOG("init file logger error: " + logFilePath + ", " + e.what());
         return false;
@@ -55,12 +54,12 @@ bool FileLogger::init()
     return true;
 }
 
-void FileLogger::log(ELogLevel logLevel, const std::string &log)
+void FileLogger::log(ELogLevel logLevel, const std::string& log)
 {
     std::string timeStr = yomkLogLocalTimeFormatted();
 
     std::lock_guard<std::mutex> lock(m_logBufferMutex);
-    auto appendLine = [this, &timeStr, &log](const char *levelTag)
+    auto appendLine = [this, &timeStr, &log](const char* levelTag)
     {
         m_logBuffer += timeStr;
         m_logBuffer += levelTag;
@@ -69,22 +68,22 @@ void FileLogger::log(ELogLevel logLevel, const std::string &log)
     };
     switch (logLevel)
     {
-    case eDebug:
-        appendLine(" [Debug] ");
-        break;
-    case eInfo:
-        appendLine(" [Info ] ");
-        break;
-    case eWarn:
-        appendLine(" [Warn ] ");
-        break;
-    case eError:
-        appendLine(" [Error] ");
-        break;
-    default:
-        YOMK_ERR_POS_LOG("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
-        appendLine(" [Info ] ");
-        break;
+        case eDebug:
+            appendLine(" [Debug] ");
+            break;
+        case eInfo:
+            appendLine(" [Info ] ");
+            break;
+        case eWarn:
+            appendLine(" [Warn ] ");
+            break;
+        case eError:
+            appendLine(" [Error] ");
+            break;
+        default:
+            YOMK_ERR_POS_LOG("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
+            appendLine(" [Info ] ");
+            break;
     }
 }
 

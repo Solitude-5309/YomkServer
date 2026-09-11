@@ -1,12 +1,12 @@
 #include "YomkContext.h"
+
 #include <exception>
 #include <iostream>
 
 // 定点引入所需类型，避免在头文件中 using namespace
 using yomk::ContextChecker;
 
-YomkContext::YomkContext(YomkServer *server)
-    : YomkService(server), m_checkerEnabled(false), m_monitorEnabled(false)
+YomkContext::YomkContext(YomkServer* server) : YomkService(server), m_checkerEnabled(false), m_monitorEnabled(false)
 {
     name("/YomkContext");
 }
@@ -43,11 +43,11 @@ void YomkContext::deinit()
 
 // 组装单个 key 的元信息行：key [类型名] checker:on|off monitors:N(async:M)
 // 类型名取 value 的消息类型，value 为空时防御显示空类型
-static std::string contextInfoLine(const YomkContext::Context &ctx)
+static std::string contextInfoLine(const YomkContext::Context& ctx)
 {
     std::string typeName = ctx.value ? ctx.value->name() : "";
     size_t asyncCount = 0;
-    for (auto &monitor : ctx.monitors)
+    for (auto& monitor : ctx.monitors)
     {
         if (monitor.asyncMonitor)
         {
@@ -166,7 +166,8 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
         }
     }
 
-    itContext->second.value = context->d.m_value; // 整体替换值对象（非原地改）：旧对象不动，先前 get/monitor 持有者即冻结为快照
+    itContext->second.value =
+        context->d.m_value;  // 整体替换值对象（非原地改）：旧对象不动，先前 get/monitor 持有者即冻结为快照
     std::vector<ContextMonitor> monitors = itContext->second.monitors;
 
     // 异步入队在写锁内完成：入队序 = 提交序；配合单线程 FIFO 池 ⇒ 异步通知恒按 set 提交序送达（并发 set 亦然）。
@@ -174,15 +175,14 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
     const bool monitorEnabled = m_monitorEnabled.load();
     if (monitorEnabled)
     {
-        for (auto &monitor : monitors)
+        for (auto& monitor : monitors)
         {
             if (monitor.asyncMonitor)
             {
                 // 值捕获回调与数据副本（context->d = 本次提交的临时快照），任务执行期自包含；池已停止时投递被拒绝并记日志丢弃
                 auto monitorFunc = monitor.contextMonitorFunc;
                 yomk::Context data = context->d;
-                if (!(m_monitorPool && m_monitorPool->post([monitorFunc, data]()
-                                                           { monitorFunc(data); })))
+                if (!(m_monitorPool && m_monitorPool->post([monitorFunc, data]() { monitorFunc(data); })))
                 {
                     YOMK_ERR_POS_LOG("context monitor pool is stopped, async monitor ignored.");
                 }
@@ -196,7 +196,7 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
     // 状态机/级联回写应改用异步 monitor（池线程迭代执行、平栈不溢出、按提交序保序）。
     if (monitorEnabled)
     {
-        for (auto &monitor : monitors)
+        for (auto& monitor : monitors)
         {
             if (!monitor.asyncMonitor)
             {
@@ -206,7 +206,7 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
                 {
                     monitor.contextMonitorFunc(context->d);
                 }
-                catch (const std::exception &e)
+                catch (const std::exception& e)
                 {
                     YOMK_ERR_POS_LOG("sync monitor threw exception: " + std::string(e.what()) + ", ignored.");
                 }
@@ -265,7 +265,8 @@ YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
         auto itContext = m_contexts.find(checker->d.m_key);
         if (itContext == m_contexts.end())
         {
-            YOMK_ERR_POS_LOG("YomkContext key: " + checker->d.m_key + " is not exist, please check ContextChecker.m_key.");
+            YOMK_ERR_POS_LOG(
+                "YomkContext key: " + checker->d.m_key + " is not exist, please check ContextChecker.m_key.");
             return YomkResponse(YomkResponse::eNo, "key is not exist");
         }
 
@@ -295,7 +296,8 @@ YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
         auto itContext = m_contexts.find(monitor->d.m_key);
         if (itContext == m_contexts.end())
         {
-            YOMK_ERR_POS_LOG("YomkContext key: " + monitor->d.m_key + " is not exist, please check ContextMonitor.m_key.");
+            YOMK_ERR_POS_LOG(
+                "YomkContext key: " + monitor->d.m_key + " is not exist, please check ContextMonitor.m_key.");
             return YomkResponse(YomkResponse::eNo, "key is not exist");
         }
         ContextMonitor contextMonitor;
@@ -311,7 +313,7 @@ YomkResponse YomkContext::keys(YomkPkgPtr pkg)
     std::vector<std::string> keyList;
     {
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
-        for (auto &iter : m_contexts)
+        for (auto& iter : m_contexts)
         {
             keyList.push_back(iter.first);
         }
@@ -343,7 +345,7 @@ YomkResponse YomkContext::listAll(YomkPkgPtr pkg)
     std::vector<std::string> lines;
     {
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
-        for (auto &iter : m_contexts)
+        for (auto& iter : m_contexts)
         {
             lines.push_back(contextInfoLine(iter.second));
         }

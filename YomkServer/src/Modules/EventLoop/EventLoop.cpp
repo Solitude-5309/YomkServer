@@ -1,12 +1,11 @@
 #include "EventLoop.h"
+
 #include <iostream>
 #include <vector>
+
 #include "YomkDefine.h"
 
-EventLoop::EventLoop()
-    : m_running(false), m_eventId(1)
-{
-}
+EventLoop::EventLoop() : m_running(false), m_eventId(1) {}
 
 EventLoop::~EventLoop()
 {
@@ -71,7 +70,7 @@ int EventLoop::destroy()
             m_eventQueue.pop();
         }
     }
-    for (auto &event : discarded)
+    for (auto& event : discarded)
     {
         if (event && event->d.m_waitCallback)
         {
@@ -86,7 +85,7 @@ int EventLoop::post(YomkPtr(Event) event)
     if (!m_running.load())
     {
         YOMK_ERR_POS_LOG("EventLoop not running, please start event loop.");
-        return 2; // 循环未运行投递被拒，与入队成功(0)/事件为空(1)区分，供上层映射错误码
+        return 2;  // 循环未运行投递被拒，与入队成功(0)/事件为空(1)区分，供上层映射错误码
     }
 
     if (!event)
@@ -113,7 +112,7 @@ int EventLoop::postWait(YomkPtr(Event) event)
     if (!m_running.load())
     {
         YOMK_ERR_POS_LOG("EventLoop not running, please start event loop.");
-        return 2; // 循环未运行投递被拒，与入队成功(0)/事件为空(1)区分
+        return 2;  // 循环未运行投递被拒，与入队成功(0)/事件为空(1)区分
     }
 
     if (!event)
@@ -130,7 +129,9 @@ int EventLoop::postWait(YomkPtr(Event) event)
     }
     if (inWorkerThread)
     {
-        YOMK_ERR_POS_LOG("EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve deadlock");
+        YOMK_ERR_POS_LOG(
+            "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve "
+            "deadlock");
         event->d.handle();
         return 0;
     }
@@ -160,13 +161,12 @@ int EventLoop::postWait(YomkPtr(Event) event)
         return rc;
     }
 
-    tmpCv.wait(lock, [&notified]()
-               { return notified; });
+    tmpCv.wait(lock, [&notified]() { return notified; });
 
     return 0;
 }
 
-void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc, const std::string &msgName)
+void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc, const std::string& msgName)
 {
     m_defaultServiceFunc = serviceFunc;
     m_defaultMsgName = msgName;
@@ -174,7 +174,7 @@ void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc, const std::st
 
 // 内省元信息行：name running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(N): tag1, tag2, ...
 // 队首最多列出 tagCount 个事件 tag，队列不足则全部列出，空 tag 显示 - 占位；默认处理函数声明过类型时附加 [类型名]
-std::string EventLoop::infoLine(const std::string &loopName, size_t tagCount)
+std::string EventLoop::infoLine(const std::string& loopName, size_t tagCount)
 {
     bool running = false;
     size_t pending = 0;
@@ -206,12 +206,10 @@ std::string EventLoop::infoLine(const std::string &loopName, size_t tagCount)
         tagList += tags[i];
     }
 
-    return loopName +
-           (running ? " running:on" : " running:off") +
-           " pending:" + std::to_string(pending) +
+    return loopName + (running ? " running:on" : " running:off") + " pending:" + std::to_string(pending) +
            (defaultFunc ? " defaultFunc:on" : " defaultFunc:off") +
-           (defaultFunc && !defaultMsgName.empty() ? " [" + defaultMsgName + "]" : "") +
-           " nextNEventTag(" + std::to_string(tagCount) + "): " + tagList;
+           (defaultFunc && !defaultMsgName.empty() ? " [" + defaultMsgName + "]" : "") + " nextNEventTag(" +
+           std::to_string(tagCount) + "): " + tagList;
 }
 
 void EventLoop::run()
@@ -221,8 +219,7 @@ void EventLoop::run()
         YomkPtr(Event) event;
         {
             std::unique_lock<std::mutex> lock(m_queueMutex);
-            m_condition.wait(lock, [this]()
-                             { return !m_eventQueue.empty() || !m_running.load(); });
+            m_condition.wait(lock, [this]() { return !m_eventQueue.empty() || !m_running.load(); });
             if (!m_running.load())
             {
                 break;
@@ -240,9 +237,11 @@ void EventLoop::run()
         {
             event->d.handle();
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
-            YOMK_ERR_POS_LOG("EventLoop: " + event->d.m_eventLoopName + " exec event id: " + std::to_string(event->d.m_eventId) + " caught, what: " + std::string(e.what()));
+            YOMK_ERR_POS_LOG(
+                "EventLoop: " + event->d.m_eventLoopName + " exec event id: " + std::to_string(event->d.m_eventId) +
+                " caught, what: " + std::string(e.what()));
         }
         catch (...)
         {

@@ -99,7 +99,7 @@ static size_t poolCount()
     {
         return SIZE_MAX;
     }
-    const std::string &first = arr->d.front();
+    const std::string& first = arr->d.front();
     if (first.rfind("functions:", 0) != 0)
     {
         return SIZE_MAX;
@@ -121,58 +121,61 @@ int main()
 
     // ============ Section 1: CRUD 闭环 ============
     {
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_echo", echoFunc).m_status == YomkResponse::eOk,
-              "REGISTER 注册函数返回 eOk");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("fp_echo", echoFunc).m_status == YomkResponse::eOk, "REGISTER 注册函数返回 eOk");
         auto resp = YOMK_FUNCTIONPOOL_CALL("fp_echo", YomkMkPtr(String, std::string("hello_fp")));
         CHECK(resp.m_status == YomkResponse::eOk, "CALL 已注册函数返回 eOk");
         YomkUnPackPkg(resp.m_data, String, echoMsg);
         CHECK(echoMsg != nullptr && echoMsg->d == "hello_fp", "CALL 回传消息解包一致（echo 语义）");
-        CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_echo").m_status == YomkResponse::eOk,
-              "UNREGISTER 注销函数返回 eOk");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_echo", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eNo,
-              "注销后 CALL 返回 eNo（FPC2 契约：not-found 统一 eNo）");
+        CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_echo").m_status == YomkResponse::eOk, "UNREGISTER 注销函数返回 eOk");
+        CHECK(
+            YOMK_FUNCTIONPOOL_CALL("fp_echo", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eNo,
+            "注销后 CALL 返回 eNo（FPC2 契约：not-found 统一 eNo）");
     }
 
     // ============ Section 2: 注册边界与重复注册更新语义 ============
     {
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("", echoFunc).m_status == YomkResponse::eInvalid,
-              "REGISTER 空函数名返回 eInvalid");
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_null", nullptr).m_status == YomkResponse::eInvalid,
-              "REGISTER null 函数返回 eInvalid");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("", echoFunc).m_status == YomkResponse::eInvalid,
+            "REGISTER 空函数名返回 eInvalid");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("fp_null", nullptr).m_status == YomkResponse::eInvalid,
+            "REGISTER null 函数返回 eInvalid");
 
         // 重复注册 = 更新：CALL 走新实现
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_upd", v1Func).m_status == YomkResponse::eOk,
-              "REGISTER v1 返回 eOk");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_upd", nullptr).m_msg.find("v1") != std::string::npos,
-              "CALL 走 v1 实现");
+        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_upd", v1Func).m_status == YomkResponse::eOk, "REGISTER v1 返回 eOk");
+        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_upd", nullptr).m_msg.find("v1") != std::string::npos, "CALL 走 v1 实现");
         auto upd = YOMK_FUNCTIONPOOL_REGISTER("fp_upd", v2Func);
         CHECK(upd.m_status == YomkResponse::eOk, "重复 REGISTER 返回 eOk（更新语义）");
         CHECK(upd.m_msg.find("update") != std::string::npos, "重复 REGISTER 消息说明更新语义");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_upd", nullptr).m_msg.find("v2") != std::string::npos,
-              "更新后 CALL 走 v2 实现");
+        CHECK(
+            YOMK_FUNCTIONPOOL_CALL("fp_upd", nullptr).m_msg.find("v2") != std::string::npos, "更新后 CALL 走 v2 实现");
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_upd").m_status == YomkResponse::eOk, "清理 fp_upd");
     }
 
     // ============ Section 3: 注销边界 ============
     {
-        CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("").m_status == YomkResponse::eInvalid,
-              "UNREGISTER 空函数名返回 eInvalid");
-        CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_never_registered").m_status == YomkResponse::eNo,
-              "UNREGISTER 未注册名返回 eNo（FPC2 契约：not-found 统一 eNo）");
+        CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("").m_status == YomkResponse::eInvalid, "UNREGISTER 空函数名返回 eInvalid");
+        CHECK(
+            YOMK_FUNCTIONPOOL_UNREGISTER("fp_never_registered").m_status == YomkResponse::eNo,
+            "UNREGISTER 未注册名返回 eNo（FPC2 契约：not-found 统一 eNo）");
     }
 
     // ============ Section 4: 调用边界与 m_pkg=nullptr 透传 ============
     {
-        CHECK(YOMK_FUNCTIONPOOL_CALL("", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eInvalid,
-              "CALL 空函数名返回 eInvalid");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_never_registered", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eNo,
-              "CALL 未注册名返回 eNo（FPC2 契约：not-found 统一 eNo）");
+        CHECK(
+            YOMK_FUNCTIONPOOL_CALL("", YomkMkPtr(String, std::string("x"))).m_status == YomkResponse::eInvalid,
+            "CALL 空函数名返回 eInvalid");
+        CHECK(
+            YOMK_FUNCTIONPOOL_CALL("fp_never_registered", YomkMkPtr(String, std::string("x"))).m_status ==
+                YomkResponse::eNo,
+            "CALL 未注册名返回 eNo（FPC2 契约：not-found 统一 eNo）");
 
         g_nullPkgSeen.store(0);
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_probe", nullProbeFunc).m_status == YomkResponse::eOk,
-              "REGISTER 探针函数返回 eOk");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_probe", nullptr).m_status == YomkResponse::eOk,
-              "CALL m_pkg=nullptr 正常执行");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("fp_probe", nullProbeFunc).m_status == YomkResponse::eOk,
+            "REGISTER 探针函数返回 eOk");
+        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_probe", nullptr).m_status == YomkResponse::eOk, "CALL m_pkg=nullptr 正常执行");
         CHECK(g_nullPkgSeen.load() == 1, "函数收到 nullptr 入参（m_pkg 原样透传）");
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_probe").m_status == YomkResponse::eOk, "清理 fp_probe");
     }
@@ -180,8 +183,9 @@ int main()
     // ============ Section 5: 内省三接口 ============
     {
         // 准备：一个无类型、一个有类型（经 3 参宏注册，见 S6 前置）
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_plain", aliveFunc).m_status == YomkResponse::eOk,
-              "REGISTER 无类型函数 fp_plain");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("fp_plain", aliveFunc).m_status == YomkResponse::eOk,
+            "REGISTER 无类型函数 fp_plain");
 
         // INFO_NAMES：存活列表包含已注册名（空表陷阱教训：必须有存活条目时调用）
         auto namesResp = YOMK_FUNCTIONPOOL_INFO_NAMES();
@@ -190,7 +194,7 @@ int main()
         bool namesFound = false;
         if (namesArr)
         {
-            for (const auto &n : namesArr->d)
+            for (const auto& n : namesArr->d)
             {
                 if (n == "fp_plain")
                 {
@@ -204,16 +208,17 @@ int main()
         auto infoResp = YOMK_FUNCTIONPOOL_INFO_NAME("fp_plain");
         CHECK(infoResp.m_status == YomkResponse::eOk, "INFO_NAME 已注册名返回 eOk");
         CHECK(infoResp.m_msg == "fp_plain", "INFO_NAME 无类型函数消息为纯名（无括号后缀）");
-        CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("fp_never_registered").m_status == YomkResponse::eNo,
-              "INFO_NAME 未注册名返回 eNo（与 unregister/call 一致——FPC2 后全接口统一）");
-        CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("").m_status == YomkResponse::eInvalid,
-              "INFO_NAME 空函数名返回 eInvalid");
+        CHECK(
+            YOMK_FUNCTIONPOOL_INFO_NAME("fp_never_registered").m_status == YomkResponse::eNo,
+            "INFO_NAME 未注册名返回 eNo（与 unregister/call 一致——FPC2 后全接口统一）");
+        CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("").m_status == YomkResponse::eInvalid, "INFO_NAME 空函数名返回 eInvalid");
 
         // INFO_ALL：首行 functions:N 相对计数（新注册一个 → 计数 +1）与行格式
         size_t before = poolCount();
         CHECK(before != SIZE_MAX, "INFO_ALL 首行 functions:N 可解析");
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_count_probe", aliveFunc).m_status == YomkResponse::eOk,
-              "REGISTER 计数探针函数");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("fp_count_probe", aliveFunc).m_status == YomkResponse::eOk,
+            "REGISTER 计数探针函数");
         size_t after = poolCount();
         CHECK(after == before + 1, "INFO_ALL 计数随注册 +1（共享池相对计数）");
         auto allResp = YOMK_FUNCTIONPOOL_INFO_ALL();
@@ -221,7 +226,7 @@ int main()
         bool allLineFound = false;
         if (allArr)
         {
-            for (const auto &l : allArr->d)
+            for (const auto& l : allArr->d)
             {
                 if (l == "fp_plain")
                 {
@@ -236,16 +241,18 @@ int main()
     // ============ Section 6: REGISTER 宏 2 参 / 3 参分发 ============
     {
         // 2 参：无类型声明
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_two", aliveFunc).m_status == YomkResponse::eOk,
-              "REGISTER 2 参宏（无类型）返回 eOk");
-        CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("fp_two").m_msg == "fp_two",
-              "2 参注册 INFO_NAME 为纯名");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("fp_two", aliveFunc).m_status == YomkResponse::eOk,
+            "REGISTER 2 参宏（无类型）返回 eOk");
+        CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("fp_two").m_msg == "fp_two", "2 参注册 INFO_NAME 为纯名");
 
         // 3 参：#MsgName 字符串化为类型名，INFO_NAME 显示 [类型]
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_three", echoFunc, String).m_status == YomkResponse::eOk,
-              "REGISTER 3 参宏（String 类型）返回 eOk");
-        CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("fp_three").m_msg == "fp_three [String]",
-              "3 参注册 INFO_NAME 显示 [String] 类型后缀");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("fp_three", echoFunc, String).m_status == YomkResponse::eOk,
+            "REGISTER 3 参宏（String 类型）返回 eOk");
+        CHECK(
+            YOMK_FUNCTIONPOOL_INFO_NAME("fp_three").m_msg == "fp_three [String]",
+            "3 参注册 INFO_NAME 显示 [String] 类型后缀");
 
         // 清理
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_two").m_status == YomkResponse::eOk, "清理 fp_two");
@@ -254,8 +261,9 @@ int main()
 
     // ============ Section 7: CALL 异常穿透契约（FPC2 已文档化为显式契约）============
     {
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_throw", throwFunc).m_status == YomkResponse::eOk,
-              "REGISTER 抛异常函数返回 eOk");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("fp_throw", throwFunc).m_status == YomkResponse::eOk,
+            "REGISTER 抛异常函数返回 eOk");
 
         // CALL 链五层（request→invoke→callFunction→用户函数）无 try/catch：
         // 异常穿透直达调用方（区别于 EventLoop run() 的吞噬设计）——FPC2 契约文档化
@@ -264,17 +272,19 @@ int main()
         {
             YOMK_FUNCTIONPOOL_CALL("fp_throw", nullptr);
         }
-        catch (const std::runtime_error &e)
+        catch (const std::runtime_error& e)
         {
             caught = (std::string(e.what()) == "fp_boom");
         }
         CHECK(caught, "用户函数异常穿透 CALL 链直达调用方（what 一致）——契约行为");
 
         // 穿透后池存活：正常注册与调用不受影响
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_alive", aliveFunc).m_status == YomkResponse::eOk,
-              "异常穿透后 REGISTER 仍正常");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("fp_alive", nullptr).m_msg.find("alive") != std::string::npos,
-              "异常穿透后 CALL 正常函数执行");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("fp_alive", aliveFunc).m_status == YomkResponse::eOk,
+            "异常穿透后 REGISTER 仍正常");
+        CHECK(
+            YOMK_FUNCTIONPOOL_CALL("fp_alive", nullptr).m_msg.find("alive") != std::string::npos,
+            "异常穿透后 CALL 正常函数执行");
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_throw").m_status == YomkResponse::eOk, "清理 fp_throw");
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_alive").m_status == YomkResponse::eOk, "清理 fp_alive");
     }
@@ -282,15 +292,14 @@ int main()
     // ============ Section 8: 超长函数名边界 ============
     {
         std::string longName(65536, 'F');
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER(longName, aliveFunc).m_status == YomkResponse::eOk,
-              "REGISTER 65536 字节函数名返回 eOk");
-        CHECK(YOMK_FUNCTIONPOOL_CALL(longName, nullptr).m_status == YomkResponse::eOk,
-              "CALL 超长函数名返回 eOk");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER(longName, aliveFunc).m_status == YomkResponse::eOk,
+            "REGISTER 65536 字节函数名返回 eOk");
+        CHECK(YOMK_FUNCTIONPOOL_CALL(longName, nullptr).m_status == YomkResponse::eOk, "CALL 超长函数名返回 eOk");
         auto longInfo = YOMK_FUNCTIONPOOL_INFO_NAME(longName);
         CHECK(longInfo.m_status == YomkResponse::eOk, "INFO_NAME 超长函数名返回 eOk");
         CHECK(longInfo.m_msg.find(longName) != std::string::npos, "INFO_NAME 完整回显超长函数名");
-        CHECK(YOMK_FUNCTIONPOOL_UNREGISTER(longName).m_status == YomkResponse::eOk,
-              "UNREGISTER 超长函数名返回 eOk");
+        CHECK(YOMK_FUNCTIONPOOL_UNREGISTER(longName).m_status == YomkResponse::eOk, "UNREGISTER 超长函数名返回 eOk");
     }
 
     // ============ 收尾清理（不污染后续闭环/其他测试的共享池）============

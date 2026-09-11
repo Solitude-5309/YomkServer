@@ -1,14 +1,15 @@
-#include "YomkServer.h"
-#include "YomkDefine.h"
-#include "EventLoop.h"
 #include <map>
 #include <mutex>
 #include <shared_mutex>
 
+#include "EventLoop.h"
+#include "YomkDefine.h"
+#include "YomkServer.h"
+
 class YomkEventLoop : public YomkService
 {
 public:
-    YomkEventLoop(YomkServer *server);
+    YomkEventLoop(YomkServer* server);
     virtual ~YomkEventLoop() {}
 
 public:

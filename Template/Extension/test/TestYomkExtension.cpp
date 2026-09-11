@@ -1,5 +1,6 @@
-#include <YomkServer/YomkAPI.h>
 #include <YomkExtension/ExtensionService.h>
+#include <YomkServer/YomkAPI.h>
+
 #include <iostream>
 
 using namespace yomk;
@@ -7,7 +8,7 @@ using namespace yomk;
 static int g_pass = 0;
 static int g_fail = 0;
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     YOMK_INIT();
 

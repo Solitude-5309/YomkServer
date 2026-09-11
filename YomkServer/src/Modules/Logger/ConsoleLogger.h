@@ -1,7 +1,7 @@
 #pragma once
-#include <string>
 #include <memory>
 #include <mutex>
+#include <string>
 class ConsoleLogger
 {
 public:
@@ -17,10 +17,10 @@ public:
     ConsoleLogger();
     ~ConsoleLogger();
     std::string getName() { return m_name; }
-    void setName(const std::string &name) { m_name = name; }
+    void setName(const std::string& name) { m_name = name; }
 
 public:
-    void log(ELogLevel logLevel, const std::string &log);
+    void log(ELogLevel logLevel, const std::string& log);
 
 private:
     std::string m_name;

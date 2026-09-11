@@ -16,7 +16,7 @@
 class CalcService : public YomkService
 {
 public:
-    explicit CalcService(YomkServer *server);
+    explicit CalcService(YomkServer* server);
 
     int init() override;
 

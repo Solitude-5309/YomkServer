@@ -152,7 +152,7 @@ static YomkResponse s5ProbeFunc(YomkPkgPtr /*pkg*/)
 // ============================================================================
 // 辅助：解析 INFO_ALL 的 StringArray 首行 "functions:N"
 // ============================================================================
-static uint64_t parseFunctionsN(const std::string &firstLine)
+static uint64_t parseFunctionsN(const std::string& firstLine)
 {
     // 格式: "functions:N"
     auto pos = firstLine.find("functions:");
@@ -164,7 +164,7 @@ static uint64_t parseFunctionsN(const std::string &firstLine)
 // ============================================================================
 // main
 // ============================================================================
-int main(int /*argc*/, char ** /*argv*/)
+int main(int /*argc*/, char** /*argv*/)
 {
     std::cout << "=== TestYomkFunctionPoolConcurrency (FPC3) ===" << std::endl;
 
@@ -182,40 +182,45 @@ int main(int /*argc*/, char ** /*argv*/)
         g_s1ExecCount.store(0);
         g_s1OkCount.store(0);
 
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("c1_probe", s1ProbeFunc).m_status == YomkResponse::eOk,
-              "S1: 注册 c1_probe 成功");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("c1_probe", s1ProbeFunc).m_status == YomkResponse::eOk,
+            "S1: 注册 c1_probe 成功");
 
         // 多线程并发 CALL（shared_lock 并发读 + std::function 拷贝）
         std::vector<std::thread> callers;
         callers.reserve(kThreads);
         for (int t = 0; t < kThreads; ++t)
         {
-            callers.emplace_back([]()
-                                 {
-                for (int i = 0; i < kCallsPerThread; ++i)
+            callers.emplace_back(
+                []()
                 {
-                    auto resp = YOMK_FUNCTIONPOOL_CALL("c1_probe", nullptr);
-                    if (resp.m_status == YomkResponse::eOk)
-                        g_s1OkCount.fetch_add(1, std::memory_order_relaxed);
-                } });
+                    for (int i = 0; i < kCallsPerThread; ++i)
+                    {
+                        auto resp = YOMK_FUNCTIONPOOL_CALL("c1_probe", nullptr);
+                        if (resp.m_status == YomkResponse::eOk)
+                            g_s1OkCount.fetch_add(1, std::memory_order_relaxed);
+                    }
+                });
         }
-        for (auto &th : callers)
+        for (auto& th : callers)
             th.join();
 
-        CHECK(g_s1ExecCount.load() == kTotalCalls,
-              "S1: 执行守恒 execCount == " + std::to_string(kTotalCalls) +
-                  "（实际 " + std::to_string(g_s1ExecCount.load()) + "）");
-        CHECK(g_s1OkCount.load() == kTotalCalls,
-              "S1: 响应守恒 okCount == " + std::to_string(kTotalCalls));
+        CHECK(
+            g_s1ExecCount.load() == kTotalCalls,
+            "S1: 执行守恒 execCount == " + std::to_string(kTotalCalls) + "（实际 " +
+                std::to_string(g_s1ExecCount.load()) + "）");
+        CHECK(g_s1OkCount.load() == kTotalCalls, "S1: 响应守恒 okCount == " + std::to_string(kTotalCalls));
 
         // 嵌套重入验证
         g_s1InnerCount.store(0);
         g_s1OuterOkCount.store(0);
 
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("c1_inner", s1InnerFunc).m_status == YomkResponse::eOk,
-              "S1: 注册 c1_inner 成功");
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("c1_outer", s1OuterFunc).m_status == YomkResponse::eOk,
-              "S1: 注册 c1_outer（内部嵌套 CALL c1_inner）成功");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("c1_inner", s1InnerFunc).m_status == YomkResponse::eOk,
+            "S1: 注册 c1_inner 成功");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("c1_outer", s1OuterFunc).m_status == YomkResponse::eOk,
+            "S1: 注册 c1_outer（内部嵌套 CALL c1_inner）成功");
 
         constexpr int kNestedThreads = 4;
         constexpr int kNestedCallsPerThread = 100;
@@ -225,28 +230,30 @@ int main(int /*argc*/, char ** /*argv*/)
         nestedCallers.reserve(kNestedThreads);
         for (int t = 0; t < kNestedThreads; ++t)
         {
-            nestedCallers.emplace_back([]()
-                                       {
-                for (int i = 0; i < kNestedCallsPerThread; ++i)
+            nestedCallers.emplace_back(
+                []()
                 {
-                    YOMK_FUNCTIONPOOL_CALL("c1_outer", nullptr);
-                } });
+                    for (int i = 0; i < kNestedCallsPerThread; ++i)
+                    {
+                        YOMK_FUNCTIONPOOL_CALL("c1_outer", nullptr);
+                    }
+                });
         }
-        for (auto &th : nestedCallers)
+        for (auto& th : nestedCallers)
             th.join();
 
-        CHECK(g_s1InnerCount.load() == kNestedTotal,
-              "S1: 嵌套重入守恒 innerCount == " + std::to_string(kNestedTotal) +
-                  "（实际 " + std::to_string(g_s1InnerCount.load()) + "）——同线程二次 shared_lock 无死锁");
-        CHECK(g_s1OuterOkCount.load() == kNestedTotal,
-              "S1: 嵌套重入 outer 全部成功回传 inner 结果");
+        CHECK(
+            g_s1InnerCount.load() == kNestedTotal,
+            "S1: 嵌套重入守恒 innerCount == " + std::to_string(kNestedTotal) + "（实际 " +
+                std::to_string(g_s1InnerCount.load()) + "）——同线程二次 shared_lock 无死锁");
+        CHECK(g_s1OuterOkCount.load() == kNestedTotal, "S1: 嵌套重入 outer 全部成功回传 inner 结果");
 
         // 清理
         YOMK_FUNCTIONPOOL_UNREGISTER("c1_probe");
         YOMK_FUNCTIONPOOL_UNREGISTER("c1_inner");
         YOMK_FUNCTIONPOOL_UNREGISTER("c1_outer");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("c1_probe", nullptr).m_status == YomkResponse::eNo,
-              "S1: 清理后 c1_probe 已不存在");
+        CHECK(
+            YOMK_FUNCTIONPOOL_CALL("c1_probe", nullptr).m_status == YomkResponse::eNo, "S1: 清理后 c1_probe 已不存在");
     }
 
     // ========================================================================
@@ -262,22 +269,25 @@ int main(int /*argc*/, char ** /*argv*/)
         g_s2TotalCalls.store(0);
         g_s2Stop.store(false);
 
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("c2_func", s2V1Func).m_status == YomkResponse::eOk,
-              "S2: 注册 c2_func 为 v1 实现");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("c2_func", s2V1Func).m_status == YomkResponse::eOk,
+            "S2: 注册 c2_func 为 v1 实现");
 
         // 启动 caller 线程（持续 CALL 直到 g_s2Stop）
         std::vector<std::thread> callers;
         callers.reserve(kCallerThreads);
         for (int t = 0; t < kCallerThreads; ++t)
         {
-            callers.emplace_back([]()
-                                 {
-                while (!g_s2Stop.load(std::memory_order_acquire))
+            callers.emplace_back(
+                []()
                 {
-                    auto resp = YOMK_FUNCTIONPOOL_CALL("c2_func", nullptr);
-                    if (resp.m_status == YomkResponse::eOk)
-                        g_s2TotalCalls.fetch_add(1, std::memory_order_relaxed);
-                } });
+                    while (!g_s2Stop.load(std::memory_order_acquire))
+                    {
+                        auto resp = YOMK_FUNCTIONPOOL_CALL("c2_func", nullptr);
+                        if (resp.m_status == YomkResponse::eOk)
+                            g_s2TotalCalls.fetch_add(1, std::memory_order_relaxed);
+                    }
+                });
         }
 
         // 主线程做 50 轮 REGISTER 更新交替 v1/v2
@@ -292,24 +302,24 @@ int main(int /*argc*/, char ** /*argv*/)
         }
 
         g_s2Stop.store(true, std::memory_order_release);
-        for (auto &th : callers)
+        for (auto& th : callers)
             th.join();
 
         uint64_t v1 = g_s2V1Count.load();
         uint64_t v2 = g_s2V2Count.load();
         uint64_t total = g_s2TotalCalls.load();
 
-        CHECK(v1 + v2 == total,
-              "S2: 写读交错守恒 v1(" + std::to_string(v1) + ") + v2(" + std::to_string(v2) +
-                  ") == total(" + std::to_string(total) + ")——无 torn std::function");
+        CHECK(
+            v1 + v2 == total,
+            "S2: 写读交错守恒 v1(" + std::to_string(v1) + ") + v2(" + std::to_string(v2) + ") == total(" +
+                std::to_string(total) + ")——无 torn std::function");
         CHECK(v1 > 0, "S2: v1 实现被观测到（更新前后均有调用命中 v1）");
         CHECK(v2 > 0, "S2: v2 实现被观测到（更新确实生效）");
         CHECK(total > 0, "S2: 总调用数 > 0（caller 线程确实执行了）");
 
         // 清理
         YOMK_FUNCTIONPOOL_UNREGISTER("c2_func");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("c2_func", nullptr).m_status == YomkResponse::eNo,
-              "S2: 清理后 c2_func 已不存在");
+        CHECK(YOMK_FUNCTIONPOOL_CALL("c2_func", nullptr).m_status == YomkResponse::eNo, "S2: 清理后 c2_func 已不存在");
     }
 
     // ========================================================================
@@ -321,12 +331,12 @@ int main(int /*argc*/, char ** /*argv*/)
         g_s3GateRelease.store(false);
         g_s3ExecCount.store(0);
 
-        CHECK(YOMK_FUNCTIONPOOL_REGISTER("c3_gated", s3GatedFunc).m_status == YomkResponse::eOk,
-              "S3: 注册 c3_gated（gate 函数：体内自旋等待释放）");
+        CHECK(
+            YOMK_FUNCTIONPOOL_REGISTER("c3_gated", s3GatedFunc).m_status == YomkResponse::eOk,
+            "S3: 注册 c3_gated（gate 函数：体内自旋等待释放）");
 
         // 启动 caller 线程：CALL c3_gated → 进入 gate 函数 → 自旋等待
-        std::thread caller([]()
-                           { YOMK_FUNCTIONPOOL_CALL("c3_gated", nullptr); });
+        std::thread caller([]() { YOMK_FUNCTIONPOOL_CALL("c3_gated", nullptr); });
 
         // 等待 gate 函数开始执行（证明 shared_lock 已释放，函数在锁外执行中）
         int waitMs = 0;
@@ -335,24 +345,26 @@ int main(int /*argc*/, char ** /*argv*/)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             ++waitMs;
         }
-        CHECK(g_s3GateStarted.load(),
-              "S3: gate 函数已进入执行（callFunction 的 shared_lock 已释放，锁外调用中）");
+        CHECK(g_s3GateStarted.load(), "S3: gate 函数已进入执行（callFunction 的 shared_lock 已释放，锁外调用中）");
 
         // 在 gate 函数执行期间 UNREGISTER——unique_lock 获取成功（无 shared_lock 持有者）
         auto unregResp = YOMK_FUNCTIONPOOL_UNREGISTER("c3_gated");
-        CHECK(unregResp.m_status == YomkResponse::eOk,
-              "S3: 在途调用期间 UNREGISTER 成功（unique_lock 无阻塞——shared_lock 已释放）");
+        CHECK(
+            unregResp.m_status == YomkResponse::eOk,
+            "S3: 在途调用期间 UNREGISTER 成功（unique_lock 无阻塞——shared_lock 已释放）");
 
         // 释放 gate → 在途调用完成
         g_s3GateRelease.store(true, std::memory_order_release);
         caller.join();
 
-        CHECK(g_s3ExecCount.load() == 1,
-              "S3: 在途调用完成（erase 不影响已拷贝的 std::function——锁外调用安全性核心证明）");
+        CHECK(
+            g_s3ExecCount.load() == 1,
+            "S3: 在途调用完成（erase 不影响已拷贝的 std::function——锁外调用安全性核心证明）");
 
         // 注销后新 CALL → eNo
-        CHECK(YOMK_FUNCTIONPOOL_CALL("c3_gated", nullptr).m_status == YomkResponse::eNo,
-              "S3: 注销后新 CALL 返回 eNo（注销生效）");
+        CHECK(
+            YOMK_FUNCTIONPOOL_CALL("c3_gated", nullptr).m_status == YomkResponse::eNo,
+            "S3: 注销后新 CALL 返回 eNo（注销生效）");
     }
 
     // ========================================================================
@@ -375,17 +387,19 @@ int main(int /*argc*/, char ** /*argv*/)
         churnThreads.reserve(kChurnThreads);
         for (int t = 0; t < kChurnThreads; ++t)
         {
-            churnThreads.emplace_back([t]()
-                                      {
-                for (int round = 0; round < kChurnRounds; ++round)
+            churnThreads.emplace_back(
+                [t]()
                 {
-                    std::string name = "c4_t" + std::to_string(t) + "_" + std::to_string(round);
-                    YOMK_FUNCTIONPOOL_REGISTER(name, s5ProbeFunc);
-                    // 短暂让步让内省线程有机会观测
-                    if (round % 10 == 9)
-                        std::this_thread::sleep_for(std::chrono::microseconds(50));
-                    YOMK_FUNCTIONPOOL_UNREGISTER(name);
-                } });
+                    for (int round = 0; round < kChurnRounds; ++round)
+                    {
+                        std::string name = "c4_t" + std::to_string(t) + "_" + std::to_string(round);
+                        YOMK_FUNCTIONPOOL_REGISTER(name, s5ProbeFunc);
+                        // 短暂让步让内省线程有机会观测
+                        if (round % 10 == 9)
+                            std::this_thread::sleep_for(std::chrono::microseconds(50));
+                        YOMK_FUNCTIONPOOL_UNREGISTER(name);
+                    }
+                });
         }
 
         // 内省线程：轮询 INFO_ALL 并记录快照
@@ -393,30 +407,32 @@ int main(int /*argc*/, char ** /*argv*/)
         introspectThreads.reserve(kIntrospectThreads);
         for (int t = 0; t < kIntrospectThreads; ++t)
         {
-            introspectThreads.emplace_back([]()
-                                           {
-                for (int round = 0; round < kIntrospectRounds; ++round)
+            introspectThreads.emplace_back(
+                []()
                 {
-                    auto resp = YOMK_FUNCTIONPOOL_INFO_ALL();
-                    if (resp.m_status == YomkResponse::eOk && resp.m_data)
+                    for (int round = 0; round < kIntrospectRounds; ++round)
                     {
-                        YomkUnPackPkg(resp.m_data, StringArray, arr);
-                        if (arr && !arr->d.empty())
+                        auto resp = YOMK_FUNCTIONPOOL_INFO_ALL();
+                        if (resp.m_status == YomkResponse::eOk && resp.m_data)
                         {
-                            // 首行 "functions:N"，其余每行一个函数条目
-                            uint64_t declaredN = parseFunctionsN(arr->d[0]);
-                            uint64_t actualLines = arr->d.size() - 1;
-                            std::lock_guard<std::mutex> lk(g_s4ObsMutex);
-                            g_s4Snapshots.push_back({declaredN, actualLines});
+                            YomkUnPackPkg(resp.m_data, StringArray, arr);
+                            if (arr && !arr->d.empty())
+                            {
+                                // 首行 "functions:N"，其余每行一个函数条目
+                                uint64_t declaredN = parseFunctionsN(arr->d[0]);
+                                uint64_t actualLines = arr->d.size() - 1;
+                                std::lock_guard<std::mutex> lk(g_s4ObsMutex);
+                                g_s4Snapshots.push_back({declaredN, actualLines});
+                            }
                         }
+                        std::this_thread::sleep_for(std::chrono::microseconds(200));
                     }
-                    std::this_thread::sleep_for(std::chrono::microseconds(200));
-                } });
+                });
         }
 
-        for (auto &th : churnThreads)
+        for (auto& th : churnThreads)
             th.join();
-        for (auto &th : introspectThreads)
+        for (auto& th : introspectThreads)
             th.join();
 
         // 验证快照一致性
@@ -425,18 +441,18 @@ int main(int /*argc*/, char ** /*argv*/)
         {
             std::lock_guard<std::mutex> lk(g_s4ObsMutex);
             snapshotCount = g_s4Snapshots.size();
-            for (const auto &snap : g_s4Snapshots)
+            for (const auto& snap : g_s4Snapshots)
             {
                 if (snap.declaredN != snap.actualLines)
                     ++inconsistentCount;
             }
         }
 
-        CHECK(snapshotCount > 0,
-              "S4: 收集到 " + std::to_string(snapshotCount) + " 个 INFO_ALL 快照");
-        CHECK(inconsistentCount == 0,
-              "S4: 全部快照一致（functions:N == 列表行数）——单次 shared_lock 内快照原子性（不一致 " +
-                  std::to_string(inconsistentCount) + " 个）");
+        CHECK(snapshotCount > 0, "S4: 收集到 " + std::to_string(snapshotCount) + " 个 INFO_ALL 快照");
+        CHECK(
+            inconsistentCount == 0,
+            "S4: 全部快照一致（functions:N == 列表行数）——单次 shared_lock 内快照原子性（不一致 " +
+                std::to_string(inconsistentCount) + " 个）");
 
         // 清理（churn 线程已自行注销，但确认池干净）
         for (int t = 0; t < kChurnThreads; ++t)
@@ -463,61 +479,69 @@ int main(int /*argc*/, char ** /*argv*/)
         std::vector<std::thread> registerers;
         for (int t = 0; t < 2; ++t)
         {
-            registerers.emplace_back([]()
-                                     {
-                for (int i = 0; i < kRounds; ++i)
+            registerers.emplace_back(
+                []()
                 {
-                    auto resp = YOMK_FUNCTIONPOOL_REGISTER("c5_probe", s5ProbeFunc);
-                    if (resp.m_status == YomkResponse::eOk)
-                        g_s5RegOk.fetch_add(1, std::memory_order_relaxed);
-                } });
+                    for (int i = 0; i < kRounds; ++i)
+                    {
+                        auto resp = YOMK_FUNCTIONPOOL_REGISTER("c5_probe", s5ProbeFunc);
+                        if (resp.m_status == YomkResponse::eOk)
+                            g_s5RegOk.fetch_add(1, std::memory_order_relaxed);
+                    }
+                });
         }
 
         // 2 caller 线程：CALL 同名（可能 eOk 或 eNo 取决于 unregister 时序）
         std::vector<std::thread> callers;
         for (int t = 0; t < 2; ++t)
         {
-            callers.emplace_back([]()
-                                 {
-                for (int i = 0; i < kRounds; ++i)
+            callers.emplace_back(
+                []()
                 {
-                    auto resp = YOMK_FUNCTIONPOOL_CALL("c5_probe", nullptr);
-                    g_s5CallerTotal.fetch_add(1, std::memory_order_relaxed);
-                    if (resp.m_status == YomkResponse::eOk)
-                        g_s5CallerOk.fetch_add(1, std::memory_order_relaxed);
-                    else if (resp.m_status == YomkResponse::eNo)
-                        g_s5CallerNo.fetch_add(1, std::memory_order_relaxed);
-                } });
+                    for (int i = 0; i < kRounds; ++i)
+                    {
+                        auto resp = YOMK_FUNCTIONPOOL_CALL("c5_probe", nullptr);
+                        g_s5CallerTotal.fetch_add(1, std::memory_order_relaxed);
+                        if (resp.m_status == YomkResponse::eOk)
+                            g_s5CallerOk.fetch_add(1, std::memory_order_relaxed);
+                        else if (resp.m_status == YomkResponse::eNo)
+                            g_s5CallerNo.fetch_add(1, std::memory_order_relaxed);
+                    }
+                });
         }
 
         // 1 unregistrer 线程：反复注销同名
-        std::thread unregistrer([]()
-                                {
-            for (int i = 0; i < kRounds; ++i)
+        std::thread unregistrer(
+            []()
             {
-                auto resp = YOMK_FUNCTIONPOOL_UNREGISTER("c5_probe");
-                if (resp.m_status == YomkResponse::eOk)
-                    g_s5UnregOk.fetch_add(1, std::memory_order_relaxed);
-                else if (resp.m_status == YomkResponse::eNo)
-                    g_s5UnregNo.fetch_add(1, std::memory_order_relaxed);
-                // 短暂让步让 registerer 有机会重新注册
-                std::this_thread::sleep_for(std::chrono::microseconds(50));
-            } });
+                for (int i = 0; i < kRounds; ++i)
+                {
+                    auto resp = YOMK_FUNCTIONPOOL_UNREGISTER("c5_probe");
+                    if (resp.m_status == YomkResponse::eOk)
+                        g_s5UnregOk.fetch_add(1, std::memory_order_relaxed);
+                    else if (resp.m_status == YomkResponse::eNo)
+                        g_s5UnregNo.fetch_add(1, std::memory_order_relaxed);
+                    // 短暂让步让 registerer 有机会重新注册
+                    std::this_thread::sleep_for(std::chrono::microseconds(50));
+                }
+            });
 
         // 1 introspector 线程：INFO_NAMES 轮询
-        std::thread introspector([]()
-                                 {
-            for (int i = 0; i < kRounds; ++i)
+        std::thread introspector(
+            []()
             {
-                auto resp = YOMK_FUNCTIONPOOL_INFO_NAMES();
-                if (resp.m_status == YomkResponse::eOk)
-                    g_s5IntrospectCount.fetch_add(1, std::memory_order_relaxed);
-                std::this_thread::sleep_for(std::chrono::microseconds(100));
-            } });
+                for (int i = 0; i < kRounds; ++i)
+                {
+                    auto resp = YOMK_FUNCTIONPOOL_INFO_NAMES();
+                    if (resp.m_status == YomkResponse::eOk)
+                        g_s5IntrospectCount.fetch_add(1, std::memory_order_relaxed);
+                    std::this_thread::sleep_for(std::chrono::microseconds(100));
+                }
+            });
 
-        for (auto &th : registerers)
+        for (auto& th : registerers)
             th.join();
-        for (auto &th : callers)
+        for (auto& th : callers)
             th.join();
         unregistrer.join();
         introspector.join();
@@ -527,19 +551,17 @@ int main(int /*argc*/, char ** /*argv*/)
         uint64_t callerTotal = g_s5CallerTotal.load();
         constexpr uint64_t expectedTotal = 2 * kRounds;
 
-        CHECK(callerOk + callerNo == callerTotal,
-              "S5: caller 守恒 ok(" + std::to_string(callerOk) + ") + no(" +
-                  std::to_string(callerNo) + ") == total(" + std::to_string(callerTotal) + ")");
-        CHECK(callerTotal == expectedTotal,
-              "S5: caller 总尝试 == " + std::to_string(expectedTotal));
-        CHECK(g_s5RegOk.load() == 2 * kRounds,
-              "S5: registerer 全部成功（注册/更新幂等）");
-        CHECK(g_s5UnregOk.load() + g_s5UnregNo.load() == kRounds,
-              "S5: unregistrer 守恒 ok+no == " + std::to_string(kRounds));
-        CHECK(g_s5IntrospectCount.load() > 0,
-              "S5: introspector 成功观测到 INFO_NAMES（无崩溃）");
-        CHECK(callerOk > 0,
-              "S5: 至少部分 CALL 成功（registerer 在 unregistrer 间隙注册了函数）");
+        CHECK(
+            callerOk + callerNo == callerTotal,
+            "S5: caller 守恒 ok(" + std::to_string(callerOk) + ") + no(" + std::to_string(callerNo) + ") == total(" +
+                std::to_string(callerTotal) + ")");
+        CHECK(callerTotal == expectedTotal, "S5: caller 总尝试 == " + std::to_string(expectedTotal));
+        CHECK(g_s5RegOk.load() == 2 * kRounds, "S5: registerer 全部成功（注册/更新幂等）");
+        CHECK(
+            g_s5UnregOk.load() + g_s5UnregNo.load() == kRounds,
+            "S5: unregistrer 守恒 ok+no == " + std::to_string(kRounds));
+        CHECK(g_s5IntrospectCount.load() > 0, "S5: introspector 成功观测到 INFO_NAMES（无崩溃）");
+        CHECK(callerOk > 0, "S5: 至少部分 CALL 成功（registerer 在 unregistrer 间隙注册了函数）");
 
         // 清理
         YOMK_FUNCTIONPOOL_UNREGISTER("c5_probe");
@@ -550,7 +572,7 @@ int main(int /*argc*/, char ** /*argv*/)
     // ========================================================================
     YOMK_SHUTDOWN();
 
-    std::cout << "\n=== Result: " << (g_total - g_failed) << "/" << g_total
-              << " passed, " << g_failed << " failed ===" << std::endl;
+    std::cout << "\n=== Result: " << (g_total - g_failed) << "/" << g_total << " passed, " << g_failed
+              << " failed ===" << std::endl;
     return g_failed == 0 ? 0 : 1;
 }

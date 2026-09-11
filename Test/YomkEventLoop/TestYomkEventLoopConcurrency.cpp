@@ -36,8 +36,8 @@
 #include <thread>
 #include <vector>
 
-#include "YomkAPI.h"
 #include "Modules/EventLoop/EventLoop.h"
+#include "YomkAPI.h"
 
 static int g_failed = 0;
 
@@ -56,7 +56,7 @@ static int g_failed = 0;
     } while (0)
 
 // ---- 文件级观测装置（文件级生命周期稳定，TSan 下无栈槽复用串扰）----
-static std::atomic<int> g_execCount{0}; // 计数 handler 执行总数（S2/S3/S4/S5）
+static std::atomic<int> g_execCount{0};  // 计数 handler 执行总数（S2/S3/S4/S5）
 
 static YomkServiceFunc countHandler()
 {
@@ -131,7 +131,7 @@ static void openGate()
 }
 
 // 轮询等待谓词成立，超时返回最终谓词值
-static bool waitUntil(const std::function<bool()> &pred, int timeoutMs)
+static bool waitUntil(const std::function<bool()>& pred, int timeoutMs)
 {
     for (int i = 0; i < timeoutMs; ++i)
     {
@@ -162,7 +162,7 @@ int main()
             for (int k = 0; k < 40; ++k)
             {
                 auto ev = YomkMkPtr(Event, yomk::Event("conc1", nullptr, nullptr, ""));
-                yomk::Event_ *raw = ev.get(); // handler 执行期间 run() 持有 shared_ptr，裸指针安全
+                yomk::Event_* raw = ev.get();  // handler 执行期间 run() 持有 shared_ptr，裸指针安全
                 ev->d.m_serviceFunc = [raw](YomkPkgPtr)
                 {
                     recordExecId(raw->d.m_eventId);
@@ -180,16 +180,15 @@ int main()
         {
             posters.emplace_back(poster, t);
         }
-        for (auto &th : posters)
+        for (auto& th : posters)
         {
             th.join();
         }
         CHECK(postOk.load() == 320, "S1 并发 post 全部返回 0（320/320）");
 
-        CHECK(waitUntil([&loop]
-                        { return loop.infoLine("conc1", 0).find("pending:0") != std::string::npos; },
-                        5000),
-              "S1 队列排空（drain 完成）");
+        CHECK(
+            waitUntil([&loop] { return loop.infoLine("conc1", 0).find("pending:0") != std::string::npos; }, 5000),
+            "S1 队列排空（drain 完成）");
 
         auto ids = execIdsSnapshot();
         CHECK(ids.size() == 320, "S1 计数守恒：执行数==投递数（320/320，无丢失无重复）");
@@ -224,22 +223,21 @@ int main()
         // loopB 的事件在 A 阻塞期间完成——若两 loop 共享线程则不可能，此为并行性的确定性证明
         for (int k = 0; k < 5; ++k)
         {
-            CHECK(loopB.post(YomkMkPtr(Event, yomk::Event("pb", nullptr, countHandler(), ""))) == 0,
-                  "S2 loopB post 计数事件返回 0");
+            CHECK(
+                loopB.post(YomkMkPtr(Event, yomk::Event("pb", nullptr, countHandler(), ""))) == 0,
+                "S2 loopB post 计数事件返回 0");
         }
-        CHECK(waitUntil([]
-                        { return g_execCount.load() == 5; },
-                        2000),
-              "S2 loopB 事件在 loopA 阻塞期间全部完成（独立 worker 并行）");
+        CHECK(
+            waitUntil([] { return g_execCount.load() == 5; }, 2000),
+            "S2 loopB 事件在 loopA 阻塞期间全部完成（独立 worker 并行）");
 
         // 释放 loopA：gate 完成后 A 的后续事件恢复执行
         openGate();
-        CHECK(loopA.post(YomkMkPtr(Event, yomk::Event("pa", nullptr, countHandler(), ""))) == 0,
-              "S2 loopA post 后续计数事件返回 0");
-        CHECK(waitUntil([]
-                        { return g_execCount.load() == 6; },
-                        2000),
-              "S2 释放后 loopA 恢复执行（gate 完成+后续事件）");
+        CHECK(
+            loopA.post(YomkMkPtr(Event, yomk::Event("pa", nullptr, countHandler(), ""))) == 0,
+            "S2 loopA post 后续计数事件返回 0");
+        CHECK(
+            waitUntil([] { return g_execCount.load() == 6; }, 2000), "S2 释放后 loopA 恢复执行（gate 完成+后续事件）");
         CHECK(g_execCount.load() == 6, "S2 两 loop 计数守恒（5+1==6）");
 
         loopA.destroy();
@@ -252,9 +250,9 @@ int main()
         EventLoop loop;
         CHECK(loop.start() == 0, "S3 start 返回 0");
 
-        std::atomic<int> waiterDone{0}; // 完成线程数
-        std::atomic<int> waitRcOk{0};   // postWait 返回 0 的次数
-        std::atomic<int> waitRespOk{0}; // 返回时响应已填充 eOk 的次数
+        std::atomic<int> waiterDone{0};  // 完成线程数
+        std::atomic<int> waitRcOk{0};    // postWait 返回 0 的次数
+        std::atomic<int> waitRespOk{0};  // 返回时响应已填充 eOk 的次数
 
         auto waiter = [&loop, &waiterDone, &waitRcOk, &waitRespOk]()
         {
@@ -280,11 +278,10 @@ int main()
             waiters.emplace_back(waiter);
         }
 
-        CHECK(waitUntil([&waiterDone]
-                        { return waiterDone.load() == 8; },
-                        5000),
-              "S3 全部 8 线程看门狗内完成（postWait 无挂起）");
-        for (auto &th : waiters)
+        CHECK(
+            waitUntil([&waiterDone] { return waiterDone.load() == 8; }, 5000),
+            "S3 全部 8 线程看门狗内完成（postWait 无挂起）");
+        for (auto& th : waiters)
         {
             th.join();
         }
@@ -303,8 +300,8 @@ int main()
         EventLoop loop;
         CHECK(loop.start() == 0, "S4 start 返回 0");
 
-        std::atomic<int> acceptedPost{0}; // post 返回 0（已入队，必执行）
-        std::atomic<int> acceptedWait{0}; // postWait 返回 0（已入队，必执行）
+        std::atomic<int> acceptedPost{0};  // post 返回 0（已入队，必执行）
+        std::atomic<int> acceptedWait{0};  // postWait 返回 0（已入队，必执行）
 
         auto poster = [&loop, &acceptedPost]()
         {
@@ -325,7 +322,7 @@ int main()
                 auto ev = YomkMkPtr(Event, yomk::Event("conc4", nullptr, countHandler(), ""));
                 if (loop.postWait(ev) == 0)
                 {
-                    acceptedWait.fetch_add(1); // 停止态返回 2 被拒：事件未入队不计数，直接投下一个
+                    acceptedWait.fetch_add(1);  // 停止态返回 2 被拒：事件未入队不计数，直接投下一个
                 }
             }
         };
@@ -347,18 +344,23 @@ int main()
         workers.emplace_back(waiter);
         workers.emplace_back(waiter);
         workers.emplace_back(churner);
-        for (auto &th : workers)
+        for (auto& th : workers)
         {
-            th.join(); // 死锁将表现为 join 卡死，由二进制级 timeout 300 兜底判 FAIL
+            th.join();  // 死锁将表现为 join 卡死，由二进制级 timeout 300 兜底判 FAIL
         }
 
         CHECK(loop.start() == 0, "S4 churn 结束后确保运行态（幂等）");
         int expected = acceptedPost.load() + acceptedWait.load();
-        CHECK(waitUntil([&loop, expected]
-                        { return g_execCount.load() == expected && loop.infoLine("conc4", 0).find("pending:0") != std::string::npos; },
-                        5000),
-              "S4 churn 后队列排空（drain 完成）");
-        CHECK(g_execCount.load() == expected, "S4 精确计数守恒：executed==accepted（rc==0 必入队、stop 保留、最终执行）");
+        CHECK(
+            waitUntil(
+                [&loop, expected] {
+                    return g_execCount.load() == expected &&
+                           loop.infoLine("conc4", 0).find("pending:0") != std::string::npos;
+                },
+                5000),
+            "S4 churn 后队列排空（drain 完成）");
+        CHECK(
+            g_execCount.load() == expected, "S4 精确计数守恒：executed==accepted（rc==0 必入队、stop 保留、最终执行）");
         CHECK(expected > 0, "S4 混合期间存在成功投递（churn 未饿死投递路径）");
 
         loop.destroy();
@@ -382,7 +384,8 @@ int main()
         {
             for (int k = 0; k < 25; ++k)
             {
-                if (YOMK_EVENTLOOP_POST("conc_loop", YomkMkPtr(String, std::string("x")), countHandler(), "").m_status == YomkResponse::eOk)
+                if (YOMK_EVENTLOOP_POST("conc_loop", YomkMkPtr(String, std::string("x")), countHandler(), "")
+                        .m_status == YomkResponse::eOk)
                 {
                     apiPostOk.fetch_add(1);
                 }
@@ -401,12 +404,13 @@ int main()
                 {
                     pollOk.fetch_add(1);
                 }
-                else if (g_pollFailSamples.size() < 5) // 诊断：留存首批失败样本（非 eOk 或非 running:on）
+                else if (g_pollFailSamples.size() < 5)  // 诊断：留存首批失败样本（非 eOk 或非 running:on）
                 {
                     std::lock_guard<std::mutex> lk(g_pollFailMutex);
                     if (g_pollFailSamples.size() < 5)
                     {
-                        g_pollFailSamples.push_back("status=" + std::to_string(static_cast<int>(r.m_status)) + " msg=[" + r.m_msg + "]");
+                        g_pollFailSamples.push_back(
+                            "status=" + std::to_string(static_cast<int>(r.m_status)) + " msg=[" + r.m_msg + "]");
                     }
                 }
             }
@@ -418,7 +422,7 @@ int main()
             posters.emplace_back(apiPoster);
         }
         std::thread pollThread(poller);
-        for (auto &th : posters)
+        for (auto& th : posters)
         {
             th.join();
         }
@@ -426,14 +430,12 @@ int main()
         pollThread.join();
 
         CHECK(apiPostOk.load() == 100, "S5 并发 POST 全部 eOk（100/100）");
-        CHECK(pollCount.load() >= 50 && pollOk.load() == pollCount.load(),
-              "S5 并发轮询 INFO_LOOP 全部 eOk 且 running:on（polls=" + std::to_string(pollCount.load()) +
-                  " ok=" + std::to_string(pollOk.load()) + " 首个失败样本: " +
-                  (g_pollFailSamples.empty() ? std::string("无") : g_pollFailSamples.front()) + "）");
-        CHECK(waitUntil([]
-                        { return g_execCount.load() == 100; },
-                        5000),
-              "S5 API 层事件全部执行（100/100）");
+        CHECK(
+            pollCount.load() >= 50 && pollOk.load() == pollCount.load(),
+            "S5 并发轮询 INFO_LOOP 全部 eOk 且 running:on（polls=" + std::to_string(pollCount.load()) +
+                " ok=" + std::to_string(pollOk.load()) +
+                " 首个失败样本: " + (g_pollFailSamples.empty() ? std::string("无") : g_pollFailSamples.front()) + "）");
+        CHECK(waitUntil([] { return g_execCount.load() == 100; }, 5000), "S5 API 层事件全部执行（100/100）");
 
         CHECK(YOMK_EVENTLOOP_DESTROY("conc_loop").m_status == YomkResponse::eOk, "S5 DESTROY conc_loop 返回 eOk");
         YOMK_SHUTDOWN();

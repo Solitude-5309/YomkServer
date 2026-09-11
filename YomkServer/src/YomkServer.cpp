@@ -1,18 +1,17 @@
 #include "YomkServer.h"
-#include "YomkServerPrivate.h"
+
+#include <functional>
 #include <iostream>
 #include <unordered_map>
-#include <functional>
-#include "Modules/FunctionPool/YomkFunctionPool.h"
+
 #include "Modules/Context/YomkContext.h"
 #include "Modules/EventLoop/YomkEventLoop.h"
+#include "Modules/FunctionPool/YomkFunctionPool.h"
 #include "Modules/Logger/YomkLogger.h"
 #include "Modules/ServerInfo/YomkServerInfo.h"
+#include "YomkServerPrivate.h"
 
-YomkServer::YomkServer(std::size_t asyncThreadCount)
-    : m_p(new YomkServerPrivate(asyncThreadCount))
-{
-}
+YomkServer::YomkServer(std::size_t asyncThreadCount) : m_p(new YomkServerPrivate(asyncThreadCount)) {}
 
 YomkServer::~YomkServer()
 {
@@ -24,7 +23,7 @@ YomkServer::~YomkServer()
 
 // 解析请求 url 为服务名与函数名（/ServiceName/func_name）；
 // 失败时记录日志并填充错误消息，返回 false（供 request 构造响应，供 asyncRequest 直接丢弃）
-static bool parseRequestUrl(const std::string &url, std::string &srvName, std::string &funcName, std::string &errMsg)
+static bool parseRequestUrl(const std::string& url, std::string& srvName, std::string& funcName, std::string& errMsg)
 {
     if (url.empty() || url[0] != '/')
     {
@@ -62,19 +61,14 @@ static bool parseRequestUrl(const std::string &url, std::string &srvName, std::s
 
 int YomkServer::startService(std::vector<std::string> srvNames)
 {
-    static const std::unordered_map<std::string, std::function<YomkService *(YomkServer *)>> serviceCreators = {
-        {"/YomkFunctionPool", [](YomkServer *server)
-         { return new YomkFunctionPool(server); }},
-        {"/YomkContext", [](YomkServer *server)
-         { return new YomkContext(server); }},
-        {"/YomkEventLoop", [](YomkServer *server)
-         { return new YomkEventLoop(server); }},
-        {"/YomkLogger", [](YomkServer *server)
-         { return new YomkLogger(server); }},
-        {"/YomkServerInfo", [](YomkServer *server)
-         { return new YomkServerInfo(server); }}};
+    static const std::unordered_map<std::string, std::function<YomkService*(YomkServer*)>> serviceCreators = {
+        {"/YomkFunctionPool", [](YomkServer* server) { return new YomkFunctionPool(server); }},
+        {"/YomkContext", [](YomkServer* server) { return new YomkContext(server); }},
+        {"/YomkEventLoop", [](YomkServer* server) { return new YomkEventLoop(server); }},
+        {"/YomkLogger", [](YomkServer* server) { return new YomkLogger(server); }},
+        {"/YomkServerInfo", [](YomkServer* server) { return new YomkServerInfo(server); }}};
 
-    for (auto &srvName : srvNames)
+    for (auto& srvName : srvNames)
     {
         auto it = serviceCreators.find(srvName);
         if (it == serviceCreators.end())
@@ -83,7 +77,7 @@ int YomkServer::startService(std::vector<std::string> srvNames)
             continue;
         }
 
-        YomkService *srv = it->second(this);
+        YomkService* srv = it->second(this);
         srv->name(srvName);
 
         addService(srv);
@@ -92,7 +86,7 @@ int YomkServer::startService(std::vector<std::string> srvNames)
     return 0;
 }
 
-int YomkServer::addService(YomkService *srv)
+int YomkServer::addService(YomkService* srv)
 {
     if (!srv)
     {
@@ -109,7 +103,7 @@ int YomkServer::addService(YomkService *srv)
     {
         initRet = srv->init();
     }
-    catch (const std::exception &e)
+    catch (const std::exception& e)
     {
         YOMK_ERR_POS_LOG("service init exception: " + srv->name() + ", what: " + e.what());
         initRet = -1;
@@ -124,12 +118,12 @@ int YomkServer::addService(YomkService *srv)
     {
         YOMK_ERR_POS_LOG("service init error: " + srv->name());
         m_p->delService(srv->name());
-        return -1; // 回滚后向调用方传播失败
+        return -1;  // 回滚后向调用方传播失败
     }
     return 0;
 }
 
-int YomkServer::delService(const std::string &srvName)
+int YomkServer::delService(const std::string& srvName)
 {
     return m_p->delService(srvName);
 }
@@ -144,12 +138,12 @@ std::vector<std::string> YomkServer::serviceNames()
     return m_p->serviceNames();
 }
 
-std::map<std::string, YomkFuncInfo> YomkServer::serviceFuncInfos(const std::string &srvName)
+std::map<std::string, YomkFuncInfo> YomkServer::serviceFuncInfos(const std::string& srvName)
 {
     return m_p->serviceFuncInfos(srvName);
 }
 
-YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)
+YomkResponse YomkServer::request(const std::string& url, YomkPkgPtr pkg)
 {
     std::string srvName;
     std::string tmpFuncName;
@@ -162,7 +156,7 @@ YomkResponse YomkServer::request(const std::string &url, YomkPkgPtr pkg)
     return m_p->request(srvName, tmpFuncName, pkg);
 }
 
-void YomkServer::asyncRequest(const std::string &url, YomkPkgPtr pkg, YomkResponseFunc func)
+void YomkServer::asyncRequest(const std::string& url, YomkPkgPtr pkg, YomkResponseFunc func)
 {
     std::string srvName;
     std::string tmpFuncName;

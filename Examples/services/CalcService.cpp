@@ -1,9 +1,8 @@
 #include "services/CalcService.h"
 
-CalcService::CalcService(YomkServer *server)
-    : YomkService(server)
+CalcService::CalcService(YomkServer* server) : YomkService(server)
 {
-    name("/CalcService"); // 服务名：URL 前缀，全局唯一
+    name("/CalcService");  // 服务名：URL 前缀，全局唯一
 }
 
 int CalcService::init()
@@ -44,6 +43,8 @@ YomkResponse CalcService::add(YomkPkgPtr pkg)
     }
     YOMK_INFO_TAG("svc.calc", name(), " audit response: ", auditResp.m_msg);
 
-    return {YomkResponse::eOk, "add success",
-            YomkMkPtr(AddResp, AddResp{static_cast<std::int64_t>(reqPkg->req.a) + reqPkg->req.b})};
+    return {
+        YomkResponse::eOk,
+        "add success",
+        YomkMkPtr(AddResp, AddResp{static_cast<std::int64_t>(reqPkg->req.a) + reqPkg->req.b})};
 }

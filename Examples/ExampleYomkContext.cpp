@@ -50,14 +50,14 @@ using yomk::ContextChecker;
 // 横幅走 std::cout 而非框架日志，保证叙事在任何日志开关状态下可见。
 // ---------------------------------------------------------------------------
 
-static void printStep(int n, const std::string &title, const std::string &explain)
+static void printStep(int n, const std::string& title, const std::string& explain)
 {
     std::cout << "\n====== 步骤" << n << "：" << title << " ======" << std::endl;
     std::cout << ">> " << explain << std::endl;
 }
 
 // 打印 YomkResponse 三要素：status/msg/m_data，展示调用契约
-static void printResp(const std::string &prefix, const YomkResponse &resp)
+static void printResp(const std::string& prefix, const YomkResponse& resp)
 {
     // 三态：eOk=0 成功；eNo=1 名字不存在或被拒绝；eInvalid=-1 参数无效或未初始化
     std::cout << "[" << prefix << "] status=" << resp.m_status << ", msg=\"" << resp.m_msg << "\"";
@@ -73,7 +73,7 @@ static void printResp(const std::string &prefix, const YomkResponse &resp)
 }
 
 // 解包并打印内省返回的 StringArray（INFO_KEYS / INFO_ALL 的返回形态）
-static void dumpLines(const std::string &prefix, const YomkResponse &resp)
+static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
     YomkUnPackPkg(resp.m_data, StringArray, arr);
@@ -82,7 +82,7 @@ static void dumpLines(const std::string &prefix, const YomkResponse &resp)
         std::cout << ">> (no data)" << std::endl;
         return;
     }
-    for (const auto &line : arr->d)
+    for (const auto& line : arr->d)
     {
         std::cout << ">> | " << line << std::endl;
     }
@@ -90,7 +90,7 @@ static void dumpLines(const std::string &prefix, const YomkResponse &resp)
 
 // GET 返回 shared_ptr<String> 而非 YomkResponse，独立打印；
 // isDefault 由调用方比较返回指针与兜底默认值指针得出
-static void printGet(const std::string &prefix, YomkPtr(String) val, bool isDefault)
+static void printGet(const std::string& prefix, YomkPtr(String) val, bool isDefault)
 {
     std::cout << ">> [" << prefix << "] value=\"" << (val ? val->d : "(null)") << "\""
               << (isDefault ? " (default 兜底)" : "") << std::endl;
@@ -102,7 +102,7 @@ static void printGet(const std::string &prefix, YomkPtr(String) val, bool isDefa
 // ---------------------------------------------------------------------------
 
 // 放行型 Checker：非空 String 一律接受
-ContextChecker::ECheckStatus checkerAcceptFunc(const yomk::Context &ctx)
+ContextChecker::ECheckStatus checkerAcceptFunc(const yomk::Context& ctx)
 {
     YomkUnPackPkg(ctx.m_value, String, str);
     if (!str)
@@ -115,41 +115,48 @@ ContextChecker::ECheckStatus checkerAcceptFunc(const yomk::Context &ctx)
 }
 
 // 拒绝型 Checker：一律拒绝，用于保护关键配置不被修改
-ContextChecker::ECheckStatus checkerRejectFunc(const yomk::Context &ctx)
+ContextChecker::ECheckStatus checkerRejectFunc(const yomk::Context& ctx)
 {
     YOMK_INFO_TAG("ctx.checker", "reject check: key=", ctx.m_key, " -> eReject");
     return ContextChecker::eReject;
 }
 
 // 同步 Monitor：写入成功后（写锁外）收到本次 set 的键值快照
-void monitorSyncFunc(const yomk::Context &ctx)
+void monitorSyncFunc(const yomk::Context& ctx)
 {
     YomkUnPackPkgVoid(ctx.m_value, String, str);
     YOMK_INFO_TAG("ctx.monitor", "sync got snapshot: key=", ctx.m_key, ", value=", str->d);
 }
 
 // 抛异常的 Monitor：验证框架防护——异常被吞，不影响 set 结果与后续 monitor
-void monitorThrowFunc(const yomk::Context & /*ctx*/)
+void monitorThrowFunc(const yomk::Context& /*ctx*/)
 {
     throw std::runtime_error("monitor boom");
 }
 
 // 计数 Monitor：验证前置回调抛异常后后续 monitor 仍照常执行
 static int monitorCallCount = 0;
-void monitorCountFunc(const yomk::Context & /*ctx*/)
+void monitorCountFunc(const yomk::Context& /*ctx*/)
 {
     ++monitorCallCount;
 }
 
 // 异步 Monitor：经单线程池送达（按 set 提交序保序），执行线程为池线程
-void monitorAsyncFunc(const yomk::Context &ctx)
+void monitorAsyncFunc(const yomk::Context& ctx)
 {
     YomkUnPackPkgVoid(ctx.m_value, String, str);
-    YOMK_INFO_TAG("ctx.monitor", "async got snapshot: key=", ctx.m_key, ", value=", str->d,
-                  " (pool thread: ", std::this_thread::get_id(), ")");
+    YOMK_INFO_TAG(
+        "ctx.monitor",
+        "async got snapshot: key=",
+        ctx.m_key,
+        ", value=",
+        str->d,
+        " (pool thread: ",
+        std::this_thread::get_id(),
+        ")");
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     // 初始化框架（上下文服务 /YomkContext 随之自动启动）
     YOMK_INIT();
@@ -162,8 +169,10 @@ int main(int argc, char *argv[])
      *
      * CREATE 把消息包按 key 存入全局键值表；GET 按类型取出（未命中返回兜底默认值）。
      */
-    printStep(1, "创建与读取",
-              "CREATE(config, v1) 后 GET 命中；重复 CREATE 同名 key 被拒；GET 未注册的 ghost 返回兜底默认值。");
+    printStep(
+        1,
+        "创建与读取",
+        "CREATE(config, v1) 后 GET 命中；重复 CREATE 同名 key 被拒；GET 未注册的 ghost 返回兜底默认值。");
     printResp("CREATE(config,v1)", YOMK_CONTEXT_CREATE("config", YomkMkPtr(String, "v1")));
     printResp("CREATE(config,重复)", YOMK_CONTEXT_CREATE("config", YomkMkPtr(String, "other")));
     std::cout << ">> 同名 key 已存在 → eNo=1，创建是排他的；更新请用 SET" << std::endl;
@@ -180,8 +189,8 @@ int main(int argc, char *argv[])
      * SET 整体替换值对象（先前 GET 的持有者仍是旧快照）；
      * 新值类型名必须与现值一致，否则被拒——强类型是统一契约。
      */
-    printStep(2, "更新与强类型契约",
-              "SET(config, v2) 成功后 GET 验证；换成 Int32 类型更新被拒：值类型须与创建时一致。");
+    printStep(
+        2, "更新与强类型契约", "SET(config, v2) 成功后 GET 验证；换成 Int32 类型更新被拒：值类型须与创建时一致。");
     printResp("SET(config,v2)", YOMK_CONTEXT_SET("config", YomkMkPtr(String, "v2")));
     printGet("GET(config)", YOMK_CONTEXT_GET(String, "config", fallback), false);
     printResp("SET(config,Int32)", YOMK_CONTEXT_SET("config", YomkMkPtr(Int32, 100)));
@@ -193,8 +202,10 @@ int main(int argc, char *argv[])
      * SET_CHECKER 为键挂校验回调，ON_CHECKER 打开全局开关；
      * 生效条件 = 开关 ON 且该键已设 checker（未设视为放行）。
      */
-    printStep(3, "Checker 门控",
-              "accept checker 放行写入；换成 reject checker 后写入被拒且值不变；OFF_CHECKER 全局关闭后放行恢复。");
+    printStep(
+        3,
+        "Checker 门控",
+        "accept checker 放行写入；换成 reject checker 后写入被拒且值不变；OFF_CHECKER 全局关闭后放行恢复。");
     printResp("SET_CHECKER(config,accept)", YOMK_CONTEXT_SET_CHECKER("config", checkerAcceptFunc));
     printResp("ON_CHECKER", YOMK_CONTEXT_ON_CHECKER());
     printResp("SET(config,v3,放行)", YOMK_CONTEXT_SET("config", YomkMkPtr(String, "v3")));
@@ -214,8 +225,8 @@ int main(int argc, char *argv[])
      * ON_MONITOR 打开全局开关后，每次 set 成功都会通知该键的全部 monitor；
      * 被 checker 拒绝的 set 不会走到通知（写入未发生）。
      */
-    printStep(4, "Monitor 同步通知",
-              "注册同步 monitor 后 SET：ctx.monitor 日志随即出现，回调收到的就是本次写入的键值快照。");
+    printStep(
+        4, "Monitor 同步通知", "注册同步 monitor 后 SET：ctx.monitor 日志随即出现，回调收到的就是本次写入的键值快照。");
     printResp("ON_MONITOR", YOMK_CONTEXT_ON_MONITOR());
     printResp("SET_MONITOR(config,sync)", YOMK_CONTEXT_SET_MONITOR("config", monitorSyncFunc));
     printResp("SET(config,v5,触发通知)", YOMK_CONTEXT_SET("config", YomkMkPtr(String, "v5")));
@@ -227,13 +238,13 @@ int main(int argc, char *argv[])
      * SET_MONITOR 是追加式：同一键可挂多个 monitor，按注册顺序全部执行；
      * 某个同步回调抛异常会被框架吞掉记日志——set 仍成功，后续 monitor 照常。
      */
-    printStep(5, "多播与异常防护",
-              "再追加 throw 与 count 两个 monitor 后 SET：异常日志出现但 set 仍 eOk，count 照常计数。");
+    printStep(
+        5, "多播与异常防护", "再追加 throw 与 count 两个 monitor 后 SET：异常日志出现但 set 仍 eOk，count 照常计数。");
     printResp("SET_MONITOR(config,throw)", YOMK_CONTEXT_SET_MONITOR("config", monitorThrowFunc));
     printResp("SET_MONITOR(config,count)", YOMK_CONTEXT_SET_MONITOR("config", monitorCountFunc));
     printResp("SET(config,v6,触发多播)", YOMK_CONTEXT_SET("config", YomkMkPtr(String, "v6")));
-    std::cout << ">> [自证] set 成功且 monitorCallCount=" << monitorCallCount
-              << "（异常被吞，后续 monitor 未受影响）" << std::endl;
+    std::cout << ">> [自证] set 成功且 monitorCallCount=" << monitorCallCount << "（异常被吞，后续 monitor 未受影响）"
+              << std::endl;
 
     /**
      * 步骤6：异步通知与全局开关
@@ -241,8 +252,10 @@ int main(int argc, char *argv[])
      * async=true 的 monitor 经单线程池送达（按 set 提交序保序），
      * 执行线程是池线程；OFF_MONITOR 全局关闭期间通知暂停但 monitor 保留。
      */
-    printStep(6, "异步通知与全局开关",
-              "注册 async monitor 后 SET：通知稍后由池线程送达（对比线程 id）；OFF_MONITOR 期间 SET 无任何通知。");
+    printStep(
+        6,
+        "异步通知与全局开关",
+        "注册 async monitor 后 SET：通知稍后由池线程送达（对比线程 id）；OFF_MONITOR 期间 SET 无任何通知。");
     std::cout << ">> 主线程 id: " << std::this_thread::get_id() << std::endl;
     printResp("SET_MONITOR(config,async)", YOMK_CONTEXT_SET_MONITOR("config", monitorAsyncFunc, true));
     printResp("SET(config,v7,异步通知)", YOMK_CONTEXT_SET("config", YomkMkPtr(String, "v7")));
@@ -260,11 +273,11 @@ int main(int argc, char *argv[])
      * INFO_KEYS / INFO_KEY / INFO_ALL 查询键与注册状态；
      * DESTROY 删除键，之后的一切操作返回 eNo（not-found 惯例）。
      */
-    printStep(7, "内省与销毁",
-              "内省三件套看键清单与注册状态；DESTROY 后 GET 返回兜底默认值，重复 DESTROY 返回 eNo。");
+    printStep(7, "内省与销毁", "内省三件套看键清单与注册状态；DESTROY 后 GET 返回兜底默认值，重复 DESTROY 返回 eNo。");
     dumpLines("INFO_KEYS", YOMK_CONTEXT_INFO_KEYS());
     printResp("INFO_KEY(config)", YOMK_CONTEXT_INFO_KEY("config"));
-    std::cout << ">> 状态行：类型 [String] / checker:on（已挂回调）/ monitors:4(async:1)（4 个回调 1 个异步）" << std::endl;
+    std::cout << ">> 状态行：类型 [String] / checker:on（已挂回调）/ monitors:4(async:1)（4 个回调 1 个异步）"
+              << std::endl;
     printResp("INFO_KEY(ghost)", YOMK_CONTEXT_INFO_KEY("ghost"));
     dumpLines("INFO_ALL", YOMK_CONTEXT_INFO_ALL());
 

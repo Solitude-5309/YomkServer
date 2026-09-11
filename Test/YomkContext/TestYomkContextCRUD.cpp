@@ -38,9 +38,9 @@ static int g_failed = 0;
         }                                                                         \
     } while (0)
 
-static bool contains(const std::vector<std::string> &vec, const std::string &item)
+static bool contains(const std::vector<std::string>& vec, const std::string& item)
 {
-    for (auto &v : vec)
+    for (auto& v : vec)
     {
         if (v == item)
         {

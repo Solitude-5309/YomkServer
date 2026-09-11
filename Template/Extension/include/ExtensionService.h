@@ -6,7 +6,7 @@ using namespace yomk;
 class ExtensionService : public YomkService
 {
 public:
-    ExtensionService(YomkServer *server);
+    ExtensionService(YomkServer* server);
     virtual ~ExtensionService() {}
     virtual int init() override;
 

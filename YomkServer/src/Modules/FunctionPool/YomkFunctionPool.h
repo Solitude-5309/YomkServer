@@ -1,15 +1,16 @@
 #pragma once
 
-#include "YomkServer.h"
-#include "YomkDefine.h"
 #include <map>
 #include <mutex>
 #include <shared_mutex>
 
+#include "YomkDefine.h"
+#include "YomkServer.h"
+
 class YomkFunctionPool : public YomkService
 {
 public:
-    YomkFunctionPool(YomkServer *server);
+    YomkFunctionPool(YomkServer* server);
     virtual ~YomkFunctionPool() {}
 
 public:

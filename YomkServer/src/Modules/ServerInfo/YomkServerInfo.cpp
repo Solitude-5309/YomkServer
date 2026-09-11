@@ -1,7 +1,6 @@
 #include "YomkServerInfo.h"
 
-YomkServerInfo::YomkServerInfo(YomkServer *server)
-    : YomkService(server)
+YomkServerInfo::YomkServerInfo(YomkServer* server) : YomkService(server)
 {
     name("/YomkServerInfo");
     if (server)
@@ -47,9 +46,10 @@ YomkResponse YomkServerInfo::listFunctions(YomkPkgPtr pkg)
     }
 
     std::vector<std::string> lines;
-    for (auto &iter : server->serviceFuncInfos(ySrvName->d))
+    for (auto& iter : server->serviceFuncInfos(ySrvName->d))
     {
-        lines.push_back(iter.second.m_funcName + (iter.second.m_msgName.empty() ? "" : " [" + iter.second.m_msgName + "]"));
+        lines.push_back(
+            iter.second.m_funcName + (iter.second.m_msgName.empty() ? "" : " [" + iter.second.m_msgName + "]"));
     }
     return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
 }
@@ -57,7 +57,7 @@ YomkResponse YomkServerInfo::listFunctions(YomkPkgPtr pkg)
 YomkResponse YomkServerInfo::functionInfo(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, String, yUrl);
-    const std::string &url = yUrl->d;
+    const std::string& url = yUrl->d;
     if (url.empty() || url[0] != '/')
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", please start with /");
@@ -81,7 +81,7 @@ YomkResponse YomkServerInfo::functionInfo(YomkPkgPtr pkg)
         return {YomkResponse::eNo, "server has been destroyed"};
     }
 
-    for (auto &name : server->serviceNames())
+    for (auto& name : server->serviceNames())
     {
         if (name == srvName)
         {
@@ -110,12 +110,14 @@ YomkResponse YomkServerInfo::listAll(YomkPkgPtr pkg)
     }
 
     std::vector<std::string> lines;
-    for (auto &srvName : server->serviceNames())
+    for (auto& srvName : server->serviceNames())
     {
         lines.push_back(srvName);
-        for (auto &iter : server->serviceFuncInfos(srvName))
+        for (auto& iter : server->serviceFuncInfos(srvName))
         {
-            lines.push_back("  " + srvName + iter.second.m_funcName + (iter.second.m_msgName.empty() ? "" : " [" + iter.second.m_msgName + "]"));
+            lines.push_back(
+                "  " + srvName + iter.second.m_funcName +
+                (iter.second.m_msgName.empty() ? "" : " [" + iter.second.m_msgName + "]"));
         }
     }
     return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
