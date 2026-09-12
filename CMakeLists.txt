@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.14)
 
+# 编译器预选模块：g++ 优先，回退 clang++（必须在 project() 之前 include）
+include(CMake/AbiInfo.cmake)
+
 # 导出 compile_commands.json，供 IDE（clangd）/clang-tidy 按真实编译参数解析
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 2.5.7 LANGUAGES CXX)
+project(Yomk VERSION 2.5.8 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：
@@ -29,6 +32,11 @@ endif()
 # CMake
 include(CMake/Cpp.cmake)
 message("-- env Cpp success.")
+
+# ABI 环境指纹：采集/打印编译环境信息并生成 abi_report.txt（project() 之后才可调用）
+yomk_abi_report()
+install(FILES ${CMAKE_BINARY_DIR}/abi_report.txt
+        DESTINATION share/YomkServer)
 
 # YomkServer
 set(YomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/YomkServer)

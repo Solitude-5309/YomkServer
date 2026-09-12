@@ -80,6 +80,42 @@ check_dependencies() {
 
 check_dependencies
 
+# -------------sl 1.5 编译环境检测（ABI 指纹） ----------------
+detect_environment() {
+    echo "-- 检测编译环境..."
+
+    # 发行版检测（/etc/os-release，覆盖 Ubuntu/Debian/CentOS/openEuler 等）
+    if [ -r /etc/os-release ]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        echo "   - 发行版:   ${PRETTY_NAME:-${ID:-未知}} (ID=${ID:-unknown}${VERSION_ID:+, VERSION_ID=${VERSION_ID}})"
+        case "${ID:-unknown}" in
+            ubuntu|debian|linuxmint) ;;
+            *) echo "   - 注意: 当前发行版非 Debian/Ubuntu 系，本脚本依赖自动安装走 apt，其他发行版请手动安装依赖" ;;
+        esac
+    else
+        echo "   - 发行版:   未知（未找到 /etc/os-release）"
+    fi
+    echo "   - 内核:     $(uname -r)"
+    echo "   - 架构:     $(uname -m)"
+
+    # 编译器选择：g++ 优先，clang++ 回退（与 CMake/AbiInfo.cmake 逻辑一致）
+    if command -v g++ >/dev/null 2>&1; then
+        CXX_COMPILER_BIN="$(command -v g++)"
+    elif command -v clang++ >/dev/null 2>&1; then
+        CXX_COMPILER_BIN="$(command -v clang++)"
+        echo "   - 注意: 未找到 g++，回退使用 clang++（ABI 与 g++ 产物不通用，请下游保持一致）"
+    else
+        fail "未找到 g++ 或 clang++，请先安装: sudo apt-get install g++"
+    fi
+    echo "   - 编译器:   ${CXX_COMPILER_BIN} ($("${CXX_COMPILER_BIN}" --version | head -1))"
+    echo "   - CMake:    $(cmake --version | head -1)"
+    echo "   - Make:     $(make --version | head -1)"
+    echo "-- 完整环境指纹将在 cmake 配置阶段输出，并生成 abi_report.txt 随库安装"
+}
+detect_environment
+# -------------el 1.5 编译环境检测（ABI 指纹） ----------------
+
 # -------------sl 2. 交互确定安装路径 ----------------
 read -r -p "请输入安装路径 [默认: ${DEFAULT_INSTALL_PREFIX}]: " input_prefix
 INSTALL_PREFIX="${input_prefix:-${DEFAULT_INSTALL_PREFIX}}"
@@ -117,6 +153,7 @@ echo "-- 开始配置..."
 cmake -S "${SCRIPT_DIR}" -B "${BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+    -DCMAKE_CXX_COMPILER="${CXX_COMPILER_BIN}" \
     -DYOMK_BUILD_TESTS="${BUILD_TESTS}" \
     || fail "cmake 配置失败"
 
@@ -176,6 +213,8 @@ echo " YomkServer 安装成功!"
 echo "-------------------------------------------"
 echo " 安装路径:       ${INSTALL_PREFIX}"
 echo " YOMK_PREFIX_PATH: ${YOMK_PREFIX_PATH}"
+echo " 编译器:         ${CXX_COMPILER_BIN} ($("${CXX_COMPILER_BIN}" --version | head -1))"
+echo " 环境指纹报告:   ${INSTALL_PREFIX}/share/YomkServer/abi_report.txt"
 echo " 动态库缓存:"
 ldconfig -p | grep -i YomkServer || true
 echo " 示例程序列表（安装于 ${INSTALL_PREFIX}/bin）:"
