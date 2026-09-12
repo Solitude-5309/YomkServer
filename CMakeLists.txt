@@ -7,7 +7,7 @@ include(CMake/AbiInfo.cmake)
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 2.5.9 LANGUAGES CXX)
+project(Yomk VERSION 2.5.10 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：

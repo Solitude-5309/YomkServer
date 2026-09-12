@@ -278,10 +278,7 @@ cmake --build . --target install --config Release
 
 #### 编译内部单元测试（可选）
 
-默认仅编译核心库与 Examples 示例程序。如需编译内部测试：
-```bash
-cmake .. -DYOMK_BUILD_TESTS=ON
-```
+默认仅编译核心库与 Examples 示例程序。如需编译内部测试，见下文[测试](#测试)章节。
 
 ### Windows
 
@@ -290,6 +287,60 @@ mkdir build
 cd build
 cmake .. -DCMAKE_INSTALL_PREFIX="C:/Users/solit/Env/YomkServer/install"
 cmake --build . --target install --config Release
+```
+
+---
+
+## 测试
+
+### 1. 编译测试
+
+默认仅编译核心库与 Examples，测试需显式开启：
+
+```bash
+mkdir build && cd build
+cmake .. -DYOMK_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build . -j
+```
+
+构建产物为 23 个测试可执行（输出到 `<仓库根>/bin/`），按模块划分：
+
+| 模块 | 测试目标 |
+|---|---|
+| YomkServer (9) | TestYomkSimpleThreadPool、TestYomkWeakFunc、TestYomkAPINotInit、TestYomkAPILifecycle、TestYomkBoot、TestYomkServer、TestYomkService、TestYomkShutdownSeq、TestYomkConcurrency |
+| FunctionPool (3) | TestYomkFunctionPoolLifecycle、TestYomkFunctionPoolConcurrency、TestYomkFunctionPoolStress |
+| Context (4) | TestYomkContextCRUD、TestYomkContextCheckerMonitor、TestYomkContextLifecycle、TestYomkContextConcurrency |
+| EventLoop (3) | TestYomkEventLoopLifecycle、TestYomkEventLoopConcurrency、TestYomkEventLoopStress |
+| Logger (4) | TestYomkLoggerLifecycle、TestYomkLoggerDirect、TestYomkLoggerConcurrency、TestYomkLoggerStress |
+
+### 2. 一键运行全量测试
+
+```bash
+./Test/run_tests.sh              # 快速模式：压测规模缩为 10000，约 10s
+./Test/run_tests.sh --full       # 完整规模（10 万级投递）
+./Test/run_tests.sh --bin DIR    # 指定测试可执行目录（默认 <仓库根>/bin）
+./Test/run_tests.sh --timeout N  # 单测试超时秒数（默认 300，--full 默认 900）
+```
+
+运行器行为：
+
+- **失败即停**：任一测试退出码非 0（含超时被杀）立即终止，终端输出该测试的 `[FAIL]` 用例摘要与完整日志路径
+- **日志落盘**：`Test/test_logs/<时间戳>/` 下每个测试一份日志 + `summary.log` 汇总
+- **现场清理**：每个测试在独立临时目录运行（隔离 CWD，防意外写文件污染仓库）；运行前清理上次遗留的 `/tmp/yomk_logger_*`，结束后复查残留，发现则清理并判定整体失败
+- **超时保护**：每个测试由 `timeout` 包裹，防卡死
+
+### 3. 单独运行与压测规模
+
+每个测试为独立可执行（纯 `main()` + `CHECK` 断言，返回 0 = 全部通过，非 0 = 存在失败用例），可直接单独运行：
+
+```bash
+./bin/TestYomkLoggerLifecycle
+```
+
+3 个 stress 测试（EventLoop / FunctionPool / Logger）规模由环境变量 `YOMK_TEST_STRESS_SCALE` 参数化（缺省 100000，下限 1000）；`run_tests.sh` 快速模式自动设为 10000，`--full` 用缺省值。单独运行时可自行指定：
+
+```bash
+YOMK_TEST_STRESS_SCALE=50000 ./bin/TestYomkEventLoopStress
 ```
 
 ---
