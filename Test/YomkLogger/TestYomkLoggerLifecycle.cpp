@@ -3,7 +3,7 @@
  * @brief Logger 模块生命周期与契约基线测试（LG1 从零新建，LG2 审计处置后回填，LG4 补删除接口，LG6 补 proxy 卸载）
  *
  * 覆盖内容（8 个 Section + 1 个前置注入段，123 断言）：
- * 1. 控制台日志基线：四级别宏输出格式（时间戳+[级别]+[MainLogger:行号] tag）；
+ * 1. 控制台日志基线：四级别宏输出格式（时间戳+[级别]+[logger]+[行号]）；
  *    级别开关 OFF→无输出仍 eOk→ON→恢复输出，四级别全覆盖
  * 2. 自定义 tag：新 tag 自动创建 console logger；65536 超长 tag；空内容日志
  * 2.5 非法级别 default 降级（P2-c 修复后）：proxy 设置前 raw 注入 level=99 →
@@ -31,7 +31,7 @@
  *    （"deleted console:c file:f"）；file 侧删除释放最后引用 → ~FileLogger 锁外自动落盘
  *    （写 2 行未 flush 即删 → 文件恰 2 行，数据不丢）；重复删除幂等 eNo；删除后单查 eNo
  *    与 LOGGERS/ALL 行数递减守恒；console 惰性重建；MainLogger 无特殊保护（可删，重建须走
- *    空 logger 名回退路径——YOMK_INFO 宏的 logger 名是 "MainLogger:行号" 而非裸 MainLogger）；
+ *    空 logger 名回退路径——YOMK_INFO 宏的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）；
  *    delete_logger 空包/错类型包契约分支
  *
  * 说明：YomkLogger 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
@@ -100,7 +100,17 @@ class CoutCapture
 {
 public:
     CoutCapture() : m_old(std::cout.rdbuf(m_ss.rdbuf())) {}
-    ~CoutCapture() { std::cout.rdbuf(m_old); }
+    ~CoutCapture()
+    {
+        std::cout.rdbuf(m_old);
+        // 捕获作用域内的 CHECK 失败时 [FAIL] 行会落入缓冲被丢弃，导致日志无失败痕迹；
+        // 析构时若缓冲含 [FAIL] 则转储到真实输出，保证失败可诊断
+        const std::string captured = m_ss.str();
+        if (captured.find("[FAIL]") != std::string::npos)
+        {
+            std::cout << captured << std::flush;
+        }
+    }
     std::string str() const { return m_ss.str(); }
 
 private:
@@ -202,14 +212,14 @@ int main()
     CHECK(!ec, "临时目录创建成功: " + tmpDir.string());
 
     // ============ Section 1: 控制台日志基线（四级别 + 开关） ============
-    {// 四级别各一发（YOMK_* 宏 tag 为 "MainLogger:行号"），marker 唯一化断言
+    {// 四级别各一发（YOMK_* 宏把 "[行号]" 拼在内容头部），marker 唯一化断言
      {CoutCapture cap;
     auto r = YOMK_INFO("lg1_s1_info_marker ", 42);
     CHECK(r.m_status == YomkResponse::eOk, "YOMK_INFO 返回 eOk");
     CHECK(r.m_msg == "success.", "YOMK_INFO 契约消息 success.");
     std::string out = cap.str();
-    CHECK(out.find("lg1_s1_info_marker 42") != std::string::npos, "INFO 输出含 marker 与整数变参");
-    CHECK(out.find("[Info ] [MainLogger:") != std::string::npos, "INFO 输出格式 [Info ] [MainLogger:行号]");
+    CHECK(out.find("lg1_s1_info_marker  42") != std::string::npos, "INFO 输出含 marker 与整数变参");
+    CHECK(out.find("[Info ] [MainLogger] [") != std::string::npos, "INFO 输出格式 [Info ] [MainLogger] [行号]");
     bool fmtOk = false;
     std::istringstream iss(out);
     std::string line;
@@ -226,7 +236,7 @@ int main()
     CoutCapture cap;
     CHECK(YOMK_WARN("lg1_s1_warn_marker").m_status == YomkResponse::eOk, "YOMK_WARN 返回 eOk");
     CHECK(
-        (cap.str().find("[Warn ] [MainLogger:") != std::string::npos &&
+        (cap.str().find("[Warn ] [MainLogger]") != std::string::npos &&
          cap.str().find("lg1_s1_warn_marker") != std::string::npos),
         "WARN 输出格式与 marker");
 }
@@ -234,7 +244,7 @@ int main()
     CoutCapture cap;
     CHECK(YOMK_ERROR("lg1_s1_error_marker").m_status == YomkResponse::eOk, "YOMK_ERROR 返回 eOk");
     CHECK(
-        (cap.str().find("[Error] [MainLogger:") != std::string::npos &&
+        (cap.str().find("[Error] [MainLogger]") != std::string::npos &&
          cap.str().find("lg1_s1_error_marker") != std::string::npos),
         "ERROR 输出格式与 marker");
 }
@@ -242,7 +252,7 @@ int main()
     CoutCapture cap;
     CHECK(YOMK_DEBUG("lg1_s1_debug_marker").m_status == YomkResponse::eOk, "YOMK_DEBUG 返回 eOk");
     CHECK(
-        (cap.str().find("[Debug] [MainLogger:") != std::string::npos &&
+        (cap.str().find("[Debug] [MainLogger]") != std::string::npos &&
          cap.str().find("lg1_s1_debug_marker") != std::string::npos),
         "DEBUG 输出格式与 marker");
 }
@@ -296,7 +306,7 @@ CHECK(
     YOMK_INFO_TAG("lg1_tag_logger", "lg1_s2_tag_marker").m_status == YomkResponse::eOk,
     "YOMK_INFO_TAG 新 tag 返回 eOk");
 CHECK(
-    (cap.str().find("[lg1_tag_logger:") != std::string::npos &&
+    (cap.str().find("[lg1_tag_logger]") != std::string::npos &&
      cap.str().find("lg1_s2_tag_marker") != std::string::npos),
     "新 tag 自动创建 console logger 并以其名输出");
 }
@@ -313,7 +323,7 @@ CHECK(
 {
     CoutCapture cap;
     CHECK(YOMK_INFO_TAG("lg1_tag_empty", "").m_status == YomkResponse::eOk, "空内容日志返回 eOk");
-    CHECK(cap.str().find("[lg1_tag_empty:") != std::string::npos, "空内容日志仍输出 tag 头（内容为空）");
+    CHECK(cap.str().find("[lg1_tag_empty]") != std::string::npos, "空内容日志仍输出 tag 头（内容为空）");
 }
 }
 
@@ -434,7 +444,7 @@ CHECK(
             "卸载后 console_log 返回 eOk + success.（走默认路径而非代理短路）");
         CHECK(out.find("lg6_s3_post_unload_marker") != std::string::npos, "卸载后恢复框架默认控制台输出");
         CHECK(
-            out.find("[Info ] [MainLogger:") != std::string::npos,
+            out.find("[Info ] [MainLogger] [") != std::string::npos,
             "卸载后输出为框架默认格式 <时间戳> [Info ] [logger] msg");
         CHECK(g_proxyHits.load() == hitsBefore, "卸载后代理不再被调用（原子命中数不增）");
     }
@@ -481,10 +491,11 @@ CHECK(
     CHECK(readOk, "落盘后日志文件可读");
     CHECK(countLines(content) == 4, "落盘内容恰 4 行（四级别各一）");
     CHECK(
-        (content.find("[Info ] [MainLogger:") != std::string::npos &&
-         content.find("lg1_s4_info_marker 7") != std::string::npos),
-        "Info 行格式（时间戳+[Info ]+[MainLogger:行号] 内容）——FILE_INFO 默认内容 tag 为 MainLogger，logger 名仅作路由 "
-        "key");
+        (content.find("[Info ] [MainLogger]") != std::string::npos &&
+         content.find("[Info ] [MainLogger] [") != std::string::npos &&
+         content.find("lg1_s4_info_marker  7") != std::string::npos),
+        "Info 行格式（时间戳+[Info ]+[MainLogger]+[行号] 内容）——FILE_INFO 默认内容 tag 为 MainLogger，行号独立成段，"
+        "logger 名仅作路由 key");
     // 自定义内容 tag 变体：FILE_INFO_TAG 的 tag 进内容行
     CHECK(
         YOMK_FILE_INFO_TAG("lg1_file_logger", "lg1CustomTag", "lg1_s4_customtag_marker").m_status == YomkResponse::eOk,
@@ -493,9 +504,9 @@ CHECK(
     bool readOkTag = false;
     std::string contentTag = readFile(logFile, readOkTag);
     CHECK(
-        (readOkTag && contentTag.find("[Info ] [lg1CustomTag:") != std::string::npos &&
+        (readOkTag && contentTag.find("[Info ] [lg1CustomTag] [") != std::string::npos &&
          contentTag.find("lg1_s4_customtag_marker") != std::string::npos),
-        "自定义 tag 行格式（[Info ] [tag:行号] 内容）");
+        "自定义 tag 行格式（[Info ] [tag] [行号] 内容）");
     CHECK(
         (content.find("[Warn ]") != std::string::npos && content.find("[Error]") != std::string::npos &&
          content.find("[Debug]") != std::string::npos),
@@ -569,7 +580,7 @@ CHECK(
             {
                 hasMain = true;
             }
-            if (line.rfind("lg1_tag_logger:", 0) == 0 && line.find(" [console]") != std::string::npos)
+            if (line.rfind("lg1_tag_logger", 0) == 0 && line.find(" [console]") != std::string::npos)
             {
                 hasTag = true;
             }
@@ -633,9 +644,9 @@ CHECK(
     "INT_MAX/INT_MIN/0/-1 变参日志返回 eOk");
 std::string out = cap.str();
 CHECK(
-    (out.find("i=2147483647") != std::string::npos && out.find("j=-2147483648") != std::string::npos &&
-     out.find("z=0") != std::string::npos && out.find("n=-1") != std::string::npos),
-    "整数边界值字符串化正确");
+    (out.find("i= 2147483647") != std::string::npos && out.find("j= -2147483648") != std::string::npos &&
+     out.find("z= 0") != std::string::npos && out.find("n= -1") != std::string::npos),
+    "整数边界值字符串化正确（变参以空格分隔，ostringstream 默认格式）");
 }
 {
     CoutCapture cap;
@@ -646,9 +657,9 @@ CHECK(
         "NaN/Inf/-Inf/-0.0 变参日志返回 eOk");
     std::string out = cap.str();
     CHECK(
-        (out.find("a=nan") != std::string::npos && out.find("b=inf") != std::string::npos &&
-         out.find("c=-inf") != std::string::npos && out.find("d=-0") != std::string::npos),
-        "浮点特殊值字符串化正确（nan/inf/-inf/-0）");
+        (out.find("a= nan") != std::string::npos && out.find("b= inf") != std::string::npos &&
+         out.find("c= -inf") != std::string::npos && out.find("d= -0") != std::string::npos),
+        "浮点特殊值字符串化正确（nan/inf/-inf/-0，变参以空格分隔）");
 }
 
 // 1MB 超大内容：console + file 双路径
@@ -945,7 +956,7 @@ CHECK(
             "S8: ALL 行数 = LOGGERS 行数 + 状态行，首行精确串不变");
 
         // MainLogger 无特殊保护：可删；重建须走"空 logger 名回退"路径
-        // （YOMK_INFO 宏把 "MainLogger:行号" 作为 logger 名，并不会重建裸 MainLogger）
+        // （YOMK_INFO 宏的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）
         CHECK(
             YOMK_FILE_LOG_DELETE("MainLogger").m_status == YomkResponse::eOk,
             "S8: MainLogger 可删除 eOk（无特殊保护）");

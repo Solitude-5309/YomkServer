@@ -4,6 +4,7 @@ build*/
 bin/
 compile_commands.json
 .vscode/
+test_logs/
 *~
 *.autosave
 *.a
