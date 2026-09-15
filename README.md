@@ -343,6 +343,18 @@ cmake --build . -j
 YOMK_TEST_STRESS_SCALE=50000 ./bin/TestYomkEventLoopStress
 ```
 
+### 4. 一键静态代码检查
+
+cppcheck + clang-tidy 双工具零告警门禁（任一告警即非零退出），全量扫描 `YomkServer/src`（含全部 Modules）与 `YomkServer/include`：
+
+```bash
+./Test/run_static_checks.sh              # 默认双跑
+./Test/run_static_checks.sh --cppcheck   # 仅跑 cppcheck
+./Test/run_static_checks.sh --tidy       # 仅跑 clang-tidy
+```
+
+依赖：cppcheck、clang-tidy，以及仓库根 `compile_commands.json`（CMake 配置阶段自动导出，缺失时脚本会给出构建提示）。检查集与 `Test/YomkServer/CMakeLists.txt` 的 `YOMK_TEST_STATIC_ANALYZE` CMake 目标口径一致，可配合 `cmake .. -DYOMK_TEST_STATIC_ANALYZE=ON` 在构建侧运行同名 target。
+
 ---
 
 ## CMake 项目集成
