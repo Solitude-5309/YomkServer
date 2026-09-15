@@ -7,10 +7,13 @@
 #   ./run_static_checks.sh -h|--help    显示本帮助
 # 行为:
 #   1. cppcheck 档: 全量扫描 YomkServer/src（含全部 Modules）+ YomkServer/include，
-#      warning/style/performance/portability/information 零告警验收（--error-exitcode=1）
+#      warning/style/performance/portability/information 零告警验收（--error-exitcode=1）；
+#      先打印检测文件清单，扫描时过滤显示逐文件 Checking 进度行与告警行（完整 verbose 落盘日志）
 #   2. clang-tidy 档: 检查集与 Test/YomkServer/CMakeLists.txt 的 _YOMK_TIDY_CHECKS 对齐，
-#      扫描 YomkServer/src 全部编译单元，--warnings-as-errors 严格门禁，header-filter 限本仓库头
+#      逐文件扫描 YomkServer/src 全部编译单元（[i/N] 进度与逐文件 [FAIL] 标记），
+#      --warnings-as-errors 严格门禁，header-filter 限本仓库头
 #   3. 任一工具告警 → 输出 [FAIL] 摘要并以非零码退出；全部零告警 → 输出 [PASS]
+#   4. 日志落盘: Test/test_logs/<时间戳>/cppcheck.log + clang-tidy.log + summary.log
 # 依赖: cppcheck、clang-tidy（缺失时报错并给出安装提示）、仓库根 compile_commands.json
 #       （cmake 配置阶段自动导出，缺失时报错并给构建提示）
 
@@ -20,7 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 usage() {
-    sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 }
 
@@ -58,60 +61,90 @@ fi
 
 FAILED=0
 
-# ---------- cppcheck：库源码全量零告警验收 ----------
+# 日志落盘（与 YomkRpc/test/run_static_checks.sh 同形态）：test_logs/<时间戳>/ 下
+# cppcheck.log / clang-tidy.log / summary.log
+LOG_ROOT="${SCRIPT_DIR}/test_logs/$(date +%Y%m%d_%H%M%S)"
+mkdir -p "${LOG_ROOT}"
+SUMMARY="${LOG_ROOT}/summary.log"
+echo "-- 日志目录: ${LOG_ROOT}"
+
+# ---------- cppcheck：库源码全量零告警验收（清单 + Checking 进度行，完整 verbose 落盘） ----------
 # -I include/YomkServer 为真实构建路径（ELC5/FPC5 教训：缺此路径时裸 #include 解析失败，
 # 宏未定义导致分析降级），抑制项与 Test/YomkServer/CMakeLists.txt 的 cppcheck 目标保持一致
 if [ ${RUN_CPPCHECK} -eq 1 ]; then
-    echo "-- cppcheck 全量扫描 YomkServer/src + YomkServer/include ..."
-    CPPCHECK_OUT="$(mktemp)"
+    echo "-- cppcheck 检测文件清单（YomkServer/src + YomkServer/include，排除 build/ 生成物）:"
+    mapfile -t CPPCHECK_FILES < <(find "${REPO_DIR}/YomkServer/src" "${REPO_DIR}/YomkServer/include" \
+        -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) ! -path '*/build/*' | sort)
+    for f in "${CPPCHECK_FILES[@]}"; do
+        echo "--   ${f#"${REPO_DIR}/"}"
+    done
+    echo "-- cppcheck 开始扫描（共 ${#CPPCHECK_FILES[@]} 个文件，Checking 行即逐文件进度，完整 verbose 日志落盘）..."
+    CPPCHECK_OUT="${LOG_ROOT}/cppcheck.log"
     cppcheck --enable=warning,style,performance,portability,information \
         --std=c++17 --language=c++ \
+        --verbose -j"$(nproc)" \
         --inline-suppr --suppress=missingInclude --suppress=noExplicitConstructor --suppress=useStlAlgorithm \
+        --suppress=unmatchedSuppression \
         --template=gcc \
         -I "${REPO_DIR}/YomkServer/include" -I "${REPO_DIR}/YomkServer/src" -I "${REPO_DIR}/YomkServer/include/YomkServer" \
         --error-exitcode=1 \
-        "${REPO_DIR}/YomkServer/src" "${REPO_DIR}/YomkServer/include" > "${CPPCHECK_OUT}" 2>&1
-    rc=$?
+        "${REPO_DIR}/YomkServer/src" "${REPO_DIR}/YomkServer/include" 2>&1 \
+        | tee "${CPPCHECK_OUT}" \
+        | grep --line-buffered -E '^Checking [^:]*\.\.\.|warning:|performance:|portability:|style:|information:|error:'
+    rc=${PIPESTATUS[0]}
     if [ ${rc} -ne 0 ]; then
         echo "[FAIL] cppcheck 检出告警（退出码 ${rc}）:"
         grep -E "warning:|performance:|portability:|style:|information:|error:" "${CPPCHECK_OUT}" | head -20
+        printf "[FAIL] cppcheck 退出码 %s\n" "${rc}" >> "${SUMMARY}"
         FAILED=1
     else
         echo "[PASS] cppcheck 零告警"
+        printf "[PASS] cppcheck 零告警\n" >> "${SUMMARY}"
     fi
-    rm -f "${CPPCHECK_OUT}"
 fi
 
-# ---------- clang-tidy：src 全部编译单元 + 本仓库头，零告警验收 ----------
+# ---------- clang-tidy：src 逐文件扫描 + 本仓库头，零告警验收（[i/N] 进度） ----------
 # 检查集为 _YOMK_TIDY_CHECKS 原串（排除项是校准成果，如框架宏约定触发的
 # bugprone-macro-parentheses），修改时须与 Test/YomkServer/CMakeLists.txt 保持对齐
 if [ ${RUN_TIDY} -eq 1 ]; then
-    echo "-- clang-tidy 扫描 YomkServer/src 全部编译单元 ..."
-    mapfile -t TIDY_SRCS < <(find "${REPO_DIR}/YomkServer/src" -name '*.cpp' | sort)
-    TIDY_OUT="$(mktemp)"
-    clang-tidy -p "${REPO_DIR}" \
-        --checks="bugprone-*,-bugprone-macro-parentheses,-bugprone-easily-swappable-parameters,cppcoreguidelines-*,-cppcoreguidelines-owning-memory,-cppcoreguidelines-macro-usage,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-special-member-functions,-cppcoreguidelines-explicit-virtual-functions,-cppcoreguidelines-non-private-member-variables-in-classes,-cppcoreguidelines-avoid-non-const-global-variables,clang-analyzer-*,performance-*,-performance-unnecessary-value-param,portability-*" \
-        --header-filter='.*/YomkServer/(include|src)/.*' \
-        --warnings-as-errors='*' \
-        "${TIDY_SRCS[@]}" > "${TIDY_OUT}" 2>&1
-    rc=$?
-    if [ ${rc} -ne 0 ] || grep -qE "warning:" "${TIDY_OUT}"; then
-        echo "[FAIL] clang-tidy 检出告警（退出码 ${rc}）:"
+    mapfile -t TIDY_FILES < <(find "${REPO_DIR}/YomkServer/src" -name '*.cpp' | sort)
+    TIDY_TOTAL=${#TIDY_FILES[@]}
+    echo "-- clang-tidy 扫描 YomkServer/src 全部编译单元（共 ${TIDY_TOTAL} 个，检查集: _YOMK_TIDY_CHECKS）..."
+    TIDY_OUT="${LOG_ROOT}/clang-tidy.log"
+    TIDY_FAIL=0
+    TIDY_IDX=0
+    for f in "${TIDY_FILES[@]}"; do
+        TIDY_IDX=$((TIDY_IDX + 1))
+        echo "-- [${TIDY_IDX}/${TIDY_TOTAL}] ${f#"${REPO_DIR}/"}"
+        if ! clang-tidy -p "${REPO_DIR}" \
+            --checks="bugprone-*,-bugprone-macro-parentheses,-bugprone-easily-swappable-parameters,cppcoreguidelines-*,-cppcoreguidelines-owning-memory,-cppcoreguidelines-macro-usage,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-special-member-functions,-cppcoreguidelines-explicit-virtual-functions,-cppcoreguidelines-non-private-member-variables-in-classes,-cppcoreguidelines-avoid-non-const-global-variables,clang-analyzer-*,performance-*,-performance-unnecessary-value-param,portability-*" \
+            --header-filter='.*/YomkServer/(include|src)/.*' \
+            --warnings-as-errors='*' \
+            "${f}" >> "${TIDY_OUT}" 2>&1; then
+            echo "    [FAIL] ${f#"${REPO_DIR}/"} 检出告警或编译错误"
+            TIDY_FAIL=1
+        fi
+    done
+    if [ ${TIDY_FAIL} -ne 0 ]; then
+        echo "[FAIL] clang-tidy 检出告警:"
         grep -E "warning:|error:" "${TIDY_OUT}" | head -20
+        printf "[FAIL] clang-tidy 告警\n" >> "${SUMMARY}"
         FAILED=1
     else
         echo "[PASS] clang-tidy 零告警"
+        printf "[PASS] clang-tidy 零告警\n" >> "${SUMMARY}"
     fi
-    rm -f "${TIDY_OUT}"
 fi
 
 if [ ${FAILED} -ne 0 ]; then
     echo "==========================================="
-    echo " 静态代码检查未通过"
+    echo " 静态代码检查未通过（日志目录: ${LOG_ROOT}）"
     echo "==========================================="
+    echo "YomkServer 静态代码检查未通过" >> "${SUMMARY}"
     exit 1
 fi
 echo "==========================================="
-echo " 静态代码检查全部通过"
+echo " 静态代码检查全部通过（日志目录: ${LOG_ROOT}）"
 echo "==========================================="
+echo "YomkServer 静态代码检查全部通过" >> "${SUMMARY}"
 exit 0
