@@ -14,10 +14,3 @@ message(STATUS "YomkExtension libraries: ${YomkExtension_LIBRARIES}")
 
 add_executable(TestYomkExtension TestYomkExtension.cpp)
 target_link_libraries(TestYomkExtension PRIVATE YomkExtension::YomkExtension YomkServer::YomkServer)
-
-# 测试程序随扩展一并安装到 <安装路径>/bin，供用户在任意终端直接运行验证
-# 测试程序可能有多个，此处显式列出全部测试目标名（不能用 ${PROJECT_NAME} 占位）
-install(TARGETS
-    TestYomkExtension
-    RUNTIME DESTINATION bin
-)

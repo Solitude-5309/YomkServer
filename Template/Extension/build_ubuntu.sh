@@ -98,14 +98,14 @@ if [ "${BUILD_TEST}" = "ON" ]; then
     mkdir -p "${TEST_BUILD_DIR}"
     cd "${TEST_BUILD_DIR}" || return 1
 
-    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}" -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}"
+    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}"
     if [ $? -ne 0 ]; then
         echo "测试程序 cmake 配置失败"
         cd "${_ORIG_DIR}"
         return 1
     fi
 
-    ${SUDO} cmake --build . --config Release --target install
+    ${SUDO} cmake --build . --config Release
     if [ $? -ne 0 ]; then
         echo "测试程序编译失败"
         cd "${_ORIG_DIR}"
@@ -119,5 +119,5 @@ unset _ORIG_DIR
 echo "编译完成，扩展库已注册到系统动态库缓存，新开任意终端即可使用"
 ldconfig -p | grep -i "${PROJECT_NAME}" || true
 if [ "${BUILD_TEST}" = "ON" ]; then
-    echo "测试程序已安装到 ${INSTALL_DIR}/bin，可直接运行 TestYomkExtension 验证"
+    echo "测试程序已编译到 ${TEST_BUILD_DIR}，可在该目录运行 TestYomkExtension 验证"
 fi
