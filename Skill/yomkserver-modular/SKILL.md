@@ -1,6 +1,6 @@
 ---
 name: yomkserver-modular
-description: 基于YomkServer框架的模块化C++17工程编程。核心理念"一切皆服务，一切皆请求"。用于创建YomkService功能模块、使用YomkContext全局状态管理、YomkEventLoop事件循环、YomkFunctionPool公共函数池和YomkLogger日志系统。当用户需要编写YomkServer模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数或搭建工程结构时使用。**当用户提到"创建工程"、"新建项目"、"create project"等关键词时，必须立即使用示例0生成完整可编译的工程骨架，不要先询问需求。**
+description: 基于YomkServer框架的模块化C++17工程编程。核心理念"一切皆服务，一切皆请求"。用于创建YomkService功能模块、使用YomkContext全局状态管理、YomkEventLoop事件循环、YomkFunctionPool公共函数池和YomkLogger日志系统。当用户需要编写YomkServer模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数或搭建工程结构时使用。**当用户提到"创建工程"、"新建项目"、"create a project"等关键词时，必须立即使用示例0生成完整可编译的工程骨架，不要先询问需求。** 仅用于基于YomkServer框架的开发，不适用于与YomkServer无关的普通C++工程或问题。
 ---
 
 # YomkServer 模块化编程框架
@@ -40,7 +40,7 @@ description: 基于YomkServer框架的模块化C++17工程编程。核心理念"
 3. **告知用户**：
    - 工程已生成在当前位置的 `ProjectName/` 目录下
    - 如何编译：`source ProjectName/build_ubuntu.sh`（交互式询问前置路径，默认取环境变量 `YOMK_PREFIX_PATH`，可修改；该变量由 YomkServer 的 `build_ubuntu.sh` 安装时自动配置）
-   - 如何启动：进入 `build/` 目录运行 `./ProjectName`
+   - 如何启动：运行 `./install/bin/ProjectName`；或先 `source install/setup.bash`（PATH 已注入 install/bin）后直接运行 `ProjectName`
 
 ### 目录结构
 
@@ -78,6 +78,7 @@ ProjectName/
 
 ### 生成规则
 
+- 优先复制模板：本 skill 所在 `Skill/` 目录的上层即 YomkServer 仓库根；若其下存在 `Template/Project/`（创建工程）或 `Template/Extension/`（创建扩展）目录，优先复制并替换工程名/类名/项目名占位符——与模板零漂移且省时；目录不存在时按 [examples.md](examples.md) 逐文件生成
 - 完整文件内容参见 [examples.md](examples.md) 示例0
 - 将 `ProjectName` 替换为用户指定名称
 - 所有文件必须完整生成，确保 `source build_ubuntu.sh` 可直接编译运行
@@ -154,7 +155,7 @@ YOMK_ASYNC_REQUEST("/XxxService/my_func", YomkMkPtr(MyData, MyData{"hello", 1}),
 int ret = YOMK_DEL_SERVICE("/XxxService");
 ```
 
-服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时，**必须**用 `YomkBindWeakSelf` 弱绑定，否则服务删除后回调悬垂 this 崩溃。`weakFunc` 是泛型模板，返回的泛型 lambda 按调用处目标 `std::function` 类型隐式转换，同一个宏自动适配全部回调签名：
+服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时，**必须**用 `YomkBindWeakSelf` 弱绑定，否则服务删除后回调悬垂 this 崩溃；弱绑定判活机制与各回调签名的适配细节见 [reference.md](reference.md) "YomkInstallFunc / YomkBindWeakSelf"：
 
 ```cpp
 int XxxService::init() {
@@ -171,11 +172,9 @@ int XxxService::init() {
 }
 ```
 
-服务删除后的丢弃语义：功能函数/FunctionPool 返回 `{eNo, "service has been deleted or unregistered, callback ignored."}`，Context checker 默认放行 `eAccept`，void 回调（monitor/异步响应）直接丢弃。弱绑定判活双层：**引用计数** + **注销标志**：`YOMK_DEL_SERVICE`/同名替换置位注销标志后，即使在途请求/异步任务仍持 `shared_ptr` 副本，弱绑定回调也立即丢弃（删除即停成立）；`YOMK_SHUTDOWN` 走排空语义不置位，排空期回调照常执行。子类仍须在 `deinit()` 停止非弱绑定路径的生产者（线程/定时器/外部注册）。
-
-**异步响应回调的生命周期要求**：`YOMK_ASYNC_REQUEST` 的 `func` 是裸回调，框架**不**自动弱绑定（区别于 `YomkInstallFunc` 的 funcMap 自动弱绑定）；回调由异步请求池执行，相对提交时刻可能延后。推荐优先用服务成员函数配合 `YomkBindWeakSelf` 作为异步回调（见上例）：服务对象由框架管理生命周期，服务删除后回调自动丢弃，无需人工管理捕获对象；若必须用普通 lambda，捕获的对象生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据。
-
-需要停止自身线程/注销外部资源的服务覆写 `virtual void deinit()`，删除服务时由框架自动调用。
+- 丢弃语义与判活细节（引用计数 + 注销标志双层判活、`YOMK_DEL_SERVICE`/同名替换置位注销标志即停、`YOMK_SHUTDOWN` 走排空不置位）见 [reference.md](reference.md) "YomkInstallFunc / YomkBindWeakSelf" 与 `YOMK_DEL_SERVICE`/`YOMK_SHUTDOWN` 行
+- 覆写 `virtual void deinit()` 停止非弱绑定路径的生产者（线程/定时器/外部注册），删除服务时由框架自动调用
+- **异步响应回调的生命周期要求**：`YOMK_ASYNC_REQUEST` 的 `func` 框架不自动弱绑定（区别于 `YomkInstallFunc`），优先用服务成员函数配合 `YomkBindWeakSelf`（见上例）；若必须用普通 lambda，捕获对象的生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据
 
 ### 优雅关闭（shutdown）
 
@@ -186,7 +185,7 @@ YOMK_SHUTDOWN();
 ```
 
 - `deinit()` 的四个触发时机：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、忘记关闭时服务器析构兜底（避免服务持有的 joinable 线程随析构触发 `std::terminate`）、同名服务被 `YOMK_ADD_SERVICE` 替换（旧服务先被锁外 `deinit`，再安装新服务）
-- 关闭时先排空在途异步请求（`YOMK_ASYNC_REQUEST` 由异步请求池执行，并发有界）再逐服务 `deinit`：`shutdown` 返回后无任何异步任务在执行；关闭后再提交的异步请求被拒绝并记日志；异步回调抛异常被框架捕获记日志，不会终止进程。双池按归属分离：异步请求走服务器请求池（线程数可配置），Context 异步 monitor（`YOMK_CONTEXT_SET_MONITOR` async=true）走 Context 模块自持的监控池（固定单线程，事件顺序无条件保证，随 Context 服务 `deinit` 排空停止）；关闭时先停请求池，再逐服务 `deinit`（请求池排空期触发的迟到监控事件由尚存活的监控池收留并随后排空），不再有退出期裸线程竞态；异步任务应保持轻量，重活经 EventLoop 或业务自建线程处理。线程池仅框架内部使用，不对用户暴露：请求池大小默认 `hardware_concurrency()/2` 向上取整（兜底 2），可经 `YOMK_INIT(n)` / `YomkServer::create(n)` 配置，仅首次初始化生效。单例锁与持有器为永生对象（堆分配不析构），退出清理经 `atexit` 注册：先在锁内置空快照、锁外再释放服务器，避免持锁触发池排空时与在途任务的快照读互锁；极端时序下最后引用在池任务内释放时，`stop()` 自检测避免自 join 崩溃，未显式 `YOMK_SHUTDOWN` 的进程也能安全退出
+- 关闭时先停请求池（拒新 → 排空 → join 工作线程）再逐服务 `deinit`，`shutdown` 返回后无任何异步任务在执行，之后再提交的异步请求被拒绝；异步任务应保持轻量，重活经 EventLoop 或业务自建线程处理；请求池大小经 `YOMK_INIT(n)` 配置（仅首次初始化生效），未显式关闭时退出经 atexit 兜底——排空语义、双池分离与单例清理细节见 [reference.md](reference.md) `YOMK_SHUTDOWN` 行
 - 覆写了 `deinit()` 的服务需保证幂等语义友好（重复触发只来自异常使用，但停止线程/释放资源应可重复执行不崩溃）
 
 ### 服务内省（调试）
@@ -209,7 +208,7 @@ resp = YOMK_SERVER_INFO_FUNCTION("/XxxService/my_func");
 resp = YOMK_SERVER_INFO_ALL();
 ```
 
-服务器层内省之外，模块内层内省由模块自身实现：YomkContext 已提供 `YOMK_CONTEXT_INFO_KEYS()`（key 列表）、`YOMK_CONTEXT_INFO_KEY(key)`（单 key 元信息：`key [类型名] checker:on|off monitors:N(async:M)`）、`YOMK_CONTEXT_INFO_ALL()`（全量 dump）；YomkEventLoop 已提供 `YOMK_EVENTLOOP_INFO_LOOPS()`（循环名列表）、`YOMK_EVENTLOOP_INFO_LOOP(name)` / `(name, n)`（单循环元信息：`name running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(n): tag1, ...`，Event 可携带 tag 标记，启动时可用三参宏声明默认处理函数期望类型）、`YOMK_EVENTLOOP_INFO_ALL()`（全量 dump）；YomkFunctionPool 已提供 `YOMK_FUNCTIONPOOL_INFO_NAMES()`（注册函数名列表）、`YOMK_FUNCTIONPOOL_INFO_NAME(name)`（单函数存在性查询，命中 msg 为函数名）、`YOMK_FUNCTIONPOOL_INFO_ALL()`（全量 dump，首行 `functions:N`）；YomkLogger 已提供 `YOMK_LOGGER_INFO_LOGGERS()`（日志器列表，控制台行 `name [console]`、文件行 `name [file] dir:路径`）、`YOMK_LOGGER_INFO_LOGGER(name)`（单日志器元信息）、`YOMK_LOGGER_INFO_ALL()`（全量 dump，首行为控制台级别开关与代理状态）。至此四个内置模块（Context/EventLoop/FunctionPool/Logger）的模块内层内省全部完成。
+服务器层内省之外，四个内置模块（Context/EventLoop/FunctionPool/Logger）均提供模块内层内省（各自的 `YOMK_*_INFO_*()` 宏：key/循环/函数/日志器列表、单条元信息、全量 dump），输出格式与示例见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。
 
 ## 任务三：创建扩展库
 
@@ -235,26 +234,25 @@ ExtensionName/
 
 ### 关键约定
 
-1. 编译为 `SHARED` 库，实现放 `src/`。**头文件分层（推荐规则，默认遵循，不强制）**：`include/` 只放导出给下游使用的对外接口头文件（服务类声明）；内部头文件（辅助类、内部数据结构等实现细节）直接放 `src/`——`install(DIRECTORY include/ ...)` 只安装 `include/` 内容，内部头文件天然不安装、对下游不可见，既减轻用户负担又隐藏内部细节；若项目习惯统一放 `include/` 也可接受
-2. CMake 使用 `configure_package_config_file` + `install(EXPORT ...)` 导出配置。**Config 模板防污染**：`ProjectConfig.cmake.in` 必须在 `find_dependency()` **之前**用 `@PACKAGE_INCLUDE_INSTALL_DIR@`/`@PACKAGE_LIB_INSTALL_DIR@` 把路径固化到私有变量，路径检查用内联 `foreach` 而非 `set_and_check` 宏——否则依赖包配置会覆盖全局 `PACKAGE_PREFIX_DIR` 与同名宏，导致 `find_package` 报路径不存在或静默指向错误前缀（模板见 examples.md 示例7）。**第三方依赖传递**：若扩展以 PUBLIC 链接了额外第三方库（导出接口中仅记录裸名），模板必须在 `find_dependency(YomkServer)` 后追加 `find_dependency(<第三方包>)`，否则下游链接扩展 target 时会因找不到库而失败；无导出包的伴生库（裸库名链接）由测试工程用 `link_directories(${ExtensionName_LIB_DIR})` 补 -L
-3. 安装后其他工程可通过 `find_package(ExtensionName)` 引用。**编译验证必须用 README 中的命令**：`source build_ubuntu.sh`（交互式询问前置路径与安装路径，默认均取 `$YOMK_PREFIX_PATH`，把扩展安装进 YomkServer 的安装目录）——导出 target 不含 include 路径是设计如此，头文件路径由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供；若把扩展安装到扩展自己的 install/，测试程序会因 `#include <ExtensionName/XxxService.h>` 找不到头文件而编译失败。README 编译章节只保留这条交互式命令，不得提供非交互式的单路径安装命令
+1. 编译为 `SHARED` 库，实现放 `src/`。**头文件分层（推荐规则，默认遵循）**：`include/` 只放导出给下游的对外接口头文件（服务类声明），内部头文件（辅助类、内部数据结构等实现细节）直接放 `src/`——`install(DIRECTORY include/ ...)` 只安装 `include/` 内容，内部细节对下游不可见；项目习惯统一放 `include/` 亦可
+2. CMake 使用 `configure_package_config_file` + `install(EXPORT ...)` 导出配置。
+   - **Config 模板防污染**：`ProjectConfig.cmake.in` 必须在 `find_dependency()` **之前**用 `@PACKAGE_INCLUDE_INSTALL_DIR@`/`@PACKAGE_LIB_INSTALL_DIR@` 把路径固化到私有变量；路径检查用内联 `foreach` 而非 `set_and_check` 宏。否则依赖包配置会覆盖全局 `PACKAGE_PREFIX_DIR` 与同名宏，导致 `find_package` 报路径不存在或静默指向错误前缀（模板见 examples.md 示例7）
+   - **第三方依赖传递**：扩展以 PUBLIC 链接的额外第三方库分两类——自带 CMake 包的，Config 模板必须在 `find_dependency(YomkServer)` 后追加 `find_dependency(<第三方包>)`，否则下游链接扩展 target 会因找不到库而失败；不带包、仅以裸库名 `-l` 链接的，导出配置不记录它，由下游/测试工程用 `link_directories(${ExtensionName_LIB_DIR})` 补库搜索路径
+3. 安装后其他工程可通过 `find_package(ExtensionName)` 引用。
+   - **编译验证只走 `source build_ubuntu.sh`**（交互式询问前置路径与安装路径，默认均取 `$YOMK_PREFIX_PATH`，把扩展安装进 YomkServer 的安装目录）；README 编译章节只保留这条交互式命令，不得提供非交互式的单路径安装命令
+   - **include 路径说明**：导出 target 不含 include 路径是设计如此，头文件路径由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供；若把扩展安装到扩展自己的 install/，测试程序会因 `#include <ExtensionName/XxxService.h>` 找不到头文件而编译失败
 4. `build_ubuntu.sh` 支持可选编译测试程序（`test/` 有独立 CMakeLists）
-5. **扩展库注册系统动态库缓存**：`build_ubuntu.sh` 安装完成后必须将 `${INSTALL_DIR}/lib` 幂等注册到 `/etc/ld.so.conf.d/yomk.conf`（扩展属于 yomk，复用同一 conf 文件，`grep -qxF` 判重后追加）并执行 `sudo ldconfig` 刷新缓存——新增的 so 不会自动进入 ld.so.cache，不刷新则新开任意终端都找不到扩展 so；禁止只用会话级 `export LD_LIBRARY_PATH` 代替（新终端即失效）；写 `/etc` 与 `ldconfig` 永远需要 sudo，与 `INSTALL_DIR` 是否可写无关
+5. **扩展库注册系统动态库缓存**：`build_ubuntu.sh` 安装完成后必须将 `${INSTALL_DIR}/lib` 幂等注册到 `/etc/ld.so.conf.d/yomk.conf`（扩展属于 yomk，复用同一 conf 文件，`grep -qxF` 判重后追加），并执行 `sudo ldconfig` 刷新缓存。新增的 so 不会自动进入 ld.so.cache，不刷新则新开任意终端都找不到扩展 so。禁止只用会话级 `export LD_LIBRARY_PATH` 代替（新终端即失效）。写 `/etc` 与 `ldconfig` 永远需要 sudo，与 `INSTALL_DIR` 是否可写无关
 6. 测试程序通过 `YOMK_NEW_SERVICE` 注册服务并验证功能
-7. **测试程序随扩展安装**：测试程序必须随扩展一并安装到 `<安装路径>/bin`（test/CMakeLists.txt 添加 install 规则，build_ubuntu.sh 以 `--target install` 构建 test），用户安装后可在任意终端直接运行测试程序验证扩展是否安装成功。install 规则必须**显式列出全部测试目标名**（测试程序可能有多个，且目标名不一定等于项目名），禁止使用 `${PROJECT_NAME}` 占位，写法参照 `Test/YomkServer/CMakeLists.txt`：
-   ```cmake
-   install(TARGETS
-       TestExtensionName
-       RUNTIME DESTINATION bin
-   )
-   ```
+7. **测试程序只编译不安装**：测试程序仅供扩展开发验证使用，由 `build_ubuntu.sh` 编译到 `test/build/`（不加 `--target install`、不设 `CMAKE_INSTALL_PREFIX`），不随扩展安装；test/CMakeLists.txt 不添加 install 规则
 8. **模板接口最小化**：模板服务默认只包含一个 `/version` 接口（方法名为 `version`，不带 `get` 前缀），不生成任何示例业务接口（如加减乘除）；业务功能通过「继续扩展」添加
 9. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
-10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回，如 `"YomkRpc v" YOMKRPC_VERSION " (WIP)"`
+10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回，如 `"ExtensionName v" EXTENSION_VERSION`
 11. **README 使用示例完整可复制**：README 使用示例必须提供完整的 main.cpp（含 include、`YOMK_INIT()`、`YOMK_NEW_SERVICE` 注册扩展服务、请求与输出），用户复制后即可编译运行；不得只提供请求代码片段
 
 ### 生成规则
 
+- 优先复制模板：本 skill 所在 `Skill/` 目录的上层即 YomkServer 仓库根；若其下存在 `Template/Extension/` 目录，优先复制并替换扩展名/类名/项目名占位符；目录不存在时按 [examples.md](examples.md) 逐文件生成
 - 完整文件内容参见 [examples.md](examples.md) 示例7
 - 将 `ExtensionName` 替换为用户指定名称
 - 所有文件必须完整生成，确保 `source build_ubuntu.sh` 可直接编译运行
@@ -282,7 +280,7 @@ YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 
 注意：消息名称是“宏词汇”而非“类型词汇”——只能在 `Yomk()` / `YomkPtr()` / `YomkMkPtr()` / `YomkUnPackPkg*` / `YomkInstallFunc` 第三参等宏的参数位置出现，不能当裸类型名使用（`YomkMsg` 展开生成的真实类型是带后缀的 `yomk::消息名称_` 与 `yomk::消息名称Ptr`，裸写消息名会报 not declared）。
 
-内置标准类型（成员名均为 `d`）：`String`, `Bool`, `Int32`, `Int64`, `Float64` 及对应 Array 类型。
+内置标准类型（成员名均为 `d`）：`Bool`, `Char`, `UChar`, `Byte`, `Int8`, `Uint8`, `Int16`, `Uint16`, `Int32`, `Uint32`, `Int64`, `Uint64`, `Float32`, `Float64`, `String` 及对应 `XxxArray` 类型（完整清单见 `YomkPkg.h` 末段）。
 
 ### 设计原则
 
@@ -293,8 +291,22 @@ YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 5. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）
 6. 配置路径通过 Context 传递，不用构造参数
 7. 扩展库只负责处理逻辑，不关心数据来源，所有外部数据必须通过请求参数传入
+8. 返回值语义遵循框架状态码约定：not-found/拒绝用 eNo，参数非法用 eInvalid（详见 [reference.md](reference.md) "状态码约定"）
+
+## 验证与质量
+
+生成或修改工程/扩展后，必须自证可编译可运行：
+
+1. **编译验证**：`source build_ubuntu.sh` 走通配置 → 编译 → 安装；运行可执行文件确认内置服务与业务服务日志正常
+2. **测试程序**：扩展模板自带 `test/`（独立 main + `[PASS]/[FAIL]` 断言 + Test Summary 汇总，退出码 0/1）；新增业务接口时同步在测试程序中追加用例，`build_ubuntu.sh` 选择编译测试后在 `test/build/` 运行验证
+3. **框架质量工具**（框架仓库内，可为生成的工程参考搭建同类能力）：
+   - `Test/run_tests.sh`：一键全量测试（`--full` 完整规模 / `--timeout N` 单测试超时；压测规模由环境变量 `YOMK_TEST_STRESS_SCALE` 参数化）
+   - `Test/run_static_checks.sh`：cppcheck + clang-tidy 零告警门禁（`--cppcheck` / `--tidy` 单独运行；依赖仓库根 `compile_commands.json`）
+   - `YOMK_TEST_SANITIZER=off|asan|tsan`：CMake 测试构建的 sanitizer 开关
+   - 测试组织范式：`Test/` 按模块分子目录，每个被测主题一个独立可执行程序（纯 main + CHECK 断言）
 
 ## 详细参考
 
 - 完整工程代码：[examples.md](examples.md)
 - API 详细参考：[reference.md](reference.md)
+- 可运行示例程序：`Examples/ExampleYomk{Service,Context,EventLoop,FunctionPool,Logger}.cpp`（8 步式覆盖各模块全部 API，读运行输出即可理解每个调用）

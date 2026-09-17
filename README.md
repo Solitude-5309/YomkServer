@@ -163,7 +163,8 @@ int main()
 支持跨服务存储与共享强类型键值状态，内置安全校验门控（Checker）与变更监控（Monitor）：
 
 ```cpp
-// 1. 创建与设置上下文键值（key 已存在返回 eNo=1；值类型须与现值一致，否则 eNo "context type not match"）
+// 1. 创建与设置上下文键值（key 已存在返回 eNo=1 "key already exists"；value 为空返回 eNo=1 "value is empty"；
+//    值类型须与现值一致，否则 eNo "context type not match"）
 YOMK_CONTEXT_CREATE("config", YomkMkPtr(String, "init_value"));
 YOMK_CONTEXT_SET("config", YomkMkPtr(String, "new_value"));
 
@@ -254,6 +255,43 @@ YOMK_FUNCTIONPOOL_UNREGISTER("calcSum");
 - **事件循环自省**：`YOMK_EVENTLOOP_INFO_LOOPS()`、`YOMK_EVENTLOOP_INFO_LOOP("TaskLoop")`、`YOMK_EVENTLOOP_INFO_ALL()`
 - **函数池自省**：`YOMK_FUNCTIONPOOL_INFO_NAMES()`、`YOMK_FUNCTIONPOOL_INFO_NAME("calcSum")`、`YOMK_FUNCTIONPOOL_INFO_ALL()`
 
+### 8. 服务生命周期与弱绑定
+
+服务删除与框架关闭：
+
+```cpp
+// 删除单个服务：从服务表移除，后续请求返回 eNo=1 "service not found: <服务名>"；名字不存在返回 -1
+int ret = YOMK_DEL_SERVICE("/MyService");
+
+// 关闭服务器：先停异步请求池（拒新 → 排空 → join），再清空服务表并逐个调用 deinit()
+// 幂等，假定在主线程调用；关闭后不支持二次初始化；未显式调用时退出经 atexit 析构兜底
+YOMK_SHUTDOWN();
+```
+
+- **deinit() 的四个触发时机**：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、同名服务被 `YOMK_ADD_SERVICE` 替换（旧服务先 deinit 再装新服务）、忘记关闭时框架析构兜底。覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
+- **异步请求池大小**：`YOMK_INIT(n)` 的 `n` 为异步请求线程池大小（0 表示自动检测），仅首次初始化生效。
+- **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃；`YOMK_SHUTDOWN` 走排空语义，排空期回调照常执行；在途请求安全执行完毕后服务才析构。
+
+**弱绑定（防悬垂回调）**：服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时必须用 `YomkBindWeakSelf` 弱绑定——服务删除后回调自动判活失效，否则访问已析构的 this 导致崩溃。`YomkInstallFunc` 注册到本服务 funcMap 已自动弱绑定，无需手动处理：
+
+```cpp
+int MyService::init()
+{
+    // FunctionPool：服务删除后回调失效（返回 eNo）
+    YOMK_FUNCTIONPOOL_REGISTER("my_work", YomkBindWeakSelf(MyService::myWork));
+
+    // Context checker/monitor 签名不同，同一宏自动适配：删除后 checker 放行（eAccept）、monitor 丢弃
+    YOMK_CONTEXT_SET_CHECKER("key", YomkBindWeakSelf(MyService::myCheck));
+    YOMK_CONTEXT_SET_MONITOR("key", YomkBindWeakSelf(MyService::myMonitor));
+
+    // 异步响应回调：框架不自动弱绑定，同样用 YomkBindWeakSelf（普通 lambda 须值捕获自包含数据）
+    YOMK_ASYNC_REQUEST("/OtherService/func", nullptr, YomkBindWeakSelf(MyService::onResp));
+    return 0;
+}
+```
+
+注意：弱绑定依赖服务的 `shared_ptr` 所有权，在构造函数内调用（服务尚未注册到服务器）回调永不触发并打错误日志。
+
 ---
 
 ## 编译与安装
@@ -285,7 +323,7 @@ cmake --build . --target install --config Release
 ```powershell
 mkdir build
 cd build
-cmake .. -DCMAKE_INSTALL_PREFIX="C:/Users/solit/Env/YomkServer/install"
+cmake .. -DCMAKE_INSTALL_PREFIX="C:/YomkServer/install"
 cmake --build . --target install --config Release
 ```
 
@@ -353,6 +391,8 @@ cppcheck + clang-tidy 双工具零告警门禁（任一告警即非零退出）�
 ./Test/run_static_checks.sh --tidy       # 仅跑 clang-tidy
 ```
 
+- **日志落盘**：`Test/test_logs/<时间戳>/` 下每次运行一份 `cppcheck.log` + `clang-tidy.log` + `summary.log` 汇总
+
 依赖：cppcheck、clang-tidy，以及仓库根 `compile_commands.json`（CMake 配置阶段自动导出，缺失时脚本会给出构建提示）。检查集与 `Test/YomkServer/CMakeLists.txt` 的 `YOMK_TEST_STATIC_ANALYZE` CMake 目标口径一致，可配合 `cmake .. -DYOMK_TEST_STATIC_ANALYZE=ON` 在构建侧运行同名 target。
 
 ---
@@ -369,7 +409,7 @@ message(STATUS "YomkServer include dirs: ${YomkServer_INCLUDE_DIRS}")
 message(STATUS "YomkServer libraries: ${YomkServer_LIBRARIES}")
 
 add_executable(my_app main.cpp)
-target_link_libraries(my_app PRIVATE YomkServer)
+target_link_libraries(my_app PRIVATE YomkServer::YomkServer)
 ```
 
 在源码中引用公共头文件：

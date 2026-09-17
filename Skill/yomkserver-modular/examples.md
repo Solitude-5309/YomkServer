@@ -38,7 +38,7 @@ using namespace yomk;
 int main(int argc, char *argv[])
 {
     YOMK_BOOT(new MyBoot(argc, argv, {"/ConfigService"}));
-    YOMK_INFO_TAG("main", "ProjectName is running, press Enter to exit.");
+    YOMK_INFO_TAG("main", "running, press Enter to exit.");
     getchar();
     return 0;
 }
@@ -77,7 +77,7 @@ private:
 
 int MyBoot::before()
 {
-    YOMK_INFO_TAG("MyBoot::before", "ProjectName v" APP_VERSION " starting...");
+    YOMK_INFO_TAG("MyBoot::before", "starting...");
 
     // 通过 /proc/self/exe 推导配置文件路径
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
@@ -614,9 +614,19 @@ int MyService::init() {
 ```
 
 同步/异步 monitor 的值语义相同（都回传该次 set 的临时快照），区别在阻塞性与顺序保证：
-- **共同语义**：monitor 仅通知发生了一次 set 事件，并回传该次 set 的键值快照——**不保证快照是最新值**。快照仅回调期有效（需留存请在回调内拷贝 ctx）；**值对象一经 set 发布即只读**——get/monitor 拿到的都别名同一对象，改动请构造新对象再 `YOMK_CONTEXT_SET`、勿原地修改（否则与并发读竞争、可能崩溃）；需最新值请在回调内用 `YOMK_CONTEXT_GET` 重读；回调抛异常会被框架吞掉记日志、不影响 set 结果；校验/拒绝请用 checker，勿用 monitor。
-- **同步（默认，async 省略或 false）**：在 set 调用线程上锁外内联执行、通知及时；顺序 set 下按调用序通知，但**并发 set 下不保证跨线程顺序**；回调内可安全调用 `get`/`keys` 等，但**重入 `set`（含跨键环）会递归，不收敛长链将栈溢出**。
-- **异步（async=true）**：在 set 写锁内投入 Context 模块自持的单线程监控池、set 返回后延迟执行；**入队序=提交序 ⇒ 恒按 set 提交序送达（并发 set 亦然）**，随服务 deinit / `YOMK_SHUTDOWN` 排空停止、不丢；适合耗时回调（跨服务/落盘/通知）解耦；池线程迭代执行、平栈不溢出，**更适合会在回调内再 set 的状态机/级联回写**（仍需保证收敛，否则任务自续活锁）。
+
+- **共同语义**：
+  - monitor 仅通知发生了一次 set 事件，并回传该次 set 的键值快照——**不保证快照是最新值**；快照仅回调期有效，需留存请在回调内拷贝 ctx。
+  - **值对象一经 set 发布即只读**：get/monitor 拿到的都别名同一对象；改动请构造新对象再 `YOMK_CONTEXT_SET`，勿原地修改（否则与并发读竞争、可能崩溃）。
+  - 需最新值请在回调内用 `YOMK_CONTEXT_GET` 重读；回调抛异常会被框架吞掉记日志、不影响 set 结果；校验/拒绝请用 checker，勿用 monitor。
+- **同步（默认，async 省略或 false）**：
+  - 在 set 调用线程上锁外内联执行、通知及时；顺序 set 下按调用序通知，**并发 set 下不保证跨线程顺序**。
+  - 回调内可安全调用 `get`/`keys` 等，但**重入 `set`（含跨键环）会递归**，不收敛长链将栈溢出。
+- **异步（async=true）**：
+  - 在 set 写锁内投入 Context 模块自持的单线程监控池、set 返回后延迟执行；**入队序=提交序 ⇒ 恒按 set 提交序送达（并发 set 亦然）**，随服务 deinit / `YOMK_SHUTDOWN` 排空停止、不丢。
+  - 适合耗时回调（跨服务/落盘/通知）解耦；池线程迭代执行、平栈不溢出，**更适合会在回调内再 set 的状态机/级联回写**（仍需保证收敛，否则任务自续活锁）。
+
+> 提示：正式工程建议 Context key 用 typedefine 常量定义（示例0 的 `CTX_CONFIG_PATH` 即范例），避免散落的裸字符串。
 
 ## 示例3：EventLoop 异步事件处理
 
@@ -638,6 +648,7 @@ YOMK_EVENTLOOP_POST("worker_loop", YomkMkPtr(String, "task_1"));
 YomkResponse resp = YOMK_EVENTLOOP_POST_WAIT("worker_loop", YomkMkPtr(String, "task_2"));
 if(resp.m_status == YomkResponse::eOk) {
     YomkUnPackPkg(resp.m_data, Event, event);
+    // event->d.m_response 即事件处理函数的返回值（POST_WAIT 将其带回给等待方）
     if(event) YOMK_INFO("event result: ", event->d.m_response.m_msg);
 }
 
@@ -663,7 +674,7 @@ YomkResponse validateAmount(YomkPkgPtr pkg) {
 YOMK_FUNCTIONPOOL_REGISTER("validate_amount", validateAmount);
 YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("validate_amount", YomkMkPtr(String, "100.5"));
 
-// 注销（注销后调用返回 eInvalid: funcName is not register）
+// 注销（注销后调用返回 eNo: funcName is not register）
 YOMK_FUNCTIONPOOL_UNREGISTER("validate_amount");
 ```
 
@@ -805,7 +816,7 @@ resp = YOMK_LOGGER_INFO_ALL();
 // 首行: "console:debug:on info:on warn:on error:on proxy:off"
 ```
 
-注意：内省只读；`YOMK_INFO_TAG(tag, ...)` 宏的 tag 会追加行号后缀，按需创建的控制台日志器名为 `tag:行号`；级别开关用既有 `YOMK_ON/OFF_CONSOLE_LOG_*()` 切换后立即在 `/all` 首行生效。完整验证见 `Test/YomkServer/TestYomkLoggerInfo.cpp`。
+注意：内省只读；按需创建的控制台日志器名即 `YOMK_INFO_TAG(tag, ...)` 的 tag 原样（行号在日志正文前缀，不参与命名）；级别开关用既有 `YOMK_ON/OFF_CONSOLE_LOG_*()` 切换后立即在 `/all` 首行生效。完整验证见 `Test/YomkServer/TestYomkLoggerInfo.cpp`。
 
 ## 示例6：文件日志
 
@@ -828,7 +839,7 @@ bool myLogProxy(const yomk::Log& log) {
     return false; // 不再传递给默认输出
 }
 YOMK_SET_CONSOLE_LOG_PROXY(myLogProxy);
-// 卸载代理（LG6/P4-e）：传 nullptr 或空 std::function 即恢复框架默认控制台输出，
+// 卸载代理：传 nullptr 或空 std::function 即恢复框架默认控制台输出，
 // YOMK_LOGGER_INFO_ALL() 首行随之由 proxy:on 回到 proxy:off
 YOMK_SET_CONSOLE_LOG_PROXY(nullptr);
 ```
@@ -896,7 +907,7 @@ int XxxService::init()
 
 YomkResponse XxxService::version(YomkPkgPtr pkg)
 {
-    std::string version = "ExtensionName v" EXTENSION_VERSION " (WIP)";
+    std::string version = "ExtensionName v" EXTENSION_VERSION;
     return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, version));
 }
 ```
@@ -920,12 +931,7 @@ message(STATUS "ExtensionName libraries: ${ExtensionName_LIBRARIES}")
 add_executable(TestExtensionName TestExtensionName.cpp)
 target_link_libraries(TestExtensionName PRIVATE ExtensionName::ExtensionName YomkServer::YomkServer)
 
-# 测试程序随扩展一并安装到 <安装路径>/bin，供用户在任意终端直接运行验证
-# 测试程序可能有多个，此处显式列出全部测试目标名（不能用 ${PROJECT_NAME} 占位）
-install(TARGETS
-    TestExtensionName
-    RUNTIME DESTINATION bin
-)
+# 测试程序仅供扩展开发验证使用，仅编译到 test/build/，不随扩展安装
 ```
 
 ### test/TestExtensionName.cpp
@@ -995,7 +1001,7 @@ set(@PROJECT_NAME@_LIBRARIES @PROJECT_NAME@::@PROJECT_NAME@)
 set(@PROJECT_NAME@_VERSION "@PROJECT_VERSION@")
 ```
 
-> **补充第三方依赖**：模板默认只有 YomkServer 一个依赖。若扩展以 PUBLIC 链接了额外第三方库（导出接口中仅记录裸名），必须在 `find_dependency(YomkServer)` 之后（同样处于路径固化之后的区域）追加 `find_dependency(<第三方包>)`，使下游的裸名解析为带全路径的导入 target，否则任何下游工程链接 `ExtensionName::ExtensionName` 都会因找不到库而失败；无导出包的伴生库（fastddsgen 生成库等，测试工程以裸库名链接）则由测试工程用 `link_directories(${ExtensionName_LIB_DIR})` 补 -L 搜索路径。
+> **补充第三方依赖**：模板默认只有 YomkServer 一个依赖。扩展以 PUBLIC 链接的额外第三方库分两类——自带 CMake 包的：必须在 `find_dependency(YomkServer)` 之后（同样处于路径固化之后的区域）追加 `find_dependency(<第三方包>)`，使下游的裸库名解析为带全路径的导入 target，否则任何下游工程链接 `ExtensionName::ExtensionName` 都会因找不到库而失败；不带包、仅以裸库名 `-l` 链接的（如 fastddsgen 生成库，测试工程以裸名链接）：导出配置不记录它，由测试工程用 `link_directories(${ExtensionName_LIB_DIR})` 补库搜索路径。
 
 ### build_ubuntu.sh
 ```bash
@@ -1099,14 +1105,14 @@ if [ "${BUILD_TEST}" = "ON" ]; then
     mkdir -p "${TEST_BUILD_DIR}"
     cd "${TEST_BUILD_DIR}" || return 1
 
-    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}" -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}"
+    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}"
     if [ $? -ne 0 ]; then
         echo "测试程序 cmake 配置失败"
         cd "${_ORIG_DIR}"
         return 1
     fi
 
-    ${SUDO} cmake --build . --config Release --target install
+    ${SUDO} cmake --build . --config Release
     if [ $? -ne 0 ]; then
         echo "测试程序编译失败"
         cd "${_ORIG_DIR}"
@@ -1120,7 +1126,7 @@ unset _ORIG_DIR
 echo "编译完成，扩展库已注册到系统动态库缓存，新开任意终端即可使用"
 ldconfig -p | grep -i "${PROJECT_NAME}" || true
 if [ "${BUILD_TEST}" = "ON" ]; then
-    echo "测试程序已安装到 ${INSTALL_DIR}/bin，可直接运行 TestExtensionName 验证"
+    echo "测试程序已编译到 ${TEST_BUILD_DIR}，可在该目录运行 TestExtensionName 验证"
 fi
 ```
 
@@ -1212,7 +1218,7 @@ install(FILES
 source build_ubuntu.sh
 ```
 
-> 交互式编译：依次询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取 `$YOMK_PREFIX_PATH`，可修改。扩展库与 YomkServer 安装到一起（头文件由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供）。测试程序随扩展安装到 `<安装路径>/bin`，安装后可直接运行 `TestExtensionName` 验证。
+> 交互式编译：依次询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取 `$YOMK_PREFIX_PATH`，可修改。扩展库与 YomkServer 安装到一起（头文件由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供）。测试程序仅编译到 `test/build/` 供验证，不随扩展安装。
 
 ## 工程结构
 
@@ -1222,6 +1228,11 @@ ExtensionName/
 │   └── XxxService.h        # 对外接口头文件（服务类声明；内部头文件放 src/）
 ├── src/
 │   └── XxxService.cpp      # 服务实现
+├── test/
+│   ├── CMakeLists.txt      # 测试程序构建
+│   └── TestExtensionName.cpp
+├── cmake/
+│   └── ProjectConfig.cmake.in  # CMake 导出配置模板
 ├── CMakeLists.txt            # CMake 构建配置
 ├── build_ubuntu.sh           # 一键编译脚本（交互式）
 └── README.md
@@ -1250,7 +1261,7 @@ int main(int argc, char *argv[])
     if (resp.m_status == YomkResponse::eOk)
     {
         YomkUnPackPkg(resp.m_data, String, version);
-        std::cout << "version: " << version->d << std::endl; // 输出: ExtensionName v0.0.1 (WIP)
+        std::cout << "version: " << version->d << std::endl; // 输出: ExtensionName v0.0.1
     }
 
     return 0;
