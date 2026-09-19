@@ -16,6 +16,8 @@
 #   4. 日志落盘: Test/test_logs/<时间戳>/cppcheck.log + clang-tidy.log + summary.log
 # 依赖: cppcheck、clang-tidy（缺失时报错并给出安装提示）、仓库根 compile_commands.json
 #       （cmake 配置阶段自动导出，缺失时报错并给构建提示）
+# 自愈: clang-tidy 档自动探测本机真实存在的 libstdc++ 头并显式 -isystem 注入，
+#       修正"clang 按最新 GCC 探测但对应 libstdc++-dev 未装"导致的 file not found
 
 set -u
 
@@ -110,13 +112,37 @@ if [ ${RUN_TIDY} -eq 1 ]; then
     mapfile -t TIDY_FILES < <(find "${REPO_DIR}/YomkServer/src" -name '*.cpp' | sort)
     TIDY_TOTAL=${#TIDY_FILES[@]}
     echo "-- clang-tidy 扫描 YomkServer/src 全部编译单元（共 ${TIDY_TOTAL} 个，检查集: _YOMK_TIDY_CHECKS）..."
+    # clang 标准库头解析自愈（同 clangd --query-driver 族教训：新机器 clang 按"最新已装 GCC"
+    # 探测 libstdc++ 头 /usr/include/c++/<V>，若该版本 GCC 裸装而无 libstdc++-<V>-dev
+    # （如 gcc-12 + 仅 libstdc++-11-dev），标准库头全部 file not found，并在残缺 AST 上
+    # 连带大量假告警（member-init/init-variables 等）。此处按 <target>/版本倒序探测首个
+    # 真实存在的 libstdc++，用 -isystem 显式注入；健康机器上注入路径与 clang 正常探测
+    # 结果一致，无行为变化。
+    TIDY_EXTRA_ARGS=()
+    _GCC_TARGET="$(gcc -dumpmachine 2>/dev/null)"
+    if [ -n "${_GCC_TARGET}" ] && [ -d "/usr/lib/gcc/${_GCC_TARGET}" ]; then
+        for _v in $(ls "/usr/lib/gcc/${_GCC_TARGET}" | sort -rV); do
+            if [ -d "/usr/include/c++/${_v}" ]; then
+                TIDY_EXTRA_ARGS=(--extra-arg-before=-isystem "--extra-arg-before=/usr/include/c++/${_v}" \
+                    --extra-arg-before=-isystem "--extra-arg-before=/usr/include/${_GCC_TARGET}/c++/${_v}" \
+                    --extra-arg-before=-isystem "--extra-arg-before=/usr/include/c++/${_v}/backward")
+                echo "-- clang 标准库头注入: libstdc++-${_v}（显式 -isystem 修正 GCC 探测与 libstdc++ dev 包错位）"
+                break
+            fi
+        done
+    fi
+    if [ ${#TIDY_EXTRA_ARGS[@]} -eq 0 ]; then
+        echo "错误: 未找到可用的 libstdc++ C++ 头（/usr/include/c++/<版本>），请安装对应 dev 包:"
+        echo "  sudo apt-get install libstdc++-<gcc版本>-dev"
+        exit 1
+    fi
     TIDY_OUT="${LOG_ROOT}/clang-tidy.log"
     TIDY_FAIL=0
     TIDY_IDX=0
     for f in "${TIDY_FILES[@]}"; do
         TIDY_IDX=$((TIDY_IDX + 1))
         echo "-- [${TIDY_IDX}/${TIDY_TOTAL}] ${f#"${REPO_DIR}/"}"
-        if ! clang-tidy -p "${REPO_DIR}" \
+        if ! clang-tidy -p "${REPO_DIR}" "${TIDY_EXTRA_ARGS[@]}" \
             --checks="bugprone-*,-bugprone-macro-parentheses,-bugprone-easily-swappable-parameters,cppcoreguidelines-*,-cppcoreguidelines-owning-memory,-cppcoreguidelines-macro-usage,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-special-member-functions,-cppcoreguidelines-explicit-virtual-functions,-cppcoreguidelines-non-private-member-variables-in-classes,-cppcoreguidelines-avoid-non-const-global-variables,clang-analyzer-*,performance-*,-performance-unnecessary-value-param,portability-*" \
             --header-filter='.*/YomkServer/(include|src)/.*' \
             --warnings-as-errors='*' \
