@@ -23,7 +23,7 @@ public:
     bool init();
 
 public:
-    void log(ELogLevel logLevel, const std::string& log);
+    void log(ELogLevel logLevel, const std::string& tag, const std::string& log);
     void write();
 
 private:

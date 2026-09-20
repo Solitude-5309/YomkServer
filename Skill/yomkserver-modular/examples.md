@@ -800,7 +800,7 @@ resp = YOMK_FUNCTIONPOOL_INFO_ALL();
 
 ```cpp
 YOMK_FILE_LOG_CREATE("/tmp", "info_logger");                          // 创建文件日志器
-YomkAPI::CONSOLE_LOG_INFO_TAG("auto_logger", "hello");                // 按需自动创建控制台日志器
+YomkAPI::CONSOLE_LOG_INFO_TAG("auto_logger", "hello");                // tag 兼容双填：按需自动创建同名控制台日志器并显示 [auto_logger]
 
 // 日志器列表（返回 StringArray，控制台在前、文件在后）
 YomkResponse resp = YOMK_LOGGER_INFO_LOGGERS();
@@ -816,7 +816,7 @@ resp = YOMK_LOGGER_INFO_ALL();
 // 首行: "console:debug:on info:on warn:on error:on proxy:off"
 ```
 
-注意：内省只读；按需创建的控制台日志器名即 `YOMK_INFO_TAG(tag, ...)` 的 tag 原样（行号在日志正文前缀，不参与命名）；级别开关用既有 `YOMK_ON/OFF_CONSOLE_LOG_*()` 切换后立即在 `/all` 首行生效。完整验证见 `Test/YomkServer/TestYomkLoggerInfo.cpp`。
+注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关用既有 `YOMK_ON/OFF_CONSOLE_LOG_*()` 切换后立即在 `/all` 首行生效。完整验证见 `Test/YomkServer/TestYomkLoggerInfo.cpp`。
 
 ## 示例6：文件日志
 

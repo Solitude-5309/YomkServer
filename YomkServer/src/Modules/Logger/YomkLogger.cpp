@@ -83,24 +83,24 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
     {
         case Log::eInfo:
             if (m_showConsoleInfoLog.load())
-                consoleLogger->log(ConsoleLogger::eInfo, log->d.m_log);
+                consoleLogger->log(ConsoleLogger::eInfo, log->d.m_tag, log->d.m_log);
             break;
         case Log::eWarn:
             if (m_showConsoleWarningLog.load())
-                consoleLogger->log(ConsoleLogger::eWarn, log->d.m_log);
+                consoleLogger->log(ConsoleLogger::eWarn, log->d.m_tag, log->d.m_log);
             break;
         case Log::eError:
             if (m_showConsoleErrorLog.load())
-                consoleLogger->log(ConsoleLogger::eError, log->d.m_log);
+                consoleLogger->log(ConsoleLogger::eError, log->d.m_tag, log->d.m_log);
             break;
         case Log::eDebug:
             if (m_showConsoleDebugLog.load())
-                consoleLogger->log(ConsoleLogger::eDebug, log->d.m_log);
+                consoleLogger->log(ConsoleLogger::eDebug, log->d.m_tag, log->d.m_log);
             break;
         default:
             YOMK_ERR_POS_LOG("unknown log level, use Info");
             if (m_showConsoleInfoLog.load())
-                consoleLogger->log(ConsoleLogger::eInfo, log->d.m_log);
+                consoleLogger->log(ConsoleLogger::eInfo, log->d.m_tag, log->d.m_log);
             break;
     }
 
@@ -175,20 +175,20 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
     switch (log->d.m_level)
     {
         case Log::eInfo:
-            itLogger->second->log(FileLogger::eInfo, log->d.m_log);
+            itLogger->second->log(FileLogger::eInfo, log->d.m_tag, log->d.m_log);
             break;
         case Log::eWarn:
-            itLogger->second->log(FileLogger::eWarn, log->d.m_log);
+            itLogger->second->log(FileLogger::eWarn, log->d.m_tag, log->d.m_log);
             break;
         case Log::eError:
-            itLogger->second->log(FileLogger::eError, log->d.m_log);
+            itLogger->second->log(FileLogger::eError, log->d.m_tag, log->d.m_log);
             break;
         case Log::eDebug:
-            itLogger->second->log(FileLogger::eDebug, log->d.m_log);
+            itLogger->second->log(FileLogger::eDebug, log->d.m_tag, log->d.m_log);
             break;
         default:
             YOMK_ERR_POS_LOG("unknown log level, use Info");
-            itLogger->second->log(FileLogger::eInfo, log->d.m_log);
+            itLogger->second->log(FileLogger::eInfo, log->d.m_tag, log->d.m_log);
             break;
     }
 

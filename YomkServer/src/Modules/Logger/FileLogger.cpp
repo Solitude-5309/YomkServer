@@ -54,15 +54,19 @@ bool FileLogger::init()
     return true;
 }
 
-void FileLogger::log(ELogLevel logLevel, const std::string& log)
+void FileLogger::log(ELogLevel logLevel, const std::string& tag, const std::string& log)
 {
     std::string timeStr = yomkLogLocalTimeFormatted();
 
+    // tag 由日志器统一拼接（替代旧 API 层拼接）：空 tag 不加前缀，与旧行为一致
+    const std::string tagPrefix = tag.empty() ? "" : "[" + tag + "] ";
+
     std::lock_guard<std::mutex> lock(m_logBufferMutex);
-    auto appendLine = [this, &timeStr, &log](const char* levelTag)
+    auto appendLine = [this, &timeStr, &tagPrefix, &log](const char* levelTag)
     {
         m_logBuffer += timeStr;
         m_logBuffer += levelTag;
+        m_logBuffer += tagPrefix;
         m_logBuffer += log;
         m_logBuffer += '\n';
     };

@@ -2,14 +2,15 @@
  * @file TestYomkLoggerDirect.cpp
  * @brief Logger 模块 ConsoleLogger/FileLogger 类直连白盒测试（LG1 新建，LG2 回填）
  *
- * 覆盖内容（2 个类，14 组用例 26 断言）：
+ * 覆盖内容（2 个类，16 组用例 30 断言）：
  * ConsoleLogger：
  * 1. 默认名 "MainLogger"、setName/getName
- * 2. 四级别输出（级别标签 [Debug]/[Info ]/[Warn ]/[Error] + [名] + 内容）
+ * 2. 四级别输出（级别标签 [Debug]/[Info ]/[Warn ]/[Error] + [名/tag] + 内容）
  * 3. 非法级别 default 降级（P2-c 修复后回填）：log(ELogLevel(99)) →
  *    "Unknown log level: 99" 提示 + 降级 Info 输出
  * 4. 时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]
  * 5. 超长名（4096）与空内容
+ * 5a. tag 显示语义（m_tag 拆分回填）：tag 非空显示 [tag]、空 tag 回退 [日志器名]
  * FileLogger：
  * 6. 默认名、setName/setDir/getDir
  * 7. init 建多级目录 + 空日志文件，返回 true（P2-b 修复后 bool 语义）
@@ -22,6 +23,7 @@
  * 13. P2-b 处置验证（LG2 回填）：init 对不可创建目录（/proc 下嵌套路径）
  *     返回 false 不抛异常，错误提示含 fs error 信息；dir 为普通文件时
  *     走 ofstream 打开失败分支（false + create log file failed）
+ * 13a. tag 前缀语义（m_tag 拆分回填）：tag 非空行内追加 [tag] 段、空 tag 不加前缀
  *
  * 说明：ConsoleLogger/FileLogger 为库内部实现类，符号已从 libYomkServer.so 导出
  *       （nm -D 核实），测试侧经源码模块 include 路径直连构造，不经框架单例
@@ -147,10 +149,10 @@ int main()
         // 四级别输出：级别标签 + [名] + 内容
         {
             CoutCapture cap;
-            logger.log(ConsoleLogger::eDebug, "lg1_dc_debug_marker");
-            logger.log(ConsoleLogger::eInfo, "lg1_dc_info_marker");
-            logger.log(ConsoleLogger::eWarn, "lg1_dc_warn_marker");
-            logger.log(ConsoleLogger::eError, "lg1_dc_error_marker");
+            logger.log(ConsoleLogger::eDebug, "", "lg1_dc_debug_marker");
+            logger.log(ConsoleLogger::eInfo, "", "lg1_dc_info_marker");
+            logger.log(ConsoleLogger::eWarn, "", "lg1_dc_warn_marker");
+            logger.log(ConsoleLogger::eError, "", "lg1_dc_error_marker");
             std::string out = cap.str();
             CHECK(
                 out.find("[Debug] [lg1_direct_console] lg1_dc_debug_marker") != std::string::npos,
@@ -168,7 +170,7 @@ int main()
             std::string out;
             {
                 CoutCapture cap;
-                logger.log(static_cast<ConsoleLogger::ELogLevel>(99), "lg1_dc_badlevel_marker");
+                logger.log(static_cast<ConsoleLogger::ELogLevel>(99), "", "lg1_dc_badlevel_marker");
                 out = cap.str();
             }
             CHECK(
@@ -186,8 +188,22 @@ int main()
             longLogger.setName(longName);
             CHECK(longLogger.getName() == longName, "4096 字符超长名 setName/getName 一致");
             CoutCapture cap;
-            longLogger.log(ConsoleLogger::eInfo, "");
+            longLogger.log(ConsoleLogger::eInfo, "", "");
             CHECK(cap.str().find("[Info ] [" + longName + "] ") != std::string::npos, "超长名 + 空内容日志正常输出");
+        }
+    
+        // tag 显示语义（m_tag 拆分回填）：tag 非空显示 [tag]，空 tag 回退 [日志器名]
+        {
+            CoutCapture cap;
+            logger.log(ConsoleLogger::eInfo, "lg1_dc_tag", "lg1_dc_tagged_marker");
+            logger.log(ConsoleLogger::eInfo, "", "lg1_dc_fallback_marker");
+            std::string out = cap.str();
+            CHECK(
+                out.find("[Info ] [lg1_dc_tag] lg1_dc_tagged_marker") != std::string::npos,
+                "tag 非空显示 [tag]（m_tag 优先于日志器名）");
+            CHECK(
+                out.find("[Info ] [lg1_direct_console] lg1_dc_fallback_marker") != std::string::npos,
+                "空 tag 回退显示 [日志器名]");
         }
     }
 
@@ -210,17 +226,17 @@ int main()
             "init 建多级目录与空日志文件");
 
         // log 四级别：入缓冲不落盘
-        fl.log(FileLogger::eDebug, "lg1_df_debug_marker");
-        fl.log(FileLogger::eInfo, "lg1_df_info_marker");
-        fl.log(FileLogger::eWarn, "lg1_df_warn_marker");
-        fl.log(FileLogger::eError, "lg1_df_error_marker");
+        fl.log(FileLogger::eDebug, "", "lg1_df_debug_marker");
+        fl.log(FileLogger::eInfo, "", "lg1_df_info_marker");
+        fl.log(FileLogger::eWarn, "", "lg1_df_warn_marker");
+        fl.log(FileLogger::eError, "", "lg1_df_error_marker");
         // 非法级别 default 降级 Info 入缓冲（P2-c 修复后回填，随下方 write 一并落盘；
         // CHECK 须在捕获作用域外，否则断言输出被 rdbuf 重定向吞没）
         {
             std::string outBad;
             {
                 CoutCapture cap;
-                fl.log(static_cast<FileLogger::ELogLevel>(99), "lg1_df_badlevel_marker");
+                fl.log(static_cast<FileLogger::ELogLevel>(99), "", "lg1_df_badlevel_marker");
                 outBad = cap.str();
             }
             CHECK(
@@ -251,7 +267,7 @@ int main()
         CHECK(fs::file_size(logFile, ec) == sizeAfter, "二次 write 无重复内容（缓冲已清空）");
 
         // 空内容 log 仍成行（追加 1 行）
-        fl.log(FileLogger::eInfo, "");
+        fl.log(FileLogger::eInfo, "", "");
         fl.write();
         bool readOk2 = false;
         std::string content2 = readFile(logFile, readOk2);
@@ -262,11 +278,26 @@ int main()
         // 1MB 超长内容往返
         {
             std::string big(1024 * 1024, 'B');
-            fl.log(FileLogger::eInfo, big);
+            fl.log(FileLogger::eInfo, "", big);
             fl.write();
             bool readOk3 = false;
             std::string content3 = readFile(logFile, readOk3);
             CHECK(readOk3 && content3.find(big) != std::string::npos, "1MB 超长内容完整落盘");
+        }
+
+        // tag 前缀语义（m_tag 拆分回填）：tag 非空行内追加 [tag] 段，空 tag 不加前缀
+        {
+            fl.log(FileLogger::eInfo, "lg1_df_tag", "lg1_df_tagged_marker");
+            fl.log(FileLogger::eInfo, "", "lg1_df_untagged_marker");
+            fl.write();
+            bool readOkTag = false;
+            std::string contentTag = readFile(logFile, readOkTag);
+            CHECK(
+                readOkTag && contentTag.find("[Info ] [lg1_df_tag] lg1_df_tagged_marker") != std::string::npos,
+                "tag 非空行格式（[级别] [tag] 内容）");
+            CHECK(
+                contentTag.find("[Info ] lg1_df_untagged_marker") != std::string::npos,
+                "空 tag 不加 [tag] 前缀");
         }
 
         // write 打不开文件分支：dir 指向普通文件路径 → 错误提示 + 流保留不丢
@@ -276,7 +307,7 @@ int main()
             FileLogger failFl;
             failFl.setName("lg1_writefail");
             failFl.setDir(regularFile.string());  // <普通文件>/lg1_writefail.log 无法打开
-            failFl.log(FileLogger::eInfo, "lg1_df_writefail_marker");
+            failFl.log(FileLogger::eInfo, "", "lg1_df_writefail_marker");
             // CHECK 须在捕获作用域外（否则断言输出被 rdbuf 重定向吞没）
             std::string outFail;
             {
@@ -309,7 +340,7 @@ int main()
                 dtorFl.setName("lg1_dtor");
                 dtorFl.setDir(dtorDir.string());
                 dtorFl.init();
-                dtorFl.log(FileLogger::eInfo, "lg1_df_dtor_marker");
+                dtorFl.log(FileLogger::eInfo, "", "lg1_df_dtor_marker");
                 // 不显式 write，作用域结束析构触发
             }
             bool readOk5 = false;

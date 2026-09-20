@@ -172,7 +172,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, oss.str(), tag}));
+        return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, oss.str(), tag, tag}));
     }
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_WARN_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
@@ -181,7 +181,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, oss.str(), tag}));
+        return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, oss.str(), tag, tag}));
     }
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_ERROR_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
@@ -190,7 +190,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, oss.str(), tag}));
+        return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, oss.str(), tag, tag}));
     }
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_DEBUG_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
@@ -199,7 +199,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, oss.str(), tag}));
+        return request("/YomkLogger/console_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, oss.str(), tag, tag}));
     }
     // 创建文件日志器
     static YomkResponse FILE_LOG_CREATE(const std::string& logDir, const std::string& logFile)
@@ -221,8 +221,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request(
-            "/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "[" + tag + "] " + oss.str(), logFile}));
+        return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, oss.str(), logFile, tag}));
     }
     template <typename... Args>
     static YomkResponse FILE_LOG_WARN_TAG(
@@ -232,8 +231,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request(
-            "/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, "[" + tag + "] " + oss.str(), logFile}));
+        return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, oss.str(), logFile, tag}));
     }
     template <typename... Args>
     static YomkResponse FILE_LOG_ERROR_TAG(
@@ -243,9 +241,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request(
-            "/YomkLogger/file_log",
-            YomkMkPtr(Log, yomk::Log{yomk::Log::eError, "[" + tag + "] " + oss.str(), logFile}));
+        return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, oss.str(), logFile, tag}));
     }
     template <typename... Args>
     static YomkResponse FILE_LOG_DEBUG_TAG(
@@ -255,9 +251,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request(
-            "/YomkLogger/file_log",
-            YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, "[" + tag + "] " + oss.str(), logFile}));
+        return request("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, oss.str(), logFile, tag}));
     }
     // 开关各级别控制台日志
     static YomkResponse ON_CONSOLE_LOG_DEBUG()

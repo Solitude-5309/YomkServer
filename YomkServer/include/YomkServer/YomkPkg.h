@@ -198,7 +198,8 @@ struct Log
     };
     ELogLevel m_level;
     std::string m_log;
-    std::string m_logger;
+    std::string m_logger;  // 日志器名：服务端按其查找/惰性创建日志器实例
+    std::string m_tag;     // 日志标签：随记录显示 [tag] 段，区别于 m_logger（末位追加，旧位置初始化兼容）
 };
 
 struct ConsoleLogProxy

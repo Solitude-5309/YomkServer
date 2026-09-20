@@ -86,7 +86,9 @@ namespace yomk {
         YomkResponse m_response; std::function<void()> m_waitCallback;
         std::string m_tag; // 用户事件标记，POST 时可选传入，仅用于内省展示
     };
-    struct Log { enum ELogLevel{eDebug,eInfo,eWarn,eError}; ELogLevel m_level; std::string m_log; std::string m_logger; };
+    // m_logger=日志器名（服务端按其选择/惰性创建日志器实例）；m_tag=记录标签（随记录显示 [tag]）
+    // 控制台 TAG 宏兼容双填（m_logger=tag 且 m_tag=tag）；文件 TAG 宏 m_logger=文件名、m_tag=tag
+    struct Log { enum ELogLevel{eDebug,eInfo,eWarn,eError}; ELogLevel m_level; std::string m_log; std::string m_logger; std::string m_tag; };
     struct Context { std::string m_key; YomkPkgPtr m_value; };
     struct ContextChecker {
         enum ECheckStatus{eAccept, eReject};
@@ -221,11 +223,11 @@ class YomkService {
 ### 日志
 | 宏 | 说明 |
 |----|------|
-| `YOMK_INFO/WARN/ERROR/DEBUG(...)` | 控制台日志 |
-| `YOMK_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(tag, ...)` | 自定义 tag 日志 |
+| `YOMK_INFO/WARN/ERROR/DEBUG(...)` | 控制台日志（默认 tag=MainLogger） |
+| `YOMK_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(tag, ...)` | 自定义 tag 日志（tag 兼容双填 Log::m_tag 与 Log::m_logger，随记录显示 [tag]） |
 | `YOMK_FILE_LOG_CREATE(dir, file)` | 创建文件日志 |
-| `YOMK_FILE_INFO/WARN/ERROR/DEBUG(file, ...)` | 文件日志 |
-| `YOMK_FILE_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(file, tag, ...)` | 文件日志自定义 tag |
+| `YOMK_FILE_INFO/WARN/ERROR/DEBUG(file, ...)` | 文件日志（默认 tag=MainLogger） |
+| `YOMK_FILE_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(file, tag, ...)` | 文件日志自定义 tag（Log::m_logger=file、Log::m_tag=tag，由日志器统一拼接 [tag] 段） |
 | `YOMK_FILE_LOG_WRITE(file)` | 刷新到磁盘 |
 | `YOMK_ON/OFF_CONSOLE_LOG_INFO/WARN/ERROR/DEBUG()` | 开关控制台级别 |
 | `YOMK_SET_CONSOLE_LOG_PROXY(func)` | 日志代理（回调返回 false 拦截该条日志、框架不做默认输出，返回 true 则放行；传 nullptr 或空 std::function 即卸载代理、恢复框架默认输出，内省首行随之显示 `proxy:off`） |

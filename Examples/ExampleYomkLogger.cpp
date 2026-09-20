@@ -8,7 +8,7 @@
  *
  * 步骤总览：
  * 1. 控制台日志四级别（默认 tag）
- * 2. 自定义 Tag（tag 即控制台日志器名）
+ * 2. 自定义 Tag（tag 随记录显示，兼容双填兼作日志器名）
  * 3. 级别开关（全局，只影响控制台）
  * 4. 控制台日志代理（消费与放行两种返回值）
  * 5. 卸载代理（恢复默认输出）
@@ -82,7 +82,7 @@ bool consoleLogProxy(const yomk::Log& log)
         return false;
     }
     // 演示"放行"：其余级别加自定义前缀后交给框架默认输出
-    std::cout << "[LogProxy] " << log.m_log << " (tag=" << log.m_logger << ")" << std::endl;
+    std::cout << "[LogProxy] " << log.m_log << " (tag=" << log.m_tag << ")" << std::endl;
     return true;
 }
 
@@ -116,11 +116,12 @@ int main(int argc, char* argv[])
     /**
      * 步骤2：自定义 Tag
      *
-     * YOMK_INFO_TAG(tag, ...) 的 tag 就是控制台日志器名，
-     * 首次使用时框架自动创建同名日志器（无需手动注册）。
+     * YOMK_INFO_TAG(tag, ...) 的 tag 作为日志标签随记录显示（Log::m_tag），
+     * 兼容双填兼作日志器名（Log::m_logger）——首次使用时框架自动创建同名日志器（无需手动注册）。
      * 用内省 LOGGERS 清单自证：能看到 "MainLogger [console]" 和 "user.service [console]"。
      */
-    printStep(2, "自定义 Tag", "tag 即控制台日志器名，首次使用自动创建；随后打印日志器清单自证。");
+    printStep(
+        2, "自定义 Tag", "tag 随记录显示、兼容双填兼作日志器名，首次使用自动创建；随后打印日志器清单自证。");
     printResp("YOMK_INFO_TAG", YOMK_INFO_TAG("user.service", "user login, id=", 7));
     printResp("YOMK_WARN_TAG", YOMK_WARN_TAG("user.service", "retry count=", 2));
     printResp("YOMK_ERROR_TAG", YOMK_ERROR_TAG("user.service", "session expired"));
@@ -203,7 +204,7 @@ int main(int argc, char* argv[])
     printResp("YOMK_FILE_WARN", YOMK_FILE_WARN("app", "file log warn, order=", 2));
     printResp("YOMK_FILE_ERROR", YOMK_FILE_ERROR("app", "file log error, order=", 3));
     printResp("YOMK_FILE_DEBUG", YOMK_FILE_DEBUG("app", "file log debug, order=", 4));
-    // 自定义 tag：内容为 "[tag] [行号] 内容"，便于在文件里区分模块
+    // 自定义 tag：走 Log::m_tag 字段由日志器统一拼接，内容为 "[tag] [行号] 内容"，便于在文件里区分模块
     printResp("YOMK_FILE_INFO_TAG", YOMK_FILE_INFO_TAG("app", "biz", "biz event, order=", 5));
     printResp("YOMK_FILE_WARN_TAG", YOMK_FILE_WARN_TAG("app", "biz", "biz warning, order=", 6));
     printResp("YOMK_FILE_ERROR_TAG", YOMK_FILE_ERROR_TAG("app", "biz", "biz failure, order=", 7));

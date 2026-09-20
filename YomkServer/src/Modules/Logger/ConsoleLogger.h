@@ -20,7 +20,7 @@ public:
     void setName(const std::string& name) { m_name = name; }
 
 public:
-    void log(ELogLevel logLevel, const std::string& log);
+    void log(ELogLevel logLevel, const std::string& tag, const std::string& log);
 
 private:
     std::string m_name;
