@@ -102,8 +102,13 @@ int EventLoop::post(YomkPtr(Event) event)
             event->d.m_serviceFunc = m_defaultServiceFunc;
         }
         m_eventQueue.push(event);
+        // 丢失唤醒防护（对齐 stop() 与 YomkSimpleThreadPool::stop 同款先例）：notify 若在锁外，
+        // worker 可能持锁评估完谓词（读到队空）但尚未入睡，本线程入队+通知从旁边穿过——
+        // 通知落在等待开始前不被 pending，worker 睡到下一事件/stop 才醒（事件延迟交付；
+        // 末事件睡死且不再投递时 postWait 等待者随事件一起滞留）。入队持锁 + 通知持锁后，
+        // 通知与谓词检查互斥串行，两个时序方向均安全
+        m_condition.notify_one();
     }
-    m_condition.notify_one();
     return 0;
 }
 
