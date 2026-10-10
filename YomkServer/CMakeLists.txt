@@ -1,8 +1,15 @@
+# 默认安装前缀：仅当用户未通过 -DCMAKE_INSTALL_PREFIX 显式指定时生效。
+# CMake 启动时已将该缓存预置为内置默认（Windows: c:/Program Files/<project>，Unix: /usr/local），
+# 不带 FORCE 的 set(CACHE) 遇已有缓存值不会覆盖，故必须用 FORCE + INITIALIZED_TO_DEFAULT 守卫。
 if(WIN32)
-    set(CMAKE_INSTALL_PREFIX "$ENV{LOCALAPPDATA}/YomkServer" CACHE PATH "Installation path")
+    if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+        set(CMAKE_INSTALL_PREFIX "$ENV{LOCALAPPDATA}/YomkServer" CACHE PATH "Installation path" FORCE)
+    endif()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 else()
-    set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Installation path")
+    if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+        set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Installation path" FORCE)
+    endif()
 endif()
 
 set(YomkServer_INCLUDE ${YomkServer_DIR}/include/YomkServer)
