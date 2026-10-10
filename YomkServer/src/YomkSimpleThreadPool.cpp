@@ -42,13 +42,21 @@ bool YomkSimpleThreadPool::post(std::function<void()> task)
 
 void YomkSimpleThreadPool::stop()
 {
-    // 幂等：重复调用（如 shutdown 与析构兜底）直接返回，不会二次 join
-    if (m_stop.exchange(true))
+    // 丢失唤醒防护（对齐 EventLoop::stop 同款先例）：置位必须与 workerLoop 的持锁谓词检查互斥。
+    // 若在锁外 exchange + notify_all，置位+通知可从 worker 的"持锁谓词检查(否) → 挂起"旁穿过
+    // ——通知落在等待开始前不被 pending，worker 睡死、join 永等（run_tests.sh 曾因此偶发
+    // TestYomkServer 300s 超时）。持锁置位后：未挂起的 worker 下次谓词检查必见 true，
+    // 已挂起的被持锁 notify 必达唤醒，两个时序方向均安全。
     {
-        return;
+        std::lock_guard<std::mutex> lock(m_mtx);
+        // 幂等：重复调用（如 shutdown 与析构兜底）直接返回，不会二次 join；
+        // 同时与 post() 的持锁检查真正同锁互斥，"停止后不再入队"承诺加锁层面兜底
+        if (m_stop.exchange(true))
+        {
+            return;
+        }
+        m_cv.notify_all();
     }
-
-    m_cv.notify_all();
     for (auto& worker : m_workers)
     {
         if (worker.joinable())
