@@ -7,9 +7,11 @@
  * 2. 未初始化守卫默认值：serverInstance() 为空、shutdown() 安全空转（幂等）；
  *    request 返回 eInvalid + 契约消息 "YomkServer is not init"；asyncRequest 静默返回
  *    回调不触发；newService/addService/delService 返回 -1
- * 3. 模块 API 守卫：EventLoop/FunctionPool/Logger 三模块全量守卫（Logger 23 入口，
- *    LG2 补齐原 19 项计数，LG4 新增 FILE_LOG_DELETE（LG6 由 LOGGER_DELETE 改名））；其余模块每种返回值形态取代表（YomkResponse 形态 → eInvalid；
- *    CONTEXT_GET 形态 → 原样返回调用方默认值），同一守卫宏展开书面豁免
+ * 3. 模块 API 守卫：五模块全量（P1 补齐 Context/ServerInfo 共 14 条，原代表条目保留）——
+ *    EventLoop 9 入口、FunctionPool 6 入口、Logger 23 入口（LG2 补齐原 19 项计数，LG4 新增
+ *    FILE_LOG_DELETE（LG6 由 LOGGER_DELETE 改名））、Context 12 入口 + GET 特殊形态、
+ *    ServerInfo 4 入口；YomkResponse 形态 → eInvalid；
+ *    CONTEXT_GET 形态 → 原样返回调用方默认值，同一守卫宏展开书面豁免
  *
  * 说明：call_once 不可逆，未初始化态须独占进程（本程序全程不调 init）；addService 传裸指针
  *       时守卫先于所有权接管返回，注册失败指针仍归调用方（测试侧 delete 验证不泄漏不崩溃）
@@ -98,10 +100,10 @@ int main()
         CHECK(YomkAPI::delService("/Any") == -1, "delService 未初始化返回 -1");
     }
 
-    std::cout << "===== 5. 模块 API 守卫（EventLoop/FunctionPool/Logger 全量，其余形态代表） =====" << std::endl;
+    std::cout << "===== 5. 模块 API 守卫（五模块全量 + CONTEXT_GET 特殊形态） =====" << std::endl;
     {
-        // YomkResponse 形态（LOG/CONTEXT/SERVER_INFO 取代表；EventLoop/FunctionPool/
-        // Logger 三模块全量守卫，Logger 23 入口，LG4 补 FILE_LOG_DELETE）
+        // 五模块入口级全量（P1 收口：Logger 23 / EventLoop 9 / FunctionPool 6 /
+        // Context 12 + GET 特殊形态 / ServerInfo 4）
         CHECK(
             YomkAPI::SET_CONSOLE_LOG_PROXY(nullptr).m_status == YomkResponse::eInvalid,
             "SET_CONSOLE_LOG_PROXY 未初始化返回 eInvalid");
@@ -173,6 +175,39 @@ int main()
             YomkAPI::CONTEXT_CREATE("guard_key", nullptr).m_status == YomkResponse::eInvalid,
             "CONTEXT_CREATE 未初始化返回 eInvalid");
         CHECK(
+            YomkAPI::CONTEXT_SET("guard_key", nullptr).m_status == YomkResponse::eInvalid,
+            "CONTEXT_SET 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::CONTEXT_DESTROY("guard_key").m_status == YomkResponse::eInvalid,
+            "CONTEXT_DESTROY 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::CONTEXT_ON_CHECKER().m_status == YomkResponse::eInvalid,
+            "CONTEXT_ON_CHECKER 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::CONTEXT_OFF_CHECKER().m_status == YomkResponse::eInvalid,
+            "CONTEXT_OFF_CHECKER 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::CONTEXT_SET_CHECKER("guard_key", nullptr).m_status == YomkResponse::eInvalid,
+            "CONTEXT_SET_CHECKER 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::CONTEXT_ON_MONITOR().m_status == YomkResponse::eInvalid,
+            "CONTEXT_ON_MONITOR 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::CONTEXT_OFF_MONITOR().m_status == YomkResponse::eInvalid,
+            "CONTEXT_OFF_MONITOR 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::CONTEXT_SET_MONITOR("guard_key", nullptr).m_status == YomkResponse::eInvalid,
+            "CONTEXT_SET_MONITOR 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::CONTEXT_INFO_KEYS().m_status == YomkResponse::eInvalid,
+            "CONTEXT_INFO_KEYS 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::CONTEXT_INFO_KEY("guard_key").m_status == YomkResponse::eInvalid,
+            "CONTEXT_INFO_KEY 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::CONTEXT_INFO_ALL().m_status == YomkResponse::eInvalid,
+            "CONTEXT_INFO_ALL 未初始化返回 eInvalid");
+        CHECK(
             YomkAPI::EVENTLOOP_START("/guard_loop").m_status == YomkResponse::eInvalid,
             "EVENTLOOP_START 未初始化返回 eInvalid");
         CHECK(
@@ -221,6 +256,15 @@ int main()
             YomkAPI::FUNCTIONPOOL_INFO_ALL().m_status == YomkResponse::eInvalid,
             "FUNCTIONPOOL_INFO_ALL 未初始化返回 eInvalid");
         CHECK(YomkAPI::SERVER_INFO_ALL().m_status == YomkResponse::eInvalid, "SERVER_INFO_ALL 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::SERVER_INFO_SERVICES().m_status == YomkResponse::eInvalid,
+            "SERVER_INFO_SERVICES 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::SERVER_INFO_FUNCTIONS("/guard_srv").m_status == YomkResponse::eInvalid,
+            "SERVER_INFO_FUNCTIONS 未初始化返回 eInvalid");
+        CHECK(
+            YomkAPI::SERVER_INFO_FUNCTION("/guard_srv/f").m_status == YomkResponse::eInvalid,
+            "SERVER_INFO_FUNCTION 未初始化返回 eInvalid");
 
         // CONTEXT_GET 特殊形态：守卫返回值即调用方默认值（指针一致）
         std::shared_ptr<Yomk(String)> ctxDefault = std::make_shared<Yomk(String)>("guard_default");
