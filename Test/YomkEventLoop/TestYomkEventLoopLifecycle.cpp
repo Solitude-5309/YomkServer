@@ -2,7 +2,7 @@
  * @file TestYomkEventLoopLifecycle.cpp
  * @brief EventLoop 三段语义（start 重启续跑 / stop 保留队列 / destroy 停后清空）白盒回归测试
  *
- * 覆盖内容（ELC2 缺陷修复后 10 个 Section）：
+ * 覆盖内容（ELC2 缺陷修复后 12 个 Section）：
  * 1. stop 保留性：停止仅退出工作线程，未执行事件保留在队列（不执行、pending 不减）
  * 2. start 续跑性：对已停止未销毁的循环再次 start，积压按原 FIFO 顺序续跑（事件不丢失）
  * 3. destroy 清空性：销毁先停止退出线程再清空队列——排队事件永不执行、重启后无任何执行（不可续跑）
@@ -16,6 +16,11 @@
  *    停止态投递 eNo / INFO_LOOP 数字路径与越界回退 / INFO_LOOPS 存活列表与销毁后移除 / INFO_ALL /
  *    空循环名与超长循环名边界（ELC6 覆盖率回填：loops() 遍历路径需在 map 非空时调用）
  * 10. postWait×destroy 等待者释放：销毁清空队列时触发被丢弃事件的等待回调，等待者不永久挂起（看门狗）
+ * 11. delService("/YomkEventLoop") 残留 loop 收尾与重注册（P4）：运行中删除内置服务——残留 loop 经
+ *     析构兜底链收尾（无 deinit override，~YomkEventLoop -> m_loops 析构 -> ~EventLoop -> destroy），
+ *     后续 EVENTLOOP API 服务级 eNo；无参重注册（new T(this) 注入）后 START/POST_WAIT 全链路恢复
+ * 12. ~EventLoop 析构兜底释放等待者（P4，白盒，看门狗）：不调 destroy 直接析构——~EventLoop 内部
+ *     destroy 兜底同样触发被丢弃事件的等待回调，析构入口与显式入口共享释放契约（S10 的入口级补全）
  *
  * 说明：白盒段直连内部类 EventLoop（include Modules/EventLoop/EventLoop.h，CMake 已追加 src 目录），
  *       不触 YOMK_INIT（类级测试与请求路由无关）；API 段使用 YOMK_INIT 单例拉起内置 /YomkEventLoop，
@@ -42,7 +47,8 @@
 #include <thread>
 #include <vector>
 
-#include "Modules/EventLoop/EventLoop.h"
+// YomkEventLoop.h 传递包含 EventLoop.h（两模块头均无 include guard，不可双包含）
+#include "Modules/EventLoop/YomkEventLoop.h"
 #include "YomkAPI.h"
 
 static int g_failed = 0;
@@ -611,6 +617,37 @@ int main()
             }
         }
         CHECK(loopsArr != nullptr && removed, "销毁后 INFO_LOOPS 不再包含 api_loop");
+    }
+
+    // ============ Section 11: delService("/YomkEventLoop") 残留 loop 收尾与重注册（API 段，P4）============
+    {
+        CHECK(YOMK_EVENTLOOP_START("/L1").m_status == YomkResponse::eOk, "启动 /L1（运行中）");
+
+        // 运行中删除内置服务：残留 /L1 loop 经析构兜底链收尾（YomkEventLoop 无 deinit override，
+        // delService 锁外释放 -> ~YomkEventLoop -> m_loops 析构 -> ~EventLoop -> destroy -> join），无挂起即证
+        CHECK(YOMK_DEL_SERVICE("/YomkEventLoop") == 0, "删除内置 /YomkEventLoop 返回 0");
+        auto afterDel = YOMK_EVENTLOOP_START("/L2");
+        CHECK(afterDel.m_status == YomkResponse::eNo && afterDel.m_msg == "service not found: /YomkEventLoop",
+              "删除后 EVENTLOOP API 服务级 eNo + 精确消息");
+        YomkUnPackPkg(YOMK_SERVER_INFO_SERVICES().m_data, StringArray, srvArr);
+        bool evtLoopGone = true;
+        if (srvArr)
+        {
+            for (const auto& n : srvArr->d)
+            {
+                if (n == "/YomkEventLoop")
+                {
+                    evtLoopGone = false;
+                }
+            }
+        }
+        CHECK(srvArr != nullptr && evtLoopGone, "服务表快照不再含 /YomkEventLoop");
+
+        CHECK(YomkAPI::newService<YomkEventLoop>() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
+        CHECK(YOMK_EVENTLOOP_START("/L2").m_status == YomkResponse::eOk, "重注册后 EVENTLOOP_START 恢复可用");
+        auto pwRelink =
+            YOMK_EVENTLOOP_POST_WAIT("/L2", YomkMkPtr(String, std::string("relink")), countingHandler("relink"), "relink");
+        CHECK(pwRelink.m_status == YomkResponse::eOk, "重注册后 EVENTLOOP_POST_WAIT 全链路 eOk");
 
         YOMK_SHUTDOWN();
     }
@@ -671,6 +708,64 @@ int main()
         CHECK(loop.infoLine("wb", 3).find("pending:0") != std::string::npos, "destroy 后 pending:0（队列已清空）");
 
         loop.destroy();  // 幂等收尾（空队列再清一次无害）
+    }
+
+    // ============ Section 12: ~EventLoop 析构兜底释放等待者（白盒，看门狗，P4）============
+    {
+        resetOrder();
+        resetGate();
+        auto loopHolder = std::make_unique<EventLoop>();
+        // 观测句柄：openGate 前 resetter 必然阻塞在 destroy 的 join 上（g1 占住 worker），
+        // 析构未完成则对象恒存活，raw 观测无悬垂；openGate 后主线程不再触碰 raw
+        EventLoop* raw = loopHolder.get();
+        CHECK(raw->start() == 0, "start 返回 0");
+
+        // g1 占住工作线程，制造确定性排队窗口
+        auto g1 = YomkMkPtr(Event, yomk::Event("wb", nullptr, gateHandler(), "g1"));
+        CHECK(raw->post(g1) == 0, "post 阻塞事件 g1 返回 0");
+        CHECK(waitGateStarted(2000), "g1 已进入执行（阻塞占住工作线程）");
+
+        // T1：postWait 计数事件 e2——入队成功（rc1 将为 0）后阻塞等待；e2 排队不执行
+        std::atomic<int> rc1{0};
+        std::atomic<bool> t1done{false};
+        auto e2 = YomkMkPtr(Event, yomk::Event("wb", nullptr, countingHandler("e2"), "e2"));
+        std::thread waiter(
+            [&raw, &rc1, &t1done, &e2]
+            {
+                rc1 = raw->postWait(e2);
+                t1done = true;
+            });
+        CHECK(
+            waitUntil([raw] { return raw->infoLine("wb", 3).find("pending:1") != std::string::npos; }, 2000),
+            "e2 已入队（pending:1，T1 进入等待）");
+        std::this_thread::sleep_for(std::chrono::milliseconds(
+            100));  // 确保 T1 已进入 wait（谓词式 wait 对早触发亦免疫，此处确定性覆盖"唤醒"分支）
+
+        // T2：不调 destroy 直接析构——~EventLoop 内部 destroy 兜底（先停止置位再 join，join 等 g1 收尾）
+        std::thread resetter([&loopHolder] { loopHolder.reset(); });
+        CHECK(
+            waitUntil([raw] { return raw->infoLine("wb", 3).find("running:off") != std::string::npos; }, 2000),
+            "析构过程中观察到 running:off（~EventLoop 先走 destroy 停止）");
+
+        // 释放 g1：worker 退出 -> 析构清队列丢弃 e2 并触发其等待回调 -> T1 解除阻塞 -> 析构完成
+        openGate();
+
+        bool released = waitUntil([&t1done] { return t1done.load(); }, 3000);
+        CHECK(released, "postWait 等待者被析构兜底释放（3s 看门狗内返回，不挂起）");
+        CHECK(rc1.load() == 0, "被丢弃事件入队时已成功（rc1==0，丢弃不改变入队结果）");
+
+        waiter.join();
+        resetter.join();
+
+        bool e2executed = false;
+        for (const auto& tag : orderSnapshot())
+        {
+            if (tag == "e2")
+            {
+                e2executed = true;
+            }
+        }
+        CHECK(!e2executed, "被丢弃事件 e2 未执行");
     }
 
     if (g_failed == 0)
