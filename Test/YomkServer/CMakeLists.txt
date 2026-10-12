@@ -375,4 +375,16 @@ target_link_libraries(TestYomkPkg PRIVATE
 )
 # -------------el TestYomkPkg ----------------
 
+# -------------sl TestYomkIntegration ----------------
+set(TestYomkIntegration_SOURCES 
+    ${TestYomkServer_DIR}/YomkServer/TestYomkIntegration.cpp
+)
+add_executable(TestYomkIntegration 
+    ${TestYomkIntegration_SOURCES}
+)
+target_link_libraries(TestYomkIntegration PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkIntegration ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install

@@ -5,7 +5,8 @@
  * 覆盖内容：
  * 1. create：正常创建、空 key、空 value、重复 key
  * 2. destroy：正常销毁、不存在 key、空 key、重复销毁
- * 3. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）
+ * 3. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）、
+ *    类型不匹配（返回默认 value，P3 增补——eOk 路径 YomkUnPackPkgT 解包失败）
  * 4. set：正常 set、不存在 key、空 key、类型不匹配
  * 5. keys/listAll/keyInfo：随增删变化、空 key、不存在 key、信息行格式
  *
@@ -116,6 +117,28 @@ int main()
         auto got = YOMK_CONTEXT_GET(String, "", defaultValue);
         CHECK(got != nullptr, "get 空 key 返回默认值指针非空");
         CHECK(got && got->d == "default", "get 空 key 返回默认值");
+    }
+
+    // get：类型不匹配，返回调用方默认 value（eOk 路径 YomkUnPackPkgT 解包失败，P3 增补）
+    {
+        auto cr = YOMK_CONTEXT_CREATE("mismatch_key", YomkMkPtr(String, std::string("strval")));
+        CHECK(cr.m_status == YomkResponse::eOk, "创建 mismatch_key（String 值）成功");
+        auto intDefault = YomkMkPtr(Int32, 777);
+        auto got = YOMK_CONTEXT_GET(Int32, "mismatch_key", intDefault);
+        CHECK(got != nullptr && got == intDefault, "get 类型不匹配返回调用方默认值（指针一致）");
+        CHECK(got && got->d == 777, "get 类型不匹配默认值内容保持 777");
+        CHECK(YOMK_CONTEXT_DESTROY("mismatch_key").m_status == YomkResponse::eOk, "销毁 mismatch_key（防污染后续 keys 计数）");
+    }
+
+    // get：类型不匹配第二变体（Bool 存 → String GET，验证 UnPackPkgT 通用失败路径）
+    {
+        auto cr = YOMK_CONTEXT_CREATE("mismatch_key2", YomkMkPtr(Bool, true));
+        CHECK(cr.m_status == YomkResponse::eOk, "创建 mismatch_key2（Bool 值）成功");
+        auto strDefault = YomkMkPtr(String, std::string("fallback"));
+        auto got = YOMK_CONTEXT_GET(String, "mismatch_key2", strDefault);
+        CHECK(got != nullptr && got == strDefault, "get 第二变体类型不匹配返回默认值（指针一致）");
+        CHECK(got && got->d == "fallback", "get 第二变体默认值内容保持 fallback");
+        CHECK(YOMK_CONTEXT_DESTROY("mismatch_key2").m_status == YomkResponse::eOk, "销毁 mismatch_key2（防污染后续 keys 计数）");
     }
 
     // set：正常 set 同类型 value

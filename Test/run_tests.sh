@@ -7,7 +7,7 @@
 #   ./run_tests.sh --timeout N  单测试超时秒数（默认 300，--full 默认 900）
 # 行为:
 #   1. 运行前清理 /tmp/yomk_logger_* 残留（上次崩溃遗留）
-#   2. 逐个运行 25 个测试（快→慢，stress 类压尾），每个测试在独立临时工作目录运行
+#   2. 逐个运行 26 个测试（快→慢，stress 类压尾），每个测试在独立临时工作目录运行
 #   3. 任一测试失败（退出码非 0 / 超时）→ 立即停止，终端输出 [FAIL] 行摘要与日志路径
 #   4. 日志落盘: Test/test_logs/<时间戳>/<测试名>.log + summary.log
 #   5. 全部结束后复查现场残留，发现则清理并计为失败
@@ -69,6 +69,7 @@ TESTS=(
     TestYomkShutdownSeq
     TestYomkConcurrency
     TestYomkPkg
+    TestYomkIntegration
     # ServerInfo 模块
     TestYomkServerInfoLifecycle
     # FunctionPool 模块
