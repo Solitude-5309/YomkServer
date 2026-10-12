@@ -363,4 +363,16 @@ target_link_libraries(TestYomkConcurrency PRIVATE
 )
 # -------------el TestYomkConcurrency ----------------
 
+# -------------sl TestYomkPkg ----------------
+set(TestYomkPkg_SOURCES 
+    ${TestYomkServer_DIR}/YomkServer/TestYomkPkg.cpp
+)
+add_executable(TestYomkPkg 
+    ${TestYomkPkg_SOURCES}
+)
+target_link_libraries(TestYomkPkg PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkPkg ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install
