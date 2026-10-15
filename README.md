@@ -308,11 +308,23 @@ int MyService::init()
 
 #### 方式 2：手动 CMake 构建
 
+与方式 1 产生完全一致的安装结果（同一套 install 规则 + 同一份安装后配置脚本）：
+
 ```bash
 mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=~/YomkServer/install
-cmake --build . --target install --config Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/yomk
+cmake --build . -j
+sudo cmake --install .
+cd ..
+./scripts/install_env.sh /opt/yomk   # 安装校验 + YOMK_PREFIX_PATH 持久化 + 动态库搜索路径注册（与方式 1 共用）
 ```
+
+说明：
+
+- `-DCMAKE_BUILD_TYPE=Release` 必须显式传入：Linux Makefiles 单配置生成器不识别 `--config Release`，缺失时将以无优化参数编译，产物与方式 1 不同
+- 构建目录使用 `build`（如上命令所示）：示例程序的 GNU build-id 与构建目录路径相关，两种方式使用同一 `<仓库>/build` 时产物字节级一致；核心库 `libYomkServer.so` 不受构建目录影响
+- 请勿设置 `$CXX` 环境变量：方式 1 固定选用 g++（手动构建在未设置时同样自动预选 g++），设置了 `$CXX` 的产物与方式 1 存在 ABI 分叉风险；可比对安装产物 `share/YomkServer/abi_report.txt` 确认编译环境一致
+- `abi_report.txt` 的"生成时间"行每次构建必然不同，属预期差异；其余内容两种方式完全一致
 
 #### 编译内部单元测试（可选）
 

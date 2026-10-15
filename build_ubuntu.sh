@@ -4,7 +4,9 @@
 # 功能:
 #   1. 检查编译依赖(cmake/g++/make)，缺失时可选自动安装
 #   2. 交互输入安装路径(默认 /opt/yomk)，交互询问是否编译内部测试（默认不编译，输入 Y 才编译；测试仅编译，不安装），编译并安装（库 + Examples 示例）
-#   3. 安装后创建环境变量 YOMK_PREFIX_PATH 记录安装路径
+#   3. 安装后调用 scripts/install_env.sh 完成系统级配置（与 README 手动 CMake 安装共用同一脚本，
+#      保证两种安装方式最终结果完全一致）:
+#      - 创建环境变量 YOMK_PREFIX_PATH 记录安装路径
 #   4. 将安装路径暴露到系统:
 #      - /etc/profile.d/yomk.sh: 登录 shell（ssh/console）生效
 #      - /etc/bash.bashrc 追加引用: 桌面终端等非登录交互式 shell 生效
@@ -16,8 +18,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/build"
 DEFAULT_INSTALL_PREFIX="/opt/yomk"
 PROFILE_SCRIPT="/etc/profile.d/yomk.sh"
-BASHRC_FILE="/etc/bash.bashrc"
-LDCONF_FILE="/etc/ld.so.conf.d/yomk.conf"
 
 fail() {
     echo "错误: $1" >&2
@@ -164,49 +164,19 @@ echo "-- 开始安装..."
 sudo cmake --install "${BUILD_DIR}" || fail "安装失败"
 # -------------el 3. 配置、编译、安装 ----------------
 
-# -------------sl 4. 持久化 YOMK_PREFIX_PATH 并暴露 bin 目录 ----------------
-echo "-- 写入环境变量配置: ${PROFILE_SCRIPT}"
-sudo tee "${PROFILE_SCRIPT}" >/dev/null <<EOF
-export YOMK_PREFIX_PATH="${INSTALL_PREFIX}"
-export PATH="\$YOMK_PREFIX_PATH/bin:\$PATH"
-EOF
-
-# /etc/profile.d/ 只对登录 shell（ssh、tty）生效，
-# 桌面终端模拟器打开的是非登录交互式 shell，只读 /etc/bash.bashrc，
-# 因此需在此追加引用，保证新开任意终端都能直接生效（幂等，重复执行不会叠加）
-YOMK_BASHRC_MARK="# >>> YomkServer environment >>>"
-if ! grep -qF "${YOMK_BASHRC_MARK}" "${BASHRC_FILE}" 2>/dev/null; then
-    echo "-- 追加环境变量引用到: ${BASHRC_FILE}"
-    sudo tee -a "${BASHRC_FILE}" >/dev/null <<EOF
-
-${YOMK_BASHRC_MARK}
-[ -f "${PROFILE_SCRIPT}" ] && . "${PROFILE_SCRIPT}"
-# <<< YomkServer environment <<<
-EOF
-fi
-
-# 当前会话立即生效
+# -------------sl 4. 安装后系统级配置（共享脚本，与手动 CMake 安装完全一致） ----------------
+# 环境变量持久化、动态库搜索路径注册与安装校验逻辑抽至 scripts/install_env.sh，
+# 由本脚本与 README 手动 CMake 安装共用，保证两种安装方式最终结果完全一致
+echo "-- 执行安装后系统级配置（环境变量 / 动态库路径 / 安装校验）..."
+"${SCRIPT_DIR}/scripts/install_env.sh" "${INSTALL_PREFIX}" || fail "安装后环境配置失败"
+# 子进程内的 export 不会带回本脚本，此处同步当前会话变量
 export YOMK_PREFIX_PATH="${INSTALL_PREFIX}"
 export PATH="${YOMK_PREFIX_PATH}/bin:${PATH}"
-# -------------el 4. 持久化 YOMK_PREFIX_PATH 并暴露 bin 目录 ----------------
+# -------------el 4. 安装后系统级配置（与手动 CMake 安装共用 scripts/install_env.sh） ----------------
 
-# -------------sl 5. 系统级暴露动态库搜索路径 ----------------
-echo "-- 写入动态库搜索路径: ${LDCONF_FILE}"
-echo "${INSTALL_PREFIX}/lib" | sudo tee "${LDCONF_FILE}" >/dev/null
-sudo ldconfig || fail "ldconfig 执行失败"
-# -------------el 5. 系统级暴露动态库搜索路径 ----------------
-
-# -------------sl 6. 安装校验与完成提示 ----------------
-echo "-- 校验安装结果..."
-[ -f "${INSTALL_PREFIX}/lib/libYomkServer.so" ] \
-    || fail "未找到 ${INSTALL_PREFIX}/lib/libYomkServer.so"
-
+# -------------sl 5. 安装成功提示 ----------------
+# 安装结果校验（libYomkServer.so + 示例程序）已由 scripts/install_env.sh 完成
 EXAMPLE_TARGETS=(ExampleYomkService ExampleYomkFunctionPool ExampleYomkContext ExampleYomkEventLoop ExampleYomkLogger)
-for t in "${EXAMPLE_TARGETS[@]}"; do
-    [ -f "${INSTALL_PREFIX}/bin/${t}" ] \
-        || fail "未找到示例程序 ${INSTALL_PREFIX}/bin/${t}"
-done
-
 echo ""
 echo "==========================================="
 echo " YomkServer 安装成功!"
@@ -230,4 +200,4 @@ if [ "${BUILD_TESTS}" = "ON" ]; then
     echo "内部测试程序已编译于 ${SCRIPT_DIR}/bin（仅供开发验证，不随安装部署）"
 fi
 echo "当前终端立即生效请执行: source ${PROFILE_SCRIPT}"
-# -------------el 6. 安装校验与完成提示 ----------------
+# -------------el 5. 安装成功提示 ----------------
