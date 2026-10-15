@@ -1,4 +1,4 @@
-#include <YomkExtension/ExtensionService.h>
+#include <TemplateExtension/ExtensionService.h>
 #include <YomkServer/YomkAPI.h>
 
 #include <iostream>

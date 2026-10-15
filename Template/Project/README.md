@@ -1,4 +1,4 @@
-# 工程文档
+# TemplateProject
 
 基于 [YomkServer](https://github.com/Solitude-5309/YomkServer) 模块化框架的空白工程模板。
 
@@ -22,19 +22,21 @@ YomkServer 是基于 C++17 的模块化高性能服务开发框架，核心设�
 ## 工程结构
 
 ```
-ProjectName/
+TemplateProject/
 ├── main.cpp                // 程序入口
 ├── boot/
 │   ├── MyBoot.h            // 生命周期管理
 │   └── MyBoot.cpp
 ├── config/
-│   └── config.json         // 配置文件
+│   └── config.txt          // 配置文件
 ├── msgs/
 │   └── YomkMsgs.h          // 消息包定义
 ├── services/               // 服务实现（按业务分子目录）
 │   └── ConfigService.h/.cpp
 ├── typedefine/
 │   └── TypeDefine.h        // 公共常量/宏/类型定义
+├── test/                   // 单元测试文件
+├── scripts/                // 项目辅助脚本
 ├── build_ubuntu.sh         // 一键编译脚本（交互式）
 ├── setup.bash.in           // 环境脚本模板
 ├── CMakeLists.txt

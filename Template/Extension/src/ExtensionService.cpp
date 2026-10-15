@@ -14,6 +14,6 @@ int ExtensionService::init()
 
 YomkResponse ExtensionService::version(YomkPkgPtr pkg)
 {
-    std::string version = "YomkExtension v" EXTENSION_VERSION;
+    std::string version = "TemplateExtension v" EXTENSION_VERSION;
     return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, version));
 }
