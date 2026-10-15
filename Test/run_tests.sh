@@ -169,20 +169,22 @@ precheck_bin() {
     return 1
 }
 
-# sanitizer 模式独有: 缺失即自动配置+构建插桩版本（stdout 落盘 /dev/null，失败报手动命令）
+# sanitizer 模式独有: 缺失即自动配置+构建插桩版本（失败报手动命令）
+# （构建输出实时透传控制台——进度百分比逐行可见，不落盘日志文件）
 ensure_sanitizer_build() {
     local bdir="${REPO_DIR}/build-${SANITIZER}"
     local outdir="${bdir}/bin"
-    echo "-- [sanitizer=${SANITIZER}] 测试可执行缺失，自动构建 ${bdir} ..."
+    echo "-- [sanitizer=${SANITIZER}] 测试可执行缺失，自动构建 ${bdir}（插桩全新全量编译需数分钟，进度逐行输出）..."
+    local start=${SECONDS}
     cmake -S "${REPO_DIR}" -B "${bdir}" -DYOMK_BUILD_TESTS=ON -DYOMK_TEST_SANITIZER="${SANITIZER}" \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="${outdir}" \
         -DCMAKE_LIBRARY_OUTPUT_DIRECTORY="${outdir}" \
-        -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY="${outdir}" > /dev/null \
+        -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY="${outdir}" \
         || { echo "错误: cmake 配置失败，请手动执行: $(build_hint)"; exit 1; }
-    cmake --build "${bdir}" -j"$(nproc)" > /dev/null \
+    cmake --build "${bdir}" -j"$(nproc)" \
         || { echo "错误: 构建失败，请手动执行: $(build_hint)"; exit 1; }
-    echo "-- [sanitizer=${SANITIZER}] 自动构建完成"
+    echo "-- [sanitizer=${SANITIZER}] 自动构建完成（耗时 $((SECONDS - start))s）"
 }
 
 # 运行前清理上次运行可能遗留的测试产物（测试中途崩溃时自清理不会执行）
