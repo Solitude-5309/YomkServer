@@ -56,7 +56,11 @@ echo "-- PYTHONPATH: ${PY_SITE_DIR}"
 
 # -------------sl 3. 收集测试 ----------------
 TESTS=("${TEST_DIR}"/Test*.py)
-[ -e "${TESTS[0]}" ] || fail "未找到测试: ${TEST_DIR}/Test*.py"
+if [ ! -e "${TESTS[0]}" ]; then
+    echo "-- 当前无测试用例（${TEST_DIR}/ 下无 Test*.py），跳过运行"
+    echo "   说明: test/ 目录预留用于全面测试集合，补充 Test*.py 后本脚本即插即用"
+    exit 0
+fi
 # -------------el 3. 收集测试 ----------------
 
 # -------------sl 4. 运行测试（失败即停） ----------------

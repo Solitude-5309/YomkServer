@@ -1,63 +1,166 @@
-# YomkServerPy 简介
-
 # YomkServerPy
 
-## 设计哲学
+Python Modular Fast Development Framework (Cython)
 
-1. 关注点分离：每个服务专注于单一职责
-2. 约定优于配置：合理的默认值减少配置复杂度
-3. 渐进式复杂度：从简单单体到复杂分布式系统的平滑演进
-4. 开发者友好：直观的API设计和丰富的文档支持
+## 简介
 
-## 模块化服务模型
-两级模块化：  
-1. YomkService：基础服务模块，封装独立业务域或技术组件
-2. Function：服务模块内具体功能单元，通过唯一URL路径标识和访问
+YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编译为 C 扩展加速，对外提供纯 Python API。遵循关注点分离、约定优于配置的设计哲学，沿用"一切皆服务，一切皆请求"的设计理念，通过标准化的通信接口和灵活的模块机制，实现系统组件的高度解耦和动态组合。
 
-模块间通信：统一的 Request/Response 模型，支持同步与异步调用模式
+- **进程内服务总线**：服务（`YomkService`）注册到服务器（`YomkServer`），通过 URL 格式 `"/服务名/功能函数名"` 进行同步或异步调用。两级模块化——`YomkService` 封装独立业务域或技术组件，`Function` 为服务内以唯一 URL 路径标识的功能单元
+- **轻量消息包**：普通 Python 类即可定义消息，实例直接作为请求负载传入、经回包 `data` 返回，属性直接访问
+- **开箱即用内置能力**：`YomkApi.init()` 即自动装配共享上下文、线程隔离事件循环与动态函数池，无需额外配置
 
-## 技术特点
+---
 
-### 开发效率
+## 快速上手
 
-1. 模块化设计：清晰的服务边界，支持并行开发
-2. 快速集成：开箱即用的基础组件，减少重复工作
-3. 敏捷迭代：动态函数池支持业务逻辑的快速变更和部署
+### 1. 最小完整示例
 
-### 可维护性
+```python
+import YomkApi
 
-1. 标准接口：统一的通信模式降低集成复杂度
-2. 状态可见：上下文管理提供清晰的系统状态视图
-3. 配置驱动：集中化的配置管理简化部署和运维
+# 1. 自定义服务：继承 YomkService，init() 中安装功能函数
+class MyService(YomkApi.YomkService):
+    def __init__(self, server):
+        super().__init__(server)
 
-### 可扩展性
+    def init(self):
+        self.install_func("/hello", self.hello)  # 功能函数名以 / 开头
 
-1. 松耦合架构：服务间依赖最小化，支持独立扩展
-2. 水平扩展：事件循环模型天然支持并发扩展
-3. 插件化机制：可动态加载和卸载服务模块
+    # 功能函数统一签名：(pkg) -> YomkResponse
+    def hello(self, pkg):
+        return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, f"hello {pkg}")
 
-## 基础服务组件
+# 2. 初始化框架（自动启动内置服务：Context / FunctionPool / EventLoop）
+YomkApi.init()
 
-### YomkContext - 上下文服务
+# 3. 注册自定义服务
+YomkApi.new_service(MyService, "/MyService")
 
-1. 统一管理框架运行时的全局状态
-2. 提供状态安全检查机制：在状态变更前执行验证逻辑，防止非法状态迁移
-3. 状态监控功能：实时监听状态变化，触发回调响应
-4. 支持状态的创建、获取、更新、删除等全生命周期管理
+# 4. 同步请求
+resp = YomkApi.request("/MyService/hello", "yomk")
+print(resp.status, resp.msg)     # ResStatus.eOk hello yomk
 
-### YomkEventLoop - 线程隔离的事件循环
+# 5. 异步请求：立即返回，回包到达时在回调线程输出
+YomkApi.async_request("/MyService/hello", "yomk2", lambda res: print("async:", res.msg))
+```
 
-1. 线程隔离的事件循环实例，每个循环运行在独立线程中
-2. 同一事件循环内保证顺序执行，不同循环间并行处理
-3. 支持非阻塞事件投递（立即返回）与阻塞投递（等待执行完成）
-4. 适用于I/O密集型和高并发任务调度
+---
 
-### YomkFunctionPool - 动态函数池
+## 核心概念与使用文档
 
-1. 统一函数注册与调度中心，为每个函数分配唯一标识符
-2. 支持运行时函数注册、更新和热替换
-3. 面向过程开发范式，实现业务逻辑的快速迭代和动态调整
-4. 提升系统应对需求变化的响应速度
+### 1. 请求与响应模型 (Request / Response)
+
+所有服务间交互均遵循统一的请求响应抽象：
+
+- **URL 寻址**：格式为 `"/服务名/函数名"`，如 `"/MyService/hello"`。
+- **返回值 `YomkResponse`**：
+  - `status`：
+    - `eOk (0)`：调用成功。
+    - `eNo (1)`：目标服务或函数不存在、被拒绝或条件不满足。
+    - `eInvalid (-1)`：入参非法或服务器未初始化。
+  - `msg`：状态描述文本。
+  - `data`：可选的负载消息（任意 Python 对象）。
+- **同步调用**：
+  ```python
+  resp = YomkApi.request("/服务名/函数名", pkg)
+  ```
+- **异步调用**：投递后立即返回，回包到达时在回调线程执行：
+  ```python
+  YomkApi.async_request("/服务名/函数名", pkg, lambda resp: print(resp.msg))
+  ```
+- **跨服务调用**：`YomkService` 基类无成员级请求方法，服务实现内部用全局 `YomkApi.request()` 调用其他服务（见 `examples/services/CalcService.py`）。
+
+完整可运行演示见 `examples/ExampleYomkService.py`（Boot 三阶段编排、同步/异步请求、跨服务调用与失败传播，读运行输出即可理解每个调用）。
+
+### 2. 消息包 (Message)
+
+用于在服务与事件循环间传递数据。Python 版无需宏或类型注册：普通类即消息定义，实例直接传递，属性直接访问：
+
+```python
+# 定义消息（普通类）
+class AddReq:
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+
+# 请求侧构造，功能函数内直接读取属性；回包 data 直接携带对象
+resp = YomkApi.request("/CalcService/add", AddReq(1, 2))
+print(resp.data.result)
+```
+
+消息定义可集中在独立模块管理（见 `examples/msgs/DemoMsgs.py`）。
+
+### 3. 共享上下文 (YomkContext)
+
+统一管理框架运行时的全局键值状态，支持变更前校验门控（Checker）与变更监控（Monitor）：
+
+```python
+# 1. 创建 / 读取 / 更新 / 销毁（key 不存在时 get 返回兜底默认值，永不返回 None 崩溃）
+YomkApi.context_create("config", "init_value")
+val = YomkApi.context_get("config", None)
+YomkApi.context_set("config", "new_value")
+YomkApi.context_destroy("config")
+
+# 2. 变更前校验门控（Checker）：回调返回 eReject 拦截本次 set，返回 eAccept 放行
+YomkApi.context_set_checker("config", lambda ctx: YomkApi.CheckStatus.eAccept)
+YomkApi.context_turn_on_checker()              # context_turn_off_checker() 关闭
+
+# 3. 变更后监听（Monitor）：async_monitor=True 时按提交序异步送达
+YomkApi.context_set_monitor("config", lambda ctx: print(ctx.value))
+YomkApi.context_turn_on_monitor()              # context_turn_off_monitor() 关闭
+```
+
+完整可运行演示见 `examples/ExampleYomkContext.py`（创建/读取/更新/销毁、checker 拒绝/接受、异步监控）。
+
+### 4. 线程隔离事件循环 (YomkEventLoop)
+
+为特定业务提供单线程 FIFO 执行队列：同一循环内事件按入队顺序在专用线程中执行，不同循环之间彼此并行，适用于 I/O 密集型和高并发任务调度：
+
+```python
+# 启动事件循环（绑定处理函数，运行在独立线程）
+YomkApi.event_loop_start("TaskLoop", event_handle)
+
+# 非阻塞投递：立即返回，事件由循环线程异步执行
+YomkApi.event_loop_post("TaskLoop", "task1")
+
+# 阻塞投递：等待执行完成；回包 data 携带事件 id、循环名与处理结果
+res = YomkApi.event_loop_post_wait("TaskLoop", "task2")
+print(res.data.m_eventId, res.data.m_eventLoopName, res.data.m_response.msg)
+
+# 停止（不再消费事件，循环对象仍存在）与销毁（彻底释放资源）
+YomkApi.event_loop_stop("TaskLoop")
+YomkApi.event_loop_destroy("TaskLoop")
+```
+
+完整可运行演示见 `examples/ExampleYomkEventLoop.py`（start/post/post_wait/stop/destroy 全生命周期）。
+
+### 5. 动态函数池 (YomkFunctionPool)
+
+统一函数注册与调度中心，面向过程开发范式，支持运行时注册、更新和热替换，业务逻辑快速迭代：
+
+```python
+# 注册函数（函数签名：(pkg) -> YomkResponse）
+YomkApi.function_pool_register("calc", func_v1)
+
+# 调用（未注册的名字返回 eNo）
+resp = YomkApi.function_pool_call("calc", "data")
+
+# 同名重复注册即运行时热替换，下一次调用执行新实现，无需重启
+YomkApi.function_pool_register("calc", func_v2)
+```
+
+完整可运行演示见 `examples/ExampleYomkFunctionPool.py`（注册/调用与同名热替换）。
+
+### 6. 服务生命周期与启动编排 (YomkService / YomkBoot)
+
+服务定义（见快速上手）与注册：
+
+- **注册**：`YomkApi.new_service(MyService, "/MyService")`（内部完成构造、设名、init、注册）；同一服务类注册多个实例用 `YomkApi.add_service(srv, name)`。
+- **启动编排**：多服务工程继承 `YomkApi.YomkBoot` 组织三阶段启动——`before()`（服务启动前准备资源）→ `start()`（创建并注册服务）→ `after()`（启动后善后），任一阶段返回非 0 即终止启动；`YomkApi.boot(boot_obj)` 内部先完成框架初始化（自动调用 init）再依次执行三阶段（见 `examples/boot/DemoBoot.py`）。
+- 服务名与功能函数名均以 `/` 开头，共同构成请求 URL。
+
+---
 
 ## 编译与安装
 
@@ -94,31 +197,68 @@ cd ..
 - `-DCMAKE_BUILD_TYPE=Release` 必须显式传入：Linux Makefiles 单配置生成器不识别 `--config Release`，缺失时将以无优化参数编译，产物与方式 1 不同
 - Python C 扩展与构建时解释器主次版本绑定，请确保运行解释器版本一致；可比对安装产物 `share/YomkServerPy/abi_report.txt` 确认构建环境一致（记录 Python/Cython/gcc/发行版等指纹，随库安装）
 
-## windows 编译安装
+测试为运行时脚本，随用例补充后按[测试](#测试)章节使用，无需编译开关。
 
-### 依赖
+### Windows
+
+依赖与编译：
+
+```
 python3
 pip install cython readerwriterlock
 
-### 编译
-mkdir build  
-cd build  
-cmake .. -DCMAKE_INSTALL_PREFIX="C:/Users/solit/Env/YomkServer/install"  
-cmake --build . --target install --config Release  
+mkdir build
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX="C:/Users/solit/Env/YomkServer/install"
+cmake --build . --target install --config Release
+```
 
-### 测试
-cd test  
-$env:PYTHONPATH = "C:/Users/solit/Env/YomkServer/install/lib/python3.12/site-packages;" + $env:PYTHONPATH   
-python TestYomkService.py  
-python TestYomkContext.py  
-python TestYomkFunctionPool.py  
-python TestYomkEventLoop.py  
+运行示例：示例位于源码树 `examples/` 目录，将含 `YomkApi.py` 的目录加入 `PYTHONPATH` 后直接运行：
+
+```powershell
+cd <源码目录>\examples
+python ExampleYomkContext.py
+python ExampleYomkFunctionPool.py
+python ExampleYomkEventLoop.py
+python ExampleYomkService.py
+```
 
 ---
 
-## 测试（Linux）
+## 示例
 
-### 1. 一键运行全量测试
+面向用户的可运行示例（对齐 main 分支 Examples 设计；Python 脚本源码即可运行，不随库安装，位于源码树 `examples/` 目录）：
+
+| 示例 | 演示内容 |
+|---|---|
+| ExampleYomkService.py | 服务定义与调用：Boot 三阶段编排、同步/异步请求、跨服务调用与失败传播（多文件工程结构） |
+| ExampleYomkContext.py | 共享上下文：创建/读取/更新/销毁 + 状态检查器（拒绝/接受）+ 异步监控 |
+| ExampleYomkFunctionPool.py | 动态函数池：注册/调用 + 同名热替换 |
+| ExampleYomkEventLoop.py | 线程隔离事件循环：启动/非阻塞投递/阻塞投递/停止/销毁 |
+
+运行方式（进入源码目录直接运行；PYTHONPATH 已由 `scripts/install_env.sh` 持久化，新终端免配置。Windows 需手动将含 `YomkApi.py` 的目录加入 `PYTHONPATH`）：
+
+```bash
+cd <源码目录>
+./examples/ExampleYomkContext.py
+# 或：python3 examples/ExampleYomkContext.py
+```
+
+多文件示例的组织方式本身也是教程（对齐 main Examples 布局）：
+
+```
+examples/
+├── ExampleYomkService.py     # 入口
+├── boot/DemoBoot.py          # 启动编排（before -> start -> after 三阶段）
+├── services/                 # 服务实现（AuditService / CalcService）
+└── msgs/DemoMsgs.py          # 消息包定义
+```
+
+---
+
+## 测试
+
+一键测试脚本 `./test/run_tests.sh` 已就绪（对齐 main 分支 Test/run_tests.sh 布局）：
 
 ```bash
 ./test/run_tests.sh                      # 使用 $YOMK_PREFIX_PATH（缺省 /opt/yomk）
@@ -126,21 +266,20 @@ python TestYomkEventLoop.py
 ./test/run_tests.sh --timeout 600        # 单测试超时秒数（默认 300）
 ```
 
-运行器行为：
+说明：
 
-- **自动环境**：自动探测 `lib/pythonX.Y/site-packages` 并设置 PYTHONPATH，无需手动 export
-- **失败即停**：任一测试退出码非 0（含超时被杀）立即终止，终端输出该测试 `[FAIL]` 摘要与最近日志
-- **日志落盘**：`test/test_logs/<时间戳>/` 下每个测试一份日志 + `summary.log` 汇总
-- **超时保护**：每个测试由 `timeout` 包裹，防卡死
+- **当前 `test/` 暂无用例**：目录预留用于全面测试集合（对齐 main 分支 `Test/` 设计），无 `Test*.py` 时脚本提示并正常退出
+- 将来补充测试后即插即用：自动探测 `lib/pythonX.Y/site-packages` 并设置 PYTHONPATH、依次运行 `Test*.py`、**失败即停**、`timeout` 超时保护、日志落盘 `test/test_logs/<时间戳>/`
 
-### 2. 单独运行
+---
 
-```bash
-export PYTHONPATH=$YOMK_PREFIX_PATH/lib/pythonX.Y/site-packages:$PYTHONPATH
-cd test
-python3 TestYomkService.py
-python3 TestYomkContext.py
-python3 TestYomkFunctionPool.py
-python3 TestYomkEventLoop.py
+## Python 项目集成
+
+安装完成后 PYTHONPATH 已持久化（Linux 由 `scripts/install_env.sh` 写入 profile），业务代码直接导入即可使用：
+
+```python
+import YomkApi   # 门面 API：自动加载 Cython 扩展 YomkServerPy，核心类型（YomkService / YomkResponse / ResStatus 等）均可经 YomkApi 直接使用
 ```
 
+- 新开任意终端免配置；未持久化的环境（如 CI、Windows）手动设置：`export PYTHONPATH=${YOMK_PREFIX_PATH}/lib/pythonX.Y/site-packages:$PYTHONPATH`
+- `YomkServerPy.pyi` 随库安装于同一目录，IDE 可据此提供类型提示与补全

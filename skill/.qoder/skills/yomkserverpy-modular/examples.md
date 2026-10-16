@@ -188,7 +188,7 @@ class ConfigService(YomkApi.YomkService):
 ```json
 {
     "name": "ProjectName",
-    "version": "2.2.9",
+    "version": "1.2.1",
     "description": "Create a new project based on YomkServerPy"
 }
 ```

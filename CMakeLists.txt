@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.14)
-project(YomkServerPy VERSION 1.2.5 LANGUAGES C)
+project(YomkServerPy VERSION 1.2.6 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 find_package(Python REQUIRED COMPONENTS Development)
@@ -124,3 +124,5 @@ install(TARGETS ${PROJECT_NAME}
     ARCHIVE DESTINATION ${PYTHON_SITE_PACKAGES}
     RUNTIME DESTINATION ${PYTHON_SITE_PACKAGES}
 )
+
+# ---------- 10. 示例不安装（Python 脚本源码即可运行，示例位于源码树 examples/，直接在源码树下运行） ----------

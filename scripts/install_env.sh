@@ -47,6 +47,7 @@ for f in YomkServerPy.so YomkServerPy.pyi YomkApi.py; do
     [ -f "${PY_SITE_DIR}/${f}" ] \
         || fail "未找到 ${PY_SITE_DIR}/${f}，请先完成 cmake install"
 done
+
 # 相对安装前缀的 site-packages 路径（写入 profile 脚本用）
 PY_REL_SITE="${PY_SITE_DIR#"${INSTALL_PREFIX}/"}"
 echo "-- 安装结果校验通过: ${PY_SITE_DIR}"

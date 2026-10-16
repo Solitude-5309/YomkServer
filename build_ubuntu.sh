@@ -195,6 +195,11 @@ echo " Python 模块（安装于 ${PY_SITE_DIR}）:"
 for f in YomkServerPy.so YomkApi.py YomkServerPy.pyi; do
     echo "   - ${f}"
 done
+echo " 示例（不随库安装，位于源码树 examples/ 目录，进入源码目录直接运行）:"
+echo "   - examples/ExampleYomkService.py"
+echo "   - examples/ExampleYomkContext.py"
+echo "   - examples/ExampleYomkFunctionPool.py"
+echo "   - examples/ExampleYomkEventLoop.py"
 echo "==========================================="
 echo ""
 echo "新开任意终端即可直接使用（无需手动 source）:"

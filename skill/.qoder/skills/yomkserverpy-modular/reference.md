@@ -24,8 +24,8 @@ class YomkResponse:
 ```python
 class YomkServer:
     def add_service(self, service: YomkService) -> None
-    def request(self, url: str, pkg=None) -> YomkResponse
-    def async_request(self, url: str, pkg=None, callback=None) -> None
+    def request(self, url: str, pkg) -> YomkResponse
+    def async_request(self, url: str, pkg, callback) -> None
 
 class YomkBoot(ABC):
     def before(self) -> int   # 服务启动前：创建资源
@@ -50,7 +50,7 @@ class ContextChecker:
     def __init__(self, key="", check_func=None)   # check_func: (Context) -> CheckStatus
 
 class ContextMonitor:
-    def __init__(self, key="", monitor_func=None, async_monitor_func=False) # monitor_func: (Context) -> None
+    def __init__(self, key="", monitor_func=None, async_monitor=False) # monitor_func: (Context) -> None；async_monitor=True 时变更通知异步送达
 
 class Function:
     def __init__(self, name="", func=None)        # func: (Any) -> YomkResponse
@@ -99,15 +99,15 @@ class EventLoopPkg:
 | `YomkApi.context_set_checker(key, func)` | 设置检查函数 |
 | `YomkApi.context_turn_on_monitor()` | 开启监控器 |
 | `YomkApi.context_turn_off_monitor()` | 关闭监控器 |
-| `YomkApi.context_set_monitor(key, func, async=False)` | 设置监控函数（async=True异步回调监控函数） |
+| `YomkApi.context_set_monitor(key, func, async_monitor=False)` | 设置监控函数（async_monitor=True 时异步回调监控函数） |
 
 ### EventLoop
 | API | 说明 |
 |-----|------|
 | `YomkApi.event_loop_start(name, handler)` | 启动事件循环 |
 | `YomkApi.event_loop_stop(name)` | 停止 |
-| `YomkApi.event_loop_post(name, pkg, handler)` | 异步投递 |
-| `YomkApi.event_loop_post_wait(name, pkg, handler)` | 同步投递 |
+| `YomkApi.event_loop_post(name, pkg, handler=None)` | 异步投递（handler 可选，缺省用启动时绑定的处理函数） |
+| `YomkApi.event_loop_post_wait(name, pkg, handler=None)` | 同步投递（handler 可选，缺省用启动时绑定的处理函数） |
 | `YomkApi.event_loop_destroy(name)` | 销毁 |
 
 ### FunctionPool
