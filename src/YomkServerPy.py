@@ -36,22 +36,35 @@ class YomkService:
         self.name: str = ""
         self.server: "YomkServer" = server
         self.functions: dict[str, Callable[[Any], YomkResponse]] = {}
+        self.function_msgs: dict[str, str] = {}
+        self.registered: bool = False
         self.rwlock_functions = rwlock.RWLockFair()
+        if not server:
+            log.error("server is null")
 
     def get_name(self):
         return self.name
 
     def set_name(self, name):
-        if not name.startswith("/"):
-            log.error("service name is error: " +
-                      name + ", please start with /")
+        if not name:
+            log.error("name is empty, set name failed, use default name")
+            return
+        if self.registered:
+            log.error("service is registered, rename is not allowed -> " + name)
             return
         self.name = name
+
+    def mark_registered(self):
+        # 框架内部使用：服务入表注册后锁定服务名，此后 set_name 改名被拒绝
+        self.registered = True
 
     def init(self):
         pass
 
-    def install_func(self, name, function):
+    def deinit(self):
+        pass
+
+    def install_func(self, name, function, msg_name=""):
         if not name.startswith("/"):
             log.error("install function name is error: " +
                       name + ", please start with /")
@@ -66,18 +79,51 @@ class YomkService:
                 log.info(
                     f"install function already exists -> {name}, update to current function")
             self.functions[name] = function
+            if msg_name:
+                self.function_msgs[name] = msg_name
+            else:
+                # 两参覆盖安装时清除残留的旧类型元数据，保持内省与注册一致
+                self.function_msgs.pop(name, None)
+
+    def func_infos(self):
+        infos: dict[str, YomkFuncInfo] = {}
+        with self.rwlock_functions.gen_rlock():
+            for func_name in self.functions:
+                info = YomkFuncInfo(func_name)
+                msg_name = self.function_msgs.get(func_name)
+                if msg_name:
+                    info.msg_name = msg_name
+                infos[func_name] = info
+        return infos
 
     def invoke(self, name, pkg):
+        if not name or not name.startswith("/"):
+            log.error("function name parse error: " + str(name) +
+                      ", please start with /")
+            return YomkResponse(
+                ResStatus.eNo,
+                "function name parse error: " +
+                str(name) + ", please start with /"
+            )
         with self.rwlock_functions.gen_rlock():
             if (name not in self.functions):
                 log.error(
                     f"function not found -> {name}, please use YomkInstallFunc to install this function.")
                 return YomkResponse(ResStatus.eNo, "function not found: " + name)
             func = self.functions[name]
-        result = func(pkg)
-        if not isinstance(result, YomkResponse):
-            raise RuntimeError("function must return YomkResponse")
-        return result
+        return func(pkg)
+
+    def request(self, url, pkg=None):
+        if not self.server:
+            log.error("service is null, please check service")
+            return YomkResponse(ResStatus.eNo, "service is null")
+        return self.server.request(url, pkg)
+
+    def async_request(self, url, pkg=None, callback=None):
+        if not self.server:
+            log.error("service is null, please check service")
+            return
+        self.server.async_request(url, pkg, callback)
 
 
 class YomkServer:
@@ -281,6 +327,13 @@ class Monitor:
     def __init__(self, monitor_func=None, async_monitor_func=False):
         self.monitor_func = monitor_func
         self.async_monitor_func = async_monitor_func
+
+
+class YomkFuncInfo:
+    def __init__(self, func_name="", msg_name=""):
+        self.func_name = func_name
+        self.msg_name = msg_name
+
 # modules
 
 

@@ -15,7 +15,8 @@ from YomkServerPy import (
     Function,
     CallFunction,
     EventLoopPkg,
-    Event
+    Event,
+    YomkFuncInfo
 )
 from typing import Any, Callable
 
