@@ -35,8 +35,9 @@ def main():
     tid = threading.get_ident()
 
     print_step(
-        1, "框架就绪", "YomkApi.init 启动内置服务（YomkContext / YomkFunctionPool / YomkEventLoop）")
+        1, "框架就绪", "YomkApi.init 启动内置服务（YomkContext / YomkFunctionPool / YomkEventLoop）；YomkApi.__version__ 返回框架版本号")
     YomkApi.init()
+    print(f"[thread {tid}] YomkApi.__version__: {YomkApi.__version__}")
 
     print_step(2, "注册与调用", "function_pool_register 注册函数；function_pool_call 按函数名调用")
     res = YomkApi.function_pool_register("func", func_v1)

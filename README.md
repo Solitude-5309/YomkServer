@@ -283,3 +283,4 @@ import YomkApi   # 门面 API：自动加载 Cython 扩展 YomkServerPy，核心
 
 - 新开任意终端免配置；未持久化的环境（如 CI、Windows）手动设置：`export PYTHONPATH=${YOMK_PREFIX_PATH}/lib/pythonX.Y/site-packages:$PYTHONPATH`
 - `YomkServerPy.pyi` 随库安装于同一目录，IDE 可据此提供类型提示与补全
+- 版本号经 `YomkApi.__version__` 查询（源于 CMakeLists 的 `project(VERSION)` 单一来源，与 `share/YomkServerPy/abi_report.txt` 同源）

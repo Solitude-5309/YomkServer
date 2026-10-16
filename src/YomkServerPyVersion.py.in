@@ -1,0 +1,2 @@
+# 由 CMake configure_file 生成（源：project(YomkServerPy VERSION x.y.z)，对齐 main 分支 YOMKSERVER_VERSION 编译期注入），勿手改
+__version__ = "@PROJECT_VERSION@"

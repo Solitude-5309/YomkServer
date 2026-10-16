@@ -36,8 +36,9 @@ def monitor_func(ctx: YomkApi.Context) -> None:
 
 def main():
     print_step(
-        1, "框架就绪", "YomkApi.init 启动内置服务（YomkContext / YomkFunctionPool / YomkEventLoop）")
+        1, "框架就绪", "YomkApi.init 启动内置服务（YomkContext / YomkFunctionPool / YomkEventLoop）；YomkApi.__version__ 返回框架版本号")
     YomkApi.init()
+    print(f"YomkApi.__version__: {YomkApi.__version__}")
 
     print_step(
         2, "创建与读取", "context_create 创建 key=ctx 的上下文；context_get 读取（key 不存在时返回默认值）")

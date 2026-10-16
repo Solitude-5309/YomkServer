@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.14)
-project(YomkServerPy VERSION 1.2.6 LANGUAGES C)
+project(YomkServerPy VERSION 1.2.7 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 find_package(Python REQUIRED COMPONENTS Development)
@@ -112,9 +112,19 @@ install(FILES
     DESTINATION lib/cmake/${PROJECT_NAME}
 )
 
-install(FILES 
+install(FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.pyi"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/YomkApi.py"
+    DESTINATION ${PYTHON_SITE_PACKAGES}
+)
+
+# 版本模块（源：project(VERSION)，对齐 main 的 YOMKSERVER_VERSION 编译期注入；YomkApi 顶部 import 暴露 __version__）
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/YomkServerPyVersion.py.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/YomkServerPyVersion.py"
+    @ONLY
+)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/YomkServerPyVersion.py"
     DESTINATION ${PYTHON_SITE_PACKAGES}
 )
 

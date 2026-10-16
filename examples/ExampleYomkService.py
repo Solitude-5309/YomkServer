@@ -40,9 +40,10 @@ def main():
     tid = threading.get_ident()
 
     print_step(
-        0, "框架就绪", "YomkApi.boot 按 before -> start -> after 三阶段完成启动编排，DemoBoot 注册 AuditService 与 CalcService")
+        0, "框架就绪", "YomkApi.boot 按 before -> start -> after 三阶段完成启动编排，DemoBoot 注册 AuditService 与 CalcService；YomkApi.__version__ 返回框架版本号")
     ret = YomkApi.boot(DemoBoot(["/AuditService", "/CalcService"]))
     print(f"[thread {tid}] boot ret: {ret}（0 = 成功）")
+    print(f"[thread {tid}] YomkApi.__version__: {YomkApi.__version__}")
 
     print_step(
         1, "同步请求", 'request 按 URL "/CalcService/echo" 调用服务并等待回包，回包 data 携带数据')

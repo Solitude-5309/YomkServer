@@ -32,8 +32,9 @@ def main():
     tid = threading.get_ident()
 
     print_step(
-        1, "框架就绪", "YomkApi.init 启动内置服务（YomkContext / YomkFunctionPool / YomkEventLoop）")
+        1, "框架就绪", "YomkApi.init 启动内置服务（YomkContext / YomkFunctionPool / YomkEventLoop）；YomkApi.__version__ 返回框架版本号")
     YomkApi.init()
+    print(f"[thread {tid}] YomkApi.__version__: {YomkApi.__version__}")
 
     print_step(2, "启动事件循环", "event_loop_start 创建独立线程循环并绑定处理函数（处理函数与主线程线程 ID 不同）")
     res = YomkApi.event_loop_start("loop_1", event_handle)
