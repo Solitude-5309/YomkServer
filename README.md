@@ -10,6 +10,21 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 - **强类型化消息包**：业务数据通过 `YomkPkg` 及其派生类安全封装与传递，支持移动语义与动态类型转换。
 - **开箱即用内置能力**：框架初始化即自动装配日志系统、共享上下文、隔离事件循环、动态函数池以及服务自省机制。
 
+### 模块清单
+
+| 模块 | 简述 |
+|---|---|
+| YomkServer / YomkService | 服务总线核心：服务注册与 `"/服务名/函数名"` URL 路由、同步/异步请求分发、服务生命周期管理（deinit / 优雅关闭） |
+| YomkPkg | 强类型消息包：`YomkMsg` 宏声明自定义消息，内置 31 种标量/数组类型，支持移动语义与动态类型转换 |
+| YomkBoot | 启动编排：before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程 |
+| YomkLogger | 日志系统：控制台与文件双输出、四级级别开关、自定义 tag、日志代理拦截与日志器自省 |
+| YomkContext | 共享上下文：跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步） |
+| YomkEventLoop | 线程隔离事件循环：具名单线程 FIFO 执行队列，循环间彼此并行，支持停启续跑与队列积压观测 |
+| YomkFunctionPool | 动态函数池：跨服务扁平函数注册中心，同名重注册即运行时热替换，按名直接调用 |
+| YomkServerInfo | 服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型 |
+
+核心层（YomkServer / YomkService / YomkPkg / YomkBoot）构成框架骨架；YomkLogger、YomkContext、YomkEventLoop、YomkFunctionPool、YomkServerInfo 均以内置服务形式随 `YOMK_INIT()` 自动启动、开箱即用，全部能力经 `YOMK_*` 宏统一调用。
+
 ---
 
 ## 快速上手
