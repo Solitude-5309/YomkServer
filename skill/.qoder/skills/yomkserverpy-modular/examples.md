@@ -420,3 +420,236 @@ def validate_amount(pkg) -> YomkApi.YomkResponse:
 YomkApi.function_pool_register("validate_amount", validate_amount)
 resp = YomkApi.function_pool_call("validate_amount", "100.5")
 ```
+
+---
+
+## 示例7：创建扩展库（独立扩展包，对齐 main 分支 Template/Extension）
+
+扩展为普通 Python 包（包名与扩展名同名，如 `TemplateExtension`），仅含 `/version` 接口；`install.sh` 将扩展包装入 YomkServerPy 的 site-packages，安装后任意终端可 `import TemplateExtension`。占位符替换：`ExtensionName` → 用户指定名（包目录、import、版本字符串前缀同步替换）。
+
+### 目录结构
+
+```
+ExtensionName/
+├── ExtensionName/
+│   ├── __init__.py          // 包入口（re-export 扩展版本号与服务类）
+│   ├── version.py           // 扩展版本号 EXTENSION_VERSION（单一来源）
+│   └── xxx_service.py       // 服务实现
+├── test/
+│   └── test_xxx.py          // 测试程序（就地运行，不随扩展安装）
+├── install.sh               // 扩展安装脚本（交互式）
+└── README.md
+```
+
+### ExtensionName/__init__.py
+```python
+"""TemplateExtension 扩展包"""
+
+from .version import EXTENSION_VERSION
+from .extension_service import ExtensionService
+```
+
+### ExtensionName/version.py
+```python
+"""TemplateExtension 版本定义"""
+
+# 扩展版本号（单一来源：本文件；python 扩展无编译期注入，对应 main 分支 project(TemplateExtension VERSION 0.0.1) 编译期注入的 EXTENSION_VERSION 宏）
+EXTENSION_VERSION = "0.0.1"
+```
+
+### ExtensionName/xxx_service.py
+```python
+import YomkApi
+from .version import EXTENSION_VERSION
+
+
+class ExtensionService(YomkApi.YomkService):
+    def __init__(self, server):
+        super().__init__(server)
+        self.set_name("/ExtensionService")
+
+    def init(self):
+        self.install_func("/version", self.version)
+        print(f"ExtensionService::init install func [ /version ] to {self.get_name()}")
+        return 0
+
+    def version(self, pkg):
+        # 版本号：EXTENSION_VERSION 常量（对应 main 分支 project(VERSION) 编译期注入的 EXTENSION_VERSION 宏）
+        return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok", f"TemplateExtension v{EXTENSION_VERSION}")
+```
+
+### test/test_xxx.py
+```python
+#!/usr/bin/env python3
+"""TestTemplateExtension —— 扩展功能测试程序（就地运行，不随扩展安装）"""
+
+import sys
+
+from TemplateExtension import ExtensionService
+import YomkApi
+
+g_pass = 0
+g_fail = 0
+
+
+def main():
+    global g_pass, g_fail
+
+    YomkApi.init()
+
+    # 注册 ExtensionService（扩展服务需先注册才能使用）
+    YomkApi.new_service(ExtensionService, "/ExtensionService")
+
+    # 测试版本查询
+    resp = YomkApi.request("/ExtensionService/version", None)
+    if resp.status == YomkApi.ResStatus.eOk:
+        print(f"[PASS] version: {resp.data}")
+        g_pass += 1
+    else:
+        print(f"[FAIL] version request failed: {resp.msg}")
+        g_fail += 1
+
+    print("\n========== Test Summary ==========")
+    print(f"PASS: {g_pass}")
+    print(f"FAIL: {g_fail}")
+
+    sys.exit(1 if g_fail > 0 else 0)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### install.sh
+```bash
+#!/bin/bash
+# 扩展安装脚本（交互式）
+# 用法: bash install.sh
+# 交互询问 YomkServerPy 安装路径（前置路径），默认取环境变量 YOMK_PREFIX_PATH，可修改
+# 将扩展包安装到框架 site-packages（与框架安装到一起），安装后任意终端可 import TemplateExtension
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EXTENSION_NAME="TemplateExtension"
+
+# 路径规范化：展开 ~ 、相对路径补全
+_normalize_path() {
+    local p="$1"
+    p="${p/#\~/$HOME}"
+    if [[ -n "${p}" && "${p}" != /* ]]; then
+        p="$(pwd)/${p}"
+    fi
+    echo "${p}"
+}
+
+if [ -z "${YOMK_PREFIX_PATH}" ]; then
+    echo "警告: 未检测到环境变量 YOMK_PREFIX_PATH，可能未通过 build_ubuntu.sh 安装 YomkServerPy，请手动输入安装路径"
+fi
+
+# 交互询问 YomkServerPy 安装路径（前置路径），默认取环境变量 YOMK_PREFIX_PATH
+read -r -p "请输入 YomkServerPy 安装路径 [默认: ${YOMK_PREFIX_PATH:-无}]: " _INPUT_PREFIX
+YOMK_SERVER_PATH="$(_normalize_path "${_INPUT_PREFIX:-${YOMK_PREFIX_PATH}}")"
+unset _INPUT_PREFIX
+if [ -z "${YOMK_SERVER_PATH}" ]; then
+    echo "错误: 未指定 YomkServerPy 安装路径"
+    exit 1
+fi
+echo "-- YomkServerPy 安装路径: ${YOMK_SERVER_PATH}"
+
+# 探测 site-packages 目录（lib/pythonX.Y/site-packages）
+SITE_PACKAGES="$(ls -d "${YOMK_SERVER_PATH}"/lib/python*/site-packages 2>/dev/null | head -n 1)"
+if [ -z "${SITE_PACKAGES}" ]; then
+    echo "错误: 未找到 site-packages 目录: ${YOMK_SERVER_PATH}/lib/pythonX.Y/site-packages"
+    exit 1
+fi
+
+# 校验框架模块（扩展 YomkServerPy*.so/.pyd + 门面 YomkApi.py）
+shopt -s nullglob
+_EXT_FILES=("${SITE_PACKAGES}"/YomkServerPy*.so "${SITE_PACKAGES}"/YomkServerPy*.pyd)
+shopt -u nullglob
+if [ ${#_EXT_FILES[@]} -eq 0 ] || [ ! -f "${SITE_PACKAGES}/YomkApi.py" ]; then
+    echo "错误: site-packages 中未找到 YomkServerPy 扩展模块或 YomkApi.py: ${SITE_PACKAGES}"
+    unset _EXT_FILES
+    exit 1
+fi
+unset _EXT_FILES
+echo "-- 框架模块校验通过: ${SITE_PACKAGES}"
+
+# 安装目录不可写时（如 /opt/yomk）使用 sudo 执行安装
+SUDO=""
+if [ ! -w "${SITE_PACKAGES}" ]; then
+    SUDO="sudo"
+fi
+
+# 安装扩展包（幂等覆盖旧版本）
+if [ -d "${SITE_PACKAGES}/${EXTENSION_NAME}" ]; then
+    echo "-- 移除旧版本: ${SITE_PACKAGES}/${EXTENSION_NAME}"
+    ${SUDO} rm -rf "${SITE_PACKAGES}/${EXTENSION_NAME}"
+fi
+${SUDO} cp -r "${SCRIPT_DIR}/${EXTENSION_NAME}" "${SITE_PACKAGES}/"
+
+# 安装后验证：新终端等价环境（仅 PYTHONPATH 指向 site-packages）下导入扩展
+if PYTHONPATH="${SITE_PACKAGES}" python3 -c "import ${EXTENSION_NAME}; print('扩展版本:', ${EXTENSION_NAME}.EXTENSION_VERSION)" 2>/dev/null; then
+    echo "-- 扩展导入验证通过"
+else
+    echo "错误: 扩展安装后无法导入，错误详情:"
+    PYTHONPATH="${SITE_PACKAGES}" python3 -c "import ${EXTENSION_NAME}"
+    exit 1
+fi
+
+echo "安装完成，扩展已装入框架 site-packages，新开任意终端即可 import ${EXTENSION_NAME}"
+echo "可运行验证: python3 ${SCRIPT_DIR}/test/test_template_extension.py"
+```
+
+### README.md
+```markdown
+# TemplateExtension 扩展
+
+基于 [YomkServerPy](https://github.com/Solitude-5309/YomkServerPy) 框架的扩展模板，提供版本查询接口，可作为新扩展的开发起点。
+
+## 功能
+
+| URL | 功能 | 说明 |
+|-----|------|------|
+| `/ExtensionService/version` | 版本查询 | 返回扩展版本信息 |
+
+## 前置条件
+
+- Python >= 3.10
+- YomkServerPy 已安装到系统
+
+## 安装
+
+bash install.sh            # 交互式，前置路径默认取 $YOMK_PREFIX_PATH，可交互修改
+
+> 扩展与 YomkServerPy 安装到一起：扩展包装入框架安装路径下的 site-packages（已在 PYTHONPATH 内），安装后任意终端可 `import TemplateExtension`。
+> 测试程序不随扩展安装，就地在模板目录下 `test/` 运行验证。
+> 若未配置 `YOMK_PREFIX_PATH` 环境变量，脚本会提示警告，此时手动输入 YomkServerPy 安装路径即可。
+
+## 工程结构
+
+TemplateExtension/
+├── TemplateExtension/
+│   ├── __init__.py          # 包入口（扩展版本号 EXTENSION_VERSION；对外仅 re-export 服务类）
+│   └── extension_service.py # 服务实现
+├── test/
+│   └── test_template_extension.py  # 测试程序（就地运行，不随扩展安装）
+├── install.sh               # 扩展安装脚本（交互式）
+└── README.md
+
+## 使用示例
+
+将以下完整程序拷贝为 main.py，安装扩展后可直接运行：
+
+import YomkApi
+from TemplateExtension import ExtensionService
+
+YomkApi.init()
+
+# 注册 ExtensionService（扩展服务需先注册才能使用）
+YomkApi.new_service(ExtensionService, "/ExtensionService")
+
+# 版本查询请求
+resp = YomkApi.request("/ExtensionService/version", None)
+if resp.status == YomkApi.ResStatus.eOk:
+    print(f"version: {resp.data}")  # 输出: TemplateExtension v0.0.1
+```
