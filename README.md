@@ -10,6 +10,29 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 - **轻量消息包**：普通 Python 类即可定义消息，实例直接作为请求负载传入、经回包 `data` 返回，属性直接访问
 - **开箱即用内置能力**：`YomkApi.init()` 即自动装配共享上下文、线程隔离事件循环与动态函数池，无需额外配置
 
+### 模块清单
+
+框架核心模块与职责一览（详见[核心概念与使用文档](#核心概念与使用文档)；其中共享上下文、事件循环、函数池为 `YomkApi.init()` 自动装配的内置模块）：
+
+| 模块 | 简述 |
+|---|---|
+| 服务（`YomkService` / `Function`） | 两级模块化的载体：服务封装独立业务域或技术组件，`install_func()` 安装服务内功能函数 |
+| 共享上下文（`YomkContext`） | 全局键值状态增删改查，支持变更前校验门控（Checker）与变更监控（Monitor） |
+| 线程隔离事件循环（`YomkEventLoop`） | 单线程 FIFO 执行队列：同循环内保序、跨循环并行，适配 I/O 密集与高并发调度 |
+| 动态函数池（`YomkFunctionPool`） | 函数统一注册与调度，支持同名热替换，面向过程范式快速迭代 |
+| 启动编排（`YomkBoot`） | 以 before → start → after 三阶段编排多服务启动，任一阶段失败即终止 |
+
+仓库目录模块：
+
+| 位置 | 简述 |
+|---|---|
+| `src/` | 核心库源码：`YomkApi.py` 门面、Cython 扩展 `YomkServerPy`、`.pyi` 类型提示与版本模块 |
+| `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池四大主题 |
+| `template/` | 脚手架：`project/` 新工程模板、`extension/` 扩展库模板 |
+| `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |
+| `test/` | 测试集合与一键测试脚本 `run_tests.sh` |
+| `CMakeLists.txt`、`cmake/`、`build_ubuntu.sh` | 构建安装体系：Cython 编译、install 规则与环境指纹报告（`abi_report.txt`） |
+
 ---
 
 ## 快速上手
