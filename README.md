@@ -59,35 +59,40 @@
 3. 面向过程开发范式，实现业务逻辑的快速迭代和动态调整
 4. 提升系统应对需求变化的响应速度
 
-## linux 编译安装
+## 编译与安装
 
-### 快速编译
-chmod +x build.sh  
-./build.sh
+### Linux
 
-### build 交互
-安装目录：~/YomkServer/install  
-编译类型：release
+#### 方式 1：自动安装脚本（推荐）
 
-### 运行test
-export PYTHONPATH=$HOME/YomkServer/install/lib/python3.10/site-packages:$PYTHONPATH 【根据实际安装目录编写】  
-cd YomkServerPy/test  
-python3 TestYomkService.py  
-python3 TestYomkContext.py  
-python3 TestYomkFunctionPool.py  
-python3 TestYomkEventLoop.py  
+```bash
+./build_ubuntu.sh
+```
 
-### 手动编译
+脚本将自动检查依赖（cmake/gcc/python3/python3-dev/cython/readerwriterlock，缺失时可选自动安装）并交互式完成配置、编译、安装（默认安装路径 `/opt/yomk`），随后调用 `scripts/install_env.sh` 设置环境变量 `YOMK_PREFIX_PATH` 与 `PYTHONPATH`——新开任意终端即可直接 `import YomkServerPy`（无需手动 source 或 export）。
 
-#### 依赖
-sudo apt update && sudo apt install gcc python3-dev  
+#### 方式 2：手动 CMake 构建
+
+与方式 1 产生完全一致的安装结果（同一套 install 规则 + 同一份安装后配置脚本）：
+
+```bash
+# 依赖
+sudo apt update && sudo apt install gcc python3-dev cmake
 pip install cython readerwriterlock
 
-#### 编译
-cd YomkServerPy  
-mkdir build && cd build  
-cmake .. -DCMAKE_INSTALL_PREFIX=~/YomkServer/install  
-cmake --build . --target install --config Release  
+# 编译安装
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/yomk
+cmake --build . -j
+sudo cmake --install .
+cd ..
+./scripts/install_env.sh /opt/yomk   # 安装校验 + YOMK_PREFIX_PATH/PYTHONPATH 持久化（与方式 1 共用）
+```
+
+说明：
+
+- `-DCMAKE_BUILD_TYPE=Release` 必须显式传入：Linux Makefiles 单配置生成器不识别 `--config Release`，缺失时将以无优化参数编译，产物与方式 1 不同
+- Python C 扩展与构建时解释器主次版本绑定，请确保运行解释器版本一致；可比对安装产物 `share/YomkServerPy/abi_report.txt` 确认构建环境一致（记录 Python/Cython/gcc/发行版等指纹，随库安装）
 
 ## windows 编译安装
 
@@ -108,4 +113,34 @@ python TestYomkService.py
 python TestYomkContext.py  
 python TestYomkFunctionPool.py  
 python TestYomkEventLoop.py  
+
+---
+
+## 测试（Linux）
+
+### 1. 一键运行全量测试
+
+```bash
+./test/run_tests.sh                      # 使用 $YOMK_PREFIX_PATH（缺省 /opt/yomk）
+./test/run_tests.sh --prefix /opt/yomk   # 指定安装路径
+./test/run_tests.sh --timeout 600        # 单测试超时秒数（默认 300）
+```
+
+运行器行为：
+
+- **自动环境**：自动探测 `lib/pythonX.Y/site-packages` 并设置 PYTHONPATH，无需手动 export
+- **失败即停**：任一测试退出码非 0（含超时被杀）立即终止，终端输出该测试 `[FAIL]` 摘要与最近日志
+- **日志落盘**：`test/test_logs/<时间戳>/` 下每个测试一份日志 + `summary.log` 汇总
+- **超时保护**：每个测试由 `timeout` 包裹，防卡死
+
+### 2. 单独运行
+
+```bash
+export PYTHONPATH=$YOMK_PREFIX_PATH/lib/pythonX.Y/site-packages:$PYTHONPATH
+cd test
+python3 TestYomkService.py
+python3 TestYomkContext.py
+python3 TestYomkFunctionPool.py
+python3 TestYomkEventLoop.py
+```
 

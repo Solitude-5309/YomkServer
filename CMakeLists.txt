@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.14)
-project(YomkServerPy VERSION 1.2.4 LANGUAGES C)
+project(YomkServerPy VERSION 1.2.5 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 find_package(Python REQUIRED COMPONENTS Development)
@@ -11,6 +11,10 @@ set(PYTHON_SITE_PACKAGES "lib/python${PYTHON_MAJOR}.${PYTHON_MINOR}/site-package
 
 # ---------- 2. 查找 Cython ----------
 find_program(CYTHON_EXECUTABLE cython REQUIRED)
+
+# ---------- 2.5 构建环境指纹（project() 之后调用，采集/打印环境信息并生成 abi_report.txt） ----------
+include(cmake/EnvInfo.cmake)
+yomk_env_report()
 
 # ---------- 3. 生成 C 文件 ----------
 set(PY_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.py)
@@ -76,6 +80,10 @@ if(WIN32)
 endif()
 
 # ---------- 9. 安装规则 ----------
+# 环境指纹报告（对齐 main 分支 abi_report 随库安装，用户可比对构建环境）
+install(FILES ${CMAKE_BINARY_DIR}/abi_report.txt
+        DESTINATION share/YomkServerPy)
+
 # 导出 targets
 install(EXPORT ${PROJECT_NAME}Targets
     FILE ${PROJECT_NAME}Targets.cmake
