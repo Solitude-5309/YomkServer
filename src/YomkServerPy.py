@@ -1,6 +1,7 @@
 from readerwriterlock import rwlock
 from enum import Enum
 import logging
+import os
 import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -76,7 +77,7 @@ class YomkService:
 
         with self.rwlock_functions.gen_wlock():
             if (name in self.functions):
-                log.info(
+                log.error(
                     f"install function already exists -> {name}, update to current function")
             self.functions[name] = function
             if msg_name:
@@ -127,138 +128,179 @@ class YomkService:
 
 
 class YomkServer:
-    def __init__(self, max_thread=8):
+    def __init__(self, async_thread_count=0):
         self.services: dict[str, YomkService] = {}
         self.rwlock_services = rwlock.RWLockFair()
-        self.executor = ThreadPoolExecutor(max_thread)
+        self.shutdown_done: bool = False
+        if async_thread_count == 0:
+            hw = os.cpu_count()
+            # 对齐 main：hw 为 0(或 None) 兜底 2，否则取一半向上取整
+            async_thread_count = 2 if not hw else (hw + 1) // 2
+        self.executor = ThreadPoolExecutor(async_thread_count)
 
-    def start_service(self, srv_names: list[str]):
+    @classmethod
+    def create(cls, async_thread_count=0):
+        # 创建 YomkServer 实例，async_thread_count 为异步请求线程池大小（0 表示自动检测）
+        return cls(async_thread_count)
+
+    def start_service(self, srv_names):
+        # 内置服务映射表（键名带 / 前缀，对齐 main serviceCreators）
+        service_creators = {
+            "/YomkContext": YomkContext,
+            "/YomkFunctionPool": YomkFunctionPool,
+            "/YomkEventLoop": YomkEventLoop,
+        }
         for srv_name in srv_names:
-            if srv_name == "YomkContext":
-                srv = YomkContext(self)
-                srv.set_name("/YomkContext")
-                srv.init()
-                self.add_service(srv)
-            elif srv_name == "YomkFunctionPool":
-                srv = YomkFunctionPool(self)
-                srv.set_name("/YomkFunctionPool")
-                srv.init()
-                self.add_service(srv)
-            elif srv_name == "YomkEventLoop":
-                srv = YomkEventLoop(self)
-                srv.set_name("/YomkEventLoop")
-                srv.init()
-                self.add_service(srv)
-            else:
-                log.info(f"yomk not support service: {srv_name}")
+            srv_cls = service_creators.get(srv_name)
+            if srv_cls is None:
+                log.error("yomk does not support service: " + srv_name)
+                continue
+            self.add_service(srv_cls(self))
+
+        return 0
+
+    def new_service(self, srv_cls, srv_name=""):
+        # 创建并注册指定类型的服务（对齐 main newService<T>：构造 -> 可选命名 -> addService）
+        srv = srv_cls(self)
+        if srv_name:
+            srv.set_name(srv_name)
+        return self.add_service(srv)
 
     def add_service(self, service):
         if not isinstance(service, YomkService):
-            raise TypeError("service must be YomkService")
+            log.error("service is null, please check the service.")
+            return -1
 
+        old_srv = None
         with self.rwlock_services.gen_wlock():
             if (service.get_name() in self.services):
-                log.info(
-                    f"add service already exists -> {service.get_name()}, update to current service")
+                log.error(
+                    f"service already exists -> {service.get_name()}, update to current service")
+            old_srv = self.services.get(service.get_name())
             self.services[service.get_name()] = service
-            return 0
+            # 入表即锁定服务名：注册后改名被拒绝，保证服务名与 service map 键一致
+            service.mark_registered()
 
-    def request(self, url, pkg):
-        if not url.startswith("/"):
-            log.error(f"url parse error: {url}, please start with /")
-            return YomkResponse(
-                ResStatus.eNo,
-                "url parse error: " + url + ", please start with /"
-            )
+        # 锁外对旧服务 deinit：同名替换语义，替换前旧服务仍在表中
+        if old_srv is not None:
+            old_srv.deinit()
 
-        pos_start = 0
-        pos_end = url.find("/", pos_start + 1)
+        # init 抛异常视同失败：捕获后走统一回滚，避免半初始化服务残留在表；
+        # init 未显式返回（None）等价成功（对齐 main 返回 0）
+        try:
+            init_ret = service.init()
+        except Exception as e:
+            log.error("service init exception: " +
+                      service.get_name() + ", what: " + str(e))
+            init_ret = -1
+
+        if init_ret is not None and init_ret != 0:
+            log.error("service init error: " + service.get_name())
+            self.del_service(service.get_name())
+            return -1
+        return 0
+
+    def del_service(self, srv_name):
+        srv = None
+        with self.rwlock_services.gen_wlock():
+            if (srv_name not in self.services):
+                log.error("service not found, can not delete -> " + srv_name)
+                return -1
+            srv = self.services.pop(srv_name)
+
+        # 锁外执行 deinit，与 shutdown 保持一致的锁外清理模式
+        if srv is not None:
+            srv.deinit()
+        return 0
+
+    def shutdown(self):
+        # 幂等：重复调用直接返回，不会二次排空与 deinit
+        if self.shutdown_done:
+            return
+        self.shutdown_done = True
+
+        # 先停异步请求池（拒新 -> 排空），对齐 main 请求池停止顺序
+        self.executor.shutdown(wait=True)
+
+        with self.rwlock_services.gen_wlock():
+            srvs = list(self.services.values())
+            self.services.clear()
+
+        # 锁外逐个 deinit，与 del_service 保持一致的锁外清理模式
+        for srv in srvs:
+            srv.deinit()
+
+    def service_names(self):
+        with self.rwlock_services.gen_rlock():
+            return list(self.services.keys())
+
+    def service_func_infos(self, srv_name):
+        with self.rwlock_services.gen_rlock():
+            srv = self.services.get(srv_name)
+        if srv is None:
+            log.error("service not found. " + srv_name +
+                      ", please start the service.")
+            return {}
+        return srv.func_infos()
+
+    def _parse_request_url(self, url):
+        # 解析请求 url 为服务名与函数名（/ServiceName/func_name）；
+        # 失败时返回 err_msg（供 request 构造响应，供 async_request 直接丢弃）
+        if not url or url[0] != "/":
+            return "", "", "url parse error: " + str(url) + ", please start with /"
+        pos_end = url.find("/", 1)
         if pos_end == -1:
-            log.error(f"url parse error: {url}, not found service name.")
-            return YomkResponse(
-                ResStatus.eNo,
-                "url parse error: " + url + ", not found service name."
-            )
-
-        srv_name = url[pos_start:pos_end]
-        if not srv_name.startswith("/"):
-            log.error(f"url parse error: srv name not start with /.")
-            return YomkResponse(
-                ResStatus.eNo,
-                "url parse error: srv name not start with /."
-            )
-
+            return "", "", "url parse error: " + url + ", not found service name."
+        srv_name = url[:pos_end]
+        if not srv_name:
+            return "", "", "url parse error: srv is empty. "
         func_name = url[pos_end:]
-        if not func_name.startswith("/"):
-            log.error(f"url parse error: function name not start with /.")
-            return YomkResponse(
-                ResStatus.eNo,
-                "url parse error: function name not start with /."
-            )
+        if not func_name:
+            return "", "", "url parse error: function name is empty"
+        return srv_name, func_name, None
+
+    def request(self, url, pkg=None):
+        srv_name, func_name, err_msg = self._parse_request_url(url)
+        if err_msg:
+            log.error(err_msg)
+            return YomkResponse(ResStatus.eNo, err_msg)
 
         with self.rwlock_services.gen_rlock():
-            if (srv_name not in self.services):
-                log.error(
-                    f"service not found: {srv_name}, please start the service.")
-                return YomkResponse(
-                    ResStatus.eNo,
-                    "service not found: " + srv_name
-                )
-            service = self.services[srv_name]
-
-        return service.invoke(func_name, pkg)
-
-    def async_request(self, url, pkg, callback):
-        if not url.startswith("/"):
-            log.error(f"url parse error: {url}, please start with /")
+            srv = self.services.get(srv_name)
+        if srv is None:
+            log.error("service not found. " + srv_name +
+                      ", please start the service.")
             return YomkResponse(
                 ResStatus.eNo,
-                "url parse error: " + url + ", please start with /"
+                "service not found: " + srv_name
             )
+        return srv.invoke(func_name, pkg)
 
-        pos_start = 0
-        pos_end = url.find("/", pos_start + 1)
-        if pos_end == -1:
-            log.error(f"url parse error: {url}, not found service name.")
-            return YomkResponse(
-                ResStatus.eNo,
-                "url parse error: " + url + ", not found service name."
-            )
+    def async_request(self, url, pkg=None, callback=None):
+        srv_name, func_name, err_msg = self._parse_request_url(url)
+        if err_msg:
+            log.error(err_msg)
+            return
 
-        srv_name = url[pos_start:pos_end]
-        if not srv_name.startswith("/"):
-            log.error(f"url parse error: srv name not start with /.")
-            return YomkResponse(
-                ResStatus.eNo,
-                "url parse error: srv name not start with /."
-            )
-
-        func_name = url[pos_end:]
-        if not func_name.startswith("/"):
-            log.error(f"url parse error: function name not start with /.")
-            return YomkResponse(
-                ResStatus.eNo,
-                "url parse error: function name not start with /."
-            )
-
-        with self.rwlock_services.gen_rlock():
-            if (srv_name not in self.services):
-                log.error(
-                    f"service not found: {srv_name}, please start the service.")
-                return YomkResponse(
-                    ResStatus.eNo,
-                    "service not found: " + srv_name
-                )
-            service = self.services[srv_name]
+        # 服务器已关闭直接拒绝，池已停止时 submit 同样异常兜底
+        if self.shutdown_done:
+            log.error("server is shutting down, async request ignored.")
+            return
 
         def task():
             try:
-                result = service.invoke(func_name, pkg)
-                callback(result)
-            except Exception as e:
-                log.exception(e)
+                # 执行时才查表（对齐 main：投递与执行间服务变更以执行时为准）；
+                # 拼回完整 URL 走 request 的解析与查表路径
+                result = self.request(srv_name + func_name, pkg)
+                if callback:
+                    callback(result)
+            except Exception:
+                log.exception("async task exception caught")
 
-        self.executor.submit(task)
+        try:
+            self.executor.submit(task)
+        except RuntimeError:
+            log.error("server is shutting down, async request ignored.")
 
 # msg
 

@@ -46,7 +46,7 @@ g_server: YomkServer = YomkServer()
 def init():
     global g_server
     g_server.start_service(
-        ["YomkContext", "YomkFunctionPool", "YomkEventLoop"])
+        ["/YomkContext", "/YomkFunctionPool", "/YomkEventLoop"])
     return g_server
 
 
@@ -57,16 +57,14 @@ def server():
 
 def new_service(class_name: type[YomkService], name: type[str] = ""):
     global g_server
-    srv = class_name(g_server)
-    srv.set_name(name)
-    srv.init()
-    return g_server.add_service(srv)
+    # 服务创建、命名与 init 内聚到 server 层（对齐 main YOMK_NEW_SERVICE 链路）
+    return g_server.new_service(class_name, name)
 
 
 def add_service(srv: type[YomkService], name: type[str] = ""):
     global g_server
-    srv.set_name(name)
-    srv.init()
+    if name:
+        srv.set_name(name)
     return g_server.add_service(srv)
 
 
