@@ -67,6 +67,7 @@ Thumbs.db
 
 # Python byte code
 *.pyc
+__pycache__/
 
 # Binaries
 # --------

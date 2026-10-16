@@ -40,16 +40,18 @@ ProjectName/
 │   └── TypeDefine.py     // 公共常量定义
 ├── test/                 // 单元测试脚本
 ├── scripts/              // 项目辅助脚本
+├── check_env.sh          // 环境检查脚本
 └── README.md
 ```
 
 ### 关键约定
 
-1. `MyBoot.before()`：通过 `Path(__file__)` 推导配置路径，存入 Context（`CTX_CONFIG_PATH`）
-2. `MyBoot.start()`：服务创建器映射表 + `srv_names` 按需启动
-3. `MyBoot.after()`：调用 `/ConfigService/load` 加载配置
+1. `MyBoot.before()`：输出 starting 提示，通过 `Path(__file__)` 推导配置路径，存入 Context（`CTX_CONFIG_PATH`）
+2. `MyBoot.start()`：服务创建器映射表（lambda 惰性创建）+ `srv_names` 按需启动，add_service 失败返回 -1
+3. `MyBoot.after()`：调用 `/ConfigService/load` 加载配置，随后请求 `/get`（name）与 `/version`（工程版本号）并输出
 4. 消息包为普通 Python 类，集中定义在 `msgs/YomkMsgs.py`
-5. 运行方式：`python main.py`（需设置 PYTHONPATH 指向 YomkServerPy 安装路径）
+5. 运行方式：`bash check_env.sh` 检查环境（PYTHONPATH 由框架安装环节配置）→ `python main.py`
+6. **版本号传递**：工程版本在 `typedefine/TypeDefine.py` 定义 `APP_VERSION` 常量（python 工程无编译期注入，对应 main 分支 project(VERSION)+宏注入），由 `ConfigService` 的 `/version` 接口返回（不放 config.json），`MyBoot.after()` 请求该接口并输出版本号
 
 ### 生成规则
 

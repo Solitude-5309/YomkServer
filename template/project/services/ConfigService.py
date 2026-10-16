@@ -1,6 +1,7 @@
 import YomkApi
 import json
-from typedefine.TypeDefine import CTX_CONFIG_PATH
+from typedefine.TypeDefine import CTX_CONFIG_PATH, APP_VERSION
+
 
 class ConfigService(YomkApi.YomkService):
     def __init__(self, server):
@@ -14,7 +15,9 @@ class ConfigService(YomkApi.YomkService):
         self.install_func("/get", self.get_config)
         self.install_func("/set", self.set_config)
         self.install_func("/reload", self.reload_config)
-        print(f"ConfigService::init install func [ /load /get /set /reload ] to {self.get_name()}")
+        self.install_func("/version", self.version)
+        print(
+            f"ConfigService::init install func [ /load /get /set /reload /version ] to {self.get_name()}")
 
     def load_config(self, pkg):
         self.config_path = YomkApi.context_get(CTX_CONFIG_PATH, "")
@@ -61,3 +64,7 @@ class ConfigService(YomkApi.YomkService):
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, f"failed to reload: {self.config_path}, {e}")
         print(f"ConfigService::reload_config reloaded: {self.config_path}")
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
+
+    def version(self, pkg):
+        # 版本号来自 typedefine/TypeDefine.py 定义的 APP_VERSION 常量（对应 main 分支 project(VERSION) 编译期注入）
+        return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok", APP_VERSION)

@@ -74,6 +74,7 @@ class EventLoopPkg:
 | `YomkApi.boot(boot_instance)` | Boot 生命周期启动（含 init） |
 | `YomkApi.init()` | 初始化（启动内置服务） |
 | `YomkApi.server()` | 获取 Server 实例 |
+| `YomkApi.__version__` | 框架版本号（源自 YomkServerPy 的 project(VERSION)，随库生成的版本模块提供） |
 
 ### 服务管理
 | API | 说明 |
