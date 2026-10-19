@@ -645,14 +645,18 @@ class YomkFunctionPool(YomkService):
     def __init__(self, server):
         super().__init__(server)
         self.set_name("/YomkFunctionPool")
-        self.m_functions = {}
+        self.m_functions = {}     # {name: Function}（func+msg_name 同存，对齐 main PoolFuncInfo 条目）
         self.m_functionsMutex = rwlock.RWLockFair()
 
     def init(self):
-        # URL 装配顺序对齐 main：/register /unregister /call
+        # URL 装配顺序对齐 main：/register /unregister /call /names /name /all
         self.install_func("/register", self.registerFunction)
         self.install_func("/unregister", self.unRegisterFunction)
         self.install_func("/call", self.callFunction)
+        # 调试内省接口，端点挂在本服务 funcMap
+        self.install_func("/names", self.funcNames)
+        self.install_func("/name", self.funcInfo)
+        self.install_func("/all", self.listAll)
 
     def registerFunction(self, function: Function):
         if not isinstance(function, Function):
@@ -667,14 +671,15 @@ class YomkFunctionPool(YomkService):
 
         with self.m_functionsMutex.gen_wlock():
             if function.name in self.m_functions:
-                # 重复名=更新语义：先更新函数本体，再返回显式区分的文案（对齐 main L33-42）
+                # 重复名=更新语义：整对象替换覆盖 func+msg_name 双字段（对齐 main L33-42），
+                # 先更新再返回显式区分的文案
                 log.info(
                     f"function name: {function.name} is already exist, update to current function")
-                self.m_functions[function.name] = function.func
+                self.m_functions[function.name] = function
                 return YomkResponse(
                     ResStatus.eOk,
                     "find function name is already exist, update to current function")
-            self.m_functions[function.name] = function.func
+            self.m_functions[function.name] = function
 
         return YomkResponse(ResStatus.eOk, "register function success")
 
@@ -708,9 +713,43 @@ class YomkFunctionPool(YomkService):
                     f"funcName: {call_func.name} is not register, please check CallFunction.m_funcName.")
                 return YomkResponse(ResStatus.eNo, "funcName is not register")
             else:
-                func = self.m_functions[call_func.name]
+                func = self.m_functions[call_func.name].func
 
         return func(call_func.pkg)
+
+    def funcNames(self, pkg):
+        # 内省：列出全部注册函数名（读锁内排序，对齐 main funcNames 的 std::map 字典序）
+        with self.m_functionsMutex.gen_rlock():
+            names = sorted(self.m_functions)
+        return YomkResponse(ResStatus.eOk, "ok", names)
+
+    def funcInfo(self, func_name: str):
+        # 内省：单个函数存在性查询，命中 msg 为 "funcName [类型名]"（未声明类型时纯名）
+        # （对齐 main funcInfo：参数无效 eInvalid、未注册 eNo）
+        if not func_name:
+            log.error("funcName is empty, please check String.")
+            return YomkResponse(ResStatus.eInvalid, "funcName is empty")
+
+        with self.m_functionsMutex.gen_rlock():
+            entry = self.m_functions.get(func_name)
+            if entry is None:
+                log.error(
+                    f"funcName: {func_name} is not register, please check funcName")
+                return YomkResponse(ResStatus.eNo, "funcName is not register")
+            msg_name = entry.msg_name
+
+        return YomkResponse(
+            ResStatus.eOk, func_name + (f" [{msg_name}]" if msg_name else ""))
+
+    def listAll(self, pkg):
+        # 内省：全量 dump，首行 functions:N，其余每行 "funcName [类型名]"
+        # （未声明类型时无括号后缀；读锁内组行保快照原子性，对齐 main listAll）
+        with self.m_functionsMutex.gen_rlock():
+            lines = [f"functions:{len(self.m_functions)}"]
+            for name in sorted(self.m_functions):
+                msg_name = self.m_functions[name].msg_name
+                lines.append(name + (f" [{msg_name}]" if msg_name else ""))
+        return YomkResponse(ResStatus.eOk, "ok", lines)
 
 
 class EventLoop:
