@@ -5,8 +5,8 @@
 - /add ：收 AddReq 消息包，先跨服务调用 /AuditService/audit 审计，
          再将计算结果以 AddResp 放入回包 data
 
-python 版说明：YomkService 基类暂无成员级 request，服务内跨服务调用
-使用全局 YomkApi.request()（与 main 的成员 request / YOMK_REQUEST 等价）。
+python 版说明：服务内跨服务调用可用成员 self.server.request(...)（对齐 main
+的成员 request / YOMK_REQUEST），也可使用全局 YomkApi.request()（两者等价）。
 跨服务失败时返回 eNo，向调用方传播失败。
 """
 
