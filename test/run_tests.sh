@@ -121,6 +121,10 @@ TESTS=(
     YomkContext/TestYomkContextCheckerMonitor
     YomkContext/TestYomkContextLifecycle
     YomkContext/TestYomkContextConcurrency
+    # YomkFunctionPool 模块（对齐 main 顺序：Lifecycle -> Concurrency -> Stress，压测压尾）
+    YomkFunctionPool/TestYomkFunctionPoolLifecycle
+    YomkFunctionPool/TestYomkFunctionPoolConcurrency
+    YomkFunctionPool/TestYomkFunctionPoolStress
 )
 
 # -------------sl 3. 门禁检查（对齐 main precheck_bin） ----------------
