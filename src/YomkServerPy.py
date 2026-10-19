@@ -649,29 +649,50 @@ class YomkFunctionPool(YomkService):
         self.m_functionsMutex = rwlock.RWLockFair()
 
     def init(self):
+        # URL 装配顺序对齐 main：/register /unregister /call
         self.install_func("/register", self.registerFunction)
+        self.install_func("/unregister", self.unRegisterFunction)
         self.install_func("/call", self.callFunction)
 
     def registerFunction(self, function: Function):
         if not isinstance(function, Function):
             raise TypeError("function must be Function")
 
-        if not function.name:
-            log.error("funcName is empty, please check Function.m_funcName.")
-            return YomkResponse(ResStatus.eNo, "funcName is empty")
-
-        if not function.func:
-            log.error("func is empty, please check Function.m_func.")
-            return YomkResponse(ResStatus.eNo, "func is empty")
+        # 合一校验（对齐 main registerFunction 入口）：空名或空函数体均视为参数无效；
+        # eNo 为 not-found/业务拒绝框架惯例，eInvalid 仅用于参数无效（main FPC2 统一契约）
+        if not function.name or not function.func:
+            log.error(
+                "funcName or func is empty, please check Function.m_funcName")
+            return YomkResponse(ResStatus.eInvalid, "funcName or func is empty")
 
         with self.m_functionsMutex.gen_wlock():
             if function.name in self.m_functions:
+                # 重复名=更新语义：先更新函数本体，再返回显式区分的文案（对齐 main L33-42）
                 log.info(
-                    f"YomkFunctionPool function name: {function.name} is already exist, and update current function")
-
+                    f"function name: {function.name} is already exist, update to current function")
+                self.m_functions[function.name] = function.func
+                return YomkResponse(
+                    ResStatus.eOk,
+                    "find function name is already exist, update to current function")
             self.m_functions[function.name] = function.func
 
         return YomkResponse(ResStatus.eOk, "register function success")
+
+    def unRegisterFunction(self, func_name: str):
+        # 注销已注册函数（对齐 main unRegisterFunction）：参数无效 eInvalid、
+        # 未注册 eNo（not-found 框架惯例；eInvalid 仅用于参数无效）
+        if not func_name:
+            log.error("funcName is empty, please check String.")
+            return YomkResponse(ResStatus.eInvalid, "funcName is empty")
+
+        with self.m_functionsMutex.gen_wlock():
+            if func_name not in self.m_functions:
+                log.error(
+                    f"funcName: {func_name} is not register, can not unregister")
+                return YomkResponse(ResStatus.eNo, "funcName is not register")
+            del self.m_functions[func_name]
+
+        return YomkResponse(ResStatus.eOk, "unregister function success")
 
     def callFunction(self, call_func: CallFunction):
         if not isinstance(call_func, CallFunction):
@@ -679,13 +700,13 @@ class YomkFunctionPool(YomkService):
 
         if not call_func.name:
             log.error("funcName is empty, please check CallFunction.m_funcName.")
-            return YomkResponse(ResStatus.eNo, "funcName is empty")
+            return YomkResponse(ResStatus.eInvalid, "funcName is empty")
 
         with self.m_functionsMutex.gen_rlock():
             if call_func.name not in self.m_functions:
                 log.error(
-                    f"funcName is not exist: {call_func.name}, please check CallFunction.m_funcName.")
-                return YomkResponse(ResStatus.eNo, "funcName is not exist")
+                    f"funcName: {call_func.name} is not register, please check CallFunction.m_funcName.")
+                return YomkResponse(ResStatus.eNo, "funcName is not register")
             else:
                 func = self.m_functions[call_func.name]
 
