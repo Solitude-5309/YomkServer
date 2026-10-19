@@ -72,7 +72,8 @@ def init(async_thread_count=0):
         if not _init_done:
             srv = YomkServer.create(async_thread_count)
             srv.start_service(
-                ["/YomkContext", "/YomkFunctionPool", "/YomkEventLoop"])
+                ["/YomkContext", "/YomkFunctionPool", "/YomkEventLoop",
+                 "/YomkServerInfo"])
             g_server = srv
             _init_done = True
     return g_server
@@ -307,3 +308,23 @@ def event_loop_info_loop(event_loop_name: type[str], tag_count: type[int] = None
 def event_loop_info_all() -> YomkResponse:
     # 查询全部事件循环状态（对齐 main EVENTLOOP_INFO_ALL）
     return _api_request("/YomkEventLoop/all", None)
+
+
+def server_info_services() -> YomkResponse:
+    # 查询所有服务名称（对齐 main SERVER_INFO_SERVICES）
+    return _api_request("/YomkServerInfo/services", None)
+
+
+def server_info_functions(srv_name: type[str]) -> YomkResponse:
+    # 查询指定服务的全部功能函数（对齐 main SERVER_INFO_FUNCTIONS）
+    return _api_request("/YomkServerInfo/functions", srv_name)
+
+
+def server_info_function(url: type[str]) -> YomkResponse:
+    # 查询指定功能函数元信息（对齐 main SERVER_INFO_FUNCTION）
+    return _api_request("/YomkServerInfo/function", url)
+
+
+def server_info_all() -> YomkResponse:
+    # 查询框架全量服务及功能函数拓扑（对齐 main SERVER_INFO_ALL）
+    return _api_request("/YomkServerInfo/all", None)

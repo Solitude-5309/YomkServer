@@ -4,6 +4,7 @@ import logging
 import os
 import queue
 import threading
+import weakref
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable
 
@@ -149,6 +150,7 @@ class YomkServer:
             "/YomkContext": YomkContext,
             "/YomkFunctionPool": YomkFunctionPool,
             "/YomkEventLoop": YomkEventLoop,
+            "/YomkServerInfo": YomkServerInfo,
         }
         for srv_name in srv_names:
             srv_cls = service_creators.get(srv_name)
@@ -399,18 +401,18 @@ class YomkContext(YomkService):
         self.m_monitorPool = None  # 单线程 FIFO 监控池，init() 重建（对齐 main m_monitorPool）
 
     def init(self):
-        self.install_func("/create", self.create)
-        self.install_func("/destroy", self.destroy)
-        self.install_func("/get", self.get)
-        self.install_func("/set", self.set)
+        self.install_func("/create", self.create, "Context")
+        self.install_func("/destroy", self.destroy, "String")
+        self.install_func("/get", self.get, "Context")
+        self.install_func("/set", self.set, "Context")
         self.install_func("/turn_on_checker", self.turn_on_checker)
         self.install_func("/turn_off_checker", self.turn_off_checker)
-        self.install_func("/set_checker", self.set_checker)
+        self.install_func("/set_checker", self.set_checker, "ContextChecker")
         self.install_func("/turn_on_monitor", self.turn_on_monitor)
         self.install_func("/turn_off_monitor", self.turn_off_monitor)
-        self.install_func("/set_monitor", self.set_monitor)
+        self.install_func("/set_monitor", self.set_monitor, "ContextMonitor")
         self.install_func("/keys", self.keys)
-        self.install_func("/key", self.key_info)
+        self.install_func("/key", self.key_info, "String")
         self.install_func("/all", self.list_all)
         # 重建监控池：池 stop 后不可复用，重建支持服务删除后重新注册；固定单线程保事件顺序（对齐 main init）
         self.m_monitorPool = ThreadPoolExecutor(1)
@@ -650,12 +652,12 @@ class YomkFunctionPool(YomkService):
 
     def init(self):
         # URL 装配顺序对齐 main：/register /unregister /call /names /name /all
-        self.install_func("/register", self.registerFunction)
-        self.install_func("/unregister", self.unRegisterFunction)
-        self.install_func("/call", self.callFunction)
+        self.install_func("/register", self.registerFunction, "Function")
+        self.install_func("/unregister", self.unRegisterFunction, "String")
+        self.install_func("/call", self.callFunction, "CallFunction")
         # 调试内省接口，端点挂在本服务 funcMap
         self.install_func("/names", self.funcNames)
-        self.install_func("/name", self.funcInfo)
+        self.install_func("/name", self.funcInfo, "String")
         self.install_func("/all", self.listAll)
 
     def registerFunction(self, function: Function):
@@ -869,11 +871,11 @@ class YomkEventLoop(YomkService):
         self.m_eventLoopMutex = rwlock.RWLockFair()
 
     def init(self):
-        self.install_func("/start", self.start)
-        self.install_func("/stop", self.stop)
-        self.install_func("/destroy", self.destroy)
-        self.install_func("/post", self.post)
-        self.install_func("/post_wait", self.post_wait)
+        self.install_func("/start", self.start, "Eventloop")
+        self.install_func("/stop", self.stop, "String")
+        self.install_func("/destroy", self.destroy, "String")
+        self.install_func("/post", self.post, "Event")
+        self.install_func("/post_wait", self.post_wait, "Event")
 
     def start(self, pkg: EventLoopPkg):
         if not isinstance(pkg, EventLoopPkg):
@@ -945,3 +947,111 @@ class YomkEventLoop(YomkService):
                 return YomkResponse(ResStatus.eOk, "event post wait success", pkg)
             else:
                 return YomkResponse(ResStatus.eNo, "event loop not exist")
+
+
+class YomkServerInfo(YomkService):
+    # 服务表内省服务（对齐 main Modules/ServerInfo）：四端点 /services /functions /function /all；
+    # 经 weakref 判活对齐 main m_weakServer.lock() 失败契约（server 销毁后四端点均返 eNo）
+    def __init__(self, server: "YomkServer"):
+        super().__init__(server)
+        # 清除基类对 server 的强引用，仅保留弱引用：
+        # 否则本实例存活会连带 server 永不销毁，weakref 判活契约（对齐 main weak_from_this）失效
+        self.server = None
+        self.m_weakServer = weakref.ref(server) if server else None
+        self.set_name("/YomkServerInfo")
+
+    def init(self):
+        self.install_func("/services", self.list_services)
+        self.install_func("/functions", self.list_functions, "String")
+        self.install_func("/function", self.function_info, "String")
+        self.install_func("/all", self.list_all)
+        return 0
+
+    def _locked_server(self):
+        # 对齐 main m_weakServer.lock()：server 已销毁时返回 None，由各端点统一走 destroyed 契约
+        return self.m_weakServer() if self.m_weakServer else None
+
+    def list_services(self, pkg):
+        server = self._locked_server()
+        if server is None:
+            log.error("server has been destroyed, list services ignored.")
+            return YomkResponse(ResStatus.eNo, "server has been destroyed")
+        # 对齐 main m_serviceMap（std::map）：服务名字典序输出
+        return YomkResponse(ResStatus.eOk, "ok", sorted(server.service_names()))
+
+    def list_functions(self, pkg):
+        if pkg is None:
+            log.error("pkg is null, please check String.d")
+            return YomkResponse(ResStatus.eNo, "pkg is null")
+        srv_name = pkg
+        if not srv_name:
+            log.error("srvName is empty, please check String.d")
+            return YomkResponse(ResStatus.eInvalid, "srvName is empty")
+
+        server = self._locked_server()
+        if server is None:
+            log.error("server has been destroyed, list functions ignored.")
+            return YomkResponse(ResStatus.eNo, "server has been destroyed")
+
+        infos = server.service_func_infos(srv_name)
+        # 对齐 main m_funcInfos（std::map）：函数名字典序；行格式 "func [msgName]"（无类型为 "func"）；
+        # 不存在的服务返回空表（eOk，对齐 main 现状契约）
+        lines = []
+        for func_name in sorted(infos.keys()):
+            info = infos[func_name]
+            lines.append(info.func_name +
+                         (f" [{info.msg_name}]" if info.msg_name else ""))
+        return YomkResponse(ResStatus.eOk, "ok", lines)
+
+    def function_info(self, pkg):
+        if pkg is None:
+            log.error("pkg is null, please check String.d")
+            return YomkResponse(ResStatus.eNo, "pkg is null")
+        url = pkg
+        if not url or url[0] != "/":
+            log.error("url parse error: " + url + ", please start with /")
+            return YomkResponse(ResStatus.eNo,
+                                "url parse error: " + url + ", please start with /")
+
+        pos_end = url.find("/", 1)
+        if pos_end == -1:
+            log.error("url parse error: " + url + ", not found function name.")
+            return YomkResponse(ResStatus.eNo,
+                                "url parse error: " + url + ", not found function name.")
+
+        srv_name = url[:pos_end]
+        func_name = url[pos_end:]
+
+        server = self._locked_server()
+        if server is None:
+            log.error("server has been destroyed, function info ignored.")
+            return YomkResponse(ResStatus.eNo, "server has been destroyed")
+
+        # 命中契约（对齐 main）：eOk 且 msg 精确等于 msgName（非 "ok"），无类型函数 msg 为空
+        for name in sorted(server.service_names()):
+            if name == srv_name:
+                info = server.service_func_infos(srv_name).get(func_name)
+                if info is None:
+                    log.error("function not found -> " + url)
+                    return YomkResponse(ResStatus.eNo, "function not found: " + url)
+                return YomkResponse(ResStatus.eOk, info.msg_name)
+
+        log.error("service not found -> " + srv_name)
+        return YomkResponse(ResStatus.eNo, "service not found: " + srv_name)
+
+    def list_all(self, pkg):
+        server = self._locked_server()
+        if server is None:
+            log.error("server has been destroyed, list all ignored.")
+            return YomkResponse(ResStatus.eNo, "server has been destroyed")
+
+        # 对齐 main：服务名字典序；功能行两空格缩进 + 服务名直拼函数名（函数名自带 / 前缀）
+        lines = []
+        for srv_name in sorted(server.service_names()):
+            lines.append(srv_name)
+            infos = server.service_func_infos(srv_name)
+            for func_name in sorted(infos.keys()):
+                info = infos[func_name]
+                lines.append("  " + srv_name + info.func_name +
+                             (f" [{info.msg_name}]" if info.msg_name else ""))
+        return YomkResponse(ResStatus.eOk, "ok", lines)

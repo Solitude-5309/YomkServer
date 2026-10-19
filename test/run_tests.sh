@@ -125,6 +125,8 @@ TESTS=(
     YomkFunctionPool/TestYomkFunctionPoolLifecycle
     YomkFunctionPool/TestYomkFunctionPoolConcurrency
     YomkFunctionPool/TestYomkFunctionPoolStress
+    # YomkServerInfo 模块
+    YomkServerInfo/TestYomkServerInfoLifecycle
 )
 
 # -------------sl 3. 门禁检查（对齐 main precheck_bin） ----------------
