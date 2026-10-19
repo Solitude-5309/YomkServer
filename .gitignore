@@ -3,6 +3,7 @@
 build/
 bin/
 .vscode/
+.qoder/
 *~
 *.autosave
 *.a

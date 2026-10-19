@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.14)
-project(YomkServerPy VERSION 1.3.4 LANGUAGES C)
+project(YomkServerPy VERSION 1.3.5 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 find_package(Python REQUIRED COMPONENTS Development)
