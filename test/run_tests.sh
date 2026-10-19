@@ -105,6 +105,7 @@ export PYTHONPATH="${PY_SITE_DIR}:${PYTHONPATH}"
 # 测试清单：快->慢，stress 类压尾（与 test/ 下 Test*.py 一一对应，新增测试在此登记）
 TESTS=(
     TestYomkPkg
+    TestYomkService
 )
 
 # -------------sl 3. 门禁检查（对齐 main precheck_bin） ----------------
