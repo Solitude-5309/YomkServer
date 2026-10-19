@@ -782,38 +782,57 @@ class EventLoop:
                     continue
 
             if not event:
-                log.info("EventLoop: event is null, please check event")
+                log.error("EventLoop: event is null, please check event")
                 continue
+            # 异常吞噬后仍无条件触发等待回调（对齐 main：postWait 同步等待"含异常场景"完成）
             try:
                 event.handle()
-                if event.m_waitCallback:
-                    event.m_waitCallback()
             except Exception as e:
-                log.error(f"Event handling failed: {e}")
+                log.error(
+                    f"EventLoop: {event.m_eventLoopName} exec event id: {event.m_eventId} caught, what: {e}")
+            except BaseException:
+                log.error("EventLoop: unknown exception caught")
+            if event.m_waitCallback:
+                event.m_waitCallback()
 
     def start(self):
         if self.m_running:
-            return
-        self.m_running = True
-        self.m_thread = threading.Thread(target=self.run)
-        self.m_thread.start()
-        return
+            log.error("EventLoop already running, please do not start it again")
+            return 0
+        # 持队列锁创建线程（对齐 main 持锁 move-assign 语义：与 postWait 自 join 防护读互斥）
+        with self.m_queueMutex:
+            self.m_running = True
+            self.m_thread = threading.Thread(target=self.run)
+            self.m_thread.start()
+        return 0
 
     def stop(self):
         if not self.m_running:
-            return
+            return 0
         self.m_running = False
+        # 仅退线程不清队列（对齐 main ELC2 契约）：未执行事件保留，待 start 续跑
         with self.m_queueMutex:
-            while not self.m_event_queue.empty():
-                self.m_event_queue.get_nowait()
             self.m_condition.notify_all()
         if self.m_thread and self.m_thread.is_alive():
             self.m_thread.join()
         return 0
 
+    def destroy(self):
+        # 对齐 main：stop 后锁内清空队列，锁外逐个触发被丢事件的等待回调（释放 postWait 等待者）；
+        # 锁外调回调避免与 postWait 持临时锁回调构成 ABBA 死锁；幂等可重复进入
+        self.stop()
+        discarded = []
+        with self.m_queueMutex:
+            while not self.m_event_queue.empty():
+                discarded.append(self.m_event_queue.get_nowait())
+        for event in discarded:
+            if event and event.m_waitCallback:
+                event.m_waitCallback()
+        return 0
+
     def post(self, event):
         if not event:
-            log.warning("EventLoop: post event is null")
+            log.error("EventLoop: post event is null")
             return 1
 
         if not self.m_running:
