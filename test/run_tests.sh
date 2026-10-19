@@ -111,6 +111,7 @@ TESTS=(
     TestYomkAPILifecycle
     TestYomkBoot
     TestYomkShutdownSeq
+    TestYomkConcurrency
 )
 
 # -------------sl 3. 门禁检查（对齐 main precheck_bin） ----------------
