@@ -13,7 +13,8 @@
 #   4. 系统默认安装 /opt/yomk
 # 行为:
 #   1. 自动探测 lib/pythonX.Y/site-packages 并设置 PYTHONPATH
-#   2. 逐个运行 TESTS 清单（快->慢，stress 类压尾），每个测试在独立临时工作目录运行
+#   2. 逐个运行 TESTS 清单（快->慢，stress 类压尾），测试文件位于 test/YomkServer/
+#      子目录（按模块分类，对齐 main Test/<模块>/ 布局），每个测试在独立临时工作目录运行
 #   3. 任一测试失败（退出码非 0 / 超时）-> 立即停止，输出 [FAIL] 行摘要与日志路径
 #   4. 日志落盘: test/test_logs/<时间戳>/<测试名>.log + summary.log
 # 剔除说明: main 的 --sanitizer 插桩与 /tmp/yomk_logger_* 残留清理为 C++ 特有机制，无 python 对应
@@ -22,7 +23,8 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEST_DIR="${SCRIPT_DIR}"
+# 测试文件目录：按模块分子目录分类（对齐 main Test/<模块>/ 布局，当前全部为基础框架模块）
+TEST_DIR="${SCRIPT_DIR}/YomkServer"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 PREFIX=""
@@ -31,7 +33,7 @@ FULL_MODE=0
 USER_TIMEOUT=0
 
 usage() {
-    sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 }
 
@@ -102,8 +104,10 @@ done
 export PYTHONPATH="${PY_SITE_DIR}:${PYTHONPATH}"
 # -------------el 2. 探测安装产物并设置 PYTHONPATH ----------------
 
-# 测试清单：快->慢，stress 类压尾（与 test/ 下 Test*.py 一一对应，新增测试在此登记）
+# 测试清单：按模块分组、快->慢，stress 类压尾（与 test/YomkServer/ 下 Test*.py 一一对应，
+# 新增测试在此登记；模块轮测试追加对应模块分组与条目）
 TESTS=(
+    # YomkServer 模块（基础服务框架）
     TestYomkPkg
     TestYomkService
     TestYomkServer
@@ -137,7 +141,8 @@ fi
 # -------------el 4. 压测规模 ----------------
 
 # -------------sl 5. 运行测试（失败即停，对齐 main run_one_suite） ----------------
-LOG_ROOT="${TEST_DIR}/test_logs/$(date +%Y%m%d_%H%M%S)"
+# 日志根保持在脚本目录（test/）下，对齐 main log_root="${SCRIPT_DIR}/test_logs/..."
+LOG_ROOT="${SCRIPT_DIR}/test_logs/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "${LOG_ROOT}"
 SUMMARY="${LOG_ROOT}/summary.log"
 printf "[MODE] prefix=%s scale=%s\n" "${PREFIX}" "${YOMK_TEST_STRESS_SCALE:-full}" >> "${SUMMARY}"
