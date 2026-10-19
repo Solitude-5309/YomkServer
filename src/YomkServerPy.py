@@ -439,7 +439,7 @@ class YomkContext(YomkService):
                 contextMonitor.key, []
             ).append(Monitor(contextMonitor.monitor_func, contextMonitor.async_monitor_func))
 
-        return YomkResponse(ResStatus.eOk, "set monitor success")
+        return YomkResponse(ResStatus.eOk, "set context monitor success")
 
     def set_checker(self, contextChecker):
         if not isinstance(contextChecker, ContextChecker):
@@ -481,6 +481,10 @@ class YomkContext(YomkService):
             log.error("key is empty, please check Context.m_key.")
             return YomkResponse(ResStatus.eNo, "key is empty")
 
+        if ctx.value is None:
+            log.error("value is empty, please check Context.m_value.")
+            return YomkResponse(ResStatus.eNo, "value is empty")
+
         with self.m_contextsMutex.gen_wlock():
             if ctx.key in self.m_contexts:
                 log.error(
@@ -490,10 +494,6 @@ class YomkContext(YomkService):
         return YomkResponse(ResStatus.eOk, "create context success")
 
     def destroy(self, key):
-        if not key:
-            log.error("key is empty, please check key.")
-            return YomkResponse(ResStatus.eNo, "key is empty")
-
         with self.m_contextsMutex.gen_wlock():
             if key not in self.m_contexts:
                 log.error(f"key is not exist: {key}, please check key.")
@@ -531,11 +531,18 @@ class YomkContext(YomkService):
                     f"key is not exist: {ctx.key}, please check Context.m_key.")
                 return YomkResponse(ResStatus.eNo, "key is not exist")
 
+            # 类型校验对齐 main：同名 key 的值类型名必须一致（新值为 None 时
+            # NoneType 必不匹配，自然被拒；main set 亦无独立空值分支）
+            if type(self.m_contexts[ctx.key]).__name__ != type(ctx.value).__name__:
+                log.error(
+                    f"context type not match: {ctx.key}, please check Context.m_value.")
+                return YomkResponse(ResStatus.eNo, "context type not match")
+
             if self.m_checkerEnabled:
                 with self.m_checkersMutex.gen_rlock():
                     if ctx.key in self.m_checkers:
                         if (self.m_checkers[ctx.key](ctx) == CheckStatus.eReject):
-                            return YomkResponse(ResStatus.eNo, "check reject set context")
+                            return YomkResponse(ResStatus.eNo, "checker reject set context")
 
             self.m_contexts[ctx.key] = ctx.value
 
