@@ -396,6 +396,7 @@ class YomkContext(YomkService):
         self.m_contextsMutex = rwlock.RWLockFair()
         self.m_checkerEnabled = False
         self.m_monitorEnabled = False
+        self.m_monitorPool = None  # 单线程 FIFO 监控池，init() 重建（对齐 main m_monitorPool）
 
     def init(self):
         self.install_func("/create", self.create)
@@ -411,6 +412,16 @@ class YomkContext(YomkService):
         self.install_func("/keys", self.keys)
         self.install_func("/key", self.key_info)
         self.install_func("/all", self.list_all)
+        # 重建监控池：池 stop 后不可复用，重建支持服务删除后重新注册；固定单线程保事件顺序（对齐 main init）
+        self.m_monitorPool = ThreadPoolExecutor(1)
+
+    def deinit(self):
+        # 排空式停止监控池（拒新 -> 排空 -> join）：返回前存量异步监控任务已全部执行；
+        # shutdown 幂等，重复 deinit 安全；池对象不可复用，置 None 待 init 重建
+        # （对齐 main YomkContext::deinit，由框架 del_service/同名替换/shutdown 锁外调用）
+        if self.m_monitorPool is not None:
+            self.m_monitorPool.shutdown(wait=True)
+            self.m_monitorPool = None
 
     def turn_on_monitor(self, pkg):
         self.m_monitorEnabled = True
@@ -547,19 +558,48 @@ class YomkContext(YomkService):
                     return YomkResponse(ResStatus.eNo, "checker reject set context")
 
             entry.value = ctx.value
-            # 锁内快照监控列表，锁外执行（监控执行形态对齐属 C4）
             monitors_snapshot = list(entry.monitors)
 
-        if self.m_monitorEnabled:
+            # 异步入队在写锁内完成：入队序 = 提交序；配合单线程 FIFO 池 ⇒
+            # 异步通知恒按 set 提交序送达，并发 set 亦然（对齐 main）。
+            # 锁序 m_contextsMutex -> 池内部锁单向安全：worker 锁外执行、deinit 由框架锁外调用
+            monitor_enabled = self.m_monitorEnabled
+            if monitor_enabled:
+                for monitor in monitors_snapshot:
+                    if (monitor.async_monitor_func):
+                        self._post_monitor(monitor.async_monitor_func, ctx)
+
+        if monitor_enabled:
             for monitor in monitors_snapshot:
-                if (monitor.async_monitor_func):
-                    t = threading.Thread(
-                        target=monitor.monitor_func, args=(ctx,))
-                    t.start()
-                else:
-                    monitor.monitor_func(ctx)
+                if not monitor.async_monitor_func:
+                    # 同步 monitor 异常防护：用户回调异常记日志吞掉，不击穿 set 调用链，
+                    # 单个回调异常不影响后续 monitor 执行（对齐 main）
+                    try:
+                        monitor.monitor_func(ctx)
+                    except Exception as e:
+                        log.error(
+                            f"sync monitor threw exception: {e}, ignored.")
 
         return YomkResponse(ResStatus.eOk, "set context success")
+
+    def _post_monitor(self, func, ctx):
+        # 异步监控投递：池未创建或已停止时拒绝并记日志丢弃（对齐 main post 失败路径）
+        if self.m_monitorPool is None:
+            log.error("context monitor pool is stopped, async monitor ignored.")
+            return
+        try:
+            self.m_monitorPool.submit(self._run_monitor_safe, func, ctx)
+        except RuntimeError:
+            # 池 shutdown 后 submit 拒新
+            log.error("context monitor pool is stopped, async monitor ignored.")
+
+    @staticmethod
+    def _run_monitor_safe(func, ctx):
+        # 池 worker 兜底：异步监控回调异常记日志吞掉，不终止 worker（对齐 main 线程池兜底）
+        try:
+            func(ctx)
+        except Exception as e:
+            log.error(f"async monitor threw exception: {e}, ignored.")
 
     def keys(self, pkg):
         with self.m_contextsMutex.gen_rlock():
