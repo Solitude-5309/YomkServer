@@ -109,6 +109,8 @@ TESTS=(
     TestYomkServer
     TestYomkAPINotInit
     TestYomkAPILifecycle
+    TestYomkBoot
+    TestYomkShutdownSeq
 )
 
 # -------------sl 3. 门禁检查（对齐 main precheck_bin） ----------------
