@@ -831,17 +831,18 @@ class EventLoop:
         return 0
 
     def post(self, event):
-        if not event:
-            log.error("EventLoop: post event is null")
-            return 1
-
+        # 判序对齐 main：先判运行态（返 2，与入队成功 0/事件为空 1 区分，供上层映射错误码），后判事件
         if not self.m_running:
-            log.warning("EventLoop: event loop is not running")
+            log.error("EventLoop not running, please start event loop.")
+            return 2
+
+        if not event:
+            log.error("EventLoop: event is null, please check event")
             return 1
 
         with self.m_queueMutex:
-            event.m_eventId = self.m_event_id
             self.m_event_id += 1
+            event.m_eventId = self.m_event_id
             if event.m_serviceFunc is None:
                 event.m_serviceFunc = self.m_defaultServiceFunc
             self.m_event_queue.put(event)
@@ -850,17 +851,22 @@ class EventLoop:
         return 0
 
     def post_wait(self, event):
-        if not event:
-            log.warning("EventLoop: post event is null")
-            return 1
-
+        # 前置检查与 post 全同（对齐 main：先运行态返 2，后事件返 1）
         if not self.m_running:
-            log.warning("EventLoop: event loop is not running")
+            log.error("EventLoop not running, please start event loop.")
+            return 2
+
+        if not event:
+            log.error("EventLoop: event is null, please check event")
             return 1
 
-        if self.m_thread and threading.get_ident() == self.m_thread.ident:
-            log.warning(
-                "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve deadlock")
+        # 自 join 防护读取持队列锁：与 start 持锁创建线程互斥串行，避免无锁并发读写
+        with self.m_queueMutex:
+            in_worker = self.m_thread is not None and threading.get_ident() == self.m_thread.ident
+        if in_worker:
+            log.error(
+                "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve "
+                "deadlock")
             event.handle()
             return 0
 
@@ -875,7 +881,11 @@ class EventLoop:
 
         with tmp_condition:
             event.m_waitCallback = callback
-            self.post(event)
+            # TOCTOU 防护（对齐 main）：仅在实际入队成功后才等待——检查与入队之间循环被停止/销毁时
+            # post 返回非零，直接返回避免等待一个永不被执行/触发的回调
+            rc = self.post(event)
+            if rc != 0:
+                return rc
             while not notified[0]:
                 tmp_condition.wait()
 
