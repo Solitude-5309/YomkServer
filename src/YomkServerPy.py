@@ -442,7 +442,7 @@ class YomkContext(YomkService):
         if not contextMonitor.monitor_func:
             log.error(
                 "monitor_func is empty, please check ContextMonitor.m_monitor_func.")
-            return YomkResponse(ResStatus.eNo, "monitor_func is empty")
+            return YomkResponse(ResStatus.eNo, "context monitor function is empty")
 
         with self.m_contextsMutex.gen_wlock():
             entry = self.m_contexts.get(contextMonitor.key)
@@ -466,7 +466,7 @@ class YomkContext(YomkService):
         if not contextChecker.check_func:
             log.error(
                 "check_func is empty, please check ContextChecker.m_check_func.")
-            return YomkResponse(ResStatus.eNo, "check_func is empty")
+            return YomkResponse(ResStatus.eNo, "checkFunc is empty")
 
         with self.m_contextsMutex.gen_wlock():
             entry = self.m_contexts.get(contextChecker.key)

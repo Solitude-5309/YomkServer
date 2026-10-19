@@ -219,7 +219,13 @@ def context_turn_off_monitor() -> YomkResponse:
 
 
 def context_set_monitor(key: type[str], monitor: type[Callable[[Context], None]], async_monitor: type[bool] = False) -> YomkResponse:
-    contextMonitor = ContextMonitor(key, monitor, async_monitor)
+    # async_monitor=True 时用户回调投递到异步位、同步位以 no-op 占位（对齐 main
+    # 单函数 + bool 标志的门面语义；服务端为两函数位形态，同步位空函数仅占位，
+    # 因 async 位存在即走异步路径，占位函数不会被执行）
+    if async_monitor:
+        contextMonitor = ContextMonitor(key, lambda c: None, monitor)
+    else:
+        contextMonitor = ContextMonitor(key, monitor, False)
     return _api_request("/YomkContext/set_monitor", contextMonitor)
 
 

@@ -13,8 +13,8 @@
 #   4. 系统默认安装 /opt/yomk
 # 行为:
 #   1. 自动探测 lib/pythonX.Y/site-packages 并设置 PYTHONPATH
-#   2. 逐个运行 TESTS 清单（快->慢，stress 类压尾），测试文件位于 test/YomkServer/
-#      子目录（按模块分类，对齐 main Test/<模块>/ 布局），每个测试在独立临时工作目录运行
+#   2. 逐个运行 TESTS 清单（快->慢，stress 类压尾），测试文件按模块子目录分类
+#      （TESTS 项带模块前缀，对齐 main Test/<模块>/ 布局），每个测试在独立临时工作目录运行
 #   3. 任一测试失败（退出码非 0 / 超时）-> 立即停止，输出 [FAIL] 行摘要与日志路径
 #   4. 日志落盘: test/test_logs/<时间戳>/<测试名>.log + summary.log
 # 剔除说明: main 的 --sanitizer 插桩与 /tmp/yomk_logger_* 残留清理为 C++ 特有机制，无 python 对应
@@ -23,8 +23,8 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# 测试文件目录：按模块分子目录分类（对齐 main Test/<模块>/ 布局，当前全部为基础框架模块）
-TEST_DIR="${SCRIPT_DIR}/YomkServer"
+# 测试文件定位：TESTS 项带模块子目录前缀（YomkServer/TestYomkPkg 形态），
+# 完整路径 = test/<TESTS 项>.py，与 main "可执行平铺、子目录仅源码组织" 的组织精神一致
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 PREFIX=""
@@ -104,27 +104,32 @@ done
 export PYTHONPATH="${PY_SITE_DIR}:${PYTHONPATH}"
 # -------------el 2. 探测安装产物并设置 PYTHONPATH ----------------
 
-# 测试清单：按模块分组、快->慢，stress 类压尾（与 test/YomkServer/ 下 Test*.py 一一对应，
+# 测试清单：按模块分组、快->慢，stress 类压尾（项带模块子目录前缀，test/<模块>/<名>.py；
 # 新增测试在此登记；模块轮测试追加对应模块分组与条目）
 TESTS=(
     # YomkServer 模块（基础服务框架）
-    TestYomkPkg
-    TestYomkService
-    TestYomkServer
-    TestYomkAPINotInit
-    TestYomkAPILifecycle
-    TestYomkBoot
-    TestYomkShutdownSeq
-    TestYomkConcurrency
+    YomkServer/TestYomkPkg
+    YomkServer/TestYomkService
+    YomkServer/TestYomkServer
+    YomkServer/TestYomkAPINotInit
+    YomkServer/TestYomkAPILifecycle
+    YomkServer/TestYomkBoot
+    YomkServer/TestYomkShutdownSeq
+    YomkServer/TestYomkConcurrency
+    # YomkContext 模块（对齐 main 顺序：CRUD -> CheckerMonitor -> Lifecycle -> Concurrency，并发压尾）
+    YomkContext/TestYomkContextCRUD
+    YomkContext/TestYomkContextCheckerMonitor
+    YomkContext/TestYomkContextLifecycle
+    YomkContext/TestYomkContextConcurrency
 )
 
 # -------------sl 3. 门禁检查（对齐 main precheck_bin） ----------------
 MISSING=()
 for t in "${TESTS[@]}"; do
-    [ -f "${TEST_DIR}/${t}.py" ] || MISSING+=("${t}.py")
+    [ -f "${SCRIPT_DIR}/${t}.py" ] || MISSING+=("${t}.py")
 done
 if [ ${#MISSING[@]} -gt 0 ]; then
-    echo "错误: ${TEST_DIR} 缺少以下测试文件（共 ${#MISSING[@]} 个）:"
+    echo "错误: ${SCRIPT_DIR} 缺少以下测试文件（共 ${#MISSING[@]} 个）:"
     for t in "${MISSING[@]}"; do echo "   - ${t}"; done
     exit 1
 fi
@@ -159,24 +164,26 @@ START_TS=${SECONDS}
 
 for t in "${TESTS[@]}"; do
     IDX=$((IDX + 1))
-    log="${LOG_ROOT}/${t}.log"
+    # 显示名/日志名取纯测试名（对齐 main 可执行平铺的 ${t}.log 形态），路径按模块前缀定位
+    T_NAME="${t##*/}"
+    log="${LOG_ROOT}/${T_NAME}.log"
     CURRENT_WORKDIR="$(mktemp -d)"
-    printf "[%2d/%2d] %-32s " "${IDX}" "${TOTAL}" "${t}"
+    printf "[%2d/%2d] %-32s " "${IDX}" "${TOTAL}" "${T_NAME}"
     T0=${SECONDS}
     # stdin 喂入换行：兼容演示型测试中的 input() 人工暂停交互（无人值守时自动继续）
-    ( cd "${CURRENT_WORKDIR}" && printf '\n\n' | timeout "${TIMEOUT_SECS}" python3 "${TEST_DIR}/${t}.py" ) > "${log}" 2>&1
+    ( cd "${CURRENT_WORKDIR}" && printf '\n\n' | timeout "${TIMEOUT_SECS}" python3 "${SCRIPT_DIR}/${t}.py" ) > "${log}" 2>&1
     RC=$?
     ELAPSED=$((SECONDS - T0))
     cleanup_workdir
     if [ ${RC} -eq 0 ]; then
         echo "PASS (${ELAPSED}s)"
-        printf "[PASS] %-32s %ds\n" "${t}" "${ELAPSED}" >> "${SUMMARY}"
+        printf "[PASS] %-32s %ds\n" "${T_NAME}" "${ELAPSED}" >> "${SUMMARY}"
         PASS=$((PASS + 1))
     else
         REASON="退出码 ${RC}"
         [ ${RC} -eq 124 ] && REASON="超时(>${TIMEOUT_SECS}s)"
         echo "FAIL (${REASON}, ${ELAPSED}s)"
-        printf "[FAIL] %-32s %s\n" "${t}" "${REASON}" >> "${SUMMARY}"
+        printf "[FAIL] %-32s %s\n" "${T_NAME}" "${REASON}" >> "${SUMMARY}"
         echo "-------------------------------------------"
         echo "测试 ${t} 失败: ${REASON}"
         echo "完整日志: ${log}"
