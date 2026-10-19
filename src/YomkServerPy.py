@@ -403,6 +403,9 @@ class YomkContext(YomkService):
         self.install_func("/turn_on_monitor", self.turn_on_monitor)
         self.install_func("/turn_off_monitor", self.turn_off_monitor)
         self.install_func("/set_monitor", self.set_monitor)
+        self.install_func("/keys", self.keys)
+        self.install_func("/key", self.key_info)
+        self.install_func("/all", self.list_all)
 
     def turn_on_monitor(self, pkg):
         self.m_monitorEnabled = True
@@ -548,6 +551,55 @@ class YomkContext(YomkService):
                             monitor.monitor_func(ctx)
 
         return YomkResponse(ResStatus.eOk, "set context success")
+
+    def keys(self, pkg):
+        with self.m_contextsMutex.gen_rlock():
+            # 排序输出对齐 main std::map 迭代序（字典序）
+            key_list = sorted(self.m_contexts.keys())
+        return YomkResponse(ResStatus.eOk, "ok", key_list)
+
+    def key_info(self, pkg):
+        key = pkg
+        if not key:
+            log.error("key is empty, please check key.")
+            return YomkResponse(ResStatus.eNo, "key is empty")
+
+        with self.m_contextsMutex.gen_rlock():
+            if key not in self.m_contexts:
+                log.error(
+                    f"YomkContext key: {key} is not exist, please check key.")
+                return YomkResponse(ResStatus.eNo, "key is not exist")
+            value = self.m_contexts[key]
+            with self.m_checkersMutex.gen_rlock():
+                checker_on = key in self.m_checkers
+                with self.m_monitorsMutex.gen_rlock():
+                    line = self._info_line(
+                        key, value, checker_on, self.m_monitors.get(key, []))
+
+        return YomkResponse(ResStatus.eOk, line)
+
+    def list_all(self, pkg):
+        lines = []
+        with self.m_contextsMutex.gen_rlock():
+            # 排序遍历对齐 main std::map 迭代序（字典序）
+            for key in sorted(self.m_contexts.keys()):
+                value = self.m_contexts[key]
+                with self.m_checkersMutex.gen_rlock():
+                    checker_on = key in self.m_checkers
+                    with self.m_monitorsMutex.gen_rlock():
+                        lines.append(self._info_line(
+                            key, value, checker_on, self.m_monitors.get(key, [])))
+        return YomkResponse(ResStatus.eOk, "ok", lines)
+
+    def _info_line(self, key, value, checker_on, monitors):
+        # 组装单个 key 的元信息行：key [类型名] checker:on|off monitors:N(async:M)（对齐 main contextInfoLine）
+        async_count = 0
+        for monitor in monitors:
+            if monitor.async_monitor_func:
+                async_count += 1
+        return (f"{key} [{type(value).__name__}] "
+                f"checker:{'on' if checker_on else 'off'} "
+                f"monitors:{len(monitors)}(async:{async_count})")
 
 
 class YomkFunctionPool(YomkService):

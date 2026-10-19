@@ -101,6 +101,9 @@ class EventLoopPkg:
 | `YomkApi.context_turn_on_monitor()` | 开启监控器 |
 | `YomkApi.context_turn_off_monitor()` | 关闭监控器 |
 | `YomkApi.context_set_monitor(key, func, async_monitor=False)` | 设置监控函数（async_monitor=True 时异步回调监控函数） |
+| `YomkApi.context_info_keys()` | 枚举全部 key（对齐 main CONTEXT_INFO_KEYS） |
+| `YomkApi.context_info_key(key)` | 查询单 key 元信息行（对齐 main CONTEXT_INFO_KEY） |
+| `YomkApi.context_info_all()` | 查询全部 key 元信息行（对齐 main CONTEXT_INFO_ALL） |
 
 ### EventLoop
 | API | 说明 |
