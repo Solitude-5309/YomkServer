@@ -379,18 +379,23 @@ class YomkFuncInfo:
 # modules
 
 
+class ContextEntry:
+    # YomkContext 单条目内部结构（对齐 main Context{value, checker, monitors}），
+    # 与消息包 Context 区分，仅服务内部使用
+    def __init__(self, value):
+        self.value = value
+        self.checker = None    # check_func 或 None（main 条目 checker 可空）
+        self.monitors = []     # [Monitor]
+
+
 class YomkContext(YomkService):
     def __init__(self, server):
         super().__init__(server)
         self.set_name("/YomkContext")
-        self.m_contexts = {}
+        self.m_contexts = {}     # {key: ContextEntry}（单条目结构对齐 main）
         self.m_contextsMutex = rwlock.RWLockFair()
         self.m_checkerEnabled = False
-        self.m_checkers = {}
-        self.m_checkersMutex = rwlock.RWLockFair()
         self.m_monitorEnabled = False
-        self.m_monitors = {}
-        self.m_monitorsMutex = rwlock.RWLockFair()
 
     def init(self):
         self.install_func("/create", self.create)
@@ -428,16 +433,14 @@ class YomkContext(YomkService):
                 "monitor_func is empty, please check ContextMonitor.m_monitor_func.")
             return YomkResponse(ResStatus.eNo, "monitor_func is empty")
 
-        with self.m_contextsMutex.gen_rlock():
-            if contextMonitor.key not in self.m_contexts:
+        with self.m_contextsMutex.gen_wlock():
+            entry = self.m_contexts.get(contextMonitor.key)
+            if entry is None:
                 log.info(
                     f"YomkContext key: {contextMonitor.key} is not exist, please check ContextMonitor.m_key.")
                 return YomkResponse(ResStatus.eNo, "key is not exist")
-
-        with self.m_monitorsMutex.gen_wlock():
-            self.m_monitors.setdefault(
-                contextMonitor.key, []
-            ).append(Monitor(contextMonitor.monitor_func, contextMonitor.async_monitor_func))
+            entry.monitors.append(Monitor(
+                contextMonitor.monitor_func, contextMonitor.async_monitor_func))
 
         return YomkResponse(ResStatus.eOk, "set context monitor success")
 
@@ -454,14 +457,13 @@ class YomkContext(YomkService):
                 "check_func is empty, please check ContextChecker.m_check_func.")
             return YomkResponse(ResStatus.eNo, "check_func is empty")
 
-        with self.m_contextsMutex.gen_rlock():
-            if contextChecker.key not in self.m_contexts:
+        with self.m_contextsMutex.gen_wlock():
+            entry = self.m_contexts.get(contextChecker.key)
+            if entry is None:
                 log.info(
                     f"YomkContext key: {contextChecker.key} is not exist, please check ContextChecker.m_key.")
                 return YomkResponse(ResStatus.eNo, "key is not exist")
-
-        with self.m_checkersMutex.gen_wlock():
-            self.m_checkers[contextChecker.key] = contextChecker.check_func
+            entry.checker = contextChecker.check_func
 
         return YomkResponse(ResStatus.eOk, "set checker success")
 
@@ -490,7 +492,7 @@ class YomkContext(YomkService):
                 log.error(
                     f"key already exists: {ctx.key}, please check Context.m_key.")
                 return YomkResponse(ResStatus.eNo, "key already exists")
-            self.m_contexts[ctx.key] = ctx.value
+            self.m_contexts[ctx.key] = ContextEntry(ctx.value)
         return YomkResponse(ResStatus.eOk, "create context success")
 
     def destroy(self, key):
@@ -514,8 +516,9 @@ class YomkContext(YomkService):
                 log.error(
                     f"key is not exist: {ctx.key}, please check Context.m_key.")
                 return YomkResponse(ResStatus.eNo, "key is not exist", ctx.value)
+            value = self.m_contexts[ctx.key].value
 
-        return YomkResponse(ResStatus.eOk, "get context success", self.m_contexts[ctx.key])
+        return YomkResponse(ResStatus.eOk, "get context success", value)
 
     def set(self, ctx):
         if not isinstance(ctx, Context):
@@ -526,36 +529,35 @@ class YomkContext(YomkService):
             return YomkResponse(ResStatus.eNo, "key is empty")
 
         with self.m_contextsMutex.gen_wlock():
-            if ctx.key not in self.m_contexts:
+            entry = self.m_contexts.get(ctx.key)
+            if entry is None:
                 log.error(
                     f"key is not exist: {ctx.key}, please check Context.m_key.")
                 return YomkResponse(ResStatus.eNo, "key is not exist")
 
             # 类型校验对齐 main：同名 key 的值类型名必须一致（新值为 None 时
             # NoneType 必不匹配，自然被拒；main set 亦无独立空值分支）
-            if type(self.m_contexts[ctx.key]).__name__ != type(ctx.value).__name__:
+            if type(entry.value).__name__ != type(ctx.value).__name__:
                 log.error(
                     f"context type not match: {ctx.key}, please check Context.m_value.")
                 return YomkResponse(ResStatus.eNo, "context type not match")
 
-            if self.m_checkerEnabled:
-                with self.m_checkersMutex.gen_rlock():
-                    if ctx.key in self.m_checkers:
-                        if (self.m_checkers[ctx.key](ctx) == CheckStatus.eReject):
-                            return YomkResponse(ResStatus.eNo, "checker reject set context")
+            if self.m_checkerEnabled and entry.checker:
+                if (entry.checker(ctx) == CheckStatus.eReject):
+                    return YomkResponse(ResStatus.eNo, "checker reject set context")
 
-            self.m_contexts[ctx.key] = ctx.value
+            entry.value = ctx.value
+            # 锁内快照监控列表，锁外执行（监控执行形态对齐属 C4）
+            monitors_snapshot = list(entry.monitors)
 
         if self.m_monitorEnabled:
-            with self.m_monitorsMutex.gen_rlock():
-                if ctx.key in self.m_monitors:
-                    for monitor in self.m_monitors[ctx.key]:
-                        if (monitor.async_monitor_func):
-                            t = threading.Thread(
-                                target=monitor.monitor_func, args=(ctx,))
-                            t.start()
-                        else:
-                            monitor.monitor_func(ctx)
+            for monitor in monitors_snapshot:
+                if (monitor.async_monitor_func):
+                    t = threading.Thread(
+                        target=monitor.monitor_func, args=(ctx,))
+                    t.start()
+                else:
+                    monitor.monitor_func(ctx)
 
         return YomkResponse(ResStatus.eOk, "set context success")
 
@@ -576,12 +578,7 @@ class YomkContext(YomkService):
                 log.error(
                     f"YomkContext key: {key} is not exist, please check key.")
                 return YomkResponse(ResStatus.eNo, "key is not exist")
-            value = self.m_contexts[key]
-            with self.m_checkersMutex.gen_rlock():
-                checker_on = key in self.m_checkers
-                with self.m_monitorsMutex.gen_rlock():
-                    line = self._info_line(
-                        key, value, checker_on, self.m_monitors.get(key, []))
+            line = self._info_line(key, self.m_contexts[key])
 
         return YomkResponse(ResStatus.eOk, line)
 
@@ -590,23 +587,18 @@ class YomkContext(YomkService):
         with self.m_contextsMutex.gen_rlock():
             # 排序遍历对齐 main std::map 迭代序（字典序）
             for key in sorted(self.m_contexts.keys()):
-                value = self.m_contexts[key]
-                with self.m_checkersMutex.gen_rlock():
-                    checker_on = key in self.m_checkers
-                    with self.m_monitorsMutex.gen_rlock():
-                        lines.append(self._info_line(
-                            key, value, checker_on, self.m_monitors.get(key, [])))
+                lines.append(self._info_line(key, self.m_contexts[key]))
         return YomkResponse(ResStatus.eOk, "ok", lines)
 
-    def _info_line(self, key, value, checker_on, monitors):
+    def _info_line(self, key, entry):
         # 组装单个 key 的元信息行：key [类型名] checker:on|off monitors:N(async:M)（对齐 main contextInfoLine）
         async_count = 0
-        for monitor in monitors:
+        for monitor in entry.monitors:
             if monitor.async_monitor_func:
                 async_count += 1
-        return (f"{key} [{type(value).__name__}] "
-                f"checker:{'on' if checker_on else 'off'} "
-                f"monitors:{len(monitors)}(async:{async_count})")
+        return (f"{key} [{type(entry.value).__name__}] "
+                f"checker:{'on' if entry.checker else 'off'} "
+                f"monitors:{len(entry.monitors)}(async:{async_count})")
 
 
 class YomkFunctionPool(YomkService):
