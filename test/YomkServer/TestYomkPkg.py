@@ -10,14 +10,15 @@ S3. Event / EventLoopPkg 结构契约：默认构造字段、带参构造透传�
 S4. YomkResponse 契约：默认构造（eInvalid/空 msg/None data）、枚举值序
     （eInvalid=-1/eOk=0/eNo=1）、双参构造、三参构造 data 透传
 S5. 框架结构体默认值（python 对应子集）：Function/CallFunction/Context/
-    ContextChecker/ContextMonitor/YomkFuncInfo 默认构造与字段
+    ContextChecker/ContextMonitor/YomkFuncInfo/LogFile/Log/ConsoleLogProxy
+    默认构造与字段
 
 剔除说明（语言机制剔除口径，非缺陷）：
 - main S1（15 标量 + 15 Array 共 30 个标准类型消息包）与 S2（四种解包宏全分支）
   依赖 YomkMsg 宏与 dynamic_pointer_cast 体系：python 方针明确消息包为普通类、
   宏体系不复刻，无框架侧被测对象，不设对应用例
-- main S5 中 LogFile/Log/ConsoleLogProxy/VoidPointer 为 Logger 模块与 C 语言特有
-  结构，python 无对应类型，留模块轮
+- main S5 中 VoidPointer 为 C 语言特有结构（void* 裸指针），python 无对应类型，
+  保留书面差异；LogFile/Log/ConsoleLogProxy 已随 Logger 模块轮落地并回填断言
 - main Event 默认构造 m_response 为 YomkResponse()（status=eInvalid）；python
   既有定稿 m_response 初始为 None，语义同为"未执行时 response 为空"
 
@@ -28,12 +29,15 @@ import sys
 
 from YomkServerPy import (
     CallFunction,
+    ConsoleLogProxy,
     Context,
     ContextChecker,
     ContextMonitor,
     Event,
     EventLoopPkg,
     Function,
+    Log,
+    LogFile,
     ResStatus,
     YomkFuncInfo,
     YomkResponse,
@@ -140,6 +144,17 @@ def s5_struct_defaults():
     fi = YomkFuncInfo()
     check(fi.func_name == "" and fi.msg_name == "",
           "YomkFuncInfo 默认：func_name/msg_name 空")
+
+    # Log 族三结构（Logger 模块轮回填，对齐 main TestYomkPkg.cpp L264-271）
+    lf = LogFile()
+    check(lf.m_logger == "" and lf.m_dir == "",
+          "LogFile 默认：logger/dir 空")
+    lg = Log()
+    check(lg.m_log == "" and lg.m_logger == "" and lg.m_tag == "",
+          "Log 默认：内容/logger/tag 空（m_level 无默认初始化语义不作值断言）")
+    cp = ConsoleLogProxy()
+    check(cp.m_consoleLogProxyFunc is None,
+          "ConsoleLogProxy 默认：代理 func None")
 
 
 def main():

@@ -3,7 +3,9 @@ from enum import Enum
 import logging
 import os
 import queue
+import sys
 import threading
+import time
 import weakref
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable
@@ -365,6 +367,178 @@ class EventLoopPkg:
         self.m_eventloopName = event_loop_name
         self.m_defaultServiceFunc = default_service_func
         self.m_msgName = msg_name
+
+
+class LogFile:
+    def __init__(self, logger="", dir=""):
+        self.m_logger = logger
+        self.m_dir = dir
+
+
+class Log:
+    # 对齐 main yomk::Log：ELogLevel 固定 int 底层类型（eDebug=0/eInfo=1/eWarn=2/eError=3），
+    # 非法值注入合法化（log 路径 default 降级 Info 分支可触达）
+    eDebug = 0
+    eInfo = 1
+    eWarn = 2
+    eError = 3
+
+    def __init__(self, level=eInfo, log_msg="", logger="", tag=""):
+        self.m_level = level
+        self.m_log = log_msg
+        self.m_logger = logger   # 日志器名：服务端按其查找/惰性创建日志器实例
+        self.m_tag = tag         # 日志标签：随记录显示 [tag] 段，区别于 m_logger
+
+
+class ConsoleLogProxy:
+    def __init__(self, console_log_proxy_func=None):
+        # func(Log) -> bool，None 等价卸载
+        self.m_consoleLogProxyFunc = console_log_proxy_func
+
+
+def _yomk_err_pos_log(msg):
+    # 对齐 main YOMK_ERR_POS_LOG：框架错误提示直写 stdout（可被测试捕获），带调用点位置前缀
+    frame = sys._getframe(1)
+    sys.stdout.write("[Yomk] [" + frame.f_code.co_filename + ":" + str(frame.f_lineno) + "] [" +
+                     frame.f_code.co_name + "] " + msg + "\n")
+    sys.stdout.flush()
+
+
+def _yomk_log_local_time_formatted():
+    # Logger 模块内部工具（对齐 main YomkLogTime.h 的 yomkLogLocalTimeFormatted 单一实现）：
+    # 本地时间戳 "[YYYY-MM-DD HH:MM:SS.mmm]"
+    now = time.time()
+    lt = time.localtime(now)
+    ms = int(round((now - int(now)) * 1000)) % 1000
+    return "[%04d-%02d-%02d %02d:%02d:%02d.%03d]" % (
+        lt.tm_year, lt.tm_mon + 1, lt.tm_mday,
+        lt.tm_hour, lt.tm_min, lt.tm_sec, ms)
+
+
+class ConsoleLogger:
+    # 对齐 main ConsoleLogger：控制台日志器，四级别 stdout 输出、
+    # 空 tag 回退日志器名、非法级别降级 Info
+    def __init__(self):
+        self.m_name = "MainLogger"
+        self.m_mutex = threading.Lock()
+
+    def get_name(self):
+        return self.m_name
+
+    def set_name(self, name):
+        self.m_name = name
+
+    def log(self, log_level, tag, log_msg):
+        time_str = _yomk_log_local_time_formatted()
+
+        with self.m_mutex:
+            # tag 优先显示；空 tag 回退日志器名，保持旧行为（对齐 main）
+            tag_shown = tag if tag else self.m_name
+            if log_level == Log.eDebug:
+                self._emit(time_str, "[Debug]", tag_shown, log_msg)
+            elif log_level == Log.eInfo:
+                self._emit(time_str, "[Info ]", tag_shown, log_msg)
+            elif log_level == Log.eWarn:
+                self._emit(time_str, "[Warn ]", tag_shown, log_msg)
+            elif log_level == Log.eError:
+                self._emit(time_str, "[Error]", tag_shown, log_msg)
+            else:
+                _yomk_err_pos_log("Unknown log level: " + str(log_level) +
+                                  ", using Info level instead.")
+                self._emit(time_str, "[Info ]", tag_shown, log_msg)
+
+    @staticmethod
+    def _emit(time_str, level_tag, tag_shown, log_msg):
+        # 直写 stdout 并 flush（对齐 main std::cout << ... << std::endl）
+        sys.stdout.write(time_str + " " + level_tag +
+                         " [" + tag_shown + "] " + log_msg + "\n")
+        sys.stdout.flush()
+
+
+class FileLogger:
+    # 对齐 main FileLogger：文件日志器，log 入内存缓冲、write 追加落盘清缓冲、
+    # 析构自动 write 兜底；init 建目录与空文件（P2-b：异常捕获转 bool 不穿透）
+    def __init__(self):
+        self.m_name = "MainLogger"
+        self.m_dir = ""
+        self.m_logBuffer = ""
+        self.m_logBufferMutex = threading.Lock()
+
+    def __del__(self):
+        # 析构兜底（对齐 main ~FileLogger -> write）：缓冲未落盘内容不丢；
+        # try 防护解释器关闭期属性缺失
+        try:
+            self.write()
+        except Exception:
+            pass
+
+    def get_name(self):
+        return self.m_name
+
+    def set_name(self, name):
+        self.m_name = name
+
+    def get_dir(self):
+        return self.m_dir
+
+    def set_dir(self, dir):
+        self.m_dir = dir
+
+    def init(self):
+        log_file_path = self.m_dir + "/" + self.m_name + ".log"
+        dir_path = os.path.dirname(log_file_path)
+        try:
+            if dir_path and not os.path.exists(dir_path):
+                os.makedirs(dir_path)   # 对齐 create_directories（多级递归）
+        except OSError as e:
+            _yomk_err_pos_log("init file logger fs error: " +
+                              log_file_path + ", " + str(e))
+            return False
+        try:
+            with open(log_file_path, "w"):
+                pass   # 建空文件（ofstream 默认 truncate 语义）
+        except OSError:
+            _yomk_err_pos_log("create log file failed: " + log_file_path)
+            return False
+        return True
+
+    def log(self, log_level, tag, log_msg):
+        time_str = _yomk_log_local_time_formatted()
+
+        # tag 由日志器统一拼接（对齐 main）：空 tag 不加前缀
+        tag_prefix = ("[" + tag + "] ") if tag else ""
+
+        with self.m_logBufferMutex:
+            if log_level == Log.eDebug:
+                self._append_line(time_str, tag_prefix, log_msg, " [Debug] ")
+            elif log_level == Log.eInfo:
+                self._append_line(time_str, tag_prefix, log_msg, " [Info ] ")
+            elif log_level == Log.eWarn:
+                self._append_line(time_str, tag_prefix, log_msg, " [Warn ] ")
+            elif log_level == Log.eError:
+                self._append_line(time_str, tag_prefix, log_msg, " [Error] ")
+            else:
+                _yomk_err_pos_log("Unknown log level: " + str(log_level) +
+                                  ", using Info level instead.")
+                self._append_line(time_str, tag_prefix, log_msg, " [Info ] ")
+
+    def _append_line(self, time_str, tag_prefix, log_msg, level_tag):
+        # 缓冲行格式对齐 main appendLine：时间戳 + " [级别] " + tag 前缀 + 内容 + 换行
+        self.m_logBuffer += time_str + level_tag + tag_prefix + log_msg + "\n"
+
+    def write(self):
+        with self.m_logBufferMutex:
+            # 空缓冲不触碰文件（对齐 main：write 失败不清缓冲、内容不丢语义由 Direct 断言）
+            if not self.m_logBuffer:
+                return
+            try:
+                with open(self.m_dir + "/" + self.m_name + ".log", "a") as log_file:
+                    log_file.write(self.m_logBuffer)
+            except OSError:
+                _yomk_err_pos_log("open log file failed: " +
+                                  self.m_dir + "/" + self.m_name + ".log")
+                return
+            self.m_logBuffer = ""
 
 
 class Monitor:
