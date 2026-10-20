@@ -17,7 +17,10 @@
 #      （TESTS 项带模块前缀，对齐 main Test/<模块>/ 布局），每个测试在独立临时工作目录运行
 #   3. 任一测试失败（退出码非 0 / 超时）-> 立即停止，输出 [FAIL] 行摘要与日志路径
 #   4. 日志落盘: test/test_logs/<时间戳>/<测试名>.log + summary.log
-# 剔除说明: main 的 --sanitizer 插桩与 /tmp/yomk_logger_* 残留清理为 C++ 特有机制，无 python 对应
+#   5. 运行前清理 /tmp/yomk_logger_* 残留（上次崩溃遗留）；全部结束后复查现场残留，
+#      发现则清理并计为失败（对齐 main 行为 1/5；python 侧 YomkLogger 测试同样在
+#      gettempdir() 建 yomk_logger_lg*_<pid> 临时目录，中途崩溃/超时时测试内自清理不会执行）
+# 剔除说明: main 的 --sanitizer 插桩为 C++ 特有机制，无 python 对应
 # 测试程序风格约定: 退出码 0=全部通过，非 0=存在失败用例（[FAIL] 行输出）
 
 set -u
@@ -33,7 +36,7 @@ FULL_MODE=0
 USER_TIMEOUT=0
 
 usage() {
-    sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 }
 
@@ -70,6 +73,35 @@ cleanup_workdir() {
 }
 trap cleanup_workdir EXIT
 trap 'echo ""; echo "被用户中断"; exit 130' INT TERM
+
+# 运行前清理 /tmp/yomk_logger_* 残留（对齐 main clean_residue，调用时机同 main: 参数解析后）
+clean_residue() {
+    shopt -s nullglob
+    local residue=(/tmp/yomk_logger_*)
+    shopt -u nullglob
+    if [ ${#residue[@]} -gt 0 ]; then
+        echo "-- 清理上次运行残留的测试产物: ${#residue[@]} 个 /tmp/yomk_logger_* 目录"
+        rm -rf "${residue[@]}"
+    fi
+}
+
+# 全部结束后复查现场：发现残留则清理并计为失败（对齐 main check_residue；
+# 残留 = 对应测试的清理逻辑未在正常路径覆盖的信号）
+check_residue() {
+    shopt -s nullglob
+    local residue=(/tmp/yomk_logger_*)
+    shopt -u nullglob
+    if [ ${#residue[@]} -gt 0 ]; then
+        echo "[FAIL] 测试结束后发现现场残留（${#residue[@]} 个）:"
+        for p in "${residue[@]}"; do echo "   - ${p}"; done
+        rm -rf "${residue[@]}"
+        echo "       已清理，但对应测试的清理逻辑未在正常路径覆盖，请排查"
+        return 1
+    fi
+    return 0
+}
+
+clean_residue
 
 # -------------sl 2. 探测安装产物并设置 PYTHONPATH ----------------
 # 探测链：--prefix > 仓库本地 build/prefix > YOMK_PREFIX_PATH > /opt/yomk
@@ -131,6 +163,11 @@ TESTS=(
     YomkEventLoop/TestYomkEventLoopLifecycle
     YomkEventLoop/TestYomkEventLoopConcurrency
     YomkEventLoop/TestYomkEventLoopStress
+    # YomkLogger 模块（对齐 main 顺序：Direct 类直连 -> Lifecycle -> Concurrency -> Stress，压测压尾）
+    YomkLogger/TestYomkLoggerDirect
+    YomkLogger/TestYomkLoggerLifecycle
+    YomkLogger/TestYomkLoggerConcurrency
+    YomkLogger/TestYomkLoggerStress
 )
 
 # -------------sl 3. 门禁检查（对齐 main precheck_bin） ----------------
@@ -210,6 +247,15 @@ for t in "${TESTS[@]}"; do
     fi
 done
 # -------------el 5. 运行测试（失败即停） ----------------
+
+# 现场残留验收（对齐 main: 输出同步落 summary，发现残留整体判定失败）
+if ! check_residue | tee -a "${SUMMARY}"; then
+    echo ""
+    echo "==========================================="
+    echo " 测试后现场残留检查未通过，整体判定失败"
+    echo "==========================================="
+    exit 1
+fi
 
 # -------------sl 6. 结果摘要（对齐 main） ----------------
 TOTAL_ELAPSED=$((SECONDS - START_TS))
