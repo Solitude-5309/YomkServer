@@ -16,6 +16,7 @@ description: 基于YomkServerPy框架的模块化Python工程编程。核心理�
 | **YomkContext** | 全局 K-V 状态管理（Checker防非法迁移、Monitor监听变更） |
 | **YomkEventLoop** | 线程隔离事件循环（同循环顺序执行、不同循环并行） |
 | **YomkFunctionPool** | 动态函数池（运行时注册/热替换） |
+| **YomkLogger** | 分级日志（控制台/文件四级别、代理、内省） |
 
 唯一入口：`import YomkApi`
 
@@ -51,7 +52,7 @@ ProjectName/
 3. `MyBoot.after()`：调用 `/ConfigService/load` 加载配置，随后请求 `/get`（name）与 `/version`（工程版本号）并输出
 4. 消息包为普通 Python 类，集中定义在 `msgs/YomkMsgs.py`
 5. 运行方式：`bash check_env.sh` 检查环境（PYTHONPATH 由框架安装环节配置）→ `python main.py`
-6. **版本号传递**：工程版本在 `typedefine/TypeDefine.py` 定义 `APP_VERSION` 常量（python 工程无编译期注入，对应 main 分支 project(VERSION)+宏注入），由 `ConfigService` 的 `/version` 接口返回（不放 config.json），`MyBoot.after()` 请求该接口并输出版本号
+6. **版本号传递**：工程版本在 `typedefine/TypeDefine.py` 定义 `APP_VERSION` 常量（单一来源：本文件），由 `ConfigService` 的 `/version` 接口返回（不放 config.json），`MyBoot.after()` 请求该接口并输出版本号
 
 ### 生成规则
 
@@ -133,18 +134,18 @@ ExtensionName/
 
 ### 关键约定
 
-1. **包名与扩展名同名**：包目录与 `import` 名直接用扩展名（如 `TemplateExtension`），与 main 分支 CMake 项目名/include 目录名一致；占位符替换规则：`ExtensionName` → 用户指定名（包目录、import 语句、版本字符串前缀同步替换），服务类 `XxxService`，不做大小写转换
-2. **版本常量独立 `version.py`（顺序无关，防循环导入）**：`EXTENSION_VERSION` 常量为版本单一来源，放包内独立 `version.py`（python 扩展无编译期注入，对应 main 的 project(VERSION)+EXTENSION_VERSION 宏）；服务模块以 `from .version import EXTENSION_VERSION` 导入。**禁止**在 `__init__.py` 内定义常量再被子模块 `from . import EXTENSION_VERSION` 取用：该写法依赖 `__init__` 的语句顺序，IDE/linter 的 import 自动重排会把子模块导入挪到常量定义之前，安装后即触发 circular import（实测踩坑）；独立模块后 `__init__.py` 仅剩 re-export 语句，任何 import 顺序都正确
+1. **包名与扩展名同名**：包目录与 `import` 名直接用扩展名（如 `TemplateExtension`）；占位符替换规则：`ExtensionName` → 用户指定名（包目录、import 语句、版本字符串前缀同步替换），服务类 `XxxService`，不做大小写转换
+2. **版本常量独立 `version.py`（顺序无关，防循环导入）**：`EXTENSION_VERSION` 常量为版本单一来源，放包内独立 `version.py`；服务模块以 `from .version import EXTENSION_VERSION` 导入。**禁止**在 `__init__.py` 内定义常量再被子模块 `from . import EXTENSION_VERSION` 取用：该写法依赖 `__init__` 的语句顺序，IDE/linter 的 import 自动重排会把子模块导入挪到常量定义之前，安装后即触发 circular import（实测踩坑）；独立模块后 `__init__.py` 仅剩 re-export 语句，任何 import 顺序都正确
 3. **模板接口最小化**：模板服务默认只包含一个 `/version` 接口，版本以字符串拼接返回（`f"ExtensionName v{EXTENSION_VERSION}"`），不生成任何示例业务接口（如加减乘除）；业务功能通过「继续扩展」添加
 4. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
 5. **安装走 install.sh**：交互询问 YomkServerPy 安装路径（默认取 `$YOMK_PREFIX_PATH`），探测 site-packages 并校验框架模块后，将扩展包幂等复制到 site-packages（与框架安装到一起）；安装目录不可写时用 sudo；装后以仅含 site-packages 的 PYTHONPATH 验证 `import`（模拟新终端环境）
-6. **测试程序就地运行**：测试脚本不含路径自举（与 main 测试程序 `find_package` 已安装扩展的语义一致），直接 `python3` 运行，依赖扩展已安装，不随扩展安装；通过 `YomkApi.new_service` 注册服务并验证功能，输出 `[PASS]`/`[FAIL]` 与 Test Summary，存在失败时退出码为 1
+6. **测试程序就地运行**：测试脚本不含路径自举，直接 `python3` 运行，依赖扩展已安装，不随扩展安装；通过 `YomkApi.new_service` 注册服务并验证功能，输出 `[PASS]`/`[FAIL]` 与 Test Summary，存在失败时退出码为 1
 7. **README 使用示例完整可复制**：使用示例必须提供完整的 main.py（含 import、`YomkApi.init()`、`new_service` 注册扩展服务、请求与输出），用户复制后即可运行；不得只提供请求代码片段
 8. **不适用项（语言差异）**：无 CMake 包导出（原生 import 即引用）、无 ldconfig 注册（site-packages 已在 PYTHONPATH 内）、无 include/src 头文件分层（`__init__.py` re-export 即对外接口）
 
 ### 生成规则
 
-- 优先复制模板：本 skill 所在 `skill/.qoder/skills/` 目录的上层即 YomkServerPy 仓库根；若其下存在 `template/extension/` 目录，优先复制并替换扩展名/类名占位符；目录不存在时按 [examples.md](examples.md) 示例7 逐文件生成
+- 优先复制模板：本 skill 所在 `skill/yomkserverpy-modular/` 目录的上层即 YomkServerPy 仓库根；若其下存在 `template/extension/` 目录，优先复制并替换扩展名/类名占位符；目录不存在时按 [examples.md](examples.md) 示例7 逐文件生成
 - 将 `ExtensionName` 替换为用户指定名称
 - 所有文件必须完整生成，确保 `bash install.sh` 可直接安装运行
 
@@ -171,6 +172,12 @@ ExtensionName/
 3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
 4. 消息定义集中 `msgs/`，服务实现放 `services/`
 5. 配置路径通过 Context 传递，不用构造参数
+
+### 日志
+
+- 业务体内日志用门面：`YomkApi.console_log_info_tag(tag, *args)`（同族 warn/error/debug），内容头自动注入 `[行号]` 定位调用处
+- 无独立 tag 需求时用无 tag 便捷函数 `console_log_info(*args)`（缺省 tag "MainLogger"）；文件日志先 `file_log_create(log_dir, log_file)` 再 `file_log_info_tag(log_file, tag, *args)`（同族便捷版）
+- 叙事横幅/演示输出走 `print`，不占日志通道
 
 ## 详细参考
 
