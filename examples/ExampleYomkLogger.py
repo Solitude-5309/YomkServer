@@ -25,9 +25,9 @@ ExampleYomkLogger —— YomkLogger 日志系统快速上手示例（面向初�
   内省：  logger_info_loggers、logger_info_logger、logger_info_all
   删除：  file_log_delete
 
-与 main（C++ 宏）的映射口径：
-- C++ 无 tag 宏（YOMK_INFO 等）等价于 tag="MainLogger"，python 侧显式传递；
-- python 门面同样在内容开头注入 "[行号]" 定位调用处；
+门面使用口径：
+- 无独立 tag 需求时，tag 统一传缺省日志器名 "MainLogger"；
+- 门面在内容开头注入 "[行号]" 定位调用处；
 - 横幅与代理前缀走 print 而非框架日志：级别关闭/代理拦截时叙事仍然可见，
   这样"被吞掉的日志"才能被解释。
 """
@@ -81,10 +81,10 @@ def main():
     #
     # 步骤1：控制台日志四级别（默认 tag）
     #
-    # C++ 无 tag 宏 YOMK_INFO/WARN/ERROR/DEBUG 使用默认日志器名 "MainLogger"。
+    # tag 缺省约定：无独立 tag 需求时统一用缺省日志器名 "MainLogger"。
     # 控制台输出格式四段：[时间] [级别] [tag] [行号] 内容，
     # 例如：[2026-10-20 15:00:00.123] [Info ] [MainLogger] [91] hello
-    # （门面与 main 宏一致，自动把 "[行号]" 拼到内容开头，方便定位调用处。）
+    # （门面自动把 "[行号]" 拼到内容开头，方便定位调用处。）
     #
     print_step(1, "控制台日志四级别（默认 tag）",
                "下面 4 条按 INFO/WARN/ERROR/DEBUG 输出，注意级别字段与 tag 定位。")

@@ -250,7 +250,7 @@ python ExampleYomkService.py
 
 ## 示例
 
-面向用户的可运行示例（对齐 main 分支 Examples 设计；Python 脚本源码即可运行，不随库安装，位于源码树 `examples/` 目录）：
+面向用户的可运行示例：
 
 | 示例 | 演示内容 |
 |---|---|
@@ -267,7 +267,7 @@ cd <源码目录>
 # 或：python3 examples/ExampleYomkContext.py
 ```
 
-多文件示例的组织方式本身也是教程（对齐 main Examples 布局）：
+多文件示例的组织方式本身也是教程：
 
 ```
 examples/
@@ -281,7 +281,7 @@ examples/
 
 ## 测试
 
-一键测试脚本 `./test/run_tests.sh` 已就绪（对齐 main 分支 Test/run_tests.sh 布局）：
+一键测试脚本 `./test/run_tests.sh` 已就绪：
 
 ```bash
 ./test/run_tests.sh                      # 使用 $YOMK_PREFIX_PATH（缺省 /opt/yomk）
@@ -291,7 +291,7 @@ examples/
 
 说明：
 
-- **当前 `test/` 暂无用例**：目录预留用于全面测试集合（对齐 main 分支 `Test/` 设计），无 `Test*.py` 时脚本提示并正常退出
+- **当前 `test/` 暂无用例**：目录预留用于全面测试集合，无 `Test*.py` 时脚本提示并正常退出
 - 将来补充测试后即插即用：自动探测 `lib/pythonX.Y/site-packages` 并设置 PYTHONPATH、依次运行 `Test*.py`、**失败即停**、`timeout` 超时保护、日志落盘 `test/test_logs/<时间戳>/`
 
 ---

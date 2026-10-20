@@ -11,16 +11,14 @@ TestYomkService.py —— YomkService 命名/函数注册/调用白盒单元测�
 6. invoke：命中（自身响应 + pkg 透传回显）、非法名/未安装返回 eNo 契约消息
 7. 空服务器守卫：YomkService(None) 构造后不崩溃 + request/async_request 契约
 
-剔除与差异说明（语言机制映射，非功能缺口）：
-- main 第 7 节 deleted 标志位断言剔除：weakFunc/deleted/markDeleted 弱绑定判活
-  整体为语言机制剔除项（python 功能函数为直接引用，无弱绑定包装层）
-- 解包宏体系剔除：python 消息包为普通类，"pkg 为空解包失败返回 eNo" 的守卫
-  由测试函数内显式判断承载（消息契约保持一致："pkg is null"）
-- 空守卫差异（私有实现体剔除项）：main 空 server 时全部方法走空实现分支；
-  python 无转发层，set_name/install_func/func_infos/invoke 直接作用于本地
-  字段/表，仅 request/async_request 保留 server 判空契约（与 main 一致）。
-  本文件第 7 节按 python 现状文档化断言，不伪造 main 形态
-- invoke 的 pkg 参数为必填（main 为默认参 nullptr），测试显式传 None
+语言机制说明（非功能缺口）：
+- deleted/markDeleted 弱绑定判活不适用：python 功能函数为直接引用，无弱绑定包装层
+- python 消息包为普通类，"pkg 为空解包失败返回 eNo" 的守卫
+  由测试函数内显式判断承载（消息契约："pkg is null"）
+- 空服务器守卫形态：python 无转发层，set_name/install_func/func_infos/invoke 直接作用于本地
+  字段/表，仅 request/async_request 保留 server 判空契约。
+  本文件第 7 节按 python 现状文档化断言
+- invoke 的 pkg 参数为必填，测试显式传 None
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """
@@ -52,7 +50,7 @@ def find_func_info(infos, func_name):
 
 
 class DemoPkg:
-    """演示消息包：python 消息包为普通类（main 标准 String 包的对应载体）"""
+    """演示消息包：python 消息包为普通类"""
 
     def __init__(self, d=""):
         self.d = d
@@ -77,7 +75,7 @@ class DemoService(YomkService):
         return 0
 
     def echo(self, pkg):
-        # main 的 String 解包回显（解包宏剔除）：pkg 为空时函数内守卫返回 eNo
+        # String 解包回显：pkg 为空时函数内守卫返回 eNo
         if not pkg:
             return YomkResponse(ResStatus.eNo, "pkg is null")
         return YomkResponse(ResStatus.eOk, "echo:" + pkg.d)
@@ -203,10 +201,10 @@ def test_null_server_guards():
     ret = srv.async_request("/SomeService/func")         # 不应崩溃（静默）
 
     check(srv.get_name() == "x",
-          "空 server 下 set_name 本地字段直接生效（现状文档化，main 空实现保持空名）")
+          "空 server 下 set_name 本地字段直接生效（现状文档化）")
     found, _ = find_func_info(srv.func_infos(), "/x")
     check(found,
-          "空 server 下 install_func 本地表直接生效（现状文档化，main 空实现不安装）")
+          "空 server 下 install_func 本地表直接生效（现状文档化）")
     check(ret is None, "空 server 下 async_request 静默返回 None")
 
     resp = srv.request("/SomeService/func")
@@ -215,7 +213,7 @@ def test_null_server_guards():
 
     resp = srv.invoke("/x", None)
     check(resp.status == ResStatus.eInvalid,
-          "空 server 下 invoke 执行本地函数返回其响应（现状文档化，main 返回 eNo service is null）")
+          "空 server 下 invoke 执行本地函数返回其响应（现状文档化）")
 
 
 def main():

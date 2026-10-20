@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-TestYomkLoggerDirect.py —— ConsoleLogger / FileLogger 类直连测试（对齐 main
-Test/YomkLogger/TestYomkLoggerDirect.cpp，LG1 轮交付）
+TestYomkLoggerDirect.py —— ConsoleLogger / FileLogger 类直连测试
+（LG1 轮交付）
 
 覆盖内容：
 1. ConsoleLogger 直连：默认名 MainLogger、setName/getName 往返、四级别输出行格式 +
@@ -13,12 +13,12 @@ Test/YomkLogger/TestYomkLoggerDirect.cpp，LG1 轮交付）
    空内容成行、1MB 超长内容、tag 前缀语义、write 打不开文件保留缓冲恢复补写、
    析构自动 write、init 不可创建目录 false 不抛、init 目录为普通文件 false
 
-映射口径（语言机制差异，非功能缺口）：
-- main CoutCapture(rdbuf) -> contextlib.redirect_stdout(io.StringIO)；
+语言机制说明：
+- stdout 捕获用 contextlib.redirect_stdout(io.StringIO)；
   _yomk_err_pos_log 直写 stdout 可被捕获，CHECK 断言在捕获作用域外
-- main 析构作用域结束触发 -> CPython 引用计数：holder 容器持唯一引用 + del +
-  gc.collect() 显式触发 __del__（无引用环即刻归零，语义等价 main 确定性析构）
-- main ELogLevel:int + static_cast(99) -> python 直接传 int 99（无 UB 顾虑）
+- 析构触发依赖 CPython 引用计数：holder 容器持唯一引用 + del +
+  gc.collect() 显式触发 __del__（无引用环即刻归零，确定性析构）
+- 级别参数直接传 int 99（python 无枚举底层类型约束）
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """
@@ -56,7 +56,7 @@ def capture(func):
 
 
 def check_time_format(content):
-    # 每条日志行行首时间戳 [YYYY-MM-DD HH:MM:SS.mmm]（对齐 main checkTimeFormat）
+    # 每条日志行行首时间戳 [YYYY-MM-DD HH:MM:SS.mmm]
     for line in content.splitlines():
         if "[Debug]" in line or "[Info ]" in line or "[Warn ]" in line or "[Error]" in line:
             if not TIME_RE.match(line):

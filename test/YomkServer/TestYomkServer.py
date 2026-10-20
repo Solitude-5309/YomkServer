@@ -19,15 +19,12 @@ TestYomkServer.py —— YomkServer URL 解析路由与服务增删改查白盒�
    仅记录）
 8. start_service：空表、不支持名 continue、内置 creator 真实路径
 
-剔除与差异说明（语言机制映射，非功能缺口）：
-- main 第 4/5 节 deletedOnDeinit 断言剔除：deleted/markDeleted 弱绑定判活为语言
-  机制剔除项（python 功能函数为直接引用，无弱绑定包装层）
-- main 第 5 节删除即停端到端（全局弱绑定回调丢弃）剔除：python 无
-  YomkBindWeakSelf 对应物
-- main 第 8 节内置 creator 真实路径断言对齐（/YomkServerInfo）；python 内置服务映射
-  表已随 Logger 模块轮补齐 5/5（/YomkContext、/YomkFunctionPool、/YomkEventLoop、
-  /YomkLogger、/YomkServerInfo）
-- 解包宏 -> 普通类属性访问（DemoPkg 载体）；promise/future -> Event + 容器
+语言机制说明（非功能缺口）：
+- 功能函数为直接引用（无弱绑定包装层），deleted/markDeleted 判活机制不适用
+- 删除即停端到端（全局弱绑定回调丢弃）不适用：python 无全局弱绑定回调机制
+- 内置服务映射表 5/5：/YomkContext、/YomkFunctionPool、/YomkEventLoop、
+  /YomkLogger、/YomkServerInfo
+- 消息包解包为普通类属性访问（DemoPkg 载体）；promise/future 同步点以 Event + 容器承载
 
 说明：全程不触碰 shutdown/YomkApi.init（服务器实例独立，每节 YomkServer.create(1)，
 节首重置全局观测变量）；排空/幂等/拒新语义归后续 shutdown 序列测试
@@ -80,7 +77,7 @@ def name_count(names, srv_name):
 
 
 class DemoPkg:
-    """演示消息包：python 消息包为普通类（main 标准 String 包的对应载体）"""
+    """演示消息包：python 消息包为普通类"""
 
     def __init__(self, d=""):
         self.d = d
@@ -112,7 +109,7 @@ class RouteSrv(YomkService):
         return YomkResponse(ResStatus.eOk, "pong")
 
     def echo(self, pkg):
-        # main 的 String 解包回显（解包宏剔除）：pkg 为空时函数内守卫返回 eNo
+        # String 解包回显：pkg 为空时函数内守卫返回 eNo
         if not pkg:
             return YomkResponse(ResStatus.eNo, "pkg is null")
         return YomkResponse(ResStatus.eOk, "echo:" + pkg.d)
@@ -255,8 +252,6 @@ def test_replace_same_name():
     check(server.new_service(RouteSrv, "/Dup") == 0, "同名第二实例注册（替换）返回 0")
     check(g_init_count == init_before + 1, "替换：新服务 init 在旧服务清理后被调用")
     check(g_deinit_count == 1, "替换：旧服务 deinit 被调用")
-    # main 此处断言旧服务 deinit 时 deleted() 已为 true（先 markDeleted 承诺实证）——
-    # python 无 deleted/markDeleted（语言机制剔除项），断言剔除
 
     resp = server.request("/Dup/ping")
     check(resp.status == ResStatus.eOk and resp.msg == "pong", "替换：新服务可路由")
@@ -282,19 +277,15 @@ def test_del_service():
 
     check(server.del_service("/NotExist") == -1, "del_service 不存在服务返回 -1")
     check(server.new_service(RouteSrv, "/Del") == 0, "删除用例注册服务成功")
-    # main 此处断言 init 时已存下全局弱绑定回调——python 无 YomkBindWeakSelf，剔除
 
     check(server.del_service("/Del") == 0, "del_service 已存在服务返回 0")
     check(g_deinit_count == 1, "del_service 触发 deinit（锁外清理）")
-    # main 此处断言 markDeleted 先于 deinit——python 无 deleted/markDeleted，剔除
 
     resp = server.request("/Del/ping")
     check(resp.status == ResStatus.eNo and "service not found" in resp.msg,
           "删除后请求返回 eNo + service not found")
     check(not name_in(server.service_names(), "/Del"), "删除后 service_names 不含该名")
     check(server.del_service("/Del") == -1, "重复删除返回 -1")
-
-    # main 删除即停端到端（弱绑定回调丢弃）——python 无弱绑定包装层，剔除
 
 
 # 6. 内省接口：service_names / service_func_infos

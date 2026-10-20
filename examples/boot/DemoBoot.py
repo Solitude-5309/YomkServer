@@ -1,5 +1,5 @@
 """
-启动编排样例：继承 YomkBoot 组织多服务工程启动（对齐 main 分支 Examples/boot/DemoBoot）
+启动编排样例：继承 YomkBoot 组织多服务工程启动
 
 YomkApi.boot(boot) 按固定顺序执行三阶段，任一阶段返回非 0 即终止启动：
 1. before()：服务启动前准备资源（Context、EventLoop、公共函数等）

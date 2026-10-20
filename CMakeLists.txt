@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.14)
-project(YomkServerPy VERSION 1.3.31 LANGUAGES C)
+project(YomkServerPy VERSION 1.4.0 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 find_package(Python REQUIRED COMPONENTS Development)
@@ -80,7 +80,7 @@ if(WIN32)
 endif()
 
 # ---------- 9. 安装规则 ----------
-# 环境指纹报告（对齐 main 分支 abi_report 随库安装，用户可比对构建环境）
+# 环境指纹报告
 install(FILES ${CMAKE_BINARY_DIR}/abi_report.txt
         DESTINATION share/YomkServerPy)
 
@@ -118,7 +118,7 @@ install(FILES
     DESTINATION ${PYTHON_SITE_PACKAGES}
 )
 
-# 版本模块（源：project(VERSION)，对齐 main 的 YOMKSERVER_VERSION 编译期注入；YomkApi 顶部 import 暴露 __version__）
+# 版本模块（源：project(VERSION)；YomkApi 顶部 import 暴露 __version__）
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/src/YomkServerPyVersion.py.in"
     "${CMAKE_CURRENT_BINARY_DIR}/YomkServerPyVersion.py"

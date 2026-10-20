@@ -12,17 +12,15 @@ TestYomkConcurrency.py —— 多线程并发功能测试与持续压测（正�
    无重复执行、shutdown 后投递全拒
 7. N7 持续压测：8 线程混合操作（同步 ping / 异步 echo / service_names 内省）
    跨两个 server 实例，server2 在 100ms 后被并发 shutdown（连续两次调用顺带
-   验证幂等）；总操作数读 YOMK_TEST_STRESS_SCALE（缺省 100000 对齐 main
+   验证幂等）；总操作数读 YOMK_TEST_STRESS_SCALE（缺省 100000
    10 万级，快速模式由 run_tests.sh 注入 10000，clamp 下限 1000）
 
-剔除与差异说明（语言机制映射，非功能缺口）：
-- main 第 6 节"删除即停并发形态"整节剔除（A-2 语言机制剔除项）：弱绑定回调
-  判活（g_weakCb / g_rejected / "deleted or unregistered" 契约消息）无 python
-  对应，is_expected_no_response 合法集合同步剔除该消息
-- main 节 4 覆盖安装经 weakFunc 弱绑定包装 -> python 直接方法引用安装（A-2 映射）
-- main 节 7 的 server1 无显式 shutdown、由作用域析构兜底 -> python 无确定性
-  析构，以节末显式 shutdown 承载兜底语义（A-4 口径）
-- main std::atomic 计数 -> CPython list.append 原子操作承载并发计数（GIL 下
+语言机制说明（非功能缺口）：
+- "删除即停并发形态"（弱绑定回调判活 g_weakCb / g_rejected / "deleted or
+  unregistered" 契约消息）不适用 python 形态，is_expected_no_response 合法集合同步剔除该消息
+- 覆盖安装用直接方法引用安装（无弱绑定包装层）
+- server1 兜底销毁以节末显式 shutdown 承载（python 无确定性析构，A-4 口径）
+- 并发计数用 CPython list.append 原子操作承载（GIL 下
   安全），读取用 len()
 """
 
@@ -61,7 +59,7 @@ def reset_globals():
 
 
 def wait_for(pred, timeout_s, desc):
-    # 10ms 步进轮询，超时打印 [TIMEOUT] 返回 False（对齐 main waitFor）
+    # 10ms 步进轮询，超时打印 [TIMEOUT] 返回 False
     for _ in range(int(timeout_s / 0.01)):
         if pred():
             return True
@@ -90,7 +88,7 @@ class ConcSrv(YomkService):
     def echo(self, pkg):
         g_hit.append(1)
         if pkg is None:
-            # main 经解包宏取字段；python 直接属性访问需空值守卫（同 T2/T3 口径）
+            # 直接属性访问需空值守卫（同 T2/T3 口径）
             return YomkResponse(ResStatus.eNo, "pkg is null")
         return YomkResponse(ResStatus.eOk, pkg.d)
 
@@ -104,18 +102,18 @@ def is_expected_no_response(r):
         return False
     # 并发注册窗口：add_service 先入表后 init，request 可能在函数安装前命中服务，
     # 返回 function not found；这是框架设计窗口（非崩溃/悬垂缺陷），纳入可接受集合
-    # （main 合法集合含 "deleted or unregistered"，弱绑定剔除项，python 无此消息）
+    # （合法集合已剔除 "deleted or unregistered"，python 无此消息）
     return "service not found" in r.msg or "function not found" in r.msg
 
 
 def on_fired_ok(r):
-    # 异步回调计数：仅 eOk 计入（对齐 main 回调内 if eOk 判定）
+    # 异步回调计数：仅 eOk 计入
     if r.status == ResStatus.eOk:
         g_fired.append(1)
 
 
 def make_fired_cb(bucket):
-    # 节 7 回调工厂：回调携带所属 bucket（对齐 main lambda 捕获 atomic 指针）
+    # 节 7 回调工厂：回调携带所属 bucket
     def _cb(r):
         if r.status == ResStatus.eOk:
             bucket.append(1)
@@ -253,7 +251,7 @@ def test_request_install_func_concurrency():
         th.start()
         workers.append(th)
 
-    # 三参/两参覆盖安装交替（对齐 main weakFunc 包装形态 -> python 直接方法引用）
+    # 三参/两参覆盖安装交替
     for _ in range(200):
         echo_srv.install_func("/echo", echo_srv.echo, "String")
         echo_srv.install_func("/echo", echo_srv.echo)
@@ -323,7 +321,7 @@ def test_n7_stress():
           "7.2 注册 server2 /StressSrv 成功")
 
     # 总操作数：YOMK_TEST_STRESS_SCALE 缺省 100000（10 万级）/ 快速模式 10000，
-    # clamp 下限 1000；8 线程均分（对齐 main 每 server 4 线程 x 2 server）
+    # clamp 下限 1000；8 线程均分
     total_ops = int(os.environ.get("YOMK_TEST_STRESS_SCALE", "100000"))
     total_ops = max(total_ops, 1000)
     k_threads_per_server = 4
@@ -389,8 +387,8 @@ def test_n7_stress():
     check(len(fired2) <= len(posted2),
           "7.7 server2 shutdown 后异步无重复执行")
 
-    # main 的 server1 由作用域析构兜底；python 无确定性析构，
-    # 以显式 shutdown 承载兜底语义（A-4 口径）
+    # server1 的兜底销毁以显式 shutdown 承载（python 无确定性析构，
+    # A-4 口径）
     server1.shutdown()
 
 

@@ -1,8 +1,6 @@
 """
 TestYomkEventLoopLifecycle.py - EventLoop 三段语义（start 重启续跑 / stop 保留队列 / destroy 停后清空）白盒回归测试
 
-对齐 main Test/YomkEventLoop/TestYomkEventLoopLifecycle.cpp（781 行 12 节），节序同 main 源码。
-
 覆盖内容（12 个 Section）：
 1+2. stop 保留 + start 续跑：停止仅退出工作线程，未执行事件保留（pending 不减）；重启按 FIFO 续跑
 3.   destroy 清空：先停止再清空——排队事件永不执行、重启无任何执行（不可续跑）
@@ -17,15 +15,14 @@ TestYomkEventLoopLifecycle.py - EventLoop 三段语义（start 重启续跑 / st
      new_service 无参重注册后全链路恢复）
 10.  postWait×destroy 等待者释放：销毁清空队列时触发被丢弃事件的等待回调（3s 看门狗）
 12.  析构兜底释放等待者：不调 destroy 直接失去引用——del + gc.collect() 触发 __del__ 兜底，共享释放契约
-     （被丢弃事件的等待回调被触发，stop 哨兵消除竞态，weakref 归零断言析构完成；映射差异：main 等待者为
-     阻塞 postWait 线程且裸指针观测不阻止析构——python 方法栈帧持 self 使"阻塞等待者存在期间析构"不可达，
+     （被丢弃事件的等待回调被触发，stop 哨兵消除竞态，weakref 归零断言析构完成；python 方法栈帧持 self 使"阻塞等待者存在期间析构"不可达，
      以排队事件 waitCallback 标记回调等价承载同一契约）
 
 说明：白盒段直连 YomkServerPy.EventLoop 类；API 段 YomkApi.init(1) 单例拉起内置 /YomkEventLoop，
       末尾 YomkApi.shutdown() 收尾（进程级幂等，shutdown 后不可再初始化）。
       停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询 info_line 至 running:off
       确认 m_running 已置位后才释放阻塞事件，杜绝工作线程抢跑后续排队事件的竞态（确定性断言）。
-      阻塞门用 threading.Event 实现（main 原子自旋门的语言映射，1ms 轮询粒度由 wait/Event.wait 内化）。
+      阻塞门用 threading.Event 实现（1ms 轮询粒度由 wait/Event.wait 内化）。
 
 风格：脚本式 main + 失败计数，退出码 0/1（零第三方依赖）
 """
@@ -41,7 +38,7 @@ from YomkServerPy import Event, EventLoop
 
 FAILED = 0
 
-# ---- 文件级观测变量（main TSan-clean 风格映射：互斥量保护 + 全部访问持锁）----
+# ---- 文件级观测变量（互斥量保护 + 全部访问持锁）----
 _ORDER_LOCK = threading.Lock()
 _ORDER = []  # 事件执行顺序（tag）
 
@@ -79,7 +76,7 @@ def reset_ids():
         del _IDS[:]
 
 
-# ---- 文件级阻塞门：占住工作线程制造确定性排队（main 原子自旋门 -> threading.Event）----
+# ---- 文件级阻塞门：占住工作线程制造确定性排队（threading.Event）----
 class Gate:
     def __init__(self):
         self.started = threading.Event()
@@ -316,7 +313,7 @@ def section_7():
     check(loop.post_wait(Event("wb", None, thrower, "thr1")) == 0,
           "handler 抛 Exception 时 postWait 仍返回 0（异常被吞噬）")
 
-    # 未知异常分支（非 Exception，main throw 42 映射 BaseException 分支）
+    # 未知异常分支（非 Exception，以 BaseException 分支承载）
     def thrower2(pkg):
         raise BaseException("non-exception")
 
@@ -612,14 +609,14 @@ def section_12():
           == 0, "post 阻塞事件 g1 返回 0")
     check(wait_gate_started(2.0), "g1 已进入执行（阻塞占住工作线程）")
 
-    # T1 等待者映射：排队事件 e2 携带标记等待回调（main 为阻塞 postWait 线程——映射差异见文件头；
+    # T1 等待者：排队事件 e2 携带标记等待回调（映射差异见文件头；
     # 若 e2 被执行则 waitCallback 亦触发，由"未执行"断言区分）
     e2 = Event("wb", None, counting_handler("e2"), "e2")
     e2.m_waitCallback = marker.set
     check(holder[0].post(e2) == 0, "post 事件 e2 返回 0（携带等待回调）")
     check(wait_until(lambda: "pending:1" in holder[0].info_line(
         "wb", 3), 2.0), "e2 已入队（pending:1）")
-    time.sleep(0.1)  # 确保 e2 稳定排队（对齐 main 确定性窗口意图）
+    time.sleep(0.1)  # 确保 e2 稳定排队
 
     # 前置：显式 stop 退出 worker（E1 语义：stop 仅退线程不清队列——e2 保留）。
     # python 运行中栈帧持 self 强引用，"worker 执行中析构"不可达；stop 后帧消亡，失去引用方可触发 __del__

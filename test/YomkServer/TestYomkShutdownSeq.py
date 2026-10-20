@@ -11,12 +11,10 @@ TestYomkShutdownSeq.py —— async_request + shutdown 排空/幂等/拒新语�
 4. 嵌套排空拒绝：排空期嵌套发起的 asyncRequest 因 shutdown 已置位被拒绝，
    不无限排空
 
-剔除与差异说明（语言机制映射，非功能缺口）：
-- main 第 1 节 deletedOnDeinit 断言（shutdown 路径不置位 markDeleted、deinit 时
-  deleted() 为 false 与 delService 对比实证）与排空期弱绑定回调探针 2 断言剔除：
-  deleted/markDeleted/YomkBindWeakSelf 弱绑定判活为语言机制剔除项
-- main 第 4 节析构兜底整节剔除：python 无确定性析构（~YomkServerPrivate 兜底
-  触发 shutdown 无对应物），兜底语义由显式 shutdown 与进程退出 atexit 承载
+语言机制说明（非功能缺口）：
+- deleted/markDeleted/YomkBindWeakSelf 弱绑定判活为语言机制剔除项，
+  排空期弱绑定回调探针断言一并剔除
+- 析构兜底不适用：python 无确定性析构，兜底语义由显式 shutdown 与进程退出 atexit 承载
 
 说明：call_once 仅约束 YomkAPI.init 单例路径；本测试在类级直测 YomkServer，
 各 YomkServer.create 实例自持独立 shutdown 标志互不影响，单进程多实例即可完成
@@ -112,8 +110,7 @@ def test_drain_semantics():
 
     check(g_task_count == 100, "排空：100 个在途异步任务在 shutdown 返回前全部执行")
     check(g_deinit_count == 1, "排空：池停止后服务 deinit 被调用一次")
-    # main 此处另断言 deinit 时 deleted() 为 false 与排空期弱绑定探针 2 断言——
-    # python 无 deleted/markDeleted 与弱绑定包装层（语言机制剔除项），剔除
+    # 排空期弱绑定探针断言剔除（python 无 deleted/markDeleted 与弱绑定包装层）
 
 
 # 2. 拒新：shutdown 后异步投递被拒、回调永不触发；同步 request 现状文档化

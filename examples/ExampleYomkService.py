@@ -5,7 +5,7 @@ ExampleYomkService —— YomkService 服务定义与调用快速上手示例（
 "一切皆服务"：把业务逻辑封装为 YomkService 子类，注册到框架后
 任意位置用 URL "/服务名/函数名" 同步或异步调用。
 
-多服务工程结构（组织方式本身也是教程，对齐 main 分支 Examples 布局）：
+多服务工程结构（组织方式本身也是教程）：
 - msgs/DemoMsgs.py        消息包定义（服务间传输的数据结构）
 - services/CalcService    计算服务（被本脚本直接请求，内部跨服务调审计）
 - services/AuditService   审计服务（被 CalcService 调用）

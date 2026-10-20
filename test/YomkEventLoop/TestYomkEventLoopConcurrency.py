@@ -1,8 +1,6 @@
 """
 TestYomkEventLoopConcurrency.py - EventLoop 多线程并发正确性测试（白盒 + API 层）
 
-对齐 main Test/YomkEventLoop/TestYomkEventLoopConcurrency.cpp（454 行 5 节）。
-
 覆盖内容（5 个 Section）：
 1. 并发 post 保序 + 计数守恒：8 线程×40 事件并发投递，执行数==320 且执行序==eventId 严格递增序
    （单 worker FIFO + 锁内赋号入队，赋号序=入队序=执行序三序合一；严格递增蕴含 eventId 全局唯一）
@@ -13,13 +11,13 @@ TestYomkEventLoopConcurrency.py - EventLoop 多线程并发正确性测试（白
 5. API 层并发投递 + 内省轮询：4 线程并发 POST + 1 线程并发 INFO_LOOP（服务层读路径稳定性）
 
 设计边界（契约内使用，非缺陷）：
-- churn 仅单线程做 start/stop——start/stop 线程安全契约为调用方串行化（main 并发 start×2 竞争
-  m_worker move-assign 有 terminate 风险，python 同样以调用方串行化为契约）；
+- churn 仅单线程做 start/stop——start/stop 线程安全契约为调用方串行化（并发
+  start×2 的 worker 置换有终止线程风险，以调用方串行化为契约）；
 - churn 不含 destroy——丢弃已接受事件会破坏计数守恒语义，其等待者释放已由 Lifecycle Section 10 覆盖。
 
-语言映射说明：std::atomic 计数 -> list.append/len（GIL 单步原子，免锁）；原子自旋门 -> threading.Event；
+语言机制说明：并发计数用 list.append/len（GIL 单步原子，免锁）；原子自旋门以 threading.Event 承载；
 事件执行序列记录 -> list append 一次性构造快照；计数 handler 闭包持事件对象引用记 m_eventId
-（main 捕获裸指针依赖 run() 持 shared_ptr 的理由在 python 不存在——闭包直接持引用）。
+（闭包直接持引用，无悬垂风险）。
 
 风格：脚本式 main + 失败计数，退出码 0/1（零第三方依赖）
 """

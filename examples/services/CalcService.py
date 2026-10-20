@@ -1,12 +1,12 @@
 """
-计算服务：演示功能注册、回包携带数据与跨服务调用（对齐 main 分支 Examples/services/CalcService）
+计算服务：演示功能注册、回包携带数据与跨服务调用
 
 - /echo：最简请求回环（收到的消息原样放入回包 data）
 - /add ：收 AddReq 消息包，先跨服务调用 /AuditService/audit 审计，
          再将计算结果以 AddResp 放入回包 data
 
-python 版说明：服务内跨服务调用可用成员 self.server.request(...)（对齐 main
-的成员 request / YOMK_REQUEST），也可使用全局 YomkApi.request()（两者等价）。
+python 版说明：服务内跨服务调用可用成员 self.server.request(...)，
+也可使用全局 YomkApi.request()（两者等价）。
 跨服务失败时返回 eNo，向调用方传播失败。
 """
 

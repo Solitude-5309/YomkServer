@@ -1,7 +1,7 @@
 """
 TestYomkContextLifecycle.py —— YomkContext 服务生命周期与异常安全白盒测试（Context 模块 MC3）
 
-对齐 main Test/YomkContext/TestYomkContextLifecycle.cpp，覆盖内容：
+覆盖内容：
 1. init 效果（内省）：内置 /YomkContext 注册、init 装配 13 个功能函数（键集合逐一对齐）
 2. 基线运行：异步 monitor 池正常工作
 3. del_service 触发 deinit + 排空：删除前投递的异步 monitor 全部排空执行
@@ -9,15 +9,14 @@ TestYomkContextLifecycle.py —— YomkContext 服务生命周期与异常安全
 5. 重新注册 + monitor 池重建：new_service(YomkContext) 后 init 重新装配、池重建可用
 6. 异常安全：派生服务 init() 抛异常，add_service try/catch 回滚无残留
 
-剔除与差异说明（语言机制映射，非功能缺口）：
-- main 派生 ThrowContext init() 抛 std::bad_alloc -> python 抛 MemoryError 等价承载
+语言机制说明（非功能缺口）：
+- 派生服务 init() 抛 MemoryError 等价承载异常安全
   （add_service 以 try/except Exception 统一回滚，见 YomkServerPy.add_service）
-- main 重新注册经 YOMK_NEW_SERVICE(YomkContext, "/YomkContext")（include 非导出内部头）->
-  python 直接以 YomkServerPy.YomkContext 类名传门面 new_service，语言机制映射
+- 重新注册直接以 YomkServerPy.YomkContext 类名传门面 new_service
 
 风格：纯 main() + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
 全程使用门面单例拉起内置 /YomkContext；末尾调用 shutdown 干净 deinit 重注册实例
-（python 门面 shutdown 后 g_server 置 None、init 不再重建，与 main call_once 约束同构）
+（python 门面 shutdown 后 g_server 置 None、init 不再重建）
 """
 
 import sys
@@ -54,7 +53,7 @@ def check(cond, msg):
 
 
 def wait_for_count(bucket, target, timeout_s):
-    # 10ms 步进轮询等待计数达到 target（对齐 main waitForCount）
+    # 10ms 步进轮询等待计数达到 target
     for _ in range(int(timeout_s / 0.01)):
         if len(bucket) >= target:
             return True
@@ -64,12 +63,12 @@ def wait_for_count(bucket, target, timeout_s):
 
 class ThrowContext(YomkContext):
     # init() 抛异常验证 add_service 的 try/catch 回滚路径
-    # （对齐 main ThrowContext 抛 std::bad_alloc，模拟 init 内建池分配失败）
+    #
     def init(self):
         raise MemoryError("mock bad_alloc")
 
 
-# init 装配的 13 个功能函数（对齐 main 内省计数，并逐一对齐键集合）
+# init 装配的 13 个功能函数
 EXPECTED_FUNCS = {
     "/create", "/destroy", "/get", "/set",
     "/turn_on_checker", "/turn_off_checker", "/set_checker",

@@ -1,7 +1,7 @@
 """
 TestYomkContextConcurrency.py —— YomkContext 多线程并发功能测试与 10 万级压力测试（Context 模块 MC4）
 
-对齐 main Test/YomkContext/TestYomkContextConcurrency.cpp，覆盖内容：
+覆盖内容：
 1. 并发 get/set 共享键（m_contextsMutex 读写锁竞争）
 2. 并发 create/destroy 独立键（map 结构变更）
 3. 并发 set_monitor 同键（修复验证：写 monitors 在写锁内，push_back 无丢失/损坏）
@@ -11,18 +11,17 @@ TestYomkContextConcurrency.py —— YomkContext 多线程并发功能测试与 
 7. 同步 monitor 重入安全（monitor 在锁外执行，内层 Context API 不死锁）
 8. N7 压力：8 线程混合 Context 操作无崩溃/无挂起（总操作数读 YOMK_TEST_STRESS_SCALE）
 
-剔除与差异说明（语言机制映射，非功能缺口）：
-- main 书面豁免"重入 checker（checker 内调用 Context API）自死锁"：属设计约束
-  （checker 在写锁内执行），python 同构（checker 回调亦在写锁内），同样不构造该用例
-- main std::atomic 计数 -> CPython list.append 原子操作承载并发计数（GIL 下安全），
+语言机制说明（非功能缺口）：
+- "重入 checker（checker 内调用 Context API）自死锁"为设计约束
+  （checker 回调在写锁内执行），同样不构造该用例
+- 并发计数用 CPython list.append 原子操作承载（GIL 下安全），
   读取用 len()（T6 口径）
-- main 10 万级固定规模 -> 总操作数读 YOMK_TEST_STRESS_SCALE（缺省 100000 对齐 main，
+- 总操作数读 YOMK_TEST_STRESS_SCALE（缺省 100000，
   快速模式由 run_tests.sh 注入 10000，clamp 下限 1000），8 线程均分（T6 口径）
 
 风格：纯 main() + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
 门面单例拉起 /YomkContext，全程经门面 API 多线程并发路由（真实 API 路径）；
-各节用独立 key 前缀，末尾 shutdown（python 门面 shutdown 后 init 不再重建，
-与 main call_once 约束同构）
+各节用独立 key 前缀，末尾 shutdown（python 门面 shutdown 后 init 不再重建）
 """
 
 import os
@@ -63,7 +62,7 @@ def check(cond, msg):
 
 
 def wait_for(pred, timeout_s, desc):
-    # 10ms 步进轮询，超时打印 [TIMEOUT] 返回最终判定（对齐 main waitFor）
+    # 10ms 步进轮询，超时打印 [TIMEOUT] 返回最终判定
     for _ in range(int(timeout_s / 0.01)):
         if pred():
             return True
@@ -364,7 +363,7 @@ def main():
     context_turn_off_checker()
     context_turn_off_monitor()
 
-    # 总操作数：YOMK_TEST_STRESS_SCALE 缺省 100000（10 万级对齐 main 8x12500）/
+    # 总操作数：YOMK_TEST_STRESS_SCALE 缺省 100000（10 万级，8 线程均分）/
     # 快速模式 10000，clamp 下限 1000；8 线程均分（T6 口径）
     total_ops = int(os.environ.get("YOMK_TEST_STRESS_SCALE", "100000"))
     total_ops = max(total_ops, 1000)

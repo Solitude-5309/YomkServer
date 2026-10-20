@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 TestYomkPkg.py
-@brief 数据模型层独立测试（对齐 main Test/YomkServer/TestYomkPkg.cpp，基础轮子集）
+@brief 数据模型层独立测试
 
 覆盖内容（3 个 Section）：
 S3. Event / EventLoopPkg 结构契约：默认构造字段、带参构造透传、handle() 有无
@@ -13,14 +13,12 @@ S5. 框架结构体默认值（python 对应子集）：Function/CallFunction/Co
     ContextChecker/ContextMonitor/YomkFuncInfo/LogFile/Log/ConsoleLogProxy
     默认构造与字段
 
-剔除说明（语言机制剔除口径，非缺陷）：
-- main S1（15 标量 + 15 Array 共 30 个标准类型消息包）与 S2（四种解包宏全分支）
-  依赖 YomkMsg 宏与 dynamic_pointer_cast 体系：python 方针明确消息包为普通类、
-  宏体系不复刻，无框架侧被测对象，不设对应用例
-- main S5 中 VoidPointer 为 C 语言特有结构（void* 裸指针），python 无对应类型，
+语言机制说明（剔除口径，非缺陷）：
+- python 方针明确消息包为普通类（宏与 dynamic_pointer_cast 体系不复刻），
+  框架侧无标准类型消息包被测对象，不设对应用例
+- VoidPointer 为 C 语言特有结构（void* 裸指针），python 无对应类型，
   保留书面差异；LogFile/Log/ConsoleLogProxy 已随 Logger 模块轮落地并回填断言
-- main Event 默认构造 m_response 为 YomkResponse()（status=eInvalid）；python
-  既有定稿 m_response 初始为 None，语义同为"未执行时 response 为空"
+- Event 默认构造 m_response 初始为 None，语义为"未执行时 response 为空"
 
 风格：纯脚本 + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
 """
@@ -47,7 +45,7 @@ g_failed = 0
 
 
 def check(cond, msg):
-    # 对齐 main CHECK 宏：[ OK ]/[FAIL] [行号] 行输出 + 失败计数
+    # [ OK ]/[FAIL] [行号] 行输出 + 失败计数
     global g_failed
     line = sys._getframe(1).f_lineno
     if cond:
@@ -72,14 +70,14 @@ def s3_event_and_pkg():
         handled["count"] += 1
         return YomkResponse(ResStatus.eOk, "handled")
 
-    ev3 = Event("/L1", "p", func)  # 三参形态（tag 走默认参，对齐 main 三参构造重载）
+    ev3 = Event("/L1", "p", func)  # 三参形态（tag 走默认参）
     check(ev3.m_eventLoopName == "/L1" and ev3.m_pkg == "p" and ev3.m_eventId == 0 and ev3.m_tag == "",
           "Event 三参构造：字段透传，eventId 保持 0（入队时由框架分配）")
     ev3.handle()
     check(handled["count"] == 1 and ev3.m_response.status == ResStatus.eOk and ev3.m_response.msg == "handled",
           "Event handle：执行 serviceFunc 并填充 response")
 
-    ev4 = Event("/L2", None, None, "tag1")  # 四参形态（对齐 main 四参构造重载）
+    ev4 = Event("/L2", None, None, "tag1")  # 四参形态
     check(ev4.m_tag == "tag1" and ev4.m_serviceFunc is None,
           "Event 四参形态：tag 透传，func 可空")
 
@@ -125,7 +123,7 @@ def s4_yomk_response():
 # ============ S5. 框架结构体默认值 ============
 def s5_struct_defaults():
     print("===== S5. 框架结构体默认值 =====")
-    # python Function/CallFunction 无默认构造（参数必填），以空值构造对齐 main 结构体默认值断言
+    # python Function/CallFunction 无默认构造（参数必填），以空值构造断言默认值
     f = Function("", None)
     check(f.name == "" and f.msg_name == "" and f.func is None,
           "Function 空值构造：名称/消息名空、func None")
@@ -145,7 +143,7 @@ def s5_struct_defaults():
     check(fi.func_name == "" and fi.msg_name == "",
           "YomkFuncInfo 默认：func_name/msg_name 空")
 
-    # Log 族三结构（Logger 模块轮回填，对齐 main TestYomkPkg.cpp L264-271）
+    # Log 族三结构（Logger 模块轮回填）
     lf = LogFile()
     check(lf.m_logger == "" and lf.m_dir == "",
           "LogFile 默认：logger/dir 空")

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-TestYomkLoggerStress.py —— YomkLogger 压力测试（LG4，对齐 main
-Test/YomkLogger/TestYomkLoggerStress.cpp，6 节；断言数随 N 变化，N=1000 时 61 条）
+TestYomkLoggerStress.py —— YomkLogger 压力测试（LG4，6 节；
+断言数随 N 变化，N=1000 时 61 条）
 
-覆盖内容（6 节全量对齐）：
+覆盖内容（6 节）：
 S1 console 侧规模与热路径（Phase A N 个唯一 tag 惰性创建 + 1k/10k/100k/N 四规模点
 ALL 延迟扫描 / A2 1000 行内容守恒抽样 + 时间戳精确校验 / B 命中写 / C 级别 OFF 短路 /
 D proxy 短路 + 穿透恢复 / E 热 tag 重复写）；S2 file 侧激进规模（A N 个 logger 分片
@@ -16,33 +16,32 @@ B ALL 首行精确串 + 数据段与 LOGGERS 逐行一致 / C 单查 N 次 / D �
 B 分组全量回收 / C 残量扫除 -> LOGGERS 行数为 0 硬断言）；S6 收尾与磁盘清理（清理前
 磁盘足迹守恒 / shutdown 计时 / rmtree / 临时目录不存在硬断言 / RSS 峰值）
 
-映射口径（语言机制差异，非功能缺口）：
+语言机制说明：
 - 规模经 YOMK_TEST_STRESS_SCALE 参数化（缺省 100000，clamp 下限 1000；run_tests.sh
-  快速模式 export 10000、--full unset 回落缺省），对称激进口径同 main：console tag=N；
+  快速模式 export 10000、--full unset 回落缺省），激进规模口径：console tag=N；
   file logger=N（分片）+N/10（单目录对照）+2xN/100（S4-D）+1（S3 大缓冲）
   +N/500x8（S5 churn，建后即删但磁盘文件保留）→ 峰值约 1.11N+0.016N 个真实 .log 文件
   （FileLogger init 语义：创建即建空文件并建目录；删除接口不删磁盘文件）
 - 断言总数随 N 变化（S1A 扫描点个数 = 去重后的 {1000,10000,100000,N} clamp 交集），
-  与 main 同构：N=1000 时 61 条、N=10000 时 62 条、N=100000 时 63 条
+  N=1000 时 61 条、N=10000 时 62 条、N=100000 时 63 条
 - ThreadSafeCoutCapture(discard) -> contextlib.redirect_stdout(io.StringIO()) 丢弃
   不取值（热路径相万级输出不占内存也不干扰计时）；取值相（A2/C probe/D 穿透）同款
   捕获后 getvalue
 - std::atomic 计数 -> list.append + len()（GIL 单步原子）；停止门 -> threading.Event；
-  起始屏障 -> StartGate（Condition 版 ready+go，30s 超时对齐 main releaseGate 上限）
+  起始屏障 -> StartGate（Condition 版 ready+go，30s 超时上限）
 - 计时 steady_clock -> time.perf_counter；[BASELINE]/[ENV]/VmHWM 仅信息行不作断言
   （环境相关）；[ENV] 读 /proc/loadavg、/proc/meminfo MemAvailable，VmHWM 读
-  /proc/self/status，读不到降级 n/a（main readEnvSnapshot/readVmHWM 等价）
+  /proc/self/status，读不到降级 n/a
 - measureIntrospection 出参（badStatus/lastLines）-> 返回元组 (stat, bad, last_lines)；
   last_lines 取 len(resp.data) 免一次大规模列表拷贝（与解包后 size() 等价）
-- S4B 逐行一致用切片相等 all_lines[1:] == loggers_lines（语义同 main 循环逐行比较）
+- S4B 逐行一致用切片相等 all_lines[1:] == loggers_lines
 - S5B 全量回收的析构路径：python 服务层 delete_logger 锁外释放最后引用 -> __del__ ->
-  write()（缓冲均已在 S3 flush 或为空 -> 空写 no-op），对齐 main "规模已在 S5 回收、
-  析构无落盘 I/O 拖累"语义；S5A churn logger 每轮 1 行由当轮删除时 __del__ 落盘，
+  write()（缓冲均已在 S3 flush 或为空 -> 空写 no-op；规模已在 S5 回收、
+  析构无落盘 I/O 拖累）；S5A churn logger 每轮 1 行由当轮删除时 __del__ 落盘，
   磁盘文件保留（删除接口不删磁盘文件）
 - proxy 安装后全程不卸载（P4-e 卸载语义由 Lifecycle S3 覆盖），S1D 末恢复穿透态，
   不影响后续 Section 的响应码与落盘断言
-- 唯一 tag 直调 YomkApi.console_log_info_tag 运行时拼名（python 无宏层，语义即 main
-  直调静态函数），循环内拼名构造 N 个唯一 tag
+- 唯一 tag 直调 YomkApi.console_log_info_tag 运行时拼名，循环内拼名构造 N 个唯一 tag
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """
@@ -76,7 +75,7 @@ def check(cond, msg):
 
 def stress_scale():
     # 环境变量 YOMK_TEST_STRESS_SCALE（run_tests.sh 快速模式降规模用），
-    # 缺省 10 万，clamp 下限 1000（对齐 main stressScale）
+    # 缺省 10 万，clamp 下限 1000
     env = os.environ.get("YOMK_TEST_STRESS_SCALE")
     if not env:
         return 100000
@@ -149,7 +148,7 @@ def count_bad_occurrence(markers):
 
 
 def count_file_lines(path):
-    # 统计文件非空行数；打开失败返回 (False, 0)（对齐 main countFileLines 出参 ok）
+    # 统计文件非空行数；打开失败返回 (False, 0)
     try:
         with open(path) as f:
             return True, sum(1 for ln in f if ln.strip())
@@ -233,7 +232,7 @@ def read_vm_hwm():
 
 
 def read_env_snapshot():
-    # 采样环境快照（对齐 main readEnvSnapshot）：CPU 核数 + 负载 + 可用内存，
+    # 采样环境快照：CPU 核数 + 负载 + 可用内存，
     # 使 [BASELINE] 数据自带环境标注；纯信息行非断言，读不到降级 n/a
     env = "cpu=" + str(os.cpu_count() or 0)
     load = "n/a"
@@ -261,7 +260,7 @@ def read_env_snapshot():
 
 
 class StartGate:
-    # 起始屏障（对齐 main waitGate/releaseGate：ready 计数 + go 标志，带超时防挂死）
+    # 起始屏障
     def __init__(self):
         self._cv = threading.Condition()
         self._ready = 0

@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 TestYomkLoggerConcurrency.py —— YomkLogger 模块多线程并发正确性验证（LG3，
-对齐 main Test/YomkLogger/TestYomkLoggerConcurrency.cpp，5 节 / 72 断言）
+5 节 / 72 断言）
 
-覆盖内容（5 节全量对齐）：
+覆盖内容（5 节）：
 S1 并发 console_log 守恒 + 行完整性（只读命中路径，8x200 同 tag 预热后并发，验证
 ConsoleLogger m_mutex 整行互斥）；S2 并发新 tag 自动创建（P1-a 双检锁核心：S2a 8
 线程屏障对齐争用同一新 tag / S2b 8 线程分散唯一 tag / S2c P3-b 死分支登记）；S3
@@ -14,27 +14,25 @@ SET v1/v2，v1+v2 == log 总数守恒）；S4 并发 file logger 创建 x 写入
 4x10 轮多写者 WRITE 幂等）；S5 全量 churn + P3-a 内省原子快照判别（3x600=1800 对
 成对创建，LOGGERS/ALL 快照 C>=F 违例 == 0）
 
-映射口径（语言机制差异，非功能缺口）：
+语言机制说明：
 - ThreadSafeCoutCapture -> contextlib.redirect_stdout(io.StringIO)：主线程先换
   sys.stdout 再 spawn/join（子线程调用期解析 sys.stdout 即得捕获缓冲）；
   StringIO.write 单次调用 GIL 原子 + ConsoleLogger m_mutex 整行单次 write，
-  行完整性断言仅在"同一 logger"段做（设计边界同 main：跨 logger 段只断言 marker
-  计数守恒）。微差：main S2b/S3/S5 捕获降噪、S3 直打终端，python 统一捕获降噪
-  （S3/S5 断言不涉及输出内容，不受影响）
+  行完整性断言仅在"同一 logger"段做（设计边界：跨 logger 段只断言 marker
+  计数守恒，python 统一捕获降噪；S3/S5 断言不涉及输出内容，不受影响）
 - std::atomic 计数 -> list.append + len()（GIL 单步原子，免锁）；停止门
   g_s3Stop/g_s4cStop/g_s5Stop -> threading.Event；起始屏障 waitGate/releaseGate
   -> StartGate（Condition 版 ready 计数 + go 标志 + 10s 超时防挂死，语义逐字对应）
 - std::mutex + vector 快照收集 -> 线程本地 list 写自身槽位，join 后主线程汇总
   （无跨线程共享写，免锁）
-- 规模保真：S5 churn 3x600（1800 对）为 P3-a 判别式灵敏度前提，不下调（main 实测：
-  120 对假阴性 / 900 对 2 违例 / 1800 对 LOGGERS 8 + ALL 7 违例）；其余段规模
-  8x200 / 8x50 / 6+2+50 / 8x250+2 / 4x10 / 2x100 / 2x200 / 2x200 逐字对齐
+- 规模保真：S5 churn 3x600（1800 对）为 P3-a 判别式灵敏度前提，不下调；其余段规模
+  8x200 / 8x50 / 6+2+50 / 8x250+2 / 4x10 / 2x100 / 2x200 / 2x200
 - proxy v1/v2 -> 闭包函数对（恒返回 True 穿透态，不影响后续 Section），
   list.append 命中计数；SET 交替 50 轮写侧与 caller 读侧并发交错
-- python 无宏层：console_log_*/file_log_*_tag 即 main 静态函数与宏行号前缀的合一
-  形态，[行号] 注入在内容头部、marker 仍位于行尾，行尾 marker 守恒判定不受影响
+- console_log_*/file_log_*_tag 门面统一形态：[行号] 注入在内容头部、marker 仍位于
+  行尾，行尾 marker 守恒判定不受影响
 
-设计边界（契约内使用，非缺陷，同 main）：
+设计边界（契约内使用，非缺陷）：
 - 全程不调 /delete_logger（删除语义由 Lifecycle S8 覆盖）；proxy 安装后不卸载且
   v1/v2 恒穿透，不影响 S4/S5 输出与落盘断言；ALL 首行级别开关组合无原子保证，
   S5 仅断言格式合法与收尾精确串
@@ -78,7 +76,7 @@ def check_time_format(line):
 
 
 def count_lines(content):
-    # 统计非空行数（对齐 main countLines）
+    # 统计非空行数
     return sum(1 for ln in content.splitlines() if ln)
 
 
@@ -110,14 +108,14 @@ def count_lines_containing(lines, needle):
 
 
 def unpack_lines(resp):
-    # 解包 LOGGERS/ALL 的 list[str]；失败返回空列表（对齐 main unpackLines）
+    # 解包 LOGGERS/ALL 的 list[str]；失败返回空列表
     if resp.status != ResStatus.eOk or not resp.data:
         return []
     return list(resp.data)
 
 
 def count_logger_lines(lines):
-    # 统计 LOGGERS 行中的 console/file 段行数（对齐 main countLoggerLines）
+    # 统计 LOGGERS 行中的 console/file 段行数
     console_lines = 0
     file_lines = 0
     for line in lines:
@@ -131,7 +129,7 @@ def count_logger_lines(lines):
 
 def check_level_line_format(line):
     # 校验 ALL 首行格式：console:debug:(on|off) info:(on|off) warn:(on|off)
-    # error:(on|off) proxy:(on|off)（对齐 main checkLevelLineFormat 逐字段解析）
+    # error:(on|off) proxy:(on|off)
     pos = 0
 
     def match_field(key):
@@ -164,7 +162,7 @@ def is_legal_status(resp):
 
 
 class StartGate:
-    # 起始屏障（对齐 main waitGate/releaseGate：ready 计数 + go 标志，带超时防挂死）
+    # 起始屏障
     def __init__(self):
         self._cv = threading.Condition()
         self._ready = 0
@@ -194,7 +192,7 @@ def main():
     os.makedirs(tmp_dir, exist_ok=True)
     check(os.path.isdir(tmp_dir), f"临时目录创建成功: {tmp_dir}")
 
-    bad_status = []  # S4/S5 共用：非法状态码观测（对齐 main g_s5BadStatus）
+    bad_status = []  # S4/S5 共用：非法状态码观测
 
     # ========================================================================
     # Section 1：并发 console_log 守恒 + 行完整性（只读命中路径）
@@ -644,7 +642,7 @@ def main():
     # 1800 对（而非小规模）：判别式的灵敏度取决于"快照 console 段遍历耗时 W"与
     # "churn 一轮 console->file 间隔 G"的相对量级——违例需 W 完整覆盖 G。
     # 小规模（百级）下 W << G 几乎不可能触发（假阴性）；console 表提到 1800+ 项后
-    # W 与 G 同量级，违例成为可稳定观测的事件（main 实测：120 对 -> 0（假阴性），
+    # W 与 G 同量级，违例成为可稳定观测的事件（标定：120 对 -> 0（假阴性），
     # 900 对 -> 2，1800 对 -> LOGGERS 8 + ALL 7）
     k_churn_rounds = 600
     k_pair_total = k_churn_threads * k_churn_rounds  # 1800 对 logger

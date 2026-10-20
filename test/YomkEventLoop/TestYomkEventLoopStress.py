@@ -1,8 +1,6 @@
 """
 TestYomkEventLoopStress.py - EventLoop 压力测试（10 万级投递 + 大数据量 + QPS 基线记录）
 
-对齐 main Test/YomkEventLoop/TestYomkEventLoopStress.cpp（349 行 5 节）。
-
 覆盖内容（5 个 Section，规模 N 经 YOMK_TEST_STRESS_SCALE 环境变量参数化，缺省 100000）：
 1. 单线程 10 万级投递基线：post N 个 trivial 计数事件 -> drain，计数守恒 + 入队/消费 QPS 基线记录
 2. 8 线程并发 10 万级：并发 post -> drain，计数守恒 + 聚合 QPS 基线（高并发持续调用无崩溃）
@@ -13,8 +11,8 @@ TestYomkEventLoopStress.py - EventLoop 压力测试（10 万级投递 + 大数�
 
 说明：
 - QPS/耗时基线仅以 [BASELINE] 行记录、不作断言（环境噪声使性能断言不可靠）；
-- 计数 handler 为 GIL 原子映射（list.append/len，见 Concurrency docstring 语言映射说明）；
-  计时用 time.perf_counter（main steady_clock 映射）；
+- 计数 handler 为 GIL 原子承载（list.append/len，见 Concurrency docstring 语言机制说明）；
+  计时用 time.perf_counter；
 - 白盒段直连内部类 EventLoop；API 段 YomkApi.init 单例，末尾 YomkApi.shutdown 收尾。
 
 风格：脚本式 main + 失败计数，退出码 0/1（零第三方依赖）

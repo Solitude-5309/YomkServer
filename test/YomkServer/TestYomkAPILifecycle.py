@@ -12,7 +12,7 @@ TestYomkAPILifecycle.py —— YomkAPI init/shutdown 单例生命周期测试（
 5. 幂等：二次 shutdown 不崩溃；进程正常退出码 0 即证退出清理幂等
 
 推迟说明（模块轮）：
-- main 模块便捷 API 已初始化态行为留模块轮（Logger 便捷 API 随 Logger 模块轮在
+- 模块便捷 API 已初始化态行为留模块轮（Logger 便捷 API 已随 Logger 模块轮在
   NotInit 文件补全量守卫）
 
 说明：本程序验证已初始化态与关闭后态，与 TestYomkAPINotInit（未初始化态）进程

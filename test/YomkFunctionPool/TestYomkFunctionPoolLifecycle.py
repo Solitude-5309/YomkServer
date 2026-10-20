@@ -1,7 +1,7 @@
 """
 TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 基线测试
 
-对齐 main Test/YomkFunctionPool/TestYomkFunctionPoolLifecycle.cpp（8 节 52 断言，零剔除）：
+（8 节 52 断言，零剔除）：
 1. CRUD 闭环：REGISTER echo 函数 → CALL 回传消息 → UNREGISTER → CALL eNo
 2. 注册边界：空函数名 / None func 均 eInvalid；重复注册为"更新"语义（CALL 走新实现，msg 含 update）
 3. 注销边界：空名 eInvalid / 未注册名 eNo
@@ -13,13 +13,13 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
    用户函数异常穿透直达调用方——测试侧捕获验证 what；随后正常 CALL 验证池存活
 8. 超长名：65536 字符函数名全生命周期（REGISTER/CALL/INFO_NAME/UNREGISTER）eOk 且完整回显
 
-语言映射说明（形态差异，非功能缺口）：
-- main 宏 YOMK_FUNCTIONPOOL_REGISTER 2/3 参 → Function(name, func) / Function(name, func, "String")
-  （经门面 function_pool_register 的 msg_name 形参承载，语义一致）
-- main YomkUnPackPkg(StringArray) 解包 → YomkResponse.data 直接是 list[str]
-- main poolCount 的 SIZE_MAX 哨兵 → None
-- main std::atomic 探针计数 → list.append（GIL 原子，T 轮既有模式）
-- 全部经门面 API 测试（对齐 main 宏走 API 的形态），同时覆盖 invoke 路由链，无覆盖损失
+语言形态说明：
+- Function 双形态：Function(name, func) 无类型 / Function(name, func, "String") 声明类型
+  （经门面 function_pool_register 的 msg_name 形参承载）
+- 内省数据解包后 YomkResponse.data 直接是 list[str]
+- poolCount 的 SIZE_MAX 哨兵值以 None 承载
+- 探针计数用 list.append（GIL 原子，T 轮既有模式）
+- 全部经门面 API 测试，同时覆盖 invoke 路由链，无覆盖损失
 """
 
 import sys
@@ -50,7 +50,7 @@ def check(cond, name):
         print(f"[FAIL] {name}")
 
 
-# ---- 测试装置函数（形态对齐 main 装置）----
+# ---- 测试装置函数 ----
 
 def echo_func(pkg):
     # echo：回传入参 pkg（验证 CALL 消息透传）

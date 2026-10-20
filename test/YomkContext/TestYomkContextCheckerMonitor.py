@@ -1,7 +1,7 @@
 """
 TestYomkContextCheckerMonitor.py —— YomkContext checker 与 monitor（同步/异步）白盒测试（Context 模块 MC2）
 
-对齐 main Test/YomkContext/TestYomkContextCheckerMonitor.cpp，覆盖内容：
+覆盖内容：
 1. set_checker 边界：空 key、None checkFunc、不存在 key、正常设置
 2. turn_on_checker/turn_off_checker 开关语义
 3. checker accept/reject：accept 放行、reject 拦截且 value 不变
@@ -16,19 +16,19 @@ TestYomkContextCheckerMonitor.py —— YomkContext checker 与 monitor（同步
 12. 并发 set 异步保序：锁内入队 ⇒ 末条异步通知收敛到最终值（C1 回归）+ 每线程子序列严格递增（python 附加强化）
 13. 异步 monitor 排空（deinit）：shutdown 前排空全部异步任务
 
-剔除与差异说明（语言机制映射，非功能缺口）：
-- main 第 9 节"抛非 std::exception（throw 42）"变体：main 以 catch(...) 兜一切异常，
-  python 服务端以 except Exception 兜底（覆盖 python 惯例全部异常类型），二者语义等价；
-  python 侧以第二种 Exception 子类承载双异常形态。KeyboardInterrupt/SystemExit 等
-  BaseException 按 python 惯例不被 except Exception 捕获（与 main catch(...) 的有意
-  差异：保持 Ctrl-C 中断语义），不构造该病态用例
-- main 的异步 monitor 单函数 + /*async=*/true 标志 -> python 经门面
-  context_set_monitor(key, func, async_monitor=True) 同语义映射（门面把用户回调
+语言机制说明（非功能缺口）：
+- "抛非 Exception 类型"病态变体不构造：python 服务端以 except Exception 兜底
+  （覆盖 python 惯例全部异常类型）；
+  KeyboardInterrupt/SystemExit 等
+  BaseException 按 python 惯例不被 except Exception 捕获（有意设计：
+  保持 Ctrl-C 中断语义）
+- 异步 monitor 经门面
+  context_set_monitor(key, func, async_monitor=True) 设置（门面把用户回调
   投递到异步位、同步位以 no-op 占位，见 YomkApi.context_set_monitor）
 
 风格：纯 main() + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
 全程使用门面单例拉起内置 /YomkContext；异步排空用例置于末尾并调用 shutdown
-（python 门面 shutdown 后 g_server 置 None、init 不再重建，与 main call_once 约束同构）；
+（python 门面 shutdown 后 g_server 置 None、init 不再重建）；
 服务删除后重新注册/池重建归 MC3
 """
 
@@ -64,7 +64,7 @@ def check(cond, msg):
 
 
 def wait_for_count(bucket, target, timeout_s):
-    # 10ms 步进轮询等待计数达到 target（对齐 main waitForCount）
+    # 10ms 步进轮询等待计数达到 target
     for _ in range(int(timeout_s / 0.01)):
         if len(bucket) >= target:
             return True
@@ -235,17 +235,17 @@ def main():
     check(len(g_sync_monitor_calls) == 0, "关闭 monitor 后同步 monitor 不触发")
 
     # ============ Section 9: 同步 monitor 异常吞掉 ============
-    # （main 的非 std::exception 变体映射说明见文件头剔除说明）
+    # （非 Exception 变体说明见文件头）
     context_turn_on_monitor()
     resp = context_create("mon_throw", "t0")
     check(resp.status == ResStatus.eOk, "创建 mon_throw 成功")
 
-    # monitor A：抛 RuntimeError（对齐 main 抛 std::exception）
+    # monitor A：抛 RuntimeError
     context_set_monitor(
         "mon_throw",
         lambda c: (g_throw_a_calls.append(1),
                    (_ for _ in ()).throw(RuntimeError("sync monitor exception")))[0])
-    # monitor B：抛自定义 Exception 子类（对齐 main 抛非 std::exception 变体的双异常形态）
+    # monitor B：抛自定义 Exception 子类
     context_set_monitor(
         "mon_throw",
         lambda c: (g_throw_b_calls.append(1),

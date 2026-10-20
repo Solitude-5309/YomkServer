@@ -1,25 +1,22 @@
 """
 TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Context 模块 MC1）
 
-对齐 main Test/YomkContext/TestYomkContextCRUD.cpp，覆盖内容：
+覆盖内容：
 1. create：正常创建（str/int）、空 key、空 value（None）、重复 key
 2. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）
 3. set：正常 set、不存在 key、空 key、类型不匹配
 4. keys/keyInfo/listAll：随增删变化、空 key、不存在 key、信息行格式
 5. destroy：正常销毁、重复销毁、不存在 key、空 key（等价不存在）、销毁后 keys 计数
 
-剔除与差异说明（语言机制映射，非功能缺口）：
-- main "get 类型不匹配返回默认值"两节剔除：main 的 YOMK_CONTEXT_GET(String, ...)
-  类型校验发生在 YomkUnPackPkgT 宏解包层（eOk 路径解包失败返回调用方默认指针），
-  python 门面 context_get(key, default) 不携带目标类型参数、eOk 返回存储值本身，
-  调用方以 python 动态类型自然规避该失败路径（A-2 语言机制剔除项）
-- main 开头 SERVER_INFO_ALL 注册校验 -> python 以 server.service_names() 承载（A-4 口径）
-- keyInfo 信息行类型名为 python 原生类型名（str/int/bool），对齐 main 消息类型名
-  （String/Int32/Bool）的语言映射：main 行内类型名来自 YomkMkPtr 消息包类型，
-  python value 为原生对象、以 type().__name__ 呈现（C1 定稿口径），格式其余部分逐字一致
+语言机制说明（非功能缺口）：
+- 门面 context_get(key, default) 不携带目标类型参数、eOk 返回存储值本身，
+  调用方以 python 动态类型自然规避"类型不匹配"失败路径（A-2 语言机制剔除项）
+- 内置服务注册校验以 server.service_names() 承载（A-4 口径）
+- keyInfo 信息行类型名为 python 原生类型名（str/int/bool）：
+  value 为原生对象、以 type().__name__ 呈现（C1 定稿口径），格式其余部分逐字一致
 
 风格：纯 main() + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
-全程使用门面单例（对齐 main YOMK_INIT 拉起内置 /YomkContext 的真实 API 路径）；
+全程使用门面单例；
 不触发 checker/monitor，不触发 shutdown 排空（归 MC2/MC3）
 """
 
@@ -75,7 +72,7 @@ def main():
     check(resp.status == ResStatus.eNo, "create 空 key 返回 eNo")
     check(resp.msg == "key is empty", "create 空 key 错误消息一致")
 
-    # create：空 value（None 对齐 main nullptr）
+    # create：空 value（None）
     resp = context_create("null_value_key", None)
     check(resp.status == ResStatus.eNo, "create None value 返回 eNo")
     check(resp.msg == "value is empty", "create None value 错误消息一致")
@@ -128,7 +125,7 @@ def main():
     resp = context_info_key("str_key")
     check(resp.status == ResStatus.eOk, "keyInfo 正常 key 返回 eOk")
     check("str_key" in resp.msg, "keyInfo 消息包含 key")
-    check("str" in resp.msg, "keyInfo 消息包含类型名 str（main String 的语言映射）")
+    check("str" in resp.msg, "keyInfo 消息包含类型名 str")
     check("checker:off" in resp.msg, "keyInfo 消息包含 checker:off")
     check("monitors:0" in resp.msg, "keyInfo 消息包含 monitors:0")
 

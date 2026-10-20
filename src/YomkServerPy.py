@@ -137,7 +137,7 @@ class YomkServer:
         self.shutdown_done: bool = False
         if async_thread_count == 0:
             hw = os.cpu_count()
-            # 对齐 main：hw 为 0(或 None) 兜底 2，否则取一半向上取整
+            # hw 为 0(或 None) 兜底 2，否则取一半向上取整
             async_thread_count = 2 if not hw else (hw + 1) // 2
         self.executor = ThreadPoolExecutor(async_thread_count)
 
@@ -147,7 +147,7 @@ class YomkServer:
         return cls(async_thread_count)
 
     def start_service(self, srv_names):
-        # 内置服务映射表（键名带 / 前缀，对齐 main serviceCreators）
+        # 内置服务映射表（键名带 / 前缀）
         service_creators = {
             "/YomkContext": YomkContext,
             "/YomkFunctionPool": YomkFunctionPool,
@@ -165,7 +165,7 @@ class YomkServer:
         return 0
 
     def new_service(self, srv_cls, srv_name=""):
-        # 创建并注册指定类型的服务（对齐 main newService<T>：构造 -> 可选命名 -> addService）
+        # 创建并注册指定类型的服务
         srv = srv_cls(self)
         if srv_name:
             srv.set_name(srv_name)
@@ -191,7 +191,7 @@ class YomkServer:
             old_srv.deinit()
 
         # init 抛异常视同失败：捕获后走统一回滚，避免半初始化服务残留在表；
-        # init 未显式返回（None）等价成功（对齐 main 返回 0）
+        # init 未显式返回（None）等价成功
         try:
             init_ret = service.init()
         except Exception as e:
@@ -224,7 +224,7 @@ class YomkServer:
             return
         self.shutdown_done = True
 
-        # 先停异步请求池（拒新 -> 排空），对齐 main 请求池停止顺序
+        # 先停异步请求池（拒新 -> 排空）
         self.executor.shutdown(wait=True)
 
         with self.rwlock_services.gen_wlock():
@@ -294,7 +294,7 @@ class YomkServer:
 
         def task():
             try:
-                # 执行时才查表（对齐 main：投递与执行间服务变更以执行时为准）；
+                # 执行时才查表；
                 # 拼回完整 URL 走 request 的解析与查表路径
                 result = self.request(srv_name + func_name, pkg)
                 if callback:
@@ -377,7 +377,7 @@ class LogFile:
 
 
 class Log:
-    # 对齐 main yomk::Log：ELogLevel 固定 int 底层类型（eDebug=0/eInfo=1/eWarn=2/eError=3），
+    # :Log：ELogLevel 固定 int 底层类型（eDebug=0/eInfo=1/eWarn=2/eError=3），
     # 非法值注入合法化（log 路径 default 降级 Info 分支可触达）
     eDebug = 0
     eInfo = 1
@@ -398,7 +398,7 @@ class ConsoleLogProxy:
 
 
 def _yomk_err_pos_log(msg):
-    # 对齐 main YOMK_ERR_POS_LOG：框架错误提示直写 stdout（可被测试捕获），带调用点位置前缀
+    # 框架错误提示直写 stdout（可被测试捕获），带调用点位置前缀
     frame = sys._getframe(1)
     sys.stdout.write("[Yomk] [" + frame.f_code.co_filename + ":" + str(frame.f_lineno) + "] [" +
                      frame.f_code.co_name + "] " + msg + "\n")
@@ -406,19 +406,19 @@ def _yomk_err_pos_log(msg):
 
 
 def _yomk_log_local_time_formatted():
-    # Logger 模块内部工具（对齐 main YomkLogTime.h 的 yomkLogLocalTimeFormatted 单一实现）：
+    # Logger 模块内部工具：
     # 本地时间戳 "[YYYY-MM-DD HH:MM:SS.mmm]"
     now = time.time()
     lt = time.localtime(now)
     ms = int(round((now - int(now)) * 1000)) % 1000
-    # python 的 tm_mon 已是 1-12 基（C 语义为 0-11 基故 main 侧需 +1，python 侧不加）
+    # python 的 tm_mon 已是 1-12 基，无需再加 1
     return "[%04d-%02d-%02d %02d:%02d:%02d.%03d]" % (
         lt.tm_year, lt.tm_mon, lt.tm_mday,
         lt.tm_hour, lt.tm_min, lt.tm_sec, ms)
 
 
 class ConsoleLogger:
-    # 对齐 main ConsoleLogger：控制台日志器，四级别 stdout 输出、
+    # 控制台日志器，四级别 stdout 输出、
     # 空 tag 回退日志器名、非法级别降级 Info
     def __init__(self):
         self.m_name = "MainLogger"
@@ -434,7 +434,7 @@ class ConsoleLogger:
         time_str = _yomk_log_local_time_formatted()
 
         with self.m_mutex:
-            # tag 优先显示；空 tag 回退日志器名，保持旧行为（对齐 main）
+            # tag 优先显示；空 tag 回退日志器名，保持旧行为
             tag_shown = tag if tag else self.m_name
             if log_level == Log.eDebug:
                 self._emit(time_str, "[Debug]", tag_shown, log_msg)
@@ -451,14 +451,14 @@ class ConsoleLogger:
 
     @staticmethod
     def _emit(time_str, level_tag, tag_shown, log_msg):
-        # 直写 stdout 并 flush（对齐 main std::cout << ... << std::endl）
+        # 直写 stdout 并 flush
         sys.stdout.write(time_str + " " + level_tag +
                          " [" + tag_shown + "] " + log_msg + "\n")
         sys.stdout.flush()
 
 
 class FileLogger:
-    # 对齐 main FileLogger：文件日志器，log 入内存缓冲、write 追加落盘清缓冲、
+    # 文件日志器，log 入内存缓冲、write 追加落盘清缓冲、
     # 析构自动 write 兜底；init 建目录与空文件（P2-b：异常捕获转 bool 不穿透）
     def __init__(self):
         self.m_name = "MainLogger"
@@ -467,7 +467,7 @@ class FileLogger:
         self.m_logBufferMutex = threading.Lock()
 
     def __del__(self):
-        # 析构兜底（对齐 main ~FileLogger -> write）：缓冲未落盘内容不丢；
+        # 析构兜底：缓冲未落盘内容不丢；
         # try 防护解释器关闭期属性缺失
         try:
             self.write()
@@ -507,7 +507,7 @@ class FileLogger:
     def log(self, log_level, tag, log_msg):
         time_str = _yomk_log_local_time_formatted()
 
-        # tag 由日志器统一拼接（对齐 main）：空 tag 不加前缀
+        # tag 由日志器统一拼接：空 tag 不加前缀
         tag_prefix = ("[" + tag + "] ") if tag else ""
 
         with self.m_logBufferMutex:
@@ -525,12 +525,12 @@ class FileLogger:
                 self._append_line(time_str, tag_prefix, log_msg, " [Info ] ")
 
     def _append_line(self, time_str, tag_prefix, log_msg, level_tag):
-        # 缓冲行格式对齐 main appendLine：时间戳 + " [级别] " + tag 前缀 + 内容 + 换行
+        # 缓冲行格式时间戳 + " [级别] " + tag 前缀 + 内容 + 换行
         self.m_logBuffer += time_str + level_tag + tag_prefix + log_msg + "\n"
 
     def write(self):
         with self.m_logBufferMutex:
-            # 空缓冲不触碰文件（对齐 main：write 失败不清缓冲、内容不丢语义由 Direct 断言）
+            # 空缓冲不触碰文件
             if not self.m_logBuffer:
                 return
             try:
@@ -558,11 +558,11 @@ class YomkFuncInfo:
 
 
 class ContextEntry:
-    # YomkContext 单条目内部结构（对齐 main Context{value, checker, monitors}），
+    # YomkContext 单条目内部结构，
     # 与消息包 Context 区分，仅服务内部使用
     def __init__(self, value):
         self.value = value
-        self.checker = None    # check_func 或 None（main 条目 checker 可空）
+        self.checker = None    # check_func 或 None（可空）
         self.monitors = []     # [Monitor]
 
 
@@ -570,11 +570,11 @@ class YomkContext(YomkService):
     def __init__(self, server):
         super().__init__(server)
         self.set_name("/YomkContext")
-        self.m_contexts = {}     # {key: ContextEntry}（单条目结构对齐 main）
+        self.m_contexts = {}     # {key: ContextEntry}（单条目结构）
         self.m_contextsMutex = rwlock.RWLockFair()
         self.m_checkerEnabled = False
         self.m_monitorEnabled = False
-        self.m_monitorPool = None  # 单线程 FIFO 监控池，init() 重建（对齐 main m_monitorPool）
+        self.m_monitorPool = None  # 单线程 FIFO 监控池，init() 重建
 
     def init(self):
         self.install_func("/create", self.create, "Context")
@@ -590,13 +590,13 @@ class YomkContext(YomkService):
         self.install_func("/keys", self.keys)
         self.install_func("/key", self.key_info, "String")
         self.install_func("/all", self.list_all)
-        # 重建监控池：池 stop 后不可复用，重建支持服务删除后重新注册；固定单线程保事件顺序（对齐 main init）
+        # 重建监控池：池 stop 后不可复用，重建支持服务删除后重新注册；固定单线程保事件顺序
         self.m_monitorPool = ThreadPoolExecutor(1)
 
     def deinit(self):
         # 排空式停止监控池（拒新 -> 排空 -> join）：返回前存量异步监控任务已全部执行；
         # shutdown 幂等，重复 deinit 安全；池对象不可复用，置 None 待 init 重建
-        # （对齐 main YomkContext::deinit，由框架 del_service/同名替换/shutdown 锁外调用）
+        #
         if self.m_monitorPool is not None:
             self.m_monitorPool.shutdown(wait=True)
             self.m_monitorPool = None
@@ -724,8 +724,8 @@ class YomkContext(YomkService):
                     f"key is not exist: {ctx.key}, please check Context.m_key.")
                 return YomkResponse(ResStatus.eNo, "key is not exist")
 
-            # 类型校验对齐 main：同名 key 的值类型名必须一致（新值为 None 时
-            # NoneType 必不匹配，自然被拒；main set 亦无独立空值分支）
+            # 类型校验同名 key 的值类型名必须一致（新值为 None 时
+            # NoneType 必不匹配，自然被拒）
             if type(entry.value).__name__ != type(ctx.value).__name__:
                 log.error(
                     f"context type not match: {ctx.key}, please check Context.m_value.")
@@ -739,7 +739,7 @@ class YomkContext(YomkService):
             monitors_snapshot = list(entry.monitors)
 
             # 异步入队在写锁内完成：入队序 = 提交序；配合单线程 FIFO 池 ⇒
-            # 异步通知恒按 set 提交序送达，并发 set 亦然（对齐 main）。
+            # 异步通知恒按 set 提交序送达，并发 set 亦然。
             # 锁序 m_contextsMutex -> 池内部锁单向安全：worker 锁外执行、deinit 由框架锁外调用
             monitor_enabled = self.m_monitorEnabled
             if monitor_enabled:
@@ -751,7 +751,7 @@ class YomkContext(YomkService):
             for monitor in monitors_snapshot:
                 if not monitor.async_monitor_func:
                     # 同步 monitor 异常防护：用户回调异常记日志吞掉，不击穿 set 调用链，
-                    # 单个回调异常不影响后续 monitor 执行（对齐 main）
+                    # 单个回调异常不影响后续 monitor 执行
                     try:
                         monitor.monitor_func(ctx)
                     except Exception as e:
@@ -761,7 +761,7 @@ class YomkContext(YomkService):
         return YomkResponse(ResStatus.eOk, "set context success")
 
     def _post_monitor(self, func, ctx):
-        # 异步监控投递：池未创建或已停止时拒绝并记日志丢弃（对齐 main post 失败路径）
+        # 异步监控投递：池未创建或已停止时拒绝并记日志丢弃
         if self.m_monitorPool is None:
             log.error("context monitor pool is stopped, async monitor ignored.")
             return
@@ -773,7 +773,7 @@ class YomkContext(YomkService):
 
     @staticmethod
     def _run_monitor_safe(func, ctx):
-        # 池 worker 兜底：异步监控回调异常记日志吞掉，不终止 worker（对齐 main 线程池兜底）
+        # 池 worker 兜底：异步监控回调异常记日志吞掉，不终止 worker
         try:
             func(ctx)
         except Exception as e:
@@ -781,7 +781,7 @@ class YomkContext(YomkService):
 
     def keys(self, pkg):
         with self.m_contextsMutex.gen_rlock():
-            # 排序输出对齐 main std::map 迭代序（字典序）
+            # 排序输出:map 迭代序（字典序）
             key_list = sorted(self.m_contexts.keys())
         return YomkResponse(ResStatus.eOk, "ok", key_list)
 
@@ -803,13 +803,13 @@ class YomkContext(YomkService):
     def list_all(self, pkg):
         lines = []
         with self.m_contextsMutex.gen_rlock():
-            # 排序遍历对齐 main std::map 迭代序（字典序）
+            # 排序遍历:map 迭代序（字典序）
             for key in sorted(self.m_contexts.keys()):
                 lines.append(self._info_line(key, self.m_contexts[key]))
         return YomkResponse(ResStatus.eOk, "ok", lines)
 
     def _info_line(self, key, entry):
-        # 组装单个 key 的元信息行：key [类型名] checker:on|off monitors:N(async:M)（对齐 main contextInfoLine）
+        # 组装单个 key 的元信息行：key [类型名] checker:on|off monitors:N(async:M)
         async_count = 0
         for monitor in entry.monitors:
             if monitor.async_monitor_func:
@@ -823,11 +823,11 @@ class YomkFunctionPool(YomkService):
     def __init__(self, server):
         super().__init__(server)
         self.set_name("/YomkFunctionPool")
-        self.m_functions = {}     # {name: Function}（func+msg_name 同存，对齐 main PoolFuncInfo 条目）
+        self.m_functions = {}     # {name: Function}（func+msg_name 同存）
         self.m_functionsMutex = rwlock.RWLockFair()
 
     def init(self):
-        # URL 装配顺序对齐 main：/register /unregister /call /names /name /all
+        # URL 装配顺序/register /unregister /call /names /name /all
         self.install_func("/register", self.registerFunction, "Function")
         self.install_func("/unregister", self.unRegisterFunction, "String")
         self.install_func("/call", self.callFunction, "CallFunction")
@@ -840,8 +840,8 @@ class YomkFunctionPool(YomkService):
         if not isinstance(function, Function):
             raise TypeError("function must be Function")
 
-        # 合一校验（对齐 main registerFunction 入口）：空名或空函数体均视为参数无效；
-        # eNo 为 not-found/业务拒绝框架惯例，eInvalid 仅用于参数无效（main FPC2 统一契约）
+        # 合一校验：空名或空函数体均视为参数无效；
+        # eNo 为 not-found/业务拒绝框架惯例，eInvalid 仅用于参数无效
         if not function.name or not function.func:
             log.error(
                 "funcName or func is empty, please check Function.m_funcName")
@@ -849,7 +849,7 @@ class YomkFunctionPool(YomkService):
 
         with self.m_functionsMutex.gen_wlock():
             if function.name in self.m_functions:
-                # 重复名=更新语义：整对象替换覆盖 func+msg_name 双字段（对齐 main L33-42），
+                # 重复名=更新语义：整对象替换覆盖 func+msg_name 双字段，
                 # 先更新再返回显式区分的文案
                 log.info(
                     f"function name: {function.name} is already exist, update to current function")
@@ -862,7 +862,7 @@ class YomkFunctionPool(YomkService):
         return YomkResponse(ResStatus.eOk, "register function success")
 
     def unRegisterFunction(self, func_name: str):
-        # 注销已注册函数（对齐 main unRegisterFunction）：参数无效 eInvalid、
+        # 注销已注册函数：参数无效 eInvalid、
         # 未注册 eNo（not-found 框架惯例；eInvalid 仅用于参数无效）
         if not func_name:
             log.error("funcName is empty, please check String.")
@@ -896,14 +896,14 @@ class YomkFunctionPool(YomkService):
         return func(call_func.pkg)
 
     def funcNames(self, pkg):
-        # 内省：列出全部注册函数名（读锁内排序，对齐 main funcNames 的 std::map 字典序）
+        # 内省：列出全部注册函数名（读锁内排序，:map 字典序）
         with self.m_functionsMutex.gen_rlock():
             names = sorted(self.m_functions)
         return YomkResponse(ResStatus.eOk, "ok", names)
 
     def funcInfo(self, func_name: str):
         # 内省：单个函数存在性查询，命中 msg 为 "funcName [类型名]"（未声明类型时纯名）
-        # （对齐 main funcInfo：参数无效 eInvalid、未注册 eNo）
+        #
         if not func_name:
             log.error("funcName is empty, please check String.")
             return YomkResponse(ResStatus.eInvalid, "funcName is empty")
@@ -921,7 +921,7 @@ class YomkFunctionPool(YomkService):
 
     def listAll(self, pkg):
         # 内省：全量 dump，首行 functions:N，其余每行 "funcName [类型名]"
-        # （未声明类型时无括号后缀；读锁内组行保快照原子性，对齐 main listAll）
+        # （未声明类型时无括号后缀；读锁内组行保快照原子性）
         with self.m_functionsMutex.gen_rlock():
             lines = [f"functions:{len(self.m_functions)}"]
             for name in sorted(self.m_functions):
@@ -942,7 +942,7 @@ class EventLoop:
         self.m_defaultMsgName = ""
 
     def set_default_service_func(self, func, msg_name=""):
-        # 双参对齐 main setDefaultServiceFunc：msg_name 同存，infoLine 内省依赖
+        # 双参msg_name 同存，infoLine 内省依赖
         self.m_defaultServiceFunc = func
         self.m_defaultMsgName = msg_name
 
@@ -963,7 +963,7 @@ class EventLoop:
             if not event:
                 log.error("EventLoop: event is null, please check event")
                 continue
-            # 异常吞噬后仍无条件触发等待回调（对齐 main：postWait 同步等待"含异常场景"完成）
+            # 异常吞噬后仍无条件触发等待回调
             try:
                 event.handle()
             except Exception as e:
@@ -978,7 +978,7 @@ class EventLoop:
         if self.m_running:
             log.error("EventLoop already running, please do not start it again")
             return 0
-        # 持队列锁创建线程（对齐 main 持锁 move-assign 语义：与 postWait 自 join 防护读互斥）
+        # 持队列锁创建线程
         with self.m_queueMutex:
             self.m_running = True
             self.m_thread = threading.Thread(target=self.run)
@@ -989,7 +989,7 @@ class EventLoop:
         if not self.m_running:
             return 0
         self.m_running = False
-        # 仅退线程不清队列（对齐 main ELC2 契约）：未执行事件保留，待 start 续跑
+        # 仅退线程不清队列：未执行事件保留，待 start 续跑
         with self.m_queueMutex:
             self.m_condition.notify_all()
         if self.m_thread and self.m_thread.is_alive():
@@ -997,7 +997,7 @@ class EventLoop:
         return 0
 
     def destroy(self):
-        # 对齐 main：stop 后锁内清空队列，锁外逐个触发被丢事件的等待回调（释放 postWait 等待者）；
+        # stop 后锁内清空队列，锁外逐个触发被丢事件的等待回调（释放 postWait 等待者）；
         # 锁外调回调避免与 postWait 持临时锁回调构成 ABBA 死锁；幂等可重复进入
         self.stop()
         discarded = []
@@ -1010,7 +1010,7 @@ class EventLoop:
         return 0
 
     def __del__(self):
-        # 析构兜底（对齐 main ~EventLoop -> destroy）：与显式 destroy 共享释放契约（丢弃事件触发等待回调）；
+        # 析构兜底：与显式 destroy 共享释放契约（丢弃事件触发等待回调）；
         # try 防护解释器关闭期属性缺失；引用环场景需 gc.collect() 显式触发（python 无 C++ 析构确定性）
         try:
             self.destroy()
@@ -1018,7 +1018,7 @@ class EventLoop:
             pass
 
     def post(self, event):
-        # 判序对齐 main：先判运行态（返 2，与入队成功 0/事件为空 1 区分，供上层映射错误码），后判事件
+        # 判序先判运行态（返 2，与入队成功 0/事件为空 1 区分，供上层映射错误码），后判事件
         if not self.m_running:
             log.error("EventLoop not running, please start event loop.")
             return 2
@@ -1038,7 +1038,7 @@ class EventLoop:
         return 0
 
     def post_wait(self, event):
-        # 前置检查与 post 全同（对齐 main：先运行态返 2，后事件返 1）
+        # 前置检查与 post 全同
         if not self.m_running:
             log.error("EventLoop not running, please start event loop.")
             return 2
@@ -1068,7 +1068,7 @@ class EventLoop:
 
         with tmp_condition:
             event.m_waitCallback = callback
-            # TOCTOU 防护（对齐 main）：仅在实际入队成功后才等待——检查与入队之间循环被停止/销毁时
+            # TOCTOU 防护：仅在实际入队成功后才等待——检查与入队之间循环被停止/销毁时
             # post 返回非零，直接返回避免等待一个永不被执行/触发的回调
             rc = self.post(event)
             if rc != 0:
@@ -1079,7 +1079,7 @@ class EventLoop:
         return 0
 
     def info_line(self, loop_name, tag_count):
-        # 内省元信息行（对齐 main infoLine）：队列锁内快照，锁外拼行；
+        # 内省元信息行：队列锁内快照，锁外拼行；
         # 格式 "名 running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(N): tag1, tag2..."
         with self.m_queueMutex:
             running = self.m_running
@@ -1121,10 +1121,10 @@ class YomkEventLoop(YomkService):
     def start(self, pkg: EventLoopPkg):
         if not isinstance(pkg, EventLoopPkg):
             raise TypeError("pkg must be EventLoopPkg")
-        # 空名是合法 map 键（对齐 main：无空名拦截，START 空名 eOk）
+        # 空名是合法 map 键
         with self.m_eventLoopMutex.gen_wlock():
             if pkg.m_eventloopName in self.m_eventLoop:
-                # 已存在仅重启，不重设默认函数（对齐 main）
+                # 已存在仅重启，不重设默认函数
                 self.m_eventLoop[pkg.m_eventloopName].start()
                 return YomkResponse(ResStatus.eOk, "event loop start success")
             event_loop = EventLoop()
@@ -1147,7 +1147,7 @@ class YomkEventLoop(YomkService):
     def destroy(self, pkg):
         with self.m_eventLoopMutex.gen_wlock():
             if pkg in self.m_eventLoop:
-                # 对齐 main：调底层 destroy（stop+清队列+释放等待者）后出表
+                # 调底层 destroy（stop+清队列+释放等待者）后出表
                 self.m_eventLoop[pkg].destroy()
                 del self.m_eventLoop[pkg]
                 return YomkResponse(ResStatus.eOk, "event loop destroy success")
@@ -1200,10 +1200,10 @@ class YomkEventLoop(YomkService):
         space_pos = input_str.rfind(" ")
         if space_pos != -1:
             count_str = input_str[space_pos + 1:]
-            # 尾段非空纯 ASCII 数字才拆（对齐 main find_first_not_of("0123456789") 过滤）
+            # 尾段非空纯 ASCII 数字才拆
             if count_str and all(c in "0123456789" for c in count_str):
                 loop_name = input_str[:space_pos]
-                # 对齐 main stoul 越界捕获回退：超过无符号上限时回退默认 3，不抛不崩
+                # 超过无符号上限时回退默认 3，不抛不崩
                 tag_count = int(count_str) if int(
                     count_str) <= 2 ** 64 - 1 else 3
 
@@ -1222,7 +1222,7 @@ class YomkEventLoop(YomkService):
         return YomkResponse(ResStatus.eOk, "ok", lines)
 
     def deinit(self):
-        # 收尾残留 loop（对齐 main 析构兜底链语义）：写锁内快照并清表，锁外逐个 destroy
+        # 收尾残留 loop：写锁内快照并清表，锁外逐个 destroy
         # （stop+清队列+释放等待者）；锁外清理模式与 shutdown 先例一致
         with self.m_eventLoopMutex.gen_wlock():
             loops = list(self.m_eventLoop.values())
@@ -1232,12 +1232,12 @@ class YomkEventLoop(YomkService):
 
 
 class YomkLogger(YomkService):
-    # 日志模块服务（对齐 main Modules/Logger/YomkLogger）：11 端点装配序与契约消息逐字对齐。
+    # 日志模块服务：11 端点装配序与契约消息逐字对齐。
     # 锁序约定：嵌套双读仅 loggers/list_all 内省快照，一律按 m_consoleLoggersMutex ->
     # m_fileLoggersMutex 的顺序持有，全仓无反向嵌套点（delete_logger 分段持锁不嵌套；
     # 其余端点均单锁）；m_consoleLogProxyMutex 为叶子锁，临界区内不得获取任何其他锁。
     # 后续维护新增嵌套时须沿用此序，否则有死锁风险。两表保持 dict 但内省输出显式
-    # sorted 对齐 main std::map 字典序（python dict 为插入序，ServerInfo 轮先例）。
+    # sorted :map 字典序（python dict 为插入序，ServerInfo 轮先例）。
     def __init__(self, server: "YomkServer"):
         super().__init__(server)
         self.set_name("/YomkLogger")
@@ -1275,8 +1275,8 @@ class YomkLogger(YomkService):
 
     @staticmethod
     def _unpack(pkg, cls):
-        # 对齐 main YomkUnPackPkgResponse 空包/错类型契约分支：eNo + " pkg is null or
-        # pkg is not <Type>. "（首尾空格为 main 宏消息字面量；String 端点包为裸 str）
+        # eNo + " pkg is null or
+        # pkg is not <Type>. "（首尾空格为消息字面量约定；String 端点包为裸 str）
         if isinstance(pkg, cls):
             return None
         type_name = "String" if cls is str else cls.__name__
@@ -1355,7 +1355,7 @@ class YomkLogger(YomkService):
             _yomk_err_pos_log("logger dir is empty.")
             return YomkResponse(ResStatus.eInvalid, "logger dir is empty.")
 
-        # 全程持独占锁（对齐 main unique_lock：查重 + init I/O + 入表同锁，P3-a 口径）
+        # 全程持独占锁
         with self.m_fileLoggersMutex.gen_wlock():
             if pkg.m_logger in self.m_fileLoggers:
                 return YomkResponse(ResStatus.eNo, "logger name already exists.")
@@ -1505,7 +1505,7 @@ class YomkLogger(YomkService):
                 console_names = list(self.m_consoleLoggers.keys())
                 file_lines = [name + " [file] dir:" + lg.get_dir()
                               for name, lg in self.m_fileLoggers.items()]
-        # 两段各自显式 sorted 对齐 main std::map 中序字典序（python dict 为插入序）
+        # 两段各自显式 sorted :map 中序字典序（python dict 为插入序）
         lines = [name + " [console]" for name in sorted(console_names)]
         lines += sorted(file_lines)
         return YomkResponse(ResStatus.eOk, "ok", lines)
@@ -1525,7 +1525,7 @@ class YomkLogger(YomkService):
         return YomkResponse(ResStatus.eNo, "logger not found.")
 
     def list_all(self, pkg):
-        # 状态行在双锁外取：四个级别开关独立无锁，组合本无原子快照保证（对齐 main 注释）
+        # 状态行在双锁外取：四个级别开关独立无锁，组合本无原子快照保证
         lines = [self.console_level_line()]
         # 同 loggers：按锁序嵌套双读锁取跨段原子快照
         with self.m_consoleLoggersMutex.gen_rlock():
@@ -1539,12 +1539,12 @@ class YomkLogger(YomkService):
 
 
 class YomkServerInfo(YomkService):
-    # 服务表内省服务（对齐 main Modules/ServerInfo）：四端点 /services /functions /function /all；
-    # 经 weakref 判活对齐 main m_weakServer.lock() 失败契约（server 销毁后四端点均返 eNo）
+    # 服务表内省服务：四端点 /services /functions /function /all；
+    # 经 weakref 判活（server 销毁后四端点均返 eNo）
     def __init__(self, server: "YomkServer"):
         super().__init__(server)
         # 清除基类对 server 的强引用，仅保留弱引用：
-        # 否则本实例存活会连带 server 永不销毁，weakref 判活契约（对齐 main weak_from_this）失效
+        # 否则本实例存活会连带 server 永不销毁，weakref 判活契约失效
         self.server = None
         self.m_weakServer = weakref.ref(server) if server else None
         self.set_name("/YomkServerInfo")
@@ -1557,7 +1557,7 @@ class YomkServerInfo(YomkService):
         return 0
 
     def _locked_server(self):
-        # 对齐 main m_weakServer.lock()：server 已销毁时返回 None，由各端点统一走 destroyed 契约
+        # server 已销毁时返回 None，由各端点统一走 destroyed 契约
         return self.m_weakServer() if self.m_weakServer else None
 
     def list_services(self, pkg):
@@ -1565,7 +1565,7 @@ class YomkServerInfo(YomkService):
         if server is None:
             log.error("server has been destroyed, list services ignored.")
             return YomkResponse(ResStatus.eNo, "server has been destroyed")
-        # 对齐 main m_serviceMap（std::map）：服务名字典序输出
+        # :map）：服务名字典序输出
         return YomkResponse(ResStatus.eOk, "ok", sorted(server.service_names()))
 
     def list_functions(self, pkg):
@@ -1583,8 +1583,8 @@ class YomkServerInfo(YomkService):
             return YomkResponse(ResStatus.eNo, "server has been destroyed")
 
         infos = server.service_func_infos(srv_name)
-        # 对齐 main m_funcInfos（std::map）：函数名字典序；行格式 "func [msgName]"（无类型为 "func"）；
-        # 不存在的服务返回空表（eOk，对齐 main 现状契约）
+        # :map）：函数名字典序；行格式 "func [msgName]"（无类型为 "func"）；
+        # 不存在的服务返回空表（eOk）
         lines = []
         for func_name in sorted(infos.keys()):
             info = infos[func_name]
@@ -1616,7 +1616,7 @@ class YomkServerInfo(YomkService):
             log.error("server has been destroyed, function info ignored.")
             return YomkResponse(ResStatus.eNo, "server has been destroyed")
 
-        # 命中契约（对齐 main）：eOk 且 msg 精确等于 msgName（非 "ok"），无类型函数 msg 为空
+        # 命中契约：eOk 且 msg 精确等于 msgName（非 "ok"），无类型函数 msg 为空
         for name in sorted(server.service_names()):
             if name == srv_name:
                 info = server.service_func_infos(srv_name).get(func_name)
@@ -1634,7 +1634,7 @@ class YomkServerInfo(YomkService):
             log.error("server has been destroyed, list all ignored.")
             return YomkResponse(ResStatus.eNo, "server has been destroyed")
 
-        # 对齐 main：服务名字典序；功能行两空格缩进 + 服务名直拼函数名（函数名自带 / 前缀）
+        # 服务名字典序；功能行两空格缩进 + 服务名直拼函数名（函数名自带 / 前缀）
         lines = []
         for srv_name in sorted(server.service_names()):
             lines.append(srv_name)

@@ -10,13 +10,13 @@ TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试（正式全�
 5. 模块便捷 API 守卫抽样：统一守卫入口 _api_request 验证（context_create/
    function_pool_register/event_loop_start 返回 eInvalid + 契约消息同根 +
    context_get 特殊形态原样返回调用方默认值）
-6. LOG 模块便捷 API 守卫全量 23 条（Logger 模块轮 P1 收口，对齐 main 第 5 节
-   五模块全量形态）：set_console_log_proxy / console_log_*_tag×4 /
+6. LOG 模块便捷 API 守卫全量 23 条（Logger 模块轮 P1 收口）：
+   set_console_log_proxy / console_log_*_tag×4 /
    file_log_create+write+*_tag×4 / off_console_log_*×4 / on_console_log_*×4 /
    logger_info_loggers+logger+all / file_log_delete，首条另断契约消息同根
 
-剔除与推迟说明（语言机制映射与范围口径，非功能缺口）：
-- main 第 4 节"守卫拒绝后调用方 delete 无泄漏无崩溃"断言剔除：python 引用计数
+推迟说明（范围口径，非功能缺口）：
+- "守卫拒绝后调用方资源释放"断言不适用：python 引用计数
   语义无所有权接管概念
 - 版本号断言形态：python 版本传递链中 YomkServerPyVersion 模块缺失时回落
   "unknown"（保持门面 import 链可用），故仅断言非空字符串，不断言具体值
@@ -105,7 +105,7 @@ def main():
           "context_get 未初始化原样返回调用方默认值")
 
     print("===== 6. LOG 模块便捷 API 守卫全量（Logger 模块轮 P1 收口 23 条） =====")
-    # 对齐 main TestYomkAPINotInit 第 5 节 Logger 23 条顺序
+    # Logger 23 条顺序（同第 5 节排布口径）
     check(YomkApi.set_console_log_proxy(None).status == ResStatus.eInvalid,
           "set_console_log_proxy 未初始化返回 eInvalid")
     resp = YomkApi.console_log_info_tag("tag", "hello")

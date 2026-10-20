@@ -1,5 +1,5 @@
 """
-审计服务：被其他服务调用的最小服务样例（对齐 main 分支 Examples/services/AuditService）
+审计服务：被其他服务调用的最小服务样例
 
 定义一个服务只需三步：
 1. 继承 YomkService，构造函数中 set_name("/AuditService") 起名

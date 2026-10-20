@@ -14,5 +14,5 @@ class ExtensionService(YomkApi.YomkService):
         return 0
 
     def version(self, pkg):
-        # 版本号：EXTENSION_VERSION 常量（对应 main 分支 project(VERSION) 编译期注入的 EXTENSION_VERSION 宏）
+        # 版本号：EXTENSION_VERSION 常量（定义于 version.py）
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok", f"TemplateExtension v{EXTENSION_VERSION}")

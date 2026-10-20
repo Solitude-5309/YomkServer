@@ -1,7 +1,7 @@
 """
 TestYomkServerInfoLifecycle.py —— ServerInfo 模块生命周期与四端点功能基线测试
 
-对齐 main Test/YomkServerInfo/TestYomkServerInfoLifecycle.cpp（8 节，从零新建——模块此前零专属覆盖）：
+（8 节，从零新建——模块此前零专属覆盖）：
 S0. server destroyed 分支（白盒直连）：测试自持 YomkServerInfo 实例（不经 add_service），
     server 释放后 4 端点 invoke 逐一返回 eNo + "server has been destroyed"
     （m_weakServer 判活失败分支，invoke 为 YomkService public 方法可直连）
@@ -18,16 +18,16 @@ S6. 内置服务删除/重注册自举契约（对齐 Context Lifecycle S4/S5 �
 S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/services 行完整、/functions 行格式、
     /function 长名下 URL 二段解析、/all 缩进行完整无截断
 
-对齐口径差异（书面记录）：
-- main S1 断言 5 内置服务；python 分支随 Logger 模块轮补齐后本测试同断言 5 内置
+语言机制说明：
+- S1 断言 5 内置服务
   （/YomkFunctionPool /YomkContext /YomkEventLoop /YomkLogger /YomkServerInfo）
-- main m_weakServer（weak_ptr.lock）→ python weakref.ref 判活：YomkServerInfo 构造时清除
+- server 判活用 weakref.ref：YomkServerInfo 构造时清除
   基类对 server 的强引用仅持弱引用；测试侧 del server 后补 gc.collect() 显式触发回收
-  （CPython 引用计数遇环不归零，main shared_ptr 无此差异）
-- main YOMK_SERVER_PTR->serviceNames() 服务表快照 → YomkApi.server().service_names()
-- main YomkUnPackPkg(StringArray) → YomkResponse.data 直接是 list[str]
-- main YomkInstallFunc 三参类型元数据 → install_func 第三参（三内置装配已对齐 main 补齐）
-- main std::atomic 探针计数 → list.append（GIL 原子，T 轮既有模式）
+  （CPython 引用计数遇环不归零）
+- 服务表快照经 YomkApi.server().service_names()
+- 内省数据解包后 YomkResponse.data 直接是 list[str]
+- install_func 第三参承载函数消息类型元数据（三内置装配已补齐）
+- 探针计数用 list.append（GIL 原子，T 轮既有模式）
 - S0 类级直连（import YomkServerPy 白盒），放在 init 单例之前以独立实例隔离单例交互；
   S1-S7 经门面 API 走完整路由链
 
@@ -80,13 +80,13 @@ def name_index(names, srv_name):
 
 
 def unpack_string_array(resp):
-    # /services、/functions、/all 的 data 均为 list[str]（对齐 main unpackStringArray）
+    # /services、/functions、/all 的 data 均为 list[str]
     if resp.status != ResStatus.eOk or resp.data is None:
         return []
     return list(resp.data)
 
 
-# ---- 测试装置服务（形态对齐 main FmtSrv/ChurnSrv）----
+# ---- 测试装置服务（FmtSrv/ChurnSrv）----
 
 class FmtSrv(ysp.YomkService):
     # 行格式演示服务：/ping 两参安装（无类型，行格式 "func"）+ /echo 三参安装（行格式 "func [String]"）

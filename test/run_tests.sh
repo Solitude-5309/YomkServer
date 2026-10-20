@@ -1,5 +1,5 @@
 #!/bin/bash
-# YomkServerPy 全量测试运行器（对齐 main Test/run_tests.sh）
+# YomkServerPy 全量测试运行器
 # 用法:
 #   ./test/run_tests.sh              快速模式（压测规模缩为 10000）
 #   ./test/run_tests.sh --full       完整规模（测试内部默认，10 万级投递）
@@ -8,26 +8,25 @@
 #   ./test/run_tests.sh -h|--help    打印本说明
 # 安装路径探测顺序（首个命中者生效）:
 #   1. --prefix 显式指定
-#   2. 仓库本地构建产物 <仓库根>/build/prefix（对齐 main 仓库本地 bin/ 优先语义）
+#   2. 仓库本地构建产物 <仓库根>/build/prefix
 #   3. 环境变量 YOMK_PREFIX_PATH
 #   4. 系统默认安装 /opt/yomk
 # 行为:
 #   1. 自动探测 lib/pythonX.Y/site-packages 并设置 PYTHONPATH
 #   2. 逐个运行 TESTS 清单（快->慢，stress 类压尾），测试文件按模块子目录分类
-#      （TESTS 项带模块前缀，对齐 main Test/<模块>/ 布局），每个测试在独立临时工作目录运行
+#      （TESTS 项带模块前缀），每个测试在独立临时工作目录运行
 #   3. 任一测试失败（退出码非 0 / 超时）-> 立即停止，输出 [FAIL] 行摘要与日志路径
 #   4. 日志落盘: test/test_logs/<时间戳>/<测试名>.log + summary.log
 #   5. 运行前清理 /tmp/yomk_logger_* 残留（上次崩溃遗留）；全部结束后复查现场残留，
-#      发现则清理并计为失败（对齐 main 行为 1/5；python 侧 YomkLogger 测试同样在
+#      发现则清理并计为失败（YomkLogger 测试同样在
 #      gettempdir() 建 yomk_logger_lg*_<pid> 临时目录，中途崩溃/超时时测试内自清理不会执行）
-# 剔除说明: main 的 --sanitizer 插桩为 C++ 特有机制，无 python 对应
 # 测试程序风格约定: 退出码 0=全部通过，非 0=存在失败用例（[FAIL] 行输出）
 
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 测试文件定位：TESTS 项带模块子目录前缀（YomkServer/TestYomkPkg 形态），
-# 完整路径 = test/<TESTS 项>.py，与 main "可执行平铺、子目录仅源码组织" 的组织精神一致
+# 完整路径 = test/<TESTS 项>.py
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 PREFIX=""
@@ -45,7 +44,7 @@ fail() {
     exit 1
 }
 
-# -------------sl 1. 解析参数（对齐 main parse_args） ----------------
+# -------------sl 1. 解析参数 ----------------
 while [ $# -gt 0 ]; do
     case "$1" in
         --full)    FULL_MODE=1 ;;
@@ -59,13 +58,13 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-# --full 未显式指定超时时放宽到 900s（对齐 main）
+# --full 未显式指定超时时放宽到 900s
 if [ "${FULL_MODE}" -eq 1 ] && [ "${USER_TIMEOUT}" -eq 0 ]; then
     TIMEOUT_SECS=900
 fi
 # -------------el 1. 解析参数 ----------------
 
-# EXIT/INT/TERM 兜底清理临时工作目录（幂等，对齐 main trap）
+# EXIT/INT/TERM 兜底清理临时工作目录（幂等）
 CURRENT_WORKDIR=""
 cleanup_workdir() {
     [ -n "${CURRENT_WORKDIR}" ] && rm -rf "${CURRENT_WORKDIR}"
@@ -74,7 +73,7 @@ cleanup_workdir() {
 trap cleanup_workdir EXIT
 trap 'echo ""; echo "被用户中断"; exit 130' INT TERM
 
-# 运行前清理 /tmp/yomk_logger_* 残留（对齐 main clean_residue，调用时机同 main: 参数解析后）
+# 运行前清理 /tmp/yomk_logger_* 残留
 clean_residue() {
     shopt -s nullglob
     local residue=(/tmp/yomk_logger_*)
@@ -85,8 +84,8 @@ clean_residue() {
     fi
 }
 
-# 全部结束后复查现场：发现残留则清理并计为失败（对齐 main check_residue；
-# 残留 = 对应测试的清理逻辑未在正常路径覆盖的信号）
+# 全部结束后复查现场：发现残留则清理并计为失败
+# （残留 = 对应测试的清理逻辑未在正常路径覆盖的信号）
 check_residue() {
     shopt -s nullglob
     local residue=(/tmp/yomk_logger_*)
@@ -105,7 +104,7 @@ clean_residue
 
 # -------------sl 2. 探测安装产物并设置 PYTHONPATH ----------------
 # 探测链：--prefix > 仓库本地 build/prefix > YOMK_PREFIX_PATH > /opt/yomk
-# 本地构建优先于环境变量（对齐 main 默认测本地 bin/ 的语义，避免旧安装被环境变量劫持）
+# 本地构建优先于环境变量
 resolve_prefix() {
     if [ -n "${PREFIX}" ]; then
         echo "${PREFIX}"
@@ -148,29 +147,29 @@ TESTS=(
     YomkServer/TestYomkBoot
     YomkServer/TestYomkShutdownSeq
     YomkServer/TestYomkConcurrency
-    # YomkContext 模块（对齐 main 顺序：CRUD -> CheckerMonitor -> Lifecycle -> Concurrency，并发压尾）
+    # YomkContext 模块
     YomkContext/TestYomkContextCRUD
     YomkContext/TestYomkContextCheckerMonitor
     YomkContext/TestYomkContextLifecycle
     YomkContext/TestYomkContextConcurrency
-    # YomkFunctionPool 模块（对齐 main 顺序：Lifecycle -> Concurrency -> Stress，压测压尾）
+    # YomkFunctionPool 模块
     YomkFunctionPool/TestYomkFunctionPoolLifecycle
     YomkFunctionPool/TestYomkFunctionPoolConcurrency
     YomkFunctionPool/TestYomkFunctionPoolStress
     # YomkServerInfo 模块
     YomkServerInfo/TestYomkServerInfoLifecycle
-    # YomkEventLoop 模块（对齐 main 顺序：Lifecycle -> Concurrency -> Stress，压测压尾）
+    # YomkEventLoop 模块
     YomkEventLoop/TestYomkEventLoopLifecycle
     YomkEventLoop/TestYomkEventLoopConcurrency
     YomkEventLoop/TestYomkEventLoopStress
-    # YomkLogger 模块（对齐 main 顺序：Direct 类直连 -> Lifecycle -> Concurrency -> Stress，压测压尾）
+    # YomkLogger 模块
     YomkLogger/TestYomkLoggerDirect
     YomkLogger/TestYomkLoggerLifecycle
     YomkLogger/TestYomkLoggerConcurrency
     YomkLogger/TestYomkLoggerStress
 )
 
-# -------------sl 3. 门禁检查（对齐 main precheck_bin） ----------------
+# -------------sl 3. 门禁检查 ----------------
 MISSING=()
 for t in "${TESTS[@]}"; do
     [ -f "${SCRIPT_DIR}/${t}.py" ] || MISSING+=("${t}.py")
@@ -182,7 +181,7 @@ if [ ${#MISSING[@]} -gt 0 ]; then
 fi
 # -------------el 3. 门禁检查 ----------------
 
-# -------------sl 4. 压测规模（对齐 main YOMK_TEST_STRESS_SCALE 惯例） ----------------
+# -------------sl 4. 压测规模 ----------------
 if [ "${FULL_MODE}" -eq 1 ]; then
     unset YOMK_TEST_STRESS_SCALE
     echo "-- 模式: 完整规模（--full），单测试超时 ${TIMEOUT_SECS}s"
@@ -192,8 +191,8 @@ else
 fi
 # -------------el 4. 压测规模 ----------------
 
-# -------------sl 5. 运行测试（失败即停，对齐 main run_one_suite） ----------------
-# 日志根保持在脚本目录（test/）下，对齐 main log_root="${SCRIPT_DIR}/test_logs/..."
+# -------------sl 5. 运行测试（失败即停） ----------------
+# 日志根保持在脚本目录（test/）下
 LOG_ROOT="${SCRIPT_DIR}/test_logs/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "${LOG_ROOT}"
 SUMMARY="${LOG_ROOT}/summary.log"
@@ -211,7 +210,7 @@ START_TS=${SECONDS}
 
 for t in "${TESTS[@]}"; do
     IDX=$((IDX + 1))
-    # 显示名/日志名取纯测试名（对齐 main 可执行平铺的 ${t}.log 形态），路径按模块前缀定位
+    # 显示名/日志名取纯测试名，路径按模块前缀定位
     T_NAME="${t##*/}"
     log="${LOG_ROOT}/${T_NAME}.log"
     CURRENT_WORKDIR="$(mktemp -d)"
@@ -248,7 +247,7 @@ for t in "${TESTS[@]}"; do
 done
 # -------------el 5. 运行测试（失败即停） ----------------
 
-# 现场残留验收（对齐 main: 输出同步落 summary，发现残留整体判定失败）
+# 现场残留验收
 if ! check_residue | tee -a "${SUMMARY}"; then
     echo ""
     echo "==========================================="
@@ -257,7 +256,7 @@ if ! check_residue | tee -a "${SUMMARY}"; then
     exit 1
 fi
 
-# -------------sl 6. 结果摘要（对齐 main） ----------------
+# -------------sl 6. 结果摘要 ----------------
 TOTAL_ELAPSED=$((SECONDS - START_TS))
 echo "YomkServerPy 全量测试通过: ${PASS}/${TOTAL}" >> "${SUMMARY}"
 

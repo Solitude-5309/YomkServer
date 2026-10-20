@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-TestYomkLoggerLifecycle.py —— YomkLogger 服务全链路生命周期测试（对齐 main
-Test/YomkLogger/TestYomkLoggerLifecycle.cpp，LG1-LG6 轮交付）
+TestYomkLoggerLifecycle.py —— YomkLogger 服务全链路生命周期测试
+（LG1-LG6 轮交付）
 
-覆盖内容（9 节全量对齐）：
+覆盖内容（9 节）：
 S1 控制台日志基线（四级别 + 开关翻转）；S2 自定义 tag 自动创建（含 65536 超长 tag、
 空内容）；S2.5 非法级别 default 降级（须在 S3 设 proxy 前）；S3 proxy 契约（拦截/
 穿透/卸载恢复/重装复位，LG6 P4-e）；S4 文件日志闭环（create/缓冲/落盘/重复/未创建/
@@ -12,16 +12,17 @@ P2-a 空名空 dir/P2-b 失败不注册幽灵）；S5 内省三端点（行格�
 S6 边界值（整数边界/浮点特殊值/1MB 内容/非法级别 file_log+off/on 无副作用）；S7 异常
 路径（空包/错类型包/空 logger 名回退/未知端点）；S8 /delete_logger 全语义（8.1-8.7）
 
-映射口径（语言机制差异，非功能缺口）：
-- main CoutCapture -> contextlib.redirect_stdout；CHECK 在捕获作用域外（LG1 教训，
-  控制台写入经 capture 包装 lambda 后取响应断言）
-- main YomkUnPackPkg(StringArray) -> YomkResponse.data 直接是 list[str]
-- main -0.0 ostringstream "-0" -> python str(-0.0) "-0.0"：子串断言 "d= -0" 仍命中
+语言机制说明：
+- stdout 捕获用 contextlib.redirect_stdout；CHECK 在捕获作用域外（LG1 教训，
+  控制台写入经 capture 包装后取响应断言）
+- 内省数据解包后 YomkResponse.data 直接是 list[str]
+- 浮点格式化 str(-0.0) 为 "-0.0"：子串断言 "d= -0" 仍命中
   （前缀包含），书面记录微差
-- S8.4 析构落盘确定性：main ~FileLogger 锁外析构 -> python 服务层 delete_logger
+- S8.4 析构落盘确定性：服务层 delete_logger
   锁外显式释放最后引用，返回前 __del__ 已落盘（C2 语义保证）
-- main YOMK_FILE_INFO 宏（tag 固定 MainLogger）-> python file_log_info_tag(file,
-  "MainLogger", *args)；YOMK_FILE_INFO_TAG -> file_log_info_tag(file, tag, *args)
+- file 日志便捷口径：file_log_info_tag(file,
+  "MainLogger", *args) 为固定缺省 tag 形态；file_log_info_tag(file, tag, *args)
+  为自定义 tag 形态
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """
@@ -358,8 +359,8 @@ def main():
     r, out = capture(lambda: YomkApi.console_log_info_tag(
         "lg1_s6_flt", "a=", nan_v, " b=", inf_v, " c=", -inf_v, " d=", -0.0))
     check(r.status == ResStatus.eOk, "NaN/Inf/-Inf/-0.0 变参日志返回 eOk")
-    # 微差书面记录：main ostringstream "-0"，python str(-0.0) 为 "-0.0"，
-    # 子串断言 "d= -0" 在两者中均命中（前缀包含）
+    # 微差书面记录：python str(-0.0) 为 "-0.0"，子串断言 "d= -0" 以
+    # 前缀包含命中
     check("a= nan" in out and "b= inf" in out and "c= -inf" in out and "d= -0" in out,
           "浮点特殊值字符串化正确（nan/inf/-inf/-0，变参以空格分隔）")
 

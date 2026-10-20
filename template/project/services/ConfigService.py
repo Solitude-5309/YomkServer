@@ -69,5 +69,5 @@ class ConfigService(YomkApi.YomkService):
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def version(self, pkg):
-        # 版本号来自 typedefine/TypeDefine.py 定义的 APP_VERSION 常量（对应 main 分支 project(VERSION) 编译期注入）
+        # 版本号来自 typedefine/TypeDefine.py 定义的 APP_VERSION 常量
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok", APP_VERSION)
