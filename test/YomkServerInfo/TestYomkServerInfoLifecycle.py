@@ -19,8 +19,8 @@ S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/service
     /function 长名下 URL 二段解析、/all 缩进行完整无截断
 
 对齐口径差异（书面记录）：
-- main S1 断言 5 内置服务（/YomkLogger 在列）；python 分支 /YomkLogger 模块尚未落地，
-  本测试断言 4 内置——Logger 模块轮补齐后回填该断言
+- main S1 断言 5 内置服务；python 分支随 Logger 模块轮补齐后本测试同断言 5 内置
+  （/YomkFunctionPool /YomkContext /YomkEventLoop /YomkLogger /YomkServerInfo）
 - main m_weakServer（weak_ptr.lock）→ python weakref.ref 判活：YomkServerInfo 构造时清除
   基类对 server 的强引用仅持弱引用；测试侧 del server 后补 gc.collect() 显式触发回收
   （CPython 引用计数遇环不归零，main shared_ptr 无此差异）
@@ -153,7 +153,7 @@ def main():
     check(True, "destroyed 实例释放无崩溃（弱引用悬垂路径安全收尾）")
 
     # ============ 单例初始化（S1-S7 共用） ============
-    check(init(1) is not None, "init 拉起单例与 4 个内置服务")
+    check(init(1) is not None, "init 拉起单例与 5 个内置服务")
 
     srv_ref = server()
 
@@ -168,7 +168,7 @@ def main():
           "/services 含内置 /YomkFunctionPool")
     check(name_in(names, "/YomkContext"), "/services 含内置 /YomkContext")
     check(name_in(names, "/YomkEventLoop"), "/services 含内置 /YomkEventLoop")
-    # 对齐差异：main 含第 5 内置 /YomkLogger，python 分支 Logger 模块轮补齐后回填
+    check(name_in(names, "/YomkLogger"), "/services 含内置 /YomkLogger")
     check(name_in(names, "/YomkServerInfo"), "/services 含内置 /YomkServerInfo")
 
     check(add_service(FmtSrv(srv_ref), "/FmtSrv") == 0, "注册 FmtSrv 返回 0")

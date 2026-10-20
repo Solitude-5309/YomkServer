@@ -24,9 +24,9 @@ TestYomkServer.py —— YomkServer URL 解析路由与服务增删改查白盒�
   机制剔除项（python 功能函数为直接引用，无弱绑定包装层）
 - main 第 5 节删除即停端到端（全局弱绑定回调丢弃）剔除：python 无
   YomkBindWeakSelf 对应物
-- main 第 8 节 /YomkServerInfo 断言以 /YomkContext 等价承载：python 内置服务映射
-  表 3/5（/YomkContext、/YomkFunctionPool、/YomkEventLoop），/YomkLogger、
-  /YomkServerInfo 随模块轮补齐
+- main 第 8 节内置 creator 真实路径断言对齐（/YomkServerInfo）；python 内置服务映射
+  表已随 Logger 模块轮补齐 5/5（/YomkContext、/YomkFunctionPool、/YomkEventLoop、
+  /YomkLogger、/YomkServerInfo）
 - 解包宏 -> 普通类属性访问（DemoPkg 载体）；promise/future -> Event + 容器
 
 说明：全程不触碰 shutdown/YomkApi.init（服务器实例独立，每节 YomkServer.create(1)，
@@ -343,10 +343,10 @@ def test_start_service():
           == 0, "start_service 不支持名返回 0（continue 分支）")
     check(not name_in(server.service_names(),
           "/NoSuchBuiltin"), "start_service 不支持名不入表")
-    check(server.start_service(["/YomkContext"])
+    check(server.start_service(["/YomkServerInfo"])
           == 0, "start_service 内置服务返回 0")
-    check(name_in(server.service_names(), "/YomkContext"),
-          "内置 creator 真实路径：/YomkContext 入表")
+    check(name_in(server.service_names(), "/YomkServerInfo"),
+          "内置 creator 真实路径：/YomkServerInfo 入表")
 
 
 def main():

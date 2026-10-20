@@ -16,10 +16,14 @@ from YomkServerPy import (
     CallFunction,
     EventLoopPkg,
     Event,
+    ConsoleLogProxy,
+    Log,
+    LogFile,
     YomkFuncInfo
 )
 from typing import Any, Callable, Optional
 import logging
+import sys
 import threading
 
 from abc import ABC, abstractmethod
@@ -72,8 +76,8 @@ def init(async_thread_count=0):
         if not _init_done:
             srv = YomkServer.create(async_thread_count)
             srv.start_service(
-                ["/YomkContext", "/YomkFunctionPool", "/YomkEventLoop",
-                 "/YomkServerInfo"])
+                ["/YomkFunctionPool", "/YomkContext", "/YomkEventLoop",
+                 "/YomkLogger", "/YomkServerInfo"])
             g_server = srv
             _init_done = True
     return g_server
@@ -169,6 +173,141 @@ def async_request(url: type[str], pkg: type[Any], callback: type[Callable[[YomkR
 
 def request(url: type[str], pkg: type[Any]) -> YomkResponse:
     return _api_request(url, pkg)
+
+
+def _yomk_api_file_line_msg(caller_frame, *args):
+    # 内容拼装：内容头为调用处行号（对齐 main 宏 TO_STRING(__LINE__) 语义），
+    # 其后逐 args 以空格连接；非 str args 经 str() 流式化（对齐 ostringstream <<）
+    msg = "[" + str(caller_frame.f_lineno) + "]"
+    for arg in args:
+        msg += " " + str(arg)
+    return msg
+
+
+# ==================== LOG_API（对齐 main YomkAPI.h LOG_API 区段） ====================
+
+def set_console_log_proxy(console_log_proxy_func):
+    # 设置控制台日志代理回调（传 None 恢复默认输出，取消代理回调）
+    return _api_request("/YomkLogger/set_console_log_proxy",
+                        ConsoleLogProxy(console_log_proxy_func))
+
+
+def console_log_info_tag(tag, *args):
+    # 控制台日志输出（tag 同填日志器名与标签，对齐 main CONSOLE_LOG_INFO_TAG）
+    return _api_request("/YomkLogger/console_log",
+                        Log(Log.eInfo, _yomk_api_file_line_msg(sys._getframe(1), *args), tag, tag))
+
+
+def console_log_warn_tag(tag, *args):
+    # 控制台警告日志输出（对齐 main CONSOLE_LOG_WARN_TAG）
+    return _api_request("/YomkLogger/console_log",
+                        Log(Log.eWarn, _yomk_api_file_line_msg(sys._getframe(1), *args), tag, tag))
+
+
+def console_log_error_tag(tag, *args):
+    # 控制台错误日志输出（对齐 main CONSOLE_LOG_ERROR_TAG）
+    return _api_request("/YomkLogger/console_log",
+                        Log(Log.eError, _yomk_api_file_line_msg(sys._getframe(1), *args), tag, tag))
+
+
+def console_log_debug_tag(tag, *args):
+    # 控制台调试日志输出（对齐 main CONSOLE_LOG_DEBUG_TAG）
+    return _api_request("/YomkLogger/console_log",
+                        Log(Log.eDebug, _yomk_api_file_line_msg(sys._getframe(1), *args), tag, tag))
+
+
+def file_log_create(log_dir, log_file):
+    # 创建文件日志器（log_dir 目录、log_file 日志器名，对齐 main FILE_LOG_CREATE 参数序）
+    return _api_request("/YomkLogger/create_file_logger", LogFile(log_file, log_dir))
+
+
+def file_log_write(log_file):
+    # 将指定日志器的缓冲落盘（对齐 main FILE_LOG_WRITE）
+    return _api_request("/YomkLogger/write_file_log", log_file)
+
+
+def file_log_info_tag(log_file, tag, *args):
+    # 文件日志输出（logger=log_file、tag=tag，对齐 main FILE_LOG_INFO_TAG）
+    return _api_request("/YomkLogger/file_log",
+                        Log(Log.eInfo, _yomk_api_file_line_msg(sys._getframe(1), *args), log_file, tag))
+
+
+def file_log_warn_tag(log_file, tag, *args):
+    # 文件警告日志输出（对齐 main FILE_LOG_WARN_TAG）
+    return _api_request("/YomkLogger/file_log",
+                        Log(Log.eWarn, _yomk_api_file_line_msg(sys._getframe(1), *args), log_file, tag))
+
+
+def file_log_error_tag(log_file, tag, *args):
+    # 文件错误日志输出（对齐 main FILE_LOG_ERROR_TAG）
+    return _api_request("/YomkLogger/file_log",
+                        Log(Log.eError, _yomk_api_file_line_msg(sys._getframe(1), *args), log_file, tag))
+
+
+def file_log_debug_tag(log_file, tag, *args):
+    # 文件调试日志输出（对齐 main FILE_LOG_DEBUG_TAG）
+    return _api_request("/YomkLogger/file_log",
+                        Log(Log.eDebug, _yomk_api_file_line_msg(sys._getframe(1), *args), log_file, tag))
+
+
+def on_console_log_info():
+    # 开启控制台 Info 级别日志（对齐 main ON_CONSOLE_LOG_INFO）
+    return _api_request("/YomkLogger/on_console_log_by_level", Log(Log.eInfo))
+
+
+def on_console_log_warn():
+    # 开启控制台 Warn 级别日志（对齐 main ON_CONSOLE_LOG_WARN）
+    return _api_request("/YomkLogger/on_console_log_by_level", Log(Log.eWarn))
+
+
+def on_console_log_error():
+    # 开启控制台 Error 级别日志（对齐 main ON_CONSOLE_LOG_ERROR）
+    return _api_request("/YomkLogger/on_console_log_by_level", Log(Log.eError))
+
+
+def on_console_log_debug():
+    # 开启控制台 Debug 级别日志（对齐 main ON_CONSOLE_LOG_DEBUG）
+    return _api_request("/YomkLogger/on_console_log_by_level", Log(Log.eDebug))
+
+
+def off_console_log_info():
+    # 关闭控制台 Info 级别日志（对齐 main OFF_CONSOLE_LOG_INFO）
+    return _api_request("/YomkLogger/off_console_log_by_level", Log(Log.eInfo))
+
+
+def off_console_log_warn():
+    # 关闭控制台 Warn 级别日志（对齐 main OFF_CONSOLE_LOG_WARN）
+    return _api_request("/YomkLogger/off_console_log_by_level", Log(Log.eWarn))
+
+
+def off_console_log_error():
+    # 关闭控制台 Error 级别日志（对齐 main OFF_CONSOLE_LOG_ERROR）
+    return _api_request("/YomkLogger/off_console_log_by_level", Log(Log.eError))
+
+
+def off_console_log_debug():
+    # 关闭控制台 Debug 级别日志（对齐 main OFF_CONSOLE_LOG_DEBUG）
+    return _api_request("/YomkLogger/off_console_log_by_level", Log(Log.eDebug))
+
+
+def logger_info_loggers():
+    # 获取全部日志器列表（对齐 main LOGGER_INFO_LOGGERS）
+    return _api_request("/YomkLogger/loggers", None)
+
+
+def logger_info_logger(logger_name):
+    # 查询指定日志器状态（对齐 main LOGGER_INFO_LOGGER）
+    return _api_request("/YomkLogger/logger", logger_name)
+
+
+def logger_info_all():
+    # 查询全部日志器及开关配置状态（对齐 main LOGGER_INFO_ALL）
+    return _api_request("/YomkLogger/all", None)
+
+
+def file_log_delete(logger_name):
+    # 删除指定日志器（console 表计数 + file 表删除触发析构落盘，对齐 main FILE_LOG_DELETE）
+    return _api_request("/YomkLogger/delete_logger", logger_name)
 
 
 def context_create(key: type[str], value: type[Any]) -> YomkResponse:

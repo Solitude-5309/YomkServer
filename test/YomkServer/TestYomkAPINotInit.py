@@ -10,11 +10,12 @@ TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试（正式全�
 5. 模块便捷 API 守卫抽样：统一守卫入口 _api_request 验证（context_create/
    function_pool_register/event_loop_start 返回 eInvalid + 契约消息同根 +
    context_get 特殊形态原样返回调用方默认值）
+6. LOG 模块便捷 API 守卫全量 23 条（Logger 模块轮 P1 收口，对齐 main 第 5 节
+   五模块全量形态）：set_console_log_proxy / console_log_*_tag×4 /
+   file_log_create+write+*_tag×4 / off_console_log_*×4 / on_console_log_*×4 /
+   logger_info_loggers+logger+all / file_log_delete，首条另断契约消息同根
 
 剔除与推迟说明（语言机制映射与范围口径，非功能缺口）：
-- main 第 5 节模块 API 守卫五模块全量 40+ 条（Logger 23 / EventLoop 9 /
-  FunctionPool 6 / Context 12 + GET 特殊形态 / ServerInfo 4）留模块轮：全量
-  守卫的模块属性决定其归属，本文件抽样仅验证统一守卫入口不触模块逻辑
 - main 第 4 节"守卫拒绝后调用方 delete 无泄漏无崩溃"断言剔除：python 引用计数
   语义无所有权接管概念
 - 版本号断言形态：python 版本传递链中 YomkServerPyVersion 模块缺失时回落
@@ -102,6 +103,57 @@ def main():
     sentinel = object()
     check(YomkApi.context_get("guard_key", sentinel) is sentinel,
           "context_get 未初始化原样返回调用方默认值")
+
+    print("===== 6. LOG 模块便捷 API 守卫全量（Logger 模块轮 P1 收口 23 条） =====")
+    # 对齐 main TestYomkAPINotInit 第 5 节 Logger 23 条顺序
+    check(YomkApi.set_console_log_proxy(None).status == ResStatus.eInvalid,
+          "set_console_log_proxy 未初始化返回 eInvalid")
+    resp = YomkApi.console_log_info_tag("tag", "hello")
+    check(resp.status == ResStatus.eInvalid,
+          "console_log_info_tag 未初始化返回 eInvalid")
+    check(resp.msg == "YomkServer is not init", f"模块 API 守卫契约消息同根: {resp.msg}")
+    check(YomkApi.console_log_warn_tag("tag", "hello").status == ResStatus.eInvalid,
+          "console_log_warn_tag 未初始化返回 eInvalid")
+    check(YomkApi.console_log_error_tag("tag", "hello").status == ResStatus.eInvalid,
+          "console_log_error_tag 未初始化返回 eInvalid")
+    check(YomkApi.console_log_debug_tag("tag", "hello").status == ResStatus.eInvalid,
+          "console_log_debug_tag 未初始化返回 eInvalid")
+    check(YomkApi.file_log_create("/tmp", "guard.log").status == ResStatus.eInvalid,
+          "file_log_create 未初始化返回 eInvalid")
+    check(YomkApi.file_log_write("guard.log").status == ResStatus.eInvalid,
+          "file_log_write 未初始化返回 eInvalid")
+    check(YomkApi.file_log_info_tag("guard.log", "tag", "hello").status == ResStatus.eInvalid,
+          "file_log_info_tag 未初始化返回 eInvalid")
+    check(YomkApi.file_log_warn_tag("guard.log", "tag", "hello").status == ResStatus.eInvalid,
+          "file_log_warn_tag 未初始化返回 eInvalid")
+    check(YomkApi.file_log_error_tag("guard.log", "tag", "hello").status == ResStatus.eInvalid,
+          "file_log_error_tag 未初始化返回 eInvalid")
+    check(YomkApi.file_log_debug_tag("guard.log", "tag", "hello").status == ResStatus.eInvalid,
+          "file_log_debug_tag 未初始化返回 eInvalid")
+    check(YomkApi.off_console_log_info().status == ResStatus.eInvalid,
+          "off_console_log_info 未初始化返回 eInvalid")
+    check(YomkApi.off_console_log_warn().status == ResStatus.eInvalid,
+          "off_console_log_warn 未初始化返回 eInvalid")
+    check(YomkApi.off_console_log_error().status == ResStatus.eInvalid,
+          "off_console_log_error 未初始化返回 eInvalid")
+    check(YomkApi.off_console_log_debug().status == ResStatus.eInvalid,
+          "off_console_log_debug 未初始化返回 eInvalid")
+    check(YomkApi.on_console_log_info().status == ResStatus.eInvalid,
+          "on_console_log_info 未初始化返回 eInvalid")
+    check(YomkApi.on_console_log_warn().status == ResStatus.eInvalid,
+          "on_console_log_warn 未初始化返回 eInvalid")
+    check(YomkApi.on_console_log_error().status == ResStatus.eInvalid,
+          "on_console_log_error 未初始化返回 eInvalid")
+    check(YomkApi.on_console_log_debug().status == ResStatus.eInvalid,
+          "on_console_log_debug 未初始化返回 eInvalid")
+    check(YomkApi.logger_info_loggers().status == ResStatus.eInvalid,
+          "logger_info_loggers 未初始化返回 eInvalid")
+    check(YomkApi.logger_info_logger("guard_logger").status == ResStatus.eInvalid,
+          "logger_info_logger 未初始化返回 eInvalid")
+    check(YomkApi.logger_info_all().status == ResStatus.eInvalid,
+          "logger_info_all 未初始化返回 eInvalid")
+    check(YomkApi.file_log_delete("guard_logger").status == ResStatus.eInvalid,
+          "file_log_delete 未初始化返回 eInvalid")
 
     print(("ALL PASSED" if g_failed == 0 else "SOME FAILED") +
           f" ({g_failed} failed)")

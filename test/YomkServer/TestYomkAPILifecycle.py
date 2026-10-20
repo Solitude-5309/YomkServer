@@ -12,9 +12,8 @@ TestYomkAPILifecycle.py —— YomkAPI init/shutdown 单例生命周期测试（
 5. 幂等：二次 shutdown 不崩溃；进程正常退出码 0 即证退出清理幂等
 
 推迟说明（模块轮）：
-- main 内置服务断言 5 个（另含 /YomkLogger、/YomkServerInfo），python 内置服务
-  映射表 3/5，本文件断言 3 个
-- main 模块便捷 API 已初始化态行为留模块轮
+- main 模块便捷 API 已初始化态行为留模块轮（Logger 便捷 API 随 Logger 模块轮在
+  NotInit 文件补全量守卫）
 
 说明：本程序验证已初始化态与关闭后态，与 TestYomkAPINotInit（未初始化态）进程
 隔离；门面单例状态进程级持久，shutdown 压轴执行
@@ -71,7 +70,8 @@ def main():
     check(name_in(names, "/YomkContext"), "内置服务 /YomkContext 已拉起")
     check(name_in(names, "/YomkFunctionPool"), "内置服务 /YomkFunctionPool 已拉起")
     check(name_in(names, "/YomkEventLoop"), "内置服务 /YomkEventLoop 已拉起")
-    # main 另断言 /YomkLogger 与 /YomkServerInfo——python 内置映射表 3/5，留模块轮
+    check(name_in(names, "/YomkLogger"), "内置服务 /YomkLogger 已拉起")
+    check(name_in(names, "/YomkServerInfo"), "内置服务 /YomkServerInfo 已拉起")
 
     print("===== 3. API 层独有守卫（已初始化态） =====")
     check(YomkApi.add_service(None) == -1,
