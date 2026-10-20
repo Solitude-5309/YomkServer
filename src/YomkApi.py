@@ -22,6 +22,7 @@ from YomkServerPy import (
     YomkFuncInfo
 )
 from typing import Any, Callable, Optional
+import atexit
 import logging
 import sys
 import threading
@@ -80,6 +81,8 @@ def init(async_thread_count=0):
                  "/YomkLogger", "/YomkServerInfo"])
             g_server = srv
             _init_done = True
+            # 进程退出兜底销毁（对齐 main init 内注册 std::atexit(holder().destroy())；shutdown 幂等）
+            atexit.register(shutdown)
     return g_server
 
 
@@ -104,7 +107,7 @@ def shutdown():
         g_server = None
 
 
-def new_service(class_name: type[YomkService], name: type[str] = ""):
+def new_service(class_name: type[YomkService], name: str = ""):
     global g_server
     if g_server is None:
         log.error("YomkServer is not init")
@@ -113,7 +116,7 @@ def new_service(class_name: type[YomkService], name: type[str] = ""):
     return g_server.new_service(class_name, name)
 
 
-def add_service(srv: type[YomkService], name: type[str] = ""):
+def add_service(srv: YomkService, name: str = ""):
     global g_server
     if g_server is None:
         log.error("YomkServer is not init")
@@ -126,7 +129,7 @@ def add_service(srv: type[YomkService], name: type[str] = ""):
     return g_server.add_service(srv)
 
 
-def del_service(name: type[str] = ""):
+def del_service(name: str = ""):
     # 按名称注销服务（对齐 main delService：空名拒绝）
     global g_server
     if g_server is None:
@@ -138,7 +141,7 @@ def del_service(name: type[str] = ""):
     return g_server.del_service(name)
 
 
-def boot(boot: type[YomkBoot] = None):
+def boot(boot: Optional[YomkBoot] = None):
     # 初始化并执行启动编排流程（before -> start -> after）；
     # 钩子未显式返回（None）等价成功 0（对齐 main 返回 int 0）
     init()
@@ -163,7 +166,7 @@ def boot(boot: type[YomkBoot] = None):
     return 0
 
 
-def async_request(url: type[str], pkg: type[Any], callback: type[Callable[[YomkResponse], None]]) -> None:
+def async_request(url: str, pkg: Any, callback: Callable[[YomkResponse], None]) -> None:
     global g_server
     if g_server is None:
         log.error("YomkServer is not init")
@@ -171,7 +174,7 @@ def async_request(url: type[str], pkg: type[Any], callback: type[Callable[[YomkR
     return g_server.async_request(url, pkg, callback)
 
 
-def request(url: type[str], pkg: type[Any]) -> YomkResponse:
+def request(url: str, pkg: Any) -> YomkResponse:
     return _api_request(url, pkg)
 
 
@@ -216,6 +219,30 @@ def console_log_debug_tag(tag, *args):
                         Log(Log.eDebug, _yomk_api_file_line_msg(sys._getframe(1), *args), tag, tag))
 
 
+# ---- 无 tag 便捷入口（对齐 main 无 tag 宏 YOMK_INFO/WARN/ERROR/DEBUG：缺省 tag 同填 "MainLogger"）----
+# 直接实现而非转发 *_tag 版：sys._getframe(1) 取本函数调用方帧，保证 [行号] 为用户调用行
+# （对齐 main 宏在调用处展开 TO_STRING(__LINE__) 的语义）
+
+def console_log_info(*args):
+    return _api_request("/YomkLogger/console_log",
+                        Log(Log.eInfo, _yomk_api_file_line_msg(sys._getframe(1), *args), "MainLogger", "MainLogger"))
+
+
+def console_log_warn(*args):
+    return _api_request("/YomkLogger/console_log",
+                        Log(Log.eWarn, _yomk_api_file_line_msg(sys._getframe(1), *args), "MainLogger", "MainLogger"))
+
+
+def console_log_error(*args):
+    return _api_request("/YomkLogger/console_log",
+                        Log(Log.eError, _yomk_api_file_line_msg(sys._getframe(1), *args), "MainLogger", "MainLogger"))
+
+
+def console_log_debug(*args):
+    return _api_request("/YomkLogger/console_log",
+                        Log(Log.eDebug, _yomk_api_file_line_msg(sys._getframe(1), *args), "MainLogger", "MainLogger"))
+
+
 def file_log_create(log_dir, log_file):
     # 创建文件日志器（log_dir 目录、log_file 日志器名，对齐 main FILE_LOG_CREATE 参数序）
     return _api_request("/YomkLogger/create_file_logger", LogFile(log_file, log_dir))
@@ -248,6 +275,28 @@ def file_log_debug_tag(log_file, tag, *args):
     # 文件调试日志输出（对齐 main FILE_LOG_DEBUG_TAG）
     return _api_request("/YomkLogger/file_log",
                         Log(Log.eDebug, _yomk_api_file_line_msg(sys._getframe(1), *args), log_file, tag))
+
+
+# ---- 文件日志无 tag 便捷入口（对齐 main YOMK_FILE_INFO/WARN/ERROR/DEBUG：缺省 tag "MainLogger"）----
+
+def file_log_info(log_file, *args):
+    return _api_request("/YomkLogger/file_log",
+                        Log(Log.eInfo, _yomk_api_file_line_msg(sys._getframe(1), *args), log_file, "MainLogger"))
+
+
+def file_log_warn(log_file, *args):
+    return _api_request("/YomkLogger/file_log",
+                        Log(Log.eWarn, _yomk_api_file_line_msg(sys._getframe(1), *args), log_file, "MainLogger"))
+
+
+def file_log_error(log_file, *args):
+    return _api_request("/YomkLogger/file_log",
+                        Log(Log.eError, _yomk_api_file_line_msg(sys._getframe(1), *args), log_file, "MainLogger"))
+
+
+def file_log_debug(log_file, *args):
+    return _api_request("/YomkLogger/file_log",
+                        Log(Log.eDebug, _yomk_api_file_line_msg(sys._getframe(1), *args), log_file, "MainLogger"))
 
 
 def on_console_log_info():
@@ -310,16 +359,16 @@ def file_log_delete(logger_name):
     return _api_request("/YomkLogger/delete_logger", logger_name)
 
 
-def context_create(key: type[str], value: type[Any]) -> YomkResponse:
+def context_create(key: str, value: Any) -> YomkResponse:
     ctx = Context(key, value)
     return _api_request("/YomkContext/create", ctx)
 
 
-def context_destroy(key: type[str]) -> YomkResponse:
+def context_destroy(key: str) -> YomkResponse:
     return _api_request("/YomkContext/destroy", key)
 
 
-def context_get(key: type[str], default_value: type[Any]) -> Any:
+def context_get(key: str, default_value: Any) -> Any:
     global g_server
     if g_server is None:
         return default_value
@@ -332,7 +381,7 @@ def context_get(key: type[str], default_value: type[Any]) -> Any:
     return default_value
 
 
-def context_set(key: type[str], default_value: type[Any]) -> YomkResponse:
+def context_set(key: str, default_value: Any) -> YomkResponse:
     ctx = Context(key, default_value)
     return _api_request("/YomkContext/set", ctx)
 
@@ -345,7 +394,7 @@ def context_turn_off_checker() -> YomkResponse:
     return _api_request("/YomkContext/turn_off_checker", None)
 
 
-def context_set_checker(key: type[str], checker: type[Callable[[Context], CheckStatus]]) -> YomkResponse:
+def context_set_checker(key: str, checker: Callable[[Context], CheckStatus]) -> YomkResponse:
     contextChecker = ContextChecker(key, checker)
     return _api_request("/YomkContext/set_checker", contextChecker)
 
@@ -358,7 +407,7 @@ def context_turn_off_monitor() -> YomkResponse:
     return _api_request("/YomkContext/turn_off_monitor", None)
 
 
-def context_set_monitor(key: type[str], monitor: type[Callable[[Context], None]], async_monitor: type[bool] = False) -> YomkResponse:
+def context_set_monitor(key: str, monitor: Callable[[Context], None], async_monitor: bool = False) -> YomkResponse:
     # async_monitor=True 时用户回调投递到异步位、同步位以 no-op 占位（对齐 main
     # 单函数 + bool 标志的门面语义；服务端为两函数位形态，同步位空函数仅占位，
     # 因 async 位存在即走异步路径，占位函数不会被执行）
@@ -374,7 +423,7 @@ def context_info_keys() -> YomkResponse:
     return _api_request("/YomkContext/keys", None)
 
 
-def context_info_key(key: type[str]) -> YomkResponse:
+def context_info_key(key: str) -> YomkResponse:
     # 查询指定上下文键状态（对齐 main CONTEXT_INFO_KEY）
     return _api_request("/YomkContext/key", key)
 
@@ -384,16 +433,16 @@ def context_info_all() -> YomkResponse:
     return _api_request("/YomkContext/all", None)
 
 
-def function_pool_register(name: type[str], func: type[Callable[[Any], YomkResponse]], msg_name: type[str] = "") -> YomkResponse:
+def function_pool_register(name: str, func: Callable[[Any], YomkResponse], msg_name: str = "") -> YomkResponse:
     return _api_request("/YomkFunctionPool/register", Function(name, func, msg_name))
 
 
-def function_pool_unregister(name: type[str]) -> YomkResponse:
+def function_pool_unregister(name: str) -> YomkResponse:
     # 从函数池注销函数（对齐 main FUNCTIONPOOL_UNREGISTER）
     return _api_request("/YomkFunctionPool/unregister", name)
 
 
-def function_pool_call(name: type[str], pkg: type[Any]) -> YomkResponse:
+def function_pool_call(name: str, pkg: Any) -> YomkResponse:
     return _api_request("/YomkFunctionPool/call", CallFunction(name, pkg))
 
 
@@ -402,7 +451,7 @@ def function_pool_info_names() -> YomkResponse:
     return _api_request("/YomkFunctionPool/names", None)
 
 
-def function_pool_info_name(name: type[str]) -> YomkResponse:
+def function_pool_info_name(name: str) -> YomkResponse:
     # 查询单个已注册函数元信息（对齐 main FUNCTIONPOOL_INFO_NAME）
     return _api_request("/YomkFunctionPool/name", name)
 
@@ -412,23 +461,23 @@ def function_pool_info_all() -> YomkResponse:
     return _api_request("/YomkFunctionPool/all", None)
 
 
-def event_loop_start(event_loop_name: type[str], callback: type[Callable[[Any], YomkResponse]] = None, msg_name: type[str] = "") -> YomkResponse:
+def event_loop_start(event_loop_name: str, callback: Optional[Callable[[Any], YomkResponse]] = None, msg_name: str = "") -> YomkResponse:
     return _api_request("/YomkEventLoop/start", EventLoopPkg(event_loop_name, callback, msg_name))
 
 
-def event_loop_stop(event_loop_name: type[str]) -> YomkResponse:
+def event_loop_stop(event_loop_name: str) -> YomkResponse:
     return _api_request("/YomkEventLoop/stop", event_loop_name)
 
 
-def event_loop_destroy(event_loop_name: type[str]) -> YomkResponse:
+def event_loop_destroy(event_loop_name: str) -> YomkResponse:
     return _api_request("/YomkEventLoop/destroy", event_loop_name)
 
 
-def event_loop_post(event_loop_name: type[str], pkg: type[Any], callback: type[Callable[[Any], YomkResponse]] = None, tag: type[str] = "") -> YomkResponse:
+def event_loop_post(event_loop_name: str, pkg: Any, callback: Optional[Callable[[Any], YomkResponse]] = None, tag: str = "") -> YomkResponse:
     return _api_request("/YomkEventLoop/post", Event(event_loop_name, pkg, callback, tag))
 
 
-def event_loop_post_wait(event_loop_name: type[str], pkg: type[Any], callback: type[Callable[[Any], YomkResponse]] = None, tag: type[str] = "") -> YomkResponse:
+def event_loop_post_wait(event_loop_name: str, pkg: Any, callback: Optional[Callable[[Any], YomkResponse]] = None, tag: str = "") -> YomkResponse:
     return _api_request("/YomkEventLoop/post_wait", Event(event_loop_name, pkg, callback, tag))
 
 
@@ -437,7 +486,7 @@ def event_loop_info_loops() -> YomkResponse:
     return _api_request("/YomkEventLoop/loops", None)
 
 
-def event_loop_info_loop(event_loop_name: type[str], tag_count: type[int] = None) -> YomkResponse:
+def event_loop_info_loop(event_loop_name: str, tag_count: Optional[int] = None) -> YomkResponse:
     # 查询指定事件循环状态与事件积压数（对齐 main EVENTLOOP_INFO_LOOP 双重载）
     if tag_count is not None:
         return _api_request("/YomkEventLoop/loop", event_loop_name + " " + str(tag_count))
@@ -454,12 +503,12 @@ def server_info_services() -> YomkResponse:
     return _api_request("/YomkServerInfo/services", None)
 
 
-def server_info_functions(srv_name: type[str]) -> YomkResponse:
+def server_info_functions(srv_name: str) -> YomkResponse:
     # 查询指定服务的全部功能函数（对齐 main SERVER_INFO_FUNCTIONS）
     return _api_request("/YomkServerInfo/functions", srv_name)
 
 
-def server_info_function(url: type[str]) -> YomkResponse:
+def server_info_function(url: str) -> YomkResponse:
     # 查询指定功能函数元信息（对齐 main SERVER_INFO_FUNCTION）
     return _api_request("/YomkServerInfo/function", url)
 
