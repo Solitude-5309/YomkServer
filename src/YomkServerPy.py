@@ -763,9 +763,12 @@ class EventLoop:
         self.m_running = False
         self.m_event_id = 1
         self.m_defaultServiceFunc = None
+        self.m_defaultMsgName = ""
 
-    def set_default_service_func(self, func):
+    def set_default_service_func(self, func, msg_name=""):
+        # 双参对齐 main setDefaultServiceFunc：msg_name 同存，infoLine 内省依赖
         self.m_defaultServiceFunc = func
+        self.m_defaultMsgName = msg_name
 
     def run(self):
         while self.m_running:
@@ -891,91 +894,157 @@ class EventLoop:
 
         return 0
 
+    def info_line(self, loop_name, tag_count):
+        # 内省元信息行（对齐 main infoLine）：队列锁内快照，锁外拼行；
+        # 格式 "名 running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(N): tag1, tag2..."
+        with self.m_queueMutex:
+            running = self.m_running
+            pending = self.m_event_queue.qsize()
+            default_func = self.m_defaultServiceFunc is not None
+            default_msg_name = self.m_defaultMsgName
+            # 队首最多列出 tagCount 个事件 tag，队列不足则全部列出；空 tag 显示 "-" 占位
+            tags = []
+            for event in list(self.m_event_queue.queue)[:tag_count]:
+                tags.append(event.m_tag if (event and event.m_tag) else "-")
+
+        tag_list = ", ".join(tags)
+        return (loop_name + (" running:on" if running else " running:off") +
+                " pending:" + str(pending) +
+                (" defaultFunc:on" if default_func else " defaultFunc:off") +
+                ((" [" + default_msg_name + "]") if default_func and default_msg_name else "") +
+                " nextNEventTag(" + str(tag_count) + "): " + tag_list)
+
 
 class YomkEventLoop(YomkService):
     def __init__(self, server):
         super().__init__(server)
         self.set_name("/YomkEventLoop")
-        self.m_eventLoop = {str: EventLoop()}
+        self.m_eventLoop = {}
         self.m_eventLoopMutex = rwlock.RWLockFair()
 
     def init(self):
         self.install_func("/start", self.start, "Eventloop")
         self.install_func("/stop", self.stop, "String")
-        self.install_func("/destroy", self.destroy, "String")
         self.install_func("/post", self.post, "Event")
         self.install_func("/post_wait", self.post_wait, "Event")
+        self.install_func("/destroy", self.destroy, "String")
+        # 调试内省接口，端点挂在本服务 funcMap
+        self.install_func("/loops", self.loops)
+        self.install_func("/loop", self.loop_info, "String")
+        self.install_func("/all", self.list_all)
+        return 0
 
     def start(self, pkg: EventLoopPkg):
         if not isinstance(pkg, EventLoopPkg):
             raise TypeError("pkg must be EventLoopPkg")
-        if not pkg.m_eventloopName:
-            log.error(
-                "event loop name is empty, please check EventLoopPkg.m_eventloopName.")
-            return YomkResponse(ResStatus.eNo, "event loop name is empty")
+        # 空名是合法 map 键（对齐 main：无空名拦截，START 空名 eOk）
         with self.m_eventLoopMutex.gen_wlock():
             if pkg.m_eventloopName in self.m_eventLoop:
+                # 已存在仅重启，不重设默认函数（对齐 main）
                 self.m_eventLoop[pkg.m_eventloopName].start()
                 return YomkResponse(ResStatus.eOk, "event loop start success")
-            else:
-                event_loop = EventLoop()
-                event_loop.set_default_service_func(pkg.m_defaultServiceFunc)
-                self.m_eventLoop[pkg.m_eventloopName] = event_loop
-                event_loop.start()
-                return YomkResponse(ResStatus.eOk, "event loop start success")
+            event_loop = EventLoop()
+            event_loop.set_default_service_func(
+                pkg.m_defaultServiceFunc, pkg.m_msgName)
+            event_loop.start()
+            self.m_eventLoop[pkg.m_eventloopName] = event_loop
+            return YomkResponse(ResStatus.eOk, "event loop start success")
 
     def stop(self, pkg):
-        if not pkg:
-            log.error(
-                "event loop name is empty, please check EventLoopPkg.m_eventloopName.")
-            return YomkResponse(ResStatus.eNo, "event loop name is empty")
         with self.m_eventLoopMutex.gen_rlock():
             if pkg in self.m_eventLoop:
                 self.m_eventLoop[pkg].stop()
                 return YomkResponse(ResStatus.eOk, "event loop stop success")
             else:
+                log.error("event loop: " + pkg +
+                          " not exist, please check event loop name")
                 return YomkResponse(ResStatus.eNo, "event loop not exist")
 
     def destroy(self, pkg):
-        if not pkg:
-            log.error(
-                "event loop name is empty, please check EventLoopPkg.m_eventloopName.")
-            return YomkResponse(ResStatus.eNo, "event loop name is empty")
         with self.m_eventLoopMutex.gen_wlock():
             if pkg in self.m_eventLoop:
-                self.m_eventLoop[pkg].stop()
+                # 对齐 main：调底层 destroy（stop+清队列+释放等待者）后出表
+                self.m_eventLoop[pkg].destroy()
                 del self.m_eventLoop[pkg]
                 return YomkResponse(ResStatus.eOk, "event loop destroy success")
             else:
+                log.error("event loop: " + pkg +
+                          " not exist, please check event loop name")
                 return YomkResponse(ResStatus.eNo, "event loop not exist")
 
     def post(self, pkg: Event):
         if not isinstance(pkg, Event):
             raise TypeError("pkg must be Event")
-        if not pkg.m_eventLoopName:
-            log.error(
-                "event loop name is empty, please check Event.m_eventLoopName.")
-            return YomkResponse(ResStatus.eNo, "event loop name is empty")
         with self.m_eventLoopMutex.gen_rlock():
             if pkg.m_eventLoopName in self.m_eventLoop:
-                self.m_eventLoop[pkg.m_eventLoopName].post(pkg)
-                return YomkResponse(ResStatus.eOk, "event post success")
+                # 内层返回码映射：0 成功；其余（实际仅 2=循环未运行被拒）统一 eNo
+                rc = self.m_eventLoop[pkg.m_eventLoopName].post(pkg)
+                if rc != 0:
+                    return YomkResponse(ResStatus.eNo, "event loop not running, post rejected")
+                return YomkResponse(ResStatus.eOk, "event loop post success")
             else:
+                log.error("event loop: " + pkg.m_eventLoopName +
+                          " not exist, please check event loop name")
                 return YomkResponse(ResStatus.eNo, "event loop not exist")
 
     def post_wait(self, pkg: Event):
         if not isinstance(pkg, Event):
             raise TypeError("pkg must be Event")
-        if not pkg.m_eventLoopName:
-            log.error(
-                "event loop name is empty, please check Event.m_eventLoopName.")
-            return YomkResponse(ResStatus.eNo, "event loop name is empty")
         with self.m_eventLoopMutex.gen_rlock():
             if pkg.m_eventLoopName in self.m_eventLoop:
-                self.m_eventLoop[pkg.m_eventLoopName].post_wait(pkg)
-                return YomkResponse(ResStatus.eOk, "event post wait success", pkg)
+                # 内层返回码映射：0 成功（回传 event 携带执行结果）；其余统一 eNo（未入队未执行，不回传）
+                rc = self.m_eventLoop[pkg.m_eventLoopName].post_wait(pkg)
+                if rc != 0:
+                    return YomkResponse(ResStatus.eNo, "event loop not running, post wait rejected")
+                return YomkResponse(ResStatus.eOk, "event loop post wait success", pkg)
             else:
+                log.error("event loop: " + pkg.m_eventLoopName +
+                          " not exist, please check event loop name")
                 return YomkResponse(ResStatus.eNo, "event loop not exist")
+
+    def loops(self, pkg):
+        # 内省：列出全部事件循环名
+        with self.m_eventLoopMutex.gen_rlock():
+            loop_names = list(self.m_eventLoop.keys())
+        return YomkResponse(ResStatus.eOk, "ok", loop_names)
+
+    def loop_info(self, pkg):
+        # 内省：单个事件循环元信息，入参格式 "循环名" 或 "循环名 N"（N 缺省 3）
+        input_str = pkg if pkg else ""
+        loop_name = input_str
+        tag_count = 3
+        space_pos = input_str.rfind(" ")
+        if space_pos != -1:
+            count_str = input_str[space_pos + 1:]
+            # 尾段非空纯 ASCII 数字才拆（对齐 main find_first_not_of("0123456789") 过滤）
+            if count_str and all(c in "0123456789" for c in count_str):
+                loop_name = input_str[:space_pos]
+                # 对齐 main stoul 越界捕获回退：超过无符号上限时回退默认 3，不抛不崩
+                tag_count = int(count_str) if int(
+                    count_str) <= 2 ** 64 - 1 else 3
+
+        with self.m_eventLoopMutex.gen_rlock():
+            if loop_name in self.m_eventLoop:
+                return YomkResponse(ResStatus.eOk, self.m_eventLoop[loop_name].info_line(loop_name, tag_count))
+            log.error("event loop: " + loop_name +
+                      " not exist, please check event loop name")
+            return YomkResponse(ResStatus.eNo, "event loop not exist")
+
+    def list_all(self, pkg):
+        # 内省：全部事件循环元信息，每行一个循环
+        with self.m_eventLoopMutex.gen_rlock():
+            pairs = list(self.m_eventLoop.items())
+        lines = [loop.info_line(name, 3) for name, loop in pairs]
+        return YomkResponse(ResStatus.eOk, "ok", lines)
+
+    def deinit(self):
+        # 收尾残留 loop（对齐 main 析构兜底链语义）：写锁内快照并清表，锁外逐个 destroy
+        # （stop+清队列+释放等待者）；锁外清理模式与 shutdown 先例一致
+        with self.m_eventLoopMutex.gen_wlock():
+            loops = list(self.m_eventLoop.values())
+            self.m_eventLoop.clear()
+        for loop in loops:
+            loop.destroy()
 
 
 class YomkServerInfo(YomkService):
