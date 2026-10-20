@@ -152,6 +152,7 @@ class YomkServer:
             "/YomkContext": YomkContext,
             "/YomkFunctionPool": YomkFunctionPool,
             "/YomkEventLoop": YomkEventLoop,
+            "/YomkLogger": YomkLogger,
             "/YomkServerInfo": YomkServerInfo,
         }
         for srv_name in srv_names:
@@ -1227,6 +1228,313 @@ class YomkEventLoop(YomkService):
             self.m_eventLoop.clear()
         for loop in loops:
             loop.destroy()
+
+
+class YomkLogger(YomkService):
+    # 日志模块服务（对齐 main Modules/Logger/YomkLogger）：11 端点装配序与契约消息逐字对齐。
+    # 锁序约定：嵌套双读仅 loggers/list_all 内省快照，一律按 m_consoleLoggersMutex ->
+    # m_fileLoggersMutex 的顺序持有，全仓无反向嵌套点（delete_logger 分段持锁不嵌套；
+    # 其余端点均单锁）；m_consoleLogProxyMutex 为叶子锁，临界区内不得获取任何其他锁。
+    # 后续维护新增嵌套时须沿用此序，否则有死锁风险。两表保持 dict 但内省输出显式
+    # sorted 对齐 main std::map 字典序（python dict 为插入序，ServerInfo 轮先例）。
+    def __init__(self, server: "YomkServer"):
+        super().__init__(server)
+        self.set_name("/YomkLogger")
+        self.m_consoleLoggers = {"MainLogger": ConsoleLogger()}
+        self.m_consoleLoggersMutex = rwlock.RWLockFair()
+        self.m_fileLoggers = {}
+        self.m_fileLoggersMutex = rwlock.RWLockFair()
+        self.m_showConsoleDebugLog = True
+        self.m_showConsoleInfoLog = True
+        self.m_showConsoleWarningLog = True
+        self.m_showConsoleErrorLog = True
+        # proxy 字段专属锁：锁内拷贝快照、锁外调用回调，避免持锁重入
+        self.m_consoleLogProxyMutex = threading.Lock()
+        self.m_consoleLogProxy = False
+        self.m_consoleLogProxyFunc = None
+
+    def init(self):
+        self.install_func("/set_console_log_proxy",
+                          self.set_console_log_proxy, "ConsoleLogProxy")
+        self.install_func("/console_log", self.console_log, "Log")
+        self.install_func("/create_file_logger",
+                          self.create_file_logger, "LogFile")
+        self.install_func("/file_log", self.file_log, "Log")
+        self.install_func("/write_file_log", self.write_file_log, "String")
+        self.install_func("/delete_logger", self.delete_logger, "String")
+        self.install_func("/off_console_log_by_level",
+                          self.off_console_log_by_level, "Log")
+        self.install_func("/on_console_log_by_level",
+                          self.on_console_log_by_level, "Log")
+        # 调试内省接口，端点挂在本服务 funcMap
+        self.install_func("/loggers", self.loggers)
+        self.install_func("/logger", self.logger_info, "String")
+        self.install_func("/all", self.list_all)
+        return 0
+
+    @staticmethod
+    def _unpack(pkg, cls):
+        # 对齐 main YomkUnPackPkgResponse 空包/错类型契约分支：eNo + " pkg is null or
+        # pkg is not <Type>. "（首尾空格为 main 宏消息字面量；String 端点包为裸 str）
+        if isinstance(pkg, cls):
+            return None
+        type_name = "String" if cls is str else cls.__name__
+        log.error("pkg is null or pkg is not " + type_name + ".")
+        return YomkResponse(ResStatus.eNo, " pkg is null or pkg is not " + type_name + ". ")
+
+    def console_log(self, pkg: Log):
+        bad = self._unpack(pkg, Log)
+        if bad:
+            return bad
+        if not pkg.m_logger:
+            _yomk_err_pos_log("console logger name is empty, use MainLogger")
+            pkg.m_logger = "MainLogger"
+
+        # 锁内拷贝 proxy 快照，锁外调用回调（避免用户回调持锁重入）
+        with self.m_consoleLogProxyMutex:
+            proxy_enabled = self.m_consoleLogProxy
+            proxy_func = self.m_consoleLogProxyFunc
+        if proxy_enabled and proxy_func and not proxy_func(pkg):
+            return YomkResponse(ResStatus.eOk, "console log proxy is success.")
+
+        # 双检锁：读锁 miss 后升级写锁二次查找，logger 引用拷出锁外使用
+        console_logger = None
+        with self.m_consoleLoggersMutex.gen_rlock():
+            found = self.m_consoleLoggers.get(pkg.m_logger)
+            if found is not None:
+                console_logger = found
+        if console_logger is None:
+            with self.m_consoleLoggersMutex.gen_wlock():
+                console_logger = self.m_consoleLoggers.get(pkg.m_logger)
+                if console_logger is None:
+                    new_logger = ConsoleLogger()
+                    new_logger.set_name(pkg.m_logger)
+                    self.m_consoleLoggers[pkg.m_logger] = new_logger
+                    console_logger = new_logger
+
+        if pkg.m_level == Log.eInfo:
+            if self.m_showConsoleInfoLog:
+                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+        elif pkg.m_level == Log.eWarn:
+            if self.m_showConsoleWarningLog:
+                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+        elif pkg.m_level == Log.eError:
+            if self.m_showConsoleErrorLog:
+                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+        elif pkg.m_level == Log.eDebug:
+            if self.m_showConsoleDebugLog:
+                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+        else:
+            _yomk_err_pos_log("unknown log level, use Info")
+            if self.m_showConsoleInfoLog:
+                console_logger.log(Log.eInfo, pkg.m_tag, pkg.m_log)
+
+        return YomkResponse(ResStatus.eOk, "success.")
+
+    def set_console_log_proxy(self, pkg: ConsoleLogProxy):
+        bad = self._unpack(pkg, ConsoleLogProxy)
+        if bad:
+            return bad
+        # 与 consoleLog 读侧互斥；传 None 即卸载 proxy、恢复默认输出；两字段同锁一致更新
+        with self.m_consoleLogProxyMutex:
+            self.m_consoleLogProxyFunc = pkg.m_consoleLogProxyFunc
+            self.m_consoleLogProxy = self.m_consoleLogProxyFunc is not None
+        return YomkResponse(ResStatus.eOk, "success.")
+
+    def create_file_logger(self, pkg: LogFile):
+        bad = self._unpack(pkg, LogFile)
+        if bad:
+            return bad
+
+        # 空名/空目录拒绝：eInvalid（参数无效惯例，P2-a 处置）
+        if not pkg.m_logger:
+            _yomk_err_pos_log("logger name is empty.")
+            return YomkResponse(ResStatus.eInvalid, "logger name is empty.")
+        if not pkg.m_dir:
+            _yomk_err_pos_log("logger dir is empty.")
+            return YomkResponse(ResStatus.eInvalid, "logger dir is empty.")
+
+        # 全程持独占锁（对齐 main unique_lock：查重 + init I/O + 入表同锁，P3-a 口径）
+        with self.m_fileLoggersMutex.gen_wlock():
+            if pkg.m_logger in self.m_fileLoggers:
+                return YomkResponse(ResStatus.eNo, "logger name already exists.")
+
+            file_logger = FileLogger()
+            file_logger.set_name(pkg.m_logger)
+            file_logger.set_dir(pkg.m_dir)
+            if not file_logger.init():
+                _yomk_err_pos_log("init file logger failed: " + pkg.m_logger)
+                return YomkResponse(ResStatus.eNo, "init file logger failed.")
+            self.m_fileLoggers[pkg.m_logger] = file_logger
+
+        return YomkResponse(ResStatus.eOk, "success.")
+
+    def file_log(self, pkg: Log):
+        bad = self._unpack(pkg, Log)
+        if bad:
+            return bad
+
+        if not pkg.m_logger:
+            _yomk_err_pos_log("file logger name is empty.")
+            return YomkResponse(ResStatus.eNo, "file logger name is empty.")
+
+        with self.m_fileLoggersMutex.gen_rlock():
+            file_logger = self.m_fileLoggers.get(pkg.m_logger)
+            if file_logger is None:
+                _yomk_err_pos_log("file logger: " +
+                                  pkg.m_logger + " not found.")
+                return YomkResponse(ResStatus.eNo, "file logger not found.")
+
+            if pkg.m_level == Log.eInfo:
+                file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+            elif pkg.m_level == Log.eWarn:
+                file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+            elif pkg.m_level == Log.eError:
+                file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+            elif pkg.m_level == Log.eDebug:
+                file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+            else:
+                _yomk_err_pos_log("unknown log level, use Info")
+                file_logger.log(Log.eInfo, pkg.m_tag, pkg.m_log)
+
+        return YomkResponse(ResStatus.eOk, "success.")
+
+    def write_file_log(self, pkg):
+        bad = self._unpack(pkg, str)
+        if bad:
+            return bad
+        with self.m_fileLoggersMutex.gen_rlock():
+            file_logger = self.m_fileLoggers.get(pkg)
+            if file_logger is None:
+                _yomk_err_pos_log("logger: " + pkg + " not found.")
+                return YomkResponse(ResStatus.eNo, "logger not found.")
+            file_logger.write()
+
+        return YomkResponse(ResStatus.eOk, "success.")
+
+    def delete_logger(self, pkg):
+        bad = self._unpack(pkg, str)
+        if bad:
+            return bad
+
+        # 空名拒绝（同 createFileLogger 惯例）
+        if not pkg:
+            _yomk_err_pos_log("logger name is empty.")
+            return YomkResponse(ResStatus.eInvalid, "logger name is empty.")
+
+        # 分段持锁不嵌套：删除无需跨表原子快照，同时持两把写锁会阻塞全部日志写入
+        deleted_console = 0
+        with self.m_consoleLoggersMutex.gen_wlock():
+            if pkg in self.m_consoleLoggers:
+                del self.m_consoleLoggers[pkg]
+                deleted_console = 1
+
+        # 锁内拷出、锁外释放最后引用：FileLogger __del__ 落盘 I/O 不阻塞日志写入
+        deleted_file = 0
+        removed_file = None
+        with self.m_fileLoggersMutex.gen_wlock():
+            removed_file = self.m_fileLoggers.pop(pkg, None)
+            if removed_file is not None:
+                deleted_file = 1
+        removed_file = None   # 显式释放触发 __del__ 自动 write（缓冲内容不丢）
+
+        if deleted_console == 0 and deleted_file == 0:
+            _yomk_err_pos_log("logger: " + pkg + " not found.")
+            return YomkResponse(ResStatus.eNo, "logger not found.")
+
+        # 不删除磁盘上的 .log 文件（清理归调用方）
+        return YomkResponse(
+            ResStatus.eOk,
+            "deleted console:" + str(deleted_console) + " file:" + str(deleted_file))
+
+    def off_console_log_by_level(self, pkg: Log):
+        bad = self._unpack(pkg, Log)
+        if bad:
+            return bad
+
+        if pkg.m_level == Log.eInfo:
+            self.m_showConsoleInfoLog = False
+        elif pkg.m_level == Log.eWarn:
+            self.m_showConsoleWarningLog = False
+        elif pkg.m_level == Log.eError:
+            self.m_showConsoleErrorLog = False
+        elif pkg.m_level == Log.eDebug:
+            self.m_showConsoleDebugLog = False
+        else:
+            _yomk_err_pos_log("unknown log level, turn off failed.")
+
+        return YomkResponse(ResStatus.eOk, "success.")
+
+    def on_console_log_by_level(self, pkg: Log):
+        bad = self._unpack(pkg, Log)
+        if bad:
+            return bad
+
+        if pkg.m_level == Log.eInfo:
+            self.m_showConsoleInfoLog = True
+        elif pkg.m_level == Log.eWarn:
+            self.m_showConsoleWarningLog = True
+        elif pkg.m_level == Log.eError:
+            self.m_showConsoleErrorLog = True
+        elif pkg.m_level == Log.eDebug:
+            self.m_showConsoleDebugLog = True
+        else:
+            _yomk_err_pos_log("unknown log level, turn on failed.")
+        return YomkResponse(ResStatus.eOk, "success.")
+
+    def console_level_line(self):
+        line = "console:debug:"
+        line += "on" if self.m_showConsoleDebugLog else "off"
+        line += " info:"
+        line += "on" if self.m_showConsoleInfoLog else "off"
+        line += " warn:"
+        line += "on" if self.m_showConsoleWarningLog else "off"
+        line += " error:"
+        line += "on" if self.m_showConsoleErrorLog else "off"
+        line += " proxy:"
+        # 内省读侧与写侧互斥（叶子锁）
+        with self.m_consoleLogProxyMutex:
+            line += "on" if self.m_consoleLogProxy else "off"
+        return line
+
+    def loggers(self, pkg):
+        # 按锁序 console -> file 嵌套双读锁：两段为同一时刻的原子快照
+        with self.m_consoleLoggersMutex.gen_rlock():
+            with self.m_fileLoggersMutex.gen_rlock():
+                console_names = list(self.m_consoleLoggers.keys())
+                file_lines = [name + " [file] dir:" + lg.get_dir()
+                              for name, lg in self.m_fileLoggers.items()]
+        # 两段各自显式 sorted 对齐 main std::map 中序字典序（python dict 为插入序）
+        lines = [name + " [console]" for name in sorted(console_names)]
+        lines += sorted(file_lines)
+        return YomkResponse(ResStatus.eOk, "ok", lines)
+
+    def logger_info(self, pkg):
+        bad = self._unpack(pkg, str)
+        if bad:
+            return bad
+        with self.m_consoleLoggersMutex.gen_rlock():
+            if pkg in self.m_consoleLoggers:
+                return YomkResponse(ResStatus.eOk, pkg + " [console]")
+        with self.m_fileLoggersMutex.gen_rlock():
+            file_logger = self.m_fileLoggers.get(pkg)
+            if file_logger is not None:
+                return YomkResponse(ResStatus.eOk, pkg + " [file] dir:" + file_logger.get_dir())
+        _yomk_err_pos_log("logger: " + pkg + " not found.")
+        return YomkResponse(ResStatus.eNo, "logger not found.")
+
+    def list_all(self, pkg):
+        # 状态行在双锁外取：四个级别开关独立无锁，组合本无原子快照保证（对齐 main 注释）
+        lines = [self.console_level_line()]
+        # 同 loggers：按锁序嵌套双读锁取跨段原子快照
+        with self.m_consoleLoggersMutex.gen_rlock():
+            with self.m_fileLoggersMutex.gen_rlock():
+                console_names = list(self.m_consoleLoggers.keys())
+                file_lines = [name + " [file] dir:" + lg.get_dir()
+                              for name, lg in self.m_fileLoggers.items()]
+        lines += [name + " [console]" for name in sorted(console_names)]
+        lines += sorted(file_lines)
+        return YomkResponse(ResStatus.eOk, "ok", lines)
 
 
 class YomkServerInfo(YomkService):
