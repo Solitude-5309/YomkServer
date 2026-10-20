@@ -86,19 +86,62 @@ int main()
 
 ---
 
-## 文档导航
+## 核心概念
 
-各模块的详细使用文档按模块划分于 [Docs](Docs/) 目录：
+以下概念贯穿框架各模块，便于快速建立整体认知；每个模块的完整 API 速查、使用示例与注意事项见 [Docs](Docs/) 目录对应文档。
 
-| 文档 | 内容 |
-|---|---|
-| [服务总线](Docs/YomkServer.md) | 请求与响应模型、服务生命周期与优雅关闭、弱绑定防悬垂回调、YomkBoot 启动编排 |
-| [消息包](Docs/YomkPkg.md) | 自定义消息声明、构造与三种解包宏、内置 30 种标准类型 |
-| [日志系统](Docs/YomkLogger.md) | 控制台与文件日志、级别开关、tag、日志代理拦截与日志器自省 |
-| [共享上下文](Docs/YomkContext.md) | 键值存取、Checker 门控与 Monitor 监听、自省与销毁 |
-| [事件循环](Docs/YomkEventLoop.md) | 阻塞/非阻塞投递、停启续跑、队列积压观测 |
-| [函数池](Docs/YomkFunctionPool.md) | 函数注册与调用、运行时热替换、自省 |
-| [服务自省](Docs/YomkServerInfo.md) | 服务拓扑、功能函数清单与期望消息类型查询 |
+### 1. 请求与响应模型 (Request / Response)
+
+所有服务间交互均遵循统一的请求响应抽象：
+
+- **URL 寻址**：格式为 `"/服务名/函数名"`，如 `"/MyService/hello"`。
+- **返回值 `YomkResponse`**：`m_status`（`eOk (0)` 调用成功；`eNo (1)` 目标服务或函数不存在、被拒绝或条件不满足；`eInvalid (-1)` 入参非法或服务器未初始化）、`m_msg` 状态描述文本、`m_data` 可选负载消息包。
+- **同步调用** `YOMK_REQUEST` 阻塞返回；**异步调用** `YOMK_ASYNC_REQUEST` 投递到框架内置线程池并发执行，不阻塞当前线程。
+
+详见 [服务总线](Docs/YomkServer.md)。
+
+### 2. 消息包 (YomkPkg)
+
+服务与事件循环间传递强类型数据：`YomkMsg(DataType, MsgName, VarName)` 宏声明自定义消息，`YomkMkPtr` 构造消息包，三种解包宏做类型校验（`YomkUnPackPkg` 失败置空指针 / `YomkUnPackPkgResponse` 失败返回 eNo / `YomkUnPackPkgVoid` 失败直接 return）；内置 30 种标量/数组类型。
+
+详见 [消息包](Docs/YomkPkg.md)。
+
+### 3. 日志系统 (YomkLogger)
+
+控制台与文件双输出、四级（INFO / WARN / ERROR / DEBUG）级别开关、自定义 tag、控制台日志代理拦截；`YOMK_INFO`、`YOMK_FILE_LOG_CREATE` 等宏开箱即用。
+
+详见 [日志系统](Docs/YomkLogger.md)。
+
+### 4. 共享上下文 (YomkContext)
+
+跨服务强类型键值存储：创建/读取/设置/销毁，内置变更前校验门控（Checker，支持 eAccept / eReject 拦截）与变更后监听（Monitor，同步/异步），支持运行期自省。
+
+详见 [共享上下文](Docs/YomkContext.md)。
+
+### 5. 线程隔离事件循环 (YomkEventLoop)
+
+具名单线程 FIFO 执行队列：同一循环内事件按入队顺序在专用线程中执行，不同循环之间彼此并行；支持阻塞/非阻塞投递、停止后续跑与队列积压观测。
+
+详见 [事件循环](Docs/YomkEventLoop.md)。
+
+### 6. 动态函数池 (YomkFunctionPool)
+
+跨服务扁平函数注册中心：按名注册与调用，同名重注册即运行时热替换，无需注销。
+
+详见 [函数池](Docs/YomkFunctionPool.md)。
+
+### 7. 运行期自省 (YomkServerInfo)
+
+运行期查询服务拓扑、功能函数清单与期望消息类型；Logger / Context / EventLoop / FunctionPool 亦各有模块级自省 API（`YOMK_*_INFO_*`）。
+
+详见 [服务自省](Docs/YomkServerInfo.md)。
+
+### 8. 服务生命周期与弱绑定
+
+- **deinit() 的四个触发时机**：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、同名服务被 `YOMK_ADD_SERVICE` 替换（旧服务先 deinit 再装新服务）、忘记关闭时框架析构兜底；覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
+- **弱绑定（防悬垂回调）**：服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时必须用 `YomkBindWeakSelf` 弱绑定——服务删除后回调自动判活失效；`YomkInstallFunc` 注册到本服务 funcMap 已自动弱绑定，无需手动处理。
+
+详见 [服务总线](Docs/YomkServer.md)。
 
 ---
 
