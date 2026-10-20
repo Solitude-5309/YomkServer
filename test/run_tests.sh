@@ -127,6 +127,10 @@ TESTS=(
     YomkFunctionPool/TestYomkFunctionPoolStress
     # YomkServerInfo 模块
     YomkServerInfo/TestYomkServerInfoLifecycle
+    # YomkEventLoop 模块（对齐 main 顺序：Lifecycle -> Concurrency -> Stress，压测压尾）
+    YomkEventLoop/TestYomkEventLoopLifecycle
+    YomkEventLoop/TestYomkEventLoopConcurrency
+    YomkEventLoop/TestYomkEventLoopStress
 )
 
 # -------------sl 3. 门禁检查（对齐 main precheck_bin） ----------------

@@ -833,6 +833,14 @@ class EventLoop:
                 event.m_waitCallback()
         return 0
 
+    def __del__(self):
+        # 析构兜底（对齐 main ~EventLoop -> destroy）：与显式 destroy 共享释放契约（丢弃事件触发等待回调）；
+        # try 防护解释器关闭期属性缺失；引用环场景需 gc.collect() 显式触发（python 无 C++ 析构确定性）
+        try:
+            self.destroy()
+        except Exception:
+            pass
+
     def post(self, event):
         # 判序对齐 main：先判运行态（返 2，与入队成功 0/事件为空 1 区分，供上层映射错误码），后判事件
         if not self.m_running:
