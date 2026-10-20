@@ -24,7 +24,8 @@ def print_step(n, title, explain):
 
 def event_handle(pkg: Any) -> YomkApi.YomkResponse:
     tid = threading.get_ident()
-    print(f"[thread {tid}] exec event_handle, with msg: {pkg}")
+    YomkApi.console_log_info_tag("loop.work", "exec event: ", pkg,
+                                 " (thread: ", tid, ")")
     return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "exec event_handle success")
 
 

@@ -16,8 +16,8 @@ class ConfigService(YomkApi.YomkService):
         self.install_func("/set", self.set_config)
         self.install_func("/reload", self.reload_config)
         self.install_func("/version", self.version)
-        print(
-            f"ConfigService::init install func [ /load /get /set /reload /version ] to {self.get_name()}")
+        YomkApi.console_log_info_tag("ConfigService::init",
+                                     "install func [ /load /get /set /reload /version ] to ", self.get_name())
 
     def load_config(self, pkg):
         self.config_path = YomkApi.context_get(CTX_CONFIG_PATH, "")
@@ -28,7 +28,8 @@ class ConfigService(YomkApi.YomkService):
                 self.config_json = json.load(f)
         except Exception as e:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, f"failed to open: {self.config_path}, {e}")
-        print(f"ConfigService::load_config loaded: {self.config_path}")
+        YomkApi.console_log_info_tag(
+            "ConfigService::load_config", "loaded: ", self.config_path)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def get_config(self, pkg):
@@ -53,7 +54,8 @@ class ConfigService(YomkApi.YomkService):
                 return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "invalid key path: " + pkg.key)
             current = current.setdefault(token, {})
         current[tokens[-1]] = pkg.value
-        print(f"ConfigService::set_config set {pkg.key} = {pkg.value}")
+        YomkApi.console_log_info_tag(
+            "ConfigService::set_config", "set ", pkg.key, " = ", pkg.value)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def reload_config(self, pkg):
@@ -62,7 +64,8 @@ class ConfigService(YomkApi.YomkService):
                 self.config_json = json.load(f)
         except Exception as e:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, f"failed to reload: {self.config_path}, {e}")
-        print(f"ConfigService::reload_config reloaded: {self.config_path}")
+        YomkApi.console_log_info_tag(
+            "ConfigService::reload_config", "reloaded: ", self.config_path)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def version(self, pkg):

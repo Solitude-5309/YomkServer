@@ -20,14 +20,12 @@ def print_step(n, title, explain):
 
 
 def func_v1(pkg: Any) -> YomkApi.YomkResponse:
-    tid = threading.get_ident()
-    print(f"[thread {tid}] exec func_v1, with msg: {pkg}")
+    YomkApi.console_log_info_tag("pool.func", "exec func_v1, with msg: ", pkg)
     return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "exec func_v1 success")
 
 
 def func_v2(pkg: Any) -> YomkApi.YomkResponse:
-    tid = threading.get_ident()
-    print(f"[thread {tid}] exec func_v2, with msg: {pkg}")
+    YomkApi.console_log_info_tag("pool.func", "exec func_v2, with msg: ", pkg)
     return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "exec func_v2 success")
 
 

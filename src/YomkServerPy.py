@@ -411,8 +411,9 @@ def _yomk_log_local_time_formatted():
     now = time.time()
     lt = time.localtime(now)
     ms = int(round((now - int(now)) * 1000)) % 1000
+    # python 的 tm_mon 已是 1-12 基（C 语义为 0-11 基故 main 侧需 +1，python 侧不加）
     return "[%04d-%02d-%02d %02d:%02d:%02d.%03d]" % (
-        lt.tm_year, lt.tm_mon + 1, lt.tm_mday,
+        lt.tm_year, lt.tm_mon, lt.tm_mday,
         lt.tm_hour, lt.tm_min, lt.tm_sec, ms)
 
 

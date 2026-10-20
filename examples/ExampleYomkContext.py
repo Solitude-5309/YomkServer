@@ -20,18 +20,21 @@ def print_step(n, title, explain):
 
 
 def checker_reject(ctx: YomkApi.Context) -> YomkApi.CheckStatus:
-    print(f"[checker_reject] called: ctx={ctx.key}, value={ctx.value}")
+    YomkApi.console_log_info_tag(
+        "ctx.checker", "reject check: key=", ctx.key, " -> eReject")
     return YomkApi.CheckStatus.eReject
 
 
 def checker_accept(ctx: YomkApi.Context) -> YomkApi.CheckStatus:
-    print(f"[checker_accept] called: ctx={ctx.key}, value={ctx.value}")
+    YomkApi.console_log_info_tag("ctx.checker", "accept check: key=", ctx.key,
+                                 ", value=", ctx.value, " -> eAccept")
     return YomkApi.CheckStatus.eAccept
 
 
 def monitor_func(ctx: YomkApi.Context) -> None:
     time.sleep(1)
-    print(f"[monitor_func] called: ctx={ctx.key}, value={ctx.value}")
+    YomkApi.console_log_info_tag("ctx.monitor", "sync got snapshot: key=", ctx.key,
+                                 ", value=", ctx.value)
 
 
 def main():

@@ -73,3 +73,4 @@ python main.py
 | YomkContext | 全局 K-V 状态管理 | `context_create` / `context_get` / `context_set` / `context_destroy` |
 | YomkEventLoop | 线程隔离事件循环 | `event_loop_start` / `event_loop_post` / `event_loop_post_wait` |
 | YomkFunctionPool | 动态公共函数池 | `function_pool_register` / `function_pool_call` |
+| YomkLogger | 多级别日志系统 | `console_log_info` / `console_log_error` / `file_log_create` |
