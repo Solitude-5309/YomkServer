@@ -14,14 +14,14 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 
 | 模块 | 简述 |
 |---|---|
-| YomkServer / YomkService | 服务总线核心：服务注册与 `"/服务名/函数名"` URL 路由、同步/异步请求分发、服务生命周期管理（deinit / 优雅关闭） |
-| YomkPkg | 强类型消息包：`YomkMsg` 宏声明自定义消息，内置 31 种标量/数组类型，支持移动语义与动态类型转换 |
-| YomkBoot | 启动编排：before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程 |
-| YomkLogger | 日志系统：控制台与文件双输出、四级级别开关、自定义 tag、日志代理拦截与日志器自省 |
-| YomkContext | 共享上下文：跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步） |
-| YomkEventLoop | 线程隔离事件循环：具名单线程 FIFO 执行队列，循环间彼此并行，支持停启续跑与队列积压观测 |
-| YomkFunctionPool | 动态函数池：跨服务扁平函数注册中心，同名重注册即运行时热替换，按名直接调用 |
-| YomkServerInfo | 服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型 |
+| [YomkServer / YomkService](Docs/YomkServer.md) | 服务总线核心：服务注册与 `"/服务名/函数名"` URL 路由、同步/异步请求分发、服务生命周期管理（deinit / 优雅关闭） |
+| [YomkPkg](Docs/YomkPkg.md) | 强类型消息包：`YomkMsg` 宏声明自定义消息，内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
+| [YomkBoot](Docs/YomkServer.md) | 启动编排：before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程 |
+| [YomkLogger](Docs/YomkLogger.md) | 日志系统：控制台与文件双输出、四级级别开关、自定义 tag、日志代理拦截与日志器自省 |
+| [YomkContext](Docs/YomkContext.md) | 共享上下文：跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步） |
+| [YomkEventLoop](Docs/YomkEventLoop.md) | 线程隔离事件循环：具名单线程 FIFO 执行队列，循环间彼此并行，支持停启续跑与队列积压观测 |
+| [YomkFunctionPool](Docs/YomkFunctionPool.md) | 动态函数池：跨服务扁平函数注册中心，同名重注册即运行时热替换，按名直接调用 |
+| [YomkServerInfo](Docs/YomkServerInfo.md) | 服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型 |
 
 核心层（YomkServer / YomkService / YomkPkg / YomkBoot）构成框架骨架；YomkLogger、YomkContext、YomkEventLoop、YomkFunctionPool、YomkServerInfo 均以内置服务形式随 `YOMK_INIT()` 自动启动、开箱即用，全部能力经 `YOMK_*` 宏统一调用。
 
@@ -86,226 +86,19 @@ int main()
 
 ---
 
-## 核心概念与使用文档
+## 文档导航
 
-### 1. 请求与响应模型 (Request / Response)
+各模块的详细使用文档按模块划分于 [Docs](Docs/) 目录：
 
-所有服务间交互均遵循统一的请求响应抽象：
-
-- **URL 寻址**：格式为 `"/服务名/函数名"`，如 `"/MyService/hello"`。
-- **返回值 `YomkResponse`**：
-  - `m_status`：
-    - `eOk (0)`：调用成功。
-    - `eNo (1)`：目标服务或函数不存在、被拒绝或条件不满足。
-    - `eInvalid (-1)`：入参非法或服务器未初始化。
-  - `m_msg`：状态描述文本。
-  - `m_data`：可选的负载消息包（`YomkPkgPtr`）。
-- **同步调用**：
-  ```cpp
-  YomkResponse resp = YOMK_REQUEST("/服务名/函数名", pkg);
-  ```
-- **异步调用**：投递到框架内置线程池并发执行，不阻塞当前线程：
-  ```cpp
-  YOMK_ASYNC_REQUEST("/服务名/函数名", pkg, [](YomkResponse resp) {
-      // 异步回调逻辑
-  });
-  ```
-
-  完整可运行演示见 `Examples/ExampleYomkService.cpp`（8 步覆盖服务定义、注册、同步/异步请求、跨服务调用、自省、删除与优雅关闭，读运行输出即可理解每个调用）。
-
-### 2. 消息包 (YomkPkg)
-
-用于在服务与事件循环间传递强类型数据。
-
-- **声明自定义消息**：使用 `YomkMsg(DataType, MsgName, VarName)` 宏（建议放置在命名空间之外）：
-  ```cpp
-  struct UserInfo {
-      int id;
-      std::string name;
-  };
-  YomkMsg(UserInfo, UserInfoMsg, data);
-  ```
-- **构造与传递消息包**：
-  ```cpp
-  // 创建 shared_ptr 包装的消息包
-  auto pkg = YomkMkPtr(UserInfoMsg, UserInfo{1001, "Alice"});
-  ```
-- **解包宏**：
-  - `YomkUnPackPkg(pkg, MsgName, ptr)`：解包失败时指针置为 `nullptr`。
-  - `YomkUnPackPkgResponse(pkg, MsgName, ptr)`：类型不匹配时直接以 `YomkResponse::eNo` 从当前函数返回。
-  - `YomkUnPackPkgVoid(pkg, MsgName, ptr)`：类型不匹配时直接 `return`（适用于 `void` 回调）。
-
-### 3. 日志系统 (YomkLogger)
-
-框架内置了开箱即用的控制台与文件日志输出：
-
-- **控制台日志**：
-  ```cpp
-  YOMK_INFO("server port:", 8080);
-  YOMK_WARN("resource running low");
-  YOMK_ERROR("failed to connect");
-  YOMK_DEBUG("trace id:", 12345);
-  // 指定 Tag：
-  YOMK_INFO_TAG("Network", "connected to remote host");
-  // 输出格式：[时间] [级别] [tag] [行号] 内容；tag 即控制台日志器名，首次使用自动创建
-  ```
-- **开关指定日志级别**：
-  ```cpp
-  YOMK_OFF_CONSOLE_LOG_DEBUG();
-  YOMK_ON_CONSOLE_LOG_DEBUG();
-  // 级别开关为框架全局，只影响控制台输出；文件日志四级全记
-  ```
-- **文件日志**：
-  ```cpp
-  YOMK_FILE_LOG_CREATE("./logs", "app"); // 创建日志器
-  YOMK_FILE_INFO("app", "app started");  // 写入内存缓冲
-  YOMK_FILE_LOG_WRITE("app");            // 显式刷盘（日志器释放时亦会自动落盘）
-  YOMK_FILE_LOG_DELETE("app");           // 删除日志器（同名清 console+file 两表；不删磁盘 .log）
-  ```
-- **控制台日志拦截/代理**：
-  ```cpp
-  YOMK_SET_CONSOLE_LOG_PROXY([](const yomk::Log &log) {
-      if (log.m_level == yomk::Log::eDebug)
-          return false; // 返回 false 表示消费此日志，不再默认输出
-      return true;      // 返回 true 则继续走框架默认打印
-  });
-  YOMK_SET_CONSOLE_LOG_PROXY(nullptr); // 传 nullptr 卸载代理，恢复默认输出
-  ```
-  完整可运行演示见 `Examples/ExampleYomkLogger.cpp`（8 步覆盖全部日志 API，读运行输出即可理解每个调用）。
-
-### 4. 共享上下文 (YomkContext)
-
-支持跨服务存储与共享强类型键值状态，内置安全校验门控（Checker）与变更监控（Monitor）：
-
-```cpp
-// 1. 创建与设置上下文键值（key 已存在返回 eNo=1 "key already exists"；value 为空返回 eNo=1 "value is empty"；
-//    值类型须与现值一致，否则 eNo "context type not match"）
-YOMK_CONTEXT_CREATE("config", YomkMkPtr(String, "init_value"));
-YOMK_CONTEXT_SET("config", YomkMkPtr(String, "new_value"));
-
-// 2. 读取上下文（只读快照；key 不存在时返回兜底默认值，调用方永不拿到空指针）
-auto val = YOMK_CONTEXT_GET(String, "config", nullptr);
-
-// 3. 注册变更前校验门控（Checker：全局开关 ON 且该 key 已设置时才生效；在写锁内门控，回调内重入 set 会死锁）
-YOMK_CONTEXT_SET_CHECKER("config", [](const yomk::Context &ctx) {
-    // 返回 eAccept 放行修改；返回 eReject 拦截（set 返回 eNo=1 "checker reject set context"，monitor 不触发）
-    return yomk::ContextChecker::eAccept;
-});
-YOMK_CONTEXT_ON_CHECKER();  // 开启全局校验器；YOMK_CONTEXT_OFF_CHECKER() 关闭（checker 保留但不生效）
-
-// 4. 注册变更后监听器（Monitor：追加式可注册多个；async=false 锁外即时执行，async=true 单线程池按提交序送达）
-YOMK_CONTEXT_SET_MONITOR("config", [](const yomk::Context &ctx) {
-    // 收到变更通知（本次 set 的键值快照）
-}, /*async=*/false);
-YOMK_CONTEXT_ON_MONITOR();  // 开启全局监控；YOMK_CONTEXT_OFF_MONITOR() 关闭（monitor 保留但不执行）
-
-// 5. 运行期自省与销毁
-YOMK_CONTEXT_INFO_KEYS();        // 全部键名清单
-YOMK_CONTEXT_INFO_KEY("config"); // 单键状态："config [String] checker:on monitors:1(async:0)"
-YOMK_CONTEXT_INFO_ALL();         // 全量状态（每键一行）
-YOMK_CONTEXT_DESTROY("config");  // 删除键；删除后操作返回 eNo=1（key is not exist）
-```
-
-完整可运行演示见 `Examples/ExampleYomkContext.cpp`（8 步覆盖全部上下文 API，读运行输出即可理解每个调用）。
-
-### 5. 线程隔离事件循环 (YomkEventLoop)
-
-为特定业务提供单线程 FIFO 执行队列，避免锁竞争。同一循环内事件按入队顺序在专用线程中执行，不同循环之间彼此并行：
-
-```cpp
-// 启动事件循环（可带默认处理函数与消息类型名元数据；对已存在名称再次 START 为幂等重启）
-YOMK_EVENTLOOP_START("TaskLoop");
-
-// 非阻塞投递异步任务（tag 可选：仅内省可见，用于观察队列）
-YOMK_EVENTLOOP_POST("TaskLoop", YomkMkPtr(String, "task1"), [](YomkPkgPtr pkg) {
-    // 在 TaskLoop 专用线程中顺序执行
-    return YomkResponse{YomkResponse::eOk};
-}, "billing");
-
-// 阻塞投递任务（等待任务在循环中执行完毕返回结果）
-YomkResponse resp = YOMK_EVENTLOOP_POST_WAIT("TaskLoop", nullptr, [](YomkPkgPtr) {
-    return YomkResponse{YomkResponse::eOk, "done"};
-});
-
-// 查询循环状态与队列积压（第二个参数可选：列出队首 N 个事件的 tag）
-YOMK_EVENTLOOP_INFO_LOOP("TaskLoop");  // msg 如 "TaskLoop running:on pending:0 defaultFunc:on nextNEventTag(3): "
-
-// 停止（停线程但保留队列事件，再次 START 续跑）与销毁（停线程并清空队列、移出循环表，不可续跑）
-YOMK_EVENTLOOP_STOP("TaskLoop");
-YOMK_EVENTLOOP_DESTROY("TaskLoop");
-// 注意：停止后投递返回 eNo=1（event loop not running）；销毁后操作返回 eNo=1（event loop not exist）
-```
-
-完整可运行演示见 `Examples/ExampleYomkEventLoop.cpp`（8 步覆盖全部事件循环 API，读运行输出即可理解每个调用）。
-
-### 6. 动态函数池 (YomkFunctionPool)
-
-用于跨服务、动态注册与调用的扁平函数中心：
-
-```cpp
-// 注册函数（第三个参数可选：声明期望的消息类型名，仅作内省元数据）
-YOMK_FUNCTIONPOOL_REGISTER("calcSum", [](YomkPkgPtr pkg) {
-    return YomkResponse{YomkResponse::eOk, "result"};
-});
-
-// 调用函数（返回值即函数返回值；未注册的名字返回 eNo=1）
-YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("calcSum", nullptr);
-
-// 同名重复注册即运行时热替换，无需注销
-YOMK_FUNCTIONPOOL_REGISTER("calcSum", newFunc);
-
-// 注销（按名字从函数表移除）
-YOMK_FUNCTIONPOOL_UNREGISTER("calcSum");
-```
-
-完整可运行演示见 `Examples/ExampleYomkFunctionPool.cpp`（6 步覆盖全部函数池 API，读运行输出即可理解每个调用）。
-
-### 7. 运行期自省 API
-
-框架提供内置自省接口，方便在运行时查询拓扑和调试：
-
-- **服务自省**：`YOMK_SERVER_INFO_SERVICES()`、`YOMK_SERVER_INFO_FUNCTIONS("/MyService")`、`YOMK_SERVER_INFO_ALL()`
-- **日志自省**：`YOMK_LOGGER_INFO_LOGGERS()`、`YOMK_LOGGER_INFO_LOGGER("app")`、`YOMK_LOGGER_INFO_ALL()`
-- **上下文自省**：`YOMK_CONTEXT_INFO_KEYS()`、`YOMK_CONTEXT_INFO_KEY("config")`、`YOMK_CONTEXT_INFO_ALL()`
-- **事件循环自省**：`YOMK_EVENTLOOP_INFO_LOOPS()`、`YOMK_EVENTLOOP_INFO_LOOP("TaskLoop")`、`YOMK_EVENTLOOP_INFO_ALL()`
-- **函数池自省**：`YOMK_FUNCTIONPOOL_INFO_NAMES()`、`YOMK_FUNCTIONPOOL_INFO_NAME("calcSum")`、`YOMK_FUNCTIONPOOL_INFO_ALL()`
-
-### 8. 服务生命周期与弱绑定
-
-服务删除与框架关闭：
-
-```cpp
-// 删除单个服务：从服务表移除，后续请求返回 eNo=1 "service not found: <服务名>"；名字不存在返回 -1
-int ret = YOMK_DEL_SERVICE("/MyService");
-
-// 关闭服务器：先停异步请求池（拒新 → 排空 → join），再清空服务表并逐个调用 deinit()
-// 幂等，假定在主线程调用；关闭后不支持二次初始化；未显式调用时退出经 atexit 析构兜底
-YOMK_SHUTDOWN();
-```
-
-- **deinit() 的四个触发时机**：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、同名服务被 `YOMK_ADD_SERVICE` 替换（旧服务先 deinit 再装新服务）、忘记关闭时框架析构兜底。覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
-- **异步请求池大小**：`YOMK_INIT(n)` 的 `n` 为异步请求线程池大小（0 表示自动检测），仅首次初始化生效。
-- **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃；`YOMK_SHUTDOWN` 走排空语义，排空期回调照常执行；在途请求安全执行完毕后服务才析构。
-
-**弱绑定（防悬垂回调）**：服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时必须用 `YomkBindWeakSelf` 弱绑定——服务删除后回调自动判活失效，否则访问已析构的 this 导致崩溃。`YomkInstallFunc` 注册到本服务 funcMap 已自动弱绑定，无需手动处理：
-
-```cpp
-int MyService::init()
-{
-    // FunctionPool：服务删除后回调失效（返回 eNo）
-    YOMK_FUNCTIONPOOL_REGISTER("my_work", YomkBindWeakSelf(MyService::myWork));
-
-    // Context checker/monitor 签名不同，同一宏自动适配：删除后 checker 放行（eAccept）、monitor 丢弃
-    YOMK_CONTEXT_SET_CHECKER("key", YomkBindWeakSelf(MyService::myCheck));
-    YOMK_CONTEXT_SET_MONITOR("key", YomkBindWeakSelf(MyService::myMonitor));
-
-    // 异步响应回调：框架不自动弱绑定，同样用 YomkBindWeakSelf（普通 lambda 须值捕获自包含数据）
-    YOMK_ASYNC_REQUEST("/OtherService/func", nullptr, YomkBindWeakSelf(MyService::onResp));
-    return 0;
-}
-```
-
-注意：弱绑定依赖服务的 `shared_ptr` 所有权，在构造函数内调用（服务尚未注册到服务器）回调永不触发并打错误日志。
+| 文档 | 内容 |
+|---|---|
+| [服务总线](Docs/YomkServer.md) | 请求与响应模型、服务生命周期与优雅关闭、弱绑定防悬垂回调、YomkBoot 启动编排 |
+| [消息包](Docs/YomkPkg.md) | 自定义消息声明、构造与三种解包宏、内置 30 种标准类型 |
+| [日志系统](Docs/YomkLogger.md) | 控制台与文件日志、级别开关、tag、日志代理拦截与日志器自省 |
+| [共享上下文](Docs/YomkContext.md) | 键值存取、Checker 门控与 Monitor 监听、自省与销毁 |
+| [事件循环](Docs/YomkEventLoop.md) | 阻塞/非阻塞投递、停启续跑、队列积压观测 |
+| [函数池](Docs/YomkFunctionPool.md) | 函数注册与调用、运行时热替换、自省 |
+| [服务自省](Docs/YomkServerInfo.md) | 服务拓扑、功能函数清单与期望消息类型查询 |
 
 ---
 
