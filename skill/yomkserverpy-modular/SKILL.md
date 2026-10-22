@@ -1,6 +1,6 @@
 ---
 name: yomkserverpy-modular
-description: 基于YomkServerPy框架的模块化Python工程编程。核心理念"一切皆服务，一切皆请求"。用于创建YomkService功能模块、使用YomkContext全局状态管理、YomkEventLoop事件循环、YomkFunctionPool公共函数池。当用户需要编写YomkServerPy模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数或搭建工程结构时使用。
+description: 基于YomkServerPy框架的模块化Python工程编程。核心理念"一切皆服务，一切皆请求"。用于创建YomkService功能模块、使用YomkContext全局状态管理、YomkEventLoop事件循环、YomkFunctionPool公共函数池和YomkLogger日志系统。当用户需要编写YomkServerPy模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数、使用日志或搭建工程结构时使用。
 ---
 
 # YomkServerPy 模块化编程框架
@@ -17,6 +17,7 @@ description: 基于YomkServerPy框架的模块化Python工程编程。核心理�
 | **YomkEventLoop** | 线程隔离事件循环（同循环顺序执行、不同循环并行） |
 | **YomkFunctionPool** | 动态函数池（运行时注册/热替换） |
 | **YomkLogger** | 分级日志（控制台/文件四级别、代理、内省） |
+| **YomkServerInfo** | 服务内省（服务清单/函数清单/单函数元信息/全量拓扑，调试运维） |
 
 唯一入口：`import YomkApi`
 
@@ -113,6 +114,23 @@ resp = YomkApi.request("/XxxService/my_func", MyData("hello", 1))
 # 异步
 YomkApi.async_request("/XxxService/my_func", MyData("hello", 1), lambda resp: print(resp.msg))
 ```
+
+### 服务内省（调试）
+
+框架内置 `/YomkServerInfo` 服务（随 `YomkApi.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数元信息、全量拓扑。功能函数安装时用 `install_func` 三参形式声明期望消息类型（仅作内省元数据，不参与运行时校验；两参写法兼容，内省无类型）：
+
+```python
+def init(self):
+    self.install_func("/my_func", self.my_func, "MyData")  # 内省可见类型 MyData
+    return 0
+
+resp = YomkApi.server_info_services()                      # 服务列表（data 为服务名列表）
+resp = YomkApi.server_info_functions("/XxxService")        # 函数列表（每行 "func [msgName]"）
+resp = YomkApi.server_info_function("/XxxService/my_func") # 单函数元信息（命中返回 msg 为类型名）
+resp = YomkApi.server_info_all()                           # 全量拓扑（服务名行 + 缩进函数行）
+```
+
+服务器层内省之外，四个内置模块均提供模块内层内省三件套（Context 的 `context_info_keys/key/all`、EventLoop 的 `event_loop_info_loops/loop/all`、FunctionPool 的 `function_pool_info_names/name/all`、Logger 的 `logger_info_loggers/logger/all`），见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。
 
 ## 任务三：创建扩展库
 

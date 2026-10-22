@@ -37,7 +37,7 @@ class YomkService:
     def get_name(self) -> str
     def set_name(self, name: str)
     def init(self) -> None                              # 子类必须实现
-    def install_func(self, name: str, function) -> None # 注册功能函数
+    def install_func(self, name: str, function, msg_name="") -> None # 注册功能函数（msg_name 为期望消息类型元数据，仅作内省）
 ```
 
 ## 数据结构
@@ -150,10 +150,10 @@ class EventLoopPkg:
 ### ServerInfo
 | API | 说明 |
 |-----|------|
-| `YomkApi.server_info_services()` | 枚举服务名 |
-| `YomkApi.server_info_functions(srv_name)` | 查询服务的功能函数名列表 |
-| `YomkApi.server_info_function(url)` | 查询单功能函数信息（url 为完整 `/服务名/功能名`） |
-| `YomkApi.server_info_all()` | 查询全部服务与功能函数信息 |
+| `YomkApi.server_info_services()` | 服务名列表（data 为字符串列表，字典序） |
+| `YomkApi.server_info_functions(srv_name)` | 指定服务的功能函数列表（每行 `func [msgName]`，未声明类型无括号后缀；不存在服务返回空表） |
+| `YomkApi.server_info_function(url)` | 单函数元信息查询（url 为完整 `/服务名/功能名`，命中返回 msg 为期望消息类型名，未声明为空串；不存在返回 eNo） |
+| `YomkApi.server_info_all()` | 全量拓扑：服务名行 + 两空格缩进函数行 |
 
 ## URL 格式
 

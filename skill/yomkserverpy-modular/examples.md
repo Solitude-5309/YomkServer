@@ -443,6 +443,70 @@ YomkApi.function_pool_register("validate_amount", validate_amount)
 resp = YomkApi.function_pool_call("validate_amount", "100.5")
 ```
 
+## 示例5：服务内省（调试）
+
+类型元数据由 `install_func` 三参形式声明（仅作内省元数据，不参与运行时校验；两参写法兼容，内省无类型）：
+
+```python
+class DemoService(YomkApi.YomkService):
+    def init(self):
+        self.install_func("/with_type", self.with_type, "MyData")  # 内省可见类型 MyData
+        self.install_func("/no_type", self.no_type)                # 兼容写法，内省无类型
+        return 0
+
+# 服务列表（data 为字符串列表）
+resp = YomkApi.server_info_services()
+# resp.data: ["/DemoService", "/YomkContext", "/YomkEventLoop", ...]
+
+# 指定服务的函数列表（每行 "func [msgName]"）
+resp = YomkApi.server_info_functions("/DemoService")
+# resp.data: ["/no_type", "/with_type [MyData]"]
+
+# 单函数元信息（命中时 msg 为期望消息类型名）
+resp = YomkApi.server_info_function("/DemoService/with_type")  # eOk, msg = "MyData"
+resp = YomkApi.server_info_function("/DemoService/no_type")    # eOk, msg 为空串（未声明）
+resp = YomkApi.server_info_function("/DemoService/not_exist")  # eNo
+
+# 全量拓扑：服务名行 + 两空格缩进的 "srvName + funcName [msgName]" 行
+resp = YomkApi.server_info_all()
+```
+
+说明：自省读的是运行期服务表，注册/删除即时反映到下一次查询；FunctionPool 动态注册函数的类型元数据由 `function_pool_register` 第三参声明，未声明内省显示为空。四个内置模块另提供模块内层内省三件套（Context 的 `context_info_keys/key/all`、EventLoop 的 `event_loop_info_loops/loop/all`、FunctionPool 的 `function_pool_info_names/name/all`、Logger 的 `logger_info_loggers/logger/all`），API 见 [reference.md](reference.md)。完整可运行示例见仓库 `examples/ExampleYomkServerInfo.py`。
+
+## 示例6：日志
+
+```python
+# 控制台四级别（无 tag 便捷版缺省 tag "MainLogger"；tag 版 tag 随记录显示并兼作日志器名，首次使用自动创建）
+YomkApi.console_log_info("application started")
+YomkApi.console_log_warn_tag("Security", "suspicious activity")
+
+# 级别开关（全局，只影响控制台；文件日志不受影响）
+YomkApi.off_console_log_debug()   # 同族 on/off_console_log_info/warn/error
+
+# 文件日志：创建日志器 → 写内存缓冲 → 显式落盘为 dir/name.log
+YomkApi.file_log_create("/var/log/myapp", "app")
+YomkApi.file_log_info("app", "application started")   # 同族 warn/error/debug；_tag 版可自定义 tag
+YomkApi.file_log_write("app")
+
+# 删除日志器：单端点同时清理 console/file 两表；未落盘的缓冲自动落盘，
+# 但不删除磁盘上的 .log 文件（数据保全，清理归调用方）
+resp = YomkApi.file_log_delete("app")   # eOk, msg: "deleted console:0 file:1"
+YomkApi.file_log_delete("app")          # eNo（已删除）
+# 注："MainLogger" 无特殊保护，删除后下次写控制台日志会惰性重建
+
+# 控制台日志代理：每条控制台日志先过代理，返回 False 消费该条（不再输出）
+def my_log_proxy(log: YomkApi.Log) -> bool:
+    print(f"[{log.m_tag}] {log.m_log}")
+    return False
+
+YomkApi.set_console_log_proxy(my_log_proxy)
+# 卸载代理：传 None 恢复框架默认控制台输出，
+# logger_info_all() 首行随之由 proxy:on 回到 proxy:off
+YomkApi.set_console_log_proxy(None)
+```
+
+完整可运行示例见仓库 `examples/ExampleYomkLogger.py`（四级别、级别开关、代理消费/放行、文件日志回读与删除后惰性重建）。
+
 ---
 
 ## 示例7：创建扩展库（独立扩展包）

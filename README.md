@@ -8,11 +8,11 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 
 - **进程内服务总线**：服务（`YomkService`）注册到服务器（`YomkServer`），通过 URL 格式 `"/服务名/功能函数名"` 进行同步或异步调用。两级模块化——`YomkService` 封装独立业务域或技术组件，`Function` 为服务内以唯一 URL 路径标识的功能单元
 - **轻量消息包**：普通 Python 类即可定义消息，实例直接作为请求负载传入、经回包 `data` 返回，属性直接访问
-- **开箱即用内置能力**：`YomkApi.init()` 即自动装配共享上下文、线程隔离事件循环与动态函数池，无需额外配置
+- **开箱即用内置能力**：`YomkApi.init()` 即自动装配共享上下文、线程隔离事件循环、动态函数池、分级日志与服务内省五个内置模块，无需额外配置
 
 ### 模块清单
 
-框架核心模块与职责一览（详见[核心概念与使用文档](#核心概念与使用文档)；其中共享上下文、事件循环、函数池为 `YomkApi.init()` 自动装配的内置模块）：
+框架核心模块与职责一览（详见[核心概念与使用文档](#核心概念与使用文档)；其中共享上下文、事件循环、函数池、日志、服务内省为 `YomkApi.init()` 自动装配的内置模块）：
 
 | 模块 | 简述 |
 |---|---|
@@ -20,6 +20,8 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 | 共享上下文（`YomkContext`） | 全局键值状态增删改查，支持变更前校验门控（Checker）与变更监控（Monitor） |
 | 线程隔离事件循环（`YomkEventLoop`） | 单线程 FIFO 执行队列：同循环内保序、跨循环并行，适配 I/O 密集与高并发调度 |
 | 动态函数池（`YomkFunctionPool`） | 函数统一注册与调度，支持同名热替换，面向过程范式快速迭代 |
+| 分级日志（`YomkLogger`） | 控制台/文件双输出四级别日志，支持级别开关、日志代理、文件落盘与日志器内省 |
+| 服务内省（`YomkServerInfo`） | 运行期服务表内省：服务清单、功能函数清单、单函数元信息与全量拓扑，调试运维用 |
 | 启动编排（`YomkBoot`） | 以 before → start → after 三阶段编排多服务启动，任一阶段失败即终止 |
 
 仓库目录模块：
@@ -27,7 +29,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 | 位置 | 简述 |
 |---|---|
 | `src/` | 核心库源码：`YomkApi.py` 门面、Cython 扩展 `YomkServerPy`、`.pyi` 类型提示与版本模块 |
-| `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池四大主题 |
+| `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池、日志、服务内省六大主题 |
 | `template/` | 脚手架：`project/` 新工程模板、`extension/` 扩展库模板 |
 | `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |
 | `test/` | 测试集合与一键测试脚本 `run_tests.sh` |
@@ -54,7 +56,7 @@ class MyService(YomkApi.YomkService):
     def hello(self, pkg):
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, f"hello {pkg}")
 
-# 2. 初始化框架（自动启动内置服务：Context / FunctionPool / EventLoop）
+# 2. 初始化框架（自动启动内置服务：Context / FunctionPool / EventLoop / Logger / ServerInfo）
 YomkApi.init()
 
 # 3. 注册自定义服务
@@ -183,6 +185,53 @@ YomkApi.function_pool_register("calc", func_v2)
 - **启动编排**：多服务工程继承 `YomkApi.YomkBoot` 组织三阶段启动——`before()`（服务启动前准备资源）→ `start()`（创建并注册服务）→ `after()`（启动后善后），任一阶段返回非 0 即终止启动；`YomkApi.boot(boot_obj)` 内部先完成框架初始化（自动调用 init）再依次执行三阶段（见 `examples/boot/DemoBoot.py`）。
 - 服务名与功能函数名均以 `/` 开头，共同构成请求 URL。
 
+### 7. 分级日志 (YomkLogger)
+
+控制台/文件双输出、四级别（info/warn/error/debug）分级日志，支持级别开关、日志代理与文件落盘：
+
+```python
+# 1. 控制台日志：无 tag 便捷版（缺省日志器名 "MainLogger"）与 tag 版
+#    （tag 随记录显示、兼作日志器名，首次使用自动创建同名日志器）
+YomkApi.console_log_info("service started")
+YomkApi.console_log_info_tag("biz", "user login, id=", 7)   # 同族 warn/error/debug
+
+# 2. 级别开关（全局，只影响控制台；文件日志不受影响）
+YomkApi.off_console_log_debug()    # 同族 on/off_console_log_info/warn/error
+
+# 3. 日志代理：每条控制台日志先过代理，返回 False 消费该条（不再输出）
+YomkApi.set_console_log_proxy(lambda log: False)            # 传 None 卸载，恢复默认输出
+
+# 4. 文件日志：创建日志器 → 写内存缓冲 → 显式落盘为 dir/name.log
+YomkApi.file_log_create("./YomkLog", "app")
+YomkApi.file_log_info_tag("app", "MainLogger", "order=", 1) # 同族 warn/error/debug 与无 tag 便捷版
+YomkApi.file_log_write("app")
+
+# 5. 删除日志器：同时清理 console/file 两表；未落盘缓冲自动落盘，磁盘 .log 保留
+YomkApi.file_log_delete("app")
+```
+
+完整可运行演示见 `examples/ExampleYomkLogger.py`（四级别、级别开关、代理消费/放行、文件日志回读与删除后惰性重建）。
+
+### 8. 服务内省 (YomkServerInfo)
+
+内置内省服务，随 `YomkApi.init()` 自动启动，运行期查询"框架里现在有什么、每个功能函数期望什么消息类型"：
+
+```python
+# 服务清单（data 为服务名列表）
+resp = YomkApi.server_info_services()
+
+# 指定服务的功能函数清单（每行 "函数名 [期望消息类型]"，未声明类型的函数无括号后缀）
+resp = YomkApi.server_info_functions("/CalcService")
+
+# 单函数元信息：命中时 msg 为期望消息类型名（未声明为空串），不存在返回 eNo
+resp = YomkApi.server_info_function("/CalcService/add")
+
+# 全量拓扑：服务名一行、函数行缩进两格
+resp = YomkApi.server_info_all()
+```
+
+说明：期望消息类型由 `install_func()` 三参形式声明（仅作内省元数据，不参与运行时校验）；自省读的是运行期服务表，注册/删除即时反映到下一次查询。完整可运行演示见 `examples/ExampleYomkServerInfo.py`（四类查询、注册/删除实时视图、关闭后返回值契约）。
+
 ---
 
 ## 编译与安装
@@ -244,6 +293,8 @@ python ExampleYomkContext.py
 python ExampleYomkFunctionPool.py
 python ExampleYomkEventLoop.py
 python ExampleYomkService.py
+python ExampleYomkLogger.py
+python ExampleYomkServerInfo.py
 ```
 
 ---
@@ -258,6 +309,8 @@ python ExampleYomkService.py
 | ExampleYomkContext.py | 共享上下文：创建/读取/更新/销毁 + 状态检查器（拒绝/接受）+ 异步监控 |
 | ExampleYomkFunctionPool.py | 动态函数池：注册/调用 + 同名热替换 |
 | ExampleYomkEventLoop.py | 线程隔离事件循环：启动/非阻塞投递/阻塞投递/停止/销毁 |
+| ExampleYomkLogger.py | 分级日志：控制台四级别与级别开关、日志代理（消费/放行）、文件日志创建/写入/落盘/回读/删除 |
+| ExampleYomkServerInfo.py | 服务内省：服务清单/函数清单/单函数元信息/全量拓扑，注册与删除的运行期实时视图 |
 
 运行方式（进入源码目录直接运行；PYTHONPATH 已由 `scripts/install_env.sh` 持久化，新终端免配置。Windows 需手动将含 `YomkApi.py` 的目录加入 `PYTHONPATH`）：
 
