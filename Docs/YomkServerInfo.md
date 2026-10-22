@@ -36,4 +36,4 @@ YOMK_SERVER_INFO_ALL();                        // 全量服务拓扑
 
 ## 完整示例
 
-完整可运行演示见 `Examples/ExampleYomkService.cpp`（8 步覆盖服务定义、注册、同步/异步请求、跨服务调用、自省、删除与优雅关闭）。
+完整可运行演示见 `Examples/ExampleYomkServerInfo.cpp`（7 步覆盖服务清单、函数清单与注册元数据、单查元信息、全量拓扑、运行期实时视图与关闭后守卫，读运行输出即可理解每个调用）。

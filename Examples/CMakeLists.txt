@@ -68,6 +68,18 @@ target_link_libraries(ExampleYomkLogger PRIVATE
 )
 # -------------el ExampleYomkLogger ----------------
 
+# -------------sl ExampleYomkServerInfo ----------------
+set(ExampleYomkServerInfo_SOURCES 
+    ${ExamplesYomkServer_DIR}/ExampleYomkServerInfo.cpp
+)
+add_executable(ExampleYomkServerInfo 
+    ${ExampleYomkServerInfo_SOURCES}
+)
+target_link_libraries(ExampleYomkServerInfo PRIVATE
+    ${YomkServerLib}
+)
+# -------------el ExampleYomkServerInfo ----------------
+
 # 安装示例可执行文件到 <prefix>/bin，供用户在任意终端运行验证安装
 install(TARGETS
     ExampleYomkService
@@ -75,5 +87,6 @@ install(TARGETS
     ExampleYomkContext
     ExampleYomkEventLoop
     ExampleYomkLogger
+    ExampleYomkServerInfo
     RUNTIME DESTINATION bin
 )

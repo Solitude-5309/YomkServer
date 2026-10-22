@@ -309,4 +309,4 @@ YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 
 - 完整工程代码：[examples.md](examples.md)
 - API 详细参考：[reference.md](reference.md)
-- 可运行示例程序：`Examples/ExampleYomk{Service,Context,EventLoop,FunctionPool,Logger}.cpp`（8 步式覆盖各模块全部 API，读运行输出即可理解每个调用）
+- 可运行示例程序：`Examples/ExampleYomk{Service,Context,EventLoop,FunctionPool,Logger,ServerInfo}.cpp`（分步覆盖各模块全部 API，读运行输出即可理解每个调用）
