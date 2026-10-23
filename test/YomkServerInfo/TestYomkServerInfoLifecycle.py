@@ -9,6 +9,7 @@ S1. /services：eOk + "ok" + 服务名列表含 4 内置服务；FmtSrv 注册�
 S2. /functions：行格式 "func [MsgType]" 与无类型 "func" 两种；空 srvName eInvalid；
     不存在服务 eOk 空表；内置 /YomkContext 与 /YomkServerInfo 自身行格式
 S3. /function：命中时 msg 精确等于 msgName（特殊契约，非 "ok"）、无类型函数 msg 为空；
+    四参函数说明挂入 data 段（msg 契约保持）、无说明函数 data 为空；
     URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null pkg
 S4. /all：服务名行 + 两空格缩进功能行（字典序，FmtSrv 段相邻三行精确序）
 S5. 轻量并发快照一致性：3 churn 线程 add/del × 3 内省线程轮询 4 端点（服务表读写竞争），
@@ -26,7 +27,7 @@ S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/service
   （CPython 引用计数遇环不归零）
 - 服务表快照经 YomkApi.server().service_names()
 - 内省数据解包后 YomkResponse.data 直接是 list[str]
-- install_func 第三参承载函数消息类型元数据（三内置装配已补齐）
+- install_func 第三参承载函数消息类型元数据，第四参承载函数说明（三内置装配已补齐）
 - 探针计数用 list.append（GIL 原子，T 轮既有模式）
 - S0 类级直连（import YomkServerPy 白盒），放在 init 单例之前以独立实例隔离单例交互；
   S1-S7 经门面 API 走完整路由链
@@ -89,10 +90,12 @@ def unpack_string_array(resp):
 # ---- 测试装置服务（FmtSrv/ChurnSrv）----
 
 class FmtSrv(ysp.YomkService):
-    # 行格式演示服务：/ping 两参安装（无类型，行格式 "func"）+ /echo 三参安装（行格式 "func [String]"）
+    # 行格式演示服务：/ping 两参安装（无类型，行格式 "func"）+
+    # /echo 四参安装（行格式 "func [String]"，附函数说明）
     def init(self):
         self.install_func("/ping", self.ping)
-        self.install_func("/echo", self.echo, "String")
+        self.install_func("/echo", self.echo, "String",
+                          "echo demo description")
         return 0
 
     def ping(self, pkg):
@@ -190,7 +193,8 @@ def main():
     check(resp.status == ResStatus.eOk, "/functions(FmtSrv) 返回 eOk")
     lines = unpack_string_array(resp)
     check(len(lines) == 2, f"FmtSrv 恰 2 个功能函数: {len(lines)}")
-    check(name_in(lines, "/echo [String]"), "三参安装行格式 \"/echo [String]\"")
+    check(name_in(lines, "/echo [String]"),
+          "四参安装行格式 \"/echo [String]\"（/functions 行仅类型名）")
     check(name_in(lines, "/ping"), "两参安装行格式 \"/ping\"（无类型后缀）")
 
     empty = server_info_functions("")
@@ -218,11 +222,15 @@ def main():
     print("===== S3. /function 端点 =====")
     hit_typed = server_info_function("/FmtSrv/echo")
     check(hit_typed.status == ResStatus.eOk and hit_typed.msg == "String",
-          "命中三参函数：eOk 且 msg 精确等于 msgName \"String\"（特殊契约）")
+          "命中四参函数：eOk 且 msg 精确等于 msgName \"String\"（特殊契约）")
+    check(hit_typed.data == "echo demo description",
+          "四参函数说明挂入 data 段（msg 契约保持）")
 
     hit_plain = server_info_function("/FmtSrv/ping")
     check(hit_plain.status == ResStatus.eOk and hit_plain.msg == "",
           "命中两参函数：eOk 且 msg 为空")
+    check(hit_plain.data is None,
+          "无说明函数 data 段为空（None）")
 
     empty_url = server_info_function("")
     check(empty_url.status == ResStatus.eNo and "please start with /" in empty_url.msg,

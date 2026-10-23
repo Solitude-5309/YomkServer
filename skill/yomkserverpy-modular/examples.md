@@ -445,12 +445,13 @@ resp = YomkApi.function_pool_call("validate_amount", "100.5")
 
 ## 示例5：服务内省（调试）
 
-类型元数据由 `install_func` 三参形式声明（仅作内省元数据，不参与运行时校验；两参写法兼容，内省无类型）：
+期望消息类型由 `install_func` 三参形式声明、函数说明由四参声明（均仅作内省元数据，不参与运行时校验；说明经 `/function` 响应数据段透出；两参写法兼容，内省无类型）：
 
 ```python
 class DemoService(YomkApi.YomkService):
     def init(self):
-        self.install_func("/with_type", self.with_type, "MyData")  # 内省可见类型 MyData
+        self.install_func("/with_type", self.with_type, "MyData")  # 三参：内省可见类型 MyData
+        self.install_func("/with_desc", self.with_desc, "MyData", "函数说明")  # 四参：类型 + 说明
         self.install_func("/no_type", self.no_type)                # 兼容写法，内省无类型
         return 0
 
@@ -460,9 +461,10 @@ resp = YomkApi.server_info_services()
 
 # 指定服务的函数列表（每行 "func [msgName]"）
 resp = YomkApi.server_info_functions("/DemoService")
-# resp.data: ["/no_type", "/with_type [MyData]"]
+# resp.data: ["/no_type", "/with_desc [MyData]", "/with_type [MyData]"]
 
-# 单函数元信息（命中时 msg 为期望消息类型名）
+# 单函数元信息（命中时 msg 为期望消息类型名，四参函数说明挂 data 段）
+resp = YomkApi.server_info_function("/DemoService/with_desc")  # eOk, msg = "MyData", data = "函数说明"
 resp = YomkApi.server_info_function("/DemoService/with_type")  # eOk, msg = "MyData"
 resp = YomkApi.server_info_function("/DemoService/no_type")    # eOk, msg 为空串（未声明）
 resp = YomkApi.server_info_function("/DemoService/not_exist")  # eNo

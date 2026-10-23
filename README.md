@@ -223,14 +223,15 @@ resp = YomkApi.server_info_services()
 # 指定服务的功能函数清单（每行 "函数名 [期望消息类型]"，未声明类型的函数无括号后缀）
 resp = YomkApi.server_info_functions("/CalcService")
 
-# 单函数元信息：命中时 msg 为期望消息类型名（未声明为空串），不存在返回 eNo
+# 单函数元信息：命中时 msg 为期望消息类型名（未声明为空串），
+# 四参函数说明经 data 段透出；不存在返回 eNo
 resp = YomkApi.server_info_function("/CalcService/add")
 
 # 全量拓扑：服务名一行、函数行缩进两格
 resp = YomkApi.server_info_all()
 ```
 
-说明：期望消息类型由 `install_func()` 三参形式声明（仅作内省元数据，不参与运行时校验）；自省读的是运行期服务表，注册/删除即时反映到下一次查询。完整可运行演示见 `examples/ExampleYomkServerInfo.py`（四类查询、注册/删除实时视图、关闭后返回值契约）。
+说明：期望消息类型由 `install_func()` 三参形式声明、四参附自定义函数说明（均仅作内省元数据，不参与运行时校验；说明经 `/function` 响应 data 段透出）；自省读的是运行期服务表，注册/删除即时反映到下一次查询。完整可运行演示见 `examples/ExampleYomkServerInfo.py`（四类查询、注册/删除实时视图、关闭后返回值契约）。
 
 ---
 

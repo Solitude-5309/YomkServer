@@ -117,16 +117,17 @@ YomkApi.async_request("/XxxService/my_func", MyData("hello", 1), lambda resp: pr
 
 ### 服务内省（调试）
 
-框架内置 `/YomkServerInfo` 服务（随 `YomkApi.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数元信息、全量拓扑。功能函数安装时用 `install_func` 三参形式声明期望消息类型（仅作内省元数据，不参与运行时校验；两参写法兼容，内省无类型）：
+框架内置 `/YomkServerInfo` 服务（随 `YomkApi.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数元信息、全量拓扑。功能函数安装时用 `install_func` 三参形式声明期望消息类型、四参附函数说明（均仅作内省元数据，不参与运行时校验；说明经 `/function` 响应数据段透出；两参写法兼容，内省无类型）：
 
 ```python
 def init(self):
-    self.install_func("/my_func", self.my_func, "MyData")  # 内省可见类型 MyData
+    self.install_func("/my_func", self.my_func, "MyData")  # 三参：内省可见类型 MyData
+    self.install_func("/my_desc", self.my_desc, "MyData", "说明")  # 四参：类型 + 函数说明
     return 0
 
 resp = YomkApi.server_info_services()                      # 服务列表（data 为服务名列表）
 resp = YomkApi.server_info_functions("/XxxService")        # 函数列表（每行 "func [msgName]"）
-resp = YomkApi.server_info_function("/XxxService/my_func") # 单函数元信息（命中返回 msg 为类型名）
+resp = YomkApi.server_info_function("/XxxService/my_desc") # 单函数元信息（msg 为类型名，说明挂 data 段）
 resp = YomkApi.server_info_all()                           # 全量拓扑（服务名行 + 缩进函数行）
 ```
 

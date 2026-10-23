@@ -6,7 +6,8 @@ TestYomkService.py —— YomkService 命名/函数注册/调用白盒单元测�
 2. 注册锁定：add_service 成功后改名被拒（名字与注册键一致承诺）
 3. add_service 两参形式：注册前改名生效
 4. install_func：合法名、非法名（空串/无 / 开头）拒绝、空函数拒绝、
-   三参元数据（msg_name）、两参覆盖清除残留元数据、三参覆盖恢复
+   三参元数据（msg_name）、四参函数说明（description）、两参覆盖清除残留信息、
+   三参/四参覆盖恢复
 5. func_infos 内省
 6. invoke：命中（自身响应 + pkg 透传回显）、非法名/未安装返回 eNo 契约消息
 7. 空服务器守卫：YomkService(None) 构造后不崩溃 + request/async_request 契约
@@ -42,11 +43,11 @@ def check(cond, msg):
 
 
 def find_func_info(infos, func_name):
-    """内省辅助：在 func_infos 中查找 func_name，返回 (found, msg_name)"""
+    """内省辅助：在 func_infos 中查找 func_name，返回 (found, msg_name, description)"""
     info = infos.get(func_name)
     if info is None:
-        return False, ""
-    return True, info.msg_name
+        return False, "", ""
+    return True, info.msg_name, info.description
 
 
 class DemoPkg:
@@ -72,6 +73,9 @@ class DemoService(YomkService):
         self.install_func("/reinstall", self.reinstall)
         self.install_func("/restore", self.restore)                # 先两参
         self.install_func("/restore", self.restore, "String")      # 三参覆盖：恢复元数据
+        # 四参：类型元数据 + 函数说明；三参缺省说明为空
+        self.install_func("/desc", self.desc, "String", "demo description")
+        self.install_func("/desc0", self.desc0, "String")
         return 0
 
     def echo(self, pkg):
@@ -88,6 +92,12 @@ class DemoService(YomkService):
 
     def restore(self, pkg):
         return YomkResponse(ResStatus.eOk, "restore")
+
+    def desc(self, pkg):
+        return YomkResponse(ResStatus.eOk, "desc")
+
+    def desc0(self, pkg):
+        return YomkResponse(ResStatus.eOk, "desc0")
 
 
 class NullSrv(YomkService):
@@ -137,24 +147,42 @@ def test_install_func(demo):
 
     infos = demo.func_infos()
 
-    found, _ = find_func_info(infos, "/manual")
+    found, _, _ = find_func_info(infos, "/manual")
     check(found, "合法 / 开头名安装成功，func_infos 命中")
-    found, _ = find_func_info(infos, "")
+    found, _, _ = find_func_info(infos, "")
     check(not found, "空串函数名安装被拒，func_infos 不含")
-    found, _ = find_func_info(infos, "no_slash")
+    found, _, _ = find_func_info(infos, "no_slash")
     check(not found, "无 / 开头函数名安装被拒，func_infos 不含")
-    found, _ = find_func_info(infos, "/null_func")
+    found, _, _ = find_func_info(infos, "/null_func")
     check(not found, "空函数对象安装被拒，func_infos 不含")
 
     # 三参元数据与覆盖安装
-    found, msg_name = find_func_info(infos, "/echo")
+    found, msg_name, _ = find_func_info(infos, "/echo")
     check(found and msg_name == "String", "三参安装声明元数据 msg_name == String")
-    found, msg_name = find_func_info(infos, "/plain")
+    found, msg_name, _ = find_func_info(infos, "/plain")
     check(found and msg_name == "", "两参安装无元数据")
-    found, msg_name = find_func_info(infos, "/reinstall")
+    found, msg_name, _ = find_func_info(infos, "/reinstall")
     check(found and msg_name == "", "两参覆盖安装清除残留元数据")
-    found, msg_name = find_func_info(infos, "/restore")
+    found, msg_name, _ = find_func_info(infos, "/restore")
     check(found and msg_name == "String", "三参覆盖安装恢复元数据")
+
+    # 四参函数说明：类型元数据与说明齐备；三参缺省说明为空
+    found, msg_name, desc = find_func_info(infos, "/desc")
+    check(found and msg_name == "String" and desc == "demo description",
+          "四参安装类型元数据与函数说明齐备")
+    found, msg_name, desc = find_func_info(infos, "/desc0")
+    check(found and msg_name == "String" and desc == "",
+          "三参安装缺省函数说明为空")
+
+    # 运行期覆盖安装：两参清除类型名与说明，再四参恢复
+    demo.install_func("/desc", demo.desc)
+    found, msg_name, desc = find_func_info(demo.func_infos(), "/desc")
+    check(found and msg_name == "" and desc == "",
+          "运行期两参覆盖安装清除类型名与函数说明")
+    demo.install_func("/desc", demo.desc, "String", "demo description")
+    found, msg_name, desc = find_func_info(demo.func_infos(), "/desc")
+    check(found and msg_name == "String" and desc == "demo description",
+          "运行期四参覆盖安装恢复类型名与函数说明")
 
 
 # 5. invoke：命中（含 pkg 透传）与异常路径契约
@@ -202,7 +230,7 @@ def test_null_server_guards():
 
     check(srv.get_name() == "x",
           "空 server 下 set_name 本地字段直接生效（现状文档化）")
-    found, _ = find_func_info(srv.func_infos(), "/x")
+    found, _, _ = find_func_info(srv.func_infos(), "/x")
     check(found,
           "空 server 下 install_func 本地表直接生效（现状文档化）")
     check(ret is None, "空 server 下 async_request 静默返回 None")

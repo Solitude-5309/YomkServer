@@ -29,14 +29,16 @@ class YomkResponse:
 class YomkFuncInfo:
     func_name: str
     msg_name: str
-    def __init__(self, func_name: str = "", msg_name: str = "") -> None: ...
+    description: str
+    def __init__(self, func_name: str = "", msg_name: str = "",
+                 description: str = "") -> None: ...
 
 
 class YomkService:
     name: str
     server: Any
     functions: Dict[str, Callable[[Any], YomkResponse]]
-    function_msgs: Dict[str, str]
+    function_infos: Dict[str, YomkFuncInfo]
     registered: bool
     rwlock_functions: Any
 
@@ -46,8 +48,10 @@ class YomkService:
     def mark_registered(self) -> None: ...
     def init(self) -> None: ...
     def deinit(self) -> None: ...
+
     def install_func(self, name: str, function: Callable[[
-                     Any], YomkResponse], msg_name: str = "") -> None: ...
+                     Any], YomkResponse], msg_name: str = "",
+                     description: str = "") -> None: ...
 
     def func_infos(self) -> Dict[str, YomkFuncInfo]: ...
     def invoke(self, name: str, pkg: Any) -> Any: ...

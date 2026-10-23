@@ -40,7 +40,7 @@ class YomkService:
         self.name: str = ""
         self.server: "YomkServer" = server
         self.functions: dict[str, Callable[[Any], YomkResponse]] = {}
-        self.function_msgs: dict[str, str] = {}
+        self.function_infos: dict[str, YomkFuncInfo] = {}
         self.registered: bool = False
         self.rwlock_functions = rwlock.RWLockFair()
         if not server:
@@ -68,7 +68,8 @@ class YomkService:
     def deinit(self):
         pass
 
-    def install_func(self, name, function, msg_name=""):
+    def install_func(self, name, function, msg_name="", description=""):
+        # msg_name 为期望消息类型元数据，description 为使用者自定义函数说明，均仅供内省
         if not name.startswith("/"):
             log.error("install function name is error: " +
                       name + ", please start with /")
@@ -83,20 +84,22 @@ class YomkService:
                 log.error(
                     f"install function already exists -> {name}, update to current function")
             self.functions[name] = function
-            if msg_name:
-                self.function_msgs[name] = msg_name
+            if msg_name or description:
+                self.function_infos[name] = YomkFuncInfo(
+                    name, msg_name, description)
             else:
-                # 两参覆盖安装时清除残留的旧类型元数据，保持内省与注册一致
-                self.function_msgs.pop(name, None)
+                # 两参覆盖安装时清除残留的函数信息，保持内省与注册一致
+                self.function_infos.pop(name, None)
 
     def func_infos(self):
         infos: dict[str, YomkFuncInfo] = {}
         with self.rwlock_functions.gen_rlock():
             for func_name in self.functions:
                 info = YomkFuncInfo(func_name)
-                msg_name = self.function_msgs.get(func_name)
-                if msg_name:
-                    info.msg_name = msg_name
+                stored = self.function_infos.get(func_name)
+                if stored:
+                    info.msg_name = stored.msg_name
+                    info.description = stored.description
                 infos[func_name] = info
         return infos
 
@@ -550,9 +553,10 @@ class Monitor:
 
 
 class YomkFuncInfo:
-    def __init__(self, func_name="", msg_name=""):
+    def __init__(self, func_name="", msg_name="", description=""):
         self.func_name = func_name
         self.msg_name = msg_name
+        self.description = description
 
 # modules
 
@@ -1616,14 +1620,18 @@ class YomkServerInfo(YomkService):
             log.error("server has been destroyed, function info ignored.")
             return YomkResponse(ResStatus.eNo, "server has been destroyed")
 
-        # 命中契约：eOk 且 msg 精确等于 msgName（非 "ok"），无类型函数 msg 为空
+        # 命中契约：eOk 且 msg 精确等于 msgName（非 "ok"），无类型函数 msg 为空；
+        # 函数说明非空时挂入 data 段，msg 契约保持精确类型名不变
         for name in sorted(server.service_names()):
             if name == srv_name:
                 info = server.service_func_infos(srv_name).get(func_name)
                 if info is None:
                     log.error("function not found -> " + url)
                     return YomkResponse(ResStatus.eNo, "function not found: " + url)
-                return YomkResponse(ResStatus.eOk, info.msg_name)
+                resp = YomkResponse(ResStatus.eOk, info.msg_name)
+                if info.description:
+                    resp.data = info.description
+                return resp
 
         log.error("service not found -> " + srv_name)
         return YomkResponse(ResStatus.eNo, "service not found: " + srv_name)
