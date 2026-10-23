@@ -387,7 +387,7 @@ class EventLoopPkg:
 
 
 class EventLoopInfo:
-    # 事件循环内省元信息（/YomkEventLoop/loop 返回数据）
+    # 事件循环内省元信息（/YomkEventLoop/loop 与 /YomkEventLoop/all 返回数据）
     def __init__(self, loop_name="", running=False, pending=0,
                  has_default_func=False, msg_name="", next_tags=None):
         self.loop_name = loop_name        # 循环名
@@ -1277,11 +1277,16 @@ class YomkEventLoop(YomkService):
         return YomkResponse(ResStatus.eOk, "ok", info)
 
     def list_all(self, pkg):
-        # 内省：全部事件循环元信息，每行一个循环
+        # 内省：全部事件循环元信息，锁内拷贝快照、锁外逐循环取结构化快照
+        # （msg 恒 "ok"，数据走 data；next_tags 取 3 条与单查缺省一致）
         with self.m_eventLoopMutex.gen_rlock():
             pairs = list(self.m_eventLoop.items())
-        lines = [loop.info_line(name, 3) for name, loop in pairs]
-        return YomkResponse(ResStatus.eOk, "ok", lines)
+        infos = []
+        for name, loop in pairs:
+            info = EventLoopInfo(name)
+            loop.info_snapshot(info, 3)
+            infos.append(info)
+        return YomkResponse(ResStatus.eOk, "ok", infos)
 
     def deinit(self):
         # 收尾残留 loop：写锁内快照并清表，锁外逐个 destroy

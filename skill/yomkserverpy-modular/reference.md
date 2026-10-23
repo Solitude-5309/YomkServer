@@ -137,7 +137,7 @@ class EventLoopPkg:
 | `YomkApi.event_loop_destroy(name)` | 销毁 |
 | `YomkApi.event_loop_info_loops()` | 枚举全部事件循环名 |
 | `YomkApi.event_loop_info_loop(name, tag_count=None)` | 单循环元信息结构化查询（命中 msg 恒 `"ok"`，data 为 `EventLoopInfo` 包：loop_name/running/pending/has_default_func/msg_name/next_tags；tag_count 限制 next_tags 条数；不存在循环返回 eNo） |
-| `YomkApi.event_loop_info_all()` | 查询全部循环信息 |
+| `YomkApi.event_loop_info_all()` | 全量循环元信息结构化列表（命中 msg 恒 `"ok"`，data 为 `EventLoopInfo` 列表，元素字段与单查一致，next_tags 取 3 条） |
 
 ### FunctionPool
 | API | 说明 |

@@ -55,7 +55,7 @@ def main():
     print(f"[thread {tid}] event_loop_stop: {res.msg}")
 
     print_step(6, "内省",
-               "内省三件套看循环清单与运行状态；loop 单查命中为结构化返回：msg 恒 \"ok\"，data 为 EventLoopInfo 包（循环名/运行状态/积压数/默认处理函数/期望类型/队列头 tag），不存在循环返回 eNo")
+               "内省三件套看循环清单与运行状态；loop 单查命中为结构化返回：msg 恒 \"ok\"，data 为 EventLoopInfo 包（循环名/运行状态/积压数/默认处理函数/期望类型/队列头 tag），all 全量为结构化列表（元素字段与单查一致），不存在循环返回 eNo")
     res = YomkApi.event_loop_info_loops()
     print(f"[thread {tid}] event_loop_info_loops: {res.data}")
     res = YomkApi.event_loop_info_loop("loop_1", 3)
@@ -67,7 +67,15 @@ def main():
     res = YomkApi.event_loop_info_loop("ghost")
     print(f"[thread {tid}] event_loop_info_loop(ghost): {res.msg}")
     res = YomkApi.event_loop_info_all()
-    print(f"[thread {tid}] event_loop_info_all: {res.data}")
+    print(
+        f"[thread {tid}] event_loop_info_all: msg={res.msg}, {len(res.data)} 个循环元信息")
+    for info in res.data:
+        tags = ", ".join(t if t else "-" for t in info.next_tags)
+        msg_part = f", msg_name={info.msg_name!r}" if info.msg_name else ""
+        print(f"  loop={info.loop_name}, running={'on' if info.running else 'off'}, "
+              f"pending={info.pending}, "
+              f"defaultFunc={'on' if info.has_default_func else 'off'}{msg_part}, "
+              f"next_tags=[{tags}]")
 
     print_step(7, "销毁", "event_loop_destroy 销毁循环与线程，彻底释放资源")
     res = YomkApi.event_loop_destroy("loop_1")

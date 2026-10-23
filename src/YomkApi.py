@@ -499,7 +499,7 @@ def event_loop_info_loop(event_loop_name: str, tag_count: Optional[int] = None) 
 
 
 def event_loop_info_all() -> YomkResponse:
-    # 查询全部事件循环状态
+    # 查询全部事件循环元信息（结构化列表，命中 msg 恒 "ok"，data 为 EventLoopInfo 列表，next_tags 取 3 条）
     return _api_request("/YomkEventLoop/all", None)
 
 

@@ -485,12 +485,15 @@ def section_9():
     check(loops_alive is not None and "api_loop" in loops_alive,
           "INFO_LOOPS 列表包含 api_loop")
 
-    # INFO_ALL：列表包含 api_loop 信息行
+    # INFO_ALL：结构化 EventLoopInfoList，包含 api_loop 条目
     all_resp = YomkApi.event_loop_info_all()
     check(all_resp.status == ysp.ResStatus.eOk, "INFO_ALL 返回 eOk")
-    all_lines = all_resp.data
-    check(all_lines is not None and any("api_loop" in l for l in all_lines),
-          "INFO_ALL 列表包含 api_loop 信息行")
+    check(all_resp.msg == "ok", "INFO_ALL 成功消息恒为 ok")
+    all_infos = all_resp.data
+    check(all_infos is not None
+          and any(isinstance(i, ysp.EventLoopInfo) and i.loop_name == "api_loop"
+                  for i in all_infos),
+          "INFO_ALL 列表包含 api_loop 条目")
 
     # 空循环名边界：空串为合法 map 键，全生命周期 eOk
     check(YomkApi.event_loop_start("").status ==
