@@ -30,9 +30,9 @@ class YomkResponse:
         msg: str = "",
         data: Any = None,
     ):
-        self.status = status
-        self.msg = msg
-        self.data = data
+        self.status = status  # 本次请求的状态
+        self.msg = msg        # 对状态的说明（不携带返回数据）
+        self.data = data      # 携带的返回数据
 
 
 class YomkService:
@@ -317,6 +317,17 @@ class Context:
     def __init__(self, key="", value=None):
         self.key = key
         self.value = value
+
+
+class ContextKeyInfo:
+    # Context 键内省元信息（/YomkContext/key 返回数据）
+    def __init__(self, key="", type_name="", checker_on=False,
+                 monitor_count=0, async_monitor_count=0):
+        self.key = key                    # 键名
+        self.type_name = type_name        # 值类型名（值为 None 时为空串）
+        self.checker_on = checker_on      # 门控是否开启
+        self.monitor_count = monitor_count          # monitor 总数
+        self.async_monitor_count = async_monitor_count  # 其中 async monitor 数
 
 
 class CheckStatus(Enum):
@@ -797,14 +808,25 @@ class YomkContext(YomkService):
             log.error("key is empty, please check key.")
             return YomkResponse(ResStatus.eNo, "key is empty")
 
+        # 命中：锁内构造结构化快照，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）
         with self.m_contextsMutex.gen_rlock():
             if key not in self.m_contexts:
                 log.error(
                     f"YomkContext key: {key} is not exist, please check key.")
                 return YomkResponse(ResStatus.eNo, "key is not exist")
-            line = self._info_line(key, self.m_contexts[key])
+            entry = self.m_contexts[key]
+            async_count = 0
+            for monitor in entry.monitors:
+                if monitor.async_monitor_func:
+                    async_count += 1
+            info = ContextKeyInfo(
+                key,
+                type(entry.value).__name__ if entry.value is not None else "",
+                bool(entry.checker),
+                len(entry.monitors),
+                async_count)
 
-        return YomkResponse(ResStatus.eOk, line)
+        return YomkResponse(ResStatus.eOk, "ok", info)
 
     def list_all(self, pkg):
         lines = []

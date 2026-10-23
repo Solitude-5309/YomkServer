@@ -5,15 +5,16 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
 1. create：正常创建（str/int）、空 key、空 value（None）、重复 key
 2. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）
 3. set：正常 set、不存在 key、空 key、类型不匹配
-4. keys/keyInfo/listAll：随增删变化、空 key、不存在 key、信息行格式
+4. keys/keyInfo/listAll：随增删变化、空 key、不存在 key、keyInfo 结构化包字段与清单行格式
 5. destroy：正常销毁、重复销毁、不存在 key、空 key（等价不存在）、销毁后 keys 计数
 
 语言机制说明（非功能缺口）：
 - 门面 context_get(key, default) 不携带目标类型参数、eOk 返回存储值本身，
   调用方以 python 动态类型自然规避"类型不匹配"失败路径（A-2 语言机制剔除项）
 - 内置服务注册校验以 server.service_names() 承载（A-4 口径）
-- keyInfo 信息行类型名为 python 原生类型名（str/int/bool）：
-  value 为原生对象、以 type().__name__ 呈现（C1 定稿口径），格式其余部分逐字一致
+- keyInfo 命中为结构化返回：msg 恒 "ok"，data 为 ContextKeyInfo 包（字段 type_name
+  为 python 原生类型名 str/int/bool，value 为 None 时空串）；listAll 仍为清单行文本
+  （类型名以 type().__name__ 呈现，C1 定稿口径）
 
 风格：纯 main() + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
 全程使用门面单例；
@@ -23,6 +24,7 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
 import sys
 
 from YomkApi import (
+    ContextKeyInfo,
     context_create,
     context_destroy,
     context_get,
@@ -121,13 +123,17 @@ def main():
     check("str_key" in arr, "keys 包含 str_key")
     check("int_key" in arr, "keys 包含 int_key")
 
-    # keyInfo：正常 key
+    # keyInfo：正常 key（结构化返回，msg 恒 "ok"，数据走 data）
     resp = context_info_key("str_key")
     check(resp.status == ResStatus.eOk, "keyInfo 正常 key 返回 eOk")
-    check("str_key" in resp.msg, "keyInfo 消息包含 key")
-    check("str" in resp.msg, "keyInfo 消息包含类型名 str")
-    check("checker:off" in resp.msg, "keyInfo 消息包含 checker:off")
-    check("monitors:0" in resp.msg, "keyInfo 消息包含 monitors:0")
+    check(resp.msg == "ok", "keyInfo 命中 msg 恒为 ok")
+    check(isinstance(resp.data, ContextKeyInfo),
+          "keyInfo 数据为 ContextKeyInfo 包")
+    check(resp.data.key == "str_key", "keyInfo 字段 key 一致")
+    check(resp.data.type_name == "str", "keyInfo 字段 type_name 一致")
+    check(resp.data.checker_on is False, "keyInfo 字段 checker_on 为 False")
+    check(resp.data.monitor_count == 0 and resp.data.async_monitor_count == 0,
+          "keyInfo 字段 monitor 计数为 0")
 
     # keyInfo：空 key
     resp = context_info_key("")

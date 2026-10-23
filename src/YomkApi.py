@@ -9,6 +9,7 @@ from YomkServerPy import (
     YomkResponse,
     ResStatus,
     Context,
+    ContextKeyInfo,
     CheckStatus,
     ContextChecker,
     ContextMonitor,

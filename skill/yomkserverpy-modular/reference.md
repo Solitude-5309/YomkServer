@@ -13,11 +13,13 @@ class CheckStatus(Enum):
     eReject = 1     # 拒绝
 
 class YomkResponse:
-    status: ResStatus   # 响应状态
-    msg: str            # 响应消息
-    data: Any           # 响应数据
+    status: ResStatus   # 本次请求的状态
+    msg: str            # 对状态的说明（不携带返回数据）
+    data: Any           # 携带的返回数据
     def __init__(self, status=ResStatus.eInvalid, msg="", data=None)
 ```
+
+字段语义（固化口径）：`status` 表示本次请求的状态；`msg` 仅作对状态的说明（成功 `"ok"`、错误为契约消息），**返回数据一律放 `data`**。
 
 ## 核心类
 
@@ -122,7 +124,7 @@ class EventLoopPkg:
 | `YomkApi.context_turn_off_monitor()` | 关闭监控器 |
 | `YomkApi.context_set_monitor(key, func, async_monitor=False)` | 设置监控函数（async_monitor=True 时异步回调监控函数） |
 | `YomkApi.context_info_keys()` | 枚举全部 key |
-| `YomkApi.context_info_key(key)` | 查询单 key 元信息行 |
+| `YomkApi.context_info_key(key)` | 单键元信息结构化查询（命中 msg 恒 `"ok"`，data 为 `ContextKeyInfo` 包：key/type_name/checker_on/monitor_count/async_monitor_count；空 key 与不存在 key 返回 eNo） |
 | `YomkApi.context_info_all()` | 查询全部 key 元信息行 |
 
 ### EventLoop

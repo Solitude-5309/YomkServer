@@ -14,9 +14,9 @@ class CheckStatus(Enum):
 
 
 class YomkResponse:
-    status: ResStatus
-    msg: str
-    data: Any
+    status: ResStatus   # 本次请求的状态
+    msg: str            # 对状态的说明（不携带返回数据）
+    data: Any           # 携带的返回数据
 
     def __init__(
         self,
@@ -92,6 +92,18 @@ class Context:
     key: str
     value: Any
     def __init__(self, key: str = "", value: Any = None) -> None: ...
+
+
+class ContextKeyInfo:
+    key: str
+    type_name: str
+    checker_on: bool
+    monitor_count: int
+    async_monitor_count: int
+
+    def __init__(self, key: str = "", type_name: str = "",
+                 checker_on: bool = False, monitor_count: int = 0,
+                 async_monitor_count: int = 0) -> None: ...
 
 
 class ContextChecker:
