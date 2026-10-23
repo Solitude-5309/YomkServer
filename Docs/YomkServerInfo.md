@@ -9,9 +9,9 @@
 | `YOMK_SERVER_INFO_SERVICES()` | 查询所有服务名称 |
 | `YOMK_SERVER_INFO_FUNCTIONS("/服务名")` | 查询指定服务的全部功能函数 |
 | `YOMK_SERVER_INFO_FUNCTION("/服务名/函数名")` | 单查指定功能函数元信息（结构化 FuncInfo 包：函数名/期望消息类型名/函数说明） |
-| `YOMK_SERVER_INFO_ALL()` | 查询框架全量服务及功能函数拓扑 |
+| `YOMK_SERVER_INFO_ALL()` | 查询框架全量服务及功能函数拓扑（ServerServiceInfoList 结构化包：m_serviceName 服务名 + m_funcs 函数元信息列表） |
 
-清单类端点（SERVICES/FUNCTIONS/ALL）以文本行经 `m_data`（StringArray 包）返回；单查端点 `FUNCTION` 命中返回结构化 FuncInfo 包（`m_msg` 恒 "ok"，数据在 `m_data` 字段）。
+清单类端点（SERVICES/FUNCTIONS）以文本行经 `m_data`（StringArray 包）返回；单查端点 `FUNCTION` 命中返回结构化 FuncInfo 包（`m_msg` 恒 "ok"，数据在 `m_data` 字段）；聚合端点 `ALL` 返回 ServerServiceInfoList 结构化层级包（`m_msg` 恒 "ok"）。
 
 ## 使用示例
 

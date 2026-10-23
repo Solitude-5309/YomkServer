@@ -15,7 +15,7 @@
  * 1. 注册演示服务（NEW_SERVICE 后清单多一项；REQUEST 证明注册即可调用）
  * 2. 函数清单（INFO_FUNCTIONS：2 参 vs 4 参注册的元数据差异 / 空清单分支）
  * 3. 单查元信息（INFO_FUNCTION 命中契约：m_msg=期望消息类型名、data 段=函数说明；4 个 eNo 分支）
- * 4. 全量拓扑（INFO_ALL：服务行 + 缩进函数行）
+ * 4. 全量拓扑（INFO_ALL：ServerServiceInfoList 结构化层级包）
  * 5. 运行期实时视图（DEL_SERVICE 后清单与拓扑立即变化）
  * 6. 优雅关闭（SHUTDOWN 后自省返回 eInvalid，框架已关闭是普通返回值）
  *
@@ -123,7 +123,7 @@ static void printResp(const std::string& prefix, const YomkResponse& resp)
     std::cout << std::endl;
 }
 
-// 解包并打印自省返回的 StringArray（SERVER_INFO_* 的返回形态）
+// 解包并打印自省返回的 StringArray（SERVICES/FUNCTIONS 的返回形态）
 static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
@@ -136,6 +136,28 @@ static void dumpLines(const std::string& prefix, const YomkResponse& resp)
     for (const auto& line : arr->d)
     {
         std::cout << ">> | " << line << std::endl;
+    }
+}
+
+// 解包并打印全量拓扑（INFO_ALL 返回 ServerServiceInfoList 层级包：服务 → 函数元信息；
+// 框架只返回结构化数据，显示格式由用户定义，此处仅为示范）
+static void dumpServerAll(const std::string& prefix, const YomkResponse& resp)
+{
+    printResp(prefix, resp);
+    YomkUnPackPkg(resp.m_data, ServerServiceInfoList, list);
+    if (!list)
+    {
+        std::cout << ">> (no data)" << std::endl;
+        return;
+    }
+    for (const auto& srv : list->d)
+    {
+        std::cout << ">> | " << srv.m_serviceName << std::endl;
+        for (const auto& func : srv.m_funcs)
+        {
+            std::cout << ">> |   " << func.m_funcName
+                      << (func.m_msgName.empty() ? "" : " [" + func.m_msgName + "]") << std::endl;
+        }
     }
 }
 
@@ -204,10 +226,14 @@ int main(int argc, char* argv[])
     /**
      * 步骤4：全量拓扑
      *
-     * INFO_ALL 一次拉取全部服务及其功能函数：服务名一行、函数行缩进两格。
+     * INFO_ALL 一次拉取全部服务及其功能函数：ServerServiceInfoList 层级包
+     * （m_serviceName 服务名 + m_funcs 函数元信息列表，与 INFO_FUNCTION 单查同族）。
      */
-    printStep(4, "全量拓扑", "INFO_ALL 输出全部服务及各自的功能函数：服务名一行，函数行缩进两格。");
-    dumpLines("INFO_ALL", YOMK_SERVER_INFO_ALL());
+    printStep(
+        4,
+        "全量拓扑",
+        "INFO_ALL 返回层级包：每个服务一个条目，含服务名与函数元信息列表（显示格式由用户定义）。");
+    dumpServerAll("INFO_ALL", YOMK_SERVER_INFO_ALL());
     std::cout << ">> 6 个服务 = 5 个内置 + 1 个演示；排障时一眼看清调用拓扑" << std::endl;
 
     /**
@@ -220,7 +246,7 @@ int main(int argc, char* argv[])
     int delRet = YOMK_DEL_SERVICE("/InfoDemoService");
     std::cout << "[DEL_SERVICE(/InfoDemoService)] ret=" << delRet << std::endl;
     dumpLines("INFO_SERVICES", YOMK_SERVER_INFO_SERVICES());
-    dumpLines("INFO_ALL(终态)", YOMK_SERVER_INFO_ALL());
+    dumpServerAll("INFO_ALL(终态)", YOMK_SERVER_INFO_ALL());
     std::cout << ">> 删除即从拓扑消失，剩下的 5 项即内置服务" << std::endl;
 
     /**

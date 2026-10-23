@@ -2,7 +2,7 @@
  * @file TestYomkServerInfoLifecycle.cpp
  * @brief ServerInfo 模块生命周期与四端点功能基线测试（P0，从零新建——模块此前零专属覆盖）
  *
- * 覆盖内容（8 个 Section，74 断言）：
+ * 覆盖内容（8 个 Section，76 断言）：
  * S0. server destroyed 分支（白盒直连）：测试自持 YomkServerInfo 实例（不经 addService），
  *     server 释放后 4 端点 invoke 逐一返回 eNo + "server has been destroyed"
  *     （m_weakServer.lock() 失败分支，invoke 为 YomkService public 方法可直连）
@@ -12,13 +12,14 @@
  * S3. /function：命中时 m_msg 精确等于 msgName（特殊契约，非 "ok"）、无类型函数 m_msg 为空；
  *     四参函数说明挂入数据段（m_msg 契约保持）、无说明函数数据段为空；
  *     URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null pkg
- * S4. /all：服务名行 + 两空格缩进功能行（map 字典序，FmtSrv 段相邻三行精确序）
+ * S4. /all：ServerServiceInfoList 结构化包（按 m_serviceName 查条目；m_funcs map 字典序
+ *     /echo 在 /ping 前，字段断言替代缩进行精确串）
  * S5. 轻量并发快照一致性：3 churn 线程 add/del × 3 内省线程轮询 4 端点（服务表 shared_mutex
  *     读写竞争），恒 eOk、/services 恒含存活服务、churn 后无残留
  * S6. 内置服务删除/重注册自举契约（对齐 Context Lifecycle S4/S5 模式）：删除后 4 端点不可路由、
  *     服务表快照反映删除；newService 无参重注册（构造函数固定名生效）后自举恢复
  * S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/services 行完整、/functions 行格式、
- *     /function 长名下 URL 二段解析、/all 缩进行完整无截断
+ *     /function 长名下 URL 二段解析、/all 超长条目完整无截断
  *
  * 说明：S1-S5 经 YOMK_INIT 单例 + YOMK_SERVER_INFO_* 宏走完整路由链；S0 类级直连
  *       （include Modules/ServerInfo/YomkServerInfo.h，CMake 已追加 src 目录），
@@ -60,19 +61,42 @@ static bool nameIn(const std::vector<std::string>& names, const std::string& srv
     return std::find(names.begin(), names.end(), srvName) != names.end();
 }
 
-static int nameIndex(const std::vector<std::string>& names, const std::string& srvName)
+// 在 ServerServiceInfoList 解包结果中按服务名查找条目（/all 结构化消费 helper）
+static const yomk::ServerServiceInfo* findServiceInfo(
+    const std::shared_ptr<yomk::ServerServiceInfoList_>& list, const std::string& srvName)
 {
-    for (size_t i = 0; i < names.size(); ++i)
+    if (!list)
     {
-        if (names[i] == srvName)
+        return nullptr;
+    }
+    for (const auto& srv : list->d)
+    {
+        if (srv.m_serviceName == srvName)
         {
-            return static_cast<int>(i);
+            return &srv;
         }
     }
-    return -1;
+    return nullptr;
 }
 
-// 解包 StringArray 响应数据段（/services、/functions、/all 的 m_data 均为 StringArray 包）
+// 在服务条目内按函数名查找元信息（m_funcName 带 / 前缀 url 段）
+static const yomk::FuncInfo* findFuncInfo(const yomk::ServerServiceInfo* srv, const std::string& funcName)
+{
+    if (srv == nullptr)
+    {
+        return nullptr;
+    }
+    for (const auto& func : srv->m_funcs)
+    {
+        if (func.m_funcName == funcName)
+        {
+            return &func;
+        }
+    }
+    return nullptr;
+}
+
+// 解包 StringArray 响应数据段（/services、/functions 的 m_data 均为 StringArray 包）
 static std::vector<std::string> unpackStringArray(const YomkResponse& resp)
 {
     std::vector<std::string> lines;
@@ -305,30 +329,25 @@ int main()
         auto resp = YOMK_SERVER_INFO_ALL();
         CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "ok", "/all 返回 eOk + ok");
 
-        auto lines = unpackStringArray(resp);
-        CHECK(!lines.empty(), "/all 输出非空");
+        YomkUnPackPkg(resp.m_data, ServerServiceInfoList, list);
+        CHECK(list != nullptr && !list->d.empty(), "/all 输出非空");
 
-        // FmtSrv 段：服务名行后紧跟两条两空格缩进功能行，段内按 map 字典序 /echo 在 /ping 前
-        int fmtIdx = nameIndex(lines, "/FmtSrv");
-        CHECK(fmtIdx >= 0, "/all 含 FmtSrv 服务名行");
-        if (fmtIdx >= 0 && fmtIdx + 2 < static_cast<int>(lines.size()))
-        {
-            CHECK(lines[fmtIdx + 1] == "  /FmtSrv/echo [String]",
-                  "缩进行精确格式 \"  /FmtSrv/echo [String]\"");
-            CHECK(lines[fmtIdx + 2] == "  /FmtSrv/ping", "缩进行精确格式 \"  /FmtSrv/ping\"");
-        }
-        else
-        {
-            CHECK(false, "FmtSrv 段缩进行缺失");
-        }
+        // FmtSrv 段：按 m_serviceName 查条目，段内 map 字典序 /echo 在 /ping 前
+        const yomk::ServerServiceInfo* fmt = findServiceInfo(list, "/FmtSrv");
+        CHECK(fmt != nullptr, "/all 含 FmtSrv 服务条目");
+        CHECK(fmt && fmt->m_funcs.size() == 2 && fmt->m_funcs[0].m_funcName == "/echo" &&
+                  fmt->m_funcs[0].m_msgName == "String" && fmt->m_funcs[1].m_funcName == "/ping" &&
+                  fmt->m_funcs[1].m_msgName.empty(),
+              "FmtSrv 段：/echo [String] 与 /ping 字段齐全（map 字典序）");
 
         // 内置 /YomkServerInfo 段：4 端点齐全（/services、/all 无类型，另两个带 [String]）
-        int selfIdx = nameIndex(lines, "/YomkServerInfo");
-        CHECK(selfIdx >= 0, "/all 含 /YomkServerInfo 服务名行");
-        CHECK(nameIn(lines, "  /YomkServerInfo/services"), "内置段含 \"/services\" 缩进行");
-        CHECK(nameIn(lines, "  /YomkServerInfo/functions [String]"),
-              "内置段含 \"/functions [String]\" 缩进行");
-        CHECK(nameIn(lines, "  /YomkServerInfo/all"), "内置段含 \"/all\" 缩进行");
+        const yomk::ServerServiceInfo* self = findServiceInfo(list, "/YomkServerInfo");
+        CHECK(self != nullptr, "/all 含 /YomkServerInfo 服务条目");
+        CHECK(findFuncInfo(self, "/services") != nullptr, "内置段含 \"/services\" 条目");
+        CHECK(findFuncInfo(self, "/functions") != nullptr &&
+                  findFuncInfo(self, "/functions")->m_msgName == "String",
+              "内置段含 \"/functions\" 条目且 m_msgName == \"String\"");
+        CHECK(findFuncInfo(self, "/all") != nullptr, "内置段含 \"/all\" 条目");
     }
 
     // ============ S5. 轻量并发快照一致性 ============
@@ -442,7 +461,8 @@ int main()
         CHECK(restored.m_status == YomkResponse::eOk &&
                   nameIn(unpackStringArray(restored), "/YomkServerInfo"),
               "重注册后自举恢复：/services eOk 且含自身");
-        CHECK(nameIn(unpackStringArray(YOMK_SERVER_INFO_ALL()), "/YomkServerInfo"),
+        YomkUnPackPkg(YOMK_SERVER_INFO_ALL().m_data, ServerServiceInfoList, restoredAll);
+        CHECK(findServiceInfo(restoredAll, "/YomkServerInfo") != nullptr,
               "重注册后 /all 含自身段（自举查询成功）");
     }
 
@@ -470,20 +490,12 @@ int main()
         CHECK(longFuncInfo && longFuncInfo->d.m_funcName == "/ping",
               "超长名下 URL 二段解析正确（m_funcName == \"/ping\"）");
 
-        auto allLines = unpackStringArray(YOMK_SERVER_INFO_ALL());
-        int longIdx = nameIndex(allLines, longName);
-        CHECK(longIdx >= 0, "/all 含超长服务名行");
-        if (longIdx >= 0 && longIdx + 2 < static_cast<int>(allLines.size()))
-        {
-            CHECK(allLines[longIdx + 1] == "  " + longName + "/echo [String]",
-                  "/all 超长缩进行完整（echo [String]）");
-            CHECK(allLines[longIdx + 2] == "  " + longName + "/ping",
-                  "/all 超长缩进行完整（ping）");
-        }
-        else
-        {
-            CHECK(false, "/all 超长段缩进行缺失");
-        }
+        YomkUnPackPkg(YOMK_SERVER_INFO_ALL().m_data, ServerServiceInfoList, longAll);
+        const yomk::ServerServiceInfo* longSrv = findServiceInfo(longAll, longName);
+        CHECK(longSrv != nullptr, "/all 含超长服务名条目（无截断）");
+        CHECK(longSrv && longSrv->m_funcs.size() == 2 && longSrv->m_funcs[0].m_funcName == "/echo" &&
+                  longSrv->m_funcs[0].m_msgName == "String" && longSrv->m_funcs[1].m_funcName == "/ping",
+              "/all 超长条目函数字段完整（echo [String] 与 ping，无截断）");
 
         CHECK(YOMK_DEL_SERVICE(longName) == 0, "超长名服务删除返回 0");
         CHECK(!nameIn(unpackStringArray(YOMK_SERVER_INFO_SERVICES()), longName),

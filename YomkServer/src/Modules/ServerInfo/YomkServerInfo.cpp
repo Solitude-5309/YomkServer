@@ -108,6 +108,7 @@ YomkResponse YomkServerInfo::functionInfo(YomkPkgPtr pkg)
 
 YomkResponse YomkServerInfo::listAll(YomkPkgPtr pkg)
 {
+    (void)pkg;
     auto server = m_weakServer.lock();
     if (!server)
     {
@@ -115,16 +116,21 @@ YomkResponse YomkServerInfo::listAll(YomkPkgPtr pkg)
         return {YomkResponse::eNo, "server has been destroyed"};
     }
 
-    std::vector<std::string> lines;
+    // 同现实现取数锁序：serviceNames() 一次，再逐服务 serviceFuncInfos()；
+    // FuncInfo 三字段与 /function 单查同族整体拷贝（m_funcName 为带 / 前缀 url 段）
+    std::vector<yomk::ServerServiceInfo> infos;
     for (auto& srvName : server->serviceNames())
     {
-        lines.push_back(srvName);
-        for (auto& iter : server->serviceFuncInfos(srvName))
+        yomk::ServerServiceInfo srv;
+        srv.m_serviceName = srvName;
+        auto funcInfos = server->serviceFuncInfos(srvName);
+        srv.m_funcs.reserve(funcInfos.size());
+        for (auto& iter : funcInfos)
         {
-            lines.push_back(
-                "  " + srvName + iter.second.m_funcName +
-                (iter.second.m_msgName.empty() ? "" : " [" + iter.second.m_msgName + "]"));
+            srv.m_funcs.push_back(iter.second);
         }
+        infos.push_back(std::move(srv));
     }
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
+    // m_msg 恒 "ok"，数据走 m_data（结构化层级包：服务 → 函数元信息）
+    return {YomkResponse::eOk, "ok", YomkMkPtr(ServerServiceInfoList, std::move(infos))};
 }

@@ -719,7 +719,8 @@ resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_desc");  // eOk，m_msgName 
 resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/no_type");    // eOk，m_msgName 为空串（未声明），m_description 为空
 resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/not_exist");  // eNo
 
-// 全量 dump：服务名行 + 缩进的 "srvName + funcName [msgName]" 行
+// 全量拓扑：ServerServiceInfoList 层级包（m_serviceName 服务名 + m_funcs 函数元信息列表，
+// 与 INFO_FUNCTION 单查同族）
 resp = YOMK_SERVER_INFO_ALL();
 ```
 

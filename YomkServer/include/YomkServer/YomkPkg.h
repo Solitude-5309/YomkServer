@@ -223,7 +223,7 @@ struct ConsoleLogProxy
     std::function<bool(const Log& log)> m_consoleLogProxyFunc;
 };
 
-// Logger 控制台状态（LOGGER_INFO_ALL 返回数据状态段；与 consoleLevelLine 行文本五字段对应）
+// Logger 控制台状态（LOGGER_INFO_ALL 返回数据状态段：debug/info/warn/error 四级别开关 + proxy）
 struct ConsoleLogState
 {
     bool m_debugOn = false;  // debug 级别开关
@@ -282,6 +282,13 @@ struct ContextMonitor
     bool m_asyncMonitor = false;
 };
 
+// 服务级内省条目（SERVER_INFO_ALL 返回数据元素：服务名 + 该服务注册的函数元信息列表）
+struct ServerServiceInfo
+{
+    std::string m_serviceName;           // 服务名（带 / 前缀，如 "/FmtSrv"）
+    std::vector<FuncInfo> m_funcs;       // 函数元信息（与 /function 单查同族，m_funcName 带 / 前缀 url 段）
+};
+
 struct VoidPointer
 {
     void* m_ptr = nullptr;
@@ -310,6 +317,8 @@ YomkMsg(Context, Context, d)
 YomkMsg(ContextKeyInfo, ContextKeyInfo, d)
 // Context 全量键内省（CONTEXT_INFO_ALL 返回数据）
 YomkMsg(std::vector<yomk::ContextKeyInfo>, ContextKeyInfoList, d)
+// ServerInfo 全量拓扑内省（SERVER_INFO_ALL 返回数据；层级为服务 → 函数元信息）
+YomkMsg(std::vector<yomk::ServerServiceInfo>, ServerServiceInfoList, d)
 YomkMsg(ContextChecker, ContextChecker, d)
 YomkMsg(ContextMonitor, ContextMonitor, d)
 YomkMsg(VoidPointer, VoidPointer, d)

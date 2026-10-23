@@ -224,7 +224,7 @@ class YomkService {
 | `YOMK_SERVER_INFO_SERVICES()` | 服务列表（返回 StringArray） |
 | `YOMK_SERVER_INFO_FUNCTIONS(srvName)` | 指定服务的函数列表（每行 `funcName [msgName]`） |
 | `YOMK_SERVER_INFO_FUNCTION(url)` | 单函数元信息查询（入参 `/srvName/funcName`，命中返回结构化 FuncInfo 包：m_funcName/m_msgName/m_description，`m_msg` 恒 "ok"） |
-| `YOMK_SERVER_INFO_ALL()` | 全量 dump：服务名行 + 缩进函数行 |
+| `YOMK_SERVER_INFO_ALL()` | 全量服务拓扑（ServerServiceInfoList 结构化包，元素含 m_serviceName 与 m_funcs（FuncInfo 列表，与 /function 单查同族），m_msg 恒 "ok"） |
 
 ### 日志
 | 宏 | 说明 |
