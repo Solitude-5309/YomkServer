@@ -172,7 +172,7 @@ YomkApi.function_pool_register("greet", greet, "String", "向指定的人问好"
 # 调用（未注册的名字返回 eNo）
 resp = YomkApi.function_pool_call("calc", "data")
 
-# 单函数内省：命中 msg 为 "函数名 [类型名]"，四参函数说明挂 data 段
+# 单函数内省：命中 msg 恒 "ok"，data 为 FuncInfo 包（func_name/msg_name/description）
 resp = YomkApi.function_pool_info_name("greet")
 
 # 同名重复注册即运行时热替换，下一次调用执行新实现，无需重启
@@ -227,8 +227,8 @@ resp = YomkApi.server_info_services()
 # 指定服务的功能函数清单（每行 "函数名 [期望消息类型]"，未声明类型的函数无括号后缀）
 resp = YomkApi.server_info_functions("/CalcService")
 
-# 单函数元信息：命中时 msg 为期望消息类型名（未声明为空串），
-# 四参函数说明经 data 段透出；不存在返回 eNo
+# 单函数元信息：命中返回结构化 FuncInfo 包（msg 恒 "ok"，
+# msg_name=期望消息类型名、description=四参函数说明）；不存在返回 eNo
 resp = YomkApi.server_info_function("/CalcService/add")
 
 # 全量拓扑：服务名一行、函数行缩进两格

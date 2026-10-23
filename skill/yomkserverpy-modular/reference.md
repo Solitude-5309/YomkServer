@@ -154,7 +154,7 @@ class EventLoopPkg:
 |-----|------|
 | `YomkApi.server_info_services()` | 服务名列表（data 为字符串列表，字典序） |
 | `YomkApi.server_info_functions(srv_name)` | 指定服务的功能函数列表（每行 `func [msgName]`，未声明类型无括号后缀；不存在服务返回空表） |
-| `YomkApi.server_info_function(url)` | 单函数元信息查询（url 为完整 `/服务名/功能名`，命中返回 msg 为期望消息类型名，未声明为空串，四参函数说明非空时挂 data 段；不存在返回 eNo） |
+| `YomkApi.server_info_function(url)` | 单函数元信息结构化查询（url 为完整 `/服务名/功能名`，命中 msg 恒 "ok"，data 为 FuncInfo 包：func_name/msg_name/description；不存在返回 eNo） |
 | `YomkApi.server_info_all()` | 全量拓扑：服务名行 + 两空格缩进函数行 |
 
 ## URL 格式

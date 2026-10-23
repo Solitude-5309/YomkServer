@@ -1681,18 +1681,15 @@ class YomkServerInfo(YomkService):
             log.error("server has been destroyed, function info ignored.")
             return YomkResponse(ResStatus.eNo, "server has been destroyed")
 
-        # 命中契约：eOk 且 msg 精确等于 msgName（非 "ok"），无类型函数 msg 为空；
-        # 函数说明非空时挂入 data 段，msg 契约保持精确类型名不变
+        # 命中：结构化包恒挂，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）；
+        # 复用 FuncInfo 与函数池 /name 单查端点同族
         for name in sorted(server.service_names()):
             if name == srv_name:
                 info = server.service_func_infos(srv_name).get(func_name)
                 if info is None:
                     log.error("function not found -> " + url)
                     return YomkResponse(ResStatus.eNo, "function not found: " + url)
-                resp = YomkResponse(ResStatus.eOk, info.msg_name)
-                if info.description:
-                    resp.data = info.description
-                return resp
+                return YomkResponse(ResStatus.eOk, "ok", info)
 
         log.error("service not found -> " + srv_name)
         return YomkResponse(ResStatus.eNo, "service not found: " + srv_name)

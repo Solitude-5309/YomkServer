@@ -8,8 +8,8 @@ S0. server destroyed 分支（白盒直连）：测试自持 YomkServerInfo 实�
 S1. /services：eOk + "ok" + 服务名列表含 4 内置服务；FmtSrv 注册后出现、删除后消失、重注册后出现
 S2. /functions：行格式 "func [MsgType]" 与无类型 "func" 两种；空 srvName eInvalid；
     不存在服务 eOk 空表；内置 /YomkContext 与 /YomkServerInfo 自身行格式
-S3. /function：命中时 msg 精确等于 msgName（特殊契约，非 "ok"）、无类型函数 msg 为空；
-    四参函数说明挂入 data 段（msg 契约保持）、无说明函数 data 为空；
+S3. /function：命中返回结构化 FuncInfo 包（msg 恒 "ok"，func_name/msg_name/description）；
+    四参函数 description 承载说明、无说明函数 description 为空（包恒挂）；
     URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null pkg
 S4. /all：服务名行 + 两空格缩进功能行（字典序，FmtSrv 段相邻三行精确序）
 S5. 轻量并发快照一致性：3 churn 线程 add/del × 3 内省线程轮询 4 端点（服务表读写竞争），
@@ -221,16 +221,24 @@ def main():
     # ============ S3. /function ============
     print("===== S3. /function 端点 =====")
     hit_typed = server_info_function("/FmtSrv/echo")
-    check(hit_typed.status == ResStatus.eOk and hit_typed.msg == "String",
-          "命中四参函数：eOk 且 msg 精确等于 msgName \"String\"（特殊契约）")
-    check(hit_typed.data == "echo demo description",
-          "四参函数说明挂入 data 段（msg 契约保持）")
+    check(hit_typed.status == ResStatus.eOk and hit_typed.msg == "ok",
+          "命中四参函数：eOk 且 msg 恒为 ok")
+    check(isinstance(hit_typed.data, ysp.FuncInfo),
+          "命中四参函数：数据为 FuncInfo 包")
+    check(hit_typed.data is not None and hit_typed.data.func_name == "/echo"
+          and hit_typed.data.msg_name == "String",
+          "命中四参函数字段 func_name/msg_name 一致")
+    check(hit_typed.data is not None and hit_typed.data.description == "echo demo description",
+          "四参函数 description 承载函数说明")
 
     hit_plain = server_info_function("/FmtSrv/ping")
-    check(hit_plain.status == ResStatus.eOk and hit_plain.msg == "",
-          "命中两参函数：eOk 且 msg 为空")
-    check(hit_plain.data is None,
-          "无说明函数 data 段为空（None）")
+    check(hit_plain.status == ResStatus.eOk and hit_plain.msg == "ok",
+          "命中两参函数：eOk 且 msg 恒为 ok")
+    check(hit_plain.data is not None and hit_plain.data.func_name == "/ping"
+          and hit_plain.data.msg_name == "",
+          "命中两参函数字段 func_name 一致且 msg_name 为空")
+    check(hit_plain.data is not None and hit_plain.data.description == "",
+          "无说明函数 description 为空（结构化包恒挂）")
 
     empty_url = server_info_function("")
     check(empty_url.status == ResStatus.eNo and "please start with /" in empty_url.msg,
@@ -371,8 +379,10 @@ def main():
           "超长名下函数行格式完整")
 
     long_function = server_info_function(long_name + "/ping")
-    check(long_function.status == ResStatus.eOk and long_function.msg == "",
-          "超长名下 /function URL 二段解析正确（msg 为空）")
+    check(long_function.status == ResStatus.eOk and long_function.msg == "ok",
+          "超长名下 /function URL 二段解析正确（msg 恒为 ok）")
+    check(long_function.data is not None and long_function.data.func_name == "/ping",
+          "超长名下 URL 二段解析正确（func_name == \"/ping\"）")
 
     all_lines = unpack_string_array(server_info_all())
     long_idx = name_index(all_lines, long_name)

@@ -443,13 +443,13 @@ YomkApi.function_pool_register("validate_amount", validate_amount)
 YomkApi.function_pool_register("calc_sum", calc_sum, "String", "计算输入之和")  # 四参：类型 + 说明
 resp = YomkApi.function_pool_call("validate_amount", "100.5")
 
-# 单函数内省：命中 msg 为 "函数名 [类型名]"，四参函数说明挂 data 段
-resp = YomkApi.function_pool_info_name("calc_sum")  # eOk, msg = "calc_sum [String]"，data = "计算输入之和"
+# 单函数内省：命中 msg 恒 "ok"，data 为 FuncInfo 包（func_name/msg_name/description）
+resp = YomkApi.function_pool_info_name("calc_sum")  # eOk, msg_name = "String"，description = "计算输入之和"
 ```
 
 ## 示例5：服务内省（调试）
 
-期望消息类型由 `install_func` 三参形式声明、函数说明由四参声明（均仅作内省元数据，不参与运行时校验；说明经 `/function` 响应数据段透出；两参写法兼容，内省无类型）：
+期望消息类型由 `install_func` 三参形式声明、函数说明由四参声明（均仅作内省元数据，不参与运行时校验；说明经 `/function` 结构化包透出；两参写法兼容，内省无类型）：
 
 ```python
 class DemoService(YomkApi.YomkService):
@@ -467,10 +467,10 @@ resp = YomkApi.server_info_services()
 resp = YomkApi.server_info_functions("/DemoService")
 # resp.data: ["/no_type", "/with_desc [MyData]", "/with_type [MyData]"]
 
-# 单函数元信息（命中时 msg 为期望消息类型名，四参函数说明挂 data 段）
-resp = YomkApi.server_info_function("/DemoService/with_desc")  # eOk, msg = "MyData", data = "函数说明"
-resp = YomkApi.server_info_function("/DemoService/with_type")  # eOk, msg = "MyData"
-resp = YomkApi.server_info_function("/DemoService/no_type")    # eOk, msg 为空串（未声明）
+# 单函数元信息（命中 msg 恒 "ok"，data 为 FuncInfo 包：func_name/msg_name/description）
+resp = YomkApi.server_info_function("/DemoService/with_desc")  # eOk, msg_name = "MyData", description = "函数说明"
+resp = YomkApi.server_info_function("/DemoService/with_type")  # eOk, msg_name = "MyData"
+resp = YomkApi.server_info_function("/DemoService/no_type")    # eOk, msg_name 为空串（未声明），description 为空
 resp = YomkApi.server_info_function("/DemoService/not_exist")  # eNo
 
 # 全量拓扑：服务名行 + 两空格缩进的 "srvName + funcName [msgName]" 行

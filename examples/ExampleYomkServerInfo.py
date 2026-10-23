@@ -14,7 +14,7 @@ ExampleYomkServerInfo —— YomkServerInfo 服务自省快速上手示例（面
 0. 框架就绪（5 个内置服务随 init 启动，/YomkServerInfo 即其中之一）
 1. 注册演示服务（new_service 后清单多一项；request 证明注册即可调用）
 2. 函数清单（server_info_functions：两参 vs 三/四参注册的元数据差异 / 空清单分支）
-3. 单查元信息（server_info_function 命中契约：msg=期望消息类型名、四参函数说明挂 data 段；4 个 eNo 分支）
+3. 单查元信息（server_info_function 命中返回结构化 FuncInfo 包：msg 恒 ok、msg_name=期望消息类型名、description=四参函数说明；4 个 eNo 分支）
 4. 全量拓扑（server_info_all：服务行 + 缩进函数行）
 5. 运行期实时视图（del_service 后清单与拓扑立即变化）
 6. 优雅关闭（shutdown 后自省返回 eInvalid，框架已关闭是普通返回值）
@@ -82,8 +82,8 @@ def print_step(n, title, explain):
 def print_resp(prefix, resp):
     # YomkResponse 三态：eOk=0 成功；eNo=1 目标不存在或被拒绝；eInvalid=-1 参数无效或未初始化
     print(f'[{prefix}] status={resp.status.value}, msg="{resp.msg}"')
-    # /function 命中时函数说明挂 data 段（字符串），非空即展示；
-    # 列表形态 data 由 dump_lines 逐行打印，此处不重复
+    # data 为字符串时直接展示（如 request 返回值）；
+    # 列表形态 data 由 dump_lines 逐行打印，结构化包（如 /function 的 FuncInfo）不展开
     if isinstance(resp.data, str):
         print(f'>> data="{resp.data}"')
 
@@ -146,17 +146,17 @@ def main():
     #
     # 步骤3：单查元信息
     #
-    # server_info_function 按 URL 单查：命中时 msg 精确返回期望消息类型名
-    # （无元数据为空串），四参函数说明挂 data 段；4 种坏 URL 均返回 eNo，
-    # 是普通返回值不崩溃。
+    # server_info_function 按 URL 单查：命中返回结构化 FuncInfo 包（msg 恒 "ok"），
+    # msg_name=期望消息类型名、description=注册时声明的函数说明（均为可空字段）；
+    # 4 种坏 URL 均返回 eNo，是普通返回值不崩溃。
     #
     print_step(3, "单查元信息",
-               "server_info_function 命中时 msg=期望消息类型名（/sum 为 SumReq，/hi 为空串），函数说明挂 data 段；4 种坏 URL 均为 eNo=1。")
+               "server_info_function 命中返回结构化 FuncInfo 包（msg 恒 \"ok\"）：msg_name 承载期望消息类型名（/sum 为 SumReq，/hi 为空串），description 承载函数说明；4 种坏 URL 均为 eNo=1。")
     print_resp("server_info_function(/sum)",
                YomkApi.server_info_function("/InfoDemoService/sum"))
     print_resp("server_info_function(/hi)",
                YomkApi.server_info_function("/InfoDemoService/hi"))
-    print(">> 命中契约：msg 即该函数期望的消息类型名，空串表示未声明；函数说明经 data 段透出")
+    print(">> 命中契约：结构化 FuncInfo 包，msg_name=该函数期望的消息类型名（空串表示未声明），description=四参 install_func 声明的函数说明")
     print_resp("server_info_function(url不以/开头)",
                YomkApi.server_info_function("InfoDemoService/sum"))
     print_resp("server_info_function(缺函数名)",
