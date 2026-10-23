@@ -810,17 +810,17 @@ YomkAPI::CONSOLE_LOG_INFO_TAG("auto_logger", "hello");                // tag 兼
 YomkResponse resp = YOMK_LOGGER_INFO_LOGGERS();
 // arr->d: ["MainLogger [console]", "auto_logger [console]", "info_logger [file] dir:/tmp"]
 
-// 单日志器元信息：命中 eOk 且 msg 为元信息行，未注册 eNo
-resp = YOMK_LOGGER_INFO_LOGGER("MainLogger");      // eOk, msg: "MainLogger [console]"
-resp = YOMK_LOGGER_INFO_LOGGER("info_logger");     // eOk, msg: "info_logger [file] dir:/tmp"
+// 单日志器元信息：LoggerInfo 结构化包（m_loggerName/m_type/m_dir，m_msg 恒 "ok"）
+resp = YOMK_LOGGER_INFO_LOGGER("MainLogger");      // eOk, m_type="console"，m_dir 为空串
+resp = YOMK_LOGGER_INFO_LOGGER("info_logger");     // eOk, m_type="file"，m_dir="/tmp"
 resp = YOMK_LOGGER_INFO_LOGGER("not_exist");       // eNo
 
-// 全量 dump：首行为控制台级别开关与代理状态，其余为日志器行
+// 全量日志器与控制台状态：LoggerAllInfo 结构化包
+// m_console（ConsoleLogState 五 bool：debug/info/warn/error/proxy）+ m_loggers（单查同款 LoggerInfo 列表）
 resp = YOMK_LOGGER_INFO_ALL();
-// 首行: "console:debug:on info:on warn:on error:on proxy:off"
 ```
 
-注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关用既有 `YOMK_ON/OFF_CONSOLE_LOG_*()` 切换后立即在 `/all` 首行生效。完整验证见 `Test/YomkServer/TestYomkLoggerInfo.cpp`。
+注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关用既有 `YOMK_ON/OFF_CONSOLE_LOG_*()` 切换后立即在 `/all` 的 m_console 字段生效。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
 
 ## 示例6：文件日志
 
@@ -844,7 +844,7 @@ bool myLogProxy(const yomk::Log& log) {
 }
 YOMK_SET_CONSOLE_LOG_PROXY(myLogProxy);
 // 卸载代理：传 nullptr 或空 std::function 即恢复框架默认控制台输出，
-// YOMK_LOGGER_INFO_ALL() 首行随之由 proxy:on 回到 proxy:off
+// YOMK_LOGGER_INFO_ALL() 的 m_console.m_proxyOn 随之由 true 回到 false
 YOMK_SET_CONSOLE_LOG_PROXY(nullptr);
 ```
 

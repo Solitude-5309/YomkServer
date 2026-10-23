@@ -28,7 +28,7 @@
 |---|---|
 | `YOMK_LOGGER_INFO_LOGGERS()` | 获取全部日志器列表 |
 | `YOMK_LOGGER_INFO_LOGGER(name)` | 查询指定日志器状态 |
-| `YOMK_LOGGER_INFO_ALL()` | 查询全部日志器及开关配置状态 |
+| `YOMK_LOGGER_INFO_ALL()` | 查询全部日志器及开关配置状态（LoggerAllInfo 结构化包：m_console 状态段 + m_loggers 清单段） |
 
 ## 使用示例
 

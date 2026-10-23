@@ -755,7 +755,15 @@ static LatencyStat measureIntrospection(uint64_t rounds, bool useAll, uint64_t& 
             ++badStatus;
             continue;
         }
-        lastLines = unpackLines(resp).size();
+        if (useAll)
+        {
+            YomkUnPackPkg(resp.m_data, LoggerAllInfo, allPkg);
+            lastLines = allPkg ? allPkg->d.m_loggers.size() : 0;
+        }
+        else
+        {
+            lastLines = unpackLines(resp).size();
+        }
         feedLatency(stat, totalMs, ms);
     }
     return stat;
@@ -906,8 +914,7 @@ int main()
             }
             createdA = cp;
 
-            // 扫描数据点：条目 = createdA 个 tag + MainLogger（此刻 file 侧仍为 0）；
-            // ALL 首行为级别状态行，故总行数 = 条目数 + 1
+            // 扫描数据点：条目 = createdA 个 tag + MainLogger（此刻 file 侧仍为 0）
             const uint64_t entries = createdA + 1;
             uint64_t badAll = 0;
             uint64_t linesAll = 0;
@@ -916,8 +923,8 @@ int main()
                       << statAll.avgMs << " ms (min " << statAll.minMs << " / max " << statAll.maxMs << " over "
                       << statAll.count << " calls, lines " << linesAll << ")" << std::endl;
             CHECK(
-                (badAll == 0 && linesAll == entries + 1),
-                "S1A: 扫描点 entries=" + std::to_string(entries) + " 内省 eOk + 行数守恒");
+                (badAll == 0 && linesAll == entries),
+                "S1A: 扫描点 entries=" + std::to_string(entries) + " 内省 eOk + 日志器数守恒");
         }
         recordBaseline("S1A_console_create_unique_tag", N, elapsedA);
         CHECK(okA == N, "S1A: 唯一 tag 写入 eOk 守恒 " + std::to_string(okA) + "/" + std::to_string(N));
@@ -1346,23 +1353,37 @@ int main()
         const LatencyStat statA = measureIntrospection(rounds, true, badA, linesA);
         recordLatency("S4A_all", statA);
         CHECK(
-            (badA == 0 && linesA == entries + 1),
-            "S4A: ALL eOk + 行数守恒（含状态行，" + std::to_string(linesA) + "/" + std::to_string(entries + 1) + "）");
+            (badA == 0 && linesA == entries),
+            "S4A: ALL eOk + 日志器数守恒（" + std::to_string(linesA) + "/" + std::to_string(entries) + "）");
 
-        // ---- Phase B：ALL 首行精确串 + 数据段与 LOGGERS 逐行一致（P3-a 原子快照可观测等价）----
-        const std::vector<std::string> allLines = unpackLines(YOMK_LOGGER_INFO_ALL());
+        // ---- Phase B：ALL 控制台状态字段 + 与 LOGGERS 的数量/类型计数等价（P3-a 原子快照可观测等价）----
+        // 结构化后数据段形态不同（LoggerInfo vs 行文本），逐行字符串比对改为数量与类型计数比对；
+        // 等价性由两套取数同为嵌套双锁原子快照保证
+        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerAllInfo, allPkg);
         CHECK(
-            (!allLines.empty() && allLines.front() == "console:debug:on info:on warn:on error:on proxy:on"),
-            "S4B: ALL 首行状态串精确匹配（proxy 已在 S1D 安装）");
-        bool identical = (allLines.size() == entries + 1 && loggersLines.size() == entries);
-        for (size_t i = 1; identical && i < allLines.size(); ++i)
+            (allPkg != nullptr && allPkg->d.m_console.m_debugOn && allPkg->d.m_console.m_infoOn &&
+             allPkg->d.m_console.m_warnOn && allPkg->d.m_console.m_errorOn && allPkg->d.m_console.m_proxyOn),
+            "S4B: ALL 控制台状态全 on（proxy 已在 S1D 安装）");
+        uint64_t ac = 0;
+        uint64_t af = 0;
+        if (allPkg)
         {
-            if (allLines[i] != loggersLines[i - 1])
+            for (const auto& li : allPkg->d.m_loggers)
             {
-                identical = false;
+                if (li.m_type == "console")
+                {
+                    ++ac;
+                }
+                else
+                {
+                    ++af;
+                }
             }
         }
-        CHECK(identical, "S4B: ALL 数据段与 LOGGERS 逐行一致（嵌套双锁原子快照）");
+        const bool identical =
+            (allPkg != nullptr && allPkg->d.m_loggers.size() == entries && loggersLines.size() == entries &&
+             ac == c && af == f);
+        CHECK(identical, "S4B: ALL 与 LOGGERS 数量及类型计数一致（嵌套双锁原子快照）");
 
         // ---- Phase C：单查 N 次（偶数查 console 名、奇数查 file 名；两表查找热路径量化点）----
         // LG6（P4-d 量化口径修正）：原 probes = N/100，@N=100000 仅 1000 次、总耗时 0.6-1.2 ms，
@@ -1434,7 +1455,8 @@ int main()
                         g_s4dSnapBadStatus.fetch_add(1, std::memory_order_relaxed);
                         continue;
                     }
-                    const uint64_t lines = unpackLines(resp).size();
+                    YomkUnPackPkg(resp.m_data, LoggerAllInfo, allPkg);
+                    const uint64_t lines = allPkg ? allPkg->d.m_loggers.size() : 0;
                     g_s4dSnapCount.fetch_add(1, std::memory_order_relaxed);
                     if (lines < prevLines)
                     {

@@ -223,12 +223,29 @@ struct ConsoleLogProxy
     std::function<bool(const Log& log)> m_consoleLogProxyFunc;
 };
 
+// Logger 控制台状态（LOGGER_INFO_ALL 返回数据状态段；与 consoleLevelLine 行文本五字段对应）
+struct ConsoleLogState
+{
+    bool m_debugOn = false;  // debug 级别开关
+    bool m_infoOn = false;   // info 级别开关
+    bool m_warnOn = false;   // warn 级别开关
+    bool m_errorOn = false;  // error 级别开关
+    bool m_proxyOn = false;  // 控制台代理已安装
+};
+
 // 日志器内省元信息（LOGGER_INFO_LOGGER 返回数据）
 struct LoggerInfo
 {
     std::string m_loggerName;  // 日志器名
     std::string m_type;        // 类型："console" 或 "file"（与 INFO_LOGGERS 行文本 [console]/[file] 对应）
     std::string m_dir;         // file 类型的日志目录（console 时为空串）
+};
+
+// Logger 全量内省（LOGGER_INFO_ALL 返回数据：控制台状态段 + 日志器清单段）
+struct LoggerAllInfo
+{
+    ConsoleLogState m_console;
+    std::vector<LoggerInfo> m_loggers;
 };
 
 struct Context
@@ -287,6 +304,8 @@ YomkMsg(LogFile, LogFile, d)
 YomkMsg(Log, Log, d)
 YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)
 YomkMsg(LoggerInfo, LoggerInfo, d)
+// Logger 全量内省（LOGGER_INFO_ALL 返回数据：控制台状态段 + 日志器清单段）
+YomkMsg(LoggerAllInfo, LoggerAllInfo, d)
 YomkMsg(Context, Context, d)
 YomkMsg(ContextKeyInfo, ContextKeyInfo, d)
 // Context 全量键内省（CONTEXT_INFO_ALL 返回数据）

@@ -193,7 +193,7 @@ static std::atomic<uint64_t> g_s5SwitchOk{0};
 static std::atomic<uint64_t> g_s5IntrospectOk{0};
 static std::atomic<uint64_t> g_s5BadStatus{0};            // 状态码不属于 {eOk,eNo,eInvalid} 的次数
 static std::atomic<uint64_t> g_s5AtomicityViolations{0};  // P3-a 判别式违例（F > C）计数
-static std::atomic<uint64_t> g_s5BadLevelLine{0};         // ALL 首行格式非法计数
+static std::atomic<uint64_t> g_s5BadProxyState{0};        // ALL 控制台状态 proxyOn 校验失败计数
 static std::atomic<bool> g_s5Stop{false};                 // 内省线程停止门（churn 完成后置位）
 
 // 内省快照收集（S5）
@@ -357,55 +357,6 @@ static void countLoggerLines(const std::vector<std::string>& lines, uint64_t& co
             ++fileLines;
         }
     }
-}
-
-// 校验 ALL 首行格式：console:debug:(on|off) info:(on|off) warn:(on|off) error:(on|off) proxy:(on|off)
-static bool checkLevelLineFormat(const std::string& line)
-{
-    auto matchField = [&line](size_t& pos, const std::string& key) -> bool
-    {
-        if (line.compare(pos, key.size(), key) != 0)
-        {
-            return false;
-        }
-        pos += key.size();
-        if (line.compare(pos, 2, "on") == 0)
-        {
-            pos += 2;
-            return true;
-        }
-        if (line.compare(pos, 3, "off") == 0)
-        {
-            pos += 3;
-            return true;
-        }
-        return false;
-    };
-
-    size_t pos = 0;
-    if (!matchField(pos, "console:debug:"))
-        return false;
-    if (pos >= line.size() || line[pos] != ' ')
-        return false;
-    ++pos;
-    if (!matchField(pos, "info:"))
-        return false;
-    if (pos >= line.size() || line[pos] != ' ')
-        return false;
-    ++pos;
-    if (!matchField(pos, "warn:"))
-        return false;
-    if (pos >= line.size() || line[pos] != ' ')
-        return false;
-    ++pos;
-    if (!matchField(pos, "error:"))
-        return false;
-    if (pos >= line.size() || line[pos] != ' ')
-        return false;
-    ++pos;
-    if (!matchField(pos, "proxy:"))
-        return false;
-    return pos == line.size();
 }
 
 // 状态码是否属于框架合法集合 {eInvalid, eOk, eNo}
@@ -731,7 +682,7 @@ int main()
         g_s3LogTotal.store(0);
         g_s3LogOk.store(0);
         g_s3SetOk.store(0);
-        g_s5BadLevelLine.store(0);
+        g_s5BadProxyState.store(0);
         g_s3Stop.store(false);
 
         // 首次设置为 v1（此后进程内 proxy 恒为 on，v1/v2 交替更新 func）
@@ -762,7 +713,7 @@ int main()
                 });
         }
 
-        // 内省线程：并发轮询 ALL，校验首行格式（proxy:on 恒定 + 无撕裂）
+        // 内省线程：并发轮询 ALL，校验控制台状态（proxyOn 恒定）
         std::vector<std::thread> introspectors;
         introspectors.reserve(kIntrospectThreads);
         for (int t = 0; t < kIntrospectThreads; ++t)
@@ -772,14 +723,10 @@ int main()
                 {
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
-                        auto lines = unpackLines(YOMK_LOGGER_INFO_ALL());
-                        if (!lines.empty())
+                        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerAllInfo, allPkg);
+                        if (allPkg && !allPkg->d.m_console.m_proxyOn)
                         {
-                            if (!checkLevelLineFormat(lines.front()) ||
-                                lines.front().find("proxy:on") == std::string::npos)
-                            {
-                                g_s5BadLevelLine.fetch_add(1, std::memory_order_relaxed);
-                            }
+                            g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
                         }
                         std::this_thread::sleep_for(std::chrono::microseconds(200));
                     }
@@ -822,8 +769,8 @@ int main()
         CHECK(total > 0, "S3: caller 线程确实执行了日志调用");
         CHECK(g_s3LogOk.load() == total, "S3: 全部 console_log 返回 eOk（穿透态不影响响应码）");
         CHECK(
-            g_s5BadLevelLine.load() == 0,
-            "S3: 并发内省 ALL 首行格式全部合法且含 proxy:on（非法 " + std::to_string(g_s5BadLevelLine.load()) +
+            g_s5BadProxyState.load() == 0,
+            "S3: 并发内省 ALL 控制台状态全部含 proxyOn（非法 " + std::to_string(g_s5BadProxyState.load()) +
                 " 次）");
     }
 
@@ -1218,7 +1165,7 @@ int main()
         g_s5SwitchOk.store(0);
         g_s5IntrospectOk.store(0);
         g_s5BadStatus.store(0);
-        g_s5BadLevelLine.store(0);
+        g_s5BadProxyState.store(0);
         g_s5AtomicityViolations.store(0);
         g_s5Stop.store(false);
         {
@@ -1288,16 +1235,26 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            auto allLines = unpackLines(allResp);
-                            if (!allLines.empty())
+                            YomkUnPackPkg(allResp.m_data, LoggerAllInfo, allPkg);
+                            if (allPkg)
                             {
-                                if (!checkLevelLineFormat(allLines.front()) ||
-                                    allLines.front().find("proxy:on") == std::string::npos)
+                                if (!allPkg->d.m_console.m_proxyOn)
                                 {
-                                    g_s5BadLevelLine.fetch_add(1, std::memory_order_relaxed);
+                                    g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
                                 }
-                                snap.allLines = allLines.size();
-                                countLoggerLines(allLines, snap.allConsole, snap.allFile);
+                                snap.allLines = allPkg->d.m_loggers.size();
+                                // 结构化清单按 m_type 计数（与 countLoggerLines 行文本计数语义一致）
+                                for (const auto& li : allPkg->d.m_loggers)
+                                {
+                                    if (li.m_type == "console")
+                                    {
+                                        ++snap.allConsole;
+                                    }
+                                    else
+                                    {
+                                        ++snap.allFile;
+                                    }
+                                }
                                 g_s5IntrospectOk.fetch_add(1, std::memory_order_relaxed);
                                 local.push_back(snap);
                             }
@@ -1492,8 +1449,8 @@ int main()
             "S5: 全部快照行数 <= 最终值 " + std::to_string(finalTotal) + "（超出 " + std::to_string(exceedFinal) +
                 " 次）——无幻觉行");
         CHECK(
-            g_s5BadLevelLine.load() == 0,
-            "S5: 并发下 ALL 首行格式全部合法且含 proxy:on（非法 " + std::to_string(g_s5BadLevelLine.load()) + " 次）");
+            g_s5BadProxyState.load() == 0,
+            "S5: 并发下 ALL 控制台状态全部含 proxyOn（非法 " + std::to_string(g_s5BadProxyState.load()) + " 次）");
         CHECK(
             g_s5BadStatus.load() == 0,
             "S5: 全部响应码属于 {eInvalid,eOk,eNo}（非法状态码 " + std::to_string(g_s5BadStatus.load()) + " 次）");
@@ -1534,15 +1491,18 @@ int main()
             g_s5IntrospectOk.load() > 0,
             "S5: 内省线程确实观测到 ALL（" + std::to_string(g_s5IntrospectOk.load()) + " 次）");
 
-        // ---- 最终一致性：ALL 首行精确串 + 行数跨端点一致 + file sink 落盘守恒 ----
-        auto finalAll = unpackLines(YOMK_LOGGER_INFO_ALL());
+        // ---- 最终一致性：ALL 控制台状态字段 + 日志器数跨端点一致 + file sink 落盘守恒 ----
+        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerAllInfo, finalAllPkg);
         CHECK(
-            (!finalAll.empty() && finalAll.front() == "console:debug:on info:on warn:on error:on proxy:on"),
-            "S5: 收尾四级别全 ON 后 ALL 首行为精确串（含 S3 已设的 proxy:on）");
+            (finalAllPkg != nullptr && finalAllPkg->d.m_console.m_debugOn && finalAllPkg->d.m_console.m_infoOn &&
+             finalAllPkg->d.m_console.m_warnOn && finalAllPkg->d.m_console.m_errorOn &&
+             finalAllPkg->d.m_console.m_proxyOn),
+            "S5: 收尾四级别全 ON 后 ALL 控制台状态全 on（含 S3 已设的 proxyOn）");
         CHECK(
-            finalAll.size() == finalTotal + 1,
-            "S5: ALL 行数 == LOGGERS 行数 + 1 首行（" + std::to_string(finalAll.size()) + " vs " +
-                std::to_string(finalTotal + 1) + "）——跨端点最终一致");
+            finalAllPkg != nullptr && finalAllPkg->d.m_loggers.size() == finalTotal,
+            "S5: ALL 日志器数 == LOGGERS 行数（" +
+                std::to_string(finalAllPkg ? finalAllPkg->d.m_loggers.size() : 0) + " vs " +
+                std::to_string(finalTotal) + "）——跨端点最终一致");
 
         std::string sinkContent = readFile(pairDir / (kFileSink + ".log"));
         uint64_t sinkLines = countLines(sinkContent);

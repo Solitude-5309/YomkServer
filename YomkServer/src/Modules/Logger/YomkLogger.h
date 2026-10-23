@@ -32,7 +32,6 @@ private:
     YomkResponse loggers(YomkPkgPtr pkg);
     YomkResponse loggerInfo(YomkPkgPtr pkg);
     YomkResponse listAll(YomkPkgPtr pkg);
-    std::string consoleLevelLine();
 
 private:
     // 锁序约定：需要同时读取两张 logger 表时（loggers/listAll 内省快照），

@@ -236,8 +236,8 @@ class YomkService {
 | `YOMK_FILE_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(file, tag, ...)` | 文件日志自定义 tag（Log::m_logger=file、Log::m_tag=tag，由日志器统一拼接 [tag] 段） |
 | `YOMK_FILE_LOG_WRITE(file)` | 刷新到磁盘 |
 | `YOMK_ON/OFF_CONSOLE_LOG_INFO/WARN/ERROR/DEBUG()` | 开关控制台级别 |
-| `YOMK_SET_CONSOLE_LOG_PROXY(func)` | 日志代理（回调返回 false 拦截该条日志、框架不做默认输出，返回 true 则放行；传 nullptr 或空 std::function 即卸载代理、恢复框架默认输出，内省首行随之显示 `proxy:off`） |
+| `YOMK_SET_CONSOLE_LOG_PROXY(func)` | 日志代理（回调返回 false 拦截该条日志、框架不做默认输出，返回 true 则放行；传 nullptr 或空 std::function 即卸载代理、恢复框架默认输出，内省状态段 m_console.m_proxyOn 随之为 false） |
 | `YOMK_LOGGER_INFO_LOGGERS()` | 内省：日志器列表（返回 StringArray，控制台行 `name [console]`，文件行 `name [file] dir:路径`） |
-| `YOMK_LOGGER_INFO_LOGGER(name)` | 内省：单日志器元信息（msg 同上格式，未注册 eNo） |
-| `YOMK_LOGGER_INFO_ALL()` | 内省：全量 dump（首行 `console:debug:on\|off info:... warn:... error:... proxy:on\|off`，其余为日志器行） |
+| `YOMK_LOGGER_INFO_LOGGER(name)` | 内省：单日志器元信息（结构化 LoggerInfo 包：m_loggerName/m_type/m_dir，m_msg 恒 "ok"，未注册 eNo） |
+| `YOMK_LOGGER_INFO_ALL()` | 内省：全量日志器与控制台状态（LoggerAllInfo 结构化包：m_console（ConsoleLogState 五 bool：debug/info/warn/error/proxy）+ m_loggers（元素为单查同款 LoggerInfo），m_msg 恒 "ok"） |
 | `YOMK_FILE_LOG_DELETE(name)` | 删除日志器（同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 eNo；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |

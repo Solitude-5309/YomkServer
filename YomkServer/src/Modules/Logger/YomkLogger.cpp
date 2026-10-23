@@ -305,25 +305,6 @@ YomkResponse YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
     return YomkResponse(YomkResponse::eOk, "success.");
 }
 
-std::string YomkLogger::consoleLevelLine()
-{
-    std::string line = "console:debug:";
-    line += m_showConsoleDebugLog.load() ? "on" : "off";
-    line += " info:";
-    line += m_showConsoleInfoLog.load() ? "on" : "off";
-    line += " warn:";
-    line += m_showConsoleWarningLog.load() ? "on" : "off";
-    line += " error:";
-    line += m_showConsoleErrorLog.load() ? "on" : "off";
-    line += " proxy:";
-    // 内省读侧与写侧互斥（叶子锁）
-    {
-        std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
-        line += m_consoleLogProxy ? "on" : "off";
-    }
-    return line;
-}
-
 YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
 {
     (void)pkg;
@@ -378,20 +359,38 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
 YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
 {
     (void)pkg;
-    std::vector<std::string> lines;
-    // 状态行在双锁外取：四个级别开关为独立 atomic，组合本无原子快照保证
-    lines.push_back(consoleLevelLine());
+    yomk::LoggerAllInfo all;
+    // 状态段在双锁外取：四个级别开关为独立 atomic，组合本无原子快照保证
+    all.m_console.m_debugOn = m_showConsoleDebugLog.load();
+    all.m_console.m_infoOn = m_showConsoleInfoLog.load();
+    all.m_console.m_warnOn = m_showConsoleWarningLog.load();
+    all.m_console.m_errorOn = m_showConsoleErrorLog.load();
     {
-        // 同 loggers：按锁序嵌套双读锁取跨段原子快照
+        // proxy 状态读侧与写侧互斥（叶子锁）
+        std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
+        all.m_console.m_proxyOn = m_consoleLogProxy;
+    }
+    {
+        // 同 loggers：按锁序嵌套双读锁取跨段原子快照，逐条构造 LoggerInfo（与 loggerInfo 命中分支同构）
         std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
         std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
-        // 同 loggers：预分配缩短双锁窗口（+1 为首行状态行）
-        lines.reserve(m_consoleLoggers.size() + m_fileLoggers.size() + 1);
+        all.m_loggers.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
         for (auto& iter : m_consoleLoggers)
-            lines.push_back(iter.first + " [console]");
+        {
+            yomk::LoggerInfo info;
+            info.m_loggerName = iter.first;
+            info.m_type = "console";
+            all.m_loggers.push_back(std::move(info));
+        }
         for (auto& iter : m_fileLoggers)
-            lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
+        {
+            yomk::LoggerInfo info;
+            info.m_loggerName = iter.first;
+            info.m_type = "file";
+            info.m_dir = iter.second->getDir();
+            all.m_loggers.push_back(std::move(info));
+        }
     }
-    // 同 loggers：std::map 天然字典序，move 入包消除拷贝
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, std::move(lines))};
+    // 同 loggers：std::map 天然字典序（console 段在前、file 段在后）；m_msg 恒 "ok"，数据走 m_data
+    return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerAllInfo, std::move(all))};
 }

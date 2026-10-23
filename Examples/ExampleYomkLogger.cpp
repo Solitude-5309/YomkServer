@@ -67,6 +67,36 @@ static void dumpLines(const std::string& prefix, const YomkResponse& resp)
     }
 }
 
+// 解包并打印内省返回的 LoggerAllInfo（INFO_ALL 的返回形态）——
+// 框架只返回结构化数据，显示格式由用户定义
+static void dumpLoggerAll(const std::string& prefix, const YomkResponse& resp)
+{
+    printResp(prefix, resp);
+    YomkUnPackPkg(resp.m_data, LoggerAllInfo, allPkg);
+    if (!allPkg)
+    {
+        std::cout << ">> (no data)" << std::endl;
+        return;
+    }
+    const auto& st = allPkg->d.m_console;
+    std::cout << ">> | console: debug=" << (st.m_debugOn ? "on" : "off") << " info=" << (st.m_infoOn ? "on" : "off")
+              << " warn=" << (st.m_warnOn ? "on" : "off") << " error=" << (st.m_errorOn ? "on" : "off")
+              << " proxy=" << (st.m_proxyOn ? "on" : "off") << std::endl;
+    for (const auto& info : allPkg->d.m_loggers)
+    {
+        std::cout << ">> | " << info.m_loggerName << " [" << info.m_type << "]";
+        if (info.m_type == "file")
+        {
+            std::cout << " dir:" << info.m_dir;
+        }
+        std::cout << std::endl;
+    }
+    if (allPkg->d.m_loggers.empty())
+    {
+        std::cout << ">> | (empty loggers)" << std::endl;
+    }
+}
+
 /**
  * @brief 自定义控制台日志代理
  *
@@ -147,8 +177,8 @@ int main(int argc, char* argv[])
     printResp("YOMK_ERROR(被关闭)", YOMK_ERROR("you cannot see me: error is off"));
     printResp("YOMK_DEBUG(被关闭)", YOMK_DEBUG("you cannot see me: debug is off"));
 
-    // 用内省 ALL 自证开关状态：首行 console:debug:off info:off warn:off error:off proxy:off
-    dumpLines("YOMK_LOGGER_INFO_ALL(全关)", YOMK_LOGGER_INFO_ALL());
+    // 用内省 ALL 自证开关状态：控制台状态段五开关全 off
+    dumpLoggerAll("YOMK_LOGGER_INFO_ALL(全关)", YOMK_LOGGER_INFO_ALL());
 
     printStep(3, "级别开关（续）：恢复", "4 个 ON 宏重新打开，同样的日志立刻出现。");
     printResp("ON_INFO", YOMK_ON_CONSOLE_LOG_INFO());
@@ -174,7 +204,7 @@ int main(int argc, char* argv[])
     printResp("YOMK_WARN(代理放行)", YOMK_WARN("passed through proxy"));
     printResp("YOMK_ERROR(代理放行)", YOMK_ERROR("passed through proxy"));
     printResp("YOMK_DEBUG(代理消费)", YOMK_DEBUG("consumed by proxy, never printed"));
-    dumpLines("YOMK_LOGGER_INFO_ALL(代理开启)", YOMK_LOGGER_INFO_ALL());
+    dumpLoggerAll("YOMK_LOGGER_INFO_ALL(代理开启)", YOMK_LOGGER_INFO_ALL());
 
     /**
      * 步骤5：卸载代理
@@ -185,7 +215,7 @@ int main(int argc, char* argv[])
     printStep(5, "卸载代理", "传 nullptr 恢复默认输出；对比上一条 [LogProxy] 前缀消失。");
     printResp("SET_PROXY(nullptr)", YOMK_SET_CONSOLE_LOG_PROXY(nullptr));
     printResp("YOMK_INFO(默认输出)", YOMK_INFO("default format again, no proxy prefix"));
-    dumpLines("YOMK_LOGGER_INFO_ALL(代理已卸载)", YOMK_LOGGER_INFO_ALL());
+    dumpLoggerAll("YOMK_LOGGER_INFO_ALL(代理已卸载)", YOMK_LOGGER_INFO_ALL());
 
     /**
      * 步骤6：文件日志
@@ -236,7 +266,7 @@ int main(int argc, char* argv[])
     std::cout << ">> app 命中 → 结构化 LoggerInfo：m_type=file，m_dir 承载日志目录（m_msg 恒 \"ok\"）" << std::endl;
     printResp("LOGGER_INFO_LOGGER(ghost)", YOMK_LOGGER_INFO_LOGGER("ghost"));
     std::cout << ">> ghost 未注册 → eNo=1，not-found 是框架统一惯例" << std::endl;
-    dumpLines("YOMK_LOGGER_INFO_ALL", YOMK_LOGGER_INFO_ALL());
+    dumpLoggerAll("YOMK_LOGGER_INFO_ALL", YOMK_LOGGER_INFO_ALL());
 
     /**
      * 步骤8：删除日志器
