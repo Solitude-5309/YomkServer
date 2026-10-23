@@ -320,7 +320,7 @@ class Context:
 
 
 class ContextKeyInfo:
-    # Context 键内省元信息（/YomkContext/key 返回数据）
+    # Context 键内省元信息（/YomkContext/key 与 /YomkContext/all 返回数据）
     def __init__(self, key="", type_name="", checker_on=False,
                  monitor_count=0, async_monitor_count=0):
         self.key = key                    # 键名
@@ -852,22 +852,23 @@ class YomkContext(YomkService):
         return YomkResponse(ResStatus.eOk, "ok", info)
 
     def list_all(self, pkg):
-        lines = []
+        # 命中：锁内构造结构化快照列表，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）
+        infos = []
         with self.m_contextsMutex.gen_rlock():
             # 排序遍历:map 迭代序（字典序）
             for key in sorted(self.m_contexts.keys()):
-                lines.append(self._info_line(key, self.m_contexts[key]))
-        return YomkResponse(ResStatus.eOk, "ok", lines)
-
-    def _info_line(self, key, entry):
-        # 组装单个 key 的元信息行：key [类型名] checker:on|off monitors:N(async:M)
-        async_count = 0
-        for monitor in entry.monitors:
-            if monitor.async_monitor_func:
-                async_count += 1
-        return (f"{key} [{type(entry.value).__name__}] "
-                f"checker:{'on' if entry.checker else 'off'} "
-                f"monitors:{len(entry.monitors)}(async:{async_count})")
+                entry = self.m_contexts[key]
+                async_count = 0
+                for monitor in entry.monitors:
+                    if monitor.async_monitor_func:
+                        async_count += 1
+                infos.append(ContextKeyInfo(
+                    key,
+                    type(entry.value).__name__ if entry.value is not None else "",
+                    bool(entry.checker),
+                    len(entry.monitors),
+                    async_count))
+        return YomkResponse(ResStatus.eOk, "ok", infos)
 
 
 class YomkFunctionPool(YomkService):

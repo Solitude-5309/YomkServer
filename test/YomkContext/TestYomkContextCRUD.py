@@ -5,7 +5,7 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
 1. create：正常创建（str/int）、空 key、空 value（None）、重复 key
 2. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）
 3. set：正常 set、不存在 key、空 key、类型不匹配
-4. keys/keyInfo/listAll：随增删变化、空 key、不存在 key、keyInfo 结构化包字段与清单行格式
+4. keys/keyInfo/listAll：随增删变化、空 key、不存在 key、keyInfo 结构化包字段与 listAll 结构化列表
 5. destroy：正常销毁、重复销毁、不存在 key、空 key（等价不存在）、销毁后 keys 计数
 
 语言机制说明（非功能缺口）：
@@ -13,8 +13,8 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
   调用方以 python 动态类型自然规避"类型不匹配"失败路径（A-2 语言机制剔除项）
 - 内置服务注册校验以 server.service_names() 承载（A-4 口径）
 - keyInfo 命中为结构化返回：msg 恒 "ok"，data 为 ContextKeyInfo 包（字段 type_name
-  为 python 原生类型名 str/int/bool，value 为 None 时空串）；listAll 仍为清单行文本
-  （类型名以 type().__name__ 呈现，C1 定稿口径）
+  为 python 原生类型名 str/int/bool，value 为 None 时空串）；listAll 命中同为结构化
+  返回：msg 恒 "ok"，data 为 ContextKeyInfo 列表（键序为字典序）
 
 风格：纯 main() + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
 全程使用门面单例；
@@ -145,11 +145,22 @@ def main():
     check(resp.status == ResStatus.eNo, "keyInfo 不存在 key 返回 eNo")
     check(resp.msg == "key is not exist", "keyInfo 不存在 key 错误消息一致")
 
-    # listAll：包含所有 key 信息
+    # listAll：包含所有 key 信息（结构化列表，msg 恒 "ok"）
     resp = context_info_all()
     check(resp.status == ResStatus.eOk, "listAll 返回 eOk")
+    check(resp.msg == "ok", "listAll 成功消息恒为 ok")
     check(isinstance(resp.data, list) and len(resp.data) == 2,
-          "listAll 返回 2 行信息")
+          "listAll 返回 2 个键信息")
+    check(all(isinstance(i, ContextKeyInfo) for i in resp.data),
+          "listAll 元素为 ContextKeyInfo 包")
+    # 键序为字典序（int_key, str_key），逐字段断言（均未挂 checker/monitor）
+    check(resp.data[0].key == "int_key" and resp.data[1].key == "str_key",
+          "listAll 键序为字典序（int_key, str_key）")
+    check(resp.data[0].type_name == "int" and resp.data[1].type_name == "str",
+          "listAll 类型名一致")
+    check(all(not i.checker_on and i.monitor_count == 0
+              and i.async_monitor_count == 0 for i in resp.data),
+          "listAll checker/monitor 计数为 0")
 
     # destroy：正常销毁
     resp = context_destroy("int_key")

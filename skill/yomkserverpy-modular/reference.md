@@ -125,7 +125,7 @@ class EventLoopPkg:
 | `YomkApi.context_set_monitor(key, func, async_monitor=False)` | 设置监控函数（async_monitor=True 时异步回调监控函数） |
 | `YomkApi.context_info_keys()` | 枚举全部 key |
 | `YomkApi.context_info_key(key)` | 单键元信息结构化查询（命中 msg 恒 `"ok"`，data 为 `ContextKeyInfo` 包：key/type_name/checker_on/monitor_count/async_monitor_count；空 key 与不存在 key 返回 eNo） |
-| `YomkApi.context_info_all()` | 查询全部 key 元信息行 |
+| `YomkApi.context_info_all()` | 全量键元信息结构化列表（命中 msg 恒 `"ok"`，data 为 `ContextKeyInfo` 列表，元素字段与单查一致，键序为字典序） |
 
 ### EventLoop
 | API | 说明 |

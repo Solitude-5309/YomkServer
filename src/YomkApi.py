@@ -432,7 +432,7 @@ def context_info_key(key: str) -> YomkResponse:
 
 
 def context_info_all() -> YomkResponse:
-    # 查询全部上下文键及其数据类型
+    # 查询全部上下文键元信息（结构化列表，命中 msg 恒 "ok"，data 为 ContextKeyInfo 列表）
     return _api_request("/YomkContext/all", None)
 
 

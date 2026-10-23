@@ -8,7 +8,8 @@ YomkContext 统一管理框架运行时的全局状态：
 - 状态安全检查（Checker）：状态变更前执行验证逻辑，返回 eReject 拒绝本次迁移
 - 状态监控（Monitor）：状态变化时触发回调，支持异步监控（async_monitor=True）
 - 内省三件套：context_info_keys / context_info_key / context_info_all
-  （key 单查命中为结构化 ContextKeyInfo 包：msg 恒 "ok"，数据走 data）
+  （key 单查命中为结构化 ContextKeyInfo 包：msg 恒 "ok"，数据走 data；
+  all 全量为结构化 ContextKeyInfo 列表，元素字段与单查一致）
 """
 
 import time
@@ -77,7 +78,7 @@ def main():
     time.sleep(1.5)  # 等待异步监控回调输出
 
     print_step(6, "内省",
-               "内省三件套看键清单与注册状态；key 单查命中为结构化返回：msg 恒 \"ok\"，data 为 ContextKeyInfo 包（键名/值类型名/门控/monitor 计数），不存在 key 返回 eNo")
+               "内省三件套看键清单与注册状态；key 单查命中为结构化返回：msg 恒 \"ok\"，data 为 ContextKeyInfo 包（键名/值类型名/门控/monitor 计数），all 全量为结构化列表（元素字段与单查一致），不存在 key 返回 eNo")
     res = YomkApi.context_info_keys()
     print(f"context_info_keys: {res.data}")
     res = YomkApi.context_info_key("ctx")
@@ -88,7 +89,10 @@ def main():
     res = YomkApi.context_info_key("ghost")
     print(f"context_info_key(ghost): {res.msg}")
     res = YomkApi.context_info_all()
-    print(f"context_info_all: {res.data}")
+    print(f"context_info_all: msg={res.msg}, {len(res.data)} 个键元信息")
+    for info in res.data:
+        print(f"  key={info.key}, type_name={info.type_name}, checker_on={info.checker_on}, "
+              f"monitor_count={info.monitor_count}(async:{info.async_monitor_count})")
 
     print_step(7, "销毁", "context_destroy 删除上下文，此后读取返回默认值")
     res = YomkApi.context_destroy("ctx")
