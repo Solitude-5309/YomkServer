@@ -70,7 +70,7 @@ public:
     void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
                      const std::string& description = "");
     // 获取本服务已注册功能函数元信息
-    std::map<std::string, YomkFuncInfo> funcInfos();
+    std::map<std::string, yomk::FuncInfo> funcInfos();
     // 直接调用本服务的功能函数
     YomkResponse invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
     // 发起同步请求

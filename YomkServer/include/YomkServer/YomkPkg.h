@@ -126,16 +126,16 @@ typedef std::function<YomkResponse(YomkPkgPtr pkg)> YomkServiceFunc;
 // 异步响应回调签名：request 完成后回传结果
 typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 
+namespace yomk
+{
+
 // 功能函数元信息（调试内省用）
-struct YomkFuncInfo
+struct FuncInfo
 {
     std::string m_funcName;    // 功能函数名（/开头）
     std::string m_msgName;     // 期望消息类型名（三参宏声明，可为空）
     std::string m_description; // 函数说明（四参宏声明，内容使用者自定义，可为空）
 };
-
-namespace yomk
-{
 
 struct Function
 {
@@ -267,6 +267,7 @@ struct VoidPointer
 // clang-format off
 YomkMsg(Function, Function, d)
 YomkMsg(CallFunction, CallFunction, d)
+YomkMsg(FuncInfo, FuncInfo, d)
 YomkMsg(Event, Event, d)
 YomkMsg(Eventloop, Eventloop, d)
 YomkMsg(EventLoopInfo, EventLoopInfo, d)

@@ -43,7 +43,7 @@ public:
     // 获取全部服务名称列表
     std::vector<std::string> serviceNames();
     // 获取指定服务的功能函数元信息
-    std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string& srvName);
+    std::map<std::string, yomk::FuncInfo> serviceFuncInfos(const std::string& srvName);
     // 同步请求服务功能函数（URL: "/服务名/函数名"）
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     // 异步请求服务功能函数

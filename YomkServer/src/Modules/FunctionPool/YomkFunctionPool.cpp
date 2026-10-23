@@ -104,7 +104,7 @@ YomkResponse YomkFunctionPool::funcNames(YomkPkgPtr pkg)
     return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, funcNames)};
 }
 
-// 内省：单个函数存在性查询，命中 msg 为 funcName [类型名]（未声明类型时无括号后缀）
+// 内省：单个函数元信息查询，命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，数据走 m_data）
 YomkResponse YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, String, yFuncName);
@@ -121,14 +121,12 @@ YomkResponse YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
         YOMK_ERR_POS_LOG("funcName: " + yFuncName->d + " is not register, please check funcName");
         return YomkResponse(YomkResponse::eNo, "funcName is not register");
     }
-    // m_msg 契约保持 "funcName [类型名]" 行格式；函数说明非空时挂入响应数据段
-    const std::string& msgName = itFunc->second.m_msgName;
-    YomkResponse resp{YomkResponse::eOk, yFuncName->d + (msgName.empty() ? "" : " [" + msgName + "]")};
-    if (!itFunc->second.m_description.empty())
-    {
-        resp.m_data = YomkMkPtr(String, itFunc->second.m_description);
-    }
-    return resp;
+    // 命中：结构化包恒挂，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
+    yomk::FuncInfo info;
+    info.m_funcName = yFuncName->d;
+    info.m_msgName = itFunc->second.m_msgName;
+    info.m_description = itFunc->second.m_description;
+    return {YomkResponse::eOk, "ok", YomkMkPtr(FuncInfo, info)};
 }
 
 // 内省：全量 dump，首行 functions:N，其余每行 funcName [类型名]（未声明类型时无括号后缀）

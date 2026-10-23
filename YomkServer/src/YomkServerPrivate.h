@@ -34,7 +34,7 @@ public:
     bool postRequestTask(std::function<void()> task);
     YomkResponse request(const std::string& srvName, const std::string& funcName, YomkPkgPtr pkg = nullptr);
     std::vector<std::string> serviceNames();
-    std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string& srvName);
+    std::map<std::string, yomk::FuncInfo> serviceFuncInfos(const std::string& srvName);
 
 private:
     std::map<std::string, std::shared_ptr<YomkService>> m_serviceMap;

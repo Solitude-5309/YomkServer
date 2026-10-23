@@ -145,11 +145,11 @@ int main(int argc, char* argv[])
      *
      * 第三个参数 MsgName 声明该函数期望的消息类型名，第四参为函数说明（使用者自定义，
      * 框架透传不解析），均仅作内省元数据；调用时框架不做类型校验。
-     * 单查 INFO_NAME 会显示 "tool.greet [String]"，函数说明经响应数据段透出。
+     * 单查 INFO_NAME 返回结构化 FuncInfo 包（m_data 恒挂，m_msg 恒 "ok"），m_msgName/m_description 承载类型与说明。
      */
     printStep(
         2, "带消息类型名的注册",
-        "用 4 参形式注册 tool.greet 并传名调用；INFO_NAME 单查可见 [String] 后缀与 data 段函数说明。");
+        "用 4 参形式注册 tool.greet 并传名调用；INFO_NAME 单查返回结构化 FuncInfo（类型与说明在 m_data 字段）。");
     printResp("REGISTER(tool.greet,desc)", YOMK_FUNCTIONPOOL_REGISTER("tool.greet", greet, String, "向指定的人问好"));
     printResp("INFO_NAME(tool.greet)", YOMK_FUNCTIONPOOL_INFO_NAME("tool.greet"));
     printResp("CALL(tool.greet)", YOMK_FUNCTIONPOOL_CALL("tool.greet", YomkMkPtr(String, "yomk")));

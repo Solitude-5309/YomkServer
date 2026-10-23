@@ -138,7 +138,7 @@ std::vector<std::string> YomkServer::serviceNames()
     return m_p->serviceNames();
 }
 
-std::map<std::string, YomkFuncInfo> YomkServer::serviceFuncInfos(const std::string& srvName)
+std::map<std::string, yomk::FuncInfo> YomkServer::serviceFuncInfos(const std::string& srvName)
 {
     return m_p->serviceFuncInfos(srvName);
 }

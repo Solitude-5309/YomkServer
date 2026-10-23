@@ -137,7 +137,7 @@ std::vector<std::string> YomkServerPrivate::serviceNames()
     return names;
 }
 
-std::map<std::string, YomkFuncInfo> YomkServerPrivate::serviceFuncInfos(const std::string& srvName)
+std::map<std::string, yomk::FuncInfo> YomkServerPrivate::serviceFuncInfos(const std::string& srvName)
 {
     std::shared_ptr<YomkService> srv;
     {

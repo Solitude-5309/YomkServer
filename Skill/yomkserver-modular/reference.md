@@ -73,11 +73,13 @@ YomkBindWeakSelf(Func)           // 弱绑定成员函数（不装入 funcMap）
 // 删除后返回 eNo）、异步响应（void(YomkResponse)，丢弃）、Context checker
 // （ECheckStatus(const Context&)，删除后默认放行 eAccept）、Context monitor（void，丢弃）。
 
-struct YomkFuncInfo {  // 功能函数元信息（调试内省用），预留扩展（如安全性校验）
+namespace yomk {
+struct FuncInfo {  // 功能函数元信息（调试内省用），预留扩展（如安全性校验）
     std::string m_funcName;     // 功能函数名（/开头）
     std::string m_msgName;      // 期望消息类型名（YomkInstallFunc 三参声明，可为空）
     std::string m_description;  // 函数说明（YomkInstallFunc 四参声明，内容使用者自定义，可为空）
 };
+}  // namespace yomk
 ```
 
 ## 内置数据结构
@@ -136,7 +138,7 @@ class YomkServer {
     int delService(const std::string& srvName);  // 删除服务（锁外调 deinit 后析构）
     void shutdown();  // 优雅关闭：停请求池（拒新->排空->join）后锁外逐个 deinit（Context 在其中自停监控池），幂等
     std::vector<std::string> serviceNames();  // 内省：全部服务名
-    std::map<std::string, YomkFuncInfo> serviceFuncInfos(const std::string& srvName);  // 内省：指定服务的函数元信息
+    std::map<std::string, yomk::FuncInfo> serviceFuncInfos(const std::string& srvName);  // 内省：指定服务的函数元信息
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 };
@@ -157,7 +159,7 @@ class YomkService {
     virtual void deinit() {}  // 删除服务时由框架在锁外调用，覆写用于停线程/注销外部资源
     template<typename Func> auto weakFunc(Func func);  // 泛型弱绑定守卫（适配签名清单见上方 YomkBindWeakSelf 注释）
     void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "");
-    std::map<std::string, YomkFuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
+    std::map<std::string, yomk::FuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
     YomkResponse invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);  // 直接调用本服务的功能函数（不经 URL 路由）
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);

@@ -40,7 +40,7 @@ void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFun
     m_funcMap[funcName] = func;
     if (!msgName.empty() || !description.empty())
     {
-        YomkFuncInfo info;
+        yomk::FuncInfo info;
         info.m_funcName = funcName;
         info.m_msgName = msgName;
         info.m_description = description;
@@ -53,13 +53,13 @@ void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFun
     }
 }
 
-std::map<std::string, YomkFuncInfo> YomkServicePrivate::funcInfos()
+std::map<std::string, yomk::FuncInfo> YomkServicePrivate::funcInfos()
 {
-    std::map<std::string, YomkFuncInfo> infos;
+    std::map<std::string, yomk::FuncInfo> infos;
     std::shared_lock<std::shared_mutex> lock(m_funcMapMtx);
     for (auto& iter : m_funcMap)
     {
-        YomkFuncInfo info;
+        yomk::FuncInfo info;
         info.m_funcName = iter.first;
         auto itInfo = m_funcInfoMap.find(iter.first);
         if (itInfo != m_funcInfoMap.end())

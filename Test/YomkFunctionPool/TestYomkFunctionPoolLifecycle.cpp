@@ -205,10 +205,15 @@ int main()
         }
         CHECK(namesArr != nullptr && namesFound, "INFO_NAMES 列表包含 fp_plain");
 
-        // INFO_NAME：无类型格式（纯名）与未注册/空名
+        // INFO_NAME：结构化返回（FuncInfo 包恒挂）与未注册/空名
         auto infoResp = YOMK_FUNCTIONPOOL_INFO_NAME("fp_plain");
         CHECK(infoResp.m_status == YomkResponse::eOk, "INFO_NAME 已注册名返回 eOk");
-        CHECK(infoResp.m_msg == "fp_plain", "INFO_NAME 无类型函数消息为纯名（无括号后缀）");
+        CHECK(infoResp.m_msg == "ok", "INFO_NAME 命中 m_msg 恒为 ok");
+        YomkUnPackPkg(infoResp.m_data, FuncInfo, infoPlainResp);
+        CHECK(infoPlainResp != nullptr, "INFO_NAME 数据为 FuncInfo 包");
+        CHECK(infoPlainResp && infoPlainResp->d.m_funcName == "fp_plain", "INFO_NAME 字段 m_funcName 一致");
+        CHECK(infoPlainResp && infoPlainResp->d.m_msgName.empty() && infoPlainResp->d.m_description.empty(),
+              "2 参注册 m_msgName/m_description 均为空");
         CHECK(
             YOMK_FUNCTIONPOOL_INFO_NAME("fp_never_registered").m_status == YomkResponse::eNo,
             "INFO_NAME 未注册名返回 eNo（与 unregister/call 一致——FPC2 后全接口统一）");
@@ -245,35 +250,46 @@ int main()
         CHECK(
             YOMK_FUNCTIONPOOL_REGISTER("fp_two", aliveFunc).m_status == YomkResponse::eOk,
             "REGISTER 2 参宏（无类型）返回 eOk");
-        CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("fp_two").m_msg == "fp_two", "2 参注册 INFO_NAME 为纯名");
+        auto twoResp = YOMK_FUNCTIONPOOL_INFO_NAME("fp_two");
+        YomkUnPackPkg(twoResp.m_data, FuncInfo, twoInfo);
+        CHECK(twoResp.m_msg == "ok" && twoInfo && twoInfo->d.m_funcName == "fp_two" &&
+                  twoInfo->d.m_msgName.empty() && twoInfo->d.m_description.empty(),
+              "2 参注册 INFO_NAME 结构化字段（纯名无类型无说明）");
 
         // 3 参：#MsgName 字符串化为类型名，INFO_NAME 显示 [类型]
         CHECK(
             YOMK_FUNCTIONPOOL_REGISTER("fp_three", echoFunc, String).m_status == YomkResponse::eOk,
             "REGISTER 3 参宏（String 类型）返回 eOk");
-        CHECK(
-            YOMK_FUNCTIONPOOL_INFO_NAME("fp_three").m_msg == "fp_three [String]",
-            "3 参注册 INFO_NAME 显示 [String] 类型后缀");
+        auto threeResp = YOMK_FUNCTIONPOOL_INFO_NAME("fp_three");
+        YomkUnPackPkg(threeResp.m_data, FuncInfo, threeInfo);
+        CHECK(threeResp.m_msg == "ok" && threeInfo && threeInfo->d.m_funcName == "fp_three" &&
+                  threeInfo->d.m_msgName == "String",
+              "3 参注册 INFO_NAME 字段 m_msgName == \"String\"");
 
         // 4 参：追加函数说明，INFO_NAME m_msg 契约保持、说明挂数据段
         CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_desc", echoFunc, String, "fp description").m_status == YomkResponse::eOk,
               "REGISTER 4 参宏（String 类型 + 说明）返回 eOk");
         auto infoDesc = YOMK_FUNCTIONPOOL_INFO_NAME("fp_desc");
-        CHECK(infoDesc.m_status == YomkResponse::eOk && infoDesc.m_msg == "fp_desc [String]",
-              "4 参注册 INFO_NAME m_msg 契约保持 [String] 后缀");
-        CHECK(infoDesc.m_data != nullptr, "4 参注册 INFO_NAME 说明挂入数据段");
-        if (infoDesc.m_data)
-        {
-            YomkUnPackPkgT(infoDesc.m_data, "String", Yomk(String), yDesc);
-            CHECK(yDesc && yDesc->d == "fp description", "数据段解包 String == \"fp description\"");
-        }
-        CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("fp_three").m_data == nullptr, "3 参注册（无说明）数据段缺省");
+        CHECK(infoDesc.m_status == YomkResponse::eOk && infoDesc.m_msg == "ok",
+              "4 参注册 INFO_NAME 命中 m_msg 恒为 ok");
+        YomkUnPackPkg(infoDesc.m_data, FuncInfo, descInfo);
+        CHECK(descInfo != nullptr, "4 参注册 INFO_NAME 结构化包恒挂");
+        CHECK(descInfo && descInfo->d.m_funcName == "fp_desc" && descInfo->d.m_msgName == "String",
+              "4 参注册字段 m_funcName/m_msgName 一致");
+        CHECK(descInfo && descInfo->d.m_description == "fp description", "字段 m_description 承载函数说明");
+        auto threeData = YOMK_FUNCTIONPOOL_INFO_NAME("fp_three");
+        YomkUnPackPkg(threeData.m_data, FuncInfo, threeDescInfo);
+        CHECK(threeDescInfo && threeDescInfo->d.m_description.empty(),
+              "3 参注册（无说明）m_description 为空（结构化包恒挂）");
 
         // 覆盖语义：4 参后接 2 参同名热替换 → 类型后缀与说明均清除
         CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_desc", echoFunc).m_status == YomkResponse::eOk, "2 参覆盖 4 参注册返回 eOk");
         auto infoPlain = YOMK_FUNCTIONPOOL_INFO_NAME("fp_desc");
-        CHECK(infoPlain.m_status == YomkResponse::eOk && infoPlain.m_msg == "fp_desc" && infoPlain.m_data == nullptr,
-              "2 参热替换清除类型后缀与说明");
+        YomkUnPackPkg(infoPlain.m_data, FuncInfo, plainInfo);
+        CHECK(infoPlain.m_status == YomkResponse::eOk && infoPlain.m_msg == "ok" && plainInfo &&
+                  plainInfo->d.m_funcName == "fp_desc" && plainInfo->d.m_msgName.empty() &&
+                  plainInfo->d.m_description.empty(),
+              "2 参热替换清除类型与说明（结构化字段为空）");
 
         // 清理
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_two").m_status == YomkResponse::eOk, "清理 fp_two");
@@ -320,7 +336,8 @@ int main()
         CHECK(YOMK_FUNCTIONPOOL_CALL(longName, nullptr).m_status == YomkResponse::eOk, "CALL 超长函数名返回 eOk");
         auto longInfo = YOMK_FUNCTIONPOOL_INFO_NAME(longName);
         CHECK(longInfo.m_status == YomkResponse::eOk, "INFO_NAME 超长函数名返回 eOk");
-        CHECK(longInfo.m_msg.find(longName) != std::string::npos, "INFO_NAME 完整回显超长函数名");
+        YomkUnPackPkg(longInfo.m_data, FuncInfo, longFuncInfo);
+        CHECK(longFuncInfo && longFuncInfo->d.m_funcName == longName, "INFO_NAME 完整回显超长函数名");
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER(longName).m_status == YomkResponse::eOk, "UNREGISTER 超长函数名返回 eOk");
     }
 

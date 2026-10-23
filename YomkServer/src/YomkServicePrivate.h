@@ -31,7 +31,7 @@ public:
     void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
                      const std::string& description = "");
     YomkResponse invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
-    std::map<std::string, YomkFuncInfo> funcInfos();
+    std::map<std::string, yomk::FuncInfo> funcInfos();
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
@@ -43,6 +43,6 @@ protected:
     // 删除/同名替换后为 true，weakFunc 判活叠加此标志（删除即停）
     std::atomic<bool> m_deleted{false};
     std::map<std::string, YomkServiceFunc> m_funcMap;
-    std::map<std::string, YomkFuncInfo> m_funcInfoMap; // funcName -> 函数信息（类型名 + 说明）
+    std::map<std::string, yomk::FuncInfo> m_funcInfoMap; // funcName -> 函数信息（类型名 + 说明）
     std::shared_mutex m_funcMapMtx;
 };

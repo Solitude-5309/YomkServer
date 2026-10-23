@@ -39,7 +39,7 @@ static int g_failed = 0;
     } while (0)
 
 // 内省辅助：在 funcInfos 中查找 funcName，命中可选返回其 m_msgName 与 m_description
-static bool findFuncInfo(const std::map<std::string, YomkFuncInfo>& infos, const std::string& funcName,
+static bool findFuncInfo(const std::map<std::string, yomk::FuncInfo>& infos, const std::string& funcName,
                          std::string* msgName = nullptr, std::string* description = nullptr)
 {
     auto iter = infos.find(funcName);
@@ -154,7 +154,7 @@ static void testInstallFunc(DemoService* demo)
     // 空函数对象：安装被拒（守卫修复后）
     demo->installFunc("/null_func", nullptr);
 
-    std::map<std::string, YomkFuncInfo> infos = demo->funcInfos();
+    std::map<std::string, yomk::FuncInfo> infos = demo->funcInfos();
     std::string msgName;
 
     CHECK(findFuncInfo(infos, "/manual"), "合法 / 开头名安装成功，funcInfos 命中");

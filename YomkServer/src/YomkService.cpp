@@ -68,7 +68,7 @@ void YomkService::installFunc(const std::string& funcName, YomkServiceFunc func,
     m_p->installFunc(funcName, func, msgName, description);
 }
 
-std::map<std::string, YomkFuncInfo> YomkService::funcInfos()
+std::map<std::string, yomk::FuncInfo> YomkService::funcInfos()
 {
     if (!m_p)
     {
