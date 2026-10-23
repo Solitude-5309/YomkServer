@@ -34,6 +34,13 @@ class FuncInfo:
                  description: str = "") -> None: ...
 
 
+class ServerServiceInfo:
+    service_name: str
+    funcs: List[FuncInfo]
+    def __init__(self, service_name: str = "",
+                 funcs: List[FuncInfo] = None) -> None: ...
+
+
 class YomkService:
     name: str
     server: Any

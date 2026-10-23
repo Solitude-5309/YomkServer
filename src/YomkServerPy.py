@@ -607,12 +607,20 @@ class Monitor:
 
 
 class FuncInfo:
-    # 功能函数元信息（/YomkFunctionPool/name 与 /YomkFunctionPool/all 返回数据），
-    # 预留扩展（如安全性校验）
+    # 功能函数元信息（/YomkFunctionPool/name 与 /YomkFunctionPool/all、
+    # /YomkServerInfo/function 单查与 /all 清单段返回数据），预留扩展（如安全性校验）
     def __init__(self, func_name="", msg_name="", description=""):
         self.func_name = func_name
         self.msg_name = msg_name
         self.description = description
+
+
+class ServerServiceInfo:
+    # 服务级内省条目（/YomkServerInfo/all 返回数据元素：服务名 + 该服务注册的函数元信息列表）
+    def __init__(self, service_name="", funcs=None):
+        self.service_name = service_name   # 服务名（带 / 前缀，如 "/FmtSrv"）
+        # 函数元信息（与 /function 单查同族 FuncInfo，func_name 为带 / 前缀 url 段）
+        self.funcs = funcs if funcs is not None else []
 
 # modules
 
@@ -1718,13 +1726,12 @@ class YomkServerInfo(YomkService):
             log.error("server has been destroyed, list all ignored.")
             return YomkResponse(ResStatus.eNo, "server has been destroyed")
 
-        # 服务名字典序；功能行两空格缩进 + 服务名直拼函数名（函数名自带 / 前缀）
-        lines = []
+        # 同现实现取数序：service_names() 一次，再逐服务 service_func_infos()；
+        # FuncInfo 三字段与 /function 单查同族整体复用（func_name 为带 / 前缀 url 段）
+        infos = []
         for srv_name in sorted(server.service_names()):
-            lines.append(srv_name)
-            infos = server.service_func_infos(srv_name)
-            for func_name in sorted(infos.keys()):
-                info = infos[func_name]
-                lines.append("  " + srv_name + info.func_name +
-                             (f" [{info.msg_name}]" if info.msg_name else ""))
-        return YomkResponse(ResStatus.eOk, "ok", lines)
+            func_infos = server.service_func_infos(srv_name)
+            infos.append(ServerServiceInfo(
+                srv_name, [func_infos[name] for name in sorted(func_infos.keys())]))
+        # msg 恒 "ok"，数据走 data（结构化层级列表：服务 → 函数元信息）
+        return YomkResponse(ResStatus.eOk, "ok", infos)

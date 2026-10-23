@@ -11,13 +11,14 @@ S2. /functions：行格式 "func [MsgType]" 与无类型 "func" 两种；空 srv
 S3. /function：命中返回结构化 FuncInfo 包（msg 恒 "ok"，func_name/msg_name/description）；
     四参函数 description 承载说明、无说明函数 description 为空（包恒挂）；
     URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null pkg
-S4. /all：服务名行 + 两空格缩进功能行（字典序，FmtSrv 段相邻三行精确序）
+S4. /all：ServerServiceInfo 层级列表（按 service_name 查条目；funcs 字典序
+    /echo 在 /ping 前，字段断言替代缩进行精确串）
 S5. 轻量并发快照一致性：3 churn 线程 add/del × 3 内省线程轮询 4 端点（服务表读写竞争），
     恒 eOk、/services 恒含存活服务、churn 后无残留
 S6. 内置服务删除/重注册自举契约（对齐 Context Lifecycle S4/S5 模式）：删除后 4 端点不可路由、
     服务表快照反映删除；new_service 无参重注册（构造函数固定名生效）后自举恢复
 S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/services 行完整、/functions 行格式、
-    /function 长名下 URL 二段解析、/all 缩进行完整无截断
+    /function 长名下 URL 二段解析、/all 超长条目完整无截断
 
 语言机制说明：
 - S1 断言 5 内置服务
@@ -26,7 +27,8 @@ S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/service
   基类对 server 的强引用仅持弱引用；测试侧 del server 后补 gc.collect() 显式触发回收
   （CPython 引用计数遇环不归零）
 - 服务表快照经 YomkApi.server().service_names()
-- 内省数据解包后 YomkResponse.data 直接是 list[str]
+- 内省数据解包后 YomkResponse.data 直接是 python 对象
+  （/services、/functions 为 list[str]，/all 为 ServerServiceInfo 层级列表）
 - install_func 第三参承载函数消息类型元数据，第四参承载函数说明（三内置装配已补齐）
 - 探针计数用 list.append（GIL 原子，T 轮既有模式）
 - S0 类级直连（import YomkServerPy 白盒），放在 init 单例之前以独立实例隔离单例交互；
@@ -54,6 +56,7 @@ from YomkApi import (
     server_info_functions,
     server_info_function,
     server_info_all,
+    ServerServiceInfo,
 )
 
 PASS = 0
@@ -74,17 +77,31 @@ def name_in(names, srv_name):
     return srv_name in names
 
 
-def name_index(names, srv_name):
-    if srv_name in names:
-        return names.index(srv_name)
-    return -1
-
-
 def unpack_string_array(resp):
-    # /services、/functions、/all 的 data 均为 list[str]
+    # /services、/functions 的 data 为 list[str]
     if resp.status != ResStatus.eOk or resp.data is None:
         return []
     return list(resp.data)
+
+
+def find_service_info(all_list, srv_name):
+    # 在 /all 结构化层级列表中按服务名查找条目（ServerServiceInfo 消费 helper）
+    if not all_list:
+        return None
+    for srv in all_list:
+        if srv.service_name == srv_name:
+            return srv
+    return None
+
+
+def find_func_info(srv, func_name):
+    # 在服务条目内按函数名查找元信息（func_name 带 / 前缀 url 段）
+    if srv is None:
+        return None
+    for func in srv.funcs:
+        if func.func_name == func_name:
+            return func
+    return None
 
 
 # ---- 测试装置服务（FmtSrv/ChurnSrv）----
@@ -269,27 +286,29 @@ def main():
     resp = server_info_all()
     check(resp.status == ResStatus.eOk and resp.msg == "ok", "/all 返回 eOk + ok")
 
-    lines = unpack_string_array(resp)
-    check(len(lines) > 0, "/all 输出非空")
+    all_list = resp.data
+    check(isinstance(all_list, list) and len(all_list) > 0 and
+          all(isinstance(srv, ServerServiceInfo) for srv in all_list),
+          "/all 输出非空且为 ServerServiceInfo 层级列表")
 
-    # FmtSrv 段：服务名行后紧跟两条两空格缩进功能行，段内按字典序 /echo 在 /ping 前
-    fmt_idx = name_index(lines, "/FmtSrv")
-    check(fmt_idx >= 0, "/all 含 FmtSrv 服务名行")
-    if fmt_idx >= 0 and fmt_idx + 2 < len(lines):
-        check(lines[fmt_idx + 1] == "  /FmtSrv/echo [String]",
-              "缩进行精确格式 \"  /FmtSrv/echo [String]\"")
-        check(lines[fmt_idx + 2] == "  /FmtSrv/ping",
-              "缩进行精确格式 \"  /FmtSrv/ping\"")
-    else:
-        check(False, "FmtSrv 段缩进行缺失")
+    # FmtSrv 段：按 service_name 查条目，段内字典序 /echo 在 /ping 前
+    fmt = find_service_info(all_list, "/FmtSrv")
+    check(fmt is not None, "/all 含 FmtSrv 服务条目")
+    check(fmt is not None and len(fmt.funcs) == 2 and
+          fmt.funcs[0].func_name == "/echo" and fmt.funcs[0].msg_name == "String" and
+          fmt.funcs[1].func_name == "/ping" and fmt.funcs[1].msg_name == "",
+          "FmtSrv 段：/echo [String] 与 /ping 字段齐全（字典序）")
 
-    # 内置 /YomkServerInfo 段：4 端点齐全（/services、/all 无类型，另两个带 [String]）
-    self_idx = name_index(lines, "/YomkServerInfo")
-    check(self_idx >= 0, "/all 含 /YomkServerInfo 服务名行")
-    check(name_in(lines, "  /YomkServerInfo/services"), "内置段含 \"/services\" 缩进行")
-    check(name_in(lines, "  /YomkServerInfo/functions [String]"),
-          "内置段含 \"/functions [String]\" 缩进行")
-    check(name_in(lines, "  /YomkServerInfo/all"), "内置段含 \"/all\" 缩进行")
+    # 内置 /YomkServerInfo 段：4 端点齐全（/services、/all 无类型，/functions 带 [String]）
+    self_srv = find_service_info(all_list, "/YomkServerInfo")
+    check(self_srv is not None, "/all 含 /YomkServerInfo 服务条目")
+    check(find_func_info(self_srv, "/services") is not None,
+          "内置段含 \"/services\" 条目")
+    check(find_func_info(self_srv, "/functions") is not None and
+          find_func_info(self_srv, "/functions").msg_name == "String",
+          "内置段含 \"/functions\" 条目且 msg_name == \"String\"")
+    check(find_func_info(self_srv, "/all") is not None,
+          "内置段含 \"/all\" 条目")
 
     # ============ S5. 轻量并发快照一致性 ============
     print("===== S5. 并发 churn × 内省快照一致性 =====")
@@ -359,7 +378,7 @@ def main():
     restored = server_info_services()
     check(restored.status == ResStatus.eOk and name_in(unpack_string_array(restored), "/YomkServerInfo"),
           "重注册后自举恢复：/services eOk 且含自身")
-    check(name_in(unpack_string_array(server_info_all()), "/YomkServerInfo"),
+    check(find_service_info(server_info_all().data, "/YomkServerInfo") is not None,
           "重注册后 /all 含自身段（自举查询成功）")
 
     # ============ S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8） ============
@@ -384,16 +403,13 @@ def main():
     check(long_function.data is not None and long_function.data.func_name == "/ping",
           "超长名下 URL 二段解析正确（func_name == \"/ping\"）")
 
-    all_lines = unpack_string_array(server_info_all())
-    long_idx = name_index(all_lines, long_name)
-    check(long_idx >= 0, "/all 含超长服务名行")
-    if long_idx >= 0 and long_idx + 2 < len(all_lines):
-        check(all_lines[long_idx + 1] == "  " + long_name + "/echo [String]",
-              "/all 超长缩进行完整（echo [String]）")
-        check(all_lines[long_idx + 2] == "  " + long_name + "/ping",
-              "/all 超长缩进行完整（ping）")
-    else:
-        check(False, "/all 超长段缩进行缺失")
+    long_srv = find_service_info(server_info_all().data, long_name)
+    check(long_srv is not None, "/all 含超长服务名条目（无截断）")
+    check(long_srv is not None and len(long_srv.funcs) == 2 and
+          long_srv.funcs[0].func_name == "/echo" and
+          long_srv.funcs[0].msg_name == "String" and
+          long_srv.funcs[1].func_name == "/ping",
+          "/all 超长条目函数字段完整（echo [String] 与 ping，无截断）")
 
     check(del_service(long_name) == 0, "超长名服务删除返回 0")
     check(not name_in(unpack_string_array(server_info_services()), long_name),

@@ -15,7 +15,7 @@ ExampleYomkServerInfo —— YomkServerInfo 服务自省快速上手示例（面
 1. 注册演示服务（new_service 后清单多一项；request 证明注册即可调用）
 2. 函数清单（server_info_functions：两参 vs 三/四参注册的元数据差异 / 空清单分支）
 3. 单查元信息（server_info_function 命中返回结构化 FuncInfo 包：msg 恒 ok、msg_name=期望消息类型名、description=四参函数说明；4 个 eNo 分支）
-4. 全量拓扑（server_info_all：服务行 + 缩进函数行）
+4. 全量拓扑（server_info_all：ServerServiceInfo 层级列表）
 5. 运行期实时视图（del_service 后清单与拓扑立即变化）
 6. 优雅关闭（shutdown 后自省返回 eInvalid，框架已关闭是普通返回值）
 
@@ -83,19 +83,33 @@ def print_resp(prefix, resp):
     # YomkResponse 三态：eOk=0 成功；eNo=1 目标不存在或被拒绝；eInvalid=-1 参数无效或未初始化
     print(f'[{prefix}] status={resp.status.value}, msg="{resp.msg}"')
     # data 为字符串时直接展示（如 request 返回值）；
-    # 列表形态 data 由 dump_lines 逐行打印，结构化包（如 /function 的 FuncInfo）不展开
+    # 列表形态 data 由 dump_lines 逐行打印，结构化包/层级列表由 dump_all_info 等专项工具展开
     if isinstance(resp.data, str):
         print(f'>> data="{resp.data}"')
 
 
 def dump_lines(prefix, resp):
-    # 自省四端点的返回形态：data 为字符串列表（services/functions/all）
+    # 自省清单端点的返回形态：data 为字符串列表（services/functions）
     print_resp(prefix, resp)
     if resp.data is None:
         print(">> (no data)")
         return
     for line in resp.data:
         print(f">> | {line}")
+
+
+def dump_all_info(prefix, resp):
+    # 解包并打印全量拓扑（server_info_all 返回 ServerServiceInfo 层级列表：
+    # 服务 → 函数元信息；框架只返回结构化数据，显示格式由用户定义，此处仅为示范）
+    print_resp(prefix, resp)
+    if resp.data is None:
+        print(">> (no data)")
+        return
+    for srv in resp.data:
+        print(f">> | {srv.service_name}")
+        for func in srv.funcs:
+            print(f">> |   {func.func_name}" +
+                  (f" [{func.msg_name}]" if func.msg_name else ""))
 
 
 def main():
@@ -170,11 +184,12 @@ def main():
     #
     # 步骤4：全量拓扑
     #
-    # server_info_all 一次拉取全部服务及其功能函数：服务名一行、函数行缩进两格。
+    # server_info_all 一次拉取全部服务及其功能函数：ServerServiceInfo 层级列表
+    # （service_name 服务名 + funcs 函数元信息列表，与 server_info_function 单查同族）。
     #
     print_step(4, "全量拓扑",
-               "server_info_all 输出全部服务及各自的功能函数：服务名一行，函数行缩进两格。")
-    dump_lines("server_info_all", YomkApi.server_info_all())
+               "server_info_all 返回层级列表：每个服务一个条目，含服务名与函数元信息列表（显示格式由用户定义）。")
+    dump_all_info("server_info_all", YomkApi.server_info_all())
     print(">> 6 个服务 = 5 个内置 + 1 个演示；排障时一眼看清调用拓扑")
 
     #
@@ -188,7 +203,7 @@ def main():
     del_ret = YomkApi.del_service("/InfoDemoService")
     print(f"[del_service(/InfoDemoService)] ret={del_ret}")
     dump_lines("server_info_services", YomkApi.server_info_services())
-    dump_lines("server_info_all(终态)", YomkApi.server_info_all())
+    dump_all_info("server_info_all(终态)", YomkApi.server_info_all())
     print(">> 删除即从拓扑消失，剩下的 5 项即内置服务")
 
     #

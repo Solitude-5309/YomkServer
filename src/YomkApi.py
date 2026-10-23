@@ -24,7 +24,8 @@ from YomkServerPy import (
     FuncInfo,
     LoggerInfo,
     ConsoleLogState,
-    LoggerAllInfo
+    LoggerAllInfo,
+    ServerServiceInfo
 )
 from typing import Any, Callable, Optional
 import atexit
@@ -522,5 +523,6 @@ def server_info_function(url: str) -> YomkResponse:
 
 
 def server_info_all() -> YomkResponse:
-    # 查询框架全量服务及功能函数拓扑
+    # 查询框架全量服务及功能函数拓扑（结构化层级列表：每服务一个 ServerServiceInfo
+    # 条目 service_name + funcs（FuncInfo 列表，与单查同族），命中 msg 恒 "ok"）
     return _api_request("/YomkServerInfo/all", None)

@@ -231,7 +231,7 @@ resp = YomkApi.server_info_functions("/CalcService")
 # msg_name=期望消息类型名、description=四参函数说明）；不存在返回 eNo
 resp = YomkApi.server_info_function("/CalcService/add")
 
-# 全量拓扑：服务名一行、函数行缩进两格
+# 全量拓扑：结构化层级列表（每服务条目 service_name + funcs）
 resp = YomkApi.server_info_all()
 ```
 

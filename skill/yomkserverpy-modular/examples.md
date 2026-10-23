@@ -473,7 +473,7 @@ resp = YomkApi.server_info_function("/DemoService/with_type")  # eOk, msg_name =
 resp = YomkApi.server_info_function("/DemoService/no_type")    # eOk, msg_name 为空串（未声明），description 为空
 resp = YomkApi.server_info_function("/DemoService/not_exist")  # eNo
 
-# 全量拓扑：服务名行 + 两空格缩进的 "srvName + funcName [msgName]" 行
+# 全量拓扑：ServerServiceInfo 层级列表（service_name 服务名 + funcs 函数元信息列表，与单查同族）
 resp = YomkApi.server_info_all()
 ```
 

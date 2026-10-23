@@ -128,7 +128,7 @@ def init(self):
 resp = YomkApi.server_info_services()                      # 服务列表（data 为服务名列表）
 resp = YomkApi.server_info_functions("/XxxService")        # 函数列表（每行 "func [msgName]"）
 resp = YomkApi.server_info_function("/XxxService/my_desc") # 单函数元信息（命中返回结构化 FuncInfo 包：msg_name=类型名、description=四参说明，msg 恒 "ok"）
-resp = YomkApi.server_info_all()                           # 全量拓扑（服务名行 + 缩进函数行）
+resp = YomkApi.server_info_all()                           # 全量拓扑（ServerServiceInfo 层级列表：service_name + funcs）
 ```
 
 服务器层内省之外，四个内置模块均提供模块内层内省三件套（Context 的 `context_info_keys/key/all`、EventLoop 的 `event_loop_info_loops/loop/all`、FunctionPool 的 `function_pool_info_names/name/all`、Logger 的 `logger_info_loggers/logger/all`），见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。
