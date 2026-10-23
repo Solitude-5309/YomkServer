@@ -22,7 +22,9 @@ from YomkServerPy import (
     Log,
     LogFile,
     FuncInfo,
-    LoggerInfo
+    LoggerInfo,
+    ConsoleLogState,
+    LoggerAllInfo
 )
 from typing import Any, Callable, Optional
 import atexit
@@ -353,7 +355,8 @@ def logger_info_logger(logger_name):
 
 
 def logger_info_all():
-    # 查询全部日志器及开关配置状态
+    # 查询全部日志器及控制台状态（结构化包装包，命中 msg 恒 "ok"，data 为 LoggerAllInfo：
+    # console 状态段五开关 + loggers 清单段 LoggerInfo 列表）
     return _api_request("/YomkLogger/all", None)
 
 

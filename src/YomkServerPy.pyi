@@ -193,6 +193,27 @@ class LoggerInfo:
                  dir: str = "") -> None: ...
 
 
+class ConsoleLogState:
+    debug_on: bool    # debug 级别开关
+    info_on: bool     # info 级别开关
+    warn_on: bool     # warn 级别开关
+    error_on: bool    # error 级别开关
+    proxy_on: bool    # 控制台代理已安装
+
+    def __init__(self, debug_on: bool = False, info_on: bool = False,
+                 warn_on: bool = False, error_on: bool = False,
+                 proxy_on: bool = False) -> None: ...
+
+
+class LoggerAllInfo:
+    console: ConsoleLogState  # 控制台状态段
+    # 清单段元素与单查同款 LoggerInfo（console 段在前、file 段在后，各段字典序）
+    loggers: List[LoggerInfo]
+
+    def __init__(self, console: ConsoleLogState = None,
+                 loggers: List[LoggerInfo] = None) -> None: ...
+
+
 class YomkContext(YomkService):
     def __init__(self, server: Any) -> None: ...
     def init(self) -> None: ...

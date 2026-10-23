@@ -8,14 +8,14 @@ TestYomkLoggerLifecycle.py —— YomkLogger 服务全链路生命周期测试
 S1 控制台日志基线（四级别 + 开关翻转）；S2 自定义 tag 自动创建（含 65536 超长 tag、
 空内容）；S2.5 非法级别 default 降级（须在 S3 设 proxy 前）；S3 proxy 契约（拦截/
 穿透/卸载恢复/重装复位，LG6 P4-e）；S4 文件日志闭环（create/缓冲/落盘/重复/未创建/
-P2-a 空名空 dir/P2-b 失败不注册幽灵）；S5 内省三端点（行格式/字典序/开关联动精确串）；
+P2-a 空名空 dir/P2-b 失败不注册幽灵）；S5 内省三端点（行格式/字典序/开关联动逐字段）；
 S6 边界值（整数边界/浮点特殊值/1MB 内容/非法级别 file_log+off/on 无副作用）；S7 异常
 路径（空包/错类型包/空 logger 名回退/未知端点）；S8 /delete_logger 全语义（8.1-8.7）
 
 语言机制说明：
 - stdout 捕获用 contextlib.redirect_stdout；CHECK 在捕获作用域外（LG1 教训，
   控制台写入经 capture 包装后取响应断言）
-- 内省数据解包后 YomkResponse.data 直接是 list[str]
+- 内省数据解包后 LOGGERS 端点 data 为 list[str]，ALL 端点 data 为 LoggerAllInfo 包装包
 - 浮点格式化 str(-0.0) 为 "-0.0"：子串断言 "d= -0" 仍命中
   （前缀包含），书面记录微差
 - S8.4 析构落盘确定性：服务层 delete_logger
@@ -36,7 +36,7 @@ import sys
 import tempfile
 
 import YomkApi
-from YomkServerPy import Log, ResStatus, LoggerInfo
+from YomkServerPy import Log, ResStatus, LoggerInfo, LoggerAllInfo
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
@@ -168,8 +168,14 @@ def main():
         proxy_hits.append(1)
         return not proxy_state["intercept"]
 
-    check(YomkApi.logger_info_all().data[0] == "console:debug:on info:on warn:on error:on proxy:off",
-          "proxy 设置前 ALL 首行 consoleLevelLine 全 on + proxy:off")
+    all_resp = YomkApi.logger_info_all()
+    check(all_resp.status == ResStatus.eOk and all_resp.msg == "ok"
+          and isinstance(all_resp.data, LoggerAllInfo),
+          "ALL 命中返回 eOk + msg ok + LoggerAllInfo 包装包")
+    check(all_resp.data.console.debug_on and all_resp.data.console.info_on
+          and all_resp.data.console.warn_on and all_resp.data.console.error_on
+          and not all_resp.data.console.proxy_on,
+          "proxy 设置前 ALL 状态段全 on + proxy_off")
     check(YomkApi.set_console_log_proxy(proxy).status == ResStatus.eOk,
           "SET_CONSOLE_LOG_PROXY 返回 eOk")
 
@@ -191,8 +197,8 @@ def main():
     check("lg1_s3_pass_marker" in out, "穿透态恢复默认控制台输出")
     check(len(proxy_hits) == 2, "proxy 累计被调用 2 次")
 
-    check("proxy:on" in YomkApi.logger_info_all(
-    ).data[0], "proxy 设置后 ALL 首行 proxy:on")
+    check(YomkApi.logger_info_all().data.console.proxy_on,
+          "proxy 设置后 ALL 状态段 proxy_on")
 
     # LG6（P4-e）：卸载前先把代理切回拦截态，确认代理确实在链路上
     proxy_state["intercept"] = True
@@ -205,8 +211,8 @@ def main():
     # 卸载：传 None（等价空 function）
     check(YomkApi.set_console_log_proxy(None).status == ResStatus.eOk,
           "set_console_log_proxy(None) 卸载返回 eOk")
-    check("proxy:off" in YomkApi.logger_info_all().data[0],
-          "卸载后 ALL 首行回到 proxy:off（P4-e 前恒报 proxy:on）")
+    check(not YomkApi.logger_info_all().data.console.proxy_on,
+          "卸载后 ALL 状态段回到 proxy_off（P4-e 前恒报 proxy_on）")
 
     # 卸载后：恢复框架默认输出，且代理不再被调用
     hits_before = len(proxy_hits)
@@ -223,8 +229,8 @@ def main():
     proxy_state["intercept"] = False
     check(YomkApi.set_console_log_proxy(proxy).status == ResStatus.eOk,
           "重装代理返回 eOk（卸载可逆）")
-    check("proxy:on" in YomkApi.logger_info_all().data[0],
-          "重装后 ALL 首行恢复 proxy:on（S4-S7 不变量已复位）")
+    check(YomkApi.logger_info_all().data.console.proxy_on,
+          "重装后 ALL 状态段恢复 proxy_on（S4-S7 不变量已复位）")
 
     # ============ Section 4: 文件日志闭环 ============
     log_dir = os.path.join(tmp_dir, "s4")
@@ -349,15 +355,16 @@ def main():
     check(no_info.status == ResStatus.eNo and no_info.msg == "logger not found.",
           "LOGGER 未注册名返回 eNo + logger not found.")
 
-    # ALL：首行 consoleLevelLine 与开关翻转联动（精确串断言）
-    check(YomkApi.logger_info_all().data[0] == "console:debug:on info:on warn:on error:on proxy:on",
-          "ALL 首行全 on + proxy:on（S3 已设 proxy）")
+    # ALL：状态段与开关翻转联动（逐字段断言）
+    c = YomkApi.logger_info_all().data.console
+    check(c.debug_on and c.info_on and c.warn_on and c.error_on and c.proxy_on,
+          "ALL 状态段全 on + proxy_on（S3 已设 proxy）")
     YomkApi.off_console_log_info()
-    check(YomkApi.logger_info_all().data[0] == "console:debug:on info:off warn:on error:on proxy:on",
-          "OFF INFO 后 ALL 首行 info:off（开关联动精确串）")
+    check(not YomkApi.logger_info_all().data.console.info_on,
+          "OFF INFO 后 ALL 状态段 info_off（开关联动）")
     YomkApi.on_console_log_info()
-    check(YomkApi.logger_info_all().data[0] == "console:debug:on info:on warn:on error:on proxy:on",
-          "ON INFO 复原后 ALL 首行 info:on")
+    check(YomkApi.logger_info_all().data.console.info_on,
+          "ON INFO 复原后 ALL 状态段 info_on")
 
     # ============ Section 6: 边界值（数值特殊值 / 超大内容 / 非法级别） ============
     r, out = capture(lambda: YomkApi.console_log_info_tag(
@@ -420,8 +427,9 @@ def main():
         "/YomkLogger/on_console_log_by_level", Log(99, "", "")))
     check(r_on.status == ResStatus.eOk and "unknown log level, turn on failed." in out_on,
           "on 非法级别 eOk + 错误提示（default 活分支）")
-    check(YomkApi.logger_info_all().data[0] == "console:debug:on info:on warn:on error:on proxy:on",
-          "非法级别 off/on 无副作用（ALL 首行仍全 on）")
+    c = YomkApi.logger_info_all().data.console
+    check(c.debug_on and c.info_on and c.warn_on and c.error_on and c.proxy_on,
+          "非法级别 off/on 无副作用（ALL 状态段仍全 on + proxy_on）")
 
     # ============ Section 7: 异常路径（空包 / 错类型包 / 未知端点） ============
     r, out = capture(lambda: YomkApi.request("/YomkLogger/console_log", None))
@@ -555,10 +563,11 @@ def main():
           ResStatus.eOk, "S8: 计数用例删除 eOk")
     check(len(YomkApi.logger_info_loggers().data) == before,
           "S8: 删除后 LOGGERS 行数回落（递减守恒）")
-    all_lines = YomkApi.logger_info_all().data
-    check(len(all_lines) == before + 1 and
-          all_lines[0] == "console:debug:on info:on warn:on error:on proxy:on",
-          "S8: ALL 行数 = LOGGERS 行数 + 状态行，首行精确串不变")
+    all_info = YomkApi.logger_info_all().data
+    c = all_info.console
+    check(len(all_info.loggers) == before and
+          c.debug_on and c.info_on and c.warn_on and c.error_on and c.proxy_on,
+          "S8: ALL 清单条数 == LOGGERS 行数，状态段全 on 不变")
 
     # MainLogger 无特殊保护：可删；重建须走"空 logger 名回退"路径
     check(YomkApi.file_log_delete("MainLogger").status == ResStatus.eOk,

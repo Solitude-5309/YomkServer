@@ -34,8 +34,8 @@ SET v1/v2，v1+v2 == log 总数守恒）；S4 并发 file logger 创建 x 写入
 
 设计边界（契约内使用，非缺陷）：
 - 全程不调 /delete_logger（删除语义由 Lifecycle S8 覆盖）；proxy 安装后不卸载且
-  v1/v2 恒穿透，不影响 S4/S5 输出与落盘断言；ALL 首行级别开关组合无原子保证，
-  S5 仅断言格式合法与收尾精确串
+  v1/v2 恒穿透，不影响 S4/S5 输出与落盘断言；ALL 状态段级别开关组合无原子保证，
+  S5 仅断言状态段五开关与收尾字段
 """
 
 import contextlib
@@ -49,7 +49,7 @@ import threading
 import time
 
 import YomkApi
-from YomkServerPy import ResStatus
+from YomkServerPy import ResStatus, LoggerAllInfo
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
@@ -108,7 +108,7 @@ def count_lines_containing(lines, needle):
 
 
 def unpack_lines(resp):
-    # 解包 LOGGERS/ALL 的 list[str]；失败返回空列表
+    # 解包 LOGGERS 的 list[str]；失败返回空列表
     if resp.status != ResStatus.eOk or not resp.data:
         return []
     return list(resp.data)
@@ -125,35 +125,6 @@ def count_logger_lines(lines):
         if " [file] dir:" in line:
             file_lines += 1
     return console_lines, file_lines
-
-
-def check_level_line_format(line):
-    # 校验 ALL 首行格式：console:debug:(on|off) info:(on|off) warn:(on|off)
-    # error:(on|off) proxy:(on|off)
-    pos = 0
-
-    def match_field(key):
-        nonlocal pos
-        if not line.startswith(key, pos):
-            return False
-        pos += len(key)
-        if line.startswith("on", pos):
-            pos += 2
-            return True
-        if line.startswith("off", pos):
-            pos += 3
-            return True
-        return False
-
-    for key in ("console:debug:", "info:", "warn:", "error:"):
-        if not match_field(key):
-            return False
-        if pos >= len(line) or line[pos] != " ":
-            return False
-        pos += 1
-    if not match_field("proxy:"):
-        return False
-    return pos == len(line)
 
 
 def is_legal_status(resp):
@@ -397,15 +368,15 @@ def main():
                     i += 1
             callers.append(threading.Thread(target=caller_worker))
 
-        # 内省线程：并发轮询 ALL，校验首行格式（proxy:on 恒定 + 无撕裂）
+        # 内省线程：并发轮询 ALL，校验状态段（proxy_on 恒定；五开关类型由字段保证，组合任意）
         introspectors = []
         for _t in range(k_introspect_threads):
             def s3_introspect_worker():
                 while not s3_stop.is_set():
-                    lines = unpack_lines(YomkApi.logger_info_all())
-                    if lines:
-                        if (not check_level_line_format(lines[0]) or
-                                "proxy:on" not in lines[0]):
+                    resp = YomkApi.logger_info_all()
+                    if resp.status == ResStatus.eOk and isinstance(
+                            resp.data, LoggerAllInfo):
+                        if not resp.data.console.proxy_on:
                             s3_bad_level_line.append(1)
                     time.sleep(0.0002)
             introspectors.append(threading.Thread(target=s3_introspect_worker))
@@ -443,7 +414,7 @@ def main():
     check(total > 0, "S3: caller 线程确实执行了日志调用")
     check(len(s3_log_ok) == total, "S3: 全部 console_log 返回 eOk（穿透态不影响响应码）")
     check(len(s3_bad_level_line) == 0,
-          f"S3: 并发内省 ALL 首行格式全部合法且含 proxy:on（非法 {len(s3_bad_level_line)} 次）")
+          f"S3: 并发内省 ALL 状态段格式合法且 proxy_on（非法 {len(s3_bad_level_line)} 次）")
 
     # ========================================================================
     # Section 4：并发 file logger 创建 × 写入 × 落盘（FileLogger 守恒）
@@ -747,17 +718,20 @@ def main():
                     all_resp = YomkApi.logger_info_all()
                     if not is_legal_status(all_resp):
                         bad_status.append(1)
-                    all_lines = unpack_lines(all_resp)
-                    if all_lines:
-                        if (not check_level_line_format(all_lines[0]) or
-                                "proxy:on" not in all_lines[0]):
+                    if (all_resp.status == ResStatus.eOk
+                            and isinstance(all_resp.data, LoggerAllInfo)):
+                        # 开关被 s5_switch 线程并发翻转，组合任意；仅 proxy_on 恒定
+                        if not all_resp.data.console.proxy_on:
                             s5_bad_level_line.append(1)
-                        snap_all_console, snap_all_file = count_logger_lines(
-                            all_lines)
+                        all_loggers = all_resp.data.loggers
+                        snap_all_console = sum(
+                            1 for lg in all_loggers if lg.type == "console")
+                        snap_all_file = len(all_loggers) - snap_all_console
                         s5_introspect_ok.append(1)
-                        # (consoleLines, fileLines, allLines, allConsole, allFile)
-                        local.append((snap_console, snap_file, len(all_lines),
-                                      snap_all_console, snap_all_file))
+                        # (consoleLines, fileLines, allCount, allConsole, allFile)
+                        local.append((snap_console, snap_file,
+                                      len(all_loggers), snap_all_console,
+                                      snap_all_file))
                     time.sleep(0.00001)
                 snaps_by_thread[t] = local
             introspect_threads.append(
@@ -890,7 +864,7 @@ def main():
     check(exceed_final == 0,
           f"S5: 全部快照行数 <= 最终值 {final_total}（超出 {exceed_final} 次）——无幻觉行")
     check(len(s5_bad_level_line) == 0,
-          f"S5: 并发下 ALL 首行格式全部合法且含 proxy:on（非法 {len(s5_bad_level_line)} 次）")
+          f"S5: 并发下 ALL 状态段格式合法且 proxy_on 恒定（非法 {len(s5_bad_level_line)} 次）")
     check(len(bad_status) == 0,
           f"S5: 全部响应码属于 {{eInvalid,eOk,eNo}}（非法状态码 {len(bad_status)} 次）")
 
@@ -917,13 +891,13 @@ def main():
     check(len(s5_introspect_ok) > 0,
           f"S5: 内省线程确实观测到 ALL（{len(s5_introspect_ok)} 次）")
 
-    # ---- 最终一致性：ALL 首行精确串 + 行数跨端点一致 + file sink 落盘守恒 ----
-    final_all = unpack_lines(YomkApi.logger_info_all())
-    check(len(final_all) > 0 and
-          final_all[0] == "console:debug:on info:on warn:on error:on proxy:on",
-          "S5: 收尾四级别全 ON 后 ALL 首行为精确串（含 S3 已设的 proxy:on）")
-    check(len(final_all) == final_total + 1,
-          f"S5: ALL 行数 == LOGGERS 行数 + 1 首行（{len(final_all)} vs {final_total + 1}）——跨端点最终一致")
+    # ---- 最终一致性：ALL 状态段精确 + 清单条数跨端点一致 + file sink 落盘守恒 ----
+    final_info = YomkApi.logger_info_all().data
+    fc = final_info.console
+    check(fc.debug_on and fc.info_on and fc.warn_on and fc.error_on and fc.proxy_on,
+          "S5: 收尾四级别全 ON 后 ALL 状态段全 on（含 S3 已设的 proxy_on）")
+    check(len(final_info.loggers) == final_total,
+          f"S5: ALL 清单条数 == LOGGERS 行数（{len(final_info.loggers)} vs {final_total}）——跨端点最终一致")
 
     sink_content = read_file(os.path.join(pair_dir, k_file_sink + ".log"))
     sink_lines = count_lines(sink_content)

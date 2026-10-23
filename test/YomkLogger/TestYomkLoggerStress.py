@@ -11,7 +11,7 @@ D proxy 短路 + 穿透恢复 / E 热 tag 重复写）；S2 file 侧激进规模
 1000/目录 / B N/10 单目录对照相 / C 磁盘足迹 + 内省条目双守恒）；S3 文件写入与大缓冲
 落盘（A N 行分散 K sink 缓冲 / B 2N 行单 logger 大缓冲一次落盘 / C K sink 逐个 flush
 行数守恒 / D 空缓冲重复 flush 文件不增长）；S4 内省端点 2N+ 条目响应（A 全规模延迟 /
-B ALL 首行精确串 + 数据段与 LOGGERS 逐行一致 / C 单查 N 次 / D 内省快照与 create
+B ALL 状态段精确 + 清单段与 LOGGERS 逐行一致 / C 单查 N 次 / D 内省快照与 create
 相互阻塞量化）；S5 8 线程混合负载 churn + 全量删除回收（A 六调用 churn 守恒 /
 B 分组全量回收 / C 残量扫除 -> LOGGERS 行数为 0 硬断言）；S6 收尾与磁盘清理（清理前
 磁盘足迹守恒 / shutdown 计时 / rmtree / 临时目录不存在硬断言 / RSS 峰值）
@@ -57,7 +57,7 @@ import threading
 import time
 
 import YomkApi
-from YomkServerPy import ResStatus
+from YomkServerPy import ResStatus, LoggerAllInfo
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
@@ -92,14 +92,14 @@ def make_name(prefix, index):
 
 
 def unpack_lines(resp):
-    # 解包 LOGGERS/ALL 的 list[str]；失败返回空列表
+    # 解包 LOGGERS 的 list[str]；失败返回空列表
     if resp.status != ResStatus.eOk or not resp.data:
         return []
     return list(resp.data)
 
 
 def count_logger_lines(lines):
-    # 统计 LOGGERS/ALL 数据行中的 console/file 段行数
+    # 统计 LOGGERS 数据行中的 console/file 段行数
     console_lines = 0
     file_lines = 0
     for line in lines:
@@ -192,7 +192,11 @@ def measure_introspection(rounds, use_all):
         if resp.status != ResStatus.eOk:
             bad += 1
             continue
-        last_lines = len(resp.data) if resp.data else 0
+        # use_all 时 data 为 LoggerAllInfo，清单条数口径与 LOGGERS 行数一致
+        if use_all:
+            last_lines = len(resp.data.loggers) if resp.data else 0
+        else:
+            last_lines = len(resp.data) if resp.data else 0
         if count == 0:
             min_ms = max_ms = ms
         else:
@@ -355,15 +359,15 @@ def main():
         created_a = cp
 
         # 扫描数据点：条目 = created_a 个 tag + MainLogger（此刻 file 侧仍为 0）；
-        # ALL 首行为级别状态行，故总行数 = 条目数 + 1
+        # ALL data 为 LoggerAllInfo，清单条数 = 条目数
         entries = created_a + 1
         stat_all, bad_all, lines_all = measure_introspection(
             introspection_rounds(entries), True)
         print(f"[BASELINE] S1A_scan_ALL@entries={entries}: avg {stat_all[2]:.3f} ms "
               f"(min {stat_all[1]:.3f} / max {stat_all[3]:.3f} over {stat_all[0]} calls, "
               f"lines {lines_all})")
-        check(bad_all == 0 and lines_all == entries + 1,
-              f"S1A: 扫描点 entries={entries} 内省 eOk + 行数守恒")
+        check(bad_all == 0 and lines_all == entries,
+              f"S1A: 扫描点 entries={entries} 内省 eOk + 清单条数守恒")
 
     record_baseline("S1A_console_create_unique_tag", n, elapsed_a)
     check(ok_a == n, f"S1A: 唯一 tag 写入 eOk 守恒 {ok_a}/{n}")
@@ -637,19 +641,25 @@ def main():
           f"S4A: LOGGERS eOk + 行数守恒（{lines_l}/{entries}）")
     stat_a, bad_a, lines_a = measure_introspection(rounds, True)
     record_latency("S4A_all", stat_a)
-    check(bad_a == 0 and lines_a == entries + 1,
-          f"S4A: ALL eOk + 行数守恒（含状态行，{lines_a}/{entries + 1}）")
+    check(bad_a == 0 and lines_a == entries,
+          f"S4A: ALL eOk + 清单条数守恒（{lines_a}/{entries}）")
 
-    # ---- Phase B：ALL 首行精确串 + 数据段与 LOGGERS 逐行一致（P3-a 原子快照可观测等价）----
-    all_lines = unpack_lines(YomkApi.logger_info_all())
-    check(len(all_lines) > 0 and
-          all_lines[0] == "console:debug:on info:on warn:on error:on proxy:on",
-          "S4B: ALL 首行状态串精确匹配（proxy 已在 S1D 安装）")
-    identical = (len(all_lines) == entries +
-                 1 and len(loggers_lines) == entries)
+    # ---- Phase B：ALL 状态段精确 + 清单段与 LOGGERS 逐行一致（P3-a 原子快照可观测等价）----
+    all_info = YomkApi.logger_info_all().data
+    check(isinstance(all_info, LoggerAllInfo) and
+          all_info.console.debug_on and all_info.console.info_on and
+          all_info.console.warn_on and all_info.console.error_on and
+          all_info.console.proxy_on,
+          "S4B: ALL 状态段全 on + proxy_on（proxy 已在 S1D 安装）")
+    identical = (isinstance(all_info, LoggerAllInfo) and
+                 len(all_info.loggers) == entries and
+                 len(loggers_lines) == entries)
     if identical:
-        identical = (all_lines[1:] == loggers_lines)
-    check(identical, "S4B: ALL 数据段与 LOGGERS 逐行一致（嵌套双锁原子快照）")
+        identical = all(
+            line == (lg.logger_name + " [console]" if lg.type == "console"
+                     else lg.logger_name + " [file] dir:" + lg.dir)
+            for line, lg in zip(loggers_lines, all_info.loggers))
+    check(identical, "S4B: ALL 清单段与 LOGGERS 逐行一致（嵌套双锁原子快照）")
 
     # ---- Phase C：单查 N 次（偶数查 console 名、奇数查 file 名；两表查找热路径量化点）----
     # 名字域校验：偶数 i 的 lg4s1_tag_i 由 S1A 创建、奇数 i 的 lg4s2_fl_i 由 S2A 创建，
@@ -698,7 +708,7 @@ def main():
             if resp.status != ResStatus.eOk:
                 s4d_snap_bad_status.append(1)
                 continue
-            lines = len(resp.data) if resp.data else 0
+            lines = len(resp.data.loggers) if resp.data else 0
             s4d_snap_count.append(1)
             if lines < prev_lines:
                 s4d_snap_non_mono.append(1)

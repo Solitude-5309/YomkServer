@@ -108,7 +108,7 @@ class EventLoopPkg:
 | `YomkApi.set_console_log_proxy(func)` | 设置日志代理（func 返回 False 消费该条日志） |
 | `YomkApi.logger_info_loggers()` | 枚举全部日志器名 |
 | `YomkApi.logger_info_logger(logger_name)` | 单日志器元信息结构化查询（命中 msg 恒 "ok"，data 为 LoggerInfo 包：logger_name/type/dir——type 为 "console"/"file"，file 时 dir 为日志目录；未注册返回 eNo） |
-| `YomkApi.logger_info_all()` | 查询全部日志器信息 |
+| `YomkApi.logger_info_all()` | 全量日志器及控制台状态（命中 msg 恒 `"ok"`，data 为 `LoggerAllInfo` 包装包：console 状态段 debug_on/info_on/warn_on/error_on/proxy_on + loggers 清单段 `LoggerInfo` 列表） |
 
 ### Context
 | API | 说明 |

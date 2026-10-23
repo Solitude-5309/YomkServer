@@ -57,6 +57,25 @@ def dump_lines(prefix, resp):
         print(f">> | {line}")
 
 
+def dump_all_info(prefix, resp):
+    # 解包并打印 logger_info_all 返回的 LoggerAllInfo（结构化包装包）——
+    # 框架只返回结构化数据，显示格式由用户定义
+    print_resp(prefix, resp)
+    info = resp.data
+    if info is None:
+        print(">> (no data)")
+        return
+    c = info.console
+    print(f">> | console: debug={'on' if c.debug_on else 'off'} info={'on' if c.info_on else 'off'} "
+          f"warn={'on' if c.warn_on else 'off'} error={'on' if c.error_on else 'off'} "
+          f"proxy={'on' if c.proxy_on else 'off'}")
+    for lg in info.loggers:
+        dir_part = f" dir:{lg.dir}" if lg.type == "file" else ""
+        print(f">> | {lg.logger_name} [{lg.type}]{dir_part}")
+    if not info.loggers:
+        print(">> | (no loggers)")
+
+
 def console_log_proxy(log: Log) -> bool:
     """自定义控制台日志代理：框架每写一条控制台日志，都会先调用本函数。"""
     # 演示"消费"：DEBUG 日志被代理吞掉，不再出现在控制台
@@ -138,8 +157,8 @@ def main():
     print_resp("console_log_debug_tag(被关闭)", YomkApi.console_log_debug_tag(
         "MainLogger", "you cannot see me: debug is off"))
 
-    # 用内省 ALL 自证开关状态：首行 console:debug:off info:off warn:off error:off proxy:off
-    dump_lines("logger_info_all(全关)", YomkApi.logger_info_all())
+    # 用内省 ALL 自证开关状态：状态段 debug_on/info_on/warn_on/error_on 全 False、proxy_on=False
+    dump_all_info("logger_info_all(全关)", YomkApi.logger_info_all())
 
     print_step(3, "级别开关（续）：恢复", "4 个 on 重新打开，同样的日志立刻出现。")
     print_resp("on_console_log_info", YomkApi.on_console_log_info())
@@ -157,7 +176,7 @@ def main():
     # 安装 console_log_proxy 后所有控制台日志先过代理：
     # - DEBUG 被 return False 消费掉——控制台不再出现；
     # - 其余被加 [LogProxy] 前缀后 return True 放行——正常输出。
-    # 内省 ALL 首行 proxy:on 标记代理已安装。
+    # 内省 ALL 状态段 proxy_on=True 标记代理已安装。
     #
     print_step(
         4, "控制台日志代理", "代理消费 DEBUG（不再输出）、放行其他级别（加 [LogProxy] 前缀）；观察下面 4 条的差异。")
@@ -172,20 +191,20 @@ def main():
         "MainLogger", "passed through proxy"))
     print_resp("console_log_debug_tag(代理消费)", YomkApi.console_log_debug_tag(
         "MainLogger", "consumed by proxy, never printed"))
-    dump_lines("logger_info_all(代理开启)", YomkApi.logger_info_all())
+    dump_all_info("logger_info_all(代理开启)", YomkApi.logger_info_all())
 
     #
     # 步骤5：卸载代理
     #
     # 传 None 即卸载，恢复框架默认输出格式（无 [LogProxy] 前缀），
-    # 内省首行 proxy 回到 off。
+    # 内省状态段 proxy_on 回到 False。
     #
     print_step(5, "卸载代理", "传 None 恢复默认输出；对比上一条 [LogProxy] 前缀消失。")
     print_resp("set_console_log_proxy(None)",
                YomkApi.set_console_log_proxy(None))
     print_resp("console_log_info_tag(默认输出)", YomkApi.console_log_info_tag(
         "MainLogger", "default format again, no proxy prefix"))
-    dump_lines("logger_info_all(代理已卸载)", YomkApi.logger_info_all())
+    dump_all_info("logger_info_all(代理已卸载)", YomkApi.logger_info_all())
 
     #
     # 步骤6：文件日志
@@ -229,7 +248,7 @@ def main():
     #
     # logger_info_loggers：日志器清单（console 段 + file 段，各自按名称字典序）；
     # logger_info_logger(name)：单查，命中返回结构化 LoggerInfo 包（msg 恒 "ok"，类型与目录在 data 字段），未注册返回 eNo=1；
-    # logger_info_all：全量状态，首行为控制台级别与代理开关。
+    # logger_info_all：全量状态，结构化包装包（console 状态段五开关 + loggers 清单段）。
     #
     print_step(7, "内省三件套", "清单看全部、单查看一个、ALL 看总状态；单查一个从未创建的名字演示 eNo 惯例。")
     dump_lines("logger_info_loggers", YomkApi.logger_info_loggers())
@@ -238,7 +257,7 @@ def main():
     print_resp("logger_info_logger(ghost)",
                YomkApi.logger_info_logger("ghost"))
     print(">> ghost 未注册 → eNo=1，not-found 是框架统一惯例")
-    dump_lines("logger_info_all", YomkApi.logger_info_all())
+    dump_all_info("logger_info_all", YomkApi.logger_info_all())
 
     #
     # 步骤8：删除日志器

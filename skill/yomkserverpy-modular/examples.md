@@ -507,7 +507,7 @@ def my_log_proxy(log: YomkApi.Log) -> bool:
 
 YomkApi.set_console_log_proxy(my_log_proxy)
 # 卸载代理：传 None 恢复框架默认控制台输出，
-# logger_info_all() 首行随之由 proxy:on 回到 proxy:off
+# logger_info_all() 状态段 proxy_on 随之由 True 回到 False
 YomkApi.set_console_log_proxy(None)
 ```
 
