@@ -13,7 +13,7 @@
 | `YOMK_NEW_SERVICE(ClassName)` | 创建并注册指定类型的服务 |
 | `YOMK_ADD_SERVICE(srv)` | 注册已有服务实例（所有权移交给框架） |
 | `YOMK_DEL_SERVICE("/服务名")` | 按名称删除单个服务 |
-| `YomkInstallFunc(funcName, func)` | 在 `init()` 中注册功能函数（自动弱绑定）；可加第三参 `MsgName` 声明期望消息类型名供自省识别 |
+| `YomkInstallFunc(funcName, func)` | 在 `init()` 中注册功能函数（自动弱绑定）；可加第三参 `MsgName` 声明期望消息类型名供自省识别，第四参 `Description` 附函数说明（自由字符串，`/function` 单查数据段可读） |
 
 ### 请求与响应
 

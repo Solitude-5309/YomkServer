@@ -92,7 +92,13 @@ YomkResponse YomkServerInfo::functionInfo(YomkPkgPtr pkg)
                 YOMK_ERR_POS_LOG("function not found -> " + url);
                 return {YomkResponse::eNo, "function not found: " + url};
             }
-            return {YomkResponse::eOk, iter->second.m_msgName};
+            // m_msg 契约保持精确 msgName；函数说明非空时挂入响应数据段
+            YomkResponse resp{YomkResponse::eOk, iter->second.m_msgName};
+            if (!iter->second.m_description.empty())
+            {
+                resp.m_data = YomkMkPtr(String, iter->second.m_description);
+            }
+            return resp;
         }
     }
 

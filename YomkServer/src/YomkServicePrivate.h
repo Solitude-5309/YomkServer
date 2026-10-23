@@ -28,7 +28,8 @@ public:
     bool deleted() const { return m_deleted.load(); }
 
 public:
-    void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "");
+    void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
+                     const std::string& description = "");
     YomkResponse invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
     std::map<std::string, YomkFuncInfo> funcInfos();
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
@@ -42,6 +43,6 @@ protected:
     // 删除/同名替换后为 true，weakFunc 判活叠加此标志（删除即停）
     std::atomic<bool> m_deleted{false};
     std::map<std::string, YomkServiceFunc> m_funcMap;
-    std::map<std::string, std::string> m_funcMsgMap;
+    std::map<std::string, YomkFuncInfo> m_funcInfoMap; // funcName -> 函数信息（类型名 + 说明）
     std::shared_mutex m_funcMapMtx;
 };

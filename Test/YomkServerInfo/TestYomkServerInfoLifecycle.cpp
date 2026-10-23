@@ -2,7 +2,7 @@
  * @file TestYomkServerInfoLifecycle.cpp
  * @brief ServerInfo 模块生命周期与四端点功能基线测试（P0，从零新建——模块此前零专属覆盖）
  *
- * 覆盖内容（8 个 Section，70 断言）：
+ * 覆盖内容（8 个 Section，74 断言）：
  * S0. server destroyed 分支（白盒直连）：测试自持 YomkServerInfo 实例（不经 addService），
  *     server 释放后 4 端点 invoke 逐一返回 eNo + "server has been destroyed"
  *     （m_weakServer.lock() 失败分支，invoke 为 YomkService public 方法可直连）
@@ -10,6 +10,7 @@
  * S2. /functions：行格式 "func [MsgType]" 与无类型 "func" 两种；空 srvName eInvalid；
  *     不存在服务 eOk 空表；内置 /YomkContext 与 /YomkServerInfo 自身行格式
  * S3. /function：命中时 m_msg 精确等于 msgName（特殊契约，非 "ok"）、无类型函数 m_msg 为空；
+ *     四参函数说明挂入数据段（m_msg 契约保持）、无说明函数数据段为空；
  *     URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null pkg
  * S4. /all：服务名行 + 两空格缩进功能行（map 字典序，FmtSrv 段相邻三行精确序）
  * S5. 轻量并发快照一致性：3 churn 线程 add/del × 3 内省线程轮询 4 端点（服务表 shared_mutex
@@ -88,8 +89,9 @@ static std::vector<std::string> unpackStringArray(const YomkResponse& resp)
 }
 
 /**
- * @brief 行格式演示服务：/ping 两参安装（无类型，行格式 "func"）+ /echo 三参安装
- *        （String 类型，行格式 "func [String]"），供 S2/S3/S4 精确格式断言使用
+ * @brief 行格式演示服务：/ping 两参安装（无类型，行格式 "func"）+ /echo 四参安装
+ *        （String 类型 + 说明 "echo demo description"，行格式 "func [String]"），
+ *        供 S2/S3/S4 精确格式断言与 description 透出断言使用
  */
 class FmtSrv : public YomkService
 {
@@ -100,7 +102,7 @@ public:
     virtual int init() override
     {
         YomkInstallFunc("/ping", FmtSrv::ping);
-        YomkInstallFunc("/echo", FmtSrv::echo, String);
+        YomkInstallFunc("/echo", FmtSrv::echo, String, "echo demo description");
         return 0;
     }
 
@@ -277,6 +279,18 @@ int main()
         auto nullPkg = YOMK_REQUEST("/YomkServerInfo/function", nullptr);
         CHECK(nullPkg.m_status == YomkResponse::eNo && nullPkg.m_msg.find("pkg is null") != std::string::npos,
               "null pkg 返回 eNo + pkg is null（解包宏守卫）");
+
+        // description 透出：四参安装的 /echo 命中时 m_msg 契约保持且说明挂入数据段；无说明的 /ping 数据段为空
+        auto hitDesc = YOMK_SERVER_INFO_FUNCTION("/FmtSrv/echo");
+        CHECK(hitDesc.m_status == YomkResponse::eOk && hitDesc.m_msg == "String",
+              "四参函数命中：m_msg 契约保持精确 msgName \"String\"");
+        CHECK(hitDesc.m_data != nullptr, "四参函数命中：说明挂入响应数据段");
+        if (hitDesc.m_data)
+        {
+            YomkUnPackPkgT(hitDesc.m_data, "String", Yomk(String), yDesc);
+            CHECK(yDesc && yDesc->d == "echo demo description", "数据段解包 String == \"echo demo description\"");
+        }
+        CHECK(hitPlain.m_data == nullptr, "两参函数（无说明）命中：数据段保持为空");
     }
 
     // ============ S4. /all ============

@@ -57,14 +57,15 @@ std::string YomkService::name()
     return m_p->name();
 }
 
-void YomkService::installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName)
+void YomkService::installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName,
+                              const std::string& description)
 {
     if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
         return;
     }
-    m_p->installFunc(funcName, func, msgName);
+    m_p->installFunc(funcName, func, msgName, description);
 }
 
 std::map<std::string, YomkFuncInfo> YomkService::funcInfos()

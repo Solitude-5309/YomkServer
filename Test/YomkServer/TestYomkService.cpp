@@ -6,7 +6,8 @@
  * 1. 命名：注册前设置/读取、空名拒绝、YOMK_ADD_SERVICE 两参形式注册前改名
  * 2. 注册锁定：addService 成功后改名被拒（名字与注册键一致承诺）
  * 3. installFunc：合法名、非法名（空串/无 / 开头）拒绝、空函数拒绝、
- *    三参元数据（m_msgName）、两参覆盖清除残留元数据、三参覆盖恢复
+ *    三参元数据（m_msgName）、四参函数说明（m_description）、
+ *    两参覆盖清除残留信息、三参/四参覆盖恢复
  * 4. funcInfos 内省
  * 5. invoke：命中（自身响应 + pkg 透传回显）、非法名/未安装返回 eNo 契约消息
  * 6. 空服务器守卫：server==nullptr 构造后全部 !m_p 分支
@@ -37,9 +38,9 @@ static int g_failed = 0;
         }                                                                         \
     } while (0)
 
-// 内省辅助：在 funcInfos 中查找 funcName，命中可选返回其 m_msgName
-static bool findFuncInfo(
-    const std::map<std::string, YomkFuncInfo>& infos, const std::string& funcName, std::string* msgName = nullptr)
+// 内省辅助：在 funcInfos 中查找 funcName，命中可选返回其 m_msgName 与 m_description
+static bool findFuncInfo(const std::map<std::string, YomkFuncInfo>& infos, const std::string& funcName,
+                         std::string* msgName = nullptr, std::string* description = nullptr)
 {
     auto iter = infos.find(funcName);
     if (iter == infos.end())
@@ -49,6 +50,10 @@ static bool findFuncInfo(
     if (msgName)
     {
         *msgName = iter->second.m_msgName;
+    }
+    if (description)
+    {
+        *description = iter->second.m_description;
     }
     return true;
 }
@@ -66,8 +71,11 @@ public:
     {
         YomkInstallFunc("/echo", DemoService::echo, String);            // 三参：内省元数据 String
         YomkInstallFunc("/plain", DemoService::plain);                  // 两参：无元数据
+        // 四参注册：含函数说明；三参注册：说明缺省为空
+        YomkInstallFunc("/desc", DemoService::reinstall, String, "demo description");  // 四参：含函数说明
+        YomkInstallFunc("/desc0", DemoService::plain, String);          // 三参：说明缺省为空
         YomkInstallFunc("/reinstall", DemoService::reinstall, String);  // 先三参
-        YomkInstallFunc("/reinstall", DemoService::reinstall);          // 两参覆盖：清残留元数据
+        YomkInstallFunc("/reinstall", DemoService::reinstall);          // 两参覆盖：清残留信息
         YomkInstallFunc("/restore", DemoService::restore);              // 先两参
         YomkInstallFunc("/restore", DemoService::restore, String);      // 三参覆盖：恢复元数据
         return 0;
@@ -133,7 +141,7 @@ static void testAddServiceWithName()
     CHECK(renamed->name() == "/RenamedDemo", "注册前经两参形式改名生效");
 }
 
-// 4. installFunc：正常/非法名/空函数 + 三参元数据 + 覆盖安装元数据清除/恢复
+// 4. installFunc：正常/非法名/空函数 + 三参元数据/四参说明 + 覆盖安装信息清除/恢复
 static void testInstallFunc(DemoService* demo)
 {
     // 正常路径：运行时追加安装合法名
@@ -157,8 +165,30 @@ static void testInstallFunc(DemoService* demo)
     // 三参元数据与覆盖安装
     CHECK(findFuncInfo(infos, "/echo", &msgName) && msgName == "String", "三参安装声明元数据 m_msgName == String");
     CHECK(findFuncInfo(infos, "/plain", &msgName) && msgName.empty(), "两参安装无元数据");
-    CHECK(findFuncInfo(infos, "/reinstall", &msgName) && msgName.empty(), "两参覆盖安装清除残留元数据");
+    CHECK(findFuncInfo(infos, "/reinstall", &msgName) && msgName.empty(), "两参覆盖安装清除残留信息");
     CHECK(findFuncInfo(infos, "/restore", &msgName) && msgName == "String", "三参覆盖安装恢复元数据");
+
+    // 四参函数说明：/desc 声明说明，/desc0 说明缺省为空
+    std::string description;
+    CHECK(
+        findFuncInfo(infos, "/desc", &msgName, &description) && msgName == "String"
+            && description == "demo description",
+        "四参安装声明 m_msgName == String 与 m_description == demo description");
+    CHECK(findFuncInfo(infos, "/desc0", &msgName, &description) && msgName == "String" && description.empty(),
+          "三参安装说明缺省 m_description 为空");
+
+    // 覆盖语义：四参注册后接两参覆盖 → 类型名与说明均清除；再四参恢复
+    demo->installFunc("/desc", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::eOk, "manual"}; });
+    infos = demo->funcInfos();
+    CHECK(findFuncInfo(infos, "/desc", &msgName, &description) && msgName.empty() && description.empty(),
+          "两参覆盖四参注册清除类型名与说明");
+    demo->installFunc("/desc", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::eOk, "manual"}; }, "String",
+                      "demo description");
+    infos = demo->funcInfos();
+    CHECK(
+        findFuncInfo(infos, "/desc", &msgName, &description) && msgName == "String"
+            && description == "demo description",
+        "四参覆盖恢复类型名与说明");
 }
 
 // 5. invoke：命中（含 pkg 透传）与异常路径契约

@@ -61,6 +61,7 @@ YomkUnPackPkgT(pkg, MsgName, ClassName, ptr) // MsgName为运行时字符串
 ```cpp
 YomkInstallFunc(FuncName, Func)             // 弱绑定成员函数并装入本服务 funcMap
 YomkInstallFunc(FuncName, Func, MsgName)    // 同上，额外声明期望消息类型（可选末位参数）
+YomkInstallFunc(FuncName, Func, MsgName, Description)  // 同上，追加函数说明（自由字符串，框架透传不解析）
 // MsgName 字符串化后仅作内省元数据，不参与运行时校验；两参旧调用零改动
 YomkBindWeakSelf(Func)           // 弱绑定成员函数（不装入 funcMap），供注册到外部子系统使用
 // 两者均展开为 weakFunc(bind(&Func, this, _1))：回调触发时先 weak_ptr.lock() 判活，
@@ -71,8 +72,9 @@ YomkBindWeakSelf(Func)           // 弱绑定成员函数（不装入 funcMap）
 // （ECheckStatus(const Context&)，删除后默认放行 eAccept）、Context monitor（void，丢弃）。
 
 struct YomkFuncInfo {  // 功能函数元信息（调试内省用），预留扩展（如安全性校验）
-    std::string m_funcName;  // 功能函数名（/开头）
-    std::string m_msgName;   // 期望消息类型名（YomkInstallFunc 三参声明，可为空）
+    std::string m_funcName;     // 功能函数名（/开头）
+    std::string m_msgName;      // 期望消息类型名（YomkInstallFunc 三参声明，可为空）
+    std::string m_description;  // 函数说明（YomkInstallFunc 四参声明，内容使用者自定义，可为空）
 };
 ```
 

@@ -694,12 +694,13 @@ void MyService::deinit() {
 
 ## 示例5：服务内省（调试）
 
-内省类型元数据由 `YomkInstallFunc` 三参形式声明（不参与运行时校验，两参旧写法零改动）：
+内省类型元数据由 `YomkInstallFunc` 三参形式声明、函数说明由四参形式声明（不参与运行时校验，两参旧写法零改动）：
 
 ```cpp
 int DemoService::init()
 {
     YomkInstallFunc("/with_type", DemoService::withType, String);  // 内省可见类型 String
+    YomkInstallFunc("/with_desc", DemoService::withType, String, "对函数的说明");  // 四参：内省可见类型 + 说明
     YomkInstallFunc("/no_type", DemoService::noType);              // 旧写法兼容，内省无类型
     return 0;
 }
@@ -710,11 +711,12 @@ YomkUnPackPkg(resp.m_data, StringArray, arr);  // arr->d: ["/DemoService", "/Yom
 
 // 指定服务的函数列表（每行 "funcName [msgName]"）
 resp = YOMK_SERVER_INFO_FUNCTIONS("/DemoService");
-// arr->d: ["/no_type", "/with_type [String]"]
+// arr->d: ["/no_type", "/with_desc [String]", "/with_type [String]"]
 
 // 单函数类型查询（service type）
 resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_type");  // eOk, msg = "String"
-resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/no_type");    // eOk, msg 为空串（未声明）
+resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_desc");  // eOk, msg = "String"，data = "对函数的说明"（四参说明挂数据段）
+resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/no_type");    // eOk, msg 为空串（未声明），data 缺省
 resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/not_exist");  // eNo
 
 // 全量 dump：服务名行 + 缩进的 "srvName + funcName [msgName]" 行

@@ -190,11 +190,12 @@ YOMK_SHUTDOWN();
 
 ### 服务内省（调试）
 
-框架内置 `/YomkServerInfo` 服务（随 `YOMK_INIT` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时用三参宏声明期望消息类型（仅作内省元数据，不参与运行时校验；两参旧写法零改动）：
+框架内置 `/YomkServerInfo` 服务（随 `YOMK_INIT` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时用三参宏声明期望消息类型、四参宏追加函数说明（仅作内省元数据，不参与运行时校验；两参旧写法零改动）：
 
 ```cpp
 int XxxService::init() {
     YomkInstallFunc("/my_func", XxxService::myFunc, MyData);  // 内省可见类型 MyData
+    YomkInstallFunc("/my_desc", XxxService::myFunc, MyData, "对函数的说明");  // 四参：内省可见类型 + 说明（内容自定义）
     return 0;
 }
 
@@ -202,7 +203,7 @@ int XxxService::init() {
 YomkResponse resp = YOMK_SERVER_INFO_SERVICES();
 // 指定服务的函数列表（每行 "funcName [msgName]"）
 resp = YOMK_SERVER_INFO_FUNCTIONS("/XxxService");
-// 单函数类型查询（命中返回 msg 为类型名）
+// 单函数类型查询（命中返回 msg 为类型名，data 段为四参声明的说明，无说明缺省）
 resp = YOMK_SERVER_INFO_FUNCTION("/XxxService/my_func");
 // 全量 dump（服务名行 + 缩进函数行）
 resp = YOMK_SERVER_INFO_ALL();

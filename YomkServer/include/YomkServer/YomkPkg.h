@@ -10,13 +10,15 @@
 // 弱绑定服务成员函数，用于安全挂接外部回调
 #define YomkBindWeakSelf(Func) weakFunc(std::bind(&Func, this, std::placeholders::_1))
 
-// 注册服务成员功能函数（支持可选 MsgName 参数声明期望消息类型）
-#define YOMK_INSTALL_FUNC_SELECT(_1, _2, _3, NAME, ...) NAME
-#define YomkInstallFunc(...)                                                        \
-    YOMK_INSTALL_FUNC_SELECT(__VA_ARGS__, YOMK_INSTALL_FUNC_3, YOMK_INSTALL_FUNC_2) \
+// 注册服务成员功能函数（3 参声明期望消息类型；4 参追加函数说明，内容使用者自定义）
+#define YOMK_INSTALL_FUNC_SELECT(_1, _2, _3, _4, NAME, ...) NAME
+#define YomkInstallFunc(...)                                                                                      \
+    YOMK_INSTALL_FUNC_SELECT(__VA_ARGS__, YOMK_INSTALL_FUNC_4, YOMK_INSTALL_FUNC_3, YOMK_INSTALL_FUNC_2) \
     (__VA_ARGS__)
 #define YOMK_INSTALL_FUNC_2(FuncName, Func) installFunc(FuncName, YomkBindWeakSelf(Func))
 #define YOMK_INSTALL_FUNC_3(FuncName, Func, MsgName) installFunc(FuncName, YomkBindWeakSelf(Func), #MsgName)
+#define YOMK_INSTALL_FUNC_4(FuncName, Func, MsgName, Description) \
+    installFunc(FuncName, YomkBindWeakSelf(Func), #MsgName, Description)
 
 // 校验消息类型并解包，类型不匹配时直接返回 YomkResponse::eNo
 #define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                             \
@@ -126,8 +128,9 @@ typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 // 功能函数元信息（调试内省用）
 struct YomkFuncInfo
 {
-    std::string m_funcName;  // 功能函数名（/开头）
-    std::string m_msgName;   // 期望消息类型名（三参宏声明，可为空）
+    std::string m_funcName;    // 功能函数名（/开头）
+    std::string m_msgName;     // 期望消息类型名（三参宏声明，可为空）
+    std::string m_description; // 函数说明（四参宏声明，内容使用者自定义，可为空）
 };
 
 namespace yomk

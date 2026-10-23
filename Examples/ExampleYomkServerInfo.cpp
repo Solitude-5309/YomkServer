@@ -13,8 +13,8 @@
  * 步骤总览：
  * 0. 框架就绪（5 个内置服务随 YOMK_INIT 启动，/YomkServerInfo 即其中之一）
  * 1. 注册演示服务（NEW_SERVICE 后清单多一项；REQUEST 证明注册即可调用）
- * 2. 函数清单（INFO_FUNCTIONS：2 参 vs 3 参注册的元数据差异 / 空清单分支）
- * 3. 单查元信息（INFO_FUNCTION 命中契约：m_msg=期望消息类型名；4 个 eNo 分支）
+ * 2. 函数清单（INFO_FUNCTIONS：2 参 vs 4 参注册的元数据差异 / 空清单分支）
+ * 3. 单查元信息（INFO_FUNCTION 命中契约：m_msg=期望消息类型名、data 段=函数说明；4 个 eNo 分支）
  * 4. 全量拓扑（INFO_ALL：服务行 + 缩进函数行）
  * 5. 运行期实时视图（DEL_SERVICE 后清单与拓扑立即变化）
  * 6. 优雅关闭（SHUTDOWN 后自省返回 eInvalid，框架已关闭是普通返回值）
@@ -28,7 +28,7 @@
  *   YOMK_SERVER_INFO_FUNCTIONS("/服务名")       自省：指定服务的功能函数清单
  *   YOMK_SERVER_INFO_FUNCTION("/服务名/函数名") 自省：单个功能函数元信息
  *   YOMK_SERVER_INFO_ALL()                      自省：框架全量服务拓扑
- *   YomkInstallFunc(2/3 参)                     服务侧注册（3 参声明期望消息类型）
+ *   YomkInstallFunc(2/3/4 参)                   服务侧注册（3 参声明期望消息类型，4 参附函数说明）
  *
  * 注：日志/上下文/事件循环/函数池各内置模块另有模块级自省 API
  * （YOMK_LOGGER_INFO_* 等），见 Docs/YomkServerInfo.md"说明"一节。
@@ -41,8 +41,8 @@
 #include "YomkAPI.h"
 
 // ---------------------------------------------------------------------------
-// 自省素材：一个最小演示服务。2 参注册的 /hi 无元数据，3 参注册的 /sum
-// 声明期望消息类型 SumReq——两者差异将由步骤2/3 的自省结果直接呈现。
+// 自省素材：一个最小演示服务。2 参注册的 /hi 无元数据，4 参注册的 /sum
+// 声明期望消息类型 SumReq 并附函数说明——差异将由步骤2/3 的自省结果直接呈现。
 // ---------------------------------------------------------------------------
 
 // 加法请求：此处仅作 /sum 的期望消息类型元数据，供自省识别
@@ -64,10 +64,10 @@ public:
 
     int init() override
     {
-        // 2 参注册：无消息元数据；3 参注册：声明 /sum 期望 SumReq，供自省识别
+        // 2 参注册：无元数据；4 参注册：声明 /sum 期望 SumReq 并附函数说明，供自省识别
         YomkInstallFunc("/hi", InfoDemoService::hi);
-        YomkInstallFunc("/sum", InfoDemoService::sum, SumReq);
-        YOMK_INFO_TAG("svc.info", "init: install /hi (no meta), /sum [SumReq]");
+        YomkInstallFunc("/sum", InfoDemoService::sum, SumReq, "计算两整数之和");
+        YOMK_INFO_TAG("svc.info", "init: install /hi (no meta), /sum [SumReq] + description");
         return 0;
     }
 
@@ -170,11 +170,11 @@ int main(int argc, char* argv[])
     /**
      * 步骤2：函数清单
      *
-     * INFO_FUNCTIONS 列出指定服务的全部功能函数：3 参注册的 /sum 带
+     * INFO_FUNCTIONS 列出指定服务的全部功能函数：4 参注册的 /sum 带
      * [SumReq] 元数据，2 参注册的 /hi 没有；查不存在的服务返回空清单。
      */
     printStep(
-        2, "函数清单", "INFO_FUNCTIONS 看函数清单：/sum [SumReq] 带 3 参注册元数据，/hi 无；查不存在的服务返回空清单。");
+        2, "函数清单", "INFO_FUNCTIONS 看函数清单：/sum [SumReq] 带 4 参注册元数据，/hi 无；查不存在的服务返回空清单。");
     dumpLines("INFO_FUNCTIONS(/InfoDemoService)", YOMK_SERVER_INFO_FUNCTIONS("/InfoDemoService"));
     std::cout << ">> [SumReq] 即期望消息类型元数据，由 YomkInstallFunc 第三参声明" << std::endl;
     dumpLines("INFO_FUNCTIONS(/GhostService)", YOMK_SERVER_INFO_FUNCTIONS("/GhostService"));
@@ -184,15 +184,17 @@ int main(int argc, char* argv[])
      * 步骤3：单查元信息
      *
      * INFO_FUNCTION 按 URL 单查：命中时 m_msg 精确返回期望消息类型名
-     * （无元数据为空串）；4 种坏 URL 均返回 eNo，是普通返回值不崩溃。
+     * （无元数据为空串），data 段携带注册时声明的函数说明（无说明缺省）；
+     * 4 种坏 URL 均返回 eNo，是普通返回值不崩溃。
      */
     printStep(
         3,
         "单查元信息",
-        "INFO_FUNCTION 命中时 m_msg=期望消息类型名（/sum 为 SumReq，/hi 为空串）；4 种坏 URL 均为 eNo=1。");
+        "INFO_FUNCTION 命中时 m_msg=期望消息类型名（/sum 为 SumReq，/hi 为空串），"
+        "data 段=注册声明的函数说明；4 种坏 URL 均为 eNo=1.");
     printResp("INFO_FUNCTION(/sum)", YOMK_SERVER_INFO_FUNCTION("/InfoDemoService/sum"));
     printResp("INFO_FUNCTION(/hi)", YOMK_SERVER_INFO_FUNCTION("/InfoDemoService/hi"));
-    std::cout << ">> 命中契约：m_msg 即该函数期望的消息类型名，空串表示未声明" << std::endl;
+    std::cout << ">> 命中契约：m_msg 即期望的消息类型名，data 段为 YomkInstallFunc 第四参声明的函数说明" << std::endl;
     printResp("INFO_FUNCTION(url不以/开头)", YOMK_SERVER_INFO_FUNCTION("InfoDemoService/sum"));
     printResp("INFO_FUNCTION(缺函数名)", YOMK_SERVER_INFO_FUNCTION("/InfoDemoService"));
     printResp("INFO_FUNCTION(服务不存在)", YOMK_SERVER_INFO_FUNCTION("/GhostService/hi"));

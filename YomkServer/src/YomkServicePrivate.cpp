@@ -15,7 +15,8 @@ void YomkServicePrivate::name(const std::string& name)
     m_name = name;
 }
 
-void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName)
+void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName,
+                                     const std::string& description)
 {
     if (funcName.empty() || funcName[0] != '/')
     {
@@ -37,14 +38,18 @@ void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFun
     }
 
     m_funcMap[funcName] = func;
-    if (!msgName.empty())
+    if (!msgName.empty() || !description.empty())
     {
-        m_funcMsgMap[funcName] = msgName;
+        YomkFuncInfo info;
+        info.m_funcName = funcName;
+        info.m_msgName = msgName;
+        info.m_description = description;
+        m_funcInfoMap[funcName] = info;
     }
     else
     {
-        // 两参覆盖安装时清除残留的旧类型元数据，保持内省与注册一致
-        m_funcMsgMap.erase(funcName);
+        // 两参覆盖安装时清除残留的函数信息，保持内省与注册一致
+        m_funcInfoMap.erase(funcName);
     }
 }
 
@@ -56,10 +61,11 @@ std::map<std::string, YomkFuncInfo> YomkServicePrivate::funcInfos()
     {
         YomkFuncInfo info;
         info.m_funcName = iter.first;
-        auto itMsg = m_funcMsgMap.find(iter.first);
-        if (itMsg != m_funcMsgMap.end())
+        auto itInfo = m_funcInfoMap.find(iter.first);
+        if (itInfo != m_funcInfoMap.end())
         {
-            info.m_msgName = itMsg->second;
+            info.m_msgName = itInfo->second.m_msgName;
+            info.m_description = itInfo->second.m_description;
         }
         infos.emplace(iter.first, info);
     }
