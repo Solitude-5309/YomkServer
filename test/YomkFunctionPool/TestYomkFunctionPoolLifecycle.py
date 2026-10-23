@@ -1,13 +1,13 @@
 """
 TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 基线测试
 
-（8 节 52 断言，零剔除）：
+（8 节 53 断言，零剔除）：
 1. CRUD 闭环：REGISTER echo 函数 → CALL 回传消息 → UNREGISTER → CALL eNo
 2. 注册边界：空函数名 / None func 均 eInvalid；重复注册为"更新"语义（CALL 走新实现，msg 含 update）
 3. 注销边界：空名 eInvalid / 未注册名 eNo
 4. 调用边界：空名 eInvalid / 未注册 eNo / pkg=None 原样透传给函数（探针计数）
 5. 内省：info_names 存活列表包含注册名（空表陷阱教训）/ info_name 命中返回结构化 FuncInfo 包
-   （msg 恒 ok）与未注册 eNo、空名 eInvalid / info_all "functions:N" 首行相对计数与行格式
+   （msg 恒 ok）与未注册 eNo、空名 eInvalid / info_all 结构化 FuncInfoList 相对计数与字段断言
 6. 注册 2 参/3 参/4 参分发映射：无类型（字段空）vs 声明类型（msg_name 字段）vs
    附函数说明（description 字段）；2 参同名热替换清除类型与说明
 7. 异常契约：CALL 链（request→invoke→callFunction→用户函数）无 try/catch，
@@ -18,7 +18,8 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
 - Function 三形态：Function(name, func) 无类型 / Function(name, func, "String") 声明类型 /
   Function(name, func, "String", "说明") 附函数说明（经门面 function_pool_register 的
   msg_name 与 description 形参承载）
-- 内省清单端点（info_names/info_all）data 为 list[str]；info_name 命中 data 为 FuncInfo 结构化包
+- 内省清单端点 info_names data 为 list[str]；info_name 与 info_all 命中均为 FuncInfo
+  结构化（info_all 为 FuncInfo 列表，总数由列表长度承载）
 - poolCount 的 SIZE_MAX 哨兵值以 None 承载
 - 探针计数用 list.append（GIL 原子，T 轮既有模式）
 - 全部经门面 API 测试，同时覆盖 invoke 路由链，无覆盖损失
@@ -91,17 +92,11 @@ def alive_func(pkg):
 
 
 def pool_count():
-    # 从 info_all 首行 "functions:N" 解析当前函数总数；失败返回 None（SIZE_MAX 映射）
+    # 从 info_all 结构化列表取当前函数总数（列表长度承载）；失败返回 None（SIZE_MAX 哨兵映射）
     r = function_pool_info_all()
-    if r.status != ResStatus.eOk or not r.data:
+    if r.status != ResStatus.eOk or not isinstance(r.data, list):
         return None
-    first = r.data[0]
-    if not first.startswith("functions:"):
-        return None
-    try:
-        return int(first[len("functions:"):])
-    except ValueError:
-        return None
+    return len(r.data)
 
 
 server = init(1)
@@ -182,16 +177,18 @@ check(r.status == ResStatus.eNo, "INFO_NAME 未注册名返回 eNo（与 unregis
 r = function_pool_info_name("")
 check(r.status == ResStatus.eInvalid, "INFO_NAME 空函数名返回 eInvalid")
 
-# info_all：首行 functions:N 相对计数（新注册一个 → 计数 +1）与行格式
+# info_all：结构化 FuncInfoList 相对计数（新注册一个 → 长度 +1）与字段断言
 before = pool_count()
-check(before is not None, "INFO_ALL 首行 functions:N 可解析")
+check(before is not None, "INFO_ALL FuncInfoList 可解包")
 r = function_pool_register("fp_count_probe", alive_func)
 check(r.status == ResStatus.eOk, "REGISTER 计数探针函数")
 after = pool_count()
 check(after == before + 1, "INFO_ALL 计数随注册 +1（共享池相对计数）")
 r = function_pool_info_all()
-check(isinstance(r.data, list) and "fp_plain" in r.data,
-      "INFO_ALL 列表行包含 fp_plain（纯名格式）")
+check(r.msg == "ok", "INFO_ALL 成功消息恒为 ok")
+all_found = any(isinstance(i, FuncInfo) and i.func_name == "fp_plain"
+                and i.msg_name == "" and i.description == "" for i in r.data)
+check(all_found, "INFO_ALL 列表包含 fp_plain（msg_name/description 均空）")
 r = function_pool_unregister("fp_count_probe")
 check(r.status == ResStatus.eOk, "清理 fp_count_probe")
 

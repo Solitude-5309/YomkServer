@@ -462,7 +462,7 @@ def function_pool_info_name(name: str) -> YomkResponse:
 
 
 def function_pool_info_all() -> YomkResponse:
-    # 查询全部已注册函数元信息
+    # 查询全部已注册函数元信息（结构化列表，命中 msg 恒 "ok"，data 为 FuncInfo 列表，总数由列表长度承载）
     return _api_request("/YomkFunctionPool/all", None)
 
 

@@ -1,17 +1,16 @@
 """
-TestYomkFunctionPoolConcurrency.py —— YomkFunctionPool 并发正确性验证（5 节 27 断言）
+TestYomkFunctionPoolConcurrency.py —— YomkFunctionPool 并发正确性验证（5 节 26 断言）
 
 节结构逐节对齐同名 C++ 测试（S1 并发 CALL 守恒 + 嵌套重入 / S2 REGISTER 更新 x CALL
-写读交错 / S3 UNREGISTER x CALL 锁外安全性 / S4 内省 x 变更快照一致性 / S5 全量 churn
+写读交错 / S3 UNREGISTER x CALL 锁外安全性 / S4 内省 x 变更（INFO_ALL 结构化快照持续可解包）/ S5 全量 churn
 混合守恒），零剔除。
 
 语言映射：
 - YOMK_FUNCTIONPOOL_* 宏 → 门面 function_pool_* 六 API（覆盖 invoke 路由链）
 - std::atomic 计数 → list.append（GIL 原子，len() 读数）
 - 自旋门/停止标志 → threading.Event（S3 started/release gate、S2 stop）
-- SnapshotRecord + std::mutex → list.append((declaredN, actualLines)) 元组
+- SnapshotRecord + std::mutex → list.append(条目数)
   （GIL 下 append 原子，免锁）
-- YomkUnPackPkg(StringArray) → r.data list；parseFunctionsN → startswith + int 切片
 - 装置全部走门面 API（对齐宏形态，覆盖 invoke 路由链）
 """
 
@@ -276,7 +275,7 @@ def main():
     k_introspect_threads = 2
     k_introspect_rounds = 30
 
-    snapshots = []  # (declaredN, actualLines)；GIL 下 append 原子免锁
+    snapshots = []  # 快照条目数；GIL 下 append 原子免锁
 
     def churn_worker(t):
         # churn 线程：并发 REGISTER/UNREGISTER 唯一名
@@ -289,19 +288,11 @@ def main():
             function_pool_unregister(name)
 
     def introspect_worker():
-        # 内省线程：轮询 INFO_ALL 并记录快照
+        # 内省线程：轮询 INFO_ALL 并记录快照（解包 FuncInfoList 取列表长度）
         for _ in range(k_introspect_rounds):
             resp = function_pool_info_all()
-            if resp.status == ResStatus.eOk and resp.data:
-                first = resp.data[0]
-                if first.startswith("functions:"):
-                    # 首行 "functions:N"，其余每行一个函数条目
-                    try:
-                        declared_n = int(first[len("functions:"):])
-                    except ValueError:
-                        declared_n = -1
-                    actual_lines = len(resp.data) - 1
-                    snapshots.append((declared_n, actual_lines))
+            if resp.status == ResStatus.eOk and isinstance(resp.data, list):
+                snapshots.append(len(resp.data))
             time.sleep(0.0002)
 
     threads = [threading.Thread(target=churn_worker, args=(t,))
@@ -313,14 +304,11 @@ def main():
     for t in threads:
         t.join()
 
-    # 验证快照一致性
+    # 验证快照收集
     snapshot_count = len(snapshots)
-    inconsistent = sum(1 for n, lines in snapshots if n != lines)
 
     check(snapshot_count > 0,
           f"S4: 收集到 {snapshot_count} 个 INFO_ALL 快照")
-    check(inconsistent == 0,
-          f"S4: 全部快照一致（functions:N == 列表行数）——单次读锁内快照原子性（不一致 {inconsistent} 个）")
 
     # 清理（churn 线程已自行注销，但确认池干净）
     for t in range(k_churn_threads):

@@ -6,6 +6,8 @@ YomkFunctionPool 统一函数注册与调度中心：
 - 注册：function_pool_register(name, func)，面向过程开发范式，业务逻辑快速迭代；
   三参声明期望消息类型、四参附函数说明（均仅内省元数据）
 - 调用：function_pool_call(name, pkg)
+- 内省：function_pool_info_names / info_name / info_all（info_name 单查与 info_all 全量
+  均为结构化 FuncInfo：msg 恒 "ok"，数据走 data）
 - 热替换：重复注册同名函数即覆盖，下一次调用执行新实现（运行时更新，无需重启）
 """
 
@@ -49,7 +51,7 @@ def main():
     print(f"[thread {tid}] call func: {res.msg}")
 
     print_step(3, "带类型与函数说明的注册",
-               "三参声明期望消息类型、四参附函数说明（均仅内省元数据，调用不做类型校验）；info_name 单查返回结构化 FuncInfo（类型与说明在 data 字段）")
+               "三参声明期望消息类型、四参附函数说明（均仅内省元数据，调用不做类型校验）；info_name 单查返回结构化 FuncInfo（类型与说明在 data 字段）；info_all 全量返回结构化 FuncInfo 列表")
     res = YomkApi.function_pool_register("greet", greet, "String", "向指定的人问好")
     print(f"[thread {tid}] register greet: {res.msg}")
     res = YomkApi.function_pool_info_name("greet")
@@ -57,6 +59,11 @@ def main():
     print(f"[thread {tid}] info greet: msg={res.msg}"
           + (f", func_name={fi.func_name}, msg_name={fi.msg_name}, description={fi.description}"
              if fi is not None else ""))
+    res = YomkApi.function_pool_info_all()
+    print(f"[thread {tid}] info_all: msg={res.msg}, {len(res.data)} 个函数元信息")
+    for fi in res.data:
+        print(f"  func_name={fi.func_name}, msg_name={fi.msg_name}, "
+              f"description={fi.description}")
     res = YomkApi.function_pool_call("greet", "yomk")
     print(f"[thread {tid}] call greet: {res.msg}")
 

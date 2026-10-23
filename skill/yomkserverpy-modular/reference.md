@@ -147,7 +147,7 @@ class EventLoopPkg:
 | `YomkApi.function_pool_call(name, pkg)` | 调用函数 |
 | `YomkApi.function_pool_info_names()` | 枚举全部函数名 |
 | `YomkApi.function_pool_info_name(name)` | 单函数元信息结构化查询（命中 msg 恒 "ok"，data 为 FuncInfo 包：func_name/msg_name/description；未注册返回 eNo） |
-| `YomkApi.function_pool_info_all()` | 查询全部函数信息 |
+| `YomkApi.function_pool_info_all()` | 全量函数元信息结构化列表（命中 msg 恒 `"ok"`，data 为 `FuncInfo` 列表，元素字段与单查一致，总数由列表长度承载） |
 
 ### ServerInfo
 | API | 说明 |

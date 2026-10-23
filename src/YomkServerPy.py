@@ -588,7 +588,8 @@ class Monitor:
 
 
 class FuncInfo:
-    # 功能函数元信息（调试内省用），预留扩展（如安全性校验）
+    # 功能函数元信息（/YomkFunctionPool/name 与 /YomkFunctionPool/all 返回数据），
+    # 预留扩展（如安全性校验）
     def __init__(self, func_name="", msg_name="", description=""):
         self.func_name = func_name
         self.msg_name = msg_name
@@ -971,14 +972,12 @@ class YomkFunctionPool(YomkService):
         return YomkResponse(ResStatus.eOk, "ok", info)
 
     def listAll(self, pkg):
-        # 内省：全量 dump，首行 functions:N，其余每行 "funcName [类型名]"
-        # （未声明类型时无括号后缀；读锁内组行保快照原子性）
+        # 内省：全量函数元信息，读锁内构造结构化快照列表
+        # （msg 恒 "ok"，数据走 data；函数总数由列表长度承载）
         with self.m_functionsMutex.gen_rlock():
-            lines = [f"functions:{len(self.m_functions)}"]
-            for name in sorted(self.m_functions):
-                msg_name = self.m_functions[name].msg_name
-                lines.append(name + (f" [{msg_name}]" if msg_name else ""))
-        return YomkResponse(ResStatus.eOk, "ok", lines)
+            infos = [FuncInfo(name, entry.msg_name, entry.description)
+                     for name, entry in sorted(self.m_functions.items())]
+        return YomkResponse(ResStatus.eOk, "ok", infos)
 
 
 class EventLoop:
