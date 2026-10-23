@@ -84,6 +84,27 @@ static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 static void dumpInfo(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
+    YomkUnPackPkg(resp.m_data, EventLoopInfo, info);
+    if (info)
+    {
+        std::cout << ">> | loop=" << info->d.m_loopName << " running=" << (info->d.m_running ? "on" : "off")
+                  << " pending=" << info->d.m_pending << " defaultFunc=" << (info->d.m_hasDefaultFunc ? "on" : "off");
+        if (!info->d.m_msgName.empty())
+        {
+            std::cout << " msgName=" << info->d.m_msgName;
+        }
+        std::cout << " nextTags=[";
+        for (size_t i = 0; i < info->d.m_nextTags.size(); ++i)
+        {
+            if (i > 0)
+            {
+                std::cout << ", ";
+            }
+            std::cout << (info->d.m_nextTags[i].empty() ? "-" : info->d.m_nextTags[i]);
+        }
+        std::cout << "]" << std::endl;
+        return;
+    }
     std::cout << ">> | " << resp.m_msg << std::endl;
 }
 
@@ -165,7 +186,7 @@ int main(int argc, char* argv[])
             YOMK_EVENTLOOP_POST(
                 "workLoop", YomkMkPtr(String, "task" + std::to_string(i)), nullptr, "task" + std::to_string(i)));
     }
-    std::cout << ">> 立即内省：正在执行的事件不计入 pending，队首列出的是待处理任务的 tag" << std::endl;
+    std::cout << ">> 立即内省：正在执行的事件不计入 pending，nextTags 列出的是待处理任务的 tag" << std::endl;
     dumpInfo("INFO_LOOP(workLoop,5)", YOMK_EVENTLOOP_INFO_LOOP("workLoop", 5));
     std::cout << ">> 等待队列排空，观察 loop.work 日志的消费顺序：task2..task5 之后才是 followup1..3（FIFO）"
               << std::endl;
@@ -210,7 +231,7 @@ int main(int argc, char* argv[])
     printResp("POST(hold2)", YOMK_EVENTLOOP_POST("workLoop", YomkMkPtr(String, "hold2"), nullptr, "hold2"));
     printResp("STOP(workLoop)", YOMK_EVENTLOOP_STOP("workLoop"));
     dumpInfo("INFO_LOOP(workLoop)", YOMK_EVENTLOOP_INFO_LOOP("workLoop"));
-    std::cout << ">> running:off 且积压事件仍在队列；此刻投递会被拒绝" << std::endl;
+    std::cout << ">> running=off 且 pending 仍为 2（积压事件保留在队列）；此刻投递会被拒绝" << std::endl;
     printResp("POST(已停止)", YOMK_EVENTLOOP_POST("workLoop", YomkMkPtr(String, "rejectedTask")));
     printResp("START(workLoop,续跑)", YOMK_EVENTLOOP_START("workLoop"));
     std::cout << ">> 等待保留事件被续跑消化" << std::endl;

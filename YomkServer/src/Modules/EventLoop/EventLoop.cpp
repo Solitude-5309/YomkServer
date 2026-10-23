@@ -177,44 +177,45 @@ void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc, const std::st
     m_defaultMsgName = msgName;
 }
 
+// 结构化内省快照：填充事件循环元信息（EVENTLOOP_INFO_LOOP 返回数据）
+// m_queueMutex 锁内取数；队列头起最多 tagCount 条事件 tag，存原值（空串保留，展示层 "-" 占位由 infoLine 处理）
+void EventLoop::infoSnapshot(yomk::EventLoopInfo& info, size_t tagCount)
+{
+    std::lock_guard<std::mutex> lock(m_queueMutex);
+    info.m_running = m_running.load();
+    info.m_pending = m_eventQueue.size();
+    info.m_hasDefaultFunc = static_cast<bool>(m_defaultServiceFunc);
+    info.m_msgName = m_defaultMsgName;
+    std::queue<YomkPtr(Event)> queueCopy = m_eventQueue;
+    while (!queueCopy.empty() && info.m_nextTags.size() < tagCount)
+    {
+        auto event = queueCopy.front();
+        queueCopy.pop();
+        info.m_nextTags.push_back(event ? event->d.m_tag : "");
+    }
+}
+
 // 内省元信息行：name running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(N): tag1, tag2, ...
 // 队首最多列出 tagCount 个事件 tag，队列不足则全部列出，空 tag 显示 - 占位；默认处理函数声明过类型时附加 [类型名]
 std::string EventLoop::infoLine(const std::string& loopName, size_t tagCount)
 {
-    bool running = false;
-    size_t pending = 0;
-    bool defaultFunc = false;
-    std::string defaultMsgName;
-    std::vector<std::string> tags;
-    {
-        std::lock_guard<std::mutex> lock(m_queueMutex);
-        running = m_running.load();
-        pending = m_eventQueue.size();
-        defaultFunc = static_cast<bool>(m_defaultServiceFunc);
-        defaultMsgName = m_defaultMsgName;
-        std::queue<YomkPtr(Event)> queueCopy = m_eventQueue;
-        while (!queueCopy.empty() && tags.size() < tagCount)
-        {
-            auto event = queueCopy.front();
-            queueCopy.pop();
-            tags.push_back(event && !event->d.m_tag.empty() ? event->d.m_tag : "-");
-        }
-    }
+    yomk::EventLoopInfo info;
+    infoSnapshot(info, tagCount);
 
     std::string tagList;
-    for (size_t i = 0; i < tags.size(); ++i)
+    for (size_t i = 0; i < info.m_nextTags.size(); ++i)
     {
         if (i > 0)
         {
             tagList += ", ";
         }
-        tagList += tags[i];
+        tagList += info.m_nextTags[i].empty() ? "-" : info.m_nextTags[i];
     }
 
-    return loopName + (running ? " running:on" : " running:off") + " pending:" + std::to_string(pending) +
-           (defaultFunc ? " defaultFunc:on" : " defaultFunc:off") +
-           (defaultFunc && !defaultMsgName.empty() ? " [" + defaultMsgName + "]" : "") + " nextNEventTag(" +
-           std::to_string(tagCount) + "): " + tagList;
+    return loopName + (info.m_running ? " running:on" : " running:off") + " pending:" +
+           std::to_string(info.m_pending) + (info.m_hasDefaultFunc ? " defaultFunc:on" : " defaultFunc:off") +
+           (info.m_hasDefaultFunc && !info.m_msgName.empty() ? " [" + info.m_msgName + "]" : "") +
+           " nextNEventTag(" + std::to_string(tagCount) + "): " + tagList;
 }
 
 void EventLoop::run()

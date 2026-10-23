@@ -465,22 +465,23 @@ int main()
 
         // 辅助线程 STOP：服务层 stop 内部 join 等待在途事件收尾
         std::thread stopper([] { YOMK_EVENTLOOP_STOP("api_loop"); });
-        auto lineOf = []()
+        auto infoOf = []()
         {
             auto r = YOMK_EVENTLOOP_INFO_LOOP("api_loop");
-            return r.m_status == YomkResponse::eOk ? r.m_msg : std::string();
+            YomkUnPackPkg(r.m_data, EventLoopInfo, info);
+            return info;
         };
         CHECK(
-            waitUntil([&lineOf] { return lineOf().find("running:off") != std::string::npos; }, 2000),
+            waitUntil([&infoOf] { auto info = infoOf(); return info && !info->d.m_running; }, 2000),
             "API 停止过程中 INFO_LOOP 观察到 running:off");
 
         openGate();
         stopper.join();
 
         CHECK(orderSnapshot().empty(), "API 停止后排队事件未执行");
-        std::string line = lineOf();
-        CHECK(line.find("running:off") != std::string::npos, "API 停止后 running:off");
-        CHECK(line.find("pending:2") != std::string::npos, "API 停止后 pending:2（未执行事件保留）");
+        auto infoStopped = infoOf();
+        CHECK(infoStopped && !infoStopped->d.m_running, "API 停止后 running:off");
+        CHECK(infoStopped && infoStopped->d.m_pending == 2, "API 停止后 pending:2（未执行事件保留）");
 
         // 停止态投递被拒（契约回归）：服务层映射 eNo，调用方可区分"已入队"与"被拒"
         CHECK(
@@ -491,13 +492,26 @@ int main()
             YOMK_EVENTLOOP_POST_WAIT("api_loop", YomkMkPtr(String, std::string("rx2")), countingHandler("rx2"), "rx2")
                     .m_status == YomkResponse::eNo,
             "停止态 POST_WAIT 返回 eNo（被拒且不等待）");
-        CHECK(lineOf().find("pending:2") != std::string::npos, "被拒投递未入队（pending 仍为 2）");
+        auto infoRejected = infoOf();
+        CHECK(infoRejected && infoRejected->d.m_pending == 2, "被拒投递未入队（pending 仍为 2）");
 
-        // 越界数字 tagCount（D3 回归）：stoul 越界不再崩溃，回退默认 3
+        // 越界数字 tagCount（D3 回归）：stoul 越界不再崩溃，回退默认 3；
+        // 冻结窗口队列 2 条（c1/c2），回退 tagCount=3 >= 2 截断不生效全部列出
         auto oob = YOMK_EVENTLOOP_INFO_LOOP("api_loop 99999999999999999999");
         CHECK(oob.m_status == YomkResponse::eOk, "越界数字 tagCount 返回 eOk（不崩溃）");
-        CHECK(oob.m_msg.find("nextNEventTag(3)") != std::string::npos, "越界数字 tagCount 回退默认 3");
-        CHECK(oob.m_msg.find("99999999999999999999") == std::string::npos, "越界数字串不出现在回显中");
+        CHECK(oob.m_msg == "ok", "越界数字 tagCount 命中 m_msg 恒为 ok");
+        YomkUnPackPkg(oob.m_data, EventLoopInfo, oobInfo);
+        CHECK(oobInfo != nullptr, "越界数字 tagCount 解包 EventLoopInfo 成功");
+        CHECK(oobInfo && oobInfo->d.m_pending == 2, "越界数字串不影响循环状态（pending 仍为 2）");
+        CHECK(oobInfo && oobInfo->d.m_nextTags.size() == 2, "越界数字 tagCount 回退默认 3（队列 2 条全部列出）");
+        CHECK(oobInfo && oobInfo->d.m_nextTags[0] == "c1" && oobInfo->d.m_nextTags[1] == "c2",
+              "越界数字 tagCount 快照 tag 原值一致（c1/c2）");
+
+        // tagCount 截断语义：N < 队列条数时截断队列头 N 条（冻结窗口队列 2 条）
+        auto trunc = YOMK_EVENTLOOP_INFO_LOOP("api_loop", 1);
+        YomkUnPackPkg(trunc.m_data, EventLoopInfo, truncInfo);
+        CHECK(truncInfo && truncInfo->d.m_nextTags.size() == 1 && truncInfo->d.m_nextTags[0] == "c1",
+              "tagCount=1 截断队列头 1 条 tag");
 
         // 重启续跑：服务层 START 命中已存在条目即重启，积压按 FIFO 续跑
         CHECK(YOMK_EVENTLOOP_START("api_loop", nullptr).m_status == YomkResponse::eOk, "再次 START 返回 eOk（重启）");
@@ -535,16 +549,10 @@ int main()
         CHECK(YOMK_EVENTLOOP_INFO_LOOP("no_such").m_status == YomkResponse::eNo, "INFO_LOOP 不存在循环返回 eNo");
 
         // INFO_LOOP 数字 tagCount 路径："name N" 字符串解析与类型化重载、大数值（合法范围）；
-        // 注：infoLine 字段为字面 nextNEventTag(数字)，N 为字母、括号内为实际 tagCount
-        CHECK(
-            YOMK_EVENTLOOP_INFO_LOOP("api_loop 5").m_msg.find("nextNEventTag(5)") != std::string::npos,
-            "字符串数字路径解析 tagCount=5");
-        CHECK(
-            YOMK_EVENTLOOP_INFO_LOOP("api_loop", 7).m_msg.find("nextNEventTag(7)") != std::string::npos,
-            "类型化重载解析 tagCount=7");
-        CHECK(
-            YOMK_EVENTLOOP_INFO_LOOP("api_loop 1000000").m_msg.find("nextNEventTag(1000000)") != std::string::npos,
-            "大数值 tagCount 正常解析（合法范围内）");
+        // 结构化返回：解析健壮性体现为 eOk 且 m_msg 恒 "ok"（该窗口队列已清空，截断语义已在冻结窗口验证）
+        CHECK(YOMK_EVENTLOOP_INFO_LOOP("api_loop 5").m_msg == "ok", "字符串数字路径解析 tagCount=5");
+        CHECK(YOMK_EVENTLOOP_INFO_LOOP("api_loop", 7).m_msg == "ok", "类型化重载解析 tagCount=7");
+        CHECK(YOMK_EVENTLOOP_INFO_LOOP("api_loop 1000000").m_msg == "ok", "大数值 tagCount 正常解析（合法范围内）");
 
         // INFO_LOOPS：api_loop 存活时列表包含其名（loops() 遍历路径；销毁后移除验证见段尾）
         auto loopsAliveResp = YOMK_EVENTLOOP_INFO_LOOPS();
@@ -592,12 +600,13 @@ int main()
         CHECK(YOMK_EVENTLOOP_INFO_LOOP("").m_status == YomkResponse::eOk, "INFO_LOOP 空循环名返回 eOk");
         CHECK(YOMK_EVENTLOOP_DESTROY("").m_status == YomkResponse::eOk, "DESTROY 空循环名返回 eOk");
 
-        // 超长循环名边界（65536 字符）：生命周期各接口 eOk 且 infoLine 完整回显
+        // 超长循环名边界（65536 字符）：生命周期各接口 eOk 且结构化返回完整回显
         std::string longName(65536, 'L');
         CHECK(YOMK_EVENTLOOP_START(longName, nullptr).m_status == YomkResponse::eOk, "START 超长循环名返回 eOk");
         auto longInfo = YOMK_EVENTLOOP_INFO_LOOP(longName);
         CHECK(longInfo.m_status == YomkResponse::eOk, "INFO_LOOP 超长循环名返回 eOk");
-        CHECK(longInfo.m_msg.find(longName) != std::string::npos, "INFO_LOOP 完整回显超长循环名");
+        YomkUnPackPkg(longInfo.m_data, EventLoopInfo, longLoopInfo);
+        CHECK(longLoopInfo && longLoopInfo->d.m_loopName == longName, "INFO_LOOP 完整回显超长循环名");
         CHECK(YOMK_EVENTLOOP_DESTROY(longName).m_status == YomkResponse::eOk, "DESTROY 超长循环名返回 eOk");
 
         // 销毁移除条目

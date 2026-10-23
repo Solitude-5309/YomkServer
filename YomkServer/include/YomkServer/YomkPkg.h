@@ -186,6 +186,17 @@ struct Eventloop
     std::string m_msgName;  // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
 };
 
+// 事件循环内省元信息（EVENTLOOP_INFO_LOOP 返回数据）
+struct EventLoopInfo
+{
+    std::string m_loopName;               // 循环名
+    bool m_running = false;               // worker 是否运行中
+    std::size_t m_pending = 0;            // 积压事件数
+    bool m_hasDefaultFunc = false;        // 是否注册默认处理函数
+    std::string m_msgName;                // 默认处理函数期望消息类型名（可空）
+    std::vector<std::string> m_nextTags;  // 队列头起最多 tagCount 条事件 tag（存原值，空串保留）
+};
+
 struct LogFile
 {
     std::string m_logger;
@@ -258,6 +269,7 @@ YomkMsg(Function, Function, d)
 YomkMsg(CallFunction, CallFunction, d)
 YomkMsg(Event, Event, d)
 YomkMsg(Eventloop, Eventloop, d)
+YomkMsg(EventLoopInfo, EventLoopInfo, d)
 YomkMsg(LogFile, LogFile, d)
 YomkMsg(Log, Log, d)
 YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)

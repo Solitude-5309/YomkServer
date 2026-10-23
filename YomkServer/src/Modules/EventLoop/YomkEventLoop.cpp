@@ -167,7 +167,11 @@ YomkResponse YomkEventLoop::loopInfo(YomkPkgPtr pkg)
         eventLoop = itEventLoop->second;
     }
 
-    return YomkResponse(YomkResponse::eOk, eventLoop->infoLine(loopName, tagCount));
+    // 命中：结构化快照，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
+    yomk::EventLoopInfo info;
+    info.m_loopName = loopName;
+    eventLoop->infoSnapshot(info, tagCount);
+    return {YomkResponse::eOk, "ok", YomkMkPtr(EventLoopInfo, info)};
 }
 
 // 内省：全部事件循环元信息，每行一个循环

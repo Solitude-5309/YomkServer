@@ -400,17 +400,19 @@ int main()
             {
                 auto r = YOMK_EVENTLOOP_INFO_LOOP("conc_loop");
                 pollCount.fetch_add(1);
-                if (r.m_status == YomkResponse::eOk && r.m_msg.find("running:on") != std::string::npos)
+                YomkUnPackPkg(r.m_data, EventLoopInfo, info);
+                if (r.m_status == YomkResponse::eOk && info && info->d.m_running)
                 {
                     pollOk.fetch_add(1);
                 }
-                else if (g_pollFailSamples.size() < 5)  // 诊断：留存首批失败样本（非 eOk 或非 running:on）
+                else if (g_pollFailSamples.size() < 5)  // 诊断：留存首批失败样本（非 eOk 或非运行中）
                 {
                     std::lock_guard<std::mutex> lk(g_pollFailMutex);
                     if (g_pollFailSamples.size() < 5)
                     {
                         g_pollFailSamples.push_back(
-                            "status=" + std::to_string(static_cast<int>(r.m_status)) + " msg=[" + r.m_msg + "]");
+                            "status=" + std::to_string(static_cast<int>(r.m_status)) + " running=" +
+                            (info ? std::string(info->d.m_running ? "on" : "off") : std::string("unpack-fail")));
                     }
                 }
             }

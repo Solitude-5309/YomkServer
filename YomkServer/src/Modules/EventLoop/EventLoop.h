@@ -20,6 +20,8 @@ public:
     int postWait(YomkPtr(Event) event);  // 返回码同 post；同步等待执行完成（含异常场景）后返回
     void setDefaultServiceFunc(YomkServiceFunc serviceFunc, const std::string& msgName);
     std::string infoLine(const std::string& loopName, size_t tagCount);
+        // 结构化内省快照：填充事件循环元信息（EVENTLOOP_INFO_LOOP 返回数据）；tag 存原值，空串保留
+        void infoSnapshot(yomk::EventLoopInfo& info, size_t tagCount);
     void run();
 
 private:
