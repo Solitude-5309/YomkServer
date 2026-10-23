@@ -8,7 +8,7 @@
  * 3. 注销边界：空名 eInvalid / 未注册名 eInvalid（现状契约，P1 登记项）
  * 4. 调用边界：空名 eInvalid / 未注册 eInvalid（P1）/ CallFunction.m_pkg=nullptr 原样透传给函数
  * 5. 内省：INFO_NAMES 存活列表包含注册名（空表陷阱教训）/ INFO_NAME 命中 "名 [类型]" 与
- *    无类型两种格式、未注册 eNo、空名 eInvalid / INFO_ALL "functions:N" 首行相对计数与行格式
+ *    无类型两种格式、未注册 eNo、空名 eInvalid / INFO_ALL FuncInfoList 相对计数与字段断言
  * 6. 宏分发：YOMK_FUNCTIONPOOL_REGISTER 2 参（无类型）/ 3 参（#MsgName 字符串化为类型名）/
  *     4 参（追加函数说明，INFO_NAME m_msg 契约保持 + 数据段可读）与同名热替换覆盖语义
  * 7. 异常契约：CALL 链（request→invoke→callFunction→用户函数）无任何 try/catch，
@@ -91,28 +91,16 @@ static YomkResponse aliveFunc(YomkPkgPtr)
     return {YomkResponse::eOk, "alive"};
 }
 
-// 从 INFO_ALL 首行 "functions:N" 解析当前函数总数；失败返回 SIZE_MAX
+// 从 INFO_ALL 解包 FuncInfoList 取当前函数总数（d.size() 承载）；失败返回 SIZE_MAX
 static size_t poolCount()
 {
     auto r = YOMK_FUNCTIONPOOL_INFO_ALL();
-    YomkUnPackPkg(r.m_data, StringArray, arr);
-    if (!arr || arr->d.empty())
+    YomkUnPackPkg(r.m_data, FuncInfoList, arr);
+    if (!arr)
     {
         return SIZE_MAX;
     }
-    const std::string& first = arr->d.front();
-    if (first.rfind("functions:", 0) != 0)
-    {
-        return SIZE_MAX;
-    }
-    try
-    {
-        return static_cast<size_t>(std::stoul(first.substr(10)));
-    }
-    catch (...)
-    {
-        return SIZE_MAX;
-    }
+    return arr->d.size();
 }
 
 int main()
@@ -219,28 +207,29 @@ int main()
             "INFO_NAME 未注册名返回 eNo（与 unregister/call 一致——FPC2 后全接口统一）");
         CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("").m_status == YomkResponse::eInvalid, "INFO_NAME 空函数名返回 eInvalid");
 
-        // INFO_ALL：首行 functions:N 相对计数（新注册一个 → 计数 +1）与行格式
+        // INFO_ALL：结构化 FuncInfoList 相对计数（新注册一个 → size +1）与字段断言
         size_t before = poolCount();
-        CHECK(before != SIZE_MAX, "INFO_ALL 首行 functions:N 可解析");
+        CHECK(before != SIZE_MAX, "INFO_ALL FuncInfoList 可解包");
         CHECK(
             YOMK_FUNCTIONPOOL_REGISTER("fp_count_probe", aliveFunc).m_status == YomkResponse::eOk,
             "REGISTER 计数探针函数");
         size_t after = poolCount();
         CHECK(after == before + 1, "INFO_ALL 计数随注册 +1（共享池相对计数）");
         auto allResp = YOMK_FUNCTIONPOOL_INFO_ALL();
-        YomkUnPackPkg(allResp.m_data, StringArray, allArr);
-        bool allLineFound = false;
+        CHECK(allResp.m_msg == "ok", "INFO_ALL 成功消息恒为 ok");
+        YomkUnPackPkg(allResp.m_data, FuncInfoList, allArr);
+        bool allFound = false;
         if (allArr)
         {
-            for (const auto& l : allArr->d)
+            for (const auto& fi : allArr->d)
             {
-                if (l == "fp_plain")
+                if (fi.m_funcName == "fp_plain")
                 {
-                    allLineFound = true;
+                    allFound = fi.m_msgName.empty() && fi.m_description.empty();
                 }
             }
         }
-        CHECK(allArr != nullptr && allLineFound, "INFO_ALL 列表行包含 fp_plain（纯名格式）");
+        CHECK(allArr != nullptr && allFound, "INFO_ALL 列表包含 fp_plain（m_msgName/m_description 均空）");
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_count_probe").m_status == YomkResponse::eOk, "清理 fp_count_probe");
     }
 

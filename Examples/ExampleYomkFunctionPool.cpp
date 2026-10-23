@@ -25,7 +25,7 @@
  *   YOMK_FUNCTIONPOOL_UNREGISTER      注销函数
  *   YOMK_FUNCTIONPOOL_INFO_NAMES      清单：全部函数名
  *   YOMK_FUNCTIONPOOL_INFO_NAME       单查：函数元信息
- *   YOMK_FUNCTIONPOOL_INFO_ALL        全量：数量 + 全部函数元信息
+ *   YOMK_FUNCTIONPOOL_INFO_ALL        全量：全部函数元信息列表（FuncInfoList 包，数量由 size 承载）
  */
 
 #include <iostream>
@@ -59,7 +59,7 @@ static void printResp(const std::string& prefix, const YomkResponse& resp)
     std::cout << std::endl;
 }
 
-// 解包并打印内省返回的 StringArray（INFO_NAMES / INFO_ALL 的返回形态）
+// 解包并打印内省返回的 StringArray（INFO_NAMES 的返回形态）
 static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
@@ -72,6 +72,29 @@ static void dumpLines(const std::string& prefix, const YomkResponse& resp)
     for (const auto& line : arr->d)
     {
         std::cout << ">> | " << line << std::endl;
+    }
+}
+
+// 解包并打印内省返回的 FuncInfoList（INFO_ALL 的返回形态）——
+// 框架只返回结构化数据，显示格式由用户定义
+static void dumpFuncInfos(const std::string& prefix, const YomkResponse& resp)
+{
+    printResp(prefix, resp);
+    YomkUnPackPkg(resp.m_data, FuncInfoList, arr);
+    if (!arr)
+    {
+        std::cout << ">> (no data)" << std::endl;
+        return;
+    }
+    for (const auto& info : arr->d)
+    {
+        std::cout << ">> | " << info.m_funcName
+                  << (info.m_msgName.empty() ? "" : " [" + info.m_msgName + "]")
+                  << (info.m_description.empty() ? "" : " - " + info.m_description) << std::endl;
+    }
+    if (arr->d.empty())
+    {
+        std::cout << ">> (empty)" << std::endl;
     }
 }
 
@@ -187,15 +210,15 @@ int main(int argc, char* argv[])
      * 步骤5：内省三件套
      *
      * INFO_NAMES：全部函数名（字典序）；
-     * INFO_NAME：单查，命中返回元信息，未注册返回 eNo=1（not-found 惯例）；
-     * INFO_ALL：首行 functions:N，其后每行 "函数名 [MsgName]"。
+     * INFO_NAME：单查，命中返回结构化 FuncInfo 包（m_msg 恒 "ok"），未注册返回 eNo=1；
+     * INFO_ALL：FuncInfoList 结构化包，逐函数 m_funcName/m_msgName/m_description。
      */
-    printStep(5, "内省三件套", "清单看全部、单查看一个、ALL 看数量与全量元信息；单查未注册名字演示 eNo。");
+    printStep(5, "内省三件套", "清单看全部、单查看一个、ALL 看全量元信息列表；单查未注册名字演示 eNo。");
     dumpLines("INFO_NAMES", YOMK_FUNCTIONPOOL_INFO_NAMES());
     printResp("INFO_NAME(tool.greet)", YOMK_FUNCTIONPOOL_INFO_NAME("tool.greet"));
     printResp("INFO_NAME(ghost)", YOMK_FUNCTIONPOOL_INFO_NAME("ghost"));
     std::cout << ">> ghost 未注册 → eNo=1，not-found 是框架统一惯例" << std::endl;
-    dumpLines("INFO_ALL", YOMK_FUNCTIONPOOL_INFO_ALL());
+    dumpFuncInfos("INFO_ALL", YOMK_FUNCTIONPOOL_INFO_ALL());
 
     /**
      * 步骤6：注销与错误分支
@@ -206,11 +229,11 @@ int main(int argc, char* argv[])
     printStep(
         6,
         "注销与错误分支",
-        "注销 tool.calcSum 后再调用应 eNo；重复注销也应 eNo；INFO_ALL 的 functions 计数随之减少。");
+        "注销 tool.calcSum 后再调用应 eNo；重复注销也应 eNo；INFO_ALL 的列表长度随之减少。");
     printResp("UNREGISTER(tool.calcSum)", YOMK_FUNCTIONPOOL_UNREGISTER("tool.calcSum"));
     printResp("CALL(tool.calcSum,已注销)", YOMK_FUNCTIONPOOL_CALL("tool.calcSum", nullptr));
     printResp("UNREGISTER(tool.calcSum,重复)", YOMK_FUNCTIONPOOL_UNREGISTER("tool.calcSum"));
-    dumpLines("INFO_ALL(收尾)", YOMK_FUNCTIONPOOL_INFO_ALL());
+    dumpFuncInfos("INFO_ALL(收尾)", YOMK_FUNCTIONPOOL_INFO_ALL());
 
     std::cout << "\n====== 示例结束：按回车退出 ======" << std::endl;
     getchar();

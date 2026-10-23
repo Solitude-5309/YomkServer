@@ -276,6 +276,8 @@ struct VoidPointer
 YomkMsg(Function, Function, d)
 YomkMsg(CallFunction, CallFunction, d)
 YomkMsg(FuncInfo, FuncInfo, d)
+// FunctionPool 全量函数内省（FUNCTIONPOOL_INFO_ALL 返回数据；函数总数由 d.size() 承载）
+YomkMsg(std::vector<yomk::FuncInfo>, FuncInfoList, d)
 YomkMsg(Event, Event, d)
 YomkMsg(Eventloop, Eventloop, d)
 YomkMsg(EventLoopInfo, EventLoopInfo, d)

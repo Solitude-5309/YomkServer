@@ -129,18 +129,21 @@ YomkResponse YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
     return {YomkResponse::eOk, "ok", YomkMkPtr(FuncInfo, info)};
 }
 
-// 内省：全量 dump，首行 functions:N，其余每行 funcName [类型名]（未声明类型时无括号后缀）
+// 内省：全量函数元信息，锁内构造结构化快照（m_msg 恒 "ok"，数据走 m_data；总数由 d.size() 承载）
 YomkResponse YomkFunctionPool::listAll(YomkPkgPtr pkg)
 {
-    std::vector<std::string> lines;
+    std::vector<yomk::FuncInfo> infos;
     {
         std::shared_lock<std::shared_mutex> lock(m_functionsMutex);
-        lines.push_back("functions:" + std::to_string(m_functions.size()));
+        infos.reserve(m_functions.size());
         for (auto& iter : m_functions)
         {
-            const std::string& msgName = iter.second.m_msgName;
-            lines.push_back(iter.first + (msgName.empty() ? "" : " [" + msgName + "]"));
+            yomk::FuncInfo info;
+            info.m_funcName = iter.first;
+            info.m_msgName = iter.second.m_msgName;
+            info.m_description = iter.second.m_description;
+            infos.push_back(std::move(info));
         }
     }
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
+    return {YomkResponse::eOk, "ok", YomkMkPtr(FuncInfoList, infos)};
 }

@@ -6,7 +6,7 @@
  * - S1：并发 CALL 守恒（只读路径 shared_lock 并发拷贝）+ 嵌套重入（同线程二次 shared_lock）
  * - S2：并发 REGISTER 更新 × CALL（unique_lock 写 vs shared_lock 读交错，无 torn std::function）
  * - S3：并发 UNREGISTER × CALL（锁外调用安全性——erase 后在途调用仍完成）
- * - S4：并发内省 × 变更（INFO_ALL 快照一致性：functions:N == 列表行数）
+ * - S4：并发内省 × 变更（INFO_ALL 结构化快照持续可解包）
  * - S5：全量 churn 混合守恒（register/update/unregister/call/introspect 全并发）
  *
  * 装置：文件级原子计数/自旋门（TSan-clean），YOMK_INIT 单例，段尾清理共享池。
@@ -65,14 +65,9 @@ static std::atomic<bool> g_s3GateStarted{false};
 static std::atomic<bool> g_s3GateRelease{false};
 static std::atomic<uint64_t> g_s3ExecCount{0};
 
-// S4 快照一致性
-struct SnapshotRecord
-{
-    uint64_t declaredN;
-    uint64_t actualLines;
-};
+// S4 快照观测：记录每次 INFO_ALL 快照的函数条目数
 static std::mutex g_s4ObsMutex;
-static std::vector<SnapshotRecord> g_s4Snapshots;
+static std::vector<size_t> g_s4Snapshots;
 
 // S5 churn 守恒
 static std::atomic<uint64_t> g_s5CallerOk{0};
@@ -147,18 +142,6 @@ static YomkResponse s3GatedFunc(YomkPkgPtr /*pkg*/)
 static YomkResponse s5ProbeFunc(YomkPkgPtr /*pkg*/)
 {
     return YomkResponse(YomkResponse::eOk, "s5_ok");
-}
-
-// ============================================================================
-// 辅助：解析 INFO_ALL 的 StringArray 首行 "functions:N"
-// ============================================================================
-static uint64_t parseFunctionsN(const std::string& firstLine)
-{
-    // 格式: "functions:N"
-    auto pos = firstLine.find("functions:");
-    if (pos == std::string::npos)
-        return 0;
-    return std::strtoull(firstLine.c_str() + pos + 10, nullptr, 10);
 }
 
 // ============================================================================
@@ -415,14 +398,12 @@ int main(int /*argc*/, char** /*argv*/)
                         auto resp = YOMK_FUNCTIONPOOL_INFO_ALL();
                         if (resp.m_status == YomkResponse::eOk && resp.m_data)
                         {
-                            YomkUnPackPkg(resp.m_data, StringArray, arr);
-                            if (arr && !arr->d.empty())
+                            YomkUnPackPkg(resp.m_data, FuncInfoList, arr);
+                            if (arr)
                             {
-                                // 首行 "functions:N"，其余每行一个函数条目
-                                uint64_t declaredN = parseFunctionsN(arr->d[0]);
-                                uint64_t actualLines = arr->d.size() - 1;
+                                // 单包快照：锁内构造的 FuncInfoList 天然原子（条目数即快照规模）
                                 std::lock_guard<std::mutex> lk(g_s4ObsMutex);
-                                g_s4Snapshots.push_back({declaredN, actualLines});
+                                g_s4Snapshots.push_back(arr->d.size());
                             }
                         }
                         std::this_thread::sleep_for(std::chrono::microseconds(200));
@@ -435,24 +416,14 @@ int main(int /*argc*/, char** /*argv*/)
         for (auto& th : introspectThreads)
             th.join();
 
-        // 验证快照一致性
+        // 验证快照收集（结构化单包自洽，原 declaredN/actualLines 校验内化为解包成功）
         size_t snapshotCount = 0;
-        size_t inconsistentCount = 0;
         {
             std::lock_guard<std::mutex> lk(g_s4ObsMutex);
             snapshotCount = g_s4Snapshots.size();
-            for (const auto& snap : g_s4Snapshots)
-            {
-                if (snap.declaredN != snap.actualLines)
-                    ++inconsistentCount;
-            }
         }
 
         CHECK(snapshotCount > 0, "S4: 收集到 " + std::to_string(snapshotCount) + " 个 INFO_ALL 快照");
-        CHECK(
-            inconsistentCount == 0,
-            "S4: 全部快照一致（functions:N == 列表行数）——单次 shared_lock 内快照原子性（不一致 " +
-                std::to_string(inconsistentCount) + " 个）");
 
         // 清理（churn 线程已自行注销，但确认池干净）
         for (int t = 0; t < kChurnThreads; ++t)

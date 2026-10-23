@@ -13,7 +13,7 @@
 | `YOMK_FUNCTIONPOOL_UNREGISTER(name)` | 按名字从函数表移除 |
 | `YOMK_FUNCTIONPOOL_INFO_NAMES()` | 获取全部函数名 |
 | `YOMK_FUNCTIONPOOL_INFO_NAME(name)` | 查询单个已注册函数元信息 |
-| `YOMK_FUNCTIONPOOL_INFO_ALL()` | 查询全部已注册函数元信息 |
+| `YOMK_FUNCTIONPOOL_INFO_ALL()` | 查询全部已注册函数元信息（FuncInfoList 结构化包） |
 
 ## 使用示例
 

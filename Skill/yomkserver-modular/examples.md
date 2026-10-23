@@ -786,13 +786,13 @@ YOMK_FUNCTIONPOOL_REGISTER("func_b", funcB);          // 两参旧写法零改�
 // 注册函数名列表（返回 StringArray）
 YomkResponse resp = YOMK_FUNCTIONPOOL_INFO_NAMES();    // arr->d: ["func_a", "func_b", "func_desc"]
 
-// 单函数存在性查询：命中 eOk 且 msg 为 funcName [类型名]，未注册 eNo
-resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_a");           // eOk, msg: "func_a [String]"（无说明时 data 缺省）
-resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_desc");        // eOk, msg 同款，data 解包 String 为函数说明
-resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_b");           // eOk, msg: "func_b"
+// 单函数元信息查询：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，m_data 恒挂），未注册 eNo
+resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_a");           // eOk，解包 FuncInfo：m_funcName="func_a" m_msgName="String"
+resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_desc");        // eOk，解包 FuncInfo：m_description="函数说明"
+resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_b");           // eOk，解包 FuncInfo：m_msgName/m_description 空
 resp = YOMK_FUNCTIONPOOL_INFO_NAME("not_exist");        // eNo
 
-// 全量 dump：首行 functions:N，其余每行 funcName [类型名]
+// 全量函数元信息：FuncInfoList 结构化包（元素为单查同款 FuncInfo）
 resp = YOMK_FUNCTIONPOOL_INFO_ALL();
 ```
 
