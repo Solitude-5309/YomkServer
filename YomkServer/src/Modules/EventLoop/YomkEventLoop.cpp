@@ -174,7 +174,7 @@ YomkResponse YomkEventLoop::loopInfo(YomkPkgPtr pkg)
     return {YomkResponse::eOk, "ok", YomkMkPtr(EventLoopInfo, info)};
 }
 
-// 内省：全部事件循环元信息，每行一个循环
+// 内省：全部事件循环元信息，锁内拷贝快照、锁外逐循环取结构化快照（m_msg 恒 "ok"，数据走 m_data）
 YomkResponse YomkEventLoop::listAll(YomkPkgPtr pkg)
 {
     std::vector<EventLoopPtr> eventLoops;
@@ -188,10 +188,14 @@ YomkResponse YomkEventLoop::listAll(YomkPkgPtr pkg)
         }
     }
 
-    std::vector<std::string> lines;
+    std::vector<yomk::EventLoopInfo> infos;
+    infos.reserve(eventLoops.size());
     for (size_t i = 0; i < eventLoops.size(); ++i)
     {
-        lines.push_back(eventLoops[i]->infoLine(loopNames[i], 3));
+        yomk::EventLoopInfo info;
+        info.m_loopName = loopNames[i];
+        eventLoops[i]->infoSnapshot(info, 3);
+        infos.push_back(std::move(info));
     }
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
+    return {YomkResponse::eOk, "ok", YomkMkPtr(EventLoopInfoList, infos)};
 }

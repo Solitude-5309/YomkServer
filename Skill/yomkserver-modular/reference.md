@@ -205,8 +205,8 @@ class YomkService {
 | `YOMK_EVENTLOOP_POST_WAIT(name, pkg, handle, tag="")` | 同步投递（tag 同上；未运行被拒返 eNo，销毁丢弃排队事件时等待者同样被释放） |
 | `YOMK_EVENTLOOP_DESTROY(name)` | 销毁（先停止退出线程、再清空未执行事件——不可续跑，并移除循环条目） |
 | `YOMK_EVENTLOOP_INFO_LOOPS()` | 内省：事件循环名列表（返回 StringArray） |
-| `YOMK_EVENTLOOP_INFO_LOOP(name)` / `(name, n)` | 内省：单循环元信息（msg 格式 `name running:on\|off pending:N defaultFunc:on\|off [类型名] nextNEventTag(n): tag1, tag2, ...`，默认处理函数声明过类型时附加 `[类型名]`，n 缺省 3，队列不足 n 时全部列出，空 tag 显示 `-`） |
-| `YOMK_EVENTLOOP_INFO_ALL()` | 内省：全量 dump（每行同单循环元信息格式） |
+| `YOMK_EVENTLOOP_INFO_LOOP(name)` / `(name, n)` | 内省：单循环元信息（结构化 EventLoopInfo 包：m_loopName/m_running/m_pending/m_hasDefaultFunc/m_msgName/m_nextTags，m_nextTags 存原值取 n 条，n 缺省 3，m_msg 恒 "ok"，未命中返 eNo） |
+| `YOMK_EVENTLOOP_INFO_ALL()` | 内省：全量循环元信息（EventLoopInfoList 结构化包，元素为单查同款 EventLoopInfo，m_nextTags 取 3 条，m_msg 恒 "ok"） |
 
 ### FunctionPool
 | 宏 | 说明 |

@@ -28,7 +28,7 @@
  *   YOMK_EVENTLOOP_DESTROY     销毁循环（清空队列，移出循环表）
  *   YOMK_EVENTLOOP_INFO_LOOPS  清单：全部循环名
  *   YOMK_EVENTLOOP_INFO_LOOP   单查：循环状态 + 队列 tag 预览
- *   YOMK_EVENTLOOP_INFO_ALL    全量：每循环一行状态
+ *   YOMK_EVENTLOOP_INFO_ALL    全量：循环元信息列表（EventLoopInfoList 包）
  */
 
 #include <chrono>
@@ -64,7 +64,7 @@ static void printResp(const std::string& prefix, const YomkResponse& resp)
     std::cout << std::endl;
 }
 
-// 解包并打印内省返回的 StringArray（INFO_LOOPS / INFO_ALL 的返回形态）
+// 解包并打印内省返回的 StringArray（INFO_LOOPS 的返回形态）
 static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
@@ -80,7 +80,7 @@ static void dumpLines(const std::string& prefix, const YomkResponse& resp)
     }
 }
 
-// INFO_LOOP 的状态行放在 msg 里，追加一行清单式展示便于对齐阅读
+// 解包单循环结构化 EventLoopInfo，追加一行清单式展示便于对齐阅读
 static void dumpInfo(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
@@ -106,6 +106,42 @@ static void dumpInfo(const std::string& prefix, const YomkResponse& resp)
         return;
     }
     std::cout << ">> | " << resp.m_msg << std::endl;
+}
+
+// 解包并打印内省返回的 EventLoopInfoList（INFO_ALL 的返回形态）——
+// 框架只返回结构化数据，显示格式由用户定义
+static void dumpLoopInfos(const std::string& prefix, const YomkResponse& resp)
+{
+    printResp(prefix, resp);
+    YomkUnPackPkg(resp.m_data, EventLoopInfoList, arr);
+    if (!arr)
+    {
+        std::cout << ">> (no data)" << std::endl;
+        return;
+    }
+    for (const auto& info : arr->d)
+    {
+        std::cout << ">> | loop=" << info.m_loopName << " running=" << (info.m_running ? "on" : "off")
+                  << " pending=" << info.m_pending << " defaultFunc=" << (info.m_hasDefaultFunc ? "on" : "off");
+        if (!info.m_msgName.empty())
+        {
+            std::cout << " msgName=" << info.m_msgName;
+        }
+        std::cout << " nextTags=[";
+        for (size_t i = 0; i < info.m_nextTags.size(); ++i)
+        {
+            if (i > 0)
+            {
+                std::cout << ", ";
+            }
+            std::cout << (info.m_nextTags[i].empty() ? "-" : info.m_nextTags[i]);
+        }
+        std::cout << "]" << std::endl;
+    }
+    if (arr->d.empty())
+    {
+        std::cout << ">> (empty)" << std::endl;
+    }
 }
 
 // 解包 POST_WAIT 回传的 Event 包，打印 eventId/loopName/response 三要素
@@ -237,7 +273,7 @@ int main(int argc, char* argv[])
     std::cout << ">> 等待保留事件被续跑消化" << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
     dumpInfo("INFO_LOOP(workLoop)", YOMK_EVENTLOOP_INFO_LOOP("workLoop"));
-    dumpLines("INFO_ALL", YOMK_EVENTLOOP_INFO_ALL());
+    dumpLoopInfos("INFO_ALL", YOMK_EVENTLOOP_INFO_ALL());
 
     /**
      * 步骤6：销毁与 not-found
@@ -256,10 +292,10 @@ int main(int argc, char* argv[])
     /**
      * 步骤7：全量自省收尾
      *
-     * INFO_ALL 每循环一行状态；循环表已空时输出空清单。
+     * INFO_ALL 循环元信息列表；循环表已空时输出空列表。
      */
-    printStep(7, "全量自省收尾", "INFO_ALL 全量状态；循环表已空，清单为空。");
-    dumpLines("INFO_ALL", YOMK_EVENTLOOP_INFO_ALL());
+    printStep(7, "全量自省收尾", "INFO_ALL 全量元信息列表；循环表已空，列表为空。");
+    dumpLoopInfos("INFO_ALL", YOMK_EVENTLOOP_INFO_ALL());
     std::cout << ">> 事件循环表已空" << std::endl;
 
     std::cout << "\n====== 示例结束：按回车退出 ======" << std::endl;

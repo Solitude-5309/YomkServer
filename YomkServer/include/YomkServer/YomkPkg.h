@@ -281,6 +281,8 @@ YomkMsg(std::vector<yomk::FuncInfo>, FuncInfoList, d)
 YomkMsg(Event, Event, d)
 YomkMsg(Eventloop, Eventloop, d)
 YomkMsg(EventLoopInfo, EventLoopInfo, d)
+// EventLoop 全量循环内省（EVENTLOOP_INFO_ALL 返回数据；m_nextTags 取 3 条与单查缺省一致）
+YomkMsg(std::vector<yomk::EventLoopInfo>, EventLoopInfoList, d)
 YomkMsg(LogFile, LogFile, d)
 YomkMsg(Log, Log, d)
 YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)

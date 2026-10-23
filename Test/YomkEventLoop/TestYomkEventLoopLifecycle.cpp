@@ -571,22 +571,23 @@ int main()
         }
         CHECK(loopsAliveArr != nullptr && loopsFound, "INFO_LOOPS 列表包含 api_loop");
 
-        // INFO_ALL：列表包含 api_loop 信息行
+        // INFO_ALL：结构化 EventLoopInfoList，包含 api_loop 条目
         auto allResp = YOMK_EVENTLOOP_INFO_ALL();
         CHECK(allResp.m_status == YomkResponse::eOk, "INFO_ALL 返回 eOk");
-        YomkUnPackPkg(allResp.m_data, StringArray, allArr);
+        CHECK(allResp.m_msg == "ok", "INFO_ALL 成功消息恒为 ok");
+        YomkUnPackPkg(allResp.m_data, EventLoopInfoList, allArr);
         bool allFound = false;
         if (allArr)
         {
-            for (const auto& l : allArr->d)
+            for (const auto& info : allArr->d)
             {
-                if (l.find("api_loop") != std::string::npos)
+                if (info.m_loopName == "api_loop")
                 {
                     allFound = true;
                 }
             }
         }
-        CHECK(allArr != nullptr && allFound, "INFO_ALL 列表包含 api_loop 信息行");
+        CHECK(allArr != nullptr && allFound, "INFO_ALL 列表包含 api_loop 条目");
 
         // 空循环名边界：空串为合法 map 键，全生命周期 eOk
         CHECK(YOMK_EVENTLOOP_START("", nullptr).m_status == YomkResponse::eOk, "START 空循环名返回 eOk");

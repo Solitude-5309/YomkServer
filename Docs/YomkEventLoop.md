@@ -12,7 +12,7 @@
 | `YOMK_EVENTLOOP_POST_WAIT(name, pkg, func, tag)` | 阻塞投递任务，等待任务在循环中执行完毕返回结果 |
 | `YOMK_EVENTLOOP_INFO_LOOP(name)` | 查询循环状态与队列积压 |
 | `YOMK_EVENTLOOP_INFO_LOOP(name, n)` | 同上，第二个参数可选：列出队首 N 个事件的 tag |
-| `YOMK_EVENTLOOP_INFO_LOOPS()` / `YOMK_EVENTLOOP_INFO_ALL()` | 循环清单 / 全量状态自省 |
+| `YOMK_EVENTLOOP_INFO_LOOPS()` / `YOMK_EVENTLOOP_INFO_ALL()` | 循环清单 / 全量状态自省（EventLoopInfoList 结构化包） |
 | `YOMK_EVENTLOOP_STOP(name)` | 停止（停线程但保留队列事件，再次 START 续跑） |
 | `YOMK_EVENTLOOP_DESTROY(name)` | 销毁（停线程并清空队列、移出循环表，不可续跑） |
 

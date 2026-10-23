@@ -762,13 +762,13 @@ YOMK_EVENTLOOP_POST("loop_a", YomkMkPtr(String, "data"), myHandle);  // 不打 t
 // 循环名列表（返回 StringArray）
 YomkResponse resp = YOMK_EVENTLOOP_INFO_LOOPS();   // arr->d: ["loop_a", "loop_b"]
 
-// 单循环元信息：name running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(n): tag1, ...
-// 默认处理函数声明过类型时附加 [类型名]，未声明无括号后缀
-resp = YOMK_EVENTLOOP_INFO_LOOP("loop_a");          // n 缺省 3
-resp = YOMK_EVENTLOOP_INFO_LOOP("loop_a", 5);       // 队列不足 5 个时全部列出，空 tag 显示 -
+// 单循环元信息：EventLoopInfo 结构化包（m_loopName/m_running/m_pending/m_hasDefaultFunc/m_msgName/m_nextTags）
+// m_nextTags 存原值取 n 条（队列不足 n 时全部列出），n 缺省 3；m_msg 恒 "ok"
+resp = YOMK_EVENTLOOP_INFO_LOOP("loop_a");
+resp = YOMK_EVENTLOOP_INFO_LOOP("loop_a", 5);
 resp = YOMK_EVENTLOOP_INFO_LOOP("not_exist");       // eNo
 
-// 全量 dump：每行同单循环元信息格式
+// 全量循环元信息：EventLoopInfoList 结构化包，元素为单查同款 EventLoopInfo
 resp = YOMK_EVENTLOOP_INFO_ALL();
 ```
 
