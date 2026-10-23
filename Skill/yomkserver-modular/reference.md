@@ -193,8 +193,8 @@ class YomkService {
 | `YOMK_CONTEXT_ON/OFF_MONITOR()` | 开关监控器 |
 | `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 设置监控函数（async 省略默认 false）。**语义**：仅通知发生了一次 set，并回传该次键值快照（不保证实时）；顺序上异步恒按 set 提交序保序，同步并发下不保证跨线程序。**回调约束**：快照仅回调期有效（留存请拷贝）；值对象只读勿原地改；需最新值在回调内 `YOMK_CONTEXT_GET` 重读；异常被吞不影响 set；校验/拒绝用 checker。**两种模式**：同步（默认）——锁外内联、及时，回调内重入 set 会递归（长链栈溢出）；异步——写锁内入单线程监控池、set 返回后按提交序执行、deinit/`YOMK_SHUTDOWN` 排空不丢，适合耗时回调与状态机回写 |
 | `YOMK_CONTEXT_INFO_KEYS()` | 内省：key 列表（返回 StringArray） |
-| `YOMK_CONTEXT_INFO_KEY(key)` | 内省：单 key 元信息（msg 格式 `key [类型名] checker:on\|off monitors:N(async:M)`） |
-| `YOMK_CONTEXT_INFO_ALL()` | 内省：全量 dump（每行同单 key 元信息格式） |
+| `YOMK_CONTEXT_INFO_KEY(key)` | 内省：单 key 元信息（结构化 ContextKeyInfo 包：m_key/m_typeName/m_checkerOn/m_monitorCount/m_asyncMonitorCount，m_msg 恒 "ok"） |
+| `YOMK_CONTEXT_INFO_ALL()` | 内省：全量键元信息（ContextKeyInfoList 结构化包，元素为单查同款 ContextKeyInfo，m_msg 恒 "ok"） |
 
 ### EventLoop
 | 宏 | 说明 |

@@ -31,7 +31,7 @@
  *   YOMK_CONTEXT_ON/OFF_MONITOR  全局通知开关
  *   YOMK_CONTEXT_INFO_KEYS     清单：全部键名
  *   YOMK_CONTEXT_INFO_KEY      单查：键结构化元信息（ContextKeyInfo 包）
- *   YOMK_CONTEXT_INFO_ALL      全量：每键一行状态
+ *   YOMK_CONTEXT_INFO_ALL      全量：键结构化元信息列表（ContextKeyInfoList 包）
  *   YOMK_CONTEXT_DESTROY       销毁键（不存在返回 eNo）
  */
 
@@ -72,7 +72,7 @@ static void printResp(const std::string& prefix, const YomkResponse& resp)
     std::cout << std::endl;
 }
 
-// 解包并打印内省返回的 StringArray（INFO_KEYS / INFO_ALL 的返回形态）
+// 解包并打印内省返回的 StringArray（INFO_KEYS 的返回形态）
 static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
@@ -85,6 +85,30 @@ static void dumpLines(const std::string& prefix, const YomkResponse& resp)
     for (const auto& line : arr->d)
     {
         std::cout << ">> | " << line << std::endl;
+    }
+}
+
+// 解包并打印内省返回的 ContextKeyInfoList（INFO_ALL 的返回形态）——
+// 框架只返回结构化数据，显示格式由用户定义
+static void dumpKeyInfos(const std::string& prefix, const YomkResponse& resp)
+{
+    printResp(prefix, resp);
+    YomkUnPackPkg(resp.m_data, ContextKeyInfoList, arr);
+    if (!arr)
+    {
+        std::cout << ">> (no data)" << std::endl;
+        return;
+    }
+    for (const auto& info : arr->d)
+    {
+        std::cout << ">> | " << info.m_key << " [" << info.m_typeName << "]"
+                  << " checker:" << (info.m_checkerOn ? "on" : "off")
+                  << " monitors:" << info.m_monitorCount
+                  << "(async:" << info.m_asyncMonitorCount << ")" << std::endl;
+    }
+    if (arr->d.empty())
+    {
+        std::cout << ">> (empty)" << std::endl;
     }
 }
 
@@ -279,13 +303,13 @@ int main(int argc, char* argv[])
     std::cout << ">> 结构化返回 ContextKeyInfo（m_data 承载，m_msg 恒 \"ok\"）：m_key=config m_typeName=String"
               << " m_checkerOn=true（已挂回调） m_monitorCount=4 m_asyncMonitorCount=1" << std::endl;
     printResp("INFO_KEY(ghost)", YOMK_CONTEXT_INFO_KEY("ghost"));
-    dumpLines("INFO_ALL", YOMK_CONTEXT_INFO_ALL());
+    dumpKeyInfos("INFO_ALL", YOMK_CONTEXT_INFO_ALL());
 
     printResp("DESTROY(config)", YOMK_CONTEXT_DESTROY("config"));
     val = YOMK_CONTEXT_GET(String, "config", fallback);
     printGet("GET(config,已销毁)", val, val == fallback);
     printResp("DESTROY(config,重复)", YOMK_CONTEXT_DESTROY("config"));
-    dumpLines("INFO_ALL(收尾)", YOMK_CONTEXT_INFO_ALL());
+    dumpKeyInfos("INFO_ALL(收尾)", YOMK_CONTEXT_INFO_ALL());
     std::cout << ">> 键值表已空" << std::endl;
 
     std::cout << "\n====== 示例结束：按回车退出 ======" << std::endl;

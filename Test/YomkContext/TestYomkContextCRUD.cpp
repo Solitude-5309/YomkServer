@@ -8,7 +8,7 @@
  * 3. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）、
  *    类型不匹配（返回默认 value，P3 增补——eOk 路径 YomkUnPackPkgT 解包失败）
  * 4. set：正常 set、不存在 key、空 key、类型不匹配
- * 5. keys/listAll/keyInfo：随增删变化、空 key、不存在 key、信息行格式
+ * 5. keys/listAll/keyInfo：随增删变化、空 key、不存在 key、字段断言
  *
  * 说明：全程使用 YOMK_INIT 单例拉起内置 /YomkContext，测试通过 YOMK_CONTEXT_* API 宏调用；
  *       不触发 checker/monitor，不触发 shutdown 排空（归 MC2/MC3）
@@ -212,13 +212,24 @@ int main()
         CHECK(resp.m_msg == "key is not exist", "keyInfo 不存在 key 错误消息一致");
     }
 
-    // listAll：包含所有 key 信息
+    // listAll：包含所有 key 信息（结构化 ContextKeyInfoList，m_msg 恒 "ok"）
     {
         auto resp = YOMK_CONTEXT_INFO_ALL();
         CHECK(resp.m_status == YomkResponse::eOk, "listAll 返回 eOk");
-        YomkUnPackPkg(resp.m_data, StringArray, arr);
-        CHECK(arr != nullptr, "listAll 数据为 StringArray");
-        CHECK(arr && arr->d.size() == 2, "listAll 返回 2 行信息");
+        CHECK(resp.m_msg == "ok", "listAll 成功消息恒为 ok");
+        YomkUnPackPkg(resp.m_data, ContextKeyInfoList, arr);
+        CHECK(arr != nullptr, "listAll 数据为 ContextKeyInfoList");
+        CHECK(arr && arr->d.size() == 2, "listAll 返回 2 个键信息");
+        // m_contexts 为 std::map，中序遍历字典序：int_key < str_key；逐字段断言（均未挂 checker/monitor）
+        CHECK(arr && arr->d[0].m_key == "int_key" && arr->d[1].m_key == "str_key",
+              "listAll 键序为 map 字典序（int_key, str_key）");
+        CHECK(arr && arr->d[0].m_typeName == "Int32" && arr->d[1].m_typeName == "String",
+              "listAll 类型名一致");
+        CHECK(arr && !arr->d[0].m_checkerOn && !arr->d[1].m_checkerOn, "listAll checker 状态为关");
+        CHECK(arr && arr->d[0].m_monitorCount == 0 && arr->d[1].m_monitorCount == 0,
+              "listAll monitor 计数为 0");
+        CHECK(arr && arr->d[0].m_asyncMonitorCount == 0 && arr->d[1].m_asyncMonitorCount == 0,
+              "listAll async monitor 计数为 0");
     }
 
     // destroy：正常销毁

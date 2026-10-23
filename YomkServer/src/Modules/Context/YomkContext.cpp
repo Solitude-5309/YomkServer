@@ -354,15 +354,30 @@ YomkResponse YomkContext::keyInfo(YomkPkgPtr pkg)
     return {YomkResponse::eOk, "ok", YomkMkPtr(ContextKeyInfo, info)};
 }
 
+// 内省：全量键元信息，锁内构造结构化快照（m_msg 恒 "ok"，数据走 m_data）
 YomkResponse YomkContext::listAll(YomkPkgPtr pkg)
 {
-    std::vector<std::string> lines;
+    std::vector<yomk::ContextKeyInfo> infos;
     {
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
+        infos.reserve(m_contexts.size());
         for (auto& iter : m_contexts)
         {
-            lines.push_back(contextInfoLine(iter.second));
+            const auto& ctx = iter.second;
+            yomk::ContextKeyInfo info;
+            info.m_key = ctx.key;
+            info.m_typeName = ctx.value ? ctx.value->name() : "";
+            info.m_checkerOn = static_cast<bool>(ctx.checker);
+            info.m_monitorCount = ctx.monitors.size();
+            for (auto& monitor : ctx.monitors)
+            {
+                if (monitor.asyncMonitor)
+                {
+                    ++info.m_asyncMonitorCount;
+                }
+            }
+            infos.push_back(std::move(info));
         }
     }
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
+    return {YomkResponse::eOk, "ok", YomkMkPtr(ContextKeyInfoList, infos)};
 }

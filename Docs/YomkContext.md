@@ -41,8 +41,8 @@ YOMK_CONTEXT_ON_MONITOR();  // 开启全局监控；YOMK_CONTEXT_OFF_MONITOR() �
 
 // 5. 运行期自省与销毁
 YOMK_CONTEXT_INFO_KEYS();        // 全部键名清单
-YOMK_CONTEXT_INFO_KEY("config"); // 单键状态："config [String] checker:on monitors:1(async:0)"
-YOMK_CONTEXT_INFO_ALL();         // 全量状态（每键一行）
+YOMK_CONTEXT_INFO_KEY("config"); // 单键元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"）
+YOMK_CONTEXT_INFO_ALL();         // 全量键元信息：ContextKeyInfoList 结构化包
 YOMK_CONTEXT_DESTROY("config");  // 删除键
 ```
 

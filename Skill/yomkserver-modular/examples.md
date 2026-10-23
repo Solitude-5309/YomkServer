@@ -737,11 +737,11 @@ YOMK_CONTEXT_SET_MONITOR("str_key", myMonitor, true);
 // key 列表（返回 StringArray）
 YomkResponse resp = YOMK_CONTEXT_INFO_KEYS();   // arr->d: ["str_key"]
 
-// 单 key 元信息：key [类型名] checker:on|off monitors:N(async:M)
-resp = YOMK_CONTEXT_INFO_KEY("str_key");        // eOk, msg: "str_key [String] checker:on monitors:1(async:1)"
+// 单 key 元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"，数据走 m_data）
+resp = YOMK_CONTEXT_INFO_KEY("str_key");        // eOk，解包 ContextKeyInfo：m_key="str_key" m_typeName="String" ...
 resp = YOMK_CONTEXT_INFO_KEY("not_exist");      // eNo
 
-// 全量 dump：每行同单 key 元信息格式
+// 全量键元信息：ContextKeyInfoList 结构化包（元素为单查同款 ContextKeyInfo）
 resp = YOMK_CONTEXT_INFO_ALL();
 ```
 

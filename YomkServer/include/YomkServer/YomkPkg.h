@@ -285,6 +285,8 @@ YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)
 YomkMsg(LoggerInfo, LoggerInfo, d)
 YomkMsg(Context, Context, d)
 YomkMsg(ContextKeyInfo, ContextKeyInfo, d)
+// Context 全量键内省（CONTEXT_INFO_ALL 返回数据）
+YomkMsg(std::vector<yomk::ContextKeyInfo>, ContextKeyInfoList, d)
 YomkMsg(ContextChecker, ContextChecker, d)
 YomkMsg(ContextMonitor, ContextMonitor, d)
 YomkMsg(VoidPointer, VoidPointer, d)
