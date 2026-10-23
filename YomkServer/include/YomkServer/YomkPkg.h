@@ -141,6 +141,7 @@ struct Function
     std::string m_funcName;
     YomkServiceFunc m_func;
     std::string m_msgName;
+    std::string m_description;  // 函数说明（四参宏声明，内容使用者自定义，可为空）
 };
 
 struct CallFunction

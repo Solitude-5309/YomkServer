@@ -20,7 +20,7 @@
  * 6. 注销与错误分支（注销后调用、重复注销）
  *
  * 涉及的 API 宏（YomkAPI.h）：
- *   YOMK_FUNCTIONPOOL_REGISTER        注册函数（2 参 / 3 参带 MsgName）
+ *   YOMK_FUNCTIONPOOL_REGISTER        注册函数（2 参 / 3 参带 MsgName / 4 参带说明）
  *   YOMK_FUNCTIONPOOL_CALL            按名调用
  *   YOMK_FUNCTIONPOOL_UNREGISTER      注销函数
  *   YOMK_FUNCTIONPOOL_INFO_NAMES      清单：全部函数名
@@ -141,14 +141,16 @@ int main(int argc, char* argv[])
         YOMK_FUNCTIONPOOL_CALL("tool.calcSum", YomkMkPtr(StringArray, std::vector<std::string>{"3", "4", "5"})));
 
     /**
-     * 步骤2：带消息类型名的注册（3 参）
+     * 步骤2：带消息类型名的注册（4 参）
      *
-     * 第三个参数 MsgName 声明该函数期望的消息类型名，仅作内省元数据，
-     * 调用时框架不做类型校验；单查 INFO_NAME 会显示 "tool.greet [String]"。
+     * 第三个参数 MsgName 声明该函数期望的消息类型名，第四参为函数说明（使用者自定义，
+     * 框架透传不解析），均仅作内省元数据；调用时框架不做类型校验。
+     * 单查 INFO_NAME 会显示 "tool.greet [String]"，函数说明经响应数据段透出。
      */
     printStep(
-        2, "带消息类型名的注册", "用 3 参形式注册 tool.greet 并传名调用；INFO_NAME 单查可见 [String] 元数据后缀。");
-    printResp("REGISTER(tool.greet,String)", YOMK_FUNCTIONPOOL_REGISTER("tool.greet", greet, String));
+        2, "带消息类型名的注册",
+        "用 4 参形式注册 tool.greet 并传名调用；INFO_NAME 单查可见 [String] 后缀与 data 段函数说明。");
+    printResp("REGISTER(tool.greet,desc)", YOMK_FUNCTIONPOOL_REGISTER("tool.greet", greet, String, "向指定的人问好"));
     printResp("INFO_NAME(tool.greet)", YOMK_FUNCTIONPOOL_INFO_NAME("tool.greet"));
     printResp("CALL(tool.greet)", YOMK_FUNCTIONPOOL_CALL("tool.greet", YomkMkPtr(String, "yomk")));
 

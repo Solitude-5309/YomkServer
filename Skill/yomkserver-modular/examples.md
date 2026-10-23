@@ -776,17 +776,19 @@ resp = YOMK_EVENTLOOP_INFO_ALL();
 
 ### FunctionPool 模块内省
 
-`/YomkFunctionPool` 服务自身提供注册表级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）。注册时可用三参宏声明期望消息类型（与 `YomkInstallFunc` 同款，字符串化后仅作内省元数据，不参与运行时校验）：
+`/YomkFunctionPool` 服务自身提供注册表级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）。注册时可用三参宏声明期望消息类型、四参宏追加函数说明（与 `YomkInstallFunc` 同款，字符串化后仅作内省元数据，不参与运行时校验）：
 
 ```cpp
 YOMK_FUNCTIONPOOL_REGISTER("func_a", funcA, String);  // 声明期望类型，内省可见 [String]
+YOMK_FUNCTIONPOOL_REGISTER("func_desc", funcA, String, "函数说明");  // 四参：说明挂 INFO_NAME 数据段
 YOMK_FUNCTIONPOOL_REGISTER("func_b", funcB);          // 两参旧写法零改动，内省无括号后缀
 
 // 注册函数名列表（返回 StringArray）
-YomkResponse resp = YOMK_FUNCTIONPOOL_INFO_NAMES();    // arr->d: ["func_a", "func_b"]
+YomkResponse resp = YOMK_FUNCTIONPOOL_INFO_NAMES();    // arr->d: ["func_a", "func_b", "func_desc"]
 
 // 单函数存在性查询：命中 eOk 且 msg 为 funcName [类型名]，未注册 eNo
-resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_a");           // eOk, msg: "func_a [String]"
+resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_a");           // eOk, msg: "func_a [String]"（无说明时 data 缺省）
+resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_desc");        // eOk, msg 同款，data 解包 String 为函数说明
 resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_b");           // eOk, msg: "func_b"
 resp = YOMK_FUNCTIONPOOL_INFO_NAME("not_exist");        // eNo
 

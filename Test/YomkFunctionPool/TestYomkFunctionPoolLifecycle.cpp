@@ -9,7 +9,8 @@
  * 4. 调用边界：空名 eInvalid / 未注册 eInvalid（P1）/ CallFunction.m_pkg=nullptr 原样透传给函数
  * 5. 内省：INFO_NAMES 存活列表包含注册名（空表陷阱教训）/ INFO_NAME 命中 "名 [类型]" 与
  *    无类型两种格式、未注册 eNo、空名 eInvalid / INFO_ALL "functions:N" 首行相对计数与行格式
- * 6. 宏分发：YOMK_FUNCTIONPOOL_REGISTER 2 参（无类型）与 3 参（#MsgName 字符串化为类型名）
+ * 6. 宏分发：YOMK_FUNCTIONPOOL_REGISTER 2 参（无类型）/ 3 参（#MsgName 字符串化为类型名）/
+ *     4 参（追加函数说明，INFO_NAME m_msg 契约保持 + 数据段可读）与同名热替换覆盖语义
  * 7. 异常契约：CALL 链（request→invoke→callFunction→用户函数）无任何 try/catch，
  *    用户函数抛 std::exception 异常穿透直达调用方——测试侧捕获 what 验证；随后正常 CALL 验证池存活
  * 8. 超长名：65536 字符函数名全生命周期（REGISTER/CALL/INFO_NAME/UNREGISTER）eOk 且完整回显
@@ -254,9 +255,30 @@ int main()
             YOMK_FUNCTIONPOOL_INFO_NAME("fp_three").m_msg == "fp_three [String]",
             "3 参注册 INFO_NAME 显示 [String] 类型后缀");
 
+        // 4 参：追加函数说明，INFO_NAME m_msg 契约保持、说明挂数据段
+        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_desc", echoFunc, String, "fp description").m_status == YomkResponse::eOk,
+              "REGISTER 4 参宏（String 类型 + 说明）返回 eOk");
+        auto infoDesc = YOMK_FUNCTIONPOOL_INFO_NAME("fp_desc");
+        CHECK(infoDesc.m_status == YomkResponse::eOk && infoDesc.m_msg == "fp_desc [String]",
+              "4 参注册 INFO_NAME m_msg 契约保持 [String] 后缀");
+        CHECK(infoDesc.m_data != nullptr, "4 参注册 INFO_NAME 说明挂入数据段");
+        if (infoDesc.m_data)
+        {
+            YomkUnPackPkgT(infoDesc.m_data, "String", Yomk(String), yDesc);
+            CHECK(yDesc && yDesc->d == "fp description", "数据段解包 String == \"fp description\"");
+        }
+        CHECK(YOMK_FUNCTIONPOOL_INFO_NAME("fp_three").m_data == nullptr, "3 参注册（无说明）数据段缺省");
+
+        // 覆盖语义：4 参后接 2 参同名热替换 → 类型后缀与说明均清除
+        CHECK(YOMK_FUNCTIONPOOL_REGISTER("fp_desc", echoFunc).m_status == YomkResponse::eOk, "2 参覆盖 4 参注册返回 eOk");
+        auto infoPlain = YOMK_FUNCTIONPOOL_INFO_NAME("fp_desc");
+        CHECK(infoPlain.m_status == YomkResponse::eOk && infoPlain.m_msg == "fp_desc" && infoPlain.m_data == nullptr,
+              "2 参热替换清除类型后缀与说明");
+
         // 清理
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_two").m_status == YomkResponse::eOk, "清理 fp_two");
         CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_three").m_status == YomkResponse::eOk, "清理 fp_three");
+        CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_desc").m_status == YomkResponse::eOk, "清理 fp_desc");
     }
 
     // ============ Section 7: CALL 异常穿透契约（FPC2 已文档化为显式契约）============

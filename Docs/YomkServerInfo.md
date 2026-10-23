@@ -25,7 +25,7 @@ YOMK_SERVER_INFO_ALL();                        // 全量服务拓扑
 ## 说明
 
 - 期望消息类型名通过三参宏声明：`YomkInstallFunc(funcName, func, MsgName)`、`YOMK_FUNCTIONPOOL_REGISTER(name, func, MsgName)`、`YOMK_EVENTLOOP_START(name, func, MsgName)`，仅作内省元数据，不影响调用。
-- 函数说明通过 `YomkInstallFunc` 四参宏声明（第四参自由字符串，内容使用者自定义，框架透传不解析）；`/function` 端点命中时 `m_msg` 仍精确等于消息类型名，说明挂入响应数据段（String 包，无说明缺省）。
+- 函数说明通过四参宏声明（第四参自由字符串，内容使用者自定义，框架透传不解析）：`YomkInstallFunc` 与 `YOMK_FUNCTIONPOOL_REGISTER` 均支持。`/function` 端点命中时 `m_msg` 仍精确等于消息类型名，说明挂入响应数据段（String 包，无说明缺省）；函数池 `/YomkFunctionPool/name` 单查端点 `m_msg` 保持 `funcName [类型名]` 行格式，说明同样挂入响应数据段。
 - 各内置模块另有模块级自省 API，详见各模块文档：
 
 | 模块 | 自省 API |

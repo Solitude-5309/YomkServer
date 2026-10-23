@@ -485,12 +485,14 @@ public:
     }
     // FUNCTIONPOOL_API
 public:
-    // 注册函数到全局函数池
+    // 注册函数到全局函数池（msgName 声明期望消息类型；description 函数说明，内容使用者自定义，均可为空）
     static YomkResponse FUNCTIONPOOL_REGISTER(
-        const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "")
+        const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
+        const std::string& description = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkFunctionPool/register", YomkMkPtr(Function, yomk::Function{funcName, func, msgName}));
+        return request(
+            "/YomkFunctionPool/register", YomkMkPtr(Function, yomk::Function{funcName, func, msgName, description}));
     }
     // 从函数池注销函数
     static YomkResponse FUNCTIONPOOL_UNREGISTER(const std::string& funcName)
@@ -665,12 +667,14 @@ private:
 #define YOMK_EVENTLOOP_INFO_LOOPS() YomkAPI::EVENTLOOP_INFO_LOOPS()
 #define YOMK_EVENTLOOP_INFO_LOOP(...) YomkAPI::EVENTLOOP_INFO_LOOP(__VA_ARGS__)
 #define YOMK_EVENTLOOP_INFO_ALL() YomkAPI::EVENTLOOP_INFO_ALL()
-#define YOMK_FUNCTIONPOOL_REGISTER_SELECT(_1, _2, _3, NAME, ...) NAME
-#define YOMK_FUNCTIONPOOL_REGISTER(...)                                                                        \
-    YOMK_FUNCTIONPOOL_REGISTER_SELECT(__VA_ARGS__, YOMK_FUNCTIONPOOL_REGISTER_3, YOMK_FUNCTIONPOOL_REGISTER_2) \
+#define YOMK_FUNCTIONPOOL_REGISTER_SELECT(_1, _2, _3, _4, NAME, ...) NAME
+#define YOMK_FUNCTIONPOOL_REGISTER(...)                                                                                            \
+    YOMK_FUNCTIONPOOL_REGISTER_SELECT(__VA_ARGS__, YOMK_FUNCTIONPOOL_REGISTER_4, YOMK_FUNCTIONPOOL_REGISTER_3, YOMK_FUNCTIONPOOL_REGISTER_2) \
     (__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_REGISTER_2(funcName, func) YomkAPI::FUNCTIONPOOL_REGISTER(funcName, func)
 #define YOMK_FUNCTIONPOOL_REGISTER_3(funcName, func, MsgName) YomkAPI::FUNCTIONPOOL_REGISTER(funcName, func, #MsgName)
+#define YOMK_FUNCTIONPOOL_REGISTER_4(funcName, func, MsgName, Description) \
+    YomkAPI::FUNCTIONPOOL_REGISTER(funcName, func, #MsgName, Description)
 #define YOMK_FUNCTIONPOOL_UNREGISTER(...) YomkAPI::FUNCTIONPOOL_UNREGISTER(__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_CALL(...) YomkAPI::FUNCTIONPOOL_CALL(__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_INFO_NAMES() YomkAPI::FUNCTIONPOOL_INFO_NAMES()

@@ -35,10 +35,11 @@ YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
     {
         itFunc->second.m_func = yFunc->d.m_func;
         itFunc->second.m_msgName = yFunc->d.m_msgName;
+        itFunc->second.m_description = yFunc->d.m_description;
         YOMK_ERR_POS_LOG("function name: " + yFunc->d.m_funcName + " is already exist, update to current function");
         return YomkResponse(YomkResponse::eOk, "find function name is already exist, update to current function");
     }
-    m_functions.emplace(yFunc->d.m_funcName, PoolFuncInfo{yFunc->d.m_func, yFunc->d.m_msgName});
+    m_functions.emplace(yFunc->d.m_funcName, PoolFuncInfo{yFunc->d.m_func, yFunc->d.m_msgName, yFunc->d.m_description});
     return {YomkResponse::eOk, "register function success"};
 }
 
@@ -120,8 +121,14 @@ YomkResponse YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
         YOMK_ERR_POS_LOG("funcName: " + yFuncName->d + " is not register, please check funcName");
         return YomkResponse(YomkResponse::eNo, "funcName is not register");
     }
+    // m_msg 契约保持 "funcName [类型名]" 行格式；函数说明非空时挂入响应数据段
     const std::string& msgName = itFunc->second.m_msgName;
-    return {YomkResponse::eOk, yFuncName->d + (msgName.empty() ? "" : " [" + msgName + "]")};
+    YomkResponse resp{YomkResponse::eOk, yFuncName->d + (msgName.empty() ? "" : " [" + msgName + "]")};
+    if (!itFunc->second.m_description.empty())
+    {
+        resp.m_data = YomkMkPtr(String, itFunc->second.m_description);
+    }
+    return resp;
 }
 
 // 内省：全量 dump，首行 functions:N，其余每行 funcName [类型名]（未声明类型时无括号后缀）

@@ -25,11 +25,12 @@ private:
     YomkResponse listAll(YomkPkgPtr pkg);
 
 private:
-    // 池中函数条目：函数本体 + 期望消息类型名（内省元数据，可为空）
+    // 池中函数条目：函数本体 + 期望消息类型名 + 函数说明（内省元数据，均可为空）
     struct PoolFuncInfo
     {
         YomkServiceFunc m_func;
         std::string m_msgName;
+        std::string m_description;
     };
 
 private:
