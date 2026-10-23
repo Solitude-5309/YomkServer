@@ -3,14 +3,12 @@
 # 用法:
 #   ./test/run_tests.sh              快速模式（压测规模缩为 10000）
 #   ./test/run_tests.sh --full       完整规模（测试内部默认，10 万级投递）
-#   ./test/run_tests.sh --prefix DIR 安装路径（缺省自动探测，见下）
+#   ./test/run_tests.sh --prefix DIR 测试库产物目录（缺省 <仓库根>/build/prefix）
 #   ./test/run_tests.sh --timeout N  单测试超时秒数（默认 300，--full 默认 900）
 #   ./test/run_tests.sh -h|--help    打印本说明
-# 安装路径探测顺序（首个命中者生效）:
-#   1. --prefix 显式指定
-#   2. 仓库本地构建产物 <仓库根>/build/prefix
-#   3. 环境变量 YOMK_PREFIX_PATH
-#   4. 系统默认安装 /opt/yomk
+# 测试库产物目录（对齐 main run_tests.sh 只消费仓库内本地产物的设计，无系统安装回退）:
+#   默认 <仓库根>/build/prefix；--prefix DIR 可显式指定其他产物目录
+#   产物缺失时报错并给出构建安装命令，不会静默回退系统安装（避免多份产物不同步时跑旧库）
 # 行为:
 #   1. 自动探测 lib/pythonX.Y/site-packages 并设置 PYTHONPATH
 #   2. 逐个运行 TESTS 清单（快->慢，stress 类压尾），测试文件按模块子目录分类
@@ -102,34 +100,27 @@ check_residue() {
 
 clean_residue
 
-# -------------sl 2. 探测安装产物并设置 PYTHONPATH ----------------
-# 探测链：--prefix > 仓库本地 build/prefix > YOMK_PREFIX_PATH > /opt/yomk
-# 本地构建优先于环境变量
-resolve_prefix() {
-    if [ -n "${PREFIX}" ]; then
-        echo "${PREFIX}"
-        return 0
-    fi
-    if [ -d "${REPO_DIR}/build/prefix/lib" ]; then
-        echo "${REPO_DIR}/build/prefix"
-        return 0
-    fi
-    if [ -n "${YOMK_PREFIX_PATH:-}" ]; then
-        echo "${YOMK_PREFIX_PATH}"
-        return 0
-    fi
-    echo "/opt/yomk"
+# -------------sl 2. 测试库产物目录并设置 PYTHONPATH ----------------
+# 对齐 main run_tests.sh 设计：只消费仓库内本地产物（<仓库根>/build/prefix，--prefix 可覆盖），
+# 不回退系统安装（YOMK_PREFIX_PATH / /opt/yomk）——避免多份产物不同步时测试静默跑旧库；
+# 产物缺失时报错并给出构建命令（对齐 main 的 build_hint 门禁；
+# 构建期直接产出测试产物到 build/prefix，与 main 一致不含 install 步骤）
+build_hint() {
+    echo "cmake -S ${REPO_DIR} -B ${REPO_DIR}/build -DCMAKE_BUILD_TYPE=Release && cmake --build ${REPO_DIR}/build -j"
 }
 
-PREFIX="$(resolve_prefix)"
+# 默认固定仓库本地产物目录（--prefix 可覆盖）
+if [ -z "${PREFIX}" ]; then
+    PREFIX="${REPO_DIR}/build/prefix"
+fi
 PREFIX="${PREFIX/#\~/$HOME}"
 
 PY_SITE_DIR=$(ls -d "${PREFIX}"/lib/python*[0-9].[0-9]*/site-packages 2>/dev/null | head -1)
 [ -n "${PY_SITE_DIR}" ] \
-    || fail "未找到 ${PREFIX}/lib/pythonX.Y/site-packages，请确认已安装（可用 --prefix 指定安装路径）"
+    || fail "未找到 ${PREFIX}/lib/pythonX.Y/site-packages，请先构建: $(build_hint)（或用 --prefix 指定产物目录）"
 
 for f in YomkServerPy.so YomkApi.py; do
-    [ -f "${PY_SITE_DIR}/${f}" ] || fail "未找到 ${PY_SITE_DIR}/${f}，请先完成 cmake install"
+    [ -f "${PY_SITE_DIR}/${f}" ] || fail "未找到 ${PY_SITE_DIR}/${f}，请先构建: $(build_hint)"
 done
 
 export PYTHONPATH="${PY_SITE_DIR}:${PYTHONPATH}"

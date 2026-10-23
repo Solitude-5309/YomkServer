@@ -1,5 +1,5 @@
 ﻿cmake_minimum_required(VERSION 3.14)
-project(YomkServerPy VERSION 1.4.5 LANGUAGES C)
+project(YomkServerPy VERSION 1.4.6 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 find_package(Python REQUIRED COMPONENTS Development)
@@ -32,7 +32,29 @@ add_custom_command(
 )
 
 # ---------- 4. 编译为共享库 ----------
+# 构建期即产出测试可用产物（对齐 main CMAKE_RUNTIME_OUTPUT_DIRECTORY=bin 的设计）：
+# .so 直接输出到构建树内 build/prefix/<PYTHON_SITE_PACKAGES>，与 YomkApi.py/.pyi/
+# 版本模块同目录；run_tests.sh 默认消费该目录——构建即可测，不依赖 install 步骤，
+# 测试产物与安装产物同源同版本（install 仅负责部署到安装前缀）
+set(BUILD_SITE_DIR "${CMAKE_BINARY_DIR}/prefix/${PYTHON_SITE_PACKAGES}")
+file(MAKE_DIRECTORY "${BUILD_SITE_DIR}")
+
 add_library(${PROJECT_NAME} SHARED ${C_SOURCE})
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${BUILD_SITE_DIR}"
+    ARCHIVE_OUTPUT_DIRECTORY "${BUILD_SITE_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "${BUILD_SITE_DIR}"
+)
+
+# 纯 python 模块构建期同步拷入（YomkServerPyVersion.py 已由 configure_file 生成于构建树）
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.pyi"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/YomkApi.py"
+        "${CMAKE_BINARY_DIR}/${PROJECT_NAME}Version.py"
+        "${BUILD_SITE_DIR}"
+    COMMENT "Copying pure-python modules into build site-packages"
+)
 
 # ---------- 5. 头文件和链接 ----------
 target_include_directories(${PROJECT_NAME} PRIVATE
