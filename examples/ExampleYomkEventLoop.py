@@ -8,7 +8,7 @@ YomkEventLoop：每个循环运行在独立线程中
 
 本示例演示单个循环的完整生命周期：
 start（绑定处理函数）-> post（非阻塞投递）-> post_wait（阻塞投递，
-回包携带事件 id 与执行结果）-> stop -> destroy
+回包携带事件 id 与执行结果）-> stop -> 内省（结构化元信息） -> destroy
 """
 
 import threading
@@ -54,7 +54,22 @@ def main():
     res = YomkApi.event_loop_stop("loop_1")
     print(f"[thread {tid}] event_loop_stop: {res.msg}")
 
-    print_step(6, "销毁", "event_loop_destroy 销毁循环与线程，彻底释放资源")
+    print_step(6, "内省",
+               "内省三件套看循环清单与运行状态；loop 单查命中为结构化返回：msg 恒 \"ok\"，data 为 EventLoopInfo 包（循环名/运行状态/积压数/默认处理函数/期望类型/队列头 tag），不存在循环返回 eNo")
+    res = YomkApi.event_loop_info_loops()
+    print(f"[thread {tid}] event_loop_info_loops: {res.data}")
+    res = YomkApi.event_loop_info_loop("loop_1", 3)
+    info = res.data
+    print(f"[thread {tid}] event_loop_info_loop: msg={res.msg}, loop_name={info.loop_name}, "
+          f"running={info.running}, pending={info.pending}, "
+          f"has_default_func={info.has_default_func}, msg_name={info.msg_name!r}, "
+          f"next_tags={info.next_tags}")
+    res = YomkApi.event_loop_info_loop("ghost")
+    print(f"[thread {tid}] event_loop_info_loop(ghost): {res.msg}")
+    res = YomkApi.event_loop_info_all()
+    print(f"[thread {tid}] event_loop_info_all: {res.data}")
+
+    print_step(7, "销毁", "event_loop_destroy 销毁循环与线程，彻底释放资源")
     res = YomkApi.event_loop_destroy("loop_1")
     print(f"[thread {tid}] event_loop_destroy: {res.msg}")
 

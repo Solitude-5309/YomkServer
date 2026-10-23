@@ -281,11 +281,12 @@ def section_5():
             r = YomkApi.event_loop_info_loop("conc_loop")
             with stat_lock:
                 poll_count[0] += 1
-                if r.status == ysp.ResStatus.eOk and "running:on" in r.msg:
+                if r.status == ysp.ResStatus.eOk and r.data is not None and r.data.running:
                     poll_ok[0] += 1
                 elif len(poll_fail_samples) < 5:  # 诊断：留存首批失败样本
                     poll_fail_samples.append(
-                        f"status={r.status} msg=[{r.msg}]")
+                        f"status={r.status} msg=[{r.msg}] "
+                        f"running={r.data.running if r.data is not None else None}")
 
     posters = [threading.Thread(target=api_poster) for _ in range(4)]
     poll_thread = threading.Thread(target=poller)

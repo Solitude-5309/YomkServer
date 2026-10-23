@@ -136,13 +136,13 @@ def line_of(loop, name, tag_count=3):
     return line if line else ""
 
 
-def line_of_api(name, tag_count=None):
+def info_of_api(name, tag_count=None):
     import YomkApi
     if tag_count is not None:
         r = YomkApi.event_loop_info_loop(name, tag_count)
     else:
         r = YomkApi.event_loop_info_loop(name)
-    return r.msg if r.status == ysp.ResStatus.eOk else ""
+    return r.data if r.status == ysp.ResStatus.eOk else None
 
 
 # ============ Section 1+2: stop 保留 + start 续跑（白盒）============
@@ -406,29 +406,34 @@ def section_9():
     stopper = threading.Thread(
         target=YomkApi.event_loop_stop, args=("api_loop",))
     stopper.start()
-    check(wait_until(lambda: "running:off" in line_of_api("api_loop"), 2.0),
-          "API 停止过程中 INFO_LOOP 观察到 running:off")
+    check(wait_until(lambda: (lambda o: o is not None and not o.running)(info_of_api("api_loop")), 2.0),
+          "API 停止过程中 INFO_LOOP 观察到 worker 未运行（running=False）")
 
     open_gate()
     stopper.join()
 
     check(order_snapshot() == [], "API 停止后排队事件未执行")
-    line = line_of_api("api_loop")
-    check("running:off" in line, "API 停止后 running:off")
-    check("pending:2" in line, "API 停止后 pending:2（未执行事件保留）")
+    info = info_of_api("api_loop")
+    check(info is not None and not info.running, "API 停止后未运行（running=False）")
+    check(info is not None and info.pending == 2, "API 停止后 pending=2（未执行事件保留）")
 
     # 停止态投递被拒（契约回归）：服务层映射 eNo，调用方可区分"已入队"与"被拒"
     check(YomkApi.event_loop_post("api_loop", "rx", counting_handler("rx"), "rx").status == ysp.ResStatus.eNo,
           "停止态 POST 返回 eNo（投递被拒）")
     check(YomkApi.event_loop_post_wait("api_loop", "rx2", counting_handler("rx2"), "rx2").status == ysp.ResStatus.eNo,
           "停止态 POST_WAIT 返回 eNo（被拒且不等待）")
-    check("pending:2" in line_of_api("api_loop"), "被拒投递未入队（pending 仍为 2）")
+    check((lambda o: o is not None and o.pending == 2)(info_of_api("api_loop")),
+          "被拒投递未入队（pending 仍为 2）")
 
-    # 越界数字 tagCount（D3 回归）：int 越界回退不再崩溃，回退默认 3
+    # 越界数字 tagCount（D3 回归）：int 越界回退不再崩溃，回退默认 3；
+    # 冻结窗口（队列 2 条）一并验证截断与原值保留
     oob = YomkApi.event_loop_info_loop("api_loop 99999999999999999999")
     check(oob.status == ysp.ResStatus.eOk, "越界数字 tagCount 返回 eOk（不崩溃）")
-    check("nextNEventTag(3)" in oob.msg, "越界数字 tagCount 回退默认 3")
-    check("99999999999999999999" not in oob.msg, "越界数字串不出现在回显中")
+    check(oob.msg == "ok", "越界数字 tagCount 命中 msg 恒为 ok")
+    check(isinstance(oob.data, ysp.EventLoopInfo),
+          "越界数字 tagCount 数据为 EventLoopInfo 包")
+    check(oob.data is not None and oob.data.next_tags == ["c1", "c2"],
+          "越界数字 tagCount 回退默认 3，队列 2 条全部回显且 tag 存原值")
 
     # 重启续跑：服务层 START 命中已存在条目即重启，积压按 FIFO 续跑
     check(YomkApi.event_loop_start("api_loop").status ==
@@ -461,12 +466,16 @@ def section_9():
     check(YomkApi.event_loop_info_loop("no_such").status ==
           ysp.ResStatus.eNo, "INFO_LOOP 不存在循环返回 eNo")
 
-    # INFO_LOOP 数字 tagCount 路径："name N" 字符串解析与类型化重载、大数值（合法范围）
-    check("nextNEventTag(5)" in YomkApi.event_loop_info_loop("api_loop 5").msg,
+    # INFO_LOOP 数字 tagCount 路径："name N" 字符串解析与类型化重载、大数值（合法范围）：
+    # 解析健壮性以 eOk + msg 恒 "ok" 承载，截断语义由冻结窗口断言覆盖
+    r5 = YomkApi.event_loop_info_loop("api_loop 5")
+    check(r5.status == ysp.ResStatus.eOk and r5.msg == "ok",
           "字符串数字路径解析 tagCount=5")
-    check("nextNEventTag(7)" in YomkApi.event_loop_info_loop("api_loop", 7).msg,
+    r7 = YomkApi.event_loop_info_loop("api_loop", 7)
+    check(r7.status == ysp.ResStatus.eOk and r7.msg == "ok",
           "类型化重载解析 tagCount=7")
-    check("nextNEventTag(1000000)" in YomkApi.event_loop_info_loop("api_loop 1000000").msg,
+    r1m = YomkApi.event_loop_info_loop("api_loop 1000000")
+    check(r1m.status == ysp.ResStatus.eOk and r1m.msg == "ok",
           "大数值 tagCount 正常解析（合法范围内）")
 
     # INFO_LOOPS：api_loop 存活时列表包含其名（loops() 遍历路径；销毁后移除验证见段尾）
@@ -501,7 +510,8 @@ def section_9():
           ysp.ResStatus.eOk, "START 超长循环名返回 eOk")
     long_info = YomkApi.event_loop_info_loop(long_name)
     check(long_info.status == ysp.ResStatus.eOk, "INFO_LOOP 超长循环名返回 eOk")
-    check(long_name in long_info.msg, "INFO_LOOP 完整回显超长循环名")
+    check(long_info.data is not None and long_info.data.loop_name == long_name,
+          "INFO_LOOP 完整回显超长循环名")
     check(YomkApi.event_loop_destroy(long_name).status ==
           ysp.ResStatus.eOk, "DESTROY 超长循环名返回 eOk")
 

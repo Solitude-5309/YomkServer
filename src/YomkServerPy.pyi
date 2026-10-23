@@ -170,6 +170,19 @@ class EventLoopPkg:
     ) -> None: ...
 
 
+class EventLoopInfo:
+    loop_name: str
+    running: bool
+    pending: int
+    has_default_func: bool
+    msg_name: str
+    next_tags: List[str]
+
+    def __init__(self, loop_name: str = "", running: bool = False,
+                 pending: int = 0, has_default_func: bool = False,
+                 msg_name: str = "", next_tags: List[str] = None) -> None: ...
+
+
 class YomkContext(YomkService):
     def __init__(self, server: Any) -> None: ...
     def init(self) -> None: ...

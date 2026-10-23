@@ -16,6 +16,7 @@ from YomkServerPy import (
     Function,
     CallFunction,
     EventLoopPkg,
+    EventLoopInfo,
     Event,
     ConsoleLogProxy,
     Log,

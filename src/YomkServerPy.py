@@ -386,6 +386,19 @@ class EventLoopPkg:
         self.m_msgName = msg_name
 
 
+class EventLoopInfo:
+    # 事件循环内省元信息（/YomkEventLoop/loop 返回数据）
+    def __init__(self, loop_name="", running=False, pending=0,
+                 has_default_func=False, msg_name="", next_tags=None):
+        self.loop_name = loop_name        # 循环名
+        self.running = running            # worker 是否运行中
+        self.pending = pending            # 积压事件数
+        self.has_default_func = has_default_func  # 是否注册默认处理函数
+        self.msg_name = msg_name          # 默认处理函数期望消息类型名（可空）
+        # 队列头起最多 tag_count 条事件 tag（存原值，空串保留）
+        self.next_tags = next_tags if next_tags is not None else []
+
+
 class LogFile:
     def __init__(self, logger="", dir=""):
         self.m_logger = logger
@@ -1110,24 +1123,29 @@ class EventLoop:
 
         return 0
 
-    def info_line(self, loop_name, tag_count):
-        # 内省元信息行：队列锁内快照，锁外拼行；
-        # 格式 "名 running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(N): tag1, tag2..."
+    def info_snapshot(self, info, tag_count):
+        # 结构化内省快照：填充事件循环元信息（/YomkEventLoop/loop 返回数据）；
+        # 队列锁内取数；队列头起最多 tag_count 条事件 tag，存原值（空串保留，展示层 "-" 占位由 info_line 处理）
         with self.m_queueMutex:
-            running = self.m_running
-            pending = self.m_event_queue.qsize()
-            default_func = self.m_defaultServiceFunc is not None
-            default_msg_name = self.m_defaultMsgName
-            # 队首最多列出 tagCount 个事件 tag，队列不足则全部列出；空 tag 显示 "-" 占位
-            tags = []
+            info.running = self.m_running
+            info.pending = self.m_event_queue.qsize()
+            info.has_default_func = self.m_defaultServiceFunc is not None
+            info.msg_name = self.m_defaultMsgName
             for event in list(self.m_event_queue.queue)[:tag_count]:
-                tags.append(event.m_tag if (event and event.m_tag) else "-")
+                info.next_tags.append(event.m_tag if event else "")
 
-        tag_list = ", ".join(tags)
-        return (loop_name + (" running:on" if running else " running:off") +
-                " pending:" + str(pending) +
-                (" defaultFunc:on" if default_func else " defaultFunc:off") +
-                ((" [" + default_msg_name + "]") if default_func and default_msg_name else "") +
+    def info_line(self, loop_name, tag_count):
+        # 内省元信息行：结构化快照取数，展示层拼行；
+        # 格式 "名 running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(N): tag1, tag2..."
+        info = EventLoopInfo()
+        self.info_snapshot(info, tag_count)
+
+        # 队首最多列出 tag_count 个事件 tag，队列不足则全部列出；空 tag 显示 "-" 占位
+        tag_list = ", ".join(tag if tag else "-" for tag in info.next_tags)
+        return (loop_name + (" running:on" if info.running else " running:off") +
+                " pending:" + str(info.pending) +
+                (" defaultFunc:on" if info.has_default_func else " defaultFunc:off") +
+                ((" [" + info.msg_name + "]") if info.has_default_func and info.msg_name else "") +
                 " nextNEventTag(" + str(tag_count) + "): " + tag_list)
 
 
@@ -1241,10 +1259,17 @@ class YomkEventLoop(YomkService):
 
         with self.m_eventLoopMutex.gen_rlock():
             if loop_name in self.m_eventLoop:
-                return YomkResponse(ResStatus.eOk, self.m_eventLoop[loop_name].info_line(loop_name, tag_count))
-            log.error("event loop: " + loop_name +
-                      " not exist, please check event loop name")
-            return YomkResponse(ResStatus.eNo, "event loop not exist")
+                # 锁内拷循环对象，锁外取数（info_snapshot 自锁队列锁）
+                event_loop = self.m_eventLoop[loop_name]
+            else:
+                log.error("event loop: " + loop_name +
+                          " not exist, please check event loop name")
+                return YomkResponse(ResStatus.eNo, "event loop not exist")
+
+        # 命中：结构化快照，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）
+        info = EventLoopInfo(loop_name)
+        event_loop.info_snapshot(info, tag_count)
+        return YomkResponse(ResStatus.eOk, "ok", info)
 
     def list_all(self, pkg):
         # 内省：全部事件循环元信息，每行一个循环
