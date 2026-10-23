@@ -426,6 +426,15 @@ class ConsoleLogProxy:
         self.m_consoleLogProxyFunc = console_log_proxy_func
 
 
+class LoggerInfo:
+    # 日志器内省元信息（/YomkLogger/logger 返回数据）
+    def __init__(self, logger_name="", type="", dir=""):
+        self.logger_name = logger_name  # 日志器名
+        # 类型："console" 或 "file"（与 LOGGERS 行文本 [console]/[file] 对应）
+        self.type = type
+        self.dir = dir                  # file 类型的日志目录（console 时为空串）
+
+
 def _yomk_err_pos_log(msg):
     # 框架错误提示直写 stdout（可被测试捕获），带调用点位置前缀
     frame = sys._getframe(1)
@@ -1567,13 +1576,16 @@ class YomkLogger(YomkService):
         bad = self._unpack(pkg, str)
         if bad:
             return bad
+        # 命中：锁内构造结构化快照，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）；
+        # 保持先 console 后 file 的查表顺序（同名双表时 console 优先命中）
         with self.m_consoleLoggersMutex.gen_rlock():
             if pkg in self.m_consoleLoggers:
-                return YomkResponse(ResStatus.eOk, pkg + " [console]")
+                return YomkResponse(ResStatus.eOk, "ok", LoggerInfo(pkg, "console"))
         with self.m_fileLoggersMutex.gen_rlock():
             file_logger = self.m_fileLoggers.get(pkg)
             if file_logger is not None:
-                return YomkResponse(ResStatus.eOk, pkg + " [file] dir:" + file_logger.get_dir())
+                return YomkResponse(
+                    ResStatus.eOk, "ok", LoggerInfo(pkg, "file", file_logger.get_dir()))
         _yomk_err_pos_log("logger: " + pkg + " not found.")
         return YomkResponse(ResStatus.eNo, "logger not found.")
 

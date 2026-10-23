@@ -36,7 +36,7 @@ import sys
 import tempfile
 
 import YomkApi
-from YomkServerPy import Log, ResStatus
+from YomkServerPy import Log, ResStatus, LoggerInfo
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
@@ -326,12 +326,25 @@ def main():
           "LOGGERS 含 file logger 行（名 [file] dir:路径）")
 
     console_info = YomkApi.logger_info_logger("MainLogger")
-    check(console_info.status == ResStatus.eOk and console_info.msg == "MainLogger [console]",
-          "LOGGER(MainLogger) 命中 console 格式")
+    check(console_info.status == ResStatus.eOk and console_info.msg == "ok",
+          "LOGGER(MainLogger) 命中 msg 恒为 ok")
+    check(isinstance(console_info.data, LoggerInfo),
+          "LOGGER(MainLogger) 数据为 LoggerInfo 包")
+    check(console_info.data is not None
+          and console_info.data.logger_name == "MainLogger"
+          and console_info.data.type == "console",
+          "LOGGER(MainLogger) 字段 logger_name/type 一致")
+    check(console_info.data is not None and console_info.data.dir == "",
+          "console 命中 dir 为空")
     file_info = YomkApi.logger_info_logger("lg1_file_logger")
-    check(file_info.status == ResStatus.eOk and
-          file_info.msg == "lg1_file_logger [file] dir:" + log_dir,
-          "LOGGER(lg1_file_logger) 命中 file 格式（含 dir）")
+    check(file_info.status == ResStatus.eOk and file_info.msg == "ok",
+          "LOGGER(lg1_file_logger) 命中 msg 恒为 ok")
+    check(file_info.data is not None
+          and file_info.data.logger_name == "lg1_file_logger"
+          and file_info.data.type == "file",
+          "LOGGER(lg1_file_logger) 字段 logger_name/type 一致")
+    check(file_info.data is not None and file_info.data.dir == log_dir,
+          "file 命中 dir 为创建目录")
     no_info = YomkApi.logger_info_logger("lg1_never_registered")
     check(no_info.status == ResStatus.eNo and no_info.msg == "logger not found.",
           "LOGGER 未注册名返回 eNo + logger not found.")

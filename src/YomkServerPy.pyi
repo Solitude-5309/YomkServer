@@ -183,6 +183,16 @@ class EventLoopInfo:
                  msg_name: str = "", next_tags: List[str] = None) -> None: ...
 
 
+class LoggerInfo:
+    logger_name: str  # 日志器名
+    # 类型："console" 或 "file"（与 LOGGERS 行文本 [console]/[file] 对应）
+    type: str
+    dir: str          # file 类型的日志目录（console 时为空串）
+
+    def __init__(self, logger_name: str = "", type: str = "",
+                 dir: str = "") -> None: ...
+
+
 class YomkContext(YomkService):
     def __init__(self, server: Any) -> None: ...
     def init(self) -> None: ...

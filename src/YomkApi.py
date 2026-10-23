@@ -21,7 +21,8 @@ from YomkServerPy import (
     ConsoleLogProxy,
     Log,
     LogFile,
-    FuncInfo
+    FuncInfo,
+    LoggerInfo
 )
 from typing import Any, Callable, Optional
 import atexit

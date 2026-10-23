@@ -228,12 +228,13 @@ def main():
     # 步骤7：内省三件套
     #
     # logger_info_loggers：日志器清单（console 段 + file 段，各自按名称字典序）；
-    # logger_info_logger(name)：单查，命中返回元信息行，未注册返回 eNo=1；
+    # logger_info_logger(name)：单查，命中返回结构化 LoggerInfo 包（msg 恒 "ok"，类型与目录在 data 字段），未注册返回 eNo=1；
     # logger_info_all：全量状态，首行为控制台级别与代理开关。
     #
     print_step(7, "内省三件套", "清单看全部、单查看一个、ALL 看总状态；单查一个从未创建的名字演示 eNo 惯例。")
     dump_lines("logger_info_loggers", YomkApi.logger_info_loggers())
     print_resp("logger_info_logger(app)", YomkApi.logger_info_logger("app"))
+    print('>> app 命中 → 结构化 LoggerInfo：type=file，dir 承载日志目录（msg 恒 "ok"）')
     print_resp("logger_info_logger(ghost)",
                YomkApi.logger_info_logger("ghost"))
     print(">> ghost 未注册 → eNo=1，not-found 是框架统一惯例")

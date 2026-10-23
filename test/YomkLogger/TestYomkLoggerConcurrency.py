@@ -300,8 +300,9 @@ def main():
           "S2a: 全部 marker 恰出现 1 次（不丢不重）")
 
     race_info = YomkApi.logger_info_logger(k_race_tag)
-    check(race_info.status == ResStatus.eOk and race_info.msg == k_race_tag + " [console]",
-          f"S2a: LOGGER({k_race_tag}) 命中 console 格式")
+    check(race_info.status == ResStatus.eOk and race_info.data is not None
+          and race_info.data.type == "console",
+          f"S2a: LOGGER({k_race_tag}) 命中 console 类型")
 
     # ---- S2b：分散创建——8 线程各自唯一 tag ----
     k_spread_threads = 8
@@ -343,9 +344,9 @@ def main():
     for t in range(k_spread_threads):
         tag = "lg3_s2_t" + str(t)
         info = YomkApi.logger_info_logger(tag)
-        if info.status != ResStatus.eOk or info.msg != tag + " [console]":
+        if info.status != ResStatus.eOk or info.data is None or info.data.type != "console":
             all_spread_hit = False
-    check(all_spread_hit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 格式")
+    check(all_spread_hit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 类型")
 
     # ---- S2c：P3-b 判定登记（LG6 已收口）----
     # S2a（同一新 tag 8 线程争用）与 S2b（8 个新 tag 并发创建）是 consoleLog 中
