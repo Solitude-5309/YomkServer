@@ -227,12 +227,13 @@ int main(int argc, char* argv[])
      * 步骤7：内省三件套
      *
      * LOGGERS：日志器清单（console 段 + file 段，各自按名称字典序）；
-     * LOGGER(name)：单查，命中返回元信息行，未注册返回 eNo=1；
+     * LOGGER(name)：单查，命中返回结构化 LoggerInfo 包（m_msg 恒 "ok"，类型与目录在 m_data 字段），未注册返回 eNo=1；
      * ALL：全量状态，首行为控制台级别与代理开关。
      */
     printStep(7, "内省三件套", "清单看全部、单查看一个、ALL 看总状态；单查一个从未创建的名字演示 eNo 惯例。");
     dumpLines("YOMK_LOGGER_INFO_LOGGERS", YOMK_LOGGER_INFO_LOGGERS());
     printResp("LOGGER_INFO_LOGGER(app)", YOMK_LOGGER_INFO_LOGGER("app"));
+    std::cout << ">> app 命中 → 结构化 LoggerInfo：m_type=file，m_dir 承载日志目录（m_msg 恒 \"ok\"）" << std::endl;
     printResp("LOGGER_INFO_LOGGER(ghost)", YOMK_LOGGER_INFO_LOGGER("ghost"));
     std::cout << ">> ghost 未注册 → eNo=1，not-found 是框架统一惯例" << std::endl;
     dumpLines("YOMK_LOGGER_INFO_ALL", YOMK_LOGGER_INFO_ALL());

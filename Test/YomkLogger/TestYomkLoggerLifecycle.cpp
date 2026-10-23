@@ -594,16 +594,25 @@ CHECK(
     CHECK(hasTag, "LOGGERS 含 S2 自建 tag logger 行（tag:行号 [console]）");
     CHECK(hasFile, "LOGGERS 含 file logger 行（名 [file] dir:路径）");
 
-    // LOGGER(name)：console/file 命中格式与未注册
+    // LOGGER(name)：console/file 命中结构化返回（LoggerInfo 包，m_msg 恒 "ok"）与未注册
     auto consoleInfo = YOMK_LOGGER_INFO_LOGGER("MainLogger");
     CHECK(
-        (consoleInfo.m_status == YomkResponse::eOk && consoleInfo.m_msg == "MainLogger [console]"),
-        "LOGGER(MainLogger) 命中 console 格式");
+        (consoleInfo.m_status == YomkResponse::eOk && consoleInfo.m_msg == "ok"),
+        "LOGGER(MainLogger) 命中 m_msg 恒为 ok");
+    YomkUnPackPkg(consoleInfo.m_data, LoggerInfo, consolePkg);
+    CHECK(consolePkg != nullptr, "LOGGER(MainLogger) 数据为 LoggerInfo 包");
+    CHECK(consolePkg && consolePkg->d.m_loggerName == "MainLogger" && consolePkg->d.m_type == "console",
+          "LOGGER(MainLogger) 字段 loggerName/type 一致");
+    CHECK(consolePkg && consolePkg->d.m_dir.empty(), "console 命中 m_dir 为空");
     auto fileInfo = YOMK_LOGGER_INFO_LOGGER("lg1_file_logger");
     CHECK(
-        (fileInfo.m_status == YomkResponse::eOk &&
-         fileInfo.m_msg == "lg1_file_logger [file] dir:" + (tmpDir / "s4").string()),
-        "LOGGER(lg1_file_logger) 命中 file 格式（含 dir）");
+        (fileInfo.m_status == YomkResponse::eOk && fileInfo.m_msg == "ok"),
+        "LOGGER(lg1_file_logger) 命中 m_msg 恒为 ok");
+    YomkUnPackPkg(fileInfo.m_data, LoggerInfo, filePkg);
+    CHECK(filePkg != nullptr, "LOGGER(lg1_file_logger) 数据为 LoggerInfo 包");
+    CHECK(filePkg && filePkg->d.m_loggerName == "lg1_file_logger" && filePkg->d.m_type == "file",
+          "LOGGER(lg1_file_logger) 字段 loggerName/type 一致");
+    CHECK(filePkg && filePkg->d.m_dir == (tmpDir / "s4").string(), "file 命中 m_dir 为创建目录");
     auto noInfo = YOMK_LOGGER_INFO_LOGGER("lg1_never_registered");
     CHECK(
         (noInfo.m_status == YomkResponse::eNo && noInfo.m_msg == "logger not found."),

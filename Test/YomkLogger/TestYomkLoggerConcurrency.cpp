@@ -635,9 +635,10 @@ int main()
         CHECK(countBadOccurrence(raceMarkers) == 0, "S2a: 全部 marker 恰出现 1 次（不丢不重）");
 
         auto raceInfo = YOMK_LOGGER_INFO_LOGGER(kRaceTag);
+        YomkUnPackPkg(raceInfo.m_data, LoggerInfo, racePkg);
         CHECK(
-            (raceInfo.m_status == YomkResponse::eOk && raceInfo.m_msg == kRaceTag + " [console]"),
-            "S2a: LOGGER(" + kRaceTag + ") 命中 console 格式");
+            (raceInfo.m_status == YomkResponse::eOk && racePkg && racePkg->d.m_type == "console"),
+            "S2a: LOGGER(" + kRaceTag + ") 命中 console 类型");
 
         // ---- S2b：分散创建——8 线程各自唯一 tag ----
         constexpr int kSpreadThreads = 8;
@@ -699,12 +700,13 @@ int main()
         {
             std::string tag = "lg3_s2_t" + std::to_string(t);
             auto info = YOMK_LOGGER_INFO_LOGGER(tag);
-            if (info.m_status != YomkResponse::eOk || info.m_msg != tag + " [console]")
+            YomkUnPackPkg(info.m_data, LoggerInfo, spreadPkg);
+            if (info.m_status != YomkResponse::eOk || !spreadPkg || spreadPkg->d.m_type != "console")
             {
                 allSpreadHit = false;
             }
         }
-        CHECK(allSpreadHit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 格式");
+        CHECK(allSpreadHit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 类型");
 
         // ---- S2c：P3-b 判定登记（LG6 已收口）----
         // S2a（同一新 tag 8 线程争用）与 S2b（8 个新 tag 并发创建）是 consoleLog 中

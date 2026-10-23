@@ -347,16 +347,29 @@ YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
 YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, String, yName);
+    // 命中：锁内构造结构化快照，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）；
+    // 保持先 console 后 file 的查表顺序（同名双表时 console 优先命中，与改造前一致）
     {
         std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
         if (m_consoleLoggers.find(yName->d) != m_consoleLoggers.end())
-            return {YomkResponse::eOk, yName->d + " [console]"};
+        {
+            yomk::LoggerInfo info;
+            info.m_loggerName = yName->d;
+            info.m_type = "console";
+            return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, info)};
+        }
     }
     {
         std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
         auto itLogger = m_fileLoggers.find(yName->d);
         if (itLogger != m_fileLoggers.end())
-            return {YomkResponse::eOk, yName->d + " [file] dir:" + itLogger->second->getDir()};
+        {
+            yomk::LoggerInfo info;
+            info.m_loggerName = yName->d;
+            info.m_type = "file";
+            info.m_dir = itLogger->second->getDir();
+            return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, info)};
+        }
     }
     YOMK_ERR_POS_LOG("logger: " + yName->d + " not found.");
     return YomkResponse(YomkResponse::eNo, "logger not found.");

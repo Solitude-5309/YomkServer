@@ -223,6 +223,14 @@ struct ConsoleLogProxy
     std::function<bool(const Log& log)> m_consoleLogProxyFunc;
 };
 
+// 日志器内省元信息（LOGGER_INFO_LOGGER 返回数据）
+struct LoggerInfo
+{
+    std::string m_loggerName;  // 日志器名
+    std::string m_type;        // 类型："console" 或 "file"（与 INFO_LOGGERS 行文本 [console]/[file] 对应）
+    std::string m_dir;         // file 类型的日志目录（console 时为空串）
+};
+
 struct Context
 {
     std::string m_key;
@@ -274,6 +282,7 @@ YomkMsg(EventLoopInfo, EventLoopInfo, d)
 YomkMsg(LogFile, LogFile, d)
 YomkMsg(Log, Log, d)
 YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)
+YomkMsg(LoggerInfo, LoggerInfo, d)
 YomkMsg(Context, Context, d)
 YomkMsg(ContextKeyInfo, ContextKeyInfo, d)
 YomkMsg(ContextChecker, ContextChecker, d)
