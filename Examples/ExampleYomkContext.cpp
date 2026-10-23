@@ -30,7 +30,7 @@
  *   YOMK_CONTEXT_SET_MONITOR   追加键级通知回调（可多个，async 可选）
  *   YOMK_CONTEXT_ON/OFF_MONITOR  全局通知开关
  *   YOMK_CONTEXT_INFO_KEYS     清单：全部键名
- *   YOMK_CONTEXT_INFO_KEY      单查：键状态行
+ *   YOMK_CONTEXT_INFO_KEY      单查：键结构化元信息（ContextKeyInfo 包）
  *   YOMK_CONTEXT_INFO_ALL      全量：每键一行状态
  *   YOMK_CONTEXT_DESTROY       销毁键（不存在返回 eNo）
  */
@@ -276,8 +276,8 @@ int main(int argc, char* argv[])
     printStep(7, "内省与销毁", "内省三件套看键清单与注册状态；DESTROY 后 GET 返回兜底默认值，重复 DESTROY 返回 eNo。");
     dumpLines("INFO_KEYS", YOMK_CONTEXT_INFO_KEYS());
     printResp("INFO_KEY(config)", YOMK_CONTEXT_INFO_KEY("config"));
-    std::cout << ">> 状态行：类型 [String] / checker:on（已挂回调）/ monitors:4(async:1)（4 个回调 1 个异步）"
-              << std::endl;
+    std::cout << ">> 结构化返回 ContextKeyInfo（m_data 承载，m_msg 恒 \"ok\"）：m_key=config m_typeName=String"
+              << " m_checkerOn=true（已挂回调） m_monitorCount=4 m_asyncMonitorCount=1" << std::endl;
     printResp("INFO_KEY(ghost)", YOMK_CONTEXT_INFO_KEY("ghost"));
     dumpLines("INFO_ALL", YOMK_CONTEXT_INFO_ALL());
 

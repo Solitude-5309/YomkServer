@@ -184,14 +184,18 @@ int main()
         CHECK(arr && contains(arr->d, "int_key"), "keys 包含 int_key");
     }
 
-    // keyInfo：正常 key
+    // keyInfo：正常 key（结构化返回，m_msg 恒 "ok"，数据走 m_data）
     {
         auto resp = YOMK_CONTEXT_INFO_KEY("str_key");
         CHECK(resp.m_status == YomkResponse::eOk, "keyInfo 正常 key 返回 eOk");
-        CHECK(resp.m_msg.find("str_key") != std::string::npos, "keyInfo 消息包含 key");
-        CHECK(resp.m_msg.find("String") != std::string::npos, "keyInfo 消息包含类型名 String");
-        CHECK(resp.m_msg.find("checker:off") != std::string::npos, "keyInfo 消息包含 checker:off");
-        CHECK(resp.m_msg.find("monitors:0") != std::string::npos, "keyInfo 消息包含 monitors:0");
+        CHECK(resp.m_msg == "ok", "keyInfo 命中 m_msg 恒为 ok");
+        YomkUnPackPkg(resp.m_data, ContextKeyInfo, info);
+        CHECK(info != nullptr, "keyInfo 数据为 ContextKeyInfo 包");
+        CHECK(info && info->d.m_key == "str_key", "keyInfo 字段 m_key 一致");
+        CHECK(info && info->d.m_typeName == "String", "keyInfo 字段 m_typeName 一致");
+        CHECK(info && !info->d.m_checkerOn, "keyInfo 字段 m_checkerOn 为 false");
+        CHECK(info && info->d.m_monitorCount == 0 && info->d.m_asyncMonitorCount == 0,
+              "keyInfo 字段 monitor 计数为 0");
     }
 
     // keyInfo：空 key

@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -94,7 +95,7 @@ protected:
 };
 typedef std::shared_ptr<YomkPkg> YomkPkgPtr;
 
-// 请求调用结果对象
+// 请求调用结果对象（m_status 表示本次请求的状态；m_msg 对状态的说明；m_data 携带的返回数据）
 class YomkResponse
 {
 public:
@@ -114,9 +115,9 @@ public:
     virtual ~YomkResponse() {}
 
 public:
-    EResStatus m_status;
-    std::string m_msg;
-    YomkPkgPtr m_data;
+    EResStatus m_status;  // 本次请求的状态
+    std::string m_msg;    // 对状态的说明（不携带返回数据）
+    YomkPkgPtr m_data;    // 携带的返回数据
 };
 typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
 
@@ -217,6 +218,16 @@ struct Context
     YomkPkgPtr m_value;
 };
 
+// Context 键内省元信息（CONTEXT_INFO_KEY 返回数据）
+struct ContextKeyInfo
+{
+    std::string m_key;                    // 键名
+    std::string m_typeName;               // 值消息包类型名（值为空时为空串）
+    bool m_checkerOn = false;             // 门控是否开启
+    std::size_t m_monitorCount = 0;       // monitor 总数
+    std::size_t m_asyncMonitorCount = 0;  // 其中 async monitor 数
+};
+
 struct ContextChecker
 {
     enum ECheckStatus
@@ -251,6 +262,7 @@ YomkMsg(LogFile, LogFile, d)
 YomkMsg(Log, Log, d)
 YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)
 YomkMsg(Context, Context, d)
+YomkMsg(ContextKeyInfo, ContextKeyInfo, d)
 YomkMsg(ContextChecker, ContextChecker, d)
 YomkMsg(ContextMonitor, ContextMonitor, d)
 YomkMsg(VoidPointer, VoidPointer, d)

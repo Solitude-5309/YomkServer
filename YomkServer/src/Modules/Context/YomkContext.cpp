@@ -337,7 +337,21 @@ YomkResponse YomkContext::keyInfo(YomkPkgPtr pkg)
         YOMK_ERR_POS_LOG("YomkContext key: " + str->d + " is not exist, please check key.");
         return YomkResponse(YomkResponse::eNo, "key is not exist");
     }
-    return {YomkResponse::eOk, contextInfoLine(itContext->second)};
+    // 命中：锁内构造结构化快照，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
+    const auto& ctx = itContext->second;
+    yomk::ContextKeyInfo info;
+    info.m_key = ctx.key;
+    info.m_typeName = ctx.value ? ctx.value->name() : "";
+    info.m_checkerOn = static_cast<bool>(ctx.checker);
+    info.m_monitorCount = ctx.monitors.size();
+    for (auto& monitor : ctx.monitors)
+    {
+        if (monitor.asyncMonitor)
+        {
+            ++info.m_asyncMonitorCount;
+        }
+    }
+    return {YomkResponse::eOk, "ok", YomkMkPtr(ContextKeyInfo, info)};
 }
 
 YomkResponse YomkContext::listAll(YomkPkgPtr pkg)

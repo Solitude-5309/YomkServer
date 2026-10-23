@@ -8,14 +8,16 @@ typedef std::shared_ptr<YomkPkg> YomkPkgPtr;  // 消息包指针
 class YomkResponse {
 public:
     enum EResStatus { eInvalid = -1, eOk = 0, eNo = 1 };
-    EResStatus m_status;
-    std::string m_msg;
-    YomkPkgPtr m_data;
+    EResStatus m_status;  // 本次请求的状态
+    std::string m_msg;    // 对状态的说明（不携带返回数据）
+    YomkPkgPtr m_data;    // 携带的返回数据
 };
 
 typedef std::function<YomkResponse(YomkPkgPtr pkg)> YomkServiceFunc;
 typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 ```
+
+字段语义（固化口径）：`m_status` 表示本次请求的状态；`m_msg` 仅作对状态的说明（成功 `"ok"`、错误为契约消息），**返回数据一律放 `m_data`**。
 
 ## 状态码约定
 
