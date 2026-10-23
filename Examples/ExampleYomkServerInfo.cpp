@@ -183,18 +183,18 @@ int main(int argc, char* argv[])
     /**
      * 步骤3：单查元信息
      *
-     * INFO_FUNCTION 按 URL 单查：命中时 m_msg 精确返回期望消息类型名
-     * （无元数据为空串），data 段携带注册时声明的函数说明（无说明缺省）；
+     * INFO_FUNCTION 按 URL 单查：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"），
+     * m_msgName=期望消息类型名、m_description=注册时声明的函数说明（均为可空字段）；
      * 4 种坏 URL 均返回 eNo，是普通返回值不崩溃。
      */
     printStep(
         3,
         "单查元信息",
-        "INFO_FUNCTION 命中时 m_msg=期望消息类型名（/sum 为 SumReq，/hi 为空串），"
-        "data 段=注册声明的函数说明；4 种坏 URL 均为 eNo=1.");
+        "INFO_FUNCTION 命中返回结构化 FuncInfo 包（m_msg 恒 \"ok\"）：m_msgName 承载期望消息类型名"
+        "（/sum 为 SumReq，/hi 为空串），m_description 承载函数说明；4 种坏 URL 均为 eNo=1.");
     printResp("INFO_FUNCTION(/sum)", YOMK_SERVER_INFO_FUNCTION("/InfoDemoService/sum"));
     printResp("INFO_FUNCTION(/hi)", YOMK_SERVER_INFO_FUNCTION("/InfoDemoService/hi"));
-    std::cout << ">> 命中契约：m_msg 即期望的消息类型名，data 段为 YomkInstallFunc 第四参声明的函数说明" << std::endl;
+    std::cout << ">> 命中契约：结构化 FuncInfo 包，m_msgName=期望的消息类型名，m_description=YomkInstallFunc 第四参声明的函数说明" << std::endl;
     printResp("INFO_FUNCTION(url不以/开头)", YOMK_SERVER_INFO_FUNCTION("InfoDemoService/sum"));
     printResp("INFO_FUNCTION(缺函数名)", YOMK_SERVER_INFO_FUNCTION("/InfoDemoService"));
     printResp("INFO_FUNCTION(服务不存在)", YOMK_SERVER_INFO_FUNCTION("/GhostService/hi"));

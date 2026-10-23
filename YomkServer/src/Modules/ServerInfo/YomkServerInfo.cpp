@@ -92,13 +92,13 @@ YomkResponse YomkServerInfo::functionInfo(YomkPkgPtr pkg)
                 YOMK_ERR_POS_LOG("function not found -> " + url);
                 return {YomkResponse::eNo, "function not found: " + url};
             }
-            // m_msg 契约保持精确 msgName；函数说明非空时挂入响应数据段
-            YomkResponse resp{YomkResponse::eOk, iter->second.m_msgName};
-            if (!iter->second.m_description.empty())
-            {
-                resp.m_data = YomkMkPtr(String, iter->second.m_description);
-            }
-            return resp;
+            // 命中：结构化包恒挂，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）；
+            // 复用 yomk::FuncInfo 与 FunctionPool /name 单查端点同族
+            yomk::FuncInfo info;
+            info.m_funcName = funcName;
+            info.m_msgName = iter->second.m_msgName;
+            info.m_description = iter->second.m_description;
+            return {YomkResponse::eOk, "ok", YomkMkPtr(FuncInfo, info)};
         }
     }
 

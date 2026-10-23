@@ -203,7 +203,7 @@ int XxxService::init() {
 YomkResponse resp = YOMK_SERVER_INFO_SERVICES();
 // 指定服务的函数列表（每行 "funcName [msgName]"）
 resp = YOMK_SERVER_INFO_FUNCTIONS("/XxxService");
-// 单函数类型查询（命中返回 msg 为类型名，data 段为四参声明的说明，无说明缺省）
+// 单函数元信息查询（命中返回结构化 FuncInfo 包：m_msgName=类型名、m_description=四参说明，m_msg 恒 "ok"）
 resp = YOMK_SERVER_INFO_FUNCTION("/XxxService/my_func");
 // 全量 dump（服务名行 + 缩进函数行）
 resp = YOMK_SERVER_INFO_ALL();

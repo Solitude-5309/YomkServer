@@ -248,12 +248,19 @@ int main()
     std::cout << "===== S3. /function 端点 =====" << std::endl;
     {
         auto hitTyped = YOMK_SERVER_INFO_FUNCTION("/FmtSrv/echo");
-        CHECK(hitTyped.m_status == YomkResponse::eOk && hitTyped.m_msg == "String",
-              "命中三参函数：eOk 且 m_msg 精确等于 msgName \"String\"（特殊契约）");
+        CHECK(hitTyped.m_status == YomkResponse::eOk && hitTyped.m_msg == "ok",
+              "命中三参函数：eOk 且 m_msg 恒为 ok");
+        YomkUnPackPkg(hitTyped.m_data, FuncInfo, typedInfo);
+        CHECK(typedInfo != nullptr, "命中三参函数：数据为 FuncInfo 包");
+        CHECK(typedInfo && typedInfo->d.m_funcName == "/echo" && typedInfo->d.m_msgName == "String",
+              "命中三参函数字段 m_funcName/m_msgName 一致");
 
         auto hitPlain = YOMK_SERVER_INFO_FUNCTION("/FmtSrv/ping");
-        CHECK(hitPlain.m_status == YomkResponse::eOk && hitPlain.m_msg.empty(),
-              "命中两参函数：eOk 且 m_msg 为空");
+        CHECK(hitPlain.m_status == YomkResponse::eOk && hitPlain.m_msg == "ok",
+              "命中两参函数：eOk 且 m_msg 恒为 ok");
+        YomkUnPackPkg(hitPlain.m_data, FuncInfo, plainInfo);
+        CHECK(plainInfo && plainInfo->d.m_funcName == "/ping" && plainInfo->d.m_msgName.empty(),
+              "命中两参函数字段 m_funcName 一致且 m_msgName 为空");
 
         auto emptyUrl = YOMK_SERVER_INFO_FUNCTION("");
         CHECK(emptyUrl.m_status == YomkResponse::eNo && emptyUrl.m_msg.find("please start with /") != std::string::npos,
@@ -280,17 +287,16 @@ int main()
         CHECK(nullPkg.m_status == YomkResponse::eNo && nullPkg.m_msg.find("pkg is null") != std::string::npos,
               "null pkg 返回 eNo + pkg is null（解包宏守卫）");
 
-        // description 透出：四参安装的 /echo 命中时 m_msg 契约保持且说明挂入数据段；无说明的 /ping 数据段为空
+        // description 透出：四参安装的 /echo 命中时说明承载于 FuncInfo 包；无说明的 /ping 恒挂包但说明为空
         auto hitDesc = YOMK_SERVER_INFO_FUNCTION("/FmtSrv/echo");
-        CHECK(hitDesc.m_status == YomkResponse::eOk && hitDesc.m_msg == "String",
-              "四参函数命中：m_msg 契约保持精确 msgName \"String\"");
-        CHECK(hitDesc.m_data != nullptr, "四参函数命中：说明挂入响应数据段");
-        if (hitDesc.m_data)
-        {
-            YomkUnPackPkgT(hitDesc.m_data, "String", Yomk(String), yDesc);
-            CHECK(yDesc && yDesc->d == "echo demo description", "数据段解包 String == \"echo demo description\"");
-        }
-        CHECK(hitPlain.m_data == nullptr, "两参函数（无说明）命中：数据段保持为空");
+        CHECK(hitDesc.m_status == YomkResponse::eOk && hitDesc.m_msg == "ok",
+              "四参函数命中：m_msg 恒为 ok");
+        YomkUnPackPkg(hitDesc.m_data, FuncInfo, descInfo);
+        CHECK(descInfo && descInfo->d.m_msgName == "String", "四参函数命中：m_msgName == \"String\"");
+        CHECK(descInfo && descInfo->d.m_description == "echo demo description",
+              "四参函数命中：m_description == \"echo demo description\"");
+        CHECK(hitPlain.m_data != nullptr && plainInfo && plainInfo->d.m_description.empty(),
+              "两参函数（无说明）命中：结构化包恒挂且 m_description 为空");
     }
 
     // ============ S4. /all ============
@@ -458,8 +464,11 @@ int main()
               "超长名下函数行格式完整");
 
         auto longFunction = YOMK_SERVER_INFO_FUNCTION(longName + "/ping");
-        CHECK(longFunction.m_status == YomkResponse::eOk && longFunction.m_msg.empty(),
-              "超长名下 /function URL 二段解析正确（m_msg 为空）");
+        CHECK(longFunction.m_status == YomkResponse::eOk && longFunction.m_msg == "ok",
+              "超长名下 /function URL 二段解析正确（m_msg 恒为 ok）");
+        YomkUnPackPkg(longFunction.m_data, FuncInfo, longFuncInfo);
+        CHECK(longFuncInfo && longFuncInfo->d.m_funcName == "/ping",
+              "超长名下 URL 二段解析正确（m_funcName == \"/ping\"）");
 
         auto allLines = unpackStringArray(YOMK_SERVER_INFO_ALL());
         int longIdx = nameIndex(allLines, longName);

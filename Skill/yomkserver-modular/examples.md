@@ -713,10 +713,10 @@ YomkUnPackPkg(resp.m_data, StringArray, arr);  // arr->d: ["/DemoService", "/Yom
 resp = YOMK_SERVER_INFO_FUNCTIONS("/DemoService");
 // arr->d: ["/no_type", "/with_desc [String]", "/with_type [String]"]
 
-// 单函数类型查询（service type）
-resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_type");  // eOk, msg = "String"
-resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_desc");  // eOk, msg = "String"，data = "对函数的说明"（四参说明挂数据段）
-resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/no_type");    // eOk, msg 为空串（未声明），data 缺省
+// 单函数元信息查询（结构化 FuncInfo 包：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
+resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_type");  // eOk，m_msgName = "String"
+resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_desc");  // eOk，m_msgName = "String"，m_description = "对函数的说明"（四参说明）
+resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/no_type");    // eOk，m_msgName 为空串（未声明），m_description 为空
 resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/not_exist");  // eNo
 
 // 全量 dump：服务名行 + 缩进的 "srvName + funcName [msgName]" 行
