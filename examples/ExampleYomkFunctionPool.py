@@ -49,12 +49,14 @@ def main():
     print(f"[thread {tid}] call func: {res.msg}")
 
     print_step(3, "带类型与函数说明的注册",
-               "三参声明期望消息类型、四参附函数说明（均仅内省元数据，调用不做类型校验）；info_name 单查可见 [String] 后缀，函数说明经 data 段透出")
+               "三参声明期望消息类型、四参附函数说明（均仅内省元数据，调用不做类型校验）；info_name 单查返回结构化 FuncInfo（类型与说明在 data 字段）")
     res = YomkApi.function_pool_register("greet", greet, "String", "向指定的人问好")
     print(f"[thread {tid}] register greet: {res.msg}")
     res = YomkApi.function_pool_info_name("greet")
-    print(f"[thread {tid}] info greet: {res.msg}"
-          + (f', data: "{res.data}"' if res.data is not None else ""))
+    fi = res.data
+    print(f"[thread {tid}] info greet: msg={res.msg}"
+          + (f", func_name={fi.func_name}, msg_name={fi.msg_name}, description={fi.description}"
+             if fi is not None else ""))
     res = YomkApi.function_pool_call("greet", "yomk")
     print(f"[thread {tid}] call greet: {res.msg}")
 

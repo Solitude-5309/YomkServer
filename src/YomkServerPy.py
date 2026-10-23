@@ -40,7 +40,7 @@ class YomkService:
         self.name: str = ""
         self.server: "YomkServer" = server
         self.functions: dict[str, Callable[[Any], YomkResponse]] = {}
-        self.function_infos: dict[str, YomkFuncInfo] = {}
+        self.function_infos: dict[str, FuncInfo] = {}
         self.registered: bool = False
         self.rwlock_functions = rwlock.RWLockFair()
         if not server:
@@ -85,17 +85,17 @@ class YomkService:
                     f"install function already exists -> {name}, update to current function")
             self.functions[name] = function
             if msg_name or description:
-                self.function_infos[name] = YomkFuncInfo(
+                self.function_infos[name] = FuncInfo(
                     name, msg_name, description)
             else:
                 # 两参覆盖安装时清除残留的函数信息，保持内省与注册一致
                 self.function_infos.pop(name, None)
 
     def func_infos(self):
-        infos: dict[str, YomkFuncInfo] = {}
+        infos: dict[str, FuncInfo] = {}
         with self.rwlock_functions.gen_rlock():
             for func_name in self.functions:
-                info = YomkFuncInfo(func_name)
+                info = FuncInfo(func_name)
                 stored = self.function_infos.get(func_name)
                 if stored:
                     info.msg_name = stored.msg_name
@@ -578,7 +578,8 @@ class Monitor:
         self.async_monitor_func = async_monitor_func
 
 
-class YomkFuncInfo:
+class FuncInfo:
+    # 功能函数元信息（调试内省用），预留扩展（如安全性校验）
     def __init__(self, func_name="", msg_name="", description=""):
         self.func_name = func_name
         self.msg_name = msg_name
@@ -943,8 +944,7 @@ class YomkFunctionPool(YomkService):
         return YomkResponse(ResStatus.eOk, "ok", names)
 
     def funcInfo(self, func_name: str):
-        # 内省：单个函数存在性查询，命中 msg 为 "funcName [类型名]"（未声明类型时纯名），
-        # 函数说明非空时挂入 data 段（msg 契约保持行格式不变）
+        # 内省：单个函数元信息查询，命中返回结构化 FuncInfo 包（msg 恒 "ok"，数据走 data）
         if not func_name:
             log.error("funcName is empty, please check String.")
             return YomkResponse(ResStatus.eInvalid, "funcName is empty")
@@ -955,14 +955,10 @@ class YomkFunctionPool(YomkService):
                 log.error(
                     f"funcName: {func_name} is not register, please check funcName")
                 return YomkResponse(ResStatus.eNo, "funcName is not register")
-            msg_name = entry.msg_name
-            description = entry.description
+            # 命中：结构化包恒挂，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）
+            info = FuncInfo(func_name, entry.msg_name, entry.description)
 
-        resp = YomkResponse(
-            ResStatus.eOk, func_name + (f" [{msg_name}]" if msg_name else ""))
-        if description:
-            resp.data = description
-        return resp
+        return YomkResponse(ResStatus.eOk, "ok", info)
 
     def listAll(self, pkg):
         # 内省：全量 dump，首行 functions:N，其余每行 "funcName [类型名]"

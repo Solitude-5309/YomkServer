@@ -10,7 +10,7 @@ S3. Event / EventLoopPkg 结构契约：默认构造字段、带参构造透传�
 S4. YomkResponse 契约：默认构造（eInvalid/空 msg/None data）、枚举值序
     （eInvalid=-1/eOk=0/eNo=1）、双参构造、三参构造 data 透传
 S5. 框架结构体默认值（python 对应子集）：Function/CallFunction/Context/
-    ContextChecker/ContextMonitor/YomkFuncInfo/LogFile/Log/ConsoleLogProxy
+    ContextChecker/ContextMonitor/FuncInfo/LogFile/Log/ConsoleLogProxy
     默认构造与字段
 
 语言机制说明（剔除口径，非缺陷）：
@@ -33,11 +33,11 @@ from YomkServerPy import (
     ContextMonitor,
     Event,
     EventLoopPkg,
+    FuncInfo,
     Function,
     Log,
     LogFile,
     ResStatus,
-    YomkFuncInfo,
     YomkResponse,
 )
 
@@ -139,9 +139,9 @@ def s5_struct_defaults():
     cmo = ContextMonitor()
     check(cmo.key == "" and cmo.monitor_func is None and cmo.async_monitor_func is False,
           "ContextMonitor 默认：key 空、func None、async False")
-    fi = YomkFuncInfo()
+    fi = FuncInfo()
     check(fi.func_name == "" and fi.msg_name == "",
-          "YomkFuncInfo 默认：func_name/msg_name 空")
+          "FuncInfo 默认：func_name/msg_name 空")
 
     # Log 族三结构（Logger 模块轮回填）
     lf = LogFile()
