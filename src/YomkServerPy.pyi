@@ -113,8 +113,11 @@ class Function:
     name: str
     func: Callable[[Any], YomkResponse]
     msg_name: str
+    description: str
+
     def __init__(self, name: str = "", func: Callable[[
-                 Any], YomkResponse] = None, msg_name: str = "") -> None: ...
+                 Any], YomkResponse] = None, msg_name: str = "",
+                 description: str = "") -> None: ...
 
 
 class CallFunction:

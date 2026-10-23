@@ -165,17 +165,21 @@ YomkApi.event_loop_destroy("TaskLoop")
 统一函数注册与调度中心，面向过程开发范式，支持运行时注册、更新和热替换，业务逻辑快速迭代：
 
 ```python
-# 注册函数（函数签名：(pkg) -> YomkResponse）
+# 注册函数（函数签名：(pkg) -> YomkResponse；三参声明期望消息类型、四参附函数说明，均仅内省元数据）
 YomkApi.function_pool_register("calc", func_v1)
+YomkApi.function_pool_register("greet", greet, "String", "向指定的人问好")
 
 # 调用（未注册的名字返回 eNo）
 resp = YomkApi.function_pool_call("calc", "data")
+
+# 单函数内省：命中 msg 为 "函数名 [类型名]"，四参函数说明挂 data 段
+resp = YomkApi.function_pool_info_name("greet")
 
 # 同名重复注册即运行时热替换，下一次调用执行新实现，无需重启
 YomkApi.function_pool_register("calc", func_v2)
 ```
 
-完整可运行演示见 `examples/ExampleYomkFunctionPool.py`（注册/调用与同名热替换）。
+完整可运行演示见 `examples/ExampleYomkFunctionPool.py`（注册/调用、类型与说明声明、同名热替换）。
 
 ### 6. 服务生命周期与启动编排 (YomkService / YomkBoot)
 

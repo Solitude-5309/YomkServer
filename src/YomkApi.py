@@ -433,8 +433,10 @@ def context_info_all() -> YomkResponse:
     return _api_request("/YomkContext/all", None)
 
 
-def function_pool_register(name: str, func: Callable[[Any], YomkResponse], msg_name: str = "") -> YomkResponse:
-    return _api_request("/YomkFunctionPool/register", Function(name, func, msg_name))
+def function_pool_register(name: str, func: Callable[[Any], YomkResponse], msg_name: str = "",
+                           description: str = "") -> YomkResponse:
+    # 注册函数到全局函数池：msg_name 声明期望消息类型，description 函数说明，均可为空（仅内省元数据）
+    return _api_request("/YomkFunctionPool/register", Function(name, func, msg_name, description))
 
 
 def function_pool_unregister(name: str) -> YomkResponse:

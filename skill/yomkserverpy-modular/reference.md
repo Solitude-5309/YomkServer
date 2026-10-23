@@ -140,11 +140,11 @@ class EventLoopPkg:
 ### FunctionPool
 | API | 说明 |
 |-----|------|
-| `YomkApi.function_pool_register(name, func, msg_name="")` | 注册函数（msg_name 为函数消息类型元数据，可缺省） |
+| `YomkApi.function_pool_register(name, func, msg_name="", description="")` | 注册函数（三参声明期望消息类型、四参附函数说明，均仅内省元数据；说明经 info_name 数据段透出；同名重复注册即运行时热替换） |
 | `YomkApi.function_pool_unregister(name)` | 注销函数 |
 | `YomkApi.function_pool_call(name, pkg)` | 调用函数 |
 | `YomkApi.function_pool_info_names()` | 枚举全部函数名 |
-| `YomkApi.function_pool_info_name(name)` | 查询单函数信息 |
+| `YomkApi.function_pool_info_name(name)` | 单函数存在性查询（命中 msg 为 `funcName [类型名]`，未声明类型纯名，未注册 eNo；四参函数说明挂 data 段） |
 | `YomkApi.function_pool_info_all()` | 查询全部函数信息 |
 
 ### ServerInfo

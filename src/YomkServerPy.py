@@ -338,10 +338,12 @@ class ContextMonitor:
 
 
 class Function:
-    def __init__(self, name, func, msg_name=""):
+    def __init__(self, name, func, msg_name="", description=""):
         self.name = name
         self.func = func
         self.msg_name = msg_name
+        # 函数说明，内容使用者自定义，与 msg_name 同为仅内省元数据
+        self.description = description
 
 
 class CallFunction:
@@ -853,8 +855,8 @@ class YomkFunctionPool(YomkService):
 
         with self.m_functionsMutex.gen_wlock():
             if function.name in self.m_functions:
-                # 重复名=更新语义：整对象替换覆盖 func+msg_name 双字段，
-                # 先更新再返回显式区分的文案
+                # 重复名=更新语义：整对象替换覆盖 func、msg_name、description 三字段
+                # （未在替换对象上声明的元数据即被清除），先更新再返回显式区分的文案
                 log.info(
                     f"function name: {function.name} is already exist, update to current function")
                 self.m_functions[function.name] = function
@@ -906,8 +908,8 @@ class YomkFunctionPool(YomkService):
         return YomkResponse(ResStatus.eOk, "ok", names)
 
     def funcInfo(self, func_name: str):
-        # 内省：单个函数存在性查询，命中 msg 为 "funcName [类型名]"（未声明类型时纯名）
-        #
+        # 内省：单个函数存在性查询，命中 msg 为 "funcName [类型名]"（未声明类型时纯名），
+        # 函数说明非空时挂入 data 段（msg 契约保持行格式不变）
         if not func_name:
             log.error("funcName is empty, please check String.")
             return YomkResponse(ResStatus.eInvalid, "funcName is empty")
@@ -919,9 +921,13 @@ class YomkFunctionPool(YomkService):
                     f"funcName: {func_name} is not register, please check funcName")
                 return YomkResponse(ResStatus.eNo, "funcName is not register")
             msg_name = entry.msg_name
+            description = entry.description
 
-        return YomkResponse(
+        resp = YomkResponse(
             ResStatus.eOk, func_name + (f" [{msg_name}]" if msg_name else ""))
+        if description:
+            resp.data = description
+        return resp
 
     def listAll(self, pkg):
         # 内省：全量 dump，首行 functions:N，其余每行 "funcName [类型名]"

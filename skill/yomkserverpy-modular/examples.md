@@ -438,9 +438,13 @@ def validate_amount(pkg) -> YomkApi.YomkResponse:
     except:
         return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "invalid amount")
 
-# 注册 + 调用
+# 注册 + 调用（三参声明期望消息类型、四参附函数说明，均仅内省元数据）
 YomkApi.function_pool_register("validate_amount", validate_amount)
+YomkApi.function_pool_register("calc_sum", calc_sum, "String", "计算输入之和")  # 四参：类型 + 说明
 resp = YomkApi.function_pool_call("validate_amount", "100.5")
+
+# 单函数内省：命中 msg 为 "函数名 [类型名]"，四参函数说明挂 data 段
+resp = YomkApi.function_pool_info_name("calc_sum")  # eOk, msg = "calc_sum [String]"，data = "计算输入之和"
 ```
 
 ## 示例5：服务内省（调试）

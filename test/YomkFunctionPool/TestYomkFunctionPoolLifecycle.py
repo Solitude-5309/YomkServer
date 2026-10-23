@@ -8,14 +8,16 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
 4. 调用边界：空名 eInvalid / 未注册 eNo / pkg=None 原样透传给函数（探针计数）
 5. 内省：info_names 存活列表包含注册名（空表陷阱教训）/ info_name 命中纯名与未注册 eNo、
    空名 eInvalid / info_all "functions:N" 首行相对计数与行格式
-6. 注册 2 参/3 参分发映射：无类型（纯名内省）vs 声明类型（[String] 后缀内省）
+6. 注册 2 参/3 参/4 参分发映射：无类型（纯名内省）vs 声明类型（[String] 后缀）vs
+   附函数说明（data 段透出，msg 契约保持）；2 参同名热替换清除类型后缀与说明
 7. 异常契约：CALL 链（request→invoke→callFunction→用户函数）无 try/catch，
    用户函数异常穿透直达调用方——测试侧捕获验证 what；随后正常 CALL 验证池存活
 8. 超长名：65536 字符函数名全生命周期（REGISTER/CALL/INFO_NAME/UNREGISTER）eOk 且完整回显
 
 语言形态说明：
-- Function 双形态：Function(name, func) 无类型 / Function(name, func, "String") 声明类型
-  （经门面 function_pool_register 的 msg_name 形参承载）
+- Function 三形态：Function(name, func) 无类型 / Function(name, func, "String") 声明类型 /
+  Function(name, func, "String", "说明") 附函数说明（经门面 function_pool_register 的
+  msg_name 与 description 形参承载）
 - 内省数据解包后 YomkResponse.data 直接是 list[str]
 - poolCount 的 SIZE_MAX 哨兵值以 None 承载
 - 探针计数用 list.append（GIL 原子，T 轮既有模式）
@@ -187,7 +189,7 @@ check(isinstance(r.data, list) and "fp_plain" in r.data,
 r = function_pool_unregister("fp_count_probe")
 check(r.status == ResStatus.eOk, "清理 fp_count_probe")
 
-# ============ Section 6: REGISTER 2 参 / 3 参分发映射 ============
+# ============ Section 6: REGISTER 2 参 / 3 参 / 4 参分发映射 ============
 r = function_pool_register("fp_two", alive_func)
 check(r.status == ResStatus.eOk, "REGISTER 2 参宏（无类型）返回 eOk")
 r = function_pool_info_name("fp_two")
@@ -198,10 +200,29 @@ check(r.status == ResStatus.eOk, "REGISTER 3 参宏（String 类型）返回 eOk
 r = function_pool_info_name("fp_three")
 check(r.msg == "fp_three [String]", "3 参注册 INFO_NAME 显示 [String] 类型后缀")
 
+# 4 参：追加函数说明，INFO_NAME msg 契约保持、说明挂数据段
+r = function_pool_register("fp_desc", echo_func, "String", "fp description")
+check(r.status == ResStatus.eOk, "REGISTER 4 参宏（String 类型 + 说明）返回 eOk")
+r = function_pool_info_name("fp_desc")
+check(r.status == ResStatus.eOk and r.msg == "fp_desc [String]",
+      "4 参注册 INFO_NAME msg 契约保持 [String] 类型后缀")
+check(r.data == "fp description", "4 参注册函数说明挂入 data 段")
+r = function_pool_info_name("fp_three")
+check(r.data is None, "3 参注册（无说明）data 段缺省")
+
+# 覆盖语义：2 参同名热替换 → 类型后缀与说明均清除
+r = function_pool_register("fp_desc", alive_func)
+check(r.status == ResStatus.eOk, "2 参覆盖 4 参注册返回 eOk")
+r = function_pool_info_name("fp_desc")
+check(r.status == ResStatus.eOk and r.msg == "fp_desc" and r.data is None,
+      "2 参热替换清除类型后缀与说明")
+
 r = function_pool_unregister("fp_two")
 check(r.status == ResStatus.eOk, "清理 fp_two")
 r = function_pool_unregister("fp_three")
 check(r.status == ResStatus.eOk, "清理 fp_three")
+r = function_pool_unregister("fp_desc")
+check(r.status == ResStatus.eOk, "清理 fp_desc")
 
 # ============ Section 7: CALL 异常穿透契约 ============
 r = function_pool_register("fp_throw", throw_func)
