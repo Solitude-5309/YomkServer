@@ -248,7 +248,7 @@ def main():
     # 步骤7：内省三件套
     #
     # logger_info_loggers(type)：按类型查询日志器纯名清单（console/file，各表按名称字典序）；
-    # logger_info_logger(name)：单查，命中返回结构化 LoggerInfo 包（msg 恒 "ok"，类型与目录在 data 字段），未注册返回 eNo=1；
+    # logger_info_logger(name, type)：按类型单表精确查，命中返回结构化 LoggerInfo 包（msg 恒 "ok"，类型与目录在 data 字段），未注册返回 eNo=1；
     # logger_info_all：全量状态，结构化包装包（console 状态段五开关 + loggers 清单段）。
     #
     print_step(7, "内省三件套", "清单按类型看（console/file）、单查看一个、ALL 看总状态；单查一个从未创建的名字演示 eNo 惯例。")
@@ -256,10 +256,11 @@ def main():
                YomkApi.logger_info_loggers("console"))
     dump_lines("logger_info_loggers(file)",
                YomkApi.logger_info_loggers("file"))
-    print_resp("logger_info_logger(app)", YomkApi.logger_info_logger("app"))
-    print('>> app 命中 → 结构化 LoggerInfo：type=file，dir 承载日志目录（msg 恒 "ok"）')
-    print_resp("logger_info_logger(ghost)",
-               YomkApi.logger_info_logger("ghost"))
+    print_resp("logger_info_logger(app, file)",
+               YomkApi.logger_info_logger("app", "file"))
+    print('>> app 按类型 file 单查命中 → 结构化 LoggerInfo：type=file，dir 承载日志目录（msg 恒 "ok"）')
+    print_resp("logger_info_logger(ghost, console)",
+               YomkApi.logger_info_logger("ghost", "console"))
     print(">> ghost 未注册 → eNo=1，not-found 是框架统一惯例")
     dump_all_info("logger_info_all", YomkApi.logger_info_all())
 

@@ -310,7 +310,7 @@ def main():
         "/proc/lg1_impossible/sub", "lg1_bad_dir_logger")
     check(bad_dir.status == ResStatus.eNo and bad_dir.msg == "init file logger failed.",
           "不可创建 dir 返回 eNo + init file logger failed.（P2-b 已处置，异常不穿透）")
-    ghost_info = YomkApi.logger_info_logger("lg1_bad_dir_logger")
+    ghost_info = YomkApi.logger_info_logger("lg1_bad_dir_logger", "file")
     check(ghost_info.status == ResStatus.eNo and ghost_info.msg == "logger not found.",
           "init 失败的 logger 未注册（无幽灵 key，内省 not found）")
     # init 失败不占用名字：同名换有效 dir 重试应成功
@@ -333,7 +333,7 @@ def main():
           and "lg1_file_logger" in file_resp.data,
           "LOGGERS(file) 含 lg1_file_logger 纯名行（dir 经 LOGGER_INFO_LOGGER 查询断言覆盖）")
 
-    console_info = YomkApi.logger_info_logger("MainLogger")
+    console_info = YomkApi.logger_info_logger("MainLogger", "console")
     check(console_info.status == ResStatus.eOk and console_info.msg == "ok",
           "LOGGER(MainLogger) 命中 msg 恒为 ok")
     check(isinstance(console_info.data, LoggerInfo),
@@ -344,7 +344,7 @@ def main():
           "LOGGER(MainLogger) 字段 logger_name/type 一致")
     check(console_info.data is not None and console_info.data.dir == "",
           "console 命中 dir 为空")
-    file_info = YomkApi.logger_info_logger("lg1_file_logger")
+    file_info = YomkApi.logger_info_logger("lg1_file_logger", "file")
     check(file_info.status == ResStatus.eOk and file_info.msg == "ok",
           "LOGGER(lg1_file_logger) 命中 msg 恒为 ok")
     check(file_info.data is not None
@@ -353,7 +353,7 @@ def main():
           "LOGGER(lg1_file_logger) 字段 logger_name/type 一致")
     check(file_info.data is not None and file_info.data.dir == log_dir,
           "file 命中 dir 为创建目录")
-    no_info = YomkApi.logger_info_logger("lg1_never_registered")
+    no_info = YomkApi.logger_info_logger("lg1_never_registered", "console")
     check(no_info.status == ResStatus.eNo and no_info.msg == "logger not found.",
           "LOGGER 未注册名返回 eNo + logger not found.")
 
@@ -463,7 +463,7 @@ def main():
           "file_log 空 logger 名返回 eNo + 契约消息")
     check("file logger name is empty." in out, "file_log 空名错误提示")
     # LOGGER_INFO_LOGGER 空名 -> eNo（P2-a 堵死空名注册后无幽灵 key）
-    empty_name_info = YomkApi.logger_info_logger("")
+    empty_name_info = YomkApi.logger_info_logger("", "console")
     check(empty_name_info.status == ResStatus.eNo and empty_name_info.msg == "logger not found.",
           "LOGGER 空名返回 eNo + logger not found.（P2-a 处置后无幽灵 key）")
     # 未知端点 -> invoke 路由层 eNo
@@ -490,18 +490,18 @@ def main():
     r, _ = capture(lambda: YomkApi.console_log_info_tag(
         name, "lg1_s8_console_marker"))
     check(r.status == ResStatus.eOk, "S8: console-only 预热创建 eOk")
-    check(YomkApi.logger_info_logger(name).status ==
+    check(YomkApi.logger_info_logger(name, "console").status ==
           ResStatus.eOk, "S8: 创建后单查命中 eOk")
     r, _ = capture(lambda: YomkApi.file_log_delete(name))
     check(r.status == ResStatus.eOk and r.msg == "deleted console:1 file:0",
           f"S8: console-only 删除 eOk + msg 计数: {r.msg}")
-    check(YomkApi.logger_info_logger(name).status ==
+    check(YomkApi.logger_info_logger(name, "console").status ==
           ResStatus.eNo, "S8: console 删除后单查 eNo")
     # 惰性重建：同名再写一条 -> consoleLog 双检锁重建路径
     r, _ = capture(lambda: YomkApi.console_log_info_tag(
         name, "lg1_s8_rebuild_marker"))
     check(r.status == ResStatus.eOk, "S8: 删除后同名再写 eOk（惰性重建）")
-    check(YomkApi.logger_info_logger(name).status == ResStatus.eOk,
+    check(YomkApi.logger_info_logger(name, "console").status == ResStatus.eOk,
           "S8: 惰性重建后单查恢复 eOk")
     check(YomkApi.file_log_delete(name).status ==
           ResStatus.eOk, "S8: 清理重建 logger eOk")
@@ -541,8 +541,9 @@ def main():
     r, _ = capture(lambda: YomkApi.file_log_delete(name))
     check(r.status == ResStatus.eOk and r.msg == "deleted console:1 file:1",
           f"S8: 同名双表一次删除 eOk + msg 计数: {r.msg}")
-    check(YomkApi.logger_info_logger(name).status == ResStatus.eNo,
-          "S8: 双表删除后单查 eNo（两表均已清理）")
+    check(YomkApi.logger_info_logger(name, "console").status == ResStatus.eNo and
+          YomkApi.logger_info_logger(name, "file").status == ResStatus.eNo,
+          "S8: 双表删除后按类型单查均 eNo（两表均已清理）")
     r, out2 = capture(lambda: YomkApi.file_log_delete(name))
     check(r.status == ResStatus.eNo and r.msg == "logger not found.",
           "S8: 重复删除返回 eNo（幂等）")
@@ -580,12 +581,12 @@ def main():
     # MainLogger 无特殊保护：可删；重建须走"空 logger 名回退"路径
     check(YomkApi.file_log_delete("MainLogger").status == ResStatus.eOk,
           "S8: MainLogger 可删除 eOk（无特殊保护）")
-    check(YomkApi.logger_info_logger("MainLogger").status == ResStatus.eNo,
+    check(YomkApi.logger_info_logger("MainLogger", "console").status == ResStatus.eNo,
           "S8: MainLogger 删除后单查 eNo")
     r, rebuild_out = capture(lambda: YomkApi.request(
         "/YomkLogger/console_log", Log(Log.eInfo, "lg1_s8_mainlogger_rebuild_marker", "")))
     check(r.status == ResStatus.eOk, "S8: MainLogger 删除后空名回退写入 eOk")
-    check(YomkApi.logger_info_logger("MainLogger").status == ResStatus.eOk,
+    check(YomkApi.logger_info_logger("MainLogger", "console").status == ResStatus.eOk,
           "S8: MainLogger 惰性重建后单查恢复 eOk")
     check("[MainLogger] lg1_s8_mainlogger_rebuild_marker" in rebuild_out,
           "S8: 重建对象名确为 MainLogger（输出行 [MainLogger]）")

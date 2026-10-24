@@ -22,6 +22,7 @@ from YomkServerPy import (
     Log,
     LogFile,
     FuncInfo,
+    LoggerQuery,
     LoggerInfo,
     ConsoleLogState,
     LoggerAllInfo,
@@ -350,9 +351,9 @@ def logger_info_loggers(logger_type):
     return _api_request("/YomkLogger/loggers", logger_type)
 
 
-def logger_info_logger(logger_name):
-    # 查询指定日志器状态
-    return _api_request("/YomkLogger/logger", logger_name)
+def logger_info_logger(logger_name, logger_type):
+    # 查询指定日志器状态（type: "console"/"file"；两表允许同名，须按类型精确单查）
+    return _api_request("/YomkLogger/logger", LoggerQuery(logger_name, logger_type))
 
 
 def logger_info_all():

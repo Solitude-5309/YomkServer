@@ -426,6 +426,13 @@ class ConsoleLogProxy:
         self.m_consoleLogProxyFunc = console_log_proxy_func
 
 
+class LoggerQuery:
+    # 日志器单查请求（/YomkLogger/logger 请求数据：名 + 类型，两表允许同名须按类型区分）
+    def __init__(self, logger_name="", type=""):
+        self.m_logger_name = logger_name
+        self.m_type = type  # 类型："console" 或 "file"
+
+
 class LoggerInfo:
     # 日志器内省元信息（/YomkLogger/logger 返回数据、/YomkLogger/all 清单段元素）
     def __init__(self, logger_name="", type="", dir=""):
@@ -1362,9 +1369,9 @@ class YomkLogger(YomkService):
                           self.off_console_log_by_level, "Log")
         self.install_func("/on_console_log_by_level",
                           self.on_console_log_by_level, "Log")
-        # 调试内省接口，端点挂在本服务 funcMap；/loggers 传类型参数（String）
+        # 调试内省接口，端点挂在本服务 funcMap；/loggers、/logger 均传类型参数
         self.install_func("/loggers", self.loggers, "String")
-        self.install_func("/logger", self.logger_info, "String")
+        self.install_func("/logger", self.logger_info, "LoggerQuery")
         self.install_func("/all", self.list_all)
         return 0
 
@@ -1597,21 +1604,29 @@ class YomkLogger(YomkService):
         return YomkResponse(ResStatus.eOk, "ok", names)
 
     def logger_info(self, pkg):
-        bad = self._unpack(pkg, str)
+        bad = self._unpack(pkg, LoggerQuery)
         if bad:
             return bad
-        # 命中：锁内构造结构化快照，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）；
-        # 保持先 console 后 file 的查表顺序（同名双表时 console 优先命中）
-        with self.m_consoleLoggersMutex.gen_rlock():
-            if pkg in self.m_consoleLoggers:
-                return YomkResponse(ResStatus.eOk, "ok", LoggerInfo(pkg, "console"))
-        with self.m_fileLoggersMutex.gen_rlock():
-            file_logger = self.m_fileLoggers.get(pkg)
-            if file_logger is not None:
+        # 按类型单表精确查找：两表允许同名，不再先 console 后 file 双表 fallback（同名歧义由 type 消除）；
+        # 命中：锁内构造结构化快照，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）
+        if pkg.m_type == "console":
+            with self.m_consoleLoggersMutex.gen_rlock():
+                if pkg.m_logger_name not in self.m_consoleLoggers:
+                    _yomk_err_pos_log("console logger: " + pkg.m_logger_name + " not found.")
+                    return YomkResponse(ResStatus.eNo, "logger not found.")
                 return YomkResponse(
-                    ResStatus.eOk, "ok", LoggerInfo(pkg, "file", file_logger.get_dir()))
-        _yomk_err_pos_log("logger: " + pkg + " not found.")
-        return YomkResponse(ResStatus.eNo, "logger not found.")
+                    ResStatus.eOk, "ok", LoggerInfo(pkg.m_logger_name, "console"))
+        if pkg.m_type == "file":
+            with self.m_fileLoggersMutex.gen_rlock():
+                file_logger = self.m_fileLoggers.get(pkg.m_logger_name)
+                if file_logger is None:
+                    _yomk_err_pos_log("file logger: " + pkg.m_logger_name + " not found.")
+                    return YomkResponse(ResStatus.eNo, "logger not found.")
+                return YomkResponse(
+                    ResStatus.eOk, "ok",
+                    LoggerInfo(pkg.m_logger_name, "file", file_logger.get_dir()))
+        _yomk_err_pos_log("unknown logger type: " + pkg.m_type + ".")
+        return YomkResponse(ResStatus.eNo, "unknown logger type.")
 
     def list_all(self, pkg):
         # 状态段在双锁外取：四个级别开关独立无锁，组合本无原子快照保证

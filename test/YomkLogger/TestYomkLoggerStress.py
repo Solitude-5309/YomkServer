@@ -642,9 +642,11 @@ def main():
         identical = console_lg == loggers_lines and file_lg == file_lines
     check(identical, "S4B: ALL 清单段与 LOGGERS 分型逐行一致（两端点单锁快照）")
 
-    # ---- Phase C：单查 N 次（偶数查 console 名、奇数查 file 名；两表查找热路径量化点）----
+    # ---- Phase C：按类型单查 N 次（偶数查 console 表、奇数查 file 表；两表查找热路径量化点）----
+    # logger_info 按类型单表精确查找（console/file 各自读锁），偶奇交替恰覆盖两表热路径。
     # 名字域校验：偶数 i 的 lg4s1_tag_i 由 S1A 创建、奇数 i 的 lg4s2_fl_i 由 S2A 创建，
-    # 全部命中，CHECK(okProbe == probes) 的守恒语义成立
+    # 全部命中，CHECK(okProbe == probes) 的守恒语义成立；口径变更（单查改带 type）
+    # 须与修复前基线同批采样才可比
     probes = n
     ok_probe = 0
     with contextlib.redirect_stdout(io.StringIO()):
@@ -652,7 +654,8 @@ def main():
         for i in range(probes):
             name = make_name("lg4s1_tag_", i) if i % 2 == 0 else make_name(
                 "lg4s2_fl_", i)
-            if YomkApi.logger_info_logger(name).status == ResStatus.eOk:
+            typ = "console" if i % 2 == 0 else "file"
+            if YomkApi.logger_info_logger(name, typ).status == ResStatus.eOk:
                 ok_probe += 1
         elapsed_probe = (time.perf_counter() - t0) * 1000.0
     record_baseline("S4C_logger_single_query", probes, elapsed_probe)
@@ -788,7 +791,7 @@ def main():
                 elif not is_legal_status(rd):
                     s5_bad_status.append(1)
 
-                rn = YomkApi.logger_info_logger(name)
+                rn = YomkApi.logger_info_logger(name, "console")
                 if rn.status == ResStatus.eNo:
                     s5_post_delete_no.append(1)
                 elif not is_legal_status(rn):
@@ -886,9 +889,11 @@ def main():
     gone_file = 0
     with contextlib.redirect_stdout(io.StringIO()):
         for i in range(probes_c):
-            if YomkApi.logger_info_logger(make_name("lg4s1_tag_", i)).status == ResStatus.eNo:
+            if YomkApi.logger_info_logger(
+                    make_name("lg4s1_tag_", i), "console").status == ResStatus.eNo:
                 gone_console += 1
-            if YomkApi.logger_info_logger(make_name("lg4s2_fl_", i)).status == ResStatus.eNo:
+            if YomkApi.logger_info_logger(
+                    make_name("lg4s2_fl_", i), "file").status == ResStatus.eNo:
                 gone_file += 1
     check(gone_console == probes_c and gone_file == probes_c,
           f"S5C: 抽样单查全部 eNo（console {gone_console} / file {gone_file}，"

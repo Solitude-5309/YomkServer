@@ -257,7 +257,7 @@ def main():
     check(count_bad_occurrence(race_markers) == 0,
           "S2a: 全部 marker 恰出现 1 次（不丢不重）")
 
-    race_info = YomkApi.logger_info_logger(k_race_tag)
+    race_info = YomkApi.logger_info_logger(k_race_tag, "console")
     check(race_info.status == ResStatus.eOk and race_info.data is not None
           and race_info.data.type == "console",
           f"S2a: LOGGER({k_race_tag}) 命中 console 类型")
@@ -301,7 +301,7 @@ def main():
     all_spread_hit = True
     for t in range(k_spread_threads):
         tag = "lg3_s2_t" + str(t)
-        info = YomkApi.logger_info_logger(tag)
+        info = YomkApi.logger_info_logger(tag, "console")
         if info.status != ResStatus.eOk or info.data is None or info.data.type != "console":
             all_spread_hit = False
     check(all_spread_hit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 类型")
