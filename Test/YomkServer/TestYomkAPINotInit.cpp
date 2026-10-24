@@ -165,7 +165,7 @@ int main()
             YomkAPI::LOGGER_INFO_LOGGERS("console").m_status == YomkResponse::eInvalid,
             "LOGGER_INFO_LOGGERS 未初始化返回 eInvalid");
         CHECK(
-            YomkAPI::LOGGER_INFO_LOGGER("guard_logger").m_status == YomkResponse::eInvalid,
+            YomkAPI::LOGGER_INFO_LOGGER("guard_logger", "console").m_status == YomkResponse::eInvalid,
             "LOGGER_INFO_LOGGER 未初始化返回 eInvalid");
         CHECK(YomkAPI::LOGGER_INFO_ALL().m_status == YomkResponse::eInvalid, "LOGGER_INFO_ALL 未初始化返回 eInvalid");
         CHECK(

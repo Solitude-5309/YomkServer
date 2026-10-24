@@ -564,7 +564,7 @@ int main()
                 "）——同一实例被并发复用无丢失");
         CHECK(countBadOccurrence(raceMarkers) == 0, "S2a: 全部 marker 恰出现 1 次（不丢不重）");
 
-        auto raceInfo = YOMK_LOGGER_INFO_LOGGER(kRaceTag);
+        auto raceInfo = YOMK_LOGGER_INFO_LOGGER(kRaceTag, "console");
         YomkUnPackPkg(raceInfo.m_data, LoggerInfo, racePkg);
         CHECK(
             (raceInfo.m_status == YomkResponse::eOk && racePkg && racePkg->d.m_type == "console"),
@@ -626,7 +626,7 @@ int main()
         for (int t = 0; t < kSpreadThreads; ++t)
         {
             std::string tag = "lg3_s2_t" + std::to_string(t);
-            auto info = YOMK_LOGGER_INFO_LOGGER(tag);
+            auto info = YOMK_LOGGER_INFO_LOGGER(tag, "console");
             YomkUnPackPkg(info.m_data, LoggerInfo, spreadPkg);
             if (info.m_status != YomkResponse::eOk || !spreadPkg || spreadPkg->d.m_type != "console")
             {

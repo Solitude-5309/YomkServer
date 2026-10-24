@@ -257,15 +257,15 @@ int main(int argc, char* argv[])
      * 步骤7：内省三件套
      *
      * LOGGERS：按类型（console/file）查询日志器名清单，行内容即纯名（各自按名称字典序）；
-     * LOGGER(name)：单查，命中返回结构化 LoggerInfo 包（m_msg 恒 "ok"，类型与目录在 m_data 字段），未注册返回 eNo=1；
+     * LOGGER(name, type)：按类型单表精确查，命中返回结构化 LoggerInfo 包（m_msg 恒 "ok"，类型与目录在 m_data 字段），未注册返回 eNo=1；
      * ALL：全量状态，首行为控制台级别与代理开关。
      */
     printStep(7, "内省三件套", "清单看全部、单查看一个、ALL 看总状态；单查一个从未创建的名字演示 eNo 惯例。");
     dumpLines("YOMK_LOGGER_INFO_LOGGERS(console)", YOMK_LOGGER_INFO_LOGGERS("console"));
     dumpLines("YOMK_LOGGER_INFO_LOGGERS(file)", YOMK_LOGGER_INFO_LOGGERS("file"));
-    printResp("LOGGER_INFO_LOGGER(app)", YOMK_LOGGER_INFO_LOGGER("app"));
-    std::cout << ">> app 命中 → 结构化 LoggerInfo：m_type=file，m_dir 承载日志目录（m_msg 恒 \"ok\"）" << std::endl;
-    printResp("LOGGER_INFO_LOGGER(ghost)", YOMK_LOGGER_INFO_LOGGER("ghost"));
+    printResp("LOGGER_INFO_LOGGER(app, file)", YOMK_LOGGER_INFO_LOGGER("app", "file"));
+    std::cout << ">> app 按类型 file 单查命中 → 结构化 LoggerInfo：m_type=file，m_dir 承载日志目录（m_msg 恒 \"ok\"）" << std::endl;
+    printResp("LOGGER_INFO_LOGGER(ghost, console)", YOMK_LOGGER_INFO_LOGGER("ghost", "console"));
     std::cout << ">> ghost 未注册 → eNo=1，not-found 是框架统一惯例" << std::endl;
     dumpLoggerAll("YOMK_LOGGER_INFO_ALL", YOMK_LOGGER_INFO_ALL());
 

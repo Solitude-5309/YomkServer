@@ -233,6 +233,13 @@ struct ConsoleLogState
     bool m_proxyOn = false;  // 控制台代理已安装
 };
 
+// 日志器单查请求（LOGGER_INFO_LOGGER 请求数据：名 + 类型，两表允许同名须按类型区分）
+struct LoggerQuery
+{
+    std::string m_loggerName;
+    std::string m_type;  // 类型："console" 或 "file"
+};
+
 // 日志器内省元信息（LOGGER_INFO_LOGGER 返回数据）
 struct LoggerInfo
 {
@@ -310,6 +317,7 @@ YomkMsg(std::vector<yomk::EventLoopInfo>, EventLoopInfoList, d)
 YomkMsg(LogFile, LogFile, d)
 YomkMsg(Log, Log, d)
 YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)
+YomkMsg(LoggerQuery, LoggerQuery, d)
 YomkMsg(LoggerInfo, LoggerInfo, d)
 // Logger 全量内省（LOGGER_INFO_ALL 返回数据：控制台状态段 + 日志器清单段）
 YomkMsg(LoggerAllInfo, LoggerAllInfo, d)

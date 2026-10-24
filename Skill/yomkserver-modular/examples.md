@@ -813,10 +813,10 @@ YomkResponse resp = YOMK_LOGGER_INFO_LOGGERS("console");
 resp = YOMK_LOGGER_INFO_LOGGERS("file");
 // arr->d: ["info_logger"]
 
-// 单日志器元信息：LoggerInfo 结构化包（m_loggerName/m_type/m_dir，m_msg 恒 "ok"）
-resp = YOMK_LOGGER_INFO_LOGGER("MainLogger");      // eOk, m_type="console"，m_dir 为空串
-resp = YOMK_LOGGER_INFO_LOGGER("info_logger");     // eOk, m_type="file"，m_dir="/tmp"
-resp = YOMK_LOGGER_INFO_LOGGER("not_exist");       // eNo
+// 单日志器元信息：按类型单表精确查（两表允许同名），LoggerInfo 结构化包（m_loggerName/m_type/m_dir，m_msg 恒 "ok"）
+resp = YOMK_LOGGER_INFO_LOGGER("MainLogger", "console");  // eOk, m_type="console"，m_dir 为空串
+resp = YOMK_LOGGER_INFO_LOGGER("info_logger", "file");    // eOk, m_type="file"，m_dir="/tmp"
+resp = YOMK_LOGGER_INFO_LOGGER("not_exist", "console");   // eNo
 
 // 全量日志器与控制台状态：LoggerAllInfo 结构化包
 // m_console（ConsoleLogState 五 bool：debug/info/warn/error/proxy）+ m_loggers（单查同款 LoggerInfo 列表）

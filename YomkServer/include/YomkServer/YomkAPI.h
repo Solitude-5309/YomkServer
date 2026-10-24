@@ -300,11 +300,11 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/loggers", YomkMkPtr(String, type));
     }
-    // 查询指定日志器状态
-    static YomkResponse LOGGER_INFO_LOGGER(const std::string& loggerName)
+    // 查询指定日志器状态（type: "console"/"file"；两表允许同名，须按类型精确单查）
+    static YomkResponse LOGGER_INFO_LOGGER(const std::string& loggerName, const std::string& type)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/logger", YomkMkPtr(String, loggerName));
+        return request("/YomkLogger/logger", YomkMkPtr(LoggerQuery, yomk::LoggerQuery{loggerName, type}));
     }
     // 查询全部日志器及开关配置状态
     static YomkResponse LOGGER_INFO_ALL()

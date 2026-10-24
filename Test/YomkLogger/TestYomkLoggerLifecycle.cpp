@@ -556,7 +556,7 @@ CHECK(
     CHECK(
         (badDir.m_status == YomkResponse::eNo && badDir.m_msg == "init file logger failed."),
         "不可创建 dir 返回 eNo + init file logger failed.（P2-b 已处置，异常不穿透）");
-    auto ghostInfo = YOMK_LOGGER_INFO_LOGGER("lg1_bad_dir_logger");
+    auto ghostInfo = YOMK_LOGGER_INFO_LOGGER("lg1_bad_dir_logger", "file");
     CHECK(
         (ghostInfo.m_status == YomkResponse::eNo && ghostInfo.m_msg == "logger not found."),
         "init 失败的 logger 未注册（无幽灵 key，内省 not found）");
@@ -609,7 +609,7 @@ CHECK(
     CHECK(hasFile, "LOGGERS(file) 含 lg1_file_logger 行（dir 经 LOGGER 单查 m_dir 校验）");
 
     // LOGGER(name)：console/file 命中结构化返回（LoggerInfo 包，m_msg 恒 "ok"）与未注册
-    auto consoleInfo = YOMK_LOGGER_INFO_LOGGER("MainLogger");
+    auto consoleInfo = YOMK_LOGGER_INFO_LOGGER("MainLogger", "console");
     CHECK(
         (consoleInfo.m_status == YomkResponse::eOk && consoleInfo.m_msg == "ok"),
         "LOGGER(MainLogger) 命中 m_msg 恒为 ok");
@@ -618,7 +618,7 @@ CHECK(
     CHECK(consolePkg && consolePkg->d.m_loggerName == "MainLogger" && consolePkg->d.m_type == "console",
           "LOGGER(MainLogger) 字段 loggerName/type 一致");
     CHECK(consolePkg && consolePkg->d.m_dir.empty(), "console 命中 m_dir 为空");
-    auto fileInfo = YOMK_LOGGER_INFO_LOGGER("lg1_file_logger");
+    auto fileInfo = YOMK_LOGGER_INFO_LOGGER("lg1_file_logger", "file");
     CHECK(
         (fileInfo.m_status == YomkResponse::eOk && fileInfo.m_msg == "ok"),
         "LOGGER(lg1_file_logger) 命中 m_msg 恒为 ok");
@@ -627,7 +627,7 @@ CHECK(
     CHECK(filePkg && filePkg->d.m_loggerName == "lg1_file_logger" && filePkg->d.m_type == "file",
           "LOGGER(lg1_file_logger) 字段 loggerName/type 一致");
     CHECK(filePkg && filePkg->d.m_dir == (tmpDir / "s4").string(), "file 命中 m_dir 为创建目录");
-    auto noInfo = YOMK_LOGGER_INFO_LOGGER("lg1_never_registered");
+    auto noInfo = YOMK_LOGGER_INFO_LOGGER("lg1_never_registered", "console");
     CHECK(
         (noInfo.m_status == YomkResponse::eNo && noInfo.m_msg == "logger not found."),
         "LOGGER 未注册名返回 eNo + logger not found.");
@@ -828,7 +828,7 @@ CHECK(
     }
     // LOGGER_INFO_LOGGER 空名 → eNo（LG2 堵死空名注册后回填；
     // LG1 时为 P2-a 幽灵 logger 命中 eOk 的现状固化）
-    auto emptyNameInfo = YOMK_LOGGER_INFO_LOGGER("");
+    auto emptyNameInfo = YOMK_LOGGER_INFO_LOGGER("", "console");
     CHECK(
         (emptyNameInfo.m_status == YomkResponse::eNo && emptyNameInfo.m_msg == "logger not found."),
         "LOGGER 空名返回 eNo + logger not found.（P2-a 处置后无幽灵 key）");
@@ -886,18 +886,18 @@ CHECK(
         const std::string name = "lg1_s8_console_only";
         CHECK(
             consoleInfo(name, "lg1_s8_console_marker").m_status == YomkResponse::eOk, "S8: console-only 预热创建 eOk");
-        CHECK(YOMK_LOGGER_INFO_LOGGER(name).m_status == YomkResponse::eOk, "S8: 创建后单查命中 eOk");
+        CHECK(YOMK_LOGGER_INFO_LOGGER(name, "console").m_status == YomkResponse::eOk, "S8: 创建后单查命中 eOk");
 
         auto del = YOMK_FILE_LOG_DELETE(name);
         CHECK(
             (del.m_status == YomkResponse::eOk && del.m_msg == "deleted console:1 file:0"),
             "S8: console-only 删除 eOk + msg 计数: " + del.m_msg);
-        CHECK(YOMK_LOGGER_INFO_LOGGER(name).m_status == YomkResponse::eNo, "S8: console 删除后单查 eNo");
+        CHECK(YOMK_LOGGER_INFO_LOGGER(name, "console").m_status == YomkResponse::eNo, "S8: console 删除后单查 eNo");
         // 惰性重建：同名再写一条 → consoleLog 双检锁重建路径
         CHECK(
             consoleInfo(name, "lg1_s8_rebuild_marker").m_status == YomkResponse::eOk,
             "S8: 删除后同名再写 eOk（惰性重建）");
-        CHECK(YOMK_LOGGER_INFO_LOGGER(name).m_status == YomkResponse::eOk, "S8: 惰性重建后单查恢复 eOk");
+        CHECK(YOMK_LOGGER_INFO_LOGGER(name, "console").m_status == YomkResponse::eOk, "S8: 惰性重建后单查恢复 eOk");
         CHECK(YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk, "S8: 清理重建 logger eOk");
     }
 
@@ -946,7 +946,10 @@ CHECK(
         CHECK(
             (del.m_status == YomkResponse::eOk && del.m_msg == "deleted console:1 file:1"),
             "S8: 同名双表一次删除 eOk + msg 计数: " + del.m_msg);
-        CHECK(YOMK_LOGGER_INFO_LOGGER(name).m_status == YomkResponse::eNo, "S8: 双表删除后单查 eNo（两表均已清理）");
+        CHECK(
+            (YOMK_LOGGER_INFO_LOGGER(name, "console").m_status == YomkResponse::eNo &&
+             YOMK_LOGGER_INFO_LOGGER(name, "file").m_status == YomkResponse::eNo),
+            "S8: 双表删除后按类型单查均 eNo（两表均已清理）");
         std::string out2;
         YomkResponse del2(YomkResponse::eOk);
         {
@@ -985,7 +988,7 @@ CHECK(
         CHECK(
             YOMK_FILE_LOG_DELETE("MainLogger").m_status == YomkResponse::eOk,
             "S8: MainLogger 可删除 eOk（无特殊保护）");
-        CHECK(YOMK_LOGGER_INFO_LOGGER("MainLogger").m_status == YomkResponse::eNo, "S8: MainLogger 删除后单查 eNo");
+        CHECK(YOMK_LOGGER_INFO_LOGGER("MainLogger", "console").m_status == YomkResponse::eNo, "S8: MainLogger 删除后单查 eNo");
         std::string rebuildOut;
         YomkResponse rebuild(YomkResponse::eInvalid);
         {
@@ -997,7 +1000,7 @@ CHECK(
         }
         CHECK(rebuild.m_status == YomkResponse::eOk, "S8: MainLogger 删除后空名回退写入 eOk");
         CHECK(
-            YOMK_LOGGER_INFO_LOGGER("MainLogger").m_status == YomkResponse::eOk,
+            YOMK_LOGGER_INFO_LOGGER("MainLogger", "console").m_status == YomkResponse::eOk,
             "S8: MainLogger 惰性重建后单查恢复 eOk");
         CHECK(
             rebuildOut.find("[MainLogger] lg1_s8_mainlogger_rebuild_marker") != std::string::npos,

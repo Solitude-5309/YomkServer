@@ -29,7 +29,7 @@ int YomkLogger::init()
     YomkInstallFunc("/off_console_log_by_level", YomkLogger::offConsoleLogByLevel, Log);
     YomkInstallFunc("/on_console_log_by_level", YomkLogger::onConsoleLogByLevel, Log);
     YomkInstallFunc("/loggers", YomkLogger::loggers, String);
-    YomkInstallFunc("/logger", YomkLogger::loggerInfo, String);
+    YomkInstallFunc("/logger", YomkLogger::loggerInfo, LoggerQuery);
     YomkInstallFunc("/all", YomkLogger::listAll);
     return 0;
 }
@@ -335,33 +335,37 @@ YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, yName);
-    // 命中：锁内构造结构化快照，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）；
-    // 保持先 console 后 file 的查表顺序（同名双表时 console 优先命中，与改造前一致）
+    YomkUnPackPkgResponse(pkg, LoggerQuery, query);
+    // 按类型单表精确查找：两表允许同名，不再先 console 后 file 双表 fallback（同名歧义由 type 消除）；
+    // 命中：锁内构造结构化快照，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
+    yomk::LoggerInfo info;
+    info.m_loggerName = query->d.m_loggerName;
+    if (query->d.m_type == "console")
     {
         std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-        if (m_consoleLoggers.find(yName->d) != m_consoleLoggers.end())
+        if (m_consoleLoggers.find(query->d.m_loggerName) == m_consoleLoggers.end())
         {
-            yomk::LoggerInfo info;
-            info.m_loggerName = yName->d;
-            info.m_type = "console";
-            return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, info)};
+            YOMK_ERR_POS_LOG("console logger: " + query->d.m_loggerName + " not found.");
+            return YomkResponse(YomkResponse::eNo, "logger not found.");
         }
+        info.m_type = "console";
+        return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
     }
+    if (query->d.m_type == "file")
     {
         std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
-        auto itLogger = m_fileLoggers.find(yName->d);
-        if (itLogger != m_fileLoggers.end())
+        auto itLogger = m_fileLoggers.find(query->d.m_loggerName);
+        if (itLogger == m_fileLoggers.end())
         {
-            yomk::LoggerInfo info;
-            info.m_loggerName = yName->d;
-            info.m_type = "file";
-            info.m_dir = itLogger->second->getDir();
-            return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, info)};
+            YOMK_ERR_POS_LOG("file logger: " + query->d.m_loggerName + " not found.");
+            return YomkResponse(YomkResponse::eNo, "logger not found.");
         }
+        info.m_type = "file";
+        info.m_dir = itLogger->second->getDir();
+        return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
     }
-    YOMK_ERR_POS_LOG("logger: " + yName->d + " not found.");
-    return YomkResponse(YomkResponse::eNo, "logger not found.");
+    YOMK_ERR_POS_LOG("unknown logger type: " + query->d.m_type + ".");
+    return YomkResponse(YomkResponse::eNo, "unknown logger type.");
 }
 
 YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)

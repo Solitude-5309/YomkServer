@@ -1347,10 +1347,10 @@ int main()
         // 采样进入十毫秒量级（N=20000 修复前实测 11.3-11.9 ms、三次方差 ±2.3%，已远高于计时
         // 分辨率），S4C 遂成为两张表查找热路径的可解读量化口径（LG6 正是以它实测否决了
         // P4-d 的 std::map → std::unordered_map，详见 doc 头与 YomkLogger.h 容器选型注释）：
-        // loggerInfo 先取 console 表 shared_lock 查找、miss 后再取 file 表 shared_lock 查找，
-        // 恰是两张表的查找热路径。名字域校验：偶数 i 的 lg4s1_tag_i 由 S1A 创建（i ∈ 0..N-1）、
-        // 奇数 i 的 lg4s2_fl_i 由 S2A 创建（i ∈ 0..N-1），故 probes 提升到 N 后仍全部命中，
-        // CHECK(okProbe == probes) 的守恒语义不变。口径变更须与修复前基线同批采样才可比。
+        // loggerInfo 按类型单表精确查找（console/file 各自 shared_lock），偶奇交替恰覆盖两表热路径。
+        // 名字域校验：偶数 i 的 lg4s1_tag_i 由 S1A 创建（i ∈ 0..N-1）、奇数 i 的 lg4s2_fl_i 由
+        // S2A 创建（i ∈ 0..N-1），故 probes 提升到 N 后仍全部命中，CHECK(okProbe == probes) 的
+        // 守恒语义不变。口径变更（单查改带 type）须与修复前基线同批采样才可比。
         const uint64_t probes = N;
         uint64_t okProbe = 0;
         double elapsedProbe = 0.0;
@@ -1360,7 +1360,8 @@ int main()
             for (uint64_t i = 0; i < probes; ++i)
             {
                 const std::string name = (i % 2 == 0) ? makeName("lg4s1_tag_", i) : makeName("lg4s2_fl_", i);
-                if (YOMK_LOGGER_INFO_LOGGER(name).m_status == YomkResponse::eOk)
+                const std::string type = (i % 2 == 0) ? "console" : "file";
+                if (YOMK_LOGGER_INFO_LOGGER(name, type).m_status == YomkResponse::eOk)
                 {
                     ++okProbe;
                 }
@@ -1533,7 +1534,7 @@ int main()
                             else if (!isLegalStatus(rd))
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
 
-                            auto rn = YOMK_LOGGER_INFO_LOGGER(name);
+                            auto rn = YOMK_LOGGER_INFO_LOGGER(name, "console");
                             if (rn.m_status == YomkResponse::eNo)
                                 g_s5PostDeleteNo.fetch_add(1, std::memory_order_relaxed);
                             else if (!isLegalStatus(rn))
@@ -1672,11 +1673,11 @@ int main()
                 ThreadSafeCoutCapture cap(true);
                 for (uint64_t i = 0; i < probes; ++i)
                 {
-                    if (YOMK_LOGGER_INFO_LOGGER(makeName("lg4s1_tag_", i)).m_status == YomkResponse::eNo)
+                    if (YOMK_LOGGER_INFO_LOGGER(makeName("lg4s1_tag_", i), "console").m_status == YomkResponse::eNo)
                     {
                         ++goneConsole;
                     }
-                    if (YOMK_LOGGER_INFO_LOGGER(makeName("lg4s2_fl_", i)).m_status == YomkResponse::eNo)
+                    if (YOMK_LOGGER_INFO_LOGGER(makeName("lg4s2_fl_", i), "file").m_status == YomkResponse::eNo)
                     {
                         ++goneFile;
                     }
