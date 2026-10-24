@@ -126,7 +126,7 @@ def init(self):
     return 0
 
 resp = YomkApi.server_info_services()                      # 服务列表（data 为服务名列表）
-resp = YomkApi.server_info_functions("/XxxService")        # 函数列表（每行 "func [msgName]"）
+resp = YomkApi.server_info_functions("/XxxService")        # 函数结构化清单（data 为 FuncInfo 列表：func_name/msg_name/description，与单查同族）
 resp = YomkApi.server_info_function("/XxxService/my_desc") # 单函数元信息（命中返回结构化 FuncInfo 包：msg_name=类型名、description=四参说明，msg 恒 "ok"）
 resp = YomkApi.server_info_all()                           # 全量拓扑（ServerServiceInfo 层级列表：service_name + funcs）
 ```

@@ -514,7 +514,8 @@ def server_info_services() -> YomkResponse:
 
 
 def server_info_functions(srv_name: str) -> YomkResponse:
-    # 查询指定服务的全部功能函数
+    # 查询指定服务的功能函数清单（结构化列表，命中 msg 恒 "ok"，data 为 FuncInfo
+    # 列表与 /function 单查、/all 聚合同族；不存在服务返回空表）
     return _api_request("/YomkServerInfo/functions", srv_name)
 
 

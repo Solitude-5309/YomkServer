@@ -89,13 +89,29 @@ def print_resp(prefix, resp):
 
 
 def dump_lines(prefix, resp):
-    # 自省清单端点的返回形态：data 为字符串列表（services/functions）
+    # 自省清单端点的返回形态：data 为字符串列表（services）
     print_resp(prefix, resp)
     if resp.data is None:
         print(">> (no data)")
         return
     for line in resp.data:
         print(f">> | {line}")
+
+
+def dump_func_info_list(prefix, resp):
+    # 打印 server_info_functions 返回的 FuncInfo 结构化清单
+    # （func_name/msg_name/description 三字段，与 /function 单查同族）——
+    # 框架只返回结构化数据，显示格式由用户定义，此处仅为示范
+    print_resp(prefix, resp)
+    if resp.data is None:
+        print(">> (no data)")
+        return
+    for func in resp.data:
+        print(f">> | {func.func_name}" +
+              (f" [{func.msg_name}]" if func.msg_name else "") +
+              (f" # {func.description}" if func.description else ""))
+    if not resp.data:
+        print(">> | (no funcs)")
 
 
 def dump_all_info(prefix, resp):
@@ -145,16 +161,17 @@ def main():
     #
     # 步骤2：函数清单
     #
-    # server_info_functions 列出指定服务的全部功能函数：四参注册的 /sum 带
-    # [SumReq] 元数据，两参注册的 /hi 没有；查不存在的服务返回空清单。
+    # server_info_functions 列出指定服务的全部功能函数：结构化 FuncInfo 清单，
+    # 四参注册的 /sum msg_name 承载 [SumReq]、description 承载说明，
+    # 两参注册的 /hi 均为空；查不存在的服务返回空清单。
     #
     print_step(2, "函数清单",
-               "server_info_functions 看函数清单：/sum [SumReq] 带注册元数据，/hi 无；查不存在的服务返回空清单。")
-    dump_lines("server_info_functions(/InfoDemoService)",
-               YomkApi.server_info_functions("/InfoDemoService"))
-    print(">> [SumReq] 即期望消息类型元数据，由 install_func 第三/四参声明")
-    dump_lines("server_info_functions(/GhostService)",
-               YomkApi.server_info_functions("/GhostService"))
+               "server_info_functions 看 FuncInfo 结构化清单：/sum msg_name 带 [SumReq] 元数据、description 承载说明，/hi 均为空；查不存在的服务返回空清单。")
+    dump_func_info_list("server_info_functions(/InfoDemoService)",
+                        YomkApi.server_info_functions("/InfoDemoService"))
+    print(">> msg_name 即期望消息类型元数据、description 即函数说明，由 install_func 第三/四参声明")
+    dump_func_info_list("server_info_functions(/GhostService)",
+                        YomkApi.server_info_functions("/GhostService"))
     print(">> 服务不存在 → 返回空清单（eOk），查询失败不崩溃")
 
     #

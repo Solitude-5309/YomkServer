@@ -463,9 +463,10 @@ class DemoService(YomkApi.YomkService):
 resp = YomkApi.server_info_services()
 # resp.data: ["/DemoService", "/YomkContext", "/YomkEventLoop", ...]
 
-# 指定服务的函数列表（每行 "func [msgName]"）
+# 指定服务的函数结构化清单（data 为 FuncInfo 列表，与单查同族）
 resp = YomkApi.server_info_functions("/DemoService")
-# resp.data: ["/no_type", "/with_desc [MyData]", "/with_type [MyData]"]
+# resp.data: [FuncInfo("/no_type"), FuncInfo("/with_type", "MyData"),
+#             FuncInfo("/with_desc", "MyData", "函数说明")]
 
 # 单函数元信息（命中 msg 恒 "ok"，data 为 FuncInfo 包：func_name/msg_name/description）
 resp = YomkApi.server_info_function("/DemoService/with_desc")  # eOk, msg_name = "MyData", description = "函数说明"

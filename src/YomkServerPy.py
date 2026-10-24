@@ -1705,14 +1705,11 @@ class YomkServerInfo(YomkService):
             return YomkResponse(ResStatus.eNo, "server has been destroyed")
 
         infos = server.service_func_infos(srv_name)
-        # :map）：函数名字典序；行格式 "func [msgName]"（无类型为 "func"）；
-        # 不存在的服务返回空表（eOk）
-        lines = []
-        for func_name in sorted(infos.keys()):
-            info = infos[func_name]
-            lines.append(info.func_name +
-                         (f" [{info.msg_name}]" if info.msg_name else ""))
-        return YomkResponse(ResStatus.eOk, "ok", lines)
+        # 结构化清单：FuncInfo 三字段与 /function 单查、/all 聚合同族
+        # （func_name 为带 / 前缀 url 段）；显式 sorted :map 字典序（python dict
+        # 为插入序，类头注释先例）；不存在的服务返回空表（eOk）
+        funcs = [infos[name] for name in sorted(infos.keys())]
+        return YomkResponse(ResStatus.eOk, "ok", funcs)
 
     def function_info(self, pkg):
         if pkg is None:
