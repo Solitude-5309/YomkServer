@@ -435,15 +435,21 @@ class LoggerQuery:
 
 class LoggerInfo:
     # 日志器内省元信息（/YomkLogger/logger 返回数据、/YomkLogger/all 清单段元素）
-    def __init__(self, logger_name="", type="", dir=""):
+    def __init__(self, logger_name="", type="", dir="", logger_state=None):
         self.logger_name = logger_name  # 日志器名
         # 类型："console" 或 "file"（loggers 端点按此类型参数查询）
         self.type = type
         self.dir = dir                  # file 类型的日志目录（console 时为空串）
+        # 控制台状态段（成员 logger_state，类型 LoggerState，对应 C++ LoggerState m_loggerState）：
+        # console 条目承载真实全局状态；file 条目暂无开关概念（级别恒 true、proxyOn 恒 false，
+        # proxy 为控制台专属）
+        self.logger_state = (logger_state if logger_state is not None
+                             else LoggerState())
 
 
-class ConsoleLogState:
-    # 控制台状态段（/YomkLogger/all 返回数据状态段；debug/info/warn/error/proxy 五开关）
+class LoggerState:
+    # LoggerInfo 的 logger_state 状态段（console 条目为真实全局状态；file 条目
+    # 四级别恒 true、proxyOn 恒 false）；debug/info/warn/error/proxy 五开关
     def __init__(self, debug_on=False, info_on=False, warn_on=False,
                  error_on=False, proxy_on=False):
         self.debug_on = debug_on        # debug 级别开关
@@ -451,14 +457,6 @@ class ConsoleLogState:
         self.warn_on = warn_on          # warn 级别开关
         self.error_on = error_on        # error 级别开关
         self.proxy_on = proxy_on        # 控制台代理已安装
-
-
-class LoggerAllInfo:
-    # Logger 全量内省（/YomkLogger/all 返回数据：控制台状态段 + 日志器清单段）
-    def __init__(self, console=None, loggers=None):
-        self.console = console if console is not None else ConsoleLogState()
-        # 清单段元素与单查同款 LoggerInfo（console 段在前、file 段在后，各段字典序）
-        self.loggers = loggers if loggers is not None else []
 
 
 def _yomk_err_pos_log(msg):
@@ -1337,7 +1335,8 @@ class YomkLogger(YomkService):
     # 锁序约定：嵌套双读仅 list_all 内省快照，一律按 m_consoleLoggersMutex ->
     # m_fileLoggersMutex 的顺序持有，全仓无反向嵌套点（loggers 按类型单锁查表，
     # delete_logger 分段持锁不嵌套；其余端点均单锁）；m_consoleLogProxyMutex 为叶子锁，
-    # 临界区内不得获取任何其他锁。
+    # 临界区内不得获取任何其他锁（current_console_state 在表锁外先独立取 proxy 锁，
+    # 沿用 proxy 锁独立作用域先释放的既有模式）。
     # 后续维护新增嵌套时须沿用此序，否则有死锁风险。两表保持 dict 但内省输出显式
     # sorted :map 字典序（python dict 为插入序，ServerInfo 轮先例）。
     def __init__(self, server: "YomkServer"):
@@ -1603,6 +1602,16 @@ class YomkLogger(YomkService):
         # 单表显式 sorted :map 中序字典序（python dict 为插入序，类头注释先例）
         return YomkResponse(ResStatus.eOk, "ok", names)
 
+    def current_console_state(self):
+        # 取控制台状态段：四个级别开关为独立原子读（组合本无原子快照保证），
+        # proxy 状态读侧与写侧互斥（叶子锁，独立作用域），不持任何表锁
+        state = LoggerState(
+            bool(self.m_showConsoleDebugLog), bool(self.m_showConsoleInfoLog),
+            bool(self.m_showConsoleWarningLog), bool(self.m_showConsoleErrorLog))
+        with self.m_consoleLogProxyMutex:
+            state.proxy_on = self.m_consoleLogProxy
+        return state
+
     def logger_info(self, pkg):
         bad = self._unpack(pkg, LoggerQuery)
         if bad:
@@ -1610,12 +1619,15 @@ class YomkLogger(YomkService):
         # 按类型单表精确查找：两表允许同名，不再先 console 后 file 双表 fallback（同名歧义由 type 消除）；
         # 命中：锁内构造结构化快照，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）
         if pkg.m_type == "console":
+            # 状态段在表锁外取（独立原子读 + proxy 叶子锁独立作用域，与 list_all 同构）
+            state = self.current_console_state()
             with self.m_consoleLoggersMutex.gen_rlock():
                 if pkg.m_logger_name not in self.m_consoleLoggers:
                     _yomk_err_pos_log("console logger: " + pkg.m_logger_name + " not found.")
                     return YomkResponse(ResStatus.eNo, "logger not found.")
                 return YomkResponse(
-                    ResStatus.eOk, "ok", LoggerInfo(pkg.m_logger_name, "console"))
+                    ResStatus.eOk, "ok",
+                    LoggerInfo(pkg.m_logger_name, "console", "", state))
         if pkg.m_type == "file":
             with self.m_fileLoggersMutex.gen_rlock():
                 file_logger = self.m_fileLoggers.get(pkg.m_logger_name)
@@ -1624,31 +1636,28 @@ class YomkLogger(YomkService):
                     return YomkResponse(ResStatus.eNo, "logger not found.")
                 return YomkResponse(
                     ResStatus.eOk, "ok",
-                    LoggerInfo(pkg.m_logger_name, "file", file_logger.get_dir()))
+                    LoggerInfo(pkg.m_logger_name, "file", file_logger.get_dir(),
+                               LoggerState(True, True, True, True)))
         _yomk_err_pos_log("unknown logger type: " + pkg.m_type + ".")
         return YomkResponse(ResStatus.eNo, "unknown logger type.")
 
     def list_all(self, pkg):
-        # 状态段在双锁外取：四个级别开关独立无锁，组合本无原子快照保证
-        all_info = LoggerAllInfo()
-        all_info.console.debug_on = bool(self.m_showConsoleDebugLog)
-        all_info.console.info_on = bool(self.m_showConsoleInfoLog)
-        all_info.console.warn_on = bool(self.m_showConsoleWarningLog)
-        all_info.console.error_on = bool(self.m_showConsoleErrorLog)
-        with self.m_consoleLogProxyMutex:
-            # proxy 状态读侧与写侧互斥（叶子锁）
-            all_info.console.proxy_on = self.m_consoleLogProxy
+        # LoggerState 内嵌每条 LoggerInfo：console 条目承载真实全局状态，
+        # file 条目暂无开关概念（级别恒 true、proxyOn 恒 false）
+        console = self.current_console_state()
         # 同 loggers：按锁序嵌套双读锁取跨段原子快照，逐条构造 LoggerInfo
         # （与 logger_info 命中分支同构；console 段在前、file 段在后，各段字典序）
         with self.m_consoleLoggersMutex.gen_rlock():
             with self.m_fileLoggersMutex.gen_rlock():
-                all_info.loggers = [LoggerInfo(name, "console")
-                                    for name in sorted(self.m_consoleLoggers)]
-                all_info.loggers += [
+                loggers = [LoggerInfo(name, "console", "", console)
+                           for name in sorted(self.m_consoleLoggers)]
+                loggers += [
                     LoggerInfo(
-                        name, "file", self.m_fileLoggers[name].get_dir())
+                        name, "file", self.m_fileLoggers[name].get_dir(),
+                        LoggerState(True, True, True, True))
                     for name in sorted(self.m_fileLoggers)]
-        return YomkResponse(ResStatus.eOk, "ok", all_info)
+        # msg 恒 "ok"，数据走 data（清单本身即 data）
+        return YomkResponse(ResStatus.eOk, "ok", loggers)
 
 
 class YomkServerInfo(YomkService):

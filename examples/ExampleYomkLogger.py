@@ -58,21 +58,26 @@ def dump_lines(prefix, resp):
 
 
 def dump_all_info(prefix, resp):
-    # 解包并打印 logger_info_all 返回的 LoggerAllInfo（结构化包装包）——
+    # 解包并打印 logger_info_all 返回的 list[LoggerInfo] 清单（每条内嵌 logger_state
+    # 状态段：console 条目真实全局状态、file 条目级别恒 true/proxy 恒 off）——
     # 框架只返回结构化数据，显示格式由用户定义
     print_resp(prefix, resp)
-    info = resp.data
-    if info is None:
+    data = resp.data
+    if data is None:
         print(">> (no data)")
         return
-    c = info.console
-    print(f">> | console: debug={'on' if c.debug_on else 'off'} info={'on' if c.info_on else 'off'} "
-          f"warn={'on' if c.warn_on else 'off'} error={'on' if c.error_on else 'off'} "
-          f"proxy={'on' if c.proxy_on else 'off'}")
-    for lg in info.loggers:
+    for lg in data:
         dir_part = f" dir:{lg.dir}" if lg.type == "file" else ""
-        print(f">> | {lg.logger_name} [{lg.type}]{dir_part}")
-    if not info.loggers:
+        state_part = ""
+        if lg.type == "console" and lg.logger_state:
+            c = lg.logger_state
+            state_part = (f" debug={'on' if c.debug_on else 'off'}"
+                          f" info={'on' if c.info_on else 'off'}"
+                          f" warn={'on' if c.warn_on else 'off'}"
+                          f" error={'on' if c.error_on else 'off'}"
+                          f" proxy={'on' if c.proxy_on else 'off'}")
+        print(f">> | {lg.logger_name} [{lg.type}]{dir_part}{state_part}")
+    if not data:
         print(">> | (no loggers)")
 
 
@@ -249,7 +254,7 @@ def main():
     #
     # logger_info_loggers(type)：按类型查询日志器纯名清单（console/file，各表按名称字典序）；
     # logger_info_logger(name, type)：按类型单表精确查，命中返回结构化 LoggerInfo 包（msg 恒 "ok"，类型与目录在 data 字段），未注册返回 eNo=1；
-    # logger_info_all：全量状态，结构化包装包（console 状态段五开关 + loggers 清单段）。
+    # logger_info_all：全量清单（list[LoggerInfo]，每条内嵌 logger_state 状态段）。
     #
     print_step(7, "内省三件套", "清单按类型看（console/file）、单查看一个、ALL 看总状态；单查一个从未创建的名字演示 eNo 惯例。")
     dump_lines("logger_info_loggers(console)",

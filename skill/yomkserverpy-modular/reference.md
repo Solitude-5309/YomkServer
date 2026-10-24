@@ -108,7 +108,7 @@ class EventLoopPkg:
 | `YomkApi.set_console_log_proxy(func)` | 设置日志代理（func 返回 False 消费该条日志） |
 | `YomkApi.logger_info_loggers(logger_type)` | 按类型获取日志器纯名列表（type 为 `"console"`/`"file"`，仅返回该类型的日志器名字典序清单；其他值返回 eNo `"unknown logger type."`） |
 | `YomkApi.logger_info_logger(logger_name, logger_type)` | 单日志器元信息结构化查询（type: "console"/"file"；两表允许同名，按类型单表精确查找不 fallback；命中 msg 恒 "ok"，data 为 LoggerInfo 包：logger_name/type/dir，file 时 dir 为日志目录；未注册或非法 type 返回 eNo） |
-| `YomkApi.logger_info_all()` | 全量日志器及控制台状态（命中 msg 恒 `"ok"`，data 为 `LoggerAllInfo` 包装包：console 状态段 debug_on/info_on/warn_on/error_on/proxy_on + loggers 清单段 `LoggerInfo` 列表） |
+| `YomkApi.logger_info_all()` | 全量日志器及控制台状态（命中 msg 恒 `"ok"`，data 为 `list[LoggerInfo]` 清单，每条内嵌 `logger_state` 状态段（`LoggerState` 五开关 debug_on/info_on/warn_on/error_on/proxy_on）；console 条目为真实全局状态、file 条目级别恒 true/proxy_on 恒 false） |
 
 ### Context
 | API | 说明 |

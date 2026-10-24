@@ -24,8 +24,7 @@ from YomkServerPy import (
     FuncInfo,
     LoggerQuery,
     LoggerInfo,
-    ConsoleLogState,
-    LoggerAllInfo,
+    LoggerState,
     ServerServiceInfo
 )
 from typing import Any, Callable, Optional
@@ -357,8 +356,9 @@ def logger_info_logger(logger_name, logger_type):
 
 
 def logger_info_all():
-    # 查询全部日志器及控制台状态（结构化包装包，命中 msg 恒 "ok"，data 为 LoggerAllInfo：
-    # console 状态段五开关 + loggers 清单段 LoggerInfo 列表）
+    # 查询全部日志器及控制台状态（命中 msg 恒 "ok"，data 为 list[LoggerInfo] 清单，
+    # 每条内嵌 logger_state 状态段（LoggerState：console 条目真实全局状态、
+    # file 条目级别恒 true/proxy_on 恒 false））
     return _api_request("/YomkLogger/all", None)
 
 

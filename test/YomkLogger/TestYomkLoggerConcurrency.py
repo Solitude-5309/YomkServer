@@ -49,7 +49,7 @@ import threading
 import time
 
 import YomkApi
-from YomkServerPy import ResStatus, LoggerAllInfo
+from YomkServerPy import ResStatus
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
@@ -112,6 +112,14 @@ def unpack_lines(resp):
     if resp.status != ResStatus.eOk or not resp.data:
         return []
     return list(resp.data)
+
+
+def first_console_state(data):
+    # 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 None）
+    for lg in (data if data else []):
+        if lg.type == "console":
+            return lg.logger_state
+    return None
 
 
 def is_legal_status(resp):
@@ -362,8 +370,9 @@ def main():
                 while not s3_stop.is_set():
                     resp = YomkApi.logger_info_all()
                     if resp.status == ResStatus.eOk and isinstance(
-                            resp.data, LoggerAllInfo):
-                        if not resp.data.console.proxy_on:
+                            resp.data, list):
+                        st = first_console_state(resp.data)
+                        if st and not st.proxy_on:
                             s3_bad_level_line.append(1)
                     time.sleep(0.0002)
             introspectors.append(threading.Thread(target=s3_introspect_worker))
@@ -709,11 +718,12 @@ def main():
                     if not is_legal_status(all_resp):
                         bad_status.append(1)
                     if (all_resp.status == ResStatus.eOk
-                            and isinstance(all_resp.data, LoggerAllInfo)):
+                            and isinstance(all_resp.data, list)):
                         # 开关被 s5_switch 线程并发翻转，组合任意；仅 proxy_on 恒定
-                        if not all_resp.data.console.proxy_on:
+                        st = first_console_state(all_resp.data)
+                        if st and not st.proxy_on:
                             s5_bad_level_line.append(1)
-                        all_loggers = all_resp.data.loggers
+                        all_loggers = all_resp.data
                         snap_all_console = sum(
                             1 for lg in all_loggers if lg.type == "console")
                         snap_all_file = len(all_loggers) - snap_all_console
@@ -886,12 +896,12 @@ def main():
 
     # ---- 最终一致性：ALL 状态段精确 + 清单条数跨端点一致 + file sink 落盘守恒 ----
     final_info = YomkApi.logger_info_all().data
-    fc = final_info.console
-    check(fc.debug_on and fc.info_on and fc.warn_on and fc.error_on and fc.proxy_on,
-          "S5: 收尾四级别全 ON 后 ALL 状态段全 on（含 S3 已设的 proxy_on）")
-    check(len(final_info.loggers) == final_total,
+    fc = first_console_state(final_info)
+    check(fc and fc.debug_on and fc.info_on and fc.warn_on and fc.error_on and fc.proxy_on,
+          "S5: 收尾四级别全 ON 后 ALL console 条目状态段全 on（含 S3 已设的 proxy_on）")
+    check(len(final_info) == final_total,
           f"S5: ALL 清单条数 == LOGGERS console+file 行数"
-          f"（{len(final_info.loggers)} vs {final_total}）——跨端点最终一致")
+          f"（{len(final_info)} vs {final_total}）——跨端点最终一致")
 
     sink_content = read_file(os.path.join(pair_dir, k_file_sink + ".log"))
     sink_lines = count_lines(sink_content)

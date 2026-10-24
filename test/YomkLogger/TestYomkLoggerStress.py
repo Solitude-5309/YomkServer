@@ -58,7 +58,7 @@ import threading
 import time
 
 import YomkApi
-from YomkServerPy import ResStatus, LoggerAllInfo
+from YomkServerPy import ResStatus
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
@@ -154,6 +154,14 @@ def introspection_rounds(entries):
     return 5
 
 
+def first_console_state(data):
+    # 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 None）
+    for lg in (data if data else []):
+        if lg.type == "console":
+            return lg.logger_state
+    return None
+
+
 def measure_introspection(rounds, use_all):
     # 对内省端点做 rounds 次调用，返回延迟分布；非 eOk 计入 bad
     count = 0
@@ -171,11 +179,8 @@ def measure_introspection(rounds, use_all):
         if resp.status != ResStatus.eOk:
             bad += 1
             continue
-        # use_all 时 data 为 LoggerAllInfo，清单条数口径与 LOGGERS 行数一致
-        if use_all:
-            last_lines = len(resp.data.loggers) if resp.data else 0
-        else:
-            last_lines = len(resp.data) if resp.data else 0
+        # use_all（list[LoggerInfo]）与 LOGGERS（list[str]）data 均为清单，条数口径一致
+        last_lines = len(resp.data) if resp.data else 0
         if count == 0:
             min_ms = max_ms = ms
         else:
@@ -338,7 +343,7 @@ def main():
         created_a = cp
 
         # 扫描数据点：条目 = created_a 个 tag + MainLogger（此刻 file 侧仍为 0）；
-        # ALL data 为 LoggerAllInfo，清单条数 = 条目数
+        # ALL data 为 list[LoggerInfo]，清单条数 = 条目数
         entries = created_a + 1
         stat_all, bad_all, lines_all = measure_introspection(
             introspection_rounds(entries), True)
@@ -626,18 +631,19 @@ def main():
 
     # ---- Phase B：ALL 状态段精确 + 清单段与 LOGGERS 分型逐行一致（两端点单锁快照）----
     all_info = YomkApi.logger_info_all().data
-    check(isinstance(all_info, LoggerAllInfo) and
-          all_info.console.debug_on and all_info.console.info_on and
-          all_info.console.warn_on and all_info.console.error_on and
-          all_info.console.proxy_on,
-          "S4B: ALL 状态段全 on + proxy_on（proxy 已在 S1D 安装）")
-    identical = isinstance(all_info, LoggerAllInfo) and len(all_info.loggers) == entries
+    st = first_console_state(all_info)
+    check(isinstance(all_info, list) and st and
+          st.debug_on and st.info_on and
+          st.warn_on and st.error_on and
+          st.proxy_on,
+          "S4B: ALL console 条目状态段全 on + proxy_on（proxy 已在 S1D 安装）")
+    identical = isinstance(all_info, list) and len(all_info) == entries
     if identical:
         # 分型对照：console 端点行与 ALL 清单 console 型条目逐行相等，file 同理
         # （S4 阶段表内条目不再增删，两端点各自单锁快照后分型一致）
-        console_lg = [lg.logger_name for lg in all_info.loggers
+        console_lg = [lg.logger_name for lg in all_info
                       if lg.type == "console"]
-        file_lg = [lg.logger_name for lg in all_info.loggers
+        file_lg = [lg.logger_name for lg in all_info
                    if lg.type == "file"]
         identical = console_lg == loggers_lines and file_lg == file_lines
     check(identical, "S4B: ALL 清单段与 LOGGERS 分型逐行一致（两端点单锁快照）")
@@ -692,7 +698,7 @@ def main():
             if resp.status != ResStatus.eOk:
                 s4d_snap_bad_status.append(1)
                 continue
-            lines = len(resp.data.loggers) if resp.data else 0
+            lines = len(resp.data) if resp.data else 0
             s4d_snap_count.append(1)
             if lines < prev_lines:
                 s4d_snap_non_mono.append(1)

@@ -195,12 +195,15 @@ class LoggerInfo:
     # 类型："console" 或 "file"（与 LOGGERS 行文本 [console]/[file] 对应）
     type: str
     dir: str          # file 类型的日志目录（console 时为空串）
+    # logger_state 状态段（console 条目为真实全局状态；file 条目四级别恒 true、
+    # proxyOn 恒 false）
+    logger_state: LoggerState
 
     def __init__(self, logger_name: str = "", type: str = "",
-                 dir: str = "") -> None: ...
+                 dir: str = "", logger_state: LoggerState = None) -> None: ...
 
 
-class ConsoleLogState:
+class LoggerState:
     debug_on: bool    # debug 级别开关
     info_on: bool     # info 级别开关
     warn_on: bool     # warn 级别开关
@@ -210,15 +213,6 @@ class ConsoleLogState:
     def __init__(self, debug_on: bool = False, info_on: bool = False,
                  warn_on: bool = False, error_on: bool = False,
                  proxy_on: bool = False) -> None: ...
-
-
-class LoggerAllInfo:
-    console: ConsoleLogState  # 控制台状态段
-    # 清单段元素与单查同款 LoggerInfo（console 段在前、file 段在后，各段字典序）
-    loggers: List[LoggerInfo]
-
-    def __init__(self, console: ConsoleLogState = None,
-                 loggers: List[LoggerInfo] = None) -> None: ...
 
 
 class YomkContext(YomkService):
