@@ -3,7 +3,7 @@
  * @brief Logger 模块多线程并发正确性验证（LG3，5 Section / 72 断言）
  *
  * 覆盖测试要求第 5/10 类（TSan 数据竞争 + 多线程并发正确性），5 个 Section：
- * - S1：并发 console_log 守恒 + 行完整性（只读命中路径，验证 ConsoleLogger::m_mutex 整行互斥）
+ * - S1：并发 console_log 守恒 + 行完整性（只读命中路径，验证 ConsoleLogger::s_mutex 整行互斥）
  * - S2：并发新 tag 自动创建（P1-a 双检锁核心验证）——S2a 最大争用同一新 tag、S2b 分散唯一 tag
  * - S3：并发 proxy set × console_log × 内省（P1-b 专属锁核心验证，镜像 FPC3-S2 写读交错）
  * - S4：并发 file logger 创建 × 写入 × 落盘（S4a 同名争用恰一胜、S4c 2000 行不丢不重守恒）
@@ -43,8 +43,10 @@
  *   不影响 S4/S5 的输出与落盘断言；
  * - ALL 首行的 4 个级别开关是独立 atomic，其组合快照无原子保证（既有设计）→ S5 仅断言
  *   其格式合法与收尾精确串，不断言开关组合的瞬时原子性；
- * - 不同 console logger 并发写 std::cout 会交错撕裂（cout 无跨 logger 全局锁，设计现状）
- *   → 行完整性断言仅在"同一 logger"段（S1/S2a）做，跨 logger 段只断言 marker 计数守恒。
+ * - 不同 console logger 并发写 std::cout 原会交错撕裂（无跨 logger 全局锁，LG6 时点的
+ *   设计现状）——P4-h 已消除：ConsoleLogger::m_mutex 升级为类级 static s_mutex（全实例
+ *   一把），跨实例行级原子成立；行完整性断言扩至跨 logger 段亦可做，本文件断言结构
+ *   保持不变（同段口径依旧成立且更严）。
  *
  * 装置说明：
  * - ThreadSafeCoutCapture（本文件专用）：LG1 的 CoutCapture 把 std::cout 的 rdbuf 换成
@@ -53,7 +55,8 @@
  *   rdbuf 替换由主线程单点完成（线程启动前构造、join 后析构）。
  *   断言可靠性依据：单次 std::cout << str 对应一次 xsputn（装置内加锁）→ marker 作为
  *   整体写入不被切断，故 marker 计数守恒在所有并发段可用；整行格式完整性依赖
- *   ConsoleLogger::m_mutex，仅同一 logger 段可用。
+ *   ConsoleLogger::s_mutex（P4-h 前为实例级 m_mutex，仅同一 logger 段可用；升级后
+ *   全实例同一把，跨 logger 段同样可用）。
  * - 全部 CHECK 在捕获作用域外（LG1 教训：捕获域内断言输出被 rdbuf 重定向吞没）。
  * - 其余沿用 FPC3 模式：文件级 atomic 计数/停止门/起始屏障（TSan-clean），
  *   std::mutex + std::vector 收集内省快照，临时目录收尾 remove_all。
@@ -482,7 +485,7 @@ int main()
                 "）——并发输出不丢");
         CHECK(
             countBadOccurrence(markers) == 0,
-            "S1: 全部 marker 恰出现 1 次（无重复、无撕裂）——ConsoleLogger::m_mutex 整行互斥");
+            "S1: 全部 marker 恰出现 1 次（无重复、无撕裂）——ConsoleLogger::s_mutex 整行互斥");
 
         // 行完整性：同一 logger 的每一行均满足时间戳 + 级别 + tag 前缀格式（无跨行撕裂）
         uint64_t intactLines = 0;

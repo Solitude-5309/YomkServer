@@ -24,6 +24,9 @@ public:
 
 private:
     std::string m_name;
-    std::mutex m_mutex;
+    // 类级共享锁：全部 ConsoleLogger 实例（每 tag 惰性创建一个）共用一把，
+    // 跨实例（跨 tag）并发输出仍整行原子；实例可被删除重建（consoleLog 惰性重建路径），
+    // static 锁不受实例生命周期影响。临界区内无其他锁获取，为叶子锁
+    static std::mutex s_mutex;
 };
 typedef std::shared_ptr<ConsoleLogger> ConsoleLoggerPtr;
