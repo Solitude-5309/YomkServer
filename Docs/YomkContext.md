@@ -57,4 +57,4 @@ YOMK_CONTEXT_DESTROY("config");  // 删除键
 
 ## 完整示例
 
-完整可运行演示见 `Examples/ExampleYomkContext.cpp`（8 步覆盖全部上下文 API，读运行输出即可理解每个调用）。
+完整可运行演示见 `Examples/ExampleYomkContext.cpp`（8 个机械臂场景小示例 `showArmXXX` 组合覆盖全部上下文 API，日志统一走 YomkLogger 并按 tag 分层，读运行输出即可理解每个调用）。
