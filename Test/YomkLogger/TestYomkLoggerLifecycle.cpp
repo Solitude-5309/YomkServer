@@ -18,7 +18,7 @@
  *    行数与行格式（含 FILE_INFO_TAG 自定义 tag 变体）；重复创建 eNo；未创建 logger 的
  *    FILE_LOG/WRITE eNo；P2-a/P2-b 处置验证（空名/空 dir eInvalid、不可建 dir eNo
  *    且不注册幽灵 logger、失败后同名重试成功）
- * 5. 内省三端点：LOGGERS 列表行格式 / LOGGER(name) console/file 两格式与未注册 eNo /
+ * 5. 内省三端点：LOGGERS 按类型（console/file）纯名列表 / LOGGER(name) console/file 两格式与未注册 eNo /
  *    ALL 控制台状态段五 bool 与开关翻转联动 + 日志器清单段
  * 6. 边界值：变参 fold 传 INT_MAX/INT_MIN/0/-1/NaN/Inf/-Inf/-0.0；1MB 超大内容 console+file
  *    双路径；非法级别注入回填（P2-c 修复后 99 合法）：file_log/off/on 三处 default
@@ -154,6 +154,13 @@ static std::vector<std::string> unpackLines(const YomkResponse& resp)
         lines = arr->d;
     }
     return lines;
+}
+
+// 双表合计行数（console/file 端点各取一次，行内容即 logger 纯名）
+static size_t loggersTotal()
+{
+    return unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size() +
+           unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
 }
 
 // 时间戳格式粗校验："dddd-dd-dd dd:dd:dd.ddd]"（不锁定具体日期值）
@@ -563,34 +570,43 @@ CHECK(
 
 // ============ Section 5: 内省三端点 ============
 {
-    // LOGGERS：console/file 列表行
-    auto loggersResp = YOMK_LOGGER_INFO_LOGGERS();
-    CHECK(loggersResp.m_status == YomkResponse::eOk, "LOGGER_INFO_LOGGERS 返回 eOk");
-    YomkUnPackPkg(loggersResp.m_data, StringArray, loggersArr);
+    // LOGGERS：按类型查询，行内容即 logger 纯名
+    auto consoleResp = YOMK_LOGGER_INFO_LOGGERS("console");
+    CHECK(consoleResp.m_status == YomkResponse::eOk, "LOGGER_INFO_LOGGERS(console) 返回 eOk");
+    YomkUnPackPkg(consoleResp.m_data, StringArray, consoleArr);
     bool hasMain = false;
     bool hasTag = false;
-    bool hasFile = false;
-    if (loggersArr)
+    if (consoleArr)
     {
-        for (const auto& line : loggersArr->d)
+        for (const auto& line : consoleArr->d)
         {
-            if (line == "MainLogger [console]")
+            if (line == "MainLogger")
             {
                 hasMain = true;
             }
-            if (line.rfind("lg1_tag_logger", 0) == 0 && line.find(" [console]") != std::string::npos)
+            if (line.rfind("lg1_tag_logger", 0) == 0)
             {
                 hasTag = true;
             }
-            if (line == "lg1_file_logger [file] dir:" + (tmpDir / "s4").string())
+        }
+    }
+    CHECK((consoleArr != nullptr && hasMain), "LOGGERS(console) 含 MainLogger 行");
+    CHECK(hasTag, "LOGGERS(console) 含 S2 自建 tag logger 行");
+    auto fileResp = YOMK_LOGGER_INFO_LOGGERS("file");
+    CHECK(fileResp.m_status == YomkResponse::eOk, "LOGGER_INFO_LOGGERS(file) 返回 eOk");
+    YomkUnPackPkg(fileResp.m_data, StringArray, fileArr);
+    bool hasFile = false;
+    if (fileArr)
+    {
+        for (const auto& line : fileArr->d)
+        {
+            if (line == "lg1_file_logger")
             {
                 hasFile = true;
             }
         }
     }
-    CHECK((loggersArr != nullptr && hasMain), "LOGGERS 含 MainLogger [console] 行");
-    CHECK(hasTag, "LOGGERS 含 S2 自建 tag logger 行（tag:行号 [console]）");
-    CHECK(hasFile, "LOGGERS 含 file logger 行（名 [file] dir:路径）");
+    CHECK(hasFile, "LOGGERS(file) 含 lg1_file_logger 行（dir 经 LOGGER 单查 m_dir 校验）");
 
     // LOGGER(name)：console/file 命中结构化返回（LoggerInfo 包，m_msg 恒 "ok"）与未注册
     auto consoleInfo = YOMK_LOGGER_INFO_LOGGER("MainLogger");
@@ -950,13 +966,13 @@ CHECK(
         fs::path dir = tmpDir / "s8_count";
         fs::create_directories(dir, ec);
         const std::string name = "lg1_s8_count";
-        const size_t before = unpackLines(YOMK_LOGGER_INFO_LOGGERS()).size();
+        const size_t before = loggersTotal();
         CHECK(
             consoleInfo(name, "lg1_s8_count_marker").m_status == YomkResponse::eOk, "S8: 计数用例 console 侧创建 eOk");
         CHECK(YOMK_FILE_LOG_CREATE(dir.string(), name).m_status == YomkResponse::eOk, "S8: 计数用例 file 侧创建 eOk");
-        CHECK(unpackLines(YOMK_LOGGER_INFO_LOGGERS()).size() == before + 2, "S8: 双表各建一个 → LOGGERS 行数 +2");
+        CHECK(loggersTotal() == before + 2, "S8: 双表各建一个 → LOGGERS 行数 +2");
         CHECK(YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk, "S8: 计数用例删除 eOk");
-        CHECK(unpackLines(YOMK_LOGGER_INFO_LOGGERS()).size() == before, "S8: 删除后 LOGGERS 行数回落（递减守恒）");
+        CHECK(loggersTotal() == before, "S8: 删除后 LOGGERS 行数回落（递减守恒）");
         YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerAllInfo, allPkg);
         CHECK(
             (allPkg != nullptr && allPkg->d.m_loggers.size() == before && allPkg->d.m_console.m_debugOn &&
@@ -987,7 +1003,7 @@ CHECK(
             rebuildOut.find("[MainLogger] lg1_s8_mainlogger_rebuild_marker") != std::string::npos,
             "S8: 重建对象名确为 MainLogger（输出行 [MainLogger]）");
         CHECK(
-            unpackLines(YOMK_LOGGER_INFO_LOGGERS()).size() == before,
+            loggersTotal() == before,
             "S8: MainLogger 删除+重建后行数回到基线（无泄漏无重复）");
     }
 

@@ -22,7 +22,7 @@
  *   开关：  YOMK_ON/OFF_CONSOLE_LOG_INFO/WARN/ERROR/DEBUG
  *   代理：  YOMK_SET_CONSOLE_LOG_PROXY
  *   文件：  YOMK_FILE_LOG_CREATE、YOMK_FILE_INFO/WARN/ERROR/DEBUG(_TAG)、YOMK_FILE_LOG_WRITE
- *   内省：  YOMK_LOGGER_INFO_LOGGERS、YOMK_LOGGER_INFO_LOGGER、YOMK_LOGGER_INFO_ALL
+ *   内省：  YOMK_LOGGER_INFO_LOGGERS("console"/"file")、YOMK_LOGGER_INFO_LOGGER、YOMK_LOGGER_INFO_ALL
  *   删除：  YOMK_FILE_LOG_DELETE
  */
 
@@ -51,7 +51,7 @@ static void printResp(const std::string& prefix, const YomkResponse& resp)
     std::cout << "[" << prefix << "] status=" << resp.m_status << ", msg=\"" << resp.m_msg << "\"" << std::endl;
 }
 
-// 解包并打印内省返回的 StringArray（YomkLoggerInfoLoggers / All 的返回形态）
+// 解包并打印内省返回的 StringArray（LOGGER_INFO_LOGGERS 按类型纯名清单的返回形态）
 static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
      *
      * YOMK_INFO_TAG(tag, ...) 的 tag 作为日志标签随记录显示（Log::m_tag），
      * 兼容双填兼作日志器名（Log::m_logger）——首次使用时框架自动创建同名日志器（无需手动注册）。
-     * 用内省 LOGGERS 清单自证：能看到 "MainLogger [console]" 和 "user.service [console]"。
+     * 用内省 LOGGERS(console) 清单自证：能看到 "MainLogger" 和 "user.service"。
      */
     printStep(
         2, "自定义 Tag", "tag 随记录显示、兼容双填兼作日志器名，首次使用自动创建；随后打印日志器清单自证。");
@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
     printResp("YOMK_WARN_TAG", YOMK_WARN_TAG("user.service", "retry count=", 2));
     printResp("YOMK_ERROR_TAG", YOMK_ERROR_TAG("user.service", "session expired"));
     printResp("YOMK_DEBUG_TAG", YOMK_DEBUG_TAG("user.service", "cache hit, key=token"));
-    dumpLines("YOMK_LOGGER_INFO_LOGGERS", YOMK_LOGGER_INFO_LOGGERS());
+    dumpLines("YOMK_LOGGER_INFO_LOGGERS(console)", YOMK_LOGGER_INFO_LOGGERS("console"));
 
     /**
      * 步骤3：级别开关（全局，只影响控制台）
@@ -256,12 +256,13 @@ int main(int argc, char* argv[])
     /**
      * 步骤7：内省三件套
      *
-     * LOGGERS：日志器清单（console 段 + file 段，各自按名称字典序）；
+     * LOGGERS：按类型（console/file）查询日志器名清单，行内容即纯名（各自按名称字典序）；
      * LOGGER(name)：单查，命中返回结构化 LoggerInfo 包（m_msg 恒 "ok"，类型与目录在 m_data 字段），未注册返回 eNo=1；
      * ALL：全量状态，首行为控制台级别与代理开关。
      */
     printStep(7, "内省三件套", "清单看全部、单查看一个、ALL 看总状态；单查一个从未创建的名字演示 eNo 惯例。");
-    dumpLines("YOMK_LOGGER_INFO_LOGGERS", YOMK_LOGGER_INFO_LOGGERS());
+    dumpLines("YOMK_LOGGER_INFO_LOGGERS(console)", YOMK_LOGGER_INFO_LOGGERS("console"));
+    dumpLines("YOMK_LOGGER_INFO_LOGGERS(file)", YOMK_LOGGER_INFO_LOGGERS("file"));
     printResp("LOGGER_INFO_LOGGER(app)", YOMK_LOGGER_INFO_LOGGER("app"));
     std::cout << ">> app 命中 → 结构化 LoggerInfo：m_type=file，m_dir 承载日志目录（m_msg 恒 \"ok\"）" << std::endl;
     printResp("LOGGER_INFO_LOGGER(ghost)", YOMK_LOGGER_INFO_LOGGER("ghost"));
@@ -296,7 +297,7 @@ int main(int argc, char* argv[])
 
     // MainLogger 惰性重建：删除后首次写日志，框架自动重建同名日志器
     printResp("YOMK_INFO(重建后)", YOMK_INFO("MainLogger recreated on demand"));
-    dumpLines("YOMK_LOGGER_INFO_LOGGERS(收尾)", YOMK_LOGGER_INFO_LOGGERS());
+    dumpLines("YOMK_LOGGER_INFO_LOGGERS(console,收尾)", YOMK_LOGGER_INFO_LOGGERS("console"));
 
     std::cout << "\n====== 示例结束：按回车退出 ======" << std::endl;
     getchar();

@@ -182,17 +182,17 @@ int main()
     std::cout << "===== S2. 删除内置服务契约与恢复（/YomkLogger） =====" << std::endl;
     {
         CHECK(YOMK_DEL_SERVICE("/YomkLogger") == 0, "删除内置 /YomkLogger 返回 0");
-        auto afterDel = YOMK_LOGGER_INFO_LOGGERS();
+        auto afterDel = YOMK_LOGGER_INFO_LOGGERS("console");
         CHECK(afterDel.m_status == YomkResponse::eNo && afterDel.m_msg == "service not found: /YomkLogger",
               "删除后 LOGGER API 服务级 eNo + 精确消息");
         CHECK(!contains(unpackStringArray(YOMK_SERVER_INFO_SERVICES()), "/YomkLogger"),
               "服务表快照不再含 /YomkLogger");
 
         CHECK(YomkAPI::newService<YomkLogger>() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
-        auto restored = YOMK_LOGGER_INFO_LOGGERS();
-        // loggers 列表项格式 "<名> [console]" / "<名> [file]"（YomkLogger::loggers 拼接类型后缀）
-        CHECK(restored.m_status == YomkResponse::eOk && contains(unpackStringArray(restored), "MainLogger [console]"),
-              "重注册后 LOGGER API 恢复且含 MainLogger [console]");
+        auto restored = YOMK_LOGGER_INFO_LOGGERS("console");
+        // loggers 按类型查询，行内容即 logger 纯名（YomkLogger::loggers 不再拼接类型后缀）
+        CHECK(restored.m_status == YomkResponse::eOk && contains(unpackStringArray(restored), "MainLogger"),
+              "重注册后 LOGGER API 恢复且含 MainLogger");
         CHECK(YomkAPI::CONSOLE_LOG_INFO_TAG("MainLogger", "[integration]", "s2 relink marker").m_status ==
                   YomkResponse::eOk,
               "重注册后日志 API 全链路可用（console_log eOk）");

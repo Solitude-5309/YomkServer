@@ -237,7 +237,7 @@ struct ConsoleLogState
 struct LoggerInfo
 {
     std::string m_loggerName;  // 日志器名
-    std::string m_type;        // 类型："console" 或 "file"（与 INFO_LOGGERS 行文本 [console]/[file] 对应）
+    std::string m_type;        // 类型："console" 或 "file"（与 INFO_LOGGERS 的类型参数同名）
     std::string m_dir;         // file 类型的日志目录（console 时为空串）
 };
 

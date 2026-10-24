@@ -807,9 +807,11 @@ resp = YOMK_FUNCTIONPOOL_INFO_ALL();
 YOMK_FILE_LOG_CREATE("/tmp", "info_logger");                          // 创建文件日志器
 YomkAPI::CONSOLE_LOG_INFO_TAG("auto_logger", "hello");                // tag 兼容双填：按需自动创建同名控制台日志器并显示 [auto_logger]
 
-// 日志器列表（返回 StringArray，控制台在前、文件在后）
-YomkResponse resp = YOMK_LOGGER_INFO_LOGGERS();
-// arr->d: ["MainLogger [console]", "auto_logger [console]", "info_logger [file] dir:/tmp"]
+// 日志器列表：按类型查询（返回 StringArray，行内容即纯名，字典序）
+YomkResponse resp = YOMK_LOGGER_INFO_LOGGERS("console");
+// arr->d: ["MainLogger", "auto_logger"]
+resp = YOMK_LOGGER_INFO_LOGGERS("file");
+// arr->d: ["info_logger"]
 
 // 单日志器元信息：LoggerInfo 结构化包（m_loggerName/m_type/m_dir，m_msg 恒 "ok"）
 resp = YOMK_LOGGER_INFO_LOGGER("MainLogger");      // eOk, m_type="console"，m_dir 为空串

@@ -294,11 +294,11 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/off_console_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eError}));
     }
-    // 获取全部日志器列表
-    static YomkResponse LOGGER_INFO_LOGGERS()
+    // 按类型获取日志器名列表（type: "console"/"file"，仅返回该类型的纯名）
+    static YomkResponse LOGGER_INFO_LOGGERS(const std::string& type)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/loggers", nullptr);
+        return request("/YomkLogger/loggers", YomkMkPtr(String, type));
     }
     // 查询指定日志器状态
     static YomkResponse LOGGER_INFO_LOGGER(const std::string& loggerName)
@@ -634,7 +634,7 @@ private:
     YomkAPI::FILE_LOG_DEBUG_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_DEBUG_TAG(file, tag, ...) \
     YomkAPI::FILE_LOG_DEBUG_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_LOGGER_INFO_LOGGERS() YomkAPI::LOGGER_INFO_LOGGERS()
+#define YOMK_LOGGER_INFO_LOGGERS(type) YomkAPI::LOGGER_INFO_LOGGERS(type)
 #define YOMK_LOGGER_INFO_LOGGER(...) YomkAPI::LOGGER_INFO_LOGGER(__VA_ARGS__)
 #define YOMK_LOGGER_INFO_ALL() YomkAPI::LOGGER_INFO_ALL()
 #define YOMK_FILE_LOG_DELETE(...) YomkAPI::FILE_LOG_DELETE(__VA_ARGS__)

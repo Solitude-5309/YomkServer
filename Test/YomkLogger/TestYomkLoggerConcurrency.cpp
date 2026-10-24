@@ -199,8 +199,8 @@ static std::atomic<bool> g_s5Stop{false};                 // 内省线程停止�
 // 内省快照收集（S5）
 struct IntrospectSnapshot
 {
-    uint64_t consoleLines;  // LOGGERS 中 " [console]" 结尾行数
-    uint64_t fileLines;     // LOGGERS 中含 " [file] dir:" 行数
+    uint64_t consoleLines;  // LOGGERS(console) 端点行数（行内容即纯名）
+    uint64_t fileLines;     // LOGGERS(file) 端点行数
     uint64_t allLines;      // ALL 返回总行数（首行 + console 段 + file 段）
     uint64_t allConsole;    // ALL 中 console 段行数
     uint64_t allFile;       // ALL 中 file 段行数
@@ -336,27 +336,6 @@ static std::vector<std::string> unpackLines(const YomkResponse& resp)
         lines = arr->d;
     }
     return lines;
-}
-
-// 统计 LOGGERS 行中的 console/file 段行数
-static void countLoggerLines(const std::vector<std::string>& lines, uint64_t& consoleLines, uint64_t& fileLines)
-{
-    consoleLines = 0;
-    fileLines = 0;
-    for (const auto& line : lines)
-    {
-        static const std::string kConsoleSuffix = " [console]";
-        if (line.size() >= kConsoleSuffix.size() &&
-            line.compare(line.size() - kConsoleSuffix.size(), kConsoleSuffix.size(), kConsoleSuffix) == 0)
-        {
-            ++consoleLines;
-            continue;
-        }
-        if (line.find(" [file] dir:") != std::string::npos)
-        {
-            ++fileLines;
-        }
-    }
 }
 
 // 状态码是否属于框架合法集合 {eInvalid, eOk, eNo}
@@ -517,10 +496,10 @@ int main()
             intactLines == kTotal,
             "S1: 完整行数 == " + std::to_string(kTotal) + "（实际 " + std::to_string(intactLines) + "）");
 
-        // 同一 tag 仅一个 logger 实例（并发命中路径不重复创建）
-        auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
+        // 同一 tag 仅一个 logger 实例（并发命中路径不重复创建；行内容即纯名）
+        auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console"));
         CHECK(
-            countLinesContaining(loggersLines, kTag + " [console]") == 1,
+            countLinesContaining(loggersLines, kTag) == 1,
             "S1: LOGGERS 中 " + kTag + " 恰 1 行（无重复实例）");
     }
 
@@ -573,9 +552,9 @@ int main()
             "S2a: 争用创建全部 eOk == " + std::to_string(kTotal) + "（实际 " + std::to_string(g_s2aOkCount.load()) +
                 "）");
 
-        auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
+        auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console"));
         CHECK(
-            countLinesContaining(loggersLines, kRaceTag + " [console]") == 1,
+            countLinesContaining(loggersLines, kRaceTag) == 1,
             "S2a: LOGGERS 中 " + kRaceTag + " 恰 1 行——双检锁下并发 miss 仅创建一个实例");
 
         auto raceMarkers = collectTailMarkers(out, "lg3s2a_t");
@@ -597,9 +576,8 @@ int main()
         constexpr uint64_t kSpreadTotal = kSpreadThreads * kSpreadPerThread;
 
         g_s2bOkCount.store(0);
-        uint64_t consoleBefore = 0;
-        uint64_t fileBefore = 0;
-        countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), consoleBefore, fileBefore);
+        const uint64_t consoleBefore = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
+        const uint64_t fileBefore = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
 
         {
             ThreadSafeCoutCapture cap;
@@ -636,10 +614,8 @@ int main()
             "S2b: 分散创建全部 eOk == " + std::to_string(kSpreadTotal) + "（实际 " +
                 std::to_string(g_s2bOkCount.load()) + "）");
 
-        uint64_t consoleAfter = 0;
-        uint64_t fileAfter = 0;
-        auto spreadLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
-        countLoggerLines(spreadLines, consoleAfter, fileAfter);
+        const uint64_t consoleAfter = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
+        const uint64_t fileAfter = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
         CHECK(
             consoleAfter - consoleBefore == kSpreadThreads,
             "S2b: console logger 新增恰 " + std::to_string(kSpreadThreads) + " 个（实际新增 " +
@@ -796,9 +772,8 @@ int main()
         g_s4aCreateOk.store(0);
         g_s4aCreateNo.store(0);
 
-        uint64_t fileBeforeA = 0;
-        uint64_t consoleBeforeA = 0;
-        countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), consoleBeforeA, fileBeforeA);
+        const uint64_t fileBeforeA = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
+        const uint64_t consoleBeforeA = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
 
         resetGate();
         {
@@ -841,9 +816,8 @@ int main()
                 std::to_string(g_s4aCreateNo.load()) + "）——unique_lock 互斥下重名检查守恒");
         CHECK(fs::exists(sameDir / (kSameName + ".log")), "S4a: 胜出者日志文件已落盘");
 
-        uint64_t fileAfterA = 0;
-        uint64_t consoleAfterA = 0;
-        countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), consoleAfterA, fileAfterA);
+        const uint64_t fileAfterA = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
+        const uint64_t consoleAfterA = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
         CHECK(
             fileAfterA - fileBeforeA == 1,
             "S4a: file logger 仅新增 1 个（无重复注册，实际新增 " + std::to_string(fileAfterA - fileBeforeA) + "）");
@@ -885,9 +859,7 @@ int main()
             g_s4bCreateOk.load() == kThreads,
             "S4b: 8 线程异名并发创建全部 eOk（实际 " + std::to_string(g_s4bCreateOk.load()) + "）");
 
-        uint64_t fileAfterB = 0;
-        uint64_t consoleAfterB = 0;
-        countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), consoleAfterB, fileAfterB);
+        const uint64_t fileAfterB = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
         CHECK(
             fileAfterB - fileAfterA == kThreads,
             "S4b: file logger 新增恰 " + std::to_string(kThreads) + " 个（实际新增 " +
@@ -1148,10 +1120,9 @@ int main()
             YOMK_FILE_LOG_CREATE(pairDir.string(), kFileSink).m_status == YomkResponse::eOk,
             "S5: 预热 file sink logger 成功");
 
-        // 基线快照
-        uint64_t baseC = 0;
-        uint64_t baseF = 0;
-        countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), baseC, baseF);
+        // 基线快照（先 file 后 console：file 采样时刻早于 console，配合成对创建语义保证 C>=F 判别式有效）
+        const uint64_t baseF = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
+        const uint64_t baseC = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
         CHECK(
             (baseC > 0 && baseF > 0),
             "S5: 基线非空（console " + std::to_string(baseC) + " / file " + std::to_string(baseF) + "）");
@@ -1227,8 +1198,10 @@ int main()
                         while (!g_s5Stop.load(std::memory_order_acquire))
                         {
                             IntrospectSnapshot snap{};
-                            auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
-                            countLoggerLines(loggersLines, snap.consoleLines, snap.fileLines);
+                            // 先 file 后 console：file 采样时刻早于 console；churn 成对创建先 console 后
+                            // file 且两表只增不减，故相对基线增量 deltaC >= deltaF 恒成立（判别式有效前提）
+                            snap.fileLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
+                            snap.consoleLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
 
                             auto allResp = YOMK_LOGGER_INFO_ALL();
                             if (!isLegalStatus(allResp))
@@ -1243,7 +1216,7 @@ int main()
                                     g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
                                 }
                                 snap.allLines = allPkg->d.m_loggers.size();
-                                // 结构化清单按 m_type 计数（与 countLoggerLines 行文本计数语义一致）
+                                // 结构化清单按 m_type 计数（与按类型端点行数计数语义一致）
                                 for (const auto& li : allPkg->d.m_loggers)
                                 {
                                     if (li.m_type == "console")
@@ -1385,9 +1358,9 @@ int main()
         CHECK(YOMK_FILE_LOG_WRITE(kFileSink).m_status == YomkResponse::eOk, "S5: 收尾 file sink WRITE eOk");
 
         // ---- P3-a 判别式：对每个快照验证 C >= F（相对基线增量）----
-        uint64_t finalC = 0;
-        uint64_t finalF = 0;
-        countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), finalC, finalF);
+        // 收尾时 churn 已结束、两表静态；采样顺序保持与快照线程一致（先 file 后 console）
+        const uint64_t finalF = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
+        const uint64_t finalC = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
         const uint64_t finalTotal = finalC + finalF;
 
         uint64_t loggersViolations = 0;  // LOGGERS 端点 F > C 违例
@@ -1436,7 +1409,7 @@ int main()
         CHECK(
             loggersViolations == 0,
             "S5: LOGGERS 快照 C>=F 恒成立（违例 " + std::to_string(loggersViolations) +
-                " 个）——P3-a 嵌套双锁原子快照实证（分段锁下 file 段晚于 console 段会产生 F>C）");
+                " 个）——按类型端点先 file 后 console 采样 + churn 成对创建语义实证");
         CHECK(
             allViolations == 0,
             "S5: ALL 快照 C>=F 恒成立（违例 " + std::to_string(allViolations) + " 个）——listAll 同为原子快照");

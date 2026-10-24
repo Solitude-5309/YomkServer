@@ -26,7 +26,7 @@
 
 | API | 说明 |
 |---|---|
-| `YOMK_LOGGER_INFO_LOGGERS()` | 获取全部日志器列表 |
+| `YOMK_LOGGER_INFO_LOGGERS(type)` | 按类型获取日志器名列表（type: `"console"`/`"file"`，返回 StringArray 纯名字典序；非法类型 eNo） |
 | `YOMK_LOGGER_INFO_LOGGER(name)` | 查询指定日志器状态 |
 | `YOMK_LOGGER_INFO_ALL()` | 查询全部日志器及开关配置状态（LoggerAllInfo 结构化包：m_console 状态段 + m_loggers 清单段） |
 

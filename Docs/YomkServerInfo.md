@@ -30,7 +30,7 @@ YOMK_SERVER_INFO_ALL();                        // 全量服务拓扑
 
 | 模块 | 自省 API |
 |---|---|
-| 日志 | `YOMK_LOGGER_INFO_LOGGERS()`、`YOMK_LOGGER_INFO_LOGGER("app")`、`YOMK_LOGGER_INFO_ALL()`（见 [YomkLogger.md](YomkLogger.md)） |
+| 日志 | `YOMK_LOGGER_INFO_LOGGERS("console")`、`YOMK_LOGGER_INFO_LOGGER("app")`、`YOMK_LOGGER_INFO_ALL()`（见 [YomkLogger.md](YomkLogger.md)） |
 | 上下文 | `YOMK_CONTEXT_INFO_KEYS()`、`YOMK_CONTEXT_INFO_KEY("config")`、`YOMK_CONTEXT_INFO_ALL()`（见 [YomkContext.md](YomkContext.md)） |
 | 事件循环 | `YOMK_EVENTLOOP_INFO_LOOPS()`、`YOMK_EVENTLOOP_INFO_LOOP("TaskLoop")`、`YOMK_EVENTLOOP_INFO_ALL()`（见 [YomkEventLoop.md](YomkEventLoop.md)） |
 | 函数池 | `YOMK_FUNCTIONPOOL_INFO_NAMES()`、`YOMK_FUNCTIONPOOL_INFO_NAME("calcSum")`、`YOMK_FUNCTIONPOOL_INFO_ALL()`（见 [YomkFunctionPool.md](YomkFunctionPool.md)） |

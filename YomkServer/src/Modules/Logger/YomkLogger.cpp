@@ -28,7 +28,7 @@ int YomkLogger::init()
     YomkInstallFunc("/delete_logger", YomkLogger::deleteLogger, String);
     YomkInstallFunc("/off_console_log_by_level", YomkLogger::offConsoleLogByLevel, Log);
     YomkInstallFunc("/on_console_log_by_level", YomkLogger::onConsoleLogByLevel, Log);
-    YomkInstallFunc("/loggers", YomkLogger::loggers);
+    YomkInstallFunc("/loggers", YomkLogger::loggers, String);
     YomkInstallFunc("/logger", YomkLogger::loggerInfo, String);
     YomkInstallFunc("/all", YomkLogger::listAll);
     return 0;
@@ -307,22 +307,30 @@ YomkResponse YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
 {
-    (void)pkg;
-    std::vector<std::string> lines;
+    YomkUnPackPkgResponse(pkg, String, type);
+    std::vector<std::string> names;
+    if (type->d == "console")
     {
-        // 按锁序 console -> file 嵌套双读锁：两段为同一时刻的原子快照
-        std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
-        std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
-        // 预分配避免扩容，缩短双锁窗口
-        lines.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
+        std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
+        names.reserve(m_consoleLoggers.size());
         for (auto& iter : m_consoleLoggers)
-            lines.push_back(iter.first + " [console]");
-        for (auto& iter : m_fileLoggers)
-            lines.push_back(iter.first + " [file] dir:" + iter.second->getDir());
+            names.push_back(iter.first);
     }
-    // 两表为 std::map，中序遍历天然字典序，无需排序（选型见 YomkLogger.h）
+    else if (type->d == "file")
+    {
+        std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
+        names.reserve(m_fileLoggers.size());
+        for (auto& iter : m_fileLoggers)
+            names.push_back(iter.first);
+    }
+    else
+    {
+        YOMK_ERR_POS_LOG("unknown logger type: " + type->d + ".");
+        return YomkResponse(YomkResponse::eNo, "unknown logger type.");
+    }
+    // 单表为 std::map，中序遍历天然字典序，无需排序（选型见 YomkLogger.h）
     // move 入包消除全量拷贝
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, std::move(lines))};
+    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, std::move(names))};
 }
 
 YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)

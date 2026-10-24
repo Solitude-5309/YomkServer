@@ -34,7 +34,7 @@ private:
     YomkResponse listAll(YomkPkgPtr pkg);
 
 private:
-    // 锁序约定：需要同时读取两张 logger 表时（loggers/listAll 内省快照），
+    // 锁序约定：需要同时读取两张 logger 表时（listAll 内省快照），
     // 一律按 m_consoleLoggersMutex -> m_fileLoggersMutex 的顺序嵌套持有，全仓无反向嵌套点
     // （consoleLog 的 proxy 锁在独立作用域释放后才取 console 锁；loggerInfo/fileLog/
     // writeFileLog/createFileLogger 均单锁）；m_consoleLogProxyMutex 为叶子锁，

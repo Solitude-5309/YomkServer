@@ -559,44 +559,6 @@ static std::vector<std::string> unpackLines(const YomkResponse& resp)
     return lines;
 }
 
-// 统计 LOGGERS/ALL 数据行中的 console/file 段行数
-static void countLoggerLines(const std::vector<std::string>& lines, uint64_t& consoleLines, uint64_t& fileLines)
-{
-    consoleLines = 0;
-    fileLines = 0;
-    for (const auto& line : lines)
-    {
-        static const std::string kConsoleSuffix = " [console]";
-        if (line.size() >= kConsoleSuffix.size() &&
-            line.compare(line.size() - kConsoleSuffix.size(), kConsoleSuffix.size(), kConsoleSuffix) == 0)
-        {
-            ++consoleLines;
-            continue;
-        }
-        if (line.find(" [file] dir:") != std::string::npos)
-        {
-            ++fileLines;
-        }
-    }
-}
-
-// 从内省数据行解析 logger 名（"name [console]" / "name [file] dir:..."）
-static std::string parseLoggerName(const std::string& line)
-{
-    auto pos = line.find(" [file] dir:");
-    if (pos != std::string::npos)
-    {
-        return line.substr(0, pos);
-    }
-    static const std::string kConsoleSuffix = " [console]";
-    if (line.size() > kConsoleSuffix.size() &&
-        line.compare(line.size() - kConsoleSuffix.size(), kConsoleSuffix.size(), kConsoleSuffix) == 0)
-    {
-        return line.substr(0, line.size() - kConsoleSuffix.size());
-    }
-    return line;
-}
-
 // 状态码是否属于框架合法集合 {eInvalid, eOk, eNo}
 static bool isLegalStatus(const YomkResponse& resp)
 {
@@ -748,7 +710,7 @@ static LatencyStat measureIntrospection(uint64_t rounds, bool useAll, uint64_t& 
     for (uint64_t i = 0; i < rounds; ++i)
     {
         auto t0 = Clock::now();
-        auto resp = useAll ? YOMK_LOGGER_INFO_ALL() : YOMK_LOGGER_INFO_LOGGERS();
+        auto resp = useAll ? YOMK_LOGGER_INFO_ALL() : YOMK_LOGGER_INFO_LOGGERS("console");
         double ms = msSince(t0);
         if (resp.m_status != YomkResponse::eOk)
         {
@@ -855,9 +817,8 @@ int main()
 
     // 起点基线：库内部不使用 YOMK_INFO 家族宏 → console 表恰为构造函数预置的 MainLogger
     {
-        uint64_t c = 0;
-        uint64_t f = 0;
-        countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), c, f);
+        const uint64_t c = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
+        const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
         CHECK(
             (c == 1 && f == 0),
             "起点内省基线 console=1(MainLogger)/file=0（实测 " + std::to_string(c) + "/" + std::to_string(f) + "）");
@@ -929,9 +890,7 @@ int main()
         recordBaseline("S1A_console_create_unique_tag", N, elapsedA);
         CHECK(okA == N, "S1A: 唯一 tag 写入 eOk 守恒 " + std::to_string(okA) + "/" + std::to_string(N));
 
-        uint64_t consoleEntries = 0;
-        uint64_t fileEntries = 0;
-        countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), consoleEntries, fileEntries);
+        const uint64_t consoleEntries = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
         CHECK(
             consoleEntries == N + 1,
             "S1A: console 表条目 = N + MainLogger（实测 " + std::to_string(consoleEntries) + "）");
@@ -1152,9 +1111,8 @@ int main()
             "S2C: 磁盘 .log 文件数守恒 = N + N/10（实测 " + std::to_string(diskFiles) + "/" + std::to_string(N + M) +
                 "）");
 
-        uint64_t c = 0;
-        uint64_t f = 0;
-        countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), c, f);
+        const uint64_t c = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
+        const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
         CHECK(
             (c == N + 1 && f == N + M),
             "S2C: 内省条目守恒 console=N+1 file=N+N/10（实测 " + std::to_string(c) + "/" + std::to_string(f) + "）");
@@ -1327,11 +1285,9 @@ int main()
     // ========================================================================
     std::cout << "\n--- S4: 内省端点规模响应（P4-c 验证点） ---" << std::endl;
     {
-        auto loggersResp = YOMK_LOGGER_INFO_LOGGERS();
-        const std::vector<std::string> loggersLines = unpackLines(loggersResp);
-        uint64_t c = 0;
-        uint64_t f = 0;
-        countLoggerLines(loggersLines, c, f);
+        const std::vector<std::string> loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console"));
+        const uint64_t c = loggersLines.size();
+        const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
         const uint64_t entries = c + f;
         std::cout << "[CONFIG] S4 entries = " << entries << " (console " << c << " / file " << f
                   << ") rounds = " << introspectionRounds(entries) << std::endl;
@@ -1346,8 +1302,8 @@ int main()
         const LatencyStat statL = measureIntrospection(rounds, false, badL, linesL);
         recordLatency("S4A_loggers", statL);
         CHECK(
-            (badL == 0 && linesL == entries),
-            "S4A: LOGGERS eOk + 行数守恒（" + std::to_string(linesL) + "/" + std::to_string(entries) + "）");
+            (badL == 0 && linesL == c),
+            "S4A: LOGGERS eOk + console 行数守恒（" + std::to_string(linesL) + "/" + std::to_string(c) + "）");
         uint64_t badA = 0;
         uint64_t linesA = 0;
         const LatencyStat statA = measureIntrospection(rounds, true, badA, linesA);
@@ -1357,8 +1313,8 @@ int main()
             "S4A: ALL eOk + 日志器数守恒（" + std::to_string(linesA) + "/" + std::to_string(entries) + "）");
 
         // ---- Phase B：ALL 控制台状态字段 + 与 LOGGERS 的数量/类型计数等价（P3-a 原子快照可观测等价）----
-        // 结构化后数据段形态不同（LoggerInfo vs 行文本），逐行字符串比对改为数量与类型计数比对；
-        // 等价性由两套取数同为嵌套双锁原子快照保证
+        // 结构化后数据段形态不同（LoggerInfo vs 纯名行），逐行字符串比对改为数量与类型计数比对；
+        // S4 阶段表内条目不再增删，console/file 两端点各自单锁快照后计数等价
         YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerAllInfo, allPkg);
         CHECK(
             (allPkg != nullptr && allPkg->d.m_console.m_debugOn && allPkg->d.m_console.m_infoOn &&
@@ -1381,7 +1337,7 @@ int main()
             }
         }
         const bool identical =
-            (allPkg != nullptr && allPkg->d.m_loggers.size() == entries && loggersLines.size() == entries &&
+            (allPkg != nullptr && allPkg->d.m_loggers.size() == entries && loggersLines.size() == c &&
              ac == c && af == f);
         CHECK(identical, "S4B: ALL 与 LOGGERS 数量及类型计数一致（嵌套双锁原子快照）");
 
@@ -1614,9 +1570,8 @@ int main()
             "S5A: 删除后单查 eNo 守恒 " + std::to_string(g_s5PostDeleteNo.load()) + "/" + std::to_string(churnTotal));
         CHECK(g_s5BadStatus.load() == 0, "S5A: 无非法状态码（异常 " + std::to_string(g_s5BadStatus.load()) + " 次）");
         {
-            uint64_t c = 0;
-            uint64_t f = 0;
-            countLoggerLines(unpackLines(YOMK_LOGGER_INFO_LOGGERS()), c, f);
+            const uint64_t c = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
+            const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
             CHECK(
                 (c == N + 1 && f == fileTotal + 1 + 2 * D),
                 "S5A: churn 后条目净变化 0（实测 console " + std::to_string(c) + " / file " + std::to_string(f) + "）");
@@ -1680,18 +1635,22 @@ int main()
             ThreadSafeCoutCapture cap(true);
             for (int round = 0; round < 3; ++round)
             {
-                const std::vector<std::string> lines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
-                if (lines.empty())
+                // 行内容即 logger 纯名，按类型端点各扫一份
+                const std::vector<std::string> consoleLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console"));
+                const std::vector<std::string> fileLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file"));
+                if (consoleLines.empty() && fileLines.empty())
                 {
                     break;
                 }
-                for (const auto& line : lines)
+                for (const auto& name : consoleLines)
                 {
-                    const std::string name = parseLoggerName(line);
-                    if (name.empty())
+                    if (YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk)
                     {
-                        continue;
+                        ++residualDeleted;
                     }
+                }
+                for (const auto& name : fileLines)
+                {
                     if (YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk)
                     {
                         ++residualDeleted;
@@ -1699,11 +1658,12 @@ int main()
                 }
             }
         }
-        const std::vector<std::string> finalLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS());
+        const size_t finalLeft = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size() +
+                                 unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
         CHECK(
-            finalLines.empty(),
+            finalLeft == 0,
             "S5C: 全量回收后 LOGGERS 行数为 0（残量扫除 " + std::to_string(residualDeleted) + " 个，实剩 " +
-                std::to_string(finalLines.size()) + "）");
+                std::to_string(finalLeft) + "）");
         {
             const uint64_t probes = (N / 100 == 0) ? 1 : N / 100;
             uint64_t goneConsole = 0;

@@ -162,7 +162,7 @@ int main()
             YomkAPI::ON_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eInvalid,
             "ON_CONSOLE_LOG_DEBUG 未初始化返回 eInvalid");
         CHECK(
-            YomkAPI::LOGGER_INFO_LOGGERS().m_status == YomkResponse::eInvalid,
+            YomkAPI::LOGGER_INFO_LOGGERS("console").m_status == YomkResponse::eInvalid,
             "LOGGER_INFO_LOGGERS 未初始化返回 eInvalid");
         CHECK(
             YomkAPI::LOGGER_INFO_LOGGER("guard_logger").m_status == YomkResponse::eInvalid,
