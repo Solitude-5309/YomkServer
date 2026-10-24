@@ -7,8 +7,9 @@
  *     server 释放后 4 端点 invoke 逐一返回 eNo + "server has been destroyed"
  *     （m_weakServer.lock() 失败分支，invoke 为 YomkService public 方法可直连）
  * S1. /services：eOk + StringArray 含 5 内置服务；FmtSrv 注册后出现、删除后消失、重注册后出现
- * S2. /functions：行格式 "func [MsgType]" 与无类型 "func" 两种；空 srvName eInvalid；
- *     不存在服务 eOk 空表；内置 /YomkContext 与 /YomkServerInfo 自身行格式
+ * S2. /functions：FuncInfoList 结构化清单（m_funcName 带 / 前缀、m_msgName 类型名/空、
+ *     m_description 四参说明）；空 srvName eInvalid；不存在服务 eOk 空表；内置
+ *     /YomkContext 与 /YomkServerInfo 自身条目
  * S3. /function：命中时 m_msg 精确等于 msgName（特殊契约，非 "ok"）、无类型函数 m_msg 为空；
  *     四参函数说明挂入数据段（m_msg 契约保持）、无说明函数数据段为空；
  *     URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null pkg
@@ -18,7 +19,7 @@
  *     读写竞争），恒 eOk、/services 恒含存活服务、churn 后无残留
  * S6. 内置服务删除/重注册自举契约（对齐 Context Lifecycle S4/S5 模式）：删除后 4 端点不可路由、
  *     服务表快照反映删除；newService 无参重注册（构造函数固定名生效）后自举恢复
- * S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/services 行完整、/functions 行格式、
+ * S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/services 行完整、/functions 条目字段、
  *     /function 长名下 URL 二段解析、/all 超长条目完整无截断
  *
  * 说明：S1-S5 经 YOMK_INIT 单例 + YOMK_SERVER_INFO_* 宏走完整路由链；S0 类级直连
@@ -96,7 +97,7 @@ static const yomk::FuncInfo* findFuncInfo(const yomk::ServerServiceInfo* srv, co
     return nullptr;
 }
 
-// 解包 StringArray 响应数据段（/services、/functions 的 m_data 均为 StringArray 包）
+// 解包 StringArray 响应数据段（/services 的 m_data 为 StringArray 包）
 static std::vector<std::string> unpackStringArray(const YomkResponse& resp)
 {
     std::vector<std::string> lines;
@@ -112,10 +113,39 @@ static std::vector<std::string> unpackStringArray(const YomkResponse& resp)
     return lines;
 }
 
+// 解包 FuncInfoList 响应数据段（/functions 的 m_data 为 FuncInfoList 结构化包）
+static std::vector<yomk::FuncInfo> unpackFuncInfoList(const YomkResponse& resp)
+{
+    std::vector<yomk::FuncInfo> funcs;
+    if (resp.m_status != YomkResponse::eOk || !resp.m_data)
+    {
+        return funcs;
+    }
+    YomkUnPackPkgT(resp.m_data, "FuncInfoList", Yomk(FuncInfoList), listPkg);
+    if (listPkg)
+    {
+        funcs = listPkg->d;
+    }
+    return funcs;
+}
+
+// 在 FuncInfoList 解包结果中按函数名查找元信息（m_funcName 带 / 前缀 url 段）
+static const yomk::FuncInfo* findFunc(const std::vector<yomk::FuncInfo>& funcs, const std::string& funcName)
+{
+    for (const auto& func : funcs)
+    {
+        if (func.m_funcName == funcName)
+        {
+            return &func;
+        }
+    }
+    return nullptr;
+}
+
 /**
- * @brief 行格式演示服务：/ping 两参安装（无类型，行格式 "func"）+ /echo 四参安装
- *        （String 类型 + 说明 "echo demo description"，行格式 "func [String]"），
- *        供 S2/S3/S4 精确格式断言与 description 透出断言使用
+ * @brief 结构化清单演示服务：/ping 两参安装（无类型条目）+ /echo 四参安装
+ *        （String 类型 + 说明 "echo demo description"），
+ *        供 S2/S3/S4 条目字段精确断言与 description 透出断言使用
  */
 class FmtSrv : public YomkService
 {
@@ -241,31 +271,36 @@ int main()
     {
         auto resp = YOMK_SERVER_INFO_FUNCTIONS("/FmtSrv");
         CHECK(resp.m_status == YomkResponse::eOk, "/functions(FmtSrv) 返回 eOk");
-        auto lines = unpackStringArray(resp);
-        CHECK(lines.size() == 2, "FmtSrv 恰 2 个功能函数: " + std::to_string(lines.size()));
-        CHECK(nameIn(lines, "/echo [String]"), "三参安装行格式 \"/echo [String]\"");
-        CHECK(nameIn(lines, "/ping"), "两参安装行格式 \"/ping\"（无类型后缀）");
+        auto funcs = unpackFuncInfoList(resp);
+        CHECK(funcs.size() == 2, "FmtSrv 恰 2 个功能函数: " + std::to_string(funcs.size()));
+        const yomk::FuncInfo* echo = findFunc(funcs, "/echo");
+        CHECK(echo != nullptr && echo->m_msgName == "String" && echo->m_description == "echo demo description",
+              "四参安装条目 /echo：类型 String + 说明透出");
+        const yomk::FuncInfo* ping = findFunc(funcs, "/ping");
+        CHECK(ping != nullptr && ping->m_msgName.empty(), "两参安装条目 /ping（m_msgName 空）");
 
         auto empty = YOMK_SERVER_INFO_FUNCTIONS("");
         CHECK(empty.m_status == YomkResponse::eInvalid && empty.m_msg == "srvName is empty",
               "空 srvName 返回 eInvalid + 契约消息: " + empty.m_msg);
 
         auto noSrv = YOMK_SERVER_INFO_FUNCTIONS("/NoSuchSrv");
-        CHECK(noSrv.m_status == YomkResponse::eOk && unpackStringArray(noSrv).empty(),
+        CHECK(noSrv.m_status == YomkResponse::eOk && unpackFuncInfoList(noSrv).empty(),
               "不存在服务返回 eOk + 空列表（现状契约）");
 
         auto ctx = YOMK_SERVER_INFO_FUNCTIONS("/YomkContext");
-        auto ctxLines = unpackStringArray(ctx);
-        CHECK(ctx.m_status == YomkResponse::eOk && nameIn(ctxLines, "/create [Context]"),
-              "内置 /YomkContext 含 \"/create [Context]\"");
-        CHECK(nameIn(ctxLines, "/keys"), "内置 /YomkContext 无类型端点行 \"/keys\"");
+        auto ctxFuncs = unpackFuncInfoList(ctx);
+        const yomk::FuncInfo* create = findFunc(ctxFuncs, "/create");
+        CHECK(ctx.m_status == YomkResponse::eOk && create != nullptr && create->m_msgName == "Context",
+              "内置 /YomkContext 含 /create 期望类型 Context");
+        CHECK(findFunc(ctxFuncs, "/keys") != nullptr, "内置 /YomkContext 无类型端点 /keys（m_msgName 空）");
 
         auto self = YOMK_SERVER_INFO_FUNCTIONS("/YomkServerInfo");
-        auto selfLines = unpackStringArray(self);
-        CHECK(self.m_status == YomkResponse::eOk && selfLines.size() == 4,
+        auto selfFuncs = unpackFuncInfoList(self);
+        CHECK(self.m_status == YomkResponse::eOk && selfFuncs.size() == 4,
               "/YomkServerInfo 自身恰 4 个端点");
-        CHECK(nameIn(selfLines, "/function [String]") && nameIn(selfLines, "/all"),
-              "自身行格式含带类型与无类型两种");
+        const yomk::FuncInfo* function = findFunc(selfFuncs, "/function");
+        CHECK(function != nullptr && function->m_msgName == "String" && findFunc(selfFuncs, "/all") != nullptr,
+              "自身条目含带类型 /function 与无类型 /all");
     }
 
     // ============ S3. /function ============
@@ -390,7 +425,7 @@ int main()
                 }
 
                 auto functions = YOMK_SERVER_INFO_FUNCTIONS("/FmtSrv");
-                if (functions.m_status != YomkResponse::eOk || unpackStringArray(functions).size() != 2)
+                if (functions.m_status != YomkResponse::eOk || unpackFuncInfoList(functions).size() != 2)
                 {
                     g_badFuncs.fetch_add(1);
                 }
@@ -477,11 +512,15 @@ int main()
               "/services 行完整包含超长服务名（无截断）");
 
         auto longFuncs = YOMK_SERVER_INFO_FUNCTIONS(longName);
-        auto longFuncLines = unpackStringArray(longFuncs);
-        CHECK(longFuncs.m_status == YomkResponse::eOk && longFuncLines.size() == 2,
-              "超长名服务 /functions 返回 2 行");
-        CHECK(nameIn(longFuncLines, "/echo [String]") && nameIn(longFuncLines, "/ping"),
-              "超长名下函数行格式完整");
+        auto longFuncList = unpackFuncInfoList(longFuncs);
+        CHECK(longFuncs.m_status == YomkResponse::eOk && longFuncList.size() == 2,
+              "超长名服务 /functions 返回 2 条目");
+        const yomk::FuncInfo* longEcho = findFunc(longFuncList, "/echo");
+        const yomk::FuncInfo* longPing = findFunc(longFuncList, "/ping");
+        CHECK(
+            (longEcho != nullptr && longEcho->m_msgName == "String" && longPing != nullptr &&
+             longPing->m_msgName.empty()),
+            "超长名下函数条目字段完整");
 
         auto longFunction = YOMK_SERVER_INFO_FUNCTION(longName + "/ping");
         CHECK(longFunction.m_status == YomkResponse::eOk && longFunction.m_msg == "ok",

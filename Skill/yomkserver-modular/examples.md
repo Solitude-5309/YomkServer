@@ -709,9 +709,9 @@ int DemoService::init()
 YomkResponse resp = YOMK_SERVER_INFO_SERVICES();
 YomkUnPackPkg(resp.m_data, StringArray, arr);  // arr->d: ["/DemoService", "/YomkServerInfo", ...]
 
-// 指定服务的函数列表（每行 "funcName [msgName]"）
+// 指定服务的函数列表（FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
 resp = YOMK_SERVER_INFO_FUNCTIONS("/DemoService");
-// arr->d: ["/no_type", "/with_desc [String]", "/with_type [String]"]
+// listPkg->d（按注册名字典序）：{"/no_type","",""}、{"/with_desc","String","对函数的说明"}、{"/with_type","String",""}
 
 // 单函数元信息查询（结构化 FuncInfo 包：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
 resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_type");  // eOk，m_msgName = "String"

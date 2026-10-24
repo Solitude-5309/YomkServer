@@ -25,7 +25,7 @@
  *   YOMK_REQUEST                                同步请求（自证注册的服务可用）
  *   YOMK_DEL_SERVICE(name)                      注销服务（删除即从拓扑消失）
  *   YOMK_SERVER_INFO_SERVICES()                 自省：全部服务名清单
- *   YOMK_SERVER_INFO_FUNCTIONS("/服务名")       自省：指定服务的功能函数清单
+ *   YOMK_SERVER_INFO_FUNCTIONS("/服务名")       自省：指定服务的功能函数清单（FuncInfoList 结构化）
  *   YOMK_SERVER_INFO_FUNCTION("/服务名/函数名") 自省：单个功能函数元信息
  *   YOMK_SERVER_INFO_ALL()                      自省：框架全量服务拓扑
  *   YomkInstallFunc(2/3/4 参)                   服务侧注册（3 参声明期望消息类型，4 参附函数说明）
@@ -123,7 +123,7 @@ static void printResp(const std::string& prefix, const YomkResponse& resp)
     std::cout << std::endl;
 }
 
-// 解包并打印自省返回的 StringArray（SERVICES/FUNCTIONS 的返回形态）
+// 解包并打印自省返回的 StringArray（SERVICES 的返回形态）
 static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
@@ -136,6 +136,24 @@ static void dumpLines(const std::string& prefix, const YomkResponse& resp)
     for (const auto& line : arr->d)
     {
         std::cout << ">> | " << line << std::endl;
+    }
+}
+
+// 解包并打印函数清单（INFO_FUNCTIONS 返回 FuncInfoList 结构化包：m_funcName/m_msgName/m_description；
+// 框架只返回结构化数据，显示格式由用户定义，此处仅为示范）
+static void dumpFuncInfoList(const std::string& prefix, const YomkResponse& resp)
+{
+    printResp(prefix, resp);
+    YomkUnPackPkg(resp.m_data, FuncInfoList, listPkg);
+    if (!listPkg)
+    {
+        std::cout << ">> (no data)" << std::endl;
+        return;
+    }
+    for (const auto& func : listPkg->d)
+    {
+        std::cout << ">> | " << func.m_funcName << " msg=" << func.m_msgName << " desc=" << func.m_description
+                  << std::endl;
     }
 }
 
@@ -192,14 +210,17 @@ int main(int argc, char* argv[])
     /**
      * 步骤2：函数清单
      *
-     * INFO_FUNCTIONS 列出指定服务的全部功能函数：4 参注册的 /sum 带
-     * [SumReq] 元数据，2 参注册的 /hi 没有；查不存在的服务返回空清单。
+     * INFO_FUNCTIONS 列出指定服务的全部功能函数：FuncInfoList 结构化清单，
+     * 4 参注册的 /sum 带 msg=SumReq 元数据，2 参注册的 /hi msg 为空；
+     * 查不存在的服务返回空清单。
      */
     printStep(
-        2, "函数清单", "INFO_FUNCTIONS 看函数清单：/sum [SumReq] 带 4 参注册元数据，/hi 无；查不存在的服务返回空清单。");
-    dumpLines("INFO_FUNCTIONS(/InfoDemoService)", YOMK_SERVER_INFO_FUNCTIONS("/InfoDemoService"));
-    std::cout << ">> [SumReq] 即期望消息类型元数据，由 YomkInstallFunc 第三参声明" << std::endl;
-    dumpLines("INFO_FUNCTIONS(/GhostService)", YOMK_SERVER_INFO_FUNCTIONS("/GhostService"));
+        2,
+        "函数清单",
+        "INFO_FUNCTIONS 看函数清单（FuncInfoList 结构化）：/sum 带 msg=SumReq 元数据，/hi msg 为空；查不存在的服务返回空清单。");
+    dumpFuncInfoList("INFO_FUNCTIONS(/InfoDemoService)", YOMK_SERVER_INFO_FUNCTIONS("/InfoDemoService"));
+    std::cout << ">> msg 字段即期望消息类型元数据，由 YomkInstallFunc 第三参声明" << std::endl;
+    dumpFuncInfoList("INFO_FUNCTIONS(/GhostService)", YOMK_SERVER_INFO_FUNCTIONS("/GhostService"));
     std::cout << ">> 服务不存在 → 返回空清单（eOk），查询失败不崩溃" << std::endl;
 
     /**

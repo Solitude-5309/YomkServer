@@ -75,7 +75,7 @@ static void printResp(const std::string& prefix, const YomkResponse& resp)
     std::cout << std::endl;
 }
 
-// 解包并打印自省返回的 StringArray（SERVER_INFO_* 的返回形态）
+// 解包并打印自省返回的 StringArray（SERVER_INFO_SERVICES 的返回形态）
 static void dumpLines(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
@@ -88,6 +88,23 @@ static void dumpLines(const std::string& prefix, const YomkResponse& resp)
     for (const auto& line : arr->d)
     {
         std::cout << ">> | " << line << std::endl;
+    }
+}
+
+// 解包并打印函数清单（INFO_FUNCTIONS 返回 FuncInfoList 结构化包：m_funcName/m_msgName/m_description）
+static void dumpFuncInfoList(const std::string& prefix, const YomkResponse& resp)
+{
+    printResp(prefix, resp);
+    YomkUnPackPkg(resp.m_data, FuncInfoList, listPkg);
+    if (!listPkg)
+    {
+        std::cout << ">> (no data)" << std::endl;
+        return;
+    }
+    for (const auto& func : listPkg->d)
+    {
+        std::cout << ">> | " << func.m_funcName << " msg=" << func.m_msgName << " desc=" << func.m_description
+                  << std::endl;
     }
 }
 
@@ -156,11 +173,11 @@ int main(int argc, char* argv[])
     printStep(
         5,
         "服务自省",
-        "INFO_FUNCTIONS 看函数清单：/add [AddReq] 带 3 参注册元数据，/echo 无；INFO_FUNCTION 单查元数据。");
-    dumpLines("INFO_FUNCTIONS(/CalcService)", YOMK_SERVER_INFO_FUNCTIONS("/CalcService"));
+        "INFO_FUNCTIONS 看函数清单（FuncInfoList 结构化）：/add 带 msg=AddReq 元数据，/echo msg 为空；INFO_FUNCTION 单查元数据。");
+    dumpFuncInfoList("INFO_FUNCTIONS(/CalcService)", YOMK_SERVER_INFO_FUNCTIONS("/CalcService"));
     printResp("INFO_FUNCTION(/CalcService/add)", YOMK_SERVER_INFO_FUNCTION("/CalcService/add"));
     printResp("INFO_FUNCTION(/CalcService/echo)", YOMK_SERVER_INFO_FUNCTION("/CalcService/echo"));
-    std::cout << ">> [AddReq] 元数据由 YomkInstallFunc 第三参声明，供自省识别期望消息类型" << std::endl;
+    std::cout << ">> msg 字段（AddReq）由 YomkInstallFunc 第三参声明，供自省识别期望消息类型" << std::endl;
 
     printStep(
         6,

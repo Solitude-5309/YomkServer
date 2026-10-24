@@ -201,7 +201,7 @@ int XxxService::init() {
 
 // 服务列表（返回 StringArray）
 YomkResponse resp = YOMK_SERVER_INFO_SERVICES();
-// 指定服务的函数列表（每行 "funcName [msgName]"）
+// 指定服务的函数列表（FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
 resp = YOMK_SERVER_INFO_FUNCTIONS("/XxxService");
 // 单函数元信息查询（命中返回结构化 FuncInfo 包：m_msgName=类型名、m_description=四参说明，m_msg 恒 "ok"）
 resp = YOMK_SERVER_INFO_FUNCTION("/XxxService/my_func");

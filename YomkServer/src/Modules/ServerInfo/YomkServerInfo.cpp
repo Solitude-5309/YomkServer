@@ -45,13 +45,13 @@ YomkResponse YomkServerInfo::listFunctions(YomkPkgPtr pkg)
         return {YomkResponse::eNo, "server has been destroyed"};
     }
 
-    std::vector<std::string> lines;
+    // 结构化清单：FuncInfo 三字段与 /function 单查、/all 聚合同族（m_funcName 带 / 前缀 url 段）
+    std::vector<yomk::FuncInfo> funcs;
     for (auto& iter : server->serviceFuncInfos(ySrvName->d))
     {
-        lines.push_back(
-            iter.second.m_funcName + (iter.second.m_msgName.empty() ? "" : " [" + iter.second.m_msgName + "]"));
+        funcs.push_back(iter.second);
     }
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, lines)};
+    return {YomkResponse::eOk, "ok", YomkMkPtr(FuncInfoList, std::move(funcs))};
 }
 
 YomkResponse YomkServerInfo::functionInfo(YomkPkgPtr pkg)
