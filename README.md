@@ -258,7 +258,7 @@ resp = YomkApi.server_info_all()
 ```bash
 # 依赖
 sudo apt update && sudo apt install gcc python3-dev cmake
-pip install cython readerwriterlock
+python3 -m pip install cython readerwriterlock
 
 # 编译安装
 mkdir build && cd build
@@ -282,7 +282,7 @@ cd ..
 
 ```
 python3
-pip install cython readerwriterlock
+python3 -m pip install cython readerwriterlock
 
 mkdir build
 cd build

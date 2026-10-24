@@ -84,7 +84,9 @@ function(yomk_env_report)
             OUTPUT_VARIABLE _cython_out ERROR_VARIABLE _cython_out
             OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_STRIP_TRAILING_WHITESPACE)
         string(REGEX MATCH "[0-9]+\\.[0-9]+[^\r\n ]*" _cython_ver "${_cython_out}")
-        _abi_line("Cython" "${_cython_ver} (${CYTHON_EXECUTABLE})")
+        # 回退形态为分号列表（<Python_EXECUTABLE>;-m;cython），展示时还原为空格分隔
+        string(REPLACE ";" " " _cython_disp "${CYTHON_EXECUTABLE}")
+        _abi_line("Cython" "${_cython_ver} (${_cython_disp})")
     else()
         _abi_line("Cython" "(未找到)")
     endif()

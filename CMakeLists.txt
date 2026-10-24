@@ -1,8 +1,10 @@
 ﻿cmake_minimum_required(VERSION 3.14)
-project(YomkServerPy VERSION 1.4.16 LANGUAGES C)
+project(YomkServerPy VERSION 1.4.17 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
-find_package(Python REQUIRED COMPONENTS Development)
+# Interpreter 组件提供 Python_EXECUTABLE：cython 仅 user-site 安装时（可执行入口
+# 不在 PATH），Cython 转译回退为解释器模块调用（见下方 Cython 查找）
+find_package(Python REQUIRED COMPONENTS Interpreter Development)
 
 string(REPLACE "." ";" PYTHON_VERSION_LIST ${Python_VERSION})
 list(GET PYTHON_VERSION_LIST 0 PYTHON_MAJOR)
@@ -10,7 +12,13 @@ list(GET PYTHON_VERSION_LIST 1 PYTHON_MINOR)
 set(PYTHON_SITE_PACKAGES "lib/python${PYTHON_MAJOR}.${PYTHON_MINOR}/site-packages")
 
 # ---------- 2. 查找 Cython ----------
-find_program(CYTHON_EXECUTABLE cython REQUIRED)
+# 优先 PATH 中的 cython 可执行文件；user-site 安装且 ~/.local/bin 不在 PATH 时
+# 回退为解释器模块调用（COMMAND 处按分号展开为 <Python_EXECUTABLE> -m cython），
+# 与 build_ubuntu.sh 依赖检测语义一致
+find_program(CYTHON_EXECUTABLE cython)
+if(NOT CYTHON_EXECUTABLE)
+    set(CYTHON_EXECUTABLE "${Python_EXECUTABLE};-m;cython")
+endif()
 
 # ---------- 2.5 构建环境指纹（project() 之后调用，采集/打印环境信息并生成 abi_report.txt） ----------
 include(cmake/EnvInfo.cmake)

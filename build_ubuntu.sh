@@ -42,8 +42,10 @@ check_dependencies() {
         fi
     done
 
-    # cython 命令行工具（Cython 源码 -> C 转译），由 pip 包提供
-    if ! command -v cython >/dev/null 2>&1; then
+    # Cython 源码 -> C 转译（pip 包提供）：按解释器模块调用检测，与 CMake 侧
+    # 回退形态一致——可执行入口装在 user-site 时（~/.local/bin 不在 PATH）
+    # command -v 会误判缺失
+    if ! python3 -m cython --version >/dev/null 2>&1; then
         missing_pips+=("cython")
     fi
 
@@ -74,7 +76,7 @@ check_dependencies() {
     if [ ! -t 0 ]; then
         echo "错误: 非交互环境无法自动安装依赖，请手动执行:" >&2
         [ ${#missing_pkgs[@]} -gt 0 ] && echo "   sudo apt-get install -y ${missing_pkgs[*]}" >&2
-        [ ${#missing_pips[@]} -gt 0 ] && echo "   pip install ${missing_pips[*]}" >&2
+        [ ${#missing_pips[@]} -gt 0 ] && echo "   python3 -m pip install ${missing_pips[*]}" >&2
         exit 1
     fi
 
@@ -83,7 +85,7 @@ check_dependencies() {
         [nN]*)
             echo "已取消自动安装，请手动执行以下命令后重新运行本脚本:"
             [ ${#missing_pkgs[@]} -gt 0 ] && echo "   sudo apt-get install -y ${missing_pkgs[*]}"
-            [ ${#missing_pips[@]} -gt 0 ] && echo "   pip install ${missing_pips[*]}"
+            [ ${#missing_pips[@]} -gt 0 ] && echo "   python3 -m pip install ${missing_pips[*]}"
             exit 1
             ;;
         *)
@@ -93,13 +95,14 @@ check_dependencies() {
                 sudo apt-get install -y "${missing_pkgs[@]}" || fail "依赖安装失败"
             fi
             if [ ${#missing_pips[@]} -gt 0 ]; then
-                echo "-- 开始自动安装依赖: pip install ${missing_pips[*]}"
-                pip install "${missing_pips[@]}" || fail "依赖安装失败"
+                echo "-- 开始自动安装依赖: python3 -m pip install ${missing_pips[*]}"
+                python3 -m pip install "${missing_pips[@]}" || fail "依赖安装失败"
             fi
-            # 安装后再次校验
-            for cmd in cmake gcc python3 cython; do
+            # 安装后再次校验（cython 与检测同语义：解释器模块调用，不受 PATH 影响）
+            for cmd in cmake gcc python3; do
                 command -v "${cmd}" >/dev/null 2>&1 || fail "依赖 ${cmd} 安装后仍不可用"
             done
+            python3 -m cython --version >/dev/null 2>&1 || fail "依赖 cython 安装后仍不可用"
             python3 -c "import readerwriterlock" >/dev/null 2>&1 || fail "依赖 readerwriterlock 安装后仍不可用"
             echo "-- 依赖安装完成"
             ;;
@@ -128,7 +131,7 @@ detect_environment() {
     echo "   - 内核:     $(uname -r)"
     echo "   - 架构:     $(uname -m)"
     echo "   - Python:   $(python3 --version 2>&1)"
-    echo "   - Cython:   $(cython --version 2>&1)"
+    echo "   - Cython:   $(python3 -m cython --version 2>&1)"
     echo "   - 编译器:   $(gcc --version | head -1)"
     echo "   - CMake:    $(cmake --version | head -1)"
     echo "-- 完整环境指纹将在 cmake 配置阶段输出，并生成 abi_report.txt 随库安装"
