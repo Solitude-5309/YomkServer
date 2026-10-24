@@ -146,7 +146,7 @@ def main():
           "on_console_log_error 未初始化返回 eInvalid")
     check(YomkApi.on_console_log_debug().status == ResStatus.eInvalid,
           "on_console_log_debug 未初始化返回 eInvalid")
-    check(YomkApi.logger_info_loggers().status == ResStatus.eInvalid,
+    check(YomkApi.logger_info_loggers("console").status == ResStatus.eInvalid,
           "logger_info_loggers 未初始化返回 eInvalid")
     check(YomkApi.logger_info_logger("guard_logger").status == ResStatus.eInvalid,
           "logger_info_logger 未初始化返回 eInvalid")

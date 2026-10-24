@@ -11,7 +11,7 @@ D proxy 短路 + 穿透恢复 / E 热 tag 重复写）；S2 file 侧激进规模
 1000/目录 / B N/10 单目录对照相 / C 磁盘足迹 + 内省条目双守恒）；S3 文件写入与大缓冲
 落盘（A N 行分散 K sink 缓冲 / B 2N 行单 logger 大缓冲一次落盘 / C K sink 逐个 flush
 行数守恒 / D 空缓冲重复 flush 文件不增长）；S4 内省端点 2N+ 条目响应（A 全规模延迟 /
-B ALL 状态段精确 + 清单段与 LOGGERS 逐行一致 / C 单查 N 次 / D 内省快照与 create
+B ALL 状态段精确 + 清单段与 LOGGERS 分型逐行一致 / C 单查 N 次 / D 内省快照与 create
 相互阻塞量化）；S5 8 线程混合负载 churn + 全量删除回收（A 六调用 churn 守恒 /
 B 分组全量回收 / C 残量扫除 -> LOGGERS 行数为 0 硬断言）；S6 收尾与磁盘清理（清理前
 磁盘足迹守恒 / shutdown 计时 / rmtree / 临时目录不存在硬断言 / RSS 峰值）
@@ -34,7 +34,8 @@ B 分组全量回收 / C 残量扫除 -> LOGGERS 行数为 0 硬断言）；S6 �
   /proc/self/status，读不到降级 n/a
 - measureIntrospection 出参（badStatus/lastLines）-> 返回元组 (stat, bad, last_lines)；
   last_lines 取 len(resp.data) 免一次大规模列表拷贝（与解包后 size() 等价）
-- S4B 逐行一致用切片相等 all_lines[1:] == loggers_lines
+- S4B 逐行一致按分型对照：console/file 端点响应行与 ALL 清单对应 type 条目的
+  logger_name 逐行相等（两端点各自单锁快照）
 - S5B 全量回收的析构路径：python 服务层 delete_logger 锁外释放最后引用 -> __del__ ->
   write()（缓冲均已在 S3 flush 或为空 -> 空写 no-op；规模已在 S5 回收、
   析构无落盘 I/O 拖累）；S5A churn logger 每轮 1 行由当轮删除时 __del__ 落盘，
@@ -96,30 +97,6 @@ def unpack_lines(resp):
     if resp.status != ResStatus.eOk or not resp.data:
         return []
     return list(resp.data)
-
-
-def count_logger_lines(lines):
-    # 统计 LOGGERS 数据行中的 console/file 段行数
-    console_lines = 0
-    file_lines = 0
-    for line in lines:
-        if line.endswith(" [console]"):
-            console_lines += 1
-            continue
-        if " [file] dir:" in line:
-            file_lines += 1
-    return console_lines, file_lines
-
-
-def parse_logger_name(line):
-    # 从内省数据行解析 logger 名（"name [console]" / "name [file] dir:..."）
-    pos = line.find(" [file] dir:")
-    if pos != -1:
-        return line[:pos]
-    suffix = " [console]"
-    if len(line) > len(suffix) and line.endswith(suffix):
-        return line[:-len(suffix)]
-    return line
 
 
 def is_legal_status(resp):
@@ -187,7 +164,9 @@ def measure_introspection(rounds, use_all):
     last_lines = 0
     for _ in range(rounds):
         t0 = time.perf_counter()
-        resp = YomkApi.logger_info_all() if use_all else YomkApi.logger_info_loggers()
+        # 非 ALL 分支取 console 类型端点（按类型纯名清单，口径与 ALL console 型条数一致）
+        resp = (YomkApi.logger_info_all() if use_all
+                else YomkApi.logger_info_loggers("console"))
         ms = (time.perf_counter() - t0) * 1000.0
         if resp.status != ResStatus.eOk:
             bad += 1
@@ -324,8 +303,8 @@ def main():
                   for s in range(shard_count)]
 
     # 起点基线：库内部不使用 LOG 家族宏 → console 表恰为构造函数预置的 MainLogger
-    base_c, base_f = count_logger_lines(
-        unpack_lines(YomkApi.logger_info_loggers()))
+    base_c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    base_f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
     check(base_c == 1 and base_f == 0,
           f"起点内省基线 console=1(MainLogger)/file=0（实测 {base_c}/{base_f}）")
 
@@ -372,8 +351,7 @@ def main():
     record_baseline("S1A_console_create_unique_tag", n, elapsed_a)
     check(ok_a == n, f"S1A: 唯一 tag 写入 eOk 守恒 {ok_a}/{n}")
 
-    console_entries, _file_entries = count_logger_lines(
-        unpack_lines(YomkApi.logger_info_loggers()))
+    console_entries = len(unpack_lines(YomkApi.logger_info_loggers("console")))
     check(console_entries == n + 1,
           f"S1A: console 表条目 = N + MainLogger（实测 {console_entries}）")
 
@@ -517,7 +495,8 @@ def main():
     check(disk_files == n + m,
           f"S2C: 磁盘 .log 文件数守恒 = N + N/10（实测 {disk_files}/{n + m}）")
 
-    c, f = count_logger_lines(unpack_lines(YomkApi.logger_info_loggers()))
+    c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
     check(c == n + 1 and f == n + m,
           f"S2C: 内省条目守恒 console=N+1 file=N+N/10（实测 {c}/{f}）")
     file_total = f
@@ -625,8 +604,9 @@ def main():
     # ========================================================================
     # S4：内省端点在 2N+ 条目下的响应（P4-c 验证点：双锁快照窗口）
     # ========================================================================
-    loggers_lines = unpack_lines(YomkApi.logger_info_loggers())
-    c, f = count_logger_lines(loggers_lines)
+    loggers_lines = unpack_lines(YomkApi.logger_info_loggers("console"))
+    file_lines = unpack_lines(YomkApi.logger_info_loggers("file"))
+    c, f = len(loggers_lines), len(file_lines)
     entries = c + f
     print(f"[CONFIG] S4 entries = {entries} (console {c} / file {f}) "
           f"rounds = {introspection_rounds(entries)}")
@@ -637,29 +617,30 @@ def main():
     rounds = introspection_rounds(entries)
     stat_l, bad_l, lines_l = measure_introspection(rounds, False)
     record_latency("S4A_loggers", stat_l)
-    check(bad_l == 0 and lines_l == entries,
-          f"S4A: LOGGERS eOk + 行数守恒（{lines_l}/{entries}）")
+    check(bad_l == 0 and lines_l == c,
+          f"S4A: LOGGERS eOk + console 行数守恒（{lines_l}/{c}）")
     stat_a, bad_a, lines_a = measure_introspection(rounds, True)
     record_latency("S4A_all", stat_a)
     check(bad_a == 0 and lines_a == entries,
           f"S4A: ALL eOk + 清单条数守恒（{lines_a}/{entries}）")
 
-    # ---- Phase B：ALL 状态段精确 + 清单段与 LOGGERS 逐行一致（P3-a 原子快照可观测等价）----
+    # ---- Phase B：ALL 状态段精确 + 清单段与 LOGGERS 分型逐行一致（两端点单锁快照）----
     all_info = YomkApi.logger_info_all().data
     check(isinstance(all_info, LoggerAllInfo) and
           all_info.console.debug_on and all_info.console.info_on and
           all_info.console.warn_on and all_info.console.error_on and
           all_info.console.proxy_on,
           "S4B: ALL 状态段全 on + proxy_on（proxy 已在 S1D 安装）")
-    identical = (isinstance(all_info, LoggerAllInfo) and
-                 len(all_info.loggers) == entries and
-                 len(loggers_lines) == entries)
+    identical = isinstance(all_info, LoggerAllInfo) and len(all_info.loggers) == entries
     if identical:
-        identical = all(
-            line == (lg.logger_name + " [console]" if lg.type == "console"
-                     else lg.logger_name + " [file] dir:" + lg.dir)
-            for line, lg in zip(loggers_lines, all_info.loggers))
-    check(identical, "S4B: ALL 清单段与 LOGGERS 逐行一致（嵌套双锁原子快照）")
+        # 分型对照：console 端点行与 ALL 清单 console 型条目逐行相等，file 同理
+        # （S4 阶段表内条目不再增删，两端点各自单锁快照后分型一致）
+        console_lg = [lg.logger_name for lg in all_info.loggers
+                      if lg.type == "console"]
+        file_lg = [lg.logger_name for lg in all_info.loggers
+                   if lg.type == "file"]
+        identical = console_lg == loggers_lines and file_lg == file_lines
+    check(identical, "S4B: ALL 清单段与 LOGGERS 分型逐行一致（两端点单锁快照）")
 
     # ---- Phase C：单查 N 次（偶数查 console 名、奇数查 file 名；两表查找热路径量化点）----
     # 名字域校验：偶数 i 的 lg4s1_tag_i 由 S1A 创建、奇数 i 的 lg4s2_fl_i 由 S2A 创建，
@@ -840,7 +821,8 @@ def main():
           f"S5A: 删除后单查 eNo 守恒 {len(s5_post_delete_no)}/{churn_total}")
     check(len(s5_bad_status) == 0,
           f"S5A: 无非法状态码（异常 {len(s5_bad_status)} 次）")
-    c, f = count_logger_lines(unpack_lines(YomkApi.logger_info_loggers()))
+    c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
     check(c == n + 1 and f == file_total + 1 + 2 * d,
           f"S5A: churn 后条目净变化 0（实测 console {c} / file {f}）")
 
@@ -884,19 +866,20 @@ def main():
     residual_deleted = 0
     with contextlib.redirect_stdout(io.StringIO()):
         for _round in range(3):
-            lines = unpack_lines(YomkApi.logger_info_loggers())
+            lines = unpack_lines(YomkApi.logger_info_loggers("console"))
+            lines += unpack_lines(YomkApi.logger_info_loggers("file"))
             if not lines:
                 break
-            for line in lines:
-                name = parse_logger_name(line)
+            for name in lines:
                 if not name:
                     continue
                 if YomkApi.file_log_delete(name).status == ResStatus.eOk:
                     residual_deleted += 1
-    final_lines = unpack_lines(YomkApi.logger_info_loggers())
-    check(not final_lines,
+    final_left = (len(unpack_lines(YomkApi.logger_info_loggers("console"))) +
+                  len(unpack_lines(YomkApi.logger_info_loggers("file"))))
+    check(not final_left,
           f"S5C: 全量回收后 LOGGERS 行数为 0（残量扫除 {residual_deleted} 个，"
-          f"实剩 {len(final_lines)}）")
+          f"实剩 {final_left}）")
 
     probes_c = n // 100 if n // 100 > 0 else 1
     gone_console = 0

@@ -12,7 +12,7 @@ ConsoleLogger m_mutex 整行互斥）；S2 并发新 tag 自动创建（P1-a 双
 SET v1/v2，v1+v2 == log 总数守恒）；S4 并发 file logger 创建 x 写入 x 落盘（S4a
 同名争用恰一胜 / S4b 异名全 eOk / S4c 8x250 + 2 writer 2000 行不丢不重 / S4d
 4x10 轮多写者 WRITE 幂等）；S5 全量 churn + P3-a 内省原子快照判别（3x600=1800 对
-成对创建，LOGGERS/ALL 快照 C>=F 违例 == 0）
+成对创建，ALL 快照 C>=F 违例 == 0 + LOGGERS 分表计数合法）
 
 语言机制说明：
 - ThreadSafeCoutCapture -> contextlib.redirect_stdout(io.StringIO)：主线程先换
@@ -114,19 +114,6 @@ def unpack_lines(resp):
     return list(resp.data)
 
 
-def count_logger_lines(lines):
-    # 统计 LOGGERS 行中的 console/file 段行数
-    console_lines = 0
-    file_lines = 0
-    for line in lines:
-        if line.endswith(" [console]"):
-            console_lines += 1
-            continue
-        if " [file] dir:" in line:
-            file_lines += 1
-    return console_lines, file_lines
-
-
 def is_legal_status(resp):
     # 状态码是否属于框架合法集合 {eInvalid, eOk, eNo}
     return resp.status in (ResStatus.eInvalid, ResStatus.eOk, ResStatus.eNo)
@@ -225,9 +212,9 @@ def main():
           f"S1: 完整行数 == {k_total}（实际 {intact_lines}）")
 
     # 同一 tag 仅一个 logger 实例（并发命中路径不重复创建）
-    loggers_lines = unpack_lines(YomkApi.logger_info_loggers())
-    check(count_lines_containing(loggers_lines, k_tag + " [console]") == 1,
-          f"S1: LOGGERS 中 {k_tag} 恰 1 行（无重复实例）")
+    loggers_lines = unpack_lines(YomkApi.logger_info_loggers("console"))
+    check(count_lines_containing(loggers_lines, k_tag) == 1,
+          f"S1: LOGGERS(console) 中 {k_tag} 恰 1 行（无重复实例）")
 
     # ========================================================================
     # Section 2：并发新 tag 自动创建（P1-a 双检锁核心验证）
@@ -260,9 +247,9 @@ def main():
     check(len(s2a_ok_count) == k_total,
           f"S2a: 争用创建全部 eOk == {k_total}（实际 {len(s2a_ok_count)}）")
 
-    loggers_lines = unpack_lines(YomkApi.logger_info_loggers())
-    check(count_lines_containing(loggers_lines, k_race_tag + " [console]") == 1,
-          f"S2a: LOGGERS 中 {k_race_tag} 恰 1 行——双检锁下并发 miss 仅创建一个实例")
+    loggers_lines = unpack_lines(YomkApi.logger_info_loggers("console"))
+    check(count_lines_containing(loggers_lines, k_race_tag) == 1,
+          f"S2a: LOGGERS(console) 中 {k_race_tag} 恰 1 行——双检锁下并发 miss 仅创建一个实例")
 
     race_markers = collect_tail_markers(out, "lg3s2a_t")
     check(len(race_markers) == k_total,
@@ -280,8 +267,8 @@ def main():
     k_spread_per_thread = 50
     k_spread_total = k_spread_threads * k_spread_per_thread
     s2b_ok_count = []
-    console_before, file_before = count_logger_lines(
-        unpack_lines(YomkApi.logger_info_loggers()))
+    console_before = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    file_before = len(unpack_lines(YomkApi.logger_info_loggers("file")))
 
     with contextlib.redirect_stdout(io.StringIO()):
         gate = StartGate()
@@ -305,8 +292,8 @@ def main():
     check(len(s2b_ok_count) == k_spread_total,
           f"S2b: 分散创建全部 eOk == {k_spread_total}（实际 {len(s2b_ok_count)}）")
 
-    console_after, file_after = count_logger_lines(
-        unpack_lines(YomkApi.logger_info_loggers()))
+    console_after = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    file_after = len(unpack_lines(YomkApi.logger_info_loggers("file")))
     check(console_after - console_before == k_spread_threads,
           f"S2b: console logger 新增恰 {k_spread_threads} 个（实际新增 {console_after - console_before}）")
     check(file_after == file_before, "S2b: file logger 数量未受影响")
@@ -425,8 +412,8 @@ def main():
     k_same_name = "lg3_s4_same"
     s4a_create_ok = []
     s4a_create_no = []
-    console_before_a, file_before_a = count_logger_lines(
-        unpack_lines(YomkApi.logger_info_loggers()))
+    console_before_a = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    file_before_a = len(unpack_lines(YomkApi.logger_info_loggers("file")))
 
     gate = StartGate()
     workers = []
@@ -456,8 +443,8 @@ def main():
     check(os.path.isfile(os.path.join(same_dir, k_same_name + ".log")),
           "S4a: 胜出者日志文件已落盘")
 
-    console_after_a, file_after_a = count_logger_lines(
-        unpack_lines(YomkApi.logger_info_loggers()))
+    console_after_a = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    file_after_a = len(unpack_lines(YomkApi.logger_info_loggers("file")))
     check(file_after_a - file_before_a == 1,
           f"S4a: file logger 仅新增 1 个（无重复注册，实际新增 {file_after_a - file_before_a}）")
     check(console_after_a == console_before_a, "S4a: console logger 数量未受影响")
@@ -486,8 +473,8 @@ def main():
     check(len(s4b_create_ok) == k_threads,
           f"S4b: 8 线程异名并发创建全部 eOk（实际 {len(s4b_create_ok)}）")
 
-    console_after_b, file_after_b = count_logger_lines(
-        unpack_lines(YomkApi.logger_info_loggers()))
+    console_after_b = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    file_after_b = len(unpack_lines(YomkApi.logger_info_loggers("file")))
     check(file_after_b - file_after_a == k_threads,
           f"S4b: file logger 新增恰 {k_threads} 个（实际新增 {file_after_b - file_after_a}）")
 
@@ -664,8 +651,8 @@ def main():
           "S5: 预热 file sink logger 成功")
 
     # 基线快照
-    base_c, base_f = count_logger_lines(
-        unpack_lines(YomkApi.logger_info_loggers()))
+    base_c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    base_f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
     check(base_c > 0 and base_f > 0,
           f"S5: 基线非空（console {base_c} / file {base_f}）")
 
@@ -712,8 +699,11 @@ def main():
             def s5_introspect_worker(t=t):
                 local = []
                 while not s5_stop.is_set():
-                    snap_console, snap_file = count_logger_lines(
-                        unpack_lines(YomkApi.logger_info_loggers()))
+                    # 按类型端点分表采样：两次独立调用非原子，撕裂判别移交 ALL 端点
+                    snap_console = len(unpack_lines(
+                        YomkApi.logger_info_loggers("console")))
+                    snap_file = len(unpack_lines(
+                        YomkApi.logger_info_loggers("file")))
 
                     all_resp = YomkApi.logger_info_all()
                     if not is_legal_status(all_resp):
@@ -822,12 +812,13 @@ def main():
     check(YomkApi.file_log_write(k_file_sink).status == ResStatus.eOk,
           "S5: 收尾 file sink WRITE eOk")
 
-    # ---- P3-a 判别式：对每个快照验证 C >= F（相对基线增量）----
-    final_c, final_f = count_logger_lines(
-        unpack_lines(YomkApi.logger_info_loggers()))
+    # ---- P3-a 判别式：ALL 快照验证 C >= F（嵌套双锁原子快照）；
+    # LOGGERS 按类型端点分表快照验证计数合法性（非负且不超最终值）----
+    final_c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    final_f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
     final_total = final_c + final_f
 
-    loggers_violations = 0  # LOGGERS 端点 F > C 违例
+    loggers_violations = 0  # LOGGERS 分表快照违例（delta 负值或超出最终对应值）
     all_violations = 0      # ALL 端点 F > C 违例
     non_monotonic = 0       # 同线程快照序列总行数递减违例
     exceed_final = 0        # 快照行数超过最终值违例
@@ -839,7 +830,9 @@ def main():
             snapshot_count += 1
             delta_c = snap[0] - base_c
             delta_f = snap[1] - base_f
-            if delta_f > delta_c:
+            # 分表快照合法性：各表 delta 非负且不超最终对应值（churn 只增不减）
+            if (delta_c < 0 or delta_f < 0 or
+                    delta_c > final_c - base_c or delta_f > final_f - base_f):
                 loggers_violations += 1
             all_delta_c = snap[3] - base_c
             all_delta_f = snap[4] - base_f
@@ -855,8 +848,8 @@ def main():
 
     check(snapshot_count > 0, f"S5: 收集到 {snapshot_count} 个内省快照")
     check(loggers_violations == 0,
-          f"S5: LOGGERS 快照 C>=F 恒成立（违例 {loggers_violations} 个）"
-          "——P3-a 嵌套双锁原子快照实证（分段锁下 file 段晚于 console 段会产生 F>C）")
+          f"S5: LOGGERS 分表快照计数合法（违例 {loggers_violations} 个）"
+          "——按类型端点各表单锁快照；跨表撕裂判别由 ALL 端点原子快照承载）")
     check(all_violations == 0,
           f"S5: ALL 快照 C>=F 恒成立（违例 {all_violations} 个）——list_all 同为原子快照")
     check(non_monotonic == 0,
@@ -897,7 +890,8 @@ def main():
     check(fc.debug_on and fc.info_on and fc.warn_on and fc.error_on and fc.proxy_on,
           "S5: 收尾四级别全 ON 后 ALL 状态段全 on（含 S3 已设的 proxy_on）")
     check(len(final_info.loggers) == final_total,
-          f"S5: ALL 清单条数 == LOGGERS 行数（{len(final_info.loggers)} vs {final_total}）——跨端点最终一致")
+          f"S5: ALL 清单条数 == LOGGERS console+file 行数"
+          f"（{len(final_info.loggers)} vs {final_total}）——跨端点最终一致")
 
     sink_content = read_file(os.path.join(pair_dir, k_file_sink + ".log"))
     sink_lines = count_lines(sink_content)

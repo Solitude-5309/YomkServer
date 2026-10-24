@@ -430,7 +430,7 @@ class LoggerInfo:
     # 日志器内省元信息（/YomkLogger/logger 返回数据、/YomkLogger/all 清单段元素）
     def __init__(self, logger_name="", type="", dir=""):
         self.logger_name = logger_name  # 日志器名
-        # 类型："console" 或 "file"（与 LOGGERS 行文本 [console]/[file] 对应）
+        # 类型："console" 或 "file"（loggers 端点按此类型参数查询）
         self.type = type
         self.dir = dir                  # file 类型的日志目录（console 时为空串）
 
@@ -1327,9 +1327,10 @@ class YomkEventLoop(YomkService):
 
 class YomkLogger(YomkService):
     # 日志模块服务：11 端点装配序与契约消息逐字对齐。
-    # 锁序约定：嵌套双读仅 loggers/list_all 内省快照，一律按 m_consoleLoggersMutex ->
-    # m_fileLoggersMutex 的顺序持有，全仓无反向嵌套点（delete_logger 分段持锁不嵌套；
-    # 其余端点均单锁）；m_consoleLogProxyMutex 为叶子锁，临界区内不得获取任何其他锁。
+    # 锁序约定：嵌套双读仅 list_all 内省快照，一律按 m_consoleLoggersMutex ->
+    # m_fileLoggersMutex 的顺序持有，全仓无反向嵌套点（loggers 按类型单锁查表，
+    # delete_logger 分段持锁不嵌套；其余端点均单锁）；m_consoleLogProxyMutex 为叶子锁，
+    # 临界区内不得获取任何其他锁。
     # 后续维护新增嵌套时须沿用此序，否则有死锁风险。两表保持 dict 但内省输出显式
     # sorted :map 字典序（python dict 为插入序，ServerInfo 轮先例）。
     def __init__(self, server: "YomkServer"):
@@ -1361,8 +1362,8 @@ class YomkLogger(YomkService):
                           self.off_console_log_by_level, "Log")
         self.install_func("/on_console_log_by_level",
                           self.on_console_log_by_level, "Log")
-        # 调试内省接口，端点挂在本服务 funcMap
-        self.install_func("/loggers", self.loggers)
+        # 调试内省接口，端点挂在本服务 funcMap；/loggers 传类型参数（String）
+        self.install_func("/loggers", self.loggers, "String")
         self.install_func("/logger", self.logger_info, "String")
         self.install_func("/all", self.list_all)
         return 0
@@ -1578,16 +1579,22 @@ class YomkLogger(YomkService):
         return YomkResponse(ResStatus.eOk, "success.")
 
     def loggers(self, pkg):
-        # 按锁序 console -> file 嵌套双读锁：两段为同一时刻的原子快照
-        with self.m_consoleLoggersMutex.gen_rlock():
+        bad = self._unpack(pkg, str)
+        if bad:
+            return bad
+        if pkg == "console":
+            # 单读锁遍历 console 表：纯名清单，不再嵌套双锁
+            with self.m_consoleLoggersMutex.gen_rlock():
+                names = sorted(self.m_consoleLoggers)
+        elif pkg == "file":
+            # 单读锁遍历 file 表：纯名清单，不再嵌套双锁
             with self.m_fileLoggersMutex.gen_rlock():
-                console_names = list(self.m_consoleLoggers.keys())
-                file_lines = [name + " [file] dir:" + lg.get_dir()
-                              for name, lg in self.m_fileLoggers.items()]
-        # 两段各自显式 sorted :map 中序字典序（python dict 为插入序）
-        lines = [name + " [console]" for name in sorted(console_names)]
-        lines += sorted(file_lines)
-        return YomkResponse(ResStatus.eOk, "ok", lines)
+                names = sorted(self.m_fileLoggers)
+        else:
+            _yomk_err_pos_log("unknown logger type: " + pkg + ".")
+            return YomkResponse(ResStatus.eNo, "unknown logger type.")
+        # 单表显式 sorted :map 中序字典序（python dict 为插入序，类头注释先例）
+        return YomkResponse(ResStatus.eOk, "ok", names)
 
     def logger_info(self, pkg):
         bad = self._unpack(pkg, str)

@@ -345,9 +345,9 @@ def off_console_log_debug():
     return _api_request("/YomkLogger/off_console_log_by_level", Log(Log.eDebug))
 
 
-def logger_info_loggers():
-    # 获取全部日志器列表
-    return _api_request("/YomkLogger/loggers", None)
+def logger_info_loggers(logger_type):
+    # 按类型获取日志器名列表（type: "console"/"file"，仅返回该类型的纯名）
+    return _api_request("/YomkLogger/loggers", logger_type)
 
 
 def logger_info_logger(logger_name):

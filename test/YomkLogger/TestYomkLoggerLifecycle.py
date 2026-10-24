@@ -321,15 +321,17 @@ def main():
           "init 失败后同名换有效 dir 重试成功（名字未被幽灵占用）")
 
     # ============ Section 5: 内省三端点 ============
-    loggers_resp = YomkApi.logger_info_loggers()
-    check(loggers_resp.status == ResStatus.eOk, "LOGGER_INFO_LOGGERS 返回 eOk")
-    check("MainLogger [console]" in loggers_resp.data,
-          "LOGGERS 含 MainLogger [console] 行")
-    check(any(l.startswith("lg1_tag_logger") and l.endswith(" [console]")
-              for l in loggers_resp.data),
-          "LOGGERS 含 S2 自建 tag logger 行（tag [console]）")
-    check("lg1_file_logger [file] dir:" + log_dir in loggers_resp.data,
-          "LOGGERS 含 file logger 行（名 [file] dir:路径）")
+    console_resp = YomkApi.logger_info_loggers("console")
+    check(console_resp.status == ResStatus.eOk,
+          "LOGGER_INFO_LOGGERS(console) 返回 eOk")
+    check("MainLogger" in console_resp.data,
+          "LOGGERS(console) 含 MainLogger 纯名行")
+    check(any(l.startswith("lg1_tag_logger") for l in console_resp.data),
+          "LOGGERS(console) 含 S2 自建 tag logger 纯名行")
+    file_resp = YomkApi.logger_info_loggers("file")
+    check(file_resp.status == ResStatus.eOk
+          and "lg1_file_logger" in file_resp.data,
+          "LOGGERS(file) 含 lg1_file_logger 纯名行（dir 经 LOGGER_INFO_LOGGER 查询断言覆盖）")
 
     console_info = YomkApi.logger_info_logger("MainLogger")
     check(console_info.status == ResStatus.eOk and console_info.msg == "ok",
@@ -551,17 +553,23 @@ def main():
     dir86 = os.path.join(tmp_dir, "s8_count")
     os.makedirs(dir86, exist_ok=True)
     name = "lg1_s8_count"
-    before = len(YomkApi.logger_info_loggers().data)
+
+    def lg_total():
+        # 内省总行数 = console + file 两类型端点之和（按类型纯名清单）
+        return (len(YomkApi.logger_info_loggers("console").data) +
+                len(YomkApi.logger_info_loggers("file").data))
+
+    before = lg_total()
     r, _ = capture(lambda: YomkApi.console_log_info_tag(
         name, "lg1_s8_count_marker"))
     check(r.status == ResStatus.eOk, "S8: 计数用例 console 侧创建 eOk")
     check(YomkApi.file_log_create(dir86, name).status == ResStatus.eOk,
           "S8: 计数用例 file 侧创建 eOk")
-    check(len(YomkApi.logger_info_loggers().data) == before + 2,
+    check(lg_total() == before + 2,
           "S8: 双表各建一个 -> LOGGERS 行数 +2")
     check(YomkApi.file_log_delete(name).status ==
           ResStatus.eOk, "S8: 计数用例删除 eOk")
-    check(len(YomkApi.logger_info_loggers().data) == before,
+    check(lg_total() == before,
           "S8: 删除后 LOGGERS 行数回落（递减守恒）")
     all_info = YomkApi.logger_info_all().data
     c = all_info.console
@@ -581,7 +589,7 @@ def main():
           "S8: MainLogger 惰性重建后单查恢复 eOk")
     check("[MainLogger] lg1_s8_mainlogger_rebuild_marker" in rebuild_out,
           "S8: 重建对象名确为 MainLogger（输出行 [MainLogger]）")
-    check(len(YomkApi.logger_info_loggers().data) == before,
+    check(lg_total() == before,
           "S8: MainLogger 删除+重建后行数回到基线（无泄漏无重复）")
 
     # 8.7 异常路径：空包 / 错类型包（YomkUnPackPkgResponse 契约分支）
