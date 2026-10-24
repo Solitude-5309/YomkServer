@@ -306,7 +306,8 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/logger", YomkMkPtr(LoggerQuery, yomk::LoggerQuery{loggerName, type}));
     }
-    // 查询全部日志器及开关配置状态
+    // 查询全部日志器及开关配置状态（返回 LoggerInfoList 清单，每条内嵌 ConsoleLogState 状态段：
+    // console 条目为真实全局状态，file 条目四级别恒 true、proxyOn 恒 false）
     static YomkResponse LOGGER_INFO_ALL()
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));

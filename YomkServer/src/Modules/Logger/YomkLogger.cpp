@@ -342,6 +342,8 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
     info.m_loggerName = query->d.m_loggerName;
     if (query->d.m_type == "console")
     {
+        // 状态段在表锁外取（独立 atomic + proxy 叶子锁独立作用域，与 listAll 同构）
+        const yomk::ConsoleLogState state = currentConsoleState();
         std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
         if (m_consoleLoggers.find(query->d.m_loggerName) == m_consoleLoggers.end())
         {
@@ -349,6 +351,7 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
             return YomkResponse(YomkResponse::eNo, "logger not found.");
         }
         info.m_type = "console";
+        info.m_console = state;
         return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
     }
     if (query->d.m_type == "file")
@@ -362,37 +365,52 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
         }
         info.m_type = "file";
         info.m_dir = itLogger->second->getDir();
+        // file 日志器暂无开关概念：级别恒 true、proxyOn 恒 false（控制台专属）
+        info.m_console.m_debugOn = true;
+        info.m_console.m_infoOn = true;
+        info.m_console.m_warnOn = true;
+        info.m_console.m_errorOn = true;
         return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
     }
     YOMK_ERR_POS_LOG("unknown logger type: " + query->d.m_type + ".");
     return YomkResponse(YomkResponse::eNo, "unknown logger type.");
 }
 
-YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
+// 取控制台状态段：四个级别开关为独立 atomic（组合本无原子快照保证），proxy 叶子锁独立作用域
+ConsoleLogState YomkLogger::currentConsoleState()
 {
-    (void)pkg;
-    yomk::LoggerAllInfo all;
-    // 状态段在双锁外取：四个级别开关为独立 atomic，组合本无原子快照保证
-    all.m_console.m_debugOn = m_showConsoleDebugLog.load();
-    all.m_console.m_infoOn = m_showConsoleInfoLog.load();
-    all.m_console.m_warnOn = m_showConsoleWarningLog.load();
-    all.m_console.m_errorOn = m_showConsoleErrorLog.load();
+    yomk::ConsoleLogState state;
+    state.m_debugOn = m_showConsoleDebugLog.load();
+    state.m_infoOn = m_showConsoleInfoLog.load();
+    state.m_warnOn = m_showConsoleWarningLog.load();
+    state.m_errorOn = m_showConsoleErrorLog.load();
     {
         // proxy 状态读侧与写侧互斥（叶子锁）
         std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
-        all.m_console.m_proxyOn = m_consoleLogProxy;
+        state.m_proxyOn = m_consoleLogProxy;
     }
+    return state;
+}
+
+YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
+{
+    (void)pkg;
+    // ConsoleLogState 内嵌每条 LoggerInfo：console 条目承载真实全局状态，
+    // file 条目暂无开关概念（级别恒 true、proxyOn 恒 false）
+    const yomk::ConsoleLogState console = currentConsoleState();
+    std::vector<yomk::LoggerInfo> loggers;
     {
-        // 同 loggers：按锁序嵌套双读锁取跨段原子快照，逐条构造 LoggerInfo（与 loggerInfo 命中分支同构）
+        // 按锁序嵌套双读锁取跨段原子快照，逐条构造 LoggerInfo（与 loggerInfo 命中分支同构）
         std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
         std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
-        all.m_loggers.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
+        loggers.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
         for (auto& iter : m_consoleLoggers)
         {
             yomk::LoggerInfo info;
             info.m_loggerName = iter.first;
             info.m_type = "console";
-            all.m_loggers.push_back(std::move(info));
+            info.m_console = console;
+            loggers.push_back(std::move(info));
         }
         for (auto& iter : m_fileLoggers)
         {
@@ -400,9 +418,13 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
             info.m_loggerName = iter.first;
             info.m_type = "file";
             info.m_dir = iter.second->getDir();
-            all.m_loggers.push_back(std::move(info));
+            info.m_console.m_debugOn = true;
+            info.m_console.m_infoOn = true;
+            info.m_console.m_warnOn = true;
+            info.m_console.m_errorOn = true;
+            loggers.push_back(std::move(info));
         }
     }
-    // 同 loggers：std::map 天然字典序（console 段在前、file 段在后）；m_msg 恒 "ok"，数据走 m_data
-    return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerAllInfo, std::move(all))};
+    // std::map 天然字典序（console 段在前、file 段在后）；m_msg 恒 "ok"，数据走 m_data
+    return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfoList, std::move(loggers))};
 }

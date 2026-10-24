@@ -702,6 +702,23 @@ static uint64_t introspectionRounds(uint64_t entries)
     return 5;
 }
 
+// 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
+static const yomk::ConsoleLogState* firstConsoleState(YomkPtr(LoggerInfoList) listPkg)
+{
+    if (!listPkg)
+    {
+        return nullptr;
+    }
+    for (const auto& li : listPkg->d)
+    {
+        if (li.m_type == "console")
+        {
+            return &li.m_console;
+        }
+    }
+    return nullptr;
+}
+
 // 对内省端点做 rounds 次调用，返回延迟分布；非 eOk 计入 badStatus
 static LatencyStat measureIntrospection(uint64_t rounds, bool useAll, uint64_t& badStatus, uint64_t& lastLines)
 {
@@ -719,8 +736,8 @@ static LatencyStat measureIntrospection(uint64_t rounds, bool useAll, uint64_t& 
         }
         if (useAll)
         {
-            YomkUnPackPkg(resp.m_data, LoggerAllInfo, allPkg);
-            lastLines = allPkg ? allPkg->d.m_loggers.size() : 0;
+            YomkUnPackPkg(resp.m_data, LoggerInfoList, listPkg);
+            lastLines = listPkg ? listPkg->d.size() : 0;
         }
         else
         {
@@ -1315,16 +1332,16 @@ int main()
         // ---- Phase B：ALL 控制台状态字段 + 与 LOGGERS 的数量/类型计数等价（P3-a 原子快照可观测等价）----
         // 结构化后数据段形态不同（LoggerInfo vs 纯名行），逐行字符串比对改为数量与类型计数比对；
         // S4 阶段表内条目不再增删，console/file 两端点各自单锁快照后计数等价
-        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerAllInfo, allPkg);
+        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, listPkg);
+        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
         CHECK(
-            (allPkg != nullptr && allPkg->d.m_console.m_debugOn && allPkg->d.m_console.m_infoOn &&
-             allPkg->d.m_console.m_warnOn && allPkg->d.m_console.m_errorOn && allPkg->d.m_console.m_proxyOn),
+            (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
             "S4B: ALL 控制台状态全 on（proxy 已在 S1D 安装）");
         uint64_t ac = 0;
         uint64_t af = 0;
-        if (allPkg)
+        if (listPkg)
         {
-            for (const auto& li : allPkg->d.m_loggers)
+            for (const auto& li : listPkg->d)
             {
                 if (li.m_type == "console")
                 {
@@ -1337,7 +1354,7 @@ int main()
             }
         }
         const bool identical =
-            (allPkg != nullptr && allPkg->d.m_loggers.size() == entries && loggersLines.size() == c &&
+            (listPkg != nullptr && listPkg->d.size() == entries && loggersLines.size() == c &&
              ac == c && af == f);
         CHECK(identical, "S4B: ALL 与 LOGGERS 数量及类型计数一致（嵌套双锁原子快照）");
 
@@ -1412,8 +1429,8 @@ int main()
                         g_s4dSnapBadStatus.fetch_add(1, std::memory_order_relaxed);
                         continue;
                     }
-                    YomkUnPackPkg(resp.m_data, LoggerAllInfo, allPkg);
-                    const uint64_t lines = allPkg ? allPkg->d.m_loggers.size() : 0;
+                    YomkUnPackPkg(resp.m_data, LoggerInfoList, listPkg);
+                    const uint64_t lines = listPkg ? listPkg->d.size() : 0;
                     g_s4dSnapCount.fetch_add(1, std::memory_order_relaxed);
                     if (lines < prevLines)
                     {

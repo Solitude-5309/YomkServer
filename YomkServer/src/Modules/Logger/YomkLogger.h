@@ -32,12 +32,15 @@ private:
     YomkResponse loggers(YomkPkgPtr pkg);
     YomkResponse loggerInfo(YomkPkgPtr pkg);
     YomkResponse listAll(YomkPkgPtr pkg);
+    // 取控制台状态段：四个级别开关独立 atomic + proxy 叶子锁，均在表锁外独立作用域取
+    ConsoleLogState currentConsoleState();
 
 private:
     // 锁序约定：需要同时读取两张 logger 表时（listAll 内省快照），
     // 一律按 m_consoleLoggersMutex -> m_fileLoggersMutex 的顺序嵌套持有，全仓无反向嵌套点
     // （consoleLog 的 proxy 锁在独立作用域释放后才取 console 锁；loggerInfo/fileLog/
-    // writeFileLog/createFileLogger 均单锁）；m_consoleLogProxyMutex 为叶子锁，
+    // writeFileLog/createFileLogger 均单锁；currentConsoleState 在表锁外先独立取 proxy 锁，
+    // 沿用 proxy 锁独立作用域先释放的既有模式）；m_consoleLogProxyMutex 为叶子锁，
     // 其临界区内不得获取任何其他锁。后续维护新增嵌套时须沿用此序，否则有死锁风险。
     // 容器选型：两表保持 std::map——曾实测改 unordered_map 致内省/删除路径数倍退化
     // （S4A_loggers +116%、S5B_delete_all -40%、S5A_mixed_churn -58%），已回退；

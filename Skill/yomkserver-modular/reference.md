@@ -239,5 +239,5 @@ class YomkService {
 | `YOMK_SET_CONSOLE_LOG_PROXY(func)` | 日志代理（回调返回 false 拦截该条日志、框架不做默认输出，返回 true 则放行；传 nullptr 或空 std::function 即卸载代理、恢复框架默认输出，内省状态段 m_console.m_proxyOn 随之为 false） |
 | `YOMK_LOGGER_INFO_LOGGERS(type)` | 内省：按类型查日志器名列表（type 取 `"console"` 或 `"file"`，返回 StringArray，行内容即纯名字典序；非法类型 eNo） |
 | `YOMK_LOGGER_INFO_LOGGER(name, type)` | 内省：按类型单表查日志器元信息（type 取 `"console"`/`"file"`；结构化 LoggerInfo 包：m_loggerName/m_type/m_dir，m_msg 恒 "ok"，未注册或非法 type 均 eNo；两表允许同名，不 fallback） |
-| `YOMK_LOGGER_INFO_ALL()` | 内省：全量日志器与控制台状态（LoggerAllInfo 结构化包：m_console（ConsoleLogState 五 bool：debug/info/warn/error/proxy）+ m_loggers（元素为单查同款 LoggerInfo），m_msg 恒 "ok"） |
+| `YOMK_LOGGER_INFO_ALL()` | 内省：全量日志器清单（LoggerInfoList：vector<LoggerInfo>，元素为单查同款，每条内嵌 ConsoleLogState 状态段——console 条目为真实全局状态，file 条目四级别恒 true、proxyOn 恒 false，m_msg 恒 "ok"） |
 | `YOMK_FILE_LOG_DELETE(name)` | 删除日志器（同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 eNo；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |

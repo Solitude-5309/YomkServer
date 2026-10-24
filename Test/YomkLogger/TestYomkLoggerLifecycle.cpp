@@ -163,6 +163,23 @@ static size_t loggersTotal()
            unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
 }
 
+// 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
+static const yomk::ConsoleLogState* firstConsoleState(YomkPtr(LoggerInfoList) listPkg)
+{
+    if (!listPkg)
+    {
+        return nullptr;
+    }
+    for (const auto& li : listPkg->d)
+    {
+        if (li.m_type == "console")
+        {
+            return &li.m_console;
+        }
+    }
+    return nullptr;
+}
+
 // 时间戳格式粗校验："dddd-dd-dd dd:dd:dd.ddd]"（不锁定具体日期值）
 static bool checkTimeFormat(const std::string& line)
 {
@@ -361,10 +378,10 @@ CHECK(
     // 设置前 all 内省 proxy:off
     {
         auto allResp = YOMK_LOGGER_INFO_ALL();
-        YomkUnPackPkg(allResp.m_data, LoggerAllInfo, allPkg);
+        YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
+        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
         CHECK(
-            (allPkg != nullptr && allPkg->d.m_console.m_debugOn && allPkg->d.m_console.m_infoOn &&
-             allPkg->d.m_console.m_warnOn && allPkg->d.m_console.m_errorOn && !allPkg->d.m_console.m_proxyOn),
+            (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && !st->m_proxyOn),
             "proxy 设置前 ALL 控制台状态全 on + proxyOff");
     }
 
@@ -400,8 +417,9 @@ CHECK(
     // 设置后 all 内省 proxy:on
     {
         auto allResp = YOMK_LOGGER_INFO_ALL();
-        YomkUnPackPkg(allResp.m_data, LoggerAllInfo, allPkg);
-        CHECK(allPkg != nullptr && allPkg->d.m_console.m_proxyOn, "proxy 设置后 ALL 状态 proxyOn");
+        YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
+        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+        CHECK(st != nullptr && st->m_proxyOn, "proxy 设置后 ALL 状态 proxyOn");
     }
 
     // ---- LG6（P4-e）：proxy 可卸载 ----
@@ -428,9 +446,10 @@ CHECK(
             YOMK_SET_CONSOLE_LOG_PROXY(nullptr).m_status == YomkResponse::eOk,
             "SET_CONSOLE_LOG_PROXY(nullptr) 卸载返回 eOk");
         auto allResp = YOMK_LOGGER_INFO_ALL();
-        YomkUnPackPkg(allResp.m_data, LoggerAllInfo, allPkg);
+        YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
+        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
         CHECK(
-            allPkg != nullptr && !allPkg->d.m_console.m_proxyOn,
+            st != nullptr && !st->m_proxyOn,
             "卸载后 ALL 状态回到 proxyOff（P4-e 前恒报 proxyOn）");
     }
 
@@ -459,9 +478,10 @@ CHECK(
         g_proxyIntercept.store(false);
         CHECK(YOMK_SET_CONSOLE_LOG_PROXY(proxy).m_status == YomkResponse::eOk, "重装代理返回 eOk（卸载可逆）");
         auto allResp = YOMK_LOGGER_INFO_ALL();
-        YomkUnPackPkg(allResp.m_data, LoggerAllInfo, allPkg);
+        YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
+        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
         CHECK(
-            allPkg != nullptr && allPkg->d.m_console.m_proxyOn,
+            st != nullptr && st->m_proxyOn,
             "重装后 ALL 状态恢复 proxyOn（S4-S7 不变量已复位）");
     }
 }
@@ -635,26 +655,26 @@ CHECK(
     // ALL：控制台状态字段与开关翻转联动（逐字段断言）
     {
         auto allResp = YOMK_LOGGER_INFO_ALL();
-        YomkUnPackPkg(allResp.m_data, LoggerAllInfo, allPkg);
+        YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
+        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
         CHECK(
-            (allPkg != nullptr && allPkg->d.m_console.m_debugOn && allPkg->d.m_console.m_infoOn &&
-             allPkg->d.m_console.m_warnOn && allPkg->d.m_console.m_errorOn && allPkg->d.m_console.m_proxyOn),
+            (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
             "ALL 控制台状态全 on（S3 已设 proxy）");
     }
     {
         YOMK_OFF_CONSOLE_LOG_INFO();
         auto allResp = YOMK_LOGGER_INFO_ALL();
-        YomkUnPackPkg(allResp.m_data, LoggerAllInfo, allPkg);
+        YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
+        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
         CHECK(
-            (allPkg != nullptr && allPkg->d.m_console.m_debugOn && !allPkg->d.m_console.m_infoOn &&
-             allPkg->d.m_console.m_warnOn && allPkg->d.m_console.m_errorOn && allPkg->d.m_console.m_proxyOn),
+            (st != nullptr && st->m_debugOn && !st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
             "OFF INFO 后 ALL 状态 infoOff（开关联动逐字段）");
         YOMK_ON_CONSOLE_LOG_INFO();
         auto allResp2 = YOMK_LOGGER_INFO_ALL();
-        YomkUnPackPkg(allResp2.m_data, LoggerAllInfo, allPkg2);
+        YomkUnPackPkg(allResp2.m_data, LoggerInfoList, listPkg2);
+        const yomk::ConsoleLogState* st2 = firstConsoleState(listPkg2);
         CHECK(
-            (allPkg2 != nullptr && allPkg2->d.m_console.m_debugOn && allPkg2->d.m_console.m_infoOn &&
-             allPkg2->d.m_console.m_warnOn && allPkg2->d.m_console.m_errorOn && allPkg2->d.m_console.m_proxyOn),
+            (st2 != nullptr && st2->m_debugOn && st2->m_infoOn && st2->m_warnOn && st2->m_errorOn && st2->m_proxyOn),
             "ON INFO 复原后 ALL 状态 infoOn");
     }
 }
@@ -760,10 +780,10 @@ CHECK(
         (rOn.m_status == YomkResponse::eOk && outOn.find("unknown log level, turn on failed.") != std::string::npos),
         "on 非法级别 eOk + 错误提示（default 活分支）");
     auto allResp = YOMK_LOGGER_INFO_ALL();
-    YomkUnPackPkg(allResp.m_data, LoggerAllInfo, allPkg);
+    YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
+    const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
     CHECK(
-        (allPkg != nullptr && allPkg->d.m_console.m_debugOn && allPkg->d.m_console.m_infoOn &&
-         allPkg->d.m_console.m_warnOn && allPkg->d.m_console.m_errorOn && allPkg->d.m_console.m_proxyOn),
+        (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
         "非法级别 off/on 无副作用（ALL 控制台状态仍全 on）");
 }
 }
@@ -976,11 +996,11 @@ CHECK(
         CHECK(loggersTotal() == before + 2, "S8: 双表各建一个 → LOGGERS 行数 +2");
         CHECK(YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk, "S8: 计数用例删除 eOk");
         CHECK(loggersTotal() == before, "S8: 删除后 LOGGERS 行数回落（递减守恒）");
-        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerAllInfo, allPkg);
+        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, listPkg);
+        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
         CHECK(
-            (allPkg != nullptr && allPkg->d.m_loggers.size() == before && allPkg->d.m_console.m_debugOn &&
-             allPkg->d.m_console.m_infoOn && allPkg->d.m_console.m_warnOn && allPkg->d.m_console.m_errorOn &&
-             allPkg->d.m_console.m_proxyOn),
+            (listPkg != nullptr && listPkg->d.size() == before && st != nullptr && st->m_debugOn &&
+             st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
             "S8: ALL 日志器数 = LOGGERS 行数，控制台状态全 on 不变");
 
         // MainLogger 无特殊保护：可删；重建须走"空 logger 名回退"路径

@@ -223,7 +223,8 @@ struct ConsoleLogProxy
     std::function<bool(const Log& log)> m_consoleLogProxyFunc;
 };
 
-// Logger 控制台状态（LOGGER_INFO_ALL 返回数据状态段：debug/info/warn/error 四级别开关 + proxy）
+// Logger 控制台状态（LoggerInfo 内嵌状态段：debug/info/warn/error 四级别开关 + proxy；
+// console 条目承载真实全局状态，file 条目暂无开关概念：四级别恒 true、proxyOn 恒 false）
 struct ConsoleLogState
 {
     bool m_debugOn = false;  // debug 级别开关
@@ -240,19 +241,14 @@ struct LoggerQuery
     std::string m_type;  // 类型："console" 或 "file"
 };
 
-// 日志器内省元信息（LOGGER_INFO_LOGGER 返回数据）
+// 日志器内省元信息（LOGGER_INFO_LOGGER 单查返回数据，LOGGER_INFO_ALL 清单元素）
 struct LoggerInfo
 {
     std::string m_loggerName;  // 日志器名
     std::string m_type;        // 类型："console" 或 "file"（与 INFO_LOGGERS 的类型参数同名）
     std::string m_dir;         // file 类型的日志目录（console 时为空串）
-};
-
-// Logger 全量内省（LOGGER_INFO_ALL 返回数据：控制台状态段 + 日志器清单段）
-struct LoggerAllInfo
-{
+    // 控制台状态段：console 条目承载真实全局状态；file 条目暂无开关概念（级别恒 true、proxyOn 恒 false）
     ConsoleLogState m_console;
-    std::vector<LoggerInfo> m_loggers;
 };
 
 struct Context
@@ -319,8 +315,8 @@ YomkMsg(Log, Log, d)
 YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)
 YomkMsg(LoggerQuery, LoggerQuery, d)
 YomkMsg(LoggerInfo, LoggerInfo, d)
-// Logger 全量内省（LOGGER_INFO_ALL 返回数据：控制台状态段 + 日志器清单段）
-YomkMsg(LoggerAllInfo, LoggerAllInfo, d)
+// Logger 全量内省（LOGGER_INFO_ALL 返回数据；元素为单查同款 LoggerInfo，每条内嵌 ConsoleLogState 状态段）
+YomkMsg(std::vector<yomk::LoggerInfo>, LoggerInfoList, d)
 YomkMsg(Context, Context, d)
 YomkMsg(ContextKeyInfo, ContextKeyInfo, d)
 // Context 全量键内省（CONTEXT_INFO_ALL 返回数据）

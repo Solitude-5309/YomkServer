@@ -67,31 +67,35 @@ static void dumpLines(const std::string& prefix, const YomkResponse& resp)
     }
 }
 
-// 解包并打印内省返回的 LoggerAllInfo（INFO_ALL 的返回形态）——
+// 解包并打印内省返回的 LoggerInfoList（INFO_ALL 的返回形态，每条内嵌控制台状态段）——
 // 框架只返回结构化数据，显示格式由用户定义
 static void dumpLoggerAll(const std::string& prefix, const YomkResponse& resp)
 {
     printResp(prefix, resp);
-    YomkUnPackPkg(resp.m_data, LoggerAllInfo, allPkg);
-    if (!allPkg)
+    YomkUnPackPkg(resp.m_data, LoggerInfoList, listPkg);
+    if (!listPkg)
     {
         std::cout << ">> (no data)" << std::endl;
         return;
     }
-    const auto& st = allPkg->d.m_console;
-    std::cout << ">> | console: debug=" << (st.m_debugOn ? "on" : "off") << " info=" << (st.m_infoOn ? "on" : "off")
-              << " warn=" << (st.m_warnOn ? "on" : "off") << " error=" << (st.m_errorOn ? "on" : "off")
-              << " proxy=" << (st.m_proxyOn ? "on" : "off") << std::endl;
-    for (const auto& info : allPkg->d.m_loggers)
+    for (const auto& info : listPkg->d)
     {
         std::cout << ">> | " << info.m_loggerName << " [" << info.m_type << "]";
         if (info.m_type == "file")
         {
+            // file 条目暂无开关概念（级别恒 true、proxyOn 恒 false），仅显示目录
             std::cout << " dir:" << info.m_dir;
+        }
+        else
+        {
+            const auto& st = info.m_console;
+            std::cout << " debug=" << (st.m_debugOn ? "on" : "off") << " info=" << (st.m_infoOn ? "on" : "off")
+                      << " warn=" << (st.m_warnOn ? "on" : "off") << " error=" << (st.m_errorOn ? "on" : "off")
+                      << " proxy=" << (st.m_proxyOn ? "on" : "off");
         }
         std::cout << std::endl;
     }
-    if (allPkg->d.m_loggers.empty())
+    if (listPkg->d.empty())
     {
         std::cout << ">> | (empty loggers)" << std::endl;
     }

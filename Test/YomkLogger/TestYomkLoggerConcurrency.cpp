@@ -338,6 +338,23 @@ static std::vector<std::string> unpackLines(const YomkResponse& resp)
     return lines;
 }
 
+// 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
+static const yomk::ConsoleLogState* firstConsoleState(YomkPtr(LoggerInfoList) listPkg)
+{
+    if (!listPkg)
+    {
+        return nullptr;
+    }
+    for (const auto& li : listPkg->d)
+    {
+        if (li.m_type == "console")
+        {
+            return &li.m_console;
+        }
+    }
+    return nullptr;
+}
+
 // 状态码是否属于框架合法集合 {eInvalid, eOk, eNo}
 static bool isLegalStatus(const YomkResponse& resp)
 {
@@ -699,8 +716,9 @@ int main()
                 {
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
-                        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerAllInfo, allPkg);
-                        if (allPkg && !allPkg->d.m_console.m_proxyOn)
+                        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, listPkg);
+                        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+                        if (st && !st->m_proxyOn)
                         {
                             g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
                         }
@@ -1208,16 +1226,17 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            YomkUnPackPkg(allResp.m_data, LoggerAllInfo, allPkg);
-                            if (allPkg)
+                            YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
+                            if (listPkg)
                             {
-                                if (!allPkg->d.m_console.m_proxyOn)
+                                const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+                                if (st == nullptr || !st->m_proxyOn)
                                 {
                                     g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
                                 }
-                                snap.allLines = allPkg->d.m_loggers.size();
+                                snap.allLines = listPkg->d.size();
                                 // 结构化清单按 m_type 计数（与按类型端点行数计数语义一致）
-                                for (const auto& li : allPkg->d.m_loggers)
+                                for (const auto& li : listPkg->d)
                                 {
                                     if (li.m_type == "console")
                                     {
@@ -1465,16 +1484,16 @@ int main()
             "S5: 内省线程确实观测到 ALL（" + std::to_string(g_s5IntrospectOk.load()) + " 次）");
 
         // ---- 最终一致性：ALL 控制台状态字段 + 日志器数跨端点一致 + file sink 落盘守恒 ----
-        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerAllInfo, finalAllPkg);
+        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, finalListPkg);
+        const yomk::ConsoleLogState* finalSt = firstConsoleState(finalListPkg);
         CHECK(
-            (finalAllPkg != nullptr && finalAllPkg->d.m_console.m_debugOn && finalAllPkg->d.m_console.m_infoOn &&
-             finalAllPkg->d.m_console.m_warnOn && finalAllPkg->d.m_console.m_errorOn &&
-             finalAllPkg->d.m_console.m_proxyOn),
+            (finalSt != nullptr && finalSt->m_debugOn && finalSt->m_infoOn &&
+             finalSt->m_warnOn && finalSt->m_errorOn && finalSt->m_proxyOn),
             "S5: 收尾四级别全 ON 后 ALL 控制台状态全 on（含 S3 已设的 proxyOn）");
         CHECK(
-            finalAllPkg != nullptr && finalAllPkg->d.m_loggers.size() == finalTotal,
+            finalListPkg != nullptr && finalListPkg->d.size() == finalTotal,
             "S5: ALL 日志器数 == LOGGERS 行数（" +
-                std::to_string(finalAllPkg ? finalAllPkg->d.m_loggers.size() : 0) + " vs " +
+                std::to_string(finalListPkg ? finalListPkg->d.size() : 0) + " vs " +
                 std::to_string(finalTotal) + "）——跨端点最终一致");
 
         std::string sinkContent = readFile(pairDir / (kFileSink + ".log"));

@@ -818,8 +818,8 @@ resp = YOMK_LOGGER_INFO_LOGGER("MainLogger", "console");  // eOk, m_type="consol
 resp = YOMK_LOGGER_INFO_LOGGER("info_logger", "file");    // eOk, m_type="file"，m_dir="/tmp"
 resp = YOMK_LOGGER_INFO_LOGGER("not_exist", "console");   // eNo
 
-// 全量日志器与控制台状态：LoggerAllInfo 结构化包
-// m_console（ConsoleLogState 五 bool：debug/info/warn/error/proxy）+ m_loggers（单查同款 LoggerInfo 列表）
+// 全量日志器清单：LoggerInfoList（vector<LoggerInfo>，元素为单查同款，每条内嵌控制台状态段）
+// console 条目 m_console 为真实全局状态；file 条目四级别恒 true、proxyOn 恒 false
 resp = YOMK_LOGGER_INFO_ALL();
 ```
 
@@ -847,7 +847,7 @@ bool myLogProxy(const yomk::Log& log) {
 }
 YOMK_SET_CONSOLE_LOG_PROXY(myLogProxy);
 // 卸载代理：传 nullptr 或空 std::function 即恢复框架默认控制台输出，
-// YOMK_LOGGER_INFO_ALL() 的 m_console.m_proxyOn 随之由 true 回到 false
+// ALL 清单 console 条目的 m_console.m_proxyOn 随之由 true 回到 false
 YOMK_SET_CONSOLE_LOG_PROXY(nullptr);
 ```
 
