@@ -88,7 +88,7 @@ static void dumpLoggerAll(const std::string& prefix, const YomkResponse& resp)
         }
         else
         {
-            const auto& st = info.m_console;
+            const auto& st = info.m_loggerState;
             std::cout << " debug=" << (st.m_debugOn ? "on" : "off") << " info=" << (st.m_infoOn ? "on" : "off")
                       << " warn=" << (st.m_warnOn ? "on" : "off") << " error=" << (st.m_errorOn ? "on" : "off")
                       << " proxy=" << (st.m_proxyOn ? "on" : "off");

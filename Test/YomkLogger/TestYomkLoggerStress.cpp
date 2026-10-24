@@ -703,7 +703,7 @@ static uint64_t introspectionRounds(uint64_t entries)
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::ConsoleLogState* firstConsoleState(YomkPtr(LoggerInfoList) listPkg)
+static const yomk::LoggerState* firstConsoleState(YomkPtr(LoggerInfoList) listPkg)
 {
     if (!listPkg)
     {
@@ -713,7 +713,7 @@ static const yomk::ConsoleLogState* firstConsoleState(YomkPtr(LoggerInfoList) li
     {
         if (li.m_type == "console")
         {
-            return &li.m_console;
+            return &li.m_loggerState;
         }
     }
     return nullptr;
@@ -1333,7 +1333,7 @@ int main()
         // 结构化后数据段形态不同（LoggerInfo vs 纯名行），逐行字符串比对改为数量与类型计数比对；
         // S4 阶段表内条目不再增删，console/file 两端点各自单锁快照后计数等价
         YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, listPkg);
-        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+        const yomk::LoggerState* st = firstConsoleState(listPkg);
         CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
             "S4B: ALL 控制台状态全 on（proxy 已在 S1D 安装）");

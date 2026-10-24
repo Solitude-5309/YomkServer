@@ -819,11 +819,11 @@ resp = YOMK_LOGGER_INFO_LOGGER("info_logger", "file");    // eOk, m_type="file"�
 resp = YOMK_LOGGER_INFO_LOGGER("not_exist", "console");   // eNo
 
 // 全量日志器清单：LoggerInfoList（vector<LoggerInfo>，元素为单查同款，每条内嵌控制台状态段）
-// console 条目 m_console 为真实全局状态；file 条目四级别恒 true、proxyOn 恒 false
+// console 条目 m_loggerState 为真实全局状态；file 条目四级别恒 true、proxyOn 恒 false
 resp = YOMK_LOGGER_INFO_ALL();
 ```
 
-注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关用既有 `YOMK_ON/OFF_CONSOLE_LOG_*()` 切换后立即在 `/all` 的 m_console 字段生效。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
+注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关用既有 `YOMK_ON/OFF_CONSOLE_LOG_*()` 切换后立即在 `/all` 的 m_loggerState 字段生效。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
 
 ## 示例6：文件日志
 
@@ -847,7 +847,7 @@ bool myLogProxy(const yomk::Log& log) {
 }
 YOMK_SET_CONSOLE_LOG_PROXY(myLogProxy);
 // 卸载代理：传 nullptr 或空 std::function 即恢复框架默认控制台输出，
-// ALL 清单 console 条目的 m_console.m_proxyOn 随之由 true 回到 false
+// ALL 清单 console 条目的 m_loggerState.m_proxyOn 随之由 true 回到 false
 YOMK_SET_CONSOLE_LOG_PROXY(nullptr);
 ```
 

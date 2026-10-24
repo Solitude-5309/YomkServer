@@ -339,7 +339,7 @@ static std::vector<std::string> unpackLines(const YomkResponse& resp)
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::ConsoleLogState* firstConsoleState(YomkPtr(LoggerInfoList) listPkg)
+static const yomk::LoggerState* firstConsoleState(YomkPtr(LoggerInfoList) listPkg)
 {
     if (!listPkg)
     {
@@ -349,7 +349,7 @@ static const yomk::ConsoleLogState* firstConsoleState(YomkPtr(LoggerInfoList) li
     {
         if (li.m_type == "console")
         {
-            return &li.m_console;
+            return &li.m_loggerState;
         }
     }
     return nullptr;
@@ -717,7 +717,7 @@ int main()
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
                         YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, listPkg);
-                        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+                        const yomk::LoggerState* st = firstConsoleState(listPkg);
                         if (st && !st->m_proxyOn)
                         {
                             g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
@@ -1229,7 +1229,7 @@ int main()
                             YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
                             if (listPkg)
                             {
-                                const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+                                const yomk::LoggerState* st = firstConsoleState(listPkg);
                                 if (st == nullptr || !st->m_proxyOn)
                                 {
                                     g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
@@ -1485,7 +1485,7 @@ int main()
 
         // ---- 最终一致性：ALL 控制台状态字段 + 日志器数跨端点一致 + file sink 落盘守恒 ----
         YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, finalListPkg);
-        const yomk::ConsoleLogState* finalSt = firstConsoleState(finalListPkg);
+        const yomk::LoggerState* finalSt = firstConsoleState(finalListPkg);
         CHECK(
             (finalSt != nullptr && finalSt->m_debugOn && finalSt->m_infoOn &&
              finalSt->m_warnOn && finalSt->m_errorOn && finalSt->m_proxyOn),

@@ -343,7 +343,7 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
     if (query->d.m_type == "console")
     {
         // 状态段在表锁外取（独立 atomic + proxy 叶子锁独立作用域，与 listAll 同构）
-        const yomk::ConsoleLogState state = currentConsoleState();
+        const yomk::LoggerState state = currentConsoleState();
         std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
         if (m_consoleLoggers.find(query->d.m_loggerName) == m_consoleLoggers.end())
         {
@@ -351,7 +351,7 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
             return YomkResponse(YomkResponse::eNo, "logger not found.");
         }
         info.m_type = "console";
-        info.m_console = state;
+        info.m_loggerState = state;
         return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
     }
     if (query->d.m_type == "file")
@@ -366,10 +366,10 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
         info.m_type = "file";
         info.m_dir = itLogger->second->getDir();
         // file 日志器暂无开关概念：级别恒 true、proxyOn 恒 false（控制台专属）
-        info.m_console.m_debugOn = true;
-        info.m_console.m_infoOn = true;
-        info.m_console.m_warnOn = true;
-        info.m_console.m_errorOn = true;
+        info.m_loggerState.m_debugOn = true;
+        info.m_loggerState.m_infoOn = true;
+        info.m_loggerState.m_warnOn = true;
+        info.m_loggerState.m_errorOn = true;
         return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
     }
     YOMK_ERR_POS_LOG("unknown logger type: " + query->d.m_type + ".");
@@ -377,9 +377,9 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
 }
 
 // 取控制台状态段：四个级别开关为独立 atomic（组合本无原子快照保证），proxy 叶子锁独立作用域
-ConsoleLogState YomkLogger::currentConsoleState()
+LoggerState YomkLogger::currentConsoleState()
 {
-    yomk::ConsoleLogState state;
+    yomk::LoggerState state;
     state.m_debugOn = m_showConsoleDebugLog.load();
     state.m_infoOn = m_showConsoleInfoLog.load();
     state.m_warnOn = m_showConsoleWarningLog.load();
@@ -395,9 +395,9 @@ ConsoleLogState YomkLogger::currentConsoleState()
 YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
 {
     (void)pkg;
-    // ConsoleLogState 内嵌每条 LoggerInfo：console 条目承载真实全局状态，
+    // LoggerState 内嵌每条 LoggerInfo：console 条目承载真实全局状态，
     // file 条目暂无开关概念（级别恒 true、proxyOn 恒 false）
-    const yomk::ConsoleLogState console = currentConsoleState();
+    const yomk::LoggerState console = currentConsoleState();
     std::vector<yomk::LoggerInfo> loggers;
     {
         // 按锁序嵌套双读锁取跨段原子快照，逐条构造 LoggerInfo（与 loggerInfo 命中分支同构）
@@ -409,7 +409,7 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
             yomk::LoggerInfo info;
             info.m_loggerName = iter.first;
             info.m_type = "console";
-            info.m_console = console;
+            info.m_loggerState = console;
             loggers.push_back(std::move(info));
         }
         for (auto& iter : m_fileLoggers)
@@ -418,10 +418,10 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
             info.m_loggerName = iter.first;
             info.m_type = "file";
             info.m_dir = iter.second->getDir();
-            info.m_console.m_debugOn = true;
-            info.m_console.m_infoOn = true;
-            info.m_console.m_warnOn = true;
-            info.m_console.m_errorOn = true;
+            info.m_loggerState.m_debugOn = true;
+            info.m_loggerState.m_infoOn = true;
+            info.m_loggerState.m_warnOn = true;
+            info.m_loggerState.m_errorOn = true;
             loggers.push_back(std::move(info));
         }
     }

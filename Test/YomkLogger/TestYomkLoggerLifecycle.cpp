@@ -164,7 +164,7 @@ static size_t loggersTotal()
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::ConsoleLogState* firstConsoleState(YomkPtr(LoggerInfoList) listPkg)
+static const yomk::LoggerState* firstConsoleState(YomkPtr(LoggerInfoList) listPkg)
 {
     if (!listPkg)
     {
@@ -174,7 +174,7 @@ static const yomk::ConsoleLogState* firstConsoleState(YomkPtr(LoggerInfoList) li
     {
         if (li.m_type == "console")
         {
-            return &li.m_console;
+            return &li.m_loggerState;
         }
     }
     return nullptr;
@@ -379,7 +379,7 @@ CHECK(
     {
         auto allResp = YOMK_LOGGER_INFO_ALL();
         YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
-        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+        const yomk::LoggerState* st = firstConsoleState(listPkg);
         CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && !st->m_proxyOn),
             "proxy 设置前 ALL 控制台状态全 on + proxyOff");
@@ -418,7 +418,7 @@ CHECK(
     {
         auto allResp = YOMK_LOGGER_INFO_ALL();
         YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
-        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+        const yomk::LoggerState* st = firstConsoleState(listPkg);
         CHECK(st != nullptr && st->m_proxyOn, "proxy 设置后 ALL 状态 proxyOn");
     }
 
@@ -447,7 +447,7 @@ CHECK(
             "SET_CONSOLE_LOG_PROXY(nullptr) 卸载返回 eOk");
         auto allResp = YOMK_LOGGER_INFO_ALL();
         YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
-        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+        const yomk::LoggerState* st = firstConsoleState(listPkg);
         CHECK(
             st != nullptr && !st->m_proxyOn,
             "卸载后 ALL 状态回到 proxyOff（P4-e 前恒报 proxyOn）");
@@ -479,7 +479,7 @@ CHECK(
         CHECK(YOMK_SET_CONSOLE_LOG_PROXY(proxy).m_status == YomkResponse::eOk, "重装代理返回 eOk（卸载可逆）");
         auto allResp = YOMK_LOGGER_INFO_ALL();
         YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
-        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+        const yomk::LoggerState* st = firstConsoleState(listPkg);
         CHECK(
             st != nullptr && st->m_proxyOn,
             "重装后 ALL 状态恢复 proxyOn（S4-S7 不变量已复位）");
@@ -656,7 +656,7 @@ CHECK(
     {
         auto allResp = YOMK_LOGGER_INFO_ALL();
         YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
-        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+        const yomk::LoggerState* st = firstConsoleState(listPkg);
         CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
             "ALL 控制台状态全 on（S3 已设 proxy）");
@@ -665,14 +665,14 @@ CHECK(
         YOMK_OFF_CONSOLE_LOG_INFO();
         auto allResp = YOMK_LOGGER_INFO_ALL();
         YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
-        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+        const yomk::LoggerState* st = firstConsoleState(listPkg);
         CHECK(
             (st != nullptr && st->m_debugOn && !st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
             "OFF INFO 后 ALL 状态 infoOff（开关联动逐字段）");
         YOMK_ON_CONSOLE_LOG_INFO();
         auto allResp2 = YOMK_LOGGER_INFO_ALL();
         YomkUnPackPkg(allResp2.m_data, LoggerInfoList, listPkg2);
-        const yomk::ConsoleLogState* st2 = firstConsoleState(listPkg2);
+        const yomk::LoggerState* st2 = firstConsoleState(listPkg2);
         CHECK(
             (st2 != nullptr && st2->m_debugOn && st2->m_infoOn && st2->m_warnOn && st2->m_errorOn && st2->m_proxyOn),
             "ON INFO 复原后 ALL 状态 infoOn");
@@ -781,7 +781,7 @@ CHECK(
         "on 非法级别 eOk + 错误提示（default 活分支）");
     auto allResp = YOMK_LOGGER_INFO_ALL();
     YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
-    const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+    const yomk::LoggerState* st = firstConsoleState(listPkg);
     CHECK(
         (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
         "非法级别 off/on 无副作用（ALL 控制台状态仍全 on）");
@@ -997,7 +997,7 @@ CHECK(
         CHECK(YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk, "S8: 计数用例删除 eOk");
         CHECK(loggersTotal() == before, "S8: 删除后 LOGGERS 行数回落（递减守恒）");
         YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, listPkg);
-        const yomk::ConsoleLogState* st = firstConsoleState(listPkg);
+        const yomk::LoggerState* st = firstConsoleState(listPkg);
         CHECK(
             (listPkg != nullptr && listPkg->d.size() == before && st != nullptr && st->m_debugOn &&
              st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),

@@ -28,7 +28,7 @@
 |---|---|
 | `YOMK_LOGGER_INFO_LOGGERS(type)` | 按类型获取日志器名列表（type: `"console"`/`"file"`，返回 StringArray 纯名字典序；非法类型 eNo） |
 | `YOMK_LOGGER_INFO_LOGGER(name, type)` | 按类型单查指定日志器（type: `"console"`/`"file"`；两表允许同名，单表精确查找不 fallback；未注册或非法 type 均 eNo） |
-| `YOMK_LOGGER_INFO_ALL()` | 查询全部日志器及开关配置状态（LoggerInfoList 清单：元素为单查同款 LoggerInfo，每条内嵌 ConsoleLogState 状态段——console 条目为真实全局状态，file 条目四级别恒 true、proxyOn 恒 false） |
+| `YOMK_LOGGER_INFO_ALL()` | 查询全部日志器及开关配置状态（LoggerInfoList 清单：元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段——console 条目为真实全局状态，file 条目四级别恒 true、proxyOn 恒 false） |
 
 ## 使用示例
 

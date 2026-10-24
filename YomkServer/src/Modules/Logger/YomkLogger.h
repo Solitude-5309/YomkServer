@@ -33,7 +33,7 @@ private:
     YomkResponse loggerInfo(YomkPkgPtr pkg);
     YomkResponse listAll(YomkPkgPtr pkg);
     // 取控制台状态段：四个级别开关独立 atomic + proxy 叶子锁，均在表锁外独立作用域取
-    ConsoleLogState currentConsoleState();
+    LoggerState currentConsoleState();
 
 private:
     // 锁序约定：需要同时读取两张 logger 表时（listAll 内省快照），
