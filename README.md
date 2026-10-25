@@ -94,9 +94,9 @@ YomkApi.async_request("/MyService/hello", "yomk2", lambda res: print("async:", r
   ```python
   YomkApi.async_request("/服务名/函数名", pkg, lambda resp: print(resp.msg))
   ```
-- **跨服务调用**：`YomkService` 基类无成员级请求方法，服务实现内部用全局 `YomkApi.request()` 调用其他服务（见 `examples/services/CalcService.py`）。
+- **跨服务调用**：服务实现内部用成员 `self.request(url, pkg)` 调用其他服务（`YomkService` 基类提供，与全局 `YomkApi.request()` 等价、无需获取单例；见 `examples/services/MotionService.py`）。
 
-完整可运行演示见 `examples/ExampleYomkService.py`（Boot 三阶段编排、同步/异步请求、跨服务调用与失败传播，读运行输出即可理解每个调用）。
+完整可运行演示见 `examples/ExampleYomkService.py`（控制柜一次上电会话 8 个场景：上电自检与工位注册、通讯自检与寻址异常、异步下发、运动调用链、自省读取、工位热替换、工位下线断链传播、收班断电，读运行输出即可理解每个调用）。
 
 ### 2. 消息包 (Message)
 
@@ -104,17 +104,19 @@ YomkApi.async_request("/MyService/hello", "yomk2", lambda res: print("async:", r
 
 ```python
 # 定义消息（普通类）
-class AddReq:
-    def __init__(self, a, b):
-        self.a = a
-        self.b = b
+class MoveCmd:
+    def __init__(self, x, y, z, speed_ratio):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.speed_ratio = speed_ratio
 
-# 请求侧构造，功能函数内直接读取属性；回包 data 直接携带对象
-resp = YomkApi.request("/CalcService/add", AddReq(1, 2))
-print(resp.data.result)
+# 请求侧构造，功能函数内直接读取属性；回包 data 直接携带对象（如强类型 MoveResp）
+resp = YomkApi.request("/MotionService/move", MoveCmd(100.0, 50.0, 200.0, 0.8))
+print(resp.data.reach_x)
 ```
 
-消息定义可集中在独立模块管理（见 `examples/msgs/DemoMsgs.py`）。
+消息定义可集中在独立模块管理（见 `examples/msgs/ArmMsgs.py`）。
 
 ### 3. 共享上下文 (YomkContext)
 
@@ -186,7 +188,7 @@ YomkApi.function_pool_register("calc", func_v2)
 服务定义（见快速上手）与注册：
 
 - **注册**：`YomkApi.new_service(MyService, "/MyService")`（内部完成构造、设名、init、注册）；同一服务类注册多个实例用 `YomkApi.add_service(srv, name)`。
-- **启动编排**：多服务工程继承 `YomkApi.YomkBoot` 组织三阶段启动——`before()`（服务启动前准备资源）→ `start()`（创建并注册服务）→ `after()`（启动后善后），任一阶段返回非 0 即终止启动；`YomkApi.boot(boot_obj)` 内部先完成框架初始化（自动调用 init）再依次执行三阶段（见 `examples/boot/DemoBoot.py`）。
+- **启动编排**：多服务工程继承 `YomkApi.YomkBoot` 组织三阶段启动——`before()`（服务启动前准备资源）→ `start()`（创建并注册服务）→ `after()`（启动后善后），任一阶段返回非 0 即终止启动；`YomkApi.boot(boot_obj)` 内部先完成框架初始化（自动调用 init）再依次执行三阶段（见 `examples/boot/ArmBoot.py`）。
 - 服务名与功能函数名均以 `/` 开头，共同构成请求 URL。
 
 ### 7. 分级日志 (YomkLogger)
@@ -225,11 +227,11 @@ YomkApi.file_log_delete("app")
 resp = YomkApi.server_info_services()
 
 # 指定服务的功能函数清单（每行 "函数名 [期望消息类型]"，未声明类型的函数无括号后缀）
-resp = YomkApi.server_info_functions("/CalcService")
+resp = YomkApi.server_info_functions("/MotionService")
 
 # 单函数元信息：命中返回结构化 FuncInfo 包（msg 恒 "ok"，
 # msg_name=期望消息类型名、description=四参函数说明）；不存在返回 eNo
-resp = YomkApi.server_info_function("/CalcService/add")
+resp = YomkApi.server_info_function("/MotionService/move")
 
 # 全量拓扑：结构化层级列表（每服务条目 service_name + funcs）
 resp = YomkApi.server_info_all()
@@ -310,7 +312,7 @@ python ExampleYomkServerInfo.py
 
 | 示例 | 演示内容 |
 |---|---|
-| ExampleYomkService.py | 服务定义与调用：Boot 三阶段编排、同步/异步请求、跨服务调用与失败传播（多文件工程结构） |
+| ExampleYomkService.py | 服务定义与调用：上电注册/BOOT 三阶段编排、同步/异步请求、跨服务调用与失败传播、工位热替换与下线断链（多文件工程结构） |
 | ExampleYomkContext.py | 共享上下文：创建/读取/更新/销毁 + 状态检查器（拒绝/接受）+ 异步监控 |
 | ExampleYomkFunctionPool.py | 动态函数池：注册/调用 + 同名热替换 |
 | ExampleYomkEventLoop.py | 线程隔离事件循环：启动/非阻塞投递/阻塞投递/停止/销毁 |
@@ -330,9 +332,9 @@ cd <源码目录>
 ```
 examples/
 ├── ExampleYomkService.py     # 入口
-├── boot/DemoBoot.py          # 启动编排（before -> start -> after 三阶段）
-├── services/                 # 服务实现（AuditService / CalcService）
-└── msgs/DemoMsgs.py          # 消息包定义
+├── boot/ArmBoot.py           # 启动编排（before -> start -> after 三阶段）
+├── services/                 # 服务实现（MotionService / TelemetryService）
+└── msgs/ArmMsgs.py           # 消息包定义
 ```
 
 ---
