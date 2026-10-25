@@ -92,8 +92,8 @@ int MyService::init()
 
 ## 启动编排（YomkBoot）
 
-`YomkBoot` 提供 before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程。`YOMK_BOOT(bootPtr)` 内部先完成框架初始化，再按 before → start → after 顺序执行；任一步返回非 0 立即中止并打错误日志。参考实现见 `Examples/boot/DemoBoot.h`。
+`YomkBoot` 提供 before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程。`YOMK_BOOT(bootPtr)` 内部先完成框架初始化，再按 before → start → after 顺序执行；任一步返回非 0 立即中止并打错误日志。参考实现见 `Examples/boot/ArmBoot.h`。
 
 ## 完整示例
 
-完整可运行演示见 `Examples/ExampleYomkService.cpp`（8 步覆盖服务定义、注册、同步/异步请求、跨服务调用、自省、删除与优雅关闭，读运行输出即可理解每个调用）。
+完整可运行演示见 `Examples/ExampleYomkService.cpp`（8 个机械臂控制场景小示例 showArmXXX 覆盖服务定义、注册、同步/异步请求、跨服务调用、自省、删除与优雅关闭，读运行输出即可理解每个调用）。
