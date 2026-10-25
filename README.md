@@ -138,6 +138,8 @@ YomkApi.context_set_monitor("config", lambda ctx: print(ctx.value))
 YomkApi.context_turn_on_monitor()              # context_turn_off_monitor() 关闭
 ```
 
+内部结构：Context 功能承载在 `ContextGroup`（底层实例组，不继承 `YomkService`）上——键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持；`YomkContext` 服务本身仅持默认组成员 `m_main`（组名 "main"，成员直取免查找）并负责 13 个端点的装配与转发，多组（自定义组）能力在后续迭代扩展。
+
 完整可运行演示见 `examples/ExampleYomkContext.py`（创建/读取/更新/销毁、checker 拒绝/接受、异步监控）。
 
 ### 4. 线程隔离事件循环 (YomkEventLoop)
