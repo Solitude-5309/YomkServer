@@ -355,10 +355,10 @@ class UserService(YomkApi.YomkService):
 # 头部添加
 from services.UserService import UserService
 
-# start() 映射表中添加
+# start() 映射表中添加（lambda 惰性创建，与示例0一致）
 cur_srvs = {
-    "/ConfigService": ConfigService(YomkApi.server()),
-    "/UserService": UserService(YomkApi.server()),
+    "/ConfigService": lambda: ConfigService(YomkApi.server()),
+    "/UserService": lambda: UserService(YomkApi.server()),
 }
 ```
 

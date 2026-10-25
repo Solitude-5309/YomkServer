@@ -50,7 +50,7 @@ ProjectName/
 
 1. `MyBoot.before()`：输出 starting 提示，通过 `Path(__file__)` 推导配置路径，存入 Context（`CTX_CONFIG_PATH`）
 2. `MyBoot.start()`：服务创建器映射表（lambda 惰性创建）+ `srv_names` 按需启动，add_service 失败返回 -1
-3. `MyBoot.after()`：调用 `/ConfigService/load` 加载配置，随后请求 `/get`（name）与 `/version`（工程版本号）并输出
+3. `MyBoot.after()`：调用 `/ConfigService/load` 加载配置，随后请求 `/get`（name、description）与 `/version`（工程版本号）并输出
 4. 消息包为普通 Python 类，集中定义在 `msgs/YomkMsgs.py`
 5. 运行方式：`bash check_env.sh` 检查环境（PYTHONPATH 由框架安装环节配置）→ `python main.py`
 6. **版本号传递**：工程版本在 `typedefine/TypeDefine.py` 定义 `APP_VERSION` 常量（单一来源：本文件），由 `ConfigService` 的 `/version` 接口返回（不放 config.json），`MyBoot.after()` 请求该接口并输出版本号
@@ -97,8 +97,8 @@ class XxxService(YomkApi.YomkService):
 3. **注册到 Boot**（`boot/MyBoot.py` 的 `start()` 映射表中添加）：
 ```python
 from services.XxxService import XxxService
-# start() 中 cur_srvs 字典添加：
-"/XxxService": XxxService(YomkApi.server()),
+# start() 中 cur_srvs 字典添加（lambda 惰性创建，与示例0约定一致）：
+"/XxxService": lambda: XxxService(YomkApi.server()),
 ```
 
 4. **启动列表添加**（`main.py` 的 `MyBoot` 参数中）：

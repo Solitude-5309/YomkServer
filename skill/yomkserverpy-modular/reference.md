@@ -38,8 +38,11 @@ class YomkService:
     def __init__(self, server: YomkServer)
     def get_name(self) -> str
     def set_name(self, name: str)
-    def init(self) -> None                              # 子类必须实现
+    def init(self) -> None                              # 子类必须实现（注册时由框架调用）
+    def deinit(self) -> None                            # 注销/shutdown 时由框架调用（默认空实现，可覆盖）
     def install_func(self, name: str, function, msg_name="", description="") -> None # 注册功能函数（msg_name 为期望消息类型元数据，description 为自定义函数说明，均仅作内省）
+    def request(self, url: str, pkg=None) -> YomkResponse        # 跨服务调用（转发所属 Server.request，与全局 YomkApi.request 等价）
+    def async_request(self, url: str, pkg=None, callback=None) -> None
 ```
 
 ## 数据结构
@@ -52,20 +55,20 @@ class ContextChecker:
     def __init__(self, key="", check_func=None)   # check_func: (Context) -> CheckStatus
 
 class ContextMonitor:
-    def __init__(self, key="", monitor_func=None, async_monitor=False) # monitor_func: (Context) -> None；async_monitor=True 时变更通知异步送达
+    def __init__(self, key="", monitor_func=None, async_monitor_func=None) # monitor_func: (Context) -> None；async_monitor_func 为异步送达的监控函数（经 context_set_monitor(async_monitor=True) 设置）
 
 class Function:
-    def __init__(self, name="", func=None)        # func: (Any) -> YomkResponse
+    def __init__(self, name, func, msg_name="", description="")   # func: (Any) -> YomkResponse；msg_name/description 仅内省元数据
 
 class CallFunction:
-    def __init__(self, name="", pkg=None)
+    def __init__(self, name, pkg)
 
 class Event:
     def __init__(self, event_loop_name="", pkg=None, func=None, tag="")
     # 属性：m_eventLoopName, m_pkg, m_serviceFunc, m_eventId, m_response, m_waitCallback, m_tag
 
 class EventLoopPkg:
-    def __init__(self, event_loop_name="", default_service_func=None)
+    def __init__(self, event_loop_name="", default_service_func=None, msg_name="")   # msg_name：默认处理函数期望消息类型（内省元数据）
 ```
 
 ## YomkApi 便捷 API 速查
@@ -74,7 +77,7 @@ class EventLoopPkg:
 | API | 说明 |
 |-----|------|
 | `YomkApi.boot(boot_instance)` | Boot 生命周期启动（含 init） |
-| `YomkApi.init()` | 初始化（启动内置服务） |
+| `YomkApi.init(async_thread_count=0)` | 初始化（启动内置服务；async_thread_count 为异步请求线程池大小，0 表示自动检测） |
 | `YomkApi.server()` | 获取 Server 实例 |
 | `YomkApi.server_instance()` | 获取 Server 实例（server 的别名） |
 | `YomkApi.shutdown()` | 销毁 Server（幂等；进程退出时由 atexit 兜底调用） |
@@ -130,7 +133,7 @@ class EventLoopPkg:
 ### EventLoop
 | API | 说明 |
 |-----|------|
-| `YomkApi.event_loop_start(name, handler)` | 启动事件循环 |
+| `YomkApi.event_loop_start(name, handler, msg_name="")` | 启动事件循环（msg_name 为默认处理函数期望消息类型，内省元数据） |
 | `YomkApi.event_loop_stop(name)` | 停止 |
 | `YomkApi.event_loop_post(name, pkg, handler=None, tag="")` | 异步投递（handler 可选，缺省用启动时绑定的处理函数） |
 | `YomkApi.event_loop_post_wait(name, pkg, handler=None, tag="")` | 同步投递（handler 可选，缺省用启动时绑定的处理函数） |

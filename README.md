@@ -226,7 +226,8 @@ YomkApi.file_log_delete("app")
 # 服务清单（data 为服务名列表）
 resp = YomkApi.server_info_services()
 
-# 指定服务的功能函数清单（每行 "函数名 [期望消息类型]"，未声明类型的函数无括号后缀）
+# 指定服务的功能函数结构化清单（data 为 FuncInfo 列表：func_name/msg_name/description，
+# 与单查、全量拓扑同族；不存在服务返回空表）
 resp = YomkApi.server_info_functions("/MotionService")
 
 # 单函数元信息：命中返回结构化 FuncInfo 包（msg 恒 "ok"，
@@ -341,18 +342,21 @@ examples/
 
 ## 测试
 
-一键测试脚本 `./test/run_tests.sh` 已就绪：
+一键测试脚本 `./test/run_tests.sh` 已就绪，测试按模块子目录组织（YomkServer / YomkContext / YomkEventLoop / YomkFunctionPool / YomkLogger / YomkServerInfo），覆盖生命周期、并发与压力场景：
 
 ```bash
-./test/run_tests.sh                      # 使用 $YOMK_PREFIX_PATH（缺省 /opt/yomk）
-./test/run_tests.sh --prefix /opt/yomk   # 指定安装路径
-./test/run_tests.sh --timeout 600        # 单测试超时秒数（默认 300）
+./test/run_tests.sh                      # 快速模式（压测规模缩为 10000）
+./test/run_tests.sh --full               # 完整规模（测试内部默认，10 万级投递；超时默认 900s）
+./test/run_tests.sh --prefix DIR         # 指定测试库产物目录（缺省 <仓库根>/build/prefix）
+./test/run_tests.sh --timeout N          # 单测试超时秒数（默认 300）
 ```
 
 说明：
 
-- **当前 `test/` 暂无用例**：目录预留用于全面测试集合，无 `Test*.py` 时脚本提示并正常退出
-- 将来补充测试后即插即用：自动探测 `lib/pythonX.Y/site-packages` 并设置 PYTHONPATH、依次运行 `Test*.py`、**失败即停**、`timeout` 超时保护、日志落盘 `test/test_logs/<时间戳>/`
+- **只消费仓库内本地产物**：默认 `<仓库根>/build/prefix`，自动探测其下 `lib/pythonX.Y/site-packages` 并设置 PYTHONPATH；产物缺失时报错并给出构建安装命令，不静默回退系统安装（避免多份产物不同步时跑旧库）
+- 逐个运行 TESTS 清单（快→慢，stress 类压尾），每个测试在独立临时工作目录运行；任一测试失败（退出码非 0 / 超时）→ **立即停止**，输出 `[FAIL]` 行摘要与日志路径
+- 日志落盘 `test/test_logs/<时间戳>/`（含 `summary.log`）
+- 测试程序风格约定：退出码 0 = 全部通过，非 0 = 存在失败用例（`[FAIL]` 行输出）
 
 ---
 
