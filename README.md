@@ -204,11 +204,12 @@ cmake .. -DYOMK_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
 cmake --build . -j
 ```
 
-构建产物为 23 个测试可执行（输出到 `<仓库根>/bin/`），按模块划分：
+构建产物为 26 个测试可执行（输出到 `<仓库根>/bin/`），按模块划分：
 
 | 模块 | 测试目标 |
 |---|---|
-| YomkServer (9) | TestYomkSimpleThreadPool、TestYomkWeakFunc、TestYomkAPINotInit、TestYomkAPILifecycle、TestYomkBoot、TestYomkServer、TestYomkService、TestYomkShutdownSeq、TestYomkConcurrency |
+| YomkServer (11) | TestYomkSimpleThreadPool、TestYomkWeakFunc、TestYomkAPINotInit、TestYomkAPILifecycle、TestYomkBoot、TestYomkServer、TestYomkService、TestYomkShutdownSeq、TestYomkConcurrency、TestYomkPkg、TestYomkIntegration |
+| YomkServerInfo (1) | TestYomkServerInfoLifecycle |
 | FunctionPool (3) | TestYomkFunctionPoolLifecycle、TestYomkFunctionPoolConcurrency、TestYomkFunctionPoolStress |
 | Context (4) | TestYomkContextCRUD、TestYomkContextCheckerMonitor、TestYomkContextLifecycle、TestYomkContextConcurrency |
 | EventLoop (3) | TestYomkEventLoopLifecycle、TestYomkEventLoopConcurrency、TestYomkEventLoopStress |

@@ -116,7 +116,7 @@ int MyBoot::after()
         YOMK_ERROR_TAG("MyBoot::after", "load config failed: ", resp.m_msg);
         return -1;
     }
-    YOMK_INFO_TAG("MyBoot::after", "ProjectName started successfully.");
+    YOMK_INFO_TAG("MyBoot::after", "started successfully.");
 
     resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(ConfigKey, ConfigKey{"name"}));
     if (resp.m_status != YomkResponse::eOk)
@@ -724,7 +724,7 @@ resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/not_exist");  // eNo
 resp = YOMK_SERVER_INFO_ALL();
 ```
 
-说明：FunctionPool 动态注册的函数无类型信息，内省显示为空；模块内层内省由各模块自行实现（四个内置模块均已完成，见下）。完整验证见 `Test/YomkServer/TestYomkServerInfo.cpp`。
+说明：FunctionPool 动态注册的函数无类型信息，内省显示为空；模块内层内省由各模块自行实现（四个内置模块均已完成，见下）。完整验证见 `Test/YomkServerInfo/TestYomkServerInfoLifecycle.cpp`。
 
 ### Context 模块内省
 
@@ -746,7 +746,7 @@ resp = YOMK_CONTEXT_INFO_KEY("not_exist");      // eNo
 resp = YOMK_CONTEXT_INFO_ALL();
 ```
 
-注意：`YOMK_CONTEXT_CREATE(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YOMK_CONTEXT_GET`。完整验证见 `Test/YomkServer/TestYomkContextInfo.cpp`。
+注意：`YOMK_CONTEXT_CREATE(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YOMK_CONTEXT_GET`。完整验证见 `Test/YomkContext/TestYomkContextCRUD.cpp`。
 
 ### EventLoop 模块内省
 
@@ -773,7 +773,7 @@ resp = YOMK_EVENTLOOP_INFO_LOOP("not_exist");       // eNo
 resp = YOMK_EVENTLOOP_INFO_ALL();
 ```
 
-注意：自动生成的事件 id 对用户无意义，内省不展示；内省只读，`stop()` 会清空队列，观察排队 tag 需保持循环运行。完整验证见 `Test/YomkServer/TestYomkEventLoopInfo.cpp`。
+注意：自动生成的事件 id 对用户无意义，内省不展示；内省只读，`stop()` 会清空队列，观察排队 tag 需保持循环运行。完整验证见 `Test/YomkEventLoop/TestYomkEventLoopLifecycle.cpp`。
 
 ### FunctionPool 模块内省
 
@@ -797,7 +797,7 @@ resp = YOMK_FUNCTIONPOOL_INFO_NAME("not_exist");        // eNo
 resp = YOMK_FUNCTIONPOOL_INFO_ALL();
 ```
 
-注意：内省只读；注销后函数立即从内省结果中消失。完整验证见 `Test/YomkServer/TestYomkFunctionPoolInfo.cpp`。
+注意：内省只读；注销后函数立即从内省结果中消失。完整验证见 `Test/YomkFunctionPool/TestYomkFunctionPoolLifecycle.cpp`。
 
 ### Logger 模块内省
 
@@ -805,7 +805,7 @@ resp = YOMK_FUNCTIONPOOL_INFO_ALL();
 
 ```cpp
 YOMK_FILE_LOG_CREATE("/tmp", "info_logger");                          // 创建文件日志器
-YomkAPI::CONSOLE_LOG_INFO_TAG("auto_logger", "hello");                // tag 兼容双填：按需自动创建同名控制台日志器并显示 [auto_logger]
+YOMK_INFO_TAG("auto_logger", "hello");  // tag 兼容双填：按需自动创建同名控制台日志器并显示 [auto_logger]
 
 // 日志器列表：按类型查询（返回 StringArray，行内容即纯名，字典序）
 YomkResponse resp = YOMK_LOGGER_INFO_LOGGERS("console");
@@ -1146,12 +1146,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(YomkServer REQUIRED)
-message(STATUS "YomkServer version: ${YomkServer_VERSION}")  
-message(STATUS "YomkServer include dirs: ${YomkServer_INCLUDE_DIRS}")  
-message(STATUS "YomkServer lib dir: ${YomkServer_LIB_DIR}")  
-message(STATUS "YomkServer libraries: ${YomkServer_LIBRARIES}") 
-include_directories(${YomkServer_INCLUDE_DIRS})
-link_directories(${YomkServer_LIB_DIR})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
