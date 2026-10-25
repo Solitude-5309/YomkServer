@@ -27,11 +27,15 @@ private:
     YomkResponse turnOffMonitor(YomkPkgPtr pkg);
     YomkResponse setChecker(YomkPkgPtr pkg);
     YomkResponse setMonitor(YomkPkgPtr pkg);
+    YomkResponse groups(YomkPkgPtr pkg);
     YomkResponse keys(YomkPkgPtr pkg);
     YomkResponse keyInfo(YomkPkgPtr pkg);
     YomkResponse listAll(YomkPkgPtr pkg);
 
 private:
+    // 组路由辅助：main 组成员直取；失败时 resp 携带错误响应并返回 nullptr
+    ContextGroup* findGroup(const std::string& groupName, YomkResponse& resp);
+
     // 默认组 main：成员直取，不进组表、免查找；完整承载现有 Context 全部功能
     ContextGroup m_main;
 };

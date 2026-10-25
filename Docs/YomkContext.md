@@ -40,15 +40,17 @@ YOMK_CONTEXT_SET_MONITOR("config", [](const yomk::Context &ctx) {
 YOMK_CONTEXT_ON_MONITOR();  // 开启全局监控；YOMK_CONTEXT_OFF_MONITOR() 关闭（monitor 保留但不执行）
 
 // 5. 运行期自省与销毁
-YOMK_CONTEXT_INFO_KEYS();        // 全部键名清单
-YOMK_CONTEXT_INFO_KEY("config"); // 单键元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"）
-YOMK_CONTEXT_INFO_ALL();         // 全量键元信息：ContextKeyInfoList 结构化包
+YOMK_CONTEXT_INFO_KEYS();        // 组内全部键名清单（缺省 main 组）
+YOMK_CONTEXT_INFO_KEY("config"); // 单键元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"；含所属组 m_group）
+YOMK_CONTEXT_INFO_GROUPS();      // 全部组名清单（StringArray）
+YOMK_CONTEXT_INFO_ALL();         // 跨组聚合：ContextGroupInfoList 两层结构（组名 + 该组全部键元信息）
 YOMK_CONTEXT_DESTROY("config");  // 删除键
 ```
 
 ## 注意事项
 
 - **创建与设置**：key 已存在返回 `eNo=1` "key already exists"；value 为空返回 `eNo=1` "value is empty"；值类型须与现值一致，否则 `eNo` "context type not match"。
+- **组名约定**：所有 Context API 的最后一个参数为组名，缺省 `"main"`；键所属组随 `ContextKeyInfo.m_group` 一并内省返回。空组名返回 `eNo=1` "group name is empty"，非 main 组在自定义组能力上线前一律返回 `eNo=1` "group not exist"。
 - **读取快照勿原地修改**：`YOMK_CONTEXT_GET` 返回只读快照，改动请构造新对象再 `YOMK_CONTEXT_SET`，勿原地修改（否则与并发读竞争、可能崩溃）。
 - **Checker 生效条件**：全局开关 ON 且该 key 已设置时才生效；在写锁内门控，回调内重入 set 会死锁。
 - **Monitor 执行语义**：`async=false` 锁外即时执行，`async=true` 单线程池按提交序送达；仅通知发生了一次 set，并回传该次 set 的键值快照，不保证快照实时性。
@@ -57,7 +59,7 @@ YOMK_CONTEXT_DESTROY("config");  // 删除键
 
 ## 内部结构
 
-Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持。`YomkContext` 服务本身仅持默认组成员 `m_main`（组名 "main"，成员直取免查找）并负责 13 个端点的装配与转发；多组（自定义组）能力在后续迭代中扩展。
+Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持，内省快照携带所属组名（`ContextKeyInfo.m_group`）。`YomkContext` 服务本身持默认组成员 `m_main`（组名 "main"，成员直取免查找）并负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `findGroup` 定位 → 组实例委托"，空组名返回 `eNo "group name is empty"`、非 main 组名返回 `eNo "group not exist"`；多组（自定义组 map）能力在后续迭代中扩展。
 
 ## 完整示例
 

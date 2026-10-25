@@ -163,7 +163,7 @@ static void logVerify(const std::string& text)
     YOMK_INFO_TAG("arm.demo", "[验证] " + text);
 }
 
-// 自省结果展开：单键 ContextKeyInfo 的全部字段逐行展示（键名行 + 4 个字段行），
+// 自省结果展开：单键 ContextKeyInfo 的全部字段逐行展示（键名行 + 5 个字段行），
 // INFO_KEY 与 INFO_ALL 共用；紧随其结果行输出，键名行以 "-" 起头、字段行缩进对齐
 static void logKeyInfo(const std::string& api, const yomk::ContextKeyInfo& info)
 {
@@ -186,6 +186,10 @@ static void logKeyInfo(const std::string& api, const yomk::ContextKeyInfo& info)
 
     oss.str("");
     oss << "[" << api << "]     async: " << info.m_asyncMonitorCount;
+    YOMK_INFO_TAG("arm.demo", oss.str());
+
+    oss.str("");
+    oss << "[" << api << "]     group: " << info.m_group;
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
@@ -553,14 +557,17 @@ static void showArmDashboard()
     logAction("查询未注册键", "INFO_KEY arm.ghost", [&] { return YOMK_CONTEXT_INFO_KEY("arm.ghost"); });
     logVerify("查询未注册的键 -> eNo(key is not exist)");
 
-    // 全量导出（ContextKeyInfoList 结构化包），逐键展开全部字段
+    // 全量导出（组 → 键元信息两层结构化包），逐组逐键展开全部字段
     YomkResponse allResp = logAction("全量导出键值表", "INFO_ALL", [&] { return YOMK_CONTEXT_INFO_ALL(); });
-    YomkUnPackPkg(allResp.m_data, ContextKeyInfoList, allArr);
+    YomkUnPackPkg(allResp.m_data, ContextGroupInfoList, allArr);
     if (allArr)
     {
-        for (const auto& info : allArr->d)
+        for (const auto& group : allArr->d)
         {
-            logKeyInfo("INFO_ALL", info);
+            for (const auto& info : group.m_keys)
+            {
+                logKeyInfo("INFO_ALL", info);
+            }
         }
     }
 }

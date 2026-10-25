@@ -3,7 +3,7 @@
  * @brief YomkContext 服务生命周期与异常安全白盒测试（Context 模块 MC3）
  *
  * 覆盖内容：
- * 1. init 效果（内省）：内置 /YomkContext 注册、init 装配 13 个功能函数
+ * 1. init 效果（内省）：内置 /YomkContext 注册、init 装配 14 个功能函数
  * 2. 基线运行：异步 monitor 池正常工作
  * 3. delService 触发 deinit + 排空：删除前投递的异步 monitor 全部排空执行
  * 4. 删除后不可路由 + 重复删除契约：请求返回 service not found、重复删除返回 -1
@@ -89,7 +89,7 @@ int main()
         CHECK(hasService(names, "/YomkContext"), "内置 /YomkContext 已注册");
 
         auto infos = YOMK_SERVER_PTR->serviceFuncInfos("/YomkContext");
-        CHECK(infos.size() == 13, "init 装配 13 个功能函数");
+        CHECK(infos.size() == 14, "init 装配 14 个功能函数");
     }
 
     // ============ Section 2: 基线运行（异步 monitor 池工作）============
@@ -153,7 +153,7 @@ int main()
         CHECK(reAdd == 0, "重新注册 YomkContext 返回 0");
 
         auto infos = YOMK_SERVER_PTR->serviceFuncInfos("/YomkContext");
-        CHECK(infos.size() == 13, "重新注册后 init 重新装配 13 个功能函数");
+        CHECK(infos.size() == 14, "重新注册后 init 重新装配 14 个功能函数");
 
         YOMK_CONTEXT_ON_MONITOR();
         auto cr = YOMK_CONTEXT_CREATE("life_rebuild", YomkMkPtr(String, std::string("r0")));

@@ -321,10 +321,11 @@ int ContextGroup::keyInfo(const std::string& key, yomk::ContextKeyInfo& info)
             ++info.m_asyncMonitorCount;
         }
     }
+    info.m_group = m_name;
     return 0;
 }
 
-// 内省：全量键元信息快照，锁内构造、值返回
+// 内省：全量键元信息快照，锁内构造、值返回（快照携带所属组名）
 std::vector<yomk::ContextKeyInfo> ContextGroup::listAll()
 {
     std::vector<yomk::ContextKeyInfo> infos;
@@ -346,6 +347,7 @@ std::vector<yomk::ContextKeyInfo> ContextGroup::listAll()
                     ++info.m_asyncMonitorCount;
                 }
             }
+            info.m_group = m_name;
             infos.push_back(std::move(info));
         }
     }

@@ -196,6 +196,7 @@ int main()
         CHECK(info && !info->d.m_checkerOn, "keyInfo 字段 m_checkerOn 为 false");
         CHECK(info && info->d.m_monitorCount == 0 && info->d.m_asyncMonitorCount == 0,
               "keyInfo 字段 monitor 计数为 0");
+        CHECK(info && info->d.m_group == "main", "keyInfo 字段 m_group 一致");
     }
 
     // keyInfo：空 key
@@ -212,23 +213,28 @@ int main()
         CHECK(resp.m_msg == "key is not exist", "keyInfo 不存在 key 错误消息一致");
     }
 
-    // listAll：包含所有 key 信息（结构化 ContextKeyInfoList，m_msg 恒 "ok"）
+    // listAll：跨组聚合（组 → 键元信息两层结构化包，m_msg 恒 "ok"）
     {
         auto resp = YOMK_CONTEXT_INFO_ALL();
         CHECK(resp.m_status == YomkResponse::eOk, "listAll 返回 eOk");
         CHECK(resp.m_msg == "ok", "listAll 成功消息恒为 ok");
-        YomkUnPackPkg(resp.m_data, ContextKeyInfoList, arr);
-        CHECK(arr != nullptr, "listAll 数据为 ContextKeyInfoList");
-        CHECK(arr && arr->d.size() == 2, "listAll 返回 2 个键信息");
-        // m_contexts 为 std::map，中序遍历字典序：int_key < str_key；逐字段断言（均未挂 checker/monitor）
-        CHECK(arr && arr->d[0].m_key == "int_key" && arr->d[1].m_key == "str_key",
+        YomkUnPackPkg(resp.m_data, ContextGroupInfoList, arr);
+        CHECK(arr != nullptr, "listAll 数据为 ContextGroupInfoList");
+        CHECK(arr && arr->d.size() == 1, "listAll 返回 1 个组信息");
+        CHECK(arr && arr->d[0].m_groupName == "main", "listAll 组名为 main");
+        // 组内 m_keys 为 std::map 快照，中序遍历字典序：int_key < str_key；逐字段断言（均未挂 checker/monitor）
+        CHECK(arr && arr->d[0].m_keys.size() == 2, "listAll 返回 2 个键信息");
+        CHECK(arr && arr->d[0].m_keys[0].m_key == "int_key" && arr->d[0].m_keys[1].m_key == "str_key",
               "listAll 键序为 map 字典序（int_key, str_key）");
-        CHECK(arr && arr->d[0].m_typeName == "Int32" && arr->d[1].m_typeName == "String",
+        CHECK(arr && arr->d[0].m_keys[0].m_typeName == "Int32" && arr->d[0].m_keys[1].m_typeName == "String",
               "listAll 类型名一致");
-        CHECK(arr && !arr->d[0].m_checkerOn && !arr->d[1].m_checkerOn, "listAll checker 状态为关");
-        CHECK(arr && arr->d[0].m_monitorCount == 0 && arr->d[1].m_monitorCount == 0,
+        CHECK(arr && arr->d[0].m_keys[0].m_group == "main" && arr->d[0].m_keys[1].m_group == "main",
+              "listAll 键所属组一致");
+        CHECK(arr && !arr->d[0].m_keys[0].m_checkerOn && !arr->d[0].m_keys[1].m_checkerOn,
+              "listAll checker 状态为关");
+        CHECK(arr && arr->d[0].m_keys[0].m_monitorCount == 0 && arr->d[0].m_keys[1].m_monitorCount == 0,
               "listAll monitor 计数为 0");
-        CHECK(arr && arr->d[0].m_asyncMonitorCount == 0 && arr->d[1].m_asyncMonitorCount == 0,
+        CHECK(arr && arr->d[0].m_keys[0].m_asyncMonitorCount == 0 && arr->d[0].m_keys[1].m_asyncMonitorCount == 0,
               "listAll async monitor 计数为 0");
     }
 

@@ -321,19 +321,21 @@ public:
     }
     // CONTEXT_API
 public:
-    // 创建上下文键值
-    static YomkResponse CONTEXT_CREATE(const std::string& ctxName, YomkPkgPtr ctx)
+    // 创建上下文键值（groupName 缺省 "main"；组名约定永远是 API 最后一个参数，下同）
+    static YomkResponse CONTEXT_CREATE(
+        const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/create", YomkMkPtr(Context, yomk::Context{ctxName, ctx}));
+        return request("/YomkContext/create", YomkMkPtr(Context, yomk::Context{ctxName, ctx, groupName}));
     }
     // 获取上下文值（只读快照），改动请构造新对象再 CONTEXT_SET，勿原地修改（否则与并发读竞争、可能崩溃）
     template <typename T>
-    static std::shared_ptr<T> CONTEXT_GET(
-        const std::string& msgName, const std::string& ctxName, std::shared_ptr<T> ctxDefault)
+    static std::shared_ptr<T> CONTEXT_GET(const std::string& msgName, const std::string& ctxName,
+        std::shared_ptr<T> ctxDefault, const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(ctxDefault);
-        YomkResponse response = request("/YomkContext/get", YomkMkPtr(Context, yomk::Context{ctxName, ctxDefault}));
+        YomkResponse response =
+            request("/YomkContext/get", YomkMkPtr(Context, yomk::Context{ctxName, ctxDefault, groupName}));
         if (response.m_status == YomkResponse::eOk)
         {
             YomkUnPackPkgT(response.m_data, msgName, T, ctxData);
@@ -349,66 +351,76 @@ public:
         }
     }
     // 设置上下文值（整体替换）
-    static YomkResponse CONTEXT_SET(const std::string& ctxName, YomkPkgPtr ctx)
+    static YomkResponse CONTEXT_SET(
+        const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/set", YomkMkPtr(Context, yomk::Context{ctxName, ctx}));
+        return request("/YomkContext/set", YomkMkPtr(Context, yomk::Context{ctxName, ctx, groupName}));
     }
     // 开关上下文校验门控
-    static YomkResponse CONTEXT_ON_CHECKER()
+    static YomkResponse CONTEXT_ON_CHECKER(const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/turn_on_checker", nullptr);
+        return request("/YomkContext/turn_on_checker", YomkMkPtr(String, groupName));
     }
-    static YomkResponse CONTEXT_OFF_CHECKER()
+    static YomkResponse CONTEXT_OFF_CHECKER(const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/turn_off_checker", nullptr);
+        return request("/YomkContext/turn_off_checker", YomkMkPtr(String, groupName));
     }
     // 设置上下文校验门控回调
-    static YomkResponse CONTEXT_SET_CHECKER(const std::string& ctxName, YomkContextCheckFunc checker)
-    {
-        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/set_checker", YomkMkPtr(ContextChecker, yomk::ContextChecker{ctxName, checker}));
-    }
-    // 开关上下文变更监听器
-    static YomkResponse CONTEXT_ON_MONITOR()
-    {
-        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/turn_on_monitor", nullptr);
-    }
-    static YomkResponse CONTEXT_OFF_MONITOR()
-    {
-        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/turn_off_monitor", nullptr);
-    }
-    // 设置上下文变更监听回调（async=true 为异步通知），仅通知发生了一次 set 事件，并回传该次 set 的键值快照——不保证快照实时性；顺序上异步恒按 set 提交序送达、同步在并发 set 下不保证跨线程序。
-    static YomkResponse CONTEXT_SET_MONITOR(
-        const std::string& ctxName, YomkContextMonitorFunc monitor, bool async = false)
+    static YomkResponse CONTEXT_SET_CHECKER(
+        const std::string& ctxName, YomkContextCheckFunc checker, const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request(
-            "/YomkContext/set_monitor", YomkMkPtr(ContextMonitor, yomk::ContextMonitor{ctxName, monitor, async}));
+            "/YomkContext/set_checker", YomkMkPtr(ContextChecker, yomk::ContextChecker{ctxName, checker, groupName}));
+    }
+    // 开关上下文变更监听器
+    static YomkResponse CONTEXT_ON_MONITOR(const std::string& groupName = "main")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkContext/turn_on_monitor", YomkMkPtr(String, groupName));
+    }
+    static YomkResponse CONTEXT_OFF_MONITOR(const std::string& groupName = "main")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkContext/turn_off_monitor", YomkMkPtr(String, groupName));
+    }
+    // 设置上下文变更监听回调（async=true 为异步通知），仅通知发生了一次 set 事件，并回传该次 set 的键值快照——不保证快照实时性；顺序上异步恒按 set 提交序送达、同步在并发 set 下不保证跨线程序。
+    static YomkResponse CONTEXT_SET_MONITOR(const std::string& ctxName, YomkContextMonitorFunc monitor,
+        bool async = false, const std::string& groupName = "main")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkContext/set_monitor",
+            YomkMkPtr(ContextMonitor, yomk::ContextMonitor{ctxName, monitor, async, groupName}));
     }
     // 销毁指定上下文键
-    static YomkResponse CONTEXT_DESTROY(const std::string& ctxName)
+    static YomkResponse CONTEXT_DESTROY(const std::string& ctxName, const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/destroy", YomkMkPtr(String, ctxName));
+        return request(
+            "/YomkContext/destroy", YomkMkPtr(ContextGroupKey, yomk::ContextGroupKey{groupName, ctxName}));
     }
     // 获取全部上下文键名
-    static YomkResponse CONTEXT_INFO_KEYS()
+    static YomkResponse CONTEXT_INFO_KEYS(const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/keys", nullptr);
+        return request("/YomkContext/keys", YomkMkPtr(String, groupName));
     }
     // 查询指定上下文键状态
-    static YomkResponse CONTEXT_INFO_KEY(const std::string& ctxName)
+    static YomkResponse CONTEXT_INFO_KEY(const std::string& ctxName, const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/key", YomkMkPtr(String, ctxName));
+        return request("/YomkContext/key", YomkMkPtr(ContextGroupKey, yomk::ContextGroupKey{groupName, ctxName}));
     }
-    // 查询全部上下文键及其数据类型
+    // 查询全部组名清单（返回 StringArray，对齐 EVENTLOOP_INFO_LOOPS 形态）
+    static YomkResponse CONTEXT_INFO_GROUPS()
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkContext/groups", nullptr);
+    }
+    // 查询全部组及其全部键的内省元信息（跨组聚合：返回 ContextGroupInfoList，层级为组 → 键元信息）
     static YomkResponse CONTEXT_INFO_ALL()
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
@@ -643,15 +655,16 @@ private:
 #define YOMK_CONTEXT_CREATE(...) YomkAPI::CONTEXT_CREATE(__VA_ARGS__)
 #define YOMK_CONTEXT_GET(MsgName, ...) YomkAPI::CONTEXT_GET<Yomk(MsgName)>(#MsgName, __VA_ARGS__)
 #define YOMK_CONTEXT_SET(...) YomkAPI::CONTEXT_SET(__VA_ARGS__)
-#define YOMK_CONTEXT_ON_CHECKER() YomkAPI::CONTEXT_ON_CHECKER()
-#define YOMK_CONTEXT_OFF_CHECKER() YomkAPI::CONTEXT_OFF_CHECKER()
+#define YOMK_CONTEXT_ON_CHECKER(...) YomkAPI::CONTEXT_ON_CHECKER(__VA_ARGS__)
+#define YOMK_CONTEXT_OFF_CHECKER(...) YomkAPI::CONTEXT_OFF_CHECKER(__VA_ARGS__)
 #define YOMK_CONTEXT_SET_CHECKER(...) YomkAPI::CONTEXT_SET_CHECKER(__VA_ARGS__)
-#define YOMK_CONTEXT_ON_MONITOR() YomkAPI::CONTEXT_ON_MONITOR()
-#define YOMK_CONTEXT_OFF_MONITOR() YomkAPI::CONTEXT_OFF_MONITOR()
+#define YOMK_CONTEXT_ON_MONITOR(...) YomkAPI::CONTEXT_ON_MONITOR(__VA_ARGS__)
+#define YOMK_CONTEXT_OFF_MONITOR(...) YomkAPI::CONTEXT_OFF_MONITOR(__VA_ARGS__)
 #define YOMK_CONTEXT_SET_MONITOR(...) YomkAPI::CONTEXT_SET_MONITOR(__VA_ARGS__)
 #define YOMK_CONTEXT_DESTROY(...) YomkAPI::CONTEXT_DESTROY(__VA_ARGS__)
-#define YOMK_CONTEXT_INFO_KEYS() YomkAPI::CONTEXT_INFO_KEYS()
+#define YOMK_CONTEXT_INFO_KEYS(...) YomkAPI::CONTEXT_INFO_KEYS(__VA_ARGS__)
 #define YOMK_CONTEXT_INFO_KEY(...) YomkAPI::CONTEXT_INFO_KEY(__VA_ARGS__)
+#define YOMK_CONTEXT_INFO_GROUPS() YomkAPI::CONTEXT_INFO_GROUPS()
 #define YOMK_CONTEXT_INFO_ALL() YomkAPI::CONTEXT_INFO_ALL()
 #define YOMK_EVENTLOOP_START_SELECT(_1, _2, _3, NAME, ...) NAME
 #define YOMK_EVENTLOOP_START(...)                                                                                    \

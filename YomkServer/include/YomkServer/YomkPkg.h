@@ -255,9 +255,10 @@ struct Context
 {
     std::string m_key;
     YomkPkgPtr m_value;
+    std::string m_group = "main";  // key 所属组名（缺省 main）
 };
 
-// Context 键内省元信息（CONTEXT_INFO_KEY 返回数据）
+// Context 键内省元信息（CONTEXT_INFO_KEY 单查返回数据；同时是 ContextGroupInfo.m_keys 清单元素）
 struct ContextKeyInfo
 {
     std::string m_key;                    // 键名
@@ -265,6 +266,7 @@ struct ContextKeyInfo
     bool m_checkerOn = false;             // 门控是否开启
     std::size_t m_monitorCount = 0;       // monitor 总数
     std::size_t m_asyncMonitorCount = 0;  // 其中 async monitor 数
+    std::string m_group = "main";         // key 所属组名
 };
 
 struct ContextChecker
@@ -276,6 +278,7 @@ struct ContextChecker
     };
     std::string m_key;
     std::function<ECheckStatus(const yomk::Context& ctx)> m_checkFunc;
+    std::string m_group = "main";  // 目标 key 所属组名（缺省 main）
 };
 
 struct ContextMonitor
@@ -283,6 +286,21 @@ struct ContextMonitor
     std::string m_key;
     std::function<void(Context ctx)> m_contextMonitorFunc;
     bool m_asyncMonitor = false;
+    std::string m_group = "main";  // 目标 key 所属组名（缺省 main）
+};
+
+// Context 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键）
+struct ContextGroupKey
+{
+    std::string m_group = "main";  // 组名（缺省 main）
+    std::string m_key;             // 键名
+};
+
+// Context 组级内省条目（CONTEXT_INFO_ALL 返回数据元素：组名 + 该组下全部键元信息，对齐 ServerServiceInfo）
+struct ContextGroupInfo
+{
+    std::string m_groupName;                   // 组名
+    std::vector<ContextKeyInfo> m_keys;        // 该组全部键的内省元信息（map 字典序）
 };
 
 // 服务级内省条目（SERVER_INFO_ALL 返回数据元素：服务名 + 该服务注册的函数元信息列表）
@@ -318,9 +336,15 @@ YomkMsg(LoggerInfo, LoggerInfo, d)
 // Logger 全量内省（LOGGER_INFO_ALL 返回数据；元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段）
 YomkMsg(std::vector<yomk::LoggerInfo>, LoggerInfoList, d)
 YomkMsg(Context, Context, d)
+// Context 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键，组名缺省 main）
+YomkMsg(ContextGroupKey, ContextGroupKey, d)
 YomkMsg(ContextKeyInfo, ContextKeyInfo, d)
-// Context 全量键内省（CONTEXT_INFO_ALL 返回数据）
+// Context 键元信息清单（ContextGroupInfo.m_keys 的元素类型）
 YomkMsg(std::vector<yomk::ContextKeyInfo>, ContextKeyInfoList, d)
+// Context 组级内省条目（ContextGroupInfoList 元素；层级为组 → 键元信息）
+YomkMsg(ContextGroupInfo, ContextGroupInfo, d)
+// Context 组级全量内省（CONTEXT_INFO_ALL 返回数据）
+YomkMsg(std::vector<yomk::ContextGroupInfo>, ContextGroupInfoList, d)
 // ServerInfo 全量拓扑内省（SERVER_INFO_ALL 返回数据；层级为服务 → 函数元信息）
 YomkMsg(std::vector<yomk::ServerServiceInfo>, ServerServiceInfoList, d)
 YomkMsg(ContextChecker, ContextChecker, d)
