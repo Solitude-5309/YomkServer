@@ -1,286 +1,509 @@
 /**
  * @file ExampleYomkServerInfo.cpp
- * @brief YomkServerInfo 服务自省快速上手示例（面向初学者）
+ * @brief YomkServerInfo 服务自省示例：机械臂产线背景的 6 个场景小示例（面向初学者）
  *
- * 自省即"运行期问框架"：/YomkServerInfo 是随 YOMK_INIT 自动启动的内置服务，
- * 提供服务清单、功能函数清单、单函数元信息与全量拓扑四类查询——调试与运维
- * 时用它确认"框架里现在有什么、每个功能函数期望什么消息类型"。
+ * 服务自省即"运行期问框架"：/YomkServerInfo 是随 YOMK_INIT 自动启动的内置服务，
+ * 提供服务清单、指定服务的功能函数清单、单函数元信息与全量拓扑四类查询——
+ * 调试与运维时用它确认"产线上现在有哪些工位（服务）、每个功能函数期望什么
+ * 消息类型"，无需翻源码即可掌握调用拓扑。
  *
- * 本示例按 7 个步骤演示全部用法。每一步先打印横幅说明
- * "接下来做什么、预期看到什么"，再调用 API，随后用返回值与自省结果
- * 自证行为——只读运行输出即可明白每个 API 调用发生了什么。
+ * 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 showXXX 小函数，
+ * 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
+ * 全部 4 个 YOMK_SERVER_INFO_* 用户宏无一遗漏（服务注册/请求/注销/关闭
+ * 作为自省对象的素材接口随之演示）。
  *
- * 步骤总览：
- * 0. 框架就绪（5 个内置服务随 YOMK_INIT 启动，/YomkServerInfo 即其中之一）
- * 1. 注册演示服务（NEW_SERVICE 后清单多一项；REQUEST 证明注册即可调用）
- * 2. 函数清单（INFO_FUNCTIONS：2 参 vs 4 参注册的元数据差异 / 空清单分支）
- * 3. 单查元信息（INFO_FUNCTION 命中契约：m_msg=期望消息类型名、data 段=函数说明；4 个 eNo 分支）
- * 4. 全量拓扑（INFO_ALL：ServerServiceInfoList 结构化层级包）
- * 5. 运行期实时视图（DEL_SERVICE 后清单与拓扑立即变化）
- * 6. 优雅关闭（SHUTDOWN 后自省返回 eInvalid，框架已关闭是普通返回值）
+ * 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.station
+ * 装配工位函数体），日志流即执行序、顺着读就能明白：每个操作先打"开始执行
+ * xxx"——操作是用户视角的业务动作，随后结果行标注本次接口调用；REQUEST
+ * 在调用方线程同步执行工位函数，arm.station 日志被夹在开始行与结果行之间，
+ * 归属一目了然。
  *
- * 涉及的 API 宏（YomkAPI.h）：
- *   YOMK_INIT / YOMK_SHUTDOWN                   框架生命周期
- *   YOMK_NEW_SERVICE(T)                         创建并注册服务
- *   YOMK_REQUEST                                同步请求（自证注册的服务可用）
- *   YOMK_DEL_SERVICE(name)                      注销服务（删除即从拓扑消失）
- *   YOMK_SERVER_INFO_SERVICES()                 自省：全部服务名清单
- *   YOMK_SERVER_INFO_FUNCTIONS("/服务名")       自省：指定服务的功能函数清单（FuncInfoList 结构化）
- *   YOMK_SERVER_INFO_FUNCTION("/服务名/函数名") 自省：单个功能函数元信息
- *   YOMK_SERVER_INFO_ALL()                      自省：框架全量服务拓扑
- *   YomkInstallFunc(2/3/4 参)                   服务侧注册（3 参声明期望消息类型，4 参附函数说明）
+ * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
  *
- * 注：日志/上下文/事件循环/函数池各内置模块另有模块级自省 API
- * （YOMK_LOGGER_INFO_* 等），见 Docs/YomkServerInfo.md"说明"一节。
+ * 场景 1 showArmPlantRoster     [INFO_SERVICES / NEW_SERVICE / REQUEST]
+ *        开班点名与工位上线：内置服务清单打底，NEW_SERVICE 注册装配工位后
+ *        清单立即多一项；REQUEST 试运行 /report 与 /quality_check 证明注册
+ *        即可调用（工位函数体 arm.station 日志夹在开始行与结果行之间）。
+ * 场景 2 showArmStationFunctions [INFO_FUNCTIONS]
+ *        工位职能清单：FuncInfoList 结构化清单（4 参注册的 /quality_check
+ *        带 QualityCheckReq 元数据与函数说明，2 参注册的 /report 双空）；
+ *        不存在的工位返回空清单 eOk，空服务名返回 eInvalid。
+ * 场景 3 showArmFuncLookup      [INFO_FUNCTION]
+ *        函数名片单查：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，
+ *        m_msgName=期望消息类型名、m_description=函数说明）；4 种坏 URL 均
+ *        返回 eNo（url 解析失败 / 目标不存在），是普通返回值不崩溃。
+ * 场景 4 showArmPlantTopology   [INFO_ALL]
+ *        全厂拓扑总览：ServerServiceInfoList 层级包逐服务逐函数导出——
+ *        排障时一次看清"哪些工位在册、各自能干什么"。
+ * 场景 5 showArmLiveView        [INFO_SERVICES / INFO_ALL / DEL_SERVICE]
+ *        工位下线实时视图：DEL_SERVICE 后清单与拓扑立即少一项（无需重启），
+ *        注销不存在的服务返回 -1——自省读的是运行期服务表。
+ * 场景 6 showArmPowerOff        [SHUTDOWN / INFO_SERVICES]
+ *        收班断电：SHUTDOWN 排空在途请求并释放全部服务，关闭后任何自省调用
+ *        统一返回 eInvalid "YomkServer is not init"；日志宏随之静默——
+ *        静默即演示效果，收班预告已提前说明，示例日志到此为止。
+ *
+ * 演示服务规划（机械臂产线装配工位，跨场景流转）：
+ *   /ArmStation              NEW_SERVICE 注册（场景 1）、DEL_SERVICE 下线（场景 5）
+ *   /report        2 参注册  工位状态上报（入参 String 状态文本，回执确认；无元数据）
+ *   /quality_check 4 参注册  质量抽检（入参 QualityCheckReq；声明期望消息类型
+ *                            与函数说明，供场景 2/3 的自省识别）
  */
 
 #include <cstdint>
-#include <iostream>
+#include <functional>
+#include <sstream>
 #include <string>
+#include <vector>
 
 #include "YomkAPI.h"
 
 // ---------------------------------------------------------------------------
-// 自省素材：一个最小演示服务。2 参注册的 /hi 无元数据，4 参注册的 /sum
-// 声明期望消息类型 SumReq 并附函数说明——差异将由步骤2/3 的自省结果直接呈现。
+// 辅助输出：全部走 YomkLogger 控制台日志（YOMK_INFO_TAG 等），无 std::cout。
+// 日志是最终面向用户的输出：每条自包含（谁+做什么+结果，关键数据随行）。
+// 格式敏感的行先用 ostringstream 拼好再单参输出，避免多参数自动空格
+// 把 "ret=0" 拆成 "ret= 0"。
 // ---------------------------------------------------------------------------
 
-// 加法请求：此处仅作 /sum 的期望消息类型元数据，供自省识别
-struct SumReq
+// 场景横幅：编号 + 标题 + 涉及接口，随后一行场景背景；横幅前留一个空行分隔场景
+static void logScene(int n, const std::string& title, const std::string& apis, const std::string& explain)
 {
-    std::int32_t a;
-    std::int32_t b;
-};
-
-YomkMsg(SumReq, SumReq, req)
-
-class InfoDemoService : public YomkService
-{
-public:
-    explicit InfoDemoService(YomkServer* server) : YomkService(server)
-    {
-        name("/InfoDemoService");  // 服务名：URL 前缀，必须 / 开头且全局唯一
-    }
-
-    int init() override
-    {
-        // 2 参注册：无元数据；4 参注册：声明 /sum 期望 SumReq 并附函数说明，供自省识别
-        YomkInstallFunc("/hi", InfoDemoService::hi);
-        YomkInstallFunc("/sum", InfoDemoService::sum, SumReq, "计算两整数之和");
-        YOMK_INFO_TAG("svc.info", "init: install /hi (no meta), /sum [SumReq] + description");
-        return 0;
-    }
-
-    // 问好：收到字符串回显进 m_msg
-    YomkResponse hi(YomkPkgPtr pkg)
-    {
-        YomkUnPackPkgResponse(pkg, String, str);
-        if (!str)
-        {
-            return {YomkResponse::eNo, "pkg is not String"};
-        }
-        YOMK_INFO_TAG("svc.info", name(), " hi got: ", str->d);
-        return {YomkResponse::eOk, "hi " + str->d};
-    }
-
-    // 加法：解包 SumReq，把结果放进 m_msg
-    YomkResponse sum(YomkPkgPtr pkg)
-    {
-        YomkUnPackPkgResponse(pkg, SumReq, data);
-        if (!data)
-        {
-            return {YomkResponse::eNo, "pkg is not SumReq"};
-        }
-        YOMK_INFO_TAG("svc.info", name(), " sum got: ", data->req.a, " + ", data->req.b);
-        return {YomkResponse::eOk, "sum = " + std::to_string(data->req.a + data->req.b)};
-    }
-};
-
-// ---------------------------------------------------------------------------
-// 辅助输出：横幅与返回值打印。
-// 横幅走 std::cout 而非框架日志，保证叙事在任何日志开关状态下可见。
-// ---------------------------------------------------------------------------
-
-static void printStep(int n, const std::string& title, const std::string& explain)
-{
-    std::cout << "\n====== 步骤" << n << "：" << title << " ======" << std::endl;
-    std::cout << ">> " << explain << std::endl;
+    YOMK_INFO_TAG("arm.demo", "");
+    std::ostringstream oss;
+    oss << "========== 场景 " << n << "：" << title << "（" << apis << "）==========";
+    YOMK_INFO_TAG("arm.demo", oss.str());
+    YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
 }
 
-// 打印 YomkResponse 三要素：status/msg/m_data，展示调用契约
-static void printResp(const std::string& prefix, const YomkResponse& resp)
+// API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
+// 清单类返回挂 String data 时随行展示；结构化包（StringArray/FuncInfo/FuncInfoList/
+// ServerServiceInfoList）形态各异，解包类型不匹配时静默不展示
+// status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
+static void logResp(const std::string& api, const YomkResponse& resp)
 {
-    // 三态：eOk=0 成功；eNo=1 目标不存在或被拒绝；eInvalid=-1 参数无效或未初始化
-    std::cout << "[" << prefix << "] status=" << resp.m_status << ", msg=\"" << resp.m_msg << "\"";
-    if (resp.m_data)
+    std::ostringstream oss;
+    oss << "[" << api << "] status=" << resp.m_status;
+    if (resp.m_status == YomkResponse::eOk)
+    {
+        oss << "(eOk 成功)";
+    }
+    else if (resp.m_status == YomkResponse::eNo)
+    {
+        oss << "(eNo 拒绝或不存在)";
+    }
+    else
+    {
+        oss << "(eInvalid 未初始化或参数无效)";
+    }
+    oss << ", msg=\"" << resp.m_msg << "\"";
+    if (resp.m_status == YomkResponse::eOk && resp.m_data)
     {
         YomkUnPackPkg(resp.m_data, String, data);
         if (data)
         {
-            std::cout << ", data=\"" << data->d << "\"";
+            oss << ", data=\"" << data->d << "\"";
         }
     }
-    std::cout << std::endl;
+    YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
-// 解包并打印自省返回的 StringArray（SERVICES 的返回形态）
-static void dumpLines(const std::string& prefix, const YomkResponse& resp)
+// 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+// 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
+// 结果行标注本次接口调用；REQUEST 在调用方线程同步执行工位函数，arm.station
+// 日志被夹在开始行与结果行之间，归属一目了然，读者顺着日志读即可理解
+static YomkResponse logAction(const std::string& op, const std::string& api, const std::function<YomkResponse()>& call)
 {
-    printResp(prefix, resp);
-    YomkUnPackPkg(resp.m_data, StringArray, arr);
-    if (!arr)
-    {
-        std::cout << ">> (no data)" << std::endl;
-        return;
-    }
-    for (const auto& line : arr->d)
-    {
-        std::cout << ">> | " << line << std::endl;
-    }
+    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    YomkResponse resp = call();
+    logResp(api, resp);
+    return resp;
 }
 
-// 解包并打印函数清单（INFO_FUNCTIONS 返回 FuncInfoList 结构化包：m_funcName/m_msgName/m_description；
-// 框架只返回结构化数据，显示格式由用户定义，此处仅为示范）
-static void dumpFuncInfoList(const std::string& prefix, const YomkResponse& resp)
+// 操作开始行（返回值需要定制展开的动作，如清单/拓扑/名片类查询）：
+// 由调用处随后打结果行
+static void logAction(const std::string& op)
 {
-    printResp(prefix, resp);
-    YomkUnPackPkg(resp.m_data, FuncInfoList, listPkg);
-    if (!listPkg)
-    {
-        std::cout << ">> (no data)" << std::endl;
-        return;
-    }
-    for (const auto& func : listPkg->d)
-    {
-        std::cout << ">> | " << func.m_funcName << " msg=" << func.m_msgName << " desc=" << func.m_description
-                  << std::endl;
-    }
+    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
 }
 
-// 解包并打印全量拓扑（INFO_ALL 返回 ServerServiceInfoList 层级包：服务 → 函数元信息；
-// 框架只返回结构化数据，显示格式由用户定义，此处仅为示范）
-static void dumpServerAll(const std::string& prefix, const YomkResponse& resp)
+// 操作日志（int 返回版）：NEW_SERVICE/DEL_SERVICE 等框架管理接口返回 int
+// （0=成功，-1=失败），先打开始行再调用，结果行标注返回值
+static void logActionInt(const std::string& op, const std::string& api, const std::function<int()>& call)
 {
-    printResp(prefix, resp);
+    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    int ret = call();
+    std::ostringstream oss;
+    oss << "[" << api << "] ret=" << ret << (ret == 0 ? "(成功)" : "(失败)");
+    YOMK_INFO_TAG("arm.demo", oss.str());
+}
+
+// 服务清单行：StringArray 逐行展示（" - " 无序列表风格）
+static void logStringLine(const std::string& api, const std::string& line)
+{
+    YOMK_INFO_TAG("arm.demo", "[" + api + "] - " + line);
+}
+
+// 自省结果展开：单个函数 FuncInfo 的全部字段逐行展示（函数名行 + 字段行），
+// FUNCTIONS 清单与 FUNCTION 单查共用；紧随其结果行输出，函数名行以 "-" 起头、
+// 字段行缩进对齐，元数据为空时兜底"(未指定)"
+static void logFuncInfo(const std::string& api, const yomk::FuncInfo& info)
+{
+    std::ostringstream oss;
+    oss << "[" << api << "] - " << info.m_funcName;
+    YOMK_INFO_TAG("arm.demo", oss.str());
+
+    oss.str("");
+    oss << "[" << api << "]     msgName: " << (info.m_msgName.empty() ? "(未指定)" : info.m_msgName);
+    YOMK_INFO_TAG("arm.demo", oss.str());
+
+    oss.str("");
+    oss << "[" << api << "]     description: " << (info.m_description.empty() ? "(未指定)" : info.m_description);
+    YOMK_INFO_TAG("arm.demo", oss.str());
+}
+
+// 拓扑展开：服务名行 + 该服务的函数清单行（函数名 + 可选 MsgName 标注），
+// INFO_ALL 层级包逐服务逐函数导出（框架只回结构化数据，展示格式由用户定义）
+static void logSrvLine(const std::string& api, const std::string& srvName)
+{
+    YOMK_INFO_TAG("arm.demo", "[" + api + "] - " + srvName);
+}
+
+static void logTopologyFunc(const std::string& api, const yomk::FuncInfo& info)
+{
+    // 二级函数行退两级空格：相对服务名行（"- " 前缀，内容起始差 2 字符）再深一层，
+    // 层级差 4 字符在长日志前缀下依然分明
+    std::string line = "      " + info.m_funcName;
+    if (!info.m_msgName.empty())
+    {
+        line += " [" + info.m_msgName + "]";
+    }
+    YOMK_INFO_TAG("arm.demo", "[" + api + "]" + line);
+}
+
+static void logTopology(const std::string& api, const YomkResponse& resp)
+{
     YomkUnPackPkg(resp.m_data, ServerServiceInfoList, list);
     if (!list)
     {
-        std::cout << ">> (no data)" << std::endl;
         return;
     }
     for (const auto& srv : list->d)
     {
-        std::cout << ">> | " << srv.m_serviceName << std::endl;
+        logSrvLine(api, srv.m_serviceName);
         for (const auto& func : srv.m_funcs)
         {
-            std::cout << ">> |   " << func.m_funcName
-                      << (func.m_msgName.empty() ? "" : " [" + func.m_msgName + "]") << std::endl;
+            logTopologyFunc(api, func);
         }
     }
 }
 
+// 拓扑摘要行：服务名 + 函数计数（工位下线后复查用，避免重复全量展开）
+static void logSrvBrief(const std::string& api, const std::string& srvName, std::size_t funcCount)
+{
+    std::ostringstream oss;
+    oss << "[" << api << "] - " << srvName << "（" << funcCount << " 个功能函数）";
+    YOMK_INFO_TAG("arm.demo", oss.str());
+}
+
+// 自证结论：期望与实际写在同一行，读者无需查源码即可确认框架行为
+static void logVerify(const std::string& text)
+{
+    YOMK_INFO_TAG("arm.demo", "[验证] " + text);
+}
+
+// ---------------------------------------------------------------------------
+// 自省素材：机械臂产线装配工位服务。2 参注册的 /report 无元数据，4 参注册的
+// /quality_check 声明期望消息类型 QualityCheckReq 并附函数说明——差异将由
+// 场景 2/3 的自省结果直接呈现。REQUEST 在调用方线程同步执行函数体，
+// arm.station 日志夹在调用方开始行与结果行之间，归属一目了然。
+// ---------------------------------------------------------------------------
+
+// 质量抽检请求：此处仅作 /quality_check 的期望消息类型元数据，供自省识别
+struct QualityCheckReq
+{
+    std::string m_station;  // 工位号
+    std::int32_t m_count;   // 抽检件数
+};
+
+YomkMsg(QualityCheckReq, QualityCheckReq, req)
+
+class ArmStationService : public YomkService
+{
+public:
+    explicit ArmStationService(YomkServer* server) : YomkService(server)
+    {
+        name("/ArmStation");  // 服务名：URL 前缀，必须 / 开头且全局唯一
+    }
+
+    int init() override
+    {
+        // 2 参注册：无元数据；4 参注册：声明 /quality_check 期望 QualityCheckReq
+        // 并附函数说明，供自省识别
+        YomkInstallFunc("/report", ArmStationService::report);
+        YomkInstallFunc(
+            "/quality_check", ArmStationService::qualityCheck, QualityCheckReq, "装配工位质量抽检：按件抽检并回执结论");
+        YOMK_INFO_TAG("arm.station", "init: install /report (no meta), /quality_check [QualityCheckReq] + description");
+        return 0;
+    }
+
+    // 工位状态上报：收到状态文本回执确认
+    YomkResponse report(YomkPkgPtr pkg)
+    {
+        YomkUnPackPkgResponse(pkg, String, status);
+        std::ostringstream oss;
+        oss << "工位状态上报：收到 \"" << status->d << "\"";
+        YOMK_INFO_TAG("arm.station", oss.str());
+        return {YomkResponse::eOk, "station report received: " + status->d};
+    }
+
+    // 质量抽检：解包 QualityCheckReq，按件抽检并回执结论
+    YomkResponse qualityCheck(YomkPkgPtr pkg)
+    {
+        YomkUnPackPkgResponse(pkg, QualityCheckReq, data);
+        std::ostringstream oss;
+        oss << "质量抽检执行：工位 " << data->req.m_station << " 抽检 " << data->req.m_count << " 件";
+        YOMK_INFO_TAG("arm.station", oss.str());
+        return {YomkResponse::eOk,
+            "quality check passed: " + data->req.m_station + ", " + std::to_string(data->req.m_count) + " pcs"};
+    }
+};
+
+// ---------------------------------------------------------------------------
+// 6 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。
+// 工位流转：/ArmStation 场景 1 上线，场景 2/3/4 自省读它，场景 5 下线，场景 6 断电。
+// ---------------------------------------------------------------------------
+
+// 场景 1：开班点名与工位上线（注册 + 试运行）
+static void showArmPlantRoster()
+{
+    logScene(
+        1,
+        "开班点名与工位上线",
+        "INFO_SERVICES / NEW_SERVICE / REQUEST",
+        "开班点名看产线在册工位：INFO_SERVICES 查到的就是框架运行期服务表；"
+        "NEW_SERVICE 把装配工位注册进产线，REQUEST 试运行两个功能函数证明"
+        "注册即可调用。");
+
+    logAction("开班点名：查询产线在册服务");
+    YomkResponse namesResp = YOMK_SERVER_INFO_SERVICES();
+    logResp("INFO_SERVICES", namesResp);
+    YomkUnPackPkg(namesResp.m_data, StringArray, nameArr);
+    if (nameArr)
+    {
+        for (const auto& srvName : nameArr->d)
+        {
+            logStringLine("INFO_SERVICES", srvName);
+        }
+    }
+    logVerify("5 项即内置服务（/YomkContext /YomkEventLoop /YomkFunctionPool /YomkLogger /YomkServerInfo），自省服务开箱即用无需注册");
+
+    logActionInt("装配工位上线：注册 /ArmStation", "NEW_SERVICE /ArmStation", [] { return YOMK_NEW_SERVICE(ArmStationService); });
+
+    logAction("复查在册服务清单");
+    namesResp = YOMK_SERVER_INFO_SERVICES();
+    logResp("INFO_SERVICES", namesResp);
+    YomkUnPackPkg(namesResp.m_data, StringArray, nameArr2);
+    if (nameArr2)
+    {
+        for (const auto& srvName : nameArr2->d)
+        {
+            logStringLine("INFO_SERVICES", srvName);
+        }
+    }
+    logVerify("清单多一项 /ArmStation 且排最前：服务名按字典序排列，注册即时反映到下一次查询");
+
+    logAction(
+        "试运行工位功能：状态上报", "REQUEST /ArmStation/report",
+        [&] { return YOMK_REQUEST("/ArmStation/report", YomkMkPtr(String, "joint ready")); });
+
+    // 入参先赋具名变量：聚合初始化含逗号，直接内联进宏会被预处理器误当实参分隔符
+    QualityCheckReq checkReq{"S3", 5};
+    logAction(
+        "试运行工位功能：质量抽检", "REQUEST /ArmStation/quality_check",
+        [&] { return YOMK_REQUEST("/ArmStation/quality_check", YomkMkPtr(QualityCheckReq, checkReq)); });
+    logVerify("arm.station 日志夹在开始行与结果行之间——REQUEST 在调用方线程同步执行；返回值即函数返回值，msg 携带回执");
+}
+
+// 场景 2：工位职能清单（INFO_FUNCTIONS 三分支）
+static void showArmStationFunctions()
+{
+    logScene(
+        2,
+        "工位职能清单",
+        "INFO_FUNCTIONS",
+        "查阅装配工位能干什么：INFO_FUNCTIONS 返回 FuncInfoList 结构化清单"
+        "（m_funcName/m_msgName/m_description）——4 参注册的 /quality_check 带"
+        "元数据，2 参注册的 /report 双空，差异一目了然。");
+
+    logAction("查阅装配工位职能清单");
+    YomkResponse funcsResp = YOMK_SERVER_INFO_FUNCTIONS("/ArmStation");
+    logResp("INFO_FUNCTIONS /ArmStation", funcsResp);
+    YomkUnPackPkg(funcsResp.m_data, FuncInfoList, listPkg);
+    if (listPkg)
+    {
+        for (const auto& func : listPkg->d)
+        {
+            logFuncInfo("INFO_FUNCTIONS", func);
+        }
+    }
+    logVerify("msgName 即 YomkInstallFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /report 两字段为(未指定)");
+
+    logAction("查阅不存在工位 /GhostStation 的职能清单");
+    funcsResp = YOMK_SERVER_INFO_FUNCTIONS("/GhostStation");
+    logResp("INFO_FUNCTIONS /GhostStation", funcsResp);
+    logVerify("服务不存在 -> 空清单 eOk：查询失败不崩溃，仍是普通返回值");
+
+    logAction("以空服务名查阅职能清单");
+    funcsResp = YOMK_SERVER_INFO_FUNCTIONS("");
+    logResp("INFO_FUNCTIONS (空服务名)", funcsResp);
+    logVerify("空服务名 -> eInvalid(srvName is empty)：参数无效与目标不存在是两种不同状态");
+}
+
+// 场景 3：功能函数名片单查（INFO_FUNCTION 命中契约 + 4 种坏 URL）
+static void showArmFuncLookup()
+{
+    logScene(
+        3,
+        "功能函数名片单查",
+        "INFO_FUNCTION",
+        "按 URL 调阅单个函数的名片：命中返回结构化 FuncInfo 包（m_msg 恒 ok），"
+        "msgName 与 description 承载注册时声明的元数据；url 解析失败与目标"
+        "不存在均为 eNo。");
+
+    logAction("调阅质量抽检函数名片");
+    YomkResponse resp = YOMK_SERVER_INFO_FUNCTION("/ArmStation/quality_check");
+    logResp("INFO_FUNCTION /ArmStation/quality_check", resp);
+    YomkUnPackPkg(resp.m_data, FuncInfo, info);
+    if (info)
+    {
+        logFuncInfo("INFO_FUNCTION", info->d);
+    }
+    logVerify("命中契约：m_msg 恒 ok、数据走 m_data；m_msgName=QualityCheckReq、m_description=第四参说明——与场景 2 清单同族");
+
+    logAction("调阅状态上报函数名片");
+    resp = YOMK_SERVER_INFO_FUNCTION("/ArmStation/report");
+    logResp("INFO_FUNCTION /ArmStation/report", resp);
+    YomkUnPackPkg(resp.m_data, FuncInfo, reportInfo);
+    if (reportInfo)
+    {
+        logFuncInfo("INFO_FUNCTION", reportInfo->d);
+    }
+    logVerify("2 参注册的 /report msgName 为(未指定)：元数据是可选声明，不影响调用");
+
+    logAction("以不以 / 开头的 url 单查", "INFO_FUNCTION ArmStation/quality_check (无/)",
+        [&] { return YOMK_SERVER_INFO_FUNCTION("ArmStation/quality_check"); });
+
+    logAction("以缺函数名的 url 单查", "INFO_FUNCTION /ArmStation (缺函数名)",
+        [&] { return YOMK_SERVER_INFO_FUNCTION("/ArmStation"); });
+
+    logAction("以服务不存在的 url 单查", "INFO_FUNCTION /GhostStation/hi (服务不存在)",
+        [&] { return YOMK_SERVER_INFO_FUNCTION("/GhostStation/hi"); });
+
+    logAction("以函数不存在的 url 单查", "INFO_FUNCTION /ArmStation/ghost (函数不存在)",
+        [&] { return YOMK_SERVER_INFO_FUNCTION("/ArmStation/ghost"); });
+    logVerify("4 种坏 URL 均为 eNo 且 msg 说明原因：url 解析失败 / 目标不存在是普通返回值，不报错不崩溃");
+}
+
+// 场景 4：全厂拓扑总览（INFO_ALL）
+static void showArmPlantTopology()
+{
+    logScene(
+        4,
+        "全厂拓扑总览",
+        "INFO_ALL",
+        "一次拉取全厂服务拓扑：INFO_ALL 返回 ServerServiceInfoList 层级包"
+        "（m_serviceName 服务名 + m_funcs 函数元信息列表），排障时一眼看清"
+        "调用拓扑。");
+
+    logAction("导出全厂服务拓扑");
+    YomkResponse allResp = YOMK_SERVER_INFO_ALL();
+    logResp("INFO_ALL", allResp);
+    logTopology("INFO_ALL", allResp);
+    logVerify("6 个服务 = 5 个内置 + 1 个装配工位，函数名带 / 前缀、带元数据的附 [MsgName] 标注——层级自上而下逐服务展开");
+}
+
+// 场景 5：工位下线实时视图（DEL_SERVICE + 自省复查）
+static void showArmLiveView()
+{
+    logScene(
+        5,
+        "工位下线实时视图",
+        "INFO_SERVICES / INFO_ALL / DEL_SERVICE",
+        "班中工位检修下线：DEL_SERVICE 把工位移出服务表，清单与拓扑立即少"
+        "一项，无需重启或刷新——自省读的是运行期服务表，注册/删除即时反映"
+        "到下一次查询。");
+
+    logActionInt("装配工位下线：注销 /ArmStation", "DEL_SERVICE /ArmStation", [] { return YOMK_DEL_SERVICE("/ArmStation"); });
+
+    logAction("复查在册服务清单");
+    YomkResponse namesResp = YOMK_SERVER_INFO_SERVICES();
+    logResp("INFO_SERVICES", namesResp);
+    YomkUnPackPkg(namesResp.m_data, StringArray, nameArr);
+    if (nameArr)
+    {
+        for (const auto& srvName : nameArr->d)
+        {
+            logStringLine("INFO_SERVICES", srvName);
+        }
+    }
+    logVerify("清单回到 5 项内置服务：删除即时生效，无需重启");
+
+    logAction("复查全厂拓扑终态");
+    YomkResponse allResp = YOMK_SERVER_INFO_ALL();
+    logResp("INFO_ALL", allResp);
+    YomkUnPackPkg(allResp.m_data, ServerServiceInfoList, list);
+    if (list)
+    {
+        for (const auto& srv : list->d)
+        {
+            logSrvBrief("INFO_ALL", srv.m_serviceName, srv.m_funcs.size());
+        }
+    }
+    logVerify("拓扑只剩 5 个内置服务，各服务函数计数如实呈现：工位已从调用拓扑消失");
+
+    logActionInt("注销不存在的工位 /GhostStation", "DEL_SERVICE /GhostStation", [] { return YOMK_DEL_SERVICE("/GhostStation"); });
+    logVerify("不存在的服务 -> ret=-1（失败）：注销失败是普通返回值不崩溃（框架侧另有直出提示行）");
+}
+
+// 场景 6：收班断电（SHUTDOWN 后自省守卫）
+static void showArmPowerOff()
+{
+    logScene(
+        6,
+        "收班断电",
+        "SHUTDOWN / INFO_SERVICES",
+        "收班断电前先预告：SHUTDOWN 排空在途请求并释放全部服务（幂等），"
+        "关闭后框架单例清空，任何自省调用统一返回 eInvalid——本条守卫演示"
+        "将在静默中完成，静默即演示效果。");
+
+    YOMK_INFO_TAG("arm.demo", "收班预告：SHUTDOWN 后框架已关闭，此后任何自省调用统一返回 eInvalid \"YomkServer is not init\"；");
+    YOMK_INFO_TAG("arm.demo", "本示例所有日志宏随之静默——下面的静默段正是演示效果，示例日志至此结束，程序停在 getchar 等待回车退出");
+
+    logAction(
+        "收班断电：优雅关闭框架", "SHUTDOWN + INFO_SERVICES (关闭后守卫)",
+        [&] {
+            YOMK_SHUTDOWN();
+            return YOMK_SERVER_INFO_SERVICES();  // eInvalid：结果行随日志宏静默，行为已由收班预告说明
+        });
+}
+
 int main(int argc, char* argv[])
 {
+    // 初始化框架（/YomkServerInfo 等 5 个内置服务随之自动启动，自省开箱即用）
     YOMK_INIT();
 
-    /**
-     * 步骤0：框架就绪
-     *
-     * YOMK_INIT 自动启动 5 个内置服务，自省服务 /YomkServerInfo 开箱即用，
-     * 无需注册。INFO_SERVICES 查到的就是这张运行期服务表。
-     */
-    printStep(0, "框架就绪", "YOMK_INIT 启动框架与 5 个内置服务；/YomkServerInfo 即其中之一，自省开箱即用。");
-    dumpLines("INFO_SERVICES", YOMK_SERVER_INFO_SERVICES());
-    std::cout << ">> 清单即内置服务：自省查询的就是框架运行期服务表" << std::endl;
+    YOMK_INFO_TAG("arm.demo", "机械臂产线 x YomkServerInfo 示例：一次班次贯穿 6 个场景，覆盖全部服务自省 API");
+    YOMK_INFO_TAG("arm.demo", "日志按 tag 分层：arm.demo=叙事与结果 / arm.station=装配工位服务函数体（REQUEST 调用方线程同步执行）");
 
-    /**
-     * 步骤1：注册演示服务
-     *
-     * NEW_SERVICE 一步注册；注册后清单立即多一项，
-     * REQUEST /hi 与 /sum 证明注册的服务真的可用。
-     */
-    printStep(1, "注册演示服务", "NEW_SERVICE(InfoDemoService) 后清单多一项；REQUEST /hi 与 /sum 证明注册即可调用。");
-    int newRet = YOMK_NEW_SERVICE(InfoDemoService);
-    std::cout << "[NEW_SERVICE(InfoDemoService)] ret=" << newRet << std::endl;
-    dumpLines("INFO_SERVICES", YOMK_SERVER_INFO_SERVICES());
-    printResp("REQUEST(hi)", YOMK_REQUEST("/InfoDemoService/hi", YomkMkPtr(String, "yomk")));
-    SumReq sumReq{3, 4};
-    printResp("REQUEST(sum)", YOMK_REQUEST("/InfoDemoService/sum", YomkMkPtr(SumReq, sumReq)));
+    showArmPlantRoster();
+    showArmStationFunctions();
+    showArmFuncLookup();
+    showArmPlantTopology();
+    showArmLiveView();
+    showArmPowerOff();
 
-    /**
-     * 步骤2：函数清单
-     *
-     * INFO_FUNCTIONS 列出指定服务的全部功能函数：FuncInfoList 结构化清单，
-     * 4 参注册的 /sum 带 msg=SumReq 元数据，2 参注册的 /hi msg 为空；
-     * 查不存在的服务返回空清单。
-     */
-    printStep(
-        2,
-        "函数清单",
-        "INFO_FUNCTIONS 看函数清单（FuncInfoList 结构化）：/sum 带 msg=SumReq 元数据，/hi msg 为空；查不存在的服务返回空清单。");
-    dumpFuncInfoList("INFO_FUNCTIONS(/InfoDemoService)", YOMK_SERVER_INFO_FUNCTIONS("/InfoDemoService"));
-    std::cout << ">> msg 字段即期望消息类型元数据，由 YomkInstallFunc 第三参声明" << std::endl;
-    dumpFuncInfoList("INFO_FUNCTIONS(/GhostService)", YOMK_SERVER_INFO_FUNCTIONS("/GhostService"));
-    std::cout << ">> 服务不存在 → 返回空清单（eOk），查询失败不崩溃" << std::endl;
-
-    /**
-     * 步骤3：单查元信息
-     *
-     * INFO_FUNCTION 按 URL 单查：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"），
-     * m_msgName=期望消息类型名、m_description=注册时声明的函数说明（均为可空字段）；
-     * 4 种坏 URL 均返回 eNo，是普通返回值不崩溃。
-     */
-    printStep(
-        3,
-        "单查元信息",
-        "INFO_FUNCTION 命中返回结构化 FuncInfo 包（m_msg 恒 \"ok\"）：m_msgName 承载期望消息类型名"
-        "（/sum 为 SumReq，/hi 为空串），m_description 承载函数说明；4 种坏 URL 均为 eNo=1.");
-    printResp("INFO_FUNCTION(/sum)", YOMK_SERVER_INFO_FUNCTION("/InfoDemoService/sum"));
-    printResp("INFO_FUNCTION(/hi)", YOMK_SERVER_INFO_FUNCTION("/InfoDemoService/hi"));
-    std::cout << ">> 命中契约：结构化 FuncInfo 包，m_msgName=期望的消息类型名，m_description=YomkInstallFunc 第四参声明的函数说明" << std::endl;
-    printResp("INFO_FUNCTION(url不以/开头)", YOMK_SERVER_INFO_FUNCTION("InfoDemoService/sum"));
-    printResp("INFO_FUNCTION(缺函数名)", YOMK_SERVER_INFO_FUNCTION("/InfoDemoService"));
-    printResp("INFO_FUNCTION(服务不存在)", YOMK_SERVER_INFO_FUNCTION("/GhostService/hi"));
-    printResp("INFO_FUNCTION(函数不存在)", YOMK_SERVER_INFO_FUNCTION("/InfoDemoService/ghost"));
-    std::cout << ">> URL 解析失败 / 目标不存在均为 eNo=1，调用失败是普通返回值" << std::endl;
-
-    /**
-     * 步骤4：全量拓扑
-     *
-     * INFO_ALL 一次拉取全部服务及其功能函数：ServerServiceInfoList 层级包
-     * （m_serviceName 服务名 + m_funcs 函数元信息列表，与 INFO_FUNCTION 单查同族）。
-     */
-    printStep(
-        4,
-        "全量拓扑",
-        "INFO_ALL 返回层级包：每个服务一个条目，含服务名与函数元信息列表（显示格式由用户定义）。");
-    dumpServerAll("INFO_ALL", YOMK_SERVER_INFO_ALL());
-    std::cout << ">> 6 个服务 = 5 个内置 + 1 个演示；排障时一眼看清调用拓扑" << std::endl;
-
-    /**
-     * 步骤5：运行期实时视图
-     *
-     * 自省读的是运行期服务表：DEL_SERVICE 后清单与拓扑立即少一项，
-     * 无需重启或刷新——注册/删除即时反映到下一次查询。
-     */
-    printStep(5, "运行期实时视图", "DEL_SERVICE 删除演示服务后，INFO_SERVICES 与 INFO_ALL 立即少一项——自省是实时视图。");
-    int delRet = YOMK_DEL_SERVICE("/InfoDemoService");
-    std::cout << "[DEL_SERVICE(/InfoDemoService)] ret=" << delRet << std::endl;
-    dumpLines("INFO_SERVICES", YOMK_SERVER_INFO_SERVICES());
-    dumpServerAll("INFO_ALL(终态)", YOMK_SERVER_INFO_ALL());
-    std::cout << ">> 删除即从拓扑消失，剩下的 5 项即内置服务" << std::endl;
-
-    /**
-     * 步骤6：优雅关闭
-     *
-     * SHUTDOWN 后框架已关闭，任何自省调用返回 eInvalid=-1（普通返回值）。
-     */
-    printStep(6, "优雅关闭", "SHUTDOWN 后自省返回 eInvalid=-1：框架已关闭是普通返回值，不崩溃。");
-    YOMK_SHUTDOWN();
-    std::cout << ">> YOMK_SHUTDOWN() 完成：排空在途请求并释放全部服务（幂等）" << std::endl;
-    printResp("INFO_SERVICES(关闭后)", YOMK_SERVER_INFO_SERVICES());
-
-    std::cout << "\n====== 示例结束：按回车退出 ======" << std::endl;
+    // 场景 6 已 SHUTDOWN：日志宏全部静默，结束横幅不再可见——
+    // 结束预告已并入场景 6 的收班预告锚点，程序在此等待回车退出
     getchar();
 
     return 0;
