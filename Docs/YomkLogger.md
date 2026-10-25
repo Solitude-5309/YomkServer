@@ -71,4 +71,4 @@ YOMK_SET_CONSOLE_LOG_PROXY(nullptr); // 传 nullptr 卸载代理，恢复默认�
 
 ## 完整示例
 
-完整可运行演示见 `Examples/ExampleYomkLogger.cpp`（8 步覆盖全部日志 API，读运行输出即可理解每个调用）。
+完整可运行演示见 `Examples/ExampleYomkLogger.cpp`（6 个机械臂产线场景小示例 showArmXXX 覆盖全部日志 API，读运行输出即可理解每个调用）。
