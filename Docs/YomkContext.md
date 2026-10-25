@@ -50,7 +50,7 @@ YOMK_CONTEXT_DESTROY("config");  // 删除键
 ## 注意事项
 
 - **创建与设置**：key 已存在返回 `eNo=1` "key already exists"；value 为空返回 `eNo=1` "value is empty"；值类型须与现值一致，否则 `eNo` "context type not match"。
-- **组名约定**：所有 Context API 的最后一个参数为组名，缺省 `"main"`；键所属组随 `ContextKeyInfo.m_group` 一并内省返回。空组名返回 `eNo=1` "group name is empty"，非 main 组在自定义组能力上线前一律返回 `eNo=1` "group not exist"。
+- **组名约定**：所有 Context API 的最后一个参数为组名，缺省 `"main"`；键所属组随 `ContextKeyInfo.m_group` 一并内省返回。空组名返回 `eNo=1` "group name is empty"；非 main 组首次寻址即自动创建（惰性、不支持销毁、组名唯一，同名寻址复用同组），监控池每组自持（每组一个单线程池，随建组只增不减）。
 - **读取快照勿原地修改**：`YOMK_CONTEXT_GET` 返回只读快照，改动请构造新对象再 `YOMK_CONTEXT_SET`，勿原地修改（否则与并发读竞争、可能崩溃）。
 - **Checker 生效条件**：全局开关 ON 且该 key 已设置时才生效；在写锁内门控，回调内重入 set 会死锁。
 - **Monitor 执行语义**：`async=false` 锁外即时执行，`async=true` 单线程池按提交序送达；仅通知发生了一次 set，并回传该次 set 的键值快照，不保证快照实时性。
@@ -59,7 +59,7 @@ YOMK_CONTEXT_DESTROY("config");  // 删除键
 
 ## 内部结构
 
-Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持，内省快照携带所属组名（`ContextKeyInfo.m_group`）。`YomkContext` 服务本身持默认组成员 `m_main`（组名 "main"，成员直取免查找）并负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `findGroup` 定位 → 组实例委托"，空组名返回 `eNo "group name is empty"`、非 main 组名返回 `eNo "group not exist"`；多组（自定义组 map）能力在后续迭代中扩展。
+Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持，内省快照携带所属组名（`ContextKeyInfo.m_group`）。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表 `m_customGroup`（`map<string, ContextGroupPtr>` + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `findGroup` 定位 → 组实例委托"。`findGroup` 三段式：空组名返回 `eNo "group name is empty"`；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（组不支持销毁，map 只增不减，同名寻址复用同组，锁外裸指针长期安全）。
 
 ## 完整示例
 

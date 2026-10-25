@@ -3,6 +3,8 @@
 #include "ContextGroup.h"
 #include "YomkDefine.h"
 #include "YomkServer.h"
+#include <map>
+#include <shared_mutex>
 using namespace yomk;
 class YomkContext : public YomkService
 {
@@ -33,9 +35,15 @@ private:
     YomkResponse listAll(YomkPkgPtr pkg);
 
 private:
-    // 组路由辅助：main 组成员直取；失败时 resp 携带错误响应并返回 nullptr
+    // 组路由辅助：main 组成员直取；自定义组按名惰性自动创建（不支持销毁）；
+    // 失败时 resp 携带错误响应并返回 nullptr
     ContextGroup* findGroup(const std::string& groupName, YomkResponse& resp);
 
     // 默认组 main：成员直取，不进组表、免查找；完整承载现有 Context 全部功能
     ContextGroup m_main;
+
+    // 自定义组表：按组名惰性自动创建、不支持销毁（map 只增不减）；
+    // 组名唯一由 map key 天然保证，同名寻址即复用同组
+    std::map<std::string, ContextGroupPtr> m_customGroup;
+    std::shared_mutex m_customGroupMutex;
 };

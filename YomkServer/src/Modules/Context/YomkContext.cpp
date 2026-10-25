@@ -29,9 +29,24 @@ void YomkContext::deinit()
     // 排空式停止（拒新 -> 排空 -> join）：返回前存量异步监控任务已全部执行；
     // stop 幂等，重复 deinit 安全
     m_main.stop();
+    // 自定义组：锁内拷出指针、锁外逐组排空停止（保持"deinit 不持锁调 stop"）
+    std::vector<ContextGroupPtr> groups;
+    {
+        std::shared_lock<std::shared_mutex> lockGroups(m_customGroupMutex);
+        groups.reserve(m_customGroup.size());
+        for (const auto& iter : m_customGroup)
+        {
+            groups.push_back(iter.second);
+        }
+    }
+    for (const auto& group : groups)
+    {
+        group->stop();
+    }
 }
 
-// 组路由辅助：main 组成员直取；失败时 resp 携带错误响应并返回 nullptr（调用方判空即返回）
+// 组路由辅助：main 组成员直取；自定义组按名惰性自动创建（不支持销毁，map 只增不减）；
+// 失败时 resp 携带错误响应并返回 nullptr（调用方判空即返回）
 ContextGroup* YomkContext::findGroup(const std::string& groupName, YomkResponse& resp)
 {
     if (groupName.empty())
@@ -44,10 +59,25 @@ ContextGroup* YomkContext::findGroup(const std::string& groupName, YomkResponse&
     {
         return &m_main;
     }
-    // 自定义组表在闭环 3 引入，本闭环非 main 组名一律拒绝
-    YOMK_ERR_POS_LOG("YomkContext group: " + groupName + " not exist, please check Context.m_group.");
-    resp = YomkResponse(YomkResponse::eNo, "group not exist");
-    return nullptr;
+
+    // 非 main：读锁快查自定义组表
+    {
+        std::shared_lock<std::shared_mutex> lockGroups(m_customGroupMutex);
+        auto it = m_customGroup.find(groupName);
+        if (it != m_customGroup.end())
+        {
+            return it->second.get();
+        }
+    }
+    // 未命中：写锁内 double-check 后惰性创建（构造 + emplace 锁内原子完成，避免并发双建）；
+    // map 持有强引用且只增不减，锁外裸指针长期安全
+    std::unique_lock<std::shared_mutex> lockGroups(m_customGroupMutex);
+    auto it = m_customGroup.find(groupName);
+    if (it == m_customGroup.end())
+    {
+        it = m_customGroup.emplace(groupName, std::make_shared<ContextGroup>(groupName)).first;
+    }
+    return it->second.get();
 }
 
 YomkResponse YomkContext::create(YomkPkgPtr pkg)
@@ -263,9 +293,16 @@ YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::groups(YomkPkgPtr pkg)
 {
-    // 全部组名（闭环 2 恒 main 单组；闭环 3 扩展自定义组）
+    // 全部组名：main 恒在首位，自定义组按 map 字典序追加
     std::vector<std::string> groupNames;
     groupNames.push_back(m_main.name());
+    {
+        std::shared_lock<std::shared_mutex> lockGroups(m_customGroupMutex);
+        for (const auto& iter : m_customGroup)
+        {
+            groupNames.push_back(iter.first);
+        }
+    }
     return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, groupNames)};
 }
 
@@ -309,11 +346,29 @@ YomkResponse YomkContext::keyInfo(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::listAll(YomkPkgPtr pkg)
 {
-    // 跨组聚合：组 → 键元信息两层结构（对齐 SERVER_INFO_ALL 的 ServerServiceInfo 范式）；闭环 2 恒 main 单组
-    yomk::ContextGroupInfo group;
-    group.m_groupName = m_main.name();
-    group.m_keys = m_main.listAll();
+    // 跨组聚合：组 → 键元信息两层结构（对齐 SERVER_INFO_ALL 的 ServerServiceInfo 范式）；
+    // main 组条目恒在首位，自定义组按 map 字典序追加（锁内拷指针、锁外取快照）
     std::vector<yomk::ContextGroupInfo> groups;
-    groups.push_back(std::move(group));
+    yomk::ContextGroupInfo mainInfo;
+    mainInfo.m_groupName = m_main.name();
+    mainInfo.m_keys = m_main.listAll();
+    groups.push_back(std::move(mainInfo));
+
+    std::vector<ContextGroupPtr> customGroups;
+    {
+        std::shared_lock<std::shared_mutex> lockGroups(m_customGroupMutex);
+        customGroups.reserve(m_customGroup.size());
+        for (const auto& iter : m_customGroup)
+        {
+            customGroups.push_back(iter.second);
+        }
+    }
+    for (const auto& group : customGroups)
+    {
+        yomk::ContextGroupInfo info;
+        info.m_groupName = group->name();
+        info.m_keys = group->listAll();
+        groups.push_back(std::move(info));
+    }
     return {YomkResponse::eOk, "ok", YomkMkPtr(ContextGroupInfoList, std::move(groups))};
 }

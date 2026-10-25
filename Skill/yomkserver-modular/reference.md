@@ -197,7 +197,7 @@ class YomkService {
 | `YOMK_CONTEXT_INFO_GROUPS()` | 内省：全部组名清单（返回 StringArray） |
 | `YOMK_CONTEXT_INFO_ALL()` | 内省：跨组聚合（ContextGroupInfoList 两层结构化包：组名 m_groupName + 该组全部键元信息 m_keys，m_msg 恒 "ok"） |
 
-组名约定：上表所有 `[group]` 为可选组名尾参，**组名永远是最后一个参数、缺省 `"main"`**；空组名返回 eNo "group name is empty"，非 main 组在自定义组能力上线前一律返回 eNo "group not exist"。
+组名约定：上表所有 `[group]` 为可选组名尾参，**组名永远是最后一个参数、缺省 `"main"`**；空组名返回 eNo "group name is empty"，非 main 组首次寻址即自动创建（惰性、不支持销毁、组名唯一，监控池每组自持）。
 
 ### EventLoop
 | 宏 | 说明 |
