@@ -2,7 +2,7 @@
 TestYomkContextLifecycle.py —— YomkContext 服务生命周期与异常安全白盒测试（Context 模块 MC3）
 
 覆盖内容：
-1. init 效果（内省）：内置 /YomkContext 注册、init 装配 13 个功能函数（键集合逐一对齐）
+1. init 效果（内省）：内置 /YomkContext 注册、init 装配 14 个功能函数（键集合逐一对齐）
 2. 基线运行：异步 monitor 池正常工作
 3. del_service 触发 deinit + 排空：删除前投递的异步 monitor 全部排空执行
 4. 删除后不可路由 + 重复删除契约：请求返回 service not found、重复删除返回 -1
@@ -68,12 +68,12 @@ class ThrowContext(YomkContext):
         raise MemoryError("mock bad_alloc")
 
 
-# init 装配的 13 个功能函数
+# init 装配的 14 个功能函数
 EXPECTED_FUNCS = {
     "/create", "/destroy", "/get", "/set",
     "/turn_on_checker", "/turn_off_checker", "/set_checker",
     "/turn_on_monitor", "/turn_off_monitor", "/set_monitor",
-    "/keys", "/key", "/all",
+    "/groups", "/keys", "/key", "/all",
 }
 
 # ---- 文件级观测变量 ----
@@ -89,7 +89,7 @@ def main():
     check("/YomkContext" in names, "内置 /YomkContext 已注册")
 
     infos = srv.service_func_infos("/YomkContext")
-    check(len(infos) == 13, "init 装配 13 个功能函数")
+    check(len(infos) == 14, "init 装配 14 个功能函数")
     check(set(infos.keys()) == EXPECTED_FUNCS, "装配的功能函数键集合逐一对齐")
 
     # ============ Section 2: 基线运行（异步 monitor 池工作）============
@@ -146,7 +146,7 @@ def main():
     check(re_add == 0, "重新注册 YomkContext 返回 0")
 
     infos = server().service_func_infos("/YomkContext")
-    check(len(infos) == 13, "重新注册后 init 重新装配 13 个功能函数")
+    check(len(infos) == 14, "重新注册后 init 重新装配 14 个功能函数")
 
     context_turn_on_monitor()
     resp = context_create("life_rebuild", "r0")

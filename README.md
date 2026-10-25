@@ -136,9 +136,20 @@ YomkApi.context_turn_on_checker()              # context_turn_off_checker() 关�
 # 3. 变更后监听（Monitor）：async_monitor=True 时按提交序异步送达
 YomkApi.context_set_monitor("config", lambda ctx: print(ctx.value))
 YomkApi.context_turn_on_monitor()              # context_turn_off_monitor() 关闭
+
+# 4. 运行期自省（组名永远是 API 最后一个参数，缺省 "main"）
+YomkApi.context_info_keys()                    # 组内键名清单
+YomkApi.context_info_key("config")             # 单键元信息（含所属组 group 字段）
+YomkApi.context_info_groups()                  # 全部组名清单（main 恒在首位）
+YomkApi.context_info_all()                     # 跨组聚合：组 → 键元信息两层结构
+
+# 5. 自定义组：非 main 组名首次寻址即自动创建（惰性、不支持销毁、组名唯一）
+YomkApi.context_create("speed_ratio", 1.0, "robot_a")
 ```
 
-内部结构：Context 功能承载在 `ContextGroup`（底层实例组，不继承 `YomkService`）上——键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持；`YomkContext` 服务本身仅持默认组成员 `m_main`（组名 "main"，成员直取免查找）并负责 13 个端点的装配与转发，多组（自定义组）能力在后续迭代扩展。
+组名约定：所有 Context API 的最后一个参数为组名，缺省 `"main"`；键所属组随 `ContextKeyInfo.group` 一并内省返回。空组名返回 `eNo` `"group name is empty"`；非 main 组首次寻址即自动创建，监控池每组自持（每组一个单线程池，随建组只增不减）。
+
+内部结构：Context 功能承载在 `ContextGroup`（底层实例组，不继承 `YomkService`）上——键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持，内省快照携带所属组名。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表 `m_customGroup`（dict + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `find_group` 定位 → 组实例委托"。`find_group` 三段式：空组名返回 `eNo "group name is empty"`；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（组不支持销毁，只增不减，同名寻址复用同组）。
 
 完整可运行演示见 `examples/ExampleYomkContext.py`（创建/读取/更新/销毁、checker 拒绝/接受、异步监控）。
 

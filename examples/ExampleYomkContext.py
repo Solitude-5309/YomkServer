@@ -9,7 +9,7 @@ ExampleYomkContext —— YomkContext 共享上下文示例：机械臂控制背
 
 本示例用"机械臂一次作业会话"贯穿 8 个场景：每个场景是一个 show_arm_xxx
 小函数，形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
-全部 13 个 context_* 用户接口无一遗漏。
+全部 14 个 context_* 用户接口无一遗漏。
 
 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.guard 校验 /
 arm.watch 通知 / arm.telemetry 上报），日志流即执行序、顺着读就能明白：
@@ -126,7 +126,7 @@ def log_verify(text):
     YomkApi.console_log_info_tag("arm.demo", "[验证] " + text)
 
 
-# 自省结果展开：单键 ContextKeyInfo 的全部字段逐行展示（键名行 + 4 个字段行），
+# 自省结果展开：单键 ContextKeyInfo 的全部字段逐行展示（键名行 + 5 个字段行），
 # INFO_KEY 与 INFO_ALL 共用；紧随其结果行输出，键名行以 "-" 起头、字段行缩进对齐
 def log_key_info(api, info):
     YomkApi.console_log_info_tag("arm.demo", f"[{api}] - {info.key}")
@@ -139,6 +139,8 @@ def log_key_info(api, info):
         "arm.demo", f"[{api}]     monitors: {info.monitor_count}")
     YomkApi.console_log_info_tag(
         "arm.demo", f"[{api}]     async: {info.async_monitor_count}")
+    YomkApi.console_log_info_tag(
+        "arm.demo", f"[{api}]     group: {info.group}")
 
 
 # CREATE 幂等化封装：键已存在（eNo "key already exists"）视为就绪跳过。
@@ -433,11 +435,12 @@ def show_arm_dashboard():
                lambda: YomkApi.context_info_key("arm.ghost"))
     log_verify("查询未注册的键 -> eNo(key is not exist)")
 
-    # 全量导出（结构化列表），逐键展开全部字段
+    # 全量导出（组 → 键元信息两层结构化列表），逐组逐键展开全部字段
     all_resp = log_action("全量导出键值表", "INFO_ALL", lambda: YomkApi.context_info_all())
     if all_resp.data:
-        for info in all_resp.data:
-            log_key_info("INFO_ALL", info)
+        for group in all_resp.data:
+            for info in group.keys:
+                log_key_info("INFO_ALL", info)
 
 
 # 场景 8：机械臂下电流程，逐键清理共享状态

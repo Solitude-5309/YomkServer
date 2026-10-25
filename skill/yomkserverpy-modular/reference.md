@@ -49,13 +49,19 @@ class YomkService:
 
 ```python
 class Context:
-    def __init__(self, key="", value=None)
+    def __init__(self, key="", value=None, group="main")   # group: key 所属组名（缺省 main）
 
 class ContextChecker:
-    def __init__(self, key="", check_func=None)   # check_func: (Context) -> CheckStatus
+    def __init__(self, key="", check_func=None, group="main")   # check_func: (Context) -> CheckStatus
 
 class ContextMonitor:
-    def __init__(self, key="", monitor_func=None, async_monitor_func=None) # monitor_func: (Context) -> None；async_monitor_func 为异步送达的监控函数（经 context_set_monitor(async_monitor=True) 设置）
+    def __init__(self, key="", monitor_func=None, async_monitor_func=None, group="main") # monitor_func: (Context) -> None；async_monitor_func 为异步送达的监控函数（经 context_set_monitor(async_monitor=True) 设置）
+
+class ContextGroupKey:
+    def __init__(self, group="main", key="")   # 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键）
+
+class ContextGroupInfo:
+    def __init__(self, group_name="", keys=None)   # 组级内省条目（context_info_all 返回数据元素：组名 + 该组全部键元信息）
 
 class Function:
     def __init__(self, name, func, msg_name="", description="")   # func: (Any) -> YomkResponse；msg_name/description 仅内省元数据
@@ -116,19 +122,22 @@ class EventLoopPkg:
 ### Context
 | API | 说明 |
 |-----|------|
-| `YomkApi.context_create(key, value)` | 创建 K-V |
-| `YomkApi.context_get(key, default)` | 获取值 |
-| `YomkApi.context_set(key, value)` | 设置值 |
-| `YomkApi.context_destroy(key)` | 销毁 |
-| `YomkApi.context_turn_on_checker()` | 开启检查器 |
-| `YomkApi.context_turn_off_checker()` | 关闭检查器 |
-| `YomkApi.context_set_checker(key, func)` | 设置检查函数 |
-| `YomkApi.context_turn_on_monitor()` | 开启监控器 |
-| `YomkApi.context_turn_off_monitor()` | 关闭监控器 |
-| `YomkApi.context_set_monitor(key, func, async_monitor=False)` | 设置监控函数（async_monitor=True 时异步回调监控函数） |
-| `YomkApi.context_info_keys()` | 枚举全部 key |
-| `YomkApi.context_info_key(key)` | 单键元信息结构化查询（命中 msg 恒 `"ok"`，data 为 `ContextKeyInfo` 包：key/type_name/checker_on/monitor_count/async_monitor_count；空 key 与不存在 key 返回 eNo） |
-| `YomkApi.context_info_all()` | 全量键元信息结构化列表（命中 msg 恒 `"ok"`，data 为 `ContextKeyInfo` 列表，元素字段与单查一致，键序为字典序） |
+| `YomkApi.context_create(key, value[, group_name])` | 创建 K-V（组名永远是 API 最后一个参数、缺省 `"main"`，下同） |
+| `YomkApi.context_get(key, default[, group_name])` | 获取值 |
+| `YomkApi.context_set(key, value[, group_name])` | 设置值 |
+| `YomkApi.context_destroy(key[, group_name])` | 销毁 |
+| `YomkApi.context_turn_on_checker([group_name])` | 开启检查器 |
+| `YomkApi.context_turn_off_checker([group_name])` | 关闭检查器 |
+| `YomkApi.context_set_checker(key, func[, group_name])` | 设置检查函数 |
+| `YomkApi.context_turn_on_monitor([group_name])` | 开启监控器 |
+| `YomkApi.context_turn_off_monitor([group_name])` | 关闭监控器 |
+| `YomkApi.context_set_monitor(key, func, async_monitor=False[, group_name])` | 设置监控函数（async_monitor=True 时异步回调监控函数） |
+| `YomkApi.context_info_keys([group_name])` | 组内键名清单（缺省 main 组） |
+| `YomkApi.context_info_key(key[, group_name])` | 单键元信息结构化查询（命中 msg 恒 `"ok"`，data 为 `ContextKeyInfo` 包：key/type_name/checker_on/monitor_count/async_monitor_count/group；空 key 与不存在 key 返回 eNo） |
+| `YomkApi.context_info_groups()` | 全部组名清单（data 为组名列表：main 恒在首位，自定义组按字典序追加） |
+| `YomkApi.context_info_all()` | 跨组聚合（命中 msg 恒 `"ok"`，data 为 `ContextGroupInfo` 列表，层级为组 → 键元信息；main 组条目恒在首位） |
+
+组名约定：上表所有 `[group_name]` 为可选组名尾参，**组名永远是最后一个参数、缺省 `"main"`**；空组名返回 eNo `"group name is empty"`；非 main 组首次寻址即自动创建（惰性、不支持销毁、组名唯一，同名寻址复用同组，监控池每组自持）。
 
 ### EventLoop
 | API | 说明 |

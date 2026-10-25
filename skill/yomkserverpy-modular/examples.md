@@ -478,7 +478,7 @@ resp = YomkApi.server_info_function("/DemoService/not_exist")  # eNo
 resp = YomkApi.server_info_all()
 ```
 
-说明：自省读的是运行期服务表，注册/删除即时反映到下一次查询；FunctionPool 动态注册函数的类型元数据由 `function_pool_register` 第三参声明，未声明内省显示为空。四个内置模块另提供模块内层内省三件套（Context 的 `context_info_keys/key/all`、EventLoop 的 `event_loop_info_loops/loop/all`、FunctionPool 的 `function_pool_info_names/name/all`、Logger 的 `logger_info_loggers/logger/all`），API 见 [reference.md](reference.md)。完整可运行示例见仓库 `examples/ExampleYomkServerInfo.py`。
+说明：自省读的是运行期服务表，注册/删除即时反映到下一次查询；FunctionPool 动态注册函数的类型元数据由 `function_pool_register` 第三参声明，未声明内省显示为空。四个内置模块另提供模块内层内省函数族（Context 的 `context_info_keys/key/groups/all`、EventLoop 的 `event_loop_info_loops/loop/all`、FunctionPool 的 `function_pool_info_names/name/all`、Logger 的 `logger_info_loggers/logger/all`），API 见 [reference.md](reference.md)。完整可运行示例见仓库 `examples/ExampleYomkServerInfo.py`。
 
 ## 示例6：日志
 

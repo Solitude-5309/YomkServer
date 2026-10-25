@@ -131,7 +131,7 @@ resp = YomkApi.server_info_function("/XxxService/my_desc") # 单函数元信息�
 resp = YomkApi.server_info_all()                           # 全量拓扑（ServerServiceInfo 层级列表：service_name + funcs）
 ```
 
-服务器层内省之外，四个内置模块均提供模块内层内省三件套（Context 的 `context_info_keys/key/all`、EventLoop 的 `event_loop_info_loops/loop/all`、FunctionPool 的 `function_pool_info_names/name/all`、Logger 的 `logger_info_loggers/logger/all`），见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。
+服务器层内省之外，四个内置模块均提供模块内层内省函数族（Context 的 `context_info_keys/key/groups/all`、EventLoop 的 `event_loop_info_loops/loop/all`、FunctionPool 的 `function_pool_info_names/name/all`、Logger 的 `logger_info_loggers/logger/all`），见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。
 
 ## 任务三：创建扩展库
 

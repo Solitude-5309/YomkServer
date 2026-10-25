@@ -13,6 +13,8 @@ from YomkServerPy import (
     CheckStatus,
     ContextChecker,
     ContextMonitor,
+    ContextGroupKey,
+    ContextGroupInfo,
     Function,
     CallFunction,
     EventLoopPkg,
@@ -367,20 +369,23 @@ def file_log_delete(logger_name):
     return _api_request("/YomkLogger/delete_logger", logger_name)
 
 
-def context_create(key: str, value: Any) -> YomkResponse:
-    ctx = Context(key, value)
+# Context 各 API 的组名约定：组名永远是最后一个参数，缺省 "main"（空组名返回 eNo
+# "group name is empty"；非 main 组首次寻址即自动创建，惰性、不支持销毁、组名唯一）
+
+def context_create(key: str, value: Any, group_name: str = "main") -> YomkResponse:
+    ctx = Context(key, value, group_name)
     return _api_request("/YomkContext/create", ctx)
 
 
-def context_destroy(key: str) -> YomkResponse:
-    return _api_request("/YomkContext/destroy", key)
+def context_destroy(key: str, group_name: str = "main") -> YomkResponse:
+    return _api_request("/YomkContext/destroy", ContextGroupKey(group_name, key))
 
 
-def context_get(key: str, default_value: Any) -> Any:
+def context_get(key: str, default_value: Any, group_name: str = "main") -> Any:
     global g_server
     if g_server is None:
         return default_value
-    ctx = Context(key, default_value)
+    ctx = Context(key, default_value, group_name)
     res = g_server.request("/YomkContext/get", ctx)
     if res.status == ResStatus.eOk:
         return res.data
@@ -389,55 +394,63 @@ def context_get(key: str, default_value: Any) -> Any:
     return default_value
 
 
-def context_set(key: str, default_value: Any) -> YomkResponse:
-    ctx = Context(key, default_value)
+def context_set(key: str, value: Any, group_name: str = "main") -> YomkResponse:
+    ctx = Context(key, value, group_name)
     return _api_request("/YomkContext/set", ctx)
 
 
-def context_turn_on_checker() -> YomkResponse:
-    return _api_request("/YomkContext/turn_on_checker", None)
+def context_turn_on_checker(group_name: str = "main") -> YomkResponse:
+    return _api_request("/YomkContext/turn_on_checker", group_name)
 
 
-def context_turn_off_checker() -> YomkResponse:
-    return _api_request("/YomkContext/turn_off_checker", None)
+def context_turn_off_checker(group_name: str = "main") -> YomkResponse:
+    return _api_request("/YomkContext/turn_off_checker", group_name)
 
 
-def context_set_checker(key: str, checker: Callable[[Context], CheckStatus]) -> YomkResponse:
-    contextChecker = ContextChecker(key, checker)
+def context_set_checker(key: str, checker: Callable[[Context], CheckStatus],
+                        group_name: str = "main") -> YomkResponse:
+    contextChecker = ContextChecker(key, checker, group_name)
     return _api_request("/YomkContext/set_checker", contextChecker)
 
 
-def context_turn_on_monitor() -> YomkResponse:
-    return _api_request("/YomkContext/turn_on_monitor", None)
+def context_turn_on_monitor(group_name: str = "main") -> YomkResponse:
+    return _api_request("/YomkContext/turn_on_monitor", group_name)
 
 
-def context_turn_off_monitor() -> YomkResponse:
-    return _api_request("/YomkContext/turn_off_monitor", None)
+def context_turn_off_monitor(group_name: str = "main") -> YomkResponse:
+    return _api_request("/YomkContext/turn_off_monitor", group_name)
 
 
-def context_set_monitor(key: str, monitor: Callable[[Context], None], async_monitor: bool = False) -> YomkResponse:
+def context_set_monitor(key: str, monitor: Callable[[Context], None], async_monitor: bool = False,
+                        group_name: str = "main") -> YomkResponse:
     # async_monitor=True 时用户回调投递到异步位、同步位以 no-op 占位
     # （服务端为两函数位形态，同步位空函数仅占位，
     # 因 async 位存在即走异步路径，占位函数不会被执行）
     if async_monitor:
-        contextMonitor = ContextMonitor(key, lambda c: None, monitor)
+        contextMonitor = ContextMonitor(key, lambda c: None, monitor, group_name)
     else:
-        contextMonitor = ContextMonitor(key, monitor, False)
+        contextMonitor = ContextMonitor(key, monitor, False, group_name)
     return _api_request("/YomkContext/set_monitor", contextMonitor)
 
 
-def context_info_keys() -> YomkResponse:
-    # 获取全部上下文键名
-    return _api_request("/YomkContext/keys", None)
+def context_info_keys(group_name: str = "main") -> YomkResponse:
+    # 获取组内全部上下文键名（缺省 main 组）
+    return _api_request("/YomkContext/keys", group_name)
 
 
-def context_info_key(key: str) -> YomkResponse:
-    # 查询指定上下文键状态
-    return _api_request("/YomkContext/key", key)
+def context_info_key(key: str, group_name: str = "main") -> YomkResponse:
+    # 查询指定上下文键状态（含所属组 group 字段）
+    return _api_request("/YomkContext/key", ContextGroupKey(group_name, key))
+
+
+def context_info_groups() -> YomkResponse:
+    # 查询全部组名清单（命中 msg 恒 "ok"，data 为组名列表：main 恒在首位）
+    return _api_request("/YomkContext/groups", None)
 
 
 def context_info_all() -> YomkResponse:
-    # 查询全部上下文键元信息（结构化列表，命中 msg 恒 "ok"，data 为 ContextKeyInfo 列表）
+    # 查询全部组及其全部键的内省元信息（跨组聚合：命中 msg 恒 "ok"，data 为 ContextGroupInfo
+    # 列表，层级为组 → 键元信息；main 组条目恒在首位，自定义组按字典序追加）
     return _api_request("/YomkContext/all", None)
 
 

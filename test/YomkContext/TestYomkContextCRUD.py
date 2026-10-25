@@ -24,6 +24,7 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
 import sys
 
 from YomkApi import (
+    ContextGroupInfo,
     ContextKeyInfo,
     context_create,
     context_destroy,
@@ -134,6 +135,7 @@ def main():
     check(resp.data.checker_on is False, "keyInfo 字段 checker_on 为 False")
     check(resp.data.monitor_count == 0 and resp.data.async_monitor_count == 0,
           "keyInfo 字段 monitor 计数为 0")
+    check(resp.data.group == "main", "keyInfo 字段 group 一致")
 
     # keyInfo：空 key
     resp = context_info_key("")
@@ -145,21 +147,27 @@ def main():
     check(resp.status == ResStatus.eNo, "keyInfo 不存在 key 返回 eNo")
     check(resp.msg == "key is not exist", "keyInfo 不存在 key 错误消息一致")
 
-    # listAll：包含所有 key 信息（结构化列表，msg 恒 "ok"）
+    # listAll：跨组聚合（组 → 键元信息两层结构化列表，msg 恒 "ok"）
     resp = context_info_all()
     check(resp.status == ResStatus.eOk, "listAll 返回 eOk")
     check(resp.msg == "ok", "listAll 成功消息恒为 ok")
-    check(isinstance(resp.data, list) and len(resp.data) == 2,
-          "listAll 返回 2 个键信息")
-    check(all(isinstance(i, ContextKeyInfo) for i in resp.data),
+    check(isinstance(resp.data, list) and len(resp.data) == 1,
+          "listAll 返回 1 个组信息")
+    check(isinstance(resp.data[0], ContextGroupInfo),
+          "listAll 元素为 ContextGroupInfo 包")
+    check(resp.data[0].group_name == "main", "listAll 组名为 main")
+    # 组内 keys 为字典序快照：int_key < str_key；逐字段断言（均未挂 checker/monitor）
+    check(len(resp.data[0].keys) == 2, "listAll 返回 2 个键信息")
+    check(all(isinstance(i, ContextKeyInfo) for i in resp.data[0].keys),
           "listAll 元素为 ContextKeyInfo 包")
-    # 键序为字典序（int_key, str_key），逐字段断言（均未挂 checker/monitor）
-    check(resp.data[0].key == "int_key" and resp.data[1].key == "str_key",
+    check(resp.data[0].keys[0].key == "int_key" and resp.data[0].keys[1].key == "str_key",
           "listAll 键序为字典序（int_key, str_key）")
-    check(resp.data[0].type_name == "int" and resp.data[1].type_name == "str",
+    check(resp.data[0].keys[0].type_name == "int" and resp.data[0].keys[1].type_name == "str",
           "listAll 类型名一致")
+    check(resp.data[0].keys[0].group == "main" and resp.data[0].keys[1].group == "main",
+          "listAll 键所属组一致")
     check(all(not i.checker_on and i.monitor_count == 0
-              and i.async_monitor_count == 0 for i in resp.data),
+              and i.async_monitor_count == 0 for i in resp.data[0].keys),
           "listAll checker/monitor 计数为 0")
 
     # destroy：正常销毁
