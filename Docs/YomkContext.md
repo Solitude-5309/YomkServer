@@ -55,6 +55,10 @@ YOMK_CONTEXT_DESTROY("config");  // 删除键
 - **销毁后行为**：删除键后操作返回 `eNo=1`（key is not exist）。
 - 服务成员函数注册为 checker/monitor 时须用 `YomkBindWeakSelf` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
+## 内部结构
+
+Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持。`YomkContext` 服务本身仅持默认组成员 `m_main`（组名 "main"，成员直取免查找）并负责 13 个端点的装配与转发；多组（自定义组）能力在后续迭代中扩展。
+
 ## 完整示例
 
 完整可运行演示见 `Examples/ExampleYomkContext.cpp`（8 个机械臂场景小示例 `showArmXXX` 组合覆盖全部上下文 API，日志统一走 YomkLogger 并按 tag 分层，读运行输出即可理解每个调用）。
