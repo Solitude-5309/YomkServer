@@ -2,7 +2,7 @@
  * @file TestYomkLoggerDirect.cpp
  * @brief Logger 模块 ConsoleLogger/FileLogger 类直连白盒测试（LG1 新建，LG2 回填）
  *
- * 覆盖内容（2 个类，16 组用例 30 断言）：
+ * 覆盖内容（2 个类，17 组用例 45 断言）：
  * ConsoleLogger：
  * 1. 默认名 "MainLogger"、setName/getName
  * 2. 四级别输出（级别标签 [Debug]/[Info ]/[Warn ]/[Error] + [名/tag] + 内容）
@@ -11,6 +11,9 @@
  * 4. 时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]
  * 5. 超长名（4096）与空内容
  * 5a. tag 显示语义（m_tag 拆分回填）：tag 非空显示 [tag]、空 tag 回退 [日志器名]
+ * 14. 级别门控（门控下沉新增）：14a 新实例四级默认全开；14b setLevelOn 关断隔离
+ *     （isLevelOn 反查 + 关断级别无输出、其余级别不受影响）；14c 恢复输出；
+ *     14d unknown 级别按 Info 门控（关 Info 后 log(99) 门控层直接丢弃，无降级提示）
  * FileLogger：
  * 6. 默认名、setName/setDir/getDir
  * 7. init 建多级目录 + 空日志文件，返回 true（P2-b 修复后 bool 语义）
@@ -204,6 +207,71 @@ int main()
             CHECK(
                 out.find("[Info ] [lg1_direct_console] lg1_dc_fallback_marker") != std::string::npos,
                 "空 tag 回退显示 [日志器名]");
+        }
+
+        // 级别门控（门控下沉新增）：默认全开 → 关断隔离 → 恢复 → unknown 按 Info 门控
+        {
+            ConsoleLogger gateLogger;
+            gateLogger.setName("lg1_dc_gate");
+            CHECK(
+                (gateLogger.isLevelOn(ConsoleLogger::eDebug) && gateLogger.isLevelOn(ConsoleLogger::eInfo) &&
+                 gateLogger.isLevelOn(ConsoleLogger::eWarn) && gateLogger.isLevelOn(ConsoleLogger::eError)),
+                "14a: 新实例四级门控默认全开");
+
+            // 14b 关断隔离：Info 关断后自身无输出，其余级别不受影响
+            gateLogger.setLevelOn(ConsoleLogger::eInfo, false);
+            CHECK(!gateLogger.isLevelOn(ConsoleLogger::eInfo), "14b: isLevelOn 反查 Info 关断生效");
+            CHECK(gateLogger.isLevelOn(ConsoleLogger::eWarn), "14b: 关断 Info 不影响其他级别");
+            // CHECK 须在捕获作用域外（否则断言输出被 rdbuf 重定向吞没，下同）
+            std::string outGateOff;
+            {
+                CoutCapture cap;
+                gateLogger.log(ConsoleLogger::eInfo, "", "lg1_dc_gate_off_marker");
+                gateLogger.log(ConsoleLogger::eWarn, "", "lg1_dc_gate_warn_marker");
+                outGateOff = cap.str();
+            }
+            CHECK(outGateOff.find("lg1_dc_gate_off_marker") == std::string::npos, "14b: 关断级别无输出");
+            CHECK(
+                outGateOff.find("[Warn ] [lg1_dc_gate] lg1_dc_gate_warn_marker") != std::string::npos,
+                "14b: 未关断级别输出不受影响");
+
+            // 14c 恢复：重开后输出恢复
+            gateLogger.setLevelOn(ConsoleLogger::eInfo, true);
+            CHECK(gateLogger.isLevelOn(ConsoleLogger::eInfo), "14c: isLevelOn 反查恢复生效");
+            std::string outGateOn;
+            {
+                CoutCapture cap;
+                gateLogger.log(ConsoleLogger::eInfo, "", "lg1_dc_gate_on_marker");
+                outGateOn = cap.str();
+            }
+            CHECK(
+                outGateOn.find("[Info ] [lg1_dc_gate] lg1_dc_gate_on_marker") != std::string::npos,
+                "14c: 恢复后输出正常");
+
+            // 14d unknown 级别按 Info 门控：关 Info 后 log(99) 在门控层直接丢弃
+            // （不进入 default 降级分支，无 Unknown log level 提示）；恢复后降级行为回归
+            gateLogger.setLevelOn(ConsoleLogger::eInfo, false);
+            std::string outGateBad;
+            {
+                CoutCapture cap;
+                gateLogger.log(static_cast<ConsoleLogger::ELogLevel>(99), "", "lg1_dc_gate_bad_marker");
+                outGateBad = cap.str();
+            }
+            CHECK(
+                outGateBad.find("lg1_dc_gate_bad_marker") == std::string::npos &&
+                    outGateBad.find("Unknown log level") == std::string::npos,
+                "14d: unknown 级别随 Info 门控直接丢弃（无降级提示）");
+            gateLogger.setLevelOn(ConsoleLogger::eInfo, true);
+            std::string outGateBad2;
+            {
+                CoutCapture cap;
+                gateLogger.log(static_cast<ConsoleLogger::ELogLevel>(99), "", "lg1_dc_gate_bad2_marker");
+                outGateBad2 = cap.str();
+            }
+            CHECK(
+                outGateBad2.find("Unknown log level: 99") != std::string::npos &&
+                    outGateBad2.find("[Info ] [lg1_dc_gate] lg1_dc_gate_bad2_marker") != std::string::npos,
+                "14d: 恢复后 unknown 级别回归 default 降级 Info 输出");
         }
     }
 

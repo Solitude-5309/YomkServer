@@ -8,12 +8,85 @@
 // 类级共享锁定义：跨实例行级原子的唯一互斥点（见 ConsoleLogger.h 成员注释）
 std::mutex ConsoleLogger::s_mutex;
 
-ConsoleLogger::ConsoleLogger() : m_name("MainLogger") {}
+// 初始化列表须按 ConsoleLogger.h 声明序书写（-Wreorder）
+ConsoleLogger::ConsoleLogger()
+    : m_name("MainLogger"),
+      m_showDebugLog(true),
+      m_showInfoLog(true),
+      m_showWarnLog(true),
+      m_showErrorLog(true)
+{}
 
 ConsoleLogger::~ConsoleLogger() {}
 
+void ConsoleLogger::setLevelOn(ELogLevel logLevel, bool on)
+{
+    switch (logLevel)
+    {
+        case eDebug:
+            m_showDebugLog.store(on);
+            break;
+        case eInfo:
+            m_showInfoLog.store(on);
+            break;
+        case eWarn:
+            m_showWarnLog.store(on);
+            break;
+        case eError:
+            m_showErrorLog.store(on);
+            break;
+        default:
+            // unknown 级别按 Info 门控（与 log() 降级语义一致）
+            m_showInfoLog.store(on);
+            break;
+    }
+}
+
+bool ConsoleLogger::isLevelOn(ELogLevel logLevel) const
+{
+    switch (logLevel)
+    {
+        case eDebug:
+            return m_showDebugLog.load();
+        case eInfo:
+            return m_showInfoLog.load();
+        case eWarn:
+            return m_showWarnLog.load();
+        case eError:
+            return m_showErrorLog.load();
+        default:
+            return m_showInfoLog.load();
+    }
+}
+
 void ConsoleLogger::log(ELogLevel logLevel, const std::string& tag, const std::string& log)
 {
+    // 级别门控随 sink 自持：关断级别直接丢弃不输出（unknown 级别按 Info 门控，
+    // 与下方 default 降级语义一致）；判定在类级锁外完成，atomic 读无新锁
+    switch (logLevel)
+    {
+        case eDebug:
+            if (!m_showDebugLog.load())
+                return;
+            break;
+        case eInfo:
+            if (!m_showInfoLog.load())
+                return;
+            break;
+        case eWarn:
+            if (!m_showWarnLog.load())
+                return;
+            break;
+        case eError:
+            if (!m_showErrorLog.load())
+                return;
+            break;
+        default:
+            if (!m_showInfoLog.load())
+                return;
+            break;
+    }
+
     std::string timeStr = yomkLogLocalTimeFormatted();
 
     // tag 优先显示；空 tag 回退日志器名，保持旧行为
