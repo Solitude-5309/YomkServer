@@ -12,8 +12,9 @@ TestYomkShutdownSeq.py —— async_request + shutdown 排空/幂等/拒新语�
    不无限排空
 
 语言机制说明（非功能缺口）：
-- deleted/markDeleted/YomkBindWeakSelf 弱绑定判活为语言机制剔除项，
-  排空期弱绑定回调探针断言一并剔除
+- 弱绑定判活已对齐落地（YomkService.weak_func + deleted/mark_deleted）：
+  install_func 自动弱绑定，排空期弱绑定回调照常执行（shutdown 不置位注销标志），
+  与 del_service 删除即停对比实证
 - 析构兜底不适用：python 无确定性析构，兜底语义由显式 shutdown 与进程退出 atexit 承载
 
 说明：call_once 仅约束 YomkAPI.init 单例路径；本测试在类级直测 YomkServer，
@@ -32,15 +33,18 @@ g_failed = 0
 
 # ---- 文件级观测变量（每节首重置；写于池线程、读于 shutdown join 之后，无并发读写） ----
 g_task_count = 0    # 异步任务回调到达计数
+
 g_deinit_count = 0  # 服务 deinit 调用次数
 g_spawn_exec = 0    # /spawn 真实执行次数
+g_deinit_deleted = None  # deinit 时服务注销标志状态（shutdown 路径应为 False）
 
 
 def reset_globals():
-    global g_task_count, g_deinit_count, g_spawn_exec
+    global g_task_count, g_deinit_count, g_spawn_exec, g_deinit_deleted
     g_task_count = 0
     g_deinit_count = 0
     g_spawn_exec = 0
+    g_deinit_deleted = None
 
 
 def check(cond, msg):
@@ -62,8 +66,9 @@ class DrainSrv(YomkService):
         return 0
 
     def deinit(self):
-        global g_deinit_count
+        global g_deinit_count, g_deinit_deleted
         g_deinit_count += 1
+        g_deinit_deleted = self.deleted()
 
     def ping(self, pkg):
         return YomkResponse(ResStatus.eOk, "pong")
@@ -108,9 +113,11 @@ def test_drain_semantics():
 
     server.shutdown()  # 阻塞至请求池排空 join 完成
 
-    check(g_task_count == 100, "排空：100 个在途异步任务在 shutdown 返回前全部执行")
+    check(g_task_count == 100,
+          "排空：100 个在途弱绑定异步任务在 shutdown 返回前全部执行（install_func 自动包装存活路径透明）")
     check(g_deinit_count == 1, "排空：池停止后服务 deinit 被调用一次")
-    # 排空期弱绑定探针断言剔除（python 无 deleted/markDeleted 与弱绑定包装层）
+    check(g_deinit_deleted is False,
+          "排空：shutdown 不置位注销标志（deinit 时 deleted() 为 False，与 del_service 删除即停对比）")
 
 
 # 2. 拒新：shutdown 后异步投递被拒、回调永不触发；同步 request 现状文档化

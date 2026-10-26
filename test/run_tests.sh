@@ -124,6 +124,7 @@ TESTS=(
     YomkServer/TestYomkAPILifecycle
     YomkServer/TestYomkBoot
     YomkServer/TestYomkShutdownSeq
+    YomkServer/TestYomkWeakFunc
     YomkServer/TestYomkConcurrency
     # YomkContext 模块
     YomkContext/TestYomkContextCRUD

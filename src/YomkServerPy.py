@@ -42,6 +42,9 @@ class YomkService:
         self.functions: dict[str, Callable[[Any], YomkResponse]] = {}
         self.function_infos: dict[str, FuncInfo] = {}
         self.registered: bool = False
+        # 注销标志（对齐 main std::atomic<bool> m_deleted）：del_service/同名替换置位，
+        # shutdown 不置位——删除即停（weak_func 判活叠加此标志），排空期回调照常执行
+        self.m_deleted: bool = False
         self.rwlock_functions = rwlock.RWLockFair()
         if not server:
             log.error("server is null")
@@ -61,6 +64,55 @@ class YomkService:
     def mark_registered(self):
         # 框架内部使用：服务入表注册后锁定服务名，此后 set_name 改名被拒绝
         self.registered = True
+
+    def mark_deleted(self):
+        # 框架内部使用：del_service/同名替换置位注销标志，weak_func 判活叠加此标志
+        # （删除即停：即使回调仍被在途任务持有，调用也立即丢弃）
+        self.m_deleted = True
+
+    def deleted(self):
+        # 注销标志查询（对齐 main deleted() 公开接口）
+        return self.m_deleted
+
+    def weak_func(self, func, discard="response"):
+        # 包装回调为弱绑定判活回调（对齐 main weakFunc）：weakref(self) 引用计数层
+        # + deleted() 注销标志层，双层独立生效；丢弃时按 discard 声明给出契约返回值
+        # （"response" 返 eNo+契约消息 / "check" 放行 eAccept / "none" 返 None——
+        # 对齐 main 按静态返回类型 void/YomkResponse/ECheckStatus/Ret{} 四分支的
+        # 语言形态映射，python 动态类型下由调用方声明丢弃形态）
+        # 绑定方法持实例强引用，直接持有会抵消判活（main std::bind 持裸 this 无此
+        # 问题）：经 WeakMethod 弱化宿主；拆分两 helper 是刻意的——绑定方法不得被
+        # 本函数闭包捕获（cython 函数级 scope 会持 func 参数），仅裸函数参与捕获
+        if getattr(func, "__self__", None) is not None:
+            return self._weak_meth(func, discard)
+        return self._weak_plain(func, discard)
+
+    def _weak_meth(self, func, discard):
+        # 绑定方法分支：WeakMethod 弱化宿主，判活叠加方法宿主存活；
+        # 本分支闭包仅持有 WeakMethod（内部全弱引用），不持绑定方法
+        self_ref = weakref.ref(self)
+        meth_ref = weakref.WeakMethod(func)
+
+        def wrapper(*args, **kwargs):
+            srv = self_ref()
+            live_func = meth_ref()
+            if srv is None or live_func is None or srv.m_deleted:
+                return _yomk_weak_discard_result(discard)
+            return live_func(*args, **kwargs)
+
+        return wrapper
+
+    def _weak_plain(self, func, discard):
+        # 普通函数/闭包分支：不持实例引用，判活仅由 self_ref 承载
+        self_ref = weakref.ref(self)
+
+        def wrapper(*args, **kwargs):
+            srv = self_ref()
+            if srv is None or srv.m_deleted:
+                return _yomk_weak_discard_result(discard)
+            return func(*args, **kwargs)
+
+        return wrapper
 
     def init(self):
         pass
@@ -83,7 +135,7 @@ class YomkService:
             if (name in self.functions):
                 log.error(
                     f"install function already exists -> {name}, update to current function")
-            self.functions[name] = function
+            self.functions[name] = self.weak_func(function)
             if msg_name or description:
                 self.function_infos[name] = FuncInfo(
                     name, msg_name, description)
@@ -189,8 +241,10 @@ class YomkServer:
             # 入表即锁定服务名：注册后改名被拒绝，保证服务名与 service map 键一致
             service.mark_registered()
 
-        # 锁外对旧服务 deinit：同名替换语义，替换前旧服务仍在表中
+        # 锁外对旧服务置位注销标志并 deinit：同名替换语义，替换前旧服务仍在表中；
+        # 置位后旧服务弱绑定回调立即丢弃（删除即停）
         if old_srv is not None:
+            old_srv.mark_deleted()
             old_srv.deinit()
 
         # init 抛异常视同失败：捕获后走统一回滚，避免半初始化服务残留在表；
@@ -216,8 +270,10 @@ class YomkServer:
                 return -1
             srv = self.services.pop(srv_name)
 
-        # 锁外执行 deinit，与 shutdown 保持一致的锁外清理模式
+        # 锁外置位注销标志并执行 deinit，与 shutdown 保持一致的锁外清理模式；
+        # 置位后已注册弱绑定回调立即丢弃（删除即停）
         if srv is not None:
+            srv.mark_deleted()
             srv.deinit()
         return 0
 
@@ -497,6 +553,19 @@ def _yomk_err_pos_log(msg):
     sys.stdout.write("[Yomk] [" + frame.f_code.co_filename + ":" + str(frame.f_lineno) + "] [" +
                      frame.f_code.co_name + "] " + msg + "\n")
     sys.stdout.flush()
+
+
+def _yomk_weak_discard_result(discard):
+    # weak_func 丢弃契约（对齐 main 按静态返回类型四分支的语言形态映射）：
+    # "response" 返 eNo+契约消息 / "check" 放行 eAccept / "none" 返 None（Ret{} 默认值）
+    log.error("service has been deleted or unregistered, callback ignored.")
+    if discard == "response":
+        return YomkResponse(
+            ResStatus.eNo,
+            "service has been deleted or unregistered, callback ignored.")
+    if discard == "check":
+        return CheckStatus.eAccept
+    return None
 
 
 def _yomk_log_local_time_formatted():
