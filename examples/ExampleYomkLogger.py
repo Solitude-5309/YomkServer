@@ -10,11 +10,12 @@ ExampleYomkLogger —— YomkLogger 日志系统示例：机械臂产线背景�
 控制台输出格式四段：[时间] [级别] [tag] [行号] 内容——tag 即控制台日志器名，
 首次使用自动创建；门面自动把 [行号] 拼进内容开头，方便定位调用处。
 级别开关两级主闸并联：无参作用于全局主闸（框架全局）、具名逐器门控单个日志器，
-输出取两层 AND，只影响控制台；文件日志四级全记。
+输出取两层 AND；控制台与文件两套主闸相互独立（on/off_file_log_* 操作文件侧）。
 
 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 show_arm_xxx
 小函数，形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
-全部日志用户门面 API（控制台 8 / 开关 8 / 代理 1 / 文件 10 / 内省 4）无一遗漏。
+全部日志用户门面 API（控制台 8 / 开关 16 / 代理 1 / 文件 10 / 内省 4）无一遗漏；
+开关含控制台与文件两族各 8（本示例演示控制台族，文件族 on/off_file_log_* 同构）。
 叙事日志统一走 arm.demo（YomkLogger 自身即演示对象）。
 
 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
@@ -429,7 +430,7 @@ def show_arm_logger_dashboard():
         for info in resp.data:
             log_logger_info("LOGGER_INFO_ALL", info)
     log_verify(
-        "console 条目 state 为逐器门控层真值（未做具名开关恒全 on），file 条目级别恒 on、proxy 恒 off（控制台专属概念）")
+        "console 条目 state 为控制台逐器门控层真值（未做具名开关恒全 on），file 条目为文件逐器门控层真值、proxy 恒 off（文件代理落地前）")
 
     # 全局主闸态单查：ALL 条目报逐器真值，主闸态经 logger_info_global 独立承载，两层一起看全
     log_action_start("复查全局主闸状态")

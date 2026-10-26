@@ -12,7 +12,9 @@ TestYomkLoggerDirect.py —— ConsoleLogger / FileLogger 类直连测试
 2. FileLogger 直连：默认名/setter、init 建多级目录 + 空 .log 返 bool、log 四级别
    内存缓冲（write 前文件 0 字节）、write 追加落盘 + 清缓冲 + 二次 write no-op、
    空内容成行、1MB 超长内容、tag 前缀语义、write 打不开文件保留缓冲恢复补写、
-   析构自动 write、init 不可创建目录 false 不抛、init 目录为普通文件 false
+   析构自动 write、init 不可创建目录 false 不抛、init 目录为普通文件 false、
+   级别门控（默认全开 / 关断隔离落盘实证 / 恢复 / unknown 按 Info 门控直接
+   丢弃无降级提示、恢复后降级行为回归）
 
 语言机制说明：
 - stdout 捕获用 contextlib.redirect_stdout(io.StringIO)；
@@ -292,6 +294,61 @@ def main():
           "init 目录为普通文件时返回 False（open 打开失败分支）")
     check("create log file failed: " + regular_dir + "/lg1_initfail.log" in out,
           "init 打开失败错误提示含完整日志文件路径")
+
+    # 级别门控（门控下沉新增）：默认全开 → 关断隔离 → 恢复 → unknown 按 Info 门控
+    # （对齐 ConsoleLogger 用例 14；FileLogger 无 stdout 输出，经 write 落盘文件内容验证）
+    gate_dir = os.path.join(tmp_dir, "fl_gate")
+    gate_fl = FileLogger()
+    gate_fl.set_name("lg1_df_gate")
+    gate_fl.set_dir(gate_dir)
+    check(gate_fl.init() is True, "15: 门控用例 FileLogger init 成功")
+    gate_log_file = os.path.join(gate_dir, "lg1_df_gate.log")
+
+    # 15a 新实例四级门控默认全开
+    check(gate_fl.is_level_on(Log.eDebug) and gate_fl.is_level_on(Log.eInfo)
+          and gate_fl.is_level_on(Log.eWarn) and gate_fl.is_level_on(Log.eError),
+          "15a: 新实例四级门控默认全开")
+
+    # 15b 关断隔离：Info 关断后 log 不入缓冲（write 落盘不增长），其余级别不受影响
+    gate_fl.set_level_on(Log.eInfo, False)
+    check(not gate_fl.is_level_on(Log.eInfo), "15b: is_level_on 反查 Info 关断生效")
+    check(gate_fl.is_level_on(Log.eWarn), "15b: 关断 Info 不影响其他级别")
+    gate_fl.log(Log.eInfo, "", "lg1_df_gate_off_marker")
+    gate_fl.log(Log.eWarn, "", "lg1_df_gate_warn_marker")
+    gate_fl.write()
+    gate_content = read_file(gate_log_file)
+    check("lg1_df_gate_off_marker" not in gate_content, "15b: 关断级别不落盘")
+    check("[Warn ] lg1_df_gate_warn_marker" in gate_content,
+          "15b: 未关断级别落盘不受影响")
+
+    # 15c 恢复：重开后输出恢复
+    gate_fl.set_level_on(Log.eInfo, True)
+    check(gate_fl.is_level_on(Log.eInfo), "15c: is_level_on 反查恢复生效")
+    gate_fl.log(Log.eInfo, "", "lg1_df_gate_on_marker")
+    gate_fl.write()
+    gate_content2 = read_file(gate_log_file)
+    check("[Info ] lg1_df_gate_on_marker" in gate_content2, "15c: 恢复后落盘正常")
+
+    # 15d unknown 级别按 Info 门控：关 Info 后 log(99) 门控层直接丢弃
+    # （不进入 default 降级分支，无 Unknown log level 提示）；恢复后降级行为回归
+    gate_fl.set_level_on(Log.eInfo, False)
+    size_before_bad = os.path.getsize(gate_log_file)
+    out_bad_gate = capture(lambda: gate_fl.log(
+        99, "", "lg1_df_gate_bad_marker"))
+    gate_fl.write()
+    check("Unknown log level" not in out_bad_gate,
+          "15d: unknown 级别随 Info 门控直接丢弃（无降级提示）")
+    check(os.path.getsize(gate_log_file) == size_before_bad,
+          "15d: 关断期间 log(99) 不落盘（文件不增长）")
+    gate_fl.set_level_on(Log.eInfo, True)
+    out_bad_gate2 = capture(lambda: gate_fl.log(
+        99, "", "lg1_df_gate_bad2_marker"))
+    gate_fl.write()
+    gate_content3 = read_file(gate_log_file)
+    check("Unknown log level: 99" in out_bad_gate2,
+          "15d: 恢复后 unknown 级别回归 default 降级提示")
+    check("[Info ] lg1_df_gate_bad2_marker" in gate_content3,
+          "15d: 恢复后降级 Info 行落盘")
 
     # ============ 收尾清理 ============
     shutil.rmtree(tmp_dir, ignore_errors=True)

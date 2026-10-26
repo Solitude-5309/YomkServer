@@ -487,12 +487,13 @@ resp = YomkApi.server_info_all()
 YomkApi.console_log_info("application started")
 YomkApi.console_log_warn_tag("Security", "suspicious activity")
 
-# 级别开关两级主闸并联（只影响控制台；文件日志不受影响）：
-# 无参 = 全局主闸（YomkLogger 全局开关），具名 = 逐器门控单个日志器，输出取两层 AND
-YomkApi.off_console_log_debug()      # 全局主闸关 DEBUG；同族 on/off_console_log_info/warn/error
+# 级别开关两级主闸并联：无参 = 全局主闸（YomkLogger 全局开关），具名 = 逐器门控单个日志器，
+# 输出取两层 AND；控制台与文件两套主闸相互独立（on/off_file_log_* 同族操作文件侧）
+YomkApi.off_console_log_debug()      # 控制台主闸关 DEBUG；同族 on/off_console_log_info/warn/error
 YomkApi.off_console_log_info("biz")  # 具名逐器关断：仅 biz 的 INFO 无输出（未命中 eNo 不惰性创建）
-resp = YomkApi.logger_info_global()  # 查全局主闸状态（data 为 LoggerState 五开关）
-resp = YomkApi.logger_info_all()     # console 条目报逐器门控层真值（两层正交，归因唯一）
+resp = YomkApi.logger_info_global()         # 查控制台主闸状态（缺省 type="console"，data 为 LoggerState 五开关）
+resp = YomkApi.logger_info_global("file")   # 查文件主闸状态（未知 type 返回 eNo）
+resp = YomkApi.logger_info_all()     # 条目报逐器门控层真值（两层正交，归因唯一）
 YomkApi.on_console_log_info("biz")   # 具名恢复，条目 info_on 回归 true
 
 # 文件日志：创建日志器 → 写内存缓冲 → 显式落盘为 dir/name.log

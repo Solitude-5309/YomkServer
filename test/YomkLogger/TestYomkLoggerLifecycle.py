@@ -4,7 +4,7 @@
 TestYomkLoggerLifecycle.py —— YomkLogger 服务全链路生命周期测试
 （LG1-LG6 轮交付）
 
-覆盖内容（10 节）：
+覆盖内容（11 节）：
 S1 控制台日志基线（四级别 + 开关翻转）；S2 自定义 tag 自动创建（含 65536 超长 tag、
 空内容）；S2.5 非法级别 default 降级（须在 S3 设 proxy 前）；S3 proxy 契约（拦截/
 穿透/卸载恢复/重装复位，LG6 P4-e）；S4 文件日志闭环（create/缓冲/落盘/重复/未创建/
@@ -13,7 +13,10 @@ S6 边界值（整数边界/浮点特殊值/1MB 内容/非法级别 file_log+off
 路径（空包/错类型包/空 logger 名回退/未知端点）；S8 /delete_logger 全语义（8.1-8.7）；
 S9 服务级具名开关与全局态端点（两级主闸并联：具名 OFF/ON 逐器隔离与恢复、未知名
 eNo 不惰性创建、主闸×逐器两层归因、条目逐器真值与两层正交、全局主闸态基线与
-无参翻转联动）
+无参翻转联动）；S10 文件日志两级开关与全局态端点（与控制台同构、落盘实证：
+具名 OFF/ON 文件逐器隔离与恢复、未知名 eNo、文件主闸×逐器两层归因、
+两层正交、logger_info_global("file"/"console") 两套主闸独立直证与无参翻转联动、
+未知 type eNo）
 
 语言机制说明：
 - stdout 捕获用 contextlib.redirect_stdout；CHECK 在捕获作用域外（LG1 教训，
@@ -715,6 +718,116 @@ def main():
           "S9f: 无参 ON_DEBUG 恢复 eOk")
     check(YomkApi.logger_info_global().data.debug_on,
           "S9f: 主闸 ON_DEBUG 后全局态 debug_on")
+
+    # ============ Section 10: 文件日志两级开关与全局态端点（与控制台同构） ============
+    fl_name = "lg1_s10_fl"
+    s10_dir = os.path.join(tmp_dir, "s10")
+    os.makedirs(s10_dir, exist_ok=True)
+    s10_log_file = os.path.join(s10_dir, fl_name + ".log")
+    check(YomkApi.file_log_create(s10_dir, fl_name).status == ResStatus.eOk,
+          "S10: 建文件日志器 lg1_s10_fl 成功")
+
+    # 10.1 具名 OFF 隔离：关 lg1_s10_fl 的 info，warn 落盘不受影响
+    check(YomkApi.off_file_log_info(fl_name).status == ResStatus.eOk,
+          "S10a: 具名 OFF_FILE_LOG_INFO(fl) 返回 eOk")
+    li = YomkApi.logger_info_logger(fl_name, "file")
+    check(li.data is not None and not li.data.logger_state.info_on
+          and li.data.logger_state.warn_on,
+          "S10a: 单查条目 info_off 且 warn_on（文件逐器门控真值）")
+    check(YomkApi.file_log_info_tag(fl_name, "lg1s10", "lg1_s10a_off_marker").status
+          == ResStatus.eOk, "S10a: 关断后 FILE_INFO 仍 eOk")
+    check(YomkApi.file_log_warn_tag(fl_name, "lg1s10", "lg1_s10a_warn_marker").status
+          == ResStatus.eOk, "S10a: WARN 写入 eOk")
+    check(YomkApi.file_log_write(fl_name).status ==
+          ResStatus.eOk, "S10a: WRITE eOk")
+    s10_content = read_file(s10_log_file)
+    check("lg1_s10a_off_marker" not in s10_content, "S10a: 关断级别不落盘（marker 缺席）")
+    check("lg1_s10a_warn_marker" in s10_content, "S10a: 未关断级别落盘不受影响")
+
+    # 10.2 具名 ON 恢复
+    check(YomkApi.on_file_log_info(fl_name).status == ResStatus.eOk,
+          "S10b: 具名 ON_FILE_LOG_INFO(fl) 返回 eOk")
+    li = YomkApi.logger_info_logger(fl_name, "file")
+    check(li.data is not None and li.data.logger_state.info_on,
+          "S10b: 条目 info_on 恢复")
+    check(YomkApi.file_log_info_tag(fl_name, "lg1s10", "lg1_s10b_on_marker").status
+          == ResStatus.eOk, "S10b: 恢复后 FILE_INFO eOk")
+    check(YomkApi.file_log_write(fl_name).status ==
+          ResStatus.eOk, "S10b: WRITE eOk")
+    s10_content = read_file(s10_log_file)
+    check("lg1_s10b_on_marker" in s10_content, "S10b: 恢复后落盘回归")
+
+    # 10.3 具名未知名 eNo（不惰性创建）
+    off_no = YomkApi.off_file_log_info("lg1_s10_never_created")
+    check(off_no.status == ResStatus.eNo and off_no.msg == "file logger not found.",
+          "S10c: 具名 OFF 未知名返回 eNo + file logger not found.")
+    on_no = YomkApi.on_file_log_info("lg1_s10_never_created")
+    check(on_no.status == ResStatus.eNo and on_no.msg == "file logger not found.",
+          "S10c: 具名 ON 未知名返回 eNo")
+    check("lg1_s10_never_created" not in YomkApi.logger_info_loggers("file").data,
+          "S10c: 未知名未被惰性创建（LOGGERS 无该名）")
+
+    # 10.4 主闸×逐器组合 + 两层归因：文件主闸 OFF + 逐器 ON → 仍不落盘（两层 AND），
+    # 文件全局态与条目逐器态各自真实呈现、归因唯一
+    check(YomkApi.off_file_log_info().status == ResStatus.eOk,
+          "S10d: 无参 OFF（文件主闸）返回 eOk")
+    g = YomkApi.logger_info_global("file")
+    check(g.data is not None and not g.data.info_on,
+          "S10d: logger_info_global(\"file\") 报文件主闸 info_off")
+    li = YomkApi.logger_info_logger(fl_name, "file")
+    check(li.data is not None and li.data.logger_state.info_on,
+          "S10d: 条目报逐器 info_on（与文件主闸态相反，两层归因唯一）")
+    check(YomkApi.file_log_info_tag(fl_name, "lg1s10", "lg1_s10d_gate_marker").status
+          == ResStatus.eOk, "S10d: 主闸关断后 FILE_INFO 仍 eOk")
+    check(YomkApi.file_log_write(fl_name).status ==
+          ResStatus.eOk, "S10d: WRITE eOk")
+    s10_content = read_file(s10_log_file)
+    check("lg1_s10d_gate_marker" not in s10_content,
+          "S10d: 主闸 OFF + 逐器 ON → 仍不落盘（两层 AND）")
+    check(YomkApi.on_file_log_info().status == ResStatus.eOk,
+          "S10d: 无参 ON（文件主闸）恢复 eOk")
+    check(YomkApi.file_log_info_tag(fl_name, "lg1s10", "lg1_s10d_on_marker").status
+          == ResStatus.eOk, "S10d: 主闸恢复后 FILE_INFO eOk")
+    check(YomkApi.file_log_write(fl_name).status ==
+          ResStatus.eOk, "S10d: WRITE eOk")
+    s10_content = read_file(s10_log_file)
+    check("lg1_s10d_on_marker" in s10_content, "S10d: 主闸恢复后落盘回归（逐器仍 on）")
+
+    # 10.5 两层正交：具名关断直接反映在条目、不波及文件主闸态
+    check(YomkApi.off_file_log_info(fl_name).status == ResStatus.eOk,
+          "S10e: 再次具名关断返回 eOk")
+    g = YomkApi.logger_info_global("file")
+    check(g.data is not None and g.data.info_on,
+          "S10e: 具名关断不影响文件主闸（两层正交）")
+    check(YomkApi.on_file_log_info(fl_name).status == ResStatus.eOk,
+          "S10e: 具名恢复 eOk（状态复原）")
+
+    # 10.6 全局态端点基线：logger_info_global("file"/"console") 两套主闸独立 + 无参翻转联动
+    g = YomkApi.logger_info_global("file")
+    check(g.status == ResStatus.eOk and g.msg == "ok",
+          "S10f: logger_info_global(\"file\") 返回 eOk + ok")
+    check(g.data is not None and g.data.debug_on and g.data.info_on
+          and g.data.warn_on and g.data.error_on,
+          "S10f: 文件主闸四级全 on")
+    check(g.data is not None and not g.data.proxy_on,
+          "S10f: 文件态 proxy_on=False（文件代理闭环 3 落地前恒 false）")
+    check(YomkApi.off_file_log_debug().status == ResStatus.eOk,
+          "S10f: 无参 OFF_FILE_LOG_DEBUG 返回 eOk")
+    check(not YomkApi.logger_info_global("file").data.debug_on,
+          "S10f: 文件主闸 OFF_DEBUG 后文件态 debug_off")
+    # 两套主闸独立直证：文件主闸翻转不波及控制台主闸
+    gc = YomkApi.logger_info_global("console")
+    check(gc.data is not None and gc.data.debug_on and gc.data.info_on
+          and gc.data.warn_on and gc.data.error_on,
+          "S10f: 控制台主闸四级仍全 on（与文件主闸独立）")
+    check(YomkApi.on_file_log_debug().status == ResStatus.eOk,
+          "S10f: 无参 ON_FILE_LOG_DEBUG 恢复 eOk")
+    check(YomkApi.logger_info_global("file").data.debug_on,
+          "S10f: 文件主闸 ON_DEBUG 后文件态 debug_on")
+    # 未知 type：客户端直返 eNo 不发请求
+    bad_type = YomkApi.logger_info_global("badtype")
+    check(bad_type.status == ResStatus.eNo and bad_type.msg == "unknown logger type.",
+          "S10f: 未知 type 返回 eNo unknown logger type.")
 
     # ============ 收尾清理 ============
     YomkApi.shutdown()

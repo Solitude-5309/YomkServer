@@ -99,7 +99,8 @@ class Context:
     key: str
     value: Any
     group: str
-    def __init__(self, key: str = "", value: Any = None, group: str = "main") -> None: ...
+    def __init__(self, key: str = "", value: Any = None,
+                 group: str = "main") -> None: ...
 
 
 class ContextKeyInfo:
@@ -128,6 +129,7 @@ class ContextMonitor:
     monitor_func: Callable[[Any], None]
     async_monitor_func: bool
     group: str
+
     def __init__(self, key: str = "", monitor_func: Callable[[
                  Any], None] = None, async_monitor_func: bool = False,
                  group: str = "main") -> None: ...
@@ -144,7 +146,8 @@ class ContextGroupInfo:
     # Context 组级内省条目（/YomkContext/all 返回数据元素：组名 + 该组下全部键元信息）
     group_name: str
     keys: List[ContextKeyInfo]
-    def __init__(self, group_name: str = "", keys: List[ContextKeyInfo] = None) -> None: ...
+    def __init__(self, group_name: str = "",
+                 keys: List[ContextKeyInfo] = None) -> None: ...
 
 
 class Function:
@@ -214,8 +217,9 @@ class LoggerInfo:
     # 类型："console" 或 "file"（与 LOGGERS 行文本 [console]/[file] 对应）
     type: str
     dir: str          # file 类型的日志目录（console 时为空串）
-    # logger_state 状态段（console 条目为真实全局状态；file 条目四级别恒 true、
-    # proxyOn 恒 false）
+    # logger_state 状态段：console 条目承载控制台逐器门控层真值、file 条目承载
+    # 文件逐器门控层真值（均为逐器层，全局主闸态经 console_global_state/
+    # file_global_state 查询；文件代理落地前 file 侧 proxyOn 恒 false）
     logger_state: LoggerState
 
     def __init__(self, logger_name: str = "", type: str = "",
@@ -227,7 +231,8 @@ class LoggerState:
     info_on: bool     # info 级别开关
     warn_on: bool     # warn 级别开关
     error_on: bool    # error 级别开关
-    proxy_on: bool    # 控制台代理已安装
+    proxy_on: bool    # 代理已安装：console_global_state 报控制台代理、
+    # file_global_state 报文件代理（文件代理落地前 file 侧恒 false）
 
     def __init__(self, debug_on: bool = False, info_on: bool = False,
                  warn_on: bool = False, error_on: bool = False,

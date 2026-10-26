@@ -355,6 +355,54 @@ def off_console_log_debug(logger_name=""):
                         Log(Log.eDebug, "", logger_name))
 
 
+def on_file_log_info(logger_name=""):
+    # 开启文件 Info 级别日志（logger_name 空 = 文件全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/on_file_log_by_level",
+                        Log(Log.eInfo, "", logger_name))
+
+
+def on_file_log_warn(logger_name=""):
+    # 开启文件 Warn 级别日志（logger_name 空 = 文件全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/on_file_log_by_level",
+                        Log(Log.eWarn, "", logger_name))
+
+
+def on_file_log_error(logger_name=""):
+    # 开启文件 Error 级别日志（logger_name 空 = 文件全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/on_file_log_by_level",
+                        Log(Log.eError, "", logger_name))
+
+
+def on_file_log_debug(logger_name=""):
+    # 开启文件 Debug 级别日志（logger_name 空 = 文件全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/on_file_log_by_level",
+                        Log(Log.eDebug, "", logger_name))
+
+
+def off_file_log_info(logger_name=""):
+    # 关闭文件 Info 级别日志（logger_name 空 = 文件全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/off_file_log_by_level",
+                        Log(Log.eInfo, "", logger_name))
+
+
+def off_file_log_warn(logger_name=""):
+    # 关闭文件 Warn 级别日志（logger_name 空 = 文件全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/off_file_log_by_level",
+                        Log(Log.eWarn, "", logger_name))
+
+
+def off_file_log_error(logger_name=""):
+    # 关闭文件 Error 级别日志（logger_name 空 = 文件全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/off_file_log_by_level",
+                        Log(Log.eError, "", logger_name))
+
+
+def off_file_log_debug(logger_name=""):
+    # 关闭文件 Debug 级别日志（logger_name 空 = 文件全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/off_file_log_by_level",
+                        Log(Log.eDebug, "", logger_name))
+
+
 def logger_info_loggers(logger_type):
     # 按类型获取日志器名列表（type: "console"/"file"，仅返回该类型的纯名）
     return _api_request("/YomkLogger/loggers", logger_type)
@@ -367,14 +415,19 @@ def logger_info_logger(logger_name, logger_type):
 
 def logger_info_all():
     # 查询全部日志器及逐器门控状态（命中 msg 恒 "ok"，data 为 list[LoggerInfo] 清单，
-    # 每条内嵌 logger_state 状态段（LoggerState：console 条目为逐器门控层真值、
-    # file 条目级别恒 true/proxy_on 恒 false））
+    # 每条内嵌 logger_state 状态段（LoggerState：console 条目为控制台逐器门控层真值、
+    # file 条目为文件逐器门控层真值，proxy_on 恒 false——文件代理落地前））
     return _api_request("/YomkLogger/all", None)
 
 
-def logger_info_global():
-    # 查询控制台全局主闸状态（4 级别 + proxy；独立于逐器门控层，供两层归因）
-    return _api_request("/YomkLogger/console_global_state", None)
+def logger_info_global(type="console"):
+    # 查询全局主闸状态（4 级别 + proxy；type: "console"/"file"，两套主闸相互独立
+    # 供两层归因；缺省 "console" 与历史无参语义一致，未知 type 返回 eNo）
+    if type == "file":
+        return _api_request("/YomkLogger/file_global_state", None)
+    if type == "console":
+        return _api_request("/YomkLogger/console_global_state", None)
+    return YomkResponse(ResStatus.eNo, "unknown logger type.")
 
 
 def file_log_delete(logger_name):
