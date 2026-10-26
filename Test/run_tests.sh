@@ -15,11 +15,12 @@
 #                    （契约：本机内核 high-entropy ASLR 下 TSan runtime 启动即
 #                    "unexpected memory mapping"，退出码 66）；默认 off 行为不变
 # 行为:
-#   1. 运行前清理 /tmp/yomk_logger_* 残留（上次崩溃遗留）
+#   1. 测试临时产物统一落 Test/test_logs/tmp（经 YOMK_TEST_TMP_ROOT 注入测试进程，
+#      测试内 getenv 取根、独立运行回退 /tmp）；启动时整目录重建（兜底上次崩溃遗留）
 #   2. 逐个运行 26 个测试（快→慢，stress 类压尾），每个测试在独立临时工作目录运行
 #   3. 任一测试失败（退出码非 0 / 超时）→ 立即停止，终端输出 [FAIL] 行摘要与日志路径
 #   4. 日志落盘: Test/test_logs/<时间戳>/<测试名>.log + summary.log
-#   5. 全部结束后复查现场残留，发现则清理并计为失败
+#   5. 退出（含失败/中断/超时）时整目录删除 Test/test_logs/tmp，不留任何临时产物
 # 测试程序风格约定: main() 返回 0=全部通过，非 0=存在失败用例（[FAIL] 行输出）
 
 set -u
@@ -38,7 +39,7 @@ SAN_RUNNER=()
 SAN_LIST=()
 
 usage() {
-    sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,23p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 }
 
@@ -83,13 +84,26 @@ parse_args() {
     fi
 }
 
-# EXIT/INT/TERM 兜底清理临时工作目录（幂等）
+# 测试临时根（固定共享目录，test_logs 已 gitignore）：启动整目录重建 + 导出注入，
+# 退出整目录删除（幂等；失败/超时/中断路径经 EXIT trap 全覆盖）
+TEST_TMP_ROOT="${SCRIPT_DIR}/test_logs/tmp"
+ensure_test_tmp_root() {
+    rm -rf "${TEST_TMP_ROOT}"
+    mkdir -p "${TEST_TMP_ROOT}"
+    export YOMK_TEST_TMP_ROOT="${TEST_TMP_ROOT}"
+}
+
+# EXIT/INT/TERM 兜底清理临时工作目录与整个测试临时根（幂等）
 CURRENT_WORKDIR=""
 cleanup_workdir() {
     [ -n "${CURRENT_WORKDIR}" ] && rm -rf "${CURRENT_WORKDIR}"
     CURRENT_WORKDIR=""
 }
-trap cleanup_workdir EXIT
+cleanup_all() {
+    cleanup_workdir
+    rm -rf "${TEST_TMP_ROOT}"
+}
+trap cleanup_all EXIT
 trap 'echo ""; echo "被用户中断"; exit 130' INT TERM
 
 # 测试清单：按模块分组、快→慢，stress 类压尾（与 Test/ 下 CMakeLists 目标一一对应）
@@ -187,35 +201,9 @@ ensure_sanitizer_build() {
     echo "-- [sanitizer=${SANITIZER}] 自动构建完成（耗时 $((SECONDS - start))s）"
 }
 
-# 运行前清理上次运行可能遗留的测试产物（测试中途崩溃时自清理不会执行）
-clean_residue() {
-    shopt -s nullglob
-    local residue=(/tmp/yomk_logger_*)
-    shopt -u nullglob
-    if [ ${#residue[@]} -gt 0 ]; then
-        echo "-- 清理上次运行残留的测试产物: ${#residue[@]} 个 /tmp/yomk_logger_* 目录"
-        rm -rf "${residue[@]}"
-    fi
-}
-
-# 全部结束后复查现场：发现残留则清理并计为失败
-check_residue() {
-    shopt -s nullglob
-    local residue=(/tmp/yomk_logger_*)
-    shopt -u nullglob
-    if [ ${#residue[@]} -gt 0 ]; then
-        echo "[FAIL] 测试结束后发现现场残留（${#residue[@]} 个）:"
-        for p in "${residue[@]}"; do echo "   - ${p}"; done
-        rm -rf "${residue[@]}"
-        echo "       已清理，但对应测试的清理逻辑未在正常路径覆盖，请排查"
-        return 1
-    fi
-    return 0
-}
-
 main() {
     parse_args "$@"
-    clean_residue
+    ensure_test_tmp_root
 
     # 多套 sanitizer 顺序逐轮执行（并发会因 CPU 争抢造成时序类断言假失败）
     local san round_total=${#SAN_LIST[@]} round_idx=0
@@ -236,7 +224,7 @@ main() {
     fi
 }
 
-# 单轮完整流程: 定位/构建插桩目录 → 环境契约注入 → 26 测试循环 → 残留验收
+# 单轮完整流程: 定位/构建插桩目录 → 环境契约注入 → 26 测试循环
 run_one_suite() {
     # sanitizer 模式: 默认指向独立插桩构建目录（用户显式 --bin 时尊重其值）
     if [ "${SANITIZER}" != "off" ] && [ "${BIN_DIR}" = "${REPO_DIR}/bin" ]; then
@@ -304,7 +292,7 @@ run_one_suite() {
     for t in "${TESTS[@]}"; do
         idx=$((idx + 1))
         log="${log_root}/${t}.log"
-        CURRENT_WORKDIR="$(mktemp -d)"
+        CURRENT_WORKDIR="$(mktemp -d -p "${TEST_TMP_ROOT}")"
         printf "[%2d/%2d] %-32s " "${idx}" "${total}" "${t}"
         start=${SECONDS}
         ( cd "${CURRENT_WORKDIR}" && timeout "${TIMEOUT_SECS}" "${SAN_RUNNER[@]}" "${BIN_DIR}/${t}" ) > "${log}" 2>&1
@@ -336,15 +324,6 @@ run_one_suite() {
             exit 1
         fi
     done
-
-    # 现场残留验收
-    if ! check_residue | tee -a "${summary}"; then
-        echo ""
-        echo "==========================================="
-        echo " 测试后现场残留检查未通过，整体判定失败"
-        echo "==========================================="
-        exit 1
-    fi
 
     echo ""
     echo "==========================================="

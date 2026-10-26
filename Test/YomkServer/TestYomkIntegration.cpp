@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -116,6 +117,13 @@ static bool waitUntil(const std::function<bool()>& cond, int timeoutMs)
     return cond();
 }
 
+// 测试临时根：run_tests.sh 注入（Test/test_logs/tmp），独立运行回退 /tmp
+static fs::path testTmpRoot()
+{
+    const char* env = std::getenv("YOMK_TEST_TMP_ROOT");
+    return (env && *env) ? fs::path(env) : fs::temp_directory_path();
+}
+
 int main()
 {
     auto server = YOMK_INIT(1);
@@ -201,7 +209,7 @@ int main()
     // ============ S1. YOMK_SHUTDOWN 全链路统一收尾（压轴：call_once 后不可再 init） ============
     std::cout << "===== S1. YOMK_SHUTDOWN 全链路统一收尾（压轴） =====" << std::endl;
     {
-        fs::path tmpDir = fs::temp_directory_path() / ("yomk_integration_s1_" + std::to_string(::getpid()));
+        fs::path tmpDir = testTmpRoot() / ("yomk_integration_s1_" + std::to_string(::getpid()));
         std::error_code ec;
         fs::create_directories(tmpDir, ec);
         CHECK(!ec, "S1 临时目录创建成功: " + tmpDir.string());

@@ -19,7 +19,7 @@
  *
  * 规模经 YOMK_TEST_STRESS_SCALE 参数化（缺省 100000，clamp 下限 1000），对称激进口径：
  * console tag = N；file logger = N（分片）+ N/10（单目录对照）+ 2×N/100（S4-D）+ 1（S3 大缓冲）
- * + N/500×8（S5 churn，建后即删但磁盘文件保留）→ 峰值 /tmp 下约 1.11N + 0.016N 个真实 .log
+ * + N/500×8（S5 churn，建后即删但磁盘文件保留）→ 峰值临时根（YOMK_TEST_TMP_ROOT 注入，缺省 /tmp）下约 1.11N + 0.016N 个真实 .log
  * 文件（FileLogger::init 语义：创建即建空文件并建目录；删除接口不删磁盘文件）。
  * 每 Section 记录 [BASELINE] 吞吐/延迟但不断言 timing（环境相关），仅断言守恒与正确性。
  * 断言总数随 N 变化（S1A 扫描点个数 = 去重后的 {1000,10000,100000,N} 交集），N=1000 时 61 条。
@@ -803,6 +803,13 @@ static bool lg4Proxy(const yomk::Log& /*log*/)
     return g_proxyReturn.load(std::memory_order_relaxed);
 }
 
+// 测试临时根：run_tests.sh 注入（Test/test_logs/tmp），独立运行回退 /tmp
+static fs::path testTmpRoot()
+{
+    const char* env = std::getenv("YOMK_TEST_TMP_ROOT");
+    return (env && *env) ? fs::path(env) : fs::temp_directory_path();
+}
+
 // ============================================================================
 // main
 // ============================================================================
@@ -818,7 +825,7 @@ int main()
     auto server = YOMK_INIT(1);
     CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
 
-    fs::path tmpDir = fs::temp_directory_path() / ("yomk_logger_lg4_" + std::to_string(::getpid()));
+    fs::path tmpDir = testTmpRoot() / ("yomk_logger_lg4_" + std::to_string(::getpid()));
     std::error_code ec;
     fs::create_directories(tmpDir, ec);
     CHECK(!ec, "临时目录创建成功: " + tmpDir.string());

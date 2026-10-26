@@ -73,6 +73,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -410,6 +411,13 @@ static bool s3ProxyV2(const yomk::Log& /*log*/)
     return true;
 }
 
+// 测试临时根：run_tests.sh 注入（Test/test_logs/tmp），独立运行回退 /tmp
+static fs::path testTmpRoot()
+{
+    const char* env = std::getenv("YOMK_TEST_TMP_ROOT");
+    return (env && *env) ? fs::path(env) : fs::temp_directory_path();
+}
+
 // ============================================================================
 // main
 // ============================================================================
@@ -418,7 +426,7 @@ int main()
     auto server = YOMK_INIT(1);
     CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
 
-    fs::path tmpDir = fs::temp_directory_path() / ("yomk_logger_lg3_" + std::to_string(::getpid()));
+    fs::path tmpDir = testTmpRoot() / ("yomk_logger_lg3_" + std::to_string(::getpid()));
     std::error_code ec;
     fs::create_directories(tmpDir, ec);
     CHECK(!ec, "临时目录创建成功: " + tmpDir.string());
