@@ -27,19 +27,27 @@ private:
     YomkResponse deleteLogger(YomkPkgPtr pkg);
     YomkResponse offConsoleLogByLevel(YomkPkgPtr pkg);
     YomkResponse onConsoleLogByLevel(YomkPkgPtr pkg);
+    // 具名开关唯一写入口：按名查表逐器门控（未命中 eNo 不惰性创建，不触碰全局主闸）
+    YomkResponse setNamedConsoleLevel(const std::string& loggerName, Log::ELogLevel level, bool on);
 
 private:
     YomkResponse loggers(YomkPkgPtr pkg);
     YomkResponse loggerInfo(YomkPkgPtr pkg);
     YomkResponse listAll(YomkPkgPtr pkg);
-    // 取控制台状态段：四个级别开关独立 atomic + proxy 叶子锁，均在表锁外独立作用域取
+    YomkResponse consoleGlobalState(YomkPkgPtr pkg);
+    // 取控制台全局主闸态：四个级别开关独立 atomic + proxy 叶子锁，均在表锁外独立作用域取
+    // （/console_global_state 端点返回体）
     LoggerState currentConsoleState();
+    // 取单条 console 条目状态：四级别 = logger.isLevelOn 逐器层真值（条目不做两层 AND 代算），
+    // proxyOn 由调用点在表锁外取好传入
+    LoggerState namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn);
 
 private:
     // 锁序约定：需要同时读取两张 logger 表时（listAll 内省快照），
     // 一律按 m_consoleLoggersMutex -> m_fileLoggersMutex 的顺序嵌套持有，全仓无反向嵌套点
     // （consoleLog 的 proxy 锁在独立作用域释放后才取 console 锁；loggerInfo/fileLog/
-    // writeFileLog/createFileLogger 均单锁；currentConsoleState 在表锁外先独立取 proxy 锁，
+    // writeFileLog/createFileLogger/setNamedConsoleLevel 均单锁；currentConsoleState 与
+    // namedConsoleState 的 proxyOn 均在表锁外先独立取 proxy 锁，
     // 沿用 proxy 锁独立作用域先释放的既有模式）；m_consoleLogProxyMutex 为叶子锁，
     // 其临界区内不得获取任何其他锁。后续维护新增嵌套时须沿用此序，否则有死锁风险。
     // 容器选型：两表保持 std::map——曾实测改 unordered_map 致内省/删除路径数倍退化

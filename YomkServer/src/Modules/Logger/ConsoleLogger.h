@@ -28,8 +28,8 @@ public:
 
 private:
     std::string m_name;
-    // 级别门控随 sink 自持（每实例独立、默认全开）：现网开关真源仍为 YomkLogger 全局
-    // atomic（服务层先行短路），本类门控为其后置二道防线
+    // 级别门控随 sink 自持（每实例独立、默认全开）：两级主闸并联架构的第二层（逐器门控），
+    // 第一层为 YomkLogger 全局主闸（经 /console_global_state 内省），输出取两层 AND
     std::atomic<bool> m_showDebugLog;
     std::atomic<bool> m_showInfoLog;
     std::atomic<bool> m_showWarnLog;

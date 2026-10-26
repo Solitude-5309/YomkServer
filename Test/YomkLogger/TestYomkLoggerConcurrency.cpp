@@ -1486,13 +1486,20 @@ int main()
             g_s5IntrospectOk.load() > 0,
             "S5: 内省线程确实观测到 ALL（" + std::to_string(g_s5IntrospectOk.load()) + " 次）");
 
-        // ---- 最终一致性：ALL 控制台状态字段 + 日志器数跨端点一致 + file sink 落盘守恒 ----
+        // ---- 最终一致性：全局主闸状态 + ALL 条目逐器真值 + 日志器数跨端点一致 + file sink 落盘守恒 ----
+        // 条目改报逐器门控层真值后，"收尾全 ON" 验证语义迁移至 LOGGER_INFO_GLOBAL（全局主闸态）；
+        // ALL 条目断言保留，验证未做具名开关时逐器真值恒 on（退化性基线）
+        YomkUnPackPkg(YOMK_LOGGER_INFO_GLOBAL().m_data, LoggerState, finalGs);
+        CHECK(
+            (finalGs != nullptr && finalGs->d.m_debugOn && finalGs->d.m_infoOn &&
+             finalGs->d.m_warnOn && finalGs->d.m_errorOn && finalGs->d.m_proxyOn),
+            "S5: 收尾四级别全 ON 后全局主闸状态全 on（含 S3 已设的 proxyOn）");
         YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, finalListPkg);
         const yomk::LoggerState* finalSt = firstConsoleState(finalListPkg);
         CHECK(
             (finalSt != nullptr && finalSt->m_debugOn && finalSt->m_infoOn &&
              finalSt->m_warnOn && finalSt->m_errorOn && finalSt->m_proxyOn),
-            "S5: 收尾四级别全 ON 后 ALL 控制台状态全 on（含 S3 已设的 proxyOn）");
+            "S5: 收尾 ALL 首条 console 条目逐器门控真值全 on（未做具名开关，含 proxyOn）");
         CHECK(
             finalListPkg != nullptr && finalListPkg->d.size() == finalTotal,
             "S5: ALL 日志器数 == LOGGERS 行数（" +

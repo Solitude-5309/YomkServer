@@ -9,11 +9,12 @@
  *
  * 控制台输出格式四段：[时间] [级别] [tag] [行号] 内容——tag 即控制台日志器名，
  * 首次使用自动创建；宏自动把 [行号] 拼进内容开头，方便定位调用处。
- * 级别开关为框架全局（不分日志器），只影响控制台；文件日志四级全记。
+ * 级别开关两级并联：无参作用于全局主闸（框架全局）、具名逐器门控单个日志器，
+ * 输出取两层 AND，只影响控制台；文件日志四级全记。
  *
  * 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 showXXX 小函数，
  * 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
- * 全部 30 个 YOMK 日志用户宏（控制台 8 / 开关 8 / 代理 1 / 文件 10 / 内省 3）
+ * 全部 31 个 YOMK 日志用户宏（控制台 8 / 开关 8 / 代理 1 / 文件 10 / 内省 4）
  * 无一遗漏。叙事日志统一走 arm.demo（YomkLogger 自身即演示对象）。
  *
  * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
@@ -21,18 +22,21 @@
  * 场景 1 showArmLogLevels   [YOMK_INFO/WARN/ERROR/DEBUG + _TAG 版]
  *        班前点检报文分级：四级日志按 DEBUG 详单 -> INFO 通报 -> WARN 预警 ->
  *        ERROR 告警递进；默认 tag 与自定义 tag 双填兼容，[行号] 随行定位。
- * 场景 2 showArmSilentMode  [OFF/ON_CONSOLE_LOG_* + LOGGER_INFO_LOGGER]
- *        产线静默模式：四级别逐级全关（空窗由 WARN/ERROR 锚点桥接，调用仍返回
- *        eOk）；逐级恢复后单查 MainLogger 状态段复查五开关全 on。
+ * 场景 2 showArmSilentMode  [OFF/ON_CONSOLE_LOG_*（无参/具名）+ LOGGER_INFO_GLOBAL + LOGGER_INFO_LOGGER]
+ *        产线静默模式：全局静默四级别逐级全关（空窗由 WARN/ERROR 锚点桥接，调用仍返回
+ *        eOk）；逐级恢复后单查 MainLogger 状态段复查五开关全 on；随后逐器静默——具名
+ *        关断 arm.joint 仅其报文消失（MainLogger/arm.demo 对照不受影响），
+ *        LOGGER_INFO_GLOBAL 报主闸全 on 与条目 infoOff 两层归因唯一。
  * 场景 3 showArmBlackbox    [SET_CONSOLE_LOG_PROXY / FILE_LOG_CREATE / WRITE]
  *        安全黑匣子：代理把 WARN/ERROR 转写文件后消费、DEBUG 噪声消化、INFO
  *        放行——结果行 msg 区分消费与放行；传 nullptr 卸载恢复默认。
  * 场景 4 showArmShiftLog    [YOMK_FILE_INFO/WARN/ERROR/DEBUG + _TAG 版]
  *        班次存档：双 tag 四级写入内存缓冲，显式 WRITE 刷盘；级别全关期间
  *        DEBUG 照常落盘——文件日志与控制台开关、代理相互独立。
- * 场景 5 showArmLoggerDashboard [LOGGER_INFO_LOGGERS / LOGGER / ALL]
+ * 场景 5 showArmLoggerDashboard [LOGGER_INFO_LOGGERS / LOGGER / ALL + LOGGER_INFO_GLOBAL]
  *        运维面板：console/file 清单（字典序）、单查结构化 LoggerInfo（含未
- *        注册 eNo）、全量导出——console 条目承载真实全局状态。
+ *        注册 eNo）、全量导出——console 条目承载逐器门控层真值，再查
+ *        LOGGER_INFO_GLOBAL 复核全局主闸态，两层一起看全。
  * 场景 6 showArmLogCleanup  [FILE_LOG_DELETE + 惰性重建]
  *        收班清档：DELETE 同名清 console+file 两表（返回清了几张表）、磁盘
  *        .log 保留；MainLogger 删除后再写自动重建（按名惰性创建）。
@@ -237,7 +241,7 @@ static void showArmSilentMode()
     logScene(
         2,
         "产线静默模式",
-        "OFF/ON_CONSOLE_LOG_* + LOGGER_INFO_LOGGER",
+        "OFF/ON_CONSOLE_LOG_*（无参/具名） + LOGGER_INFO_GLOBAL + LOGGER_INFO_LOGGER",
         "夜间无人值守降噪：四级别逐级全关（调用仍返回 eOk，仅输出被抑制），"
         "空窗段无任何控制台输出；恢复后单查状态段复查五开关全 on。");
 
@@ -275,7 +279,38 @@ static void showArmSilentMode()
     {
         logLoggerInfo("LOGGER_INFO_LOGGER", info->d);
     }
-    logVerify("五开关全 on：OFF/ON 是框架全局开关（不分日志器），状态段是内省读到的真实配置");
+    logVerify("五开关全 on：无参 OFF/ON 作用于全局主闸，状态段报逐器门控层真值（本段未用具名开关，两者一致）");
+
+    // 逐器静默：具名开关仅门控单个日志器，全局主闸不受影响（两层归因现场演示）
+    logAction("逐器静默：仅关闭 arm.joint 的 INFO（具名关断）", "OFF_CONSOLE_LOG_INFO arm.joint",
+        [&] { return YOMK_OFF_CONSOLE_LOG_INFO("arm.joint"); });
+    logAction("关节模块上报工位动态（INFO，arm.joint 已被具名关断）", "YOMK_INFO_TAG arm.joint",
+        [&] { return YOMK_INFO_TAG("arm.joint", "工位 A 首件下线（本条仅 arm.joint 静默，你看不到）"); });
+    YOMK_INFO_TAG("arm.demo", "arm.joint 已逐器静默：arm.demo 叙事与 MainLogger 输出不受影响（对照锚点）");
+
+    logAction("复查全局主闸状态");
+    YomkResponse gResp = YOMK_LOGGER_INFO_GLOBAL();
+    logResp("LOGGER_INFO_GLOBAL", gResp);
+    YomkUnPackPkg(gResp.m_data, LoggerState, gs);
+    if (gs)
+    {
+        std::ostringstream oss;
+        oss << "[LOGGER_INFO_GLOBAL] 主闸: debug=" << (gs->d.m_debugOn ? "on" : "off")
+            << " info=" << (gs->d.m_infoOn ? "on" : "off") << " warn=" << (gs->d.m_warnOn ? "on" : "off")
+            << " error=" << (gs->d.m_errorOn ? "on" : "off") << " proxy=" << (gs->d.m_proxyOn ? "on" : "off");
+        YOMK_INFO_TAG("arm.demo", oss.str());
+    }
+    YomkResponse jResp = YOMK_LOGGER_INFO_LOGGER("arm.joint", "console");
+    YomkUnPackPkg(jResp.m_data, LoggerInfo, jInfo);
+    if (jInfo)
+    {
+        logLoggerInfo("LOGGER_INFO_LOGGER arm.joint", jInfo->d);
+    }
+    logVerify("主闸 info=on 而条目 info=off——两层状态各自真实呈现：输出被关是逐器层所致，具名 ON 即恢复");
+    logAction("逐器恢复：仅重开 arm.joint 的 INFO（具名恢复）", "ON_CONSOLE_LOG_INFO arm.joint",
+        [&] { return YOMK_ON_CONSOLE_LOG_INFO("arm.joint"); });
+    logAction("关节模块恢复上报（INFO，输出回归）", "YOMK_INFO_TAG arm.joint",
+        [&] { return YOMK_INFO_TAG("arm.joint", "arm.joint INFO 已恢复，报文重新可见"); });
 }
 
 // 场景 3：安全黑匣子（控制台日志代理：消费与放行）
@@ -370,16 +405,17 @@ static void showArmShiftLog(const std::string& logDir)
     logVerify("9 条四级双 tag 全部落盘：FILE 写入不经级别开关与代理（写缓冲在先、显式 WRITE 落盘在后）");
 }
 
-// 场景 5：日志系统运维面板（内省三件套）
+// 场景 5：日志系统运维面板（内省三件套 + 全局主闸态单查）
 static void showArmLoggerDashboard()
 {
     logScene(
         5,
         "日志系统运维面板",
-        "LOGGER_INFO_LOGGERS / LOGGER / ALL",
+        "LOGGER_INFO_LOGGERS / LOGGER / ALL + LOGGER_INFO_GLOBAL",
         "班中巡检日志系统：LOGGERS 按类型拉取日志器名清单（字典序）；LOGGER 按类型"
         "单查结构化 LoggerInfo（两表允许同名，须精确指定）；ALL 全量导出——"
-        "框架只回结构化数据，展示格式由用户定义。");
+        "框架只回结构化数据，展示格式由用户定义；末尾 LOGGER_INFO_GLOBAL 单查"
+        "全局主闸态，与条目逐器真值两层一起看全。");
 
     logAction("巡检控制台日志器清单");
     YomkResponse consoleResp = YOMK_LOGGER_INFO_LOGGERS("console");
@@ -433,7 +469,22 @@ static void showArmLoggerDashboard()
             logLoggerInfo("LOGGER_INFO_ALL", info);
         }
     }
-    logVerify("console 条目 state 为真实全局状态（五开关），file 条目级别恒 on、proxy 恒 off（控制台专属概念）");
+    logVerify("console 条目 state 为逐器门控层真值（未做具名开关恒全 on），file 条目级别恒 on、proxy 恒 off（控制台专属概念）");
+
+    // 全局主闸态单查：ALL 条目报逐器真值，主闸态经 LOGGER_INFO_GLOBAL 独立承载，两层一起看全
+    logAction("复查全局主闸状态");
+    resp = YOMK_LOGGER_INFO_GLOBAL();
+    logResp("LOGGER_INFO_GLOBAL", resp);
+    YomkUnPackPkg(resp.m_data, LoggerState, gs);
+    if (gs)
+    {
+        std::ostringstream oss;
+        oss << "[LOGGER_INFO_GLOBAL] 主闸: debug=" << (gs->d.m_debugOn ? "on" : "off")
+            << " info=" << (gs->d.m_infoOn ? "on" : "off") << " warn=" << (gs->d.m_warnOn ? "on" : "off")
+            << " error=" << (gs->d.m_errorOn ? "on" : "off") << " proxy=" << (gs->d.m_proxyOn ? "on" : "off");
+        YOMK_INFO_TAG("arm.demo", oss.str());
+    }
+    logVerify("条目逐器真值 + 主闸态独立单查：两层状态各自真实呈现，输出归因唯一（条目 off 是逐器层所致、条目 on 而无输出查主闸）");
 }
 
 // 场景 6：收班清档（DELETE 两表清理、磁盘保留、惰性重建）

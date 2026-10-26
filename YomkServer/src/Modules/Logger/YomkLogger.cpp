@@ -31,6 +31,7 @@ int YomkLogger::init()
     YomkInstallFunc("/loggers", YomkLogger::loggers, String);
     YomkInstallFunc("/logger", YomkLogger::loggerInfo, LoggerQuery);
     YomkInstallFunc("/all", YomkLogger::listAll);
+    YomkInstallFunc("/console_global_state", YomkLogger::consoleGlobalState);
     return 0;
 }
 
@@ -258,6 +259,13 @@ YomkResponse YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, Log, log);
 
+    // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
+    if (!log->d.m_logger.empty())
+    {
+        return setNamedConsoleLevel(log->d.m_logger, log->d.m_level, false);
+    }
+
+    // 空名 = 全局主闸路径（与既有语义一致）
     switch (log->d.m_level)
     {
         case Log::eInfo:
@@ -284,6 +292,13 @@ YomkResponse YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, Log, log);
 
+    // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
+    if (!log->d.m_logger.empty())
+    {
+        return setNamedConsoleLevel(log->d.m_logger, log->d.m_level, true);
+    }
+
+    // 空名 = 全局主闸路径（与既有语义一致）
     switch (log->d.m_level)
     {
         case Log::eInfo:
@@ -300,6 +315,42 @@ YomkResponse YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
             break;
         default:
             YOMK_ERR_POS_LOG("unknown log level, turn on failed.");
+            break;
+    }
+    return YomkResponse(YomkResponse::eOk, "success.");
+}
+
+// 具名开关唯一写入口：表读锁内查找拷指针出锁、锁外 setLevelOn（单锁；未命中 eNo 不惰性创建）
+YomkResponse YomkLogger::setNamedConsoleLevel(const std::string& loggerName, Log::ELogLevel level, bool on)
+{
+    ConsoleLoggerPtr consoleLogger;
+    {
+        std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
+        auto itLogger = m_consoleLoggers.find(loggerName);
+        if (itLogger == m_consoleLoggers.end())
+        {
+            YOMK_ERR_POS_LOG("console logger: " + loggerName + " not found.");
+            return YomkResponse(YomkResponse::eNo, "console logger not found.");
+        }
+        consoleLogger = itLogger->second;
+    }
+
+    switch (level)
+    {
+        case Log::eInfo:
+            consoleLogger->setLevelOn(ConsoleLogger::eInfo, on);
+            break;
+        case Log::eWarn:
+            consoleLogger->setLevelOn(ConsoleLogger::eWarn, on);
+            break;
+        case Log::eError:
+            consoleLogger->setLevelOn(ConsoleLogger::eError, on);
+            break;
+        case Log::eDebug:
+            consoleLogger->setLevelOn(ConsoleLogger::eDebug, on);
+            break;
+        default:
+            YOMK_ERR_POS_LOG(std::string("unknown log level, turn ") + (on ? "on" : "off") + " failed.");
             break;
     }
     return YomkResponse(YomkResponse::eOk, "success.");
@@ -342,16 +393,26 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
     info.m_loggerName = query->d.m_loggerName;
     if (query->d.m_type == "console")
     {
-        // 状态段在表锁外取（独立 atomic + proxy 叶子锁独立作用域，与 listAll 同构）
-        const yomk::LoggerState state = currentConsoleState();
-        std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-        if (m_consoleLoggers.find(query->d.m_loggerName) == m_consoleLoggers.end())
+        // 锁内查找拷指针出锁外使用（与 consoleLog 双检锁同款模式）
+        ConsoleLoggerPtr consoleLogger;
         {
-            YOMK_ERR_POS_LOG("console logger: " + query->d.m_loggerName + " not found.");
-            return YomkResponse(YomkResponse::eNo, "logger not found.");
+            std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
+            auto itLogger = m_consoleLoggers.find(query->d.m_loggerName);
+            if (itLogger == m_consoleLoggers.end())
+            {
+                YOMK_ERR_POS_LOG("console logger: " + query->d.m_loggerName + " not found.");
+                return YomkResponse(YomkResponse::eNo, "logger not found.");
+            }
+            consoleLogger = itLogger->second;
+        }
+        // 状态段：条目报逐器门控层真值；proxyOn 在表锁外独立取（proxy 叶子锁独立作用域）
+        bool proxyOn = false;
+        {
+            std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
+            proxyOn = m_consoleLogProxy;
         }
         info.m_type = "console";
-        info.m_loggerState = state;
+        info.m_loggerState = namedConsoleState(consoleLogger, proxyOn);
         return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
     }
     if (query->d.m_type == "file")
@@ -376,7 +437,8 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
     return YomkResponse(YomkResponse::eNo, "unknown logger type.");
 }
 
-// 取控制台状态段：四个级别开关为独立 atomic（组合本无原子快照保证），proxy 叶子锁独立作用域
+// 取控制台全局主闸态（/console_global_state 返回体）：四个级别开关为独立 atomic（组合本无原子快照保证），
+// proxy 叶子锁独立作用域
 LoggerState YomkLogger::currentConsoleState()
 {
     yomk::LoggerState state;
@@ -392,15 +454,32 @@ LoggerState YomkLogger::currentConsoleState()
     return state;
 }
 
+// 取单条 console 条目状态：四级别为逐器门控层真值（logger.isLevelOn），proxyOn 由调用点传入
+LoggerState YomkLogger::namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn)
+{
+    yomk::LoggerState state;
+    state.m_debugOn = consoleLogger->isLevelOn(ConsoleLogger::eDebug);
+    state.m_infoOn = consoleLogger->isLevelOn(ConsoleLogger::eInfo);
+    state.m_warnOn = consoleLogger->isLevelOn(ConsoleLogger::eWarn);
+    state.m_errorOn = consoleLogger->isLevelOn(ConsoleLogger::eError);
+    state.m_proxyOn = proxyOn;
+    return state;
+}
+
 YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
 {
     (void)pkg;
-    // LoggerState 内嵌每条 LoggerInfo：console 条目承载真实全局状态，
+    // LoggerState 内嵌每条 LoggerInfo：console 条目报逐器门控层真值（namedConsoleState 逐条求值），
     // file 条目暂无开关概念（级别恒 true、proxyOn 恒 false）
-    const yomk::LoggerState console = currentConsoleState();
+    // proxyOn 在双表锁外先独立取（proxy 叶子锁独立作用域），随后传入逐条求值
+    bool proxyOn = false;
+    {
+        std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
+        proxyOn = m_consoleLogProxy;
+    }
     std::vector<yomk::LoggerInfo> loggers;
     {
-        // 按锁序嵌套双读锁取跨段原子快照，逐条构造 LoggerInfo（与 loggerInfo 命中分支同构）
+        // 按锁序嵌套双读锁取跨段快照，逐条构造 LoggerInfo（与 loggerInfo 命中分支同构）
         std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
         std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
         loggers.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
@@ -409,7 +488,7 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
             yomk::LoggerInfo info;
             info.m_loggerName = iter.first;
             info.m_type = "console";
-            info.m_loggerState = console;
+            info.m_loggerState = namedConsoleState(iter.second, proxyOn);
             loggers.push_back(std::move(info));
         }
         for (auto& iter : m_fileLoggers)
@@ -427,4 +506,11 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
     }
     // std::map 天然字典序（console 段在前、file 段在后）；m_msg 恒 "ok"，数据走 m_data
     return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfoList, std::move(loggers))};
+}
+
+// 控制台全局主闸态内省（无参形态同 /all；m_msg 恒 "ok"，LoggerState 包走 m_data）
+YomkResponse YomkLogger::consoleGlobalState(YomkPkgPtr pkg)
+{
+    (void)pkg;
+    return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerState, currentConsoleState())};
 }

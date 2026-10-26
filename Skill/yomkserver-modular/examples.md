@@ -822,11 +822,18 @@ resp = YOMK_LOGGER_INFO_LOGGER("info_logger", "file");    // eOk, m_type="file"�
 resp = YOMK_LOGGER_INFO_LOGGER("not_exist", "console");   // eNo
 
 // 全量日志器清单：LoggerInfoList（vector<LoggerInfo>，元素为单查同款，每条内嵌控制台状态段）
-// console 条目 m_loggerState 为真实全局状态；file 条目四级别恒 true、proxyOn 恒 false
+// console 条目 m_loggerState 承载逐器门控层真值（未做具名开关恒全 on）；
+// file 条目四级别恒 true、proxyOn 恒 false
 resp = YOMK_LOGGER_INFO_ALL();
+
+// 控制台全局主闸状态：LoggerState 独立包（四级别主闸开关 + proxyOn），
+// 独立于逐器门控层——条目 on 但无输出时查此接口确认主闸是否关断（两层归因）
+YOMK_OFF_CONSOLE_LOG_INFO("auto_logger");  // 具名关断：仅门控该日志器，不影响全局主闸
+resp = YOMK_LOGGER_INFO_LOGGER("auto_logger", "console");  // 条目报逐器 infoOff
+YOMK_ON_CONSOLE_LOG_INFO("auto_logger");   // 具名恢复
 ```
 
-注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关用既有 `YOMK_ON/OFF_CONSOLE_LOG_*()` 切换后立即在 `/all` 的 m_loggerState 字段生效。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
+注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关两级并联——`YOMK_ON/OFF_CONSOLE_LOG_*()` 无参作用于全局主闸、具名仅门控该日志器（未命中 eNo，不惰性创建），输出取两层 AND；`/all` 的 console 条目 m_loggerState 报逐器门控层真值（无参翻转不影响条目），全局主闸态经 `YOMK_LOGGER_INFO_GLOBAL()` 查询。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
 
 ## 示例6：文件日志
 

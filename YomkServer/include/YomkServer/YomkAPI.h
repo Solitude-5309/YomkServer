@@ -306,12 +306,18 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/logger", YomkMkPtr(LoggerQuery, yomk::LoggerQuery{loggerName, type}));
     }
-    // 查询全部日志器及开关配置状态（返回 LoggerInfoList 清单，每条内嵌 LoggerState 状态段：
-    // console 条目为真实全局状态，file 条目四级别恒 true、proxyOn 恒 false）
+    // 查询全部日志器及逐器门控状态（返回 LoggerInfoList 清单，每条内嵌 LoggerState 状态段：
+    // console 条目为逐器门控层真值，file 条目四级别恒 true、proxyOn 恒 false）
     static YomkResponse LOGGER_INFO_ALL()
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/all", nullptr);
+    }
+    // 查询控制台全局主闸状态（4 级别 + proxy；独立于逐器门控层，供两层归因）
+    static YomkResponse LOGGER_INFO_GLOBAL()
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/console_global_state", nullptr);
     }
     // 删除指定日志器
     static YomkResponse FILE_LOG_DELETE(const std::string& loggerName)
@@ -651,6 +657,7 @@ private:
 #define YOMK_LOGGER_INFO_LOGGERS(type) YomkAPI::LOGGER_INFO_LOGGERS(type)
 #define YOMK_LOGGER_INFO_LOGGER(...) YomkAPI::LOGGER_INFO_LOGGER(__VA_ARGS__)
 #define YOMK_LOGGER_INFO_ALL() YomkAPI::LOGGER_INFO_ALL()
+#define YOMK_LOGGER_INFO_GLOBAL() YomkAPI::LOGGER_INFO_GLOBAL()
 #define YOMK_FILE_LOG_DELETE(...) YomkAPI::FILE_LOG_DELETE(__VA_ARGS__)
 #define YOMK_CONTEXT_CREATE(...) YomkAPI::CONTEXT_CREATE(__VA_ARGS__)
 #define YOMK_CONTEXT_GET(MsgName, ...) YomkAPI::CONTEXT_GET<Yomk(MsgName)>(#MsgName, __VA_ARGS__)

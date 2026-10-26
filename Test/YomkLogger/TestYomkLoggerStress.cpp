@@ -1345,14 +1345,20 @@ int main()
             (badA == 0 && linesA == entries),
             "S4A: ALL eOk + 日志器数守恒（" + std::to_string(linesA) + "/" + std::to_string(entries) + "）");
 
-        // ---- Phase B：ALL 控制台状态字段 + 与 LOGGERS 的数量/类型计数等价（P3-a 原子快照可观测等价）----
+        // ---- Phase B：全局主闸状态 + ALL 条目逐器真值 + 与 LOGGERS 的数量/类型计数等价（P3-a 原子快照可观测等价）----
         // 结构化后数据段形态不同（LoggerInfo vs 纯名行），逐行字符串比对改为数量与类型计数比对；
-        // S4 阶段表内条目不再增删，console/file 两端点各自单锁快照后计数等价
+        // S4 阶段表内条目不再增删，console/file 两端点各自单锁快照后计数等价；
+        // 条目改报逐器门控层真值后，"全 on" 验证语义迁移至 LOGGER_INFO_GLOBAL（全局主闸态）
+        YomkUnPackPkg(YOMK_LOGGER_INFO_GLOBAL().m_data, LoggerState, gsPkg);
+        CHECK(
+            (gsPkg != nullptr && gsPkg->d.m_debugOn && gsPkg->d.m_infoOn && gsPkg->d.m_warnOn &&
+             gsPkg->d.m_errorOn && gsPkg->d.m_proxyOn),
+            "S4B: 全局主闸状态全 on（proxy 已在 S1D 安装）");
         YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, listPkg);
         const yomk::LoggerState* st = firstConsoleState(listPkg);
         CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
-            "S4B: ALL 控制台状态全 on（proxy 已在 S1D 安装）");
+            "S4B: ALL 首条 console 条目逐器门控真值全 on（未做具名开关，含 proxyOn）");
         uint64_t ac = 0;
         uint64_t af = 0;
         if (listPkg)

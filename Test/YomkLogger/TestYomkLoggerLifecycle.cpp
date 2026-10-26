@@ -2,7 +2,7 @@
  * @file TestYomkLoggerLifecycle.cpp
  * @brief Logger 模块生命周期与契约基线测试（LG1 从零新建，LG2 审计处置后回填，LG4 补删除接口，LG6 补 proxy 卸载）
  *
- * 覆盖内容（8 个 Section + 1 个前置注入段，123 断言）：
+ * 覆盖内容（9 个 Section + 1 个前置注入段，断言计数以运行实测为准）：
  * 1. 控制台日志基线：四级别宏输出格式（时间戳+[级别]+[logger]+[行号]）；
  *    级别开关 OFF→无输出仍 eOk→ON→恢复输出，四级别全覆盖
  * 2. 自定义 tag：新 tag 自动创建 console logger；65536 超长 tag；空内容日志
@@ -33,6 +33,9 @@
  *    与 LOGGERS/ALL 行数递减守恒；console 惰性重建；MainLogger 无特殊保护（可删，重建须走
  *    空 logger 名回退路径——YOMK_INFO 宏的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）；
  *    delete_logger 空包/错类型包契约分支
+ * 9. 服务级具名开关与全局态端点（两级主闸并联）：具名 OFF/ON 逐器隔离与恢复、未知名 eNo
+ *    （不惰性创建）、主闸×逐器组合两层归因（LOGGER_INFO_GLOBAL 报主闸 off 与条目逐器 on
+ *    各自真实呈现）、条目逐器真值与两层正交、LOGGER_INFO_GLOBAL 全局主闸态基线与无参宏翻转联动
  *
  * 说明：YomkLogger 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
  *       YOMK_INIT 单例白盒直连；全部经 API 宏/raw request 测试，同时覆盖 invoke 路由链，
@@ -663,19 +666,19 @@ CHECK(
     }
     {
         YOMK_OFF_CONSOLE_LOG_INFO();
-        auto allResp = YOMK_LOGGER_INFO_ALL();
-        YomkUnPackPkg(allResp.m_data, LoggerInfoList, listPkg);
-        const yomk::LoggerState* st = firstConsoleState(listPkg);
+        // 主闸翻转与条目解耦后，翻转联动取数迁移至 LOGGER_INFO_GLOBAL（全局主闸态）；
+        // 条目改报逐器层真值，不受无参翻转影响（正交性在 Section 9 直证）
+        auto gResp = YOMK_LOGGER_INFO_GLOBAL();
+        YomkUnPackPkg(gResp.m_data, LoggerState, gs);
         CHECK(
-            (st != nullptr && st->m_debugOn && !st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
-            "OFF INFO 后 ALL 状态 infoOff（开关联动逐字段）");
+            (gs != nullptr && gs->d.m_debugOn && !gs->d.m_infoOn && gs->d.m_warnOn && gs->d.m_errorOn && gs->d.m_proxyOn),
+            "OFF INFO 后全局主闸状态 infoOff（开关联动逐字段）");
         YOMK_ON_CONSOLE_LOG_INFO();
-        auto allResp2 = YOMK_LOGGER_INFO_ALL();
-        YomkUnPackPkg(allResp2.m_data, LoggerInfoList, listPkg2);
-        const yomk::LoggerState* st2 = firstConsoleState(listPkg2);
+        auto gResp2 = YOMK_LOGGER_INFO_GLOBAL();
+        YomkUnPackPkg(gResp2.m_data, LoggerState, gs2);
         CHECK(
-            (st2 != nullptr && st2->m_debugOn && st2->m_infoOn && st2->m_warnOn && st2->m_errorOn && st2->m_proxyOn),
-            "ON INFO 复原后 ALL 状态 infoOn");
+            (gs2 != nullptr && gs2->d.m_debugOn && gs2->d.m_infoOn && gs2->d.m_warnOn && gs2->d.m_errorOn && gs2->d.m_proxyOn),
+            "ON INFO 复原后全局主闸状态 infoOn");
     }
 }
 
@@ -1040,6 +1043,134 @@ CHECK(
         CHECK(
             (rWrong.m_status == YomkResponse::eNo && rWrong.m_msg == " pkg is null or pkg is not String. "),
             "S8: delete_logger 错类型包（Log）返回 eNo + 契约消息");
+    }
+}
+
+// ============ Section 9: 服务级具名开关与全局态端点（两级主闸并联） ============
+{
+    const std::string tagA = "lg1_s9_tagA";
+    const std::string tagB = "lg1_s9_tagB";
+
+    // 9.1 具名 OFF 隔离：关 tagA 的 info，tagB 输出不受影响
+    {
+        CoutCapture cap;
+        CHECK(YOMK_INFO_TAG(tagA, "lg1_s9a_pre_a_marker").m_status == YomkResponse::eOk, "S9a: tagA 预写 eOk");
+        CHECK(YOMK_INFO_TAG(tagB, "lg1_s9a_pre_b_marker").m_status == YomkResponse::eOk, "S9a: tagB 预写 eOk");
+    }
+    CHECK(
+        YOMK_OFF_CONSOLE_LOG_INFO(tagA).m_status == YomkResponse::eOk,
+        "S9a: 具名 OFF_CONSOLE_LOG_INFO(tagA) 返回 eOk");
+    {
+        CoutCapture cap;
+        CHECK(
+            YOMK_INFO_TAG(tagA, "lg1_s9a_off_a_marker").m_status == YomkResponse::eOk,
+            "S9a: 具名关断后 tagA 调用仍 eOk");
+        CHECK(
+            YOMK_INFO_TAG(tagB, "lg1_s9a_off_b_marker").m_status == YomkResponse::eOk,
+            "S9a: 具名关断后 tagB 调用 eOk");
+        CHECK(cap.str().find("lg1_s9a_off_a_marker") == std::string::npos, "S9a: 具名关断后 tagA 无输出");
+        CHECK(cap.str().find("lg1_s9a_off_b_marker") != std::string::npos, "S9a: 具名关断不波及 tagB（逐器隔离）");
+    }
+
+    // 9.2 具名 ON 恢复
+    CHECK(
+        YOMK_ON_CONSOLE_LOG_INFO(tagA).m_status == YomkResponse::eOk,
+        "S9b: 具名 ON_CONSOLE_LOG_INFO(tagA) 返回 eOk");
+    {
+        CoutCapture cap;
+        CHECK(YOMK_INFO_TAG(tagA, "lg1_s9b_on_a_marker").m_status == YomkResponse::eOk, "S9b: 恢复后 tagA 调用 eOk");
+        CHECK(cap.str().find("lg1_s9b_on_a_marker") != std::string::npos, "S9b: 具名恢复后 tagA 输出回归");
+    }
+
+    // 9.3 具名未知名 eNo（不惰性创建）
+    {
+        auto offNo = YOMK_OFF_CONSOLE_LOG_INFO("lg1_s9_never_created");
+        CHECK(
+            (offNo.m_status == YomkResponse::eNo && offNo.m_msg == "console logger not found."),
+            "S9c: 具名 OFF 未知名返回 eNo + console logger not found.");
+        auto onNo = YOMK_ON_CONSOLE_LOG_INFO("lg1_s9_never_created");
+        CHECK(
+            (onNo.m_status == YomkResponse::eNo && onNo.m_msg == "console logger not found."),
+            "S9c: 具名 ON 未知名返回 eNo");
+        CHECK(
+            YOMK_LOGGER_INFO_LOGGER("lg1_s9_never_created", "console").m_status == YomkResponse::eNo,
+            "S9c: 未知名未被惰性创建（单查 eNo）");
+    }
+
+    // 9.4 主闸×逐器组合 + 两层归因：全局 OFF + 逐器 ON → 仍无输出（两层 AND），
+    // 全局态与条目逐器态各自真实呈现、归因唯一
+    {
+        CHECK(YOMK_OFF_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S9d: 无参 OFF（全局主闸）返回 eOk");
+        {
+            CoutCapture cap;
+            CHECK(
+                YOMK_INFO_TAG(tagA, "lg1_s9d_global_off_a_marker").m_status == YomkResponse::eOk,
+                "S9d: 主闸关断后 tagA 调用仍 eOk");
+            CHECK(
+                cap.str().find("lg1_s9d_global_off_a_marker") == std::string::npos,
+                "S9d: 主闸 OFF + 逐器 ON → 仍无输出（两层 AND）");
+        }
+        auto gResp = YOMK_LOGGER_INFO_GLOBAL();
+        YomkUnPackPkg(gResp.m_data, LoggerState, gs);
+        CHECK(gs != nullptr && !gs->d.m_infoOn, "S9d: LOGGER_INFO_GLOBAL 报主闸 infoOff");
+        auto liResp = YOMK_LOGGER_INFO_LOGGER(tagA, "console");
+        YomkUnPackPkg(liResp.m_data, LoggerInfo, lp);
+        CHECK(
+            lp != nullptr && lp->d.m_loggerState.m_infoOn,
+            "S9d: 条目报逐器 infoOn（与主闸态相反，两层归因唯一）");
+        CHECK(YOMK_ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S9d: 无参 ON（全局主闸）恢复 eOk");
+        {
+            CoutCapture cap;
+            CHECK(
+                YOMK_INFO_TAG(tagA, "lg1_s9d_global_on_a_marker").m_status == YomkResponse::eOk,
+                "S9d: 主闸恢复后 tagA 调用 eOk");
+            CHECK(
+                cap.str().find("lg1_s9d_global_on_a_marker") != std::string::npos,
+                "S9d: 主闸恢复后输出回归（逐器仍 on）");
+        }
+    }
+
+    // 9.5 条目逐器真值与两层正交：具名关断直接反映在条目、不波及全局态
+    {
+        auto liAResp = YOMK_LOGGER_INFO_LOGGER(tagA, "console");
+        YomkUnPackPkg(liAResp.m_data, LoggerInfo, la);
+        CHECK(la != nullptr && la->d.m_loggerState.m_infoOn, "S9e: tagA 条目 infoOn（具名恢复后逐器态）");
+        auto liBResp = YOMK_LOGGER_INFO_LOGGER(tagB, "console");
+        YomkUnPackPkg(liBResp.m_data, LoggerInfo, lb);
+        CHECK(
+            lb != nullptr && lb->d.m_loggerState.m_infoOn,
+            "S9e: tagB 条目 infoOn（未被具名触碰恒 true）");
+        CHECK(YOMK_OFF_CONSOLE_LOG_INFO(tagA).m_status == YomkResponse::eOk, "S9e: 再次具名关断 tagA 返回 eOk");
+        auto gResp = YOMK_LOGGER_INFO_GLOBAL();
+        YomkUnPackPkg(gResp.m_data, LoggerState, gs);
+        CHECK(gs != nullptr && gs->d.m_infoOn, "S9e: 具名关断不影响全局主闸（两层正交）");
+        auto liA2Resp = YOMK_LOGGER_INFO_LOGGER(tagA, "console");
+        YomkUnPackPkg(liA2Resp.m_data, LoggerInfo, la2);
+        CHECK(
+            la2 != nullptr && !la2->d.m_loggerState.m_infoOn,
+            "S9e: tagA 条目报逐器 infoOff（具名关断直接反映）");
+        CHECK(YOMK_ON_CONSOLE_LOG_INFO(tagA).m_status == YomkResponse::eOk, "S9e: 具名恢复 tagA 返回 eOk（状态复原）");
+    }
+
+    // 9.6 全局态端点基线：LOGGER_INFO_GLOBAL 解 LoggerState 包 + 无参宏翻转联动
+    {
+        auto gResp = YOMK_LOGGER_INFO_GLOBAL();
+        CHECK(
+            (gResp.m_status == YomkResponse::eOk && gResp.m_msg == "ok"),
+            "S9f: LOGGER_INFO_GLOBAL 返回 eOk + ok");
+        YomkUnPackPkg(gResp.m_data, LoggerState, gs);
+        CHECK(
+            (gs != nullptr && gs->d.m_debugOn && gs->d.m_infoOn && gs->d.m_warnOn && gs->d.m_errorOn),
+            "S9f: 全局主闸四级全 on");
+        CHECK(gs != nullptr && gs->d.m_proxyOn, "S9f: 全局态含 S3 已设 proxyOn");
+        CHECK(YOMK_OFF_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eOk, "S9f: 无参 OFF_DEBUG 返回 eOk");
+        auto gResp2 = YOMK_LOGGER_INFO_GLOBAL();
+        YomkUnPackPkg(gResp2.m_data, LoggerState, gs2);
+        CHECK(gs2 != nullptr && !gs2->d.m_debugOn, "S9f: 主闸 OFF_DEBUG 后全局态 debugOff");
+        CHECK(YOMK_ON_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eOk, "S9f: 无参 ON_DEBUG 恢复 eOk");
+        auto gResp3 = YOMK_LOGGER_INFO_GLOBAL();
+        YomkUnPackPkg(gResp3.m_data, LoggerState, gs3);
+        CHECK(gs3 != nullptr && gs3->d.m_debugOn, "S9f: 主闸 ON_DEBUG 后全局态 debugOn");
     }
 }
 

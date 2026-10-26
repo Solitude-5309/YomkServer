@@ -223,8 +223,9 @@ struct ConsoleLogProxy
     std::function<bool(const Log& log)> m_consoleLogProxyFunc;
 };
 
-// Logger 控制台状态（LoggerInfo 内嵌状态段：debug/info/warn/error 四级别开关 + proxy；
-// console 条目承载真实全局状态，file 条目暂无开关概念：四级别恒 true、proxyOn 恒 false）
+// Logger 控制台状态（debug/info/warn/error 四级别开关 + proxy；
+// console 条目承载逐器门控层真值，全局主闸态经 /console_global_state 查询；
+// file 条目暂无开关概念：四级别恒 true、proxyOn 恒 false）
 struct LoggerState
 {
     bool m_debugOn = false;  // debug 级别开关
@@ -247,7 +248,8 @@ struct LoggerInfo
     std::string m_loggerName;  // 日志器名
     std::string m_type;        // 类型："console" 或 "file"（与 INFO_LOGGERS 的类型参数同名）
     std::string m_dir;         // file 类型的日志目录（console 时为空串）
-    // 控制台状态段：console 条目承载真实全局状态；file 条目暂无开关概念（级别恒 true、proxyOn 恒 false）
+    // 控制台状态段：console 条目承载逐器门控层真值（全局主闸态经 /console_global_state 查询）；
+    // file 条目暂无开关概念（级别恒 true、proxyOn 恒 false）
     LoggerState m_loggerState;
 };
 
@@ -333,6 +335,8 @@ YomkMsg(Log, Log, d)
 YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)
 YomkMsg(LoggerQuery, LoggerQuery, d)
 YomkMsg(LoggerInfo, LoggerInfo, d)
+// Logger 控制台全局主闸态（LOGGER_INFO_GLOBAL 返回数据：四级别主闸开关 + proxy）
+YomkMsg(LoggerState, LoggerState, d)
 // Logger 全量内省（LOGGER_INFO_ALL 返回数据；元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段）
 YomkMsg(std::vector<yomk::LoggerInfo>, LoggerInfoList, d)
 YomkMsg(Context, Context, d)
