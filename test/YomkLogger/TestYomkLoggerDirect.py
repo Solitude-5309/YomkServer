@@ -7,7 +7,8 @@ TestYomkLoggerDirect.py —— ConsoleLogger / FileLogger 类直连测试
 覆盖内容：
 1. ConsoleLogger 直连：默认名 MainLogger、setName/getName 往返、四级别输出行格式 +
    时间戳格式、非法级别 99 default 错误提示 + 降级 Info、4096 超长名 + 空内容、
-   tag 显示语义（非空 [tag] 优先 / 空 tag 回退 [日志器名]）
+   tag 显示语义（非空 [tag] 优先 / 空 tag 回退 [日志器名]）、级别门控（默认全开 /
+   关断隔离 / 恢复 / unknown 按 Info 门控直接丢弃无降级提示）
 2. FileLogger 直连：默认名/setter、init 建多级目录 + 空 .log 返 bool、log 四级别
    内存缓冲（write 前文件 0 字节）、write 追加落盘 + 清缓冲 + 二次 write no-op、
    空内容成行、1MB 超长内容、tag 前缀语义、write 打不开文件保留缓冲恢复补写、
@@ -115,6 +116,51 @@ def main():
           "tag 非空显示 [tag]（m_tag 优先于日志器名）")
     check("[Info ] [lg1_direct_console] lg1_dc_fallback_marker" in out,
           "空 tag 回退显示 [日志器名]")
+
+    # 级别门控：默认全开 → 关断隔离 → 恢复 → unknown 按 Info 门控
+    gate_logger = ConsoleLogger()
+    gate_logger.set_name("lg1_dc_gate")
+    check(gate_logger.is_level_on(Log.eDebug) and
+          gate_logger.is_level_on(Log.eInfo) and
+          gate_logger.is_level_on(Log.eWarn) and
+          gate_logger.is_level_on(Log.eError),
+          "14a: 新实例四级门控默认全开")
+
+    # 14b 关断隔离：Info 关断后自身无输出，其余级别不受影响
+    gate_logger.set_level_on(Log.eInfo, False)
+    check(not gate_logger.is_level_on(Log.eInfo),
+          "14b: is_level_on 反查 Info 关断生效")
+    check(gate_logger.is_level_on(Log.eWarn), "14b: 关断 Info 不影响其他级别")
+    # check 须在捕获作用域外（否则断言输出被重定向吞没，下同）
+    out_gate_off = capture(lambda: (
+        gate_logger.log(Log.eInfo, "", "lg1_dc_gate_off_marker"),
+        gate_logger.log(Log.eWarn, "", "lg1_dc_gate_warn_marker")))
+    check("lg1_dc_gate_off_marker" not in out_gate_off, "14b: 关断级别无输出")
+    check("[Warn ] [lg1_dc_gate] lg1_dc_gate_warn_marker" in out_gate_off,
+          "14b: 未关断级别输出不受影响")
+
+    # 14c 恢复：重开后输出恢复
+    gate_logger.set_level_on(Log.eInfo, True)
+    check(gate_logger.is_level_on(Log.eInfo), "14c: is_level_on 反查恢复生效")
+    out_gate_on = capture(
+        lambda: gate_logger.log(Log.eInfo, "", "lg1_dc_gate_on_marker"))
+    check("[Info ] [lg1_dc_gate] lg1_dc_gate_on_marker" in out_gate_on,
+          "14c: 恢复后输出正常")
+
+    # 14d unknown 级别按 Info 门控：关 Info 后 log(99) 在门控层直接丢弃
+    # （不进入 default 降级分支，无 Unknown log level 提示）；恢复后降级行为回归
+    gate_logger.set_level_on(Log.eInfo, False)
+    out_gate_bad = capture(
+        lambda: gate_logger.log(99, "", "lg1_dc_gate_bad_marker"))
+    check("lg1_dc_gate_bad_marker" not in out_gate_bad and
+          "Unknown log level" not in out_gate_bad,
+          "14d: unknown 级别随 Info 门控直接丢弃（无降级提示）")
+    gate_logger.set_level_on(Log.eInfo, True)
+    out_gate_bad2 = capture(
+        lambda: gate_logger.log(99, "", "lg1_dc_gate_bad2_marker"))
+    check("Unknown log level: 99" in out_gate_bad2 and
+          "[Info ] [lg1_dc_gate] lg1_dc_gate_bad2_marker" in out_gate_bad2,
+          "14d: 恢复后 unknown 级别回归 default 降级 Info 输出")
 
     # ============ FileLogger 直连 ============
     fl = FileLogger()

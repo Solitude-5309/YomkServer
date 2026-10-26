@@ -499,11 +499,17 @@ def _yomk_log_local_time_formatted():
 
 
 class ConsoleLogger:
-    # 控制台日志器，四级别 stdout 输出、
-    # 空 tag 回退日志器名、非法级别降级 Info
+    # 控制台日志器，四级别 stdout 输出、空 tag 回退日志器名、
+    # 非法级别降级 Info、按器级别门控（关断级别 log 入口直接丢弃）
     def __init__(self):
         self.m_name = "MainLogger"
         self.m_mutex = threading.Lock()
+        # 级别门控随 sink 自持（每实例独立、默认全开）：现网开关真源仍为 YomkLogger
+        # 全局开关（服务层先行短路），本类门控为其后置二道防线
+        self.m_showDebugLog = True
+        self.m_showInfoLog = True
+        self.m_showWarnLog = True
+        self.m_showErrorLog = True
 
     def get_name(self):
         return self.m_name
@@ -511,7 +517,52 @@ class ConsoleLogger:
     def set_name(self, name):
         self.m_name = name
 
+    def set_level_on(self, log_level, on):
+        # 按器级别门控：关断的级别在 log() 入口直接丢弃；unknown 级别按 Info 门控
+        if log_level == Log.eDebug:
+            self.m_showDebugLog = on
+        elif log_level == Log.eInfo:
+            self.m_showInfoLog = on
+        elif log_level == Log.eWarn:
+            self.m_showWarnLog = on
+        elif log_level == Log.eError:
+            self.m_showErrorLog = on
+        else:
+            # unknown 级别按 Info 门控（与 log() 降级语义一致）
+            self.m_showInfoLog = on
+
+    def is_level_on(self, log_level):
+        # 反查级别门控状态；unknown 级别返回 Info 门控值
+        if log_level == Log.eDebug:
+            return self.m_showDebugLog
+        elif log_level == Log.eInfo:
+            return self.m_showInfoLog
+        elif log_level == Log.eWarn:
+            return self.m_showWarnLog
+        elif log_level == Log.eError:
+            return self.m_showErrorLog
+        else:
+            return self.m_showInfoLog
+
     def log(self, log_level, tag, log_msg):
+        # 级别门控在类级锁外判定（GIL 下 bool 读原子，无新锁）：关断级别直接丢弃
+        # 不输出（unknown 级别按 Info 门控，与下方 default 降级语义一致）
+        if log_level == Log.eDebug:
+            if not self.m_showDebugLog:
+                return
+        elif log_level == Log.eInfo:
+            if not self.m_showInfoLog:
+                return
+        elif log_level == Log.eWarn:
+            if not self.m_showWarnLog:
+                return
+        elif log_level == Log.eError:
+            if not self.m_showErrorLog:
+                return
+        else:
+            if not self.m_showInfoLog:
+                return
+
         time_str = _yomk_log_local_time_formatted()
 
         with self.m_mutex:

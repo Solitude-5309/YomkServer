@@ -307,44 +307,52 @@ def file_log_debug(log_file, *args):
                         Log(Log.eDebug, _yomk_api_file_line_msg(sys._getframe(1), *args), log_file, "MainLogger"))
 
 
-def on_console_log_info():
-    # 开启控制台 Info 级别日志
-    return _api_request("/YomkLogger/on_console_log_by_level", Log(Log.eInfo))
+def on_console_log_info(logger_name=""):
+    # 开启控制台 Info 级别日志（logger_name 空 = 全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/on_console_log_by_level",
+                        Log(Log.eInfo, "", logger_name))
 
 
-def on_console_log_warn():
-    # 开启控制台 Warn 级别日志
-    return _api_request("/YomkLogger/on_console_log_by_level", Log(Log.eWarn))
+def on_console_log_warn(logger_name=""):
+    # 开启控制台 Warn 级别日志（logger_name 空 = 全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/on_console_log_by_level",
+                        Log(Log.eWarn, "", logger_name))
 
 
-def on_console_log_error():
-    # 开启控制台 Error 级别日志
-    return _api_request("/YomkLogger/on_console_log_by_level", Log(Log.eError))
+def on_console_log_error(logger_name=""):
+    # 开启控制台 Error 级别日志（logger_name 空 = 全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/on_console_log_by_level",
+                        Log(Log.eError, "", logger_name))
 
 
-def on_console_log_debug():
-    # 开启控制台 Debug 级别日志
-    return _api_request("/YomkLogger/on_console_log_by_level", Log(Log.eDebug))
+def on_console_log_debug(logger_name=""):
+    # 开启控制台 Debug 级别日志（logger_name 空 = 全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/on_console_log_by_level",
+                        Log(Log.eDebug, "", logger_name))
 
 
-def off_console_log_info():
-    # 关闭控制台 Info 级别日志
-    return _api_request("/YomkLogger/off_console_log_by_level", Log(Log.eInfo))
+def off_console_log_info(logger_name=""):
+    # 关闭控制台 Info 级别日志（logger_name 空 = 全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/off_console_log_by_level",
+                        Log(Log.eInfo, "", logger_name))
 
 
-def off_console_log_warn():
-    # 关闭控制台 Warn 级别日志
-    return _api_request("/YomkLogger/off_console_log_by_level", Log(Log.eWarn))
+def off_console_log_warn(logger_name=""):
+    # 关闭控制台 Warn 级别日志（logger_name 空 = 全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/off_console_log_by_level",
+                        Log(Log.eWarn, "", logger_name))
 
 
-def off_console_log_error():
-    # 关闭控制台 Error 级别日志
-    return _api_request("/YomkLogger/off_console_log_by_level", Log(Log.eError))
+def off_console_log_error(logger_name=""):
+    # 关闭控制台 Error 级别日志（logger_name 空 = 全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/off_console_log_by_level",
+                        Log(Log.eError, "", logger_name))
 
 
-def off_console_log_debug():
-    # 关闭控制台 Debug 级别日志
-    return _api_request("/YomkLogger/off_console_log_by_level", Log(Log.eDebug))
+def off_console_log_debug(logger_name=""):
+    # 关闭控制台 Debug 级别日志（logger_name 空 = 全局主闸，与无参语义一致；具名 = 逐器门控）
+    return _api_request("/YomkLogger/off_console_log_by_level",
+                        Log(Log.eDebug, "", logger_name))
 
 
 def logger_info_loggers(logger_type):
