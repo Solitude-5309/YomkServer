@@ -366,10 +366,15 @@ def logger_info_logger(logger_name, logger_type):
 
 
 def logger_info_all():
-    # 查询全部日志器及控制台状态（命中 msg 恒 "ok"，data 为 list[LoggerInfo] 清单，
-    # 每条内嵌 logger_state 状态段（LoggerState：console 条目真实全局状态、
+    # 查询全部日志器及逐器门控状态（命中 msg 恒 "ok"，data 为 list[LoggerInfo] 清单，
+    # 每条内嵌 logger_state 状态段（LoggerState：console 条目为逐器门控层真值、
     # file 条目级别恒 true/proxy_on 恒 false））
     return _api_request("/YomkLogger/all", None)
+
+
+def logger_info_global():
+    # 查询控制台全局主闸状态（4 级别 + proxy；独立于逐器门控层，供两层归因）
+    return _api_request("/YomkLogger/console_global_state", None)
 
 
 def file_log_delete(logger_name):
@@ -435,7 +440,8 @@ def context_set_monitor(key: str, monitor: Callable[[Context], None], async_moni
     # （服务端为两函数位形态，同步位空函数仅占位，
     # 因 async 位存在即走异步路径，占位函数不会被执行）
     if async_monitor:
-        contextMonitor = ContextMonitor(key, lambda c: None, monitor, group_name)
+        contextMonitor = ContextMonitor(
+            key, lambda c: None, monitor, group_name)
     else:
         contextMonitor = ContextMonitor(key, monitor, False, group_name)
     return _api_request("/YomkContext/set_monitor", contextMonitor)

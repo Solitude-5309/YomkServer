@@ -421,7 +421,8 @@ def main():
     k_same_name = "lg3_s4_same"
     s4a_create_ok = []
     s4a_create_no = []
-    console_before_a = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    console_before_a = len(unpack_lines(
+        YomkApi.logger_info_loggers("console")))
     file_before_a = len(unpack_lines(YomkApi.logger_info_loggers("file")))
 
     gate = StartGate()
@@ -894,11 +895,14 @@ def main():
     check(len(s5_introspect_ok) > 0,
           f"S5: 内省线程确实观测到 ALL（{len(s5_introspect_ok)} 次）")
 
-    # ---- 最终一致性：ALL 状态段精确 + 清单条数跨端点一致 + file sink 落盘守恒 ----
+    # ---- 最终一致性：GLOBAL 主闸态精确 + ALL 条目逐器真值 + 清单条数跨端点一致 + file sink 落盘守恒 ----
+    fg = YomkApi.logger_info_global().data
+    check(fg and fg.debug_on and fg.info_on and fg.warn_on and fg.error_on and fg.proxy_on,
+          "S5: 收尾四级别全 ON 后全局主闸状态全 on（含 S3 已设的 proxy_on）")
     final_info = YomkApi.logger_info_all().data
     fc = first_console_state(final_info)
     check(fc and fc.debug_on and fc.info_on and fc.warn_on and fc.error_on and fc.proxy_on,
-          "S5: 收尾四级别全 ON 后 ALL console 条目状态段全 on（含 S3 已设的 proxy_on）")
+          "S5: ALL console 条目逐器门控真值全 on（未做具名开关，含 proxy_on）")
     check(len(final_info) == final_total,
           f"S5: ALL 清单条数 == LOGGERS console+file 行数"
           f"（{len(final_info)} vs {final_total}）——跨端点最终一致")

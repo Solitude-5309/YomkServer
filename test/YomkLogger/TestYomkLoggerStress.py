@@ -629,14 +629,19 @@ def main():
     check(bad_a == 0 and lines_a == entries,
           f"S4A: ALL eOk + 清单条数守恒（{lines_a}/{entries}）")
 
-    # ---- Phase B：ALL 状态段精确 + 清单段与 LOGGERS 分型逐行一致（两端点单锁快照）----
+    # ---- Phase B：GLOBAL 主闸态精确 + ALL 条目逐器真值 + 清单段与 LOGGERS 分型逐行一致（两端点单锁快照）----
+    gb = YomkApi.logger_info_global().data
+    check(gb and gb.debug_on and gb.info_on and
+          gb.warn_on and gb.error_on and
+          gb.proxy_on,
+          "S4B: 全局主闸状态全 on + proxy_on（proxy 已在 S1D 安装）")
     all_info = YomkApi.logger_info_all().data
     st = first_console_state(all_info)
     check(isinstance(all_info, list) and st and
           st.debug_on and st.info_on and
           st.warn_on and st.error_on and
           st.proxy_on,
-          "S4B: ALL console 条目状态段全 on + proxy_on（proxy 已在 S1D 安装）")
+          "S4B: ALL console 条目逐器门控真值全 on（未做具名开关，proxy 已在 S1D 安装）")
     identical = isinstance(all_info, list) and len(all_info) == entries
     if identical:
         # 分型对照：console 端点行与 ALL 清单 console 型条目逐行相等，file 同理

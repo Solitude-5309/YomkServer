@@ -214,8 +214,12 @@ YomkApi.function_pool_register("calc", func_v2)
 YomkApi.console_log_info("service started")
 YomkApi.console_log_info_tag("biz", "user login, id=", 7)   # 同族 warn/error/debug
 
-# 2. 级别开关（全局，只影响控制台；文件日志不受影响）
-YomkApi.off_console_log_debug()    # 同族 on/off_console_log_info/warn/error
+# 2. 级别开关两级主闸并联（只影响控制台；文件日志不受影响）：
+#    无参 = 全局主闸（YomkLogger 全局开关），具名 = 逐器门控单个日志器，输出取两层 AND
+YomkApi.off_console_log_debug()      # 全局主闸关 DEBUG；同族 on/off_console_log_info/warn/error
+YomkApi.off_console_log_info("biz")  # 具名逐器关断：仅 biz 的 INFO 无输出（未命中 eNo 不惰性创建）
+resp = YomkApi.logger_info_global()  # 查全局主闸状态；逐器真值条目走 logger_info_all()
+YomkApi.on_console_log_info("biz")   # 具名恢复
 
 # 3. 日志代理：每条控制台日志先过代理，返回 False 消费该条（不再输出）
 YomkApi.set_console_log_proxy(lambda log: False)            # 传 None 卸载，恢复默认输出

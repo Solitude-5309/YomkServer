@@ -9,11 +9,12 @@ ExampleYomkLogger —— YomkLogger 日志系统示例：机械臂产线背景�
 
 控制台输出格式四段：[时间] [级别] [tag] [行号] 内容——tag 即控制台日志器名，
 首次使用自动创建；门面自动把 [行号] 拼进内容开头，方便定位调用处。
-级别开关为框架全局（不分日志器），只影响控制台；文件日志四级全记。
+级别开关两级主闸并联：无参作用于全局主闸（框架全局）、具名逐器门控单个日志器，
+输出取两层 AND，只影响控制台；文件日志四级全记。
 
 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 show_arm_xxx
 小函数，形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
-全部日志用户门面 API（控制台 8 / 开关 8 / 代理 1 / 文件 10 / 内省 3）无一遗漏。
+全部日志用户门面 API（控制台 8 / 开关 8 / 代理 1 / 文件 10 / 内省 4）无一遗漏。
 叙事日志统一走 arm.demo（YomkLogger 自身即演示对象）。
 
 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
@@ -21,18 +22,21 @@ ExampleYomkLogger —— YomkLogger 日志系统示例：机械臂产线背景�
 场景 1 show_arm_log_levels   [console_log_info/warn/error/debug + _tag 版]
        班前点检报文分级：四级日志按 DEBUG 详单 -> INFO 通报 -> WARN 预警 ->
        ERROR 告警递进；默认 tag 与自定义 tag 双填兼容，[行号] 随行定位。
-场景 2 show_arm_silent_mode  [off/on_console_log_* + logger_info_logger]
-       产线静默模式：四级别逐级全关（空窗由 WARN/ERROR 锚点桥接，调用仍返回
-       eOk）；逐级恢复后单查 MainLogger 状态段复查五开关全 on。
+场景 2 show_arm_silent_mode  [off/on_console_log_*（无参/具名）+ logger_info_global + logger_info_logger]
+       产线静默模式：全局静默四级别逐级全关（空窗由 WARN/ERROR 锚点桥接，调用
+       仍返回 eOk）；逐级恢复后单查 MainLogger 状态段复查四级别全 on；随后
+       逐器静默——具名关断 arm.joint 仅其报文消失（arm.demo 对照不受影响），
+       logger_info_global 报主闸全 on 与条目 info_off 两层归因唯一。
 场景 3 show_arm_blackbox     [set_console_log_proxy / file_log_create / file_log_write]
        安全黑匣子：代理把 WARN/ERROR 转写文件后消费、DEBUG 噪声消化、INFO
        放行——结果行 msg 区分消费与放行；传 None 卸载恢复默认。
 场景 4 show_arm_shift_log    [file_log_info/warn/error/debug + _tag 版]
        班次存档：双 tag 四级写入内存缓冲，显式 WRITE 刷盘；级别全关期间
        DEBUG 照常落盘——文件日志与控制台开关、代理相互独立。
-场景 5 show_arm_logger_dashboard [logger_info_loggers / logger_info_logger / logger_info_all]
+场景 5 show_arm_logger_dashboard [logger_info_loggers / logger_info_logger / logger_info_all / logger_info_global]
        运维面板：console/file 清单（字典序）、单查结构化 LoggerInfo（含未
-       注册 eNo）、全量导出——console 条目承载真实全局状态。
+       注册 eNo）、全量导出——console 条目承载逐器门控层真值，再查
+       logger_info_global 复核全局主闸态，两层一起看全。
 场景 6 show_arm_log_cleanup  [file_log_delete + 惰性重建]
        收班清档：DELETE 同名清 console+file 两表（返回清了几张表）、磁盘
        .log 保留；MainLogger 删除后再写自动重建（按名惰性创建）。
@@ -103,12 +107,24 @@ def log_logger_info(api, info):
     YomkApi.console_log_info_tag("arm.demo", f"[{api}]     type: {info.type}")
 
     if info.type == "file":
-        YomkApi.console_log_info_tag("arm.demo", f"[{api}]     dir: {info.dir}")
+        YomkApi.console_log_info_tag(
+            "arm.demo", f"[{api}]     dir: {info.dir}")
         return
     state = info.logger_state
     YomkApi.console_log_info_tag(
         "arm.demo",
         f"[{api}]     state: debug={'on' if state.debug_on else 'off'}"
+        f" info={'on' if state.info_on else 'off'}"
+        f" warn={'on' if state.warn_on else 'off'}"
+        f" error={'on' if state.error_on else 'off'}"
+        f" proxy={'on' if state.proxy_on else 'off'}")
+
+
+# 全局主闸状态行：LOGGER_INFO_GLOBAL 的 LoggerState 五开关单行展示（两层归因用）
+def log_global_state(api, state):
+    YomkApi.console_log_info_tag(
+        "arm.demo",
+        f"[{api}] 主闸: debug={'on' if state.debug_on else 'off'}"
         f" info={'on' if state.info_on else 'off'}"
         f" warn={'on' if state.warn_on else 'off'}"
         f" error={'on' if state.error_on else 'off'}"
@@ -198,21 +214,26 @@ def show_arm_silent_mode():
     log_scene(
         2,
         "产线静默模式",
-        "off/on_console_log_* + logger_info_logger",
+        "off/on_console_log_*（无参/具名） + logger_info_global + logger_info_logger",
         "夜间无人值守降噪：四级别逐级全关（调用仍返回 eOk，仅输出被抑制），"
-        "空窗段无任何控制台输出；恢复后单查状态段复查五开关全 on。")
+        "空窗段无任何控制台输出；恢复后单查状态段复查四级别全 on。")
 
     # 先关 DEBUG 详单（最常用的降噪手段）
     log_action("关闭 DEBUG 详单（产线静默）", "OFF_CONSOLE_LOG_DEBUG",
                lambda: YomkApi.off_console_log_debug())
     log_verify("随后的 DEBUG 调用（静默段）仍返回 eOk 但不再输出：级别开关只抑制输出、不影响调用成功")
 
-    YomkApi.console_log_warn_tag("arm.demo", "继续降噪：INFO/WARN/ERROR 也将逐级关闭，空窗期间操作照常执行")
-    YomkApi.console_log_error_tag("arm.demo", "最后一条可见日志：ERROR 关闭后全静默，恢复后汇报空窗详情")
+    YomkApi.console_log_warn_tag(
+        "arm.demo", "继续降噪：INFO/WARN/ERROR 也将逐级关闭，空窗期间操作照常执行")
+    YomkApi.console_log_error_tag(
+        "arm.demo", "最后一条可见日志：ERROR 关闭后全静默，恢复后汇报空窗详情")
 
-    log_action("关闭 INFO 流程通报", "OFF_CONSOLE_LOG_INFO", lambda: YomkApi.off_console_log_info())
-    log_action("关闭 WARN 隐患预警", "OFF_CONSOLE_LOG_WARN", lambda: YomkApi.off_console_log_warn())
-    log_action("关闭 ERROR 故障告警", "OFF_CONSOLE_LOG_ERROR", lambda: YomkApi.off_console_log_error())
+    log_action("关闭 INFO 流程通报", "OFF_CONSOLE_LOG_INFO",
+               lambda: YomkApi.off_console_log_info())
+    log_action("关闭 WARN 隐患预警", "OFF_CONSOLE_LOG_WARN",
+               lambda: YomkApi.off_console_log_warn())
+    log_action("关闭 ERROR 故障告警", "OFF_CONSOLE_LOG_ERROR",
+               lambda: YomkApi.off_console_log_error())
 
     # 全静默段：以下 4 条调用成功返回 eOk，控制台一行都不出现
     YomkApi.console_log_info("你看不到我：INFO 已关闭")
@@ -226,15 +247,43 @@ def show_arm_silent_mode():
     YomkApi.console_log_info_tag(
         "arm.demo",
         "静默解除：空窗期间已按序执行 OFF_INFO/WARN/ERROR 与 4 条演示调用，全部返回 eOk——恢复 WARN/DEBUG 后复查")
-    log_action("恢复 WARN 隐患预警", "ON_CONSOLE_LOG_WARN", lambda: YomkApi.on_console_log_warn())
-    log_action("恢复 DEBUG 详单", "ON_CONSOLE_LOG_DEBUG", lambda: YomkApi.on_console_log_debug())
+    log_action("恢复 WARN 隐患预警", "ON_CONSOLE_LOG_WARN",
+               lambda: YomkApi.on_console_log_warn())
+    log_action("恢复 DEBUG 详单", "ON_CONSOLE_LOG_DEBUG",
+               lambda: YomkApi.on_console_log_debug())
 
     log_action_start("复查 MainLogger 开关状态")
     resp = YomkApi.logger_info_logger("MainLogger", "console")
     log_resp("LOGGER_INFO_LOGGER MainLogger(console)", resp)
     if resp.data is not None:
         log_logger_info("LOGGER_INFO_LOGGER", resp.data)
-    log_verify("五开关全 on：OFF/ON 是框架全局开关（不分日志器），状态段是内省读到的真实配置")
+    log_verify("四级别全 on（代理未安装 proxy=off）：无参 OFF/ON 作用于全局主闸，"
+               "状态段报逐器门控层真值（本段未用具名开关，两者一致）")
+
+    # 逐器静默：具名开关仅门控单个日志器，全局主闸不受影响（两层归因现场演示）
+    log_action("逐器静默：仅关闭 arm.joint 的 INFO（具名关断）", "OFF_CONSOLE_LOG_INFO arm.joint",
+               lambda: YomkApi.off_console_log_info("arm.joint"))
+    log_action("关节模块上报工位动态（INFO，arm.joint 已被具名关断）", "CONSOLE_LOG_INFO_TAG arm.joint",
+               lambda: YomkApi.console_log_info_tag(
+                   "arm.joint", "工位 A 首件下线（本条仅 arm.joint 静默，你看不到）"))
+    YomkApi.console_log_info_tag(
+        "arm.demo", "arm.joint 已逐器静默：arm.demo 叙事与 MainLogger 输出不受影响（对照锚点）")
+
+    log_action_start("复查全局主闸状态")
+    resp = YomkApi.logger_info_global()
+    log_resp("LOGGER_INFO_GLOBAL", resp)
+    if resp.data is not None:
+        log_global_state("LOGGER_INFO_GLOBAL", resp.data)
+    log_action_start("单查 arm.joint 条目")
+    resp = YomkApi.logger_info_logger("arm.joint", "console")
+    log_resp("LOGGER_INFO_LOGGER arm.joint(console)", resp)
+    if resp.data is not None:
+        log_logger_info("LOGGER_INFO_LOGGER arm.joint", resp.data)
+    log_verify("主闸 info=on 而条目 info=off——两层状态各自真实呈现：输出被关是逐器层所致，具名 ON 即恢复")
+    log_action("逐器恢复：仅重开 arm.joint 的 INFO（具名恢复）", "ON_CONSOLE_LOG_INFO arm.joint",
+               lambda: YomkApi.on_console_log_info("arm.joint"))
+    log_action("关节模块恢复上报（INFO，输出回归）", "CONSOLE_LOG_INFO_TAG arm.joint",
+               lambda: YomkApi.console_log_info_tag("arm.joint", "arm.joint INFO 已恢复，报文重新可见"))
 
 
 # 场景 3：安全黑匣子（控制台日志代理：消费与放行）
@@ -270,7 +319,8 @@ def show_arm_blackbox(log_dir):
         log_logger_info("LOGGER_INFO_LOGGER", resp.data)
     log_verify("state 段 proxy=on：代理是框架全局单点，接管全部控制台日志")
 
-    log_action("刷盘安全黑匣子", "FILE_LOG_WRITE blackbox", lambda: YomkApi.file_log_write("blackbox"))
+    log_action("刷盘安全黑匣子", "FILE_LOG_WRITE blackbox",
+               lambda: YomkApi.file_log_write("blackbox"))
     log_action_start("回读黑匣子文件验证转写")
     YomkApi.console_log_info_tag("arm.demo", "---- blackbox.log 内容 ----")
     log_file_content(Path(log_dir) / "blackbox.log")
@@ -323,21 +373,23 @@ def show_arm_shift_log(log_dir):
                lambda: YomkApi.off_console_log_debug())
     log_action("开关关闭期间存档详单（DEBUG）", "FILE_LOG_DEBUG shiftlog",
                lambda: YomkApi.file_log_debug("shiftlog", "交叉验证：控制台 DEBUG 已关，此行仍应落盘"))
-    log_action("恢复 DEBUG 详单", "ON_CONSOLE_LOG_DEBUG", lambda: YomkApi.on_console_log_debug())
+    log_action("恢复 DEBUG 详单", "ON_CONSOLE_LOG_DEBUG",
+               lambda: YomkApi.on_console_log_debug())
 
-    log_action("显式刷盘班次存档", "FILE_LOG_WRITE shiftlog", lambda: YomkApi.file_log_write("shiftlog"))
+    log_action("显式刷盘班次存档", "FILE_LOG_WRITE shiftlog",
+               lambda: YomkApi.file_log_write("shiftlog"))
     log_action_start("回读班次存档文件")
     YomkApi.console_log_info_tag("arm.demo", "---- shiftlog.log 内容 ----")
     log_file_content(Path(log_dir) / "shiftlog.log")
     log_verify("9 条四级双 tag 全部落盘：FILE 写入不经级别开关与代理（写缓冲在先、显式 WRITE 落盘在后）")
 
 
-# 场景 5：日志系统运维面板（内省三件套）
+# 场景 5：日志系统运维面板（内省三件套 + 全局主闸态单查）
 def show_arm_logger_dashboard():
     log_scene(
         5,
         "日志系统运维面板",
-        "logger_info_loggers / logger_info_logger / logger_info_all",
+        "logger_info_loggers / logger_info_logger / logger_info_all / logger_info_global",
         "班中巡检日志系统：LOGGERS 按类型拉取日志器名清单（字典序）；LOGGER 按类型"
         "单查结构化 LoggerInfo（两表允许同名，须精确指定）；ALL 全量导出——"
         "框架只回结构化数据，展示格式由用户定义。")
@@ -376,7 +428,17 @@ def show_arm_logger_dashboard():
     if resp.data:
         for info in resp.data:
             log_logger_info("LOGGER_INFO_ALL", info)
-    log_verify("console 条目 state 为真实全局状态（五开关），file 条目级别恒 on、proxy 恒 off（控制台专属概念）")
+    log_verify(
+        "console 条目 state 为逐器门控层真值（未做具名开关恒全 on），file 条目级别恒 on、proxy 恒 off（控制台专属概念）")
+
+    # 全局主闸态单查：ALL 条目报逐器真值，主闸态经 logger_info_global 独立承载，两层一起看全
+    log_action_start("复查全局主闸状态")
+    resp = YomkApi.logger_info_global()
+    log_resp("LOGGER_INFO_GLOBAL", resp)
+    if resp.data is not None:
+        log_global_state("LOGGER_INFO_GLOBAL", resp.data)
+    log_verify("条目逐器真值 + 主闸态独立单查：两层状态各自真实呈现，输出归因唯一"
+               "（条目 off 是逐器层所致、条目 on 而无输出查主闸）")
 
 
 # 场景 6：收班清档（DELETE 两表清理、磁盘保留、惰性重建）
@@ -403,7 +465,8 @@ def show_arm_log_cleanup(log_dir):
     log_verify("msg=deleted console:1 file:0：MainLogger 只在 console 表（框架预创建）")
 
     log_action_start("回读班次存档文件确认保留")
-    YomkApi.console_log_info_tag("arm.demo", "---- shiftlog.log 内容（日志器已删、磁盘仍在） ----")
+    YomkApi.console_log_info_tag(
+        "arm.demo", "---- shiftlog.log 内容（日志器已删、磁盘仍在） ----")
     log_file_content(Path(log_dir) / "shiftlog.log")
     log_verify("DELETE 只清内存表：磁盘 .log 文件保留，数据保全归调用方")
 
@@ -440,7 +503,8 @@ def main():
     show_arm_logger_dashboard()
     show_arm_log_cleanup(log_dir)
 
-    YomkApi.console_log_info_tag("arm.demo", "========== 示例结束：按回车退出 ==========")
+    YomkApi.console_log_info_tag(
+        "arm.demo", "========== 示例结束：按回车退出 ==========")
     input()
 
 

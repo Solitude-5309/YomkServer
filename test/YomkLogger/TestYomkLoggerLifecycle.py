@@ -4,13 +4,16 @@
 TestYomkLoggerLifecycle.py —— YomkLogger 服务全链路生命周期测试
 （LG1-LG6 轮交付）
 
-覆盖内容（9 节）：
+覆盖内容（10 节）：
 S1 控制台日志基线（四级别 + 开关翻转）；S2 自定义 tag 自动创建（含 65536 超长 tag、
 空内容）；S2.5 非法级别 default 降级（须在 S3 设 proxy 前）；S3 proxy 契约（拦截/
 穿透/卸载恢复/重装复位，LG6 P4-e）；S4 文件日志闭环（create/缓冲/落盘/重复/未创建/
 P2-a 空名空 dir/P2-b 失败不注册幽灵）；S5 内省三端点（行格式/字典序/开关联动逐字段）；
 S6 边界值（整数边界/浮点特殊值/1MB 内容/非法级别 file_log+off/on 无副作用）；S7 异常
-路径（空包/错类型包/空 logger 名回退/未知端点）；S8 /delete_logger 全语义（8.1-8.7）
+路径（空包/错类型包/空 logger 名回退/未知端点）；S8 /delete_logger 全语义（8.1-8.7）；
+S9 服务级具名开关与全局态端点（两级主闸并联：具名 OFF/ON 逐器隔离与恢复、未知名
+eNo 不惰性创建、主闸×逐器两层归因、条目逐器真值与两层正交、全局主闸态基线与
+无参翻转联动）
 
 语言机制说明：
 - stdout 捕获用 contextlib.redirect_stdout；CHECK 在捕获作用域外（LG1 教训，
@@ -366,16 +369,18 @@ def main():
     check(no_info.status == ResStatus.eNo and no_info.msg == "logger not found.",
           "LOGGER 未注册名返回 eNo + logger not found.")
 
-    # ALL：状态段与开关翻转联动（逐字段断言）
+    # ALL：状态段基线 + 开关翻转联动（逐字段断言）；主闸翻转与条目解耦后，
+    # 翻转联动取数迁移至 logger_info_global（全局主闸态）；条目改报逐器层
+    # 真值，不受无参翻转影响（正交性在 S9 直证）
     c = first_console_state(YomkApi.logger_info_all().data)
     check(c.debug_on and c.info_on and c.warn_on and c.error_on and c.proxy_on,
           "ALL console 条目状态段全 on + proxy_on（S3 已设 proxy）")
     YomkApi.off_console_log_info()
-    check(not first_console_state(YomkApi.logger_info_all().data).info_on,
-          "OFF INFO 后 ALL console 条目状态段 info_off（开关联动）")
+    check(not YomkApi.logger_info_global().data.info_on,
+          "OFF INFO 后全局主闸状态 info_off（开关联动逐字段）")
     YomkApi.on_console_log_info()
-    check(first_console_state(YomkApi.logger_info_all().data).info_on,
-          "ON INFO 复原后 ALL console 条目状态段 info_on")
+    check(YomkApi.logger_info_global().data.info_on,
+          "ON INFO 复原后全局主闸状态 info_on")
 
     # ============ Section 6: 边界值（数值特殊值 / 超大内容 / 非法级别） ============
     r, out = capture(lambda: YomkApi.console_log_info_tag(
@@ -610,6 +615,106 @@ def main():
         "/YomkLogger/delete_logger", Log(Log.eInfo, "x", "y"))
     check(r_wrong.status == ResStatus.eNo and r_wrong.msg == " pkg is null or pkg is not String. ",
           "S8: delete_logger 错类型包（Log）返回 eNo + 契约消息")
+
+    # ============ Section 9: 服务级具名开关与全局态端点（两级主闸并联） ============
+    tag_a = "lg1_s9_tagA"
+    tag_b = "lg1_s9_tagB"
+
+    # 9.1 具名 OFF 隔离：关 tagA 的 info，tagB 输出不受影响
+    r_pre = capture(lambda: (
+        YomkApi.console_log_info_tag(tag_a, "lg1_s9a_pre_a_marker"),
+        YomkApi.console_log_info_tag(tag_b, "lg1_s9a_pre_b_marker")))[0]
+    check(r_pre[0].status == ResStatus.eOk and r_pre[1].status == ResStatus.eOk,
+          "S9a: tagA/tagB 预写 eOk")
+    check(YomkApi.off_console_log_info(tag_a).status == ResStatus.eOk,
+          "S9a: 具名 OFF_CONSOLE_LOG_INFO(tagA) 返回 eOk")
+    r_a, out_a = capture(
+        lambda: YomkApi.console_log_info_tag(tag_a, "lg1_s9a_off_a_marker"))
+    r_b, out_b = capture(
+        lambda: YomkApi.console_log_info_tag(tag_b, "lg1_s9a_off_b_marker"))
+    check(r_a.status == ResStatus.eOk and r_b.status == ResStatus.eOk,
+          "S9a: 具名关断后 tagA/tagB 调用仍 eOk")
+    check("lg1_s9a_off_a_marker" not in out_a, "S9a: 具名关断后 tagA 无输出")
+    check("lg1_s9a_off_b_marker" in out_b,
+          "S9a: 具名关断不波及 tagB（逐器隔离）")
+
+    # 9.2 具名 ON 恢复
+    check(YomkApi.on_console_log_info(tag_a).status == ResStatus.eOk,
+          "S9b: 具名 ON_CONSOLE_LOG_INFO(tagA) 返回 eOk")
+    r, out = capture(
+        lambda: YomkApi.console_log_info_tag(tag_a, "lg1_s9b_on_a_marker"))
+    check(r.status == ResStatus.eOk, "S9b: 恢复后 tagA 调用 eOk")
+    check("lg1_s9b_on_a_marker" in out, "S9b: 具名恢复后 tagA 输出回归")
+
+    # 9.3 具名未知名 eNo（不惰性创建）
+    off_no = YomkApi.off_console_log_info("lg1_s9_never_created")
+    check(off_no.status == ResStatus.eNo and
+          off_no.msg == "console logger not found.",
+          "S9c: 具名 OFF 未知名返回 eNo + console logger not found.")
+    on_no = YomkApi.on_console_log_info("lg1_s9_never_created")
+    check(on_no.status == ResStatus.eNo and
+          on_no.msg == "console logger not found.",
+          "S9c: 具名 ON 未知名返回 eNo")
+    check(YomkApi.logger_info_logger(
+        "lg1_s9_never_created", "console").status == ResStatus.eNo,
+        "S9c: 未知名未被惰性创建（单查 eNo）")
+
+    # 9.4 主闸×逐器组合 + 两层归因：全局 OFF + 逐器 ON → 仍无输出（两层 AND），
+    # 全局态与条目逐器态各自真实呈现、归因唯一
+    check(YomkApi.off_console_log_info().status == ResStatus.eOk,
+          "S9d: 无参 OFF（全局主闸）返回 eOk")
+    r, out = capture(lambda: YomkApi.console_log_info_tag(
+        tag_a, "lg1_s9d_global_off_a_marker"))
+    check(r.status == ResStatus.eOk, "S9d: 主闸关断后 tagA 调用仍 eOk")
+    check("lg1_s9d_global_off_a_marker" not in out,
+          "S9d: 主闸 OFF + 逐器 ON → 仍无输出（两层 AND）")
+    check(YomkApi.logger_info_global().data.info_on is False,
+          "S9d: logger_info_global 报主闸 info_off")
+    li = YomkApi.logger_info_logger(tag_a, "console")
+    check(li.data is not None and li.data.logger_state.info_on,
+          "S9d: 条目报逐器 info_on（与主闸态相反，两层归因唯一）")
+    check(YomkApi.on_console_log_info().status == ResStatus.eOk,
+          "S9d: 无参 ON（全局主闸）恢复 eOk")
+    r, out = capture(lambda: YomkApi.console_log_info_tag(
+        tag_a, "lg1_s9d_global_on_a_marker"))
+    check(r.status == ResStatus.eOk, "S9d: 主闸恢复后 tagA 调用 eOk")
+    check("lg1_s9d_global_on_a_marker" in out,
+          "S9d: 主闸恢复后输出回归（逐器仍 on）")
+
+    # 9.5 条目逐器真值与两层正交：具名关断直接反映在条目、不波及全局态
+    la = YomkApi.logger_info_logger(tag_a, "console")
+    lb = YomkApi.logger_info_logger(tag_b, "console")
+    check(la.data is not None and la.data.logger_state.info_on,
+          "S9e: tagA 条目 info_on（具名恢复后逐器态）")
+    check(lb.data is not None and lb.data.logger_state.info_on,
+          "S9e: tagB 条目 info_on（未被具名触碰恒 true）")
+    check(YomkApi.off_console_log_info(tag_a).status == ResStatus.eOk,
+          "S9e: 再次具名关断 tagA 返回 eOk")
+    check(YomkApi.logger_info_global().data.info_on,
+          "S9e: 具名关断不影响全局主闸（两层正交）")
+    la2 = YomkApi.logger_info_logger(tag_a, "console")
+    check(la2.data is not None and not la2.data.logger_state.info_on,
+          "S9e: tagA 条目报逐器 info_off（具名关断直接反映）")
+    check(YomkApi.on_console_log_info(tag_a).status == ResStatus.eOk,
+          "S9e: 具名恢复 tagA 返回 eOk（状态复原）")
+
+    # 9.6 全局态端点基线：logger_info_global 解 LoggerState + 无参翻转联动
+    g = YomkApi.logger_info_global()
+    check(g.status == ResStatus.eOk and g.msg == "ok",
+          "S9f: logger_info_global 返回 eOk + ok")
+    check(g.data is not None and g.data.debug_on and g.data.info_on
+          and g.data.warn_on and g.data.error_on,
+          "S9f: 全局主闸四级全 on")
+    check(g.data is not None and g.data.proxy_on,
+          "S9f: 全局态含 S3 已设 proxy_on")
+    check(YomkApi.off_console_log_debug().status == ResStatus.eOk,
+          "S9f: 无参 OFF_DEBUG 返回 eOk")
+    check(not YomkApi.logger_info_global().data.debug_on,
+          "S9f: 主闸 OFF_DEBUG 后全局态 debug_off")
+    check(YomkApi.on_console_log_debug().status == ResStatus.eOk,
+          "S9f: 无参 ON_DEBUG 恢复 eOk")
+    check(YomkApi.logger_info_global().data.debug_on,
+          "S9f: 主闸 ON_DEBUG 后全局态 debug_on")
 
     # ============ 收尾清理 ============
     YomkApi.shutdown()

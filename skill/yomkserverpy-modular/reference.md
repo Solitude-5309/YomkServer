@@ -113,11 +113,12 @@ class EventLoopPkg:
 | `YomkApi.file_log_info(log_file, *args)` | 文件 Info 日志便捷版（缺省 tag "MainLogger"；同族 warn/error/debug） |
 | `YomkApi.file_log_write(log_file)` | 手动落盘 |
 | `YomkApi.file_log_delete(logger_name)` | 删除日志器（最后引用释放时触发析构落盘） |
-| `YomkApi.on_console_log_info()` / `YomkApi.off_console_log_info()` | 开/关控制台 Info 输出（同族 warn/error/debug） |
+| `YomkApi.on_console_log_info([logger_name])` / `YomkApi.off_console_log_info([logger_name])` | 开/关控制台 Info 输出（同族 warn/error/debug）；两级主闸并联——无参 = 全局主闸（YomkLogger 全局开关），具名 = 逐器门控单个日志器（未命中 eNo `"console logger not found."`，不惰性创建、不触碰主闸），输出取两层 AND |
 | `YomkApi.set_console_log_proxy(func)` | 设置日志代理（func 返回 False 消费该条日志） |
 | `YomkApi.logger_info_loggers(logger_type)` | 按类型获取日志器纯名列表（type 为 `"console"`/`"file"`，仅返回该类型的日志器名字典序清单；其他值返回 eNo `"unknown logger type."`） |
 | `YomkApi.logger_info_logger(logger_name, logger_type)` | 单日志器元信息结构化查询（type: "console"/"file"；两表允许同名，按类型单表精确查找不 fallback；命中 msg 恒 "ok"，data 为 LoggerInfo 包：logger_name/type/dir，file 时 dir 为日志目录；未注册或非法 type 返回 eNo） |
-| `YomkApi.logger_info_all()` | 全量日志器及控制台状态（命中 msg 恒 `"ok"`，data 为 `list[LoggerInfo]` 清单，每条内嵌 `logger_state` 状态段（`LoggerState` 五开关 debug_on/info_on/warn_on/error_on/proxy_on）；console 条目为真实全局状态、file 条目级别恒 true/proxy_on 恒 false） |
+| `YomkApi.logger_info_all()` | 全量日志器及状态（命中 msg 恒 `"ok"`，data 为 `list[LoggerInfo]` 清单，每条内嵌 `logger_state` 状态段（`LoggerState` 五开关 debug_on/info_on/warn_on/error_on/proxy_on）；console 条目承载逐器门控层真值（不做两层 AND 代算）、file 条目级别恒 true/proxy_on 恒 false） |
+| `YomkApi.logger_info_global()` | 查询控制台全局主闸状态（命中 msg 恒 `"ok"`，data 为 `LoggerState` 包：4 级别开关 + proxy；独立于逐器门控层，供两层归因） |
 
 ### Context
 | API | 说明 |
