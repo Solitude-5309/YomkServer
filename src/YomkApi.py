@@ -21,6 +21,7 @@ from YomkServerPy import (
     EventLoopInfo,
     Event,
     ConsoleLogProxy,
+    FileLogProxy,
     Log,
     LogFile,
     FuncInfo,
@@ -201,6 +202,12 @@ def set_console_log_proxy(console_log_proxy_func):
     # 设置控制台日志代理回调（传 None 恢复默认输出，取消代理回调）
     return _api_request("/YomkLogger/set_console_log_proxy",
                         ConsoleLogProxy(console_log_proxy_func))
+
+
+def set_file_log_proxy(file_log_proxy_func):
+    # 设置文件日志代理回调（传 None 恢复默认落盘，取消代理回调；与控制台代理相互独立）
+    return _api_request("/YomkLogger/set_file_log_proxy",
+                        FileLogProxy(file_log_proxy_func))
 
 
 def console_log_info_tag(tag, *args):
@@ -415,14 +422,14 @@ def logger_info_logger(logger_name, logger_type):
 
 def logger_info_all():
     # 查询全部日志器及逐器门控状态（命中 msg 恒 "ok"，data 为 list[LoggerInfo] 清单，
-    # 每条内嵌 logger_state 状态段（LoggerState：console 条目为控制台逐器门控层真值、
-    # file 条目为文件逐器门控层真值，proxy_on 恒 false——文件代理落地前））
+    # 每条内嵌 logger_state 状态段（LoggerState：console/file 条目各自为对应侧逐器
+    # 门控层真值，proxy_on 各报对应侧代理态））
     return _api_request("/YomkLogger/all", None)
 
 
 def logger_info_global(type="console"):
-    # 查询全局主闸状态（4 级别 + proxy；type: "console"/"file"，两套主闸相互独立
-    # 供两层归因；缺省 "console" 与历史无参语义一致，未知 type 返回 eNo）
+    # 查询全局主闸状态（4 级别 + proxy；type: "console"/"file"，两套主闸/两套代理
+    # 各自独立供两层归因；缺省 "console" 与历史无参语义一致，未知 type 返回 eNo）
     if type == "file":
         return _api_request("/YomkLogger/file_global_state", None)
     if type == "console":

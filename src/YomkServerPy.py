@@ -445,6 +445,14 @@ class ConsoleLogProxy:
         self.m_consoleLogProxyFunc = console_log_proxy_func
 
 
+class FileLogProxy:
+    # 文件日志代理回调载体（/YomkLogger/set_file_log_proxy 请求数据；
+    # 语义与控制台代理对称，两代理各自独立）
+    def __init__(self, file_log_proxy_func=None):
+        # func(Log) -> bool，None 等价卸载
+        self.m_fileLogProxyFunc = file_log_proxy_func
+
+
 class LoggerQuery:
     # 日志器单查请求（/YomkLogger/logger 请求数据：名 + 类型，两表允许同名须按类型区分）
     def __init__(self, logger_name="", type=""):
@@ -479,7 +487,7 @@ class LoggerState:
         self.warn_on = warn_on          # warn 级别开关
         self.error_on = error_on        # error 级别开关
         # proxy_on：代理已安装——/console_global_state 报控制台代理、
-        # /file_global_state 报文件代理（文件代理落地前 file 侧恒 false）
+        # /file_global_state 报文件代理（两套代理各自独立）
         self.proxy_on = proxy_on
 
 
@@ -1678,13 +1686,15 @@ class YomkEventLoop(YomkService):
 
 
 class YomkLogger(YomkService):
-    # 日志模块服务：14 端点装配序与契约消息逐字对齐。
+    # 日志模块服务：16 端点装配序与契约消息逐字对齐。
     # 锁序约定：嵌套双读仅 list_all 内省快照，一律按 m_consoleLoggersMutex ->
-    # m_fileLoggersMutex 的顺序持有，全仓无反向嵌套点（loggers 按类型单锁查表，
-    # delete_logger 分段持锁不嵌套；其余端点含 set_named_console_level/
-    # set_named_file_level 均单锁）；m_consoleLogProxyMutex 为叶子锁，
-    # 临界区内不得获取任何其他锁（current_console_state 在表锁外先独立取 proxy 锁，
-    # 沿用 proxy 锁独立作用域先释放的既有模式）。
+    # m_fileLoggersMutex 的顺序持有，全仓无反向嵌套点（console_log/file_log 的
+    # proxy 锁在独立作用域释放后才取 logger 表锁；logger_info/write_file_log/
+    # create_file_logger/set_named_console_level/set_named_file_level/
+    # set_file_log_proxy 均单锁；current_console_state/named_console_state 的
+    # console proxyOn 与 current_file_state/logger_info/list_all 的 file proxyOn
+    # 均在表锁外先独立取 proxy 锁）；m_consoleLogProxyMutex 与 m_fileLogProxyMutex
+    # 为叶子锁，其临界区内不得获取任何其他锁。
     # 后续维护新增嵌套时须沿用此序，否则有死锁风险。两表保持 dict 但内省输出显式
     # sorted :map 字典序（python dict 为插入序，ServerInfo 轮先例）。
     def __init__(self, server: "YomkServer"):
@@ -1704,14 +1714,21 @@ class YomkLogger(YomkService):
         self.m_showFileInfoLog = True
         self.m_showFileWarningLog = True
         self.m_showFileErrorLog = True
-        # proxy 字段专属锁：锁内拷贝快照、锁外调用回调，避免持锁重入
+        # proxy 字段专属锁：锁内拷贝快照、锁外调用回调，避免持锁重入；控制台与文件
+        # 两套代理互不共锁，各自独立
         self.m_consoleLogProxyMutex = threading.Lock()
         self.m_consoleLogProxy = False
         self.m_consoleLogProxyFunc = None
+        # 文件日志全局代理（与控制台代理相互独立，语义对称）；proxy 字段专属锁同上
+        self.m_fileLogProxyMutex = threading.Lock()
+        self.m_fileLogProxy = False
+        self.m_fileLogProxyFunc = None
 
     def init(self):
         self.install_func("/set_console_log_proxy",
                           self.set_console_log_proxy, "ConsoleLogProxy")
+        self.install_func("/set_file_log_proxy",
+                          self.set_file_log_proxy, "FileLogProxy")
         self.install_func("/console_log", self.console_log, "Log")
         self.install_func("/create_file_logger",
                           self.create_file_logger, "LogFile")
@@ -1803,6 +1820,16 @@ class YomkLogger(YomkService):
             self.m_consoleLogProxy = self.m_consoleLogProxyFunc is not None
         return YomkResponse(ResStatus.eOk, "success.")
 
+    def set_file_log_proxy(self, pkg: FileLogProxy):
+        bad = self._unpack(pkg, FileLogProxy)
+        if bad:
+            return bad
+        # 与 fileLog 读侧互斥；传 None 即卸载 proxy、恢复默认落盘；两字段同锁一致更新
+        with self.m_fileLogProxyMutex:
+            self.m_fileLogProxyFunc = pkg.m_fileLogProxyFunc
+            self.m_fileLogProxy = self.m_fileLogProxyFunc is not None
+        return YomkResponse(ResStatus.eOk, "success.")
+
     def create_file_logger(self, pkg: LogFile):
         bad = self._unpack(pkg, LogFile)
         if bad:
@@ -1839,6 +1866,14 @@ class YomkLogger(YomkService):
         if not pkg.m_logger:
             _yomk_err_pos_log("file logger name is empty.")
             return YomkResponse(ResStatus.eNo, "file logger name is empty.")
+
+        # 锁内拷贝文件代理快照，锁外调用回调（与 console_log 同款模式，避免用户回调持锁重入）；
+        # 代理先于表查找、主闸与逐器门控（未知名在拦截态下同样被短路，语义与 console 一致）
+        with self.m_fileLogProxyMutex:
+            proxy_enabled = self.m_fileLogProxy
+            proxy_func = self.m_fileLogProxyFunc
+        if proxy_enabled and proxy_func and not proxy_func(pkg):
+            return YomkResponse(ResStatus.eOk, "file log proxy is success.")
 
         with self.m_fileLoggersMutex.gen_rlock():
             file_logger = self.m_fileLoggers.get(pkg.m_logger)
@@ -2090,17 +2125,19 @@ class YomkLogger(YomkService):
             proxy_on)
 
     def current_file_state(self):
-        # 取文件全局主闸态（/file_global_state 返回体）：四个级别开关独立读
-        # （组合本无原子快照保证），与控制台主闸相互独立；不持任何表锁；
-        # proxy_on 为文件代理态（文件代理闭环 3 落地前恒 false）
-        return LoggerState(
+        # 取文件全局主闸态（/file_global_state 返回体）：四个级别开关为独立
+        # 原子读（组合本无原子快照保证），与控制台主闸相互独立，不持任何表锁；
+        # proxy 状态读侧与写侧互斥（叶子锁独立作用域，与控制台 proxyOn 各自独立）
+        state = LoggerState(
             bool(self.m_showFileDebugLog), bool(self.m_showFileInfoLog),
-            bool(self.m_showFileWarningLog), bool(self.m_showFileErrorLog),
-            False)
+            bool(self.m_showFileWarningLog), bool(self.m_showFileErrorLog))
+        with self.m_fileLogProxyMutex:
+            state.proxy_on = self.m_fileLogProxy
+        return state
 
     def named_file_state(self, file_logger, proxy_on):
         # 取单条 file 条目状态：四级别为逐器门控层真值（is_level_on），
-        # proxyOn 由调用点传入（条目不做两层 AND 代算）
+        # proxyOn 由调用点传入（文件代理态，条目不做两层 AND 代算）
         return LoggerState(
             file_logger.is_level_on(Log.eDebug),
             file_logger.is_level_on(Log.eInfo),
@@ -2131,29 +2168,35 @@ class YomkLogger(YomkService):
                 LoggerInfo(pkg.m_logger_name, "console", "",
                            self.named_console_state(console_logger, proxy_on)))
         if pkg.m_type == "file":
+            # 锁内查找拷引用出锁外使用（与 console 分支同款模式）
+            file_logger = None
             with self.m_fileLoggersMutex.gen_rlock():
                 file_logger = self.m_fileLoggers.get(pkg.m_logger_name)
                 if file_logger is None:
                     _yomk_err_pos_log("file logger: " +
                                       pkg.m_logger_name + " not found.")
                     return YomkResponse(ResStatus.eNo, "logger not found.")
-                # 状态段：条目报文件逐器门控层真值；proxy_on 为文件代理态
-                # （文件代理闭环 3 落地前恒 false）
-                return YomkResponse(
-                    ResStatus.eOk, "ok",
-                    LoggerInfo(pkg.m_logger_name, "file", file_logger.get_dir(),
-                               self.named_file_state(file_logger, False)))
+            # 状态段：条目报文件逐器门控层真值；proxyOn 在表锁外独立取
+            # （proxy 叶子锁独立作用域）
+            with self.m_fileLogProxyMutex:
+                proxy_on = self.m_fileLogProxy
+            return YomkResponse(
+                ResStatus.eOk, "ok",
+                LoggerInfo(pkg.m_logger_name, "file", file_logger.get_dir(),
+                           self.named_file_state(file_logger, proxy_on)))
         _yomk_err_pos_log("unknown logger type: " + pkg.m_type + ".")
         return YomkResponse(ResStatus.eNo, "unknown logger type.")
 
     def list_all(self, pkg):
         # LoggerState 内嵌每条 LoggerInfo：console 条目报控制台逐器门控层真值
         # （named_console_state 逐条求值），file 条目报文件逐器门控层真值
-        # （named_file_state 逐条求值，proxy_on 文件代理落地前恒 false）；
+        # （named_file_state 逐条求值）；
         # 全局主闸态迁出条目、由 /console_global_state 与 /file_global_state 承载
-        # console proxyOn 在双表锁外先独立取（proxy 叶子锁独立作用域），随后传入逐条求值
+        # console/file 两个 proxyOn 各自独立取（两把 proxy 叶子锁独立作用域），随后传入逐条求值
         with self.m_consoleLogProxyMutex:
             proxy_on = self.m_consoleLogProxy
+        with self.m_fileLogProxyMutex:
+            file_proxy_on = self.m_fileLogProxy
         # 同 loggers：按锁序嵌套双读锁取跨段快照，逐条构造 LoggerInfo
         # （与 logger_info 命中分支同构；console 段在前、file 段在后，各段字典序）
         with self.m_consoleLoggersMutex.gen_rlock():
@@ -2167,7 +2210,8 @@ class YomkLogger(YomkService):
                 loggers += [
                     LoggerInfo(
                         name, "file", self.m_fileLoggers[name].get_dir(),
-                        self.named_file_state(self.m_fileLoggers[name], False))
+                        self.named_file_state(self.m_fileLoggers[name],
+                                              file_proxy_on))
                     for name in sorted(self.m_fileLoggers)]
         # msg 恒 "ok"，数据走 data（清单本身即 data）
         return YomkResponse(ResStatus.eOk, "ok", loggers)

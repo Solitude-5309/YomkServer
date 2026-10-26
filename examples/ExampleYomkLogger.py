@@ -10,11 +10,12 @@ ExampleYomkLogger —— YomkLogger 日志系统示例：机械臂产线背景�
 控制台输出格式四段：[时间] [级别] [tag] [行号] 内容——tag 即控制台日志器名，
 首次使用自动创建；门面自动把 [行号] 拼进内容开头，方便定位调用处。
 级别开关两级主闸并联：无参作用于全局主闸（框架全局）、具名逐器门控单个日志器，
-输出取两层 AND；控制台与文件两套主闸相互独立（on/off_file_log_* 操作文件侧）。
+输出取两层 AND；控制台与文件两套主闸相互独立（on/off_file_log_* 操作文件侧），
+两套代理亦相互独立（set_console_log_proxy / set_file_log_proxy 各管一侧）。
 
 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 show_arm_xxx
 小函数，形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
-全部日志用户门面 API（控制台 8 / 开关 16 / 代理 1 / 文件 10 / 内省 4）无一遗漏；
+全部日志用户门面 API（控制台 8 / 开关 16 / 代理 2 / 文件 10 / 内省 4）无一遗漏；
 开关含控制台与文件两族各 8（本示例演示控制台族，文件族 on/off_file_log_* 同构）。
 叙事日志统一走 arm.demo（YomkLogger 自身即演示对象）。
 
@@ -28,16 +29,18 @@ ExampleYomkLogger —— YomkLogger 日志系统示例：机械臂产线背景�
        仍返回 eOk）；逐级恢复后单查 MainLogger 状态段复查四级别全 on；随后
        逐器静默——具名关断 arm.joint 仅其报文消失（arm.demo 对照不受影响），
        logger_info_global 报主闸全 on 与条目 info_off 两层归因唯一。
-场景 3 show_arm_blackbox     [set_console_log_proxy / file_log_create / file_log_write]
+场景 3 show_arm_blackbox     [set_console_log_proxy / set_file_log_proxy / file_log_create / file_log_write]
        安全黑匣子：代理把 WARN/ERROR 转写文件后消费、DEBUG 噪声消化、INFO
-       放行——结果行 msg 区分消费与放行；传 None 卸载恢复默认。
-场景 4 show_arm_shift_log    [file_log_info/warn/error/debug + _tag 版]
-       班次存档：双 tag 四级写入内存缓冲，显式 WRITE 刷盘；级别全关期间
-       DEBUG 照常落盘——文件日志与控制台开关、代理相互独立。
+       放行——结果行 msg 区分消费与放行；传 None 卸载恢复默认。随后安装
+       文件代理拦 DEBUG 不落盘、None 卸载恢复写入——两套代理相互独立。
+场景 4 show_arm_shift_log    [file_log_info/warn/error/debug + _tag 版 + off/on_file_log_* + logger_info_global("file")]
+       班次存档：双 tag 四级写入内存缓冲，显式 WRITE 刷盘；控制台 DEBUG 全关
+       期间文件 DEBUG 照常落盘，文件具名关断期间 INFO 静默吞条（主闸仍 on，
+       缺席归因逐器门控层）——文件开关与控制台开关两套相互独立。
 场景 5 show_arm_logger_dashboard [logger_info_loggers / logger_info_logger / logger_info_all / logger_info_global]
        运维面板：console/file 清单（字典序）、单查结构化 LoggerInfo（含未
-       注册 eNo）、全量导出——console 条目承载逐器门控层真值，再查
-       logger_info_global 复核全局主闸态，两层一起看全。
+       注册 eNo）、全量导出——条目各自报逐器门控层真值与对应侧代理态，
+       logger_info_global 按 type 分流单查控制台/文件两套主闸态，两层一起看全。
 场景 6 show_arm_log_cleanup  [file_log_delete + 惰性重建]
        收班清档：DELETE 同名清 console+file 两表（返回清了几张表）、磁盘
        .log 保留；MainLogger 删除后再写自动重建（按名惰性创建）。
@@ -172,6 +175,15 @@ def blackbox_proxy(log: Log) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# 文件日志代理（场景 3）：拦截 DEBUG 不落盘，其余穿透走默认落盘；与控制台代理
+# 相互独立。回调在调用方线程同步执行，内部不要再写文件日志（同一链路会重入）。
+# ---------------------------------------------------------------------------
+def file_debug_proxy(log_pkg) -> bool:
+    # 仅拦 DEBUG：DEBUG 被拦不落盘，INFO/WARN/ERROR 穿透正常写缓冲
+    return log_pkg.m_level != Log.eDebug
+
+
+# ---------------------------------------------------------------------------
 # 6 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。
 # 文件器流转：blackbox/shiftlog 场景 3/4 创建，场景 6 一并清档。
 # ---------------------------------------------------------------------------
@@ -292,9 +304,10 @@ def show_arm_blackbox(log_dir):
     log_scene(
         3,
         "安全黑匣子",
-        "set_console_log_proxy / file_log_create / file_log_write",
+        "set_console_log_proxy / set_file_log_proxy / file_log_create / file_log_write",
         "关键事件不能只留控制台：安装代理后每条控制台日志先过回调——WARN/ERROR "
-        "转写黑匣子文件后消费、DEBUG 噪声就地消化、INFO 放行；结果行 msg 区分消费与放行。")
+        "转写黑匣子文件后消费、DEBUG 噪声就地消化、INFO 放行；结果行 msg 区分消费与放行；"
+        "随后文件代理拦 DEBUG 不落盘、None 卸载恢复写入。")
 
     log_action("创建安全黑匣子文件器 blackbox", "FILE_LOG_CREATE blackbox",
                lambda: YomkApi.file_log_create(log_dir, "blackbox"))
@@ -336,15 +349,33 @@ def show_arm_blackbox(log_dir):
         log_logger_info("LOGGER_INFO_LOGGER", resp.data)
     log_verify("proxy 回到 off：传 None 即卸载，控制台恢复框架默认输出格式")
 
+    # 文件日志代理段：与控制台代理相互独立，拦 DEBUG 不落盘、None 卸载恢复写入
+    log_action("安装文件日志代理", "SET_FILE_LOG_PROXY file_debug_proxy",
+               lambda: YomkApi.set_file_log_proxy(file_debug_proxy))
+    log_action_start("复查文件侧全局主闸状态（文件代理态随装随报）")
+    resp = YomkApi.logger_info_global("file")
+    log_resp("LOGGER_INFO_GLOBAL file", resp)
+    if resp.data is not None:
+        log_global_state("LOGGER_INFO_GLOBAL file", resp.data)
+    log_action("记录 DEBUG 详单（文件代理拦截）", "FILE_LOG_DEBUG blackbox",
+               lambda: YomkApi.file_log_debug("blackbox", "视觉对位耗时 350ms，阈值 500ms"))
+    log_action("卸载文件日志代理", "SET_FILE_LOG_PROXY None",
+               lambda: YomkApi.set_file_log_proxy(None))
+    log_action("卸载后记录 DEBUG 详单（穿透）", "FILE_LOG_DEBUG blackbox",
+               lambda: YomkApi.file_log_debug("blackbox", "卸载代理后此行正常写入缓冲"))
+    log_verify("proxy=on 时 DEBUG 被拦（msg=file log proxy is success.）、None 卸载后 "
+               "DEBUG 恢复写入——文件代理与控制台代理相互独立")
+
 
 # 场景 4：班次存档（文件日志：缓冲、刷盘、与控制台独立）
 def show_arm_shift_log(log_dir):
     log_scene(
         4,
         "班次存档",
-        "file_log_info/warn/error/debug + _tag 版",
+        "file_log_info/warn/error/debug + _tag 版 + off/on_file_log_*",
         "全级别班次存档：FILE 系列门面写入内存缓冲，WRITE 显式刷盘到 dir/name.log；"
-        "文件日志不经控制台级别开关与代理，两路输出相互独立。")
+        "文件开关与控制台开关两套相互独立——控制台 DEBUG 全关期间文件 DEBUG 照常"
+        "落盘，文件具名关断期间条目静默吞条（msg 仍 success.），落盘与否回读实证。")
 
     log_action("创建班次存档文件器 shiftlog", "FILE_LOG_CREATE shiftlog",
                lambda: YomkApi.file_log_create(log_dir, "shiftlog"))
@@ -377,12 +408,27 @@ def show_arm_shift_log(log_dir):
     log_action("恢复 DEBUG 详单", "ON_CONSOLE_LOG_DEBUG",
                lambda: YomkApi.on_console_log_debug())
 
+    # 存档静默：文件具名关断期间条目静默吞条（msg 仍 success.），缺席归因逐器门控层
+    log_action("具名关断 shiftlog 的 INFO", "OFF_FILE_LOG_INFO shiftlog",
+               lambda: YomkApi.off_file_log_info("shiftlog"))
+    log_action("静默期间存档（INFO）", "FILE_LOG_INFO shiftlog",
+               lambda: YomkApi.file_log_info("shiftlog", "静默期间此行不应落盘"))
+    log_action_start("复查文件侧全局主闸状态")
+    resp = YomkApi.logger_info_global("file")
+    log_resp("LOGGER_INFO_GLOBAL file", resp)
+    if resp.data is not None:
+        log_global_state("LOGGER_INFO_GLOBAL file", resp.data)
+    log_verify("文件主闸仍全 on：INFO 缺席归因逐器门控层，两层状态各自真实呈现")
+    log_action("具名恢复 shiftlog 的 INFO", "ON_FILE_LOG_INFO shiftlog",
+               lambda: YomkApi.on_file_log_info("shiftlog"))
+
     log_action("显式刷盘班次存档", "FILE_LOG_WRITE shiftlog",
                lambda: YomkApi.file_log_write("shiftlog"))
     log_action_start("回读班次存档文件")
     YomkApi.console_log_info_tag("arm.demo", "---- shiftlog.log 内容 ----")
     log_file_content(Path(log_dir) / "shiftlog.log")
-    log_verify("9 条四级双 tag 全部落盘：FILE 写入不经级别开关与代理（写缓冲在先、显式 WRITE 落盘在后）")
+    log_verify("9 条四级双 tag 落盘、静默段 INFO 缺席：文件开关只影响文件写入，"
+               "与控制台开关相互独立（写缓冲在先、显式 WRITE 落盘在后）")
 
 
 # 场景 5：日志系统运维面板（内省三件套 + 全局主闸态单查）
@@ -430,16 +476,21 @@ def show_arm_logger_dashboard():
         for info in resp.data:
             log_logger_info("LOGGER_INFO_ALL", info)
     log_verify(
-        "console 条目 state 为控制台逐器门控层真值（未做具名开关恒全 on），file 条目为文件逐器门控层真值、proxy 恒 off（文件代理落地前）")
+        "console/file 条目各自报逐器门控层真值（未做具名开关恒全 on）与对应侧代理态——两层归因的条目侧")
 
-    # 全局主闸态单查：ALL 条目报逐器真值，主闸态经 logger_info_global 独立承载，两层一起看全
-    log_action_start("复查全局主闸状态")
-    resp = YomkApi.logger_info_global()
-    log_resp("LOGGER_INFO_GLOBAL", resp)
+    # 全局主闸态单查：ALL 条目报逐器真值，主闸态经 logger_info_global 按 type 独立承载，两层一起看全
+    log_action_start("复查控制台侧全局主闸状态")
+    resp = YomkApi.logger_info_global("console")
+    log_resp("LOGGER_INFO_GLOBAL console", resp)
     if resp.data is not None:
-        log_global_state("LOGGER_INFO_GLOBAL", resp.data)
-    log_verify("条目逐器真值 + 主闸态独立单查：两层状态各自真实呈现，输出归因唯一"
-               "（条目 off 是逐器层所致、条目 on 而无输出查主闸）")
+        log_global_state("LOGGER_INFO_GLOBAL console", resp.data)
+    log_action_start("复查文件侧全局主闸状态")
+    resp = YomkApi.logger_info_global("file")
+    log_resp("LOGGER_INFO_GLOBAL file", resp)
+    if resp.data is not None:
+        log_global_state("LOGGER_INFO_GLOBAL file", resp.data)
+    log_verify("条目逐器真值 + 两侧主闸态独立单查：两套主闸/两套代理各自真实呈现，"
+               "输出与落盘归因唯一（条目 off 是逐器层所致、条目 on 而无输出查对应侧主闸）")
 
 
 # 场景 6：收班清档（DELETE 两表清理、磁盘保留、惰性重建）

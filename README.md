@@ -221,9 +221,11 @@ YomkApi.off_console_log_info("biz")  # 具名逐器关断：仅 biz 的 INFO 无
 resp = YomkApi.logger_info_global()          # 查控制台主闸状态（缺省 type="console"）
 resp = YomkApi.logger_info_global("file")    # 查文件主闸状态（未知 type 返回 eNo；逐器真值条目走 logger_info_all()）
 YomkApi.on_console_log_info("biz")   # 具名恢复
+YomkApi.off_file_log_debug()         # 文件主闸关 DEBUG（与控制台开关相互独立）；同族 on/off_file_log_*
 
-# 3. 日志代理：每条控制台日志先过代理，返回 False 消费该条（不再输出）
+# 3. 日志代理：每条控制台日志先过代理，返回 False 消费该条（不再输出）；文件代理与之相互独立
 YomkApi.set_console_log_proxy(lambda log: False)            # 传 None 卸载，恢复默认输出
+YomkApi.set_file_log_proxy(lambda log: log.m_level != YomkApi.Log.eDebug)  # 文件代理拦 DEBUG；传 None 卸载，GLOBAL("file") 复查 proxy 态
 
 # 4. 文件日志：创建日志器 → 写内存缓冲 → 显式落盘为 dir/name.log
 YomkApi.file_log_create("./YomkLog", "app")

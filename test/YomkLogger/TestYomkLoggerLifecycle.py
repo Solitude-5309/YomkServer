@@ -4,7 +4,7 @@
 TestYomkLoggerLifecycle.py —— YomkLogger 服务全链路生命周期测试
 （LG1-LG6 轮交付）
 
-覆盖内容（11 节）：
+覆盖内容（12 节）：
 S1 控制台日志基线（四级别 + 开关翻转）；S2 自定义 tag 自动创建（含 65536 超长 tag、
 空内容）；S2.5 非法级别 default 降级（须在 S3 设 proxy 前）；S3 proxy 契约（拦截/
 穿透/卸载恢复/重装复位，LG6 P4-e）；S4 文件日志闭环（create/缓冲/落盘/重复/未创建/
@@ -16,7 +16,8 @@ eNo 不惰性创建、主闸×逐器两层归因、条目逐器真值与两层�
 无参翻转联动）；S10 文件日志两级开关与全局态端点（与控制台同构、落盘实证：
 具名 OFF/ON 文件逐器隔离与恢复、未知名 eNo、文件主闸×逐器两层归因、
 两层正交、logger_info_global("file"/"console") 两套主闸独立直证与无参翻转联动、
-未知 type eNo）
+未知 type eNo）；S11 文件日志全局代理契约（与控制台 S3 同构仅单一全局代理：
+基线两套独立直证/拦截/穿透/卸载 LG6 镜像/重装可逆，末尾重装回穿透态）
 
 语言机制说明：
 - stdout 捕获用 contextlib.redirect_stdout；CHECK 在捕获作用域外（LG1 教训，
@@ -810,7 +811,7 @@ def main():
           and g.data.warn_on and g.data.error_on,
           "S10f: 文件主闸四级全 on")
     check(g.data is not None and not g.data.proxy_on,
-          "S10f: 文件态 proxy_on=False（文件代理闭环 3 落地前恒 false）")
+          "S10f: 文件态 proxy_on=False（文件代理未设置时恒 false）")
     check(YomkApi.off_file_log_debug().status == ResStatus.eOk,
           "S10f: 无参 OFF_FILE_LOG_DEBUG 返回 eOk")
     check(not YomkApi.logger_info_global("file").data.debug_on,
@@ -828,6 +829,84 @@ def main():
     bad_type = YomkApi.logger_info_global("badtype")
     check(bad_type.status == ResStatus.eNo and bad_type.msg == "unknown logger type.",
           "S10f: 未知 type 返回 eNo unknown logger type.")
+
+    # ============ Section 11: 文件日志全局代理契约（与控制台 S3 同构） ============
+    fl_name = "lg1_s11_fl"
+    s11_dir = os.path.join(tmp_dir, "s11")
+    os.makedirs(s11_dir, exist_ok=True)
+    s11_log_file = os.path.join(s11_dir, fl_name + ".log")
+    check(YomkApi.file_log_create(s11_dir, fl_name).status == ResStatus.eOk,
+          "S11: 建文件日志器 lg1_s11_fl 成功")
+    file_proxy_hits = []
+    file_proxy_state = {"intercept": True}
+
+    def file_proxy(log_pkg):
+        file_proxy_hits.append(1)
+        return not file_proxy_state["intercept"]
+
+    # 11.1 基线：两套代理独立直证（文件代理未设置 + 控制台代理 S3 重装态）
+    gf = YomkApi.logger_info_global("file")
+    gc = YomkApi.logger_info_global("console")
+    check(gf.status == ResStatus.eOk and gc.status == ResStatus.eOk
+          and gf.data is not None and gc.data is not None,
+          "S11a: GLOBAL(file/console) 均返回 eOk")
+    check(not gf.data.proxy_on and gc.data.proxy_on,
+          "S11a: 文件 proxy_off + 控制台 proxy_on（两套代理各自独立直证）")
+
+    # 11.2 拦截态：proxy 返回 False -> eOk + 专属消息 + marker 缺席
+    check(YomkApi.set_file_log_proxy(file_proxy).status == ResStatus.eOk,
+          "S11b: SET_FILE_LOG_PROXY 返回 eOk")
+    r = YomkApi.file_log_info_tag(
+        fl_name, "lg1s11", "lg1_s11b_intercept_marker")
+    check(r.status == ResStatus.eOk and r.msg == "file log proxy is success.",
+          "S11b: 拦截态 file_log 返回 eOk + 专属契约消息")
+    check(YomkApi.file_log_write(fl_name).status == ResStatus.eOk,
+          "S11b: WRITE eOk")
+    check("lg1_s11b_intercept_marker" not in read_file(s11_log_file),
+          "S11b: 拦截态条目不落盘（marker 缺席）")
+    check(len(file_proxy_hits) == 1, "S11b: 文件代理被调用 1 次（原子计数）")
+
+    # 11.3 穿透态：proxy 返回 True -> 走默认落盘
+    file_proxy_state["intercept"] = False
+    r = YomkApi.file_log_info_tag(fl_name, "lg1s11", "lg1_s11c_pass_marker")
+    check(r.status == ResStatus.eOk and r.msg == "success.",
+          "S11c: 穿透态 file_log 返回 eOk + success.")
+    check(YomkApi.file_log_write(fl_name).status == ResStatus.eOk,
+          "S11c: WRITE eOk")
+    check("lg1_s11c_pass_marker" in read_file(s11_log_file),
+          "S11c: 穿透态条目落盘回归")
+    check(len(file_proxy_hits) == 2, "S11c: 文件代理累计被调用 2 次")
+    check(YomkApi.logger_info_global("file").data.proxy_on,
+          "S11c: GLOBAL(file) 状态段 proxy_on")
+
+    # 11.4 卸载（LG6 镜像）：卸载前先切回拦截态，确认代理确实在链路上
+    file_proxy_state["intercept"] = True
+    r = YomkApi.file_log_info_tag(
+        fl_name, "lg1s11", "lg1_s11d_pre_unload_marker")
+    check(r.status == ResStatus.eOk and r.msg == "file log proxy is success.",
+          "S11d: 卸载前拦截态契约消息（代理确实在链路上）")
+    check(YomkApi.set_file_log_proxy(None).status == ResStatus.eOk,
+          "S11d: set_file_log_proxy(None) 卸载返回 eOk")
+    check(not YomkApi.logger_info_global("file").data.proxy_on,
+          "S11d: 卸载后 GLOBAL(file) 回到 proxy_off")
+    hits_before = len(file_proxy_hits)
+    r = YomkApi.file_log_info_tag(
+        fl_name, "lg1s11", "lg1_s11d_post_unload_marker")
+    check(r.status == ResStatus.eOk and r.msg == "success.",
+          "S11d: 卸载后 file_log 返回 eOk + success.（走默认路径而非代理短路）")
+    check(YomkApi.file_log_write(fl_name).status == ResStatus.eOk,
+          "S11d: WRITE eOk")
+    check("lg1_s11d_post_unload_marker" in read_file(s11_log_file),
+          "S11d: 卸载后条目落盘回归（默认路径）")
+    check(len(file_proxy_hits) == hits_before,
+          "S11d: 卸载后代理不再被调用（命中数不增）")
+
+    # 11.5 复位：重装同一代理并回到穿透态，维持不变量
+    file_proxy_state["intercept"] = False
+    check(YomkApi.set_file_log_proxy(file_proxy).status == ResStatus.eOk,
+          "S11e: 重装文件代理返回 eOk（卸载可逆）")
+    check(YomkApi.logger_info_global("file").data.proxy_on,
+          "S11e: 重装后 GLOBAL(file) 恢复 proxy_on（不变量已复位）")
 
     # ============ 收尾清理 ============
     YomkApi.shutdown()

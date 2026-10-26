@@ -491,8 +491,8 @@ YomkApi.console_log_warn_tag("Security", "suspicious activity")
 # 输出取两层 AND；控制台与文件两套主闸相互独立（on/off_file_log_* 同族操作文件侧）
 YomkApi.off_console_log_debug()      # 控制台主闸关 DEBUG；同族 on/off_console_log_info/warn/error
 YomkApi.off_console_log_info("biz")  # 具名逐器关断：仅 biz 的 INFO 无输出（未命中 eNo 不惰性创建）
-resp = YomkApi.logger_info_global()         # 查控制台主闸状态（缺省 type="console"，data 为 LoggerState 五开关）
-resp = YomkApi.logger_info_global("file")   # 查文件主闸状态（未知 type 返回 eNo）
+resp = YomkApi.logger_info_global()         # 查控制台主闸状态（缺省 type="console"，data 为 LoggerState 五开关，proxy_on 报控制台代理态）
+resp = YomkApi.logger_info_global("file")   # 查文件主闸状态（proxy_on 报文件代理态，未知 type 返回 eNo）
 resp = YomkApi.logger_info_all()     # 条目报逐器门控层真值（两层正交，归因唯一）
 YomkApi.on_console_log_info("biz")   # 具名恢复，条目 info_on 回归 true
 
@@ -516,6 +516,16 @@ YomkApi.set_console_log_proxy(my_log_proxy)
 # 卸载代理：传 None 恢复框架默认控制台输出，
 # logger_info_all() 状态段 proxy_on 随之由 True 回到 False
 YomkApi.set_console_log_proxy(None)
+
+# 文件开关与控制台开关两套相互独立：无参 = 文件全局主闸，具名 = 逐器门控，
+# 写入取两层 AND；具名关断期间条目静默吞条（msg 仍 success.，不落盘）
+YomkApi.off_file_log_info("app_log")   # 仅 app_log 的 INFO 静默（未命中 eNo 不惰性创建）
+YomkApi.on_file_log_info("app_log")    # 具名恢复，写入回归落盘
+
+# 文件日志代理：每条文件写入先过代理，返回 False 拦截该条不落盘、True 穿透走默认落盘
+YomkApi.set_file_log_proxy(lambda log: log.m_level != YomkApi.Log.eDebug)  # 拦 DEBUG
+YomkApi.set_file_log_proxy(None)   # 传 None 卸载恢复默认落盘；GLOBAL("file") 单查
+# proxy_on 随之联动为 False；与控制台代理相互独立
 ```
 
 完整可运行示例见仓库 `examples/ExampleYomkLogger.py`（四级别、级别开关、代理消费/放行、文件日志回读与删除后惰性重建）。

@@ -219,7 +219,7 @@ class LoggerInfo:
     dir: str          # file 类型的日志目录（console 时为空串）
     # logger_state 状态段：console 条目承载控制台逐器门控层真值、file 条目承载
     # 文件逐器门控层真值（均为逐器层，全局主闸态经 console_global_state/
-    # file_global_state 查询；文件代理落地前 file 侧 proxyOn 恒 false）
+    # file_global_state 查询；proxy_on 各报对应侧代理态，两套代理各自独立）
     logger_state: LoggerState
 
     def __init__(self, logger_name: str = "", type: str = "",
@@ -232,7 +232,7 @@ class LoggerState:
     warn_on: bool     # warn 级别开关
     error_on: bool    # error 级别开关
     proxy_on: bool    # 代理已安装：console_global_state 报控制台代理、
-    # file_global_state 报文件代理（文件代理落地前 file 侧恒 false）
+    # file_global_state 报文件代理（两套代理各自独立）
 
     def __init__(self, debug_on: bool = False, info_on: bool = False,
                  warn_on: bool = False, error_on: bool = False,
