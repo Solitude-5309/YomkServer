@@ -3,18 +3,19 @@
  * @brief YomkLogger 日志系统示例：机械臂产线背景的 6 个场景小示例（面向初学者）
  *
  * 日志系统提供开箱即用的双路输出：控制台日志（四级级别 + tag 分层 + 代理拦截）
- * 与文件日志（内存缓冲 + 显式刷盘），并附带日志器内省。随 YOMK_INIT() 自动启动。
+ * 与文件日志（内存缓冲 + 显式刷盘 + 级别门控 + 代理拦截），并附带日志器内省。
+ * 随 YOMK_INIT() 自动启动。
  * 机械臂产线中运行足迹走控制台（班前点检、班中预警、班后清档），关键事件另存
  * 黑匣子与班次存档（文件日志），运维班前班后用内看点检日志系统本身。
  *
  * 控制台输出格式四段：[时间] [级别] [tag] [行号] 内容——tag 即控制台日志器名，
  * 首次使用自动创建；宏自动把 [行号] 拼进内容开头，方便定位调用处。
  * 级别开关两级并联：无参作用于全局主闸（框架全局）、具名逐器门控单个日志器，
- * 输出取两层 AND，只影响控制台；文件日志四级全记。
+ * 输出/落盘取两层 AND；控制台开关与文件开关两套相互独立，文件开关只影响写入。
  *
  * 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 showXXX 小函数，
  * 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
- * 全部 31 个 YOMK 日志用户宏（控制台 8 / 开关 8 / 代理 1 / 文件 10 / 内省 4）
+ * 全部 40 个 YOMK 日志用户宏（控制台 8 / 开关 16 / 代理 2 / 文件 10 / 内省 4）
  * 无一遗漏。叙事日志统一走 arm.demo（YomkLogger 自身即演示对象）。
  *
  * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
@@ -27,16 +28,19 @@
  *        eOk）；逐级恢复后单查 MainLogger 状态段复查五开关全 on；随后逐器静默——具名
  *        关断 arm.joint 仅其报文消失（MainLogger/arm.demo 对照不受影响），
  *        LOGGER_INFO_GLOBAL 报主闸全 on 与条目 infoOff 两层归因唯一。
- * 场景 3 showArmBlackbox    [SET_CONSOLE_LOG_PROXY / FILE_LOG_CREATE / WRITE]
+ * 场景 3 showArmBlackbox    [SET_CONSOLE_LOG_PROXY / SET_FILE_LOG_PROXY / FILE_LOG_CREATE / WRITE]
  *        安全黑匣子：代理把 WARN/ERROR 转写文件后消费、DEBUG 噪声消化、INFO
- *        放行——结果行 msg 区分消费与放行；传 nullptr 卸载恢复默认。
- * 场景 4 showArmShiftLog    [YOMK_FILE_INFO/WARN/ERROR/DEBUG + _TAG 版]
- *        班次存档：双 tag 四级写入内存缓冲，显式 WRITE 刷盘；级别全关期间
- *        DEBUG 照常落盘——文件日志与控制台开关、代理相互独立。
- * 场景 5 showArmLoggerDashboard [LOGGER_INFO_LOGGERS / LOGGER / ALL + LOGGER_INFO_GLOBAL]
+ *        放行——结果行 msg 区分消费与放行；传 nullptr 卸载恢复默认。文件代理段
+ *        用 GLOBAL("file") 复查 proxy 态并演示拦截/卸载，与控制台代理相互独立。
+ * 场景 4 showArmShiftLog    [YOMK_FILE_INFO/WARN/ERROR/DEBUG + _TAG 版 + OFF/ON_FILE_LOG_* + GLOBAL("file")]
+ *        班次存档：双 tag 四级写入内存缓冲，显式 WRITE 刷盘；控制台 DEBUG 全关
+ *        期间文件 DEBUG 照常落盘（两套开关独立）；文件具名关断期间 INFO 静默
+ *        吞条而文件主闸仍 on——两层归因，恢复后落盘回归。
+ * 场景 5 showArmLoggerDashboard [LOGGER_INFO_LOGGERS / LOGGER / ALL + LOGGER_INFO_GLOBAL("console"/"file")]
  *        运维面板：console/file 清单（字典序）、单查结构化 LoggerInfo（含未
- *        注册 eNo）、全量导出——console 条目承载逐器门控层真值，再查
- *        LOGGER_INFO_GLOBAL 复核全局主闸态，两层一起看全。
+ *        注册 eNo）、全量导出——console/file 条目各自承载逐器门控层真值与
+ *        对应侧代理态，再查 LOGGER_INFO_GLOBAL 按 type 复核两套主闸态，
+ *        两层一起看全。
  * 场景 6 showArmLogCleanup  [FILE_LOG_DELETE + 惰性重建]
  *        收班清档：DELETE 同名清 console+file 两表（返回清了几张表）、磁盘
  *        .log 保留；MainLogger 删除后再写自动重建（按名惰性创建）。
@@ -200,6 +204,17 @@ bool blackboxProxy(const yomk::Log& log)
 }
 
 // ---------------------------------------------------------------------------
+// 文件日志代理（场景 3）：拦截 DEBUG 噪声不落盘、其余放行走默认落盘。
+// 框架每写一条文件日志先过本回调（先于文件器查找与级别门控）：返回 false 该条
+// 不写入内存缓冲，返回 true 穿透继续默认落盘。回调在调用方线程同步执行，
+// 内部不要再写文件日志（会重入本代理），语义与控制台代理对称、相互独立。
+// ---------------------------------------------------------------------------
+bool fileDebugProxy(const yomk::Log& log)
+{
+    return log.m_level != yomk::Log::eDebug;  // 仅拦截 DEBUG，其余放行
+}
+
+// ---------------------------------------------------------------------------
 // 6 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。
 // 文件器流转：blackbox/shiftlog 场景 3/4 创建，场景 6 一并清档。
 // ---------------------------------------------------------------------------
@@ -319,9 +334,10 @@ static void showArmBlackbox(const std::string& logDir)
     logScene(
         3,
         "安全黑匣子",
-        "SET_CONSOLE_LOG_PROXY / FILE_LOG_CREATE / WRITE",
+        "SET_CONSOLE_LOG_PROXY / SET_FILE_LOG_PROXY / FILE_LOG_CREATE / WRITE",
         "关键事件不能只留控制台：安装代理后每条控制台日志先过回调——WARN/ERROR "
-        "转写黑匣子文件后消费、DEBUG 噪声就地消化、INFO 放行；结果行 msg 区分消费与放行。");
+        "转写黑匣子文件后消费、DEBUG 噪声就地消化、INFO 放行，结果行 msg 区分"
+        "消费与放行；文件代理同款语义作用于文件写入，两套代理相互独立。");
 
     logAction(
         "创建安全黑匣子文件器 blackbox", "FILE_LOG_CREATE blackbox", [&] { return YOMK_FILE_LOG_CREATE(logDir, "blackbox"); });
@@ -361,6 +377,24 @@ static void showArmBlackbox(const std::string& logDir)
         logLoggerInfo("LOGGER_INFO_LOGGER", offInfo->d);
     }
     logVerify("proxy 回到 off：传 nullptr 即卸载，控制台恢复框架默认输出格式");
+
+    // 文件代理段：同一套拦截语义作用在文件写入路径，GLOBAL("file") 单查文件侧状态
+    logAction("安装文件日志代理", "SET_FILE_LOG_PROXY fileDebugProxy", [&] { return YOMK_SET_FILE_LOG_PROXY(fileDebugProxy); });
+    resp = YOMK_LOGGER_INFO_GLOBAL("file");
+    logResp("LOGGER_INFO_GLOBAL file", resp);
+    YomkUnPackPkg(resp.m_data, LoggerState, fgs);
+    if (fgs)
+    {
+        std::ostringstream oss;
+        oss << "[LOGGER_INFO_GLOBAL file] 文件主闸: debug=" << (fgs->d.m_debugOn ? "on" : "off")
+            << " info=" << (fgs->d.m_infoOn ? "on" : "off") << " warn=" << (fgs->d.m_warnOn ? "on" : "off")
+            << " error=" << (fgs->d.m_errorOn ? "on" : "off") << " proxy=" << (fgs->d.m_proxyOn ? "on" : "off");
+        YOMK_INFO_TAG("arm.demo", oss.str());
+    }
+    logAction("记录调试详单（DEBUG，文件代理拦截）", "YOMK_FILE_DEBUG blackbox", [&] { return YOMK_FILE_DEBUG("blackbox", "视觉对位耗时 350ms，阈值 500ms"); });
+    logAction("卸载文件代理恢复落盘", "SET_FILE_LOG_PROXY nullptr", [&] { return YOMK_SET_FILE_LOG_PROXY(nullptr); });
+    logAction("卸载后记录调试详单（DEBUG，穿透落盘）", "YOMK_FILE_DEBUG blackbox", [&] { return YOMK_FILE_DEBUG("blackbox", "卸载代理后此行正常写入缓冲"); });
+    logVerify("proxy=on 时 DEBUG 被拦（msg=file log proxy is success.）、nullptr 卸载后 DEBUG 恢复写入——文件代理与控制台代理相互独立");
 }
 
 // 场景 4：班次存档（文件日志：缓冲、刷盘、与控制台独立）
@@ -369,9 +403,10 @@ static void showArmShiftLog(const std::string& logDir)
     logScene(
         4,
         "班次存档",
-        "YOMK_FILE_INFO/WARN/ERROR/DEBUG + _TAG 版",
+        "YOMK_FILE_INFO/WARN/ERROR/DEBUG + _TAG 版 + OFF/ON_FILE_LOG_* + GLOBAL(\"file\")",
         "全级别班次存档：FILE 系列宏写入内存缓冲，WRITE 显式刷盘到 dir/name.log；"
-        "文件日志不经控制台级别开关与代理，两路输出相互独立。");
+        "文件开关与控制台开关两套相互独立——控制台 DEBUG 全关期间文件 DEBUG 照常"
+        "落盘，文件具名关断期间条目静默吞条（msg 仍 success.），落盘与否回读实证。");
 
     logAction(
         "创建班次存档文件器 shiftlog", "FILE_LOG_CREATE shiftlog", [&] { return YOMK_FILE_LOG_CREATE(logDir, "shiftlog"); });
@@ -398,11 +433,27 @@ static void showArmShiftLog(const std::string& logDir)
         [&] { return YOMK_FILE_DEBUG("shiftlog", "交叉验证：控制台 DEBUG 已关，此行仍应落盘"); });
     logAction("恢复 DEBUG 详单", "ON_CONSOLE_LOG_DEBUG", [&] { return YOMK_ON_CONSOLE_LOG_DEBUG(); });
 
+    // 存档静默段：文件具名关断期间 INFO 静默吞条（msg 仍 success.），文件主闸仍 on——两层归因
+    logAction("存档静默：具名关断 shiftlog 的 INFO", "OFF_FILE_LOG_INFO shiftlog", [&] { return YOMK_OFF_FILE_LOG_INFO("shiftlog"); });
+    logAction("静默期间存档通报（INFO，被门控吞掉）", "YOMK_FILE_INFO shiftlog", [&] { return YOMK_FILE_INFO("shiftlog", "静默期间此行不应落盘"); });
+    YomkResponse resp = YOMK_LOGGER_INFO_GLOBAL("file");
+    logResp("LOGGER_INFO_GLOBAL file", resp);
+    YomkUnPackPkg(resp.m_data, LoggerState, fgs);
+    if (fgs)
+    {
+        std::ostringstream oss;
+        oss << "[LOGGER_INFO_GLOBAL file] 文件主闸 info=" << (fgs->d.m_infoOn ? "on" : "off")
+            << " proxy=" << (fgs->d.m_proxyOn ? "on" : "off") << "（主闸仍 on：缺席归因逐器门控层）";
+        YOMK_INFO_TAG("arm.demo", oss.str());
+    }
+    logVerify("文件主闸仍全 on：INFO 缺席归因逐器门控层，两层状态各自真实呈现");
+    logAction("恢复 shiftlog 的 INFO", "ON_FILE_LOG_INFO shiftlog", [&] { return YOMK_ON_FILE_LOG_INFO("shiftlog"); });
+
     logAction("显式刷盘班次存档", "FILE_LOG_WRITE shiftlog", [&] { return YOMK_FILE_LOG_WRITE("shiftlog"); });
     logAction("回读班次存档文件");
     YOMK_INFO_TAG("arm.demo", "---- shiftlog.log 内容 ----");
     logFileContent(fs::path(logDir) / "shiftlog.log");
-    logVerify("9 条四级双 tag 全部落盘：FILE 写入不经级别开关与代理（写缓冲在先、显式 WRITE 落盘在后）");
+    logVerify("9 条四级双 tag 落盘、静默段 INFO 缺席：文件开关只影响文件写入，与控制台开关相互独立（写缓冲在先、显式 WRITE 落盘在后）");
 }
 
 // 场景 5：日志系统运维面板（内省三件套 + 全局主闸态单查）
@@ -411,11 +462,11 @@ static void showArmLoggerDashboard()
     logScene(
         5,
         "日志系统运维面板",
-        "LOGGER_INFO_LOGGERS / LOGGER / ALL + LOGGER_INFO_GLOBAL",
+        "LOGGER_INFO_LOGGERS / LOGGER / ALL + LOGGER_INFO_GLOBAL(\"console\"/\"file\")",
         "班中巡检日志系统：LOGGERS 按类型拉取日志器名清单（字典序）；LOGGER 按类型"
         "单查结构化 LoggerInfo（两表允许同名，须精确指定）；ALL 全量导出——"
-        "框架只回结构化数据，展示格式由用户定义；末尾 LOGGER_INFO_GLOBAL 单查"
-        "全局主闸态，与条目逐器真值两层一起看全。");
+        "框架只回结构化数据，展示格式由用户定义；末尾 LOGGER_INFO_GLOBAL 按 type"
+        "分流单查控制台/文件两套主闸态，与条目逐器真值两层一起看全。");
 
     logAction("巡检控制台日志器清单");
     YomkResponse consoleResp = YOMK_LOGGER_INFO_LOGGERS("console");
@@ -469,22 +520,34 @@ static void showArmLoggerDashboard()
             logLoggerInfo("LOGGER_INFO_ALL", info);
         }
     }
-    logVerify("console 条目 state 为逐器门控层真值（未做具名开关恒全 on），file 条目级别恒 on、proxy 恒 off（控制台专属概念）");
+    logVerify("console/file 条目各自报逐器门控层真值（未做具名开关恒全 on）与对应侧代理态——两层归因的条目侧");
 
-    // 全局主闸态单查：ALL 条目报逐器真值，主闸态经 LOGGER_INFO_GLOBAL 独立承载，两层一起看全
-    logAction("复查全局主闸状态");
-    resp = YOMK_LOGGER_INFO_GLOBAL();
-    logResp("LOGGER_INFO_GLOBAL", resp);
+    // 全局主闸态单查：ALL 条目报逐器真值，主闸态经 LOGGER_INFO_GLOBAL(type) 按 type 分流独立承载，两层一起看全
+    logAction("复查控制台侧全局主闸状态");
+    resp = YOMK_LOGGER_INFO_GLOBAL("console");
+    logResp("LOGGER_INFO_GLOBAL console", resp);
     YomkUnPackPkg(resp.m_data, LoggerState, gs);
     if (gs)
     {
         std::ostringstream oss;
-        oss << "[LOGGER_INFO_GLOBAL] 主闸: debug=" << (gs->d.m_debugOn ? "on" : "off")
+        oss << "[LOGGER_INFO_GLOBAL console] 主闸: debug=" << (gs->d.m_debugOn ? "on" : "off")
             << " info=" << (gs->d.m_infoOn ? "on" : "off") << " warn=" << (gs->d.m_warnOn ? "on" : "off")
             << " error=" << (gs->d.m_errorOn ? "on" : "off") << " proxy=" << (gs->d.m_proxyOn ? "on" : "off");
         YOMK_INFO_TAG("arm.demo", oss.str());
     }
-    logVerify("条目逐器真值 + 主闸态独立单查：两层状态各自真实呈现，输出归因唯一（条目 off 是逐器层所致、条目 on 而无输出查主闸）");
+    logAction("复查文件侧全局主闸状态");
+    resp = YOMK_LOGGER_INFO_GLOBAL("file");
+    logResp("LOGGER_INFO_GLOBAL file", resp);
+    YomkUnPackPkg(resp.m_data, LoggerState, fgs);
+    if (fgs)
+    {
+        std::ostringstream oss;
+        oss << "[LOGGER_INFO_GLOBAL file] 文件主闸: debug=" << (fgs->d.m_debugOn ? "on" : "off")
+            << " info=" << (fgs->d.m_infoOn ? "on" : "off") << " warn=" << (fgs->d.m_warnOn ? "on" : "off")
+            << " error=" << (fgs->d.m_errorOn ? "on" : "off") << " proxy=" << (fgs->d.m_proxyOn ? "on" : "off");
+        YOMK_INFO_TAG("arm.demo", oss.str());
+    }
+    logVerify("条目逐器真值 + 两侧主闸态独立单查：两套主闸/两套代理各自真实呈现，输出与落盘归因唯一（条目 off 是逐器层所致、条目 on 而无输出查对应侧主闸）");
 }
 
 // 场景 6：收班清档（DELETE 两表清理、磁盘保留、惰性重建）

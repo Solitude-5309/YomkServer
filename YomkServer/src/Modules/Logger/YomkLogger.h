@@ -21,6 +21,7 @@ public:
 private:
     YomkResponse consoleLog(YomkPkgPtr pkg);
     YomkResponse setConsoleLogProxy(YomkPkgPtr pkg);
+    YomkResponse setFileLogProxy(YomkPkgPtr pkg);
     YomkResponse createFileLogger(YomkPkgPtr pkg);
     YomkResponse fileLog(YomkPkgPtr pkg);
     YomkResponse writeFileLog(YomkPkgPtr pkg);
@@ -48,20 +49,21 @@ private:
     // proxyOn 由调用点在表锁外取好传入
     LoggerState namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn);
     // 取文件全局主闸态（/file_global_state 端点返回体）：四个级别开关独立 atomic，
-    // 与控制台主闸相互独立；proxyOn 为文件代理态（闭环 3 落地前恒 false）
+    // 与控制台主闸相互独立；proxyOn 为文件代理态（独立叶子锁，与控制台代理各自独立）
     LoggerState currentFileState();
     // 取单条 file 条目状态：四级别 = logger.isLevelOn 逐器层真值（条目不做两层 AND 代算），
-    // proxyOn 由调用点传入（文件代理落地前恒 false）
+    // proxyOn 由调用点传入（文件代理态）
     LoggerState namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn);
 
 private:
     // 锁序约定：需要同时读取两张 logger 表时（listAll 内省快照），
     // 一律按 m_consoleLoggersMutex -> m_fileLoggersMutex 的顺序嵌套持有，全仓无反向嵌套点
-    // （consoleLog 的 proxy 锁在独立作用域释放后才取 console 锁；loggerInfo/fileLog/
-    // writeFileLog/createFileLogger/setNamedConsoleLevel/setNamedFileLevel 均单锁；currentConsoleState 与
-    // namedConsoleState 的 proxyOn 均在表锁外先独立取 proxy 锁，
-    // 沿用 proxy 锁独立作用域先释放的既有模式）；m_consoleLogProxyMutex 为叶子锁，
-    // 其临界区内不得获取任何其他锁。后续维护新增嵌套时须沿用此序，否则有死锁风险。
+    // （consoleLog/fileLog 的 proxy 锁在独立作用域释放后才取 logger 表锁；loggerInfo/
+    // writeFileLog/createFileLogger/setNamedConsoleLevel/setNamedFileLevel/setFileLogProxy 均单锁；
+    // currentConsoleState/namedConsoleState 的 proxyOn 与 currentFileState/loggerInfo/listAll 的
+    // 文件 proxyOn 均在表锁外先独立取 proxy 锁，沿用 proxy 锁独立作用域先释放的既有模式）；
+    // m_consoleLogProxyMutex 与 m_fileLogProxyMutex 为叶子锁，其临界区内不得获取任何其他锁。
+    // 后续维护新增嵌套时须沿用此序，否则有死锁风险。
     // 容器选型：两表保持 std::map——曾实测改 unordered_map 致内省/删除路径数倍退化
     // （S4A_loggers +116%、S5B_delete_all -40%、S5A_mixed_churn -58%），已回退；
     // 完整消融数据见 TestYomkLoggerStress.cpp doc 头。map 中序遍历天然字典序，内省输出无需排序。
@@ -80,8 +82,13 @@ private:
     std::atomic<bool> m_showFileInfoLog;
     std::atomic<bool> m_showFileWarningLog;
     std::atomic<bool> m_showFileErrorLog;
-    // proxy 字段专属锁：锁内拷贝快照、锁外调用回调，避免持锁重入
+    // proxy 字段专属锁：锁内拷贝快照、锁外调用回调，避免持锁重入；
+    // 控制台与文件两套代理互不共锁，各自独立
     std::mutex m_consoleLogProxyMutex;
     bool m_consoleLogProxy;
     YomkConsoleLogProxyFunc m_consoleLogProxyFunc;
+    // 文件日志全局代理（与控制台代理相互独立，语义对称）
+    std::mutex m_fileLogProxyMutex;
+    bool m_fileLogProxy;
+    YomkFileLogProxyFunc m_fileLogProxyFunc;
 };

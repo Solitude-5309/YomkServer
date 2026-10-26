@@ -223,6 +223,12 @@ struct ConsoleLogProxy
     std::function<bool(const Log& log)> m_consoleLogProxyFunc;
 };
 
+// 文件日志代理回调载体（SET_FILE_LOG_PROXY 请求数据；语义与控制台代理对称，两代理各自独立）
+struct FileLogProxy
+{
+    std::function<bool(const Log& log)> m_fileLogProxyFunc;
+};
+
 // Logger 日志器状态（debug/info/warn/error 四级别开关 + proxy；
 // console 条目承载控制台逐器门控层真值，console 全局主闸态经 /console_global_state 查询；
 // file 条目承载文件逐器门控层真值，file 全局主闸态经 /file_global_state 查询；
@@ -234,7 +240,7 @@ struct LoggerState
     bool m_warnOn = false;   // warn 级别开关
     bool m_errorOn = false;  // error 级别开关
     // 代理已安装：console_global_state 报控制台代理、file_global_state 报文件代理
-    // （文件代理闭环 3 落地前 file 侧恒 false）
+    // （两套代理态各自独立）
     bool m_proxyOn = false;
 };
 
@@ -253,7 +259,8 @@ struct LoggerInfo
     std::string m_dir;         // file 类型的日志目录（console 时为空串）
     // 状态段：console 条目承载控制台逐器门控层真值（console 全局主闸态经
     // /console_global_state 查询）；file 条目承载文件逐器门控层真值（file 全局主闸态
-    // 经 /file_global_state 查询）；m_proxyOn 语义随端点（文件代理闭环 3 落地前 file 侧恒 false）
+    // 经 /file_global_state 查询）；m_proxyOn 语义随端点（console 条目报控制台代理、
+    // file 条目报文件代理，两套代理态各自独立）
     LoggerState m_loggerState;
 };
 
@@ -337,6 +344,7 @@ YomkMsg(std::vector<yomk::EventLoopInfo>, EventLoopInfoList, d)
 YomkMsg(LogFile, LogFile, d)
 YomkMsg(Log, Log, d)
 YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)
+YomkMsg(FileLogProxy, FileLogProxy, d)
 YomkMsg(LoggerQuery, LoggerQuery, d)
 YomkMsg(LoggerInfo, LoggerInfo, d)
 // Logger 控制台全局主闸态（LOGGER_INFO_GLOBAL 返回数据：四级别主闸开关 + proxy）
@@ -364,6 +372,8 @@ typedef std::function<void(const yomk::Context &ctx)> YomkContextMonitorFunc;
 // Context checker 回调：返回 eAccept/eReject 门控 set；详见 YomkAPI::CONTEXT_SET_CHECKER
 typedef std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context &ctx)> YomkContextCheckFunc;
 typedef std::function<bool(const yomk::Log &log)> YomkConsoleLogProxyFunc;
+// 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 YomkAPI::SET_FILE_LOG_PROXY
+typedef std::function<bool(const yomk::Log &log)> YomkFileLogProxyFunc;
 
 // 内置标准类型消息包（成员名均为 d）
 YomkMsg(bool, Bool, d)

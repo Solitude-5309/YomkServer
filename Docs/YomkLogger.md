@@ -18,7 +18,9 @@
 | API | 说明 |
 |---|---|
 | `YOMK_FILE_LOG_CREATE(dir, name)` | 创建文件日志器 |
-| `YOMK_FILE_INFO(file, ...)` / `YOMK_FILE_WARN(...)` / `YOMK_FILE_ERROR(...)` / `YOMK_FILE_DEBUG(...)` | 写入指定日志器的内存缓冲 |
+| `YOMK_FILE_INFO(file, ...)` / `YOMK_FILE_WARN(...)` / `YOMK_FILE_ERROR(...)` / `YOMK_FILE_DEBUG(...)`（`_TAG` 变体传自定义 tag） | 写入指定日志器的内存缓冲（_TAG 变体由日志器统一拼接 [tag] 段） |
+| `YOMK_ON_FILE_LOG_DEBUG(name = "")` / `YOMK_OFF_FILE_LOG_DEBUG(name = "")` | 开关文件日志级别（另有 INFO / WARN / ERROR 同名开关，共四级）；无参 = 文件全局主闸（框架全局），传文件日志器名 = 仅门控该器（具名未命中 eNo，不惰性创建） |
+| `YOMK_SET_FILE_LOG_PROXY(func)` | 设置文件日志代理拦截（回调返回 false 该条不落盘、返回 true 穿透走默认落盘）；传 `nullptr` 或空 std::function 卸载代理，恢复默认落盘 |
 | `YOMK_FILE_LOG_WRITE(name)` | 显式刷盘 |
 | `YOMK_FILE_LOG_DELETE(name)` | 删除日志器 |
 
@@ -28,8 +30,8 @@
 |---|---|
 | `YOMK_LOGGER_INFO_LOGGERS(type)` | 按类型获取日志器名列表（type: `"console"`/`"file"`，返回 StringArray 纯名字典序；非法类型 eNo） |
 | `YOMK_LOGGER_INFO_LOGGER(name, type)` | 按类型单查指定日志器（type: `"console"`/`"file"`；两表允许同名，单表精确查找不 fallback；未注册或非法 type 均 eNo） |
-| `YOMK_LOGGER_INFO_ALL()` | 查询全部日志器及开关配置状态（LoggerInfoList 清单：元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段——console 条目承载该日志器逐器门控层真值（未做具名开关恒全 on），file 条目四级别恒 true、proxyOn 恒 false） |
-| `YOMK_LOGGER_INFO_GLOBAL()` | 查询控制台全局主闸状态（返回 LoggerState 独立包：四级别主闸开关 + proxyOn；独立于逐器门控层，与 INFO_ALL/INFO_LOGGER 条目配合完成两层归因） |
+| `YOMK_LOGGER_INFO_ALL()` | 查询全部日志器及开关配置状态（LoggerInfoList 清单：元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段——console 条目承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态，file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态） |
+| `YOMK_LOGGER_INFO_GLOBAL(type = "console")` | 查询全局主闸状态（type = "file" 查文件侧、type = "console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 eNo。返回 LoggerState 独立包：四级别主闸开关 + proxyOn；独立于逐器门控层，与 INFO_ALL/INFO_LOGGER 条目配合完成两层归因） |
 
 ## 使用示例
 
@@ -56,6 +58,12 @@ YOMK_FILE_INFO("app", "app started");  // 写入内存缓冲
 YOMK_FILE_LOG_WRITE("app");            // 显式刷盘
 YOMK_FILE_LOG_DELETE("app");           // 删除日志器
 
+// 文件日志开关（无参 = 文件全局主闸，具名 = 逐器门控；两层 AND 后才写入）
+YOMK_OFF_FILE_LOG_DEBUG();       // 文件主闸关断：全部文件器 DEBUG 均不写入
+YOMK_ON_FILE_LOG_DEBUG();
+YOMK_OFF_FILE_LOG_INFO("app");   // 具名关断：仅 app 的 INFO 不再写入，其他文件器不受影响
+YOMK_ON_FILE_LOG_INFO("app");
+
 // 控制台日志拦截/代理
 YOMK_SET_CONSOLE_LOG_PROXY([](const yomk::Log &log) {
     if (log.m_level == yomk::Log::eDebug)
@@ -63,17 +71,25 @@ YOMK_SET_CONSOLE_LOG_PROXY([](const yomk::Log &log) {
     return true;      // 返回 true 则继续走框架默认打印
 });
 YOMK_SET_CONSOLE_LOG_PROXY(nullptr); // 传 nullptr 卸载代理，恢复默认输出
+
+// 文件日志代理：返回 false 拦截该条不落盘，返回 true 穿透走默认落盘
+YOMK_SET_FILE_LOG_PROXY([](const yomk::Log &log) {
+    if (log.m_level == yomk::Log::eDebug)
+        return false; // 返回 false 表示拦截此条，不写入文件
+    return true;      // 返回 true 则继续走框架默认落盘
+});
+YOMK_SET_FILE_LOG_PROXY(nullptr); // 传 nullptr 卸载文件代理，恢复默认落盘
 ```
 
 ## 注意事项
 
 - tag 即控制台日志器名，首次使用自动创建。
-- 级别开关两级并联：无参作用于全局主闸（框架全局），具名作用于单个日志器（逐器门控）；输出取两层 AND，只影响控制台输出，文件日志四级全记。
-- 内省归因：INFO_ALL/INFO_LOGGER 的 console 条目报逐器门控层真值（未做具名开关恒全 on）；条目 on 但无输出时查 `YOMK_LOGGER_INFO_GLOBAL()` 确认主闸是否关断——两层状态各自真实呈现，可唯一归因。
+- 级别开关两级并联：无参作用于全局主闸（框架全局），具名作用于单个日志器（逐器门控）；输出/落盘取两层 AND。控制台开关（ON/OFF_CONSOLE_LOG_*）只影响控制台输出，文件开关（ON/OFF_FILE_LOG_*）只影响文件写入，两套开关相互独立。
+- 内省归因：INFO_ALL/INFO_LOGGER 条目报逐器门控层真值（console/file 条目各自独立，未做具名开关恒全 on；proxyOn 各报对应侧代理态）；条目 on 但无输出/未落盘时查 `YOMK_LOGGER_INFO_GLOBAL("console"/"file")` 确认对应侧主闸是否关断——两层状态各自真实呈现，可唯一归因。
 - `YOMK_FILE_LOG_WRITE` 显式刷盘；日志器释放时亦会自动落盘。
 - `YOMK_FILE_LOG_DELETE` 同名清 console + file 两表；不删磁盘 `.log` 文件。
-- 代理回调返回 `false` 表示消费此日志不再默认输出；返回 `true` 继续框架默认打印。
+- 代理回调返回 `false` 表示消费此日志不再默认输出（控制台代理）或不再落盘（文件代理）；返回 `true` 继续框架默认行为。控制台代理与文件代理相互独立，传 `nullptr` 或空 std::function 即卸载。
 
 ## 完整示例
 
-完整可运行演示见 `Examples/ExampleYomkLogger.cpp`（6 个机械臂产线场景小示例 showArmXXX 覆盖全部日志 API，读运行输出即可理解每个调用）。
+完整可运行演示见 `Examples/ExampleYomkLogger.cpp`（6 个机械臂产线场景小示例 showArmXXX 覆盖全部日志 API——含两级开关与双代理演示，读运行输出即可理解每个调用）。

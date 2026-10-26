@@ -14,7 +14,9 @@ YomkLogger::YomkLogger(YomkServer* server)
       m_showFileWarningLog(true),
       m_showFileErrorLog(true),
       m_consoleLogProxy(false),
-      m_consoleLogProxyFunc(nullptr)
+      m_consoleLogProxyFunc(nullptr),
+      m_fileLogProxy(false),
+      m_fileLogProxyFunc(nullptr)
 {
     name("/YomkLogger");
     m_consoleLoggers["MainLogger"] = std::make_shared<ConsoleLogger>();
@@ -25,6 +27,7 @@ YomkLogger::~YomkLogger() {}
 int YomkLogger::init()
 {
     YomkInstallFunc("/set_console_log_proxy", YomkLogger::setConsoleLogProxy, ConsoleLogProxy);
+    YomkInstallFunc("/set_file_log_proxy", YomkLogger::setFileLogProxy, FileLogProxy);
     YomkInstallFunc("/console_log", YomkLogger::consoleLog, Log);
     YomkInstallFunc("/create_file_logger", YomkLogger::createFileLogger, LogFile);
     YomkInstallFunc("/file_log", YomkLogger::fileLog, Log);
@@ -126,6 +129,17 @@ YomkResponse YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
     return {YomkResponse::eOk, "success."};
 }
 
+YomkResponse YomkLogger::setFileLogProxy(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, FileLogProxy, fileLogProxy);
+    // 与 fileLog 读侧互斥；语义与 setConsoleLogProxy 对称
+    std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
+    m_fileLogProxyFunc = fileLogProxy->d.m_fileLogProxyFunc;
+    // 传空回调即卸载 proxy、恢复默认落盘；两字段同锁一致更新
+    m_fileLogProxy = (m_fileLogProxyFunc != nullptr);
+    return {YomkResponse::eOk, "success."};
+}
+
 YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, LogFile, logFile);
@@ -169,6 +183,20 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
     {
         YOMK_ERR_POS_LOG("file logger name is empty.");
         return YomkResponse(YomkResponse::eNo, "file logger name is empty.");
+    }
+
+    // 锁内拷贝文件代理快照，锁外调用回调（与 consoleLog 同款模式，避免用户回调持锁重入）；
+    // 代理先于表查找、主闸与逐器门控（未知名在拦截态下同样被短路，语义与 console 一致）
+    bool proxyEnabled = false;
+    YomkFileLogProxyFunc proxyFunc;
+    {
+        std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
+        proxyEnabled = m_fileLogProxy;
+        proxyFunc = m_fileLogProxyFunc;
+    }
+    if (proxyEnabled && proxyFunc && !proxyFunc(log->d))
+    {
+        return YomkResponse(YomkResponse::eOk, "file log proxy is success.");
     }
 
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
@@ -530,17 +558,27 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
     }
     if (query->d.m_type == "file")
     {
-        std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
-        auto itLogger = m_fileLoggers.find(query->d.m_loggerName);
-        if (itLogger == m_fileLoggers.end())
+        // 锁内查找拷指针出锁外使用（与 console 分支同款模式）
+        FileLoggerPtr fileLogger;
         {
-            YOMK_ERR_POS_LOG("file logger: " + query->d.m_loggerName + " not found.");
-            return YomkResponse(YomkResponse::eNo, "logger not found.");
+            std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
+            auto itLogger = m_fileLoggers.find(query->d.m_loggerName);
+            if (itLogger == m_fileLoggers.end())
+            {
+                YOMK_ERR_POS_LOG("file logger: " + query->d.m_loggerName + " not found.");
+                return YomkResponse(YomkResponse::eNo, "logger not found.");
+            }
+            fileLogger = itLogger->second;
+        }
+        // 状态段：条目报文件逐器门控层真值；proxyOn 在表锁外独立取（文件代理叶子锁独立作用域）
+        bool proxyOn = false;
+        {
+            std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
+            proxyOn = m_fileLogProxy;
         }
         info.m_type = "file";
-        info.m_dir = itLogger->second->getDir();
-        // 状态段：条目报文件逐器门控层真值；proxyOn 为文件代理态（闭环 3 落地前恒 false）
-        info.m_loggerState = namedFileState(itLogger->second, false);
+        info.m_dir = fileLogger->getDir();
+        info.m_loggerState = namedFileState(fileLogger, proxyOn);
         return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
     }
     YOMK_ERR_POS_LOG("unknown logger type: " + query->d.m_type + ".");
@@ -577,7 +615,7 @@ LoggerState YomkLogger::namedConsoleState(const ConsoleLoggerPtr& consoleLogger,
 }
 
 // 取文件全局主闸态（/file_global_state 返回体）：四个级别开关独立 atomic（与控制台主闸相互独立）；
-// proxyOn 为文件代理态（闭环 3 接管，落地前恒 false）
+// 文件代理态读侧与写侧互斥（叶子锁独立作用域，与控制台 proxyOn 各自独立）
 LoggerState YomkLogger::currentFileState()
 {
     yomk::LoggerState state;
@@ -585,7 +623,11 @@ LoggerState YomkLogger::currentFileState()
     state.m_infoOn = m_showFileInfoLog.load();
     state.m_warnOn = m_showFileWarningLog.load();
     state.m_errorOn = m_showFileErrorLog.load();
-    state.m_proxyOn = false;
+    {
+        // proxy 状态读侧与写侧互斥（叶子锁）
+        std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
+        state.m_proxyOn = m_fileLogProxy;
+    }
     return state;
 }
 
@@ -605,12 +647,17 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
 {
     (void)pkg;
     // LoggerState 内嵌每条 LoggerInfo：console 条目报控制台逐器门控层真值（namedConsoleState 逐条求值），
-    // file 条目报文件逐器门控层真值（namedFileState 逐条求值，proxyOn 文件代理落地前恒 false）
-    // console proxyOn 在双表锁外先独立取（proxy 叶子锁独立作用域），随后传入逐条求值
+    // file 条目报文件逐器门控层真值（namedFileState 逐条求值）
+    // console/file 两个 proxyOn 各自在双表锁外独立取（两把 proxy 叶子锁独立作用域），随后传入逐条求值
     bool proxyOn = false;
     {
         std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
         proxyOn = m_consoleLogProxy;
+    }
+    bool fileProxyOn = false;
+    {
+        std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
+        fileProxyOn = m_fileLogProxy;
     }
     std::vector<yomk::LoggerInfo> loggers;
     {
@@ -632,7 +679,7 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
             info.m_loggerName = iter.first;
             info.m_type = "file";
             info.m_dir = iter.second->getDir();
-            info.m_loggerState = namedFileState(iter.second, false);
+            info.m_loggerState = namedFileState(iter.second, fileProxyOn);
             loggers.push_back(std::move(info));
         }
     }

@@ -2,7 +2,7 @@
  * @file TestYomkLoggerLifecycle.cpp
  * @brief Logger 模块生命周期与契约基线测试（LG1 从零新建，LG2 审计处置后回填，LG4 补删除接口，LG6 补 proxy 卸载）
  *
- * 覆盖内容（10 个 Section + 1 个前置注入段，断言计数以运行实测为准）：
+ * 覆盖内容（11 个 Section + 1 个前置注入段，断言计数以运行实测为准）：
  * 1. 控制台日志基线：四级别宏输出格式（时间戳+[级别]+[logger]+[行号]）；
  *    级别开关 OFF→无输出仍 eOk→ON→恢复输出，四级别全覆盖
  * 2. 自定义 tag：新 tag 自动创建 console logger；65536 超长 tag；空内容日志
@@ -40,6 +40,12 @@
  *     未知名 eNo（不惰性创建）、文件主闸×逐器两层归因（LOGGER_INFO_GLOBAL("file") 报文件主闸 off
  *     与条目逐器 on 各自真实呈现、两层 AND 不落盘）、具名关断不波及文件主闸（两层正交）、
  *     LOGGER_INFO_GLOBAL("file")/"console"）两套主闸态独立直证与无参宏翻转联动、未知 type eNo
+ * 11. 文件日志全局代理契约（与控制台 S3 同构，仅单一全局代理无逐器代理）：设置前基线
+ *     （GLOBAL("file") proxyOff 且 GLOBAL("console") proxyOn 两套代理独立直证）、
+ *     SET_FILE_LOG_PROXY 拦截（false→eOk+"file log proxy is success."+落盘 marker 缺席+原子计数）
+ *     与穿透（true→默认落盘回归 + GLOBAL("file") proxyOn）、卸载（LG6 镜像：nullptr→eOk、
+ *     GLOBAL("file") 回 proxyOff、恢复默认落盘、代理不再被调用原子命中数不增）、重装可逆；
+ *     用例末尾重装并回到穿透态
  *
  * 说明：YomkLogger 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
  *       YOMK_INIT 单例白盒直连；全部经 API 宏/raw request 测试，同时覆盖 invoke 路由链，
@@ -101,6 +107,8 @@ static int g_failed = 0;
 // ---- 文件级观测装置（TSan-clean 既有模式）----
 static std::atomic<long> g_proxyHits{0};           // proxy 被调用次数
 static std::atomic<bool> g_proxyIntercept{false};  // true：proxy 返回 false 拦截；false：返回 true 穿透
+static std::atomic<long> g_fileProxyHits{0};           // 文件 proxy 被调用次数
+static std::atomic<bool> g_fileProxyIntercept{false};  // true：文件 proxy 返回 false 拦截；false：返回 true 穿透
 
 // RAII 捕获 std::cout：构造换 rdbuf，析构还原（同进程内对库侧 std::cout 同样生效）
 class CoutCapture
@@ -1319,7 +1327,7 @@ CHECK(
             "S10f: 文件主闸四级全 on");
         CHECK(
             gs != nullptr && !gs->d.m_proxyOn,
-            "S10f: 文件态 proxyOn=false（文件代理闭环 3 落地前恒 false）");
+            "S10f: 文件态 proxyOn=false（文件代理未设置时恒 false）");
         CHECK(YOMK_OFF_FILE_LOG_DEBUG().m_status == YomkResponse::eOk, "S10f: 无参 OFF_FILE_LOG_DEBUG 返回 eOk");
         auto gResp2 = YOMK_LOGGER_INFO_GLOBAL("file");
         YomkUnPackPkg(gResp2.m_data, LoggerState, gs2);
@@ -1339,6 +1347,109 @@ CHECK(
         CHECK(
             (badType.m_status == YomkResponse::eNo && badType.m_msg == "unknown logger type."),
             "S10f: 未知 type 返回 eNo unknown logger type.");
+    }
+}
+
+// ============ Section 11: 文件日志全局代理契约（与控制台 S3 同构） ============
+{
+    const std::string flName11 = "lg1_s11_fl";
+    fs::path s11Dir = tmpDir / "s11";
+    fs::create_directories(s11Dir, ec);
+    CHECK(
+        YOMK_FILE_LOG_CREATE(s11Dir.string(), flName11).m_status == YomkResponse::eOk,
+        "S11: 建文件日志器 lg1_s11_fl 成功");
+    fs::path s11LogFile = s11Dir / (flName11 + ".log");
+
+    // 11.1 设置前基线：文件代理未设置 + 两套代理独立直证
+    {
+        auto gRespF = YOMK_LOGGER_INFO_GLOBAL("file");
+        YomkUnPackPkg(gRespF.m_data, LoggerState, gsF);
+        CHECK(gsF != nullptr && !gsF->d.m_proxyOn, "S11a: 设置前 GLOBAL(\"file\") proxyOff");
+        auto gRespC = YOMK_LOGGER_INFO_GLOBAL("console");
+        YomkUnPackPkg(gRespC.m_data, LoggerState, gsC);
+        CHECK(
+            gsC != nullptr && gsC->d.m_proxyOn,
+            "S11a: 设置前 GLOBAL(\"console\") proxyOn（S3 重装态），两套代理独立直证");
+    }
+
+    // 11.2 拦截态：文件 proxy 返回 false → eOk + 专属消息 + 不落盘
+    g_fileProxyHits.store(0);
+    g_fileProxyIntercept.store(true);
+    auto fileProxy = [](const yomk::Log&) -> bool
+    {
+        g_fileProxyHits.fetch_add(1);
+        return !g_fileProxyIntercept.load();  // 拦截态返回 false，穿透态返回 true
+    };
+    CHECK(YOMK_SET_FILE_LOG_PROXY(fileProxy).m_status == YomkResponse::eOk, "S11b: SET_FILE_LOG_PROXY 返回 eOk");
+    {
+        auto r = YOMK_FILE_INFO_TAG(flName11, "lg1s11", "lg1_s11b_intercept_marker");
+        CHECK(r.m_status == YomkResponse::eOk, "S11b: 拦截态 FILE_INFO 返回 eOk");
+        CHECK(r.m_msg == "file log proxy is success.", "S11b: 拦截态契约消息 file log proxy is success.");
+        CHECK(YOMK_FILE_LOG_WRITE(flName11).m_status == YomkResponse::eOk, "S11b: WRITE eOk");
+        {
+            bool ok = false;
+            std::string content = readFile(s11LogFile, ok);
+            CHECK(
+                ok && content.find("lg1_s11b_intercept_marker") == std::string::npos,
+                "S11b: 拦截态不落盘（marker 缺席）");
+        }
+        CHECK(g_fileProxyHits.load() == 1, "S11b: 文件 proxy 被调用 1 次（原子计数）");
+    }
+
+    // 11.3 穿透态：文件 proxy 返回 true → 走默认落盘；GLOBAL("file") proxy 联动
+    {
+        g_fileProxyIntercept.store(false);
+        auto r = YOMK_FILE_INFO_TAG(flName11, "lg1s11", "lg1_s11c_pass_marker");
+        CHECK((r.m_status == YomkResponse::eOk && r.m_msg == "success."), "S11c: 穿透态 FILE_INFO eOk + success.");
+        CHECK(YOMK_FILE_LOG_WRITE(flName11).m_status == YomkResponse::eOk, "S11c: WRITE eOk");
+        {
+            bool ok = false;
+            std::string content = readFile(s11LogFile, ok);
+            CHECK(
+                ok && content.find("lg1_s11c_pass_marker") != std::string::npos,
+                "S11c: 穿透态恢复默认落盘（marker 命中）");
+        }
+        CHECK(g_fileProxyHits.load() == 2, "S11c: 文件 proxy 累计被调用 2 次");
+        auto gRespF = YOMK_LOGGER_INFO_GLOBAL("file");
+        YomkUnPackPkg(gRespF.m_data, LoggerState, gsF);
+        CHECK(gsF != nullptr && gsF->d.m_proxyOn, "S11c: 设置后 GLOBAL(\"file\") proxyOn");
+    }
+
+    // 11.4 卸载（LG6 镜像）：先把代理切回拦截态确认在链路上，再传 nullptr 卸载
+    {
+        g_fileProxyIntercept.store(true);
+        auto r = YOMK_FILE_INFO_TAG(flName11, "lg1s11", "lg1_s11d_pre_unload_marker");
+        CHECK(
+            (r.m_status == YomkResponse::eOk && r.m_msg == "file log proxy is success."),
+            "S11d: 卸载前拦截态契约消息（文件代理确实在链路上）");
+        CHECK(
+            YOMK_SET_FILE_LOG_PROXY(nullptr).m_status == YomkResponse::eOk,
+            "S11d: SET_FILE_LOG_PROXY(nullptr) 卸载返回 eOk");
+        auto gRespF = YOMK_LOGGER_INFO_GLOBAL("file");
+        YomkUnPackPkg(gRespF.m_data, LoggerState, gsF);
+        CHECK(gsF != nullptr && !gsF->d.m_proxyOn, "S11d: 卸载后 GLOBAL(\"file\") 回 proxyOff");
+        const long hitsBefore = g_fileProxyHits.load();
+        CHECK(
+            YOMK_FILE_INFO_TAG(flName11, "lg1s11", "lg1_s11d_post_unload_marker").m_status == YomkResponse::eOk,
+            "S11d: 卸载后 FILE_INFO eOk（走默认路径而非代理短路）");
+        CHECK(YOMK_FILE_LOG_WRITE(flName11).m_status == YomkResponse::eOk, "S11d: WRITE eOk");
+        {
+            bool ok = false;
+            std::string content = readFile(s11LogFile, ok);
+            CHECK(
+                ok && content.find("lg1_s11d_post_unload_marker") != std::string::npos,
+                "S11d: 卸载后恢复默认落盘（marker 命中）");
+        }
+        CHECK(g_fileProxyHits.load() == hitsBefore, "S11d: 卸载后代理不再被调用（原子命中数不增）");
+    }
+
+    // 11.5 重装可逆：重装回穿透态（Section 11 为末段，收尾无代理态依赖）
+    {
+        g_fileProxyIntercept.store(false);
+        CHECK(YOMK_SET_FILE_LOG_PROXY(fileProxy).m_status == YomkResponse::eOk, "S11e: 重装文件代理返回 eOk（卸载可逆）");
+        auto gRespF = YOMK_LOGGER_INFO_GLOBAL("file");
+        YomkUnPackPkg(gRespF.m_data, LoggerState, gsF);
+        CHECK(gsF != nullptr && gsF->d.m_proxyOn, "S11e: 重装后 GLOBAL(\"file\") 恢复 proxyOn");
     }
 }
 

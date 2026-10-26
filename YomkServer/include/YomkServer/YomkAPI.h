@@ -164,6 +164,12 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/set_console_log_proxy", YomkMkPtr(ConsoleLogProxy, yomk::ConsoleLogProxy{func}));
     }
+    // 设置文件日志代理回调（传 nullptr 恢复默认落盘，取消代理回调；与控制台代理相互独立）
+    static YomkResponse SET_FILE_LOG_PROXY(YomkFileLogProxyFunc func)
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/set_file_log_proxy", YomkMkPtr(FileLogProxy, yomk::FileLogProxy{func}));
+    }
     // 控制台日志输出
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_INFO_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
@@ -670,6 +676,7 @@ private:
 #define YOMK_REQUEST(...) YomkAPI::request(__VA_ARGS__)
 #define YOMK_ASYNC_REQUEST(...) YomkAPI::asyncRequest(__VA_ARGS__)
 #define YOMK_SET_CONSOLE_LOG_PROXY(func) YomkAPI::SET_CONSOLE_LOG_PROXY(func)
+#define YOMK_SET_FILE_LOG_PROXY(func) YomkAPI::SET_FILE_LOG_PROXY(func)
 #define YOMK_ON_CONSOLE_LOG_INFO(...) YomkAPI::ON_CONSOLE_LOG_INFO(__VA_ARGS__)
 #define YOMK_ON_CONSOLE_LOG_WARN(...) YomkAPI::ON_CONSOLE_LOG_WARN(__VA_ARGS__)
 #define YOMK_ON_CONSOLE_LOG_ERROR(...) YomkAPI::ON_CONSOLE_LOG_ERROR(__VA_ARGS__)
