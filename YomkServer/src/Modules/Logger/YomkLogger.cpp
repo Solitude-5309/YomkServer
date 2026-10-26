@@ -9,6 +9,10 @@ YomkLogger::YomkLogger(YomkServer* server)
       m_showConsoleInfoLog(true),
       m_showConsoleWarningLog(true),
       m_showConsoleErrorLog(true),
+      m_showFileDebugLog(true),
+      m_showFileInfoLog(true),
+      m_showFileWarningLog(true),
+      m_showFileErrorLog(true),
       m_consoleLogProxy(false),
       m_consoleLogProxyFunc(nullptr)
 {
@@ -32,6 +36,9 @@ int YomkLogger::init()
     YomkInstallFunc("/logger", YomkLogger::loggerInfo, LoggerQuery);
     YomkInstallFunc("/all", YomkLogger::listAll);
     YomkInstallFunc("/console_global_state", YomkLogger::consoleGlobalState);
+    YomkInstallFunc("/off_file_log_by_level", YomkLogger::offFileLogByLevel, Log);
+    YomkInstallFunc("/on_file_log_by_level", YomkLogger::onFileLogByLevel, Log);
+    YomkInstallFunc("/file_global_state", YomkLogger::fileGlobalState);
     return 0;
 }
 
@@ -176,20 +183,25 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
     switch (log->d.m_level)
     {
         case Log::eInfo:
-            itLogger->second->log(FileLogger::eInfo, log->d.m_tag, log->d.m_log);
+            if (m_showFileInfoLog.load())
+                itLogger->second->log(FileLogger::eInfo, log->d.m_tag, log->d.m_log);
             break;
         case Log::eWarn:
-            itLogger->second->log(FileLogger::eWarn, log->d.m_tag, log->d.m_log);
+            if (m_showFileWarningLog.load())
+                itLogger->second->log(FileLogger::eWarn, log->d.m_tag, log->d.m_log);
             break;
         case Log::eError:
-            itLogger->second->log(FileLogger::eError, log->d.m_tag, log->d.m_log);
+            if (m_showFileErrorLog.load())
+                itLogger->second->log(FileLogger::eError, log->d.m_tag, log->d.m_log);
             break;
         case Log::eDebug:
-            itLogger->second->log(FileLogger::eDebug, log->d.m_tag, log->d.m_log);
+            if (m_showFileDebugLog.load())
+                itLogger->second->log(FileLogger::eDebug, log->d.m_tag, log->d.m_log);
             break;
         default:
             YOMK_ERR_POS_LOG("unknown log level, use Info");
-            itLogger->second->log(FileLogger::eInfo, log->d.m_tag, log->d.m_log);
+            if (m_showFileInfoLog.load())
+                itLogger->second->log(FileLogger::eInfo, log->d.m_tag, log->d.m_log);
             break;
     }
 
@@ -356,6 +368,107 @@ YomkResponse YomkLogger::setNamedConsoleLevel(const std::string& loggerName, Log
     return YomkResponse(YomkResponse::eOk, "success.");
 }
 
+YomkResponse YomkLogger::offFileLogByLevel(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, Log, log);
+
+    // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
+    if (!log->d.m_logger.empty())
+    {
+        return setNamedFileLevel(log->d.m_logger, log->d.m_level, false);
+    }
+
+    // 空名 = 全局主闸路径（与控制台侧双模式语义对称）
+    switch (log->d.m_level)
+    {
+        case Log::eInfo:
+            m_showFileInfoLog.store(false);
+            break;
+        case Log::eWarn:
+            m_showFileWarningLog.store(false);
+            break;
+        case Log::eError:
+            m_showFileErrorLog.store(false);
+            break;
+        case Log::eDebug:
+            m_showFileDebugLog.store(false);
+            break;
+        default:
+            YOMK_ERR_POS_LOG("unknown log level, turn off failed.");
+            break;
+    }
+
+    return YomkResponse(YomkResponse::eOk, "success.");
+}
+
+YomkResponse YomkLogger::onFileLogByLevel(YomkPkgPtr pkg)
+{
+    YomkUnPackPkgResponse(pkg, Log, log);
+
+    // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
+    if (!log->d.m_logger.empty())
+    {
+        return setNamedFileLevel(log->d.m_logger, log->d.m_level, true);
+    }
+
+    // 空名 = 全局主闸路径（与控制台侧双模式语义对称）
+    switch (log->d.m_level)
+    {
+        case Log::eInfo:
+            m_showFileInfoLog.store(true);
+            break;
+        case Log::eWarn:
+            m_showFileWarningLog.store(true);
+            break;
+        case Log::eError:
+            m_showFileErrorLog.store(true);
+            break;
+        case Log::eDebug:
+            m_showFileDebugLog.store(true);
+            break;
+        default:
+            YOMK_ERR_POS_LOG("unknown log level, turn on failed.");
+            break;
+    }
+    return YomkResponse(YomkResponse::eOk, "success.");
+}
+
+// 文件侧具名开关唯一写入口：表读锁内查找拷指针出锁、锁外 setLevelOn（单锁；未命中 eNo 不惰性创建）
+YomkResponse YomkLogger::setNamedFileLevel(const std::string& loggerName, Log::ELogLevel level, bool on)
+{
+    FileLoggerPtr fileLogger;
+    {
+        std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
+        auto itLogger = m_fileLoggers.find(loggerName);
+        if (itLogger == m_fileLoggers.end())
+        {
+            YOMK_ERR_POS_LOG("file logger: " + loggerName + " not found.");
+            return YomkResponse(YomkResponse::eNo, "file logger not found.");
+        }
+        fileLogger = itLogger->second;
+    }
+
+    switch (level)
+    {
+        case Log::eInfo:
+            fileLogger->setLevelOn(FileLogger::eInfo, on);
+            break;
+        case Log::eWarn:
+            fileLogger->setLevelOn(FileLogger::eWarn, on);
+            break;
+        case Log::eError:
+            fileLogger->setLevelOn(FileLogger::eError, on);
+            break;
+        case Log::eDebug:
+            fileLogger->setLevelOn(FileLogger::eDebug, on);
+            break;
+        default:
+            YOMK_ERR_POS_LOG(std::string("unknown log level, turn ") + (on ? "on" : "off") + " failed.");
+            break;
+    }
+    return YomkResponse(YomkResponse::eOk, "success.");
+}
+
 YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
 {
     YomkUnPackPkgResponse(pkg, String, type);
@@ -426,11 +539,8 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
         }
         info.m_type = "file";
         info.m_dir = itLogger->second->getDir();
-        // file 日志器暂无开关概念：级别恒 true、proxyOn 恒 false（控制台专属）
-        info.m_loggerState.m_debugOn = true;
-        info.m_loggerState.m_infoOn = true;
-        info.m_loggerState.m_warnOn = true;
-        info.m_loggerState.m_errorOn = true;
+        // 状态段：条目报文件逐器门控层真值；proxyOn 为文件代理态（闭环 3 落地前恒 false）
+        info.m_loggerState = namedFileState(itLogger->second, false);
         return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
     }
     YOMK_ERR_POS_LOG("unknown logger type: " + query->d.m_type + ".");
@@ -466,12 +576,37 @@ LoggerState YomkLogger::namedConsoleState(const ConsoleLoggerPtr& consoleLogger,
     return state;
 }
 
+// 取文件全局主闸态（/file_global_state 返回体）：四个级别开关独立 atomic（与控制台主闸相互独立）；
+// proxyOn 为文件代理态（闭环 3 接管，落地前恒 false）
+LoggerState YomkLogger::currentFileState()
+{
+    yomk::LoggerState state;
+    state.m_debugOn = m_showFileDebugLog.load();
+    state.m_infoOn = m_showFileInfoLog.load();
+    state.m_warnOn = m_showFileWarningLog.load();
+    state.m_errorOn = m_showFileErrorLog.load();
+    state.m_proxyOn = false;
+    return state;
+}
+
+// 取单条 file 条目状态：四级别为逐器门控层真值（logger.isLevelOn），proxyOn 由调用点传入
+LoggerState YomkLogger::namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn)
+{
+    yomk::LoggerState state;
+    state.m_debugOn = fileLogger->isLevelOn(FileLogger::eDebug);
+    state.m_infoOn = fileLogger->isLevelOn(FileLogger::eInfo);
+    state.m_warnOn = fileLogger->isLevelOn(FileLogger::eWarn);
+    state.m_errorOn = fileLogger->isLevelOn(FileLogger::eError);
+    state.m_proxyOn = proxyOn;
+    return state;
+}
+
 YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
 {
     (void)pkg;
-    // LoggerState 内嵌每条 LoggerInfo：console 条目报逐器门控层真值（namedConsoleState 逐条求值），
-    // file 条目暂无开关概念（级别恒 true、proxyOn 恒 false）
-    // proxyOn 在双表锁外先独立取（proxy 叶子锁独立作用域），随后传入逐条求值
+    // LoggerState 内嵌每条 LoggerInfo：console 条目报控制台逐器门控层真值（namedConsoleState 逐条求值），
+    // file 条目报文件逐器门控层真值（namedFileState 逐条求值，proxyOn 文件代理落地前恒 false）
+    // console proxyOn 在双表锁外先独立取（proxy 叶子锁独立作用域），随后传入逐条求值
     bool proxyOn = false;
     {
         std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
@@ -497,10 +632,7 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
             info.m_loggerName = iter.first;
             info.m_type = "file";
             info.m_dir = iter.second->getDir();
-            info.m_loggerState.m_debugOn = true;
-            info.m_loggerState.m_infoOn = true;
-            info.m_loggerState.m_warnOn = true;
-            info.m_loggerState.m_errorOn = true;
+            info.m_loggerState = namedFileState(iter.second, false);
             loggers.push_back(std::move(info));
         }
     }
@@ -513,4 +645,11 @@ YomkResponse YomkLogger::consoleGlobalState(YomkPkgPtr pkg)
 {
     (void)pkg;
     return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerState, currentConsoleState())};
+}
+
+// 文件全局主闸态内省（无参形态同 /all；m_msg 恒 "ok"，LoggerState 包走 m_data）
+YomkResponse YomkLogger::fileGlobalState(YomkPkgPtr pkg)
+{
+    (void)pkg;
+    return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerState, currentFileState())};
 }

@@ -223,16 +223,19 @@ struct ConsoleLogProxy
     std::function<bool(const Log& log)> m_consoleLogProxyFunc;
 };
 
-// Logger 控制台状态（debug/info/warn/error 四级别开关 + proxy；
-// console 条目承载逐器门控层真值，全局主闸态经 /console_global_state 查询；
-// file 条目暂无开关概念：四级别恒 true、proxyOn 恒 false）
+// Logger 日志器状态（debug/info/warn/error 四级别开关 + proxy；
+// console 条目承载控制台逐器门控层真值，console 全局主闸态经 /console_global_state 查询；
+// file 条目承载文件逐器门控层真值，file 全局主闸态经 /file_global_state 查询；
+// 两套主闸相互独立）
 struct LoggerState
 {
     bool m_debugOn = false;  // debug 级别开关
     bool m_infoOn = false;   // info 级别开关
     bool m_warnOn = false;   // warn 级别开关
     bool m_errorOn = false;  // error 级别开关
-    bool m_proxyOn = false;  // 控制台代理已安装
+    // 代理已安装：console_global_state 报控制台代理、file_global_state 报文件代理
+    // （文件代理闭环 3 落地前 file 侧恒 false）
+    bool m_proxyOn = false;
 };
 
 // 日志器单查请求（LOGGER_INFO_LOGGER 请求数据：名 + 类型，两表允许同名须按类型区分）
@@ -248,8 +251,9 @@ struct LoggerInfo
     std::string m_loggerName;  // 日志器名
     std::string m_type;        // 类型："console" 或 "file"（与 INFO_LOGGERS 的类型参数同名）
     std::string m_dir;         // file 类型的日志目录（console 时为空串）
-    // 控制台状态段：console 条目承载逐器门控层真值（全局主闸态经 /console_global_state 查询）；
-    // file 条目暂无开关概念（级别恒 true、proxyOn 恒 false）
+    // 状态段：console 条目承载控制台逐器门控层真值（console 全局主闸态经
+    // /console_global_state 查询）；file 条目承载文件逐器门控层真值（file 全局主闸态
+    // 经 /file_global_state 查询）；m_proxyOn 语义随端点（文件代理闭环 3 落地前 file 侧恒 false）
     LoggerState m_loggerState;
 };
 

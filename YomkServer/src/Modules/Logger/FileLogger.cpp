@@ -8,7 +8,14 @@
 #include "YomkLogTime.h"
 namespace fs = std::filesystem;
 
-FileLogger::FileLogger() : m_name("MainLogger") {}
+// 初始化列表须按 FileLogger.h 声明序书写（-Wreorder）
+FileLogger::FileLogger()
+    : m_name("MainLogger"),
+      m_showDebugLog(true),
+      m_showInfoLog(true),
+      m_showWarnLog(true),
+      m_showErrorLog(true)
+{}
 
 FileLogger::~FileLogger()
 {
@@ -54,8 +61,75 @@ bool FileLogger::init()
     return true;
 }
 
+void FileLogger::setLevelOn(ELogLevel logLevel, bool on)
+{
+    switch (logLevel)
+    {
+        case eDebug:
+            m_showDebugLog.store(on);
+            break;
+        case eInfo:
+            m_showInfoLog.store(on);
+            break;
+        case eWarn:
+            m_showWarnLog.store(on);
+            break;
+        case eError:
+            m_showErrorLog.store(on);
+            break;
+        default:
+            // unknown 级别按 Info 门控（与 log() 降级语义一致）
+            m_showInfoLog.store(on);
+            break;
+    }
+}
+
+bool FileLogger::isLevelOn(ELogLevel logLevel) const
+{
+    switch (logLevel)
+    {
+        case eDebug:
+            return m_showDebugLog.load();
+        case eInfo:
+            return m_showInfoLog.load();
+        case eWarn:
+            return m_showWarnLog.load();
+        case eError:
+            return m_showErrorLog.load();
+        default:
+            return m_showInfoLog.load();
+    }
+}
+
 void FileLogger::log(ELogLevel logLevel, const std::string& tag, const std::string& log)
 {
+    // 级别门控随 sink 自持：关断级别直接丢弃不落缓冲（unknown 级别按 Info 门控，
+    // 与下方 default 降级语义一致）；判定在缓冲锁外完成，atomic 读无新锁，
+    // 位置在取时间戳之前避免白算
+    switch (logLevel)
+    {
+        case eDebug:
+            if (!m_showDebugLog.load())
+                return;
+            break;
+        case eInfo:
+            if (!m_showInfoLog.load())
+                return;
+            break;
+        case eWarn:
+            if (!m_showWarnLog.load())
+                return;
+            break;
+        case eError:
+            if (!m_showErrorLog.load())
+                return;
+            break;
+        default:
+            if (!m_showInfoLog.load())
+                return;
+            break;
+    }
+
     std::string timeStr = yomkLogLocalTimeFormatted();
 
     // tag 由日志器统一拼接（替代旧 API 层拼接）：空 tag 不加前缀，与旧行为一致

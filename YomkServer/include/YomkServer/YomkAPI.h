@@ -294,6 +294,47 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/off_console_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, "", loggerName}));
     }
+    // 开关各级别文件日志（loggerName 空 = 文件全局主闸；具名 = 逐器门控，未知名返回 eNo）
+    static YomkResponse ON_FILE_LOG_DEBUG(const std::string& loggerName = "")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/on_file_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, "", loggerName}));
+    }
+    static YomkResponse ON_FILE_LOG_INFO(const std::string& loggerName = "")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/on_file_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "", loggerName}));
+    }
+    static YomkResponse ON_FILE_LOG_WARN(const std::string& loggerName = "")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/on_file_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, "", loggerName}));
+    }
+    static YomkResponse ON_FILE_LOG_ERROR(const std::string& loggerName = "")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/on_file_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, "", loggerName}));
+    }
+    static YomkResponse OFF_FILE_LOG_DEBUG(const std::string& loggerName = "")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/off_file_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eDebug, "", loggerName}));
+    }
+    static YomkResponse OFF_FILE_LOG_INFO(const std::string& loggerName = "")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/off_file_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "", loggerName}));
+    }
+    static YomkResponse OFF_FILE_LOG_WARN(const std::string& loggerName = "")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/off_file_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eWarn, "", loggerName}));
+    }
+    static YomkResponse OFF_FILE_LOG_ERROR(const std::string& loggerName = "")
+    {
+        YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
+        return request("/YomkLogger/off_file_log_by_level", YomkMkPtr(Log, yomk::Log{yomk::Log::eError, "", loggerName}));
+    }
     // 按类型获取日志器名列表（type: "console"/"file"，仅返回该类型的纯名）
     static YomkResponse LOGGER_INFO_LOGGERS(const std::string& type)
     {
@@ -307,17 +348,26 @@ public:
         return request("/YomkLogger/logger", YomkMkPtr(LoggerQuery, yomk::LoggerQuery{loggerName, type}));
     }
     // 查询全部日志器及逐器门控状态（返回 LoggerInfoList 清单，每条内嵌 LoggerState 状态段：
-    // console 条目为逐器门控层真值，file 条目四级别恒 true、proxyOn 恒 false）
+    // console 条目为控制台逐器门控层真值，file 条目为文件逐器门控层真值）
     static YomkResponse LOGGER_INFO_ALL()
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkLogger/all", nullptr);
     }
-    // 查询控制台全局主闸状态（4 级别 + proxy；独立于逐器门控层，供两层归因）
-    static YomkResponse LOGGER_INFO_GLOBAL()
+    // 查询全局主闸状态（4 级别 + proxy；type: "console"/"file"，两套主闸相互独立供两层归因；
+    // 缺省 "console" 与历史无参语义一致，未知 type 返回 eNo）
+    static YomkResponse LOGGER_INFO_GLOBAL(const std::string& type = "console")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/console_global_state", nullptr);
+        if (type == "file")
+        {
+            return request("/YomkLogger/file_global_state", nullptr);
+        }
+        if (type == "console")
+        {
+            return request("/YomkLogger/console_global_state", nullptr);
+        }
+        return YomkResponse(YomkResponse::eNo, "unknown logger type.");
     }
     // 删除指定日志器
     static YomkResponse FILE_LOG_DELETE(const std::string& loggerName)
@@ -628,6 +678,14 @@ private:
 #define YOMK_OFF_CONSOLE_LOG_WARN(...) YomkAPI::OFF_CONSOLE_LOG_WARN(__VA_ARGS__)
 #define YOMK_OFF_CONSOLE_LOG_ERROR(...) YomkAPI::OFF_CONSOLE_LOG_ERROR(__VA_ARGS__)
 #define YOMK_OFF_CONSOLE_LOG_DEBUG(...) YomkAPI::OFF_CONSOLE_LOG_DEBUG(__VA_ARGS__)
+#define YOMK_ON_FILE_LOG_INFO(...) YomkAPI::ON_FILE_LOG_INFO(__VA_ARGS__)
+#define YOMK_ON_FILE_LOG_WARN(...) YomkAPI::ON_FILE_LOG_WARN(__VA_ARGS__)
+#define YOMK_ON_FILE_LOG_ERROR(...) YomkAPI::ON_FILE_LOG_ERROR(__VA_ARGS__)
+#define YOMK_ON_FILE_LOG_DEBUG(...) YomkAPI::ON_FILE_LOG_DEBUG(__VA_ARGS__)
+#define YOMK_OFF_FILE_LOG_INFO(...) YomkAPI::OFF_FILE_LOG_INFO(__VA_ARGS__)
+#define YOMK_OFF_FILE_LOG_WARN(...) YomkAPI::OFF_FILE_LOG_WARN(__VA_ARGS__)
+#define YOMK_OFF_FILE_LOG_ERROR(...) YomkAPI::OFF_FILE_LOG_ERROR(__VA_ARGS__)
+#define YOMK_OFF_FILE_LOG_DEBUG(...) YomkAPI::OFF_FILE_LOG_DEBUG(__VA_ARGS__)
 #define YOMK_INFO(...) YomkAPI::CONSOLE_LOG_INFO_TAG("MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_INFO_TAG(tag, ...) YomkAPI::CONSOLE_LOG_INFO_TAG(tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_WARN(...) YomkAPI::CONSOLE_LOG_WARN_TAG("MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
@@ -657,7 +715,7 @@ private:
 #define YOMK_LOGGER_INFO_LOGGERS(type) YomkAPI::LOGGER_INFO_LOGGERS(type)
 #define YOMK_LOGGER_INFO_LOGGER(...) YomkAPI::LOGGER_INFO_LOGGER(__VA_ARGS__)
 #define YOMK_LOGGER_INFO_ALL() YomkAPI::LOGGER_INFO_ALL()
-#define YOMK_LOGGER_INFO_GLOBAL() YomkAPI::LOGGER_INFO_GLOBAL()
+#define YOMK_LOGGER_INFO_GLOBAL(...) YomkAPI::LOGGER_INFO_GLOBAL(__VA_ARGS__)
 #define YOMK_FILE_LOG_DELETE(...) YomkAPI::FILE_LOG_DELETE(__VA_ARGS__)
 #define YOMK_CONTEXT_CREATE(...) YomkAPI::CONTEXT_CREATE(__VA_ARGS__)
 #define YOMK_CONTEXT_GET(MsgName, ...) YomkAPI::CONTEXT_GET<Yomk(MsgName)>(#MsgName, __VA_ARGS__)

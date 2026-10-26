@@ -30,23 +30,35 @@ private:
     // 具名开关唯一写入口：按名查表逐器门控（未命中 eNo 不惰性创建，不触碰全局主闸）
     YomkResponse setNamedConsoleLevel(const std::string& loggerName, Log::ELogLevel level, bool on);
 
+    YomkResponse offFileLogByLevel(YomkPkgPtr pkg);
+    YomkResponse onFileLogByLevel(YomkPkgPtr pkg);
+    // 文件侧具名开关唯一写入口：语义与 setNamedConsoleLevel 对称（未命中 eNo 不惰性创建）
+    YomkResponse setNamedFileLevel(const std::string& loggerName, Log::ELogLevel level, bool on);
+
 private:
     YomkResponse loggers(YomkPkgPtr pkg);
     YomkResponse loggerInfo(YomkPkgPtr pkg);
     YomkResponse listAll(YomkPkgPtr pkg);
     YomkResponse consoleGlobalState(YomkPkgPtr pkg);
+    YomkResponse fileGlobalState(YomkPkgPtr pkg);
     // 取控制台全局主闸态：四个级别开关独立 atomic + proxy 叶子锁，均在表锁外独立作用域取
     // （/console_global_state 端点返回体）
     LoggerState currentConsoleState();
     // 取单条 console 条目状态：四级别 = logger.isLevelOn 逐器层真值（条目不做两层 AND 代算），
     // proxyOn 由调用点在表锁外取好传入
     LoggerState namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn);
+    // 取文件全局主闸态（/file_global_state 端点返回体）：四个级别开关独立 atomic，
+    // 与控制台主闸相互独立；proxyOn 为文件代理态（闭环 3 落地前恒 false）
+    LoggerState currentFileState();
+    // 取单条 file 条目状态：四级别 = logger.isLevelOn 逐器层真值（条目不做两层 AND 代算），
+    // proxyOn 由调用点传入（文件代理落地前恒 false）
+    LoggerState namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn);
 
 private:
     // 锁序约定：需要同时读取两张 logger 表时（listAll 内省快照），
     // 一律按 m_consoleLoggersMutex -> m_fileLoggersMutex 的顺序嵌套持有，全仓无反向嵌套点
     // （consoleLog 的 proxy 锁在独立作用域释放后才取 console 锁；loggerInfo/fileLog/
-    // writeFileLog/createFileLogger/setNamedConsoleLevel 均单锁；currentConsoleState 与
+    // writeFileLog/createFileLogger/setNamedConsoleLevel/setNamedFileLevel 均单锁；currentConsoleState 与
     // namedConsoleState 的 proxyOn 均在表锁外先独立取 proxy 锁，
     // 沿用 proxy 锁独立作用域先释放的既有模式）；m_consoleLogProxyMutex 为叶子锁，
     // 其临界区内不得获取任何其他锁。后续维护新增嵌套时须沿用此序，否则有死锁风险。
@@ -62,6 +74,12 @@ private:
     std::atomic<bool> m_showConsoleInfoLog;
     std::atomic<bool> m_showConsoleWarningLog;
     std::atomic<bool> m_showConsoleErrorLog;
+    // 文件日志全局主闸（第一层）：与控制台主闸相互独立，输出取主闸×逐器两层 AND；
+    // 逐器门控随 FileLogger sink 自持（第二层）
+    std::atomic<bool> m_showFileDebugLog;
+    std::atomic<bool> m_showFileInfoLog;
+    std::atomic<bool> m_showFileWarningLog;
+    std::atomic<bool> m_showFileErrorLog;
     // proxy 字段专属锁：锁内拷贝快照、锁外调用回调，避免持锁重入
     std::mutex m_consoleLogProxyMutex;
     bool m_consoleLogProxy;

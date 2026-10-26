@@ -2,7 +2,7 @@
  * @file TestYomkLoggerDirect.cpp
  * @brief Logger 模块 ConsoleLogger/FileLogger 类直连白盒测试（LG1 新建，LG2 回填）
  *
- * 覆盖内容（2 个类，17 组用例 45 断言）：
+ * 覆盖内容（2 个类，18 组用例 56 断言）：
  * ConsoleLogger：
  * 1. 默认名 "MainLogger"、setName/getName
  * 2. 四级别输出（级别标签 [Debug]/[Info ]/[Warn ]/[Error] + [名/tag] + 内容）
@@ -27,6 +27,9 @@
  *     返回 false 不抛异常，错误提示含 fs error 信息；dir 为普通文件时
  *     走 ofstream 打开失败分支（false + create log file failed）
  * 13a. tag 前缀语义（m_tag 拆分回填）：tag 非空行内追加 [tag] 段、空 tag 不加前缀
+ * 15. 级别门控（门控下沉新增）：15a 新实例四级默认全开；15b setLevelOn 关断隔离
+ *     （isLevelOn 反查 + 关断级别不落盘、其余级别不受影响）；15c 恢复落盘；
+ *     15d unknown 级别按 Info 门控（关 Info 后 log(99) 门控层直接丢弃，无降级提示）
  *
  * 说明：ConsoleLogger/FileLogger 为库内部实现类，符号已从 libYomkServer.so 导出
  *       （nm -D 核实），测试侧经源码模块 include 路径直连构造，不经框架单例
@@ -453,6 +456,82 @@ int main()
             CHECK(
                 out.find("create log file failed: " + regularDir.string() + "/lg1_initfail.log") != std::string::npos,
                 "init 打开失败错误提示含完整日志文件路径");
+        }
+
+        // 级别门控（门控下沉新增）：默认全开 → 关断隔离 → 恢复 → unknown 按 Info 门控
+        // （对齐 ConsoleLogger 用例 14；FileLogger 无 cout，经 write 落盘文件内容验证）
+        {
+            fs::path gateDir = tmpDir / "fl_gate";
+            fs::create_directories(gateDir, ec);
+            FileLogger gateFl;
+            gateFl.setName("lg1_df_gate");
+            gateFl.setDir(gateDir.string());
+            CHECK(gateFl.init(), "15: 门控用例 FileLogger init 成功");
+            fs::path gateLogFile = gateDir / "lg1_df_gate.log";
+
+            // 15a 新实例四级门控默认全开
+            CHECK(
+                (gateFl.isLevelOn(FileLogger::eDebug) && gateFl.isLevelOn(FileLogger::eInfo) &&
+                 gateFl.isLevelOn(FileLogger::eWarn) && gateFl.isLevelOn(FileLogger::eError)),
+                "15a: 新实例四级门控默认全开");
+
+            // 15b 关断隔离：Info 关断后 log 不入缓冲（write 落盘不增长），其余级别不受影响
+            gateFl.setLevelOn(FileLogger::eInfo, false);
+            CHECK(!gateFl.isLevelOn(FileLogger::eInfo), "15b: isLevelOn 反查 Info 关断生效");
+            CHECK(gateFl.isLevelOn(FileLogger::eWarn), "15b: 关断 Info 不影响其他级别");
+            gateFl.log(FileLogger::eInfo, "", "lg1_df_gate_off_marker");
+            gateFl.log(FileLogger::eWarn, "", "lg1_df_gate_warn_marker");
+            gateFl.write();
+            bool gateReadOk = false;
+            std::string gateContent = readFile(gateLogFile, gateReadOk);
+            CHECK(
+                gateReadOk && gateContent.find("lg1_df_gate_off_marker") == std::string::npos,
+                "15b: 关断级别不落盘");
+            CHECK(
+                gateContent.find("[Warn ] lg1_df_gate_warn_marker") != std::string::npos,
+                "15b: 未关断级别落盘不受影响");
+
+            // 15c 恢复：重开后输出恢复
+            gateFl.setLevelOn(FileLogger::eInfo, true);
+            CHECK(gateFl.isLevelOn(FileLogger::eInfo), "15c: isLevelOn 反查恢复生效");
+            gateFl.log(FileLogger::eInfo, "", "lg1_df_gate_on_marker");
+            gateFl.write();
+            bool gateReadOk2 = false;
+            std::string gateContent2 = readFile(gateLogFile, gateReadOk2);
+            CHECK(
+                gateReadOk2 && gateContent2.find("[Info ] lg1_df_gate_on_marker") != std::string::npos,
+                "15c: 恢复后落盘正常");
+
+            // 15d unknown 级别按 Info 门控：关 Info 后 log(99) 门控层直接丢弃
+            // （不进入 default 降级分支，无 Unknown log level 提示）；恢复后降级行为回归
+            gateFl.setLevelOn(FileLogger::eInfo, false);
+            auto sizeBeforeBad = fs::file_size(gateLogFile, ec);
+            std::string outBadGate;
+            {
+                CoutCapture cap;
+                gateFl.log(static_cast<FileLogger::ELogLevel>(99), "", "lg1_df_gate_bad_marker");
+                outBadGate = cap.str();
+            }
+            gateFl.write();
+            CHECK(
+                outBadGate.find("Unknown log level") == std::string::npos,
+                "15d: unknown 级别随 Info 门控直接丢弃（无降级提示）");
+            CHECK(
+                fs::file_size(gateLogFile, ec) == sizeBeforeBad, "15d: 关断期间 log(99) 不落盘（文件不增长）");
+            gateFl.setLevelOn(FileLogger::eInfo, true);
+            std::string outBadGate2;
+            {
+                CoutCapture cap;
+                gateFl.log(static_cast<FileLogger::ELogLevel>(99), "", "lg1_df_gate_bad2_marker");
+                outBadGate2 = cap.str();
+            }
+            gateFl.write();
+            bool gateReadOk3 = false;
+            std::string gateContent3 = readFile(gateLogFile, gateReadOk3);
+            CHECK(
+                outBadGate2.find("Unknown log level: 99") != std::string::npos &&
+                    gateContent3.find("[Info ] lg1_df_gate_bad2_marker") != std::string::npos,
+                "15d: 恢复后 unknown 级别回归 default 降级 Info 落盘");
         }
     }
 

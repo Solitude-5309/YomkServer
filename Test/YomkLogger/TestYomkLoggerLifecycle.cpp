@@ -2,7 +2,7 @@
  * @file TestYomkLoggerLifecycle.cpp
  * @brief Logger 模块生命周期与契约基线测试（LG1 从零新建，LG2 审计处置后回填，LG4 补删除接口，LG6 补 proxy 卸载）
  *
- * 覆盖内容（9 个 Section + 1 个前置注入段，断言计数以运行实测为准）：
+ * 覆盖内容（10 个 Section + 1 个前置注入段，断言计数以运行实测为准）：
  * 1. 控制台日志基线：四级别宏输出格式（时间戳+[级别]+[logger]+[行号]）；
  *    级别开关 OFF→无输出仍 eOk→ON→恢复输出，四级别全覆盖
  * 2. 自定义 tag：新 tag 自动创建 console logger；65536 超长 tag；空内容日志
@@ -36,6 +36,10 @@
  * 9. 服务级具名开关与全局态端点（两级主闸并联）：具名 OFF/ON 逐器隔离与恢复、未知名 eNo
  *    （不惰性创建）、主闸×逐器组合两层归因（LOGGER_INFO_GLOBAL 报主闸 off 与条目逐器 on
  *    各自真实呈现）、条目逐器真值与两层正交、LOGGER_INFO_GLOBAL 全局主闸态基线与无参宏翻转联动
+ * 10. 文件日志两级开关与全局态端点（与控制台同构）：具名 OFF/ON 文件逐器隔离与恢复（落盘文件实证）、
+ *     未知名 eNo（不惰性创建）、文件主闸×逐器两层归因（LOGGER_INFO_GLOBAL("file") 报文件主闸 off
+ *     与条目逐器 on 各自真实呈现、两层 AND 不落盘）、具名关断不波及文件主闸（两层正交）、
+ *     LOGGER_INFO_GLOBAL("file")/"console"）两套主闸态独立直证与无参宏翻转联动、未知 type eNo
  *
  * 说明：YomkLogger 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
  *       YOMK_INIT 单例白盒直连；全部经 API 宏/raw request 测试，同时覆盖 invoke 路由链，
@@ -1171,6 +1175,170 @@ CHECK(
         auto gResp3 = YOMK_LOGGER_INFO_GLOBAL();
         YomkUnPackPkg(gResp3.m_data, LoggerState, gs3);
         CHECK(gs3 != nullptr && gs3->d.m_debugOn, "S9f: 主闸 ON_DEBUG 后全局态 debugOn");
+    }
+}
+
+// ============ Section 10: 文件日志两级开关与全局态端点 ============
+{
+    const std::string flName = "lg1_s10_fl";
+    fs::path s10Dir = tmpDir / "s10";
+    fs::create_directories(s10Dir, ec);
+    CHECK(
+        YOMK_FILE_LOG_CREATE(s10Dir.string(), flName).m_status == YomkResponse::eOk,
+        "S10: 建文件日志器 lg1_s10_fl 成功");
+    fs::path s10LogFile = s10Dir / (flName + ".log");
+
+    // 10.1 具名 OFF 隔离：关 lg1_s10_fl 的 info，warn 落盘不受影响
+    CHECK(
+        YOMK_OFF_FILE_LOG_INFO(flName).m_status == YomkResponse::eOk,
+        "S10a: 具名 OFF_FILE_LOG_INFO(fl) 返回 eOk");
+    {
+        auto liResp = YOMK_LOGGER_INFO_LOGGER(flName, "file");
+        YomkUnPackPkg(liResp.m_data, LoggerInfo, lp);
+        CHECK(
+            lp != nullptr && !lp->d.m_loggerState.m_infoOn && lp->d.m_loggerState.m_warnOn,
+            "S10a: 单查条目 infoOff 且 warnOn（文件逐器门控真值）");
+    }
+    CHECK(
+        YOMK_FILE_INFO_TAG(flName, "lg1s10", "lg1_s10a_off_marker").m_status == YomkResponse::eOk,
+        "S10a: 关断后 FILE_INFO 仍 eOk");
+    CHECK(
+        YOMK_FILE_WARN_TAG(flName, "lg1s10", "lg1_s10a_warn_marker").m_status == YomkResponse::eOk,
+        "S10a: WARN 写入 eOk");
+    CHECK(YOMK_FILE_LOG_WRITE(flName).m_status == YomkResponse::eOk, "S10a: WRITE eOk");
+    {
+        bool ok = false;
+        std::string content = readFile(s10LogFile, ok);
+        CHECK(
+            ok && content.find("lg1_s10a_off_marker") == std::string::npos,
+            "S10a: 关断级别不落盘（marker 缺席）");
+        CHECK(
+            ok && content.find("lg1_s10a_warn_marker") != std::string::npos,
+            "S10a: 未关断级别落盘不受影响");
+    }
+
+    // 10.2 具名 ON 恢复
+    CHECK(
+        YOMK_ON_FILE_LOG_INFO(flName).m_status == YomkResponse::eOk,
+        "S10b: 具名 ON_FILE_LOG_INFO(fl) 返回 eOk");
+    {
+        auto liResp = YOMK_LOGGER_INFO_LOGGER(flName, "file");
+        YomkUnPackPkg(liResp.m_data, LoggerInfo, lp);
+        CHECK(lp != nullptr && lp->d.m_loggerState.m_infoOn, "S10b: 条目 infoOn 恢复");
+    }
+    CHECK(
+        YOMK_FILE_INFO_TAG(flName, "lg1s10", "lg1_s10b_on_marker").m_status == YomkResponse::eOk,
+        "S10b: 恢复后 FILE_INFO eOk");
+    CHECK(YOMK_FILE_LOG_WRITE(flName).m_status == YomkResponse::eOk, "S10b: WRITE eOk");
+    {
+        bool ok = false;
+        std::string content = readFile(s10LogFile, ok);
+        CHECK(ok && content.find("lg1_s10b_on_marker") != std::string::npos, "S10b: 恢复后落盘回归");
+    }
+
+    // 10.3 具名未知名 eNo（不惰性创建）
+    {
+        auto offNo = YOMK_OFF_FILE_LOG_INFO("lg1_s10_never_created");
+        CHECK(
+            (offNo.m_status == YomkResponse::eNo && offNo.m_msg == "file logger not found."),
+            "S10c: 具名 OFF 未知名返回 eNo + file logger not found.");
+        auto onNo = YOMK_ON_FILE_LOG_INFO("lg1_s10_never_created");
+        CHECK(
+            (onNo.m_status == YomkResponse::eNo && onNo.m_msg == "file logger not found."),
+            "S10c: 具名 ON 未知名返回 eNo");
+        YomkUnPackPkg(YOMK_LOGGER_INFO_LOGGERS("file").m_data, StringArray, arr);
+        bool ghostFound = false;
+        if (arr)
+        {
+            for (const auto& n : arr->d)
+            {
+                if (n == "lg1_s10_never_created")
+                {
+                    ghostFound = true;
+                }
+            }
+        }
+        CHECK(!ghostFound, "S10c: 未知名未被惰性创建（LOGGERS 无该名）");
+    }
+
+    // 10.4 主闸×逐器组合 + 两层归因：文件主闸 OFF + 逐器 ON → 仍不落盘（两层 AND），
+    // 文件全局态与条目逐器态各自真实呈现、归因唯一
+    {
+        CHECK(YOMK_OFF_FILE_LOG_INFO().m_status == YomkResponse::eOk, "S10d: 无参 OFF（文件主闸）返回 eOk");
+        auto gResp = YOMK_LOGGER_INFO_GLOBAL("file");
+        YomkUnPackPkg(gResp.m_data, LoggerState, gs);
+        CHECK(gs != nullptr && !gs->d.m_infoOn, "S10d: LOGGER_INFO_GLOBAL(\"file\") 报文件主闸 infoOff");
+        auto liResp = YOMK_LOGGER_INFO_LOGGER(flName, "file");
+        YomkUnPackPkg(liResp.m_data, LoggerInfo, lp);
+        CHECK(
+            lp != nullptr && lp->d.m_loggerState.m_infoOn,
+            "S10d: 条目报逐器 infoOn（与文件主闸态相反，两层归因唯一）");
+        CHECK(
+            YOMK_FILE_INFO_TAG(flName, "lg1s10", "lg1_s10d_gate_marker").m_status == YomkResponse::eOk,
+            "S10d: 主闸关断后 FILE_INFO 仍 eOk");
+        CHECK(YOMK_FILE_LOG_WRITE(flName).m_status == YomkResponse::eOk, "S10d: WRITE eOk");
+        {
+            bool ok = false;
+            std::string content = readFile(s10LogFile, ok);
+            CHECK(
+                ok && content.find("lg1_s10d_gate_marker") == std::string::npos,
+                "S10d: 主闸 OFF + 逐器 ON → 仍不落盘（两层 AND）");
+        }
+        CHECK(YOMK_ON_FILE_LOG_INFO().m_status == YomkResponse::eOk, "S10d: 无参 ON（文件主闸）恢复 eOk");
+        CHECK(
+            YOMK_FILE_INFO_TAG(flName, "lg1s10", "lg1_s10d_on_marker").m_status == YomkResponse::eOk,
+            "S10d: 主闸恢复后 FILE_INFO eOk");
+        CHECK(YOMK_FILE_LOG_WRITE(flName).m_status == YomkResponse::eOk, "S10d: WRITE eOk");
+        {
+            bool ok = false;
+            std::string content = readFile(s10LogFile, ok);
+            CHECK(
+                ok && content.find("lg1_s10d_on_marker") != std::string::npos,
+                "S10d: 主闸恢复后落盘回归（逐器仍 on）");
+        }
+    }
+
+    // 10.5 两层正交：具名关断直接反映在条目、不波及文件主闸态
+    {
+        CHECK(YOMK_OFF_FILE_LOG_INFO(flName).m_status == YomkResponse::eOk, "S10e: 再次具名关断返回 eOk");
+        auto gResp = YOMK_LOGGER_INFO_GLOBAL("file");
+        YomkUnPackPkg(gResp.m_data, LoggerState, gs);
+        CHECK(gs != nullptr && gs->d.m_infoOn, "S10e: 具名关断不影响文件主闸（两层正交）");
+        CHECK(YOMK_ON_FILE_LOG_INFO(flName).m_status == YomkResponse::eOk, "S10e: 具名恢复 eOk（状态复原）");
+    }
+
+    // 10.6 全局态端点基线：LOGGER_INFO_GLOBAL("file")/("console") 两套主闸独立 + 无参宏翻转联动
+    {
+        auto gResp = YOMK_LOGGER_INFO_GLOBAL("file");
+        CHECK(
+            (gResp.m_status == YomkResponse::eOk && gResp.m_msg == "ok"),
+            "S10f: LOGGER_INFO_GLOBAL(\"file\") 返回 eOk + ok");
+        YomkUnPackPkg(gResp.m_data, LoggerState, gs);
+        CHECK(
+            (gs != nullptr && gs->d.m_debugOn && gs->d.m_infoOn && gs->d.m_warnOn && gs->d.m_errorOn),
+            "S10f: 文件主闸四级全 on");
+        CHECK(
+            gs != nullptr && !gs->d.m_proxyOn,
+            "S10f: 文件态 proxyOn=false（文件代理闭环 3 落地前恒 false）");
+        CHECK(YOMK_OFF_FILE_LOG_DEBUG().m_status == YomkResponse::eOk, "S10f: 无参 OFF_FILE_LOG_DEBUG 返回 eOk");
+        auto gResp2 = YOMK_LOGGER_INFO_GLOBAL("file");
+        YomkUnPackPkg(gResp2.m_data, LoggerState, gs2);
+        CHECK(gs2 != nullptr && !gs2->d.m_debugOn, "S10f: 文件主闸 OFF_DEBUG 后文件态 debugOff");
+        // 两套主闸独立直证：文件主闸翻转不波及控制台主闸
+        auto gResp3 = YOMK_LOGGER_INFO_GLOBAL("console");
+        YomkUnPackPkg(gResp3.m_data, LoggerState, gc);
+        CHECK(
+            (gc != nullptr && gc->d.m_debugOn && gc->d.m_infoOn && gc->d.m_warnOn && gc->d.m_errorOn),
+            "S10f: 控制台主闸四级仍全 on（与文件主闸独立）");
+        CHECK(YOMK_ON_FILE_LOG_DEBUG().m_status == YomkResponse::eOk, "S10f: 无参 ON_FILE_LOG_DEBUG 恢复 eOk");
+        auto gResp4 = YOMK_LOGGER_INFO_GLOBAL("file");
+        YomkUnPackPkg(gResp4.m_data, LoggerState, gs4);
+        CHECK(gs4 != nullptr && gs4->d.m_debugOn, "S10f: 文件主闸 ON_DEBUG 后文件态 debugOn");
+        // 未知 type：客户端直返 eNo 不发请求
+        auto badType = YOMK_LOGGER_INFO_GLOBAL("badtype");
+        CHECK(
+            (badType.m_status == YomkResponse::eNo && badType.m_msg == "unknown logger type."),
+            "S10f: 未知 type 返回 eNo unknown logger type.");
     }
 }
 
