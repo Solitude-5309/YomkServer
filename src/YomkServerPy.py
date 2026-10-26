@@ -1123,12 +1123,13 @@ class YomkContext(YomkService):
         if group is None:
             return fail
 
-        # 返回码映射（约定见 ContextGroup.get）：0 命中 / 1 key 为空 / 2 key 不存在；未命中 value 已为默认值
+        # 返回码映射（约定见 ContextGroup.get）：0 命中 / 1 key 为空 / 2 key 不存在；
+        # 未命中 value 已为默认值，msg 注明返回默认值（提示 data 非存储值）
         rc, value = group.get(ctx.key, ctx.value)
         if rc == 1:
-            return YomkResponse(ResStatus.eNo, "key is empty", value)
+            return YomkResponse(ResStatus.eNo, "key is empty, return default value.", value)
         if rc == 2:
-            return YomkResponse(ResStatus.eNo, "key is not exist", value)
+            return YomkResponse(ResStatus.eNo, "key is not exist, return default value.", value)
         return YomkResponse(ResStatus.eOk, "get context success", value)
 
     def set(self, ctx):
