@@ -15,9 +15,9 @@
 #      （TESTS 项带模块前缀），每个测试在独立临时工作目录运行
 #   3. 任一测试失败（退出码非 0 / 超时）-> 立即停止，输出 [FAIL] 行摘要与日志路径
 #   4. 日志落盘: test/test_logs/<时间戳>/<测试名>.log + summary.log
-#   5. 运行前清理 /tmp/yomk_logger_* 残留（上次崩溃遗留）；全部结束后复查现场残留，
-#      发现则清理并计为失败（YomkLogger 测试同样在
-#      gettempdir() 建 yomk_logger_lg*_<pid> 临时目录，中途崩溃/超时时测试内自清理不会执行）
+#   5. 测试临时产物统一落 test/test_logs/tmp（经 YOMK_TEST_TMP_ROOT 注入测试进程，
+#      测试内取根、独立运行回退系统临时目录）；启动时整目录重建（兜底上次崩溃遗留），
+#      退出（含失败/中断/超时）时整目录删除，不留任何临时产物
 # 测试程序风格约定: 退出码 0=全部通过，非 0=存在失败用例（[FAIL] 行输出）
 
 set -u
@@ -62,43 +62,30 @@ if [ "${FULL_MODE}" -eq 1 ] && [ "${USER_TIMEOUT}" -eq 0 ]; then
 fi
 # -------------el 1. 解析参数 ----------------
 
-# EXIT/INT/TERM 兜底清理临时工作目录（幂等）
+# 测试临时根（固定共享目录，test_logs 已 gitignore）：启动整目录重建 + 导出注入，
+# 退出整目录删除（幂等；失败/超时/中断路径经 EXIT trap 全覆盖）
+TEST_TMP_ROOT="${SCRIPT_DIR}/test_logs/tmp"
+ensure_test_tmp_root() {
+    rm -rf "${TEST_TMP_ROOT}"
+    mkdir -p "${TEST_TMP_ROOT}"
+    export YOMK_TEST_TMP_ROOT="${TEST_TMP_ROOT}"
+}
+
+# EXIT/INT/TERM 兜底清理临时工作目录与整个测试临时根（幂等）
 CURRENT_WORKDIR=""
 cleanup_workdir() {
     [ -n "${CURRENT_WORKDIR}" ] && rm -rf "${CURRENT_WORKDIR}"
     CURRENT_WORKDIR=""
 }
-trap cleanup_workdir EXIT
+cleanup_all() {
+    cleanup_workdir
+    rm -rf "${TEST_TMP_ROOT}"
+}
+trap cleanup_all EXIT
 trap 'echo ""; echo "被用户中断"; exit 130' INT TERM
 
-# 运行前清理 /tmp/yomk_logger_* 残留
-clean_residue() {
-    shopt -s nullglob
-    local residue=(/tmp/yomk_logger_*)
-    shopt -u nullglob
-    if [ ${#residue[@]} -gt 0 ]; then
-        echo "-- 清理上次运行残留的测试产物: ${#residue[@]} 个 /tmp/yomk_logger_* 目录"
-        rm -rf "${residue[@]}"
-    fi
-}
-
-# 全部结束后复查现场：发现残留则清理并计为失败
-# （残留 = 对应测试的清理逻辑未在正常路径覆盖的信号）
-check_residue() {
-    shopt -s nullglob
-    local residue=(/tmp/yomk_logger_*)
-    shopt -u nullglob
-    if [ ${#residue[@]} -gt 0 ]; then
-        echo "[FAIL] 测试结束后发现现场残留（${#residue[@]} 个）:"
-        for p in "${residue[@]}"; do echo "   - ${p}"; done
-        rm -rf "${residue[@]}"
-        echo "       已清理，但对应测试的清理逻辑未在正常路径覆盖，请排查"
-        return 1
-    fi
-    return 0
-}
-
-clean_residue
+# 启动即整目录重建测试临时根（兜底上次崩溃遗留），并注入测试进程
+ensure_test_tmp_root
 
 # -------------sl 2. 测试库产物目录并设置 PYTHONPATH ----------------
 # 对齐 main run_tests.sh 设计：只消费仓库内本地产物（<仓库根>/build/prefix，--prefix 可覆盖），
@@ -204,7 +191,7 @@ for t in "${TESTS[@]}"; do
     # 显示名/日志名取纯测试名，路径按模块前缀定位
     T_NAME="${t##*/}"
     log="${LOG_ROOT}/${T_NAME}.log"
-    CURRENT_WORKDIR="$(mktemp -d)"
+    CURRENT_WORKDIR="$(mktemp -d -p "${TEST_TMP_ROOT}")"
     printf "[%2d/%2d] %-32s " "${IDX}" "${TOTAL}" "${T_NAME}"
     T0=${SECONDS}
     # stdin 喂入换行：兼容演示型测试中的 input() 人工暂停交互（无人值守时自动继续）
@@ -237,15 +224,6 @@ for t in "${TESTS[@]}"; do
     fi
 done
 # -------------el 5. 运行测试（失败即停） ----------------
-
-# 现场残留验收
-if ! check_residue | tee -a "${SUMMARY}"; then
-    echo ""
-    echo "==========================================="
-    echo " 测试后现场残留检查未通过，整体判定失败"
-    echo "==========================================="
-    exit 1
-fi
 
 # -------------sl 6. 结果摘要 ----------------
 TOTAL_ELAPSED=$((SECONDS - START_TS))

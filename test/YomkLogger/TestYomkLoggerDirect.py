@@ -72,8 +72,13 @@ def read_file(path):
         return f.read()
 
 
+def test_tmp_root():
+    # 测试临时根：run_tests.sh 注入（test/test_logs/tmp），独立运行回退系统临时目录
+    return os.environ.get("YOMK_TEST_TMP_ROOT") or tempfile.gettempdir()
+
+
 def main():
-    tmp_dir = os.path.join(tempfile.gettempdir(),
+    tmp_dir = os.path.join(test_tmp_root(),
                            "yomk_logger_direct_lg1_" + str(os.getpid()))
     os.makedirs(tmp_dir, exist_ok=True)
     check(os.path.isdir(tmp_dir), f"临时目录创建成功: {tmp_dir}")

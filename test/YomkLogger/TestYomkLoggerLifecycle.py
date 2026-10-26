@@ -86,11 +86,16 @@ def first_console_state(data):
     return None
 
 
+def test_tmp_root():
+    # 测试临时根：run_tests.sh 注入（test/test_logs/tmp），独立运行回退系统临时目录
+    return os.environ.get("YOMK_TEST_TMP_ROOT") or tempfile.gettempdir()
+
+
 def main():
     server = YomkApi.init(1)
     check(server is not None, "YomkApi.init 返回非空服务器")
 
-    tmp_dir = os.path.join(tempfile.gettempdir(),
+    tmp_dir = os.path.join(test_tmp_root(),
                            "yomk_logger_lg1_" + str(os.getpid()))
     os.makedirs(tmp_dir, exist_ok=True)
     check(os.path.isdir(tmp_dir), f"临时目录创建成功: {tmp_dir}")
