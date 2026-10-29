@@ -34,7 +34,7 @@ using yomk::ContextChecker;
 
 static int g_failed = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         if (!(cond))                                                              \
@@ -80,14 +80,14 @@ static bool waitFor(std::function<bool()> pred, int timeoutMs, const std::string
 int main()
 {
     auto server = YOMK_INIT(1);
-    CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
+    YOMK_TEST_CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
 
     // ============ Section 1: 并发 get/set 共享键（读写锁竞争）============
     std::cout << "===== 1. 并发 get/set 共享键 =====" << std::endl;
     {
         resetGlobals();
         auto cr = YOMK_CONTEXT_CREATE("conc_rw", YomkMkPtr(String, std::string("v_init")));
-        CHECK(cr.m_status == YomkResponse::eOk, "1.1 创建 conc_rw 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "1.1 创建 conc_rw 成功");
 
         const int T = 8, K = 500;
         std::atomic<int> okGet{0}, okSet{0};
@@ -125,9 +125,9 @@ int main()
             th.join();
 
         int expectEach = T * (K / 2);
-        CHECK(okGet.load() == expectEach, "1.2 并发 get 全部 eOk");
-        CHECK(okSet.load() == expectEach, "1.3 并发 set 全部 eOk");
-        CHECK(g_illegal.load() == 0, "1.4 无非法响应");
+        YOMK_TEST_CHECK(okGet.load() == expectEach, "1.2 并发 get 全部 eOk");
+        YOMK_TEST_CHECK(okSet.load() == expectEach, "1.3 并发 set 全部 eOk");
+        YOMK_TEST_CHECK(g_illegal.load() == 0, "1.4 无非法响应");
     }
 
     // ============ Section 2: 并发 create/destroy 独立键（map 结构变更）============
@@ -161,9 +161,9 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        CHECK(okCreate.load() == T * K, "2.1 并发 create 全部 eOk");
-        CHECK(okDestroy.load() == T * K, "2.2 并发 destroy 全部 eOk");
-        CHECK(g_illegal.load() == 0, "2.3 无非法响应");
+        YOMK_TEST_CHECK(okCreate.load() == T * K, "2.1 并发 create 全部 eOk");
+        YOMK_TEST_CHECK(okDestroy.load() == T * K, "2.2 并发 destroy 全部 eOk");
+        YOMK_TEST_CHECK(g_illegal.load() == 0, "2.3 无非法响应");
 
         // 各专属键最终均已销毁（无泄漏）
         bool allGone = true;
@@ -173,7 +173,7 @@ int main()
             if (r.m_status != YomkResponse::eNo)
                 allGone = false;
         }
-        CHECK(allGone, "2.4 独立键全部销毁，keys 无残留");
+        YOMK_TEST_CHECK(allGone, "2.4 独立键全部销毁，keys 无残留");
     }
 
     // ============ Section 3: 并发 setMonitor 同键（修复验证）============
@@ -181,7 +181,7 @@ int main()
     {
         resetGlobals();
         auto cr = YOMK_CONTEXT_CREATE("conc_mon", YomkMkPtr(String, std::string("m0")));
-        CHECK(cr.m_status == YomkResponse::eOk, "3.1 创建 conc_mon 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "3.1 创建 conc_mon 成功");
         YOMK_CONTEXT_ON_MONITOR();
 
         const int T = 8, K = 100;  // 共 T*K 个同步 monitor 并发 push_back
@@ -206,14 +206,14 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        CHECK(okMon.load() == T * K, "3.2 并发 setMonitor 全部 eOk");
-        CHECK(g_illegal.load() == 0, "3.3 无非法响应");
+        YOMK_TEST_CHECK(okMon.load() == T * K, "3.2 并发 setMonitor 全部 eOk");
+        YOMK_TEST_CHECK(g_illegal.load() == 0, "3.3 无非法响应");
 
         // 单次 set 触发全部已注册 monitor：计数 == 注册次数，证明并发 push_back 无丢失/损坏
         g_syncMon.store(0);
         auto sr = YOMK_CONTEXT_SET("conc_mon", YomkMkPtr(String, std::string("m1")));
-        CHECK(sr.m_status == YomkResponse::eOk, "3.4 触发 set 返回 eOk");
-        CHECK(g_syncMon.load() == T * K, "3.5 并发注册的 monitor 全部落地（计数 == 注册次数）");
+        YOMK_TEST_CHECK(sr.m_status == YomkResponse::eOk, "3.4 触发 set 返回 eOk");
+        YOMK_TEST_CHECK(g_syncMon.load() == T * K, "3.5 并发注册的 monitor 全部落地（计数 == 注册次数）");
         YOMK_CONTEXT_OFF_MONITOR();
     }
 
@@ -222,7 +222,7 @@ int main()
     {
         resetGlobals();
         auto cr = YOMK_CONTEXT_CREATE("conc_ck", YomkMkPtr(String, std::string("c0")));
-        CHECK(cr.m_status == YomkResponse::eOk, "4.1 创建 conc_ck 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "4.1 创建 conc_ck 成功");
 
         const int T = 16, K = 100;  // 半数写 checker、半数读 keyInfo
         std::atomic<int> okWriter{0}, okReader{0};
@@ -258,9 +258,9 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        CHECK(okWriter.load() == (T / 2) * K, "4.2 并发 setChecker 全部 eOk");
-        CHECK(okReader.load() == (T / 2) * K, "4.3 并发 keyInfo 全部 eOk");
-        CHECK(g_illegal.load() == 0, "4.4 读写并发无非法响应、无崩溃");
+        YOMK_TEST_CHECK(okWriter.load() == (T / 2) * K, "4.2 并发 setChecker 全部 eOk");
+        YOMK_TEST_CHECK(okReader.load() == (T / 2) * K, "4.3 并发 keyInfo 全部 eOk");
+        YOMK_TEST_CHECK(g_illegal.load() == 0, "4.4 读写并发无非法响应、无崩溃");
 
         // 并发注册后 checker 仍有效：开启 checker 后单次 set 调用 checker 一次
         YOMK_CONTEXT_ON_CHECKER();
@@ -273,8 +273,8 @@ int main()
                 return ContextChecker::eAccept;
             });
         auto sr = YOMK_CONTEXT_SET("conc_ck", YomkMkPtr(String, std::string("c1")));
-        CHECK(sr.m_status == YomkResponse::eOk, "4.5 并发注册后 set 仍 eOk");
-        CHECK(g_checkerCalls.load() == 1, "4.6 checker 有效并被调用 1 次");
+        YOMK_TEST_CHECK(sr.m_status == YomkResponse::eOk, "4.5 并发注册后 set 仍 eOk");
+        YOMK_TEST_CHECK(g_checkerCalls.load() == 1, "4.6 checker 有效并被调用 1 次");
         YOMK_CONTEXT_OFF_CHECKER();
     }
 
@@ -283,7 +283,7 @@ int main()
     {
         resetGlobals();
         auto cr = YOMK_CONTEXT_CREATE("conc_setck", YomkMkPtr(String, std::string("s0")));
-        CHECK(cr.m_status == YomkResponse::eOk, "5.1 创建 conc_setck 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "5.1 创建 conc_setck 成功");
         YOMK_CONTEXT_SET_CHECKER(
             "conc_setck",
             [](const yomk::Context&)
@@ -316,9 +316,9 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        CHECK(okSet.load() == T * K, "5.2 并发 set 全部 eOk");
-        CHECK(g_checkerCalls.load() == T * K, "5.3 checker 调用次数 == set 次数（unique_lock 内串行）");
-        CHECK(g_illegal.load() == 0, "5.4 无非法响应");
+        YOMK_TEST_CHECK(okSet.load() == T * K, "5.2 并发 set 全部 eOk");
+        YOMK_TEST_CHECK(g_checkerCalls.load() == T * K, "5.3 checker 调用次数 == set 次数（unique_lock 内串行）");
+        YOMK_TEST_CHECK(g_illegal.load() == 0, "5.4 无非法响应");
         YOMK_CONTEXT_OFF_CHECKER();
     }
 
@@ -327,7 +327,7 @@ int main()
     {
         resetGlobals();
         auto cr = YOMK_CONTEXT_CREATE("conc_setmon", YomkMkPtr(String, std::string("n0")));
-        CHECK(cr.m_status == YomkResponse::eOk, "6.1 创建 conc_setmon 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "6.1 创建 conc_setmon 成功");
         YOMK_CONTEXT_SET_MONITOR(
             "conc_setmon", [](const yomk::Context&) { ++g_syncMon; }, /*async=*/false);
         YOMK_CONTEXT_SET_MONITOR(
@@ -358,11 +358,11 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        CHECK(okSet.load() == T * K, "6.2 并发 set 全部 eOk");
-        CHECK(g_syncMon.load() == T * K, "6.3 同步 monitor 计数 == set 次数");
+        YOMK_TEST_CHECK(okSet.load() == T * K, "6.2 并发 set 全部 eOk");
+        YOMK_TEST_CHECK(g_syncMon.load() == T * K, "6.3 同步 monitor 计数 == set 次数");
         bool asyncOk = waitFor([&] { return g_asyncMon.load() == T * K; }, 10000, "async monitor count");
-        CHECK(asyncOk, "6.4 异步 monitor 计数 == set 次数（单线程池排空）");
-        CHECK(g_illegal.load() == 0, "6.5 无非法响应");
+        YOMK_TEST_CHECK(asyncOk, "6.4 异步 monitor 计数 == set 次数（单线程池排空）");
+        YOMK_TEST_CHECK(g_illegal.load() == 0, "6.5 无非法响应");
         YOMK_CONTEXT_OFF_MONITOR();
     }
 
@@ -372,7 +372,7 @@ int main()
         resetGlobals();
         auto cra = YOMK_CONTEXT_CREATE("conc_a", YomkMkPtr(String, std::string("a0")));
         auto crb = YOMK_CONTEXT_CREATE("conc_b", YomkMkPtr(String, std::string("b0")));
-        CHECK(cra.m_status == YomkResponse::eOk && crb.m_status == YomkResponse::eOk, "7.1 创建 conc_a/conc_b 成功");
+        YOMK_TEST_CHECK(cra.m_status == YomkResponse::eOk && crb.m_status == YomkResponse::eOk, "7.1 创建 conc_a/conc_b 成功");
 
         // conc_a 的同步 monitor 内重入 Context API（读 conc_b）：set 已在锁外执行 monitor，不应死锁
         YOMK_CONTEXT_SET_MONITOR(
@@ -387,8 +387,8 @@ int main()
 
         g_reentrantOk.store(0);
         auto sr = YOMK_CONTEXT_SET("conc_a", YomkMkPtr(String, std::string("a1")));
-        CHECK(sr.m_status == YomkResponse::eOk, "7.2 set(conc_a) 返回 eOk（monitor 重入未死锁）");
-        CHECK(g_reentrantOk.load() == 1, "7.3 monitor 内重入 INFO_KEY(conc_b) 成功 1 次");
+        YOMK_TEST_CHECK(sr.m_status == YomkResponse::eOk, "7.2 set(conc_a) 返回 eOk（monitor 重入未死锁）");
+        YOMK_TEST_CHECK(g_reentrantOk.load() == 1, "7.3 monitor 内重入 INFO_KEY(conc_b) 成功 1 次");
         YOMK_CONTEXT_OFF_MONITOR();
     }
 
@@ -404,7 +404,7 @@ int main()
             if (cr.m_status != YomkResponse::eOk)
                 ++g_illegal;
         }
-        CHECK(g_illegal.load() == 0, "8.1 预建 keyspace 成功");
+        YOMK_TEST_CHECK(g_illegal.load() == 0, "8.1 预建 keyspace 成功");
 
         // 压力段关闭 checker/monitor：避免单线程监控池积压，聚焦锁并发与 map 一致性
         YOMK_CONTEXT_OFF_CHECKER();
@@ -506,20 +506,20 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        CHECK(g_illegal.load() == 0, "8.2 10 万级混合操作无非法响应");
-        CHECK(okOps.load() == T * K, "8.3 全部操作成功计数守恒");
+        YOMK_TEST_CHECK(g_illegal.load() == 0, "8.2 10 万级混合操作无非法响应");
+        YOMK_TEST_CHECK(okOps.load() == T * K, "8.3 全部操作成功计数守恒");
 
         // 最终一致性：keyspace 仍存在、临时键已销毁
         bool keyspaceOk = (YOMK_CONTEXT_INFO_KEY("stress_0").m_status == YomkResponse::eOk) &&
                           (YOMK_CONTEXT_INFO_KEY("stress_" + std::to_string(M - 1)).m_status == YomkResponse::eOk);
-        CHECK(keyspaceOk, "8.4 压力后 keyspace 仍存在");
+        YOMK_TEST_CHECK(keyspaceOk, "8.4 压力后 keyspace 仍存在");
         bool tmpGone = true;
         for (int t = 0; t < T; ++t)
         {
             if (YOMK_CONTEXT_INFO_KEY("stress_tmp_" + std::to_string(t)).m_status != YomkResponse::eNo)
                 tmpGone = false;
         }
-        CHECK(tmpGone, "8.5 压力后临时键全部销毁");
+        YOMK_TEST_CHECK(tmpGone, "8.5 压力后临时键全部销毁");
     }
 
     YOMK_SHUTDOWN();

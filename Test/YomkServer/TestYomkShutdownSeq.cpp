@@ -31,7 +31,7 @@
 
 static int g_failed = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         if (!(cond))                                                              \
@@ -130,7 +130,7 @@ static void testDrainSemantics()
 {
     auto server = YomkServer::create(2);
     resetGlobals();
-    CHECK(server->newService<DrainSrv>("/DrainSrv") == 0, "排空用例：注册服务成功");
+    YOMK_TEST_CHECK(server->newService<DrainSrv>("/DrainSrv") == 0, "排空用例：注册服务成功");
 
     std::atomic<bool> probed{false};
     for (int i = 0; i < 100; ++i)
@@ -151,13 +151,13 @@ static void testDrainSemantics()
 
     server->shutdown();  // 阻塞至请求池排空 join 完成
 
-    CHECK(g_taskCount.load() == 100, "排空：100 个在途异步任务在 shutdown 返回前全部执行");
-    CHECK(g_deinitCount.load() == 1, "排空：池停止后服务 deinit 被调用一次");
-    CHECK(
+    YOMK_TEST_CHECK(g_taskCount.load() == 100, "排空：100 个在途异步任务在 shutdown 返回前全部执行");
+    YOMK_TEST_CHECK(g_deinitCount.load() == 1, "排空：池停止后服务 deinit 被调用一次");
+    YOMK_TEST_CHECK(
         g_deletedOnDeinit.load() == false,
         "排空语义：deinit 时 deleted() 为 false（shutdown 不置 markDeleted，与删除即停对比）");
-    CHECK(probed.load() == true, "排空：弱绑定探针回调已执行");
-    CHECK(
+    YOMK_TEST_CHECK(probed.load() == true, "排空：弱绑定探针回调已执行");
+    YOMK_TEST_CHECK(
         g_weakRespDuringDrain.m_status == YomkResponse::eOk && g_weakRespDuringDrain.m_msg == "work",
         "排空期弱绑定回调照常执行（对比 delService 后丢弃）");
 }
@@ -167,20 +167,20 @@ static void testRejectAfterShutdown()
 {
     auto server = YomkServer::create(1);
     resetGlobals();
-    CHECK(server->newService<DrainSrv>("/DrainSrv") == 0, "拒新用例：注册服务成功");
+    YOMK_TEST_CHECK(server->newService<DrainSrv>("/DrainSrv") == 0, "拒新用例：注册服务成功");
     server->shutdown();
 
     std::atomic<int> rejectCbCount{0};
     server->asyncRequest(
         "/DrainSrv/ping", nullptr, [&rejectCbCount](YomkResponse resp) { rejectCbCount.fetch_add(1); });
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    CHECK(rejectCbCount.load() == 0, "拒新：shutdown 后 asyncRequest 回调永不触发（日志 async request ignored 实证）");
+    YOMK_TEST_CHECK(rejectCbCount.load() == 0, "拒新：shutdown 后 asyncRequest 回调永不触发（日志 async request ignored 实证）");
 
     YomkResponse resp = server->request("/DrainSrv/ping");
-    CHECK(
+    YOMK_TEST_CHECK(
         resp.m_status == YomkResponse::eNo && resp.m_msg.find("service not found") != std::string::npos,
         "现状文档化：shutdown 后同步 request 返回 eNo + service not found（表已清空，非专用文案）");
-    CHECK(server->serviceNames().empty(), "shutdown 后服务表已清空");
+    YOMK_TEST_CHECK(server->serviceNames().empty(), "shutdown 后服务表已清空");
 }
 
 // 3. 幂等：连续两次 shutdown 仅一次 deinit，无挂起无崩溃
@@ -188,12 +188,12 @@ static void testShutdownIdempotent()
 {
     auto server = YomkServer::create(1);
     resetGlobals();
-    CHECK(server->newService<DrainSrv>("/DrainSrv") == 0, "幂等用例：注册服务成功");
+    YOMK_TEST_CHECK(server->newService<DrainSrv>("/DrainSrv") == 0, "幂等用例：注册服务成功");
 
     server->shutdown();
     server->shutdown();  // 第二次：m_shutdown.exchange 已置位直接返回
 
-    CHECK(g_deinitCount.load() == 1, "幂等：连续两次 shutdown 仅一次 deinit（不双重清理）");
+    YOMK_TEST_CHECK(g_deinitCount.load() == 1, "幂等：连续两次 shutdown 仅一次 deinit（不双重清理）");
 }
 
 // 4. 析构兜底：不显式 shutdown 直接离开作用域，兜底触发排空与 deinit、无挂起
@@ -216,8 +216,8 @@ static void testDestructorFallback()
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    CHECK(g_taskCount.load() == 20, "析构兜底：析构前投递的 20 个任务同样排空执行");
-    CHECK(g_deinitCount.load() == 1, "析构兜底：服务 deinit 被调用（无挂起，用例完成即证）");
+    YOMK_TEST_CHECK(g_taskCount.load() == 20, "析构兜底：析构前投递的 20 个任务同样排空执行");
+    YOMK_TEST_CHECK(g_deinitCount.load() == 1, "析构兜底：服务 deinit 被调用（无挂起，用例完成即证）");
 }
 
 // 5. 嵌套排空拒绝：排空期嵌套投递被 m_shutdown 拒绝，不无限排空
@@ -225,12 +225,12 @@ static void testNestedSpawnRejected()
 {
     auto server = YomkServer::create(1);
     resetGlobals();
-    CHECK(server->newService<SpawnSrv>("/SpawnSrv") == 0, "嵌套排空用例：注册 SpawnSrv 成功");
+    YOMK_TEST_CHECK(server->newService<SpawnSrv>("/SpawnSrv") == 0, "嵌套排空用例：注册 SpawnSrv 成功");
 
     server->asyncRequest("/SpawnSrv/spawn");
     server->shutdown();  // /spawn 休眠 200ms 后嵌套投递，此刻 m_shutdown 已置位应被拒绝
 
-    CHECK(g_spawnExec.load() == 1, "嵌套排空拒绝：/spawn 仅执行一次（排空期嵌套投递被拒绝，不无限排空）");
+    YOMK_TEST_CHECK(g_spawnExec.load() == 1, "嵌套排空拒绝：/spawn 仅执行一次（排空期嵌套投递被拒绝，不无限排空）");
 }
 
 int main()

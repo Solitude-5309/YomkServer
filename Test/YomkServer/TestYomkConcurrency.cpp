@@ -31,7 +31,7 @@
 
 static int g_failed = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         if (!(cond))                                                              \
@@ -129,7 +129,7 @@ int main()
     {
         resetGlobals();
         auto server = YomkServer::create(4);
-        CHECK(registerConcSrv(server, "/PingSrv") == 0, "1.1 register /PingSrv");
+        YOMK_TEST_CHECK(registerConcSrv(server, "/PingSrv") == 0, "1.1 register /PingSrv");
 
         const int kThreads = 8;
         const int kPerThread = 500;
@@ -160,8 +160,8 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        CHECK(okCount.load() == kThreads * kPerThread, "1.2 concurrent sync request all eOk");
-        CHECK(g_hit.load() == kThreads * kPerThread, "1.3 hit count equals total requests");
+        YOMK_TEST_CHECK(okCount.load() == kThreads * kPerThread, "1.2 concurrent sync request all eOk");
+        YOMK_TEST_CHECK(g_hit.load() == kThreads * kPerThread, "1.3 hit count equals total requests");
         server->shutdown();
     }
 
@@ -169,7 +169,7 @@ int main()
     {
         resetGlobals();
         auto server = YomkServer::create(4);
-        CHECK(registerConcSrv(server, "/AsyncSrv") == 0, "2.1 register /AsyncSrv");
+        YOMK_TEST_CHECK(registerConcSrv(server, "/AsyncSrv") == 0, "2.1 register /AsyncSrv");
 
         const int kThreads = 8;
         const int kPerThread = 125;
@@ -196,7 +196,7 @@ int main()
             th.join();
 
         bool ok = waitFor([&] { return g_fired.load() == kThreads * kPerThread; }, 5000, "async callbacks all fired");
-        CHECK(ok, "2.2 all async callbacks fired after join (no loss/dup)");
+        YOMK_TEST_CHECK(ok, "2.2 all async callbacks fired after join (no loss/dup)");
         server->shutdown();
     }
 
@@ -204,7 +204,7 @@ int main()
     {
         resetGlobals();
         auto server = YomkServer::create(4);
-        CHECK(registerConcSrv(server, "/PingSrv") == 0, "3.1 register /PingSrv");
+        YOMK_TEST_CHECK(registerConcSrv(server, "/PingSrv") == 0, "3.1 register /PingSrv");
 
         const int kReqThreads = 8;
         std::atomic<int> okCount{0};
@@ -238,8 +238,8 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        CHECK(g_illegal.load() == 0, "3.2 no illegal responses during add/del concurrency");
-        CHECK(okCount.load() > 0, "3.3 alive window served requests");
+        YOMK_TEST_CHECK(g_illegal.load() == 0, "3.2 no illegal responses during add/del concurrency");
+        YOMK_TEST_CHECK(okCount.load() > 0, "3.3 alive window served requests");
         server->shutdown();
     }
 
@@ -249,7 +249,7 @@ int main()
         auto server = YomkServer::create(4);
         ConcSrv* echoSrv = new ConcSrv(server.get());
         echoSrv->name("/EchoSrv");
-        CHECK(server->addService(echoSrv) == 0, "4.1 register /EchoSrv");
+        YOMK_TEST_CHECK(server->addService(echoSrv) == 0, "4.1 register /EchoSrv");
 
         const int kReqThreads = 8;
         std::atomic<int> okCount{0};
@@ -282,8 +282,8 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        CHECK(g_illegal.load() == 0, "4.2 no illegal responses during installFunc concurrency");
-        CHECK(okCount.load() > 0, "4.3 request survived concurrent overwrite install");
+        YOMK_TEST_CHECK(g_illegal.load() == 0, "4.2 no illegal responses during installFunc concurrency");
+        YOMK_TEST_CHECK(okCount.load() > 0, "4.3 request survived concurrent overwrite install");
         server->shutdown();
     }
 
@@ -291,7 +291,7 @@ int main()
     {
         resetGlobals();
         auto server = YomkServer::create(4);
-        CHECK(registerConcSrv(server, "/ShutdownAsyncSrv") == 0, "5.1 register /ShutdownAsyncSrv");
+        YOMK_TEST_CHECK(registerConcSrv(server, "/ShutdownAsyncSrv") == 0, "5.1 register /ShutdownAsyncSrv");
 
         g_posted.store(0);
         g_fired.store(0);
@@ -331,8 +331,8 @@ int main()
             },
             5000,
             "async fired stable after shutdown");
-        CHECK(stable, "5.2 async callbacks stable after shutdown (drain complete)");
-        CHECK(g_fired.load() <= g_posted.load(), "5.3 no duplicate async execution");
+        YOMK_TEST_CHECK(stable, "5.2 async callbacks stable after shutdown (drain complete)");
+        YOMK_TEST_CHECK(g_fired.load() <= g_posted.load(), "5.3 no duplicate async execution");
 
         int before = g_fired.load();
         for (int i = 0; i < 100; ++i)
@@ -347,15 +347,15 @@ int main()
                 });
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        CHECK(g_fired.load() == before, "5.4 post-shutdown async requests rejected");
+        YOMK_TEST_CHECK(g_fired.load() == before, "5.4 post-shutdown async requests rejected");
     }
 
     std::cout << "===== 6. 删除即停并发形态（弱绑定判活） =====" << std::endl;
     {
         resetGlobals();
         auto server = YomkServer::create(4);
-        CHECK(registerConcSrv(server, "/StopSrv") == 0, "6.1 register /StopSrv");
-        CHECK(g_weakCb != nullptr, "6.2 weak callback installed in init");
+        YOMK_TEST_CHECK(registerConcSrv(server, "/StopSrv") == 0, "6.1 register /StopSrv");
+        YOMK_TEST_CHECK(g_weakCb != nullptr, "6.2 weak callback installed in init");
 
         g_posted.store(0);
         g_fired.store(0);
@@ -398,8 +398,8 @@ int main()
             },
             5000,
             "user hit count stable after delService");
-        CHECK(stable, "6.3 user function hit count stable after del (in-flight finished)");
-        CHECK(g_rejected.load() > 0, "6.4 post-del weak callbacks discarded with contract message");
+        YOMK_TEST_CHECK(stable, "6.3 user function hit count stable after del (in-flight finished)");
+        YOMK_TEST_CHECK(g_rejected.load() > 0, "6.4 post-del weak callbacks discarded with contract message");
         server->shutdown();
     }
 
@@ -408,8 +408,8 @@ int main()
         resetGlobals();
         auto server1 = YomkServer::create(4);
         auto server2 = YomkServer::create(4);
-        CHECK(registerConcSrv(server1, "/StressSrv") == 0, "7.1 register server1 /StressSrv");
-        CHECK(registerConcSrv(server2, "/StressSrv") == 0, "7.2 register server2 /StressSrv");
+        YOMK_TEST_CHECK(registerConcSrv(server1, "/StressSrv") == 0, "7.1 register server1 /StressSrv");
+        YOMK_TEST_CHECK(registerConcSrv(server2, "/StressSrv") == 0, "7.2 register server2 /StressSrv");
 
         std::atomic<int> posted1{0}, posted2{0}, fired1{0}, fired2{0}, ok1{0}, ok2{0};
         std::atomic<bool> shutdown2Done{false};
@@ -469,13 +469,13 @@ int main()
         shutdownThread.join();
 
         // server1 未 shutdown，等待所有 async 回调完成
-        CHECK(
+        YOMK_TEST_CHECK(
             waitFor([&] { return fired1.load() == posted1.load(); }, 10000, "server1 async callbacks complete"),
             "7.3 server1 async callbacks all fired");
 
         // server2 已 shutdown，等待回调数稳定（可能小于 posted2）
         int last2 = fired2.load();
-        CHECK(
+        YOMK_TEST_CHECK(
             waitFor(
                 [&]
                 {
@@ -489,9 +489,9 @@ int main()
                 "server2 async callbacks stable after shutdown"),
             "7.4 server2 async callbacks stable after shutdown");
 
-        CHECK(ok1.load() > 0, "7.5 server1 stress requests got eOk");
-        CHECK(fired1.load() <= posted1.load(), "7.6 server1 async no duplicate execution");
-        CHECK(fired2.load() <= posted2.load(), "7.7 server2 async no duplicate execution after shutdown");
+        YOMK_TEST_CHECK(ok1.load() > 0, "7.5 server1 stress requests got eOk");
+        YOMK_TEST_CHECK(fired1.load() <= posted1.load(), "7.6 server1 async no duplicate execution");
+        YOMK_TEST_CHECK(fired2.load() <= posted2.load(), "7.7 server2 async no duplicate execution after shutdown");
         // server1 由作用域析构兜底；server2 已显式 shutdown
     }
 

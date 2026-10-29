@@ -25,7 +25,7 @@
 
 static int g_failed = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         if (!(cond))                                                              \
@@ -59,60 +59,60 @@ int main()
     std::cout << "===== 1. init/call_once 单例承诺 =====" << std::endl;
     {
         std::shared_ptr<YomkServer> first = YomkAPI::init(1);
-        CHECK(first != nullptr, "首次 init(1) 返回非空单例");
+        YOMK_TEST_CHECK(first != nullptr, "首次 init(1) 返回非空单例");
 
         std::shared_ptr<YomkServer> second = YomkAPI::init(4);
-        CHECK(
+        YOMK_TEST_CHECK(
             second != nullptr && second.get() == first.get(),
             "二次 init(4) 返回同一实例（asyncThreadCount 仅首次生效）");
 
         std::shared_ptr<YomkServer> inst = YomkAPI::serverInstance();
-        CHECK(inst.get() == first.get(), "serverInstance() 与 init 返回一致");
+        YOMK_TEST_CHECK(inst.get() == first.get(), "serverInstance() 与 init 返回一致");
     }
 
     std::cout << "===== 2. 内置服务拉起 =====" << std::endl;
     {
         std::vector<std::string> names = YomkAPI::serverInstance()->serviceNames();
-        CHECK(nameIn(names, "/YomkFunctionPool"), "内置服务 /YomkFunctionPool 已拉起");
-        CHECK(nameIn(names, "/YomkContext"), "内置服务 /YomkContext 已拉起");
-        CHECK(nameIn(names, "/YomkEventLoop"), "内置服务 /YomkEventLoop 已拉起");
-        CHECK(nameIn(names, "/YomkLogger"), "内置服务 /YomkLogger 已拉起");
-        CHECK(nameIn(names, "/YomkServerInfo"), "内置服务 /YomkServerInfo 已拉起");
+        YOMK_TEST_CHECK(nameIn(names, "/YomkFunctionPool"), "内置服务 /YomkFunctionPool 已拉起");
+        YOMK_TEST_CHECK(nameIn(names, "/YomkContext"), "内置服务 /YomkContext 已拉起");
+        YOMK_TEST_CHECK(nameIn(names, "/YomkEventLoop"), "内置服务 /YomkEventLoop 已拉起");
+        YOMK_TEST_CHECK(nameIn(names, "/YomkLogger"), "内置服务 /YomkLogger 已拉起");
+        YOMK_TEST_CHECK(nameIn(names, "/YomkServerInfo"), "内置服务 /YomkServerInfo 已拉起");
     }
 
     std::cout << "===== 3. API 层独有守卫（已初始化态） =====" << std::endl;
     {
-        CHECK(YomkAPI::addService(nullptr) == -1, "addService(nullptr) 返回 -1（YomkService is null）");
-        CHECK(YomkAPI::delService("") == -1, "delService(\"\") 返回 -1（service name is empty）");
+        YOMK_TEST_CHECK(YomkAPI::addService(nullptr) == -1, "addService(nullptr) 返回 -1（YomkService is null）");
+        YOMK_TEST_CHECK(YomkAPI::delService("") == -1, "delService(\"\") 返回 -1（service name is empty）");
     }
 
     std::cout << "===== 4. API 层增删往返 =====" << std::endl;
     {
-        CHECK(
+        YOMK_TEST_CHECK(
             YomkAPI::addService(new DummySrv(YomkAPI::serverInstance().get()), "/ApiSrv") == 0,
             "addService 两参形式改名注册成功");
-        CHECK(YomkAPI::delService("/ApiSrv") == 0, "delService 已注册服务返回 0");
-        CHECK(YomkAPI::delService("/ApiSrv") == -1, "重复删除已删服务返回 -1");
+        YOMK_TEST_CHECK(YomkAPI::delService("/ApiSrv") == 0, "delService 已注册服务返回 0");
+        YOMK_TEST_CHECK(YomkAPI::delService("/ApiSrv") == -1, "重复删除已删服务返回 -1");
 
         // 已初始化时守卫放行至服务器层：不存在的服务名按服务器层契约返回 eNo
         YomkResponse resp = YomkAPI::request("/Nope/x", nullptr);
-        CHECK(resp.m_status == YomkResponse::eNo, "request 未知服务经守卫放行至服务器层返回 eNo");
+        YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "request 未知服务经守卫放行至服务器层返回 eNo");
     }
 
     std::cout << "===== 5. shutdown 与关闭后守卫回归 =====" << std::endl;
     {
         YomkAPI::shutdown();
-        CHECK(YomkAPI::serverInstance() == nullptr, "shutdown 后单例置空");
+        YOMK_TEST_CHECK(YomkAPI::serverInstance() == nullptr, "shutdown 后单例置空");
 
         YomkAPI::shutdown();
-        CHECK(true, "二次 shutdown 幂等不崩溃");
+        YOMK_TEST_CHECK(true, "二次 shutdown 幂等不崩溃");
 
         YomkResponse resp = YomkAPI::request("/Any/func", nullptr);
-        CHECK(resp.m_status == YomkResponse::eInvalid, "关闭后 request 守卫回归 eInvalid");
-        CHECK(resp.m_msg == "YomkServer is not init", "关闭后契约消息回归: " + resp.m_msg);
-        CHECK(YomkAPI::newService<DummySrv>() == -1, "关闭后 newService 守卫回归 -1");
+        YOMK_TEST_CHECK(resp.m_status == YomkResponse::eInvalid, "关闭后 request 守卫回归 eInvalid");
+        YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not init", "关闭后契约消息回归: " + resp.m_msg);
+        YOMK_TEST_CHECK(YomkAPI::newService<DummySrv>() == -1, "关闭后 newService 守卫回归 -1");
 
-        CHECK(YomkAPI::init() == nullptr, "关闭后 init 再调返回 nullptr（call_once 已消耗，不支持二次初始化）");
+        YOMK_TEST_CHECK(YomkAPI::init() == nullptr, "关闭后 init 再调返回 nullptr（call_once 已消耗，不支持二次初始化）");
     }
 
     std::cout << (g_failed == 0 ? "ALL PASSED" : "SOME FAILED") << " (" << g_failed << " failed)" << std::endl;

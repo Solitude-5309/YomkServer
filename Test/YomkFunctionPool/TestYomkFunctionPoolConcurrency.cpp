@@ -29,7 +29,7 @@
 static int g_failed = 0;
 static int g_total = 0;
 
-#define CHECK(cond, msg)                                                         \
+#define YOMK_TEST_CHECK(cond, msg)                                                         \
     do                                                                           \
     {                                                                            \
         ++g_total;                                                               \
@@ -165,7 +165,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s1ExecCount.store(0);
         g_s1OkCount.store(0);
 
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FUNCTIONPOOL_REGISTER("c1_probe", s1ProbeFunc).m_status == YomkResponse::eOk,
             "S1: 注册 c1_probe 成功");
 
@@ -188,20 +188,20 @@ int main(int /*argc*/, char** /*argv*/)
         for (auto& th : callers)
             th.join();
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s1ExecCount.load() == kTotalCalls,
             "S1: 执行守恒 execCount == " + std::to_string(kTotalCalls) + "（实际 " +
                 std::to_string(g_s1ExecCount.load()) + "）");
-        CHECK(g_s1OkCount.load() == kTotalCalls, "S1: 响应守恒 okCount == " + std::to_string(kTotalCalls));
+        YOMK_TEST_CHECK(g_s1OkCount.load() == kTotalCalls, "S1: 响应守恒 okCount == " + std::to_string(kTotalCalls));
 
         // 嵌套重入验证
         g_s1InnerCount.store(0);
         g_s1OuterOkCount.store(0);
 
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FUNCTIONPOOL_REGISTER("c1_inner", s1InnerFunc).m_status == YomkResponse::eOk,
             "S1: 注册 c1_inner 成功");
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FUNCTIONPOOL_REGISTER("c1_outer", s1OuterFunc).m_status == YomkResponse::eOk,
             "S1: 注册 c1_outer（内部嵌套 CALL c1_inner）成功");
 
@@ -225,17 +225,17 @@ int main(int /*argc*/, char** /*argv*/)
         for (auto& th : nestedCallers)
             th.join();
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s1InnerCount.load() == kNestedTotal,
             "S1: 嵌套重入守恒 innerCount == " + std::to_string(kNestedTotal) + "（实际 " +
                 std::to_string(g_s1InnerCount.load()) + "）——同线程二次 shared_lock 无死锁");
-        CHECK(g_s1OuterOkCount.load() == kNestedTotal, "S1: 嵌套重入 outer 全部成功回传 inner 结果");
+        YOMK_TEST_CHECK(g_s1OuterOkCount.load() == kNestedTotal, "S1: 嵌套重入 outer 全部成功回传 inner 结果");
 
         // 清理
         YOMK_FUNCTIONPOOL_UNREGISTER("c1_probe");
         YOMK_FUNCTIONPOOL_UNREGISTER("c1_inner");
         YOMK_FUNCTIONPOOL_UNREGISTER("c1_outer");
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FUNCTIONPOOL_CALL("c1_probe", nullptr).m_status == YomkResponse::eNo, "S1: 清理后 c1_probe 已不存在");
     }
 
@@ -252,7 +252,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s2TotalCalls.store(0);
         g_s2Stop.store(false);
 
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FUNCTIONPOOL_REGISTER("c2_func", s2V1Func).m_status == YomkResponse::eOk,
             "S2: 注册 c2_func 为 v1 实现");
 
@@ -292,17 +292,17 @@ int main(int /*argc*/, char** /*argv*/)
         uint64_t v2 = g_s2V2Count.load();
         uint64_t total = g_s2TotalCalls.load();
 
-        CHECK(
+        YOMK_TEST_CHECK(
             v1 + v2 == total,
             "S2: 写读交错守恒 v1(" + std::to_string(v1) + ") + v2(" + std::to_string(v2) + ") == total(" +
                 std::to_string(total) + ")——无 torn std::function");
-        CHECK(v1 > 0, "S2: v1 实现被观测到（更新前后均有调用命中 v1）");
-        CHECK(v2 > 0, "S2: v2 实现被观测到（更新确实生效）");
-        CHECK(total > 0, "S2: 总调用数 > 0（caller 线程确实执行了）");
+        YOMK_TEST_CHECK(v1 > 0, "S2: v1 实现被观测到（更新前后均有调用命中 v1）");
+        YOMK_TEST_CHECK(v2 > 0, "S2: v2 实现被观测到（更新确实生效）");
+        YOMK_TEST_CHECK(total > 0, "S2: 总调用数 > 0（caller 线程确实执行了）");
 
         // 清理
         YOMK_FUNCTIONPOOL_UNREGISTER("c2_func");
-        CHECK(YOMK_FUNCTIONPOOL_CALL("c2_func", nullptr).m_status == YomkResponse::eNo, "S2: 清理后 c2_func 已不存在");
+        YOMK_TEST_CHECK(YOMK_FUNCTIONPOOL_CALL("c2_func", nullptr).m_status == YomkResponse::eNo, "S2: 清理后 c2_func 已不存在");
     }
 
     // ========================================================================
@@ -314,7 +314,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s3GateRelease.store(false);
         g_s3ExecCount.store(0);
 
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FUNCTIONPOOL_REGISTER("c3_gated", s3GatedFunc).m_status == YomkResponse::eOk,
             "S3: 注册 c3_gated（gate 函数：体内自旋等待释放）");
 
@@ -328,11 +328,11 @@ int main(int /*argc*/, char** /*argv*/)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             ++waitMs;
         }
-        CHECK(g_s3GateStarted.load(), "S3: gate 函数已进入执行（callFunction 的 shared_lock 已释放，锁外调用中）");
+        YOMK_TEST_CHECK(g_s3GateStarted.load(), "S3: gate 函数已进入执行（callFunction 的 shared_lock 已释放，锁外调用中）");
 
         // 在 gate 函数执行期间 UNREGISTER——unique_lock 获取成功（无 shared_lock 持有者）
         auto unregResp = YOMK_FUNCTIONPOOL_UNREGISTER("c3_gated");
-        CHECK(
+        YOMK_TEST_CHECK(
             unregResp.m_status == YomkResponse::eOk,
             "S3: 在途调用期间 UNREGISTER 成功（unique_lock 无阻塞——shared_lock 已释放）");
 
@@ -340,12 +340,12 @@ int main(int /*argc*/, char** /*argv*/)
         g_s3GateRelease.store(true, std::memory_order_release);
         caller.join();
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s3ExecCount.load() == 1,
             "S3: 在途调用完成（erase 不影响已拷贝的 std::function——锁外调用安全性核心证明）");
 
         // 注销后新 CALL → eNo
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FUNCTIONPOOL_CALL("c3_gated", nullptr).m_status == YomkResponse::eNo,
             "S3: 注销后新 CALL 返回 eNo（注销生效）");
     }
@@ -423,7 +423,7 @@ int main(int /*argc*/, char** /*argv*/)
             snapshotCount = g_s4Snapshots.size();
         }
 
-        CHECK(snapshotCount > 0, "S4: 收集到 " + std::to_string(snapshotCount) + " 个 INFO_ALL 快照");
+        YOMK_TEST_CHECK(snapshotCount > 0, "S4: 收集到 " + std::to_string(snapshotCount) + " 个 INFO_ALL 快照");
 
         // 清理（churn 线程已自行注销，但确认池干净）
         for (int t = 0; t < kChurnThreads; ++t)
@@ -522,17 +522,17 @@ int main(int /*argc*/, char** /*argv*/)
         uint64_t callerTotal = g_s5CallerTotal.load();
         constexpr uint64_t expectedTotal = 2 * kRounds;
 
-        CHECK(
+        YOMK_TEST_CHECK(
             callerOk + callerNo == callerTotal,
             "S5: caller 守恒 ok(" + std::to_string(callerOk) + ") + no(" + std::to_string(callerNo) + ") == total(" +
                 std::to_string(callerTotal) + ")");
-        CHECK(callerTotal == expectedTotal, "S5: caller 总尝试 == " + std::to_string(expectedTotal));
-        CHECK(g_s5RegOk.load() == 2 * kRounds, "S5: registerer 全部成功（注册/更新幂等）");
-        CHECK(
+        YOMK_TEST_CHECK(callerTotal == expectedTotal, "S5: caller 总尝试 == " + std::to_string(expectedTotal));
+        YOMK_TEST_CHECK(g_s5RegOk.load() == 2 * kRounds, "S5: registerer 全部成功（注册/更新幂等）");
+        YOMK_TEST_CHECK(
             g_s5UnregOk.load() + g_s5UnregNo.load() == kRounds,
             "S5: unregistrer 守恒 ok+no == " + std::to_string(kRounds));
-        CHECK(g_s5IntrospectCount.load() > 0, "S5: introspector 成功观测到 INFO_NAMES（无崩溃）");
-        CHECK(callerOk > 0, "S5: 至少部分 CALL 成功（registerer 在 unregistrer 间隙注册了函数）");
+        YOMK_TEST_CHECK(g_s5IntrospectCount.load() > 0, "S5: introspector 成功观测到 INFO_NAMES（无崩溃）");
+        YOMK_TEST_CHECK(callerOk > 0, "S5: 至少部分 CALL 成功（registerer 在 unregistrer 间隙注册了函数）");
 
         // 清理
         YOMK_FUNCTIONPOOL_UNREGISTER("c5_probe");

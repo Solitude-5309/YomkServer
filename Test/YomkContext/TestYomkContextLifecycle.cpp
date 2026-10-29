@@ -32,7 +32,7 @@
 
 static int g_failed = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         if (!(cond))                                                              \
@@ -81,22 +81,22 @@ static bool hasService(const std::vector<std::string>& names, const std::string&
 int main()
 {
     auto server = YOMK_INIT(1);
-    CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
+    YOMK_TEST_CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
 
     // ============ Section 1: init 效果（内省）============
     {
         auto names = YOMK_SERVER_PTR->serviceNames();
-        CHECK(hasService(names, "/YomkContext"), "内置 /YomkContext 已注册");
+        YOMK_TEST_CHECK(hasService(names, "/YomkContext"), "内置 /YomkContext 已注册");
 
         auto infos = YOMK_SERVER_PTR->serviceFuncInfos("/YomkContext");
-        CHECK(infos.size() == 14, "init 装配 14 个功能函数");
+        YOMK_TEST_CHECK(infos.size() == 14, "init 装配 14 个功能函数");
     }
 
     // ============ Section 2: 基线运行（异步 monitor 池工作）============
     {
         YOMK_CONTEXT_ON_MONITOR();
         auto cr = YOMK_CONTEXT_CREATE("life_base", YomkMkPtr(String, std::string("b0")));
-        CHECK(cr.m_status == YomkResponse::eOk, "创建 life_base 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 life_base 成功");
 
         g_asyncCalls.store(0);
         YOMK_CONTEXT_SET_MONITOR(
@@ -106,7 +106,7 @@ int main()
         YOMK_CONTEXT_SET("life_base", YomkMkPtr(String, std::string("b2")));
 
         bool reached = waitForCount(g_asyncCalls, 2, 2000);
-        CHECK(reached && g_asyncCalls.load() == 2, "基线：异步 monitor 池正常工作（计数 == 2）");
+        YOMK_TEST_CHECK(reached && g_asyncCalls.load() == 2, "基线：异步 monitor 池正常工作（计数 == 2）");
         YOMK_CONTEXT_OFF_MONITOR();
     }
 
@@ -114,7 +114,7 @@ int main()
     {
         YOMK_CONTEXT_ON_MONITOR();
         auto cr = YOMK_CONTEXT_CREATE("life_drain", YomkMkPtr(String, std::string("d0")));
-        CHECK(cr.m_status == YomkResponse::eOk, "创建 life_drain 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 life_drain 成功");
 
         g_asyncCalls.store(0);
         YOMK_CONTEXT_SET_MONITOR(
@@ -128,36 +128,36 @@ int main()
 
         // 立即删除服务：触发 markDeleted + deinit 排空 monitor 池
         int delRet = YOMK_DEL_SERVICE("/YomkContext");
-        CHECK(delRet == 0, "delService(/YomkContext) 返回 0");
+        YOMK_TEST_CHECK(delRet == 0, "delService(/YomkContext) 返回 0");
 
         // delService 返回后排空已完成，计数应等于投递次数（无丢失、无迟到）
-        CHECK(g_asyncCalls.load() == N, "delService 排空后异步 monitor 计数 == 投递次数");
+        YOMK_TEST_CHECK(g_asyncCalls.load() == N, "delService 排空后异步 monitor 计数 == 投递次数");
     }
 
     // ============ Section 4: 删除后不可路由 + 重复删除契约 ============
     {
         auto resp = YOMK_REQUEST("/YomkContext/keys", nullptr);
-        CHECK(resp.m_status == YomkResponse::eNo, "删除后请求 /YomkContext 返回 eNo");
-        CHECK(resp.m_msg == "service not found: /YomkContext", "删除后消息为 service not found: /YomkContext");
+        YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "删除后请求 /YomkContext 返回 eNo");
+        YOMK_TEST_CHECK(resp.m_msg == "service not found: /YomkContext", "删除后消息为 service not found: /YomkContext");
 
         auto names = YOMK_SERVER_PTR->serviceNames();
-        CHECK(!hasService(names, "/YomkContext"), "serviceNames 不再包含 /YomkContext");
+        YOMK_TEST_CHECK(!hasService(names, "/YomkContext"), "serviceNames 不再包含 /YomkContext");
 
         int delAgain = YOMK_DEL_SERVICE("/YomkContext");
-        CHECK(delAgain == -1, "重复删除不存在服务返回 -1");
+        YOMK_TEST_CHECK(delAgain == -1, "重复删除不存在服务返回 -1");
     }
 
     // ============ Section 5: 重新注册 + monitor 池重建 ============
     {
         int reAdd = YOMK_NEW_SERVICE(YomkContext, "/YomkContext");
-        CHECK(reAdd == 0, "重新注册 YomkContext 返回 0");
+        YOMK_TEST_CHECK(reAdd == 0, "重新注册 YomkContext 返回 0");
 
         auto infos = YOMK_SERVER_PTR->serviceFuncInfos("/YomkContext");
-        CHECK(infos.size() == 14, "重新注册后 init 重新装配 14 个功能函数");
+        YOMK_TEST_CHECK(infos.size() == 14, "重新注册后 init 重新装配 14 个功能函数");
 
         YOMK_CONTEXT_ON_MONITOR();
         auto cr = YOMK_CONTEXT_CREATE("life_rebuild", YomkMkPtr(String, std::string("r0")));
-        CHECK(cr.m_status == YomkResponse::eOk, "重新注册后创建 life_rebuild 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "重新注册后创建 life_rebuild 成功");
 
         g_asyncCalls.store(0);
         YOMK_CONTEXT_SET_MONITOR(
@@ -168,21 +168,21 @@ int main()
         YOMK_CONTEXT_SET("life_rebuild", YomkMkPtr(String, std::string("r3")));
 
         bool reached = waitForCount(g_asyncCalls, 3, 2000);
-        CHECK(reached && g_asyncCalls.load() == 3, "重新注册后 monitor 池重建可用（计数 == 3）");
+        YOMK_TEST_CHECK(reached && g_asyncCalls.load() == 3, "重新注册后 monitor 池重建可用（计数 == 3）");
         YOMK_CONTEXT_OFF_MONITOR();
     }
 
     // ============ Section 6: 异常安全（init 抛 bad_alloc 回滚）============
     {
         int addRet = YOMK_ADD_SERVICE(new ThrowContext(YOMK_SERVER_P), "/ThrowContext");
-        CHECK(addRet == -1, "init 抛 bad_alloc 时 addService 返回 -1");
+        YOMK_TEST_CHECK(addRet == -1, "init 抛 bad_alloc 时 addService 返回 -1");
 
         auto names = YOMK_SERVER_PTR->serviceNames();
-        CHECK(!hasService(names, "/ThrowContext"), "回滚后 serviceNames 不含 /ThrowContext（无残留）");
+        YOMK_TEST_CHECK(!hasService(names, "/ThrowContext"), "回滚后 serviceNames 不含 /ThrowContext（无残留）");
 
         // 进程存活、/YomkContext 仍可用
         auto resp = YOMK_CONTEXT_INFO_KEYS();
-        CHECK(resp.m_status == YomkResponse::eOk, "异常回滚后 /YomkContext 仍可用");
+        YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "异常回滚后 /YomkContext 仍可用");
     }
 
     YOMK_SHUTDOWN();

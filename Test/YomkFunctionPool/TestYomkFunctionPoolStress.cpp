@@ -30,7 +30,7 @@
 static int g_failed = 0;
 static int g_total = 0;
 
-#define CHECK(cond, msg)                                                         \
+#define YOMK_TEST_CHECK(cond, msg)                                                         \
     do                                                                           \
     {                                                                            \
         ++g_total;                                                               \
@@ -122,7 +122,7 @@ int main(int /*argc*/, char** /*argv*/)
         double regMs = std::chrono::duration<double, std::milli>(t1 - t0).count();
         recordBaseline("S1_register", N, regMs);
 
-        CHECK(regOk == N, "S1: register 守恒 " + std::to_string(regOk) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(regOk == N, "S1: register 守恒 " + std::to_string(regOk) + "/" + std::to_string(N));
 
         // Phase B: call one pre-registered hot function N times
         uint64_t callOk = 0;
@@ -137,7 +137,7 @@ int main(int /*argc*/, char** /*argv*/)
         double callMs = std::chrono::duration<double, std::milli>(t3 - t2).count();
         recordBaseline("S1_call_hotpath", N, callMs);
 
-        CHECK(callOk == N, "S1: call 热路径守恒 " + std::to_string(callOk) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(callOk == N, "S1: call 热路径守恒 " + std::to_string(callOk) + "/" + std::to_string(N));
 
         // Phase C: unregister N unique names
         uint64_t unregOk = 0;
@@ -152,7 +152,7 @@ int main(int /*argc*/, char** /*argv*/)
         double unregMs = std::chrono::duration<double, std::milli>(t5 - t4).count();
         recordBaseline("S1_unregister", N, unregMs);
 
-        CHECK(unregOk == N, "S1: unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(unregOk == N, "S1: unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(N));
     }
 
     // ========================================================================
@@ -187,7 +187,7 @@ int main(int /*argc*/, char** /*argv*/)
         double elapsed = std::chrono::duration<double, std::milli>(t1 - t0).count();
         recordBaseline("S2_concurrent_call", totalCalls, elapsed);
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s2ExecCount.load() == totalCalls,
             "S2: 并发 call 守恒 " + std::to_string(g_s2ExecCount.load()) + "/" + std::to_string(totalCalls));
 
@@ -218,10 +218,10 @@ int main(int /*argc*/, char** /*argv*/)
         double elapsed = std::chrono::duration<double, std::milli>(t1 - t0).count();
         recordBaseline("S3_churn_4ops", N * 4, elapsed);
 
-        CHECK(regOk == N, "S3: churn register 守恒 " + std::to_string(regOk) + "/" + std::to_string(N));
-        CHECK(callOk == N, "S3: churn call 守恒 " + std::to_string(callOk) + "/" + std::to_string(N));
-        CHECK(unregOk == N, "S3: churn unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(N));
-        CHECK(postNo == N, "S3: churn post-unregister eNo 守恒 " + std::to_string(postNo) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(regOk == N, "S3: churn register 守恒 " + std::to_string(regOk) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(callOk == N, "S3: churn call 守恒 " + std::to_string(callOk) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(unregOk == N, "S3: churn unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(postNo == N, "S3: churn post-unregister eNo 守恒 " + std::to_string(postNo) + "/" + std::to_string(N));
     }
 
     // ========================================================================
@@ -248,12 +248,12 @@ int main(int /*argc*/, char** /*argv*/)
         double elapsed = std::chrono::duration<double, std::milli>(t1 - t0).count();
         recordBaseline("S4_bigname_3ops", rounds * 3, elapsed);
 
-        CHECK(regOk == rounds, "S4: 大名 register 守恒 " + std::to_string(regOk) + "/" + std::to_string(rounds));
-        CHECK(callOk == rounds, "S4: 大名 call 守恒 " + std::to_string(callOk) + "/" + std::to_string(rounds));
-        CHECK(unregOk == rounds, "S4: 大名 unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(rounds));
+        YOMK_TEST_CHECK(regOk == rounds, "S4: 大名 register 守恒 " + std::to_string(regOk) + "/" + std::to_string(rounds));
+        YOMK_TEST_CHECK(callOk == rounds, "S4: 大名 call 守恒 " + std::to_string(callOk) + "/" + std::to_string(rounds));
+        YOMK_TEST_CHECK(unregOk == rounds, "S4: 大名 unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(rounds));
 
         // 最终确认已清理
-        CHECK(YOMK_FUNCTIONPOOL_CALL(bigName, nullptr).m_status == YomkResponse::eNo, "S4: 大名最终已注销（eNo）");
+        YOMK_TEST_CHECK(YOMK_FUNCTIONPOOL_CALL(bigName, nullptr).m_status == YomkResponse::eNo, "S4: 大名最终已注销（eNo）");
     }
 
     // ========================================================================
@@ -302,16 +302,16 @@ int main(int /*argc*/, char** /*argv*/)
         recordBaseline("S5_mixed_32ops_per_group", groups * 32, elapsed);
 
         const uint64_t expectedPerType = groups * kGroupSize;
-        CHECK(
+        YOMK_TEST_CHECK(
             regOk == expectedPerType,
             "S5: 混合 register 守恒 " + std::to_string(regOk) + "/" + std::to_string(expectedPerType));
-        CHECK(
+        YOMK_TEST_CHECK(
             callOk == expectedPerType,
             "S5: 混合 call 守恒 " + std::to_string(callOk) + "/" + std::to_string(expectedPerType));
-        CHECK(
+        YOMK_TEST_CHECK(
             infoNamesOk == groups, "S5: INFO_NAMES 守恒 " + std::to_string(infoNamesOk) + "/" + std::to_string(groups));
-        CHECK(infoAllOk == groups, "S5: INFO_ALL 守恒 " + std::to_string(infoAllOk) + "/" + std::to_string(groups));
-        CHECK(
+        YOMK_TEST_CHECK(infoAllOk == groups, "S5: INFO_ALL 守恒 " + std::to_string(infoAllOk) + "/" + std::to_string(groups));
+        YOMK_TEST_CHECK(
             unregOk == expectedPerType,
             "S5: 混合 unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(expectedPerType));
     }

@@ -30,7 +30,7 @@
 
 static int g_failed = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         if (!(cond))                                                              \
@@ -61,15 +61,15 @@ static void testConstruction()
 {
     {
         YomkSimpleThreadPool pool;  // threadCount=0 走默认值路径
-        CHECK(runBatchAndDrain(pool, 32) == 32, "threadCount=0 默认构造，任务全部执行");
+        YOMK_TEST_CHECK(runBatchAndDrain(pool, 32) == 32, "threadCount=0 默认构造，任务全部执行");
     }
     {
         YomkSimpleThreadPool pool(1);
-        CHECK(runBatchAndDrain(pool, 32) == 32, "threadCount=1 构造，任务全部执行");
+        YOMK_TEST_CHECK(runBatchAndDrain(pool, 32) == 32, "threadCount=1 构造，任务全部执行");
     }
     {
         YomkSimpleThreadPool pool(4);
-        CHECK(runBatchAndDrain(pool, 32) == 32, "threadCount=4 构造，任务全部执行");
+        YOMK_TEST_CHECK(runBatchAndDrain(pool, 32) == 32, "threadCount=4 构造，任务全部执行");
     }
 }
 
@@ -87,9 +87,9 @@ static void testPostAndDrain()
             allAccepted = false;
         }
     }
-    CHECK(allAccepted, "未停止时 post 恒返回 true");
+    YOMK_TEST_CHECK(allAccepted, "未停止时 post 恒返回 true");
     pool.stop();
-    CHECK(counter.load() == taskCount, "stop 返回后存量任务全部执行完毕（排空语义）");
+    YOMK_TEST_CHECK(counter.load() == taskCount, "stop 返回后存量任务全部执行完毕（排空语义）");
 }
 
 // 3. 拒新语义：停止后 post 返回 false
@@ -97,7 +97,7 @@ static void testPostRejectedAfterStop()
 {
     YomkSimpleThreadPool pool(1);
     pool.stop();
-    CHECK(pool.post([]() {}) == false, "stop 后 post 返回 false（拒新）");
+    YOMK_TEST_CHECK(pool.post([]() {}) == false, "stop 后 post 返回 false（拒新）");
 }
 
 // 4. stop 幂等：重复调用直接返回，不影响排空结果
@@ -111,7 +111,7 @@ static void testStopIdempotent()
     }
     pool.stop();
     pool.stop();  // 第二次调用应直接返回，不二次 join
-    CHECK(counter.load() == 10, "重复 stop 幂等，排空结果不受影响");
+    YOMK_TEST_CHECK(counter.load() == 10, "重复 stop 幂等，排空结果不受影响");
 }
 
 // 5. 析构兜底：未显式 stop，析构内兜底排空并 join，不挂起
@@ -126,7 +126,7 @@ static void testDestructorWithoutStop()
         }
         // 不调用 stop，交由析构兜底
     }
-    CHECK(counter.load() == 50, "未显式 stop 时析构兜底排空完成，未挂起");
+    YOMK_TEST_CHECK(counter.load() == 50, "未显式 stop 时析构兜底排空完成，未挂起");
 }
 
 // 6. 异常捕获：任务抛异常被捕获记日志，进程不终止，后续任务继续执行
@@ -138,7 +138,7 @@ static void testExceptionCaught()
     pool.post([]() { throw 42; });  // 非 std::exception 异常
     pool.post([&afterRan]() { afterRan.store(true); });
     pool.stop();
-    CHECK(afterRan.load(), "任务抛异常被捕获，进程不终止且后续任务继续执行");
+    YOMK_TEST_CHECK(afterRan.load(), "任务抛异常被捕获，进程不终止且后续任务继续执行");
 }
 
 // 7. 并发：多线程并发 post 与 stop 并发，接受数与执行数一致、无崩溃
@@ -171,7 +171,7 @@ static void testConcurrentPostWithStop()
     {
         t.join();
     }
-    CHECK(executed.load() == accepted.load(), "并发 post 与 stop：接受任务数等于执行任务数");
+    YOMK_TEST_CHECK(executed.load() == accepted.load(), "并发 post 与 stop：接受任务数等于执行任务数");
 }
 
 // 8. 大量任务：10 万级入队与执行无崩溃
@@ -189,9 +189,9 @@ static void testLargeVolume()
             break;
         }
     }
-    CHECK(allAccepted, "10 万级任务入队全部成功");
+    YOMK_TEST_CHECK(allAccepted, "10 万级任务入队全部成功");
     pool.stop();
-    CHECK(counter.load() == taskCount, "10 万级任务全部执行完毕");
+    YOMK_TEST_CHECK(counter.load() == taskCount, "10 万级任务全部执行完毕");
 }
 
 // 压力规模：环境变量 YOMK_TEST_STRESS_SCALE（run_tests.sh 快速模式 10000；缺省 10 万），clamp 下限 1000
@@ -235,7 +235,7 @@ static void testStopTimingChurn()
                 // 不显式 stop：命中析构兜底 stop 路径（TestYomkServer 撞窗形态）
             }
         }
-        CHECK(perCfg > 0, "N1 纯空闲 churn 完成（3 线程数 x 显式停/析构兜底 x " + std::to_string(perCfg) + " 轮，无挂死）");
+        YOMK_TEST_CHECK(perCfg > 0, "N1 纯空闲 churn 完成（3 线程数 x 显式停/析构兜底 x " + std::to_string(perCfg) + " 轮，无挂死）");
     }
 
     // N3 单任务守恒 churn（主断言载体）：worker 在"挂起收任务唤醒执行"的临界形态 + 析构排空，
@@ -247,7 +247,7 @@ static void testStopTimingChurn()
             YomkSimpleThreadPool pool(1);
             pool.post([&executed]() { executed.fetch_add(1); });
         }
-        CHECK(executed.load() == n, "N3 单任务 churn x " + std::to_string(n) + " 轮全部执行（守恒）");
+        YOMK_TEST_CHECK(executed.load() == n, "N3 单任务 churn x " + std::to_string(n) + " 轮全部执行（守恒）");
     }
 
     // N4 忙时停与并发投递交错 churn：post 洪流中 stop（worker 忙态 + poster 竞争路径，
@@ -286,7 +286,7 @@ static void testStopTimingChurn()
                 ++churnFail;
             }
         }
-        CHECK(churnFail == 0, "N4 忙时停交错 churn x " + std::to_string(rounds) + " 轮全部守恒（接受数==执行数）");
+        YOMK_TEST_CHECK(churnFail == 0, "N4 忙时停交错 churn x " + std::to_string(rounds) + " 轮全部守恒（接受数==执行数）");
     }
 }
 

@@ -132,7 +132,7 @@
  *   （本闭环用 266/242/24 与 210/186/24 的算术闭环完成论证，无需回退源码做对照）。
  *   测量学教训二：23 个二进制顺序累积同一 .gcda 时，5 次全量采样中观测到 2 次单点计数丢失
  *   （第 2 次：YomkLogger L109/L110 的 default 降级分支报 #####，但 Lifecycle S2.5 的对应
- *   CHECK 在 CoutCapture 作用域外且 rc=0，证明该行确已执行；V9 重测第 1 次：L398 即
+ *   YOMK_TEST_CHECK 在 CoutCapture 作用域外且 rc=0，证明该行确已执行；V9 重测第 1 次：L398 即
  *   listAll 的 return 报 #####，而该行实际计数 1574）。两次均在紧邻的重跑中自行恢复，且
  *   丢失位置互不重复、不可二分定位（只跑 Lifecycle 时 L109/L110 恒为 1，增量追加后续
  *   二进制也不擦除）→ 覆盖率结论须以“未执行行明细可解释 + 可复现”为准，不能只看单次
@@ -184,7 +184,7 @@
  *   外部链接，函数名加 yomkLog 前缀避免符号冲突。等价性由 V3 的 6 处 checkTimeFormat 调用点
  *   （Lifecycle:220/445、Direct:164/242、Concurrency:549、本测试 S1-A2 的 :847）+ V2 吞吐同量级
  *   共同兜底。注：LG5 计划沿用 LG4 的行号记为「4 处」，实测调用点为 6 处；其中 Lifecycle:220
- *   与 Direct:164 位于 CoutCapture 作用域内，CHECK 的 [ OK ] 行被写进捕获缓冲而不出现在
+ *   与 Direct:164 位于 CoutCapture 作用域内，YOMK_TEST_CHECK 的 [ OK ] 行被写进捕获缓冲而不出现在
  *   终端（Direct.cpp:167-168 的注释已说明此性质），故这两处只能由整体 0 failed 佐证。
  *   同批的无用包含清理亦已完成，并**纠正 LG4 本条目的登记错误**：LG4 写作「ConsoleLogger.cpp /
  *   FileLogger.cpp 的 <sstream> 与 <iomanip>」，实测 FileLogger.cpp 从无 <sstream> —— P4-a 前
@@ -278,7 +278,7 @@
  *   为直写终版）。
  *
  * 断言可靠性约束（LG1/LG3 教训）：
- * - cout 重定向一律用 RAII 作用域，所有 CHECK 与 [BASELINE] 打印都在作用域之外（否则被吞没）；
+ * - cout 重定向一律用 RAII 作用域，所有 YOMK_TEST_CHECK 与 [BASELINE] 打印都在作用域之外（否则被吞没）；
  *   计时值先存局部变量，出作用域后再打印。
  * - 唯一 tag 必须直调 YomkAPI::CONSOLE_LOG_INFO_TAG（运行时拼名）：YOMK_INFO_TAG 宏会把 tag
  *   拼上调用点行号，循环体内所有轮次将共用同一 logger 名，构造不出 N 个唯一 tag。
@@ -312,7 +312,7 @@ namespace fs = std::filesystem;
 static int g_failed = 0;
 static int g_total = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         ++g_total;                                                                \
@@ -823,12 +823,12 @@ int main()
     std::cout << "[ENV] " << readEnvSnapshot() << std::endl;
 
     auto server = YOMK_INIT(1);
-    CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
+    YOMK_TEST_CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
 
     fs::path tmpDir = testTmpRoot() / ("yomk_logger_lg4_" + std::to_string(::getpid()));
     std::error_code ec;
     fs::create_directories(tmpDir, ec);
-    CHECK(!ec, "临时目录创建成功: " + tmpDir.string());
+    YOMK_TEST_CHECK(!ec, "临时目录创建成功: " + tmpDir.string());
 
     // ---- 规模派生量（各 Section 共享同一口径：S5 全量回收与 S6 磁盘守恒都按此推算）----
     const uint64_t kShardSize = 1000;  // S2 分片粒度（每目录 1000 个 .log）
@@ -859,7 +859,7 @@ int main()
     {
         const uint64_t c = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
         const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
-        CHECK(
+        YOMK_TEST_CHECK(
             (c == 1 && f == 0),
             "起点内省基线 console=1(MainLogger)/file=0（实测 " + std::to_string(c) + "/" + std::to_string(f) + "）");
     }
@@ -923,15 +923,15 @@ int main()
             std::cout << "[BASELINE] S1A_scan_ALL@entries=" << entries << ": avg " << std::fixed << std::setprecision(3)
                       << statAll.avgMs << " ms (min " << statAll.minMs << " / max " << statAll.maxMs << " over "
                       << statAll.count << " calls, lines " << linesAll << ")" << std::endl;
-            CHECK(
+            YOMK_TEST_CHECK(
                 (badAll == 0 && linesAll == entries),
                 "S1A: 扫描点 entries=" + std::to_string(entries) + " 内省 eOk + 日志器数守恒");
         }
         recordBaseline("S1A_console_create_unique_tag", N, elapsedA);
-        CHECK(okA == N, "S1A: 唯一 tag 写入 eOk 守恒 " + std::to_string(okA) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(okA == N, "S1A: 唯一 tag 写入 eOk 守恒 " + std::to_string(okA) + "/" + std::to_string(N));
 
         const uint64_t consoleEntries = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
-        CHECK(
+        YOMK_TEST_CHECK(
             consoleEntries == N + 1,
             "S1A: console 表条目 = N + MainLogger（实测 " + std::to_string(consoleEntries) + "）");
 
@@ -949,10 +949,10 @@ int main()
                 out = cap.str();
             }
             auto markers = collectTailMarkers(out, "lg4s1a2_");
-            CHECK(
+            YOMK_TEST_CHECK(
                 markers.size() == sample,
                 "S1A2: 抽样 marker 全数命中（不丢）" + std::to_string(markers.size()) + "/" + std::to_string(sample));
-            CHECK(countBadOccurrence(markers) == 0, "S1A2: 抽样 marker 无重复（不重）");
+            YOMK_TEST_CHECK(countBadOccurrence(markers) == 0, "S1A2: 抽样 marker 无重复（不重）");
 
             uint64_t sampledLines = 0;
             uint64_t badFormat = 0;
@@ -970,7 +970,7 @@ int main()
                     ++badFormat;
                 }
             }
-            CHECK(
+            YOMK_TEST_CHECK(
                 (sampledLines == sample && badFormat == 0),
                 "S1A2: 抽样行时间戳格式全部合法（P4-b 改写等价性，非法 " + std::to_string(badFormat) + " 条）");
         }
@@ -993,10 +993,10 @@ int main()
             elapsedB = msSince(t0);
         }
         recordBaseline("S1B_console_write_hit", N, elapsedB);
-        CHECK(okB == N, "S1B: 命中写 eOk 守恒 " + std::to_string(okB) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(okB == N, "S1B: 命中写 eOk 守恒 " + std::to_string(okB) + "/" + std::to_string(N));
 
         // ---- Phase C：级别 OFF 短路（开关关断后仍 eOk，但不产生输出）----
-        CHECK(YOMK_OFF_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: OFF info 返回 eOk");
+        YOMK_TEST_CHECK(YOMK_OFF_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: OFF info 返回 eOk");
         {
             const uint64_t kProbe = 100;
             const uint64_t probe = (kProbe < N) ? kProbe : N;
@@ -1009,7 +1009,7 @@ int main()
                 }
                 outOff = cap.str();
             }
-            CHECK(
+            YOMK_TEST_CHECK(
                 outOff.find("lg4s1c_off_marker") == std::string::npos,
                 "S1C: 级别 OFF 期间无输出（抽样 " + std::to_string(probe) + " 行）");
         }
@@ -1029,12 +1029,12 @@ int main()
             elapsedC = msSince(t0);
         }
         recordBaseline("S1C_console_level_off_shortcut", N, elapsedC);
-        CHECK(okC == N, "S1C: 级别 OFF 短路仍 eOk 守恒 " + std::to_string(okC) + "/" + std::to_string(N));
-        CHECK(YOMK_ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: 恢复 ON info 返回 eOk");
+        YOMK_TEST_CHECK(okC == N, "S1C: 级别 OFF 短路仍 eOk 守恒 " + std::to_string(okC) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(YOMK_ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: 恢复 ON info 返回 eOk");
 
         // ---- Phase D：proxy 短路（置于 console 末相：本测试安装后不卸载，靠恒置 true 穿透
         // 避免影响后续 Section；P4-e 的卸载语义由 Lifecycle S3 覆盖）----
-        CHECK(YOMK_SET_CONSOLE_LOG_PROXY(lg4Proxy).m_status == YomkResponse::eOk, "S1D: 安装计数 proxy 返回 eOk");
+        YOMK_TEST_CHECK(YOMK_SET_CONSOLE_LOG_PROXY(lg4Proxy).m_status == YomkResponse::eOk, "S1D: 安装计数 proxy 返回 eOk");
         g_proxyReturn.store(false);
         g_proxyHits.store(0);
         uint64_t okD = 0;
@@ -1053,8 +1053,8 @@ int main()
             elapsedD = msSince(t0);
         }
         recordBaseline("S1D_console_proxy_shortcut", N, elapsedD);
-        CHECK(okD == N, "S1D: proxy 短路仍 eOk 守恒 " + std::to_string(okD) + "/" + std::to_string(N));
-        CHECK(
+        YOMK_TEST_CHECK(okD == N, "S1D: proxy 短路仍 eOk 守恒 " + std::to_string(okD) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(
             g_proxyHits.load() == N,
             "S1D: proxy 命中守恒 " + std::to_string(g_proxyHits.load()) + "/" + std::to_string(N));
         // 恢复穿透态：此后 console 日志仍会真实输出（后续 Section 不校验其内容）
@@ -1066,7 +1066,7 @@ int main()
                 YomkAPI::CONSOLE_LOG_INFO_TAG(hotTag, "lg4s1d_through_marker");
                 outThrough = cap.str();
             }
-            CHECK(
+            YOMK_TEST_CHECK(
                 outThrough.find("lg4s1d_through_marker") != std::string::npos,
                 "S1D: proxy 穿透态恢复默认输出（P4-e 登记依据）");
         }
@@ -1088,7 +1088,7 @@ int main()
             elapsedE = msSince(t0);
         }
         recordBaseline("S1E_console_hot_tag", N, elapsedE);
-        CHECK(okE == N, "S1E: 热 tag 写 eOk 守恒 " + std::to_string(okE) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(okE == N, "S1E: 热 tag 写 eOk 守恒 " + std::to_string(okE) + "/" + std::to_string(N));
 
         std::cout << "[BASELINE] S1_VmHWM:" << readVmHWM() << std::endl;
     }
@@ -1119,7 +1119,7 @@ int main()
             elapsedA = msSince(t0);
         }
         recordBaseline("S2A_file_create_sharded", N, elapsedA);
-        CHECK(okA == N, "S2A: 分片创建 eOk 守恒 " + std::to_string(okA) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(okA == N, "S2A: 分片创建 eOk 守恒 " + std::to_string(okA) + "/" + std::to_string(N));
 
         // ---- Phase B：单目录对照相（M 个 logger 全在同一目录）----
         // 与 Phase A 的每条均摊耗时对比，暴露单目录 inode 膨胀 / create_directories 退化
@@ -1138,7 +1138,7 @@ int main()
             elapsedB = msSince(t0);
         }
         recordBaseline("S2B_file_create_singledir", M, elapsedB);
-        CHECK(okB == M, "S2B: 单目录创建 eOk 守恒 " + std::to_string(okB) + "/" + std::to_string(M));
+        YOMK_TEST_CHECK(okB == M, "S2B: 单目录创建 eOk 守恒 " + std::to_string(okB) + "/" + std::to_string(M));
         std::cout << "[BASELINE] S2_per_create_us: sharded " << std::fixed << std::setprecision(1)
                   << (elapsedA * 1000.0 / static_cast<double>(N)) << " us vs singledir "
                   << (elapsedB * 1000.0 / static_cast<double>(M)) << " us (" << shardCount << " shards vs 1 dir)"
@@ -1146,14 +1146,14 @@ int main()
 
         // ---- Phase C：磁盘足迹与内省条目双守恒 ----
         const uint64_t diskFiles = countDiskFiles(s2Dir) + countDiskFiles(s2Single);
-        CHECK(
+        YOMK_TEST_CHECK(
             diskFiles == N + M,
             "S2C: 磁盘 .log 文件数守恒 = N + N/10（实测 " + std::to_string(diskFiles) + "/" + std::to_string(N + M) +
                 "）");
 
         const uint64_t c = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
         const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
-        CHECK(
+        YOMK_TEST_CHECK(
             (c == N + 1 && f == N + M),
             "S2C: 内省条目守恒 console=N+1 file=N+N/10（实测 " + std::to_string(c) + "/" + std::to_string(f) + "）");
         fileTotal = f;
@@ -1198,18 +1198,18 @@ int main()
             elapsedA = msSince(t0);
         }
         recordBaseline("S3A_file_buffer_write", totalLines, elapsedA);
-        CHECK(okA == totalLines, "S3A: 缓冲写 eOk 守恒 " + std::to_string(okA) + "/" + std::to_string(totalLines));
+        YOMK_TEST_CHECK(okA == totalLines, "S3A: 缓冲写 eOk 守恒 " + std::to_string(okA) + "/" + std::to_string(totalLines));
         {
             bool openOk = false;
             const uint64_t before = countFileLines(fs::path(sinkDir) / (sinks[0] + ".log"), openOk);
-            CHECK((openOk && before == 0), "S3A: 未 flush 前 sink0 磁盘文件仍 0 行（缓冲语义）");
+            YOMK_TEST_CHECK((openOk && before == 0), "S3A: 未 flush 前 sink0 磁盘文件仍 0 行（缓冲语义）");
         }
 
         // ---- Phase B：单 logger 大缓冲一次落盘（P4-a 主验证点）----
         const fs::path s3Dir = tmpDir / "s3";
         fs::create_directories(s3Dir, ec);
         const std::string bigName = "lg4s3_big";
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FILE_LOG_CREATE(s3Dir.string(), bigName).m_status == YomkResponse::eOk, "S3B: 大缓冲 logger 创建 eOk");
         const fs::path bigPath = s3Dir / (bigName + ".log");
         const uint64_t bigLines = 2 * N;
@@ -1229,7 +1229,7 @@ int main()
             elapsedB = msSince(t0);
         }
         recordBaseline("S3B_file_buffer_fill_big", bigLines, elapsedB);
-        CHECK(okB == bigLines, "S3B: 大缓冲填充 eOk 守恒 " + std::to_string(okB) + "/" + std::to_string(bigLines));
+        YOMK_TEST_CHECK(okB == bigLines, "S3B: 大缓冲填充 eOk 守恒 " + std::to_string(okB) + "/" + std::to_string(bigLines));
 
         YomkResponse flushBig(YomkResponse::eInvalid);
         double elapsedFlush = 0.0;
@@ -1239,7 +1239,7 @@ int main()
             flushBig = YOMK_FILE_LOG_WRITE(bigName);
             elapsedFlush = msSince(t0);
         }
-        CHECK(flushBig.m_status == YomkResponse::eOk, "S3B: 大缓冲一次落盘 eOk");
+        YOMK_TEST_CHECK(flushBig.m_status == YomkResponse::eOk, "S3B: 大缓冲一次落盘 eOk");
         {
             std::error_code sizeEc;
             const uintmax_t bytes = fs::file_size(bigPath, sizeEc);
@@ -1252,7 +1252,7 @@ int main()
         {
             bool openOk = false;
             const uint64_t readBack = countFileLines(bigPath, openOk);
-            CHECK(
+            YOMK_TEST_CHECK(
                 (openOk && readBack == bigLines),
                 "S3B: 大缓冲读回行数守恒 " + std::to_string(readBack) + "/" + std::to_string(bigLines));
         }
@@ -1273,7 +1273,7 @@ int main()
             elapsedC = msSince(t0);
         }
         recordBaseline("S3C_file_flush_k_loggers", K, elapsedC);
-        CHECK(okC == K, "S3C: K 个 logger flush eOk 守恒 " + std::to_string(okC) + "/" + std::to_string(K));
+        YOMK_TEST_CHECK(okC == K, "S3C: K 个 logger flush eOk 守恒 " + std::to_string(okC) + "/" + std::to_string(K));
         {
             uint64_t sumLines = 0;
             uint64_t badFiles = 0;
@@ -1287,8 +1287,8 @@ int main()
                 }
                 sumLines += n;
             }
-            CHECK(badFiles == 0, "S3C: 逐 sink 文件行数 = N/K（异常文件 " + std::to_string(badFiles) + " 个）");
-            CHECK(
+            YOMK_TEST_CHECK(badFiles == 0, "S3C: 逐 sink 文件行数 = N/K（异常文件 " + std::to_string(badFiles) + " 个）");
+            YOMK_TEST_CHECK(
                 sumLines == totalLines,
                 "S3C: K 个文件行数总和守恒 " + std::to_string(sumLines) + "/" + std::to_string(totalLines));
         }
@@ -1311,9 +1311,9 @@ int main()
             elapsedD = msSince(t0);
         }
         recordBaseline("S3D_file_flush_empty_buffer", N, elapsedD);
-        CHECK(okD == N, "S3D: 空缓冲重复 flush 仍 eOk 守恒 " + std::to_string(okD) + "/" + std::to_string(N));
+        YOMK_TEST_CHECK(okD == N, "S3D: 空缓冲重复 flush 仍 eOk 守恒 " + std::to_string(okD) + "/" + std::to_string(N));
         const uintmax_t sizeAfter = fs::file_size(bigPath, sizeEc);
-        CHECK(
+        YOMK_TEST_CHECK(
             (!sizeEc && sizeAfter == sizeBefore),
             "S3D: 空缓冲 flush 文件不增长（" + std::to_string(sizeAfter) + " == " + std::to_string(sizeBefore) + "）");
 
@@ -1331,7 +1331,7 @@ int main()
         const uint64_t entries = c + f;
         std::cout << "[CONFIG] S4 entries = " << entries << " (console " << c << " / file " << f
                   << ") rounds = " << introspectionRounds(entries) << std::endl;
-        CHECK(
+        YOMK_TEST_CHECK(
             (c == N + 1 && f == fileTotal + 1),
             "S4: 全规模条目守恒 console=N+1 file=N+N/10+1（实测 " + std::to_string(c) + "/" + std::to_string(f) + "）");
 
@@ -1341,14 +1341,14 @@ int main()
         uint64_t linesL = 0;
         const LatencyStat statL = measureIntrospection(rounds, false, badL, linesL);
         recordLatency("S4A_loggers", statL);
-        CHECK(
+        YOMK_TEST_CHECK(
             (badL == 0 && linesL == c),
             "S4A: LOGGERS eOk + console 行数守恒（" + std::to_string(linesL) + "/" + std::to_string(c) + "）");
         uint64_t badA = 0;
         uint64_t linesA = 0;
         const LatencyStat statA = measureIntrospection(rounds, true, badA, linesA);
         recordLatency("S4A_all", statA);
-        CHECK(
+        YOMK_TEST_CHECK(
             (badA == 0 && linesA == entries),
             "S4A: ALL eOk + 日志器数守恒（" + std::to_string(linesA) + "/" + std::to_string(entries) + "）");
 
@@ -1357,13 +1357,13 @@ int main()
         // S4 阶段表内条目不再增删，console/file 两端点各自单锁快照后计数等价；
         // 条目改报逐器门控层真值后，"全 on" 验证语义迁移至 LOGGER_INFO_GLOBAL（全局主闸态）
         YomkUnPackPkg(YOMK_LOGGER_INFO_GLOBAL().m_data, LoggerState, gsPkg);
-        CHECK(
+        YOMK_TEST_CHECK(
             (gsPkg != nullptr && gsPkg->d.m_debugOn && gsPkg->d.m_infoOn && gsPkg->d.m_warnOn &&
              gsPkg->d.m_errorOn && gsPkg->d.m_proxyOn),
             "S4B: 全局主闸状态全 on（proxy 已在 S1D 安装）");
         YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, listPkg);
         const yomk::LoggerState* st = firstConsoleState(listPkg);
-        CHECK(
+        YOMK_TEST_CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
             "S4B: ALL 首条 console 条目逐器门控真值全 on（未做具名开关，含 proxyOn）");
         uint64_t ac = 0;
@@ -1385,7 +1385,7 @@ int main()
         const bool identical =
             (listPkg != nullptr && listPkg->d.size() == entries && loggersLines.size() == c &&
              ac == c && af == f);
-        CHECK(identical, "S4B: ALL 与 LOGGERS 数量及类型计数一致（嵌套双锁原子快照）");
+        YOMK_TEST_CHECK(identical, "S4B: ALL 与 LOGGERS 数量及类型计数一致（嵌套双锁原子快照）");
 
         // ---- Phase C：单查 N 次（偶数查 console 名、奇数查 file 名；两表查找热路径量化点）----
         // LG6（P4-d 量化口径修正）：原 probes = N/100，@N=100000 仅 1000 次、总耗时 0.6-1.2 ms，
@@ -1395,7 +1395,7 @@ int main()
         // P4-d 的 std::map → std::unordered_map，详见 doc 头与 YomkLogger.h 容器选型注释）：
         // loggerInfo 按类型单表精确查找（console/file 各自 shared_lock），偶奇交替恰覆盖两表热路径。
         // 名字域校验：偶数 i 的 lg4s1_tag_i 由 S1A 创建（i ∈ 0..N-1）、奇数 i 的 lg4s2_fl_i 由
-        // S2A 创建（i ∈ 0..N-1），故 probes 提升到 N 后仍全部命中，CHECK(okProbe == probes) 的
+        // S2A 创建（i ∈ 0..N-1），故 probes 提升到 N 后仍全部命中，YOMK_TEST_CHECK(okProbe == probes) 的
         // 守恒语义不变。口径变更（单查改带 type）须与修复前基线同批采样才可比。
         const uint64_t probes = N;
         uint64_t okProbe = 0;
@@ -1415,7 +1415,7 @@ int main()
             elapsedProbe = msSince(t0);
         }
         recordBaseline("S4C_logger_single_query", probes, elapsedProbe);
-        CHECK(okProbe == probes, "S4C: 单查 eOk 守恒 " + std::to_string(okProbe) + "/" + std::to_string(probes));
+        YOMK_TEST_CHECK(okProbe == probes, "S4C: 单查 eOk 守恒 " + std::to_string(okProbe) + "/" + std::to_string(probes));
 
         // ---- Phase D：内省快照与 createFileLogger 独占锁相互阻塞量化 ----
         const fs::path s4Solo = tmpDir / "s4dsolo";
@@ -1438,7 +1438,7 @@ int main()
             }
             soloMs = msSince(t0);
         }
-        CHECK(soloOk == D, "S4D: 对照相 create eOk 守恒 " + std::to_string(soloOk) + "/" + std::to_string(D));
+        YOMK_TEST_CHECK(soloOk == D, "S4D: 对照相 create eOk 守恒 " + std::to_string(soloOk) + "/" + std::to_string(D));
 
         g_s4dStop.store(false);
         g_s4dCreateOk.store(0);
@@ -1503,15 +1503,15 @@ int main()
                   << " vs under_introspection " << concPerUs << " (ratio " << std::setprecision(2) << ratio
                   << ", snapshots " << g_s4dSnapCount.load() << ", wall " << std::setprecision(1) << concMs << " ms)"
                   << std::endl;
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s4dCreateOk.load() == D,
             "S4D: 并发相 create eOk 守恒 " + std::to_string(g_s4dCreateOk.load()) + "/" + std::to_string(D));
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s4dSnapBadStatus.load() == 0,
             "S4D: 内省快照无非 eOk（异常 " + std::to_string(g_s4dSnapBadStatus.load()) + " 次）");
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s4dSnapCount.load() > 0, "S4D: 内省线程确实产生快照（" + std::to_string(g_s4dSnapCount.load()) + " 次）");
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s4dSnapNonMono.load() == 0,
             "S4D: 快照条目数单调不减（P3-a 语义在规模下仍成立，违例 " + std::to_string(g_s4dSnapNonMono.load()) +
                 " 次）");
@@ -1597,29 +1597,29 @@ int main()
         }
         const uint64_t introspectTotal = kThreads * introspectPerThread;
         recordBaseline("S5A_mixed_churn", churnTotal * 5 + introspectTotal, elapsedChurn);
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5ConsoleOk.load() == churnTotal,
             "S5A: console 写 eOk 守恒 " + std::to_string(g_s5ConsoleOk.load()) + "/" + std::to_string(churnTotal));
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5FileOk.load() == churnTotal,
             "S5A: file 建 eOk 守恒 " + std::to_string(g_s5FileOk.load()) + "/" + std::to_string(churnTotal));
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5LogOk.load() == churnTotal,
             "S5A: file 写 eOk 守恒 " + std::to_string(g_s5LogOk.load()) + "/" + std::to_string(churnTotal));
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5IntrospectOk.load() == introspectTotal,
             "S5A: 内省 eOk 守恒 " + std::to_string(g_s5IntrospectOk.load()) + "/" + std::to_string(introspectTotal));
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5DeleteOk.load() == churnTotal,
             "S5A: 删除 eOk 守恒 " + std::to_string(g_s5DeleteOk.load()) + "/" + std::to_string(churnTotal));
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5PostDeleteNo.load() == churnTotal,
             "S5A: 删除后单查 eNo 守恒 " + std::to_string(g_s5PostDeleteNo.load()) + "/" + std::to_string(churnTotal));
-        CHECK(g_s5BadStatus.load() == 0, "S5A: 无非法状态码（异常 " + std::to_string(g_s5BadStatus.load()) + " 次）");
+        YOMK_TEST_CHECK(g_s5BadStatus.load() == 0, "S5A: 无非法状态码（异常 " + std::to_string(g_s5BadStatus.load()) + " 次）");
         {
             const uint64_t c = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
             const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
-            CHECK(
+            YOMK_TEST_CHECK(
                 (c == N + 1 && f == fileTotal + 1 + 2 * D),
                 "S5A: churn 后条目净变化 0（实测 console " + std::to_string(c) + " / file " + std::to_string(f) + "）");
         }
@@ -1668,13 +1668,13 @@ int main()
             elapsedDel = msSince(t0);
         }
         recordBaseline("S5B_delete_all", N + N + M + 1 + 2 * D, elapsedDel);
-        CHECK(
+        YOMK_TEST_CHECK(
             delConsoleOk == N,
             "S5B: console 组回收 eOk 守恒 " + std::to_string(delConsoleOk) + "/" + std::to_string(N));
-        CHECK(
+        YOMK_TEST_CHECK(
             delFileOk == N + M + 1 + 2 * D,
             "S5B: file 组回收 eOk 守恒 " + std::to_string(delFileOk) + "/" + std::to_string(N + M + 1 + 2 * D));
-        CHECK(delBad == 0, "S5B: 全量回收无非 eOk（异常 " + std::to_string(delBad) + " 次）");
+        YOMK_TEST_CHECK(delBad == 0, "S5B: 全量回收无非 eOk（异常 " + std::to_string(delBad) + " 次）");
 
         // ---- Phase C：残量扫除（MainLogger）→ LOGGERS 行数为 0 ----
         uint64_t residualDeleted = 0;
@@ -1707,7 +1707,7 @@ int main()
         }
         const size_t finalLeft = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size() +
                                  unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
-        CHECK(
+        YOMK_TEST_CHECK(
             finalLeft == 0,
             "S5C: 全量回收后 LOGGERS 行数为 0（残量扫除 " + std::to_string(residualDeleted) + " 个，实剩 " +
                 std::to_string(finalLeft) + "）");
@@ -1729,7 +1729,7 @@ int main()
                     }
                 }
             }
-            CHECK(
+            YOMK_TEST_CHECK(
                 (goneConsole == probes && goneFile == probes),
                 "S5C: 抽样单查全部 eNo（console " + std::to_string(goneConsole) + " / file " +
                     std::to_string(goneFile) + "，共 " + std::to_string(probes) + " 组）");
@@ -1746,7 +1746,7 @@ int main()
         // 清理前磁盘足迹守恒：churn/S4D 的 .log 仍在（删除接口不删磁盘文件，清理归调用方）
         const uint64_t expectDisk = N + M + 1 + 2 * D + churnTotal;
         const uint64_t disk = countDiskFiles(tmpDir);
-        CHECK(
+        YOMK_TEST_CHECK(
             disk == expectDisk,
             "S6: 清理前磁盘 .log 文件数守恒（实测 " + std::to_string(disk) + "/" + std::to_string(expectDisk) + "）");
 
@@ -1762,9 +1762,9 @@ int main()
 
         std::error_code rmEc;
         const uintmax_t removed = fs::remove_all(tmpDir, rmEc);
-        CHECK(!rmEc, "S6: remove_all 无错误码（" + rmEc.message() + "）");
+        YOMK_TEST_CHECK(!rmEc, "S6: remove_all 无错误码（" + rmEc.message() + "）");
         std::error_code existEc;
-        CHECK(!fs::exists(tmpDir, existEc), "S6: 临时目录已彻底清理（删除条目 " + std::to_string(removed) + "）");
+        YOMK_TEST_CHECK(!fs::exists(tmpDir, existEc), "S6: 临时目录已彻底清理（删除条目 " + std::to_string(removed) + "）");
 
         std::cout << "[BASELINE] S6_VmHWM:" << readVmHWM() << std::endl;
     }

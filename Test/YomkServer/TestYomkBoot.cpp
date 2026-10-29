@@ -22,7 +22,7 @@
 
 static int g_failed = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         if (!(cond))                                                              \
@@ -84,8 +84,8 @@ int main()
 {
     std::cout << "===== 1. boot(nullptr) 隐式 init =====" << std::endl;
     {
-        CHECK(YomkAPI::boot() == 0, "boot(nullptr) 返回 0（不经过三段）");
-        CHECK(YomkAPI::serverInstance() != nullptr, "boot(nullptr) 内部隐式 init 路径，单例被初始化");
+        YOMK_TEST_CHECK(YomkAPI::boot() == 0, "boot(nullptr) 返回 0（不经过三段）");
+        YOMK_TEST_CHECK(YomkAPI::serverInstance() != nullptr, "boot(nullptr) 内部隐式 init 路径，单例被初始化");
     }
 
     std::cout << "===== 2. before 失败短路 =====" << std::endl;
@@ -93,11 +93,11 @@ int main()
         resetGlobals();
         g_beforeRet = -1;
         int ret = YomkAPI::boot(new BootRecorder);
-        CHECK(ret == -1, "before 失败返回原值 -1");
-        CHECK(g_beforeCount == 1, "before 执行 1 次");
-        CHECK(g_startCount == 0, "start 被短路未执行");
-        CHECK(g_afterCount == 0, "after 被短路未执行");
-        CHECK(g_bootDtorCount == 1, "boot 对象用后即析构（所有权接管）");
+        YOMK_TEST_CHECK(ret == -1, "before 失败返回原值 -1");
+        YOMK_TEST_CHECK(g_beforeCount == 1, "before 执行 1 次");
+        YOMK_TEST_CHECK(g_startCount == 0, "start 被短路未执行");
+        YOMK_TEST_CHECK(g_afterCount == 0, "after 被短路未执行");
+        YOMK_TEST_CHECK(g_bootDtorCount == 1, "boot 对象用后即析构（所有权接管）");
     }
 
     std::cout << "===== 3. start 失败短路 =====" << std::endl;
@@ -105,11 +105,11 @@ int main()
         resetGlobals();
         g_startRet = -2;
         int ret = YomkAPI::boot(new BootRecorder);
-        CHECK(ret == -2, "start 失败返回原值 -2（非 -1 错误码同样透传）");
-        CHECK(g_beforeCount == 1, "before 执行 1 次");
-        CHECK(g_startCount == 1, "start 执行 1 次");
-        CHECK(g_afterCount == 0, "after 被短路未执行");
-        CHECK(g_bootDtorCount == 1, "boot 对象用后即析构（所有权接管）");
+        YOMK_TEST_CHECK(ret == -2, "start 失败返回原值 -2（非 -1 错误码同样透传）");
+        YOMK_TEST_CHECK(g_beforeCount == 1, "before 执行 1 次");
+        YOMK_TEST_CHECK(g_startCount == 1, "start 执行 1 次");
+        YOMK_TEST_CHECK(g_afterCount == 0, "after 被短路未执行");
+        YOMK_TEST_CHECK(g_bootDtorCount == 1, "boot 对象用后即析构（所有权接管）");
     }
 
     std::cout << "===== 4. after 失败透传 =====" << std::endl;
@@ -117,21 +117,21 @@ int main()
         resetGlobals();
         g_afterRet = -3;
         int ret = YomkAPI::boot(new BootRecorder);
-        CHECK(ret == -3, "after 失败返回原值 -3");
-        CHECK(
+        YOMK_TEST_CHECK(ret == -3, "after 失败返回原值 -3");
+        YOMK_TEST_CHECK(
             g_beforeCount == 1 && g_startCount == 1 && g_afterCount == 1, "三段各执行 1 次（after 为末段无短路语义）");
-        CHECK(g_bootDtorCount == 1, "boot 对象用后即析构（所有权接管）");
+        YOMK_TEST_CHECK(g_bootDtorCount == 1, "boot 对象用后即析构（所有权接管）");
     }
 
     std::cout << "===== 5. 全部成功执行序 =====" << std::endl;
     {
         resetGlobals();
         int ret = YomkAPI::boot(new BootRecorder);
-        CHECK(ret == 0, "三段全部成功返回 0");
-        CHECK(
+        YOMK_TEST_CHECK(ret == 0, "三段全部成功返回 0");
+        YOMK_TEST_CHECK(
             g_order.size() == 3 && g_order[0] == "before" && g_order[1] == "start" && g_order[2] == "after",
             "执行序严格 before -> start -> after");
-        CHECK(g_bootDtorCount == 1, "boot 对象用后即析构（所有权接管）");
+        YOMK_TEST_CHECK(g_bootDtorCount == 1, "boot 对象用后即析构（所有权接管）");
     }
 
     std::cout << (g_failed == 0 ? "ALL PASSED" : "SOME FAILED") << " (" << g_failed << " failed)" << std::endl;

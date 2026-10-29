@@ -26,7 +26,7 @@
 
 static int g_failed = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         if (!(cond))                                                              \
@@ -135,13 +135,13 @@ static void testAliveCallbacks(YomkServer* server)
     int intRet = cbInt(nullptr);
     YomkResponse macroResp = cbMacro(nullptr);
 
-    CHECK(voidCount.load() == 1, "存活：void 回调真实执行");
-    CHECK(
+    YOMK_TEST_CHECK(voidCount.load() == 1, "存活：void 回调真实执行");
+    YOMK_TEST_CHECK(
         respCount.load() == 1 && resp.m_status == YomkResponse::eOk && resp.m_msg == "alive",
         "存活：YomkResponse 回调正常执行");
-    CHECK(checkCount.load() == 1 && status == yomk::ContextChecker::eReject, "存活：ECheckStatus 回调返回真实值");
-    CHECK(intCount.load() == 1 && intRet == 42, "存活：其他返回值类型回调返回真实值");
-    CHECK(
+    YOMK_TEST_CHECK(checkCount.load() == 1 && status == yomk::ContextChecker::eReject, "存活：ECheckStatus 回调返回真实值");
+    YOMK_TEST_CHECK(intCount.load() == 1 && intRet == 42, "存活：其他返回值类型回调返回真实值");
+    YOMK_TEST_CHECK(
         srv->macroCount.load() == 1 && macroResp.m_status == YomkResponse::eOk && macroResp.m_msg == "macro",
         "存活：YomkBindWeakSelf 成员绑定回调真实执行");
 }
@@ -190,16 +190,16 @@ static void testDestroyDiscard(YomkServer* server)
     int intRet = cbInt(nullptr);
     YomkResponse macroResp = cbMacro(nullptr);
 
-    CHECK(voidCount.load() == 0, "销毁：void 回调丢弃，副作用计数未变化");
-    CHECK(
+    YOMK_TEST_CHECK(voidCount.load() == 0, "销毁：void 回调丢弃，副作用计数未变化");
+    YOMK_TEST_CHECK(
         respCount.load() == 0 && resp.m_status == YomkResponse::eNo &&
             resp.m_msg.find(DISCARD_MSG) != std::string::npos,
         "销毁：YomkResponse 回调丢弃，返回 eNo + 契约消息");
-    CHECK(
+    YOMK_TEST_CHECK(
         checkCount.load() == 0 && status == yomk::ContextChecker::eAccept,
         "销毁：ECheckStatus 回调丢弃，默认放行 eAccept");
-    CHECK(intCount.load() == 0 && intRet == 0, "销毁：其他返回值类型回调丢弃，返回 Ret{} 默认值");
-    CHECK(
+    YOMK_TEST_CHECK(intCount.load() == 0 && intRet == 0, "销毁：其他返回值类型回调丢弃，返回 Ret{} 默认值");
+    YOMK_TEST_CHECK(
         macroResp.m_status == YomkResponse::eNo && macroResp.m_msg.find(DISCARD_MSG) != std::string::npos,
         "销毁：YomkBindWeakSelf 绑定回调丢弃");
 }
@@ -211,13 +211,13 @@ static void testMarkDeletedDiscard(YomkServer* server)
     std::atomic<int> respCount{0};
 
     auto* rawSrv = new BindSrv(server);
-    CHECK(server->addService(rawSrv) == 0, "注册成功（框架 init 安装 /installed）");
+    YOMK_TEST_CHECK(server->addService(rawSrv) == 0, "注册成功（框架 init 安装 /installed）");
     // 经 shared_from_this 与框架共享所有权：删除后本副本使服务对象仍存活
     std::shared_ptr<YomkService> srv = rawSrv->shared_from_this();
 
     // 注销前：自动弱绑定 invoke 命中执行
     YomkResponse aliveResp = srv->invoke("/installed");
-    CHECK(
+    YOMK_TEST_CHECK(
         aliveResp.m_status == YomkResponse::eOk && aliveResp.m_msg == "alive",
         "注销前：YomkInstallFunc 自动弱绑定 invoke 命中执行");
 
@@ -230,18 +230,18 @@ static void testMarkDeletedDiscard(YomkServer* server)
         });
 
     // 持 shared_ptr 不释放，经框架删除置位注销标志（双层判活标志层独立于引用计数）
-    CHECK(server->delService("/BindSrv") == 0, "框架删除成功");
+    YOMK_TEST_CHECK(server->delService("/BindSrv") == 0, "框架删除成功");
 
     cbVoid();
     YomkResponse resp = cbResp(nullptr);
     YomkResponse invokeResp = srv->invoke("/installed");
 
-    CHECK(voidCount.load() == 0, "删除即停：void 回调立即丢弃，副作用计数未变化");
-    CHECK(
+    YOMK_TEST_CHECK(voidCount.load() == 0, "删除即停：void 回调立即丢弃，副作用计数未变化");
+    YOMK_TEST_CHECK(
         respCount.load() == 0 && resp.m_status == YomkResponse::eNo &&
             resp.m_msg.find(DISCARD_MSG) != std::string::npos,
         "删除即停：YomkResponse 回调立即丢弃（删除即停）");
-    CHECK(
+    YOMK_TEST_CHECK(
         invokeResp.m_status == YomkResponse::eNo && invokeResp.m_msg.find(DISCARD_MSG) != std::string::npos,
         "删除即停：自动弱绑定 invoke 返回丢弃契约消息");
 }
@@ -252,8 +252,8 @@ static void testConstructorWeakFunc(YomkServer* server)
     auto srv = std::make_shared<CtorBindSrv>(server);  // 构造期 weakFunc 触发框架告警
     YomkResponse resp = srv->ctorCb(nullptr);
 
-    CHECK(srv->count.load() == 0, "构造期告警：回调从未执行，副作用计数为零");
-    CHECK(
+    YOMK_TEST_CHECK(srv->count.load() == 0, "构造期告警：回调从未执行，副作用计数为零");
+    YOMK_TEST_CHECK(
         resp.m_status == YomkResponse::eNo && resp.m_msg.find(DISCARD_MSG) != std::string::npos,
         "构造期告警：绑定永久失效，持有后调用仍返回丢弃契约消息");
 }

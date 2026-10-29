@@ -35,7 +35,7 @@
 
 static int g_failed = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         if (!(cond))                                                              \
@@ -149,7 +149,7 @@ int main()
     {
         g_execCount.store(0);
         EventLoop loop;
-        CHECK(loop.start() == 0, "S1 start 返回 0");
+        YOMK_TEST_CHECK(loop.start() == 0, "S1 start 返回 0");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
@@ -166,8 +166,8 @@ int main()
             30000);
         auto t2 = std::chrono::steady_clock::now();
 
-        CHECK(drained, "S1 drain 完成（30s 看门狗）");
-        CHECK(g_execCount.load() == static_cast<long>(N), "S1 计数守恒（N/N，无丢失无重复）");
+        YOMK_TEST_CHECK(drained, "S1 drain 完成（30s 看门狗）");
+        YOMK_TEST_CHECK(g_execCount.load() == static_cast<long>(N), "S1 计数守恒（N/N，无丢失无重复）");
         recordBaseline(
             "S1 single-thread post", N, std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
         recordBaseline(
@@ -180,7 +180,7 @@ int main()
     {
         g_execCount.store(0);
         EventLoop loop;
-        CHECK(loop.start() == 0, "S2 start 返回 0");
+        YOMK_TEST_CHECK(loop.start() == 0, "S2 start 返回 0");
 
         auto t0 = std::chrono::steady_clock::now();
         {
@@ -212,8 +212,8 @@ int main()
             30000);
         auto t2 = std::chrono::steady_clock::now();
 
-        CHECK(drained, "S2 drain 完成（30s 看门狗）");
-        CHECK(g_execCount.load() == static_cast<long>(N), "S2 并发计数守恒（8 线程 N/N）");
+        YOMK_TEST_CHECK(drained, "S2 drain 完成（30s 看门狗）");
+        YOMK_TEST_CHECK(g_execCount.load() == static_cast<long>(N), "S2 并发计数守恒（8 线程 N/N）");
         recordBaseline(
             "S2 8-thread concurrent post", N, std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
         recordBaseline("S2 8-thread drain", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count());
@@ -226,13 +226,13 @@ int main()
         g_execCount.store(0);
         resetGate();
         EventLoop loop;
-        CHECK(loop.start() == 0, "S3 start 返回 0");
+        YOMK_TEST_CHECK(loop.start() == 0, "S3 start 返回 0");
 
         // gate 占住 worker：投递速率与消费速率解耦，纯测 post + 无界队列大规模增长/重分配
-        CHECK(
+        YOMK_TEST_CHECK(
             loop.post(YomkMkPtr(Event, yomk::Event("st3", nullptr, gateHandler(), "gate"))) == 0,
             "S3 post gate 事件返回 0");
-        CHECK(waitGateStarted(2000), "S3 gate 已占住工作线程");
+        YOMK_TEST_CHECK(waitGateStarted(2000), "S3 gate 已占住工作线程");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
@@ -242,7 +242,7 @@ int main()
         auto t1 = std::chrono::steady_clock::now();
 
         std::string line = loop.infoLine("st3", 0);
-        CHECK(
+        YOMK_TEST_CHECK(
             line.find("pending:" + std::to_string(N)) != std::string::npos,
             "S3 积压确认（pending:N==" + std::to_string(N) + "，无界队列大规模增长无崩溃）");
 
@@ -256,8 +256,8 @@ int main()
             30000);
         auto t2 = std::chrono::steady_clock::now();
 
-        CHECK(drained, "S3 释放后 drain 完成（30s 看门狗）");
-        CHECK(g_execCount.load() == static_cast<long>(N), "S3 积压后计数守恒（N/N）");
+        YOMK_TEST_CHECK(drained, "S3 释放后 drain 完成（30s 看门狗）");
+        YOMK_TEST_CHECK(g_execCount.load() == static_cast<long>(N), "S3 积压后计数守恒（N/N）");
         recordBaseline(
             "S3 backlog-only post (gate held)",
             N,
@@ -274,7 +274,7 @@ int main()
     {
         g_execCount.store(0);
         EventLoop loop;
-        CHECK(loop.start() == 0, "S4 start 返回 0");
+        YOMK_TEST_CHECK(loop.start() == 0, "S4 start 返回 0");
 
         const size_t tagLen = 4096;
         const size_t count = N / 10 >= 1000 ? N / 10 : 1000;
@@ -295,8 +295,8 @@ int main()
             30000);
         auto t2 = std::chrono::steady_clock::now();
 
-        CHECK(drained, "S4 drain 完成（30s 看门狗）");
-        CHECK(g_execCount.load() == static_cast<long>(count), "S4 大数据量计数守恒（无崩溃无丢失）");
+        YOMK_TEST_CHECK(drained, "S4 drain 完成（30s 看门狗）");
+        YOMK_TEST_CHECK(g_execCount.load() == static_cast<long>(count), "S4 大数据量计数守恒（无崩溃无丢失）");
         recordBaseline(
             "S4 big-tag post (" + std::to_string(count) + " x " + std::to_string(tagLen) + "B)",
             count,
@@ -311,8 +311,8 @@ int main()
     {
         g_execCount.store(0);
         auto server = YOMK_INIT(1);
-        CHECK(server != nullptr, "S5 YOMK_INIT 返回非空服务器");
-        CHECK(YOMK_EVENTLOOP_START("stress_loop", nullptr).m_status == YomkResponse::eOk, "S5 START 返回 eOk");
+        YOMK_TEST_CHECK(server != nullptr, "S5 YOMK_INIT 返回非空服务器");
+        YOMK_TEST_CHECK(YOMK_EVENTLOOP_START("stress_loop", nullptr).m_status == YomkResponse::eOk, "S5 START 返回 eOk");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
@@ -323,8 +323,8 @@ int main()
         bool drained = waitUntil([N] { return g_execCount.load() == static_cast<long>(N); }, 30000);
         auto t2 = std::chrono::steady_clock::now();
 
-        CHECK(drained, "S5 drain 完成（30s 看门狗）");
-        CHECK(g_execCount.load() == static_cast<long>(N), "S5 API 层计数守恒（N/N，路由+解包路径不丢失）");
+        YOMK_TEST_CHECK(drained, "S5 drain 完成（30s 看门狗）");
+        YOMK_TEST_CHECK(g_execCount.load() == static_cast<long>(N), "S5 API 层计数守恒（N/N，路由+解包路径不丢失）");
         recordBaseline(
             "S5 API-level post (YOMK_EVENTLOOP_POST)",
             N,
@@ -332,7 +332,7 @@ int main()
         recordBaseline(
             "S5 API-level end-to-end", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t0).count());
 
-        CHECK(YOMK_EVENTLOOP_DESTROY("stress_loop").m_status == YomkResponse::eOk, "S5 DESTROY 返回 eOk");
+        YOMK_TEST_CHECK(YOMK_EVENTLOOP_DESTROY("stress_loop").m_status == YomkResponse::eOk, "S5 DESTROY 返回 eOk");
         YOMK_SHUTDOWN();
     }
 

@@ -57,7 +57,7 @@
  *   整体写入不被切断，故 marker 计数守恒在所有并发段可用；整行格式完整性依赖
  *   ConsoleLogger::s_mutex（P4-h 前为实例级 m_mutex，仅同一 logger 段可用；升级后
  *   全实例同一把，跨 logger 段同样可用）。
- * - 全部 CHECK 在捕获作用域外（LG1 教训：捕获域内断言输出被 rdbuf 重定向吞没）。
+ * - 全部 YOMK_TEST_CHECK 在捕获作用域外（LG1 教训：捕获域内断言输出被 rdbuf 重定向吞没）。
  * - 其余沿用 FPC3 模式：文件级 atomic 计数/停止门/起始屏障（TSan-clean），
  *   std::mutex + std::vector 收集内省快照，临时目录收尾 remove_all。
  *
@@ -91,7 +91,7 @@ namespace fs = std::filesystem;
 static int g_failed = 0;
 static int g_total = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         ++g_total;                                                                \
@@ -424,12 +424,12 @@ static fs::path testTmpRoot()
 int main()
 {
     auto server = YOMK_INIT(1);
-    CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
+    YOMK_TEST_CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
 
     fs::path tmpDir = testTmpRoot() / ("yomk_logger_lg3_" + std::to_string(::getpid()));
     std::error_code ec;
     fs::create_directories(tmpDir, ec);
-    CHECK(!ec, "临时目录创建成功: " + tmpDir.string());
+    YOMK_TEST_CHECK(!ec, "临时目录创建成功: " + tmpDir.string());
 
     // ========================================================================
     // Section 1：并发 console_log 守恒 + 行完整性（只读命中路径）
@@ -447,7 +447,7 @@ int main()
         g_s1OkCount.store(0);
 
         // 预热：主线程先创建该 tag 的 console logger，使并发段全部走 shared_lock 命中路径
-        CHECK(
+        YOMK_TEST_CHECK(
             YomkAPI::CONSOLE_LOG_INFO_TAG(kTag, "lg3s1_warmup").m_status == YomkResponse::eOk,
             "S1: 预热创建 console logger " + kTag);
 
@@ -482,16 +482,16 @@ int main()
             out = cap.str();
         }
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s1OkCount.load() == kTotal,
             "S1: 响应守恒 eOk == " + std::to_string(kTotal) + "（实际 " + std::to_string(g_s1OkCount.load()) + "）");
 
         auto markers = collectTailMarkers(out, "lg3s1_t");
-        CHECK(
+        YOMK_TEST_CHECK(
             markers.size() == kTotal,
             "S1: 唯一 marker 数 == " + std::to_string(kTotal) + "（实际 " + std::to_string(markers.size()) +
                 "）——并发输出不丢");
-        CHECK(
+        YOMK_TEST_CHECK(
             countBadOccurrence(markers) == 0,
             "S1: 全部 marker 恰出现 1 次（无重复、无撕裂）——ConsoleLogger::s_mutex 整行互斥");
 
@@ -517,16 +517,16 @@ int main()
                 }
             }
         }
-        CHECK(
+        YOMK_TEST_CHECK(
             brokenLines == 0,
             "S1: 含 marker 的行全部完整（时间戳+[Info ]+[tag] 格式，撕裂行 " + std::to_string(brokenLines) + " 条）");
-        CHECK(
+        YOMK_TEST_CHECK(
             intactLines == kTotal,
             "S1: 完整行数 == " + std::to_string(kTotal) + "（实际 " + std::to_string(intactLines) + "）");
 
         // 同一 tag 仅一个 logger 实例（并发命中路径不重复创建；行内容即纯名）
         auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console"));
-        CHECK(
+        YOMK_TEST_CHECK(
             countLinesContaining(loggersLines, kTag) == 1,
             "S1: LOGGERS 中 " + kTag + " 恰 1 行（无重复实例）");
     }
@@ -575,26 +575,26 @@ int main()
             out = cap.str();
         }
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s2aOkCount.load() == kTotal,
             "S2a: 争用创建全部 eOk == " + std::to_string(kTotal) + "（实际 " + std::to_string(g_s2aOkCount.load()) +
                 "）");
 
         auto loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console"));
-        CHECK(
+        YOMK_TEST_CHECK(
             countLinesContaining(loggersLines, kRaceTag) == 1,
             "S2a: LOGGERS 中 " + kRaceTag + " 恰 1 行——双检锁下并发 miss 仅创建一个实例");
 
         auto raceMarkers = collectTailMarkers(out, "lg3s2a_t");
-        CHECK(
+        YOMK_TEST_CHECK(
             raceMarkers.size() == kTotal,
             "S2a: 唯一 marker 数 == " + std::to_string(kTotal) + "（实际 " + std::to_string(raceMarkers.size()) +
                 "）——同一实例被并发复用无丢失");
-        CHECK(countBadOccurrence(raceMarkers) == 0, "S2a: 全部 marker 恰出现 1 次（不丢不重）");
+        YOMK_TEST_CHECK(countBadOccurrence(raceMarkers) == 0, "S2a: 全部 marker 恰出现 1 次（不丢不重）");
 
         auto raceInfo = YOMK_LOGGER_INFO_LOGGER(kRaceTag, "console");
         YomkUnPackPkg(raceInfo.m_data, LoggerInfo, racePkg);
-        CHECK(
+        YOMK_TEST_CHECK(
             (raceInfo.m_status == YomkResponse::eOk && racePkg && racePkg->d.m_type == "console"),
             "S2a: LOGGER(" + kRaceTag + ") 命中 console 类型");
 
@@ -637,18 +637,18 @@ int main()
             }
         }
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s2bOkCount.load() == kSpreadTotal,
             "S2b: 分散创建全部 eOk == " + std::to_string(kSpreadTotal) + "（实际 " +
                 std::to_string(g_s2bOkCount.load()) + "）");
 
         const uint64_t consoleAfter = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
         const uint64_t fileAfter = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
-        CHECK(
+        YOMK_TEST_CHECK(
             consoleAfter - consoleBefore == kSpreadThreads,
             "S2b: console logger 新增恰 " + std::to_string(kSpreadThreads) + " 个（实际新增 " +
                 std::to_string(consoleAfter - consoleBefore) + "）");
-        CHECK(fileAfter == fileBefore, "S2b: file logger 数量未受影响");
+        YOMK_TEST_CHECK(fileAfter == fileBefore, "S2b: file logger 数量未受影响");
 
         bool allSpreadHit = true;
         for (int t = 0; t < kSpreadThreads; ++t)
@@ -661,7 +661,7 @@ int main()
                 allSpreadHit = false;
             }
         }
-        CHECK(allSpreadHit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 类型");
+        YOMK_TEST_CHECK(allSpreadHit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 类型");
 
         // ---- S2c：P3-b 判定登记（LG6 已收口）----
         // S2a（同一新 tag 8 线程争用）与 S2b（8 个新 tag 并发创建）是 consoleLog 中
@@ -690,7 +690,7 @@ int main()
         g_s3Stop.store(false);
 
         // 首次设置为 v1（此后进程内 proxy 恒为 on，v1/v2 交替更新 func）
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_SET_CONSOLE_LOG_PROXY(s3ProxyV1).m_status == YomkResponse::eOk,
             "S3: SET_CONSOLE_LOG_PROXY(v1) 返回 eOk");
 
@@ -764,16 +764,16 @@ int main()
         uint64_t v2 = g_s3V2Hits.load();
         uint64_t total = g_s3LogTotal.load();
 
-        CHECK(g_s3SetOk.load() == kSetRounds, "S3: SET 交替 " + std::to_string(kSetRounds) + " 轮全部 eOk");
-        CHECK(
+        YOMK_TEST_CHECK(g_s3SetOk.load() == kSetRounds, "S3: SET 交替 " + std::to_string(kSetRounds) + " 轮全部 eOk");
+        YOMK_TEST_CHECK(
             v1 + v2 == total,
             "S3: 写读交错守恒 v1(" + std::to_string(v1) + ") + v2(" + std::to_string(v2) + ") == log 总数(" +
                 std::to_string(total) + ")——无 torn std::function（锁内拷贝快照生效）");
-        CHECK(v1 > 0, "S3: v1 实现被观测到");
-        CHECK(v2 > 0, "S3: v2 实现被观测到（更新确实生效）");
-        CHECK(total > 0, "S3: caller 线程确实执行了日志调用");
-        CHECK(g_s3LogOk.load() == total, "S3: 全部 console_log 返回 eOk（穿透态不影响响应码）");
-        CHECK(
+        YOMK_TEST_CHECK(v1 > 0, "S3: v1 实现被观测到");
+        YOMK_TEST_CHECK(v2 > 0, "S3: v2 实现被观测到（更新确实生效）");
+        YOMK_TEST_CHECK(total > 0, "S3: caller 线程确实执行了日志调用");
+        YOMK_TEST_CHECK(g_s3LogOk.load() == total, "S3: 全部 console_log 返回 eOk（穿透态不影响响应码）");
+        YOMK_TEST_CHECK(
             g_s5BadProxyState.load() == 0,
             "S3: 并发内省 ALL 控制台状态全部含 proxyOn（非法 " + std::to_string(g_s5BadProxyState.load()) +
                 " 次）");
@@ -836,21 +836,21 @@ int main()
             }
         }
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s4aCreateOk.load() == 1,
             "S4a: 8 线程并发同名创建恰 1 个 eOk（实际 " + std::to_string(g_s4aCreateOk.load()) + "）");
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s4aCreateNo.load() == kThreads - 1,
             "S4a: 其余 " + std::to_string(kThreads - 1) + " 个 eNo \"logger name already exists.\"（实际 " +
                 std::to_string(g_s4aCreateNo.load()) + "）——unique_lock 互斥下重名检查守恒");
-        CHECK(fs::exists(sameDir / (kSameName + ".log")), "S4a: 胜出者日志文件已落盘");
+        YOMK_TEST_CHECK(fs::exists(sameDir / (kSameName + ".log")), "S4a: 胜出者日志文件已落盘");
 
         const uint64_t fileAfterA = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
         const uint64_t consoleAfterA = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
-        CHECK(
+        YOMK_TEST_CHECK(
             fileAfterA - fileBeforeA == 1,
             "S4a: file logger 仅新增 1 个（无重复注册，实际新增 " + std::to_string(fileAfterA - fileBeforeA) + "）");
-        CHECK(consoleAfterA == consoleBeforeA, "S4a: console logger 数量未受影响");
+        YOMK_TEST_CHECK(consoleAfterA == consoleBeforeA, "S4a: console logger 数量未受影响");
 
         // ---- S4b：异名并发——全部 eOk ----
         fs::path spreadDir = tmpDir / "s4b";
@@ -884,12 +884,12 @@ int main()
             }
         }
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s4bCreateOk.load() == kThreads,
             "S4b: 8 线程异名并发创建全部 eOk（实际 " + std::to_string(g_s4bCreateOk.load()) + "）");
 
         const uint64_t fileAfterB = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
-        CHECK(
+        YOMK_TEST_CHECK(
             fileAfterB - fileAfterA == kThreads,
             "S4b: file logger 新增恰 " + std::to_string(kThreads) + " 个（实际新增 " +
                 std::to_string(fileAfterB - fileAfterA) + "）");
@@ -906,7 +906,7 @@ int main()
         g_s4cWriteOk.store(0);
         g_s4cStop.store(false);
 
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FILE_LOG_CREATE(sinkDir.string(), kSinkName).m_status == YomkResponse::eOk,
             "S4c: 创建 sink file logger 成功");
 
@@ -971,29 +971,29 @@ int main()
         }
 
         // 收尾：把残余缓冲全部落盘
-        CHECK(YOMK_FILE_LOG_WRITE(kSinkName).m_status == YomkResponse::eOk, "S4c: 收尾 WRITE 返回 eOk");
+        YOMK_TEST_CHECK(YOMK_FILE_LOG_WRITE(kSinkName).m_status == YomkResponse::eOk, "S4c: 收尾 WRITE 返回 eOk");
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s4cLogOk.load() == kSinkTotal,
             "S4c: 并发写入响应守恒 eOk == " + std::to_string(kSinkTotal) + "（实际 " +
                 std::to_string(g_s4cLogOk.load()) + "）");
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s4cWriteOk.load() > 0,
             "S4c: writer 线程确实执行了落盘（" + std::to_string(g_s4cWriteOk.load()) + " 次 eOk）");
 
         std::string sinkContent = readFile(sinkDir / (kSinkName + ".log"));
         uint64_t sinkLines = countLines(sinkContent);
-        CHECK(
+        YOMK_TEST_CHECK(
             sinkLines == kSinkTotal,
             "S4c: 落盘总行数 == " + std::to_string(kSinkTotal) + "（实际 " + std::to_string(sinkLines) +
                 "）——log/write 共用 m_logBufferMutex（P4-a 后缓冲为 std::string），缓冲交接不丢行不切行");
 
         auto sinkMarkers = collectTailMarkers(sinkContent, "lg3s4c_t");
-        CHECK(
+        YOMK_TEST_CHECK(
             sinkMarkers.size() == kSinkTotal,
             "S4c: 落盘唯一 marker 数 == " + std::to_string(kSinkTotal) + "（实际 " +
                 std::to_string(sinkMarkers.size()) + "）");
-        CHECK(countBadOccurrence(sinkMarkers) == 0, "S4c: 全部 marker 恰落盘 1 次（不丢不重）——并发写落盘守恒核心证明");
+        YOMK_TEST_CHECK(countBadOccurrence(sinkMarkers) == 0, "S4c: 全部 marker 恰落盘 1 次（不丢不重）——并发写落盘守恒核心证明");
 
         // ---- S4d：多写者并发 WRITE（缓冲清空后幂等，无重复落盘）----
         constexpr int kWriterThreadsD = 4;
@@ -1004,7 +1004,7 @@ int main()
 
         g_s4dWriteOk.store(0);
 
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FILE_LOG_CREATE(multiDir.string(), kMultiName).m_status == YomkResponse::eOk,
             "S4d: 创建 multi file logger 成功");
         for (uint64_t i = 0; i < kMultiLines; ++i)
@@ -1043,18 +1043,18 @@ int main()
             }
         }
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s4dWriteOk.load() == kWriterThreadsD * kWriteRoundsD,
             "S4d: " + std::to_string(kWriterThreadsD) + " 线程 × " + std::to_string(kWriteRoundsD) +
                 " 轮并发 WRITE 全部 eOk（实际 " + std::to_string(g_s4dWriteOk.load()) + "）");
 
         std::string multiContent = readFile(multiDir / (kMultiName + ".log"));
-        CHECK(
+        YOMK_TEST_CHECK(
             countLines(multiContent) == kMultiLines,
             "S4d: 落盘行数 == " + std::to_string(kMultiLines) + "（实际 " + std::to_string(countLines(multiContent)) +
                 "）——缓冲清空后 WRITE 幂等，无重复落盘");
         auto multiMarkers = collectTailMarkers(multiContent, "lg3s4d_i");
-        CHECK(countBadOccurrence(multiMarkers) == 0, "S4d: 全部 marker 恰落盘 1 次（多写者无撕裂）");
+        YOMK_TEST_CHECK(countBadOccurrence(multiMarkers) == 0, "S4d: 全部 marker 恰落盘 1 次（多写者无撕裂）");
     }
 
     // ========================================================================
@@ -1142,17 +1142,17 @@ int main()
 
         // 预热 sink：churn 之外的所有日志调用一律使用已存在 logger，
         // 确保新 logger 只由 churn 线程“先 console 后 file”成对产生（判别式前提）
-        CHECK(
+        YOMK_TEST_CHECK(
             YomkAPI::CONSOLE_LOG_INFO_TAG(kConsoleSink, "lg3s5_warmup").m_status == YomkResponse::eOk,
             "S5: 预热 console sink logger 成功");
-        CHECK(
+        YOMK_TEST_CHECK(
             YOMK_FILE_LOG_CREATE(pairDir.string(), kFileSink).m_status == YomkResponse::eOk,
             "S5: 预热 file sink logger 成功");
 
         // 基线快照（先 file 后 console：file 采样时刻早于 console，配合成对创建语义保证 C>=F 判别式有效）
         const uint64_t baseF = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
         const uint64_t baseC = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
-        CHECK(
+        YOMK_TEST_CHECK(
             (baseC > 0 && baseF > 0),
             "S5: 基线非空（console " + std::to_string(baseC) + " / file " + std::to_string(baseF) + "）");
 
@@ -1381,11 +1381,11 @@ int main()
         }
 
         // ---- 收尾：四级别全 ON + file sink 落盘 ----
-        CHECK(YOMK_ON_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eOk, "S5: 收尾 ON debug eOk");
-        CHECK(YOMK_ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S5: 收尾 ON info eOk");
-        CHECK(YOMK_ON_CONSOLE_LOG_WARN().m_status == YomkResponse::eOk, "S5: 收尾 ON warn eOk");
-        CHECK(YOMK_ON_CONSOLE_LOG_ERROR().m_status == YomkResponse::eOk, "S5: 收尾 ON error eOk");
-        CHECK(YOMK_FILE_LOG_WRITE(kFileSink).m_status == YomkResponse::eOk, "S5: 收尾 file sink WRITE eOk");
+        YOMK_TEST_CHECK(YOMK_ON_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eOk, "S5: 收尾 ON debug eOk");
+        YOMK_TEST_CHECK(YOMK_ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S5: 收尾 ON info eOk");
+        YOMK_TEST_CHECK(YOMK_ON_CONSOLE_LOG_WARN().m_status == YomkResponse::eOk, "S5: 收尾 ON warn eOk");
+        YOMK_TEST_CHECK(YOMK_ON_CONSOLE_LOG_ERROR().m_status == YomkResponse::eOk, "S5: 收尾 ON error eOk");
+        YOMK_TEST_CHECK(YOMK_FILE_LOG_WRITE(kFileSink).m_status == YomkResponse::eOk, "S5: 收尾 file sink WRITE eOk");
 
         // ---- P3-a 判别式：对每个快照验证 C >= F（相对基线增量）----
         // 收尾时 churn 已结束、两表静态；采样顺序保持与快照线程一致（先 file 后 console）
@@ -1435,62 +1435,62 @@ int main()
         }
         g_s5AtomicityViolations.store(loggersViolations + allViolations);
 
-        CHECK(snapshotCount > 0, "S5: 收集到 " + std::to_string(snapshotCount) + " 个内省快照");
-        CHECK(
+        YOMK_TEST_CHECK(snapshotCount > 0, "S5: 收集到 " + std::to_string(snapshotCount) + " 个内省快照");
+        YOMK_TEST_CHECK(
             loggersViolations == 0,
             "S5: LOGGERS 快照 C>=F 恒成立（违例 " + std::to_string(loggersViolations) +
                 " 个）——按类型端点先 file 后 console 采样 + churn 成对创建语义实证");
-        CHECK(
+        YOMK_TEST_CHECK(
             allViolations == 0,
             "S5: ALL 快照 C>=F 恒成立（违例 " + std::to_string(allViolations) + " 个）——listAll 同为原子快照");
-        CHECK(
+        YOMK_TEST_CHECK(
             nonMonotonic == 0,
             "S5: 同线程快照序列总行数单调不减（递减 " + std::to_string(nonMonotonic) +
                 " 次）——logger 只增不减且快照不丢行");
-        CHECK(
+        YOMK_TEST_CHECK(
             exceedFinal == 0,
             "S5: 全部快照行数 <= 最终值 " + std::to_string(finalTotal) + "（超出 " + std::to_string(exceedFinal) +
                 " 次）——无幻觉行");
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5BadProxyState.load() == 0,
             "S5: 并发下 ALL 控制台状态全部含 proxyOn（非法 " + std::to_string(g_s5BadProxyState.load()) + " 次）");
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5BadStatus.load() == 0,
             "S5: 全部响应码属于 {eInvalid,eOk,eNo}（非法状态码 " + std::to_string(g_s5BadStatus.load()) + " 次）");
 
         // ---- churn 守恒 ----
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5PairConsoleOk.load() == kPairTotal,
             "S5: 成对创建 console 侧守恒 eOk == " + std::to_string(kPairTotal) + "（实际 " +
                 std::to_string(g_s5PairConsoleOk.load()) + "）");
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5PairFileOk.load() == kPairTotal,
             "S5: 成对创建 file 侧守恒 eOk == " + std::to_string(kPairTotal) + "（实际 " +
                 std::to_string(g_s5PairFileOk.load()) + "）");
-        CHECK(g_s5PairFileNo.load() == 0, "S5: 成对创建无重名失败（唯一名设计）");
-        CHECK(
+        YOMK_TEST_CHECK(g_s5PairFileNo.load() == 0, "S5: 成对创建无重名失败（唯一名设计）");
+        YOMK_TEST_CHECK(
             finalC - baseC == kPairTotal,
             "S5: console logger 最终新增 == " + std::to_string(kPairTotal) + "（实际 " +
                 std::to_string(finalC - baseC) + "）——并发创建无丢失");
-        CHECK(
+        YOMK_TEST_CHECK(
             finalF - baseF == kPairTotal + 0,
             "S5: file logger 最终新增 == " + std::to_string(kPairTotal) + "（实际 " + std::to_string(finalF - baseF) +
                 "）——并发创建无丢失");
 
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5ConsoleOk.load() == kConsoleThreads * kConsoleRounds,
             "S5: console 日志守恒 eOk == " + std::to_string(kConsoleThreads * kConsoleRounds) + "（实际 " +
                 std::to_string(g_s5ConsoleOk.load()) + "）——级别开关并发翻转不影响响应码");
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5FileOk.load() == kFileThreads * kFileRounds,
             "S5: file 日志守恒 eOk == " + std::to_string(kFileThreads * kFileRounds) + "（实际 " +
                 std::to_string(g_s5FileOk.load()) + "）");
-        CHECK(
+        YOMK_TEST_CHECK(
             g_s5SwitchOk.load() == kSwitchThreads * kSwitchRounds,
             "S5: 级别开关翻转守恒 eOk == " + std::to_string(kSwitchThreads * kSwitchRounds) + "（实际 " +
                 std::to_string(g_s5SwitchOk.load()) + "）");
-        CHECK(g_s5WriteOk.load() > 0, "S5: 周期性 WRITE 确实执行（" + std::to_string(g_s5WriteOk.load()) + " 次 eOk）");
-        CHECK(
+        YOMK_TEST_CHECK(g_s5WriteOk.load() > 0, "S5: 周期性 WRITE 确实执行（" + std::to_string(g_s5WriteOk.load()) + " 次 eOk）");
+        YOMK_TEST_CHECK(
             g_s5IntrospectOk.load() > 0,
             "S5: 内省线程确实观测到 ALL（" + std::to_string(g_s5IntrospectOk.load()) + " 次）");
 
@@ -1498,17 +1498,17 @@ int main()
         // 条目改报逐器门控层真值后，"收尾全 ON" 验证语义迁移至 LOGGER_INFO_GLOBAL（全局主闸态）；
         // ALL 条目断言保留，验证未做具名开关时逐器真值恒 on（退化性基线）
         YomkUnPackPkg(YOMK_LOGGER_INFO_GLOBAL().m_data, LoggerState, finalGs);
-        CHECK(
+        YOMK_TEST_CHECK(
             (finalGs != nullptr && finalGs->d.m_debugOn && finalGs->d.m_infoOn &&
              finalGs->d.m_warnOn && finalGs->d.m_errorOn && finalGs->d.m_proxyOn),
             "S5: 收尾四级别全 ON 后全局主闸状态全 on（含 S3 已设的 proxyOn）");
         YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, finalListPkg);
         const yomk::LoggerState* finalSt = firstConsoleState(finalListPkg);
-        CHECK(
+        YOMK_TEST_CHECK(
             (finalSt != nullptr && finalSt->m_debugOn && finalSt->m_infoOn &&
              finalSt->m_warnOn && finalSt->m_errorOn && finalSt->m_proxyOn),
             "S5: 收尾 ALL 首条 console 条目逐器门控真值全 on（未做具名开关，含 proxyOn）");
-        CHECK(
+        YOMK_TEST_CHECK(
             finalListPkg != nullptr && finalListPkg->d.size() == finalTotal,
             "S5: ALL 日志器数 == LOGGERS 行数（" +
                 std::to_string(finalListPkg ? finalListPkg->d.size() : 0) + " vs " +
@@ -1516,7 +1516,7 @@ int main()
 
         std::string sinkContent = readFile(pairDir / (kFileSink + ".log"));
         uint64_t sinkLines = countLines(sinkContent);
-        CHECK(
+        YOMK_TEST_CHECK(
             sinkLines == kFileThreads * kFileRounds,
             "S5: file sink 落盘行数 == " + std::to_string(kFileThreads * kFileRounds) + "（实际 " +
                 std::to_string(sinkLines) + "）——级别翻转与并发 WRITE 下不丢不重");

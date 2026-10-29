@@ -24,7 +24,7 @@
 
 static int g_failed = 0;
 
-#define CHECK(cond, msg)                                                          \
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
     {                                                                             \
         if (!(cond))                                                              \
@@ -120,25 +120,25 @@ public:
 // 1. 命名：注册前设置/读取一致、空名拒绝
 static void testNameBeforeRegister(DemoService* demo)
 {
-    CHECK(demo->name() == "/DemoService", "注册前 name() 读取与构造设置一致");
+    YOMK_TEST_CHECK(demo->name() == "/DemoService", "注册前 name() 读取与构造设置一致");
     demo->name("");  // 空名设置应被拒绝
-    CHECK(demo->name() == "/DemoService", "空名设置被拒，名字保持不变");
+    YOMK_TEST_CHECK(demo->name() == "/DemoService", "空名设置被拒，名字保持不变");
 }
 
 // 2. 注册与注册锁定：addService 成功返回 0，注册后改名被拒
 static void testRegisterAndLockName(DemoService* demo)
 {
-    CHECK(YOMK_ADD_SERVICE(demo) == 0, "addService 注册成功返回 0");
+    YOMK_TEST_CHECK(YOMK_ADD_SERVICE(demo) == 0, "addService 注册成功返回 0");
     demo->name("/NewName");  // 注册后改名应被拒绝
-    CHECK(demo->name() == "/DemoService", "注册后改名被拒，名字与注册键一致（锁名承诺）");
+    YOMK_TEST_CHECK(demo->name() == "/DemoService", "注册后改名被拒，名字与注册键一致（锁名承诺）");
 }
 
 // 3. YOMK_ADD_SERVICE 两参形式：注册前改名生效
 static void testAddServiceWithName()
 {
     auto* renamed = new DemoService(YOMK_SERVER_P);
-    CHECK(YOMK_ADD_SERVICE(renamed, "/RenamedDemo") == 0, "两参 YOMK_ADD_SERVICE 注册成功返回 0");
-    CHECK(renamed->name() == "/RenamedDemo", "注册前经两参形式改名生效");
+    YOMK_TEST_CHECK(YOMK_ADD_SERVICE(renamed, "/RenamedDemo") == 0, "两参 YOMK_ADD_SERVICE 注册成功返回 0");
+    YOMK_TEST_CHECK(renamed->name() == "/RenamedDemo", "注册前经两参形式改名生效");
 }
 
 // 4. installFunc：正常/非法名/空函数 + 三参元数据/四参说明 + 覆盖安装信息清除/恢复
@@ -157,35 +157,35 @@ static void testInstallFunc(DemoService* demo)
     std::map<std::string, yomk::FuncInfo> infos = demo->funcInfos();
     std::string msgName;
 
-    CHECK(findFuncInfo(infos, "/manual"), "合法 / 开头名安装成功，funcInfos 命中");
-    CHECK(!findFuncInfo(infos, ""), "空串函数名安装被拒，funcInfos 不含");
-    CHECK(!findFuncInfo(infos, "no_slash"), "无 / 开头函数名安装被拒，funcInfos 不含");
-    CHECK(!findFuncInfo(infos, "/null_func"), "空函数对象安装被拒，funcInfos 不含");
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/manual"), "合法 / 开头名安装成功，funcInfos 命中");
+    YOMK_TEST_CHECK(!findFuncInfo(infos, ""), "空串函数名安装被拒，funcInfos 不含");
+    YOMK_TEST_CHECK(!findFuncInfo(infos, "no_slash"), "无 / 开头函数名安装被拒，funcInfos 不含");
+    YOMK_TEST_CHECK(!findFuncInfo(infos, "/null_func"), "空函数对象安装被拒，funcInfos 不含");
 
     // 三参元数据与覆盖安装
-    CHECK(findFuncInfo(infos, "/echo", &msgName) && msgName == "String", "三参安装声明元数据 m_msgName == String");
-    CHECK(findFuncInfo(infos, "/plain", &msgName) && msgName.empty(), "两参安装无元数据");
-    CHECK(findFuncInfo(infos, "/reinstall", &msgName) && msgName.empty(), "两参覆盖安装清除残留信息");
-    CHECK(findFuncInfo(infos, "/restore", &msgName) && msgName == "String", "三参覆盖安装恢复元数据");
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/echo", &msgName) && msgName == "String", "三参安装声明元数据 m_msgName == String");
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/plain", &msgName) && msgName.empty(), "两参安装无元数据");
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/reinstall", &msgName) && msgName.empty(), "两参覆盖安装清除残留信息");
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/restore", &msgName) && msgName == "String", "三参覆盖安装恢复元数据");
 
     // 四参函数说明：/desc 声明说明，/desc0 说明缺省为空
     std::string description;
-    CHECK(
+    YOMK_TEST_CHECK(
         findFuncInfo(infos, "/desc", &msgName, &description) && msgName == "String"
             && description == "demo description",
         "四参安装声明 m_msgName == String 与 m_description == demo description");
-    CHECK(findFuncInfo(infos, "/desc0", &msgName, &description) && msgName == "String" && description.empty(),
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/desc0", &msgName, &description) && msgName == "String" && description.empty(),
           "三参安装说明缺省 m_description 为空");
 
     // 覆盖语义：四参注册后接两参覆盖 → 类型名与说明均清除；再四参恢复
     demo->installFunc("/desc", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::eOk, "manual"}; });
     infos = demo->funcInfos();
-    CHECK(findFuncInfo(infos, "/desc", &msgName, &description) && msgName.empty() && description.empty(),
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/desc", &msgName, &description) && msgName.empty() && description.empty(),
           "两参覆盖四参注册清除类型名与说明");
     demo->installFunc("/desc", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::eOk, "manual"}; }, "String",
                       "demo description");
     infos = demo->funcInfos();
-    CHECK(
+    YOMK_TEST_CHECK(
         findFuncInfo(infos, "/desc", &msgName, &description) && msgName == "String"
             && description == "demo description",
         "四参覆盖恢复类型名与说明");
@@ -196,37 +196,37 @@ static void testInvoke(DemoService* demo)
 {
     // 命中：返回函数自身响应
     YomkResponse resp = demo->invoke("/plain");
-    CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "plain", "invoke 命中，返回函数自身响应");
+    YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "plain", "invoke 命中，返回函数自身响应");
 
     // 命中：pkg 透传与解包回显（数据往返）
     resp = demo->invoke("/echo", YomkMkPtr(String, std::string("hi")));
-    CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "echo:hi", "invoke 命中，pkg 透传解包回显正确");
+    YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "echo:hi", "invoke 命中，pkg 透传解包回显正确");
 
     // 命中：函数内解包失败（pkg 为 nullptr）返回 eNo
     resp = demo->invoke("/echo", nullptr);
-    CHECK(
+    YOMK_TEST_CHECK(
         resp.m_status == YomkResponse::eNo && resp.m_msg.find("pkg is null") != std::string::npos,
         "invoke 命中但 pkg 为空，函数解包守卫返回 eNo");
 
     // 异常路径：空名/无 / 开头返回 eNo + parse error 契约消息
     resp = demo->invoke("");
-    CHECK(
+    YOMK_TEST_CHECK(
         resp.m_status == YomkResponse::eNo && resp.m_msg.find("parse error") != std::string::npos,
         "invoke 空函数名返回 eNo 且 msg 含 parse error");
     resp = demo->invoke("no_slash");
-    CHECK(
+    YOMK_TEST_CHECK(
         resp.m_status == YomkResponse::eNo && resp.m_msg.find("parse error") != std::string::npos,
         "invoke 无 / 开头函数名返回 eNo 且 msg 含 parse error");
 
     // 异常路径：未安装函数返回 eNo + not found 契约消息
     resp = demo->invoke("/not_exist");
-    CHECK(
+    YOMK_TEST_CHECK(
         resp.m_status == YomkResponse::eNo && resp.m_msg.find("not found") != std::string::npos,
         "invoke 未安装函数返回 eNo 且 msg 含 not found");
 
     // 空函数被拒后按未安装处理（对应守卫修复）
     resp = demo->invoke("/null_func");
-    CHECK(
+    YOMK_TEST_CHECK(
         resp.m_status == YomkResponse::eNo && resp.m_msg.find("not found") != std::string::npos,
         "invoke 被拒安装的空函数按未安装返回 eNo");
 }
@@ -239,16 +239,16 @@ static void testNullServerGuards()
     srv.installFunc("/x", [](YomkPkgPtr pkg) { return YomkResponse{}; });  // 不应崩溃
     srv.asyncRequest("/SomeService/func");                                 // 不应崩溃
 
-    CHECK(srv.name().empty(), "空实现 name() 返回空串");
-    CHECK(srv.deleted() == true, "空实现 deleted() 返回 true（视同已失效）");
-    CHECK(srv.funcInfos().empty(), "空实现 funcInfos() 返回空表");
+    YOMK_TEST_CHECK(srv.name().empty(), "空实现 name() 返回空串");
+    YOMK_TEST_CHECK(srv.deleted() == true, "空实现 deleted() 返回 true（视同已失效）");
+    YOMK_TEST_CHECK(srv.funcInfos().empty(), "空实现 funcInfos() 返回空表");
 
     YomkResponse resp = srv.invoke("/x");
-    CHECK(
+    YOMK_TEST_CHECK(
         resp.m_status == YomkResponse::eNo && resp.m_msg == "service is null",
         "空实现 invoke 返回 eNo + service is null");
     resp = srv.request("/SomeService/func");
-    CHECK(
+    YOMK_TEST_CHECK(
         resp.m_status == YomkResponse::eNo && resp.m_msg == "service is null",
         "空实现 request 返回 eNo + service is null");
 }
@@ -257,13 +257,13 @@ static void testNullServerGuards()
 static void testDeletedFlag()
 {
     auto* raw = new FlagSrv(YOMK_SERVER_P);
-    CHECK(YOMK_ADD_SERVICE(raw, "/FlagDemo") == 0, "注册成功返回 0");
+    YOMK_TEST_CHECK(YOMK_ADD_SERVICE(raw, "/FlagDemo") == 0, "注册成功返回 0");
     // 经 shared_from_this 与框架共享所有权：删除后本副本使服务对象仍存活
     std::shared_ptr<YomkService> srv = raw->shared_from_this();
-    CHECK(srv->deleted() == false, "新构造服务 deleted() 初始为 false");
+    YOMK_TEST_CHECK(srv->deleted() == false, "新构造服务 deleted() 初始为 false");
     // 框架删除在 deinit 前置位注销标志，本副本保持引用未归零
-    CHECK(YOMK_DEL_SERVICE("/FlagDemo") == 0, "删除成功返回 0");
-    CHECK(srv->deleted() == true, "框架删除后 deleted() 为 true（标志层独立于引用计数）");
+    YOMK_TEST_CHECK(YOMK_DEL_SERVICE("/FlagDemo") == 0, "删除成功返回 0");
+    YOMK_TEST_CHECK(srv->deleted() == true, "框架删除后 deleted() 为 true（标志层独立于引用计数）");
 }
 
 int main()
