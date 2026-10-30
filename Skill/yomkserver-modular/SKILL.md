@@ -18,7 +18,7 @@ description: 基于YomkServer框架的模块化C++17工程编程。核心理念"
 | **YomkFunctionPool** | 动态函数池（运行时注册/热替换） |
 | **YomkLogger** | 多级别、多输出日志 |
 
-唯一头文件：`#include <YomkServer/YomkAPI.h>`，命名空间：`using namespace yomk;`
+唯一头文件：`#include <YomkServer/YomkAPI.h>`，框架命名空间：`using namespace yomk;`；`YomkMsg` 生成类型使用独立命名空间 `yomkmsg`。
 
 ## 任务一：生成工程模板
 
@@ -143,9 +143,9 @@ add_executable(${PROJECT_NAME}
 
 ```cpp
 // 同步
-YomkResponse resp = YOMK_REQUEST("/XxxService/my_func", yomk::MyData_::shared(MyData{"hello", 1}));
+YomkResponse resp = YOMK_REQUEST("/XxxService/my_func", yomkmsg::MyData::shared(MyData{"hello", 1}));
 // 异步
-YOMK_ASYNC_REQUEST("/XxxService/my_func", yomk::MyData_::shared(MyData{"hello", 1}), [](YomkResponse resp) { });
+YOMK_ASYNC_REQUEST("/XxxService/my_func", yomkmsg::MyData::shared(MyData{"hello", 1}), [](YomkResponse resp) { });
 ```
 
 ### 服务删除与弱绑定回调
@@ -274,12 +274,12 @@ ExtensionName/
 YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 ```
 消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名（如 `YomkMsg(MyData, MyData, d)`）。
-- `yomk::消息名称_::shared(数据类实例)` — 创建消息包（类内静态工厂）
+- `yomkmsg::消息名称::shared(数据类实例)` — 创建消息包（类内静态工厂）
 - `YomkUnPackPkgResponse(pkg, 消息名称, ptr)` — 解包，失败自动返回 eNo
 - `YomkUnPackPkgVoid(pkg, 消息名称, ptr)` — 解包，失败自动 return
 - `YomkUnPackPkg(pkg, 消息名称, ptr)` — 解包，不自动 return，需手动判空
 
-注意：`YomkMsg` 展开生成的真实类型是带后缀的 `yomk::消息名称_` 与 `yomk::消息名称Ptr`（消息类 = 载荷类型名 + `_` 协议），引用须写全名，裸写消息名会报 not declared；消息名称作为字符串字面量仍用于 `YomkUnPackPkg*` 宏参数与 `installFunc` 第三参。
+注意：`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomkmsg::消息名称` 与 `yomkmsg::消息名称Ptr`，与 `yomk` 中的载荷/框架类型隔离以避免重名；引用须写全名，裸写消息名会报 not declared；消息名称作为字符串字面量仍用于 `YomkUnPackPkg*` 宏参数与 `installFunc` 第三参。
 
 内置标准类型（成员名均为 `d`）：`Bool`, `Char`, `UChar`, `Byte`, `Int8`, `Uint8`, `Int16`, `Uint16`, `Int32`, `Uint32`, `Int64`, `Uint64`, `Float32`, `Float64`, `String` 及对应 `XxxArray` 类型（完整清单见 `YomkPkg.h` 末段）。
 

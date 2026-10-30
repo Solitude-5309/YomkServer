@@ -112,13 +112,13 @@ int main()
     {
         YOMK_TEST_CHECK(
             YOMK_FUNCTIONPOOL_REGISTER("fp_echo", echoFunc).m_status == YomkResponse::eOk, "REGISTER 注册函数返回 eOk");
-        auto resp = YOMK_FUNCTIONPOOL_CALL("fp_echo", yomk::String_::shared(std::string("hello_fp")));
+        auto resp = YOMK_FUNCTIONPOOL_CALL("fp_echo", yomkmsg::String::shared(std::string("hello_fp")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "CALL 已注册函数返回 eOk");
         YomkUnPackPkg(resp.m_data, String, echoMsg);
         YOMK_TEST_CHECK(echoMsg != nullptr && echoMsg->d == "hello_fp", "CALL 回传消息解包一致（echo 语义）");
         YOMK_TEST_CHECK(YOMK_FUNCTIONPOOL_UNREGISTER("fp_echo").m_status == YomkResponse::eOk, "UNREGISTER 注销函数返回 eOk");
         YOMK_TEST_CHECK(
-            YOMK_FUNCTIONPOOL_CALL("fp_echo", yomk::String_::shared(std::string("x"))).m_status == YomkResponse::eNo,
+            YOMK_FUNCTIONPOOL_CALL("fp_echo", yomkmsg::String::shared(std::string("x"))).m_status == YomkResponse::eNo,
             "注销后 CALL 返回 eNo（FPC2 契约：not-found 统一 eNo）");
     }
 
@@ -153,10 +153,10 @@ int main()
     // ============ Section 4: 调用边界与 m_pkg=nullptr 透传 ============
     {
         YOMK_TEST_CHECK(
-            YOMK_FUNCTIONPOOL_CALL("", yomk::String_::shared(std::string("x"))).m_status == YomkResponse::eInvalid,
+            YOMK_FUNCTIONPOOL_CALL("", yomkmsg::String::shared(std::string("x"))).m_status == YomkResponse::eInvalid,
             "CALL 空函数名返回 eInvalid");
         YOMK_TEST_CHECK(
-            YOMK_FUNCTIONPOOL_CALL("fp_never_registered", yomk::String_::shared(std::string("x"))).m_status ==
+            YOMK_FUNCTIONPOOL_CALL("fp_never_registered", yomkmsg::String::shared(std::string("x"))).m_status ==
                 YomkResponse::eNo,
             "CALL 未注册名返回 eNo（FPC2 契约：not-found 统一 eNo）");
 

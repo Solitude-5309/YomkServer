@@ -7,14 +7,14 @@
 | API | 说明 |
 |---|---|
 | `YomkMsg(DataType, MsgName, VarName)` | 声明自定义消息类型（建议放置在命名空间之外） |
-| `yomk::MsgName_::shared(...)` | 创建 `shared_ptr` 包装的消息包（类内静态工厂） |
+| `yomkmsg::MsgName::shared(...)` | 创建 `shared_ptr` 包装的消息包（类内静态工厂） |
 | `YomkUnPackPkg(pkg, MsgName, ptr)` | 校验并解包；类型不匹配时指针置为 `nullptr`，不提前返回，适合需要自定义错误处理的场景 |
 | `YomkUnPackPkgResponse(pkg, MsgName, ptr)` | 类型不匹配时直接以 `YomkResponse::eNo` 从当前函数返回，适合功能函数 |
 | `YomkUnPackPkgVoid(pkg, MsgName, ptr)` | 类型不匹配时直接 `return`，适用于 `void` 回调 |
 
 ## 内置标准类型
 
-内置 30 种标量/数组类型消息包（成员名均为 `d`），可直接用 `yomk::String_::shared(...)` 等方式构造：
+内置 30 种标量/数组类型消息包（成员名均为 `d`），可直接用 `yomkmsg::String::shared(...)` 等方式构造：
 
 | 标量 | 数组 |
 |---|---|
@@ -31,7 +31,7 @@ struct UserInfo {
 YomkMsg(UserInfo, UserInfoMsg, data);
 
 // 2. 构造与传递消息包（创建 shared_ptr 包装的消息包）
-auto pkg = yomk::UserInfoMsg_::shared(UserInfo{1001, "Alice"});
+auto pkg = yomkmsg::UserInfoMsg::shared(UserInfo{1001, "Alice"});
 
 // 3. 功能函数中校验并解包
 YomkUnPackPkg(pkg, UserInfoMsg, info); // 类型校验与解包

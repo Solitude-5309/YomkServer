@@ -125,7 +125,7 @@ YomkResponse YomkEventLoop::loops(YomkPkgPtr pkg)
             loopNames.push_back(item.first);
         }
     }
-    return {YomkResponse::eOk, "ok", yomk::StringArray_::shared(loopNames)};
+    return {YomkResponse::eOk, "ok", yomkmsg::StringArray::shared(loopNames)};
 }
 
 // 内省：单个事件循环元信息，入参 String 格式：循环名 或 循环名 N（N 缺省 3）
@@ -171,7 +171,7 @@ YomkResponse YomkEventLoop::loopInfo(YomkPkgPtr pkg)
     yomk::EventLoopInfo info;
     info.m_loopName = loopName;
     eventLoop->infoSnapshot(info, tagCount);
-    return {YomkResponse::eOk, "ok", yomk::EventLoopInfo_::shared(info)};
+    return {YomkResponse::eOk, "ok", yomkmsg::EventLoopInfo::shared(info)};
 }
 
 // 内省：全部事件循环元信息，锁内拷贝快照、锁外逐循环取结构化快照（m_msg 恒 "ok"，数据走 m_data）
@@ -197,5 +197,5 @@ YomkResponse YomkEventLoop::listAll(YomkPkgPtr pkg)
         eventLoops[i]->infoSnapshot(info, 3);
         infos.push_back(std::move(info));
     }
-    return {YomkResponse::eOk, "ok", yomk::EventLoopInfoList_::shared(infos)};
+    return {YomkResponse::eOk, "ok", yomkmsg::EventLoopInfoList::shared(infos)};
 }

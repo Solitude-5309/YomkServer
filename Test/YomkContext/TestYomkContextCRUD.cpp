@@ -63,20 +63,20 @@ int main()
 
     // create：正常创建 String 类型 value
     {
-        auto resp = YOMK_CONTEXT_CREATE("str_key", yomk::String_::shared(std::string("hello")));
+        auto resp = YOMK_CONTEXT_CREATE("str_key", yomkmsg::String::shared(std::string("hello")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "create 正常 String value 返回 eOk");
         YOMK_TEST_CHECK(resp.m_msg == "create context success", "create 成功消息一致");
     }
 
     // create：正常创建 Int32 类型 value
     {
-        auto resp = YOMK_CONTEXT_CREATE("int_key", yomk::Int32_::shared(42));
+        auto resp = YOMK_CONTEXT_CREATE("int_key", yomkmsg::Int32::shared(42));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "create 正常 Int32 value 返回 eOk");
     }
 
     // create：空 key
     {
-        auto resp = YOMK_CONTEXT_CREATE("", yomk::String_::shared(std::string("value")));
+        auto resp = YOMK_CONTEXT_CREATE("", yomkmsg::String::shared(std::string("value")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "create 空 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is empty", "create 空 key 错误消息一致");
     }
@@ -90,14 +90,14 @@ int main()
 
     // create：重复 key
     {
-        auto resp = YOMK_CONTEXT_CREATE("str_key", yomk::String_::shared(std::string("dup")));
+        auto resp = YOMK_CONTEXT_CREATE("str_key", yomkmsg::String::shared(std::string("dup")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "create 重复 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key already exists", "create 重复 key 错误消息一致");
     }
 
     // get：正常 get
     {
-        auto defaultValue = yomk::String_::shared(std::string("default"));
+        auto defaultValue = yomkmsg::String::shared(std::string("default"));
         auto got = YOMK_CONTEXT_GET(String, "str_key", defaultValue);
         YOMK_TEST_CHECK(got != nullptr, "get 正常返回非空");
         YOMK_TEST_CHECK(got && got->d == "hello", "get 正常返回原始 value");
@@ -105,7 +105,7 @@ int main()
 
     // get：不存在 key，返回默认 value
     {
-        auto defaultValue = yomk::String_::shared(std::string("default"));
+        auto defaultValue = yomkmsg::String::shared(std::string("default"));
         auto got = YOMK_CONTEXT_GET(String, "no_such_key", defaultValue);
         YOMK_TEST_CHECK(got != nullptr, "get 不存在 key 返回默认值指针非空");
         YOMK_TEST_CHECK(got && got->d == "default", "get 不存在 key 返回默认值");
@@ -113,7 +113,7 @@ int main()
 
     // get：空 key，返回默认 value
     {
-        auto defaultValue = yomk::String_::shared(std::string("default"));
+        auto defaultValue = yomkmsg::String::shared(std::string("default"));
         auto got = YOMK_CONTEXT_GET(String, "", defaultValue);
         YOMK_TEST_CHECK(got != nullptr, "get 空 key 返回默认值指针非空");
         YOMK_TEST_CHECK(got && got->d == "default", "get 空 key 返回默认值");
@@ -121,9 +121,9 @@ int main()
 
     // get：类型不匹配，返回调用方默认 value（eOk 路径 YomkUnPackPkgT 解包失败，P3 增补）
     {
-        auto cr = YOMK_CONTEXT_CREATE("mismatch_key", yomk::String_::shared(std::string("strval")));
+        auto cr = YOMK_CONTEXT_CREATE("mismatch_key", yomkmsg::String::shared(std::string("strval")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mismatch_key（String 值）成功");
-        auto intDefault = yomk::Int32_::shared(777);
+        auto intDefault = yomkmsg::Int32::shared(777);
         auto got = YOMK_CONTEXT_GET(Int32, "mismatch_key", intDefault);
         YOMK_TEST_CHECK(got != nullptr && got == intDefault, "get 类型不匹配返回调用方默认值（指针一致）");
         YOMK_TEST_CHECK(got && got->d == 777, "get 类型不匹配默认值内容保持 777");
@@ -132,9 +132,9 @@ int main()
 
     // get：类型不匹配第二变体（Bool 存 → String GET，验证 UnPackPkgT 通用失败路径）
     {
-        auto cr = YOMK_CONTEXT_CREATE("mismatch_key2", yomk::Bool_::shared(true));
+        auto cr = YOMK_CONTEXT_CREATE("mismatch_key2", yomkmsg::Bool::shared(true));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mismatch_key2（Bool 值）成功");
-        auto strDefault = yomk::String_::shared(std::string("fallback"));
+        auto strDefault = yomkmsg::String::shared(std::string("fallback"));
         auto got = YOMK_CONTEXT_GET(String, "mismatch_key2", strDefault);
         YOMK_TEST_CHECK(got != nullptr && got == strDefault, "get 第二变体类型不匹配返回默认值（指针一致）");
         YOMK_TEST_CHECK(got && got->d == "fallback", "get 第二变体默认值内容保持 fallback");
@@ -143,32 +143,32 @@ int main()
 
     // set：正常 set 同类型 value
     {
-        auto resp = YOMK_CONTEXT_SET("str_key", yomk::String_::shared(std::string("world")));
+        auto resp = YOMK_CONTEXT_SET("str_key", yomkmsg::String::shared(std::string("world")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "set 正常同类型返回 eOk");
         YOMK_TEST_CHECK(resp.m_msg == "set context success", "set 成功消息一致");
 
-        auto defaultValue = yomk::String_::shared(std::string("default"));
+        auto defaultValue = yomkmsg::String::shared(std::string("default"));
         auto got = YOMK_CONTEXT_GET(String, "str_key", defaultValue);
         YOMK_TEST_CHECK(got && got->d == "world", "set 后 get 返回新 value");
     }
 
     // set：不存在 key
     {
-        auto resp = YOMK_CONTEXT_SET("no_such_key", yomk::String_::shared(std::string("x")));
+        auto resp = YOMK_CONTEXT_SET("no_such_key", yomkmsg::String::shared(std::string("x")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "set 不存在 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is not exist", "set 不存在 key 错误消息一致");
     }
 
     // set：空 key
     {
-        auto resp = YOMK_CONTEXT_SET("", yomk::String_::shared(std::string("x")));
+        auto resp = YOMK_CONTEXT_SET("", yomkmsg::String::shared(std::string("x")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "set 空 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is empty", "set 空 key 错误消息一致");
     }
 
     // set：类型不匹配
     {
-        auto resp = YOMK_CONTEXT_SET("str_key", yomk::Int32_::shared(100));
+        auto resp = YOMK_CONTEXT_SET("str_key", yomkmsg::Int32::shared(100));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "set 类型不匹配返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "context type not match", "set 类型不匹配错误消息一致");
     }

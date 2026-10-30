@@ -23,7 +23,7 @@
 YOMK_EVENTLOOP_START("TaskLoop");
 
 // 非阻塞投递异步任务（tag 可选：仅内省可见，用于观察队列）
-YOMK_EVENTLOOP_POST("TaskLoop", yomk::String_::shared("task1"), [](YomkPkgPtr pkg) {
+YOMK_EVENTLOOP_POST("TaskLoop", yomkmsg::String::shared("task1"), [](YomkPkgPtr pkg) {
     // 在 TaskLoop 专用线程中顺序执行
     return YomkResponse{YomkResponse::eOk};
 }, "billing");

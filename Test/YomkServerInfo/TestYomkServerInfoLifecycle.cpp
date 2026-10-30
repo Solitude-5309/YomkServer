@@ -64,7 +64,7 @@ static bool nameIn(const std::vector<std::string>& names, const std::string& srv
 
 // 在 ServerServiceInfoList 解包结果中按服务名查找条目（/all 结构化消费 helper）
 static const yomk::ServerServiceInfo* findServiceInfo(
-    const std::shared_ptr<yomk::ServerServiceInfoList_>& list, const std::string& srvName)
+    const std::shared_ptr<yomkmsg::ServerServiceInfoList>& list, const std::string& srvName)
 {
     if (!list)
     {
@@ -105,7 +105,7 @@ static std::vector<std::string> unpackStringArray(const YomkResponse& resp)
     {
         return lines;
     }
-    YomkUnPackPkgT(resp.m_data, "StringArray", yomk::StringArray_, arr);
+    YomkUnPackPkgT(resp.m_data, "StringArray", yomkmsg::StringArray, arr);
     if (arr)
     {
         lines = arr->d;
@@ -121,7 +121,7 @@ static std::vector<yomk::FuncInfo> unpackFuncInfoList(const YomkResponse& resp)
     {
         return funcs;
     }
-    YomkUnPackPkgT(resp.m_data, "FuncInfoList", yomk::FuncInfoList_, listPkg);
+    YomkUnPackPkgT(resp.m_data, "FuncInfoList", yomkmsg::FuncInfoList, listPkg);
     if (listPkg)
     {
         funcs = listPkg->d;
@@ -219,12 +219,12 @@ int main()
               "/services server destroyed: eNo + 契约消息: " + rServices.m_msg);
 
         // /functions 先做空名校验，须传非空 srvName 越过前置校验到达 lock 失败点
-        auto rFunctions = info->invoke("/functions", yomk::String_::shared(std::string("/Any")));
+        auto rFunctions = info->invoke("/functions", yomkmsg::String::shared(std::string("/Any")));
         YOMK_TEST_CHECK(rFunctions.m_status == YomkResponse::eNo && rFunctions.m_msg == "server has been destroyed",
               "/functions server destroyed: eNo + 契约消息");
 
         // /function 先做 URL 解析校验，须传合法 url 越过前置校验到达 lock 失败点
-        auto rFunction = info->invoke("/function", yomk::String_::shared(std::string("/Any/f")));
+        auto rFunction = info->invoke("/function", yomkmsg::String::shared(std::string("/Any/f")));
         YOMK_TEST_CHECK(rFunction.m_status == YomkResponse::eNo && rFunction.m_msg == "server has been destroyed",
               "/function server destroyed: eNo + 契约消息");
 

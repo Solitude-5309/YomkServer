@@ -214,11 +214,11 @@ int main()
             YomkAPI::EVENTLOOP_STOP("/guard_loop").m_status == YomkResponse::eInvalid,
             "EVENTLOOP_STOP 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::EVENTLOOP_POST("/guard_loop", yomk::String_::shared(std::string("x"))).m_status ==
+            YomkAPI::EVENTLOOP_POST("/guard_loop", yomkmsg::String::shared(std::string("x"))).m_status ==
                 YomkResponse::eInvalid,
             "EVENTLOOP_POST 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::EVENTLOOP_POST_WAIT("/guard_loop", yomk::String_::shared(std::string("x"))).m_status ==
+            YomkAPI::EVENTLOOP_POST_WAIT("/guard_loop", yomkmsg::String::shared(std::string("x"))).m_status ==
                 YomkResponse::eInvalid,
             "EVENTLOOP_POST_WAIT 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
@@ -243,7 +243,7 @@ int main()
             YomkAPI::FUNCTIONPOOL_UNREGISTER("/guard_func").m_status == YomkResponse::eInvalid,
             "FUNCTIONPOOL_UNREGISTER 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::FUNCTIONPOOL_CALL("/guard_func", yomk::String_::shared(std::string("x"))).m_status ==
+            YomkAPI::FUNCTIONPOOL_CALL("/guard_func", yomkmsg::String::shared(std::string("x"))).m_status ==
                 YomkResponse::eInvalid,
             "FUNCTIONPOOL_CALL 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
@@ -267,8 +267,8 @@ int main()
             "SERVER_INFO_FUNCTION 未初始化返回 eInvalid");
 
         // CONTEXT_GET 特殊形态：守卫返回值即调用方默认值（指针一致）
-        std::shared_ptr<yomk::String_> ctxDefault = std::make_shared<yomk::String_>("guard_default");
-        std::shared_ptr<yomk::String_> ctxGot = YomkAPI::CONTEXT_GET<yomk::String_>("String", "guard_key", ctxDefault);
+        std::shared_ptr<yomkmsg::String> ctxDefault = std::make_shared<yomkmsg::String>("guard_default");
+        std::shared_ptr<yomkmsg::String> ctxGot = YomkAPI::CONTEXT_GET<yomkmsg::String>("String", "guard_key", ctxDefault);
         YOMK_TEST_CHECK(ctxGot == ctxDefault, "CONTEXT_GET 未初始化原样返回调用方默认值");
     }
 

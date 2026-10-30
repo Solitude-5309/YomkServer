@@ -154,7 +154,7 @@ int main()
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
         {
-            loop.post(yomk::Event_::shared(yomk::Event("st1", nullptr, countHandler(), "")));
+            loop.post(yomkmsg::Event::shared(yomk::Event("st1", nullptr, countHandler(), "")));
         }
         auto t1 = std::chrono::steady_clock::now();
         bool drained = waitUntil(
@@ -193,7 +193,7 @@ int main()
                     {
                         for (size_t k = 0; k < perThread; ++k)
                         {
-                            loop.post(yomk::Event_::shared(yomk::Event("st2", nullptr, countHandler(), "")));
+                            loop.post(yomkmsg::Event::shared(yomk::Event("st2", nullptr, countHandler(), "")));
                         }
                     });
             }
@@ -230,14 +230,14 @@ int main()
 
         // gate 占住 worker：投递速率与消费速率解耦，纯测 post + 无界队列大规模增长/重分配
         YOMK_TEST_CHECK(
-            loop.post(yomk::Event_::shared(yomk::Event("st3", nullptr, gateHandler(), "gate"))) == 0,
+            loop.post(yomkmsg::Event::shared(yomk::Event("st3", nullptr, gateHandler(), "gate"))) == 0,
             "S3 post gate 事件返回 0");
         YOMK_TEST_CHECK(waitGateStarted(2000), "S3 gate 已占住工作线程");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
         {
-            loop.post(yomk::Event_::shared(yomk::Event("st3", nullptr, countHandler(), "")));
+            loop.post(yomkmsg::Event::shared(yomk::Event("st3", nullptr, countHandler(), "")));
         }
         auto t1 = std::chrono::steady_clock::now();
 
@@ -283,7 +283,7 @@ int main()
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < count; ++k)
         {
-            loop.post(yomk::Event_::shared(yomk::Event("st4", nullptr, countHandler(), bigTag)));
+            loop.post(yomkmsg::Event::shared(yomk::Event("st4", nullptr, countHandler(), bigTag)));
         }
         auto t1 = std::chrono::steady_clock::now();
         bool drained = waitUntil(
@@ -317,7 +317,7 @@ int main()
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
         {
-            YOMK_EVENTLOOP_POST("stress_loop", yomk::String_::shared(std::string("payload")), countHandler(), "");
+            YOMK_EVENTLOOP_POST("stress_loop", yomkmsg::String::shared(std::string("payload")), countHandler(), "");
         }
         auto t1 = std::chrono::steady_clock::now();
         bool drained = waitUntil([N] { return g_execCount.load() == static_cast<long>(N); }, 30000);

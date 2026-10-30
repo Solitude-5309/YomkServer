@@ -303,7 +303,7 @@ YomkResponse YomkContext::groups(YomkPkgPtr pkg)
             groupNames.push_back(iter.first);
         }
     }
-    return {YomkResponse::eOk, "ok", yomk::StringArray_::shared(groupNames)};
+    return {YomkResponse::eOk, "ok", yomkmsg::StringArray::shared(groupNames)};
 }
 
 YomkResponse YomkContext::keys(YomkPkgPtr pkg)
@@ -317,7 +317,7 @@ YomkResponse YomkContext::keys(YomkPkgPtr pkg)
     }
 
     std::vector<std::string> keyList = group->keys();
-    return {YomkResponse::eOk, "ok", yomk::StringArray_::shared(keyList)};
+    return {YomkResponse::eOk, "ok", yomkmsg::StringArray::shared(keyList)};
 }
 
 YomkResponse YomkContext::keyInfo(YomkPkgPtr pkg)
@@ -341,7 +341,7 @@ YomkResponse YomkContext::keyInfo(YomkPkgPtr pkg)
     {
         return YomkResponse(YomkResponse::eNo, "key is not exist");
     }
-    return {YomkResponse::eOk, "ok", yomk::ContextKeyInfo_::shared(info)};
+    return {YomkResponse::eOk, "ok", yomkmsg::ContextKeyInfo::shared(info)};
 }
 
 YomkResponse YomkContext::listAll(YomkPkgPtr pkg)
@@ -370,5 +370,5 @@ YomkResponse YomkContext::listAll(YomkPkgPtr pkg)
         info.m_keys = group->listAll();
         groups.push_back(std::move(info));
     }
-    return {YomkResponse::eOk, "ok", yomk::ContextGroupInfoList_::shared(std::move(groups))};
+    return {YomkResponse::eOk, "ok", yomkmsg::ContextGroupInfoList::shared(std::move(groups))};
 }

@@ -174,7 +174,7 @@ YomkResponse payloadSum(YomkPkgPtr pkg)
     YOMK_INFO_TAG("arm.tool", oss.str());
 
     // msg 描述结果，m_data 携带结果数据——调用方两者都能拿到
-    return {YomkResponse::eOk, "payload=" + std::to_string(totalKg) + "kg", yomk::String_::shared(std::to_string(totalKg))};
+    return {YomkResponse::eOk, "payload=" + std::to_string(totalKg) + "kg", yomkmsg::String::shared(std::to_string(totalKg))};
 }
 
 // 班次握手工具：演示带元数据的登记与调用（场景 2 以 4 参形式登记，场景 4 被热替换）
@@ -209,7 +209,7 @@ static void showArmToolRegister()
 
     logAction(
         "调用负载合计工具 tool.payloadSum", "CALL tool.payloadSum",
-        [&] { return YOMK_FUNCTIONPOOL_CALL("tool.payloadSum", yomk::StringArray_::shared(std::vector<std::string>{"12", "8", "5"})); });
+        [&] { return YOMK_FUNCTIONPOOL_CALL("tool.payloadSum", yomkmsg::StringArray::shared(std::vector<std::string>{"12", "8", "5"})); });
     logVerify("arm.tool 日志夹在开始行与结果行之间——CALL 在调用方线程同步执行；返回值即函数返回值，msg 与 data 双份携带 payload=25kg");
 }
 
@@ -239,7 +239,7 @@ static void showArmToolMeta()
 
     logAction(
         "调用班次握手工具 tool.handshake", "CALL tool.handshake",
-        [&] { return YOMK_FUNCTIONPOOL_CALL("tool.handshake", yomk::String_::shared("张工")); });
+        [&] { return YOMK_FUNCTIONPOOL_CALL("tool.handshake", yomkmsg::String::shared("张工")); });
 }
 
 // 场景 3：空参调用统一守卫
@@ -296,7 +296,7 @@ static void showArmToolHotSwap()
 
     logAction(
         "调用升级后的握手工具 tool.handshake", "CALL tool.handshake (V2)",
-        [&] { return YOMK_FUNCTIONPOOL_CALL("tool.handshake", yomk::String_::shared("张工")); });
+        [&] { return YOMK_FUNCTIONPOOL_CALL("tool.handshake", yomkmsg::String::shared("张工")); });
     logVerify("arm.tool 日志为 V2 文案：热替换立即生效，旧实现不再被调用");
 }
 

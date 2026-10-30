@@ -197,7 +197,7 @@
  * - P4-g（LG6 已修复）：内省端点原在 21 万条目下每次调用存在三重拷贝 —— listAll 的
  *   vector<string> → StringArray 包 → 测试侧 unpackLines 再拷一份，单次 ALL 的瞬时分配达数十 MB。
  *   LG6 两处收口：① YomkPkg.h 的 YomkMsg 宏补右值构造重载（向后兼容，左值实参仍逐字选中
- *   const& 版本，既有调用点行为不变），使 yomk::Msg_::shared(std::move(data)) 真正移动入包而非静默
+ *   const& 版本，既有调用点行为不变），使消息包的 shared(std::move(data)) 真正移动入包而非静默
  *   退化为拷贝；YomkLogger::loggers 与 listAll 的返回语句改为 std::move(lines)。② 本测试
  *   unpackLines 的 lines = arr->d 改为 std::move(arr->d)，消除第三重拷贝（resp.m_data 是
  *   shared_ptr，其 const 不约束所指对象，故此处有意掏空包内 vector；11 个调用点已逐一核实
@@ -719,7 +719,7 @@ static uint64_t introspectionRounds(uint64_t entries)
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::LoggerState* firstConsoleState(yomk::LoggerInfoListPtr listPkg)
+static const yomk::LoggerState* firstConsoleState(yomkmsg::LoggerInfoListPtr listPkg)
 {
     if (!listPkg)
     {

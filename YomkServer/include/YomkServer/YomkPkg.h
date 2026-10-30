@@ -12,7 +12,7 @@
 #define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                               \
     if (!pkg || pkg->name() != #MsgName)                                           \
         return {YomkResponse::eNo, " pkg is null or pkg is not " #MsgName ". "};   \
-    yomk::MsgName##Ptr ptrName = std::dynamic_pointer_cast<yomk::MsgName##_>(pkg); \
+    yomkmsg::MsgName##Ptr ptrName = std::dynamic_pointer_cast<yomkmsg::MsgName>(pkg); \
     if (!ptrName)                                                                  \
         return {YomkResponse::eNo, " pkg[" #MsgName "] is dynamic_pointer_cast failed. "};
 
@@ -20,16 +20,16 @@
 #define YomkUnPackPkgVoid(pkg, MsgName, ptrName)                                   \
     if (!pkg || pkg->name() != #MsgName)                                           \
         return;                                                                    \
-    yomk::MsgName##Ptr ptrName = std::dynamic_pointer_cast<yomk::MsgName##_>(pkg); \
+    yomkmsg::MsgName##Ptr ptrName = std::dynamic_pointer_cast<yomkmsg::MsgName>(pkg); \
     if (!ptrName)                                                                  \
         return;
 
 // 校验消息类型并解包，类型不匹配时不提前返回（指针为 nullptr）
 #define YomkUnPackPkg(pkg, MsgName, ptrName)                        \
-    yomk::MsgName##Ptr ptrName = nullptr;                           \
+    yomkmsg::MsgName##Ptr ptrName = nullptr;                           \
     if (pkg && pkg->name() == #MsgName)                             \
     {                                                               \
-        ptrName = std::dynamic_pointer_cast<yomk::MsgName##_>(pkg); \
+        ptrName = std::dynamic_pointer_cast<yomkmsg::MsgName>(pkg); \
     }
 
 // 按运行时类型名解包（框架内部使用）
@@ -41,31 +41,30 @@
     }
 
 // 消息包类型定义宏
-// 宏体已升级：类型自带 kName、内置 shared 静态工厂；类名保留 MsgName##_ ——
-// "消息类 = 载荷类型名 + _"是既有协议设计（如 YomkMsg(Function, Function, d)），
-// 去下划线会与 yomk 命名空间内同名框架类型重定义冲突
-#define YomkMsg(DataType, MsgName, VarName)                                          \
-    namespace yomk                                                                   \
-    {                                                                                \
-    class MsgName##_ : public YomkPkg                                                \
-    {                                                                                \
-    public:                                                                          \
-        static constexpr const char* kName = #MsgName;                               \
-        MsgName##_() { m_name = kName; }                                             \
-        MsgName##_(const DataType& value) : VarName(value) { m_name = kName; }       \
-        MsgName##_(DataType&& value) : VarName(std::move(value)) { m_name = kName; } \
-        virtual ~MsgName##_() {}                                                     \
-                                                                                     \
-    public:                                                                          \
-        DataType VarName{};                                                          \
-                                                                                     \
-        template <typename... A>                                                     \
-        static std::shared_ptr<MsgName##_> shared(A&&... a)                          \
-        {                                                                            \
-            return std::make_shared<MsgName##_>(std::forward<A>(a)...);              \
-        }                                                                            \
-    };                                                                               \
-    typedef std::shared_ptr<MsgName##_> MsgName##Ptr;                                \
+// 类型自带 kName、内置 shared 静态工厂；独立 yomkmsg 命名空间避免与
+// yomk 中的载荷/框架类型重名，消息类名无需下划线后缀
+#define YomkMsg(DataType, MsgName, VarName)                                       \
+    namespace yomkmsg                                                             \
+    {                                                                             \
+    class MsgName : public ::YomkPkg                                              \
+    {                                                                             \
+    public:                                                                       \
+        static constexpr const char* kName = #MsgName;                            \
+        MsgName() { m_name = kName; }                                             \
+        MsgName(const DataType& value) : VarName(value) { m_name = kName; }       \
+        MsgName(DataType&& value) : VarName(std::move(value)) { m_name = kName; } \
+        virtual ~MsgName() {}                                                     \
+                                                                                  \
+    public:                                                                       \
+        DataType VarName{};                                                       \
+                                                                                  \
+        template <typename... A>                                                  \
+        static std::shared_ptr<MsgName> shared(A&&... a)                          \
+        {                                                                         \
+            return std::make_shared<MsgName>(std::forward<A>(a)...);              \
+        }                                                                         \
+    };                                                                            \
+    typedef std::shared_ptr<MsgName> MsgName##Ptr;                                \
     }
 
 class YomkServer;
@@ -322,41 +321,41 @@ struct VoidPointer
 }  // namespace yomk
 
 // clang-format off
-YomkMsg(Function, Function, d)
-YomkMsg(CallFunction, CallFunction, d)
-YomkMsg(FuncInfo, FuncInfo, d)
+YomkMsg(yomk::Function, Function, d)
+YomkMsg(yomk::CallFunction, CallFunction, d)
+YomkMsg(yomk::FuncInfo, FuncInfo, d)
 // FunctionPool 全量函数内省（FUNCTIONPOOL_INFO_ALL 返回数据；函数总数由 d.size() 承载）
 YomkMsg(std::vector<yomk::FuncInfo>, FuncInfoList, d)
-YomkMsg(Event, Event, d)
-YomkMsg(Eventloop, Eventloop, d)
-YomkMsg(EventLoopInfo, EventLoopInfo, d)
+YomkMsg(yomk::Event, Event, d)
+YomkMsg(yomk::Eventloop, Eventloop, d)
+YomkMsg(yomk::EventLoopInfo, EventLoopInfo, d)
 // EventLoop 全量循环内省（EVENTLOOP_INFO_ALL 返回数据；m_nextTags 取 3 条与单查缺省一致）
 YomkMsg(std::vector<yomk::EventLoopInfo>, EventLoopInfoList, d)
-YomkMsg(LogFile, LogFile, d)
-YomkMsg(Log, Log, d)
-YomkMsg(ConsoleLogProxy, ConsoleLogProxy, d)
-YomkMsg(FileLogProxy, FileLogProxy, d)
-YomkMsg(LoggerQuery, LoggerQuery, d)
-YomkMsg(LoggerInfo, LoggerInfo, d)
+YomkMsg(yomk::LogFile, LogFile, d)
+YomkMsg(yomk::Log, Log, d)
+YomkMsg(yomk::ConsoleLogProxy, ConsoleLogProxy, d)
+YomkMsg(yomk::FileLogProxy, FileLogProxy, d)
+YomkMsg(yomk::LoggerQuery, LoggerQuery, d)
+YomkMsg(yomk::LoggerInfo, LoggerInfo, d)
 // Logger 控制台全局主闸态（LOGGER_INFO_GLOBAL 返回数据：四级别主闸开关 + proxy）
-YomkMsg(LoggerState, LoggerState, d)
+YomkMsg(yomk::LoggerState, LoggerState, d)
 // Logger 全量内省（LOGGER_INFO_ALL 返回数据；元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段）
 YomkMsg(std::vector<yomk::LoggerInfo>, LoggerInfoList, d)
-YomkMsg(Context, Context, d)
+YomkMsg(yomk::Context, Context, d)
 // Context 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键，组名缺省 main）
-YomkMsg(ContextGroupKey, ContextGroupKey, d)
-YomkMsg(ContextKeyInfo, ContextKeyInfo, d)
+YomkMsg(yomk::ContextGroupKey, ContextGroupKey, d)
+YomkMsg(yomk::ContextKeyInfo, ContextKeyInfo, d)
 // Context 键元信息清单（ContextGroupInfo.m_keys 的元素类型）
 YomkMsg(std::vector<yomk::ContextKeyInfo>, ContextKeyInfoList, d)
 // Context 组级内省条目（ContextGroupInfoList 元素；层级为组 → 键元信息）
-YomkMsg(ContextGroupInfo, ContextGroupInfo, d)
+YomkMsg(yomk::ContextGroupInfo, ContextGroupInfo, d)
 // Context 组级全量内省（CONTEXT_INFO_ALL 返回数据）
 YomkMsg(std::vector<yomk::ContextGroupInfo>, ContextGroupInfoList, d)
 // ServerInfo 全量拓扑内省（SERVER_INFO_ALL 返回数据；层级为服务 → 函数元信息）
 YomkMsg(std::vector<yomk::ServerServiceInfo>, ServerServiceInfoList, d)
-YomkMsg(ContextChecker, ContextChecker, d)
-YomkMsg(ContextMonitor, ContextMonitor, d)
-YomkMsg(VoidPointer, VoidPointer, d)
+YomkMsg(yomk::ContextChecker, ContextChecker, d)
+YomkMsg(yomk::ContextMonitor, ContextMonitor, d)
+YomkMsg(yomk::VoidPointer, VoidPointer, d)
 
 // Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 YomkAPI::CONTEXT_SET_MONITOR
 typedef std::function<void(const yomk::Context &ctx)> YomkContextMonitorFunc;

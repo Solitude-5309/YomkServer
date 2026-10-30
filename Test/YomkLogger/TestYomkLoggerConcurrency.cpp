@@ -343,7 +343,7 @@ static std::vector<std::string> unpackLines(const YomkResponse& resp)
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::LoggerState* firstConsoleState(yomk::LoggerInfoListPtr listPkg)
+static const yomk::LoggerState* firstConsoleState(yomkmsg::LoggerInfoListPtr listPkg)
 {
     if (!listPkg)
     {

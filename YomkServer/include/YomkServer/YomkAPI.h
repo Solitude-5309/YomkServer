@@ -162,13 +162,13 @@ public:
     static YomkResponse SET_CONSOLE_LOG_PROXY(YomkConsoleLogProxyFunc func)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/set_console_log_proxy", yomk::ConsoleLogProxy_::shared(yomk::ConsoleLogProxy{func}));
+        return request("/YomkLogger/set_console_log_proxy", yomkmsg::ConsoleLogProxy::shared(yomk::ConsoleLogProxy{func}));
     }
     // 设置文件日志代理回调（传 nullptr 恢复默认落盘，取消代理回调；与控制台代理相互独立）
     static YomkResponse SET_FILE_LOG_PROXY(YomkFileLogProxyFunc func)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/set_file_log_proxy", yomk::FileLogProxy_::shared(yomk::FileLogProxy{func}));
+        return request("/YomkLogger/set_file_log_proxy", yomkmsg::FileLogProxy::shared(yomk::FileLogProxy{func}));
     }
     // 控制台日志输出
     template <typename... Args>
@@ -178,7 +178,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/console_log", yomk::Log_::shared(yomk::Log{yomk::Log::eInfo, oss.str(), tag, tag}));
+        return request("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, oss.str(), tag, tag}));
     }
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_WARN_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
@@ -187,7 +187,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/console_log", yomk::Log_::shared(yomk::Log{yomk::Log::eWarn, oss.str(), tag, tag}));
+        return request("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, oss.str(), tag, tag}));
     }
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_ERROR_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
@@ -196,7 +196,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/console_log", yomk::Log_::shared(yomk::Log{yomk::Log::eError, oss.str(), tag, tag}));
+        return request("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, oss.str(), tag, tag}));
     }
     template <typename... Args>
     static YomkResponse CONSOLE_LOG_DEBUG_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
@@ -205,19 +205,19 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/console_log", yomk::Log_::shared(yomk::Log{yomk::Log::eDebug, oss.str(), tag, tag}));
+        return request("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, oss.str(), tag, tag}));
     }
     // 创建文件日志器
     static YomkResponse FILE_LOG_CREATE(const std::string& logDir, const std::string& logFile)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/create_file_logger", yomk::LogFile_::shared(yomk::LogFile{logFile, logDir}));
+        return request("/YomkLogger/create_file_logger", yomkmsg::LogFile::shared(yomk::LogFile{logFile, logDir}));
     }
     // 将指定日志器的缓冲落盘
     static YomkResponse FILE_LOG_WRITE(const std::string& logFile)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/write_file_log", yomk::String_::shared(logFile));
+        return request("/YomkLogger/write_file_log", yomkmsg::String::shared(logFile));
     }
     template <typename... Args>
     static YomkResponse FILE_LOG_INFO_TAG(
@@ -227,7 +227,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/file_log", yomk::Log_::shared(yomk::Log{yomk::Log::eInfo, oss.str(), logFile, tag}));
+        return request("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, oss.str(), logFile, tag}));
     }
     template <typename... Args>
     static YomkResponse FILE_LOG_WARN_TAG(
@@ -237,7 +237,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/file_log", yomk::Log_::shared(yomk::Log{yomk::Log::eWarn, oss.str(), logFile, tag}));
+        return request("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, oss.str(), logFile, tag}));
     }
     template <typename... Args>
     static YomkResponse FILE_LOG_ERROR_TAG(
@@ -247,7 +247,7 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/file_log", yomk::Log_::shared(yomk::Log{yomk::Log::eError, oss.str(), logFile, tag}));
+        return request("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, oss.str(), logFile, tag}));
     }
     template <typename... Args>
     static YomkResponse FILE_LOG_DEBUG_TAG(
@@ -257,101 +257,101 @@ public:
         std::ostringstream oss;
         oss << fileLine;
         ((oss << " " << std::forward<Args>(args)), ...);
-        return request("/YomkLogger/file_log", yomk::Log_::shared(yomk::Log{yomk::Log::eDebug, oss.str(), logFile, tag}));
+        return request("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, oss.str(), logFile, tag}));
     }
     // 开关各级别控制台日志（loggerName 空 = 全局主闸，与既有无参语义一致；具名 = 逐器门控）
     static YomkResponse ON_CONSOLE_LOG_DEBUG(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/on_console_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
+        return request("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
     }
     static YomkResponse ON_CONSOLE_LOG_INFO(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/on_console_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
+        return request("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
     }
     static YomkResponse ON_CONSOLE_LOG_WARN(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/on_console_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
+        return request("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
     }
     static YomkResponse ON_CONSOLE_LOG_ERROR(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/on_console_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
+        return request("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
     }
     static YomkResponse OFF_CONSOLE_LOG_DEBUG(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/off_console_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
+        return request("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
     }
     static YomkResponse OFF_CONSOLE_LOG_INFO(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/off_console_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
+        return request("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
     }
     static YomkResponse OFF_CONSOLE_LOG_WARN(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/off_console_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
+        return request("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
     }
     static YomkResponse OFF_CONSOLE_LOG_ERROR(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/off_console_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
+        return request("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
     }
     // 开关各级别文件日志（loggerName 空 = 文件全局主闸；具名 = 逐器门控，未知名返回 eNo）
     static YomkResponse ON_FILE_LOG_DEBUG(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/on_file_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
+        return request("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
     }
     static YomkResponse ON_FILE_LOG_INFO(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/on_file_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
+        return request("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
     }
     static YomkResponse ON_FILE_LOG_WARN(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/on_file_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
+        return request("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
     }
     static YomkResponse ON_FILE_LOG_ERROR(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/on_file_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
+        return request("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
     }
     static YomkResponse OFF_FILE_LOG_DEBUG(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/off_file_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
+        return request("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
     }
     static YomkResponse OFF_FILE_LOG_INFO(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/off_file_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
+        return request("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
     }
     static YomkResponse OFF_FILE_LOG_WARN(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/off_file_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
+        return request("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
     }
     static YomkResponse OFF_FILE_LOG_ERROR(const std::string& loggerName = "")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/off_file_log_by_level", yomk::Log_::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
+        return request("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
     }
     // 按类型获取日志器名列表（type: "console"/"file"，仅返回该类型的纯名）
     static YomkResponse LOGGER_INFO_LOGGERS(const std::string& type)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/loggers", yomk::String_::shared(type));
+        return request("/YomkLogger/loggers", yomkmsg::String::shared(type));
     }
     // 查询指定日志器状态（type: "console"/"file"；两表允许同名，须按类型精确单查）
     static YomkResponse LOGGER_INFO_LOGGER(const std::string& loggerName, const std::string& type)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/logger", yomk::LoggerQuery_::shared(yomk::LoggerQuery{loggerName, type}));
+        return request("/YomkLogger/logger", yomkmsg::LoggerQuery::shared(yomk::LoggerQuery{loggerName, type}));
     }
     // 查询全部日志器及逐器门控状态（返回 LoggerInfoList 清单，每条内嵌 LoggerState 状态段：
     // console 条目为控制台逐器门控层真值，file 条目为文件逐器门控层真值）
@@ -379,7 +379,7 @@ public:
     static YomkResponse FILE_LOG_DELETE(const std::string& loggerName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkLogger/delete_logger", yomk::String_::shared(loggerName));
+        return request("/YomkLogger/delete_logger", yomkmsg::String::shared(loggerName));
     }
     // CONTEXT_API
 public:
@@ -388,7 +388,7 @@ public:
         const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/create", yomk::Context_::shared(yomk::Context{ctxName, ctx, groupName}));
+        return request("/YomkContext/create", yomkmsg::Context::shared(yomk::Context{ctxName, ctx, groupName}));
     }
     // 获取上下文值（只读快照），改动请构造新对象再 CONTEXT_SET，勿原地修改（否则与并发读竞争、可能崩溃）
     template <typename T>
@@ -397,7 +397,7 @@ public:
     {
         YOMK_API_REQUIRE_SERVER(ctxDefault);
         YomkResponse response =
-            request("/YomkContext/get", yomk::Context_::shared(yomk::Context{ctxName, ctxDefault, groupName}));
+            request("/YomkContext/get", yomkmsg::Context::shared(yomk::Context{ctxName, ctxDefault, groupName}));
         if (response.m_status == YomkResponse::eOk)
         {
             YomkUnPackPkgT(response.m_data, msgName, T, ctxData);
@@ -417,18 +417,18 @@ public:
         const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/set", yomk::Context_::shared(yomk::Context{ctxName, ctx, groupName}));
+        return request("/YomkContext/set", yomkmsg::Context::shared(yomk::Context{ctxName, ctx, groupName}));
     }
     // 开关上下文校验门控
     static YomkResponse CONTEXT_ON_CHECKER(const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/turn_on_checker", yomk::String_::shared(groupName));
+        return request("/YomkContext/turn_on_checker", yomkmsg::String::shared(groupName));
     }
     static YomkResponse CONTEXT_OFF_CHECKER(const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/turn_off_checker", yomk::String_::shared(groupName));
+        return request("/YomkContext/turn_off_checker", yomkmsg::String::shared(groupName));
     }
     // 设置上下文校验门控回调
     static YomkResponse CONTEXT_SET_CHECKER(
@@ -436,18 +436,18 @@ public:
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request(
-            "/YomkContext/set_checker", yomk::ContextChecker_::shared(yomk::ContextChecker{ctxName, checker, groupName}));
+            "/YomkContext/set_checker", yomkmsg::ContextChecker::shared(yomk::ContextChecker{ctxName, checker, groupName}));
     }
     // 开关上下文变更监听器
     static YomkResponse CONTEXT_ON_MONITOR(const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/turn_on_monitor", yomk::String_::shared(groupName));
+        return request("/YomkContext/turn_on_monitor", yomkmsg::String::shared(groupName));
     }
     static YomkResponse CONTEXT_OFF_MONITOR(const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/turn_off_monitor", yomk::String_::shared(groupName));
+        return request("/YomkContext/turn_off_monitor", yomkmsg::String::shared(groupName));
     }
     // 设置上下文变更监听回调（async=true 为异步通知），仅通知发生了一次 set 事件，并回传该次 set 的键值快照——不保证快照实时性；顺序上异步恒按 set 提交序送达、同步在并发 set 下不保证跨线程序。
     static YomkResponse CONTEXT_SET_MONITOR(const std::string& ctxName, YomkContextMonitorFunc monitor,
@@ -455,26 +455,26 @@ public:
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request("/YomkContext/set_monitor",
-            yomk::ContextMonitor_::shared(yomk::ContextMonitor{ctxName, monitor, async, groupName}));
+            yomkmsg::ContextMonitor::shared(yomk::ContextMonitor{ctxName, monitor, async, groupName}));
     }
     // 销毁指定上下文键
     static YomkResponse CONTEXT_DESTROY(const std::string& ctxName, const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request(
-            "/YomkContext/destroy", yomk::ContextGroupKey_::shared(yomk::ContextGroupKey{groupName, ctxName}));
+            "/YomkContext/destroy", yomkmsg::ContextGroupKey::shared(yomk::ContextGroupKey{groupName, ctxName}));
     }
     // 获取全部上下文键名
     static YomkResponse CONTEXT_INFO_KEYS(const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/keys", yomk::String_::shared(groupName));
+        return request("/YomkContext/keys", yomkmsg::String::shared(groupName));
     }
     // 查询指定上下文键状态
     static YomkResponse CONTEXT_INFO_KEY(const std::string& ctxName, const std::string& groupName = "main")
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkContext/key", yomk::ContextGroupKey_::shared(yomk::ContextGroupKey{groupName, ctxName}));
+        return request("/YomkContext/key", yomkmsg::ContextGroupKey::shared(yomk::ContextGroupKey{groupName, ctxName}));
     }
     // 查询全部组名清单（返回 StringArray，对齐 EVENTLOOP_INFO_LOOPS 形态）
     static YomkResponse CONTEXT_INFO_GROUPS()
@@ -499,13 +499,13 @@ public:
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request(
             "/YomkEventLoop/start",
-            yomk::Eventloop_::shared(yomk::Eventloop{eventLoopName, m_defaultServiceFunc, msgName}));
+            yomkmsg::Eventloop::shared(yomk::Eventloop{eventLoopName, m_defaultServiceFunc, msgName}));
     }
     // 停止事件循环线程（保留未执行事件）
     static YomkResponse EVENTLOOP_STOP(const std::string& eventLoopName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkEventLoop/stop", yomk::String_::shared(eventLoopName));
+        return request("/YomkEventLoop/stop", yomkmsg::String::shared(eventLoopName));
     }
     // 异步投递事件
     static YomkResponse EVENTLOOP_POST(
@@ -516,7 +516,7 @@ public:
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request(
-            "/YomkEventLoop/post", yomk::Event_::shared(yomk::Event(eventLoopName, eventData, eventHandle, tag)));
+            "/YomkEventLoop/post", yomkmsg::Event::shared(yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 同步投递事件（阻塞等待执行完成）
     static YomkResponse EVENTLOOP_POST_WAIT(
@@ -527,13 +527,13 @@ public:
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request(
-            "/YomkEventLoop/post_wait", yomk::Event_::shared(yomk::Event(eventLoopName, eventData, eventHandle, tag)));
+            "/YomkEventLoop/post_wait", yomkmsg::Event::shared(yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 销毁事件循环并清空队列
     static YomkResponse EVENTLOOP_DESTROY(const std::string& eventLoopName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkEventLoop/destroy", yomk::String_::shared(eventLoopName));
+        return request("/YomkEventLoop/destroy", yomkmsg::String::shared(eventLoopName));
     }
     // 获取全部事件循环名称列表
     static YomkResponse EVENTLOOP_INFO_LOOPS()
@@ -545,12 +545,12 @@ public:
     static YomkResponse EVENTLOOP_INFO_LOOP(const std::string& eventLoopName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkEventLoop/loop", yomk::String_::shared(eventLoopName));
+        return request("/YomkEventLoop/loop", yomkmsg::String::shared(eventLoopName));
     }
     static YomkResponse EVENTLOOP_INFO_LOOP(const std::string& eventLoopName, size_t tagCount)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkEventLoop/loop", yomk::String_::shared(eventLoopName + " " + std::to_string(tagCount)));
+        return request("/YomkEventLoop/loop", yomkmsg::String::shared(eventLoopName + " " + std::to_string(tagCount)));
     }
     // 查询全部事件循环状态
     static YomkResponse EVENTLOOP_INFO_ALL()
@@ -567,19 +567,19 @@ public:
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
         return request(
-            "/YomkFunctionPool/register", yomk::Function_::shared(yomk::Function{funcName, func, msgName, description}));
+            "/YomkFunctionPool/register", yomkmsg::Function::shared(yomk::Function{funcName, func, msgName, description}));
     }
     // 从函数池注销函数
     static YomkResponse FUNCTIONPOOL_UNREGISTER(const std::string& funcName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkFunctionPool/unregister", yomk::String_::shared(funcName));
+        return request("/YomkFunctionPool/unregister", yomkmsg::String::shared(funcName));
     }
     // 调用函数池中注册的函数
     static YomkResponse FUNCTIONPOOL_CALL(const std::string& funcName, YomkPkgPtr callData)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkFunctionPool/call", yomk::CallFunction_::shared(yomk::CallFunction{funcName, callData}));
+        return request("/YomkFunctionPool/call", yomkmsg::CallFunction::shared(yomk::CallFunction{funcName, callData}));
     }
     // 获取函数池中全部函数名
     static YomkResponse FUNCTIONPOOL_INFO_NAMES()
@@ -591,7 +591,7 @@ public:
     static YomkResponse FUNCTIONPOOL_INFO_NAME(const std::string& funcName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkFunctionPool/name", yomk::String_::shared(funcName));
+        return request("/YomkFunctionPool/name", yomkmsg::String::shared(funcName));
     }
     // 查询全部已注册函数元信息
     static YomkResponse FUNCTIONPOOL_INFO_ALL()
@@ -612,13 +612,13 @@ public:
     static YomkResponse SERVER_INFO_FUNCTIONS(const std::string& srvName)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkServerInfo/functions", yomk::String_::shared(srvName));
+        return request("/YomkServerInfo/functions", yomkmsg::String::shared(srvName));
     }
     // 查询指定功能函数元信息
     static YomkResponse SERVER_INFO_FUNCTION(const std::string& url)
     {
         YOMK_API_REQUIRE_SERVER(YomkResponse(YomkResponse::eInvalid, "YomkServer is not init"));
-        return request("/YomkServerInfo/function", yomk::String_::shared(url));
+        return request("/YomkServerInfo/function", yomkmsg::String::shared(url));
     }
     // 查询框架全量服务及功能函数拓扑
     static YomkResponse SERVER_INFO_ALL()
@@ -725,7 +725,7 @@ private:
 #define YOMK_LOGGER_INFO_GLOBAL(...) YomkAPI::LOGGER_INFO_GLOBAL(__VA_ARGS__)
 #define YOMK_FILE_LOG_DELETE(...) YomkAPI::FILE_LOG_DELETE(__VA_ARGS__)
 #define YOMK_CONTEXT_CREATE(...) YomkAPI::CONTEXT_CREATE(__VA_ARGS__)
-#define YOMK_CONTEXT_GET(MsgName, ...) YomkAPI::CONTEXT_GET<yomk::MsgName##_>(#MsgName, __VA_ARGS__)
+#define YOMK_CONTEXT_GET(MsgName, ...) YomkAPI::CONTEXT_GET<yomkmsg::MsgName>(#MsgName, __VA_ARGS__)
 #define YOMK_CONTEXT_SET(...) YomkAPI::CONTEXT_SET(__VA_ARGS__)
 #define YOMK_CONTEXT_ON_CHECKER(...) YomkAPI::CONTEXT_ON_CHECKER(__VA_ARGS__)
 #define YOMK_CONTEXT_OFF_CHECKER(...) YomkAPI::CONTEXT_OFF_CHECKER(__VA_ARGS__)

@@ -82,7 +82,7 @@ int MyBoot::before()
     // 通过 /proc/self/exe 推导配置文件路径
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
     std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.txt";
-    YOMK_CONTEXT_CREATE(CTX_CONFIG_PATH, yomk::String_::shared(configPath.string()));
+    YOMK_CONTEXT_CREATE(CTX_CONFIG_PATH, yomkmsg::String::shared(configPath.string()));
     YOMK_INFO_TAG("MyBoot::before", "config path: ", configPath.string());
     return 0;
 }
@@ -118,7 +118,7 @@ int MyBoot::after()
     }
     YOMK_INFO_TAG("MyBoot::after", "started successfully.");
 
-    resp = YOMK_REQUEST("/ConfigService/get", yomk::ConfigKey_::shared(ConfigKey{"name"}));
+    resp = YOMK_REQUEST("/ConfigService/get", yomkmsg::ConfigKey::shared(ConfigKey{"name"}));
     if (resp.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config name failed: ", resp.m_msg);
@@ -139,7 +139,7 @@ int MyBoot::after()
     YomkUnPackPkg(resp.m_data, String, version);
     YOMK_INFO_TAG("MyBoot::after", "project version: ", version->d);
 
-    resp = YOMK_REQUEST("/ConfigService/get", yomk::ConfigKey_::shared(ConfigKey{"description"}));
+    resp = YOMK_REQUEST("/ConfigService/get", yomkmsg::ConfigKey::shared(ConfigKey{"description"}));
     if (resp.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config description failed: ", resp.m_msg);
@@ -282,7 +282,7 @@ YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
     if (it == m_configMap.end())
         return YomkResponse(YomkResponse::eNo, "key not found: " + data->req.key);
 
-    return YomkResponse(YomkResponse::eOk, "ok", yomk::String_::shared(it->second));
+    return YomkResponse(YomkResponse::eOk, "ok", yomkmsg::String::shared(it->second));
 }
 
 YomkResponse ConfigService::setConfig(YomkPkgPtr pkg)
@@ -303,7 +303,7 @@ YomkResponse ConfigService::reloadConfig(YomkPkgPtr pkg)
 YomkResponse ConfigService::version(YomkPkgPtr pkg)
 {
     // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
-    return YomkResponse(YomkResponse::eOk, "ok", yomk::String_::shared(std::string(APP_VERSION)));
+    return YomkResponse(YomkResponse::eOk, "ok", yomkmsg::String::shared(std::string(APP_VERSION)));
 }
 ```
 
@@ -534,7 +534,7 @@ YomkResponse UserService::getUser(YomkPkgPtr pkg)
 
     // 业务逻辑...
     UserInfo info{query->req.userId, "Alice", 25};
-    return YomkResponse(YomkResponse::eOk, "ok", yomk::UserInfo_::shared(info));
+    return YomkResponse(YomkResponse::eOk, "ok", yomkmsg::UserInfo::shared(info));
 }
 
 YomkResponse UserService::createUser(YomkPkgPtr pkg)
@@ -544,7 +544,7 @@ YomkResponse UserService::createUser(YomkPkgPtr pkg)
 
     // 跨服务调用示例：读取配置
     YomkResponse cfgResp = YOMK_REQUEST("/ConfigService/get",
-        yomk::ConfigKey_::shared(ConfigKey{"server.name"}));
+        yomkmsg::ConfigKey::shared(ConfigKey{"server.name"}));
 
     return YomkResponse(YomkResponse::eOk, "user created");
 }
@@ -593,14 +593,14 @@ void changeLogger(const yomk::Context& ctx) {
 }
 
 // 使用
-YOMK_CONTEXT_CREATE("config", yomk::String_::shared("default"));
+YOMK_CONTEXT_CREATE("config", yomkmsg::String::shared("default"));
 YOMK_CONTEXT_ON_CHECKER();
 YOMK_CONTEXT_SET_CHECKER("config", nonEmptyChecker);
 YOMK_CONTEXT_ON_MONITOR();
 YOMK_CONTEXT_SET_MONITOR("config", changeLogger, true);
 
-YOMK_CONTEXT_SET("config", yomk::String_::shared("new_value")); // 通过检查并触发监控
-YOMK_CONTEXT_SET("config", yomk::String_::shared(""));          // 被拒绝
+YOMK_CONTEXT_SET("config", yomkmsg::String::shared("new_value")); // 通过检查并触发监控
+YOMK_CONTEXT_SET("config", yomkmsg::String::shared(""));          // 被拒绝
 ```
 
 checker/monitor 使用**服务成员函数**时必须弱绑定，直接用 `weakFunc(&Class::Method)`（按目标类型自动适配），服务删除后 checker 默认放行、monitor 丢弃：
@@ -642,10 +642,10 @@ YomkResponse taskHandler(YomkPkgPtr pkg) {
 YOMK_EVENTLOOP_START("worker_loop", taskHandler);
 
 // 异步投递
-YOMK_EVENTLOOP_POST("worker_loop", yomk::String_::shared("task_1"));
+YOMK_EVENTLOOP_POST("worker_loop", yomkmsg::String::shared("task_1"));
 
 // 同步投递（等待结果）
-YomkResponse resp = YOMK_EVENTLOOP_POST_WAIT("worker_loop", yomk::String_::shared("task_2"));
+YomkResponse resp = YOMK_EVENTLOOP_POST_WAIT("worker_loop", yomkmsg::String::shared("task_2"));
 if(resp.m_status == YomkResponse::eOk) {
     YomkUnPackPkg(resp.m_data, Event, event);
     // event->d.m_response 即事件处理函数的返回值（POST_WAIT 将其带回给等待方）
@@ -672,7 +672,7 @@ YomkResponse validateAmount(YomkPkgPtr pkg) {
 
 // 注册 + 调用
 YOMK_FUNCTIONPOOL_REGISTER("validate_amount", validateAmount);
-YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("validate_amount", yomk::String_::shared("100.5"));
+YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("validate_amount", yomkmsg::String::shared("100.5"));
 
 // 注销（注销后调用返回 eNo: funcName is not register）
 YOMK_FUNCTIONPOOL_UNREGISTER("validate_amount");
@@ -731,7 +731,7 @@ resp = YOMK_SERVER_INFO_ALL();
 `/YomkContext` 服务自身提供 key 级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）：
 
 ```cpp
-YOMK_CONTEXT_CREATE("str_key", yomk::String_::shared("v1"));
+YOMK_CONTEXT_CREATE("str_key", yomkmsg::String::shared("v1"));
 YOMK_CONTEXT_SET_CHECKER("str_key", myChecker);
 YOMK_CONTEXT_SET_MONITOR("str_key", myMonitor, true);
 
@@ -760,8 +760,8 @@ YOMK_EVENTLOOP_START("loop_a", nullptr);
 YOMK_EVENTLOOP_START("loop_b", defaultHandle, String);  // 声明默认处理函数期望类型，内省可见 [String]
 
 // 投递事件时可选打 tag（tag 仅作内省标记，不参与路由/处理）
-YOMK_EVENTLOOP_POST("loop_a", yomk::String_::shared("data"), myHandle, "tag1");
-YOMK_EVENTLOOP_POST("loop_a", yomk::String_::shared("data"), myHandle);  // 不打 tag，旧写法直接编译
+YOMK_EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle, "tag1");
+YOMK_EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle);  // 不打 tag，旧写法直接编译
 
 // 循环名列表（返回 StringArray）
 YomkResponse resp = YOMK_EVENTLOOP_INFO_LOOPS();   // arr->d: ["loop_a", "loop_b"]
@@ -943,7 +943,7 @@ int XxxService::init()
 YomkResponse XxxService::version(YomkPkgPtr pkg)
 {
     std::string version = "ExtensionName v" EXTENSION_VERSION;
-    return YomkResponse(YomkResponse::eOk, "ok", yomk::String_::shared(version));
+    return YomkResponse(YomkResponse::eOk, "ok", yomkmsg::String::shared(version));
 }
 ```
 

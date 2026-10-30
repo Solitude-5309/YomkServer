@@ -189,7 +189,7 @@ static void testUrlParseBoundaries()
     // 合法命中 + pkg 透传端到端
     resp = server->request("/RouteSrv/ping");
     YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "pong", "request 合法 url 命中返回 eOk + pong");
-    resp = server->request("/RouteSrv/echo", yomk::String_::shared(std::string("hi")));
+    resp = server->request("/RouteSrv/echo", yomkmsg::String::shared(std::string("hi")));
     YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "echo:hi", "request 携 pkg 路由透传，解包回显往返正确");
 
     // 超长 URL（4096 级服务名）：不崩溃，走 service not found
