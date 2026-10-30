@@ -9,13 +9,13 @@ YomkFunctionPool::YomkFunctionPool(YomkServer* server) : YomkService(server)
 
 int YomkFunctionPool::init()
 {
-    YomkInstallFunc("/register", YomkFunctionPool::registerFunction, Function);
-    YomkInstallFunc("/unregister", YomkFunctionPool::unRegisterFunction, String);
-    YomkInstallFunc("/call", YomkFunctionPool::callFunction, CallFunction);
+    installFunc("/register", &YomkFunctionPool::registerFunction, "Function");
+    installFunc("/unregister", &YomkFunctionPool::unRegisterFunction, "String");
+    installFunc("/call", &YomkFunctionPool::callFunction, "CallFunction");
     // 调试内省接口，端点挂在本服务 funcMap
-    YomkInstallFunc("/names", YomkFunctionPool::funcNames);
-    YomkInstallFunc("/name", YomkFunctionPool::funcInfo, String);
-    YomkInstallFunc("/all", YomkFunctionPool::listAll);
+    installFunc("/names", &YomkFunctionPool::funcNames);
+    installFunc("/name", &YomkFunctionPool::funcInfo, "String");
+    installFunc("/all", &YomkFunctionPool::listAll);
     return 0;
 }
 

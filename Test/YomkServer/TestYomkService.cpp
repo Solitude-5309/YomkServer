@@ -69,15 +69,15 @@ public:
 public:
     virtual int init() override
     {
-        YomkInstallFunc("/echo", DemoService::echo, String);            // 三参：内省元数据 String
-        YomkInstallFunc("/plain", DemoService::plain);                  // 两参：无元数据
+        installFunc("/echo", &DemoService::echo, "String");            // 三参：内省元数据 String
+        installFunc("/plain", &DemoService::plain);                  // 两参：无元数据
         // 四参注册：含函数说明；三参注册：说明缺省为空
-        YomkInstallFunc("/desc", DemoService::reinstall, String, "demo description");  // 四参：含函数说明
-        YomkInstallFunc("/desc0", DemoService::plain, String);          // 三参：说明缺省为空
-        YomkInstallFunc("/reinstall", DemoService::reinstall, String);  // 先三参
-        YomkInstallFunc("/reinstall", DemoService::reinstall);          // 两参覆盖：清残留信息
-        YomkInstallFunc("/restore", DemoService::restore);              // 先两参
-        YomkInstallFunc("/restore", DemoService::restore, String);      // 三参覆盖：恢复元数据
+        installFunc("/desc", &DemoService::reinstall, "String", "demo description");  // 四参：含函数说明
+        installFunc("/desc0", &DemoService::plain, "String");          // 三参：说明缺省为空
+        installFunc("/reinstall", &DemoService::reinstall, "String");  // 先三参
+        installFunc("/reinstall", &DemoService::reinstall);          // 两参覆盖：清残留信息
+        installFunc("/restore", &DemoService::restore);              // 先两参
+        installFunc("/restore", &DemoService::restore, "String");      // 三参覆盖：恢复元数据
         return 0;
     }
 

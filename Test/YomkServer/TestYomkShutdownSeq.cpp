@@ -74,8 +74,8 @@ public:
 public:
     virtual int init() override
     {
-        YomkInstallFunc("/ping", DrainSrv::ping);
-        YomkInstallFunc("/work", DrainSrv::work);
+        installFunc("/ping", &DrainSrv::ping);
+        installFunc("/work", &DrainSrv::work);
         // 存弱绑定回调至全局：排空期探针调用，验证 shutdown 不置注销标志（回调照常执行）
         g_weakCb = weakFunc(&DrainSrv::work);
         return 0;
@@ -106,7 +106,7 @@ public:
 public:
     virtual int init() override
     {
-        YomkInstallFunc("/spawn", SpawnSrv::spawn);
+        installFunc("/spawn", &SpawnSrv::spawn);
         return 0;
     }
 

@@ -7,7 +7,7 @@
  * 2. 销毁丢弃（引用计数路径）：服务析构后回调丢弃——void 不执行、YomkResponse 返回 eNo+契约消息、
  *    ECheckStatus 默认放行 eAccept、其他类型返回 Ret{} 默认值
  * 3. 删除即停（注销标志路径）：持 shared_ptr 不释放经框架删除置位注销标志，回调同样立即丢弃（双层判活标志层独立生效）
- * 4. YomkInstallFunc 自动弱绑定串联：注销后 invoke 返回丢弃契约消息（真实功能函数路径）
+ * 4. installFunc 自动弱绑定串联：注销后 invoke 返回丢弃契约消息（真实功能函数路径）
  * 5. 构造期告警分支：构造期内调用 weakFunc（weak_from_this 未生效），绑定永久失效、回调永不执行
  * 6. 丢弃不执行实证：所有丢弃用例均以副作用计数未变化断言，而非仅看返回值
  *
@@ -54,8 +54,8 @@ public:
 public:
     virtual int init() override
     {
-        // YomkInstallFunc 自动弱绑定：注销后经 invoke 返回丢弃契约消息
-        YomkInstallFunc("/installed", BindSrv::workResp);
+        // installFunc 自动弱绑定：注销后经 invoke 返回丢弃契约消息
+        installFunc("/installed", &BindSrv::workResp);
         return 0;
     }
 
@@ -219,7 +219,7 @@ static void testMarkDeletedDiscard(YomkServer* server)
     YomkResponse aliveResp = srv->invoke("/installed");
     YOMK_TEST_CHECK(
         aliveResp.m_status == YomkResponse::eOk && aliveResp.m_msg == "alive",
-        "注销前：YomkInstallFunc 自动弱绑定 invoke 命中执行");
+        "注销前：installFunc 自动弱绑定 invoke 命中执行");
 
     std::function<void()> cbVoid = srv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
     std::function<YomkResponse(YomkPkgPtr)> cbResp = srv->weakFunc(

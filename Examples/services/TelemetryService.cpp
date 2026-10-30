@@ -21,7 +21,7 @@ TelemetryService::~TelemetryService()
 int TelemetryService::init()
 {
     // 注册功能函数：注册后即可通过 URL /TelemetryService/record 调用
-    YomkInstallFunc("/record", TelemetryService::record);
+    installFunc("/record", &TelemetryService::record);
 
     // 弱绑定注册到 FunctionPool：服务删除后 telemetry_hook 自动失效，不悬垂 this
     YOMK_FUNCTIONPOOL_REGISTER("telemetry_hook", weakFunc(&TelemetryService::record));

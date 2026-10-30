@@ -110,7 +110,7 @@ private:
 // .cpp
 XxxService::XxxService(YomkServer *server) : YomkService(server) { name("/XxxService"); }
 int XxxService::init() {
-    YomkInstallFunc("/my_func", XxxService::myFunc);
+    installFunc("/my_func", &XxxService::myFunc);
     YOMK_INFO_TAG("XxxService::init", "install func [ /my_func ] to", name());
     return 0;
 }
@@ -155,11 +155,11 @@ YOMK_ASYNC_REQUEST("/XxxService/my_func", YomkMkPtr(MyData, MyData{"hello", 1}),
 int ret = YOMK_DEL_SERVICE("/XxxService");
 ```
 
-服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时，**必须**用 `weakFunc(&Class::Method)` 弱绑定，否则服务删除后回调悬垂 this 崩溃；弱绑定判活机制与各回调签名的适配细节见 [reference.md](reference.md) "YomkInstallFunc / weakFunc"：
+服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时，**必须**用 `weakFunc(&Class::Method)` 弱绑定，否则服务删除后回调悬垂 this 崩溃；弱绑定判活机制与各回调签名的适配细节见 [reference.md](reference.md) "installFunc / weakFunc"：
 
 ```cpp
 int XxxService::init() {
-    YomkInstallFunc("/my_func", XxxService::myFunc);  // 本服务 funcMap 已自动弱绑定
+    installFunc("/my_func", &XxxService::myFunc);  // 本服务 funcMap 已自动弱绑定
     // 注册到 FunctionPool：弱绑定，服务删除后回调自动失效
     YOMK_FUNCTIONPOOL_REGISTER("my_work", weakFunc(&XxxService::myFunc));
     // Context checker/monitor 签名不同，同一 weakFunc 自动适配：
@@ -172,9 +172,9 @@ int XxxService::init() {
 }
 ```
 
-- 丢弃语义与判活细节（引用计数 + 注销标志双层判活、`YOMK_DEL_SERVICE`/同名替换置位注销标志即停、`YOMK_SHUTDOWN` 走排空不置位）见 [reference.md](reference.md) "YomkInstallFunc / weakFunc" 与 `YOMK_DEL_SERVICE`/`YOMK_SHUTDOWN` 行
+- 丢弃语义与判活细节（引用计数 + 注销标志双层判活、`YOMK_DEL_SERVICE`/同名替换置位注销标志即停、`YOMK_SHUTDOWN` 走排空不置位）见 [reference.md](reference.md) "installFunc / weakFunc" 与 `YOMK_DEL_SERVICE`/`YOMK_SHUTDOWN` 行
 - 覆写 `virtual void deinit()` 停止非弱绑定路径的生产者（线程/定时器/外部注册），删除服务时由框架自动调用
-- **异步响应回调的生命周期要求**：`YOMK_ASYNC_REQUEST` 的 `func` 框架不自动弱绑定（区别于 `YomkInstallFunc`），优先用服务成员函数配合 `weakFunc(&Class::Method)`（见上例）；若必须用普通 lambda，捕获对象的生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据
+- **异步响应回调的生命周期要求**：`YOMK_ASYNC_REQUEST` 的 `func` 框架不自动弱绑定（区别于 `installFunc`），优先用服务成员函数配合 `weakFunc(&Class::Method)`（见上例）；若必须用普通 lambda，捕获对象的生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据
 
 ### 优雅关闭（shutdown）
 
@@ -190,12 +190,12 @@ YOMK_SHUTDOWN();
 
 ### 服务内省（调试）
 
-框架内置 `/YomkServerInfo` 服务（随 `YOMK_INIT` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时用三参宏声明期望消息类型、四参宏追加函数说明（仅作内省元数据，不参与运行时校验；两参旧写法零改动）：
+框架内置 `/YomkServerInfo` 服务（随 `YOMK_INIT` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时用第三参声明期望消息类型、第四参追加函数说明（仅作内省元数据，不参与运行时校验）：
 
 ```cpp
 int XxxService::init() {
-    YomkInstallFunc("/my_func", XxxService::myFunc, MyData);  // 内省可见类型 MyData
-    YomkInstallFunc("/my_desc", XxxService::myFunc, MyData, "对函数的说明");  // 四参：内省可见类型 + 说明（内容自定义）
+    installFunc("/my_func", &XxxService::myFunc, "MyData");  // 内省可见类型 MyData
+    installFunc("/my_desc", &XxxService::myFunc, "MyData", "对函数的说明");  // 四参：内省可见类型 + 说明（内容自定义）
     return 0;
 }
 
@@ -263,7 +263,7 @@ ExtensionName/
 在已有扩展中添加新功能：
 
 1. **对外接口头文件添加消息包 + 方法声明**（`include/XxxService.h`；仅内部使用的声明放 `src/` 内部头文件）
-2. **实现添加功能函数**（`src/XxxService.cpp`）：`YomkInstallFunc` + 实现
+2. **实现添加功能函数**（`src/XxxService.cpp`）：`installFunc` + 实现
 3. **测试程序添加测试用例**（`test/TestXxx.cpp`）
 
 ## 编程规范
@@ -279,7 +279,7 @@ YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 - `YomkUnPackPkgVoid(pkg, 消息名称, ptr)` — 解包，失败自动 return
 - `YomkUnPackPkg(pkg, 消息名称, ptr)` — 解包，不自动 return，需手动判空
 
-注意：消息名称是“宏词汇”而非“类型词汇”——只能在 `Yomk()` / `YomkPtr()` / `YomkMkPtr()` / `YomkUnPackPkg*` / `YomkInstallFunc` 第三参等宏的参数位置出现，不能当裸类型名使用（`YomkMsg` 展开生成的真实类型是带后缀的 `yomk::消息名称_` 与 `yomk::消息名称Ptr`，裸写消息名会报 not declared）。
+注意：消息名称是“宏词汇”而非“类型词汇”——只能在 `Yomk()` / `YomkPtr()` / `YomkMkPtr()` / `YomkUnPackPkg*` 等宏的参数位置与 `installFunc` 第三参（手写字符串字面量）出现，不能当裸类型名使用（`YomkMsg` 展开生成的真实类型是带后缀的 `yomk::消息名称_` 与 `yomk::消息名称Ptr`，裸写消息名会报 not declared）。
 
 内置标准类型（成员名均为 `d`）：`Bool`, `Char`, `UChar`, `Byte`, `Int8`, `Uint8`, `Int16`, `Uint16`, `Int32`, `Uint32`, `Int64`, `Uint64`, `Float32`, `Float64`, `String` 及对应 `XxxArray` 类型（完整清单见 `YomkPkg.h` 末段）。
 
@@ -288,7 +288,7 @@ YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 1. 每个 Service 只负责单一业务域
 2. 服务间通过 `YOMK_REQUEST` 通信，不直接引用
 3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
-4. 服务成员函数注册到外部子系统（FunctionPool/EventLoop/Context checker·monitor/异步响应）必须用 `weakFunc(&Class::Method)` 弱绑定，服务删除后回调自动失效；本服务 funcMap（`YomkInstallFunc`）已自动弱绑定
+4. 服务成员函数注册到外部子系统（FunctionPool/EventLoop/Context checker·monitor/异步响应）必须用 `weakFunc(&Class::Method)` 弱绑定，服务删除后回调自动失效；本服务 funcMap（`installFunc("/x", &C::m)`）已自动弱绑定
 5. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）
 6. 配置路径通过 Context 传递，不用构造参数
 7. 扩展库只负责处理逻辑，不关心数据来源，所有外部数据必须通过请求参数传入

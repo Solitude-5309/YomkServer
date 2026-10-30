@@ -49,7 +49,7 @@ YomkMk(MsgName, ...)      // → 构造实例
 
 > **入包语义**：`YomkMkPtr` 生成的包类型同时提供 `const DataType &` 与 `DataType &&` 两种构造，传 `std::move(data)` 即移动入包（大对象可避免拷贝）；传左值时重载决议仍选中 `const&` 版本，行为与逐值拷贝一致。
 
-> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。消息类型名是“宏词汇”而非“类型词汇”——只能在 `Yomk()` / `YomkPtr()` / `YomkMkPtr()` / `YomkUnPackPkg*` / `YomkInstallFunc` 第三参等宏的参数位置出现，不能当裸类型名使用。`YomkMsg` 展开生成的真实类型是 `yomk::MsgName_`（类）与 `yomk::MsgNamePtr`（指针），裸写 `MsgName` 会报 `'MsgName' has not been declared`。
+> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。消息类型名是“宏词汇”而非“类型词汇”——只能在 `Yomk()` / `YomkPtr()` / `YomkMkPtr()` / `YomkUnPackPkg*` / `installFunc` 第三参等宏的参数位置出现（`installFunc` 第三参为手写字符串字面量），不能当裸类型名使用。`YomkMsg` 展开生成的真实类型是 `yomk::MsgName_`（类）与 `yomk::MsgNamePtr`（指针），裸写 `MsgName` 会报 `'MsgName' has not been declared`。
 
 **解包宏：**
 ```cpp
@@ -59,12 +59,13 @@ YomkUnPackPkg(pkg, MsgName, ptr)          // 不自动 return，需手动判空
 YomkUnPackPkgT(pkg, MsgName, ClassName, ptr) // MsgName为运行时字符串
 ```
 
-**YomkInstallFunc / weakFunc：**
+**installFunc / weakFunc：**
 ```cpp
-YomkInstallFunc(FuncName, Func)             // 弱绑定成员函数并装入本服务 funcMap
-YomkInstallFunc(FuncName, Func, MsgName)    // 同上，额外声明期望消息类型（可选末位参数）
-YomkInstallFunc(FuncName, Func, MsgName, Description)  // 同上，追加函数说明（自由字符串，框架透传不解析）
-// MsgName 字符串化后仅作内省元数据，不参与运行时校验；两参旧调用零改动
+installFunc("/x", &C::m)             // 弱绑定成员函数并装入本服务 funcMap
+installFunc("/x", &C::m, "MsgName")    // 同上，额外声明期望消息类型（可选末位参数）
+installFunc("/x", &C::m, "MsgName", "Description")  // 同上，追加函数说明（自由字符串，框架透传不解析）
+// MsgName 以手写字符串字面量传入，仅作内省元数据，不参与运行时校验
+// weakFunc 已收进 installFunc 成员函数指针重载内部，调用点无需手写
 weakFunc(&Class::Method)         // 弱绑定成员函数（不装入 funcMap），供注册到外部子系统使用
 // installFunc 内部经 weakFunc 绑定成员函数（等价 weakFunc(bind(&Func, this, _1))）：
 // 回调触发时先 weak_ptr.lock() 判活，服务已删除则安全丢弃，不会悬垂 this 崩溃。
@@ -76,8 +77,8 @@ weakFunc(&Class::Method)         // 弱绑定成员函数（不装入 funcMap）
 namespace yomk {
 struct FuncInfo {  // 功能函数元信息（调试内省用），预留扩展（如安全性校验）
     std::string m_funcName;     // 功能函数名（/开头）
-    std::string m_msgName;      // 期望消息类型名（YomkInstallFunc 三参声明，可为空）
-    std::string m_description;  // 函数说明（YomkInstallFunc 四参声明，内容使用者自定义，可为空）
+    std::string m_msgName;      // 期望消息类型名（installFunc 第三参声明，可为空）
+    std::string m_description;  // 函数说明（installFunc 第四参声明，内容使用者自定义，可为空）
 };
 }  // namespace yomk
 ```
@@ -159,7 +160,11 @@ class YomkService {
     virtual void deinit() {}  // 删除服务时由框架在锁外调用，覆写用于停线程/注销外部资源
     template<typename Func> auto weakFunc(Func func);  // 泛型弱绑定守卫（适配签名清单见上方 weakFunc 注释）
     template<typename Class, typename Ret, typename Arg> auto weakFunc(Ret (Class::*)(Arg));  // 成员函数指针弱绑定（判活/丢弃行为同泛型版）
-    void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "");
+    void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
+                     const std::string& description = "");  // 装入 funcMap（弱绑定已内置）
+    template<typename Class, typename Res, typename Arg>
+    void installFunc(const std::string& funcName, Res (Class::*func)(Arg), const std::string& msgName = "",
+                     const std::string& description = "");  // 成员函数指针直装："/x", &C::m[, "Msg"][, "desc"]
     std::map<std::string, yomk::FuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
     YomkResponse invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);  // 直接调用本服务的功能函数（不经 URL 路由）
     YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);

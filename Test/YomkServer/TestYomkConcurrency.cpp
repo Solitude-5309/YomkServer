@@ -85,8 +85,8 @@ public:
 
     int init() override
     {
-        YomkInstallFunc("/ping", ConcSrv::ping);
-        YomkInstallFunc("/echo", ConcSrv::echo, String);
+        installFunc("/ping", &ConcSrv::ping);
+        installFunc("/echo", &ConcSrv::echo, "String");
         g_weakCb = weakFunc(&ConcSrv::ping);
         return 0;
     }

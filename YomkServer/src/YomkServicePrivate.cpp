@@ -87,7 +87,7 @@ YomkResponse YomkServicePrivate::invoke(const std::string& funcName, YomkPkgPtr 
         if (iter == m_funcMap.end())
         {
             YOMK_ERR_POS_LOG(
-                "function not found -> " + funcName + ", please use YomkInstallFunc to install this function.");
+                "function not found -> " + funcName + ", please use installFunc to install this function.");
             return {YomkResponse::eNo, "function not found: " + funcName};
         }
         tmpFunc = iter->second;

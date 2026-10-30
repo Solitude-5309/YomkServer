@@ -24,8 +24,8 @@ YOMK_SERVER_INFO_ALL();                        // 全量服务拓扑
 
 ## 说明
 
-- 期望消息类型名通过三参宏声明：`YomkInstallFunc(funcName, func, MsgName)`、`YOMK_FUNCTIONPOOL_REGISTER(name, func, MsgName)`、`YOMK_EVENTLOOP_START(name, func, MsgName)`，仅作内省元数据，不影响调用。
-- 函数说明通过四参宏声明（第四参自由字符串，内容使用者自定义，框架透传不解析）：`YomkInstallFunc` 与 `YOMK_FUNCTIONPOOL_REGISTER` 均支持。`/function` 与函数池 `/YomkFunctionPool/name` 单查端点命中均返回结构化 FuncInfo 包（`m_msg` 恒 "ok"）：`m_msgName` 承载期望消息类型名、`m_description` 承载函数说明（未声明时为空）。
+- 期望消息类型名通过末位参数声明：`installFunc("/x", &C::m, "MsgName")`、`YOMK_FUNCTIONPOOL_REGISTER(name, func, MsgName)`、`YOMK_EVENTLOOP_START(name, func, MsgName)`，仅作内省元数据，不影响调用。
+- 函数说明通过第四参声明（末参自由字符串，内容使用者自定义，框架透传不解析）：`installFunc("/x", &C::m, "MsgName", "说明")` 与 `YOMK_FUNCTIONPOOL_REGISTER` 均支持。`/function` 与函数池 `/YomkFunctionPool/name` 单查端点命中均返回结构化 FuncInfo 包（`m_msg` 恒 "ok"）：`m_msgName` 承载期望消息类型名、`m_description` 承载函数说明（未声明时为空）。
 - 各内置模块另有模块级自省 API，详见各模块文档：
 
 | 模块 | 自省 API |

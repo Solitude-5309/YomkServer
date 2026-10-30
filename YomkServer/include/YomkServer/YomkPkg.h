@@ -8,18 +8,6 @@
 #include <utility>
 #include <vector>
 
-// 注册服务成员功能函数（3 参声明期望消息类型；4 参追加函数说明，内容使用者自定义）
-#define YOMK_INSTALL_FUNC_SELECT(_1, _2, _3, _4, NAME, ...) NAME
-#define YomkInstallFunc(...)                                                                             \
-    YOMK_INSTALL_FUNC_SELECT(__VA_ARGS__, YOMK_INSTALL_FUNC_4, YOMK_INSTALL_FUNC_3, YOMK_INSTALL_FUNC_2) \
-    (__VA_ARGS__)
-#define YOMK_INSTALL_FUNC_2(FuncName, Func) \
-    installFunc(FuncName, weakFunc(std::bind(&Func, this, std::placeholders::_1)))
-#define YOMK_INSTALL_FUNC_3(FuncName, Func, MsgName) \
-    installFunc(FuncName, weakFunc(std::bind(&Func, this, std::placeholders::_1)), #MsgName)
-#define YOMK_INSTALL_FUNC_4(FuncName, Func, MsgName, Description) \
-    installFunc(FuncName, weakFunc(std::bind(&Func, this, std::placeholders::_1)), #MsgName, Description)
-
 // 校验消息类型并解包，类型不匹配时直接返回 YomkResponse::eNo
 #define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                             \
     if (!pkg || pkg->name() != #MsgName)                                         \
@@ -142,8 +130,8 @@ namespace yomk
 struct FuncInfo
 {
     std::string m_funcName;     // 功能函数名（/开头）
-    std::string m_msgName;      // 期望消息类型名（三参宏声明，可为空）
-    std::string m_description;  // 函数说明（四参宏声明，内容使用者自定义，可为空）
+    std::string m_msgName;      // 期望消息类型名（installFunc 第三参声明，可为空）
+    std::string m_description;  // 函数说明（installFunc 第四参声明，内容使用者自定义，可为空）
 };
 
 struct Function
@@ -151,7 +139,7 @@ struct Function
     std::string m_funcName;
     YomkServiceFunc m_func;
     std::string m_msgName;
-    std::string m_description;  // 函数说明（四参宏声明，内容使用者自定义，可为空）
+    std::string m_description;  // 函数说明（installFunc 第四参声明，内容使用者自定义，可为空）
 };
 
 struct CallFunction

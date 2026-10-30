@@ -236,11 +236,11 @@ ConfigService::ConfigService(YomkServer *server)
 
 int ConfigService::init()
 {
-    YomkInstallFunc("/load", ConfigService::loadConfig);
-    YomkInstallFunc("/get", ConfigService::getConfig);
-    YomkInstallFunc("/set", ConfigService::setConfig);
-    YomkInstallFunc("/reload", ConfigService::reloadConfig);
-    YomkInstallFunc("/version", ConfigService::version);
+    installFunc("/load", &ConfigService::loadConfig);
+    installFunc("/get", &ConfigService::getConfig);
+    installFunc("/set", &ConfigService::setConfig);
+    installFunc("/reload", &ConfigService::reloadConfig);
+    installFunc("/version", &ConfigService::version);
     YOMK_INFO_TAG("ConfigService::init", "install func [ /load /get /set /reload /version ] to", name());
     return 0;
 }
@@ -521,8 +521,8 @@ UserService::UserService(YomkServer *server)
 
 int UserService::init()
 {
-    YomkInstallFunc("/get_user", UserService::getUser);
-    YomkInstallFunc("/create_user", UserService::createUser);
+    installFunc("/get_user", &UserService::getUser);
+    installFunc("/create_user", &UserService::createUser);
     YOMK_INFO_TAG("UserService::init", "install func [ /get_user /create_user ] to", name());
     return 0;
 }
@@ -694,14 +694,14 @@ void MyService::deinit() {
 
 ## 示例5：服务内省（调试）
 
-内省类型元数据由 `YomkInstallFunc` 三参形式声明、函数说明由四参形式声明（不参与运行时校验，两参旧写法零改动）：
+内省类型元数据由 installFunc 第三参声明、函数说明由第四参声明（手写字符串字面量，仅作内省元数据，不参与运行时校验）：
 
 ```cpp
 int DemoService::init()
 {
-    YomkInstallFunc("/with_type", DemoService::withType, String);  // 内省可见类型 String
-    YomkInstallFunc("/with_desc", DemoService::withType, String, "对函数的说明");  // 四参：内省可见类型 + 说明
-    YomkInstallFunc("/no_type", DemoService::noType);              // 旧写法兼容，内省无类型
+    installFunc("/with_type", &DemoService::withType, "String");  // 内省可见类型 String
+    installFunc("/with_desc", &DemoService::withType, "String", "对函数的说明");  // 四参：内省可见类型 + 说明
+    installFunc("/no_type", &DemoService::noType);                // 不声明类型，内省无类型
     return 0;
 }
 
@@ -780,7 +780,7 @@ resp = YOMK_EVENTLOOP_INFO_ALL();
 
 ### FunctionPool 模块内省
 
-`/YomkFunctionPool` 服务自身提供注册表级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）。注册时可用三参宏声明期望消息类型、四参宏追加函数说明（与 `YomkInstallFunc` 同款，字符串化后仅作内省元数据，不参与运行时校验）：
+`/YomkFunctionPool` 服务自身提供注册表级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）。注册时可用三参宏声明期望消息类型、四参宏追加函数说明（与 installFunc 第三/四参语义同款，仅作内省元数据，不参与运行时校验）：
 
 ```cpp
 YOMK_FUNCTIONPOOL_REGISTER("func_a", funcA, String);  // 声明期望类型，内省可见 [String]
@@ -935,7 +935,7 @@ XxxService::XxxService(YomkServer *server)
 
 int XxxService::init()
 {
-    YomkInstallFunc("/version", XxxService::version);
+    installFunc("/version", &XxxService::version);
     YOMK_INFO_TAG("XxxService::init", "install func [ /version ] to", name());
     return 0;
 }

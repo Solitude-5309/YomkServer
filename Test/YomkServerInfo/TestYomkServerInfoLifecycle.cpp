@@ -155,8 +155,8 @@ public:
 public:
     virtual int init() override
     {
-        YomkInstallFunc("/ping", FmtSrv::ping);
-        YomkInstallFunc("/echo", FmtSrv::echo, String, "echo demo description");
+        installFunc("/ping", &FmtSrv::ping);
+        installFunc("/echo", &FmtSrv::echo, "String", "echo demo description");
         return 0;
     }
 
@@ -184,7 +184,7 @@ public:
 public:
     virtual int init() override
     {
-        YomkInstallFunc("/hit", ChurnSrv::hit);
+        installFunc("/hit", &ChurnSrv::hit);
         return 0;
     }
 

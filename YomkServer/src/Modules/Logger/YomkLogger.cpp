@@ -26,22 +26,22 @@ YomkLogger::~YomkLogger() {}
 
 int YomkLogger::init()
 {
-    YomkInstallFunc("/set_console_log_proxy", YomkLogger::setConsoleLogProxy, ConsoleLogProxy);
-    YomkInstallFunc("/set_file_log_proxy", YomkLogger::setFileLogProxy, FileLogProxy);
-    YomkInstallFunc("/console_log", YomkLogger::consoleLog, Log);
-    YomkInstallFunc("/create_file_logger", YomkLogger::createFileLogger, LogFile);
-    YomkInstallFunc("/file_log", YomkLogger::fileLog, Log);
-    YomkInstallFunc("/write_file_log", YomkLogger::writeFileLog, String);
-    YomkInstallFunc("/delete_logger", YomkLogger::deleteLogger, String);
-    YomkInstallFunc("/off_console_log_by_level", YomkLogger::offConsoleLogByLevel, Log);
-    YomkInstallFunc("/on_console_log_by_level", YomkLogger::onConsoleLogByLevel, Log);
-    YomkInstallFunc("/loggers", YomkLogger::loggers, String);
-    YomkInstallFunc("/logger", YomkLogger::loggerInfo, LoggerQuery);
-    YomkInstallFunc("/all", YomkLogger::listAll);
-    YomkInstallFunc("/console_global_state", YomkLogger::consoleGlobalState);
-    YomkInstallFunc("/off_file_log_by_level", YomkLogger::offFileLogByLevel, Log);
-    YomkInstallFunc("/on_file_log_by_level", YomkLogger::onFileLogByLevel, Log);
-    YomkInstallFunc("/file_global_state", YomkLogger::fileGlobalState);
+    installFunc("/set_console_log_proxy", &YomkLogger::setConsoleLogProxy, "ConsoleLogProxy");
+    installFunc("/set_file_log_proxy", &YomkLogger::setFileLogProxy, "FileLogProxy");
+    installFunc("/console_log", &YomkLogger::consoleLog, "Log");
+    installFunc("/create_file_logger", &YomkLogger::createFileLogger, "LogFile");
+    installFunc("/file_log", &YomkLogger::fileLog, "Log");
+    installFunc("/write_file_log", &YomkLogger::writeFileLog, "String");
+    installFunc("/delete_logger", &YomkLogger::deleteLogger, "String");
+    installFunc("/off_console_log_by_level", &YomkLogger::offConsoleLogByLevel, "Log");
+    installFunc("/on_console_log_by_level", &YomkLogger::onConsoleLogByLevel, "Log");
+    installFunc("/loggers", &YomkLogger::loggers, "String");
+    installFunc("/logger", &YomkLogger::loggerInfo, "LoggerQuery");
+    installFunc("/all", &YomkLogger::listAll);
+    installFunc("/console_global_state", &YomkLogger::consoleGlobalState);
+    installFunc("/off_file_log_by_level", &YomkLogger::offFileLogByLevel, "Log");
+    installFunc("/on_file_log_by_level", &YomkLogger::onFileLogByLevel, "Log");
+    installFunc("/file_global_state", &YomkLogger::fileGlobalState);
     return 0;
 }
 

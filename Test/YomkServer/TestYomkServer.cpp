@@ -121,8 +121,8 @@ public:
         {
             return g_initRet;  // 既有回滚路径：init 返回非 0
         }
-        YomkInstallFunc("/ping", RouteSrv::ping, String);
-        YomkInstallFunc("/echo", RouteSrv::echo, String);
+        installFunc("/ping", &RouteSrv::ping, "String");
+        installFunc("/echo", &RouteSrv::echo, "String");
         // 存弱绑定回调至全局：服务删除后仍可从外部调用，验证删除即停端到端
         g_weakCb = weakFunc(&RouteSrv::ping);
         return 0;

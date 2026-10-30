@@ -239,9 +239,9 @@ public:
     {
         // 2 参注册：无元数据；4 参注册：声明 /quality_check 期望 QualityCheckReq
         // 并附函数说明，供自省识别
-        YomkInstallFunc("/report", ArmStationService::report);
-        YomkInstallFunc(
-            "/quality_check", ArmStationService::qualityCheck, QualityCheckReq, "装配工位质量抽检：按件抽检并回执结论");
+        installFunc("/report", &ArmStationService::report);
+        installFunc("/quality_check", &ArmStationService::qualityCheck, "QualityCheckReq",
+                    "装配工位质量抽检：按件抽检并回执结论");
         YOMK_INFO_TAG("arm.station", "init: install /report (no meta), /quality_check [QualityCheckReq] + description");
         return 0;
     }
@@ -346,7 +346,7 @@ static void showArmStationFunctions()
             logFuncInfo("INFO_FUNCTIONS", func);
         }
     }
-    logVerify("msgName 即 YomkInstallFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /report 两字段为(未指定)");
+    logVerify("msgName 即 installFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /report 两字段为(未指定)");
 
     logAction("查阅不存在工位 /GhostStation 的职能清单");
     funcsResp = YOMK_SERVER_INFO_FUNCTIONS("/GhostStation");

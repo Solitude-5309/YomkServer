@@ -66,7 +66,7 @@
  *   YOMK_REQUEST / YOMK_ASYNC_REQUEST          同步 / 异步请求
  *   YOMK_SERVER_P / YOMK_SERVER_PTR            全局单例
  *   YOMK_SERVER_INFO_SERVICES / FUNCTIONS / FUNCTION / ALL  调用拓扑自省
- *   YomkInstallFunc(2/4 参) / weakFunc(&Class::Method) / 成员 request  服务侧 API
+ *   installFunc("/x", &C::m[, "Msg"][, "desc"]) / weakFunc(&Class::Method) / 成员 request  服务侧 API
  */
 
 #include <chrono>
@@ -363,7 +363,7 @@ static void showArmIntrospect()
             logFuncInfo("INFO_FUNCTIONS", func);
         }
     }
-    logVerify("msgName 即 YomkInstallFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /echo 两字段为(未指定)");
+    logVerify("msgName 即 installFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /echo 两字段为(未指定)");
 
     logAction("调阅运动指令函数名片");
     YomkResponse resp = YOMK_SERVER_INFO_FUNCTION("/MotionService/move");

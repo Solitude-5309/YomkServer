@@ -79,6 +79,14 @@ public:
     // 注册功能函数（msgName 声明期望消息类型；description 函数说明，内容使用者自定义，均可为空）
     void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
                      const std::string& description = "");
+    // 成员函数指针重载：installFunc("/x", &Class::Method, ...) —— 弱绑定（weakFunc）收进 installFunc
+    // 内部，调用点无需手写 weakFunc；内部委托 weakFunc 成员指针重载（判活契约与旧宏 std::bind 版一致）
+    template <typename Class, typename Res, typename Arg>
+    void installFunc(const std::string& funcName, Res (Class::*func)(Arg), const std::string& msgName = "",
+                     const std::string& description = "")
+    {
+        installFunc(funcName, weakFunc(func), msgName, description);
+    }
     // 获取本服务已注册功能函数元信息
     std::map<std::string, yomk::FuncInfo> funcInfos();
     // 直接调用本服务的功能函数

@@ -23,11 +23,11 @@ ConfigService::ConfigService(YomkServer* server) : YomkService(server)
 int ConfigService::init()
 {
     // 安装功能函数
-    YomkInstallFunc("/load", ConfigService::loadConfig);
-    YomkInstallFunc("/get", ConfigService::getConfig);
-    YomkInstallFunc("/set", ConfigService::setConfig);
-    YomkInstallFunc("/reload", ConfigService::reloadConfig);
-    YomkInstallFunc("/version", ConfigService::version);
+    installFunc("/load", &ConfigService::loadConfig);
+    installFunc("/get", &ConfigService::getConfig);
+    installFunc("/set", &ConfigService::setConfig);
+    installFunc("/reload", &ConfigService::reloadConfig);
+    installFunc("/version", &ConfigService::version);
     YOMK_INFO_TAG("ConfigService::init", "install func [ /load /get /set /reload /version ] to", name());
     return 0;
 }

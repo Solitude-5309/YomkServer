@@ -7,20 +7,20 @@ YomkContext::YomkContext(YomkServer* server) : YomkService(server), m_main("main
 
 int YomkContext::init()
 {
-    YomkInstallFunc("/create", YomkContext::create, Context);
-    YomkInstallFunc("/destroy", YomkContext::destroy, ContextGroupKey);
-    YomkInstallFunc("/get", YomkContext::get, Context);
-    YomkInstallFunc("/set", YomkContext::set, Context);
-    YomkInstallFunc("/turn_on_checker", YomkContext::turnOnChecker);
-    YomkInstallFunc("/turn_off_checker", YomkContext::turnOffChecker);
-    YomkInstallFunc("/turn_on_monitor", YomkContext::turnOnMonitor);
-    YomkInstallFunc("/turn_off_monitor", YomkContext::turnOffMonitor);
-    YomkInstallFunc("/set_checker", YomkContext::setChecker, ContextChecker);
-    YomkInstallFunc("/set_monitor", YomkContext::setMonitor, ContextMonitor);
-    YomkInstallFunc("/groups", YomkContext::groups);
-    YomkInstallFunc("/keys", YomkContext::keys);
-    YomkInstallFunc("/key", YomkContext::keyInfo, ContextGroupKey);
-    YomkInstallFunc("/all", YomkContext::listAll);
+    installFunc("/create", &YomkContext::create, "Context");
+    installFunc("/destroy", &YomkContext::destroy, "ContextGroupKey");
+    installFunc("/get", &YomkContext::get, "Context");
+    installFunc("/set", &YomkContext::set, "Context");
+    installFunc("/turn_on_checker", &YomkContext::turnOnChecker);
+    installFunc("/turn_off_checker", &YomkContext::turnOffChecker);
+    installFunc("/turn_on_monitor", &YomkContext::turnOnMonitor);
+    installFunc("/turn_off_monitor", &YomkContext::turnOffMonitor);
+    installFunc("/set_checker", &YomkContext::setChecker, "ContextChecker");
+    installFunc("/set_monitor", &YomkContext::setMonitor, "ContextMonitor");
+    installFunc("/groups", &YomkContext::groups);
+    installFunc("/keys", &YomkContext::keys);
+    installFunc("/key", &YomkContext::keyInfo, "ContextGroupKey");
+    installFunc("/all", &YomkContext::listAll);
     return 0;
 }
 

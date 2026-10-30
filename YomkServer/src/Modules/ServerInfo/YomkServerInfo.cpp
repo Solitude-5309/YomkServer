@@ -11,10 +11,10 @@ YomkServerInfo::YomkServerInfo(YomkServer* server) : YomkService(server)
 
 int YomkServerInfo::init()
 {
-    YomkInstallFunc("/services", YomkServerInfo::listServices);
-    YomkInstallFunc("/functions", YomkServerInfo::listFunctions, String);
-    YomkInstallFunc("/function", YomkServerInfo::functionInfo, String);
-    YomkInstallFunc("/all", YomkServerInfo::listAll);
+    installFunc("/services", &YomkServerInfo::listServices);
+    installFunc("/functions", &YomkServerInfo::listFunctions, "String");
+    installFunc("/function", &YomkServerInfo::functionInfo, "String");
+    installFunc("/all", &YomkServerInfo::listAll);
     return 0;
 }
 
