@@ -49,12 +49,11 @@ yomkmsg::MsgName(...)          // 栈对象直接构造
 
 > **入包语义**：`yomkmsg::MsgName` 包类型同时提供 `const DataType &` 与 `DataType &&` 两种构造，`yomkmsg::MsgName::shared(std::move(data))` 即移动入包（大对象可避免拷贝）；传左值时重载决议仍选中 `const&` 版本，行为与逐值拷贝一致。
 
-> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomkmsg::MsgName`（类）与 `yomkmsg::MsgNamePtr`（指针），与 `yomk` 中的载荷/框架类型隔离以避免重名，引用一律写全名；裸写 `MsgName` 会报 `'MsgName' has not been declared`。消息名称作为字符串字面量仍出现在 `installFunc` 第三参位置（`installFunc` 第三参为手写字符串字面量）；解包由 `yomk::unPack<yomkmsg::MsgName>` 模板实参承担（类型即名字，无需字符串），`YomkUnPackPkgT`（运行时字符串版）保留为框架内部使用。
+> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomkmsg::MsgName`（类）与 `yomkmsg::MsgNamePtr`（指针），与 `yomk` 中的载荷/框架类型隔离以避免重名，引用一律写全名；裸写 `MsgName` 会报 `'MsgName' has not been declared`。消息名称作为字符串字面量仍出现在 `installFunc` 第三参位置（`installFunc` 第三参为手写字符串字面量）；解包由 `yomk::unPack<yomkmsg::MsgName>` 模板实参承担（类型即名字，无需字符串）；框架内运行时字符串解包已内联展开（原 `YomkUnPackPkgT` 宏随闭环 7 删除）。
 
 **解包：**
 ```cpp
 yomk::unPack<yomkmsg::MsgName>(pkg)          // 按消息类型解包模板：返回 shared_ptr，失败返回 nullptr（不自动 return，需手动判空）
-YomkUnPackPkgT(pkg, MsgName, ClassName, ptr) // MsgName为运行时字符串（框架内部使用）
 ```
 
 **installFunc / weakFunc：**

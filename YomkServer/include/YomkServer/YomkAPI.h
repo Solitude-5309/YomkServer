@@ -400,7 +400,11 @@ public:
             request("/YomkContext/get", yomkmsg::Context::shared(yomk::Context{ctxName, ctxDefault, groupName}));
         if (response.m_status == YomkResponse::eOk)
         {
-            YomkUnPackPkgT(response.m_data, msgName, T, ctxData);
+            std::shared_ptr<T> ctxData = nullptr;
+            if (response.m_data && response.m_data->name() == msgName)
+            {
+                ctxData = std::dynamic_pointer_cast<T>(response.m_data);
+            }
             if (ctxData)
                 return ctxData;
             else

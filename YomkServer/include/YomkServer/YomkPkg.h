@@ -8,14 +8,6 @@
 #include <utility>
 #include <vector>
 
-// 按运行时类型名解包（框架内部使用）
-#define YomkUnPackPkgT(pkg, MsgName, ClassName, ptrName)     \
-    std::shared_ptr<ClassName> ptrName = nullptr;            \
-    if (pkg && pkg->name() == MsgName)                       \
-    {                                                        \
-        ptrName = std::dynamic_pointer_cast<ClassName>(pkg); \
-    }
-
 // 消息包类型定义宏
 // 类型自带 kName、内置 shared 静态工厂；独立 yomkmsg 命名空间避免与
 // yomk 中的载荷/框架类型重名，消息类名无需下划线后缀

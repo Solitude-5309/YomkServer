@@ -5,10 +5,11 @@
  * 覆盖内容（5 个 Section，约 66 断言）：
  * S1. 标准类型消息包全集（15 标量 + 15 Array = 30 类型）：逐类型构造 name() == 类型名 且
  *     成员 d 值往返（Array 构造多元素断言 size 与元素）；默认构造零值代表（Int32/String）
- * S2. unPack 模板与解包宏 YomkUnPackPkgT 全分支（错误消息精确断言）：
+ * S2. unPack 模板与运行时类型名解包全分支（错误消息精确断言）：
  *     unPack（null/名不匹配/名匹配但动态类型不符均返回 nullptr，命中返回解包指针）、
  *     服务函数级手写判空返回 eNo + 契约消息、手写判空提前 return（标志位观测）、
- *     YomkUnPackPkgT（运行时类型名，含名匹配但 ClassName 不符的 cast 失败）
+ *     运行时类型名解包（原 YomkUnPackPkgT 宏逐字展开内联，闭环 7 随宏删除；
+ *     含名匹配但动态类型不符的 cast 失败）
  * S3. Event 结构：默认/三参/四参构造、handle() 有无 serviceFunc、m_eventId 初值、m_waitCallback
  * S4. YomkResponse 契约：默认构造、枚举值序（eInvalid=-1/eOk=0/eNo=1）、双参/三参构造
  * S5. 框架结构体默认值（Log::m_level 无类内初始化不作值断言）+ 结构体消息包版 name 就位
@@ -131,8 +132,8 @@ int main()
         YOMK_TEST_CHECK(emptyStr.name() == "String" && emptyStr.d.empty(), "String 默认构造：name 就位且 d 空");
     }
 
-    // ============ S2. unPack 模板与 YomkUnPackPkgT 全分支 ============
-    std::cout << "===== S2. unPack 模板与 YomkUnPackPkgT 全分支 =====" << std::endl;
+    // ============ S2. unPack 模板与运行时类型名解包全分支 ============
+    std::cout << "===== S2. unPack 模板与运行时类型名解包全分支 =====" << std::endl;
     {
         // 分支素材：命中包 / 名字不匹配包（公有 setter 伪造）/ 名字匹配但实际类型不符包
         auto okPkg = yomkmsg::String::shared(std::string("hello"));
@@ -203,15 +204,27 @@ int main()
         auto typeMissPtr = yomk::unPack<yomkmsg::String>(fakeTypePkg);
         YOMK_TEST_CHECK(typeMissPtr == nullptr, "unPack 名匹配但动态类型不符：cast 失败指针 nullptr");
 
-        // --- YomkUnPackPkgT：按运行时类型名（字符串变量）解包 ---
+        // --- 运行时类型名解包（原 YomkUnPackPkgT 宏的逐字展开，闭环 7 随宏删除内联） ---
         std::string rtName = "String";
-        YomkUnPackPkgT(okPkg, rtName, yomkmsg::String, tHit);
-        YOMK_TEST_CHECK(tHit != nullptr && tHit->d == "hello", "UnPackPkgT 运行时名匹配：cast 成功");
+        std::shared_ptr<yomkmsg::String> tHit = nullptr;
+        if (okPkg && okPkg->name() == rtName)
+        {
+            tHit = std::dynamic_pointer_cast<yomkmsg::String>(okPkg);
+        }
+        YOMK_TEST_CHECK(tHit != nullptr && tHit->d == "hello", "运行时名匹配：cast 成功");
         std::string wrongName = "Int32";
-        YomkUnPackPkgT(okPkg, wrongName, yomkmsg::String, tMiss);
-        YOMK_TEST_CHECK(tMiss == nullptr, "UnPackPkgT 运行时名不匹配：指针 nullptr");
-        YomkUnPackPkgT(fakeTypePkg, rtName, yomkmsg::String, tBad);
-        YOMK_TEST_CHECK(tBad == nullptr, "UnPackPkgT 名匹配但 ClassName 不符：cast 失败指针 nullptr");
+        std::shared_ptr<yomkmsg::String> tMiss = nullptr;
+        if (okPkg && okPkg->name() == wrongName)
+        {
+            tMiss = std::dynamic_pointer_cast<yomkmsg::String>(okPkg);
+        }
+        YOMK_TEST_CHECK(tMiss == nullptr, "运行时名不匹配：指针 nullptr");
+        std::shared_ptr<yomkmsg::String> tBad = nullptr;
+        if (fakeTypePkg && fakeTypePkg->name() == rtName)
+        {
+            tBad = std::dynamic_pointer_cast<yomkmsg::String>(fakeTypePkg);
+        }
+        YOMK_TEST_CHECK(tBad == nullptr, "名匹配但动态类型不符：cast 失败指针 nullptr");
     }
 
     // ============ S3. Event 结构契约 ============

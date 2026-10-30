@@ -105,7 +105,11 @@ static std::vector<std::string> unpackStringArray(const YomkResponse& resp)
     {
         return lines;
     }
-    YomkUnPackPkgT(resp.m_data, "StringArray", yomkmsg::StringArray, arr);
+    std::shared_ptr<yomkmsg::StringArray> arr = nullptr;
+    if (resp.m_data && resp.m_data->name() == "StringArray")
+    {
+        arr = std::dynamic_pointer_cast<yomkmsg::StringArray>(resp.m_data);
+    }
     if (arr)
     {
         lines = arr->d;
@@ -121,7 +125,11 @@ static std::vector<yomk::FuncInfo> unpackFuncInfoList(const YomkResponse& resp)
     {
         return funcs;
     }
-    YomkUnPackPkgT(resp.m_data, "FuncInfoList", yomkmsg::FuncInfoList, listPkg);
+    std::shared_ptr<yomkmsg::FuncInfoList> listPkg = nullptr;
+    if (resp.m_data && resp.m_data->name() == "FuncInfoList")
+    {
+        listPkg = std::dynamic_pointer_cast<yomkmsg::FuncInfoList>(resp.m_data);
+    }
     if (listPkg)
     {
         funcs = listPkg->d;

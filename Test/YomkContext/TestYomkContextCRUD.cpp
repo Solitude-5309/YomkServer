@@ -6,7 +6,7 @@
  * 1. create：正常创建、空 key、空 value、重复 key
  * 2. destroy：正常销毁、不存在 key、空 key、重复销毁
  * 3. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）、
- *    类型不匹配（返回默认 value，P3 增补——eOk 路径 YomkUnPackPkgT 解包失败）
+ *    类型不匹配（返回默认 value，P3 增补——eOk 路径运行时名解包失败）
  * 4. set：正常 set、不存在 key、空 key、类型不匹配
  * 5. keys/listAll/keyInfo：随增删变化、空 key、不存在 key、字段断言
  *
@@ -119,7 +119,7 @@ int main()
         YOMK_TEST_CHECK(got && got->d == "default", "get 空 key 返回默认值");
     }
 
-    // get：类型不匹配，返回调用方默认 value（eOk 路径 YomkUnPackPkgT 解包失败，P3 增补）
+    // get：类型不匹配，返回调用方默认 value（eOk 路径运行时名解包失败，P3 增补）
     {
         auto cr = YOMK_CONTEXT_CREATE("mismatch_key", yomkmsg::String::shared(std::string("strval")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mismatch_key（String 值）成功");
