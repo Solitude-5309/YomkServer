@@ -121,7 +121,7 @@ static void logResp(const std::string& api, const YomkResponse& resp)
     oss << ", msg=\"" << resp.m_msg << "\"";
     if (resp.m_status == YomkResponse::eOk && resp.m_data)
     {
-        YomkUnPackPkg(resp.m_data, String, data);
+        auto data = yomk::unPack<yomkmsg::String>(resp.m_data);
         if (data)
         {
             oss << ", data=\"" << data->d << "\"";
@@ -238,7 +238,7 @@ static void showArmPowerOnRegister()
     logAction("复查控制柜在册服务清单");
     YomkResponse namesResp = YOMK_SERVER_INFO_SERVICES();
     logResp("INFO_SERVICES", namesResp);
-    YomkUnPackPkg(namesResp.m_data, StringArray, nameArr);
+    auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -326,7 +326,7 @@ static void showArmMoveChain()
 
     logAction("展开到位回执 MoveResp");
     std::ostringstream oss;
-    YomkUnPackPkg(moveResp.m_data, MoveResp, respPkg);
+    auto respPkg = yomk::unPack<yomkmsg::MoveResp>(moveResp.m_data);
     if (respPkg)
     {
         oss << "[REQUEST /MotionService/move] | MoveResp 到位 (" << respPkg->resp.m_reachX << ", "
@@ -355,7 +355,7 @@ static void showArmIntrospect()
     logAction("查阅运动工位职能清单");
     YomkResponse funcsResp = YOMK_SERVER_INFO_FUNCTIONS("/MotionService");
     logResp("INFO_FUNCTIONS /MotionService", funcsResp);
-    YomkUnPackPkg(funcsResp.m_data, FuncInfoList, listPkg);
+    auto listPkg = yomk::unPack<yomkmsg::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
     {
         for (const auto& func : listPkg->d)
@@ -368,7 +368,7 @@ static void showArmIntrospect()
     logAction("调阅运动指令函数名片");
     YomkResponse resp = YOMK_SERVER_INFO_FUNCTION("/MotionService/move");
     logResp("INFO_FUNCTION /MotionService/move", resp);
-    YomkUnPackPkg(resp.m_data, FuncInfo, info);
+    auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
     if (info)
     {
         logFuncInfo("INFO_FUNCTION", info->d);
@@ -449,7 +449,7 @@ static void showArmPowerOff()
     logAction("导出收班终态拓扑（摘要）");
     YomkResponse allResp = YOMK_SERVER_INFO_ALL();
     logResp("INFO_ALL", allResp);
-    YomkUnPackPkg(allResp.m_data, ServerServiceInfoList, list);
+    auto list = yomk::unPack<yomkmsg::ServerServiceInfoList>(allResp.m_data);
     if (list)
     {
         for (const auto& srv : list->d)

@@ -8,30 +8,6 @@
 #include <utility>
 #include <vector>
 
-// 校验消息类型并解包，类型不匹配时直接返回 YomkResponse::eNo
-#define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                               \
-    if (!pkg || pkg->name() != #MsgName)                                           \
-        return {YomkResponse::eNo, " pkg is null or pkg is not " #MsgName ". "};   \
-    yomkmsg::MsgName##Ptr ptrName = std::dynamic_pointer_cast<yomkmsg::MsgName>(pkg); \
-    if (!ptrName)                                                                  \
-        return {YomkResponse::eNo, " pkg[" #MsgName "] is dynamic_pointer_cast failed. "};
-
-// 校验消息类型并解包，类型不匹配时直接 return void
-#define YomkUnPackPkgVoid(pkg, MsgName, ptrName)                                   \
-    if (!pkg || pkg->name() != #MsgName)                                           \
-        return;                                                                    \
-    yomkmsg::MsgName##Ptr ptrName = std::dynamic_pointer_cast<yomkmsg::MsgName>(pkg); \
-    if (!ptrName)                                                                  \
-        return;
-
-// 校验消息类型并解包，类型不匹配时不提前返回（指针为 nullptr）
-#define YomkUnPackPkg(pkg, MsgName, ptrName)                        \
-    yomkmsg::MsgName##Ptr ptrName = nullptr;                           \
-    if (pkg && pkg->name() == #MsgName)                             \
-    {                                                               \
-        ptrName = std::dynamic_pointer_cast<yomkmsg::MsgName>(pkg); \
-    }
-
 // 按运行时类型名解包（框架内部使用）
 #define YomkUnPackPkgT(pkg, MsgName, ClassName, ptrName)     \
     std::shared_ptr<ClassName> ptrName = nullptr;            \
@@ -118,6 +94,18 @@ typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 
 namespace yomk
 {
+
+// 按消息类型解包：消息名从 Msg::kName 内省，无需字符串实参；
+// pkg 为空或类型名不匹配时返回 nullptr（替代原解包宏，见《宏定义扫描报告.md》2.3/2.4）
+template <class Msg>
+std::shared_ptr<Msg> unPack(const YomkPkgPtr& pkg)
+{
+    if (pkg && pkg->name() == Msg::kName)
+    {
+        return std::dynamic_pointer_cast<Msg>(pkg);
+    }
+    return nullptr;
+}
 
 // 功能函数元信息（调试内省用）
 struct FuncInfo

@@ -21,7 +21,11 @@ int YomkFunctionPool::init()
 
 YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Function, yFunc);
+    auto yFunc = yomk::unPack<yomkmsg::Function>(pkg);
+    if (!yFunc)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Function"};
+    }
     if (yFunc->d.m_funcName.empty() || yFunc->d.m_func == nullptr)
     {
         YOMK_ERR_POS_LOG("funcName or func is empty, please check Function.m_funcName");
@@ -45,7 +49,11 @@ YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
 
 YomkResponse YomkFunctionPool::unRegisterFunction(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, yFuncName);
+    auto yFuncName = yomk::unPack<yomkmsg::String>(pkg);
+    if (!yFuncName)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     if (yFuncName->d.empty())
     {
         YOMK_ERR_POS_LOG("funcName is empty, please check String");
@@ -66,7 +74,11 @@ YomkResponse YomkFunctionPool::unRegisterFunction(YomkPkgPtr pkg)
 
 YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, CallFunction, yCallFunc);
+    auto yCallFunc = yomk::unPack<yomkmsg::CallFunction>(pkg);
+    if (!yCallFunc)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not CallFunction"};
+    }
     if (yCallFunc->d.m_funcName.empty())
     {
         YOMK_ERR_POS_LOG("funcName is empty, please check CallFunction.m_funcName");
@@ -107,7 +119,11 @@ YomkResponse YomkFunctionPool::funcNames(YomkPkgPtr pkg)
 // 内省：单个函数元信息查询，命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，数据走 m_data）
 YomkResponse YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, yFuncName);
+    auto yFuncName = yomk::unPack<yomkmsg::String>(pkg);
+    if (!yFuncName)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     if (yFuncName->d.empty())
     {
         YOMK_ERR_POS_LOG("funcName is empty, please check String");

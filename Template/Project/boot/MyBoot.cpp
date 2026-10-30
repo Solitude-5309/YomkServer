@@ -55,7 +55,7 @@ int MyBoot::after()
         return -1;
     }
 
-    YomkUnPackPkg(resp.m_data, String, name);
+    auto name = yomk::unPack<yomkmsg::String>(resp.m_data);
     YOMK_INFO_TAG("MyBoot::after", "config name: ", name->d);
 
     // 测试版本号接口：获取并输出工程版本号（来自 CMake project() 定义的 VERSION，编译期注入）
@@ -66,7 +66,7 @@ int MyBoot::after()
         return -1;
     }
 
-    YomkUnPackPkg(resp.m_data, String, version);
+    auto version = yomk::unPack<yomkmsg::String>(resp.m_data);
     YOMK_INFO_TAG("MyBoot::after", "project version: ", version->d);
 
     resp = YOMK_REQUEST("/ConfigService/get", yomkmsg::ConfigKey::shared(ConfigKey{"description"}));
@@ -76,7 +76,7 @@ int MyBoot::after()
         return -1;
     }
 
-    YomkUnPackPkg(resp.m_data, String, description);
+    auto description = yomk::unPack<yomkmsg::String>(resp.m_data);
     YOMK_INFO_TAG("MyBoot::after", "config description: ", description->d);
 
     return 0;

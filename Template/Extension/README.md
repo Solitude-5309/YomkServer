@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
     YomkResponse resp = YOMK_REQUEST("/ExtensionService/version", nullptr);
     if (resp.m_status == YomkResponse::eOk)
     {
-        YomkUnPackPkg(resp.m_data, String, version);
+        auto version = yomk::unPack<yomkmsg::String>(resp.m_data);
         std::cout << "version: " << version->d << std::endl; // 输出: TemplateExtension v0.0.1
     }
 

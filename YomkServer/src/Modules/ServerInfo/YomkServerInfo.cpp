@@ -31,7 +31,11 @@ YomkResponse YomkServerInfo::listServices(YomkPkgPtr pkg)
 
 YomkResponse YomkServerInfo::listFunctions(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, ySrvName);
+    auto ySrvName = yomk::unPack<yomkmsg::String>(pkg);
+    if (!ySrvName)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     if (ySrvName->d.empty())
     {
         YOMK_ERR_POS_LOG("srvName is empty, please check String.d");
@@ -56,7 +60,11 @@ YomkResponse YomkServerInfo::listFunctions(YomkPkgPtr pkg)
 
 YomkResponse YomkServerInfo::functionInfo(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, yUrl);
+    auto yUrl = yomk::unPack<yomkmsg::String>(pkg);
+    if (!yUrl)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     const std::string& url = yUrl->d;
     if (url.empty() || url[0] != '/')
     {

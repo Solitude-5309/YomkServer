@@ -54,7 +54,7 @@ public:
     // 功能函数统一签名：YomkResponse(YomkPkgPtr pkg)
     YomkResponse hello(YomkPkgPtr pkg)
     {
-        YomkUnPackPkg(pkg, String, msg); // 类型校验与解包
+        auto msg = yomk::unPack<yomkmsg::String>(pkg); // 类型校验与解包；类型不匹配时 msg 为 nullptr，需自行判空
         if (!msg)
         {
             return {YomkResponse::eNo, "pkg is not String"};
@@ -102,7 +102,7 @@ int main()
 
 ### 2. 消息包 (YomkPkg)
 
-服务与事件循环间传递强类型数据：`YomkMsg(DataType, MsgName, VarName)` 宏声明自定义消息，`yomkmsg::消息名::shared(...)` 构造消息包，三种解包宏做类型校验（`YomkUnPackPkg` 失败置空指针 / `YomkUnPackPkgResponse` 失败返回 eNo / `YomkUnPackPkgVoid` 失败直接 return）；内置 30 种标量/数组类型。
+服务与事件循环间传递强类型数据：`YomkMsg(DataType, MsgName, VarName)` 宏声明自定义消息，`yomkmsg::消息名::shared(...)` 构造消息包，`yomk::unPack<yomkmsg::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型。
 
 详见 [消息包](Docs/YomkPkg.md)。
 

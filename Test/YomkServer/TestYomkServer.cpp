@@ -142,7 +142,11 @@ private:
     }
     YomkResponse echo(YomkPkgPtr pkg)
     {
-        YomkUnPackPkgResponse(pkg, String, data);
+        auto data = yomk::unPack<yomkmsg::String>(pkg);
+        if (!data)
+        {
+            return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+        }
         return {YomkResponse::eOk, "echo:" + data->d};
     }
 };

@@ -400,7 +400,7 @@ int main()
             {
                 auto r = YOMK_EVENTLOOP_INFO_LOOP("conc_loop");
                 pollCount.fetch_add(1);
-                YomkUnPackPkg(r.m_data, EventLoopInfo, info);
+                auto info = yomk::unPack<yomkmsg::EventLoopInfo>(r.m_data);
                 if (r.m_status == YomkResponse::eOk && info && info->d.m_running)
                 {
                     pollOk.fetch_add(1);

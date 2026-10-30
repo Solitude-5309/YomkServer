@@ -36,7 +36,7 @@ typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 
 ```cpp
 YomkMsg(DataType, MsgName, VarName)
-// DataType：数据类 | MsgName：消息名称（解包宏与全名引用使用此名） | VarName：成员变量名
+// DataType：数据类 | MsgName：消息名称（解包与全名引用使用此名） | VarName：成员变量名
 ```
 
 **构造与类型引用（全名，无辅助宏）：**
@@ -49,14 +49,12 @@ yomkmsg::MsgName(...)          // 栈对象直接构造
 
 > **入包语义**：`yomkmsg::MsgName` 包类型同时提供 `const DataType &` 与 `DataType &&` 两种构造，`yomkmsg::MsgName::shared(std::move(data))` 即移动入包（大对象可避免拷贝）；传左值时重载决议仍选中 `const&` 版本，行为与逐值拷贝一致。
 
-> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomkmsg::MsgName`（类）与 `yomkmsg::MsgNamePtr`（指针），与 `yomk` 中的载荷/框架类型隔离以避免重名，引用一律写全名；裸写 `MsgName` 会报 `'MsgName' has not been declared`。消息名称作为字符串字面量仍出现在 `YomkUnPackPkg*` 宏参数与 `installFunc` 第三参位置（`installFunc` 第三参为手写字符串字面量）。
+> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomkmsg::MsgName`（类）与 `yomkmsg::MsgNamePtr`（指针），与 `yomk` 中的载荷/框架类型隔离以避免重名，引用一律写全名；裸写 `MsgName` 会报 `'MsgName' has not been declared`。消息名称作为字符串字面量仍出现在 `installFunc` 第三参位置（`installFunc` 第三参为手写字符串字面量）；解包由 `yomk::unPack<yomkmsg::MsgName>` 模板实参承担（类型即名字，无需字符串），`YomkUnPackPkgT`（运行时字符串版）保留为框架内部使用。
 
-**解包宏：**
+**解包：**
 ```cpp
-YomkUnPackPkgResponse(pkg, MsgName, ptr)  // 失败自动 return {eNo, ...}
-YomkUnPackPkgVoid(pkg, MsgName, ptr)      // 失败自动 return（void函数）
-YomkUnPackPkg(pkg, MsgName, ptr)          // 不自动 return，需手动判空
-YomkUnPackPkgT(pkg, MsgName, ClassName, ptr) // MsgName为运行时字符串
+yomk::unPack<yomkmsg::MsgName>(pkg)          // 按消息类型解包模板：返回 shared_ptr，失败返回 nullptr（不自动 return，需手动判空）
+YomkUnPackPkgT(pkg, MsgName, ClassName, ptr) // MsgName为运行时字符串（框架内部使用）
 ```
 
 **installFunc / weakFunc：**

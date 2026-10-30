@@ -82,7 +82,11 @@ ContextGroup* YomkContext::findGroup(const std::string& groupName, YomkResponse&
 
 YomkResponse YomkContext::create(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Context, context);
+    auto context = yomk::unPack<yomkmsg::Context>(pkg);
+    if (!context)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Context"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(context->d.m_group, fail);
     if (group == nullptr)
@@ -109,7 +113,11 @@ YomkResponse YomkContext::create(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::destroy(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, ContextGroupKey, groupKey);
+    auto groupKey = yomk::unPack<yomkmsg::ContextGroupKey>(pkg);
+    if (!groupKey)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not ContextGroupKey"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(groupKey->d.m_group, fail);
     if (group == nullptr)
@@ -128,7 +136,11 @@ YomkResponse YomkContext::destroy(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::get(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Context, context);
+    auto context = yomk::unPack<yomkmsg::Context>(pkg);
+    if (!context)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Context"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(context->d.m_group, fail);
     if (group == nullptr)
@@ -152,7 +164,11 @@ YomkResponse YomkContext::get(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::set(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Context, context);
+    auto context = yomk::unPack<yomkmsg::Context>(pkg);
+    if (!context)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Context"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(context->d.m_group, fail);
     if (group == nullptr)
@@ -183,7 +199,11 @@ YomkResponse YomkContext::set(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::turnOnChecker(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);
+    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(str->d, fail);
     if (group == nullptr)
@@ -197,7 +217,11 @@ YomkResponse YomkContext::turnOnChecker(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::turnOffChecker(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);
+    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(str->d, fail);
     if (group == nullptr)
@@ -211,7 +235,11 @@ YomkResponse YomkContext::turnOffChecker(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::turnOnMonitor(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);
+    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(str->d, fail);
     if (group == nullptr)
@@ -225,7 +253,11 @@ YomkResponse YomkContext::turnOnMonitor(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::turnOffMonitor(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);
+    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(str->d, fail);
     if (group == nullptr)
@@ -239,7 +271,11 @@ YomkResponse YomkContext::turnOffMonitor(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, ContextChecker, checker);
+    auto checker = yomk::unPack<yomkmsg::ContextChecker>(pkg);
+    if (!checker)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not ContextChecker"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(checker->d.m_group, fail);
     if (group == nullptr)
@@ -266,7 +302,11 @@ YomkResponse YomkContext::setChecker(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::setMonitor(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, ContextMonitor, monitor);
+    auto monitor = yomk::unPack<yomkmsg::ContextMonitor>(pkg);
+    if (!monitor)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not ContextMonitor"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(monitor->d.m_group, fail);
     if (group == nullptr)
@@ -308,7 +348,11 @@ YomkResponse YomkContext::groups(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::keys(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);
+    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(str->d, fail);
     if (group == nullptr)
@@ -322,7 +366,11 @@ YomkResponse YomkContext::keys(YomkPkgPtr pkg)
 
 YomkResponse YomkContext::keyInfo(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, ContextGroupKey, groupKey);
+    auto groupKey = yomk::unPack<yomkmsg::ContextGroupKey>(pkg);
+    if (!groupKey)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not ContextGroupKey"};
+    }
     YomkResponse fail;
     ContextGroup* group = findGroup(groupKey->d.m_group, fail);
     if (group == nullptr)

@@ -1,20 +1,20 @@
 /**
  * @file TestYomkPkg.cpp
- * @brief YomkPkg 消息包体系独立测试（正式全面测试，P2——标准类型全集/解包宏全分支此前散点触达，无独立覆盖）
+ * @brief YomkPkg 消息包体系独立测试（正式全面测试，P2——标准类型全集/解包语义全分支此前散点触达，无独立覆盖）
  *
  * 覆盖内容（5 个 Section，约 66 断言）：
  * S1. 标准类型消息包全集（15 标量 + 15 Array = 30 类型）：逐类型构造 name() == 类型名 且
  *     成员 d 值往返（Array 构造多元素断言 size 与元素）；默认构造零值代表（Int32/String）
- * S2. 四种解包宏全分支（错误消息精确断言，含前导空格）：
- *     YomkUnPackPkgResponse（null/名不匹配/同名不同类型/命中）、YomkUnPackPkgVoid（提前 return，
- *     标志位观测）、YomkUnPackPkg（不提前返回、指针 nullptr）、YomkUnPackPkgT（运行时类型名，
- *     含名匹配但 ClassName 不符的 cast 失败）
+ * S2. unPack 模板与解包宏 YomkUnPackPkgT 全分支（错误消息精确断言）：
+ *     unPack（null/名不匹配/名匹配但动态类型不符均返回 nullptr，命中返回解包指针）、
+ *     服务函数级手写判空返回 eNo + 契约消息、手写判空提前 return（标志位观测）、
+ *     YomkUnPackPkgT（运行时类型名，含名匹配但 ClassName 不符的 cast 失败）
  * S3. Event 结构：默认/三参/四参构造、handle() 有无 serviceFunc、m_eventId 初值、m_waitCallback
  * S4. YomkResponse 契约：默认构造、枚举值序（eInvalid=-1/eOk=0/eNo=1）、双参/三参构造
  * S5. 框架结构体默认值（Log::m_level 无类内初始化不作值断言）+ 结构体消息包版 name 就位
  *
- * 说明：全程不调 YOMK_INIT（纯类型/宏测试，不依赖单例）；YomkPkg::name() 公有 setter 用于
- *       伪造类型名以触达解包宏的 dynamic_pointer_cast 失败分支（名字匹配但实际类型不符）
+ * 说明：全程不调 YOMK_INIT（纯类型/模板测试，不依赖单例）；YomkPkg::name() 公有 setter 用于
+ *       伪造类型名以触达 unPack 的 dynamic_pointer_cast 失败分支（名字匹配但实际类型不符）
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
@@ -131,8 +131,8 @@ int main()
         YOMK_TEST_CHECK(emptyStr.name() == "String" && emptyStr.d.empty(), "String 默认构造：name 就位且 d 空");
     }
 
-    // ============ S2. 四种解包宏全分支 ============
-    std::cout << "===== S2. 四种解包宏全分支 =====" << std::endl;
+    // ============ S2. unPack 模板与 YomkUnPackPkgT 全分支 ============
+    std::cout << "===== S2. unPack 模板与 YomkUnPackPkgT 全分支 =====" << std::endl;
     {
         // 分支素材：命中包 / 名字不匹配包（公有 setter 伪造）/ 名字匹配但实际类型不符包
         auto okPkg = yomkmsg::String::shared(std::string("hello"));
@@ -141,56 +141,67 @@ int main()
         auto fakeTypePkg = yomkmsg::Int32::shared(1);
         fakeTypePkg->name("String");  // 名字伪造成 String（实际是 Int32，cast 必败）
 
-        // --- YomkUnPackPkgResponse：失败自动返回 eNo，命中需手动继续 ---
+        // --- unPack + 服务函数级手写判空：失败返回 eNo + 契约消息，命中需手动继续 ---
         auto unpackResp = [](YomkPkgPtr pkg) -> YomkResponse
         {
-            YomkUnPackPkgResponse(pkg, String, s);
+            auto s = yomk::unPack<yomkmsg::String>(pkg);
+            if (!s)
+            {
+                return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+            }
             return YomkResponse(YomkResponse::eOk, s->d);
         };
         YomkResponse nullResp = unpackResp(nullptr);
-        YOMK_TEST_CHECK(nullResp.m_status == YomkResponse::eNo && nullResp.m_msg == " pkg is null or pkg is not String. ",
-              "UnPackPkgResponse null pkg：eNo + 契约消息（前导空格精确）");
+        YOMK_TEST_CHECK(nullResp.m_status == YomkResponse::eNo && nullResp.m_msg == "pkg is null or pkg is not String",
+              "unPack null pkg：服务函数级判空返回 eNo + 契约消息");
         YomkResponse nameMissResp = unpackResp(fakeNamePkg);
-        YOMK_TEST_CHECK(nameMissResp.m_status == YomkResponse::eNo && nameMissResp.m_msg == " pkg is null or pkg is not String. ",
-              "UnPackPkgResponse 名字不匹配：同款契约消息");
-        YomkResponse typeMissResp = unpackResp(fakeTypePkg);
-        YOMK_TEST_CHECK(typeMissResp.m_status == YomkResponse::eNo &&
-                  typeMissResp.m_msg == " pkg[String] is dynamic_pointer_cast failed. ",
-              "UnPackPkgResponse 同名不同类型：cast 失败契约消息");
+        YOMK_TEST_CHECK(nameMissResp.m_status == YomkResponse::eNo && nameMissResp.m_msg == "pkg is null or pkg is not String",
+              "unPack 名字不匹配：同款契约消息");
         YomkResponse hitResp = unpackResp(okPkg);
         YOMK_TEST_CHECK(hitResp.m_status == YomkResponse::eOk && hitResp.m_msg == "hello",
-              "UnPackPkgResponse 命中：解包指针可用且 d 正确");
+              "unPack 命中：解包指针可用且 d 正确");
 
-        // --- YomkUnPackPkgVoid：失败自动 return void（标志位观测提前返回） ---
+        // --- unPack + 手写判空提前 return（标志位观测） ---
         bool reached = false;
         auto unpackVoid = [&](YomkPkgPtr pkg)
         {
-            YomkUnPackPkgVoid(pkg, String, s);
+            auto s = yomk::unPack<yomkmsg::String>(pkg);
+            if (!s)
+            {
+                return;
+            }
             reached = true;
         };
         reached = false;
         unpackVoid(nullptr);
-        YOMK_TEST_CHECK(reached == false, "UnPackPkgVoid null pkg：提前 return，后续语句未执行");
+        YOMK_TEST_CHECK(reached == false, "unPack null pkg：手写判空提前 return，后续语句未执行");
         reached = false;
         unpackVoid(fakeNamePkg);
-        YOMK_TEST_CHECK(reached == false, "UnPackPkgVoid 名字不匹配：提前 return");
+        YOMK_TEST_CHECK(reached == false, "unPack 名字不匹配：提前 return");
         std::string voidOut;
         auto unpackVoidHit = [&](YomkPkgPtr pkg)
         {
-            YomkUnPackPkgVoid(pkg, String, s);
+            auto s = yomk::unPack<yomkmsg::String>(pkg);
+            if (!s)
+            {
+                return;
+            }
             voidOut = s->d;
         };
         unpackVoidHit(okPkg);
-        YOMK_TEST_CHECK(voidOut == "hello", "UnPackPkgVoid 命中：解包指针可用");
+        YOMK_TEST_CHECK(voidOut == "hello", "unPack 命中：解包指针可用");
 
-        // --- YomkUnPackPkg：不自动 return（指针 nullptr，调用方手动判空） ---
-        YomkPkgPtr nullPkgArg{};  // 空包占位（宏要求 YomkPkgPtr 类型化入参，字面量 nullptr 无法推导）
-        YomkUnPackPkg(nullPkgArg, String, nullPtr);
-        YOMK_TEST_CHECK(nullPtr == nullptr, "UnPackPkg null pkg：不提前返回，指针为 nullptr");
-        YomkUnPackPkg(fakeNamePkg, String, missPtr);
-        YOMK_TEST_CHECK(missPtr == nullptr, "UnPackPkg 名字不匹配：指针为 nullptr（后续语句可达）");
-        YomkUnPackPkg(okPkg, String, hitPtr);
-        YOMK_TEST_CHECK(hitPtr != nullptr && hitPtr->d == "hello", "UnPackPkg 命中：指针非空且 d 正确");
+        // --- unPack 直接调用：不提前 return（指针 nullptr，调用方手动判空） ---
+        auto nullPtr = yomk::unPack<yomkmsg::String>(nullptr);
+        YOMK_TEST_CHECK(nullPtr == nullptr, "unPack null pkg：不提前返回，指针为 nullptr");
+        auto missPtr = yomk::unPack<yomkmsg::String>(fakeNamePkg);
+        YOMK_TEST_CHECK(missPtr == nullptr, "unPack 名字不匹配：指针为 nullptr（后续语句可达）");
+        auto hitPtr = yomk::unPack<yomkmsg::String>(okPkg);
+        YOMK_TEST_CHECK(hitPtr != nullptr && hitPtr->d == "hello", "unPack 命中：指针非空且 d 正确");
+
+        // --- unPack 名字匹配但动态类型不符：合并为单失败路径，返回 nullptr ---
+        auto typeMissPtr = yomk::unPack<yomkmsg::String>(fakeTypePkg);
+        YOMK_TEST_CHECK(typeMissPtr == nullptr, "unPack 名匹配但动态类型不符：cast 失败指针 nullptr");
 
         // --- YomkUnPackPkgT：按运行时类型名（字符串变量）解包 ---
         std::string rtName = "String";

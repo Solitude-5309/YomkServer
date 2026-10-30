@@ -25,7 +25,11 @@ int YomkEventLoop::init()
 
 YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Eventloop, eventloop);
+    auto eventloop = yomk::unPack<yomkmsg::Eventloop>(pkg);
+    if (!eventloop)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Eventloop"};
+    }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(eventloop->d.m_eventloopName);
     if (itEventLoop != m_eventLoop.end())
@@ -44,7 +48,11 @@ YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
 
 YomkResponse YomkEventLoop::stop(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);
+    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
     if (itEventLoop == m_eventLoop.end())
@@ -59,7 +67,11 @@ YomkResponse YomkEventLoop::stop(YomkPkgPtr pkg)
 
 YomkResponse YomkEventLoop::post(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Event, event);
+    auto event = yomk::unPack<yomkmsg::Event>(pkg);
+    if (!event)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Event"};
+    }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(event->d.m_eventLoopName);
     if (itEventLoop == m_eventLoop.end())
@@ -79,7 +91,11 @@ YomkResponse YomkEventLoop::post(YomkPkgPtr pkg)
 
 YomkResponse YomkEventLoop::postWait(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Event, event);
+    auto event = yomk::unPack<yomkmsg::Event>(pkg);
+    if (!event)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Event"};
+    }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(event->d.m_eventLoopName);
     if (itEventLoop == m_eventLoop.end())
@@ -99,7 +115,11 @@ YomkResponse YomkEventLoop::postWait(YomkPkgPtr pkg)
 
 YomkResponse YomkEventLoop::destroy(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);
+    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
     if (itEventLoop == m_eventLoop.end())
@@ -131,7 +151,11 @@ YomkResponse YomkEventLoop::loops(YomkPkgPtr pkg)
 // 内省：单个事件循环元信息，入参 String 格式：循环名 或 循环名 N（N 缺省 3）
 YomkResponse YomkEventLoop::loopInfo(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);
+    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     std::string input = str->d;
     std::string loopName = input;
     size_t tagCount = 3;

@@ -100,7 +100,11 @@ public:
     YomkResponse echo(YomkPkgPtr pkg)
     {
         ++g_hit;
-        YomkUnPackPkgResponse(pkg, String, sp);
+        auto sp = yomk::unPack<yomkmsg::String>(pkg);
+        if (!sp)
+        {
+            return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+        }
         return {YomkResponse::eOk, sp->d};
     }
 };

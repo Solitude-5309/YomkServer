@@ -8,9 +8,7 @@
 |---|---|
 | `YomkMsg(DataType, MsgName, VarName)` | 声明自定义消息类型（建议放置在命名空间之外） |
 | `yomkmsg::MsgName::shared(...)` | 创建 `shared_ptr` 包装的消息包（类内静态工厂） |
-| `YomkUnPackPkg(pkg, MsgName, ptr)` | 校验并解包；类型不匹配时指针置为 `nullptr`，不提前返回，适合需要自定义错误处理的场景 |
-| `YomkUnPackPkgResponse(pkg, MsgName, ptr)` | 类型不匹配时直接以 `YomkResponse::eNo` 从当前函数返回，适合功能函数 |
-| `YomkUnPackPkgVoid(pkg, MsgName, ptr)` | 类型不匹配时直接 `return`，适用于 `void` 回调 |
+| `yomk::unPack<yomkmsg::MsgName>(pkg)` | 按消息类型解包模板：返回 `std::shared_ptr<MsgName>`，pkg 为空或类型名不匹配时返回 `nullptr`，不提前返回；失败处理由调用方手写（如 `if (!ptr) return {...}`） |
 
 ## 内置标准类型
 
@@ -34,7 +32,7 @@ YomkMsg(UserInfo, UserInfoMsg, data);
 auto pkg = yomkmsg::UserInfoMsg::shared(UserInfo{1001, "Alice"});
 
 // 3. 功能函数中校验并解包
-YomkUnPackPkg(pkg, UserInfoMsg, info); // 类型校验与解包
+auto info = yomk::unPack<yomkmsg::UserInfoMsg>(pkg); // 类型校验与解包；类型不匹配时 info 为 nullptr，需自行判空
 if (!info)
 {
     return {YomkResponse::eNo, "pkg is not UserInfoMsg"};

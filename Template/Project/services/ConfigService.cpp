@@ -66,7 +66,11 @@ YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
 
 YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, ConfigKey, data);
+    auto data = yomk::unPack<yomkmsg::ConfigKey>(pkg);
+    if (!data)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not ConfigKey"};
+    }
 
     auto it = m_configMap.find(data->req.key);
     if (it == m_configMap.end())
@@ -79,7 +83,11 @@ YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
 
 YomkResponse ConfigService::setConfig(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, ConfigKeyValue, data);
+    auto data = yomk::unPack<yomkmsg::ConfigKeyValue>(pkg);
+    if (!data)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not ConfigKeyValue"};
+    }
 
     m_configMap[data->req.key] = data->req.value;
     YOMK_INFO_TAG("ConfigService::setConfig", "set ", data->req.key, " = ", data->req.value);

@@ -215,7 +215,7 @@ static void ensureKey(const std::string& op, const std::string& key, YomkPkgPtr 
 // 速度倍率安全门控：倍率是安全关键参数，超过 1.0（100%）有撞机风险，一律拒绝
 ContextChecker::ECheckStatus checkerSpeedRatio(const yomk::Context& ctx)
 {
-    YomkUnPackPkg(ctx.m_value, Float64, ratio);
+    auto ratio = yomk::unPack<yomkmsg::Float64>(ctx.m_value);
     if (!ratio)
     {
         std::ostringstream oss;
@@ -239,7 +239,11 @@ ContextChecker::ECheckStatus checkerSpeedRatio(const yomk::Context& ctx)
 // 安全 PLC 的上电告警：伺服电源指令属安全相关事件，收到快照即告警记录
 void monitorServoPowerAlarm(const yomk::Context& ctx)
 {
-    YomkUnPackPkgVoid(ctx.m_value, Bool, power);
+    auto power = yomk::unPack<yomkmsg::Bool>(ctx.m_value);
+    if (!power)
+    {
+        return;
+    }
     const char* state = (power && power->d) ? "ON" : "OFF";
     std::ostringstream oss;
     oss << "[告警] 伺服电源指令: " << ctx.m_key << "=" << state << "（安全 PLC 收到本次写入快照）";
@@ -250,7 +254,11 @@ void monitorServoPowerAlarm(const yomk::Context& ctx)
 // 与告警回调同批执行，展示 SET_MONITOR 的追加式多播
 void monitorServoPowerLog(const yomk::Context& ctx)
 {
-    YomkUnPackPkgVoid(ctx.m_value, Bool, power);
+    auto power = yomk::unPack<yomkmsg::Bool>(ctx.m_value);
+    if (!power)
+    {
+        return;
+    }
     const char* state = (power && power->d) ? "ON" : "OFF";
     std::ostringstream oss;
     oss << "[黑匣子] 记录操作: " << ctx.m_key << "->" << state << "（追加式多播：与告警回调按注册序同批执行）";
@@ -261,7 +269,11 @@ void monitorServoPowerLog(const yomk::Context& ctx)
 // 执行线程是池线程——上报动作不阻塞运动控制回路
 void monitorPoseTelemetry(const yomk::Context& ctx)
 {
-    YomkUnPackPkgVoid(ctx.m_value, Float64Array, pose);
+    auto pose = yomk::unPack<yomkmsg::Float64Array>(ctx.m_value);
+    if (!pose)
+    {
+        return;
+    }
     if (!pose)
     {
         std::ostringstream oss;
@@ -524,7 +536,7 @@ static void showArmDashboard()
 
     // 键名清单（StringArray 结构化包）
     YomkResponse keysResp = logAction("巡检键名清单", "INFO_KEYS", [&] { return YOMK_CONTEXT_INFO_KEYS(); });
-    YomkUnPackPkg(keysResp.m_data, StringArray, keyArr);
+    auto keyArr = yomk::unPack<yomkmsg::StringArray>(keysResp.m_data);
     if (keyArr)
     {
         for (const auto& key : keyArr->d)
@@ -536,7 +548,7 @@ static void showArmDashboard()
     // 单键抽查：速度倍率——场景 4 挂的门控回调仍在键上
     YomkResponse ratioResp = logAction(
         "抽查速度倍率注册详情", "INFO_KEY arm.speed_ratio", [&] { return YOMK_CONTEXT_INFO_KEY("arm.speed_ratio"); });
-    YomkUnPackPkg(ratioResp.m_data, ContextKeyInfo, ratioInfo);
+    auto ratioInfo = yomk::unPack<yomkmsg::ContextKeyInfo>(ratioResp.m_data);
     if (ratioInfo)
     {
         logKeyInfo("INFO_KEY", ratioInfo->d);
@@ -546,7 +558,7 @@ static void showArmDashboard()
     // 单键抽查：末端位姿——异步上报 monitor 已追加
     YomkResponse poseResp = logAction(
         "抽查末端位姿注册详情", "INFO_KEY arm.tcp_pose", [&] { return YOMK_CONTEXT_INFO_KEY("arm.tcp_pose"); });
-    YomkUnPackPkg(poseResp.m_data, ContextKeyInfo, poseInfo);
+    auto poseInfo = yomk::unPack<yomkmsg::ContextKeyInfo>(poseResp.m_data);
     if (poseInfo)
     {
         logKeyInfo("INFO_KEY", poseInfo->d);
@@ -559,7 +571,7 @@ static void showArmDashboard()
 
     // 全量导出（组 → 键元信息两层结构化包），逐组逐键展开全部字段
     YomkResponse allResp = logAction("全量导出键值表", "INFO_ALL", [&] { return YOMK_CONTEXT_INFO_ALL(); });
-    YomkUnPackPkg(allResp.m_data, ContextGroupInfoList, allArr);
+    auto allArr = yomk::unPack<yomkmsg::ContextGroupInfoList>(allResp.m_data);
     if (allArr)
     {
         for (const auto& group : allArr->d)
@@ -603,7 +615,7 @@ static void showArmTaskCleanup()
 
     // 收尾确认：键值表已空，会话闭环
     YomkResponse keysResp = logAction("收尾确认键值表已空", "INFO_KEYS", [&] { return YOMK_CONTEXT_INFO_KEYS(); });
-    YomkUnPackPkg(keysResp.m_data, StringArray, keyArr);
+    auto keyArr = yomk::unPack<yomkmsg::StringArray>(keysResp.m_data);
     logVerify(keyArr && keyArr->d.empty() ? "键值表已空：机械臂会话结束，共享状态全部下线" : "键值表非空：存在未清理键");
 }
 

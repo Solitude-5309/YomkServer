@@ -168,7 +168,11 @@ public:
 
     YomkResponse echo(YomkPkgPtr pkg)
     {
-        YomkUnPackPkgResponse(pkg, String, yText);
+        auto yText = yomk::unPack<yomkmsg::String>(pkg);
+        if (!yText)
+        {
+            return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+        }
         return {YomkResponse::eOk, yText->d};
     }
 };
@@ -309,7 +313,7 @@ int main()
         auto hitTyped = YOMK_SERVER_INFO_FUNCTION("/FmtSrv/echo");
         YOMK_TEST_CHECK(hitTyped.m_status == YomkResponse::eOk && hitTyped.m_msg == "ok",
               "命中三参函数：eOk 且 m_msg 恒为 ok");
-        YomkUnPackPkg(hitTyped.m_data, FuncInfo, typedInfo);
+        auto typedInfo = yomk::unPack<yomkmsg::FuncInfo>(hitTyped.m_data);
         YOMK_TEST_CHECK(typedInfo != nullptr, "命中三参函数：数据为 FuncInfo 包");
         YOMK_TEST_CHECK(typedInfo && typedInfo->d.m_funcName == "/echo" && typedInfo->d.m_msgName == "String",
               "命中三参函数字段 m_funcName/m_msgName 一致");
@@ -317,7 +321,7 @@ int main()
         auto hitPlain = YOMK_SERVER_INFO_FUNCTION("/FmtSrv/ping");
         YOMK_TEST_CHECK(hitPlain.m_status == YomkResponse::eOk && hitPlain.m_msg == "ok",
               "命中两参函数：eOk 且 m_msg 恒为 ok");
-        YomkUnPackPkg(hitPlain.m_data, FuncInfo, plainInfo);
+        auto plainInfo = yomk::unPack<yomkmsg::FuncInfo>(hitPlain.m_data);
         YOMK_TEST_CHECK(plainInfo && plainInfo->d.m_funcName == "/ping" && plainInfo->d.m_msgName.empty(),
               "命中两参函数字段 m_funcName 一致且 m_msgName 为空");
 
@@ -344,13 +348,13 @@ int main()
 
         auto nullPkg = YOMK_REQUEST("/YomkServerInfo/function", nullptr);
         YOMK_TEST_CHECK(nullPkg.m_status == YomkResponse::eNo && nullPkg.m_msg.find("pkg is null") != std::string::npos,
-              "null pkg 返回 eNo + pkg is null（解包宏守卫）");
+              "null pkg 返回 eNo + pkg is null（unPack 守卫）");
 
         // description 透出：四参安装的 /echo 命中时说明承载于 FuncInfo 包；无说明的 /ping 恒挂包但说明为空
         auto hitDesc = YOMK_SERVER_INFO_FUNCTION("/FmtSrv/echo");
         YOMK_TEST_CHECK(hitDesc.m_status == YomkResponse::eOk && hitDesc.m_msg == "ok",
               "四参函数命中：m_msg 恒为 ok");
-        YomkUnPackPkg(hitDesc.m_data, FuncInfo, descInfo);
+        auto descInfo = yomk::unPack<yomkmsg::FuncInfo>(hitDesc.m_data);
         YOMK_TEST_CHECK(descInfo && descInfo->d.m_msgName == "String", "四参函数命中：m_msgName == \"String\"");
         YOMK_TEST_CHECK(descInfo && descInfo->d.m_description == "echo demo description",
               "四参函数命中：m_description == \"echo demo description\"");
@@ -364,7 +368,7 @@ int main()
         auto resp = YOMK_SERVER_INFO_ALL();
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "ok", "/all 返回 eOk + ok");
 
-        YomkUnPackPkg(resp.m_data, ServerServiceInfoList, list);
+        auto list = yomk::unPack<yomkmsg::ServerServiceInfoList>(resp.m_data);
         YOMK_TEST_CHECK(list != nullptr && !list->d.empty(), "/all 输出非空");
 
         // FmtSrv 段：按 m_serviceName 查条目，段内 map 字典序 /echo 在 /ping 前
@@ -496,7 +500,7 @@ int main()
         YOMK_TEST_CHECK(restored.m_status == YomkResponse::eOk &&
                   nameIn(unpackStringArray(restored), "/YomkServerInfo"),
               "重注册后自举恢复：/services eOk 且含自身");
-        YomkUnPackPkg(YOMK_SERVER_INFO_ALL().m_data, ServerServiceInfoList, restoredAll);
+        auto restoredAll = yomk::unPack<yomkmsg::ServerServiceInfoList>(YOMK_SERVER_INFO_ALL().m_data);
         YOMK_TEST_CHECK(findServiceInfo(restoredAll, "/YomkServerInfo") != nullptr,
               "重注册后 /all 含自身段（自举查询成功）");
     }
@@ -525,11 +529,11 @@ int main()
         auto longFunction = YOMK_SERVER_INFO_FUNCTION(longName + "/ping");
         YOMK_TEST_CHECK(longFunction.m_status == YomkResponse::eOk && longFunction.m_msg == "ok",
               "超长名下 /function URL 二段解析正确（m_msg 恒为 ok）");
-        YomkUnPackPkg(longFunction.m_data, FuncInfo, longFuncInfo);
+        auto longFuncInfo = yomk::unPack<yomkmsg::FuncInfo>(longFunction.m_data);
         YOMK_TEST_CHECK(longFuncInfo && longFuncInfo->d.m_funcName == "/ping",
               "超长名下 URL 二段解析正确（m_funcName == \"/ping\"）");
 
-        YomkUnPackPkg(YOMK_SERVER_INFO_ALL().m_data, ServerServiceInfoList, longAll);
+        auto longAll = yomk::unPack<yomkmsg::ServerServiceInfoList>(YOMK_SERVER_INFO_ALL().m_data);
         const yomk::ServerServiceInfo* longSrv = findServiceInfo(longAll, longName);
         YOMK_TEST_CHECK(longSrv != nullptr, "/all 含超长服务名条目（无截断）");
         YOMK_TEST_CHECK(longSrv && longSrv->m_funcs.size() == 2 && longSrv->m_funcs[0].m_funcName == "/echo" &&

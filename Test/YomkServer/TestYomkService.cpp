@@ -85,7 +85,11 @@ private:
     // String 解包回显：验证 pkg 透传往返
     YomkResponse echo(YomkPkgPtr pkg)
     {
-        YomkUnPackPkgResponse(pkg, String, data);
+        auto data = yomk::unPack<yomkmsg::String>(pkg);
+        if (!data)
+        {
+            return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+        }
         return {YomkResponse::eOk, "echo:" + data->d};
     }
     YomkResponse plain(YomkPkgPtr pkg) { return {YomkResponse::eOk, "plain"}; }

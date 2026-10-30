@@ -115,7 +115,8 @@ int XxxService::init() {
     return 0;
 }
 YomkResponse XxxService::myFunc(YomkPkgPtr pkg) {
-    YomkUnPackPkgResponse(pkg, MyData, data);  // 解包（失败自动返回eNo）
+    auto data = yomk::unPack<yomkmsg::MyData>(pkg);  // 解包（失败返回 nullptr，需判空）
+    if (!data) { return {YomkResponse::eNo, "pkg is null or pkg is not MyData"}; }
     // 业务逻辑...
     return YomkResponse(YomkResponse::eOk, "success");
 }
@@ -275,11 +276,9 @@ YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 ```
 消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名（如 `YomkMsg(MyData, MyData, d)`）。
 - `yomkmsg::消息名称::shared(数据类实例)` — 创建消息包（类内静态工厂）
-- `YomkUnPackPkgResponse(pkg, 消息名称, ptr)` — 解包，失败自动返回 eNo
-- `YomkUnPackPkgVoid(pkg, 消息名称, ptr)` — 解包，失败自动 return
-- `YomkUnPackPkg(pkg, 消息名称, ptr)` — 解包，不自动 return，需手动判空
+- `yomk::unPack<yomkmsg::消息名称>(pkg)` — 解包模板，返回 shared_ptr，失败返回 nullptr（不自动 return，需手动判空处理）
 
-注意：`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomkmsg::消息名称` 与 `yomkmsg::消息名称Ptr`，与 `yomk` 中的载荷/框架类型隔离以避免重名；引用须写全名，裸写消息名会报 not declared；消息名称作为字符串字面量仍用于 `YomkUnPackPkg*` 宏参数与 `installFunc` 第三参。
+注意：`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomkmsg::消息名称` 与 `yomkmsg::消息名称Ptr`，与 `yomk` 中的载荷/框架类型隔离以避免重名；引用须写全名，裸写消息名会报 not declared；消息名称作为字符串字面量仍用于 `installFunc` 第三参与 `YomkUnPackPkgT`（框架内部），解包改由 `yomk::unPack<yomkmsg::消息名称>` 模板实参承担（类型即名字，无需字符串）。
 
 内置标准类型（成员名均为 `d`）：`Bool`, `Char`, `UChar`, `Byte`, `Int8`, `Uint8`, `Int16`, `Uint16`, `Int32`, `Uint32`, `Int64`, `Uint64`, `Float32`, `Float64`, `String` 及对应 `XxxArray` 类型（完整清单见 `YomkPkg.h` 末段）。
 

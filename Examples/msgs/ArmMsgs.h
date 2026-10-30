@@ -33,6 +33,6 @@ struct MoveResp
 
 // 注册后即可使用：
 // - 创建：yomkmsg::MoveCmd::shared(moveCmd)（聚合初始化先赋具名变量，含逗号不能内联进宏）
-// - 解包：YomkUnPackPkgResponse(pkg, MoveCmd, ptr)，通过 ptr->cmd.m_x 访问
+// - 解包：auto ptr = yomk::unPack<yomkmsg::MoveCmd>(pkg)，通过 ptr->cmd.m_x 访问
 YomkMsg(::MoveCmd, MoveCmd, cmd)
 YomkMsg(::MoveResp, MoveResp, resp)

@@ -567,7 +567,7 @@ static std::vector<std::string> unpackLines(const YomkResponse& resp)
     {
         return lines;
     }
-    YomkUnPackPkg(resp.m_data, StringArray, arr);
+    auto arr = yomk::unPack<yomkmsg::StringArray>(resp.m_data);
     if (arr)
     {
         lines = std::move(arr->d);
@@ -752,7 +752,7 @@ static LatencyStat measureIntrospection(uint64_t rounds, bool useAll, uint64_t& 
         }
         if (useAll)
         {
-            YomkUnPackPkg(resp.m_data, LoggerInfoList, listPkg);
+            auto listPkg = yomk::unPack<yomkmsg::LoggerInfoList>(resp.m_data);
             lastLines = listPkg ? listPkg->d.size() : 0;
         }
         else
@@ -1356,12 +1356,12 @@ int main()
         // 结构化后数据段形态不同（LoggerInfo vs 纯名行），逐行字符串比对改为数量与类型计数比对；
         // S4 阶段表内条目不再增删，console/file 两端点各自单锁快照后计数等价；
         // 条目改报逐器门控层真值后，"全 on" 验证语义迁移至 LOGGER_INFO_GLOBAL（全局主闸态）
-        YomkUnPackPkg(YOMK_LOGGER_INFO_GLOBAL().m_data, LoggerState, gsPkg);
+        auto gsPkg = yomk::unPack<yomkmsg::LoggerState>(YOMK_LOGGER_INFO_GLOBAL().m_data);
         YOMK_TEST_CHECK(
             (gsPkg != nullptr && gsPkg->d.m_debugOn && gsPkg->d.m_infoOn && gsPkg->d.m_warnOn &&
              gsPkg->d.m_errorOn && gsPkg->d.m_proxyOn),
             "S4B: 全局主闸状态全 on（proxy 已在 S1D 安装）");
-        YomkUnPackPkg(YOMK_LOGGER_INFO_ALL().m_data, LoggerInfoList, listPkg);
+        auto listPkg = yomk::unPack<yomkmsg::LoggerInfoList>(YOMK_LOGGER_INFO_ALL().m_data);
         const yomk::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
@@ -1458,7 +1458,7 @@ int main()
                         g_s4dSnapBadStatus.fetch_add(1, std::memory_order_relaxed);
                         continue;
                     }
-                    YomkUnPackPkg(resp.m_data, LoggerInfoList, listPkg);
+                    auto listPkg = yomk::unPack<yomkmsg::LoggerInfoList>(resp.m_data);
                     const uint64_t lines = listPkg ? listPkg->d.size() : 0;
                     g_s4dSnapCount.fetch_add(1, std::memory_order_relaxed);
                     if (lines < prevLines)

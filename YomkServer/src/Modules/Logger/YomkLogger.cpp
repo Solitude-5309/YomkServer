@@ -47,7 +47,11 @@ int YomkLogger::init()
 
 YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Log, log);
+    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    if (!log)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Log"};
+    }
     if (log->d.m_logger.empty())
     {
         YOMK_ERR_POS_LOG("console logger name is empty, use MainLogger");
@@ -120,7 +124,11 @@ YomkResponse YomkLogger::consoleLog(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, ConsoleLogProxy, consoleLogProxy);
+    auto consoleLogProxy = yomk::unPack<yomkmsg::ConsoleLogProxy>(pkg);
+    if (!consoleLogProxy)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not ConsoleLogProxy"};
+    }
     // 与 consoleLog 读侧互斥
     std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
     m_consoleLogProxyFunc = consoleLogProxy->d.m_consoleLogProxyFunc;
@@ -131,7 +139,11 @@ YomkResponse YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::setFileLogProxy(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, FileLogProxy, fileLogProxy);
+    auto fileLogProxy = yomk::unPack<yomkmsg::FileLogProxy>(pkg);
+    if (!fileLogProxy)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not FileLogProxy"};
+    }
     // 与 fileLog 读侧互斥；语义与 setConsoleLogProxy 对称
     std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
     m_fileLogProxyFunc = fileLogProxy->d.m_fileLogProxyFunc;
@@ -142,7 +154,11 @@ YomkResponse YomkLogger::setFileLogProxy(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, LogFile, logFile);
+    auto logFile = yomk::unPack<yomkmsg::LogFile>(pkg);
+    if (!logFile)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not LogFile"};
+    }
 
     // 空名/空目录拒绝：eInvalid（参数无效惯例）
     if (logFile->d.m_logger.empty())
@@ -177,7 +193,11 @@ YomkResponse YomkLogger::createFileLogger(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Log, log);
+    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    if (!log)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Log"};
+    }
 
     if (log->d.m_logger.empty())
     {
@@ -238,7 +258,11 @@ YomkResponse YomkLogger::fileLog(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::writeFileLog(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);
+    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
     auto fileLogger = m_fileLoggers.find(str->d);
     if (fileLogger == m_fileLoggers.end())
@@ -253,7 +277,11 @@ YomkResponse YomkLogger::writeFileLog(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::deleteLogger(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, yName);
+    auto yName = yomk::unPack<yomkmsg::String>(pkg);
+    if (!yName)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
 
     // 空名拒绝（同 createFileLogger 惯例）
     if (yName->d.empty())
@@ -297,7 +325,11 @@ YomkResponse YomkLogger::deleteLogger(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Log, log);
+    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    if (!log)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Log"};
+    }
 
     // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
     if (!log->d.m_logger.empty())
@@ -330,7 +362,11 @@ YomkResponse YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Log, log);
+    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    if (!log)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Log"};
+    }
 
     // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
     if (!log->d.m_logger.empty())
@@ -398,7 +434,11 @@ YomkResponse YomkLogger::setNamedConsoleLevel(const std::string& loggerName, Log
 
 YomkResponse YomkLogger::offFileLogByLevel(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Log, log);
+    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    if (!log)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Log"};
+    }
 
     // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
     if (!log->d.m_logger.empty())
@@ -431,7 +471,11 @@ YomkResponse YomkLogger::offFileLogByLevel(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::onFileLogByLevel(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, Log, log);
+    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    if (!log)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not Log"};
+    }
 
     // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
     if (!log->d.m_logger.empty())
@@ -499,7 +543,11 @@ YomkResponse YomkLogger::setNamedFileLevel(const std::string& loggerName, Log::E
 
 YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, type);
+    auto type = yomk::unPack<yomkmsg::String>(pkg);
+    if (!type)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     std::vector<std::string> names;
     if (type->d == "console")
     {
@@ -527,7 +575,11 @@ YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
 
 YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, LoggerQuery, query);
+    auto query = yomk::unPack<yomkmsg::LoggerQuery>(pkg);
+    if (!query)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not LoggerQuery"};
+    }
     // 按类型单表精确查找：两表允许同名，不再先 console 后 file 双表 fallback（同名歧义由 type 消除）；
     // 命中：锁内构造结构化快照，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
     yomk::LoggerInfo info;

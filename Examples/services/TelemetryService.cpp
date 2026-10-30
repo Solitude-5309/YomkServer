@@ -37,7 +37,11 @@ void TelemetryService::deinit()
 
 YomkResponse TelemetryService::record(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);  // String 为框架内置消息类型
+    auto str = yomk::unPack<yomkmsg::String>(pkg);  // String 为框架内置消息类型
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     std::ostringstream oss;
     oss << "留痕记录 [实例#" << m_id << "]：" << str->d;
     YOMK_INFO_TAG("arm.telemetry", oss.str());

@@ -16,7 +16,11 @@ int MotionService::init()
 
 YomkResponse MotionService::echo(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, String, str);  // String 为框架内置消息类型
+    auto str = yomk::unPack<yomkmsg::String>(pkg);  // String 为框架内置消息类型
+    if (!str)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+    }
     std::ostringstream oss;
     oss << "通讯自检回环：收到 \"" << str->d << "\"";
     YOMK_INFO_TAG("arm.motion", oss.str());
@@ -25,7 +29,11 @@ YomkResponse MotionService::echo(YomkPkgPtr pkg)
 
 YomkResponse MotionService::move(YomkPkgPtr pkg)
 {
-    YomkUnPackPkgResponse(pkg, MoveCmd, cmdPkg);
+    auto cmdPkg = yomk::unPack<yomkmsg::MoveCmd>(pkg);
+    if (!cmdPkg)
+    {
+        return {YomkResponse::eNo, "pkg is null or pkg is not MoveCmd"};
+    }
 
     std::ostringstream oss;
     oss << "运动指令执行：目标 (" << cmdPkg->cmd.m_x << ", " << cmdPkg->cmd.m_y << ", " << cmdPkg->cmd.m_z
