@@ -37,7 +37,7 @@ YOMK_FUNCTIONPOOL_UNREGISTER("calcSum");
 
 - 同名重复注册即运行时热替换，无需先注销。
 - 未注册的名字调用返回 `eNo=1`。
-- 服务成员函数注册到函数池时须用 `YomkBindWeakSelf` 弱绑定——服务删除后回调自动失效，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
+- 服务成员函数注册到函数池时须用 `weakFunc(&Class::Method)` 弱绑定——服务删除后回调自动失效，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 完整示例
 

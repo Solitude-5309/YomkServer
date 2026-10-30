@@ -55,7 +55,7 @@ YOMK_CONTEXT_DESTROY("config");  // 删除键
 - **Checker 生效条件**：全局开关 ON 且该 key 已设置时才生效；在写锁内门控，回调内重入 set 会死锁。
 - **Monitor 执行语义**：`async=false` 锁外即时执行，`async=true` 单线程池按提交序送达；仅通知发生了一次 set，并回传该次 set 的键值快照，不保证快照实时性。
 - **销毁后行为**：删除键后操作返回 `eNo=1`（key is not exist）。
-- 服务成员函数注册为 checker/monitor 时须用 `YomkBindWeakSelf` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
+- 服务成员函数注册为 checker/monitor 时须用 `weakFunc(&Class::Method)` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 内部结构
 

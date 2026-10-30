@@ -66,6 +66,16 @@ public:
             return func(std::forward<decltype(args)>(args)...);
         };
     }
+    // 成员函数指针重载：weakFunc(&Class::Method) 等价于 weakFunc(std::bind(&Class::Method, this, _1))，
+    // 内部委托上方泛型版，判活逻辑零重复（服务注销后自动忽略调用）
+    template <typename Class, typename Ret, typename Arg>
+    auto weakFunc(Ret (Class::*func)(Arg))
+    {
+        // 基类成员内的 this 为 YomkService*，须按成员指针所属类下转回调用方类型再绑定
+        // （调用点约定在本服务成员函数内，动态类型即 Class；无继承关系的类传入编译报错）
+        Class* self = static_cast<Class*>(this);
+        return weakFunc([self, func](Arg pkg) -> Ret { return (self->*func)(std::forward<Arg>(pkg)); });
+    }
     // 注册功能函数（msgName 声明期望消息类型；description 函数说明，内容使用者自定义，均可为空）
     void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
                      const std::string& description = "");

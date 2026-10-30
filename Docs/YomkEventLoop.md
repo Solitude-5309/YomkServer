@@ -46,7 +46,7 @@ YOMK_EVENTLOOP_DESTROY("TaskLoop");
 - 同一循环内事件按 FIFO 顺序执行，不同循环之间彼此并行。
 - 对已存在名称再次 `YOMK_EVENTLOOP_START` 为幂等重启。
 - 停止后投递返回 `eNo=1`（event loop not running）；销毁后操作返回 `eNo=1`（event loop not exist）。
-- 服务成员函数注册为事件处理函数时须用 `YomkBindWeakSelf` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
+- 服务成员函数注册为事件处理函数时须用 `weakFunc(&Class::Method)` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 完整示例
 

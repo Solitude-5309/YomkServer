@@ -8,18 +8,17 @@
 #include <utility>
 #include <vector>
 
-// 弱绑定服务成员函数，用于安全挂接外部回调
-#define YomkBindWeakSelf(Func) weakFunc(std::bind(&Func, this, std::placeholders::_1))
-
 // 注册服务成员功能函数（3 参声明期望消息类型；4 参追加函数说明，内容使用者自定义）
 #define YOMK_INSTALL_FUNC_SELECT(_1, _2, _3, _4, NAME, ...) NAME
-#define YomkInstallFunc(...)                                                                                      \
+#define YomkInstallFunc(...)                                                                             \
     YOMK_INSTALL_FUNC_SELECT(__VA_ARGS__, YOMK_INSTALL_FUNC_4, YOMK_INSTALL_FUNC_3, YOMK_INSTALL_FUNC_2) \
     (__VA_ARGS__)
-#define YOMK_INSTALL_FUNC_2(FuncName, Func) installFunc(FuncName, YomkBindWeakSelf(Func))
-#define YOMK_INSTALL_FUNC_3(FuncName, Func, MsgName) installFunc(FuncName, YomkBindWeakSelf(Func), #MsgName)
+#define YOMK_INSTALL_FUNC_2(FuncName, Func) \
+    installFunc(FuncName, weakFunc(std::bind(&Func, this, std::placeholders::_1)))
+#define YOMK_INSTALL_FUNC_3(FuncName, Func, MsgName) \
+    installFunc(FuncName, weakFunc(std::bind(&Func, this, std::placeholders::_1)), #MsgName)
 #define YOMK_INSTALL_FUNC_4(FuncName, Func, MsgName, Description) \
-    installFunc(FuncName, YomkBindWeakSelf(Func), #MsgName, Description)
+    installFunc(FuncName, weakFunc(std::bind(&Func, this, std::placeholders::_1)), #MsgName, Description)
 
 // 校验消息类型并解包，类型不匹配时直接返回 YomkResponse::eNo
 #define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                             \
@@ -54,21 +53,31 @@
     }
 
 // 消息包类型定义宏
-#define YomkMsg(DataType, MsgName, VarName)                                             \
-    namespace yomk                                                                      \
-    {                                                                                   \
-    class MsgName##_ : public YomkPkg                                                   \
-    {                                                                                   \
-    public:                                                                             \
-        MsgName##_() { m_name = #MsgName; }                                             \
-        MsgName##_(const DataType& value) : VarName(value) { m_name = #MsgName; }       \
-        MsgName##_(DataType&& value) : VarName(std::move(value)) { m_name = #MsgName; } \
-        virtual ~MsgName##_() {}                                                        \
-                                                                                        \
-    public:                                                                             \
-        DataType VarName{};                                                             \
-    };                                                                                  \
-    typedef std::shared_ptr<MsgName##_> MsgName##Ptr;                                   \
+// 宏体已升级：类型自带 kName、内置 shared 静态工厂；类名保留 MsgName##_ ——
+// "消息类 = 载荷类型名 + _"是既有协议设计（如 YomkMsg(Function, Function, d)），
+// 去下划线会与 yomk 命名空间内同名框架类型重定义冲突
+#define YomkMsg(DataType, MsgName, VarName)                                          \
+    namespace yomk                                                                   \
+    {                                                                                \
+    class MsgName##_ : public YomkPkg                                                \
+    {                                                                                \
+    public:                                                                          \
+        static constexpr const char* kName = #MsgName;                               \
+        MsgName##_() { m_name = kName; }                                             \
+        MsgName##_(const DataType& value) : VarName(value) { m_name = kName; }       \
+        MsgName##_(DataType&& value) : VarName(std::move(value)) { m_name = kName; } \
+        virtual ~MsgName##_() {}                                                     \
+                                                                                     \
+    public:                                                                          \
+        DataType VarName{};                                                          \
+                                                                                     \
+        template <typename... A>                                                     \
+        static std::shared_ptr<MsgName##_> shared(A&&... a)                          \
+        {                                                                            \
+            return std::make_shared<MsgName##_>(std::forward<A>(a)...);              \
+        }                                                                            \
+    };                                                                               \
+    typedef std::shared_ptr<MsgName##_> MsgName##Ptr;                                \
     }
 
 // 消息包构造与类型辅助宏
@@ -132,9 +141,9 @@ namespace yomk
 // 功能函数元信息（调试内省用）
 struct FuncInfo
 {
-    std::string m_funcName;    // 功能函数名（/开头）
-    std::string m_msgName;     // 期望消息类型名（三参宏声明，可为空）
-    std::string m_description; // 函数说明（四参宏声明，内容使用者自定义，可为空）
+    std::string m_funcName;     // 功能函数名（/开头）
+    std::string m_msgName;      // 期望消息类型名（三参宏声明，可为空）
+    std::string m_description;  // 函数说明（四参宏声明，内容使用者自定义，可为空）
 };
 
 struct Function
@@ -215,7 +224,7 @@ struct Log
     ELogLevel m_level;
     std::string m_log;
     std::string m_logger;  // 日志器名：服务端按其查找/惰性创建日志器实例
-    std::string m_tag;     // 日志标签：随记录显示 [tag] 段，区别于 m_logger（末位追加，旧位置初始化兼容）
+    std::string m_tag;  // 日志标签：随记录显示 [tag] 段，区别于 m_logger（末位追加，旧位置初始化兼容）
 };
 
 struct ConsoleLogProxy
@@ -312,15 +321,15 @@ struct ContextGroupKey
 // Context 组级内省条目（CONTEXT_INFO_ALL 返回数据元素：组名 + 该组下全部键元信息，对齐 ServerServiceInfo）
 struct ContextGroupInfo
 {
-    std::string m_groupName;                   // 组名
-    std::vector<ContextKeyInfo> m_keys;        // 该组全部键的内省元信息（map 字典序）
+    std::string m_groupName;             // 组名
+    std::vector<ContextKeyInfo> m_keys;  // 该组全部键的内省元信息（map 字典序）
 };
 
 // 服务级内省条目（SERVER_INFO_ALL 返回数据元素：服务名 + 该服务注册的函数元信息列表）
 struct ServerServiceInfo
 {
-    std::string m_serviceName;           // 服务名（带 / 前缀，如 "/FmtSrv"）
-    std::vector<FuncInfo> m_funcs;       // 函数元信息（与 /function 单查同族，m_funcName 带 / 前缀 url 段）
+    std::string m_serviceName;      // 服务名（带 / 前缀，如 "/FmtSrv"）
+    std::vector<FuncInfo> m_funcs;  // 函数元信息（与 /function 单查同族，m_funcName 带 / 前缀 url 段）
 };
 
 struct VoidPointer

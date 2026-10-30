@@ -77,7 +77,7 @@ public:
         YomkInstallFunc("/ping", DrainSrv::ping);
         YomkInstallFunc("/work", DrainSrv::work);
         // 存弱绑定回调至全局：排空期探针调用，验证 shutdown 不置注销标志（回调照常执行）
-        g_weakCb = YomkBindWeakSelf(DrainSrv::work);
+        g_weakCb = weakFunc(&DrainSrv::work);
         return 0;
     }
 

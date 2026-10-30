@@ -63,20 +63,20 @@ YOMK_SHUTDOWN();
 
 ### 弱绑定（防悬垂回调）
 
-服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时必须用 `YomkBindWeakSelf` 弱绑定——服务删除后回调自动判活失效，否则访问已析构的 this 导致崩溃。`YomkInstallFunc` 注册到本服务 funcMap 已自动弱绑定，无需手动处理：
+服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时必须用 `weakFunc(&Class::Method)` 弱绑定——服务删除后回调自动判活失效，否则访问已析构的 this 导致崩溃。`YomkInstallFunc` 注册到本服务 funcMap 已自动弱绑定，无需手动处理：
 
 ```cpp
 int MyService::init()
 {
     // FunctionPool：服务删除后回调失效（返回 eNo）
-    YOMK_FUNCTIONPOOL_REGISTER("my_work", YomkBindWeakSelf(MyService::myWork));
+    YOMK_FUNCTIONPOOL_REGISTER("my_work", weakFunc(&MyService::myWork));
 
-    // Context checker/monitor 签名不同，同一宏自动适配：删除后 checker 放行（eAccept）、monitor 丢弃
-    YOMK_CONTEXT_SET_CHECKER("key", YomkBindWeakSelf(MyService::myCheck));
-    YOMK_CONTEXT_SET_MONITOR("key", YomkBindWeakSelf(MyService::myMonitor));
+    // Context checker/monitor 签名不同，同一 weakFunc 自动适配：删除后 checker 放行（eAccept）、monitor 丢弃
+    YOMK_CONTEXT_SET_CHECKER("key", weakFunc(&MyService::myCheck));
+    YOMK_CONTEXT_SET_MONITOR("key", weakFunc(&MyService::myMonitor));
 
-    // 异步响应回调：框架不自动弱绑定，同样用 YomkBindWeakSelf（普通 lambda 须值捕获自包含数据）
-    YOMK_ASYNC_REQUEST("/OtherService/func", nullptr, YomkBindWeakSelf(MyService::onResp));
+    // 异步响应回调：框架不自动弱绑定，同样用 weakFunc(&MyService::onResp)（普通 lambda 须值捕获自包含数据）
+    YOMK_ASYNC_REQUEST("/OtherService/func", nullptr, weakFunc(&MyService::onResp));
     return 0;
 }
 ```

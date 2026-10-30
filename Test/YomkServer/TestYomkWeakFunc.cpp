@@ -3,7 +3,7 @@
  * @brief YomkService::weakFunc 弱绑定生命周期语义测试（正式全面测试，MC3）
  *
  * 覆盖内容：
- * 1. 存活路径：服务存活时四种返回值回调均真实执行（weakFunc lambda 与 YomkBindWeakSelf 成员绑定两种方式）
+ * 1. 存活路径：服务存活时四种返回值回调均真实执行（weakFunc lambda 与 weakFunc 成员函数指针绑定两种方式）
  * 2. 销毁丢弃（引用计数路径）：服务析构后回调丢弃——void 不执行、YomkResponse 返回 eNo+契约消息、
  *    ECheckStatus 默认放行 eAccept、其他类型返回 Ret{} 默认值
  * 3. 删除即停（注销标志路径）：持 shared_ptr 不释放经框架删除置位注销标志，回调同样立即丢弃（双层判活标志层独立生效）
@@ -60,18 +60,18 @@ public:
     }
 
 public:
-    // YomkBindWeakSelf 成员绑定真实执行计数
-    std::atomic<int> macroCount{0};
+    // weakFunc 成员函数指针绑定真实执行计数
+    std::atomic<int> memberCount{0};
 
     YomkResponse workResp(YomkPkgPtr pkg) { return {YomkResponse::eOk, "alive"}; }
-    YomkResponse macroWork(YomkPkgPtr pkg)
+    YomkResponse memberWork(YomkPkgPtr pkg)
     {
-        macroCount.fetch_add(1);
-        return {YomkResponse::eOk, "macro"};
+        memberCount.fetch_add(1);
+        return {YomkResponse::eOk, "member"};
     }
 
-    // YomkBindWeakSelf 宏绑定成员函数（外流注册主路径）
-    std::function<YomkResponse(YomkPkgPtr)> makeMacroCb() { return YomkBindWeakSelf(BindSrv::macroWork); }
+    // weakFunc 成员函数指针绑定（外流注册主路径）
+    std::function<YomkResponse(YomkPkgPtr)> makeMemberCb() { return weakFunc(&BindSrv::memberWork); }
 };
 
 /**
@@ -126,14 +126,14 @@ static void testAliveCallbacks(YomkServer* server)
             intCount.fetch_add(1);
             return 42;
         });
-    std::function<YomkResponse(YomkPkgPtr)> cbMacro = srv->makeMacroCb();
+    std::function<YomkResponse(YomkPkgPtr)> cbMember = srv->makeMemberCb();
 
     cbVoid();
     yomk::Context ctx{"key", nullptr};
     YomkResponse resp = cbResp(nullptr);
     yomk::ContextChecker::ECheckStatus status = cbCheck(ctx);
     int intRet = cbInt(nullptr);
-    YomkResponse macroResp = cbMacro(nullptr);
+    YomkResponse memberResp = cbMember(nullptr);
 
     YOMK_TEST_CHECK(voidCount.load() == 1, "存活：void 回调真实执行");
     YOMK_TEST_CHECK(
@@ -142,8 +142,8 @@ static void testAliveCallbacks(YomkServer* server)
     YOMK_TEST_CHECK(checkCount.load() == 1 && status == yomk::ContextChecker::eReject, "存活：ECheckStatus 回调返回真实值");
     YOMK_TEST_CHECK(intCount.load() == 1 && intRet == 42, "存活：其他返回值类型回调返回真实值");
     YOMK_TEST_CHECK(
-        srv->macroCount.load() == 1 && macroResp.m_status == YomkResponse::eOk && macroResp.m_msg == "macro",
-        "存活：YomkBindWeakSelf 成员绑定回调真实执行");
+        srv->memberCount.load() == 1 && memberResp.m_status == YomkResponse::eOk && memberResp.m_msg == "member",
+        "存活：weakFunc 成员函数指针绑定回调真实执行");
 }
 
 // 2. 销毁丢弃（引用计数路径）：服务析构后四类回调全部丢弃
@@ -158,7 +158,7 @@ static void testDestroyDiscard(YomkServer* server)
     std::function<YomkResponse(YomkPkgPtr)> cbResp;
     std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context&)> cbCheck;
     std::function<int(YomkPkgPtr)> cbInt;
-    std::function<YomkResponse(YomkPkgPtr)> cbMacro;
+    std::function<YomkResponse(YomkPkgPtr)> cbMember;
     {
         auto srv = std::make_shared<BindSrv>(server);
         cbVoid = srv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
@@ -180,7 +180,7 @@ static void testDestroyDiscard(YomkServer* server)
                 intCount.fetch_add(1);
                 return 42;
             });
-        cbMacro = srv->makeMacroCb();
+        cbMember = srv->makeMemberCb();
     }  // srv 在此析构：引用计数归零，弱绑定全部失效
 
     cbVoid();
@@ -188,7 +188,7 @@ static void testDestroyDiscard(YomkServer* server)
     YomkResponse resp = cbResp(nullptr);
     yomk::ContextChecker::ECheckStatus status = cbCheck(ctx);
     int intRet = cbInt(nullptr);
-    YomkResponse macroResp = cbMacro(nullptr);
+    YomkResponse memberResp = cbMember(nullptr);
 
     YOMK_TEST_CHECK(voidCount.load() == 0, "销毁：void 回调丢弃，副作用计数未变化");
     YOMK_TEST_CHECK(
@@ -200,8 +200,8 @@ static void testDestroyDiscard(YomkServer* server)
         "销毁：ECheckStatus 回调丢弃，默认放行 eAccept");
     YOMK_TEST_CHECK(intCount.load() == 0 && intRet == 0, "销毁：其他返回值类型回调丢弃，返回 Ret{} 默认值");
     YOMK_TEST_CHECK(
-        macroResp.m_status == YomkResponse::eNo && macroResp.m_msg.find(DISCARD_MSG) != std::string::npos,
-        "销毁：YomkBindWeakSelf 绑定回调丢弃");
+        memberResp.m_status == YomkResponse::eNo && memberResp.m_msg.find(DISCARD_MSG) != std::string::npos,
+        "销毁：weakFunc 成员函数指针绑定回调丢弃");
 }
 
 // 3. 删除即停（注销标志路径）：持引用不释放经框架删除置位注销标志，回调与自动弱绑定 invoke 立即丢弃

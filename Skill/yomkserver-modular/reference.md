@@ -59,17 +59,17 @@ YomkUnPackPkg(pkg, MsgName, ptr)          // 不自动 return，需手动判空
 YomkUnPackPkgT(pkg, MsgName, ClassName, ptr) // MsgName为运行时字符串
 ```
 
-**YomkInstallFunc / YomkBindWeakSelf：**
+**YomkInstallFunc / weakFunc：**
 ```cpp
 YomkInstallFunc(FuncName, Func)             // 弱绑定成员函数并装入本服务 funcMap
 YomkInstallFunc(FuncName, Func, MsgName)    // 同上，额外声明期望消息类型（可选末位参数）
 YomkInstallFunc(FuncName, Func, MsgName, Description)  // 同上，追加函数说明（自由字符串，框架透传不解析）
 // MsgName 字符串化后仅作内省元数据，不参与运行时校验；两参旧调用零改动
-YomkBindWeakSelf(Func)           // 弱绑定成员函数（不装入 funcMap），供注册到外部子系统使用
-// 两者均展开为 weakFunc(bind(&Func, this, _1))：回调触发时先 weak_ptr.lock() 判活，
-// 服务已删除则安全丢弃，不会悬垂 this 崩溃。
+weakFunc(&Class::Method)         // 弱绑定成员函数（不装入 funcMap），供注册到外部子系统使用
+// installFunc 内部经 weakFunc 绑定成员函数（等价 weakFunc(bind(&Func, this, _1))）：
+// 回调触发时先 weak_ptr.lock() 判活，服务已删除则安全丢弃，不会悬垂 this 崩溃。
 // weakFunc 是泛型模板，返回的泛型 lambda 按调用处目标 std::function 类型隐式转换，
-// 同一个宏自动适配全部回调签名：功能函数/FunctionPool/EventLoop（YomkResponse(YomkPkgPtr)，
+// 同一函数自动适配全部回调签名：功能函数/FunctionPool/EventLoop（YomkResponse(YomkPkgPtr)，
 // 删除后返回 eNo）、异步响应（void(YomkResponse)，丢弃）、Context checker
 // （ECheckStatus(const Context&)，删除后默认放行 eAccept）、Context monitor（void，丢弃）。
 
@@ -157,7 +157,8 @@ class YomkService {
     bool deleted() const;  // 服务是否已被标记注销（YOMK_DEL_SERVICE / 同名替换置位）
     virtual int init() = 0;
     virtual void deinit() {}  // 删除服务时由框架在锁外调用，覆写用于停线程/注销外部资源
-    template<typename Func> auto weakFunc(Func func);  // 泛型弱绑定守卫（适配签名清单见上方 YomkBindWeakSelf 注释）
+    template<typename Func> auto weakFunc(Func func);  // 泛型弱绑定守卫（适配签名清单见上方 weakFunc 注释）
+    template<typename Class, typename Ret, typename Arg> auto weakFunc(Ret (Class::*)(Arg));  // 成员函数指针弱绑定（判活/丢弃行为同泛型版）
     void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "");
     std::map<std::string, yomk::FuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
     YomkResponse invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);  // 直接调用本服务的功能函数（不经 URL 路由）

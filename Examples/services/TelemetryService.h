@@ -11,8 +11,8 @@
  * 2. 实现 init()，用 YomkInstallFunc 注册功能函数
  * 3. 功能函数签名统一为 YomkResponse(YomkPkgPtr pkg)
  *
- * 本服务额外演示弱绑定安全：init 中用 YomkBindWeakSelf 把成员函数
- * 注册到 FunctionPool，服务删除后回调立即失效，不会悬垂崩溃。
+ * 本服务额外演示弱绑定安全：init 中用 weakFunc(&TelemetryService::record)
+ * 把成员函数注册到 FunctionPool，服务删除后回调立即失效，不会悬垂崩溃。
  */
 class TelemetryService : public YomkService
 {

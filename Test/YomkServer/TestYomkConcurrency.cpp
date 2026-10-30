@@ -87,7 +87,7 @@ public:
     {
         YomkInstallFunc("/ping", ConcSrv::ping);
         YomkInstallFunc("/echo", ConcSrv::echo, String);
-        g_weakCb = YomkBindWeakSelf(ConcSrv::ping);
+        g_weakCb = weakFunc(&ConcSrv::ping);
         return 0;
     }
 

@@ -155,26 +155,26 @@ YOMK_ASYNC_REQUEST("/XxxService/my_func", YomkMkPtr(MyData, MyData{"hello", 1}),
 int ret = YOMK_DEL_SERVICE("/XxxService");
 ```
 
-服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时，**必须**用 `YomkBindWeakSelf` 弱绑定，否则服务删除后回调悬垂 this 崩溃；弱绑定判活机制与各回调签名的适配细节见 [reference.md](reference.md) "YomkInstallFunc / YomkBindWeakSelf"：
+服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时，**必须**用 `weakFunc(&Class::Method)` 弱绑定，否则服务删除后回调悬垂 this 崩溃；弱绑定判活机制与各回调签名的适配细节见 [reference.md](reference.md) "YomkInstallFunc / weakFunc"：
 
 ```cpp
 int XxxService::init() {
     YomkInstallFunc("/my_func", XxxService::myFunc);  // 本服务 funcMap 已自动弱绑定
     // 注册到 FunctionPool：弱绑定，服务删除后回调自动失效
-    YOMK_FUNCTIONPOOL_REGISTER("my_work", YomkBindWeakSelf(XxxService::myFunc));
-    // Context checker/monitor 签名不同，同一个宏自动适配：
+    YOMK_FUNCTIONPOOL_REGISTER("my_work", weakFunc(&XxxService::myFunc));
+    // Context checker/monitor 签名不同，同一 weakFunc 自动适配：
     // 服务删除后 checker 默认放行（eAccept），monitor 丢弃
-    YOMK_CONTEXT_SET_CHECKER("key", YomkBindWeakSelf(XxxService::myCheck));
-    YOMK_CONTEXT_SET_MONITOR("key", YomkBindWeakSelf(XxxService::myMonitor));
+    YOMK_CONTEXT_SET_CHECKER("key", weakFunc(&XxxService::myCheck));
+    YOMK_CONTEXT_SET_MONITOR("key", weakFunc(&XxxService::myMonitor));
     // 异步响应回调同样适用
-    YOMK_ASYNC_REQUEST("/OtherService/func", pkg, YomkBindWeakSelf(XxxService::onResp));
+    YOMK_ASYNC_REQUEST("/OtherService/func", pkg, weakFunc(&XxxService::onResp));
     return 0;
 }
 ```
 
-- 丢弃语义与判活细节（引用计数 + 注销标志双层判活、`YOMK_DEL_SERVICE`/同名替换置位注销标志即停、`YOMK_SHUTDOWN` 走排空不置位）见 [reference.md](reference.md) "YomkInstallFunc / YomkBindWeakSelf" 与 `YOMK_DEL_SERVICE`/`YOMK_SHUTDOWN` 行
+- 丢弃语义与判活细节（引用计数 + 注销标志双层判活、`YOMK_DEL_SERVICE`/同名替换置位注销标志即停、`YOMK_SHUTDOWN` 走排空不置位）见 [reference.md](reference.md) "YomkInstallFunc / weakFunc" 与 `YOMK_DEL_SERVICE`/`YOMK_SHUTDOWN` 行
 - 覆写 `virtual void deinit()` 停止非弱绑定路径的生产者（线程/定时器/外部注册），删除服务时由框架自动调用
-- **异步响应回调的生命周期要求**：`YOMK_ASYNC_REQUEST` 的 `func` 框架不自动弱绑定（区别于 `YomkInstallFunc`），优先用服务成员函数配合 `YomkBindWeakSelf`（见上例）；若必须用普通 lambda，捕获对象的生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据
+- **异步响应回调的生命周期要求**：`YOMK_ASYNC_REQUEST` 的 `func` 框架不自动弱绑定（区别于 `YomkInstallFunc`），优先用服务成员函数配合 `weakFunc(&Class::Method)`（见上例）；若必须用普通 lambda，捕获对象的生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据
 
 ### 优雅关闭（shutdown）
 
@@ -288,7 +288,7 @@ YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 1. 每个 Service 只负责单一业务域
 2. 服务间通过 `YOMK_REQUEST` 通信，不直接引用
 3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
-4. 服务成员函数注册到外部子系统（FunctionPool/EventLoop/Context checker·monitor/异步响应）必须用 `YomkBindWeakSelf` 弱绑定，服务删除后回调自动失效；本服务 funcMap（`YomkInstallFunc`）已自动弱绑定
+4. 服务成员函数注册到外部子系统（FunctionPool/EventLoop/Context checker·monitor/异步响应）必须用 `weakFunc(&Class::Method)` 弱绑定，服务删除后回调自动失效；本服务 funcMap（`YomkInstallFunc`）已自动弱绑定
 5. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）
 6. 配置路径通过 Context 传递，不用构造参数
 7. 扩展库只负责处理逻辑，不关心数据来源，所有外部数据必须通过请求参数传入

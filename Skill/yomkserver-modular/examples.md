@@ -603,12 +603,12 @@ YOMK_CONTEXT_SET("config", YomkMkPtr(String, "new_value")); // 通过检查并�
 YOMK_CONTEXT_SET("config", YomkMkPtr(String, ""));          // 被拒绝
 ```
 
-checker/monitor 使用**服务成员函数**时必须弱绑定，直接用 `YomkBindWeakSelf`（泛型模板按目标类型自动适配），服务删除后 checker 默认放行、monitor 丢弃：
+checker/monitor 使用**服务成员函数**时必须弱绑定，直接用 `weakFunc(&Class::Method)`（按目标类型自动适配），服务删除后 checker 默认放行、monitor 丢弃：
 
 ```cpp
 int MyService::init() {
-    YOMK_CONTEXT_SET_CHECKER("config", YomkBindWeakSelf(MyService::myChecker));
-    YOMK_CONTEXT_SET_MONITOR("config", YomkBindWeakSelf(MyService::myMonitor));
+    YOMK_CONTEXT_SET_CHECKER("config", weakFunc(&MyService::myChecker));
+    YOMK_CONTEXT_SET_MONITOR("config", weakFunc(&MyService::myMonitor));
     return 0;
 }
 ```
@@ -678,11 +678,11 @@ YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("validate_amount", YomkMkPtr(String, 
 YOMK_FUNCTIONPOOL_UNREGISTER("validate_amount");
 ```
 
-服务成员函数注册到 FunctionPool 时必须用 `YomkBindWeakSelf` 弱绑定，服务删除（`YOMK_DEL_SERVICE`）后回调自动失效而非悬垂 this 崩溃：
+服务成员函数注册到 FunctionPool 时必须用 `weakFunc(&Class::Method)` 弱绑定，服务删除（`YOMK_DEL_SERVICE`）后回调自动失效而非悬垂 this 崩溃：
 
 ```cpp
 int MyService::init() {
-    YOMK_FUNCTIONPOOL_REGISTER("my_work", YomkBindWeakSelf(MyService::doWork));
+    YOMK_FUNCTIONPOOL_REGISTER("my_work", weakFunc(&MyService::doWork));
     return 0;
 }
 

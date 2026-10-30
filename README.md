@@ -139,7 +139,7 @@ int main()
 ### 8. 服务生命周期与弱绑定
 
 - **deinit() 的四个触发时机**：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、同名服务被 `YOMK_ADD_SERVICE` 替换（旧服务先 deinit 再装新服务）、忘记关闭时框架析构兜底；覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
-- **弱绑定（防悬垂回调）**：服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时必须用 `YomkBindWeakSelf` 弱绑定——服务删除后回调自动判活失效；`YomkInstallFunc` 注册到本服务 funcMap 已自动弱绑定，无需手动处理。
+- **弱绑定（防悬垂回调）**：服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时必须用 `weakFunc(&Class::Method)` 弱绑定——服务删除后回调自动判活失效；`YomkInstallFunc` 注册到本服务 funcMap 已自动弱绑定，无需手动处理。
 
 详见 [服务总线](Docs/YomkServer.md)。
 

@@ -66,7 +66,7 @@
  *   YOMK_REQUEST / YOMK_ASYNC_REQUEST          同步 / 异步请求
  *   YOMK_SERVER_P / YOMK_SERVER_PTR            全局单例
  *   YOMK_SERVER_INFO_SERVICES / FUNCTIONS / FUNCTION / ALL  调用拓扑自省
- *   YomkInstallFunc(2/4 参) / YomkBindWeakSelf / 成员 request  服务侧 API
+ *   YomkInstallFunc(2/4 参) / weakFunc(&Class::Method) / 成员 request  服务侧 API
  */
 
 #include <chrono>
