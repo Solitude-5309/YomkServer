@@ -9,27 +9,27 @@
 #include <vector>
 
 // 校验消息类型并解包，类型不匹配时直接返回 YomkResponse::eNo
-#define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                             \
-    if (!pkg || pkg->name() != #MsgName)                                         \
-        return {YomkResponse::eNo, " pkg is null or pkg is not " #MsgName ". "}; \
-    YomkPtr(MsgName) ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg);    \
-    if (!ptrName)                                                                \
+#define YomkUnPackPkgResponse(pkg, MsgName, ptrName)                               \
+    if (!pkg || pkg->name() != #MsgName)                                           \
+        return {YomkResponse::eNo, " pkg is null or pkg is not " #MsgName ". "};   \
+    yomk::MsgName##Ptr ptrName = std::dynamic_pointer_cast<yomk::MsgName##_>(pkg); \
+    if (!ptrName)                                                                  \
         return {YomkResponse::eNo, " pkg[" #MsgName "] is dynamic_pointer_cast failed. "};
 
 // 校验消息类型并解包，类型不匹配时直接 return void
-#define YomkUnPackPkgVoid(pkg, MsgName, ptrName)                              \
-    if (!pkg || pkg->name() != #MsgName)                                      \
-        return;                                                               \
-    YomkPtr(MsgName) ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg); \
-    if (!ptrName)                                                             \
+#define YomkUnPackPkgVoid(pkg, MsgName, ptrName)                                   \
+    if (!pkg || pkg->name() != #MsgName)                                           \
+        return;                                                                    \
+    yomk::MsgName##Ptr ptrName = std::dynamic_pointer_cast<yomk::MsgName##_>(pkg); \
+    if (!ptrName)                                                                  \
         return;
 
 // 校验消息类型并解包，类型不匹配时不提前返回（指针为 nullptr）
-#define YomkUnPackPkg(pkg, MsgName, ptrName)                     \
-    YomkPtr(MsgName) ptrName = nullptr;                          \
-    if (pkg && pkg->name() == #MsgName)                          \
-    {                                                            \
-        ptrName = std::dynamic_pointer_cast<Yomk(MsgName)>(pkg); \
+#define YomkUnPackPkg(pkg, MsgName, ptrName)                        \
+    yomk::MsgName##Ptr ptrName = nullptr;                           \
+    if (pkg && pkg->name() == #MsgName)                             \
+    {                                                               \
+        ptrName = std::dynamic_pointer_cast<yomk::MsgName##_>(pkg); \
     }
 
 // 按运行时类型名解包（框架内部使用）
@@ -67,12 +67,6 @@
     };                                                                               \
     typedef std::shared_ptr<MsgName##_> MsgName##Ptr;                                \
     }
-
-// 消息包构造与类型辅助宏
-#define Yomk(MsgName) yomk::MsgName##_
-#define YomkMk(MsgName, ...) yomk::MsgName##_(__VA_ARGS__)
-#define YomkPtr(MsgName) yomk::MsgName##Ptr
-#define YomkMkPtr(MsgName, ...) std::make_shared<yomk::MsgName##_>(__VA_ARGS__)
 
 class YomkServer;
 

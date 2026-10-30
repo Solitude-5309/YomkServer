@@ -143,9 +143,9 @@ add_executable(${PROJECT_NAME}
 
 ```cpp
 // 同步
-YomkResponse resp = YOMK_REQUEST("/XxxService/my_func", YomkMkPtr(MyData, MyData{"hello", 1}));
+YomkResponse resp = YOMK_REQUEST("/XxxService/my_func", yomk::MyData_::shared(MyData{"hello", 1}));
 // 异步
-YOMK_ASYNC_REQUEST("/XxxService/my_func", YomkMkPtr(MyData, MyData{"hello", 1}), [](YomkResponse resp) { });
+YOMK_ASYNC_REQUEST("/XxxService/my_func", yomk::MyData_::shared(MyData{"hello", 1}), [](YomkResponse resp) { });
 ```
 
 ### 服务删除与弱绑定回调
@@ -274,12 +274,12 @@ ExtensionName/
 YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
 ```
 消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名（如 `YomkMsg(MyData, MyData, d)`）。
-- `YomkMkPtr(消息名称, 数据类实例)` — 创建消息包
+- `yomk::消息名称_::shared(数据类实例)` — 创建消息包（类内静态工厂）
 - `YomkUnPackPkgResponse(pkg, 消息名称, ptr)` — 解包，失败自动返回 eNo
 - `YomkUnPackPkgVoid(pkg, 消息名称, ptr)` — 解包，失败自动 return
 - `YomkUnPackPkg(pkg, 消息名称, ptr)` — 解包，不自动 return，需手动判空
 
-注意：消息名称是“宏词汇”而非“类型词汇”——只能在 `Yomk()` / `YomkPtr()` / `YomkMkPtr()` / `YomkUnPackPkg*` 等宏的参数位置与 `installFunc` 第三参（手写字符串字面量）出现，不能当裸类型名使用（`YomkMsg` 展开生成的真实类型是带后缀的 `yomk::消息名称_` 与 `yomk::消息名称Ptr`，裸写消息名会报 not declared）。
+注意：`YomkMsg` 展开生成的真实类型是带后缀的 `yomk::消息名称_` 与 `yomk::消息名称Ptr`（消息类 = 载荷类型名 + `_` 协议），引用须写全名，裸写消息名会报 not declared；消息名称作为字符串字面量仍用于 `YomkUnPackPkg*` 宏参数与 `installFunc` 第三参。
 
 内置标准类型（成员名均为 `d`）：`Bool`, `Char`, `UChar`, `Byte`, `Int8`, `Uint8`, `Int16`, `Uint16`, `Int32`, `Uint32`, `Int64`, `Uint64`, `Float32`, `Float64`, `String` 及对应 `XxxArray` 类型（完整清单见 `YomkPkg.h` 末段）。
 

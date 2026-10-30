@@ -161,7 +161,7 @@ int main()
         {
             for (int k = 0; k < 40; ++k)
             {
-                auto ev = YomkMkPtr(Event, yomk::Event("conc1", nullptr, nullptr, ""));
+                auto ev = yomk::Event_::shared(yomk::Event("conc1", nullptr, nullptr, ""));
                 yomk::Event_* raw = ev.get();  // handler 执行期间 run() 持有 shared_ptr，裸指针安全
                 ev->d.m_serviceFunc = [raw](YomkPkgPtr)
                 {
@@ -216,7 +216,7 @@ int main()
         YOMK_TEST_CHECK(loopB.start() == 0, "S2 loopB start 返回 0");
 
         // loopA 的 worker 被阻塞门占住
-        auto gate = YomkMkPtr(Event, yomk::Event("pa", nullptr, gateHandler(), "gate"));
+        auto gate = yomk::Event_::shared(yomk::Event("pa", nullptr, gateHandler(), "gate"));
         YOMK_TEST_CHECK(loopA.post(gate) == 0, "S2 loopA post 阻塞事件返回 0");
         YOMK_TEST_CHECK(waitGateStarted(2000), "S2 阻塞门已占住 loopA 的工作线程");
 
@@ -224,7 +224,7 @@ int main()
         for (int k = 0; k < 5; ++k)
         {
             YOMK_TEST_CHECK(
-                loopB.post(YomkMkPtr(Event, yomk::Event("pb", nullptr, countHandler(), ""))) == 0,
+                loopB.post(yomk::Event_::shared(yomk::Event("pb", nullptr, countHandler(), ""))) == 0,
                 "S2 loopB post 计数事件返回 0");
         }
         YOMK_TEST_CHECK(
@@ -234,7 +234,7 @@ int main()
         // 释放 loopA：gate 完成后 A 的后续事件恢复执行
         openGate();
         YOMK_TEST_CHECK(
-            loopA.post(YomkMkPtr(Event, yomk::Event("pa", nullptr, countHandler(), ""))) == 0,
+            loopA.post(yomk::Event_::shared(yomk::Event("pa", nullptr, countHandler(), ""))) == 0,
             "S2 loopA post 后续计数事件返回 0");
         YOMK_TEST_CHECK(
             waitUntil([] { return g_execCount.load() == 6; }, 2000), "S2 释放后 loopA 恢复执行（gate 完成+后续事件）");
@@ -258,7 +258,7 @@ int main()
         {
             for (int k = 0; k < 10; ++k)
             {
-                auto ev = YomkMkPtr(Event, yomk::Event("conc3", nullptr, countHandler(), ""));
+                auto ev = yomk::Event_::shared(yomk::Event("conc3", nullptr, countHandler(), ""));
                 int rc = loop.postWait(ev);
                 if (rc == 0)
                 {
@@ -307,7 +307,7 @@ int main()
         {
             for (int k = 0; k < 500; ++k)
             {
-                auto ev = YomkMkPtr(Event, yomk::Event("conc4", nullptr, countHandler(), ""));
+                auto ev = yomk::Event_::shared(yomk::Event("conc4", nullptr, countHandler(), ""));
                 if (loop.post(ev) == 0)
                 {
                     acceptedPost.fetch_add(1);
@@ -319,7 +319,7 @@ int main()
         {
             for (int k = 0; k < 100; ++k)
             {
-                auto ev = YomkMkPtr(Event, yomk::Event("conc4", nullptr, countHandler(), ""));
+                auto ev = yomk::Event_::shared(yomk::Event("conc4", nullptr, countHandler(), ""));
                 if (loop.postWait(ev) == 0)
                 {
                     acceptedWait.fetch_add(1);  // 停止态返回 2 被拒：事件未入队不计数，直接投下一个
@@ -384,7 +384,7 @@ int main()
         {
             for (int k = 0; k < 25; ++k)
             {
-                if (YOMK_EVENTLOOP_POST("conc_loop", YomkMkPtr(String, std::string("x")), countHandler(), "")
+                if (YOMK_EVENTLOOP_POST("conc_loop", yomk::String_::shared(std::string("x")), countHandler(), "")
                         .m_status == YomkResponse::eOk)
                 {
                     apiPostOk.fetch_add(1);

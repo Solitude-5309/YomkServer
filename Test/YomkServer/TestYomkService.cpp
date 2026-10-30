@@ -199,7 +199,7 @@ static void testInvoke(DemoService* demo)
     YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "plain", "invoke 命中，返回函数自身响应");
 
     // 命中：pkg 透传与解包回显（数据往返）
-    resp = demo->invoke("/echo", YomkMkPtr(String, std::string("hi")));
+    resp = demo->invoke("/echo", yomk::String_::shared(std::string("hi")));
     YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "echo:hi", "invoke 命中，pkg 透传解包回显正确");
 
     // 命中：函数内解包失败（pkg 为 nullptr）返回 eNo

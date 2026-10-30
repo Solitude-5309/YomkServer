@@ -314,13 +314,13 @@ static void showArmPlantRoster()
 
     logAction(
         "试运行工位功能：状态上报", "REQUEST /ArmStation/report",
-        [&] { return YOMK_REQUEST("/ArmStation/report", YomkMkPtr(String, "joint ready")); });
+        [&] { return YOMK_REQUEST("/ArmStation/report", yomk::String_::shared("joint ready")); });
 
     // 入参先赋具名变量：聚合初始化含逗号，直接内联进宏会被预处理器误当实参分隔符
     QualityCheckReq checkReq{"S3", 5};
     logAction(
         "试运行工位功能：质量抽检", "REQUEST /ArmStation/quality_check",
-        [&] { return YOMK_REQUEST("/ArmStation/quality_check", YomkMkPtr(QualityCheckReq, checkReq)); });
+        [&] { return YOMK_REQUEST("/ArmStation/quality_check", yomk::QualityCheckReq_::shared(checkReq)); });
     logVerify("arm.station 日志夹在开始行与结果行之间——REQUEST 在调用方线程同步执行；返回值即函数返回值，msg 携带回执");
 }
 

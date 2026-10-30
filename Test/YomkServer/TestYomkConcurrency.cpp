@@ -150,7 +150,7 @@ int main()
                         }
                         else
                         {
-                            auto r = server->request("/PingSrv/echo", YomkMkPtr(String, "x"));
+                            auto r = server->request("/PingSrv/echo", yomk::String_::shared("x"));
                             if (r.m_status == YomkResponse::eOk && r.m_msg == "x")
                                 ++okCount;
                         }
@@ -183,7 +183,7 @@ int main()
                     {
                         server->asyncRequest(
                             "/AsyncSrv/echo",
-                            YomkMkPtr(String, "a"),
+                            yomk::String_::shared("a"),
                             [](YomkResponse r)
                             {
                                 if (r.m_status == YomkResponse::eOk)
@@ -262,7 +262,7 @@ int main()
                 {
                     while (!stop.load())
                     {
-                        auto r = server->request("/EchoSrv/echo", YomkMkPtr(String, "loop"));
+                        auto r = server->request("/EchoSrv/echo", yomk::String_::shared("loop"));
                         if (r.m_status == YomkResponse::eOk && r.m_msg == "loop")
                             ++okCount;
                         else
@@ -303,7 +303,7 @@ int main()
                 {
                     server->asyncRequest(
                         "/ShutdownAsyncSrv/echo",
-                        YomkMkPtr(String, "s"),
+                        yomk::String_::shared("s"),
                         [](YomkResponse r)
                         {
                             if (r.m_status == YomkResponse::eOk)
@@ -339,7 +339,7 @@ int main()
         {
             server->asyncRequest(
                 "/ShutdownAsyncSrv/echo",
-                YomkMkPtr(String, "s"),
+                yomk::String_::shared("s"),
                 [](YomkResponse r)
                 {
                     if (r.m_status == YomkResponse::eOk)
@@ -434,7 +434,7 @@ int main()
                 {
                     server->asyncRequest(
                         "/StressSrv/echo",
-                        YomkMkPtr(String, "stress"),
+                        yomk::String_::shared("stress"),
                         [fired](YomkResponse r)
                         {
                             if (r.m_status == YomkResponse::eOk)

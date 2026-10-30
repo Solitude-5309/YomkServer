@@ -61,7 +61,7 @@ int EventLoop::stop()
 int EventLoop::destroy()
 {
     stop();
-    std::vector<YomkPtr(Event)> discarded;
+    std::vector<yomk::EventPtr> discarded;
     {
         std::lock_guard<std::mutex> lock(m_queueMutex);
         while (!m_eventQueue.empty())
@@ -80,7 +80,7 @@ int EventLoop::destroy()
     return 0;
 }
 
-int EventLoop::post(YomkPtr(Event) event)
+int EventLoop::post(yomk::EventPtr event)
 {
     if (!m_running.load())
     {
@@ -112,7 +112,7 @@ int EventLoop::post(YomkPtr(Event) event)
     return 0;
 }
 
-int EventLoop::postWait(YomkPtr(Event) event)
+int EventLoop::postWait(yomk::EventPtr event)
 {
     if (!m_running.load())
     {
@@ -186,7 +186,7 @@ void EventLoop::infoSnapshot(yomk::EventLoopInfo& info, size_t tagCount)
     info.m_pending = m_eventQueue.size();
     info.m_hasDefaultFunc = static_cast<bool>(m_defaultServiceFunc);
     info.m_msgName = m_defaultMsgName;
-    std::queue<YomkPtr(Event)> queueCopy = m_eventQueue;
+    std::queue<yomk::EventPtr> queueCopy = m_eventQueue;
     while (!queueCopy.empty() && info.m_nextTags.size() < tagCount)
     {
         auto event = queueCopy.front();
@@ -222,7 +222,7 @@ void EventLoop::run()
 {
     while (m_running.load())
     {
-        YomkPtr(Event) event;
+        yomk::EventPtr event;
         {
             std::unique_lock<std::mutex> lock(m_queueMutex);
             m_condition.wait(lock, [this]() { return !m_eventQueue.empty() || !m_running.load(); });

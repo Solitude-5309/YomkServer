@@ -105,7 +105,7 @@ static std::vector<std::string> unpackStringArray(const YomkResponse& resp)
     {
         return lines;
     }
-    YomkUnPackPkgT(resp.m_data, "StringArray", Yomk(StringArray), arr);
+    YomkUnPackPkgT(resp.m_data, "StringArray", yomk::StringArray_, arr);
     if (arr)
     {
         lines = arr->d;
@@ -121,7 +121,7 @@ static std::vector<yomk::FuncInfo> unpackFuncInfoList(const YomkResponse& resp)
     {
         return funcs;
     }
-    YomkUnPackPkgT(resp.m_data, "FuncInfoList", Yomk(FuncInfoList), listPkg);
+    YomkUnPackPkgT(resp.m_data, "FuncInfoList", yomk::FuncInfoList_, listPkg);
     if (listPkg)
     {
         funcs = listPkg->d;
@@ -219,12 +219,12 @@ int main()
               "/services server destroyed: eNo + 契约消息: " + rServices.m_msg);
 
         // /functions 先做空名校验，须传非空 srvName 越过前置校验到达 lock 失败点
-        auto rFunctions = info->invoke("/functions", YomkMkPtr(String, std::string("/Any")));
+        auto rFunctions = info->invoke("/functions", yomk::String_::shared(std::string("/Any")));
         YOMK_TEST_CHECK(rFunctions.m_status == YomkResponse::eNo && rFunctions.m_msg == "server has been destroyed",
               "/functions server destroyed: eNo + 契约消息");
 
         // /function 先做 URL 解析校验，须传合法 url 越过前置校验到达 lock 失败点
-        auto rFunction = info->invoke("/function", YomkMkPtr(String, std::string("/Any/f")));
+        auto rFunction = info->invoke("/function", yomk::String_::shared(std::string("/Any/f")));
         YOMK_TEST_CHECK(rFunction.m_status == YomkResponse::eNo && rFunction.m_msg == "server has been destroyed",
               "/function server destroyed: eNo + 契约消息");
 

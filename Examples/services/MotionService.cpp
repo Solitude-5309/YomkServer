@@ -20,7 +20,7 @@ YomkResponse MotionService::echo(YomkPkgPtr pkg)
     std::ostringstream oss;
     oss << "通讯自检回环：收到 \"" << str->d << "\"";
     YOMK_INFO_TAG("arm.motion", oss.str());
-    return {YomkResponse::eOk, "echo success", YomkMkPtr(String, "echo: " + str->d)};
+    return {YomkResponse::eOk, "echo success", yomk::String_::shared("echo: " + str->d)};
 }
 
 YomkResponse MotionService::move(YomkPkgPtr pkg)
@@ -36,7 +36,7 @@ YomkResponse MotionService::move(YomkPkgPtr pkg)
     // 留痕是运动的依赖前置，留痕缺失时失败沿调用链传播
     oss.str("");
     oss << "运动留痕：move -> (" << cmdPkg->cmd.m_x << "," << cmdPkg->cmd.m_y << "," << cmdPkg->cmd.m_z << ")mm";
-    YomkResponse traceResp = request("/TelemetryService/record", YomkMkPtr(String, oss.str()));
+    YomkResponse traceResp = request("/TelemetryService/record", yomk::String_::shared(oss.str()));
     if (traceResp.m_status != YomkResponse::eOk)
     {
         oss.str("");
@@ -50,5 +50,5 @@ YomkResponse MotionService::move(YomkPkgPtr pkg)
 
     // 到位回执：m_data 携带强类型 MoveResp，不止能传 String
     MoveResp respData{cmdPkg->cmd.m_x, cmdPkg->cmd.m_y, cmdPkg->cmd.m_z};
-    return {YomkResponse::eOk, "move success", YomkMkPtr(MoveResp, respData)};
+    return {YomkResponse::eOk, "move success", yomk::MoveResp_::shared(respData)};
 }

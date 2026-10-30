@@ -142,7 +142,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
 
     # YomkEventLoop-cppcheck：参数与 MC9/MC6 扫描一致；额外补 include/YomkServer（真实构建的
     # YomkServer_INCLUDE 路径，见 YomkServer/CMakeLists.txt）——EventLoop 头用裸 "YomkPkg.h" 包含，
-    # 缺此路径时包含解析失败被 missingInclude 抑制掩盖，YomkPtr 宏未定义触发 unknownMacro 且分析降级
+    # 缺此路径时包含解析失败被 missingInclude 抑制掩盖，头内类型未定义触发错误且分析降级
     if(CPPCHECK_EXE)
         add_custom_target(YomkEventLoop-cppcheck
             COMMAND ${CPPCHECK_EXE}

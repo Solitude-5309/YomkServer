@@ -20,8 +20,8 @@
 
 ```cpp
 // 1. 创建与设置上下文键值
-YOMK_CONTEXT_CREATE("config", YomkMkPtr(String, "init_value"));
-YOMK_CONTEXT_SET("config", YomkMkPtr(String, "new_value"));
+YOMK_CONTEXT_CREATE("config", yomk::String_::shared("init_value"));
+YOMK_CONTEXT_SET("config", yomk::String_::shared("new_value"));
 
 // 2. 读取上下文（只读快照；key 不存在时返回兜底默认值）
 auto val = YOMK_CONTEXT_GET(String, "config", nullptr);

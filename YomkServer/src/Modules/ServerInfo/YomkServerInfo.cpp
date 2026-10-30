@@ -26,7 +26,7 @@ YomkResponse YomkServerInfo::listServices(YomkPkgPtr pkg)
         YOMK_ERR_POS_LOG("server has been destroyed, list services ignored.");
         return {YomkResponse::eNo, "server has been destroyed"};
     }
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, server->serviceNames())};
+    return {YomkResponse::eOk, "ok", yomk::StringArray_::shared(server->serviceNames())};
 }
 
 YomkResponse YomkServerInfo::listFunctions(YomkPkgPtr pkg)
@@ -51,7 +51,7 @@ YomkResponse YomkServerInfo::listFunctions(YomkPkgPtr pkg)
     {
         funcs.push_back(iter.second);
     }
-    return {YomkResponse::eOk, "ok", YomkMkPtr(FuncInfoList, std::move(funcs))};
+    return {YomkResponse::eOk, "ok", yomk::FuncInfoList_::shared(std::move(funcs))};
 }
 
 YomkResponse YomkServerInfo::functionInfo(YomkPkgPtr pkg)
@@ -98,7 +98,7 @@ YomkResponse YomkServerInfo::functionInfo(YomkPkgPtr pkg)
             info.m_funcName = funcName;
             info.m_msgName = iter->second.m_msgName;
             info.m_description = iter->second.m_description;
-            return {YomkResponse::eOk, "ok", YomkMkPtr(FuncInfo, info)};
+            return {YomkResponse::eOk, "ok", yomk::FuncInfo_::shared(info)};
         }
     }
 
@@ -132,5 +132,5 @@ YomkResponse YomkServerInfo::listAll(YomkPkgPtr pkg)
         infos.push_back(std::move(srv));
     }
     // m_msg 恒 "ok"，数据走 m_data（结构化层级包：服务 → 函数元信息）
-    return {YomkResponse::eOk, "ok", YomkMkPtr(ServerServiceInfoList, std::move(infos))};
+    return {YomkResponse::eOk, "ok", yomk::ServerServiceInfoList_::shared(std::move(infos))};
 }

@@ -12,7 +12,7 @@ int MyBoot::before()
     // 通过 /proc/self/exe 获取可执行文件绝对路径
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
     std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.txt";
-    YOMK_CONTEXT_CREATE(CTX_CONFIG_PATH, YomkMkPtr(String, configPath.string()));
+    YOMK_CONTEXT_CREATE(CTX_CONFIG_PATH, yomk::String_::shared(configPath.string()));
     YOMK_INFO_TAG("MyBoot::before", "config path: ", configPath.string());
     return 0;
 }
@@ -48,7 +48,7 @@ int MyBoot::after()
     }
     YOMK_INFO_TAG("MyBoot::after", "started successfully.");
 
-    resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(ConfigKey, ConfigKey{"name"}));
+    resp = YOMK_REQUEST("/ConfigService/get", yomk::ConfigKey_::shared(ConfigKey{"name"}));
     if (resp.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config name failed: ", resp.m_msg);
@@ -69,7 +69,7 @@ int MyBoot::after()
     YomkUnPackPkg(resp.m_data, String, version);
     YOMK_INFO_TAG("MyBoot::after", "project version: ", version->d);
 
-    resp = YOMK_REQUEST("/ConfigService/get", YomkMkPtr(ConfigKey, ConfigKey{"description"}));
+    resp = YOMK_REQUEST("/ConfigService/get", yomk::ConfigKey_::shared(ConfigKey{"description"}));
     if (resp.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config description failed: ", resp.m_msg);

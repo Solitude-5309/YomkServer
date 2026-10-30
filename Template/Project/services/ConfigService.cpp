@@ -74,7 +74,7 @@ YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
         return YomkResponse(YomkResponse::eNo, "key not found: " + data->req.key);
     }
 
-    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, it->second));
+    return YomkResponse(YomkResponse::eOk, "ok", yomk::String_::shared(it->second));
 }
 
 YomkResponse ConfigService::setConfig(YomkPkgPtr pkg)
@@ -95,5 +95,5 @@ YomkResponse ConfigService::reloadConfig(YomkPkgPtr pkg)
 YomkResponse ConfigService::version(YomkPkgPtr pkg)
 {
     // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
-    return YomkResponse(YomkResponse::eOk, "ok", YomkMkPtr(String, std::string(APP_VERSION)));
+    return YomkResponse(YomkResponse::eOk, "ok", yomk::String_::shared(std::string(APP_VERSION)));
 }

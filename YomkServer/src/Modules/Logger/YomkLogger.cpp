@@ -522,7 +522,7 @@ YomkResponse YomkLogger::loggers(YomkPkgPtr pkg)
     }
     // 单表为 std::map，中序遍历天然字典序，无需排序（选型见 YomkLogger.h）
     // move 入包消除全量拷贝
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, std::move(names))};
+    return {YomkResponse::eOk, "ok", yomk::StringArray_::shared(std::move(names))};
 }
 
 YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
@@ -554,7 +554,7 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
         }
         info.m_type = "console";
         info.m_loggerState = namedConsoleState(consoleLogger, proxyOn);
-        return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
+        return {YomkResponse::eOk, "ok", yomk::LoggerInfo_::shared(std::move(info))};
     }
     if (query->d.m_type == "file")
     {
@@ -579,7 +579,7 @@ YomkResponse YomkLogger::loggerInfo(YomkPkgPtr pkg)
         info.m_type = "file";
         info.m_dir = fileLogger->getDir();
         info.m_loggerState = namedFileState(fileLogger, proxyOn);
-        return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfo, std::move(info))};
+        return {YomkResponse::eOk, "ok", yomk::LoggerInfo_::shared(std::move(info))};
     }
     YOMK_ERR_POS_LOG("unknown logger type: " + query->d.m_type + ".");
     return YomkResponse(YomkResponse::eNo, "unknown logger type.");
@@ -684,19 +684,19 @@ YomkResponse YomkLogger::listAll(YomkPkgPtr pkg)
         }
     }
     // std::map 天然字典序（console 段在前、file 段在后）；m_msg 恒 "ok"，数据走 m_data
-    return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerInfoList, std::move(loggers))};
+    return {YomkResponse::eOk, "ok", yomk::LoggerInfoList_::shared(std::move(loggers))};
 }
 
 // 控制台全局主闸态内省（无参形态同 /all；m_msg 恒 "ok"，LoggerState 包走 m_data）
 YomkResponse YomkLogger::consoleGlobalState(YomkPkgPtr pkg)
 {
     (void)pkg;
-    return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerState, currentConsoleState())};
+    return {YomkResponse::eOk, "ok", yomk::LoggerState_::shared(currentConsoleState())};
 }
 
 // 文件全局主闸态内省（无参形态同 /all；m_msg 恒 "ok"，LoggerState 包走 m_data）
 YomkResponse YomkLogger::fileGlobalState(YomkPkgPtr pkg)
 {
     (void)pkg;
-    return {YomkResponse::eOk, "ok", YomkMkPtr(LoggerState, currentFileState())};
+    return {YomkResponse::eOk, "ok", yomk::LoggerState_::shared(currentFileState())};
 }

@@ -86,7 +86,7 @@ int main()
     std::cout << "===== 1. 并发 get/set 共享键 =====" << std::endl;
     {
         resetGlobals();
-        auto cr = YOMK_CONTEXT_CREATE("conc_rw", YomkMkPtr(String, std::string("v_init")));
+        auto cr = YOMK_CONTEXT_CREATE("conc_rw", yomk::String_::shared(std::string("v_init")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "1.1 创建 conc_rw 成功");
 
         const int T = 8, K = 500;
@@ -101,7 +101,7 @@ int main()
                     {
                         if (i % 2 == 0)
                         {
-                            auto v = YOMK_CONTEXT_GET(String, "conc_rw", YomkMkPtr(String, std::string("")));
+                            auto v = YOMK_CONTEXT_GET(String, "conc_rw", yomk::String_::shared(std::string("")));
                             // conc_rw 始终存在且值为非空 String，命中 eOk 路径返回非空值
                             if (v && !v->d.empty())
                                 ++okGet;
@@ -112,7 +112,7 @@ int main()
                         {
                             auto r = YOMK_CONTEXT_SET(
                                 "conc_rw",
-                                YomkMkPtr(String, std::string("v") + std::to_string(t) + "_" + std::to_string(i)));
+                                yomk::String_::shared(std::string("v") + std::to_string(t) + "_" + std::to_string(i)));
                             if (r.m_status == YomkResponse::eOk)
                                 ++okSet;
                             else
@@ -145,7 +145,7 @@ int main()
                     std::string key = "conc_cd_" + std::to_string(t);
                     for (int i = 0; i < K; ++i)
                     {
-                        auto c = YOMK_CONTEXT_CREATE(key, YomkMkPtr(String, std::string("x")));
+                        auto c = YOMK_CONTEXT_CREATE(key, yomk::String_::shared(std::string("x")));
                         if (c.m_status == YomkResponse::eOk)
                             ++okCreate;
                         else
@@ -180,7 +180,7 @@ int main()
     std::cout << "===== 3. 并发 setMonitor 同键 =====" << std::endl;
     {
         resetGlobals();
-        auto cr = YOMK_CONTEXT_CREATE("conc_mon", YomkMkPtr(String, std::string("m0")));
+        auto cr = YOMK_CONTEXT_CREATE("conc_mon", yomk::String_::shared(std::string("m0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "3.1 创建 conc_mon 成功");
         YOMK_CONTEXT_ON_MONITOR();
 
@@ -211,7 +211,7 @@ int main()
 
         // 单次 set 触发全部已注册 monitor：计数 == 注册次数，证明并发 push_back 无丢失/损坏
         g_syncMon.store(0);
-        auto sr = YOMK_CONTEXT_SET("conc_mon", YomkMkPtr(String, std::string("m1")));
+        auto sr = YOMK_CONTEXT_SET("conc_mon", yomk::String_::shared(std::string("m1")));
         YOMK_TEST_CHECK(sr.m_status == YomkResponse::eOk, "3.4 触发 set 返回 eOk");
         YOMK_TEST_CHECK(g_syncMon.load() == T * K, "3.5 并发注册的 monitor 全部落地（计数 == 注册次数）");
         YOMK_CONTEXT_OFF_MONITOR();
@@ -221,7 +221,7 @@ int main()
     std::cout << "===== 4. 并发 setChecker × keyInfo 同键 =====" << std::endl;
     {
         resetGlobals();
-        auto cr = YOMK_CONTEXT_CREATE("conc_ck", YomkMkPtr(String, std::string("c0")));
+        auto cr = YOMK_CONTEXT_CREATE("conc_ck", yomk::String_::shared(std::string("c0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "4.1 创建 conc_ck 成功");
 
         const int T = 16, K = 100;  // 半数写 checker、半数读 keyInfo
@@ -272,7 +272,7 @@ int main()
                 ++g_checkerCalls;
                 return ContextChecker::eAccept;
             });
-        auto sr = YOMK_CONTEXT_SET("conc_ck", YomkMkPtr(String, std::string("c1")));
+        auto sr = YOMK_CONTEXT_SET("conc_ck", yomk::String_::shared(std::string("c1")));
         YOMK_TEST_CHECK(sr.m_status == YomkResponse::eOk, "4.5 并发注册后 set 仍 eOk");
         YOMK_TEST_CHECK(g_checkerCalls.load() == 1, "4.6 checker 有效并被调用 1 次");
         YOMK_CONTEXT_OFF_CHECKER();
@@ -282,7 +282,7 @@ int main()
     std::cout << "===== 5. 并发 set 触发 checker =====" << std::endl;
     {
         resetGlobals();
-        auto cr = YOMK_CONTEXT_CREATE("conc_setck", YomkMkPtr(String, std::string("s0")));
+        auto cr = YOMK_CONTEXT_CREATE("conc_setck", yomk::String_::shared(std::string("s0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "5.1 创建 conc_setck 成功");
         YOMK_CONTEXT_SET_CHECKER(
             "conc_setck",
@@ -305,7 +305,7 @@ int main()
                     for (int i = 0; i < K; ++i)
                     {
                         auto r =
-                            YOMK_CONTEXT_SET("conc_setck", YomkMkPtr(String, std::string("s") + std::to_string(i)));
+                            YOMK_CONTEXT_SET("conc_setck", yomk::String_::shared(std::string("s") + std::to_string(i)));
                         if (r.m_status == YomkResponse::eOk)
                             ++okSet;
                         else
@@ -326,7 +326,7 @@ int main()
     std::cout << "===== 6. 并发 set 触发 sync+async monitor =====" << std::endl;
     {
         resetGlobals();
-        auto cr = YOMK_CONTEXT_CREATE("conc_setmon", YomkMkPtr(String, std::string("n0")));
+        auto cr = YOMK_CONTEXT_CREATE("conc_setmon", yomk::String_::shared(std::string("n0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "6.1 创建 conc_setmon 成功");
         YOMK_CONTEXT_SET_MONITOR(
             "conc_setmon", [](const yomk::Context&) { ++g_syncMon; }, /*async=*/false);
@@ -347,7 +347,7 @@ int main()
                     for (int i = 0; i < K; ++i)
                     {
                         auto r =
-                            YOMK_CONTEXT_SET("conc_setmon", YomkMkPtr(String, std::string("n") + std::to_string(i)));
+                            YOMK_CONTEXT_SET("conc_setmon", yomk::String_::shared(std::string("n") + std::to_string(i)));
                         if (r.m_status == YomkResponse::eOk)
                             ++okSet;
                         else
@@ -370,8 +370,8 @@ int main()
     std::cout << "===== 7. 同步 monitor 重入安全 =====" << std::endl;
     {
         resetGlobals();
-        auto cra = YOMK_CONTEXT_CREATE("conc_a", YomkMkPtr(String, std::string("a0")));
-        auto crb = YOMK_CONTEXT_CREATE("conc_b", YomkMkPtr(String, std::string("b0")));
+        auto cra = YOMK_CONTEXT_CREATE("conc_a", yomk::String_::shared(std::string("a0")));
+        auto crb = YOMK_CONTEXT_CREATE("conc_b", yomk::String_::shared(std::string("b0")));
         YOMK_TEST_CHECK(cra.m_status == YomkResponse::eOk && crb.m_status == YomkResponse::eOk, "7.1 创建 conc_a/conc_b 成功");
 
         // conc_a 的同步 monitor 内重入 Context API（读 conc_b）：set 已在锁外执行 monitor，不应死锁
@@ -386,7 +386,7 @@ int main()
         YOMK_CONTEXT_ON_MONITOR();
 
         g_reentrantOk.store(0);
-        auto sr = YOMK_CONTEXT_SET("conc_a", YomkMkPtr(String, std::string("a1")));
+        auto sr = YOMK_CONTEXT_SET("conc_a", yomk::String_::shared(std::string("a1")));
         YOMK_TEST_CHECK(sr.m_status == YomkResponse::eOk, "7.2 set(conc_a) 返回 eOk（monitor 重入未死锁）");
         YOMK_TEST_CHECK(g_reentrantOk.load() == 1, "7.3 monitor 内重入 INFO_KEY(conc_b) 成功 1 次");
         YOMK_CONTEXT_OFF_MONITOR();
@@ -400,7 +400,7 @@ int main()
         for (int n = 0; n < M; ++n)
         {
             auto cr = YOMK_CONTEXT_CREATE(
-                "stress_" + std::to_string(n), YomkMkPtr(String, std::string("init") + std::to_string(n)));
+                "stress_" + std::to_string(n), yomk::String_::shared(std::string("init") + std::to_string(n)));
             if (cr.m_status != YomkResponse::eOk)
                 ++g_illegal;
         }
@@ -426,7 +426,7 @@ int main()
                         {
                             case 0:
                             {
-                                auto v = YOMK_CONTEXT_GET(String, key, YomkMkPtr(String, std::string("")));
+                                auto v = YOMK_CONTEXT_GET(String, key, yomk::String_::shared(std::string("")));
                                 if (v && !v->d.empty())
                                     ++okOps;
                                 else
@@ -435,7 +435,7 @@ int main()
                             }
                             case 1:
                             {
-                                auto r = YOMK_CONTEXT_SET(key, YomkMkPtr(String, std::string("sv")));
+                                auto r = YOMK_CONTEXT_SET(key, yomk::String_::shared(std::string("sv")));
                                 if (r.m_status == YomkResponse::eOk)
                                     ++okOps;
                                 else
@@ -491,7 +491,7 @@ int main()
                             default:
                             {
                                 std::string tk = "stress_tmp_" + std::to_string(t);
-                                auto c = YOMK_CONTEXT_CREATE(tk, YomkMkPtr(String, std::string("tmp")));
+                                auto c = YOMK_CONTEXT_CREATE(tk, yomk::String_::shared(std::string("tmp")));
                                 auto d = YOMK_CONTEXT_DESTROY(tk);
                                 if (c.m_status == YomkResponse::eOk && d.m_status == YomkResponse::eOk)
                                     ++okOps;

@@ -36,20 +36,20 @@ typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 
 ```cpp
 YomkMsg(DataType, MsgName, VarName)
-// DataType：数据类 | MsgName：消息名称（辅助宏使用此名） | VarName：成员变量名
+// DataType：数据类 | MsgName：消息名称（解包宏与全名引用使用此名） | VarName：成员变量名
 ```
 
-**辅助宏：**
+**构造与类型引用（全名，无辅助宏）：**
 ```cpp
-YomkMkPtr(MsgName, ...)   // 创建消息包 shared_ptr
-Yomk(MsgName)             // → yomk::MsgName##_（类名）
-YomkPtr(MsgName)          // → yomk::MsgName##Ptr（指针类型）
-YomkMk(MsgName, ...)      // → 构造实例
+yomk::MsgName_::shared(...)  // 创建消息包 shared_ptr（类内静态工厂）
+yomk::MsgName_               // 消息包类名（消息类 = 载荷类型名 + _）
+yomk::MsgNamePtr             // 指针类型 typedef
+yomk::MsgName_(...)          // 栈对象直接构造
 ```
 
-> **入包语义**：`YomkMkPtr` 生成的包类型同时提供 `const DataType &` 与 `DataType &&` 两种构造，传 `std::move(data)` 即移动入包（大对象可避免拷贝）；传左值时重载决议仍选中 `const&` 版本，行为与逐值拷贝一致。
+> **入包语义**：`yomk::MsgName_` 包类型同时提供 `const DataType &` 与 `DataType &&` 两种构造，`yomk::MsgName_::shared(std::move(data))` 即移动入包（大对象可避免拷贝）；传左值时重载决议仍选中 `const&` 版本，行为与逐值拷贝一致。
 
-> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。消息类型名是“宏词汇”而非“类型词汇”——只能在 `Yomk()` / `YomkPtr()` / `YomkMkPtr()` / `YomkUnPackPkg*` / `installFunc` 第三参等宏的参数位置出现（`installFunc` 第三参为手写字符串字面量），不能当裸类型名使用。`YomkMsg` 展开生成的真实类型是 `yomk::MsgName_`（类）与 `yomk::MsgNamePtr`（指针），裸写 `MsgName` 会报 `'MsgName' has not been declared`。
+> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。`YomkMsg` 展开生成的真实类型是 `yomk::MsgName_`（类）与 `yomk::MsgNamePtr`（指针）（消息类 = 载荷类型名 + `_` 协议），引用一律写全名；裸写 `MsgName` 会报 `'MsgName' has not been declared`。消息名称作为字符串字面量仍出现在 `YomkUnPackPkg*` 宏参数与 `installFunc` 第三参位置（`installFunc` 第三参为手写字符串字面量）。
 
 **解包宏：**
 ```cpp

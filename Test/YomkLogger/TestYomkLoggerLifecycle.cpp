@@ -180,7 +180,7 @@ static size_t loggersTotal()
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::LoggerState* firstConsoleState(YomkPtr(LoggerInfoList) listPkg)
+static const yomk::LoggerState* firstConsoleState(yomk::LoggerInfoListPtr listPkg)
 {
     if (!listPkg)
     {
@@ -385,7 +385,7 @@ YOMK_TEST_CHECK(
         CoutCapture cap;
         r = YOMK_REQUEST(
             "/YomkLogger/console_log",
-            YomkMkPtr(Log, yomk::Log{static_cast<yomk::Log::ELogLevel>(99), "lg1_s2p5_badlevel_marker", "MainLogger"}));
+            yomk::Log_::shared(yomk::Log{static_cast<yomk::Log::ELogLevel>(99), "lg1_s2p5_badlevel_marker", "MainLogger"}));
         out = cap.str();
     }
     YOMK_TEST_CHECK(r.m_status == YomkResponse::eOk, "非法级别 99 console_log 返回 eOk（P2-c 修复后 default 活分支）");
@@ -762,8 +762,8 @@ YOMK_TEST_CHECK(
         CoutCapture cap;
         r = YOMK_REQUEST(
             "/YomkLogger/file_log",
-            YomkMkPtr(
-                Log, yomk::Log{static_cast<yomk::Log::ELogLevel>(99), "lg1_s6_badlevel_marker", "lg1_s6_badlevel"}));
+            yomk::Log_::shared(
+                yomk::Log{static_cast<yomk::Log::ELogLevel>(99), "lg1_s6_badlevel_marker", "lg1_s6_badlevel"}));
         out = cap.str();
     }
     YOMK_TEST_CHECK(
@@ -784,7 +784,7 @@ YOMK_TEST_CHECK(
         CoutCapture cap;
         rOff = YOMK_REQUEST(
             "/YomkLogger/off_console_log_by_level",
-            YomkMkPtr(Log, yomk::Log{static_cast<yomk::Log::ELogLevel>(99), "", ""}));
+            yomk::Log_::shared(yomk::Log{static_cast<yomk::Log::ELogLevel>(99), "", ""}));
         outOff = cap.str();
     }
     YOMK_TEST_CHECK(
@@ -796,7 +796,7 @@ YOMK_TEST_CHECK(
         CoutCapture cap;
         rOn = YOMK_REQUEST(
             "/YomkLogger/on_console_log_by_level",
-            YomkMkPtr(Log, yomk::Log{static_cast<yomk::Log::ELogLevel>(99), "", ""}));
+            yomk::Log_::shared(yomk::Log{static_cast<yomk::Log::ELogLevel>(99), "", ""}));
         outOn = cap.str();
     }
     YOMK_TEST_CHECK(
@@ -822,7 +822,7 @@ YOMK_TEST_CHECK(
     }
     // console_log 收错类型包（String）→ 同分支 eNo
     {
-        auto r = YOMK_REQUEST("/YomkLogger/console_log", YomkMkPtr(String, std::string("wrong")));
+        auto r = YOMK_REQUEST("/YomkLogger/console_log", yomk::String_::shared(std::string("wrong")));
         YOMK_TEST_CHECK(r.m_status == YomkResponse::eNo, "console_log 错类型包返回 eNo");
         YOMK_TEST_CHECK(r.m_msg == " pkg is null or pkg is not Log. ", "console_log 错类型包契约消息");
     }
@@ -844,7 +844,7 @@ YOMK_TEST_CHECK(
             CoutCapture cap;
             r = YOMK_REQUEST(
                 "/YomkLogger/console_log",
-                YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "lg1_s7_empty_logger_marker", ""}));
+                yomk::Log_::shared(yomk::Log{yomk::Log::eInfo, "lg1_s7_empty_logger_marker", ""}));
             out = cap.str();
         }
         YOMK_TEST_CHECK(r.m_status == YomkResponse::eOk, "console_log 空 logger 名返回 eOk（回退分支）");
@@ -861,7 +861,7 @@ YOMK_TEST_CHECK(
         YomkResponse r(YomkResponse::eInvalid);
         {
             CoutCapture cap;
-            r = YOMK_REQUEST("/YomkLogger/file_log", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "x", ""}));
+            r = YOMK_REQUEST("/YomkLogger/file_log", yomk::Log_::shared(yomk::Log{yomk::Log::eInfo, "x", ""}));
             out = cap.str();
         }
         YOMK_TEST_CHECK(
@@ -1038,7 +1038,7 @@ YOMK_TEST_CHECK(
             CoutCapture cap;
             rebuild = YOMK_REQUEST(
                 "/YomkLogger/console_log",
-                YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "lg1_s8_mainlogger_rebuild_marker", ""}));
+                yomk::Log_::shared(yomk::Log{yomk::Log::eInfo, "lg1_s8_mainlogger_rebuild_marker", ""}));
             rebuildOut = cap.str();
         }
         YOMK_TEST_CHECK(rebuild.m_status == YomkResponse::eOk, "S8: MainLogger 删除后空名回退写入 eOk");
@@ -1059,7 +1059,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             (rNull.m_status == YomkResponse::eNo && rNull.m_msg == " pkg is null or pkg is not String. "),
             "S8: delete_logger nullptr 包返回 eNo + 契约消息");
-        auto rWrong = YOMK_REQUEST("/YomkLogger/delete_logger", YomkMkPtr(Log, yomk::Log{yomk::Log::eInfo, "x", "y"}));
+        auto rWrong = YOMK_REQUEST("/YomkLogger/delete_logger", yomk::Log_::shared(yomk::Log{yomk::Log::eInfo, "x", "y"}));
         YOMK_TEST_CHECK(
             (rWrong.m_status == YomkResponse::eNo && rWrong.m_msg == " pkg is null or pkg is not String. "),
             "S8: delete_logger 错类型包（Log）返回 eNo + 契约消息");

@@ -72,7 +72,7 @@ int main()
     YOMK_NEW_SERVICE(MyService);
 
     // 3. 同步请求服务
-    YomkResponse ret = YOMK_REQUEST("/MyService/hello", YomkMkPtr(String, "yomk"));
+    YomkResponse ret = YOMK_REQUEST("/MyService/hello", yomk::String_::shared("yomk"));
     if (ret.m_status == YomkResponse::eOk)
     {
         YOMK_INFO("Response received:", ret.m_msg);
@@ -102,7 +102,7 @@ int main()
 
 ### 2. 消息包 (YomkPkg)
 
-服务与事件循环间传递强类型数据：`YomkMsg(DataType, MsgName, VarName)` 宏声明自定义消息，`YomkMkPtr` 构造消息包，三种解包宏做类型校验（`YomkUnPackPkg` 失败置空指针 / `YomkUnPackPkgResponse` 失败返回 eNo / `YomkUnPackPkgVoid` 失败直接 return）；内置 30 种标量/数组类型。
+服务与事件循环间传递强类型数据：`YomkMsg(DataType, MsgName, VarName)` 宏声明自定义消息，`yomk::消息名_::shared(...)` 构造消息包，三种解包宏做类型校验（`YomkUnPackPkg` 失败置空指针 / `YomkUnPackPkgResponse` 失败返回 eNo / `YomkUnPackPkgVoid` 失败直接 return）；内置 30 种标量/数组类型。
 
 详见 [消息包](Docs/YomkPkg.md)。
 

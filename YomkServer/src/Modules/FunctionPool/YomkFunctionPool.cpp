@@ -101,7 +101,7 @@ YomkResponse YomkFunctionPool::funcNames(YomkPkgPtr pkg)
             funcNames.push_back(iter.first);
         }
     }
-    return {YomkResponse::eOk, "ok", YomkMkPtr(StringArray, funcNames)};
+    return {YomkResponse::eOk, "ok", yomk::StringArray_::shared(funcNames)};
 }
 
 // 内省：单个函数元信息查询，命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，数据走 m_data）
@@ -126,7 +126,7 @@ YomkResponse YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
     info.m_funcName = yFuncName->d;
     info.m_msgName = itFunc->second.m_msgName;
     info.m_description = itFunc->second.m_description;
-    return {YomkResponse::eOk, "ok", YomkMkPtr(FuncInfo, info)};
+    return {YomkResponse::eOk, "ok", yomk::FuncInfo_::shared(info)};
 }
 
 // 内省：全量函数元信息，锁内构造结构化快照（m_msg 恒 "ok"，数据走 m_data；总数由 d.size() 承载）
@@ -145,5 +145,5 @@ YomkResponse YomkFunctionPool::listAll(YomkPkgPtr pkg)
             infos.push_back(std::move(info));
         }
     }
-    return {YomkResponse::eOk, "ok", YomkMkPtr(FuncInfoList, infos)};
+    return {YomkResponse::eOk, "ok", yomk::FuncInfoList_::shared(infos)};
 }
