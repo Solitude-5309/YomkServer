@@ -170,7 +170,7 @@ public:
     // LOG_API
 public:
     // 设置控制台日志代理回调（传 nullptr 恢复默认输出，取消代理回调）
-    static YomkResponse SET_CONSOLE_LOG_PROXY(YomkConsoleLogProxyFunc func)
+    static YomkResponse setConsoleLogProxy(YomkConsoleLogProxyFunc func)
     {
         if (!requireServer())
         {
@@ -179,7 +179,7 @@ public:
         return request("/YomkLogger/set_console_log_proxy", yomkmsg::ConsoleLogProxy::shared(yomk::ConsoleLogProxy{func}));
     }
     // 设置文件日志代理回调（传 nullptr 恢复默认落盘，取消代理回调；与控制台代理相互独立）
-    static YomkResponse SET_FILE_LOG_PROXY(YomkFileLogProxyFunc func)
+    static YomkResponse setFileLogProxy(YomkFileLogProxyFunc func)
     {
         if (!requireServer())
         {
@@ -307,7 +307,7 @@ public:
         return request("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, oss.str(), logFile, tag}));
     }
     // 开关各级别控制台日志（loggerName 空 = 全局主闸，与既有无参语义一致；具名 = 逐器门控）
-    static YomkResponse ON_CONSOLE_LOG_DEBUG(const std::string& loggerName = "")
+    static YomkResponse enableConsoleLogDebug(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -315,7 +315,7 @@ public:
         }
         return request("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
     }
-    static YomkResponse ON_CONSOLE_LOG_INFO(const std::string& loggerName = "")
+    static YomkResponse enableConsoleLogInfo(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -323,7 +323,7 @@ public:
         }
         return request("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
     }
-    static YomkResponse ON_CONSOLE_LOG_WARN(const std::string& loggerName = "")
+    static YomkResponse enableConsoleLogWarn(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -331,7 +331,7 @@ public:
         }
         return request("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
     }
-    static YomkResponse ON_CONSOLE_LOG_ERROR(const std::string& loggerName = "")
+    static YomkResponse enableConsoleLogError(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -339,7 +339,7 @@ public:
         }
         return request("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
     }
-    static YomkResponse OFF_CONSOLE_LOG_DEBUG(const std::string& loggerName = "")
+    static YomkResponse disableConsoleLogDebug(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -347,7 +347,7 @@ public:
         }
         return request("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
     }
-    static YomkResponse OFF_CONSOLE_LOG_INFO(const std::string& loggerName = "")
+    static YomkResponse disableConsoleLogInfo(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -355,7 +355,7 @@ public:
         }
         return request("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
     }
-    static YomkResponse OFF_CONSOLE_LOG_WARN(const std::string& loggerName = "")
+    static YomkResponse disableConsoleLogWarn(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -363,7 +363,7 @@ public:
         }
         return request("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
     }
-    static YomkResponse OFF_CONSOLE_LOG_ERROR(const std::string& loggerName = "")
+    static YomkResponse disableConsoleLogError(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -372,7 +372,7 @@ public:
         return request("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
     }
     // 开关各级别文件日志（loggerName 空 = 文件全局主闸；具名 = 逐器门控，未知名返回 eNo）
-    static YomkResponse ON_FILE_LOG_DEBUG(const std::string& loggerName = "")
+    static YomkResponse enableFileLogDebug(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -380,7 +380,7 @@ public:
         }
         return request("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
     }
-    static YomkResponse ON_FILE_LOG_INFO(const std::string& loggerName = "")
+    static YomkResponse enableFileLogInfo(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -388,7 +388,7 @@ public:
         }
         return request("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
     }
-    static YomkResponse ON_FILE_LOG_WARN(const std::string& loggerName = "")
+    static YomkResponse enableFileLogWarn(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -396,7 +396,7 @@ public:
         }
         return request("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
     }
-    static YomkResponse ON_FILE_LOG_ERROR(const std::string& loggerName = "")
+    static YomkResponse enableFileLogError(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -404,7 +404,7 @@ public:
         }
         return request("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
     }
-    static YomkResponse OFF_FILE_LOG_DEBUG(const std::string& loggerName = "")
+    static YomkResponse disableFileLogDebug(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -412,7 +412,7 @@ public:
         }
         return request("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, "", loggerName}));
     }
-    static YomkResponse OFF_FILE_LOG_INFO(const std::string& loggerName = "")
+    static YomkResponse disableFileLogInfo(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -420,7 +420,7 @@ public:
         }
         return request("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, "", loggerName}));
     }
-    static YomkResponse OFF_FILE_LOG_WARN(const std::string& loggerName = "")
+    static YomkResponse disableFileLogWarn(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
@@ -428,7 +428,7 @@ public:
         }
         return request("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, "", loggerName}));
     }
-    static YomkResponse OFF_FILE_LOG_ERROR(const std::string& loggerName = "")
+    static YomkResponse disableFileLogError(const std::string& loggerName = "")
     {
         if (!requireServer())
         {

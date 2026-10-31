@@ -193,7 +193,7 @@ struct ConsoleLogProxy
     std::function<bool(const Log& log)> m_consoleLogProxyFunc;
 };
 
-// 文件日志代理回调载体（SET_FILE_LOG_PROXY 请求数据；语义与控制台代理对称，两代理各自独立）
+// 文件日志代理回调载体（setFileLogProxy 请求数据；语义与控制台代理对称，两代理各自独立）
 struct FileLogProxy
 {
     std::function<bool(const Log& log)> m_fileLogProxyFunc;
@@ -341,7 +341,7 @@ typedef std::function<void(const yomk::Context& ctx)> YomkContextMonitorFunc;
 // Context checker 回调：返回 eAccept/eReject 门控 set；详见 YomkAPI::CONTEXT_SET_CHECKER
 typedef std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)> YomkContextCheckFunc;
 typedef std::function<bool(const yomk::Log& log)> YomkConsoleLogProxyFunc;
-// 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 YomkAPI::SET_FILE_LOG_PROXY
+// 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 YomkAPI::setFileLogProxy
 typedef std::function<bool(const yomk::Log& log)> YomkFileLogProxyFunc;
 
 // 内置标准类型消息包（成员名均为 d）

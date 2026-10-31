@@ -105,8 +105,8 @@ int main()
         // 五模块入口级全量（P1 收口：Logger 23 / EventLoop 9 / FunctionPool 6 /
         // Context 12 + GET 特殊形态 / ServerInfo 4）
         YOMK_TEST_CHECK(
-            YomkAPI::SET_CONSOLE_LOG_PROXY(nullptr).m_status == YomkResponse::eInvalid,
-            "SET_CONSOLE_LOG_PROXY 未初始化返回 eInvalid");
+            YomkAPI::setConsoleLogProxy(nullptr).m_status == YomkResponse::eInvalid,
+            "setConsoleLogProxy 未初始化返回 eInvalid");
         YomkResponse logResp = YomkAPI::CONSOLE_LOG_INFO_TAG("tag", "hello");
         YOMK_TEST_CHECK(logResp.m_status == YomkResponse::eInvalid, "CONSOLE_LOG_INFO_TAG 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(logResp.m_msg == "YomkServer is not init", "模块 API 守卫契约消息同根: " + logResp.m_msg);
@@ -138,29 +138,29 @@ int main()
             YomkAPI::FILE_LOG_DEBUG_TAG("guard.log", "tag", "hello").m_status == YomkResponse::eInvalid,
             "FILE_LOG_DEBUG_TAG 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::OFF_CONSOLE_LOG_INFO().m_status == YomkResponse::eInvalid,
-            "OFF_CONSOLE_LOG_INFO 未初始化返回 eInvalid");
+            YomkAPI::disableConsoleLogInfo().m_status == YomkResponse::eInvalid,
+            "disableConsoleLogInfo 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::OFF_CONSOLE_LOG_WARN().m_status == YomkResponse::eInvalid,
-            "OFF_CONSOLE_LOG_WARN 未初始化返回 eInvalid");
+            YomkAPI::disableConsoleLogWarn().m_status == YomkResponse::eInvalid,
+            "disableConsoleLogWarn 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::OFF_CONSOLE_LOG_ERROR().m_status == YomkResponse::eInvalid,
-            "OFF_CONSOLE_LOG_ERROR 未初始化返回 eInvalid");
+            YomkAPI::disableConsoleLogError().m_status == YomkResponse::eInvalid,
+            "disableConsoleLogError 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::OFF_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eInvalid,
-            "OFF_CONSOLE_LOG_DEBUG 未初始化返回 eInvalid");
+            YomkAPI::disableConsoleLogDebug().m_status == YomkResponse::eInvalid,
+            "disableConsoleLogDebug 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eInvalid,
-            "ON_CONSOLE_LOG_INFO 未初始化返回 eInvalid");
+            YomkAPI::enableConsoleLogInfo().m_status == YomkResponse::eInvalid,
+            "enableConsoleLogInfo 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::ON_CONSOLE_LOG_WARN().m_status == YomkResponse::eInvalid,
-            "ON_CONSOLE_LOG_WARN 未初始化返回 eInvalid");
+            YomkAPI::enableConsoleLogWarn().m_status == YomkResponse::eInvalid,
+            "enableConsoleLogWarn 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::ON_CONSOLE_LOG_ERROR().m_status == YomkResponse::eInvalid,
-            "ON_CONSOLE_LOG_ERROR 未初始化返回 eInvalid");
+            YomkAPI::enableConsoleLogError().m_status == YomkResponse::eInvalid,
+            "enableConsoleLogError 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::ON_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eInvalid,
-            "ON_CONSOLE_LOG_DEBUG 未初始化返回 eInvalid");
+            YomkAPI::enableConsoleLogDebug().m_status == YomkResponse::eInvalid,
+            "enableConsoleLogDebug 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
             YomkAPI::LOGGER_INFO_LOGGERS("console").m_status == YomkResponse::eInvalid,
             "LOGGER_INFO_LOGGERS 未初始化返回 eInvalid");

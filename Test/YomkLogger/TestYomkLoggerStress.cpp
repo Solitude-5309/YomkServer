@@ -164,7 +164,7 @@
  *   S4_VmHWM=256516 kB / S5_VmHWM=526444 kB（N=100000）高于上方 LG4 登记的修复前值
  *   209004 / 491308 kB，两组绝对值不可直接比对；LG6 的一切 VmHWM 结论均取同批交错的 A/F 对照。
  * - P4-e（LG6 已修复）：setConsoleLogProxy 原恒置 m_consoleLogProxy = true，proxy 一旦安装进程内
- *   不可卸载 —— YomkAPI::SET_CONSOLE_LOG_PROXY(nullptr) 仍报 proxy:on，而 m_consoleLogProxyFunc 为空使
+ *   不可卸载 —— YomkAPI::setConsoleLogProxy(nullptr) 仍报 proxy:on，而 m_consoleLogProxyFunc 为空使
  *   consoleLog 的三重条件短路，行为等同未安装却在内省里谎报 proxy:on。LG6 改为
  *   m_consoleLogProxy = (m_consoleLogProxyFunc != nullptr)，两字段由同一把叶子锁内一致更新，传空
  *   回调即卸载并恢复框架默认控制台输出（签名与包结构均未改，ConsoleLogProxy{func} 可从空
@@ -996,7 +996,7 @@ int main()
         YOMK_TEST_CHECK(okB == N, "S1B: 命中写 eOk 守恒 " + std::to_string(okB) + "/" + std::to_string(N));
 
         // ---- Phase C：级别 OFF 短路（开关关断后仍 eOk，但不产生输出）----
-        YOMK_TEST_CHECK(YomkAPI::OFF_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: OFF info 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::disableConsoleLogInfo().m_status == YomkResponse::eOk, "S1C: OFF info 返回 eOk");
         {
             const uint64_t kProbe = 100;
             const uint64_t probe = (kProbe < N) ? kProbe : N;
@@ -1030,11 +1030,11 @@ int main()
         }
         recordBaseline("S1C_console_level_off_shortcut", N, elapsedC);
         YOMK_TEST_CHECK(okC == N, "S1C: 级别 OFF 短路仍 eOk 守恒 " + std::to_string(okC) + "/" + std::to_string(N));
-        YOMK_TEST_CHECK(YomkAPI::ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: 恢复 ON info 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo().m_status == YomkResponse::eOk, "S1C: 恢复 ON info 返回 eOk");
 
         // ---- Phase D：proxy 短路（置于 console 末相：本测试安装后不卸载，靠恒置 true 穿透
         // 避免影响后续 Section；P4-e 的卸载语义由 Lifecycle S3 覆盖）----
-        YOMK_TEST_CHECK(YomkAPI::SET_CONSOLE_LOG_PROXY(lg4Proxy).m_status == YomkResponse::eOk, "S1D: 安装计数 proxy 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::setConsoleLogProxy(lg4Proxy).m_status == YomkResponse::eOk, "S1D: 安装计数 proxy 返回 eOk");
         g_proxyReturn.store(false);
         g_proxyHits.store(0);
         uint64_t okD = 0;

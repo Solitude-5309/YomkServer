@@ -835,15 +835,15 @@ resp = YomkAPI::LOGGER_INFO_ALL();
 // 独立于逐器门控层——条目 on 但无输出/未落盘时查此接口确认对应侧主闸是否关断（两层归因）
 resp = YomkAPI::LOGGER_INFO_GLOBAL();           // 缺省 = "console"：控制台侧主闸 + 控制台代理态
 resp = YomkAPI::LOGGER_INFO_GLOBAL("file");     // 文件侧主闸 + 文件代理态（两套各自独立）
-YomkAPI::OFF_CONSOLE_LOG_INFO("auto_logger");  // 具名关断：仅门控该日志器，不影响全局主闸
+YomkAPI::disableConsoleLogInfo("auto_logger");  // 具名关断：仅门控该日志器，不影响全局主闸
 resp = YomkAPI::LOGGER_INFO_LOGGER("auto_logger", "console");  // 条目报逐器 infoOff
-YomkAPI::ON_CONSOLE_LOG_INFO("auto_logger");   // 具名恢复
+YomkAPI::enableConsoleLogInfo("auto_logger");   // 具名恢复
 // 文件开关同款双模式：无参 = 文件全局主闸，具名 = 仅门控该文件日志器
-YomkAPI::OFF_FILE_LOG_INFO("info_logger");     // 具名关断文件器：INFO 不再写入缓冲
-YomkAPI::ON_FILE_LOG_INFO("info_logger");      // 具名恢复
+YomkAPI::disableFileLogInfo("info_logger");     // 具名关断文件器：INFO 不再写入缓冲
+YomkAPI::enableFileLogInfo("info_logger");      // 具名恢复
 ```
 
-注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关两级并联且控制台/文件两套相互独立——`YomkAPI::ON/OFF_CONSOLE_LOG_*()` 与 `YomkAPI::ON/OFF_FILE_LOG_*()` 各自无参作用于对应侧全局主闸、具名仅门控该日志器（未命中 eNo，不惰性创建），输出/落盘取两层 AND；`/all` 条目 m_loggerState 报逐器门控层真值（无参翻转不影响条目，proxyOn 各报对应侧代理态），全局主闸态经 `YomkAPI::LOGGER_INFO_GLOBAL(type)` 按 type 分流查询（缺省/"console" 控制台侧、"file" 文件侧）。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
+注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关两级并联且控制台/文件两套相互独立——`YomkAPI::enable/disableConsoleLog*()` 与 `YomkAPI::enable/disableFileLog*()` 各自无参作用于对应侧全局主闸、具名仅门控该日志器（未命中 eNo，不惰性创建），输出/落盘取两层 AND；`/all` 条目 m_loggerState 报逐器门控层真值（无参翻转不影响条目，proxyOn 各报对应侧代理态），全局主闸态经 `YomkAPI::LOGGER_INFO_GLOBAL(type)` 按 type 分流查询（缺省/"console" 控制台侧、"file" 文件侧）。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
 
 ## 示例6：文件日志
 
@@ -854,9 +854,9 @@ YOMK_FILE_WARN_TAG("app_log", "Security", "Suspicious activity");
 YomkAPI::FILE_LOG_WRITE("app_log");  // 刷新到磁盘
 
 // 文件门控两层 AND：无参主闸 + 具名逐器，任一层关断该条即不写入缓冲
-YomkAPI::OFF_FILE_LOG_INFO("app_log");  // 具名关断：app_log 的 INFO 不再写入
+YomkAPI::disableFileLogInfo("app_log");  // 具名关断：app_log 的 INFO 不再写入
 YOMK_FILE_INFO("app_log", "hidden while off");  // 被门控吞掉，缓冲无此行
-YomkAPI::ON_FILE_LOG_INFO("app_log");   // 具名恢复
+YomkAPI::enableFileLogInfo("app_log");   // 具名恢复
 
 // 删除日志器：单端点同时清理 console/file 两表；文件日志器移除时析构自动落盘
 // （未 flush 的缓冲内容不丢），但不删除磁盘上的 .log 文件（数据保全，清理归调用方）
@@ -870,18 +870,18 @@ bool myLogProxy(const yomk::Log& log) {
     std::cout << "[" << log.m_logger << "] " << log.m_log << std::endl;
     return false; // 不再传递给默认输出
 }
-YomkAPI::SET_CONSOLE_LOG_PROXY(myLogProxy);
+YomkAPI::setConsoleLogProxy(myLogProxy);
 // 卸载代理：传 nullptr 或空 std::function 即恢复框架默认控制台输出，
 // ALL 清单 console 条目的 m_loggerState.m_proxyOn 随之由 true 回到 false
-YomkAPI::SET_CONSOLE_LOG_PROXY(nullptr);
+YomkAPI::setConsoleLogProxy(nullptr);
 
 // 文件日志代理：与控制台代理相互独立，回调返回 false 拦截该条不落盘、true 穿透默认落盘
-YomkAPI::SET_FILE_LOG_PROXY([](const yomk::Log& log) {
+YomkAPI::setFileLogProxy([](const yomk::Log& log) {
     return log.m_level != yomk::Log::eDebug;  // 拦截 DEBUG 不落盘，其余放行
 });
 // 卸载文件代理：传 nullptr 或空 std::function 即恢复默认落盘，
 // GLOBAL("file") 单查的 proxyOn 随之回到 false
-YomkAPI::SET_FILE_LOG_PROXY(nullptr);
+YomkAPI::setFileLogProxy(nullptr);
 ```
 
 ---

@@ -9,7 +9,7 @@
  * 2.5 非法级别 default 降级（P2-c 修复后）：proxy 设置前 raw 注入 level=99 →
  *    console_log default 降级 Info 输出 + eOk（S3 的 proxy 处于拦截态时会短路一切
  *    console_log，故该 default 分支在本窗口触达）
- * 3. proxy 契约：SET_CONSOLE_LOG_PROXY 拦截（false→eOk+"console log proxy is success."+无输出）
+ * 3. proxy 契约：setConsoleLogProxy 拦截（false→eOk+"console log proxy is success."+无输出）
  *    与穿透（true→默认输出）；原子计数验证；all 内省 proxy:on；
  *    卸载（LG6/P4-e）：传 nullptr → eOk、all 首行回 proxy:off、恢复框架默认输出、
  *    代理不再被调用（原子命中数不增）；重装可逆。用例末尾重装并回到穿透态，
@@ -42,7 +42,7 @@
  *     LOGGER_INFO_GLOBAL("file")/"console"）两套主闸态独立直证与无参宏翻转联动、未知 type eNo
  * 11. 文件日志全局代理契约（与控制台 S3 同构，仅单一全局代理无逐器代理）：设置前基线
  *     （GLOBAL("file") proxyOff 且 GLOBAL("console") proxyOn 两套代理独立直证）、
- *     SET_FILE_LOG_PROXY 拦截（false→eOk+"file log proxy is success."+落盘 marker 缺席+原子计数）
+ *     setFileLogProxy 拦截（false→eOk+"file log proxy is success."+落盘 marker 缺席+原子计数）
  *     与穿透（true→默认落盘回归 + GLOBAL("file") proxyOn）、卸载（LG6 镜像：nullptr→eOk、
  *     GLOBAL("file") 回 proxyOff、恢复默认落盘、代理不再被调用原子命中数不增）、重装可逆；
  *     用例末尾重装并回到穿透态
@@ -306,41 +306,41 @@ int main()
 
 // 级别开关：OFF→无输出仍 eOk→ON→恢复输出（四级别逐一）
 {
-    YOMK_TEST_CHECK(YomkAPI::OFF_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "OFF_CONSOLE_LOG_INFO 返回 eOk");
+    YOMK_TEST_CHECK(YomkAPI::disableConsoleLogInfo().m_status == YomkResponse::eOk, "disableConsoleLogInfo 返回 eOk");
     CoutCapture cap;
     YOMK_TEST_CHECK(YOMK_INFO("lg1_s1_off_info_marker").m_status == YomkResponse::eOk, "INFO 级别关闭后调用仍 eOk");
     YOMK_TEST_CHECK(cap.str().find("lg1_s1_off_info_marker") == std::string::npos, "INFO 级别关闭后无输出");
-    YOMK_TEST_CHECK(YomkAPI::ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "ON_CONSOLE_LOG_INFO 返回 eOk");
+    YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo().m_status == YomkResponse::eOk, "enableConsoleLogInfo 返回 eOk");
     CoutCapture cap2;
     YOMK_TEST_CHECK(YOMK_INFO("lg1_s1_on_info_marker").m_status == YomkResponse::eOk, "INFO 级别重开后调用 eOk");
     YOMK_TEST_CHECK(cap2.str().find("lg1_s1_on_info_marker") != std::string::npos, "INFO 级别重开后恢复输出");
 }
 {
-    YOMK_TEST_CHECK(YomkAPI::OFF_CONSOLE_LOG_WARN().m_status == YomkResponse::eOk, "OFF_CONSOLE_LOG_WARN 返回 eOk");
+    YOMK_TEST_CHECK(YomkAPI::disableConsoleLogWarn().m_status == YomkResponse::eOk, "disableConsoleLogWarn 返回 eOk");
     CoutCapture cap;
     YOMK_WARN("lg1_s1_off_warn_marker");
     YOMK_TEST_CHECK(cap.str().find("lg1_s1_off_warn_marker") == std::string::npos, "WARN 级别关闭后无输出");
-    YomkAPI::ON_CONSOLE_LOG_WARN();
+    YomkAPI::enableConsoleLogWarn();
     CoutCapture cap2;
     YOMK_WARN("lg1_s1_on_warn_marker");
     YOMK_TEST_CHECK(cap2.str().find("lg1_s1_on_warn_marker") != std::string::npos, "WARN 级别重开后恢复输出");
 }
 {
-    YOMK_TEST_CHECK(YomkAPI::OFF_CONSOLE_LOG_ERROR().m_status == YomkResponse::eOk, "OFF_CONSOLE_LOG_ERROR 返回 eOk");
+    YOMK_TEST_CHECK(YomkAPI::disableConsoleLogError().m_status == YomkResponse::eOk, "disableConsoleLogError 返回 eOk");
     CoutCapture cap;
     YOMK_ERROR("lg1_s1_off_error_marker");
     YOMK_TEST_CHECK(cap.str().find("lg1_s1_off_error_marker") == std::string::npos, "ERROR 级别关闭后无输出");
-    YomkAPI::ON_CONSOLE_LOG_ERROR();
+    YomkAPI::enableConsoleLogError();
     CoutCapture cap2;
     YOMK_ERROR("lg1_s1_on_error_marker");
     YOMK_TEST_CHECK(cap2.str().find("lg1_s1_on_error_marker") != std::string::npos, "ERROR 级别重开后恢复输出");
 }
 {
-    YOMK_TEST_CHECK(YomkAPI::OFF_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eOk, "OFF_CONSOLE_LOG_DEBUG 返回 eOk");
+    YOMK_TEST_CHECK(YomkAPI::disableConsoleLogDebug().m_status == YomkResponse::eOk, "disableConsoleLogDebug 返回 eOk");
     CoutCapture cap;
     YOMK_DEBUG("lg1_s1_off_debug_marker");
     YOMK_TEST_CHECK(cap.str().find("lg1_s1_off_debug_marker") == std::string::npos, "DEBUG 级别关闭后无输出");
-    YomkAPI::ON_CONSOLE_LOG_DEBUG();
+    YomkAPI::enableConsoleLogDebug();
     CoutCapture cap2;
     YOMK_DEBUG("lg1_s1_on_debug_marker");
     YOMK_TEST_CHECK(cap2.str().find("lg1_s1_on_debug_marker") != std::string::npos, "DEBUG 级别重开后恢复输出");
@@ -415,7 +415,7 @@ YOMK_TEST_CHECK(
         g_proxyHits.fetch_add(1);
         return !g_proxyIntercept.load();  // 拦截态返回 false，穿透态返回 true
     };
-    YOMK_TEST_CHECK(YomkAPI::SET_CONSOLE_LOG_PROXY(proxy).m_status == YomkResponse::eOk, "SET_CONSOLE_LOG_PROXY 返回 eOk");
+    YOMK_TEST_CHECK(YomkAPI::setConsoleLogProxy(proxy).m_status == YomkResponse::eOk, "setConsoleLogProxy 返回 eOk");
 
     // 拦截态：proxy 返回 false → eOk + 专属消息 + 无控制台输出
     {
@@ -466,8 +466,8 @@ YOMK_TEST_CHECK(
     // 卸载：传 nullptr（等价于空 std::function）
     {
         YOMK_TEST_CHECK(
-            YomkAPI::SET_CONSOLE_LOG_PROXY(nullptr).m_status == YomkResponse::eOk,
-            "SET_CONSOLE_LOG_PROXY(nullptr) 卸载返回 eOk");
+            YomkAPI::setConsoleLogProxy(nullptr).m_status == YomkResponse::eOk,
+            "setConsoleLogProxy(nullptr) 卸载返回 eOk");
         auto allResp = YomkAPI::LOGGER_INFO_ALL();
         auto listPkg = yomk::unPack<yomkmsg::LoggerInfoList>(allResp.m_data);
         const yomk::LoggerState* st = firstConsoleState(listPkg);
@@ -499,7 +499,7 @@ YOMK_TEST_CHECK(
     // 复位：重装同一代理并回到穿透态，维持 S4-S7 依赖的「proxy:on + 穿透」不变量
     {
         g_proxyIntercept.store(false);
-        YOMK_TEST_CHECK(YomkAPI::SET_CONSOLE_LOG_PROXY(proxy).m_status == YomkResponse::eOk, "重装代理返回 eOk（卸载可逆）");
+        YOMK_TEST_CHECK(YomkAPI::setConsoleLogProxy(proxy).m_status == YomkResponse::eOk, "重装代理返回 eOk（卸载可逆）");
         auto allResp = YomkAPI::LOGGER_INFO_ALL();
         auto listPkg = yomk::unPack<yomkmsg::LoggerInfoList>(allResp.m_data);
         const yomk::LoggerState* st = firstConsoleState(listPkg);
@@ -685,7 +685,7 @@ YOMK_TEST_CHECK(
             "ALL 控制台状态全 on（S3 已设 proxy）");
     }
     {
-        YomkAPI::OFF_CONSOLE_LOG_INFO();
+        YomkAPI::disableConsoleLogInfo();
         // 主闸翻转与条目解耦后，翻转联动取数迁移至 LOGGER_INFO_GLOBAL（全局主闸态）；
         // 条目改报逐器层真值，不受无参翻转影响（正交性在 Section 9 直证）
         auto gResp = YomkAPI::LOGGER_INFO_GLOBAL();
@@ -693,7 +693,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             (gs != nullptr && gs->d.m_debugOn && !gs->d.m_infoOn && gs->d.m_warnOn && gs->d.m_errorOn && gs->d.m_proxyOn),
             "OFF INFO 后全局主闸状态 infoOff（开关联动逐字段）");
-        YomkAPI::ON_CONSOLE_LOG_INFO();
+        YomkAPI::enableConsoleLogInfo();
         auto gResp2 = YomkAPI::LOGGER_INFO_GLOBAL();
         auto gs2 = yomk::unPack<yomkmsg::LoggerState>(gResp2.m_data);
         YOMK_TEST_CHECK(
@@ -1078,8 +1078,8 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(YOMK_INFO_TAG(tagB, "lg1_s9a_pre_b_marker").m_status == YomkResponse::eOk, "S9a: tagB 预写 eOk");
     }
     YOMK_TEST_CHECK(
-        YomkAPI::OFF_CONSOLE_LOG_INFO(tagA).m_status == YomkResponse::eOk,
-        "S9a: 具名 OFF_CONSOLE_LOG_INFO(tagA) 返回 eOk");
+        YomkAPI::disableConsoleLogInfo(tagA).m_status == YomkResponse::eOk,
+        "S9a: 具名 disableConsoleLogInfo(tagA) 返回 eOk");
     {
         CoutCapture cap;
         YOMK_TEST_CHECK(
@@ -1094,8 +1094,8 @@ YOMK_TEST_CHECK(
 
     // 9.2 具名 ON 恢复
     YOMK_TEST_CHECK(
-        YomkAPI::ON_CONSOLE_LOG_INFO(tagA).m_status == YomkResponse::eOk,
-        "S9b: 具名 ON_CONSOLE_LOG_INFO(tagA) 返回 eOk");
+        YomkAPI::enableConsoleLogInfo(tagA).m_status == YomkResponse::eOk,
+        "S9b: 具名 enableConsoleLogInfo(tagA) 返回 eOk");
     {
         CoutCapture cap;
         YOMK_TEST_CHECK(YOMK_INFO_TAG(tagA, "lg1_s9b_on_a_marker").m_status == YomkResponse::eOk, "S9b: 恢复后 tagA 调用 eOk");
@@ -1104,11 +1104,11 @@ YOMK_TEST_CHECK(
 
     // 9.3 具名未知名 eNo（不惰性创建）
     {
-        auto offNo = YomkAPI::OFF_CONSOLE_LOG_INFO("lg1_s9_never_created");
+        auto offNo = YomkAPI::disableConsoleLogInfo("lg1_s9_never_created");
         YOMK_TEST_CHECK(
             (offNo.m_status == YomkResponse::eNo && offNo.m_msg == "console logger not found."),
             "S9c: 具名 OFF 未知名返回 eNo + console logger not found.");
-        auto onNo = YomkAPI::ON_CONSOLE_LOG_INFO("lg1_s9_never_created");
+        auto onNo = YomkAPI::enableConsoleLogInfo("lg1_s9_never_created");
         YOMK_TEST_CHECK(
             (onNo.m_status == YomkResponse::eNo && onNo.m_msg == "console logger not found."),
             "S9c: 具名 ON 未知名返回 eNo");
@@ -1120,7 +1120,7 @@ YOMK_TEST_CHECK(
     // 9.4 主闸×逐器组合 + 两层归因：全局 OFF + 逐器 ON → 仍无输出（两层 AND），
     // 全局态与条目逐器态各自真实呈现、归因唯一
     {
-        YOMK_TEST_CHECK(YomkAPI::OFF_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S9d: 无参 OFF（全局主闸）返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::disableConsoleLogInfo().m_status == YomkResponse::eOk, "S9d: 无参 OFF（全局主闸）返回 eOk");
         {
             CoutCapture cap;
             YOMK_TEST_CHECK(
@@ -1138,7 +1138,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             lp != nullptr && lp->d.m_loggerState.m_infoOn,
             "S9d: 条目报逐器 infoOn（与主闸态相反，两层归因唯一）");
-        YOMK_TEST_CHECK(YomkAPI::ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S9d: 无参 ON（全局主闸）恢复 eOk");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo().m_status == YomkResponse::eOk, "S9d: 无参 ON（全局主闸）恢复 eOk");
         {
             CoutCapture cap;
             YOMK_TEST_CHECK(
@@ -1160,7 +1160,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             lb != nullptr && lb->d.m_loggerState.m_infoOn,
             "S9e: tagB 条目 infoOn（未被具名触碰恒 true）");
-        YOMK_TEST_CHECK(YomkAPI::OFF_CONSOLE_LOG_INFO(tagA).m_status == YomkResponse::eOk, "S9e: 再次具名关断 tagA 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::disableConsoleLogInfo(tagA).m_status == YomkResponse::eOk, "S9e: 再次具名关断 tagA 返回 eOk");
         auto gResp = YomkAPI::LOGGER_INFO_GLOBAL();
         auto gs = yomk::unPack<yomkmsg::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(gs != nullptr && gs->d.m_infoOn, "S9e: 具名关断不影响全局主闸（两层正交）");
@@ -1169,7 +1169,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             la2 != nullptr && !la2->d.m_loggerState.m_infoOn,
             "S9e: tagA 条目报逐器 infoOff（具名关断直接反映）");
-        YOMK_TEST_CHECK(YomkAPI::ON_CONSOLE_LOG_INFO(tagA).m_status == YomkResponse::eOk, "S9e: 具名恢复 tagA 返回 eOk（状态复原）");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo(tagA).m_status == YomkResponse::eOk, "S9e: 具名恢复 tagA 返回 eOk（状态复原）");
     }
 
     // 9.6 全局态端点基线：LOGGER_INFO_GLOBAL 解 LoggerState 包 + 无参宏翻转联动
@@ -1183,11 +1183,11 @@ YOMK_TEST_CHECK(
             (gs != nullptr && gs->d.m_debugOn && gs->d.m_infoOn && gs->d.m_warnOn && gs->d.m_errorOn),
             "S9f: 全局主闸四级全 on");
         YOMK_TEST_CHECK(gs != nullptr && gs->d.m_proxyOn, "S9f: 全局态含 S3 已设 proxyOn");
-        YOMK_TEST_CHECK(YomkAPI::OFF_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eOk, "S9f: 无参 OFF_DEBUG 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::disableConsoleLogDebug().m_status == YomkResponse::eOk, "S9f: 无参 OFF_DEBUG 返回 eOk");
         auto gResp2 = YomkAPI::LOGGER_INFO_GLOBAL();
         auto gs2 = yomk::unPack<yomkmsg::LoggerState>(gResp2.m_data);
         YOMK_TEST_CHECK(gs2 != nullptr && !gs2->d.m_debugOn, "S9f: 主闸 OFF_DEBUG 后全局态 debugOff");
-        YOMK_TEST_CHECK(YomkAPI::ON_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eOk, "S9f: 无参 ON_DEBUG 恢复 eOk");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogDebug().m_status == YomkResponse::eOk, "S9f: 无参 ON_DEBUG 恢复 eOk");
         auto gResp3 = YomkAPI::LOGGER_INFO_GLOBAL();
         auto gs3 = yomk::unPack<yomkmsg::LoggerState>(gResp3.m_data);
         YOMK_TEST_CHECK(gs3 != nullptr && gs3->d.m_debugOn, "S9f: 主闸 ON_DEBUG 后全局态 debugOn");
@@ -1206,8 +1206,8 @@ YOMK_TEST_CHECK(
 
     // 10.1 具名 OFF 隔离：关 lg1_s10_fl 的 info，warn 落盘不受影响
     YOMK_TEST_CHECK(
-        YomkAPI::OFF_FILE_LOG_INFO(flName).m_status == YomkResponse::eOk,
-        "S10a: 具名 OFF_FILE_LOG_INFO(fl) 返回 eOk");
+        YomkAPI::disableFileLogInfo(flName).m_status == YomkResponse::eOk,
+        "S10a: 具名 disableFileLogInfo(fl) 返回 eOk");
     {
         auto liResp = YomkAPI::LOGGER_INFO_LOGGER(flName, "file");
         auto lp = yomk::unPack<yomkmsg::LoggerInfo>(liResp.m_data);
@@ -1235,8 +1235,8 @@ YOMK_TEST_CHECK(
 
     // 10.2 具名 ON 恢复
     YOMK_TEST_CHECK(
-        YomkAPI::ON_FILE_LOG_INFO(flName).m_status == YomkResponse::eOk,
-        "S10b: 具名 ON_FILE_LOG_INFO(fl) 返回 eOk");
+        YomkAPI::enableFileLogInfo(flName).m_status == YomkResponse::eOk,
+        "S10b: 具名 enableFileLogInfo(fl) 返回 eOk");
     {
         auto liResp = YomkAPI::LOGGER_INFO_LOGGER(flName, "file");
         auto lp = yomk::unPack<yomkmsg::LoggerInfo>(liResp.m_data);
@@ -1254,11 +1254,11 @@ YOMK_TEST_CHECK(
 
     // 10.3 具名未知名 eNo（不惰性创建）
     {
-        auto offNo = YomkAPI::OFF_FILE_LOG_INFO("lg1_s10_never_created");
+        auto offNo = YomkAPI::disableFileLogInfo("lg1_s10_never_created");
         YOMK_TEST_CHECK(
             (offNo.m_status == YomkResponse::eNo && offNo.m_msg == "file logger not found."),
             "S10c: 具名 OFF 未知名返回 eNo + file logger not found.");
-        auto onNo = YomkAPI::ON_FILE_LOG_INFO("lg1_s10_never_created");
+        auto onNo = YomkAPI::enableFileLogInfo("lg1_s10_never_created");
         YOMK_TEST_CHECK(
             (onNo.m_status == YomkResponse::eNo && onNo.m_msg == "file logger not found."),
             "S10c: 具名 ON 未知名返回 eNo");
@@ -1280,7 +1280,7 @@ YOMK_TEST_CHECK(
     // 10.4 主闸×逐器组合 + 两层归因：文件主闸 OFF + 逐器 ON → 仍不落盘（两层 AND），
     // 文件全局态与条目逐器态各自真实呈现、归因唯一
     {
-        YOMK_TEST_CHECK(YomkAPI::OFF_FILE_LOG_INFO().m_status == YomkResponse::eOk, "S10d: 无参 OFF（文件主闸）返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::disableFileLogInfo().m_status == YomkResponse::eOk, "S10d: 无参 OFF（文件主闸）返回 eOk");
         auto gResp = YomkAPI::LOGGER_INFO_GLOBAL("file");
         auto gs = yomk::unPack<yomkmsg::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(gs != nullptr && !gs->d.m_infoOn, "S10d: LOGGER_INFO_GLOBAL(\"file\") 报文件主闸 infoOff");
@@ -1300,7 +1300,7 @@ YOMK_TEST_CHECK(
                 ok && content.find("lg1_s10d_gate_marker") == std::string::npos,
                 "S10d: 主闸 OFF + 逐器 ON → 仍不落盘（两层 AND）");
         }
-        YOMK_TEST_CHECK(YomkAPI::ON_FILE_LOG_INFO().m_status == YomkResponse::eOk, "S10d: 无参 ON（文件主闸）恢复 eOk");
+        YOMK_TEST_CHECK(YomkAPI::enableFileLogInfo().m_status == YomkResponse::eOk, "S10d: 无参 ON（文件主闸）恢复 eOk");
         YOMK_TEST_CHECK(
             YOMK_FILE_INFO_TAG(flName, "lg1s10", "lg1_s10d_on_marker").m_status == YomkResponse::eOk,
             "S10d: 主闸恢复后 FILE_INFO eOk");
@@ -1316,11 +1316,11 @@ YOMK_TEST_CHECK(
 
     // 10.5 两层正交：具名关断直接反映在条目、不波及文件主闸态
     {
-        YOMK_TEST_CHECK(YomkAPI::OFF_FILE_LOG_INFO(flName).m_status == YomkResponse::eOk, "S10e: 再次具名关断返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::disableFileLogInfo(flName).m_status == YomkResponse::eOk, "S10e: 再次具名关断返回 eOk");
         auto gResp = YomkAPI::LOGGER_INFO_GLOBAL("file");
         auto gs = yomk::unPack<yomkmsg::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(gs != nullptr && gs->d.m_infoOn, "S10e: 具名关断不影响文件主闸（两层正交）");
-        YOMK_TEST_CHECK(YomkAPI::ON_FILE_LOG_INFO(flName).m_status == YomkResponse::eOk, "S10e: 具名恢复 eOk（状态复原）");
+        YOMK_TEST_CHECK(YomkAPI::enableFileLogInfo(flName).m_status == YomkResponse::eOk, "S10e: 具名恢复 eOk（状态复原）");
     }
 
     // 10.6 全局态端点基线：LOGGER_INFO_GLOBAL("file")/("console") 两套主闸独立 + 无参宏翻转联动
@@ -1336,7 +1336,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             gs != nullptr && !gs->d.m_proxyOn,
             "S10f: 文件态 proxyOn=false（文件代理未设置时恒 false）");
-        YOMK_TEST_CHECK(YomkAPI::OFF_FILE_LOG_DEBUG().m_status == YomkResponse::eOk, "S10f: 无参 OFF_FILE_LOG_DEBUG 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::disableFileLogDebug().m_status == YomkResponse::eOk, "S10f: 无参 disableFileLogDebug 返回 eOk");
         auto gResp2 = YomkAPI::LOGGER_INFO_GLOBAL("file");
         auto gs2 = yomk::unPack<yomkmsg::LoggerState>(gResp2.m_data);
         YOMK_TEST_CHECK(gs2 != nullptr && !gs2->d.m_debugOn, "S10f: 文件主闸 OFF_DEBUG 后文件态 debugOff");
@@ -1346,7 +1346,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             (gc != nullptr && gc->d.m_debugOn && gc->d.m_infoOn && gc->d.m_warnOn && gc->d.m_errorOn),
             "S10f: 控制台主闸四级仍全 on（与文件主闸独立）");
-        YOMK_TEST_CHECK(YomkAPI::ON_FILE_LOG_DEBUG().m_status == YomkResponse::eOk, "S10f: 无参 ON_FILE_LOG_DEBUG 恢复 eOk");
+        YOMK_TEST_CHECK(YomkAPI::enableFileLogDebug().m_status == YomkResponse::eOk, "S10f: 无参 enableFileLogDebug 恢复 eOk");
         auto gResp4 = YomkAPI::LOGGER_INFO_GLOBAL("file");
         auto gs4 = yomk::unPack<yomkmsg::LoggerState>(gResp4.m_data);
         YOMK_TEST_CHECK(gs4 != nullptr && gs4->d.m_debugOn, "S10f: 文件主闸 ON_DEBUG 后文件态 debugOn");
@@ -1388,7 +1388,7 @@ YOMK_TEST_CHECK(
         g_fileProxyHits.fetch_add(1);
         return !g_fileProxyIntercept.load();  // 拦截态返回 false，穿透态返回 true
     };
-    YOMK_TEST_CHECK(YomkAPI::SET_FILE_LOG_PROXY(fileProxy).m_status == YomkResponse::eOk, "S11b: SET_FILE_LOG_PROXY 返回 eOk");
+    YOMK_TEST_CHECK(YomkAPI::setFileLogProxy(fileProxy).m_status == YomkResponse::eOk, "S11b: setFileLogProxy 返回 eOk");
     {
         auto r = YOMK_FILE_INFO_TAG(flName11, "lg1s11", "lg1_s11b_intercept_marker");
         YOMK_TEST_CHECK(r.m_status == YomkResponse::eOk, "S11b: 拦截态 FILE_INFO 返回 eOk");
@@ -1431,8 +1431,8 @@ YOMK_TEST_CHECK(
             (r.m_status == YomkResponse::eOk && r.m_msg == "file log proxy is success."),
             "S11d: 卸载前拦截态契约消息（文件代理确实在链路上）");
         YOMK_TEST_CHECK(
-            YomkAPI::SET_FILE_LOG_PROXY(nullptr).m_status == YomkResponse::eOk,
-            "S11d: SET_FILE_LOG_PROXY(nullptr) 卸载返回 eOk");
+            YomkAPI::setFileLogProxy(nullptr).m_status == YomkResponse::eOk,
+            "S11d: setFileLogProxy(nullptr) 卸载返回 eOk");
         auto gRespF = YomkAPI::LOGGER_INFO_GLOBAL("file");
         auto gsF = yomk::unPack<yomkmsg::LoggerState>(gRespF.m_data);
         YOMK_TEST_CHECK(gsF != nullptr && !gsF->d.m_proxyOn, "S11d: 卸载后 GLOBAL(\"file\") 回 proxyOff");
@@ -1454,7 +1454,7 @@ YOMK_TEST_CHECK(
     // 11.5 重装可逆：重装回穿透态（Section 11 为末段，收尾无代理态依赖）
     {
         g_fileProxyIntercept.store(false);
-        YOMK_TEST_CHECK(YomkAPI::SET_FILE_LOG_PROXY(fileProxy).m_status == YomkResponse::eOk, "S11e: 重装文件代理返回 eOk（卸载可逆）");
+        YOMK_TEST_CHECK(YomkAPI::setFileLogProxy(fileProxy).m_status == YomkResponse::eOk, "S11e: 重装文件代理返回 eOk（卸载可逆）");
         auto gRespF = YomkAPI::LOGGER_INFO_GLOBAL("file");
         auto gsF = yomk::unPack<yomkmsg::LoggerState>(gRespF.m_data);
         YOMK_TEST_CHECK(gsF != nullptr && gsF->d.m_proxyOn, "S11e: 重装后 GLOBAL(\"file\") 恢复 proxyOn");

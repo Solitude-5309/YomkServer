@@ -691,8 +691,8 @@ int main()
 
         // 首次设置为 v1（此后进程内 proxy 恒为 on，v1/v2 交替更新 func）
         YOMK_TEST_CHECK(
-            YomkAPI::SET_CONSOLE_LOG_PROXY(s3ProxyV1).m_status == YomkResponse::eOk,
-            "S3: SET_CONSOLE_LOG_PROXY(v1) 返回 eOk");
+            YomkAPI::setConsoleLogProxy(s3ProxyV1).m_status == YomkResponse::eOk,
+            "S3: setConsoleLogProxy(v1) 返回 eOk");
 
         // caller 线程：持续 console_log 直到 g_s3Stop
         std::vector<std::thread> callers;
@@ -742,7 +742,7 @@ int main()
         for (int round = 0; round < kSetRounds; ++round)
         {
             auto resp =
-                (round % 2 == 0) ? YomkAPI::SET_CONSOLE_LOG_PROXY(s3ProxyV2) : YomkAPI::SET_CONSOLE_LOG_PROXY(s3ProxyV1);
+                (round % 2 == 0) ? YomkAPI::setConsoleLogProxy(s3ProxyV2) : YomkAPI::setConsoleLogProxy(s3ProxyV1);
             if (resp.m_status == YomkResponse::eOk)
             {
                 g_s3SetOk.fetch_add(1, std::memory_order_relaxed);
@@ -1118,25 +1118,25 @@ int main()
                 switch (level)
                 {
                     case 0:
-                        return YomkAPI::ON_CONSOLE_LOG_DEBUG();
+                        return YomkAPI::enableConsoleLogDebug();
                     case 1:
-                        return YomkAPI::ON_CONSOLE_LOG_INFO();
+                        return YomkAPI::enableConsoleLogInfo();
                     case 2:
-                        return YomkAPI::ON_CONSOLE_LOG_WARN();
+                        return YomkAPI::enableConsoleLogWarn();
                     default:
-                        return YomkAPI::ON_CONSOLE_LOG_ERROR();
+                        return YomkAPI::enableConsoleLogError();
                 }
             }
             switch (level)
             {
                 case 0:
-                    return YomkAPI::OFF_CONSOLE_LOG_DEBUG();
+                    return YomkAPI::disableConsoleLogDebug();
                 case 1:
-                    return YomkAPI::OFF_CONSOLE_LOG_INFO();
+                    return YomkAPI::disableConsoleLogInfo();
                 case 2:
-                    return YomkAPI::OFF_CONSOLE_LOG_WARN();
+                    return YomkAPI::disableConsoleLogWarn();
                 default:
-                    return YomkAPI::OFF_CONSOLE_LOG_ERROR();
+                    return YomkAPI::disableConsoleLogError();
             }
         };
 
@@ -1381,10 +1381,10 @@ int main()
         }
 
         // ---- 收尾：四级别全 ON + file sink 落盘 ----
-        YOMK_TEST_CHECK(YomkAPI::ON_CONSOLE_LOG_DEBUG().m_status == YomkResponse::eOk, "S5: 收尾 ON debug eOk");
-        YOMK_TEST_CHECK(YomkAPI::ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S5: 收尾 ON info eOk");
-        YOMK_TEST_CHECK(YomkAPI::ON_CONSOLE_LOG_WARN().m_status == YomkResponse::eOk, "S5: 收尾 ON warn eOk");
-        YOMK_TEST_CHECK(YomkAPI::ON_CONSOLE_LOG_ERROR().m_status == YomkResponse::eOk, "S5: 收尾 ON error eOk");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogDebug().m_status == YomkResponse::eOk, "S5: 收尾 ON debug eOk");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo().m_status == YomkResponse::eOk, "S5: 收尾 ON info eOk");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogWarn().m_status == YomkResponse::eOk, "S5: 收尾 ON warn eOk");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogError().m_status == YomkResponse::eOk, "S5: 收尾 ON error eOk");
         YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(kFileSink).m_status == YomkResponse::eOk, "S5: 收尾 file sink WRITE eOk");
 
         // ---- P3-a 判别式：对每个快照验证 C >= F（相对基线增量）----
