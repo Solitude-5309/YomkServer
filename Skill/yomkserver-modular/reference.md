@@ -35,7 +35,7 @@ typedef std::function<void(YomkResponse response)> YomkResponseFunc;
 ## YomkMsg 宏
 
 ```cpp
-YomkMsg(DataType, MsgName, VarName)
+YomkMsg(DataType, MsgName, VarName);
 // DataType：数据类 | MsgName：消息名称（解包与全名引用使用此名） | VarName：成员变量名
 ```
 

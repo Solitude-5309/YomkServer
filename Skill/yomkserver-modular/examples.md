@@ -181,8 +181,8 @@ struct ConfigKeyValue
 };
 
 // clang-format off
-YomkMsg(ConfigKey, ConfigKey, req)
-YomkMsg(ConfigKeyValue, ConfigKeyValue, req)
+YomkMsg(ConfigKey, ConfigKey, req);
+YomkMsg(ConfigKeyValue, ConfigKeyValue, req);
 ```
 
 ### services/ConfigService.h
@@ -486,8 +486,8 @@ struct UserInfo
 };
 
 // clang-format off
-YomkMsg(UserQuery, UserQuery, req)
-YomkMsg(UserInfo, UserInfo, d)
+YomkMsg(UserQuery, UserQuery, req);
+YomkMsg(UserInfo, UserInfo, d);
 ```
 
 ### 2. 创建服务（services/UserService.h）

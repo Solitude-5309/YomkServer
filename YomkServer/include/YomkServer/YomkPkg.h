@@ -301,41 +301,41 @@ struct VoidPointer
 }  // namespace yomk
 
 // clang-format off
-YomkMsg(yomk::Function, Function, d)
-YomkMsg(yomk::CallFunction, CallFunction, d)
-YomkMsg(yomk::FuncInfo, FuncInfo, d)
+YomkMsg(yomk::Function, Function, d);
+YomkMsg(yomk::CallFunction, CallFunction, d);
+YomkMsg(yomk::FuncInfo, FuncInfo, d);
 // FunctionPool 全量函数内省（FUNCTIONPOOL_INFO_ALL 返回数据；函数总数由 d.size() 承载）
-YomkMsg(std::vector<yomk::FuncInfo>, FuncInfoList, d)
-YomkMsg(yomk::Event, Event, d)
-YomkMsg(yomk::Eventloop, Eventloop, d)
-YomkMsg(yomk::EventLoopInfo, EventLoopInfo, d)
+YomkMsg(std::vector<yomk::FuncInfo>, FuncInfoList, d);
+YomkMsg(yomk::Event, Event, d);
+YomkMsg(yomk::Eventloop, Eventloop, d);
+YomkMsg(yomk::EventLoopInfo, EventLoopInfo, d);
 // EventLoop 全量循环内省（EVENTLOOP_INFO_ALL 返回数据；m_nextTags 取 3 条与单查缺省一致）
-YomkMsg(std::vector<yomk::EventLoopInfo>, EventLoopInfoList, d)
-YomkMsg(yomk::LogFile, LogFile, d)
-YomkMsg(yomk::Log, Log, d)
-YomkMsg(yomk::ConsoleLogProxy, ConsoleLogProxy, d)
-YomkMsg(yomk::FileLogProxy, FileLogProxy, d)
-YomkMsg(yomk::LoggerQuery, LoggerQuery, d)
-YomkMsg(yomk::LoggerInfo, LoggerInfo, d)
+YomkMsg(std::vector<yomk::EventLoopInfo>, EventLoopInfoList, d);
+YomkMsg(yomk::LogFile, LogFile, d);
+YomkMsg(yomk::Log, Log, d);
+YomkMsg(yomk::ConsoleLogProxy, ConsoleLogProxy, d);
+YomkMsg(yomk::FileLogProxy, FileLogProxy, d);
+YomkMsg(yomk::LoggerQuery, LoggerQuery, d);
+YomkMsg(yomk::LoggerInfo, LoggerInfo, d);
 // Logger 控制台全局主闸态（LOGGER_INFO_GLOBAL 返回数据：四级别主闸开关 + proxy）
-YomkMsg(yomk::LoggerState, LoggerState, d)
+YomkMsg(yomk::LoggerState, LoggerState, d);
 // Logger 全量内省（LOGGER_INFO_ALL 返回数据；元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段）
-YomkMsg(std::vector<yomk::LoggerInfo>, LoggerInfoList, d)
-YomkMsg(yomk::Context, Context, d)
+YomkMsg(std::vector<yomk::LoggerInfo>, LoggerInfoList, d);
+YomkMsg(yomk::Context, Context, d);
 // Context 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键，组名缺省 main）
-YomkMsg(yomk::ContextGroupKey, ContextGroupKey, d)
-YomkMsg(yomk::ContextKeyInfo, ContextKeyInfo, d)
+YomkMsg(yomk::ContextGroupKey, ContextGroupKey, d);
+YomkMsg(yomk::ContextKeyInfo, ContextKeyInfo, d);
 // Context 键元信息清单（ContextGroupInfo.m_keys 的元素类型）
-YomkMsg(std::vector<yomk::ContextKeyInfo>, ContextKeyInfoList, d)
+YomkMsg(std::vector<yomk::ContextKeyInfo>, ContextKeyInfoList, d);
 // Context 组级内省条目（ContextGroupInfoList 元素；层级为组 → 键元信息）
-YomkMsg(yomk::ContextGroupInfo, ContextGroupInfo, d)
+YomkMsg(yomk::ContextGroupInfo, ContextGroupInfo, d);
 // Context 组级全量内省（CONTEXT_INFO_ALL 返回数据）
-YomkMsg(std::vector<yomk::ContextGroupInfo>, ContextGroupInfoList, d)
+YomkMsg(std::vector<yomk::ContextGroupInfo>, ContextGroupInfoList, d);
 // ServerInfo 全量拓扑内省（SERVER_INFO_ALL 返回数据；层级为服务 → 函数元信息）
-YomkMsg(std::vector<yomk::ServerServiceInfo>, ServerServiceInfoList, d)
-YomkMsg(yomk::ContextChecker, ContextChecker, d)
-YomkMsg(yomk::ContextMonitor, ContextMonitor, d)
-YomkMsg(yomk::VoidPointer, VoidPointer, d)
+YomkMsg(std::vector<yomk::ServerServiceInfo>, ServerServiceInfoList, d);
+YomkMsg(yomk::ContextChecker, ContextChecker, d);
+YomkMsg(yomk::ContextMonitor, ContextMonitor, d);
+YomkMsg(yomk::VoidPointer, VoidPointer, d);
 
 // Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 YomkAPI::CONTEXT_SET_MONITOR
 typedef std::function<void(const yomk::Context &ctx)> YomkContextMonitorFunc;
@@ -346,33 +346,33 @@ typedef std::function<bool(const yomk::Log &log)> YomkConsoleLogProxyFunc;
 typedef std::function<bool(const yomk::Log &log)> YomkFileLogProxyFunc;
 
 // 内置标准类型消息包（成员名均为 d）
-YomkMsg(bool, Bool, d)
-YomkMsg(std::vector<bool>, BoolArray, d)
-YomkMsg(signed char, Char, d)
-YomkMsg(std::vector<char>, CharArray, d)
-YomkMsg(unsigned char, UChar, d)
-YomkMsg(std::vector<unsigned char>, UCharArray, d)
-YomkMsg(unsigned char, Byte, d)
-YomkMsg(std::vector<unsigned char>, ByteArray, d)
-YomkMsg(std::int8_t, Int8, d)
-YomkMsg(std::vector<signed char>, Int8Array, d)
-YomkMsg(std::uint8_t, Uint8, d)
-YomkMsg(std::vector<unsigned char>, Uint8Array, d)
-YomkMsg(std::int16_t, Int16, d)
-YomkMsg(std::vector<std::int16_t>, Int16Array, d)
-YomkMsg(std::uint16_t, Uint16, d)
-YomkMsg(std::vector<std::uint16_t>, Uint16Array, d)
-YomkMsg(std::int32_t, Int32, d)
-YomkMsg(std::vector<std::int32_t>, Int32Array, d)
-YomkMsg(std::uint32_t, Uint32, d)
-YomkMsg(std::vector<std::uint32_t>, Uint32Array, d)
-YomkMsg(std::int64_t, Int64, d)
-YomkMsg(std::vector<std::int64_t>, Int64Array, d)
-YomkMsg(std::uint64_t, Uint64, d)
-YomkMsg(std::vector<std::uint64_t>, Uint64Array, d)
-YomkMsg(float, Float32, d)
-YomkMsg(std::vector<float>, Float32Array, d)
-YomkMsg(double, Float64, d)
-YomkMsg(std::vector<double>, Float64Array, d)
-YomkMsg(std::string, String, d)
-YomkMsg(std::vector<std::string>, StringArray, d)
+YomkMsg(bool, Bool, d);
+YomkMsg(std::vector<bool>, BoolArray, d);
+YomkMsg(signed char, Char, d);
+YomkMsg(std::vector<char>, CharArray, d);
+YomkMsg(unsigned char, UChar, d);
+YomkMsg(std::vector<unsigned char>, UCharArray, d);
+YomkMsg(unsigned char, Byte, d);
+YomkMsg(std::vector<unsigned char>, ByteArray, d);
+YomkMsg(std::int8_t, Int8, d);
+YomkMsg(std::vector<signed char>, Int8Array, d);
+YomkMsg(std::uint8_t, Uint8, d);
+YomkMsg(std::vector<unsigned char>, Uint8Array, d);
+YomkMsg(std::int16_t, Int16, d);
+YomkMsg(std::vector<std::int16_t>, Int16Array, d);
+YomkMsg(std::uint16_t, Uint16, d);
+YomkMsg(std::vector<std::uint16_t>, Uint16Array, d);
+YomkMsg(std::int32_t, Int32, d);
+YomkMsg(std::vector<std::int32_t>, Int32Array, d);
+YomkMsg(std::uint32_t, Uint32, d);
+YomkMsg(std::vector<std::uint32_t>, Uint32Array, d);
+YomkMsg(std::int64_t, Int64, d);
+YomkMsg(std::vector<std::int64_t>, Int64Array, d);
+YomkMsg(std::uint64_t, Uint64, d);
+YomkMsg(std::vector<std::uint64_t>, Uint64Array, d);
+YomkMsg(float, Float32, d);
+YomkMsg(std::vector<float>, Float32Array, d);
+YomkMsg(double, Float64, d);
+YomkMsg(std::vector<double>, Float64Array, d);
+YomkMsg(std::string, String, d);
+YomkMsg(std::vector<std::string>, StringArray, d);

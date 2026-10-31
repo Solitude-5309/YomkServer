@@ -92,7 +92,7 @@ ProjectName/
 1. **定义消息包**（`msgs/YomkMsgs.h`）：
 ```cpp
 struct MyData { std::string field1; int field2; };
-YomkMsg(MyData, MyData, d)  // 参数：数据类, 消息名称, 成员变量名
+YomkMsg(MyData, MyData, d);  // 参数：数据类, 消息名称, 成员变量名
 ```
 
 2. **创建服务文件**（`services/XxxService.h` + `services/XxxService.cpp`）：
@@ -272,7 +272,7 @@ ExtensionName/
 ### YomkMsg 消息包
 
 ```cpp
-YomkMsg(数据类, 消息名称, 成员名)  // 在命名空间外定义
+YomkMsg(数据类, 消息名称, 成员名);  // 在命名空间外定义
 ```
 消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名（如 `YomkMsg(MyData, MyData, d)`）。
 - `yomkmsg::消息名称::shared(数据类实例)` — 创建消息包（类内静态工厂）

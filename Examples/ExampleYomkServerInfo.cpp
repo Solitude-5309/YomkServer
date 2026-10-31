@@ -225,7 +225,7 @@ struct QualityCheckReq
     std::int32_t m_count;   // 抽检件数
 };
 
-YomkMsg(::QualityCheckReq, QualityCheckReq, req)
+YomkMsg(::QualityCheckReq, QualityCheckReq, req);
 
 class ArmStationService : public YomkService
 {
