@@ -72,8 +72,8 @@ int MyService::init()
     YomkAPI::FUNCTIONPOOL_REGISTER("my_work", weakFunc(&MyService::myWork));
 
     // Context checker/monitor 签名不同，同一 weakFunc 自动适配：删除后 checker 放行（eAccept）、monitor 丢弃
-    YomkAPI::CONTEXT_SET_CHECKER("key", weakFunc(&MyService::myCheck));
-    YomkAPI::CONTEXT_SET_MONITOR("key", weakFunc(&MyService::myMonitor));
+    YomkAPI::setContextChecker("key", weakFunc(&MyService::myCheck));
+    YomkAPI::setContextMonitor("key", weakFunc(&MyService::myMonitor));
 
     // 异步响应回调：框架不自动弱绑定，同样用 weakFunc(&MyService::onResp)（普通 lambda 须值捕获自包含数据）
     YomkAPI::asyncRequest("/OtherService/func", nullptr, weakFunc(&MyService::onResp));

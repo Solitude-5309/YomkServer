@@ -165,8 +165,8 @@ int XxxService::init() {
     YomkAPI::FUNCTIONPOOL_REGISTER("my_work", weakFunc(&XxxService::myFunc));
     // Context checker/monitor 签名不同，同一 weakFunc 自动适配：
     // 服务删除后 checker 默认放行（eAccept），monitor 丢弃
-    YomkAPI::CONTEXT_SET_CHECKER("key", weakFunc(&XxxService::myCheck));
-    YomkAPI::CONTEXT_SET_MONITOR("key", weakFunc(&XxxService::myMonitor));
+    YomkAPI::setContextChecker("key", weakFunc(&XxxService::myCheck));
+    YomkAPI::setContextMonitor("key", weakFunc(&XxxService::myMonitor));
     // 异步响应回调同样适用
     YomkAPI::asyncRequest("/OtherService/func", pkg, weakFunc(&XxxService::onResp));
     return 0;
