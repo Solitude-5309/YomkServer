@@ -448,7 +448,7 @@ int main()
 
         // 预热：主线程先创建该 tag 的 console logger，使并发段全部走 shared_lock 命中路径
         YOMK_TEST_CHECK(
-            YomkAPI::CONSOLE_LOG_INFO_TAG(kTag, "lg3s1_warmup").m_status == YomkResponse::eOk,
+            YomkAPI::emitConsoleLogInfo(kTag, "lg3s1_warmup").m_status == YomkResponse::eOk,
             "S1: 预热创建 console logger " + kTag);
 
         std::string out;
@@ -465,7 +465,7 @@ int main()
                         waitGate(kThreads);
                         for (int i = 0; i < kLogsPerThread; ++i)
                         {
-                            auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
+                            auto resp = YomkAPI::emitConsoleLogInfo(
                                 kTag, "lg3s1_t" + std::to_string(t) + "_i" + std::to_string(i));
                             if (resp.m_status == YomkResponse::eOk)
                             {
@@ -558,7 +558,7 @@ int main()
                         waitGate(kThreads);  // 屏障对齐：8 线程同时 miss → 同时升级独占锁
                         for (int i = 0; i < kLogsPerThread; ++i)
                         {
-                            auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
+                            auto resp = YomkAPI::emitConsoleLogInfo(
                                 kRaceTag, "lg3s2a_t" + std::to_string(t) + "_i" + std::to_string(i));
                             if (resp.m_status == YomkResponse::eOk)
                             {
@@ -621,7 +621,7 @@ int main()
                         waitGate(kSpreadThreads);
                         for (int i = 0; i < kSpreadPerThread; ++i)
                         {
-                            auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
+                            auto resp = YomkAPI::emitConsoleLogInfo(
                                 tag, "lg3s2b_t" + std::to_string(t) + "_i" + std::to_string(i));
                             if (resp.m_status == YomkResponse::eOk)
                             {
@@ -705,7 +705,7 @@ int main()
                     int i = 0;
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
-                        auto resp = YomkAPI::CONSOLE_LOG_INFO_TAG(
+                        auto resp = YomkAPI::emitConsoleLogInfo(
                             kTag, "lg3s3_t" + std::to_string(t) + "_i" + std::to_string(i));
                         g_s3LogTotal.fetch_add(1, std::memory_order_relaxed);
                         if (resp.m_status == YomkResponse::eOk)
@@ -814,7 +814,7 @@ int main()
                     [&sameDir, &kSameName]()
                     {
                         waitGate(kThreads);  // 屏障对齐：8 线程同时争抢 unique_lock
-                        auto resp = YomkAPI::FILE_LOG_CREATE(sameDir.string(), kSameName);
+                        auto resp = YomkAPI::createFileLogger(sameDir.string(), kSameName);
                         if (!isLegalStatus(resp))
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -866,7 +866,7 @@ int main()
                     [t, &spreadDir]()
                     {
                         waitGate(kThreads);
-                        auto resp = YomkAPI::FILE_LOG_CREATE(spreadDir.string(), "lg3_s4_t" + std::to_string(t));
+                        auto resp = YomkAPI::createFileLogger(spreadDir.string(), "lg3_s4_t" + std::to_string(t));
                         if (!isLegalStatus(resp))
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -907,7 +907,7 @@ int main()
         g_s4cStop.store(false);
 
         YOMK_TEST_CHECK(
-            YomkAPI::FILE_LOG_CREATE(sinkDir.string(), kSinkName).m_status == YomkResponse::eOk,
+            YomkAPI::createFileLogger(sinkDir.string(), kSinkName).m_status == YomkResponse::eOk,
             "S4c: 创建 sink file logger 成功");
 
         resetGate();
@@ -921,7 +921,7 @@ int main()
                     waitGate(kLogThreads);
                     for (int i = 0; i < kLogsPerThread; ++i)
                     {
-                        auto resp = YomkAPI::FILE_LOG_INFO_TAG(
+                        auto resp = YomkAPI::emitFileLogInfo(
                             kSinkName, "lg3s4c", "lg3s4c_t" + std::to_string(t) + "_i" + std::to_string(i));
                         if (!isLegalStatus(resp))
                         {
@@ -945,7 +945,7 @@ int main()
                 {
                     while (!g_s4cStop.load(std::memory_order_acquire))
                     {
-                        auto resp = YomkAPI::FILE_LOG_WRITE(kSinkName);
+                        auto resp = YomkAPI::flushFileLog(kSinkName);
                         if (!isLegalStatus(resp))
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -971,7 +971,7 @@ int main()
         }
 
         // 收尾：把残余缓冲全部落盘
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(kSinkName).m_status == YomkResponse::eOk, "S4c: 收尾 WRITE 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(kSinkName).m_status == YomkResponse::eOk, "S4c: 收尾 WRITE 返回 eOk");
 
         YOMK_TEST_CHECK(
             g_s4cLogOk.load() == kSinkTotal,
@@ -1005,11 +1005,11 @@ int main()
         g_s4dWriteOk.store(0);
 
         YOMK_TEST_CHECK(
-            YomkAPI::FILE_LOG_CREATE(multiDir.string(), kMultiName).m_status == YomkResponse::eOk,
+            YomkAPI::createFileLogger(multiDir.string(), kMultiName).m_status == YomkResponse::eOk,
             "S4d: 创建 multi file logger 成功");
         for (uint64_t i = 0; i < kMultiLines; ++i)
         {
-            YomkAPI::FILE_LOG_INFO_TAG(kMultiName, "lg3s4d", "lg3s4d_i" + std::to_string(i));
+            YomkAPI::emitFileLogInfo(kMultiName, "lg3s4d", "lg3s4d_i" + std::to_string(i));
         }
 
         resetGate();
@@ -1024,7 +1024,7 @@ int main()
                         waitGate(kWriterThreadsD);
                         for (int r = 0; r < kWriteRoundsD; ++r)
                         {
-                            auto resp = YomkAPI::FILE_LOG_WRITE(kMultiName);
+                            auto resp = YomkAPI::flushFileLog(kMultiName);
                             if (!isLegalStatus(resp))
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1088,13 +1088,13 @@ int main()
             switch (level)
             {
                 case 0:
-                    return YomkAPI::CONSOLE_LOG_DEBUG_TAG(tag, msg);
+                    return YomkAPI::emitConsoleLogDebug(tag, msg);
                 case 1:
-                    return YomkAPI::CONSOLE_LOG_INFO_TAG(tag, msg);
+                    return YomkAPI::emitConsoleLogInfo(tag, msg);
                 case 2:
-                    return YomkAPI::CONSOLE_LOG_WARN_TAG(tag, msg);
+                    return YomkAPI::emitConsoleLogWarn(tag, msg);
                 default:
-                    return YomkAPI::CONSOLE_LOG_ERROR_TAG(tag, msg);
+                    return YomkAPI::emitConsoleLogError(tag, msg);
             }
         };
         auto fileLevel = [](int level, const std::string& name, const std::string& msg) -> YomkResponse
@@ -1102,13 +1102,13 @@ int main()
             switch (level)
             {
                 case 0:
-                    return YomkAPI::FILE_LOG_DEBUG_TAG(name, "lg3s5", msg);
+                    return YomkAPI::emitFileLogDebug(name, "lg3s5", msg);
                 case 1:
-                    return YomkAPI::FILE_LOG_INFO_TAG(name, "lg3s5", msg);
+                    return YomkAPI::emitFileLogInfo(name, "lg3s5", msg);
                 case 2:
-                    return YomkAPI::FILE_LOG_WARN_TAG(name, "lg3s5", msg);
+                    return YomkAPI::emitFileLogWarn(name, "lg3s5", msg);
                 default:
-                    return YomkAPI::FILE_LOG_ERROR_TAG(name, "lg3s5", msg);
+                    return YomkAPI::emitFileLogError(name, "lg3s5", msg);
             }
         };
         auto switchLevel = [](int level, bool turnOn) -> YomkResponse
@@ -1143,10 +1143,10 @@ int main()
         // 预热 sink：churn 之外的所有日志调用一律使用已存在 logger，
         // 确保新 logger 只由 churn 线程“先 console 后 file”成对产生（判别式前提）
         YOMK_TEST_CHECK(
-            YomkAPI::CONSOLE_LOG_INFO_TAG(kConsoleSink, "lg3s5_warmup").m_status == YomkResponse::eOk,
+            YomkAPI::emitConsoleLogInfo(kConsoleSink, "lg3s5_warmup").m_status == YomkResponse::eOk,
             "S5: 预热 console sink logger 成功");
         YOMK_TEST_CHECK(
-            YomkAPI::FILE_LOG_CREATE(pairDir.string(), kFileSink).m_status == YomkResponse::eOk,
+            YomkAPI::createFileLogger(pairDir.string(), kFileSink).m_status == YomkResponse::eOk,
             "S5: 预热 file sink logger 成功");
 
         // 基线快照（先 file 后 console：file 采样时刻早于 console，配合成对创建语义保证 C>=F 判别式有效）
@@ -1188,7 +1188,7 @@ int main()
                         for (int r = 0; r < kChurnRounds; ++r)
                         {
                             std::string name = "lg3_s5_pair_t" + std::to_string(t) + "_r" + std::to_string(r);
-                            auto consoleResp = YomkAPI::CONSOLE_LOG_INFO_TAG(name, "lg3s5_pair");
+                            auto consoleResp = YomkAPI::emitConsoleLogInfo(name, "lg3s5_pair");
                             if (!isLegalStatus(consoleResp))
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1198,7 +1198,7 @@ int main()
                                 g_s5PairConsoleOk.fetch_add(1, std::memory_order_relaxed);
                             }
                             // 成对语义：console 先于 file（任意真实时刻 C(T) >= F(T)）
-                            auto fileResp = YomkAPI::FILE_LOG_CREATE(pairDir.string(), name);
+                            auto fileResp = YomkAPI::createFileLogger(pairDir.string(), name);
                             if (!isLegalStatus(fileResp))
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1342,7 +1342,7 @@ int main()
                             }
                             if (r % 20 == 19)
                             {
-                                auto writeResp = YomkAPI::FILE_LOG_WRITE(kFileSink);
+                                auto writeResp = YomkAPI::flushFileLog(kFileSink);
                                 if (!isLegalStatus(writeResp))
                                 {
                                     g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1385,7 +1385,7 @@ int main()
         YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo().m_status == YomkResponse::eOk, "S5: 收尾 ON info eOk");
         YOMK_TEST_CHECK(YomkAPI::enableConsoleLogWarn().m_status == YomkResponse::eOk, "S5: 收尾 ON warn eOk");
         YOMK_TEST_CHECK(YomkAPI::enableConsoleLogError().m_status == YomkResponse::eOk, "S5: 收尾 ON error eOk");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(kFileSink).m_status == YomkResponse::eOk, "S5: 收尾 file sink WRITE eOk");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(kFileSink).m_status == YomkResponse::eOk, "S5: 收尾 file sink WRITE eOk");
 
         // ---- P3-a 判别式：对每个快照验证 C >= F（相对基线增量）----
         // 收尾时 churn 已结束、两表静态；采样顺序保持与快照线程一致（先 file 后 console）

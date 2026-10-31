@@ -237,10 +237,10 @@ class YomkService {
 |----|------|
 | `YOMK_INFO/WARN/ERROR/DEBUG(...)` | 控制台日志（默认 tag=MainLogger） |
 | `YOMK_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(tag, ...)` | 自定义 tag 日志（tag 兼容双填 Log::m_tag 与 Log::m_logger，随记录显示 [tag]） |
-| `YomkAPI::FILE_LOG_CREATE(dir, file)` | 创建文件日志 |
+| `YomkAPI::createFileLogger(dir, file)` | 创建文件日志 |
 | `YOMK_FILE_INFO/WARN/ERROR/DEBUG(file, ...)` | 文件日志（默认 tag=MainLogger） |
 | `YOMK_FILE_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(file, tag, ...)` | 文件日志自定义 tag（Log::m_logger=file、Log::m_tag=tag，由日志器统一拼接 [tag] 段） |
-| `YomkAPI::FILE_LOG_WRITE(file)` | 刷新到磁盘 |
+| `YomkAPI::flushFileLog(file)` | 刷新到磁盘 |
 | `YomkAPI::ON/disableConsoleLogInfo/WARN/ERROR/DEBUG()` | 开关控制台级别：无参 = 全局主闸（框架全局），传日志器名 = 仅门控该器（具名未命中 eNo "console logger not found."，不惰性创建） |
 | `YomkAPI::ON/disableFileLogInfo/WARN/ERROR/DEBUG(name = "")` | 开关文件日志级别：无参 = 文件全局主闸（框架全局），传文件日志器名 = 仅门控该器（具名未命中 eNo "file logger not found."，不惰性创建；两层 AND 后才写入内存缓冲） |
 | `YomkAPI::setFileLogProxy(func)` | 文件日志代理（回调返回 false 拦截该条不落盘、返回 true 穿透走默认落盘；传 nullptr 或空 std::function 即卸载代理、恢复框架默认落盘，GLOBAL("file") 单查 proxyOn 随之为 false；与控制台代理相互独立） |
@@ -249,4 +249,4 @@ class YomkService {
 | `YomkAPI::LOGGER_INFO_LOGGER(name, type)` | 内省：按类型单表查日志器元信息（type 取 `"console"`/`"file"`；结构化 LoggerInfo 包：m_loggerName/m_type/m_dir，m_msg 恒 "ok"，未注册或非法 type 均 eNo；两表允许同名，不 fallback） |
 | `YomkAPI::LOGGER_INFO_ALL()` | 内省：全量日志器清单（LoggerInfoList：vector<LoggerInfo>，元素为单查同款，每条内嵌 LoggerState 状态段——console 条目承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态，file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态，m_msg 恒 "ok"） |
 | `YomkAPI::LOGGER_INFO_GLOBAL(type = "console")` | 内省：全局主闸状态单查（type="file" 查文件侧、type="console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 eNo。LoggerState 独立包：四级别主闸开关 + proxyOn，m_msg "ok"；独立于逐器门控层，与 ALL/INFO_LOGGER 条目配合两层归因） |
-| `YomkAPI::FILE_LOG_DELETE(name)` | 删除日志器（同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 eNo；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |
+| `YomkAPI::deleteFileLogger(name)` | 删除日志器（同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 eNo；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |

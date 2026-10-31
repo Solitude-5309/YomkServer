@@ -108,7 +108,7 @@ int main()
 
 ### 3. 日志系统 (YomkLogger)
 
-控制台与文件双输出、四级（INFO / WARN / ERROR / DEBUG）级别开关、自定义 tag、控制台日志代理拦截；`YOMK_INFO`、`YomkAPI::FILE_LOG_CREATE` 等接口开箱即用。
+控制台与文件双输出、四级（INFO / WARN / ERROR / DEBUG）级别开关、自定义 tag、控制台日志代理拦截；`YOMK_INFO`、`YomkAPI::createFileLogger` 等接口开箱即用。
 
 详见 [日志系统](Docs/YomkLogger.md)。
 

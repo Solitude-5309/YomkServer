@@ -17,12 +17,12 @@
 
 | API | 说明 |
 |---|---|
-| `YomkAPI::FILE_LOG_CREATE(dir, name)` | 创建文件日志器 |
+| `YomkAPI::createFileLogger(dir, name)` | 创建文件日志器 |
 | `YOMK_FILE_INFO(file, ...)` / `YOMK_FILE_WARN(...)` / `YOMK_FILE_ERROR(...)` / `YOMK_FILE_DEBUG(...)`（`_TAG` 变体传自定义 tag） | 写入指定日志器的内存缓冲（_TAG 变体由日志器统一拼接 [tag] 段） |
 | `YomkAPI::enableFileLogDebug(name = "")` / `YomkAPI::disableFileLogDebug(name = "")` | 开关文件日志级别（另有 INFO / WARN / ERROR 同名开关，共四级）；无参 = 文件全局主闸（框架全局），传文件日志器名 = 仅门控该器（具名未命中 eNo，不惰性创建） |
 | `YomkAPI::setFileLogProxy(func)` | 设置文件日志代理拦截（回调返回 false 该条不落盘、返回 true 穿透走默认落盘）；传 `nullptr` 或空 std::function 卸载代理，恢复默认落盘 |
-| `YomkAPI::FILE_LOG_WRITE(name)` | 显式刷盘 |
-| `YomkAPI::FILE_LOG_DELETE(name)` | 删除日志器 |
+| `YomkAPI::flushFileLog(name)` | 显式刷盘 |
+| `YomkAPI::deleteFileLogger(name)` | 删除日志器 |
 
 ### 日志自省
 
@@ -53,10 +53,10 @@ YomkAPI::disableConsoleLogInfo("Network");   // 具名关断
 YomkAPI::enableConsoleLogInfo("Network");    // 具名恢复
 
 // 文件日志
-YomkAPI::FILE_LOG_CREATE("./logs", "app"); // 创建日志器
+YomkAPI::createFileLogger("./logs", "app"); // 创建日志器
 YOMK_FILE_INFO("app", "app started");  // 写入内存缓冲
-YomkAPI::FILE_LOG_WRITE("app");            // 显式刷盘
-YomkAPI::FILE_LOG_DELETE("app");           // 删除日志器
+YomkAPI::flushFileLog("app");            // 显式刷盘
+YomkAPI::deleteFileLogger("app");           // 删除日志器
 
 // 文件日志开关（无参 = 文件全局主闸，具名 = 逐器门控；两层 AND 后才写入）
 YomkAPI::disableFileLogDebug();       // 文件主闸关断：全部文件器 DEBUG 均不写入
@@ -86,8 +86,8 @@ YomkAPI::setFileLogProxy(nullptr); // 传 nullptr 卸载文件代理，恢复默
 - tag 即控制台日志器名，首次使用自动创建。
 - 级别开关两级并联：无参作用于全局主闸（框架全局），具名作用于单个日志器（逐器门控）；输出/落盘取两层 AND。控制台开关（enable/disableConsoleLog*）只影响控制台输出，文件开关（enable/disableFileLog*）只影响文件写入，两套开关相互独立。
 - 内省归因：INFO_ALL/INFO_LOGGER 条目报逐器门控层真值（console/file 条目各自独立，未做具名开关恒全 on；proxyOn 各报对应侧代理态）；条目 on 但无输出/未落盘时查 `YomkAPI::LOGGER_INFO_GLOBAL("console"/"file")` 确认对应侧主闸是否关断——两层状态各自真实呈现，可唯一归因。
-- `YomkAPI::FILE_LOG_WRITE` 显式刷盘；日志器释放时亦会自动落盘。
-- `YomkAPI::FILE_LOG_DELETE` 同名清 console + file 两表；不删磁盘 `.log` 文件。
+- `YomkAPI::flushFileLog` 显式刷盘；日志器释放时亦会自动落盘。
+- `YomkAPI::deleteFileLogger` 同名清 console + file 两表；不删磁盘 `.log` 文件。
 - 代理回调返回 `false` 表示消费此日志不再默认输出（控制台代理）或不再落盘（文件代理）；返回 `true` 继续框架默认行为。控制台代理与文件代理相互独立，传 `nullptr` 或空 std::function 即卸载。
 
 ## 完整示例

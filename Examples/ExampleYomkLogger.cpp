@@ -28,7 +28,7 @@
  *        eOk）；逐级恢复后单查 MainLogger 状态段复查五开关全 on；随后逐器静默——具名
  *        关断 arm.joint 仅其报文消失（MainLogger/arm.demo 对照不受影响），
  *        LOGGER_INFO_GLOBAL 报主闸全 on 与条目 infoOff 两层归因唯一。
- * 场景 3 showArmBlackbox    [setConsoleLogProxy / setFileLogProxy / FILE_LOG_CREATE / WRITE]
+ * 场景 3 showArmBlackbox    [setConsoleLogProxy / setFileLogProxy / createFileLogger / WRITE]
  *        安全黑匣子：代理把 WARN/ERROR 转写文件后消费、DEBUG 噪声消化、INFO
  *        放行——结果行 msg 区分消费与放行；传 nullptr 卸载恢复默认。文件代理段
  *        用 GLOBAL("file") 复查 proxy 态并演示拦截/卸载，与控制台代理相互独立。
@@ -41,7 +41,7 @@
  *        注册 eNo）、全量导出——console/file 条目各自承载逐器门控层真值与
  *        对应侧代理态，再查 LOGGER_INFO_GLOBAL 按 type 复核两套主闸态，
  *        两层一起看全。
- * 场景 6 showArmLogCleanup  [FILE_LOG_DELETE + 惰性重建]
+ * 场景 6 showArmLogCleanup  [deleteFileLogger + 惰性重建]
  *        收班清档：DELETE 同名清 console+file 两表（返回清了几张表）、磁盘
  *        .log 保留；MainLogger 删除后再写自动重建（按名惰性创建）。
  *
@@ -334,13 +334,13 @@ static void showArmBlackbox(const std::string& logDir)
     logScene(
         3,
         "安全黑匣子",
-        "setConsoleLogProxy / setFileLogProxy / FILE_LOG_CREATE / WRITE",
+        "setConsoleLogProxy / setFileLogProxy / createFileLogger / WRITE",
         "关键事件不能只留控制台：安装代理后每条控制台日志先过回调——WARN/ERROR "
         "转写黑匣子文件后消费、DEBUG 噪声就地消化、INFO 放行，结果行 msg 区分"
         "消费与放行；文件代理同款语义作用于文件写入，两套代理相互独立。");
 
     logAction(
-        "创建安全黑匣子文件器 blackbox", "FILE_LOG_CREATE blackbox", [&] { return YomkAPI::FILE_LOG_CREATE(logDir, "blackbox"); });
+        "创建安全黑匣子文件器 blackbox", "createFileLogger blackbox", [&] { return YomkAPI::createFileLogger(logDir, "blackbox"); });
     logAction("安装控制台日志代理", "setConsoleLogProxy blackboxProxy", [&] { return YomkAPI::setConsoleLogProxy(blackboxProxy); });
 
     logAction("上报班中通报（INFO，代理放行）", "YOMK_INFO", [&] { return YOMK_INFO("工位 A 完成工单 W-1024 首件下线"); });
@@ -361,7 +361,7 @@ static void showArmBlackbox(const std::string& logDir)
     }
     logVerify("state 段 proxy=on：代理是框架全局单点，接管全部控制台日志");
 
-    logAction("刷盘安全黑匣子", "FILE_LOG_WRITE blackbox", [&] { return YomkAPI::FILE_LOG_WRITE("blackbox"); });
+    logAction("刷盘安全黑匣子", "flushFileLog blackbox", [&] { return YomkAPI::flushFileLog("blackbox"); });
     logAction("回读黑匣子文件验证转写");
     YOMK_INFO_TAG("arm.demo", "---- blackbox.log 内容 ----");
     logFileContent(fs::path(logDir) / "blackbox.log");
@@ -409,7 +409,7 @@ static void showArmShiftLog(const std::string& logDir)
         "落盘，文件具名关断期间条目静默吞条（msg 仍 success.），落盘与否回读实证。");
 
     logAction(
-        "创建班次存档文件器 shiftlog", "FILE_LOG_CREATE shiftlog", [&] { return YomkAPI::FILE_LOG_CREATE(logDir, "shiftlog"); });
+        "创建班次存档文件器 shiftlog", "createFileLogger shiftlog", [&] { return YomkAPI::createFileLogger(logDir, "shiftlog"); });
 
     // 默认 tag 写入（内容前缀仅 [行号]）
     logAction("存档流程通报（INFO）", "YOMK_FILE_INFO shiftlog", [&] { return YOMK_FILE_INFO("shiftlog", "班次开始，工单 W-1024 就绪"); });
@@ -449,7 +449,7 @@ static void showArmShiftLog(const std::string& logDir)
     logVerify("文件主闸仍全 on：INFO 缺席归因逐器门控层，两层状态各自真实呈现");
     logAction("恢复 shiftlog 的 INFO", "enableFileLogInfo shiftlog", [&] { return YomkAPI::enableFileLogInfo("shiftlog"); });
 
-    logAction("显式刷盘班次存档", "FILE_LOG_WRITE shiftlog", [&] { return YomkAPI::FILE_LOG_WRITE("shiftlog"); });
+    logAction("显式刷盘班次存档", "flushFileLog shiftlog", [&] { return YomkAPI::flushFileLog("shiftlog"); });
     logAction("回读班次存档文件");
     YOMK_INFO_TAG("arm.demo", "---- shiftlog.log 内容 ----");
     logFileContent(fs::path(logDir) / "shiftlog.log");
@@ -556,18 +556,18 @@ static void showArmLogCleanup(const std::string& logDir)
     logScene(
         6,
         "收班清档",
-        "FILE_LOG_DELETE + 惰性重建",
+        "deleteFileLogger + 惰性重建",
         "收班下线文件器与默认日志器：DELETE 按名同时清理 console+file 两表并返回"
         "各清了几条，磁盘 .log 文件保留（数据保全归调用方）；删除后再写自动重建。");
 
-    logAction("清档安全黑匣子 blackbox", "FILE_LOG_DELETE blackbox", [&] { return YomkAPI::FILE_LOG_DELETE("blackbox"); });
-    logAction("清档班次存档 shiftlog", "FILE_LOG_DELETE shiftlog", [&] { return YomkAPI::FILE_LOG_DELETE("shiftlog"); });
+    logAction("清档安全黑匣子 blackbox", "deleteFileLogger blackbox", [&] { return YomkAPI::deleteFileLogger("blackbox"); });
+    logAction("清档班次存档 shiftlog", "deleteFileLogger shiftlog", [&] { return YomkAPI::deleteFileLogger("shiftlog"); });
     logVerify("msg=deleted console:0 file:1：blackbox 只在 file 表，DELETE 报告两表各自清理数");
 
-    logAction("清档未注册日志器 ghost", "FILE_LOG_DELETE ghost", [&] { return YomkAPI::FILE_LOG_DELETE("ghost"); });
+    logAction("清档未注册日志器 ghost", "deleteFileLogger ghost", [&] { return YomkAPI::deleteFileLogger("ghost"); });
     logVerify("两表均未命中 -> eNo(logger not found.)：not-found 是框架统一惯例");
 
-    logAction("清档默认日志器 MainLogger", "FILE_LOG_DELETE MainLogger", [&] { return YomkAPI::FILE_LOG_DELETE("MainLogger"); });
+    logAction("清档默认日志器 MainLogger", "deleteFileLogger MainLogger", [&] { return YomkAPI::deleteFileLogger("MainLogger"); });
     logVerify("msg=deleted console:1 file:0：MainLogger 只在 console 表（框架预创建）");
 
     logAction("回读班次存档文件确认保留");

@@ -201,7 +201,7 @@ int main()
         // loggers 按类型查询，行内容即 logger 纯名（YomkLogger::loggers 不再拼接类型后缀）
         YOMK_TEST_CHECK(restored.m_status == YomkResponse::eOk && contains(unpackStringArray(restored), "MainLogger"),
               "重注册后 LOGGER API 恢复且含 MainLogger");
-        YOMK_TEST_CHECK(YomkAPI::CONSOLE_LOG_INFO_TAG("MainLogger", "[integration]", "s2 relink marker").m_status ==
+        YOMK_TEST_CHECK(YomkAPI::emitConsoleLogInfo("MainLogger", "[integration]", "s2 relink marker").m_status ==
                   YomkResponse::eOk,
               "重注册后日志 API 全链路可用（console_log eOk）");
     }
@@ -229,9 +229,9 @@ int main()
         YOMK_TEST_CHECK(postOk, "100 个积压事件全部 POST eOk");
 
         // 文件日志：FILE_LOG_INFO 仅入缓冲，FileLogger 析构 write 落盘
-        // （FILE_LOG_CREATE 第二参为日志器名，实际文件 = <dir>/<名>.log，由 FileLogger 自动追加后缀）
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_CREATE(tmpDir.string(), "integration_file").m_status == YomkResponse::eOk,
-              "FILE_LOG_CREATE 返回 eOk");
+        // （createFileLogger 第二参为日志器名，实际文件 = <dir>/<名>.log，由 FileLogger 自动追加后缀）
+        YOMK_TEST_CHECK(YomkAPI::createFileLogger(tmpDir.string(), "integration_file").m_status == YomkResponse::eOk,
+              "createFileLogger 返回 eOk");
         YOMK_TEST_CHECK(YOMK_FILE_INFO("integration_file", "s1_shutdown_flush_marker").m_status == YomkResponse::eOk,
               "FILE_LOG_INFO 入缓冲返回 eOk（日志器名与 CREATE 一致）");
 
