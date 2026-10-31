@@ -63,34 +63,34 @@ int main()
 
     // create：正常创建 String 类型 value
     {
-        auto resp = YomkAPI::CONTEXT_CREATE("str_key", yomkmsg::String::shared(std::string("hello")));
+        auto resp = YomkAPI::createContext("str_key", yomkmsg::String::shared(std::string("hello")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "create 正常 String value 返回 eOk");
         YOMK_TEST_CHECK(resp.m_msg == "create context success", "create 成功消息一致");
     }
 
     // create：正常创建 Int32 类型 value
     {
-        auto resp = YomkAPI::CONTEXT_CREATE("int_key", yomkmsg::Int32::shared(42));
+        auto resp = YomkAPI::createContext("int_key", yomkmsg::Int32::shared(42));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "create 正常 Int32 value 返回 eOk");
     }
 
     // create：空 key
     {
-        auto resp = YomkAPI::CONTEXT_CREATE("", yomkmsg::String::shared(std::string("value")));
+        auto resp = YomkAPI::createContext("", yomkmsg::String::shared(std::string("value")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "create 空 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is empty", "create 空 key 错误消息一致");
     }
 
     // create：空 value（nullptr）
     {
-        auto resp = YomkAPI::CONTEXT_CREATE("null_value_key", nullptr);
+        auto resp = YomkAPI::createContext("null_value_key", nullptr);
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "create nullptr value 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "value is empty", "create nullptr value 错误消息一致");
     }
 
     // create：重复 key
     {
-        auto resp = YomkAPI::CONTEXT_CREATE("str_key", yomkmsg::String::shared(std::string("dup")));
+        auto resp = YomkAPI::createContext("str_key", yomkmsg::String::shared(std::string("dup")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "create 重复 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key already exists", "create 重复 key 错误消息一致");
     }
@@ -98,7 +98,7 @@ int main()
     // get：正常 get
     {
         auto defaultValue = yomkmsg::String::shared(std::string("default"));
-        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("str_key", defaultValue);
+        auto got = YomkAPI::getContext<yomkmsg::String>("str_key", defaultValue);
         YOMK_TEST_CHECK(got != nullptr, "get 正常返回非空");
         YOMK_TEST_CHECK(got && got->d == "hello", "get 正常返回原始 value");
     }
@@ -106,7 +106,7 @@ int main()
     // get：不存在 key，返回默认 value
     {
         auto defaultValue = yomkmsg::String::shared(std::string("default"));
-        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("no_such_key", defaultValue);
+        auto got = YomkAPI::getContext<yomkmsg::String>("no_such_key", defaultValue);
         YOMK_TEST_CHECK(got != nullptr, "get 不存在 key 返回默认值指针非空");
         YOMK_TEST_CHECK(got && got->d == "default", "get 不存在 key 返回默认值");
     }
@@ -114,61 +114,61 @@ int main()
     // get：空 key，返回默认 value
     {
         auto defaultValue = yomkmsg::String::shared(std::string("default"));
-        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("", defaultValue);
+        auto got = YomkAPI::getContext<yomkmsg::String>("", defaultValue);
         YOMK_TEST_CHECK(got != nullptr, "get 空 key 返回默认值指针非空");
         YOMK_TEST_CHECK(got && got->d == "default", "get 空 key 返回默认值");
     }
 
     // get：类型不匹配，返回调用方默认 value（eOk 路径运行时名解包失败，P3 增补）
     {
-        auto cr = YomkAPI::CONTEXT_CREATE("mismatch_key", yomkmsg::String::shared(std::string("strval")));
+        auto cr = YomkAPI::createContext("mismatch_key", yomkmsg::String::shared(std::string("strval")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mismatch_key（String 值）成功");
         auto intDefault = yomkmsg::Int32::shared(777);
-        auto got = YomkAPI::CONTEXT_GET<yomkmsg::Int32>("mismatch_key", intDefault);
+        auto got = YomkAPI::getContext<yomkmsg::Int32>("mismatch_key", intDefault);
         YOMK_TEST_CHECK(got != nullptr && got == intDefault, "get 类型不匹配返回调用方默认值（指针一致）");
         YOMK_TEST_CHECK(got && got->d == 777, "get 类型不匹配默认值内容保持 777");
-        YOMK_TEST_CHECK(YomkAPI::CONTEXT_DESTROY("mismatch_key").m_status == YomkResponse::eOk, "销毁 mismatch_key（防污染后续 keys 计数）");
+        YOMK_TEST_CHECK(YomkAPI::destroyContext("mismatch_key").m_status == YomkResponse::eOk, "销毁 mismatch_key（防污染后续 keys 计数）");
     }
 
     // get：类型不匹配第二变体（Bool 存 → String GET，验证 UnPackPkgT 通用失败路径）
     {
-        auto cr = YomkAPI::CONTEXT_CREATE("mismatch_key2", yomkmsg::Bool::shared(true));
+        auto cr = YomkAPI::createContext("mismatch_key2", yomkmsg::Bool::shared(true));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mismatch_key2（Bool 值）成功");
         auto strDefault = yomkmsg::String::shared(std::string("fallback"));
-        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("mismatch_key2", strDefault);
+        auto got = YomkAPI::getContext<yomkmsg::String>("mismatch_key2", strDefault);
         YOMK_TEST_CHECK(got != nullptr && got == strDefault, "get 第二变体类型不匹配返回默认值（指针一致）");
         YOMK_TEST_CHECK(got && got->d == "fallback", "get 第二变体默认值内容保持 fallback");
-        YOMK_TEST_CHECK(YomkAPI::CONTEXT_DESTROY("mismatch_key2").m_status == YomkResponse::eOk, "销毁 mismatch_key2（防污染后续 keys 计数）");
+        YOMK_TEST_CHECK(YomkAPI::destroyContext("mismatch_key2").m_status == YomkResponse::eOk, "销毁 mismatch_key2（防污染后续 keys 计数）");
     }
 
     // set：正常 set 同类型 value
     {
-        auto resp = YomkAPI::CONTEXT_SET("str_key", yomkmsg::String::shared(std::string("world")));
+        auto resp = YomkAPI::setContext("str_key", yomkmsg::String::shared(std::string("world")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "set 正常同类型返回 eOk");
         YOMK_TEST_CHECK(resp.m_msg == "set context success", "set 成功消息一致");
 
         auto defaultValue = yomkmsg::String::shared(std::string("default"));
-        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("str_key", defaultValue);
+        auto got = YomkAPI::getContext<yomkmsg::String>("str_key", defaultValue);
         YOMK_TEST_CHECK(got && got->d == "world", "set 后 get 返回新 value");
     }
 
     // set：不存在 key
     {
-        auto resp = YomkAPI::CONTEXT_SET("no_such_key", yomkmsg::String::shared(std::string("x")));
+        auto resp = YomkAPI::setContext("no_such_key", yomkmsg::String::shared(std::string("x")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "set 不存在 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is not exist", "set 不存在 key 错误消息一致");
     }
 
     // set：空 key
     {
-        auto resp = YomkAPI::CONTEXT_SET("", yomkmsg::String::shared(std::string("x")));
+        auto resp = YomkAPI::setContext("", yomkmsg::String::shared(std::string("x")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "set 空 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is empty", "set 空 key 错误消息一致");
     }
 
     // set：类型不匹配
     {
-        auto resp = YomkAPI::CONTEXT_SET("str_key", yomkmsg::Int32::shared(100));
+        auto resp = YomkAPI::setContext("str_key", yomkmsg::Int32::shared(100));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "set 类型不匹配返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "context type not match", "set 类型不匹配错误消息一致");
     }
@@ -240,28 +240,28 @@ int main()
 
     // destroy：正常销毁
     {
-        auto resp = YomkAPI::CONTEXT_DESTROY("int_key");
+        auto resp = YomkAPI::destroyContext("int_key");
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "destroy 正常销毁返回 eOk");
         YOMK_TEST_CHECK(resp.m_msg == "destroy context success", "destroy 成功消息一致");
     }
 
     // destroy：重复销毁
     {
-        auto resp = YomkAPI::CONTEXT_DESTROY("int_key");
+        auto resp = YomkAPI::destroyContext("int_key");
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "destroy 重复销毁返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is not exist", "destroy 重复销毁错误消息一致");
     }
 
     // destroy：不存在 key
     {
-        auto resp = YomkAPI::CONTEXT_DESTROY("no_such_key");
+        auto resp = YomkAPI::destroyContext("no_such_key");
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "destroy 不存在 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is not exist", "destroy 不存在 key 错误消息一致");
     }
 
     // destroy：空 key（源码不单独判空，等价于不存在的 key）
     {
-        auto resp = YomkAPI::CONTEXT_DESTROY("");
+        auto resp = YomkAPI::destroyContext("");
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "destroy 空 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is not exist", "destroy 空 key 错误消息一致");
     }
@@ -278,7 +278,7 @@ int main()
 
     // 清理：销毁剩余 key
     {
-        auto resp = YomkAPI::CONTEXT_DESTROY("str_key");
+        auto resp = YomkAPI::destroyContext("str_key");
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "清理销毁 str_key 返回 eOk");
     }
 

@@ -11,7 +11,7 @@
  *    EventLoop 9 入口、FunctionPool 6 入口、Logger 23 入口（LG2 补齐原 19 项计数，LG4 新增
  *    deleteFileLogger（LG6 由 LOGGER_DELETE 改名））、Context 12 入口 + GET 特殊形态、
  *    ServerInfo 4 入口；YomkResponse 形态 → eInvalid；
- *    CONTEXT_GET 形态 → 原样返回调用方默认值，同一守卫宏展开书面豁免
+ *    getContext 形态 → 原样返回调用方默认值，同一守卫宏展开书面豁免
  *
  * 说明：call_once 不可逆，未初始化态须独占进程（本程序全程不调 init）；addService 传裸指针
  *       时守卫先于所有权接管返回，注册失败指针仍归调用方（测试侧 delete 验证不泄漏不崩溃）
@@ -100,7 +100,7 @@ int main()
         YOMK_TEST_CHECK(YomkAPI::delService("/Any") == -1, "delService 未初始化返回 -1");
     }
 
-    std::cout << "===== 5. 模块 API 守卫（五模块全量 + CONTEXT_GET 特殊形态） =====" << std::endl;
+    std::cout << "===== 5. 模块 API 守卫（五模块全量 + getContext 特殊形态） =====" << std::endl;
     {
         // 五模块入口级全量（P1 收口：Logger 23 / EventLoop 9 / FunctionPool 6 /
         // Context 12 + GET 特殊形态 / ServerInfo 4）
@@ -172,32 +172,32 @@ int main()
             YomkAPI::deleteFileLogger("guard_logger").m_status == YomkResponse::eInvalid,
             "deleteFileLogger 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::CONTEXT_CREATE("guard_key", nullptr).m_status == YomkResponse::eInvalid,
-            "CONTEXT_CREATE 未初始化返回 eInvalid");
+            YomkAPI::createContext("guard_key", nullptr).m_status == YomkResponse::eInvalid,
+            "createContext 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::CONTEXT_SET("guard_key", nullptr).m_status == YomkResponse::eInvalid,
-            "CONTEXT_SET 未初始化返回 eInvalid");
+            YomkAPI::setContext("guard_key", nullptr).m_status == YomkResponse::eInvalid,
+            "setContext 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::CONTEXT_DESTROY("guard_key").m_status == YomkResponse::eInvalid,
-            "CONTEXT_DESTROY 未初始化返回 eInvalid");
+            YomkAPI::destroyContext("guard_key").m_status == YomkResponse::eInvalid,
+            "destroyContext 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::CONTEXT_ON_CHECKER().m_status == YomkResponse::eInvalid,
-            "CONTEXT_ON_CHECKER 未初始化返回 eInvalid");
+            YomkAPI::enableContextChecker().m_status == YomkResponse::eInvalid,
+            "enableContextChecker 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::CONTEXT_OFF_CHECKER().m_status == YomkResponse::eInvalid,
-            "CONTEXT_OFF_CHECKER 未初始化返回 eInvalid");
+            YomkAPI::disableContextChecker().m_status == YomkResponse::eInvalid,
+            "disableContextChecker 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::CONTEXT_SET_CHECKER("guard_key", nullptr).m_status == YomkResponse::eInvalid,
-            "CONTEXT_SET_CHECKER 未初始化返回 eInvalid");
+            YomkAPI::setContextChecker("guard_key", nullptr).m_status == YomkResponse::eInvalid,
+            "setContextChecker 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::CONTEXT_ON_MONITOR().m_status == YomkResponse::eInvalid,
-            "CONTEXT_ON_MONITOR 未初始化返回 eInvalid");
+            YomkAPI::enableContextMonitor().m_status == YomkResponse::eInvalid,
+            "enableContextMonitor 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::CONTEXT_OFF_MONITOR().m_status == YomkResponse::eInvalid,
-            "CONTEXT_OFF_MONITOR 未初始化返回 eInvalid");
+            YomkAPI::disableContextMonitor().m_status == YomkResponse::eInvalid,
+            "disableContextMonitor 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
-            YomkAPI::CONTEXT_SET_MONITOR("guard_key", nullptr).m_status == YomkResponse::eInvalid,
-            "CONTEXT_SET_MONITOR 未初始化返回 eInvalid");
+            YomkAPI::setContextMonitor("guard_key", nullptr).m_status == YomkResponse::eInvalid,
+            "setContextMonitor 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
             YomkAPI::listContextKeys().m_status == YomkResponse::eInvalid,
             "listContextKeys 未初始化返回 eInvalid");
@@ -266,10 +266,10 @@ int main()
             YomkAPI::getServiceFunctionInfoByUrl("/guard_srv/f").m_status == YomkResponse::eInvalid,
             "getServiceFunctionInfoByUrl 未初始化返回 eInvalid");
 
-        // CONTEXT_GET 特殊形态：守卫返回值即调用方默认值（指针一致）
+        // getContext 特殊形态：守卫返回值即调用方默认值（指针一致）
         std::shared_ptr<yomkmsg::String> ctxDefault = std::make_shared<yomkmsg::String>("guard_default");
-        std::shared_ptr<yomkmsg::String> ctxGot = YomkAPI::CONTEXT_GET<yomkmsg::String>("guard_key", ctxDefault);
-        YOMK_TEST_CHECK(ctxGot == ctxDefault, "CONTEXT_GET 未初始化原样返回调用方默认值");
+        std::shared_ptr<yomkmsg::String> ctxGot = YomkAPI::getContext<yomkmsg::String>("guard_key", ctxDefault);
+        YOMK_TEST_CHECK(ctxGot == ctxDefault, "getContext 未初始化原样返回调用方默认值");
     }
 
     std::cout << (g_failed == 0 ? "ALL PASSED" : "SOME FAILED") << " (" << g_failed << " failed)" << std::endl;

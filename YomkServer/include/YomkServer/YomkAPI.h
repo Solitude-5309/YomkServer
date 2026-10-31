@@ -494,7 +494,7 @@ public:
     // CONTEXT_API
 public:
     // 创建上下文键值（groupName 缺省 "main"；组名约定永远是 API 最后一个参数，下同）
-    static YomkResponse CONTEXT_CREATE(
+    static YomkResponse createContext(
         const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
     {
         if (!requireServer())
@@ -503,9 +503,9 @@ public:
         }
         return request("/YomkContext/create", yomkmsg::Context::shared(yomk::Context{ctxName, ctx, groupName}));
     }
-    // 获取上下文值（只读快照），改动请构造新对象再 CONTEXT_SET，勿原地修改（否则与并发读竞争、可能崩溃）
+    // 获取上下文值（只读快照），改动请构造新对象再 setContext，勿原地修改（否则与并发读竞争、可能崩溃）
     template <typename T>
-    static std::shared_ptr<T> CONTEXT_GET(const std::string& ctxName,
+    static std::shared_ptr<T> getContext(const std::string& ctxName,
         std::shared_ptr<T> ctxDefault, const std::string& groupName = "main")
     {
         if (!requireServer())
@@ -533,7 +533,7 @@ public:
         }
     }
     // 设置上下文值（整体替换）
-    static YomkResponse CONTEXT_SET(
+    static YomkResponse setContext(
         const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
     {
         if (!requireServer())
@@ -543,7 +543,7 @@ public:
         return request("/YomkContext/set", yomkmsg::Context::shared(yomk::Context{ctxName, ctx, groupName}));
     }
     // 开关上下文校验门控
-    static YomkResponse CONTEXT_ON_CHECKER(const std::string& groupName = "main")
+    static YomkResponse enableContextChecker(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
@@ -551,7 +551,7 @@ public:
         }
         return request("/YomkContext/turn_on_checker", yomkmsg::String::shared(groupName));
     }
-    static YomkResponse CONTEXT_OFF_CHECKER(const std::string& groupName = "main")
+    static YomkResponse disableContextChecker(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
@@ -560,7 +560,7 @@ public:
         return request("/YomkContext/turn_off_checker", yomkmsg::String::shared(groupName));
     }
     // 设置上下文校验门控回调
-    static YomkResponse CONTEXT_SET_CHECKER(
+    static YomkResponse setContextChecker(
         const std::string& ctxName, YomkContextCheckFunc checker, const std::string& groupName = "main")
     {
         if (!requireServer())
@@ -571,7 +571,7 @@ public:
             "/YomkContext/set_checker", yomkmsg::ContextChecker::shared(yomk::ContextChecker{ctxName, checker, groupName}));
     }
     // 开关上下文变更监听器
-    static YomkResponse CONTEXT_ON_MONITOR(const std::string& groupName = "main")
+    static YomkResponse enableContextMonitor(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
@@ -579,7 +579,7 @@ public:
         }
         return request("/YomkContext/turn_on_monitor", yomkmsg::String::shared(groupName));
     }
-    static YomkResponse CONTEXT_OFF_MONITOR(const std::string& groupName = "main")
+    static YomkResponse disableContextMonitor(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
@@ -588,7 +588,7 @@ public:
         return request("/YomkContext/turn_off_monitor", yomkmsg::String::shared(groupName));
     }
     // 设置上下文变更监听回调（async=true 为异步通知），仅通知发生了一次 set 事件，并回传该次 set 的键值快照——不保证快照实时性；顺序上异步恒按 set 提交序送达、同步在并发 set 下不保证跨线程序。
-    static YomkResponse CONTEXT_SET_MONITOR(const std::string& ctxName, YomkContextMonitorFunc monitor,
+    static YomkResponse setContextMonitor(const std::string& ctxName, YomkContextMonitorFunc monitor,
         bool async = false, const std::string& groupName = "main")
     {
         if (!requireServer())
@@ -599,7 +599,7 @@ public:
             yomkmsg::ContextMonitor::shared(yomk::ContextMonitor{ctxName, monitor, async, groupName}));
     }
     // 销毁指定上下文键
-    static YomkResponse CONTEXT_DESTROY(const std::string& ctxName, const std::string& groupName = "main")
+    static YomkResponse destroyContext(const std::string& ctxName, const std::string& groupName = "main")
     {
         if (!requireServer())
         {

@@ -187,14 +187,14 @@ class YomkService {
 ### Context
 | API | 说明 |
 |----|------|
-| `YomkAPI::CONTEXT_CREATE(key, val[, group])` | 创建 K-V（key 已存在返回 eNo；val 为 nullptr 拒绝创建返回 eNo；值类型与同 key 现值不一致返回 eNo "context type not match"） |
-| `YomkAPI::CONTEXT_GET<yomkmsg::MsgName>(key, def[, group])` | 获取值（消息类型经 `T::kName` 内省匹配 key，类型只写一次；**返回值对象发布后只读**：改动请新建对象再 `YomkAPI::CONTEXT_SET`，勿原地改；key 不存在时返回兜底默认值 def，调用方永不拿到空指针） |
-| `YomkAPI::CONTEXT_SET(key, val[, group])` | 设置值 |
-| `YomkAPI::CONTEXT_DESTROY(key[, group])` | 销毁（key 不存在返回 eNo） |
+| `YomkAPI::createContext(key, val[, group])` | 创建 K-V（key 已存在返回 eNo；val 为 nullptr 拒绝创建返回 eNo；值类型与同 key 现值不一致返回 eNo "context type not match"） |
+| `YomkAPI::getContext<yomkmsg::MsgName>(key, def[, group])` | 获取值（消息类型经 `T::kName` 内省匹配 key，类型只写一次；**返回值对象发布后只读**：改动请新建对象再 `YomkAPI::setContext`，勿原地改；key 不存在时返回兜底默认值 def，调用方永不拿到空指针） |
+| `YomkAPI::setContext(key, val[, group])` | 设置值 |
+| `YomkAPI::destroyContext(key[, group])` | 销毁（key 不存在返回 eNo） |
 | `YomkAPI::CONTEXT_ON/OFF_CHECKER([group])` | 开关检查器（全局开关 ON 且该 key 已设置 checker 时才生效） |
-| `YomkAPI::CONTEXT_SET_CHECKER(key, func[, group])` | 设置检查函数（返回 eAccept 放行 / eReject 拦截，拦截后 set 返回 eNo 且 monitor 不触发）。**checker 在写锁内门控：回调内重入 set（含跨键环）会死锁**，区别于 monitor 的递归栈溢出 |
+| `YomkAPI::setContextChecker(key, func[, group])` | 设置检查函数（返回 eAccept 放行 / eReject 拦截，拦截后 set 返回 eNo 且 monitor 不触发）。**checker 在写锁内门控：回调内重入 set（含跨键环）会死锁**，区别于 monitor 的递归栈溢出 |
 | `YomkAPI::CONTEXT_ON/OFF_MONITOR([group])` | 开关监控器 |
-| `YomkAPI::CONTEXT_SET_MONITOR(key, func, async[, group])` | 设置监控函数（async 省略默认 false）。**语义**：仅通知发生了一次 set，并回传该次键值快照（不保证实时）；顺序上异步恒按 set 提交序保序，同步并发下不保证跨线程序。**回调约束**：快照仅回调期有效（留存请拷贝）；值对象只读勿原地改；需最新值在回调内 `YomkAPI::CONTEXT_GET` 重读；异常被吞不影响 set；校验/拒绝用 checker。**两种模式**：同步（默认）——锁外内联、及时，回调内重入 set 会递归（长链栈溢出）；异步——写锁内入单线程监控池、set 返回后按提交序执行、deinit/`YomkAPI::shutdown()` 排空不丢，适合耗时回调与状态机回写 |
+| `YomkAPI::setContextMonitor(key, func, async[, group])` | 设置监控函数（async 省略默认 false）。**语义**：仅通知发生了一次 set，并回传该次键值快照（不保证实时）；顺序上异步恒按 set 提交序保序，同步并发下不保证跨线程序。**回调约束**：快照仅回调期有效（留存请拷贝）；值对象只读勿原地改；需最新值在回调内 `YomkAPI::getContext` 重读；异常被吞不影响 set；校验/拒绝用 checker。**两种模式**：同步（默认）——锁外内联、及时，回调内重入 set 会递归（长链栈溢出）；异步——写锁内入单线程监控池、set 返回后按提交序执行、deinit/`YomkAPI::shutdown()` 排空不丢，适合耗时回调与状态机回写 |
 | `YomkAPI::listContextKeys([group])` | 内省：组内 key 列表（返回 StringArray） |
 | `YomkAPI::getContextInfo(key[, group])` | 内省：单 key 元信息（结构化 ContextKeyInfo 包：m_key/m_typeName/m_checkerOn/m_monitorCount/m_asyncMonitorCount/m_group，m_msg 恒 "ok"） |
 | `YomkAPI::listContextGroups()` | 内省：全部组名清单（返回 StringArray） |

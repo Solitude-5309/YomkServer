@@ -6,52 +6,52 @@
 
 | API | 说明 |
 |---|---|
-| `YomkAPI::CONTEXT_CREATE(key, pkg)` | 创建上下文键值 |
-| `YomkAPI::CONTEXT_SET(key, pkg)` | 设置上下文值（整体替换） |
-| `YomkAPI::CONTEXT_GET<yomkmsg::MsgName>(key, defaultValue)` | 读取只读快照；key 不存在时返回兜底默认值 |
-| `YomkAPI::CONTEXT_SET_CHECKER(key, func)` | 注册变更前校验门控 |
-| `YomkAPI::CONTEXT_ON_CHECKER()` / `YomkAPI::CONTEXT_OFF_CHECKER()` | 开关全局校验器（checker 保留但不生效） |
-| `YomkAPI::CONTEXT_SET_MONITOR(key, func, async)` | 注册变更后监听器（追加式可注册多个） |
-| `YomkAPI::CONTEXT_ON_MONITOR()` / `YomkAPI::CONTEXT_OFF_MONITOR()` | 开关全局监控（monitor 保留但不执行） |
+| `YomkAPI::createContext(key, pkg)` | 创建上下文键值 |
+| `YomkAPI::setContext(key, pkg)` | 设置上下文值（整体替换） |
+| `YomkAPI::getContext<yomkmsg::MsgName>(key, defaultValue)` | 读取只读快照；key 不存在时返回兜底默认值 |
+| `YomkAPI::setContextChecker(key, func)` | 注册变更前校验门控 |
+| `YomkAPI::enableContextChecker()` / `YomkAPI::disableContextChecker()` | 开关全局校验器（checker 保留但不生效） |
+| `YomkAPI::setContextMonitor(key, func, async)` | 注册变更后监听器（追加式可注册多个） |
+| `YomkAPI::enableContextMonitor()` / `YomkAPI::disableContextMonitor()` | 开关全局监控（monitor 保留但不执行） |
 | `YomkAPI::listContextKeys()` / `YomkAPI::getContextInfo(key)` / `YomkAPI::getAllContextInfo()` | 运行期自省 |
-| `YomkAPI::CONTEXT_DESTROY(key)` | 删除键 |
+| `YomkAPI::destroyContext(key)` | 删除键 |
 
 ## 使用示例
 
 ```cpp
 // 1. 创建与设置上下文键值
-YomkAPI::CONTEXT_CREATE("config", yomkmsg::String::shared("init_value"));
-YomkAPI::CONTEXT_SET("config", yomkmsg::String::shared("new_value"));
+YomkAPI::createContext("config", yomkmsg::String::shared("init_value"));
+YomkAPI::setContext("config", yomkmsg::String::shared("new_value"));
 
 // 2. 读取上下文（只读快照；key 不存在时返回兜底默认值）
-auto val = YomkAPI::CONTEXT_GET<yomkmsg::String>("config", nullptr);
+auto val = YomkAPI::getContext<yomkmsg::String>("config", nullptr);
 
 // 3. 注册变更前校验门控（Checker）
-YomkAPI::CONTEXT_SET_CHECKER("config", [](const yomk::Context &ctx) {
+YomkAPI::setContextChecker("config", [](const yomk::Context &ctx) {
     // 返回 eAccept 放行修改；返回 eReject 拦截（set 返回 eNo=1 "checker reject set context"，monitor 不触发）
     return yomk::ContextChecker::eAccept;
 });
-YomkAPI::CONTEXT_ON_CHECKER();  // 开启全局校验器；YomkAPI::CONTEXT_OFF_CHECKER() 关闭（checker 保留但不生效）
+YomkAPI::enableContextChecker();  // 开启全局校验器；YomkAPI::disableContextChecker() 关闭（checker 保留但不生效）
 
 // 4. 注册变更后监听器（Monitor）
-YomkAPI::CONTEXT_SET_MONITOR("config", [](const yomk::Context &ctx) {
+YomkAPI::setContextMonitor("config", [](const yomk::Context &ctx) {
     // 收到变更通知（本次 set 的键值快照）
 }, /*async=*/false);
-YomkAPI::CONTEXT_ON_MONITOR();  // 开启全局监控；YomkAPI::CONTEXT_OFF_MONITOR() 关闭（monitor 保留但不执行）
+YomkAPI::enableContextMonitor();  // 开启全局监控；YomkAPI::disableContextMonitor() 关闭（monitor 保留但不执行）
 
 // 5. 运行期自省与销毁
 YomkAPI::listContextKeys();        // 组内全部键名清单（缺省 main 组）
 YomkAPI::getContextInfo("config"); // 单键元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"；含所属组 m_group）
 YomkAPI::listContextGroups();      // 全部组名清单（StringArray）
 YomkAPI::getAllContextInfo();         // 跨组聚合：ContextGroupInfoList 两层结构（组名 + 该组全部键元信息）
-YomkAPI::CONTEXT_DESTROY("config");  // 删除键
+YomkAPI::destroyContext("config");  // 删除键
 ```
 
 ## 注意事项
 
 - **创建与设置**：key 已存在返回 `eNo=1` "key already exists"；value 为空返回 `eNo=1` "value is empty"；值类型须与现值一致，否则 `eNo` "context type not match"。
 - **组名约定**：所有 Context API 的最后一个参数为组名，缺省 `"main"`；键所属组随 `ContextKeyInfo.m_group` 一并内省返回。空组名返回 `eNo=1` "group name is empty"；非 main 组首次寻址即自动创建（惰性、不支持销毁、组名唯一，同名寻址复用同组），监控池每组自持（每组一个单线程池，随建组只增不减）。
-- **读取快照勿原地修改**：`YomkAPI::CONTEXT_GET` 返回只读快照，改动请构造新对象再 `YomkAPI::CONTEXT_SET`，勿原地修改（否则与并发读竞争、可能崩溃）。
+- **读取快照勿原地修改**：`YomkAPI::getContext` 返回只读快照，改动请构造新对象再 `YomkAPI::setContext`，勿原地修改（否则与并发读竞争、可能崩溃）。
 - **Checker 生效条件**：全局开关 ON 且该 key 已设置时才生效；在写锁内门控，回调内重入 set 会死锁。
 - **Monitor 执行语义**：`async=false` 锁外即时执行，`async=true` 单线程池按提交序送达；仅通知发生了一次 set，并回传该次 set 的键值快照，不保证快照实时性。
 - **销毁后行为**：删除键后操作返回 `eNo=1`（key is not exist）。

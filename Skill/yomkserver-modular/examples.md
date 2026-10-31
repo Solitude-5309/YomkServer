@@ -82,7 +82,7 @@ int MyBoot::before()
     // 通过 /proc/self/exe 推导配置文件路径
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
     std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.txt";
-    YomkAPI::CONTEXT_CREATE(CTX_CONFIG_PATH, yomkmsg::String::shared(configPath.string()));
+    YomkAPI::createContext(CTX_CONFIG_PATH, yomkmsg::String::shared(configPath.string()));
     YOMK_INFO_TAG("MyBoot::before", "config path: ", configPath.string());
     return 0;
 }
@@ -246,7 +246,7 @@ int ConfigService::init()
 
 YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
 {
-    auto ctxVal = YomkAPI::CONTEXT_GET<yomkmsg::String>(CTX_CONFIG_PATH, nullptr);
+    auto ctxVal = YomkAPI::getContext<yomkmsg::String>(CTX_CONFIG_PATH, nullptr);
     if (!ctxVal)
         return YomkResponse(YomkResponse::eNo, "config_path not found in context");
     m_configPath = ctxVal->d;
@@ -596,22 +596,22 @@ void changeLogger(const yomk::Context& ctx) {
 }
 
 // 使用
-YomkAPI::CONTEXT_CREATE("config", yomkmsg::String::shared("default"));
-YomkAPI::CONTEXT_ON_CHECKER();
-YomkAPI::CONTEXT_SET_CHECKER("config", nonEmptyChecker);
-YomkAPI::CONTEXT_ON_MONITOR();
-YomkAPI::CONTEXT_SET_MONITOR("config", changeLogger, true);
+YomkAPI::createContext("config", yomkmsg::String::shared("default"));
+YomkAPI::enableContextChecker();
+YomkAPI::setContextChecker("config", nonEmptyChecker);
+YomkAPI::enableContextMonitor();
+YomkAPI::setContextMonitor("config", changeLogger, true);
 
-YomkAPI::CONTEXT_SET("config", yomkmsg::String::shared("new_value")); // 通过检查并触发监控
-YomkAPI::CONTEXT_SET("config", yomkmsg::String::shared(""));          // 被拒绝
+YomkAPI::setContext("config", yomkmsg::String::shared("new_value")); // 通过检查并触发监控
+YomkAPI::setContext("config", yomkmsg::String::shared(""));          // 被拒绝
 ```
 
 checker/monitor 使用**服务成员函数**时必须弱绑定，直接用 `weakFunc(&Class::Method)`（按目标类型自动适配），服务删除后 checker 默认放行、monitor 丢弃：
 
 ```cpp
 int MyService::init() {
-    YomkAPI::CONTEXT_SET_CHECKER("config", weakFunc(&MyService::myChecker));
-    YomkAPI::CONTEXT_SET_MONITOR("config", weakFunc(&MyService::myMonitor));
+    YomkAPI::setContextChecker("config", weakFunc(&MyService::myChecker));
+    YomkAPI::setContextMonitor("config", weakFunc(&MyService::myMonitor));
     return 0;
 }
 ```
@@ -620,8 +620,8 @@ int MyService::init() {
 
 - **共同语义**：
   - monitor 仅通知发生了一次 set 事件，并回传该次 set 的键值快照——**不保证快照是最新值**；快照仅回调期有效，需留存请在回调内拷贝 ctx。
-  - **值对象一经 set 发布即只读**：get/monitor 拿到的都别名同一对象；改动请构造新对象再 `YomkAPI::CONTEXT_SET`，勿原地修改（否则与并发读竞争、可能崩溃）。
-  - 需最新值请在回调内用 `YomkAPI::CONTEXT_GET` 重读；回调抛异常会被框架吞掉记日志、不影响 set 结果；校验/拒绝请用 checker，勿用 monitor。
+  - **值对象一经 set 发布即只读**：get/monitor 拿到的都别名同一对象；改动请构造新对象再 `YomkAPI::setContext`，勿原地修改（否则与并发读竞争、可能崩溃）。
+  - 需最新值请在回调内用 `YomkAPI::getContext` 重读；回调抛异常会被框架吞掉记日志、不影响 set 结果；校验/拒绝请用 checker，勿用 monitor。
 - **同步（默认，async 省略或 false）**：
   - 在 set 调用线程上锁外内联执行、通知及时；顺序 set 下按调用序通知，**并发 set 下不保证跨线程顺序**。
   - 回调内可安全调用 `get`/`keys` 等，但**重入 `set`（含跨键环）会递归**，不收敛长链将栈溢出。
@@ -736,9 +736,9 @@ resp = YomkAPI::getAllServerInfo();
 `/YomkContext` 服务自身提供 key 级内省（既有功能函数均已用三参形式补齐类型名，服务器层内省同步可见）：
 
 ```cpp
-YomkAPI::CONTEXT_CREATE("str_key", yomkmsg::String::shared("v1"));
-YomkAPI::CONTEXT_SET_CHECKER("str_key", myChecker);
-YomkAPI::CONTEXT_SET_MONITOR("str_key", myMonitor, true);
+YomkAPI::createContext("str_key", yomkmsg::String::shared("v1"));
+YomkAPI::setContextChecker("str_key", myChecker);
+YomkAPI::setContextMonitor("str_key", myMonitor, true);
 
 // key 列表（返回 StringArray；末位可选组名，缺省 main）
 YomkResponse resp = YomkAPI::listContextKeys();   // arr->d: ["str_key"]
@@ -754,7 +754,7 @@ resp = YomkAPI::listContextGroups();
 resp = YomkAPI::getAllContextInfo();
 ```
 
-注意：`YomkAPI::CONTEXT_CREATE(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YomkAPI::CONTEXT_GET`。完整验证见 `Test/YomkContext/TestYomkContextCRUD.cpp`。
+注意：`YomkAPI::createContext(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YomkAPI::getContext`。完整验证见 `Test/YomkContext/TestYomkContextCRUD.cpp`。
 
 ### EventLoop 模块内省
 

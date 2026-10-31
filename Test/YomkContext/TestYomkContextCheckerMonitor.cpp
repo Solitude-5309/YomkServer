@@ -112,34 +112,34 @@ int main()
 
     // ============ Section 1: set_checker 边界 ============
     {
-        auto cr = YomkAPI::CONTEXT_CREATE("ck_key", yomkmsg::String::shared(std::string("init")));
+        auto cr = YomkAPI::createContext("ck_key", yomkmsg::String::shared(std::string("init")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 ck_key 成功");
 
-        auto emptyKey = YomkAPI::CONTEXT_SET_CHECKER("", [](const yomk::Context&) { return ContextChecker::eAccept; });
+        auto emptyKey = YomkAPI::setContextChecker("", [](const yomk::Context&) { return ContextChecker::eAccept; });
         YOMK_TEST_CHECK(emptyKey.m_status == YomkResponse::eNo, "set_checker 空 key 返回 eNo");
         YOMK_TEST_CHECK(emptyKey.m_msg == "key is empty", "set_checker 空 key 消息一致");
 
-        auto nullFunc = YomkAPI::CONTEXT_SET_CHECKER("ck_key", nullptr);
+        auto nullFunc = YomkAPI::setContextChecker("ck_key", nullptr);
         YOMK_TEST_CHECK(nullFunc.m_status == YomkResponse::eNo, "set_checker null checkFunc 返回 eNo");
         YOMK_TEST_CHECK(nullFunc.m_msg == "checkFunc is empty", "set_checker null checkFunc 消息一致");
 
         auto noKey =
-            YomkAPI::CONTEXT_SET_CHECKER("no_such_key", [](const yomk::Context&) { return ContextChecker::eAccept; });
+            YomkAPI::setContextChecker("no_such_key", [](const yomk::Context&) { return ContextChecker::eAccept; });
         YOMK_TEST_CHECK(noKey.m_status == YomkResponse::eNo, "set_checker 不存在 key 返回 eNo");
         YOMK_TEST_CHECK(noKey.m_msg == "key is not exist", "set_checker 不存在 key 消息一致");
 
-        auto ok = YomkAPI::CONTEXT_SET_CHECKER("ck_key", [](const yomk::Context&) { return ContextChecker::eAccept; });
+        auto ok = YomkAPI::setContextChecker("ck_key", [](const yomk::Context&) { return ContextChecker::eAccept; });
         YOMK_TEST_CHECK(ok.m_status == YomkResponse::eOk, "set_checker 正常设置返回 eOk");
         YOMK_TEST_CHECK(ok.m_msg == "set checker success", "set_checker 成功消息一致");
     }
 
     // ============ Section 2: checker 开关 ============
     {
-        auto on = YomkAPI::CONTEXT_ON_CHECKER();
+        auto on = YomkAPI::enableContextChecker();
         YOMK_TEST_CHECK(on.m_status == YomkResponse::eOk, "turn_on_checker 返回 eOk");
         YOMK_TEST_CHECK(on.m_msg == "turn on checker success", "turn_on_checker 消息一致");
 
-        auto off = YomkAPI::CONTEXT_OFF_CHECKER();
+        auto off = YomkAPI::disableContextChecker();
         YOMK_TEST_CHECK(off.m_status == YomkResponse::eOk, "turn_off_checker 返回 eOk");
         YOMK_TEST_CHECK(off.m_msg == "turn off checker success", "turn_off_checker 消息一致");
     }
@@ -147,22 +147,22 @@ int main()
     // ============ Section 3: checker accept/reject ============
     {
         // accept-checker，全局开启
-        YomkAPI::CONTEXT_SET_CHECKER(
+        YomkAPI::setContextChecker(
             "ck_key",
             [](const yomk::Context&)
             {
                 ++g_checkerCalls;
                 return ContextChecker::eAccept;
             });
-        YomkAPI::CONTEXT_ON_CHECKER();
+        YomkAPI::enableContextChecker();
 
         g_checkerCalls.store(0);
-        auto acceptSet = YomkAPI::CONTEXT_SET("ck_key", yomkmsg::String::shared(std::string("accepted")));
+        auto acceptSet = YomkAPI::setContext("ck_key", yomkmsg::String::shared(std::string("accepted")));
         YOMK_TEST_CHECK(acceptSet.m_status == YomkResponse::eOk, "accept-checker 下 set 返回 eOk");
         YOMK_TEST_CHECK(g_checkerCalls.load() == 1, "accept-checker 被调用 1 次");
 
         // reject-checker 覆盖
-        YomkAPI::CONTEXT_SET_CHECKER(
+        YomkAPI::setContextChecker(
             "ck_key",
             [](const yomk::Context&)
             {
@@ -170,79 +170,79 @@ int main()
                 return ContextChecker::eReject;
             });
         g_checkerCalls.store(0);
-        auto rejectSet = YomkAPI::CONTEXT_SET("ck_key", yomkmsg::String::shared(std::string("rejected")));
+        auto rejectSet = YomkAPI::setContext("ck_key", yomkmsg::String::shared(std::string("rejected")));
         YOMK_TEST_CHECK(rejectSet.m_status == YomkResponse::eNo, "reject-checker 下 set 返回 eNo");
         YOMK_TEST_CHECK(rejectSet.m_msg == "checker reject set context", "reject-checker 消息一致");
         YOMK_TEST_CHECK(g_checkerCalls.load() == 1, "reject-checker 被调用 1 次");
 
         // value 未变（仍为 accepted）
-        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("ck_key", yomkmsg::String::shared(std::string("default")));
+        auto got = YomkAPI::getContext<yomkmsg::String>("ck_key", yomkmsg::String::shared(std::string("default")));
         YOMK_TEST_CHECK(got && got->d == "accepted", "reject 后 value 保持不变");
     }
 
     // ============ Section 4: 空 checker 守卫（对应前置修复）============
     {
         // checker 仍全局开启；ck_nochecker 从未设置 checker
-        auto cr = YomkAPI::CONTEXT_CREATE("ck_nochecker", yomkmsg::String::shared(std::string("v0")));
+        auto cr = YomkAPI::createContext("ck_nochecker", yomkmsg::String::shared(std::string("v0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 ck_nochecker 成功");
 
-        auto resp = YomkAPI::CONTEXT_SET("ck_nochecker", yomkmsg::String::shared(std::string("v1")));
+        auto resp = YomkAPI::setContext("ck_nochecker", yomkmsg::String::shared(std::string("v1")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "全局开启 checker 但未设 checker 的 key set 视为 accept（不崩溃）");
 
-        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("ck_nochecker", yomkmsg::String::shared(std::string("default")));
+        auto got = YomkAPI::getContext<yomkmsg::String>("ck_nochecker", yomkmsg::String::shared(std::string("default")));
         YOMK_TEST_CHECK(got && got->d == "v1", "空 checker 守卫下 value 正常更新");
     }
 
     // ============ Section 5: checker 关闭后不生效 ============
     {
-        YomkAPI::CONTEXT_OFF_CHECKER();
+        YomkAPI::disableContextChecker();
         // ck_key 当前为 reject-checker，但 checker 已关闭，set 应成功
-        auto resp = YomkAPI::CONTEXT_SET("ck_key", yomkmsg::String::shared(std::string("after_off")));
+        auto resp = YomkAPI::setContext("ck_key", yomkmsg::String::shared(std::string("after_off")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "checker 关闭后 reject-checker 不生效，set 成功");
 
-        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("ck_key", yomkmsg::String::shared(std::string("default")));
+        auto got = YomkAPI::getContext<yomkmsg::String>("ck_key", yomkmsg::String::shared(std::string("default")));
         YOMK_TEST_CHECK(got && got->d == "after_off", "checker 关闭后 value 更新成功");
     }
 
     // ============ Section 6: set_monitor 边界 ============
     {
-        auto cr = YomkAPI::CONTEXT_CREATE("mon_bound", yomkmsg::String::shared(std::string("m0")));
+        auto cr = YomkAPI::createContext("mon_bound", yomkmsg::String::shared(std::string("m0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mon_bound 成功");
 
-        auto emptyKey = YomkAPI::CONTEXT_SET_MONITOR("", [](const yomk::Context&) {});
+        auto emptyKey = YomkAPI::setContextMonitor("", [](const yomk::Context&) {});
         YOMK_TEST_CHECK(emptyKey.m_status == YomkResponse::eNo, "set_monitor 空 key 返回 eNo");
         YOMK_TEST_CHECK(emptyKey.m_msg == "key is empty", "set_monitor 空 key 消息一致");
 
-        auto nullFunc = YomkAPI::CONTEXT_SET_MONITOR("mon_bound", nullptr);
+        auto nullFunc = YomkAPI::setContextMonitor("mon_bound", nullptr);
         YOMK_TEST_CHECK(nullFunc.m_status == YomkResponse::eNo, "set_monitor null func 返回 eNo");
         YOMK_TEST_CHECK(nullFunc.m_msg == "context monitor function is empty", "set_monitor null func 消息一致");
 
-        auto noKey = YomkAPI::CONTEXT_SET_MONITOR("no_such_key", [](const yomk::Context&) {});
+        auto noKey = YomkAPI::setContextMonitor("no_such_key", [](const yomk::Context&) {});
         YOMK_TEST_CHECK(noKey.m_status == YomkResponse::eNo, "set_monitor 不存在 key 返回 eNo");
         YOMK_TEST_CHECK(noKey.m_msg == "key is not exist", "set_monitor 不存在 key 消息一致");
 
-        auto ok = YomkAPI::CONTEXT_SET_MONITOR("mon_bound", [](const yomk::Context&) {});
+        auto ok = YomkAPI::setContextMonitor("mon_bound", [](const yomk::Context&) {});
         YOMK_TEST_CHECK(ok.m_status == YomkResponse::eOk, "set_monitor 正常设置返回 eOk");
         YOMK_TEST_CHECK(ok.m_msg == "set context monitor success", "set_monitor 成功消息一致");
     }
 
     // ============ Section 7: monitor 开关 ============
     {
-        auto on = YomkAPI::CONTEXT_ON_MONITOR();
+        auto on = YomkAPI::enableContextMonitor();
         YOMK_TEST_CHECK(on.m_status == YomkResponse::eOk, "turn_on_monitor 返回 eOk");
         YOMK_TEST_CHECK(on.m_msg == "turn on monitor success", "turn_on_monitor 消息一致");
 
-        auto off = YomkAPI::CONTEXT_OFF_MONITOR();
+        auto off = YomkAPI::disableContextMonitor();
         YOMK_TEST_CHECK(off.m_status == YomkResponse::eOk, "turn_off_monitor 返回 eOk");
         YOMK_TEST_CHECK(off.m_msg == "turn off monitor success", "turn_off_monitor 消息一致");
     }
 
     // ============ Section 8: 同步 monitor 触发 ============
     {
-        auto cr = YomkAPI::CONTEXT_CREATE("mon_sync", yomkmsg::String::shared(std::string("s0")));
+        auto cr = YomkAPI::createContext("mon_sync", yomkmsg::String::shared(std::string("s0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mon_sync 成功");
 
-        YomkAPI::CONTEXT_SET_MONITOR(
+        YomkAPI::setContextMonitor(
             "mon_sync",
             [](const yomk::Context& ctx)
             {
@@ -250,30 +250,30 @@ int main()
                 g_lastSyncValue = contextStringValue(ctx);
             });
 
-        YomkAPI::CONTEXT_ON_MONITOR();
+        YomkAPI::enableContextMonitor();
         g_syncMonitorCalls.store(0);
         g_lastSyncValue.clear();
 
-        auto resp = YomkAPI::CONTEXT_SET("mon_sync", yomkmsg::String::shared(std::string("s1")));
+        auto resp = YomkAPI::setContext("mon_sync", yomkmsg::String::shared(std::string("s1")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "开启 monitor 后 set 返回 eOk");
         YOMK_TEST_CHECK(g_syncMonitorCalls.load() == 1, "同步 monitor 被调用 1 次");
         YOMK_TEST_CHECK(g_lastSyncValue == "s1", "同步 monitor 拿到最新 value s1");
 
-        YomkAPI::CONTEXT_OFF_MONITOR();
+        YomkAPI::disableContextMonitor();
         g_syncMonitorCalls.store(0);
-        auto resp2 = YomkAPI::CONTEXT_SET("mon_sync", yomkmsg::String::shared(std::string("s2")));
+        auto resp2 = YomkAPI::setContext("mon_sync", yomkmsg::String::shared(std::string("s2")));
         YOMK_TEST_CHECK(resp2.m_status == YomkResponse::eOk, "关闭 monitor 后 set 仍返回 eOk");
         YOMK_TEST_CHECK(g_syncMonitorCalls.load() == 0, "关闭 monitor 后同步 monitor 不触发");
     }
 
     // ============ Section 9: 同步 monitor 异常吞掉 ============
     {
-        YomkAPI::CONTEXT_ON_MONITOR();
-        auto cr = YomkAPI::CONTEXT_CREATE("mon_throw", yomkmsg::String::shared(std::string("t0")));
+        YomkAPI::enableContextMonitor();
+        auto cr = YomkAPI::createContext("mon_throw", yomkmsg::String::shared(std::string("t0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mon_throw 成功");
 
         // monitor A：抛 std::exception
-        YomkAPI::CONTEXT_SET_MONITOR(
+        YomkAPI::setContextMonitor(
             "mon_throw",
             [](const yomk::Context&)
             {
@@ -281,7 +281,7 @@ int main()
                 throw std::runtime_error("sync monitor std exception");
             });
         // monitor B：抛非 std::exception
-        YomkAPI::CONTEXT_SET_MONITOR(
+        YomkAPI::setContextMonitor(
             "mon_throw",
             [](const yomk::Context&)
             {
@@ -289,44 +289,44 @@ int main()
                 throw 42;
             });
         // monitor C：正常，验证异常不影响后续 monitor
-        YomkAPI::CONTEXT_SET_MONITOR("mon_throw", [](const yomk::Context&) { ++g_syncMonitorCalls; });
+        YomkAPI::setContextMonitor("mon_throw", [](const yomk::Context&) { ++g_syncMonitorCalls; });
 
         g_throwACalls.store(0);
         g_throwBCalls.store(0);
         g_syncMonitorCalls.store(0);
 
-        auto resp = YomkAPI::CONTEXT_SET("mon_throw", yomkmsg::String::shared(std::string("t1")));
+        auto resp = YomkAPI::setContext("mon_throw", yomkmsg::String::shared(std::string("t1")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "同步 monitor 抛异常被吞掉，set 仍返回 eOk");
         YOMK_TEST_CHECK(g_throwACalls.load() == 1, "抛 std::exception 的 monitor 被调用");
         YOMK_TEST_CHECK(g_throwBCalls.load() == 1, "抛非 std::exception 的 monitor 被调用");
         YOMK_TEST_CHECK(g_syncMonitorCalls.load() == 1, "异常 monitor 之后的正常 monitor 继续执行");
-        YomkAPI::CONTEXT_OFF_MONITOR();
+        YomkAPI::disableContextMonitor();
     }
 
     // ============ Section 10: 多同步 monitor 顺序 ============
     {
-        YomkAPI::CONTEXT_ON_MONITOR();
-        auto cr = YomkAPI::CONTEXT_CREATE("mon_multi", yomkmsg::String::shared(std::string("u0")));
+        YomkAPI::enableContextMonitor();
+        auto cr = YomkAPI::createContext("mon_multi", yomkmsg::String::shared(std::string("u0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mon_multi 成功");
 
         g_order.clear();
-        YomkAPI::CONTEXT_SET_MONITOR("mon_multi", [](const yomk::Context&) { g_order.push_back("1"); });
-        YomkAPI::CONTEXT_SET_MONITOR("mon_multi", [](const yomk::Context&) { g_order.push_back("2"); });
-        YomkAPI::CONTEXT_SET_MONITOR("mon_multi", [](const yomk::Context&) { g_order.push_back("3"); });
+        YomkAPI::setContextMonitor("mon_multi", [](const yomk::Context&) { g_order.push_back("1"); });
+        YomkAPI::setContextMonitor("mon_multi", [](const yomk::Context&) { g_order.push_back("2"); });
+        YomkAPI::setContextMonitor("mon_multi", [](const yomk::Context&) { g_order.push_back("3"); });
 
-        auto resp = YomkAPI::CONTEXT_SET("mon_multi", yomkmsg::String::shared(std::string("u1")));
+        auto resp = YomkAPI::setContext("mon_multi", yomkmsg::String::shared(std::string("u1")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "多 monitor set 返回 eOk");
         YOMK_TEST_CHECK(g_order.size() == 3, "3 个同步 monitor 全部触发");
         YOMK_TEST_CHECK(
             g_order.size() == 3 && g_order[0] == "1" && g_order[1] == "2" && g_order[2] == "3",
             "多同步 monitor 按注册顺序触发");
-        YomkAPI::CONTEXT_OFF_MONITOR();
+        YomkAPI::disableContextMonitor();
     }
 
     // ============ Section 11: 异步 monitor 触发与顺序 ============
     {
-        YomkAPI::CONTEXT_ON_MONITOR();
-        auto cr = YomkAPI::CONTEXT_CREATE("mon_async", yomkmsg::String::shared(std::string("a0")));
+        YomkAPI::enableContextMonitor();
+        auto cr = YomkAPI::createContext("mon_async", yomkmsg::String::shared(std::string("a0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mon_async 成功");
 
         g_asyncCalls.store(0);
@@ -334,7 +334,7 @@ int main()
             std::lock_guard<std::mutex> lk(g_asyncMutex);
             g_asyncOrder.clear();
         }
-        YomkAPI::CONTEXT_SET_MONITOR(
+        YomkAPI::setContextMonitor(
             "mon_async",
             [](const yomk::Context& ctx)
             {
@@ -347,9 +347,9 @@ int main()
             },
             /*async=*/true);
 
-        YomkAPI::CONTEXT_SET("mon_async", yomkmsg::String::shared(std::string("a1")));
-        YomkAPI::CONTEXT_SET("mon_async", yomkmsg::String::shared(std::string("a2")));
-        YomkAPI::CONTEXT_SET("mon_async", yomkmsg::String::shared(std::string("a3")));
+        YomkAPI::setContext("mon_async", yomkmsg::String::shared(std::string("a1")));
+        YomkAPI::setContext("mon_async", yomkmsg::String::shared(std::string("a2")));
+        YomkAPI::setContext("mon_async", yomkmsg::String::shared(std::string("a3")));
 
         bool reached = waitForCount(g_asyncCalls, 3, 2000);
         YOMK_TEST_CHECK(reached, "异步 monitor 在等待窗口内全部触发（计数 == 3）");
@@ -360,13 +360,13 @@ int main()
                     g_asyncOrder[2] == "a3",
                 "异步 monitor 按 set 顺序到达（单线程池保序）");
         }
-        YomkAPI::CONTEXT_OFF_MONITOR();
+        YomkAPI::disableContextMonitor();
     }
 
     // ============ Section 12: 并发 set 异步保序（末条收敛真值，C1 回归）============
     {
-        YomkAPI::CONTEXT_ON_MONITOR();
-        auto cr = YomkAPI::CONTEXT_CREATE("mon_conc", yomkmsg::String::shared(std::string("c_init")));
+        YomkAPI::enableContextMonitor();
+        auto cr = YomkAPI::createContext("mon_conc", yomkmsg::String::shared(std::string("c_init")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mon_conc 成功");
 
         g_asyncCalls.store(0);
@@ -374,7 +374,7 @@ int main()
             std::lock_guard<std::mutex> lk(g_asyncMutex);
             g_asyncOrder.clear();
         }
-        YomkAPI::CONTEXT_SET_MONITOR(
+        YomkAPI::setContextMonitor(
             "mon_conc",
             [](const yomk::Context& ctx)
             {
@@ -388,7 +388,7 @@ int main()
             /*async=*/true);
 
         // N 个线程并发 set（各值可辨识）；C1 下异步入队在写锁内完成 ⇒ 入队序=提交序，
-        // 单线程 FIFO 池 ⇒ 末条异步通知 = 最后一次提交的值 = 最终 CONTEXT_GET 值。
+        // 单线程 FIFO 池 ⇒ 末条异步通知 = 最后一次提交的值 = 最终 getContext 值。
         // 旧实现（post 在解锁后）可能倒挂：先提交者后入队 ⇒ 末条 ≠ 终值。
         const int kThreads = 8;
         const int kIters = 20;
@@ -402,7 +402,7 @@ int main()
                     for (int i = 0; i < kIters; ++i)
                     {
                         std::string v = "t" + std::to_string(t) + "_i" + std::to_string(i);
-                        YomkAPI::CONTEXT_SET("mon_conc", yomkmsg::String::shared(v));
+                        YomkAPI::setContext("mon_conc", yomkmsg::String::shared(v));
                     }
                 });
         }
@@ -415,8 +415,8 @@ int main()
         bool reached = waitForCount(g_asyncCalls, kTotal, 15000);
         YOMK_TEST_CHECK(reached, "并发 set 后异步 monitor 在等待窗口内全部触发（计数 == 总提交数）");
 
-        // 所有写线程已 join，CONTEXT_GET 终值稳定
-        auto finalVal = YomkAPI::CONTEXT_GET<yomkmsg::String>("mon_conc", yomkmsg::String::shared(std::string("default")));
+        // 所有写线程已 join，getContext 终值稳定
+        auto finalVal = YomkAPI::getContext<yomkmsg::String>("mon_conc", yomkmsg::String::shared(std::string("default")));
         YOMK_TEST_CHECK(finalVal && !finalVal->d.empty(), "读取 mon_conc 终值成功");
 
         {
@@ -426,23 +426,23 @@ int main()
                 !g_asyncOrder.empty() && finalVal && g_asyncOrder.back() == finalVal->d,
                 "并发 set 下异步末条 == 最终值（锁内入队 ⇒ 末条收敛真值）");
         }
-        YomkAPI::CONTEXT_OFF_MONITOR();
+        YomkAPI::disableContextMonitor();
     }
 
     // ============ Section 13: 异步 monitor 排空（deinit），末尾调用 shutdown ============
     {
-        YomkAPI::CONTEXT_ON_MONITOR();
-        auto cr = YomkAPI::CONTEXT_CREATE("mon_drain", yomkmsg::String::shared(std::string("d0")));
+        YomkAPI::enableContextMonitor();
+        auto cr = YomkAPI::createContext("mon_drain", yomkmsg::String::shared(std::string("d0")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mon_drain 成功");
 
         g_drainCalls.store(0);
-        YomkAPI::CONTEXT_SET_MONITOR(
+        YomkAPI::setContextMonitor(
             "mon_drain", [](const yomk::Context&) { ++g_drainCalls; }, /*async=*/true);
 
         const int N = 50;
         for (int i = 0; i < N; ++i)
         {
-            YomkAPI::CONTEXT_SET("mon_drain", yomkmsg::String::shared(std::string("d") + std::to_string(i)));
+            YomkAPI::setContext("mon_drain", yomkmsg::String::shared(std::string("d") + std::to_string(i)));
         }
 
         // 立即 shutdown，触发 Context deinit 排空 monitor 池
