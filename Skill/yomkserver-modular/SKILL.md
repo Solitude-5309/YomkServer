@@ -46,7 +46,7 @@ description: 基于YomkServer框架的模块化C++17工程编程。核心理念"
 
 ```
 ProjectName/
-├── main.cpp              // 入口：YOMK_BOOT 启动
+├── main.cpp              // 入口：YomkAPI::boot() 启动
 ├── boot/
 │   ├── MyBoot.h          // 生命周期：before/start/after
 │   └── MyBoot.cpp
@@ -124,12 +124,12 @@ YomkResponse XxxService::myFunc(YomkPkgPtr pkg) {
 
 3. **注册到 Boot**（`boot/MyBoot.cpp` 的 `start()` 映射表中添加）：
 ```cpp
-{"/XxxService", []() { return new XxxService(YOMK_SERVER_P); }},
+{"/XxxService", []() { return new XxxService(YomkAPI::serverInstance().get()); }},
 ```
 
-4. **启动列表添加**（`main.cpp` 的 `YOMK_BOOT` 参数中）：
+4. **启动列表添加**（`main.cpp` 的 `YomkAPI::boot()` 参数中）：
 ```cpp
-YOMK_BOOT(new MyBoot(argc, argv, {"/ConfigService", "/XxxService"}));
+YomkAPI::boot(new MyBoot(argc, argv, {"/ConfigService", "/XxxService"}));
 ```
 
 5. **CMakeLists.txt 添加源文件**：
@@ -144,16 +144,16 @@ add_executable(${PROJECT_NAME}
 
 ```cpp
 // 同步
-YomkResponse resp = YOMK_REQUEST("/XxxService/my_func", yomkmsg::MyData::shared(MyData{"hello", 1}));
+YomkResponse resp = YomkAPI::request("/XxxService/my_func", yomkmsg::MyData::shared(MyData{"hello", 1}));
 // 异步
-YOMK_ASYNC_REQUEST("/XxxService/my_func", yomkmsg::MyData::shared(MyData{"hello", 1}), [](YomkResponse resp) { });
+YomkAPI::asyncRequest("/XxxService/my_func", yomkmsg::MyData::shared(MyData{"hello", 1}), [](YomkResponse resp) { });
 ```
 
 ### 服务删除与弱绑定回调
 
 ```cpp
 // 删除服务：后续请求返回 service not found，在途请求安全执行完毕后才析构
-int ret = YOMK_DEL_SERVICE("/XxxService");
+int ret = YomkAPI::delService("/XxxService");
 ```
 
 服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时，**必须**用 `weakFunc(&Class::Method)` 弱绑定，否则服务删除后回调悬垂 this 崩溃；弱绑定判活机制与各回调签名的适配细节见 [reference.md](reference.md) "installFunc / weakFunc"：
@@ -165,33 +165,33 @@ int XxxService::init() {
     YomkAPI::FUNCTIONPOOL_REGISTER("my_work", weakFunc(&XxxService::myFunc));
     // Context checker/monitor 签名不同，同一 weakFunc 自动适配：
     // 服务删除后 checker 默认放行（eAccept），monitor 丢弃
-    YOMK_CONTEXT_SET_CHECKER("key", weakFunc(&XxxService::myCheck));
-    YOMK_CONTEXT_SET_MONITOR("key", weakFunc(&XxxService::myMonitor));
+    YomkAPI::CONTEXT_SET_CHECKER("key", weakFunc(&XxxService::myCheck));
+    YomkAPI::CONTEXT_SET_MONITOR("key", weakFunc(&XxxService::myMonitor));
     // 异步响应回调同样适用
-    YOMK_ASYNC_REQUEST("/OtherService/func", pkg, weakFunc(&XxxService::onResp));
+    YomkAPI::asyncRequest("/OtherService/func", pkg, weakFunc(&XxxService::onResp));
     return 0;
 }
 ```
 
-- 丢弃语义与判活细节（引用计数 + 注销标志双层判活、`YOMK_DEL_SERVICE`/同名替换置位注销标志即停、`YOMK_SHUTDOWN` 走排空不置位）见 [reference.md](reference.md) "installFunc / weakFunc" 与 `YOMK_DEL_SERVICE`/`YOMK_SHUTDOWN` 行
+- 丢弃语义与判活细节（引用计数 + 注销标志双层判活、`YomkAPI::delService()`/同名替换置位注销标志即停、`YomkAPI::shutdown()` 走排空不置位）见 [reference.md](reference.md) "installFunc / weakFunc" 与 `YomkAPI::delService()`/`YomkAPI::shutdown()` 行
 - 覆写 `virtual void deinit()` 停止非弱绑定路径的生产者（线程/定时器/外部注册），删除服务时由框架自动调用
-- **异步响应回调的生命周期要求**：`YOMK_ASYNC_REQUEST` 的 `func` 框架不自动弱绑定（区别于 `installFunc`），优先用服务成员函数配合 `weakFunc(&Class::Method)`（见上例）；若必须用普通 lambda，捕获对象的生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据
+- **异步响应回调的生命周期要求**：`YomkAPI::asyncRequest()` 的 `func` 框架不自动弱绑定（区别于 `installFunc`），优先用服务成员函数配合 `weakFunc(&Class::Method)`（见上例）；若必须用普通 lambda，捕获对象的生命周期必须覆盖整个异步执行期，不得捕获即将销毁的局部对象引用/指针，尽量值捕获自包含数据
 
 ### 优雅关闭（shutdown）
 
 ```cpp
 // 退出前关闭服务器：逐个服务调用 deinit() 并清空服务表、释放单例，幂等，假定在主线程调用；
 // 关闭后请求返回 service not found，且不支持二次初始化（init 依赖 std::call_once）
-YOMK_SHUTDOWN();
+YomkAPI::shutdown();
 ```
 
-- `deinit()` 的四个触发时机：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、忘记关闭时服务器析构兜底（避免服务持有的 joinable 线程随析构触发 `std::terminate`）、同名服务被 `YOMK_ADD_SERVICE` 替换（旧服务先被锁外 `deinit`，再安装新服务）
-- 关闭时先停请求池（拒新 → 排空 → join 工作线程）再逐服务 `deinit`，`shutdown` 返回后无任何异步任务在执行，之后再提交的异步请求被拒绝；异步任务应保持轻量，重活经 EventLoop 或业务自建线程处理；请求池大小经 `YOMK_INIT(n)` 配置（仅首次初始化生效），未显式关闭时退出经 atexit 兜底——排空语义、双池分离与单例清理细节见 [reference.md](reference.md) `YOMK_SHUTDOWN` 行
+- `deinit()` 的四个触发时机：`YomkAPI::delService()` 删除单个服务、`YomkAPI::shutdown()` 关闭全部服务、忘记关闭时服务器析构兜底（避免服务持有的 joinable 线程随析构触发 `std::terminate`）、同名服务被 `YomkAPI::addService()` 替换（旧服务先被锁外 `deinit`，再安装新服务）
+- 关闭时先停请求池（拒新 → 排空 → join 工作线程）再逐服务 `deinit`，`shutdown` 返回后无任何异步任务在执行，之后再提交的异步请求被拒绝；异步任务应保持轻量，重活经 EventLoop 或业务自建线程处理；请求池大小经 `YomkAPI::init(n)` 配置（仅首次初始化生效），未显式关闭时退出经 atexit 兜底——排空语义、双池分离与单例清理细节见 [reference.md](reference.md) `YomkAPI::shutdown()` 行
 - 覆写了 `deinit()` 的服务需保证幂等语义友好（重复触发只来自异常使用，但停止线程/释放资源应可重复执行不崩溃）
 
 ### 服务内省（调试）
 
-框架内置 `/YomkServerInfo` 服务（随 `YOMK_INIT` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时用第三参声明期望消息类型、第四参追加函数说明（仅作内省元数据，不参与运行时校验）：
+框架内置 `/YomkServerInfo` 服务（随 `YomkAPI::init()` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时用第三参声明期望消息类型、第四参追加函数说明（仅作内省元数据，不参与运行时校验）：
 
 ```cpp
 int XxxService::init() {
@@ -201,16 +201,16 @@ int XxxService::init() {
 }
 
 // 服务列表（返回 StringArray）
-YomkResponse resp = YOMK_SERVER_INFO_SERVICES();
+YomkResponse resp = YomkAPI::SERVER_INFO_SERVICES();
 // 指定服务的函数列表（FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
-resp = YOMK_SERVER_INFO_FUNCTIONS("/XxxService");
+resp = YomkAPI::SERVER_INFO_FUNCTIONS("/XxxService");
 // 单函数元信息查询（命中返回结构化 FuncInfo 包：m_msgName=类型名、m_description=四参说明，m_msg 恒 "ok"）
-resp = YOMK_SERVER_INFO_FUNCTION("/XxxService/my_func");
+resp = YomkAPI::SERVER_INFO_FUNCTION("/XxxService/my_func");
 // 全量拓扑（ServerServiceInfoList 层级包：m_serviceName 服务名 + m_funcs 函数元信息列表）
-resp = YOMK_SERVER_INFO_ALL();
+resp = YomkAPI::SERVER_INFO_ALL();
 ```
 
-服务器层内省之外，四个内置模块（Context/EventLoop/FunctionPool/Logger）均提供模块内层内省（各自的 `YOMK_*_INFO_*()` 宏：key/循环/函数/日志器列表、单条元信息、全量内省——均返回结构化包），返回数据形态与示例见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。
+服务器层内省之外，四个内置模块（Context/EventLoop/FunctionPool/Logger）均提供模块内层内省（各自的 `YomkAPI::*_INFO_*()` 接口：key/循环/函数/日志器列表、单条元信息、全量内省——均返回结构化包），返回数据形态与示例见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。
 
 ## 任务三：创建扩展库
 
@@ -245,12 +245,12 @@ ExtensionName/
    - **include 路径说明**：导出 target 不含 include 路径是设计如此，头文件路径由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供；若把扩展安装到扩展自己的 install/，测试程序会因 `#include <ExtensionName/XxxService.h>` 找不到头文件而编译失败
 4. `build_ubuntu.sh` 支持可选编译测试程序（`test/` 有独立 CMakeLists）
 5. **扩展库注册系统动态库缓存**：`build_ubuntu.sh` 安装完成后必须将 `${INSTALL_DIR}/lib` 幂等注册到 `/etc/ld.so.conf.d/yomk.conf`（扩展属于 yomk，复用同一 conf 文件，`grep -qxF` 判重后追加），并执行 `sudo ldconfig` 刷新缓存。新增的 so 不会自动进入 ld.so.cache，不刷新则新开任意终端都找不到扩展 so。禁止只用会话级 `export LD_LIBRARY_PATH` 代替（新终端即失效）。写 `/etc` 与 `ldconfig` 永远需要 sudo，与 `INSTALL_DIR` 是否可写无关
-6. 测试程序通过 `YOMK_NEW_SERVICE` 注册服务并验证功能
+6. 测试程序通过 `YomkAPI::newService` 注册服务并验证功能
 7. **测试程序只编译不安装**：测试程序仅供扩展开发验证使用，由 `build_ubuntu.sh` 编译到 `test/build/`（不加 `--target install`、不设 `CMAKE_INSTALL_PREFIX`），不随扩展安装；test/CMakeLists.txt 不添加 install 规则
 8. **模板接口最小化**：模板服务默认只包含一个 `/version` 接口（方法名为 `version`，不带 `get` 前缀），不生成任何示例业务接口（如加减乘除）；业务功能通过「继续扩展」添加
 9. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
 10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回，如 `"ExtensionName v" EXTENSION_VERSION`
-11. **README 使用示例完整可复制**：README 使用示例必须提供完整的 main.cpp（含 include、`YOMK_INIT()`、`YOMK_NEW_SERVICE` 注册扩展服务、请求与输出），用户复制后即可编译运行；不得只提供请求代码片段
+11. **README 使用示例完整可复制**：README 使用示例必须提供完整的 main.cpp（含 include、`YomkAPI::init()`、`YomkAPI::newService` 注册扩展服务、请求与输出），用户复制后即可编译运行；不得只提供请求代码片段
 
 ### 生成规则
 
@@ -285,7 +285,7 @@ YomkMsg(数据类, 消息名称, 成员名);  // 在命名空间外定义
 ### 设计原则
 
 1. 每个 Service 只负责单一业务域
-2. 服务间通过 `YOMK_REQUEST` 通信，不直接引用
+2. 服务间通过 `YomkAPI::request()` 通信，不直接引用
 3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
 4. 服务成员函数注册到外部子系统（FunctionPool/EventLoop/Context checker·monitor/异步响应）必须用 `weakFunc(&Class::Method)` 弱绑定，服务删除后回调自动失效；本服务 funcMap（`installFunc("/x", &C::m)`）已自动弱绑定
 5. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）

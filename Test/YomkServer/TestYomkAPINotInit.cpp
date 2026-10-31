@@ -216,11 +216,11 @@ int main()
         YOMK_TEST_CHECK(
             YomkAPI::EVENTLOOP_POST("/guard_loop", yomkmsg::String::shared(std::string("x"))).m_status ==
                 YomkResponse::eInvalid,
-            "EVENTLOOP_POST 未初始化返回 eInvalid");
+            "YomkAPI::EVENTLOOP_POST 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
             YomkAPI::EVENTLOOP_POST_WAIT("/guard_loop", yomkmsg::String::shared(std::string("x"))).m_status ==
                 YomkResponse::eInvalid,
-            "EVENTLOOP_POST_WAIT 未初始化返回 eInvalid");
+            "YomkAPI::EVENTLOOP_POST_WAIT 未初始化返回 eInvalid");
         YOMK_TEST_CHECK(
             YomkAPI::EVENTLOOP_DESTROY("/guard_loop").m_status == YomkResponse::eInvalid,
             "EVENTLOOP_DESTROY 未初始化返回 eInvalid");

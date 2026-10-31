@@ -57,15 +57,15 @@
  *        释放全部服务，关闭后任何请求统一返回 eInvalid——日志宏随之静默，
  *        静默段正是演示效果，示例日志到此为止。
  *
- * 涉及的 API 宏（YomkAPI.h）：
- *   YOMK_INIT / YOMK_SHUTDOWN / YOMK_VERSION   框架生命周期
- *   YOMK_NEW_SERVICE(T, name)                  创建并注册服务（最常用）
- *   YOMK_ADD_SERVICE(ptr, name)                注册已有实例（同名即替换）
- *   YOMK_DEL_SERVICE(name)                     注销服务（删除即停）
- *   YOMK_BOOT(boot)                            启动编排（before -> start -> after）
- *   YOMK_REQUEST / YOMK_ASYNC_REQUEST          同步 / 异步请求
- *   YOMK_SERVER_P / YOMK_SERVER_PTR            全局单例
- *   YOMK_SERVER_INFO_SERVICES / FUNCTIONS / FUNCTION / ALL  调用拓扑自省
+ * 涉及的 API 接口（YomkAPI.h）：
+ *   YomkAPI::init() / YomkAPI::shutdown() / YomkAPI::version()   框架生命周期
+ *   YomkAPI::newService<T>(name)                  创建并注册服务（最常用）
+ *   YomkAPI::addService(ptr, name)                注册已有实例（同名即替换）
+ *   YomkAPI::delService(name)                     注销服务（删除即停）
+ *   YomkAPI::boot(boot)                            启动编排（before -> start -> after）
+ *   YomkAPI::request() / YomkAPI::asyncRequest()          同步 / 异步请求
+ *   YomkAPI::serverInstance().get() / YomkAPI::serverInstance()            全局单例
+ *   YomkAPI::SERVER_INFO_SERVICES / FUNCTIONS / FUNCTION / ALL  调用拓扑自省
  *   installFunc("/x", &C::m[, "Msg"][, "desc"]) / weakFunc(&Class::Method) / 成员 request  服务侧 API
  */
 
@@ -218,25 +218,25 @@ static void showArmPowerOnRegister()
 
     logAction("控制柜上电自检：读取框架版本与全局单例");
     std::ostringstream oss;
-    oss << "[YOMK_VERSION] version=" << YOMK_VERSION;
+    oss << "[YomkAPI::version()] version=" << YomkAPI::version();
     YOMK_INFO_TAG("arm.demo", oss.str());
     oss.str("");
-    oss << "[YOMK_SERVER_PTR] instance=" << (YOMK_SERVER_PTR ? "ready" : "null");
+    oss << "[YomkAPI::serverInstance()] instance=" << (YomkAPI::serverInstance() ? "ready" : "null");
     YOMK_INFO_TAG("arm.demo", oss.str());
-    logVerify("YOMK_INIT 后单例就绪：YOMK_SERVER_PTR 可判空，YOMK_SERVER_P 供服务构造时取 server 指针");
+    logVerify("YomkAPI::init() 后单例就绪：YomkAPI::serverInstance() 可判空，YomkAPI::serverInstance().get() 供服务构造时取 server 指针");
 
     logActionInt(
         "运动工位上线：一步创建并注册 /MotionService", "NEW_SERVICE /MotionService",
-        [] { return YOMK_NEW_SERVICE(MotionService); });
+        [] { return YomkAPI::newService<MotionService>(); });
     logVerify("返回 0 即注册成功：URL 前缀 /MotionService 生效，init() 已被框架调用（arm.motion 的 init 日志为证）");
 
     logActionInt(
         "启动编排注册留痕工位 /TelemetryService", "BOOT ArmBoot",
-        [] { return YOMK_BOOT(new ArmBoot({"/TelemetryService"})); });
+        [] { return YomkAPI::boot(new ArmBoot({"/TelemetryService"})); });
     logVerify("arm.boot 三段日志夹在开始行与结果行之间：BOOT 按 before→start→after 顺序执行");
 
     logAction("复查控制柜在册服务清单");
-    YomkResponse namesResp = YOMK_SERVER_INFO_SERVICES();
+    YomkResponse namesResp = YomkAPI::SERVER_INFO_SERVICES();
     logResp("INFO_SERVICES", namesResp);
     auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
     if (nameArr)
@@ -262,16 +262,16 @@ static void showArmLinkCheck()
 
     logAction(
         "通讯自检：请求运动服务回环", "REQUEST /MotionService/echo",
-        [&] { return YOMK_REQUEST("/MotionService/echo", yomkmsg::String::shared("ping")); });
+        [&] { return YomkAPI::request("/MotionService/echo", yomkmsg::String::shared("ping")); });
     logVerify("arm.motion 日志夹在开始行与结果行之间——REQUEST 在调用方线程同步执行；回包 data 携带回显文本");
 
     logAction(
         "请求不存在的服务 /GhostService", "REQUEST /GhostService/echo",
-        [&] { return YOMK_REQUEST("/GhostService/echo", yomkmsg::String::shared("ping")); });
+        [&] { return YomkAPI::request("/GhostService/echo", yomkmsg::String::shared("ping")); });
 
     logAction(
         "请求运动服务不存在的函数", "REQUEST /MotionService/not_exist",
-        [&] { return YOMK_REQUEST("/MotionService/not_exist", yomkmsg::String::shared("ping")); });
+        [&] { return YomkAPI::request("/MotionService/not_exist", yomkmsg::String::shared("ping")); });
     logVerify("两种 not-found 均为 eNo 且 msg 说明原因：寻址失败是普通返回值，不报错不崩溃");
 }
 
@@ -299,7 +299,7 @@ static void showArmAsyncTeach()
     };
 
     logAction("异步下发示教点自检请求");
-    YOMK_ASYNC_REQUEST("/MotionService/echo", yomkmsg::String::shared("teach point #1"), onTeachDone);
+    YomkAPI::asyncRequest("/MotionService/echo", yomkmsg::String::shared("teach point #1"), onTeachDone);
     logVerify("ASYNC_REQUEST 无同步结果行：发送即返回，控制回路不等回调");
 
     // 等待异步回调送达，保证回调日志先于下一条验证行出现、可读
@@ -322,7 +322,7 @@ static void showArmMoveChain()
     MoveCmd moveCmd{100.0, 50.0, 200.0, 0.8};
     YomkResponse moveResp = logAction(
         "下发运动指令：运动到 (100.0, 50.0, 200.0)mm", "REQUEST /MotionService/move",
-        [&] { return YOMK_REQUEST("/MotionService/move", yomkmsg::MoveCmd::shared(moveCmd)); });
+        [&] { return YomkAPI::request("/MotionService/move", yomkmsg::MoveCmd::shared(moveCmd)); });
 
     logAction("展开到位回执 MoveResp");
     std::ostringstream oss;
@@ -353,7 +353,7 @@ static void showArmIntrospect()
         "ExampleYomkServerInfo）。");
 
     logAction("查阅运动工位职能清单");
-    YomkResponse funcsResp = YOMK_SERVER_INFO_FUNCTIONS("/MotionService");
+    YomkResponse funcsResp = YomkAPI::SERVER_INFO_FUNCTIONS("/MotionService");
     logResp("INFO_FUNCTIONS /MotionService", funcsResp);
     auto listPkg = yomk::unPack<yomkmsg::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
@@ -366,7 +366,7 @@ static void showArmIntrospect()
     logVerify("msgName 即 installFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /echo 两字段为(未指定)");
 
     logAction("调阅运动指令函数名片");
-    YomkResponse resp = YOMK_SERVER_INFO_FUNCTION("/MotionService/move");
+    YomkResponse resp = YomkAPI::SERVER_INFO_FUNCTION("/MotionService/move");
     logResp("INFO_FUNCTION /MotionService/move", resp);
     auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
     if (info)
@@ -389,18 +389,18 @@ static void showArmStationUpgrade()
 
     logAction(
         "直调留痕钩子（替换前）", "FUNCTIONPOOL_CALL telemetry_hook (V1)",
-        [&] { return YOMK_FUNCTIONPOOL_CALL("telemetry_hook", yomkmsg::String::shared("diag check V1")); });
+        [&] { return YomkAPI::FUNCTIONPOOL_CALL("telemetry_hook", yomkmsg::String::shared("diag check V1")); });
     logVerify("留痕记录 [实例#1]：diag check V1——钩子由当前实例 init 注册、按名直调");
 
     logActionInt(
         "留痕工位升级：同名注册替换 /TelemetryService", "ADD_SERVICE /TelemetryService",
-        [] { return YOMK_ADD_SERVICE(new TelemetryService(YOMK_SERVER_P), "/TelemetryService"); });
+        [] { return YomkAPI::addService(new TelemetryService(YomkAPI::serverInstance().get()), "/TelemetryService"); });
     logVerify("框架直出 service already exists -> update to current service：旧实例 markDeleted+deinit，实例 #1 随即析构");
     logVerify("新实例 init 重挂 telemetry_hook，函数池直出 already exist -> update to current function：服务与钩子一并换新");
 
     logAction(
         "直调留痕钩子（替换后）", "FUNCTIONPOOL_CALL telemetry_hook (V2)",
-        [&] { return YOMK_FUNCTIONPOOL_CALL("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
+        [&] { return YomkAPI::FUNCTIONPOOL_CALL("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
     logVerify("留痕记录 [实例#2]：diag check V2——旧实例已删除而钩子仍可用，钩子确已换新");
 }
 
@@ -416,22 +416,22 @@ static void showArmStationOffline()
 
     logActionInt(
         "留痕工位下线：注销 /TelemetryService", "DEL_SERVICE /TelemetryService",
-        [] { return YOMK_DEL_SERVICE("/TelemetryService"); });
+        [] { return YomkAPI::delService("/TelemetryService"); });
 
     logActionInt(
         "重复注销已下线工位", "DEL_SERVICE /TelemetryService (重复)",
-        [] { return YOMK_DEL_SERVICE("/TelemetryService"); });
+        [] { return YomkAPI::delService("/TelemetryService"); });
     logVerify("服务已不存在 -> ret=-1：注销失败是普通返回值，不报错不崩溃");
 
     logAction(
         "直调留痕钩子（已下线）", "FUNCTIONPOOL_CALL telemetry_hook (已下线)",
-        [&] { return YOMK_FUNCTIONPOOL_CALL("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
+        [&] { return YomkAPI::FUNCTIONPOOL_CALL("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
     logVerify("钩子返回 eNo(service has been deleted or unregistered)：弱绑定失效，删除即停不悬垂");
 
     MoveCmd moveCmd{100.0, 50.0, 200.0, 0.8};
     logAction(
         "重发运动指令（留痕缺失）", "REQUEST /MotionService/move",
-        [&] { return YOMK_REQUEST("/MotionService/move", yomkmsg::MoveCmd::shared(moveCmd)); });
+        [&] { return YomkAPI::request("/MotionService/move", yomkmsg::MoveCmd::shared(moveCmd)); });
     logVerify("move 返回 eNo(move failed: ...)：留痕是运动的依赖前置，失败沿调用链传播");
 }
 
@@ -447,7 +447,7 @@ static void showArmPowerOff()
         "，日志宏随之静默——静默段正是演示效果。");
 
     logAction("导出收班终态拓扑（摘要）");
-    YomkResponse allResp = YOMK_SERVER_INFO_ALL();
+    YomkResponse allResp = YomkAPI::SERVER_INFO_ALL();
     logResp("INFO_ALL", allResp);
     auto list = yomk::unPack<yomkmsg::ServerServiceInfoList>(allResp.m_data);
     if (list)
@@ -465,15 +465,15 @@ static void showArmPowerOff()
     logAction(
         "收班断电：优雅关闭框架", "SHUTDOWN + REQUEST (关闭后守卫)",
         [&] {
-            YOMK_SHUTDOWN();
-            return YOMK_REQUEST("/MotionService/echo", yomkmsg::String::shared("after shutdown"));
+            YomkAPI::shutdown();
+            return YomkAPI::request("/MotionService/echo", yomkmsg::String::shared("after shutdown"));
         });
 }
 
 int main(int argc, char* argv[])
 {
     // 初始化框架（/YomkServerInfo 等 5 个内置服务随之自动启动）
-    YOMK_INIT();
+    YomkAPI::init();
 
     YOMK_INFO_TAG("arm.demo", "机械臂控制 x YomkService 示例：控制柜一次上电会话贯穿 8 个场景，覆盖服务定义与调用全部用户接口");
     YOMK_INFO_TAG(

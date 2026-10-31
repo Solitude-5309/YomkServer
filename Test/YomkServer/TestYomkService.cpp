@@ -3,7 +3,7 @@
  * @brief YomkService 命名/函数注册/调用白盒单元测试（正式全面测试，MC2）
  *
  * 覆盖内容：
- * 1. 命名：注册前设置/读取、空名拒绝、YOMK_ADD_SERVICE 两参形式注册前改名
+ * 1. 命名：注册前设置/读取、空名拒绝、YomkAPI::addService() 两参形式注册前改名
  * 2. 注册锁定：addService 成功后改名被拒（名字与注册键一致承诺）
  * 3. installFunc：合法名、非法名（空串/无 / 开头）拒绝、空函数拒绝、
  *    三参元数据（m_msgName）、四参函数说明（m_description）、
@@ -132,16 +132,16 @@ static void testNameBeforeRegister(DemoService* demo)
 // 2. 注册与注册锁定：addService 成功返回 0，注册后改名被拒
 static void testRegisterAndLockName(DemoService* demo)
 {
-    YOMK_TEST_CHECK(YOMK_ADD_SERVICE(demo) == 0, "addService 注册成功返回 0");
+    YOMK_TEST_CHECK(YomkAPI::addService(demo) == 0, "addService 注册成功返回 0");
     demo->name("/NewName");  // 注册后改名应被拒绝
     YOMK_TEST_CHECK(demo->name() == "/DemoService", "注册后改名被拒，名字与注册键一致（锁名承诺）");
 }
 
-// 3. YOMK_ADD_SERVICE 两参形式：注册前改名生效
+// 3. YomkAPI::addService() 两参形式：注册前改名生效
 static void testAddServiceWithName()
 {
-    auto* renamed = new DemoService(YOMK_SERVER_P);
-    YOMK_TEST_CHECK(YOMK_ADD_SERVICE(renamed, "/RenamedDemo") == 0, "两参 YOMK_ADD_SERVICE 注册成功返回 0");
+    auto* renamed = new DemoService(YomkAPI::serverInstance().get());
+    YOMK_TEST_CHECK(YomkAPI::addService(renamed, "/RenamedDemo") == 0, "两参 YomkAPI::addService() 注册成功返回 0");
     YOMK_TEST_CHECK(renamed->name() == "/RenamedDemo", "注册前经两参形式改名生效");
 }
 
@@ -260,21 +260,21 @@ static void testNullServerGuards()
 // 7. deleted 标志位语义（写侧置位归框架，弱绑定回调丢弃语义归 MC3）
 static void testDeletedFlag()
 {
-    auto* raw = new FlagSrv(YOMK_SERVER_P);
-    YOMK_TEST_CHECK(YOMK_ADD_SERVICE(raw, "/FlagDemo") == 0, "注册成功返回 0");
+    auto* raw = new FlagSrv(YomkAPI::serverInstance().get());
+    YOMK_TEST_CHECK(YomkAPI::addService(raw, "/FlagDemo") == 0, "注册成功返回 0");
     // 经 shared_from_this 与框架共享所有权：删除后本副本使服务对象仍存活
     std::shared_ptr<YomkService> srv = raw->shared_from_this();
     YOMK_TEST_CHECK(srv->deleted() == false, "新构造服务 deleted() 初始为 false");
     // 框架删除在 deinit 前置位注销标志，本副本保持引用未归零
-    YOMK_TEST_CHECK(YOMK_DEL_SERVICE("/FlagDemo") == 0, "删除成功返回 0");
+    YOMK_TEST_CHECK(YomkAPI::delService("/FlagDemo") == 0, "删除成功返回 0");
     YOMK_TEST_CHECK(srv->deleted() == true, "框架删除后 deleted() 为 true（标志层独立于引用计数）");
 }
 
 int main()
 {
-    YOMK_INIT();
+    YomkAPI::init();
 
-    auto* demo = new DemoService(YOMK_SERVER_P);
+    auto* demo = new DemoService(YomkAPI::serverInstance().get());
     testNameBeforeRegister(demo);
     testRegisterAndLockName(demo);
     testAddServiceWithName();

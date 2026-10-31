@@ -14,7 +14,7 @@
  *       单查 N/100 次 / 内省与 createFileLogger 并发相互阻塞量化）——P4-c 验证点
  * - S5：8 线程混合负载 churn（console 写 + file 建/写 + ALL 内省 + 删除 + 删除后单查）
  *       + 全量删除回收（分组 eOk 守恒 → 残量扫除 → LOGGERS 行数为 0 硬断言）
- * - S6：收尾（清理前磁盘足迹守恒 / YOMK_SHUTDOWN 计时 / remove_all /
+ * - S6：收尾（清理前磁盘足迹守恒 / YomkAPI::shutdown() 计时 / remove_all /
  *       临时目录不存在硬断言（用户口径：测试后临时文件全部清理干净）/ RSS 峰值）
  *
  * 规模经 YOMK_TEST_STRESS_SCALE 参数化（缺省 100000，clamp 下限 1000），对称激进口径：
@@ -164,7 +164,7 @@
  *   S4_VmHWM=256516 kB / S5_VmHWM=526444 kB（N=100000）高于上方 LG4 登记的修复前值
  *   209004 / 491308 kB，两组绝对值不可直接比对；LG6 的一切 VmHWM 结论均取同批交错的 A/F 对照。
  * - P4-e（LG6 已修复）：setConsoleLogProxy 原恒置 m_consoleLogProxy = true，proxy 一旦安装进程内
- *   不可卸载 —— YOMK_SET_CONSOLE_LOG_PROXY(nullptr) 仍报 proxy:on，而 m_consoleLogProxyFunc 为空使
+ *   不可卸载 —— YomkAPI::SET_CONSOLE_LOG_PROXY(nullptr) 仍报 proxy:on，而 m_consoleLogProxyFunc 为空使
  *   consoleLog 的三重条件短路，行为等同未安装却在内省里谎报 proxy:on。LG6 改为
  *   m_consoleLogProxy = (m_consoleLogProxyFunc != nullptr)，两字段由同一把叶子锁内一致更新，传空
  *   回调即卸载并恢复框架默认控制台输出（签名与包结构均未改，ConsoleLogProxy{func} 可从空
@@ -743,7 +743,7 @@ static LatencyStat measureIntrospection(uint64_t rounds, bool useAll, uint64_t& 
     for (uint64_t i = 0; i < rounds; ++i)
     {
         auto t0 = Clock::now();
-        auto resp = useAll ? YOMK_LOGGER_INFO_ALL() : YOMK_LOGGER_INFO_LOGGERS("console");
+        auto resp = useAll ? YomkAPI::LOGGER_INFO_ALL() : YomkAPI::LOGGER_INFO_LOGGERS("console");
         double ms = msSince(t0);
         if (resp.m_status != YomkResponse::eOk)
         {
@@ -822,8 +822,8 @@ int main()
     // LG5：环境标注先于一切 [BASELINE] 输出，使本次所有性能数据可按环境归因
     std::cout << "[ENV] " << readEnvSnapshot() << std::endl;
 
-    auto server = YOMK_INIT(1);
-    YOMK_TEST_CHECK(server != nullptr, "YOMK_INIT 返回非空服务器");
+    auto server = YomkAPI::init(1);
+    YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
 
     fs::path tmpDir = testTmpRoot() / ("yomk_logger_lg4_" + std::to_string(::getpid()));
     std::error_code ec;
@@ -857,8 +857,8 @@ int main()
 
     // 起点基线：库内部不使用 YOMK_INFO 家族宏 → console 表恰为构造函数预置的 MainLogger
     {
-        const uint64_t c = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
-        const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
+        const uint64_t c = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("console")).size();
+        const uint64_t f = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("file")).size();
         YOMK_TEST_CHECK(
             (c == 1 && f == 0),
             "起点内省基线 console=1(MainLogger)/file=0（实测 " + std::to_string(c) + "/" + std::to_string(f) + "）");
@@ -930,7 +930,7 @@ int main()
         recordBaseline("S1A_console_create_unique_tag", N, elapsedA);
         YOMK_TEST_CHECK(okA == N, "S1A: 唯一 tag 写入 eOk 守恒 " + std::to_string(okA) + "/" + std::to_string(N));
 
-        const uint64_t consoleEntries = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
+        const uint64_t consoleEntries = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("console")).size();
         YOMK_TEST_CHECK(
             consoleEntries == N + 1,
             "S1A: console 表条目 = N + MainLogger（实测 " + std::to_string(consoleEntries) + "）");
@@ -996,7 +996,7 @@ int main()
         YOMK_TEST_CHECK(okB == N, "S1B: 命中写 eOk 守恒 " + std::to_string(okB) + "/" + std::to_string(N));
 
         // ---- Phase C：级别 OFF 短路（开关关断后仍 eOk，但不产生输出）----
-        YOMK_TEST_CHECK(YOMK_OFF_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: OFF info 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::OFF_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: OFF info 返回 eOk");
         {
             const uint64_t kProbe = 100;
             const uint64_t probe = (kProbe < N) ? kProbe : N;
@@ -1030,11 +1030,11 @@ int main()
         }
         recordBaseline("S1C_console_level_off_shortcut", N, elapsedC);
         YOMK_TEST_CHECK(okC == N, "S1C: 级别 OFF 短路仍 eOk 守恒 " + std::to_string(okC) + "/" + std::to_string(N));
-        YOMK_TEST_CHECK(YOMK_ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: 恢复 ON info 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::ON_CONSOLE_LOG_INFO().m_status == YomkResponse::eOk, "S1C: 恢复 ON info 返回 eOk");
 
         // ---- Phase D：proxy 短路（置于 console 末相：本测试安装后不卸载，靠恒置 true 穿透
         // 避免影响后续 Section；P4-e 的卸载语义由 Lifecycle S3 覆盖）----
-        YOMK_TEST_CHECK(YOMK_SET_CONSOLE_LOG_PROXY(lg4Proxy).m_status == YomkResponse::eOk, "S1D: 安装计数 proxy 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::SET_CONSOLE_LOG_PROXY(lg4Proxy).m_status == YomkResponse::eOk, "S1D: 安装计数 proxy 返回 eOk");
         g_proxyReturn.store(false);
         g_proxyHits.store(0);
         uint64_t okD = 0;
@@ -1111,7 +1111,7 @@ int main()
             for (uint64_t i = 0; i < N; ++i)
             {
                 const std::string& dir = shardDirs[static_cast<size_t>(i / kShardSize)];
-                if (YOMK_FILE_LOG_CREATE(dir, makeName("lg4s2_fl_", i)).m_status == YomkResponse::eOk)
+                if (YomkAPI::FILE_LOG_CREATE(dir, makeName("lg4s2_fl_", i)).m_status == YomkResponse::eOk)
                 {
                     ++okA;
                 }
@@ -1130,7 +1130,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < M; ++i)
             {
-                if (YOMK_FILE_LOG_CREATE(s2Single.string(), makeName("lg4s2_single_", i)).m_status == YomkResponse::eOk)
+                if (YomkAPI::FILE_LOG_CREATE(s2Single.string(), makeName("lg4s2_single_", i)).m_status == YomkResponse::eOk)
                 {
                     ++okB;
                 }
@@ -1151,8 +1151,8 @@ int main()
             "S2C: 磁盘 .log 文件数守恒 = N + N/10（实测 " + std::to_string(diskFiles) + "/" + std::to_string(N + M) +
                 "）");
 
-        const uint64_t c = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
-        const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
+        const uint64_t c = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("console")).size();
+        const uint64_t f = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("file")).size();
         YOMK_TEST_CHECK(
             (c == N + 1 && f == N + M),
             "S2C: 内省条目守恒 console=N+1 file=N+N/10（实测 " + std::to_string(c) + "/" + std::to_string(f) + "）");
@@ -1210,7 +1210,7 @@ int main()
         fs::create_directories(s3Dir, ec);
         const std::string bigName = "lg4s3_big";
         YOMK_TEST_CHECK(
-            YOMK_FILE_LOG_CREATE(s3Dir.string(), bigName).m_status == YomkResponse::eOk, "S3B: 大缓冲 logger 创建 eOk");
+            YomkAPI::FILE_LOG_CREATE(s3Dir.string(), bigName).m_status == YomkResponse::eOk, "S3B: 大缓冲 logger 创建 eOk");
         const fs::path bigPath = s3Dir / (bigName + ".log");
         const uint64_t bigLines = 2 * N;
         uint64_t okB = 0;
@@ -1236,7 +1236,7 @@ int main()
         {
             ThreadSafeCoutCapture cap(true);
             auto t0 = Clock::now();
-            flushBig = YOMK_FILE_LOG_WRITE(bigName);
+            flushBig = YomkAPI::FILE_LOG_WRITE(bigName);
             elapsedFlush = msSince(t0);
         }
         YOMK_TEST_CHECK(flushBig.m_status == YomkResponse::eOk, "S3B: 大缓冲一次落盘 eOk");
@@ -1265,7 +1265,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t k = 0; k < K; ++k)
             {
-                if (YOMK_FILE_LOG_WRITE(sinks[static_cast<size_t>(k)]).m_status == YomkResponse::eOk)
+                if (YomkAPI::FILE_LOG_WRITE(sinks[static_cast<size_t>(k)]).m_status == YomkResponse::eOk)
                 {
                     ++okC;
                 }
@@ -1303,7 +1303,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N; ++i)
             {
-                if (YOMK_FILE_LOG_WRITE(bigName).m_status == YomkResponse::eOk)
+                if (YomkAPI::FILE_LOG_WRITE(bigName).m_status == YomkResponse::eOk)
                 {
                     ++okD;
                 }
@@ -1325,9 +1325,9 @@ int main()
     // ========================================================================
     std::cout << "\n--- S4: 内省端点规模响应（P4-c 验证点） ---" << std::endl;
     {
-        const std::vector<std::string> loggersLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console"));
+        const std::vector<std::string> loggersLines = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("console"));
         const uint64_t c = loggersLines.size();
-        const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
+        const uint64_t f = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("file")).size();
         const uint64_t entries = c + f;
         std::cout << "[CONFIG] S4 entries = " << entries << " (console " << c << " / file " << f
                   << ") rounds = " << introspectionRounds(entries) << std::endl;
@@ -1356,12 +1356,12 @@ int main()
         // 结构化后数据段形态不同（LoggerInfo vs 纯名行），逐行字符串比对改为数量与类型计数比对；
         // S4 阶段表内条目不再增删，console/file 两端点各自单锁快照后计数等价；
         // 条目改报逐器门控层真值后，"全 on" 验证语义迁移至 LOGGER_INFO_GLOBAL（全局主闸态）
-        auto gsPkg = yomk::unPack<yomkmsg::LoggerState>(YOMK_LOGGER_INFO_GLOBAL().m_data);
+        auto gsPkg = yomk::unPack<yomkmsg::LoggerState>(YomkAPI::LOGGER_INFO_GLOBAL().m_data);
         YOMK_TEST_CHECK(
             (gsPkg != nullptr && gsPkg->d.m_debugOn && gsPkg->d.m_infoOn && gsPkg->d.m_warnOn &&
              gsPkg->d.m_errorOn && gsPkg->d.m_proxyOn),
             "S4B: 全局主闸状态全 on（proxy 已在 S1D 安装）");
-        auto listPkg = yomk::unPack<yomkmsg::LoggerInfoList>(YOMK_LOGGER_INFO_ALL().m_data);
+        auto listPkg = yomk::unPack<yomkmsg::LoggerInfoList>(YomkAPI::LOGGER_INFO_ALL().m_data);
         const yomk::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
@@ -1407,7 +1407,7 @@ int main()
             {
                 const std::string name = (i % 2 == 0) ? makeName("lg4s1_tag_", i) : makeName("lg4s2_fl_", i);
                 const std::string type = (i % 2 == 0) ? "console" : "file";
-                if (YOMK_LOGGER_INFO_LOGGER(name, type).m_status == YomkResponse::eOk)
+                if (YomkAPI::LOGGER_INFO_LOGGER(name, type).m_status == YomkResponse::eOk)
                 {
                     ++okProbe;
                 }
@@ -1431,7 +1431,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < D; ++i)
             {
-                if (YOMK_FILE_LOG_CREATE(s4Solo.string(), makeName("lg4s4d_solo_", i)).m_status == YomkResponse::eOk)
+                if (YomkAPI::FILE_LOG_CREATE(s4Solo.string(), makeName("lg4s4d_solo_", i)).m_status == YomkResponse::eOk)
                 {
                     ++soloOk;
                 }
@@ -1452,7 +1452,7 @@ int main()
                 uint64_t prevLines = 0;
                 while (!g_s4dStop.load(std::memory_order_acquire))
                 {
-                    auto resp = YOMK_LOGGER_INFO_ALL();
+                    auto resp = YomkAPI::LOGGER_INFO_ALL();
                     if (resp.m_status != YomkResponse::eOk)
                     {
                         g_s4dSnapBadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1483,7 +1483,7 @@ int main()
             for (uint64_t i = 0; i < D; ++i)
             {
                 const auto c0 = Clock::now();
-                if (YOMK_FILE_LOG_CREATE(s4Conc.string(), makeName("lg4s4d_fl_", i)).m_status == YomkResponse::eOk)
+                if (YomkAPI::FILE_LOG_CREATE(s4Conc.string(), makeName("lg4s4d_fl_", i)).m_status == YomkResponse::eOk)
                 {
                     g_s4dCreateOk.fetch_add(1, std::memory_order_relaxed);
                 }
@@ -1552,7 +1552,7 @@ int main()
                             else if (!isLegalStatus(rc))
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
 
-                            auto rf = YOMK_FILE_LOG_CREATE(s5DirStr, name);
+                            auto rf = YomkAPI::FILE_LOG_CREATE(s5DirStr, name);
                             if (rf.m_status == YomkResponse::eOk)
                                 g_s5FileOk.fetch_add(1, std::memory_order_relaxed);
                             else if (!isLegalStatus(rf))
@@ -1566,7 +1566,7 @@ int main()
 
                             if ((r % introspectEvery) == 0)
                             {
-                                auto ri = YOMK_LOGGER_INFO_ALL();
+                                auto ri = YomkAPI::LOGGER_INFO_ALL();
                                 if (ri.m_status == YomkResponse::eOk)
                                     g_s5IntrospectOk.fetch_add(1, std::memory_order_relaxed);
                                 else if (!isLegalStatus(ri))
@@ -1574,13 +1574,13 @@ int main()
                             }
 
                             // 同名同时命中两表：单端点一次删除 console + file
-                            auto rd = YOMK_FILE_LOG_DELETE(name);
+                            auto rd = YomkAPI::FILE_LOG_DELETE(name);
                             if (rd.m_status == YomkResponse::eOk)
                                 g_s5DeleteOk.fetch_add(1, std::memory_order_relaxed);
                             else if (!isLegalStatus(rd))
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
 
-                            auto rn = YOMK_LOGGER_INFO_LOGGER(name, "console");
+                            auto rn = YomkAPI::LOGGER_INFO_LOGGER(name, "console");
                             if (rn.m_status == YomkResponse::eNo)
                                 g_s5PostDeleteNo.fetch_add(1, std::memory_order_relaxed);
                             else if (!isLegalStatus(rn))
@@ -1617,8 +1617,8 @@ int main()
             "S5A: 删除后单查 eNo 守恒 " + std::to_string(g_s5PostDeleteNo.load()) + "/" + std::to_string(churnTotal));
         YOMK_TEST_CHECK(g_s5BadStatus.load() == 0, "S5A: 无非法状态码（异常 " + std::to_string(g_s5BadStatus.load()) + " 次）");
         {
-            const uint64_t c = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size();
-            const uint64_t f = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
+            const uint64_t c = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("console")).size();
+            const uint64_t f = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("file")).size();
             YOMK_TEST_CHECK(
                 (c == N + 1 && f == fileTotal + 1 + 2 * D),
                 "S5A: churn 后条目净变化 0（实测 console " + std::to_string(c) + " / file " + std::to_string(f) + "）");
@@ -1634,7 +1634,7 @@ int main()
             auto t0 = Clock::now();
             auto recycle = [&delConsoleOk, &delFileOk, &delBad](const std::string& name, bool expectFile)
             {
-                auto r = YOMK_FILE_LOG_DELETE(name);
+                auto r = YomkAPI::FILE_LOG_DELETE(name);
                 if (r.m_status == YomkResponse::eOk)
                 {
                     if (expectFile)
@@ -1683,30 +1683,30 @@ int main()
             for (int round = 0; round < 3; ++round)
             {
                 // 行内容即 logger 纯名，按类型端点各扫一份
-                const std::vector<std::string> consoleLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console"));
-                const std::vector<std::string> fileLines = unpackLines(YOMK_LOGGER_INFO_LOGGERS("file"));
+                const std::vector<std::string> consoleLines = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("console"));
+                const std::vector<std::string> fileLines = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("file"));
                 if (consoleLines.empty() && fileLines.empty())
                 {
                     break;
                 }
                 for (const auto& name : consoleLines)
                 {
-                    if (YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk)
+                    if (YomkAPI::FILE_LOG_DELETE(name).m_status == YomkResponse::eOk)
                     {
                         ++residualDeleted;
                     }
                 }
                 for (const auto& name : fileLines)
                 {
-                    if (YOMK_FILE_LOG_DELETE(name).m_status == YomkResponse::eOk)
+                    if (YomkAPI::FILE_LOG_DELETE(name).m_status == YomkResponse::eOk)
                     {
                         ++residualDeleted;
                     }
                 }
             }
         }
-        const size_t finalLeft = unpackLines(YOMK_LOGGER_INFO_LOGGERS("console")).size() +
-                                 unpackLines(YOMK_LOGGER_INFO_LOGGERS("file")).size();
+        const size_t finalLeft = unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("console")).size() +
+                                 unpackLines(YomkAPI::LOGGER_INFO_LOGGERS("file")).size();
         YOMK_TEST_CHECK(
             finalLeft == 0,
             "S5C: 全量回收后 LOGGERS 行数为 0（残量扫除 " + std::to_string(residualDeleted) + " 个，实剩 " +
@@ -1719,11 +1719,11 @@ int main()
                 ThreadSafeCoutCapture cap(true);
                 for (uint64_t i = 0; i < probes; ++i)
                 {
-                    if (YOMK_LOGGER_INFO_LOGGER(makeName("lg4s1_tag_", i), "console").m_status == YomkResponse::eNo)
+                    if (YomkAPI::LOGGER_INFO_LOGGER(makeName("lg4s1_tag_", i), "console").m_status == YomkResponse::eNo)
                     {
                         ++goneConsole;
                     }
-                    if (YOMK_LOGGER_INFO_LOGGER(makeName("lg4s2_fl_", i), "file").m_status == YomkResponse::eNo)
+                    if (YomkAPI::LOGGER_INFO_LOGGER(makeName("lg4s2_fl_", i), "file").m_status == YomkResponse::eNo)
                     {
                         ++goneFile;
                     }
@@ -1754,7 +1754,7 @@ int main()
         {
             ThreadSafeCoutCapture cap(true);
             auto t0 = Clock::now();
-            YOMK_SHUTDOWN();
+            YomkAPI::shutdown();
             elapsedShutdown = msSince(t0);
         }
         std::cout << "[BASELINE] S6_shutdown: " << std::fixed << std::setprecision(1) << elapsedShutdown

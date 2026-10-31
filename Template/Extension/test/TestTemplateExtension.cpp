@@ -10,12 +10,12 @@ static int g_fail = 0;
 
 int main(int argc, char* argv[])
 {
-    YOMK_INIT();
+    YomkAPI::init();
 
-    YOMK_NEW_SERVICE(ExtensionService);
+    YomkAPI::newService<ExtensionService>();
 
     // 测试版本查询
-    YomkResponse resp = YOMK_REQUEST("/ExtensionService/version", nullptr);
+    YomkResponse resp = YomkAPI::request("/ExtensionService/version", nullptr);
     if (resp.m_status == YomkResponse::eOk)
     {
         auto version = yomk::unPack<yomkmsg::String>(resp.m_data);

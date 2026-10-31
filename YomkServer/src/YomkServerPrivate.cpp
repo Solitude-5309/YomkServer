@@ -71,7 +71,7 @@ int YomkServerPrivate::delService(const std::string& srvName)
 
 void YomkServerPrivate::shutdown()
 {
-    // 幂等：重复调用直接返回，析构兜底与显式 YOMK_SHUTDOWN 不会双重 deinit
+    // 幂等：重复调用直接返回，析构兜底与显式 YomkAPI::shutdown() 不会双重 deinit
     if (m_shutdown.exchange(true))
     {
         return;

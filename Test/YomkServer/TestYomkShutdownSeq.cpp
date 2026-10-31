@@ -14,7 +14,7 @@
  *
  * 说明：call_once 仅约束 YomkAPI::init 单例路径；本测试在类级直测 YomkServer::shutdown，
  *       各 YomkServer::create 实例自持独立 YomkServerPrivate::m_shutdown 互不影响，
- *       单进程多实例即可完成全部场景（API 级 YOMK_SHUTDOWN 归 MC6）；零源码变更
+ *       单进程多实例即可完成全部场景（API 级 YomkAPI::shutdown() 归 MC6）；零源码变更
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */

@@ -55,13 +55,13 @@ using namespace yomk;
 
 int main(int argc, char *argv[])
 {
-    YOMK_INIT();
+    YomkAPI::init();
 
     // 注册 ExtensionService（扩展服务需先注册才能使用）
-    YOMK_NEW_SERVICE(ExtensionService);
+    YomkAPI::newService<ExtensionService>();
 
     // 版本查询请求
-    YomkResponse resp = YOMK_REQUEST("/ExtensionService/version", nullptr);
+    YomkResponse resp = YomkAPI::request("/ExtensionService/version", nullptr);
     if (resp.m_status == YomkResponse::eOk)
     {
         auto version = yomk::unPack<yomkmsg::String>(resp.m_data);
