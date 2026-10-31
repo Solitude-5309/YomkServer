@@ -23,16 +23,16 @@
  * 场景 1 showArmLogLevels   [YOMK_INFO/WARN/ERROR/DEBUG + _TAG 版]
  *        班前点检报文分级：四级日志按 DEBUG 详单 -> INFO 通报 -> WARN 预警 ->
  *        ERROR 告警递进；默认 tag 与自定义 tag 双填兼容，[行号] 随行定位。
- * 场景 2 showArmSilentMode  [OFF/ON_CONSOLE_LOG_*（无参/具名）+ LOGGER_INFO_GLOBAL + LOGGER_INFO_LOGGER]
+ * 场景 2 showArmSilentMode  [disable/enableConsoleLog*（无参/具名）+ LOGGER_INFO_GLOBAL + LOGGER_INFO_LOGGER]
  *        产线静默模式：全局静默四级别逐级全关（空窗由 WARN/ERROR 锚点桥接，调用仍返回
  *        eOk）；逐级恢复后单查 MainLogger 状态段复查五开关全 on；随后逐器静默——具名
  *        关断 arm.joint 仅其报文消失（MainLogger/arm.demo 对照不受影响），
  *        LOGGER_INFO_GLOBAL 报主闸全 on 与条目 infoOff 两层归因唯一。
- * 场景 3 showArmBlackbox    [SET_CONSOLE_LOG_PROXY / SET_FILE_LOG_PROXY / FILE_LOG_CREATE / WRITE]
+ * 场景 3 showArmBlackbox    [setConsoleLogProxy / setFileLogProxy / FILE_LOG_CREATE / WRITE]
  *        安全黑匣子：代理把 WARN/ERROR 转写文件后消费、DEBUG 噪声消化、INFO
  *        放行——结果行 msg 区分消费与放行；传 nullptr 卸载恢复默认。文件代理段
  *        用 GLOBAL("file") 复查 proxy 态并演示拦截/卸载，与控制台代理相互独立。
- * 场景 4 showArmShiftLog    [YOMK_FILE_INFO/WARN/ERROR/DEBUG + _TAG 版 + OFF/ON_FILE_LOG_* + GLOBAL("file")]
+ * 场景 4 showArmShiftLog    [YOMK_FILE_INFO/WARN/ERROR/DEBUG + _TAG 版 + disable/enableFileLog* + GLOBAL("file")]
  *        班次存档：双 tag 四级写入内存缓冲，显式 WRITE 刷盘；控制台 DEBUG 全关
  *        期间文件 DEBUG 照常落盘（两套开关独立）；文件具名关断期间 INFO 静默
  *        吞条而文件主闸仍 on——两层归因，恢复后落盘回归。
@@ -256,20 +256,20 @@ static void showArmSilentMode()
     logScene(
         2,
         "产线静默模式",
-        "OFF/ON_CONSOLE_LOG_*（无参/具名） + LOGGER_INFO_GLOBAL + LOGGER_INFO_LOGGER",
+        "disable/enableConsoleLog*（无参/具名） + LOGGER_INFO_GLOBAL + LOGGER_INFO_LOGGER",
         "夜间无人值守降噪：四级别逐级全关（调用仍返回 eOk，仅输出被抑制），"
         "空窗段无任何控制台输出；恢复后单查状态段复查五开关全 on。");
 
     // 先关 DEBUG 详单（最常用的降噪手段）
-    logAction("关闭 DEBUG 详单（产线静默）", "OFF_CONSOLE_LOG_DEBUG", [&] { return YomkAPI::OFF_CONSOLE_LOG_DEBUG(); });
+    logAction("关闭 DEBUG 详单（产线静默）", "disableConsoleLogDebug", [&] { return YomkAPI::disableConsoleLogDebug(); });
     logVerify("随后的 DEBUG 调用（静默段）仍返回 eOk 但不再输出：级别开关只抑制输出、不影响调用成功");
 
     YOMK_WARN_TAG("arm.demo", "继续降噪：INFO/WARN/ERROR 也将逐级关闭，空窗期间操作照常执行");
     YOMK_ERROR_TAG("arm.demo", "最后一条可见日志：ERROR 关闭后全静默，恢复后汇报空窗详情");
 
-    logAction("关闭 INFO 流程通报", "OFF_CONSOLE_LOG_INFO", [&] { return YomkAPI::OFF_CONSOLE_LOG_INFO(); });
-    logAction("关闭 WARN 隐患预警", "OFF_CONSOLE_LOG_WARN", [&] { return YomkAPI::OFF_CONSOLE_LOG_WARN(); });
-    logAction("关闭 ERROR 故障告警", "OFF_CONSOLE_LOG_ERROR", [&] { return YomkAPI::OFF_CONSOLE_LOG_ERROR(); });
+    logAction("关闭 INFO 流程通报", "disableConsoleLogInfo", [&] { return YomkAPI::disableConsoleLogInfo(); });
+    logAction("关闭 WARN 隐患预警", "disableConsoleLogWarn", [&] { return YomkAPI::disableConsoleLogWarn(); });
+    logAction("关闭 ERROR 故障告警", "disableConsoleLogError", [&] { return YomkAPI::disableConsoleLogError(); });
 
     // 全静默段：以下 4 条调用成功返回 eOk，控制台一行都不出现
     YOMK_INFO("你看不到我：INFO 已关闭");
@@ -278,13 +278,13 @@ static void showArmSilentMode()
     YOMK_DEBUG("你看不到我：DEBUG 已关闭");
 
     // 恢复：ERROR/INFO 先裸调恢复（INFO 回归后叙事锚点可见），随后逐级恢复
-    YomkAPI::ON_CONSOLE_LOG_ERROR();
-    YomkAPI::ON_CONSOLE_LOG_INFO();
+    YomkAPI::enableConsoleLogError();
+    YomkAPI::enableConsoleLogInfo();
     YOMK_INFO_TAG("arm.demo",
         "静默解除：空窗期间已按序执行 OFF_INFO/WARN/ERROR 与 4 条演示调用，全部返回 eOk——"
         "恢复 WARN/DEBUG 后复查");
-    logAction("恢复 WARN 隐患预警", "ON_CONSOLE_LOG_WARN", [&] { return YomkAPI::ON_CONSOLE_LOG_WARN(); });
-    logAction("恢复 DEBUG 详单", "ON_CONSOLE_LOG_DEBUG", [&] { return YomkAPI::ON_CONSOLE_LOG_DEBUG(); });
+    logAction("恢复 WARN 隐患预警", "enableConsoleLogWarn", [&] { return YomkAPI::enableConsoleLogWarn(); });
+    logAction("恢复 DEBUG 详单", "enableConsoleLogDebug", [&] { return YomkAPI::enableConsoleLogDebug(); });
 
     logAction("复查 MainLogger 开关状态");
     YomkResponse resp = YomkAPI::LOGGER_INFO_LOGGER("MainLogger", "console");
@@ -297,8 +297,8 @@ static void showArmSilentMode()
     logVerify("五开关全 on：无参 OFF/ON 作用于全局主闸，状态段报逐器门控层真值（本段未用具名开关，两者一致）");
 
     // 逐器静默：具名开关仅门控单个日志器，全局主闸不受影响（两层归因现场演示）
-    logAction("逐器静默：仅关闭 arm.joint 的 INFO（具名关断）", "OFF_CONSOLE_LOG_INFO arm.joint",
-        [&] { return YomkAPI::OFF_CONSOLE_LOG_INFO("arm.joint"); });
+    logAction("逐器静默：仅关闭 arm.joint 的 INFO（具名关断）", "disableConsoleLogInfo arm.joint",
+        [&] { return YomkAPI::disableConsoleLogInfo("arm.joint"); });
     logAction("关节模块上报工位动态（INFO，arm.joint 已被具名关断）", "YOMK_INFO_TAG arm.joint",
         [&] { return YOMK_INFO_TAG("arm.joint", "工位 A 首件下线（本条仅 arm.joint 静默，你看不到）"); });
     YOMK_INFO_TAG("arm.demo", "arm.joint 已逐器静默：arm.demo 叙事与 MainLogger 输出不受影响（对照锚点）");
@@ -322,8 +322,8 @@ static void showArmSilentMode()
         logLoggerInfo("LOGGER_INFO_LOGGER arm.joint", jInfo->d);
     }
     logVerify("主闸 info=on 而条目 info=off——两层状态各自真实呈现：输出被关是逐器层所致，具名 ON 即恢复");
-    logAction("逐器恢复：仅重开 arm.joint 的 INFO（具名恢复）", "ON_CONSOLE_LOG_INFO arm.joint",
-        [&] { return YomkAPI::ON_CONSOLE_LOG_INFO("arm.joint"); });
+    logAction("逐器恢复：仅重开 arm.joint 的 INFO（具名恢复）", "enableConsoleLogInfo arm.joint",
+        [&] { return YomkAPI::enableConsoleLogInfo("arm.joint"); });
     logAction("关节模块恢复上报（INFO，输出回归）", "YOMK_INFO_TAG arm.joint",
         [&] { return YOMK_INFO_TAG("arm.joint", "arm.joint INFO 已恢复，报文重新可见"); });
 }
@@ -334,14 +334,14 @@ static void showArmBlackbox(const std::string& logDir)
     logScene(
         3,
         "安全黑匣子",
-        "SET_CONSOLE_LOG_PROXY / SET_FILE_LOG_PROXY / FILE_LOG_CREATE / WRITE",
+        "setConsoleLogProxy / setFileLogProxy / FILE_LOG_CREATE / WRITE",
         "关键事件不能只留控制台：安装代理后每条控制台日志先过回调——WARN/ERROR "
         "转写黑匣子文件后消费、DEBUG 噪声就地消化、INFO 放行，结果行 msg 区分"
         "消费与放行；文件代理同款语义作用于文件写入，两套代理相互独立。");
 
     logAction(
         "创建安全黑匣子文件器 blackbox", "FILE_LOG_CREATE blackbox", [&] { return YomkAPI::FILE_LOG_CREATE(logDir, "blackbox"); });
-    logAction("安装控制台日志代理", "SET_CONSOLE_LOG_PROXY blackboxProxy", [&] { return YomkAPI::SET_CONSOLE_LOG_PROXY(blackboxProxy); });
+    logAction("安装控制台日志代理", "setConsoleLogProxy blackboxProxy", [&] { return YomkAPI::setConsoleLogProxy(blackboxProxy); });
 
     logAction("上报班中通报（INFO，代理放行）", "YOMK_INFO", [&] { return YOMK_INFO("工位 A 完成工单 W-1024 首件下线"); });
     logAction("记录调试详单（DEBUG，代理消费）", "YOMK_DEBUG", [&] { return YOMK_DEBUG("视觉对位耗时 320ms，阈值 500ms"); });
@@ -367,7 +367,7 @@ static void showArmBlackbox(const std::string& logDir)
     logFileContent(fs::path(logDir) / "blackbox.log");
     logVerify("blackbox.log 仅 2 条关键事件（WARN/ERROR）：黑匣子只留关键事件，噪声就地消化");
 
-    logAction("卸载代理恢复默认输出", "SET_CONSOLE_LOG_PROXY nullptr", [&] { return YomkAPI::SET_CONSOLE_LOG_PROXY(nullptr); });
+    logAction("卸载代理恢复默认输出", "setConsoleLogProxy nullptr", [&] { return YomkAPI::setConsoleLogProxy(nullptr); });
     logAction("复查代理状态");
     resp = YomkAPI::LOGGER_INFO_LOGGER("MainLogger", "console");
     logResp("LOGGER_INFO_LOGGER MainLogger(console)", resp);
@@ -379,7 +379,7 @@ static void showArmBlackbox(const std::string& logDir)
     logVerify("proxy 回到 off：传 nullptr 即卸载，控制台恢复框架默认输出格式");
 
     // 文件代理段：同一套拦截语义作用在文件写入路径，GLOBAL("file") 单查文件侧状态
-    logAction("安装文件日志代理", "SET_FILE_LOG_PROXY fileDebugProxy", [&] { return YomkAPI::SET_FILE_LOG_PROXY(fileDebugProxy); });
+    logAction("安装文件日志代理", "setFileLogProxy fileDebugProxy", [&] { return YomkAPI::setFileLogProxy(fileDebugProxy); });
     resp = YomkAPI::LOGGER_INFO_GLOBAL("file");
     logResp("LOGGER_INFO_GLOBAL file", resp);
     auto fgs = yomk::unPack<yomkmsg::LoggerState>(resp.m_data);
@@ -392,7 +392,7 @@ static void showArmBlackbox(const std::string& logDir)
         YOMK_INFO_TAG("arm.demo", oss.str());
     }
     logAction("记录调试详单（DEBUG，文件代理拦截）", "YOMK_FILE_DEBUG blackbox", [&] { return YOMK_FILE_DEBUG("blackbox", "视觉对位耗时 350ms，阈值 500ms"); });
-    logAction("卸载文件代理恢复落盘", "SET_FILE_LOG_PROXY nullptr", [&] { return YomkAPI::SET_FILE_LOG_PROXY(nullptr); });
+    logAction("卸载文件代理恢复落盘", "setFileLogProxy nullptr", [&] { return YomkAPI::setFileLogProxy(nullptr); });
     logAction("卸载后记录调试详单（DEBUG，穿透落盘）", "YOMK_FILE_DEBUG blackbox", [&] { return YOMK_FILE_DEBUG("blackbox", "卸载代理后此行正常写入缓冲"); });
     logVerify("proxy=on 时 DEBUG 被拦（msg=file log proxy is success.）、nullptr 卸载后 DEBUG 恢复写入——文件代理与控制台代理相互独立");
 }
@@ -403,7 +403,7 @@ static void showArmShiftLog(const std::string& logDir)
     logScene(
         4,
         "班次存档",
-        "YOMK_FILE_INFO/WARN/ERROR/DEBUG + _TAG 版 + OFF/ON_FILE_LOG_* + GLOBAL(\"file\")",
+        "YOMK_FILE_INFO/WARN/ERROR/DEBUG + _TAG 版 + disable/enableFileLog* + GLOBAL(\"file\")",
         "全级别班次存档：FILE 系列宏写入内存缓冲，WRITE 显式刷盘到 dir/name.log；"
         "文件开关与控制台开关两套相互独立——控制台 DEBUG 全关期间文件 DEBUG 照常"
         "落盘，文件具名关断期间条目静默吞条（msg 仍 success.），落盘与否回读实证。");
@@ -428,13 +428,13 @@ static void showArmShiftLog(const std::string& logDir)
         [&] { return YOMK_FILE_DEBUG_TAG("shiftlog", "arm.joint", "j4 轴反向间隙补偿 0.03mm"); });
 
     // 交叉验证：控制台 DEBUG 全关期间，文件 DEBUG 照常落盘
-    logAction("关闭 DEBUG 详单（交叉验证）", "OFF_CONSOLE_LOG_DEBUG", [&] { return YomkAPI::OFF_CONSOLE_LOG_DEBUG(); });
+    logAction("关闭 DEBUG 详单（交叉验证）", "disableConsoleLogDebug", [&] { return YomkAPI::disableConsoleLogDebug(); });
     logAction("开关关闭期间存档详单（DEBUG）", "YOMK_FILE_DEBUG shiftlog",
         [&] { return YOMK_FILE_DEBUG("shiftlog", "交叉验证：控制台 DEBUG 已关，此行仍应落盘"); });
-    logAction("恢复 DEBUG 详单", "ON_CONSOLE_LOG_DEBUG", [&] { return YomkAPI::ON_CONSOLE_LOG_DEBUG(); });
+    logAction("恢复 DEBUG 详单", "enableConsoleLogDebug", [&] { return YomkAPI::enableConsoleLogDebug(); });
 
     // 存档静默段：文件具名关断期间 INFO 静默吞条（msg 仍 success.），文件主闸仍 on——两层归因
-    logAction("存档静默：具名关断 shiftlog 的 INFO", "OFF_FILE_LOG_INFO shiftlog", [&] { return YomkAPI::OFF_FILE_LOG_INFO("shiftlog"); });
+    logAction("存档静默：具名关断 shiftlog 的 INFO", "disableFileLogInfo shiftlog", [&] { return YomkAPI::disableFileLogInfo("shiftlog"); });
     logAction("静默期间存档通报（INFO，被门控吞掉）", "YOMK_FILE_INFO shiftlog", [&] { return YOMK_FILE_INFO("shiftlog", "静默期间此行不应落盘"); });
     YomkResponse resp = YomkAPI::LOGGER_INFO_GLOBAL("file");
     logResp("LOGGER_INFO_GLOBAL file", resp);
@@ -447,7 +447,7 @@ static void showArmShiftLog(const std::string& logDir)
         YOMK_INFO_TAG("arm.demo", oss.str());
     }
     logVerify("文件主闸仍全 on：INFO 缺席归因逐器门控层，两层状态各自真实呈现");
-    logAction("恢复 shiftlog 的 INFO", "ON_FILE_LOG_INFO shiftlog", [&] { return YomkAPI::ON_FILE_LOG_INFO("shiftlog"); });
+    logAction("恢复 shiftlog 的 INFO", "enableFileLogInfo shiftlog", [&] { return YomkAPI::enableFileLogInfo("shiftlog"); });
 
     logAction("显式刷盘班次存档", "FILE_LOG_WRITE shiftlog", [&] { return YomkAPI::FILE_LOG_WRITE("shiftlog"); });
     logAction("回读班次存档文件");
