@@ -40,7 +40,7 @@ YomkResponse MotionService::move(YomkPkgPtr pkg)
         << ")mm，倍率 " << cmdPkg->cmd.m_speedRatio;
     YOMK_INFO_TAG("arm.motion", oss.str());
 
-    // 跨服务调用：成员 request() 与全局宏 YOMK_REQUEST 等价，URL 直达留痕工位；
+    // 跨服务调用：成员 request() 与全局宏 YomkAPI::request() 等价，URL 直达留痕工位；
     // 留痕是运动的依赖前置，留痕缺失时失败沿调用链传播
     oss.str("");
     oss << "运动留痕：move -> (" << cmdPkg->cmd.m_x << "," << cmdPkg->cmd.m_y << "," << cmdPkg->cmd.m_z << ")mm";

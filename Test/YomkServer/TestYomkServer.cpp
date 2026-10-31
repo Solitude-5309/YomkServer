@@ -16,7 +16,7 @@
  * 7. newService 模板：有名注册可路由；无名以空名注册（现状文档化：URL 不可达，不修复仅记录）
  * 8. startService：空表、不支持名 continue、内置 /YomkServerInfo creator 真实路径
  *
- * 说明：全程不触碰 shutdown/YOMK_INIT（服务器析构兜底），每节独立 YomkServer::create 实例，
+ * 说明：全程不触碰 shutdown/YomkAPI::init()（服务器析构兜底），每节独立 YomkServer::create 实例，
  *       节首重置全局观测变量；排空/幂等/拒新语义归 MC5
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）

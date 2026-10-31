@@ -23,7 +23,7 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 | [YomkFunctionPool](Docs/YomkFunctionPool.md) | 动态函数池：跨服务扁平函数注册中心，同名重注册即运行时热替换，按名直接调用 |
 | [YomkServerInfo](Docs/YomkServerInfo.md) | 服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型 |
 
-核心层（YomkServer / YomkService / YomkPkg / YomkBoot）构成框架骨架；YomkLogger、YomkContext、YomkEventLoop、YomkFunctionPool、YomkServerInfo 均以内置服务形式随 `YOMK_INIT()` 自动启动、开箱即用，全部能力经 `YOMK_*` 宏统一调用。
+核心层（YomkServer / YomkService / YomkPkg / YomkBoot）构成框架骨架；YomkLogger、YomkContext、YomkEventLoop、YomkFunctionPool、YomkServerInfo 均以内置服务形式随 `YomkAPI::init()` 自动启动、开箱即用，全部能力经 `YomkAPI::` 接口统一调用。
 
 ---
 
@@ -66,20 +66,20 @@ public:
 int main()
 {
     // 1. 初始化框架单例（自动启动内置服务：Logger, Context, EventLoop, FunctionPool, ServerInfo）
-    YOMK_INIT();
+    YomkAPI::init();
 
     // 2. 注册自定义服务
-    YOMK_NEW_SERVICE(MyService);
+    YomkAPI::newService<MyService>();
 
     // 3. 同步请求服务
-    YomkResponse ret = YOMK_REQUEST("/MyService/hello", yomkmsg::String::shared("yomk"));
+    YomkResponse ret = YomkAPI::request("/MyService/hello", yomkmsg::String::shared("yomk"));
     if (ret.m_status == YomkResponse::eOk)
     {
         YOMK_INFO("Response received:", ret.m_msg);
     }
 
     // 4. 优雅关闭框架
-    YOMK_SHUTDOWN();
+    YomkAPI::shutdown();
     return 0;
 }
 ```
@@ -96,7 +96,7 @@ int main()
 
 - **URL 寻址**：格式为 `"/服务名/函数名"`，如 `"/MyService/hello"`。
 - **返回值 `YomkResponse`**：`m_status`（`eOk (0)` 调用成功；`eNo (1)` 目标服务或函数不存在、被拒绝或条件不满足；`eInvalid (-1)` 入参非法或服务器未初始化）、`m_msg` 状态描述文本、`m_data` 可选负载消息包。
-- **同步调用** `YOMK_REQUEST` 阻塞返回；**异步调用** `YOMK_ASYNC_REQUEST` 投递到框架内置线程池并发执行，不阻塞当前线程。
+- **同步调用** `YomkAPI::request()` 阻塞返回；**异步调用** `YomkAPI::asyncRequest()` 投递到框架内置线程池并发执行，不阻塞当前线程。
 
 详见 [服务总线](Docs/YomkServer.md)。
 
@@ -108,7 +108,7 @@ int main()
 
 ### 3. 日志系统 (YomkLogger)
 
-控制台与文件双输出、四级（INFO / WARN / ERROR / DEBUG）级别开关、自定义 tag、控制台日志代理拦截；`YOMK_INFO`、`YOMK_FILE_LOG_CREATE` 等宏开箱即用。
+控制台与文件双输出、四级（INFO / WARN / ERROR / DEBUG）级别开关、自定义 tag、控制台日志代理拦截；`YOMK_INFO`、`YomkAPI::FILE_LOG_CREATE` 等接口开箱即用。
 
 详见 [日志系统](Docs/YomkLogger.md)。
 
@@ -132,13 +132,13 @@ int main()
 
 ### 7. 运行期自省 (YomkServerInfo)
 
-运行期查询服务拓扑、功能函数清单与期望消息类型；Logger / Context / EventLoop / FunctionPool 亦各有模块级自省 API（`YOMK_*_INFO_*`）。
+运行期查询服务拓扑、功能函数清单与期望消息类型；Logger / Context / EventLoop / FunctionPool 亦各有模块级自省 API（`YomkAPI::*_INFO_*`）。
 
 详见 [服务自省](Docs/YomkServerInfo.md)。
 
 ### 8. 服务生命周期与弱绑定
 
-- **deinit() 的四个触发时机**：`YOMK_DEL_SERVICE` 删除单个服务、`YOMK_SHUTDOWN` 关闭全部服务、同名服务被 `YOMK_ADD_SERVICE` 替换（旧服务先 deinit 再装新服务）、忘记关闭时框架析构兜底；覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
+- **deinit() 的四个触发时机**：`YomkAPI::delService()` 删除单个服务、`YomkAPI::shutdown()` 关闭全部服务、同名服务被 `YomkAPI::addService()` 替换（旧服务先 deinit 再装新服务）、忘记关闭时框架析构兜底；覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
 - **弱绑定（防悬垂回调）**：服务成员函数注册到**外部子系统**（FunctionPool / EventLoop / Context checker·monitor / 异步响应回调）时必须用 `weakFunc(&Class::Method)` 弱绑定——服务删除后回调自动判活失效；`installFunc("/x", &Class::Method)` 注册到本服务 funcMap 已自动弱绑定，无需手动处理。
 
 详见 [服务总线](Docs/YomkServer.md)。

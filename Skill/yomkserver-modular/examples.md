@@ -37,7 +37,7 @@ using namespace yomk;
 
 int main(int argc, char *argv[])
 {
-    YOMK_BOOT(new MyBoot(argc, argv, {"/ConfigService"}));
+    YomkAPI::boot(new MyBoot(argc, argv, {"/ConfigService"}));
     YOMK_INFO_TAG("main", "running, press Enter to exit.");
     getchar();
     return 0;
@@ -82,7 +82,7 @@ int MyBoot::before()
     // 通过 /proc/self/exe 推导配置文件路径
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
     std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.txt";
-    YOMK_CONTEXT_CREATE(CTX_CONFIG_PATH, yomkmsg::String::shared(configPath.string()));
+    YomkAPI::CONTEXT_CREATE(CTX_CONFIG_PATH, yomkmsg::String::shared(configPath.string()));
     YOMK_INFO_TAG("MyBoot::before", "config path: ", configPath.string());
     return 0;
 }
@@ -92,7 +92,7 @@ int MyBoot::start()
     // 服务创建器映射表
     static const std::map<std::string, std::function<YomkService *()>> serviceCreators = {
         {"/ConfigService", []()
-         { return new ConfigService(YOMK_SERVER_P); }},
+         { return new ConfigService(YomkAPI::serverInstance().get()); }},
     };
 
     // 按需启动
@@ -101,7 +101,7 @@ int MyBoot::start()
         auto it = serviceCreators.find(srvName);
         if (it != serviceCreators.end())
         {
-            if (YOMK_ADD_SERVICE(it->second(), srvName) != 0)
+            if (YomkAPI::addService(it->second(), srvName) != 0)
                 return -1;
         }
     }
@@ -110,7 +110,7 @@ int MyBoot::start()
 
 int MyBoot::after()
 {
-    YomkResponse resp = YOMK_REQUEST("/ConfigService/load", nullptr);
+    YomkResponse resp = YomkAPI::request("/ConfigService/load", nullptr);
     if (resp.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("MyBoot::after", "load config failed: ", resp.m_msg);
@@ -118,7 +118,7 @@ int MyBoot::after()
     }
     YOMK_INFO_TAG("MyBoot::after", "started successfully.");
 
-    resp = YOMK_REQUEST("/ConfigService/get", yomkmsg::ConfigKey::shared(ConfigKey{"name"}));
+    resp = YomkAPI::request("/ConfigService/get", yomkmsg::ConfigKey::shared(ConfigKey{"name"}));
     if (resp.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config name failed: ", resp.m_msg);
@@ -129,7 +129,7 @@ int MyBoot::after()
     YOMK_INFO_TAG("MyBoot::after", "config name: ", name->d);
 
     // 测试版本号接口：获取并输出工程版本号（来自 CMake project() 定义的 VERSION，编译期注入）
-    resp = YOMK_REQUEST("/ConfigService/version", nullptr);
+    resp = YomkAPI::request("/ConfigService/version", nullptr);
     if (resp.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get version failed: ", resp.m_msg);
@@ -139,7 +139,7 @@ int MyBoot::after()
     auto version = yomk::unPack<yomkmsg::String>(resp.m_data);
     YOMK_INFO_TAG("MyBoot::after", "project version: ", version->d);
 
-    resp = YOMK_REQUEST("/ConfigService/get", yomkmsg::ConfigKey::shared(ConfigKey{"description"}));
+    resp = YomkAPI::request("/ConfigService/get", yomkmsg::ConfigKey::shared(ConfigKey{"description"}));
     if (resp.m_status != YomkResponse::eOk)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config description failed: ", resp.m_msg);
@@ -180,7 +180,6 @@ struct ConfigKeyValue
     std::string value; 
 };
 
-// clang-format off
 YomkMsg(ConfigKey, ConfigKey, req);
 YomkMsg(ConfigKeyValue, ConfigKeyValue, req);
 ```
@@ -485,7 +484,6 @@ struct UserInfo
     int age; 
 };
 
-// clang-format off
 YomkMsg(UserQuery, UserQuery, req);
 YomkMsg(UserInfo, UserInfo, d);
 ```
@@ -547,7 +545,7 @@ YomkResponse UserService::createUser(YomkPkgPtr pkg)
     YOMK_INFO_TAG("UserService::createUser", "create user: ", user->d.name);
 
     // 跨服务调用示例：读取配置
-    YomkResponse cfgResp = YOMK_REQUEST("/ConfigService/get",
+    YomkResponse cfgResp = YomkAPI::request("/ConfigService/get",
         yomkmsg::ConfigKey::shared(ConfigKey{"server.name"}));
 
     return YomkResponse(YomkResponse::eOk, "user created");
@@ -560,12 +558,12 @@ YomkResponse UserService::createUser(YomkPkgPtr pkg)
 #include "services/UserService.h"
 
 // start() 映射表中添加
-{"/UserService", []() { return new UserService(YOMK_SERVER_P); }},
+{"/UserService", []() { return new UserService(YomkAPI::serverInstance().get()); }},
 ```
 
 ### 5. 启动列表（main.cpp 修改）
 ```cpp
-YOMK_BOOT(new MyBoot(argc, argv, {"/ConfigService", "/UserService"}));
+YomkAPI::boot(new MyBoot(argc, argv, {"/ConfigService", "/UserService"}));
 ```
 
 ### 6. CMakeLists.txt 添加源文件
@@ -598,22 +596,22 @@ void changeLogger(const yomk::Context& ctx) {
 }
 
 // 使用
-YOMK_CONTEXT_CREATE("config", yomkmsg::String::shared("default"));
-YOMK_CONTEXT_ON_CHECKER();
-YOMK_CONTEXT_SET_CHECKER("config", nonEmptyChecker);
-YOMK_CONTEXT_ON_MONITOR();
-YOMK_CONTEXT_SET_MONITOR("config", changeLogger, true);
+YomkAPI::CONTEXT_CREATE("config", yomkmsg::String::shared("default"));
+YomkAPI::CONTEXT_ON_CHECKER();
+YomkAPI::CONTEXT_SET_CHECKER("config", nonEmptyChecker);
+YomkAPI::CONTEXT_ON_MONITOR();
+YomkAPI::CONTEXT_SET_MONITOR("config", changeLogger, true);
 
-YOMK_CONTEXT_SET("config", yomkmsg::String::shared("new_value")); // 通过检查并触发监控
-YOMK_CONTEXT_SET("config", yomkmsg::String::shared(""));          // 被拒绝
+YomkAPI::CONTEXT_SET("config", yomkmsg::String::shared("new_value")); // 通过检查并触发监控
+YomkAPI::CONTEXT_SET("config", yomkmsg::String::shared(""));          // 被拒绝
 ```
 
 checker/monitor 使用**服务成员函数**时必须弱绑定，直接用 `weakFunc(&Class::Method)`（按目标类型自动适配），服务删除后 checker 默认放行、monitor 丢弃：
 
 ```cpp
 int MyService::init() {
-    YOMK_CONTEXT_SET_CHECKER("config", weakFunc(&MyService::myChecker));
-    YOMK_CONTEXT_SET_MONITOR("config", weakFunc(&MyService::myMonitor));
+    YomkAPI::CONTEXT_SET_CHECKER("config", weakFunc(&MyService::myChecker));
+    YomkAPI::CONTEXT_SET_MONITOR("config", weakFunc(&MyService::myMonitor));
     return 0;
 }
 ```
@@ -622,13 +620,13 @@ int MyService::init() {
 
 - **共同语义**：
   - monitor 仅通知发生了一次 set 事件，并回传该次 set 的键值快照——**不保证快照是最新值**；快照仅回调期有效，需留存请在回调内拷贝 ctx。
-  - **值对象一经 set 发布即只读**：get/monitor 拿到的都别名同一对象；改动请构造新对象再 `YOMK_CONTEXT_SET`，勿原地修改（否则与并发读竞争、可能崩溃）。
+  - **值对象一经 set 发布即只读**：get/monitor 拿到的都别名同一对象；改动请构造新对象再 `YomkAPI::CONTEXT_SET`，勿原地修改（否则与并发读竞争、可能崩溃）。
   - 需最新值请在回调内用 `YomkAPI::CONTEXT_GET` 重读；回调抛异常会被框架吞掉记日志、不影响 set 结果；校验/拒绝请用 checker，勿用 monitor。
 - **同步（默认，async 省略或 false）**：
   - 在 set 调用线程上锁外内联执行、通知及时；顺序 set 下按调用序通知，**并发 set 下不保证跨线程顺序**。
   - 回调内可安全调用 `get`/`keys` 等，但**重入 `set`（含跨键环）会递归**，不收敛长链将栈溢出。
 - **异步（async=true）**：
-  - 在 set 写锁内投入 Context 模块自持的单线程监控池、set 返回后延迟执行；**入队序=提交序 ⇒ 恒按 set 提交序送达（并发 set 亦然）**，随服务 deinit / `YOMK_SHUTDOWN` 排空停止、不丢。
+  - 在 set 写锁内投入 Context 模块自持的单线程监控池、set 返回后延迟执行；**入队序=提交序 ⇒ 恒按 set 提交序送达（并发 set 亦然）**，随服务 deinit / `YomkAPI::shutdown()` 排空停止、不丢。
   - 适合耗时回调（跨服务/落盘/通知）解耦；池线程迭代执行、平栈不溢出，**更适合会在回调内再 set 的状态机/级联回写**（仍需保证收敛，否则任务自续活锁）。
 
 > 提示：正式工程建议 Context key 用 typedefine 常量定义（示例0 的 `CTX_CONFIG_PATH` 即范例），避免散落的裸字符串。
@@ -648,10 +646,10 @@ YomkResponse taskHandler(YomkPkgPtr pkg) {
 YomkAPI::EVENTLOOP_START("worker_loop", taskHandler);
 
 // 异步投递
-YOMK_EVENTLOOP_POST("worker_loop", yomkmsg::String::shared("task_1"));
+YomkAPI::EVENTLOOP_POST("worker_loop", yomkmsg::String::shared("task_1"));
 
 // 同步投递（等待结果）
-YomkResponse resp = YOMK_EVENTLOOP_POST_WAIT("worker_loop", yomkmsg::String::shared("task_2"));
+YomkResponse resp = YomkAPI::EVENTLOOP_POST_WAIT("worker_loop", yomkmsg::String::shared("task_2"));
 if(resp.m_status == YomkResponse::eOk) {
     auto event = yomk::unPack<yomkmsg::Event>(resp.m_data);
     // event->d.m_response 即事件处理函数的返回值（POST_WAIT 将其带回给等待方）
@@ -659,10 +657,10 @@ if(resp.m_status == YomkResponse::eOk) {
 }
 
 // 停止：仅退出工作线程，未执行的排队事件保留在队列（再次 START 重启续跑，事件不丢失）
-YOMK_EVENTLOOP_STOP("worker_loop");
+YomkAPI::EVENTLOOP_STOP("worker_loop");
 
 // 销毁：先停止退出工作线程、再清空未执行的排队事件（不可续跑），彻底释放
-YOMK_EVENTLOOP_DESTROY("worker_loop");
+YomkAPI::EVENTLOOP_DESTROY("worker_loop");
 ```
 
 ## 示例4：FunctionPool 公共函数池
@@ -679,13 +677,13 @@ YomkResponse validateAmount(YomkPkgPtr pkg) {
 
 // 注册 + 调用
 YomkAPI::FUNCTIONPOOL_REGISTER("validate_amount", validateAmount);
-YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("validate_amount", yomkmsg::String::shared("100.5"));
+YomkResponse resp = YomkAPI::FUNCTIONPOOL_CALL("validate_amount", yomkmsg::String::shared("100.5"));
 
 // 注销（注销后调用返回 eNo: funcName is not register）
-YOMK_FUNCTIONPOOL_UNREGISTER("validate_amount");
+YomkAPI::FUNCTIONPOOL_UNREGISTER("validate_amount");
 ```
 
-服务成员函数注册到 FunctionPool 时必须用 `weakFunc(&Class::Method)` 弱绑定，服务删除（`YOMK_DEL_SERVICE`）后回调自动失效而非悬垂 this 崩溃：
+服务成员函数注册到 FunctionPool 时必须用 `weakFunc(&Class::Method)` 弱绑定，服务删除（`YomkAPI::delService()`）后回调自动失效而非悬垂 this 崩溃：
 
 ```cpp
 int MyService::init() {
@@ -695,7 +693,7 @@ int MyService::init() {
 
 void MyService::deinit() {
     // 可选：删除服务时框架自动调用，也可主动注销外部注册的回调
-    YOMK_FUNCTIONPOOL_UNREGISTER("my_work");
+    YomkAPI::FUNCTIONPOOL_UNREGISTER("my_work");
 }
 ```
 
@@ -713,50 +711,50 @@ int DemoService::init()
 }
 
 // 服务列表（返回 StringArray）
-YomkResponse resp = YOMK_SERVER_INFO_SERVICES();
+YomkResponse resp = YomkAPI::SERVER_INFO_SERVICES();
 auto arr = yomk::unPack<yomkmsg::StringArray>(resp.m_data);  // arr->d: ["/DemoService", "/YomkServerInfo", ...]
 
 // 指定服务的函数列表（FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
-resp = YOMK_SERVER_INFO_FUNCTIONS("/DemoService");
+resp = YomkAPI::SERVER_INFO_FUNCTIONS("/DemoService");
 // listPkg->d（按注册名字典序）：{"/no_type","",""}、{"/with_desc","String","对函数的说明"}、{"/with_type","String",""}
 
 // 单函数元信息查询（结构化 FuncInfo 包：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
-resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_type");  // eOk，m_msgName = "String"
-resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/with_desc");  // eOk，m_msgName = "String"，m_description = "对函数的说明"（四参说明）
-resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/no_type");    // eOk，m_msgName 为空串（未声明），m_description 为空
-resp = YOMK_SERVER_INFO_FUNCTION("/DemoService/not_exist");  // eNo
+resp = YomkAPI::SERVER_INFO_FUNCTION("/DemoService/with_type");  // eOk，m_msgName = "String"
+resp = YomkAPI::SERVER_INFO_FUNCTION("/DemoService/with_desc");  // eOk，m_msgName = "String"，m_description = "对函数的说明"（四参说明）
+resp = YomkAPI::SERVER_INFO_FUNCTION("/DemoService/no_type");    // eOk，m_msgName 为空串（未声明），m_description 为空
+resp = YomkAPI::SERVER_INFO_FUNCTION("/DemoService/not_exist");  // eNo
 
 // 全量拓扑：ServerServiceInfoList 层级包（m_serviceName 服务名 + m_funcs 函数元信息列表，
 // 与 INFO_FUNCTION 单查同族）
-resp = YOMK_SERVER_INFO_ALL();
+resp = YomkAPI::SERVER_INFO_ALL();
 ```
 
 说明：FunctionPool 动态注册的函数无类型信息，内省显示为空；模块内层内省由各模块自行实现（四个内置模块均已完成，见下）。完整验证见 `Test/YomkServerInfo/TestYomkServerInfoLifecycle.cpp`。
 
 ### Context 模块内省
 
-`/YomkContext` 服务自身提供 key 级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）：
+`/YomkContext` 服务自身提供 key 级内省（既有功能函数均已用三参形式补齐类型名，服务器层内省同步可见）：
 
 ```cpp
-YOMK_CONTEXT_CREATE("str_key", yomkmsg::String::shared("v1"));
-YOMK_CONTEXT_SET_CHECKER("str_key", myChecker);
-YOMK_CONTEXT_SET_MONITOR("str_key", myMonitor, true);
+YomkAPI::CONTEXT_CREATE("str_key", yomkmsg::String::shared("v1"));
+YomkAPI::CONTEXT_SET_CHECKER("str_key", myChecker);
+YomkAPI::CONTEXT_SET_MONITOR("str_key", myMonitor, true);
 
 // key 列表（返回 StringArray；末位可选组名，缺省 main）
-YomkResponse resp = YOMK_CONTEXT_INFO_KEYS();   // arr->d: ["str_key"]
+YomkResponse resp = YomkAPI::CONTEXT_INFO_KEYS();   // arr->d: ["str_key"]
 
 // 单 key 元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"，数据走 m_data；含所属组 m_group）
-resp = YOMK_CONTEXT_INFO_KEY("str_key");        // eOk，解包 ContextKeyInfo：m_key="str_key" m_typeName="String" ...
-resp = YOMK_CONTEXT_INFO_KEY("not_exist");      // eNo
+resp = YomkAPI::CONTEXT_INFO_KEY("str_key");        // eOk，解包 ContextKeyInfo：m_key="str_key" m_typeName="String" ...
+resp = YomkAPI::CONTEXT_INFO_KEY("not_exist");      // eNo
 
 // 组名清单（返回 StringArray）
-resp = YOMK_CONTEXT_INFO_GROUPS();
+resp = YomkAPI::CONTEXT_INFO_GROUPS();
 
 // 跨组聚合：ContextGroupInfoList 两层结构化包（组名 m_groupName + 该组全部键元信息 m_keys）
-resp = YOMK_CONTEXT_INFO_ALL();
+resp = YomkAPI::CONTEXT_INFO_ALL();
 ```
 
-注意：`YOMK_CONTEXT_CREATE(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YomkAPI::CONTEXT_GET`。完整验证见 `Test/YomkContext/TestYomkContextCRUD.cpp`。
+注意：`YomkAPI::CONTEXT_CREATE(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YomkAPI::CONTEXT_GET`。完整验证见 `Test/YomkContext/TestYomkContextCRUD.cpp`。
 
 ### EventLoop 模块内省
 
@@ -767,20 +765,20 @@ YomkAPI::EVENTLOOP_START("loop_a", nullptr);
 YomkAPI::EVENTLOOP_START("loop_b", defaultHandle, "String");  // 声明默认处理函数期望类型，内省可见 [String]
 
 // 投递事件时可选打 tag（tag 仅作内省标记，不参与路由/处理）
-YOMK_EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle, "tag1");
-YOMK_EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle);  // 不打 tag，旧写法直接编译
+YomkAPI::EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle, "tag1");
+YomkAPI::EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle);  // 不打 tag，旧写法直接编译
 
 // 循环名列表（返回 StringArray）
-YomkResponse resp = YOMK_EVENTLOOP_INFO_LOOPS();   // arr->d: ["loop_a", "loop_b"]
+YomkResponse resp = YomkAPI::EVENTLOOP_INFO_LOOPS();   // arr->d: ["loop_a", "loop_b"]
 
 // 单循环元信息：EventLoopInfo 结构化包（m_loopName/m_running/m_pending/m_hasDefaultFunc/m_msgName/m_nextTags）
 // m_nextTags 存原值取 n 条（队列不足 n 时全部列出），n 缺省 3；m_msg 恒 "ok"
-resp = YOMK_EVENTLOOP_INFO_LOOP("loop_a");
-resp = YOMK_EVENTLOOP_INFO_LOOP("loop_a", 5);
-resp = YOMK_EVENTLOOP_INFO_LOOP("not_exist");       // eNo
+resp = YomkAPI::EVENTLOOP_INFO_LOOP("loop_a");
+resp = YomkAPI::EVENTLOOP_INFO_LOOP("loop_a", 5);
+resp = YomkAPI::EVENTLOOP_INFO_LOOP("not_exist");       // eNo
 
 // 全量循环元信息：EventLoopInfoList 结构化包，元素为单查同款 EventLoopInfo
-resp = YOMK_EVENTLOOP_INFO_ALL();
+resp = YomkAPI::EVENTLOOP_INFO_ALL();
 ```
 
 注意：自动生成的事件 id 对用户无意义，内省不展示；内省只读，`stop()` 会清空队列，观察排队 tag 需保持循环运行。完整验证见 `Test/YomkEventLoop/TestYomkEventLoopLifecycle.cpp`。
@@ -795,76 +793,76 @@ YomkAPI::FUNCTIONPOOL_REGISTER("func_desc", funcA, "String", "函数说明");  /
 YomkAPI::FUNCTIONPOOL_REGISTER("func_b", funcB);          // 不声明类型，内省无括号后缀
 
 // 注册函数名列表（返回 StringArray）
-YomkResponse resp = YOMK_FUNCTIONPOOL_INFO_NAMES();    // arr->d: ["func_a", "func_b", "func_desc"]
+YomkResponse resp = YomkAPI::FUNCTIONPOOL_INFO_NAMES();    // arr->d: ["func_a", "func_b", "func_desc"]
 
 // 单函数元信息查询：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，m_data 恒挂），未注册 eNo
-resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_a");           // eOk，解包 FuncInfo：m_funcName="func_a" m_msgName="String"
-resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_desc");        // eOk，解包 FuncInfo：m_description="函数说明"
-resp = YOMK_FUNCTIONPOOL_INFO_NAME("func_b");           // eOk，解包 FuncInfo：m_msgName/m_description 空
-resp = YOMK_FUNCTIONPOOL_INFO_NAME("not_exist");        // eNo
+resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("func_a");           // eOk，解包 FuncInfo：m_funcName="func_a" m_msgName="String"
+resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("func_desc");        // eOk，解包 FuncInfo：m_description="函数说明"
+resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("func_b");           // eOk，解包 FuncInfo：m_msgName/m_description 空
+resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("not_exist");        // eNo
 
 // 全量函数元信息：FuncInfoList 结构化包（元素为单查同款 FuncInfo）
-resp = YOMK_FUNCTIONPOOL_INFO_ALL();
+resp = YomkAPI::FUNCTIONPOOL_INFO_ALL();
 ```
 
 注意：内省只读；注销后函数立即从内省结果中消失。完整验证见 `Test/YomkFunctionPool/TestYomkFunctionPoolLifecycle.cpp`。
 
 ### Logger 模块内省
 
-`/YomkLogger` 服务自身提供日志器级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）：
+`/YomkLogger` 服务自身提供日志器级内省（既有功能函数均已用三参形式补齐类型名，服务器层内省同步可见）：
 
 ```cpp
-YOMK_FILE_LOG_CREATE("/tmp", "info_logger");                          // 创建文件日志器
+YomkAPI::FILE_LOG_CREATE("/tmp", "info_logger");                          // 创建文件日志器
 YOMK_INFO_TAG("auto_logger", "hello");  // tag 兼容双填：按需自动创建同名控制台日志器并显示 [auto_logger]
 
 // 日志器列表：按类型查询（返回 StringArray，行内容即纯名，字典序）
-YomkResponse resp = YOMK_LOGGER_INFO_LOGGERS("console");
+YomkResponse resp = YomkAPI::LOGGER_INFO_LOGGERS("console");
 // arr->d: ["MainLogger", "auto_logger"]
-resp = YOMK_LOGGER_INFO_LOGGERS("file");
+resp = YomkAPI::LOGGER_INFO_LOGGERS("file");
 // arr->d: ["info_logger"]
 
 // 单日志器元信息：按类型单表精确查（两表允许同名），LoggerInfo 结构化包（m_loggerName/m_type/m_dir，m_msg 恒 "ok"）
-resp = YOMK_LOGGER_INFO_LOGGER("MainLogger", "console");  // eOk, m_type="console"，m_dir 为空串
-resp = YOMK_LOGGER_INFO_LOGGER("info_logger", "file");    // eOk, m_type="file"，m_dir="/tmp"
-resp = YOMK_LOGGER_INFO_LOGGER("not_exist", "console");   // eNo
+resp = YomkAPI::LOGGER_INFO_LOGGER("MainLogger", "console");  // eOk, m_type="console"，m_dir 为空串
+resp = YomkAPI::LOGGER_INFO_LOGGER("info_logger", "file");    // eOk, m_type="file"，m_dir="/tmp"
+resp = YomkAPI::LOGGER_INFO_LOGGER("not_exist", "console");   // eNo
 
 // 全量日志器清单：LoggerInfoList（vector<LoggerInfo>，元素为单查同款，每条内嵌状态段）
 // console 条目 m_loggerState 承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态；
 // file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态
-resp = YOMK_LOGGER_INFO_ALL();
+resp = YomkAPI::LOGGER_INFO_ALL();
 
 // 全局主闸状态单查：LoggerState 独立包（四级别主闸开关 + proxyOn），
 // 独立于逐器门控层——条目 on 但无输出/未落盘时查此接口确认对应侧主闸是否关断（两层归因）
-resp = YOMK_LOGGER_INFO_GLOBAL();           // 缺省 = "console"：控制台侧主闸 + 控制台代理态
-resp = YOMK_LOGGER_INFO_GLOBAL("file");     // 文件侧主闸 + 文件代理态（两套各自独立）
-YOMK_OFF_CONSOLE_LOG_INFO("auto_logger");  // 具名关断：仅门控该日志器，不影响全局主闸
-resp = YOMK_LOGGER_INFO_LOGGER("auto_logger", "console");  // 条目报逐器 infoOff
-YOMK_ON_CONSOLE_LOG_INFO("auto_logger");   // 具名恢复
+resp = YomkAPI::LOGGER_INFO_GLOBAL();           // 缺省 = "console"：控制台侧主闸 + 控制台代理态
+resp = YomkAPI::LOGGER_INFO_GLOBAL("file");     // 文件侧主闸 + 文件代理态（两套各自独立）
+YomkAPI::OFF_CONSOLE_LOG_INFO("auto_logger");  // 具名关断：仅门控该日志器，不影响全局主闸
+resp = YomkAPI::LOGGER_INFO_LOGGER("auto_logger", "console");  // 条目报逐器 infoOff
+YomkAPI::ON_CONSOLE_LOG_INFO("auto_logger");   // 具名恢复
 // 文件开关同款双模式：无参 = 文件全局主闸，具名 = 仅门控该文件日志器
-YOMK_OFF_FILE_LOG_INFO("info_logger");     // 具名关断文件器：INFO 不再写入缓冲
-YOMK_ON_FILE_LOG_INFO("info_logger");      // 具名恢复
+YomkAPI::OFF_FILE_LOG_INFO("info_logger");     // 具名关断文件器：INFO 不再写入缓冲
+YomkAPI::ON_FILE_LOG_INFO("info_logger");      // 具名恢复
 ```
 
-注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关两级并联且控制台/文件两套相互独立——`YOMK_ON/OFF_CONSOLE_LOG_*()` 与 `YOMK_ON/OFF_FILE_LOG_*()` 各自无参作用于对应侧全局主闸、具名仅门控该日志器（未命中 eNo，不惰性创建），输出/落盘取两层 AND；`/all` 条目 m_loggerState 报逐器门控层真值（无参翻转不影响条目，proxyOn 各报对应侧代理态），全局主闸态经 `YOMK_LOGGER_INFO_GLOBAL(type)` 按 type 分流查询（缺省/"console" 控制台侧、"file" 文件侧）。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
+注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关两级并联且控制台/文件两套相互独立——`YomkAPI::ON/OFF_CONSOLE_LOG_*()` 与 `YomkAPI::ON/OFF_FILE_LOG_*()` 各自无参作用于对应侧全局主闸、具名仅门控该日志器（未命中 eNo，不惰性创建），输出/落盘取两层 AND；`/all` 条目 m_loggerState 报逐器门控层真值（无参翻转不影响条目，proxyOn 各报对应侧代理态），全局主闸态经 `YomkAPI::LOGGER_INFO_GLOBAL(type)` 按 type 分流查询（缺省/"console" 控制台侧、"file" 文件侧）。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
 
 ## 示例6：文件日志
 
 ```cpp
-YOMK_FILE_LOG_CREATE("/var/log/myapp", "app_log");
+YomkAPI::FILE_LOG_CREATE("/var/log/myapp", "app_log");
 YOMK_FILE_INFO("app_log", "Application started");
 YOMK_FILE_WARN_TAG("app_log", "Security", "Suspicious activity");
-YOMK_FILE_LOG_WRITE("app_log");  // 刷新到磁盘
+YomkAPI::FILE_LOG_WRITE("app_log");  // 刷新到磁盘
 
 // 文件门控两层 AND：无参主闸 + 具名逐器，任一层关断该条即不写入缓冲
-YOMK_OFF_FILE_LOG_INFO("app_log");  // 具名关断：app_log 的 INFO 不再写入
+YomkAPI::OFF_FILE_LOG_INFO("app_log");  // 具名关断：app_log 的 INFO 不再写入
 YOMK_FILE_INFO("app_log", "hidden while off");  // 被门控吞掉，缓冲无此行
-YOMK_ON_FILE_LOG_INFO("app_log");   // 具名恢复
+YomkAPI::ON_FILE_LOG_INFO("app_log");   // 具名恢复
 
 // 删除日志器：单端点同时清理 console/file 两表；文件日志器移除时析构自动落盘
 // （未 flush 的缓冲内容不丢），但不删除磁盘上的 .log 文件（数据保全，清理归调用方）
-YomkResponse del = YOMK_FILE_LOG_DELETE("app_log");
+YomkResponse del = YomkAPI::FILE_LOG_DELETE("app_log");
 // eOk, msg: "deleted console:0 file:1"
-YOMK_FILE_LOG_DELETE("app_log");   // eNo, msg: "logger not found."（已删除）
+YomkAPI::FILE_LOG_DELETE("app_log");   // eNo, msg: "logger not found."（已删除）
 // 注："MainLogger" 无特殊保护，删除后下次写控制台日志会惰性重建
 
 // 自定义控制台日志代理
@@ -872,18 +870,18 @@ bool myLogProxy(const yomk::Log& log) {
     std::cout << "[" << log.m_logger << "] " << log.m_log << std::endl;
     return false; // 不再传递给默认输出
 }
-YOMK_SET_CONSOLE_LOG_PROXY(myLogProxy);
+YomkAPI::SET_CONSOLE_LOG_PROXY(myLogProxy);
 // 卸载代理：传 nullptr 或空 std::function 即恢复框架默认控制台输出，
 // ALL 清单 console 条目的 m_loggerState.m_proxyOn 随之由 true 回到 false
-YOMK_SET_CONSOLE_LOG_PROXY(nullptr);
+YomkAPI::SET_CONSOLE_LOG_PROXY(nullptr);
 
 // 文件日志代理：与控制台代理相互独立，回调返回 false 拦截该条不落盘、true 穿透默认落盘
-YOMK_SET_FILE_LOG_PROXY([](const yomk::Log& log) {
+YomkAPI::SET_FILE_LOG_PROXY([](const yomk::Log& log) {
     return log.m_level != yomk::Log::eDebug;  // 拦截 DEBUG 不落盘，其余放行
 });
 // 卸载文件代理：传 nullptr 或空 std::function 即恢复默认落盘，
 // GLOBAL("file") 单查的 proxyOn 随之回到 false
-YOMK_SET_FILE_LOG_PROXY(nullptr);
+YomkAPI::SET_FILE_LOG_PROXY(nullptr);
 ```
 
 ---
@@ -989,11 +987,11 @@ static int g_fail = 0;
 
 int main(int argc, char *argv[])
 {
-    YOMK_INIT();
-    YOMK_NEW_SERVICE(XxxService);
+    YomkAPI::init();
+    YomkAPI::newService<XxxService>();
 
     // 测试版本查询
-    YomkResponse resp = YOMK_REQUEST("/XxxService/version", nullptr);
+    YomkResponse resp = YomkAPI::request("/XxxService/version", nullptr);
     if (resp.m_status == YomkResponse::eOk)
     {
         auto version = yomk::unPack<yomkmsg::String>(resp.m_data);
@@ -1287,13 +1285,13 @@ using namespace yomk;
 
 int main(int argc, char *argv[])
 {
-    YOMK_INIT();
+    YomkAPI::init();
 
     // 注册 XxxService（扩展服务需先注册才能使用）
-    YOMK_NEW_SERVICE(XxxService);
+    YomkAPI::newService<XxxService>();
 
     // 版本查询请求
-    YomkResponse resp = YOMK_REQUEST("/XxxService/version", nullptr);
+    YomkResponse resp = YomkAPI::request("/XxxService/version", nullptr);
     if (resp.m_status == YomkResponse::eOk)
     {
         auto version = yomk::unPack<yomkmsg::String>(resp.m_data);

@@ -33,7 +33,7 @@
  *
  * 说明：ConsoleLogger/FileLogger 为库内部实现类，符号已从 libYomkServer.so 导出
  *       （nm -D 核实），测试侧经源码模块 include 路径直连构造，不经框架单例
- *       （无 YOMK_INIT，两自包含类不依赖服务器）。cout 断言用"唯一 marker +
+ *       （无 YomkAPI::init()，两自包含类不依赖服务器）。cout 断言用"唯一 marker +
  *       rdbuf 捕获"。异常安全说明：两类无裸资源（string/stringstream/mutex
  *       自管理），bad_alloc 注入书面豁免（见 LG1 计划第 1 节）。
  *

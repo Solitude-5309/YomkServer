@@ -8,14 +8,14 @@
  * 3. 10 万级纯积压路径：gate 占住 worker 使投递/消费速率解耦——纯测 post + 无界队列大规模增长/重分配
  *    （断言 pending:N 积压确认，释放后守恒）
  * 4. 大数据量字符串：4096 字节 tag × max(N/10,1000) 个事件（约数十 MB），无崩溃且守恒
- * 5. API 层 10 万级宏投递：YOMK_EVENTLOOP_POST 走完整路由+解包路径，计数守恒 + API 级 QPS 基线
+ * 5. API 层 10 万级宏投递：YomkAPI::EVENTLOOP_POST 走完整路由+解包路径，计数守恒 + API 级 QPS 基线
  *
  * 说明：
  * - QPS/耗时基线仅以 [BASELINE] 行记录、不作断言（环境噪声使性能断言不可靠）；
  * - TSan 轨道守门以 YOMK_TEST_STRESS_SCALE=10000 降规模跑（大规模压力不在 TSan 下执行的既定约定，
  *   并发结构不变、多线程路径仍受 happens-before 验证）；ASan 全规模留覆盖率/sanitizer 收口闭环；
  * - 计数 handler 为文件级原子（TSan-clean 既有模式）；计时用 steady_clock；
- * - 白盒段直连内部类 EventLoop；API 段 YOMK_INIT 单例，末尾 YOMK_SHUTDOWN 收尾。
+ * - 白盒段直连内部类 EventLoop；API 段 YomkAPI::init() 单例，末尾 YomkAPI::shutdown() 收尾。
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
@@ -310,14 +310,14 @@ int main()
     // ============ Section 5: API 层 10 万级宏投递 ============
     {
         g_execCount.store(0);
-        auto server = YOMK_INIT(1);
-        YOMK_TEST_CHECK(server != nullptr, "S5 YOMK_INIT 返回非空服务器");
+        auto server = YomkAPI::init(1);
+        YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
         YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_START("stress_loop", nullptr).m_status == YomkResponse::eOk, "S5 START 返回 eOk");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
         {
-            YOMK_EVENTLOOP_POST("stress_loop", yomkmsg::String::shared(std::string("payload")), countHandler(), "");
+            YomkAPI::EVENTLOOP_POST("stress_loop", yomkmsg::String::shared(std::string("payload")), countHandler(), "");
         }
         auto t1 = std::chrono::steady_clock::now();
         bool drained = waitUntil([N] { return g_execCount.load() == static_cast<long>(N); }, 30000);
@@ -326,14 +326,14 @@ int main()
         YOMK_TEST_CHECK(drained, "S5 drain 完成（30s 看门狗）");
         YOMK_TEST_CHECK(g_execCount.load() == static_cast<long>(N), "S5 API 层计数守恒（N/N，路由+解包路径不丢失）");
         recordBaseline(
-            "S5 API-level post (YOMK_EVENTLOOP_POST)",
+            "S5 API-level post (YomkAPI::EVENTLOOP_POST)",
             N,
             std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
         recordBaseline(
             "S5 API-level end-to-end", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t0).count());
 
-        YOMK_TEST_CHECK(YOMK_EVENTLOOP_DESTROY("stress_loop").m_status == YomkResponse::eOk, "S5 DESTROY 返回 eOk");
-        YOMK_SHUTDOWN();
+        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_DESTROY("stress_loop").m_status == YomkResponse::eOk, "S5 DESTROY 返回 eOk");
+        YomkAPI::shutdown();
     }
 
     if (g_failed == 0)

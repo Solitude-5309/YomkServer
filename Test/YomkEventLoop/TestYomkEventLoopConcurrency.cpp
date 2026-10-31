@@ -16,8 +16,8 @@
  *   move-assign 有 terminate 风险，YomkAPI.h 未声明其线程安全）；
  * - churn 不含 destroy——丢弃已接受事件会破坏计数守恒语义，其等待者释放已由 Lifecycle Section 10 覆盖。
  *
- * 说明：白盒段直连内部类 EventLoop（CMake 已含 src 目录）；API 段 YOMK_INIT 单例拉起内置 /YomkEventLoop，
- *       末尾 YOMK_SHUTDOWN 收尾。测试装置为文件级（TSan-clean 既有验证模式）：计数用原子变量，
+ * 说明：白盒段直连内部类 EventLoop（CMake 已含 src 目录）；API 段 YomkAPI::init() 单例拉起内置 /YomkEventLoop，
+ *       末尾 YomkAPI::shutdown() 收尾。测试装置为文件级（TSan-clean 既有验证模式）：计数用原子变量，
  *       执行序列/完成标志向量用文件级互斥量且全部访问持锁（含断言快照）；阻塞门用原子自旋（1ms 粒度休眠），
  *       不用局部 mutex/cv 与 condition_variable::wait_for（本工具链 TSan 已知误报路径）；
  *       S1 的 handler 捕获事件裸指针——执行期间 run() 持有 shared_ptr 保证存活，无环引用无泄漏。
@@ -369,8 +369,8 @@ int main()
     // ============ Section 5: API 层并发投递 + 内省轮询（宏）============
     {
         g_execCount.store(0);
-        auto server = YOMK_INIT(1);
-        YOMK_TEST_CHECK(server != nullptr, "S5 YOMK_INIT 返回非空服务器");
+        auto server = YomkAPI::init(1);
+        YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
 
         auto startResp = YomkAPI::EVENTLOOP_START("conc_loop", nullptr);
         YOMK_TEST_CHECK(startResp.m_status == YomkResponse::eOk, "S5 START conc_loop 返回 eOk");
@@ -384,7 +384,7 @@ int main()
         {
             for (int k = 0; k < 25; ++k)
             {
-                if (YOMK_EVENTLOOP_POST("conc_loop", yomkmsg::String::shared(std::string("x")), countHandler(), "")
+                if (YomkAPI::EVENTLOOP_POST("conc_loop", yomkmsg::String::shared(std::string("x")), countHandler(), "")
                         .m_status == YomkResponse::eOk)
                 {
                     apiPostOk.fetch_add(1);
@@ -398,7 +398,7 @@ int main()
             // 投递完成后补足最少轮询数；轮询窗口仍覆盖并发投递期，且补足期间 worker 仍在消化队列
             while (!stopPoll.load() || pollCount.load() < 50)
             {
-                auto r = YOMK_EVENTLOOP_INFO_LOOP("conc_loop");
+                auto r = YomkAPI::EVENTLOOP_INFO_LOOP("conc_loop");
                 pollCount.fetch_add(1);
                 auto info = yomk::unPack<yomkmsg::EventLoopInfo>(r.m_data);
                 if (r.m_status == YomkResponse::eOk && info && info->d.m_running)
@@ -439,8 +439,8 @@ int main()
                 " 首个失败样本: " + (g_pollFailSamples.empty() ? std::string("无") : g_pollFailSamples.front()) + "）");
         YOMK_TEST_CHECK(waitUntil([] { return g_execCount.load() == 100; }, 5000), "S5 API 层事件全部执行（100/100）");
 
-        YOMK_TEST_CHECK(YOMK_EVENTLOOP_DESTROY("conc_loop").m_status == YomkResponse::eOk, "S5 DESTROY conc_loop 返回 eOk");
-        YOMK_SHUTDOWN();
+        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_DESTROY("conc_loop").m_status == YomkResponse::eOk, "S5 DESTROY conc_loop 返回 eOk");
+        YomkAPI::shutdown();
     }
 
     if (g_failed == 0)
