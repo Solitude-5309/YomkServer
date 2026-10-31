@@ -812,7 +812,7 @@ resp = YomkAPI::FUNCTIONPOOL_INFO_ALL();
 `/YomkLogger` 服务自身提供日志器级内省（既有功能函数均已用三参形式补齐类型名，服务器层内省同步可见）：
 
 ```cpp
-YomkAPI::FILE_LOG_CREATE("/tmp", "info_logger");                          // 创建文件日志器
+YomkAPI::createFileLogger("/tmp", "info_logger");                          // 创建文件日志器
 YOMK_INFO_TAG("auto_logger", "hello");  // tag 兼容双填：按需自动创建同名控制台日志器并显示 [auto_logger]
 
 // 日志器列表：按类型查询（返回 StringArray，行内容即纯名，字典序）
@@ -848,10 +848,10 @@ YomkAPI::enableFileLogInfo("info_logger");      // 具名恢复
 ## 示例6：文件日志
 
 ```cpp
-YomkAPI::FILE_LOG_CREATE("/var/log/myapp", "app_log");
+YomkAPI::createFileLogger("/var/log/myapp", "app_log");
 YOMK_FILE_INFO("app_log", "Application started");
 YOMK_FILE_WARN_TAG("app_log", "Security", "Suspicious activity");
-YomkAPI::FILE_LOG_WRITE("app_log");  // 刷新到磁盘
+YomkAPI::flushFileLog("app_log");  // 刷新到磁盘
 
 // 文件门控两层 AND：无参主闸 + 具名逐器，任一层关断该条即不写入缓冲
 YomkAPI::disableFileLogInfo("app_log");  // 具名关断：app_log 的 INFO 不再写入
@@ -860,9 +860,9 @@ YomkAPI::enableFileLogInfo("app_log");   // 具名恢复
 
 // 删除日志器：单端点同时清理 console/file 两表；文件日志器移除时析构自动落盘
 // （未 flush 的缓冲内容不丢），但不删除磁盘上的 .log 文件（数据保全，清理归调用方）
-YomkResponse del = YomkAPI::FILE_LOG_DELETE("app_log");
+YomkResponse del = YomkAPI::deleteFileLogger("app_log");
 // eOk, msg: "deleted console:0 file:1"
-YomkAPI::FILE_LOG_DELETE("app_log");   // eNo, msg: "logger not found."（已删除）
+YomkAPI::deleteFileLogger("app_log");   // eNo, msg: "logger not found."（已删除）
 // 注："MainLogger" 无特殊保护，删除后下次写控制台日志会惰性重建
 
 // 自定义控制台日志代理

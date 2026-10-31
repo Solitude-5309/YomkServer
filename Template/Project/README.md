@@ -81,4 +81,4 @@ TemplateProject
 | YomkContext | 全局 K-V 状态管理 | `YomkAPI::CONTEXT_CREATE` / `YomkAPI::CONTEXT_GET` / `YomkAPI::CONTEXT_SET` |
 | YomkEventLoop | 线程隔离事件循环 | `YomkAPI::EVENTLOOP_START` / `YomkAPI::EVENTLOOP_POST` |
 | YomkFunctionPool | 动态公共函数池 | `YomkAPI::FUNCTIONPOOL_REGISTER` / `YomkAPI::FUNCTIONPOOL_CALL` |
-| YomkLogger | 多级别日志系统 | `YOMK_INFO` / `YOMK_ERROR` / `YomkAPI::FILE_LOG_CREATE` |
+| YomkLogger | 多级别日志系统 | `YOMK_INFO` / `YOMK_ERROR` / `YomkAPI::createFileLogger` |

@@ -362,7 +362,7 @@ YOMK_TEST_CHECK(
     std::string longTag(65536, 'T');
     CoutCapture cap;
     YOMK_TEST_CHECK(
-        YomkAPI::CONSOLE_LOG_INFO_TAG(longTag, "lg1_s2_longtag_marker").m_status == YomkResponse::eOk,
+        YomkAPI::emitConsoleLogInfo(longTag, "lg1_s2_longtag_marker").m_status == YomkResponse::eOk,
         "65536 字符超长 tag 返回 eOk");
     YOMK_TEST_CHECK(cap.str().find("lg1_s2_longtag_marker") != std::string::npos, "超长 tag 日志正常输出");
     YOMK_TEST_CHECK(cap.str().find("[" + longTag + "]") != std::string::npos, "超长 tag 完整回显到输出行");
@@ -517,8 +517,8 @@ YOMK_TEST_CHECK(
 
     // 创建：eOk + 空文件已建（init 语义）
     YOMK_TEST_CHECK(
-        YomkAPI::FILE_LOG_CREATE(logDir.string(), "lg1_file_logger").m_status == YomkResponse::eOk,
-        "FILE_LOG_CREATE 返回 eOk");
+        YomkAPI::createFileLogger(logDir.string(), "lg1_file_logger").m_status == YomkResponse::eOk,
+        "createFileLogger 返回 eOk");
     YOMK_TEST_CHECK((fs::exists(logFile) && fs::file_size(logFile, ec) == 0), "CREATE 后 <dir>/<name>.log 空文件已建");
 
     // 四级别入缓冲：write 前文件仍空（缓冲语义）
@@ -533,7 +533,7 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(fs::file_size(logFile, ec) == 0, "WRITE 前文件仍为空（stringstream 缓冲语义）");
 
     // 落盘：读回断言行数/行格式/marker/tag
-    YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE("lg1_file_logger").m_status == YomkResponse::eOk, "FILE_LOG_WRITE 返回 eOk");
+    YOMK_TEST_CHECK(YomkAPI::flushFileLog("lg1_file_logger").m_status == YomkResponse::eOk, "flushFileLog 返回 eOk");
     bool readOk = false;
     std::string content = readFile(logFile, readOk);
     YOMK_TEST_CHECK(readOk, "落盘后日志文件可读");
@@ -548,7 +548,7 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(
         YOMK_FILE_INFO_TAG("lg1_file_logger", "lg1CustomTag", "lg1_s4_customtag_marker").m_status == YomkResponse::eOk,
         "FILE_INFO_TAG 自定义 tag 返回 eOk");
-    YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE("lg1_file_logger").m_status == YomkResponse::eOk, "自定义 tag 内容 WRITE eOk");
+    YOMK_TEST_CHECK(YomkAPI::flushFileLog("lg1_file_logger").m_status == YomkResponse::eOk, "自定义 tag 内容 WRITE eOk");
     bool readOkTag = false;
     std::string contentTag = readFile(logFile, readOkTag);
     YOMK_TEST_CHECK(
@@ -563,39 +563,39 @@ YOMK_TEST_CHECK(
 
     // 落盘后缓冲清空：再次 WRITE 文件不增长
     auto sizeBefore = fs::file_size(logFile, ec);
-    YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE("lg1_file_logger").m_status == YomkResponse::eOk, "二次 FILE_LOG_WRITE 返回 eOk");
+    YOMK_TEST_CHECK(YomkAPI::flushFileLog("lg1_file_logger").m_status == YomkResponse::eOk, "二次 flushFileLog 返回 eOk");
     YOMK_TEST_CHECK(fs::file_size(logFile, ec) == sizeBefore, "二次 WRITE 无重复内容（缓冲已清空）");
 
     // 重复创建 eNo
-    auto dup = YomkAPI::FILE_LOG_CREATE(logDir.string(), "lg1_file_logger");
+    auto dup = YomkAPI::createFileLogger(logDir.string(), "lg1_file_logger");
     YOMK_TEST_CHECK((dup.m_status == YomkResponse::eNo), "重复创建同名 file logger 返回 eNo");
     YOMK_TEST_CHECK(dup.m_msg == "logger name already exists.", "重复创建契约消息");
 
-    // 未创建 logger：FILE_LOG / FILE_LOG_WRITE 均 eNo
+    // 未创建 logger：FILE_LOG / flushFileLog 均 eNo
     auto noLogger = YOMK_FILE_INFO("lg1_never_created", "x");
     YOMK_TEST_CHECK((noLogger.m_status == YomkResponse::eNo), "FILE_LOG 未创建 logger 返回 eNo");
     YOMK_TEST_CHECK(noLogger.m_msg == "file logger not found.", "FILE_LOG not-found 契约消息");
-    auto noWrite = YomkAPI::FILE_LOG_WRITE("lg1_never_created");
-    YOMK_TEST_CHECK(noWrite.m_status == YomkResponse::eNo, "FILE_LOG_WRITE 未创建 logger 返回 eNo");
-    YOMK_TEST_CHECK(noWrite.m_msg == "logger not found.", "FILE_LOG_WRITE not-found 契约消息");
+    auto noWrite = YomkAPI::flushFileLog("lg1_never_created");
+    YOMK_TEST_CHECK(noWrite.m_status == YomkResponse::eNo, "flushFileLog 未创建 logger 返回 eNo");
+    YOMK_TEST_CHECK(noWrite.m_msg == "logger not found.", "flushFileLog not-found 契约消息");
 
     // P2-a 处置验证（LG2 回填）：空名/空 dir 一律 eInvalid，"" key 注册与
     // "/.log" 根路径拼接彻底堵死
-    auto emptyBoth = YomkAPI::FILE_LOG_CREATE("", "");
+    auto emptyBoth = YomkAPI::createFileLogger("", "");
     YOMK_TEST_CHECK(
         (emptyBoth.m_status == YomkResponse::eInvalid && emptyBoth.m_msg == "logger name is empty."),
         "空名+空 dir 创建返回 eInvalid + logger name is empty.（P2-a 已处置）");
-    auto emptyName = YomkAPI::FILE_LOG_CREATE(tmpDir.string(), "");
+    auto emptyName = YomkAPI::createFileLogger(tmpDir.string(), "");
     YOMK_TEST_CHECK(
         (emptyName.m_status == YomkResponse::eInvalid && emptyName.m_msg == "logger name is empty."),
         "空名+有效 dir 创建返回 eInvalid（P2-a 已处置）");
-    auto emptyDir = YomkAPI::FILE_LOG_CREATE("", "lg1_empty_dir_name");
+    auto emptyDir = YomkAPI::createFileLogger("", "lg1_empty_dir_name");
     YOMK_TEST_CHECK(
         (emptyDir.m_status == YomkResponse::eInvalid && emptyDir.m_msg == "logger dir is empty."),
         "有效名+空 dir 创建返回 eInvalid + logger dir is empty.（P2-a 已处置）");
 
     // P2-b 处置验证（LG2 回填）：不可创建 dir → init 返回 false → eNo 且不注册幽灵 logger
-    auto badDir = YomkAPI::FILE_LOG_CREATE("/proc/lg1_impossible/sub", "lg1_bad_dir_logger");
+    auto badDir = YomkAPI::createFileLogger("/proc/lg1_impossible/sub", "lg1_bad_dir_logger");
     YOMK_TEST_CHECK(
         (badDir.m_status == YomkResponse::eNo && badDir.m_msg == "init file logger failed."),
         "不可创建 dir 返回 eNo + init file logger failed.（P2-b 已处置，异常不穿透）");
@@ -605,7 +605,7 @@ YOMK_TEST_CHECK(
         "init 失败的 logger 未注册（无幽灵 key，内省 not found）");
     // init 失败不占用名字：同名换有效 dir 重试应成功
     fs::path retryDir = tmpDir / "s4_retry";
-    auto retry = YomkAPI::FILE_LOG_CREATE(retryDir.string(), "lg1_bad_dir_logger");
+    auto retry = YomkAPI::createFileLogger(retryDir.string(), "lg1_bad_dir_logger");
     YOMK_TEST_CHECK(
         (retry.m_status == YomkResponse::eOk && fs::exists(retryDir / "lg1_bad_dir_logger.log")),
         "init 失败后同名换有效 dir 重试成功（名字未被幽灵占用）");
@@ -738,10 +738,10 @@ YOMK_TEST_CHECK(
     fs::path bigDir = tmpDir / "s6";
     fs::create_directories(bigDir, ec);
     YOMK_TEST_CHECK(
-        YomkAPI::FILE_LOG_CREATE(bigDir.string(), "lg1_big_logger").m_status == YomkResponse::eOk,
+        YomkAPI::createFileLogger(bigDir.string(), "lg1_big_logger").m_status == YomkResponse::eOk,
         "超大内容用 file logger 创建 eOk");
     YOMK_TEST_CHECK(YOMK_FILE_INFO("lg1_big_logger", big).m_status == YomkResponse::eOk, "1MB 超大内容文件日志返回 eOk");
-    YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE("lg1_big_logger").m_status == YomkResponse::eOk, "超大内容 WRITE 返回 eOk");
+    YOMK_TEST_CHECK(YomkAPI::flushFileLog("lg1_big_logger").m_status == YomkResponse::eOk, "超大内容 WRITE 返回 eOk");
     bool readOk = false;
     std::string content = readFile(bigDir / "lg1_big_logger.log", readOk);
     YOMK_TEST_CHECK((readOk && content.find(big) != std::string::npos), "1MB 内容完整落盘");
@@ -754,7 +754,7 @@ YOMK_TEST_CHECK(
     fs::path badLevelDir = tmpDir / "s6_badlevel";
     fs::create_directories(badLevelDir, ec);
     YOMK_TEST_CHECK(
-        YomkAPI::FILE_LOG_CREATE(badLevelDir.string(), "lg1_s6_badlevel").m_status == YomkResponse::eOk,
+        YomkAPI::createFileLogger(badLevelDir.string(), "lg1_s6_badlevel").m_status == YomkResponse::eOk,
         "非法级别注入用 file logger 创建 eOk");
     std::string out;
     YomkResponse r(YomkResponse::eInvalid);
@@ -770,7 +770,7 @@ YOMK_TEST_CHECK(
         (r.m_status == YomkResponse::eOk && r.m_msg == "success."),
         "file_log 非法级别 99 返回 eOk（P2-c 修复后 default 活分支）");
     YOMK_TEST_CHECK(out.find("unknown log level, use Info") != std::string::npos, "file_log default 分支错误提示（降级 Info）");
-    YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE("lg1_s6_badlevel").m_status == YomkResponse::eOk, "非法级别落盘 WRITE eOk");
+    YOMK_TEST_CHECK(YomkAPI::flushFileLog("lg1_s6_badlevel").m_status == YomkResponse::eOk, "非法级别落盘 WRITE eOk");
     bool readOk = false;
     std::string content = readFile(badLevelDir / "lg1_s6_badlevel.log", readOk);
     YOMK_TEST_CHECK(
@@ -889,7 +889,7 @@ YOMK_TEST_CHECK(
     {
         YomkResponse r(YomkResponse::eInvalid);
         CoutCapture cap;
-        r = YomkAPI::CONSOLE_LOG_INFO_TAG(logger, marker);
+        r = YomkAPI::emitConsoleLogInfo(logger, marker);
         return r;
     };
 
@@ -899,7 +899,7 @@ YOMK_TEST_CHECK(
         YomkResponse r(YomkResponse::eOk);
         {
             CoutCapture cap;
-            r = YomkAPI::FILE_LOG_DELETE("");
+            r = YomkAPI::deleteFileLogger("");
             out = cap.str();
         }
         YOMK_TEST_CHECK(
@@ -914,7 +914,7 @@ YOMK_TEST_CHECK(
         YomkResponse r(YomkResponse::eOk);
         {
             CoutCapture cap;
-            r = YomkAPI::FILE_LOG_DELETE("lg1_s8_never_created");
+            r = YomkAPI::deleteFileLogger("lg1_s8_never_created");
             out = cap.str();
         }
         YOMK_TEST_CHECK(
@@ -931,7 +931,7 @@ YOMK_TEST_CHECK(
             consoleInfo(name, "lg1_s8_console_marker").m_status == YomkResponse::eOk, "S8: console-only 预热创建 eOk");
         YOMK_TEST_CHECK(YomkAPI::LOGGER_INFO_LOGGER(name, "console").m_status == YomkResponse::eOk, "S8: 创建后单查命中 eOk");
 
-        auto del = YomkAPI::FILE_LOG_DELETE(name);
+        auto del = YomkAPI::deleteFileLogger(name);
         YOMK_TEST_CHECK(
             (del.m_status == YomkResponse::eOk && del.m_msg == "deleted console:1 file:0"),
             "S8: console-only 删除 eOk + msg 计数: " + del.m_msg);
@@ -941,7 +941,7 @@ YOMK_TEST_CHECK(
             consoleInfo(name, "lg1_s8_rebuild_marker").m_status == YomkResponse::eOk,
             "S8: 删除后同名再写 eOk（惰性重建）");
         YOMK_TEST_CHECK(YomkAPI::LOGGER_INFO_LOGGER(name, "console").m_status == YomkResponse::eOk, "S8: 惰性重建后单查恢复 eOk");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_DELETE(name).m_status == YomkResponse::eOk, "S8: 清理重建 logger eOk");
+        YOMK_TEST_CHECK(YomkAPI::deleteFileLogger(name).m_status == YomkResponse::eOk, "S8: 清理重建 logger eOk");
     }
 
     // 8.4 file-only：写 2 行不 flush → 删除释放最后引用 → ~FileLogger 锁外自动落盘
@@ -949,7 +949,7 @@ YOMK_TEST_CHECK(
         fs::path dir = tmpDir / "s8_file";
         fs::create_directories(dir, ec);
         const std::string name = "lg1_s8_file_only";
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_CREATE(dir.string(), name).m_status == YomkResponse::eOk, "S8: file logger 创建 eOk");
+        YOMK_TEST_CHECK(YomkAPI::createFileLogger(dir.string(), name).m_status == YomkResponse::eOk, "S8: file logger 创建 eOk");
         YOMK_TEST_CHECK(
             YOMK_FILE_INFO_TAG(name, "s8Tag", "lg1_s8_file_marker_1").m_status == YomkResponse::eOk,
             "S8: file 写入第 1 行 eOk");
@@ -961,7 +961,7 @@ YOMK_TEST_CHECK(
         std::string contentBefore = readFile(dir / (name + ".log"), okBefore);
         YOMK_TEST_CHECK((okBefore && contentBefore.empty()), "S8: 删除前未 flush，文件仍为空");
 
-        auto del = YomkAPI::FILE_LOG_DELETE(name);
+        auto del = YomkAPI::deleteFileLogger(name);
         YOMK_TEST_CHECK(
             (del.m_status == YomkResponse::eOk && del.m_msg == "deleted console:0 file:1"),
             "S8: file-only 删除 eOk + msg 计数: " + del.m_msg);
@@ -972,7 +972,7 @@ YOMK_TEST_CHECK(
             (content.find("lg1_s8_file_marker_1") != std::string::npos &&
              content.find("lg1_s8_file_marker_2") != std::string::npos),
             "S8: 落盘内容含两条 marker（数据不因删除丢失）");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(name).m_status == YomkResponse::eNo, "S8: 删除后 WRITE 同名返回 eNo");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(name).m_status == YomkResponse::eNo, "S8: 删除后 WRITE 同名返回 eNo");
     }
 
     // 8.5 同名双表：一次删除同时清理两表（msg 计数 1/1），重复删除幂等 eNo
@@ -983,9 +983,9 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             consoleInfo(name, "lg1_s8_both_console_marker").m_status == YomkResponse::eOk,
             "S8: 双表用例 console 侧创建 eOk");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_CREATE(dir.string(), name).m_status == YomkResponse::eOk, "S8: 双表用例 file 侧创建 eOk");
+        YOMK_TEST_CHECK(YomkAPI::createFileLogger(dir.string(), name).m_status == YomkResponse::eOk, "S8: 双表用例 file 侧创建 eOk");
 
-        auto del = YomkAPI::FILE_LOG_DELETE(name);
+        auto del = YomkAPI::deleteFileLogger(name);
         YOMK_TEST_CHECK(
             (del.m_status == YomkResponse::eOk && del.m_msg == "deleted console:1 file:1"),
             "S8: 同名双表一次删除 eOk + msg 计数: " + del.m_msg);
@@ -997,7 +997,7 @@ YOMK_TEST_CHECK(
         YomkResponse del2(YomkResponse::eOk);
         {
             CoutCapture cap;
-            del2 = YomkAPI::FILE_LOG_DELETE(name);
+            del2 = YomkAPI::deleteFileLogger(name);
             out2 = cap.str();
         }
         YOMK_TEST_CHECK(
@@ -1015,9 +1015,9 @@ YOMK_TEST_CHECK(
         const size_t before = loggersTotal();
         YOMK_TEST_CHECK(
             consoleInfo(name, "lg1_s8_count_marker").m_status == YomkResponse::eOk, "S8: 计数用例 console 侧创建 eOk");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_CREATE(dir.string(), name).m_status == YomkResponse::eOk, "S8: 计数用例 file 侧创建 eOk");
+        YOMK_TEST_CHECK(YomkAPI::createFileLogger(dir.string(), name).m_status == YomkResponse::eOk, "S8: 计数用例 file 侧创建 eOk");
         YOMK_TEST_CHECK(loggersTotal() == before + 2, "S8: 双表各建一个 → LOGGERS 行数 +2");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_DELETE(name).m_status == YomkResponse::eOk, "S8: 计数用例删除 eOk");
+        YOMK_TEST_CHECK(YomkAPI::deleteFileLogger(name).m_status == YomkResponse::eOk, "S8: 计数用例删除 eOk");
         YOMK_TEST_CHECK(loggersTotal() == before, "S8: 删除后 LOGGERS 行数回落（递减守恒）");
         auto listPkg = yomk::unPack<yomkmsg::LoggerInfoList>(YomkAPI::LOGGER_INFO_ALL().m_data);
         const yomk::LoggerState* st = firstConsoleState(listPkg);
@@ -1029,7 +1029,7 @@ YOMK_TEST_CHECK(
         // MainLogger 无特殊保护：可删；重建须走"空 logger 名回退"路径
         // （YOMK_INFO 宏的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）
         YOMK_TEST_CHECK(
-            YomkAPI::FILE_LOG_DELETE("MainLogger").m_status == YomkResponse::eOk,
+            YomkAPI::deleteFileLogger("MainLogger").m_status == YomkResponse::eOk,
             "S8: MainLogger 可删除 eOk（无特殊保护）");
         YOMK_TEST_CHECK(YomkAPI::LOGGER_INFO_LOGGER("MainLogger", "console").m_status == YomkResponse::eNo, "S8: MainLogger 删除后单查 eNo");
         std::string rebuildOut;
@@ -1200,7 +1200,7 @@ YOMK_TEST_CHECK(
     fs::path s10Dir = tmpDir / "s10";
     fs::create_directories(s10Dir, ec);
     YOMK_TEST_CHECK(
-        YomkAPI::FILE_LOG_CREATE(s10Dir.string(), flName).m_status == YomkResponse::eOk,
+        YomkAPI::createFileLogger(s10Dir.string(), flName).m_status == YomkResponse::eOk,
         "S10: 建文件日志器 lg1_s10_fl 成功");
     fs::path s10LogFile = s10Dir / (flName + ".log");
 
@@ -1221,7 +1221,7 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(
         YOMK_FILE_WARN_TAG(flName, "lg1s10", "lg1_s10a_warn_marker").m_status == YomkResponse::eOk,
         "S10a: WARN 写入 eOk");
-    YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(flName).m_status == YomkResponse::eOk, "S10a: WRITE eOk");
+    YOMK_TEST_CHECK(YomkAPI::flushFileLog(flName).m_status == YomkResponse::eOk, "S10a: WRITE eOk");
     {
         bool ok = false;
         std::string content = readFile(s10LogFile, ok);
@@ -1245,7 +1245,7 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(
         YOMK_FILE_INFO_TAG(flName, "lg1s10", "lg1_s10b_on_marker").m_status == YomkResponse::eOk,
         "S10b: 恢复后 FILE_INFO eOk");
-    YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(flName).m_status == YomkResponse::eOk, "S10b: WRITE eOk");
+    YOMK_TEST_CHECK(YomkAPI::flushFileLog(flName).m_status == YomkResponse::eOk, "S10b: WRITE eOk");
     {
         bool ok = false;
         std::string content = readFile(s10LogFile, ok);
@@ -1292,7 +1292,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             YOMK_FILE_INFO_TAG(flName, "lg1s10", "lg1_s10d_gate_marker").m_status == YomkResponse::eOk,
             "S10d: 主闸关断后 FILE_INFO 仍 eOk");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(flName).m_status == YomkResponse::eOk, "S10d: WRITE eOk");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(flName).m_status == YomkResponse::eOk, "S10d: WRITE eOk");
         {
             bool ok = false;
             std::string content = readFile(s10LogFile, ok);
@@ -1304,7 +1304,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             YOMK_FILE_INFO_TAG(flName, "lg1s10", "lg1_s10d_on_marker").m_status == YomkResponse::eOk,
             "S10d: 主闸恢复后 FILE_INFO eOk");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(flName).m_status == YomkResponse::eOk, "S10d: WRITE eOk");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(flName).m_status == YomkResponse::eOk, "S10d: WRITE eOk");
         {
             bool ok = false;
             std::string content = readFile(s10LogFile, ok);
@@ -1364,7 +1364,7 @@ YOMK_TEST_CHECK(
     fs::path s11Dir = tmpDir / "s11";
     fs::create_directories(s11Dir, ec);
     YOMK_TEST_CHECK(
-        YomkAPI::FILE_LOG_CREATE(s11Dir.string(), flName11).m_status == YomkResponse::eOk,
+        YomkAPI::createFileLogger(s11Dir.string(), flName11).m_status == YomkResponse::eOk,
         "S11: 建文件日志器 lg1_s11_fl 成功");
     fs::path s11LogFile = s11Dir / (flName11 + ".log");
 
@@ -1393,7 +1393,7 @@ YOMK_TEST_CHECK(
         auto r = YOMK_FILE_INFO_TAG(flName11, "lg1s11", "lg1_s11b_intercept_marker");
         YOMK_TEST_CHECK(r.m_status == YomkResponse::eOk, "S11b: 拦截态 FILE_INFO 返回 eOk");
         YOMK_TEST_CHECK(r.m_msg == "file log proxy is success.", "S11b: 拦截态契约消息 file log proxy is success.");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(flName11).m_status == YomkResponse::eOk, "S11b: WRITE eOk");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(flName11).m_status == YomkResponse::eOk, "S11b: WRITE eOk");
         {
             bool ok = false;
             std::string content = readFile(s11LogFile, ok);
@@ -1409,7 +1409,7 @@ YOMK_TEST_CHECK(
         g_fileProxyIntercept.store(false);
         auto r = YOMK_FILE_INFO_TAG(flName11, "lg1s11", "lg1_s11c_pass_marker");
         YOMK_TEST_CHECK((r.m_status == YomkResponse::eOk && r.m_msg == "success."), "S11c: 穿透态 FILE_INFO eOk + success.");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(flName11).m_status == YomkResponse::eOk, "S11c: WRITE eOk");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(flName11).m_status == YomkResponse::eOk, "S11c: WRITE eOk");
         {
             bool ok = false;
             std::string content = readFile(s11LogFile, ok);
@@ -1440,7 +1440,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             YOMK_FILE_INFO_TAG(flName11, "lg1s11", "lg1_s11d_post_unload_marker").m_status == YomkResponse::eOk,
             "S11d: 卸载后 FILE_INFO eOk（走默认路径而非代理短路）");
-        YOMK_TEST_CHECK(YomkAPI::FILE_LOG_WRITE(flName11).m_status == YomkResponse::eOk, "S11d: WRITE eOk");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(flName11).m_status == YomkResponse::eOk, "S11d: WRITE eOk");
         {
             bool ok = false;
             std::string content = readFile(s11LogFile, ok);

@@ -189,7 +189,7 @@ public:
     }
     // 控制台日志输出
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_INFO_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
+    static YomkResponse emitConsoleLogInfo(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
@@ -201,7 +201,7 @@ public:
         return request("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, oss.str(), tag, tag}));
     }
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_WARN_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
+    static YomkResponse emitConsoleLogWarn(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
@@ -213,7 +213,7 @@ public:
         return request("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, oss.str(), tag, tag}));
     }
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_ERROR_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
+    static YomkResponse emitConsoleLogError(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
@@ -225,7 +225,7 @@ public:
         return request("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, oss.str(), tag, tag}));
     }
     template <typename... Args>
-    static YomkResponse CONSOLE_LOG_DEBUG_TAG(const std::string& tag, const std::string& fileLine, Args&&... args)
+    static YomkResponse emitConsoleLogDebug(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
@@ -237,7 +237,7 @@ public:
         return request("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eDebug, oss.str(), tag, tag}));
     }
     // 创建文件日志器
-    static YomkResponse FILE_LOG_CREATE(const std::string& logDir, const std::string& logFile)
+    static YomkResponse createFileLogger(const std::string& logDir, const std::string& logFile)
     {
         if (!requireServer())
         {
@@ -246,7 +246,7 @@ public:
         return request("/YomkLogger/create_file_logger", yomkmsg::LogFile::shared(yomk::LogFile{logFile, logDir}));
     }
     // 将指定日志器的缓冲落盘
-    static YomkResponse FILE_LOG_WRITE(const std::string& logFile)
+    static YomkResponse flushFileLog(const std::string& logFile)
     {
         if (!requireServer())
         {
@@ -255,7 +255,7 @@ public:
         return request("/YomkLogger/write_file_log", yomkmsg::String::shared(logFile));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_INFO_TAG(
+    static YomkResponse emitFileLogInfo(
         const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
@@ -268,7 +268,7 @@ public:
         return request("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eInfo, oss.str(), logFile, tag}));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_WARN_TAG(
+    static YomkResponse emitFileLogWarn(
         const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
@@ -281,7 +281,7 @@ public:
         return request("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eWarn, oss.str(), logFile, tag}));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_ERROR_TAG(
+    static YomkResponse emitFileLogError(
         const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
@@ -294,7 +294,7 @@ public:
         return request("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, oss.str(), logFile, tag}));
     }
     template <typename... Args>
-    static YomkResponse FILE_LOG_DEBUG_TAG(
+    static YomkResponse emitFileLogDebug(
         const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
@@ -483,7 +483,7 @@ public:
         return YomkResponse(YomkResponse::eNo, "unknown logger type.");
     }
     // 删除指定日志器
-    static YomkResponse FILE_LOG_DELETE(const std::string& loggerName)
+    static YomkResponse deleteFileLogger(const std::string& loggerName)
     {
         if (!requireServer())
         {
@@ -885,27 +885,27 @@ private:
 };
 #define YOMK_STRINGIFY(x) #x
 #define YOMK_TO_STRING(x) YOMK_STRINGIFY(x)
-#define YOMK_INFO(...) YomkAPI::CONSOLE_LOG_INFO_TAG("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_INFO_TAG(tag, ...) YomkAPI::CONSOLE_LOG_INFO_TAG(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_WARN(...) YomkAPI::CONSOLE_LOG_WARN_TAG("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_WARN_TAG(tag, ...) YomkAPI::CONSOLE_LOG_WARN_TAG(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_ERROR(...) YomkAPI::CONSOLE_LOG_ERROR_TAG("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_ERROR_TAG(tag, ...) YomkAPI::CONSOLE_LOG_ERROR_TAG(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_DEBUG(...) YomkAPI::CONSOLE_LOG_DEBUG_TAG("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_DEBUG_TAG(tag, ...) YomkAPI::CONSOLE_LOG_DEBUG_TAG(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_INFO(...) YomkAPI::emitConsoleLogInfo("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_INFO_TAG(tag, ...) YomkAPI::emitConsoleLogInfo(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_WARN(...) YomkAPI::emitConsoleLogWarn("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_WARN_TAG(tag, ...) YomkAPI::emitConsoleLogWarn(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_ERROR(...) YomkAPI::emitConsoleLogError("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_ERROR_TAG(tag, ...) YomkAPI::emitConsoleLogError(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_DEBUG(...) YomkAPI::emitConsoleLogDebug("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_DEBUG_TAG(tag, ...) YomkAPI::emitConsoleLogDebug(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_INFO(file, ...) \
-    YomkAPI::FILE_LOG_INFO_TAG(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::emitFileLogInfo(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_INFO_TAG(file, tag, ...) \
-    YomkAPI::FILE_LOG_INFO_TAG(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::emitFileLogInfo(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_WARN(file, ...) \
-    YomkAPI::FILE_LOG_WARN_TAG(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::emitFileLogWarn(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_WARN_TAG(file, tag, ...) \
-    YomkAPI::FILE_LOG_WARN_TAG(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::emitFileLogWarn(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_ERROR(file, ...) \
-    YomkAPI::FILE_LOG_ERROR_TAG(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::emitFileLogError(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_ERROR_TAG(file, tag, ...) \
-    YomkAPI::FILE_LOG_ERROR_TAG(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::emitFileLogError(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_DEBUG(file, ...) \
-    YomkAPI::FILE_LOG_DEBUG_TAG(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::emitFileLogDebug(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_DEBUG_TAG(file, tag, ...) \
-    YomkAPI::FILE_LOG_DEBUG_TAG(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::emitFileLogDebug(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
