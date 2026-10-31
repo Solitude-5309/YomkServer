@@ -236,7 +236,7 @@ static void showArmToolMeta()
         [&] { return YomkAPI::FUNCTIONPOOL_REGISTER("tool.handshake", handshake, "String", "班次握手：向指定操作工回执问候"); });
 
     logAction("查看握手工具元信息");
-    YomkResponse resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("tool.handshake");
+    YomkResponse resp = YomkAPI::getFunctionInfo("tool.handshake");
     logResp("INFO_NAME tool.handshake", resp);
     auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
     if (info)
@@ -297,7 +297,7 @@ static void showArmToolHotSwap()
     logVerify("already exist 提示 + eOk：同名重复注册即运行时热替换，无需先注销");
 
     logAction("复查握手工具元信息");
-    YomkResponse resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("tool.handshake");
+    YomkResponse resp = YomkAPI::getFunctionInfo("tool.handshake");
     logResp("INFO_NAME tool.handshake", resp);
     auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
     if (info)
@@ -324,7 +324,7 @@ static void showArmToolDashboard()
         "展示格式由用户定义。");
 
     logAction("巡检函数名清单");
-    YomkResponse namesResp = YomkAPI::FUNCTIONPOOL_INFO_NAMES();
+    YomkResponse namesResp = YomkAPI::listFunctionNames();
     logResp("INFO_NAMES", namesResp);
     auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
     if (nameArr)
@@ -337,12 +337,12 @@ static void showArmToolDashboard()
     logVerify("tool.handshake 与 tool.payloadSum 在列：清单按函数名字典序排列");
 
     logAction("单查未注册工具 tool.ghost");
-    YomkResponse resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("tool.ghost");
+    YomkResponse resp = YomkAPI::getFunctionInfo("tool.ghost");
     logResp("INFO_NAME tool.ghost", resp);
     logVerify("未注册名字 -> eNo(funcName is not register)：not-found 是框架统一惯例");
 
     logAction("全量导出工具元信息");
-    resp = YomkAPI::FUNCTIONPOOL_INFO_ALL();
+    resp = YomkAPI::getAllFunctionInfo();
     logResp("INFO_ALL", resp);
     auto allArr = yomk::unPack<yomkmsg::FuncInfoList>(resp.m_data);
     if (allArr)
@@ -383,7 +383,7 @@ static void showArmToolCleanup()
         [&] { return YomkAPI::FUNCTIONPOOL_UNREGISTER("tool.handshake"); });
 
     logAction("巡检清单确认已清空");
-    YomkResponse allResp = YomkAPI::FUNCTIONPOOL_INFO_ALL();
+    YomkResponse allResp = YomkAPI::getAllFunctionInfo();
     logResp("INFO_ALL", allResp);
     auto allArr = yomk::unPack<yomkmsg::FuncInfoList>(allResp.m_data);
     logVerify(allArr && allArr->d.empty() ? "函数清单已空：班次结束，工具柜清空，班次闭环" : "函数清单非空：存在未注销工具");

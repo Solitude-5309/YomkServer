@@ -293,7 +293,7 @@ static void showArmPlantRoster()
         "注册即可调用。");
 
     logAction("开班点名：查询产线在册服务");
-    YomkResponse namesResp = YomkAPI::SERVER_INFO_SERVICES();
+    YomkResponse namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
     auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
     if (nameArr)
@@ -308,7 +308,7 @@ static void showArmPlantRoster()
     logActionInt("装配工位上线：注册 /ArmStation", "NEW_SERVICE /ArmStation", [] { return YomkAPI::newService<ArmStationService>(); });
 
     logAction("复查在册服务清单");
-    namesResp = YomkAPI::SERVER_INFO_SERVICES();
+    namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
     auto nameArr2 = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
     if (nameArr2)
@@ -344,7 +344,7 @@ static void showArmStationFunctions()
         "元数据，2 参注册的 /report 双空，差异一目了然。");
 
     logAction("查阅装配工位职能清单");
-    YomkResponse funcsResp = YomkAPI::SERVER_INFO_FUNCTIONS("/ArmStation");
+    YomkResponse funcsResp = YomkAPI::listServiceFunctions("/ArmStation");
     logResp("INFO_FUNCTIONS /ArmStation", funcsResp);
     auto listPkg = yomk::unPack<yomkmsg::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
@@ -357,12 +357,12 @@ static void showArmStationFunctions()
     logVerify("msgName 即 installFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /report 两字段为(未指定)");
 
     logAction("查阅不存在工位 /GhostStation 的职能清单");
-    funcsResp = YomkAPI::SERVER_INFO_FUNCTIONS("/GhostStation");
+    funcsResp = YomkAPI::listServiceFunctions("/GhostStation");
     logResp("INFO_FUNCTIONS /GhostStation", funcsResp);
     logVerify("服务不存在 -> 空清单 eOk：查询失败不崩溃，仍是普通返回值");
 
     logAction("以空服务名查阅职能清单");
-    funcsResp = YomkAPI::SERVER_INFO_FUNCTIONS("");
+    funcsResp = YomkAPI::listServiceFunctions("");
     logResp("INFO_FUNCTIONS (空服务名)", funcsResp);
     logVerify("空服务名 -> eInvalid(srvName is empty)：参数无效与目标不存在是两种不同状态");
 }
@@ -379,7 +379,7 @@ static void showArmFuncLookup()
         "不存在均为 eNo。");
 
     logAction("调阅质量抽检函数名片");
-    YomkResponse resp = YomkAPI::SERVER_INFO_FUNCTION("/ArmStation/quality_check");
+    YomkResponse resp = YomkAPI::getServiceFunctionInfoByUrl("/ArmStation/quality_check");
     logResp("INFO_FUNCTION /ArmStation/quality_check", resp);
     auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
     if (info)
@@ -389,7 +389,7 @@ static void showArmFuncLookup()
     logVerify("命中契约：m_msg 恒 ok、数据走 m_data；m_msgName=QualityCheckReq、m_description=第四参说明——与场景 2 清单同族");
 
     logAction("调阅状态上报函数名片");
-    resp = YomkAPI::SERVER_INFO_FUNCTION("/ArmStation/report");
+    resp = YomkAPI::getServiceFunctionInfoByUrl("/ArmStation/report");
     logResp("INFO_FUNCTION /ArmStation/report", resp);
     auto reportInfo = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
     if (reportInfo)
@@ -399,16 +399,16 @@ static void showArmFuncLookup()
     logVerify("2 参注册的 /report msgName 为(未指定)：元数据是可选声明，不影响调用");
 
     logAction("以不以 / 开头的 url 单查", "INFO_FUNCTION ArmStation/quality_check (无/)",
-        [&] { return YomkAPI::SERVER_INFO_FUNCTION("ArmStation/quality_check"); });
+        [&] { return YomkAPI::getServiceFunctionInfoByUrl("ArmStation/quality_check"); });
 
     logAction("以缺函数名的 url 单查", "INFO_FUNCTION /ArmStation (缺函数名)",
-        [&] { return YomkAPI::SERVER_INFO_FUNCTION("/ArmStation"); });
+        [&] { return YomkAPI::getServiceFunctionInfoByUrl("/ArmStation"); });
 
     logAction("以服务不存在的 url 单查", "INFO_FUNCTION /GhostStation/hi (服务不存在)",
-        [&] { return YomkAPI::SERVER_INFO_FUNCTION("/GhostStation/hi"); });
+        [&] { return YomkAPI::getServiceFunctionInfoByUrl("/GhostStation/hi"); });
 
     logAction("以函数不存在的 url 单查", "INFO_FUNCTION /ArmStation/ghost (函数不存在)",
-        [&] { return YomkAPI::SERVER_INFO_FUNCTION("/ArmStation/ghost"); });
+        [&] { return YomkAPI::getServiceFunctionInfoByUrl("/ArmStation/ghost"); });
     logVerify("4 种坏 URL 均为 eNo 且 msg 说明原因：url 解析失败 / 目标不存在是普通返回值，不报错不崩溃");
 }
 
@@ -424,7 +424,7 @@ static void showArmPlantTopology()
         "调用拓扑。");
 
     logAction("导出全厂服务拓扑");
-    YomkResponse allResp = YomkAPI::SERVER_INFO_ALL();
+    YomkResponse allResp = YomkAPI::getAllServerInfo();
     logResp("INFO_ALL", allResp);
     logTopology("INFO_ALL", allResp);
     logVerify("6 个服务 = 5 个内置 + 1 个装配工位，函数名带 / 前缀、带元数据的附 [MsgName] 标注——层级自上而下逐服务展开");
@@ -444,7 +444,7 @@ static void showArmLiveView()
     logActionInt("装配工位下线：注销 /ArmStation", "DEL_SERVICE /ArmStation", [] { return YomkAPI::delService("/ArmStation"); });
 
     logAction("复查在册服务清单");
-    YomkResponse namesResp = YomkAPI::SERVER_INFO_SERVICES();
+    YomkResponse namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
     auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
     if (nameArr)
@@ -457,7 +457,7 @@ static void showArmLiveView()
     logVerify("清单回到 5 项内置服务：删除即时生效，无需重启");
 
     logAction("复查全厂拓扑终态");
-    YomkResponse allResp = YomkAPI::SERVER_INFO_ALL();
+    YomkResponse allResp = YomkAPI::getAllServerInfo();
     logResp("INFO_ALL", allResp);
     auto list = yomk::unPack<yomkmsg::ServerServiceInfoList>(allResp.m_data);
     if (list)
@@ -491,7 +491,7 @@ static void showArmPowerOff()
         "收班断电：优雅关闭框架", "SHUTDOWN + INFO_SERVICES (关闭后守卫)",
         [&] {
             YomkAPI::shutdown();
-            return YomkAPI::SERVER_INFO_SERVICES();  // eInvalid：结果行随日志宏静默，行为已由收班预告说明
+            return YomkAPI::listServices();  // eInvalid：结果行随日志宏静默，行为已由收班预告说明
         });
 }
 

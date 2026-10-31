@@ -437,7 +437,7 @@ public:
         return request("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::eError, "", loggerName}));
     }
     // 按类型获取日志器名列表（type: "console"/"file"，仅返回该类型的纯名）
-    static YomkResponse LOGGER_INFO_LOGGERS(const std::string& type)
+    static YomkResponse listLoggers(const std::string& type)
     {
         if (!requireServer())
         {
@@ -446,7 +446,7 @@ public:
         return request("/YomkLogger/loggers", yomkmsg::String::shared(type));
     }
     // 查询指定日志器状态（type: "console"/"file"；两表允许同名，须按类型精确单查）
-    static YomkResponse LOGGER_INFO_LOGGER(const std::string& loggerName, const std::string& type)
+    static YomkResponse getLoggerInfo(const std::string& loggerName, const std::string& type)
     {
         if (!requireServer())
         {
@@ -456,7 +456,7 @@ public:
     }
     // 查询全部日志器及逐器门控状态（返回 LoggerInfoList 清单，每条内嵌 LoggerState 状态段：
     // console 条目为控制台逐器门控层真值，file 条目为文件逐器门控层真值）
-    static YomkResponse LOGGER_INFO_ALL()
+    static YomkResponse getAllLoggerInfo()
     {
         if (!requireServer())
         {
@@ -466,7 +466,7 @@ public:
     }
     // 查询全局主闸状态（4 级别 + proxy；type: "console"/"file"，两套主闸相互独立供两层归因；
     // 缺省 "console" 与历史无参语义一致，未知 type 返回 eNo）
-    static YomkResponse LOGGER_INFO_GLOBAL(const std::string& type = "console")
+    static YomkResponse getGlobalLoggerLevel(const std::string& type = "console")
     {
         if (!requireServer())
         {
@@ -609,7 +609,7 @@ public:
             "/YomkContext/destroy", yomkmsg::ContextGroupKey::shared(yomk::ContextGroupKey{groupName, ctxName}));
     }
     // 获取全部上下文键名
-    static YomkResponse CONTEXT_INFO_KEYS(const std::string& groupName = "main")
+    static YomkResponse listContextKeys(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
@@ -618,7 +618,7 @@ public:
         return request("/YomkContext/keys", yomkmsg::String::shared(groupName));
     }
     // 查询指定上下文键状态
-    static YomkResponse CONTEXT_INFO_KEY(const std::string& ctxName, const std::string& groupName = "main")
+    static YomkResponse getContextInfo(const std::string& ctxName, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
@@ -626,8 +626,8 @@ public:
         }
         return request("/YomkContext/key", yomkmsg::ContextGroupKey::shared(yomk::ContextGroupKey{groupName, ctxName}));
     }
-    // 查询全部组名清单（返回 StringArray，对齐 EVENTLOOP_INFO_LOOPS 形态）
-    static YomkResponse CONTEXT_INFO_GROUPS()
+    // 查询全部组名清单（返回 StringArray，对齐 listEventLoops 形态）
+    static YomkResponse listContextGroups()
     {
         if (!requireServer())
         {
@@ -636,7 +636,7 @@ public:
         return request("/YomkContext/groups", nullptr);
     }
     // 查询全部组及其全部键的内省元信息（跨组聚合：返回 ContextGroupInfoList，层级为组 → 键元信息）
-    static YomkResponse CONTEXT_INFO_ALL()
+    static YomkResponse getAllContextInfo()
     {
         if (!requireServer())
         {
@@ -707,7 +707,7 @@ public:
         return request("/YomkEventLoop/destroy", yomkmsg::String::shared(eventLoopName));
     }
     // 获取全部事件循环名称列表
-    static YomkResponse EVENTLOOP_INFO_LOOPS()
+    static YomkResponse listEventLoops()
     {
         if (!requireServer())
         {
@@ -716,7 +716,7 @@ public:
         return request("/YomkEventLoop/loops", nullptr);
     }
     // 查询指定事件循环状态与事件积压数
-    static YomkResponse EVENTLOOP_INFO_LOOP(const std::string& eventLoopName)
+    static YomkResponse getEventLoopInfo(const std::string& eventLoopName)
     {
         if (!requireServer())
         {
@@ -724,7 +724,7 @@ public:
         }
         return request("/YomkEventLoop/loop", yomkmsg::String::shared(eventLoopName));
     }
-    static YomkResponse EVENTLOOP_INFO_LOOP(const std::string& eventLoopName, size_t tagCount)
+    static YomkResponse getEventLoopInfo(const std::string& eventLoopName, size_t tagCount)
     {
         if (!requireServer())
         {
@@ -733,7 +733,7 @@ public:
         return request("/YomkEventLoop/loop", yomkmsg::String::shared(eventLoopName + " " + std::to_string(tagCount)));
     }
     // 查询全部事件循环状态
-    static YomkResponse EVENTLOOP_INFO_ALL()
+    static YomkResponse getAllEventLoopInfo()
     {
         if (!requireServer())
         {
@@ -774,7 +774,7 @@ public:
         return request("/YomkFunctionPool/call", yomkmsg::CallFunction::shared(yomk::CallFunction{funcName, callData}));
     }
     // 获取函数池中全部函数名
-    static YomkResponse FUNCTIONPOOL_INFO_NAMES()
+    static YomkResponse listFunctionNames()
     {
         if (!requireServer())
         {
@@ -783,7 +783,7 @@ public:
         return request("/YomkFunctionPool/names", nullptr);
     }
     // 查询单个已注册函数元信息
-    static YomkResponse FUNCTIONPOOL_INFO_NAME(const std::string& funcName)
+    static YomkResponse getFunctionInfo(const std::string& funcName)
     {
         if (!requireServer())
         {
@@ -792,7 +792,7 @@ public:
         return request("/YomkFunctionPool/name", yomkmsg::String::shared(funcName));
     }
     // 查询全部已注册函数元信息
-    static YomkResponse FUNCTIONPOOL_INFO_ALL()
+    static YomkResponse getAllFunctionInfo()
     {
         if (!requireServer())
         {
@@ -803,7 +803,7 @@ public:
     // SERVER_INFO_API
 public:
     // 查询所有服务名称
-    static YomkResponse SERVER_INFO_SERVICES()
+    static YomkResponse listServices()
     {
         if (!requireServer())
         {
@@ -813,7 +813,7 @@ public:
     }
     // 查询指定服务的全部功能函数（返回 FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，
     // 与 /function 单查、/all 聚合、函数池内省同族；m_msg 恒 "ok"，不存在服务为空清单）
-    static YomkResponse SERVER_INFO_FUNCTIONS(const std::string& srvName)
+    static YomkResponse listServiceFunctions(const std::string& srvName)
     {
         if (!requireServer())
         {
@@ -822,7 +822,7 @@ public:
         return request("/YomkServerInfo/functions", yomkmsg::String::shared(srvName));
     }
     // 查询指定功能函数元信息
-    static YomkResponse SERVER_INFO_FUNCTION(const std::string& url)
+    static YomkResponse getServiceFunctionInfoByUrl(const std::string& url)
     {
         if (!requireServer())
         {
@@ -831,7 +831,7 @@ public:
         return request("/YomkServerInfo/function", yomkmsg::String::shared(url));
     }
     // 查询框架全量服务及功能函数拓扑
-    static YomkResponse SERVER_INFO_ALL()
+    static YomkResponse getAllServerInfo()
     {
         if (!requireServer())
         {

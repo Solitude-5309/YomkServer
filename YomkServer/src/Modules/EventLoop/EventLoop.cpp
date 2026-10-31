@@ -177,7 +177,7 @@ void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc, const std::st
     m_defaultMsgName = msgName;
 }
 
-// 结构化内省快照：填充事件循环元信息（EVENTLOOP_INFO_LOOP 返回数据）
+// 结构化内省快照：填充事件循环元信息（getEventLoopInfo 返回数据）
 // m_queueMutex 锁内取数；队列头起最多 tagCount 条事件 tag，存原值（空串保留，展示层 "-" 占位由 infoLine 处理）
 void EventLoop::infoSnapshot(yomk::EventLoopInfo& info, size_t tagCount)
 {

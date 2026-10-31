@@ -284,9 +284,9 @@ int main(int /*argc*/, char** /*argv*/)
                     ++callOk;
             }
             // introspect
-            if (YomkAPI::FUNCTIONPOOL_INFO_NAMES().m_status == YomkResponse::eOk)
+            if (YomkAPI::listFunctionNames().m_status == YomkResponse::eOk)
                 ++infoNamesOk;
-            if (YomkAPI::FUNCTIONPOOL_INFO_ALL().m_status == YomkResponse::eOk)
+            if (YomkAPI::getAllFunctionInfo().m_status == YomkResponse::eOk)
                 ++infoAllOk;
             // unregister 10
             for (int k = 0; k < kGroupSize; ++k)

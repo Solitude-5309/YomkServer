@@ -190,14 +190,14 @@ int main()
     std::cout << "===== S2. 删除内置服务契约与恢复（/YomkLogger） =====" << std::endl;
     {
         YOMK_TEST_CHECK(YomkAPI::delService("/YomkLogger") == 0, "删除内置 /YomkLogger 返回 0");
-        auto afterDel = YomkAPI::LOGGER_INFO_LOGGERS("console");
+        auto afterDel = YomkAPI::listLoggers("console");
         YOMK_TEST_CHECK(afterDel.m_status == YomkResponse::eNo && afterDel.m_msg == "service not found: /YomkLogger",
               "删除后 LOGGER API 服务级 eNo + 精确消息");
-        YOMK_TEST_CHECK(!contains(unpackStringArray(YomkAPI::SERVER_INFO_SERVICES()), "/YomkLogger"),
+        YOMK_TEST_CHECK(!contains(unpackStringArray(YomkAPI::listServices()), "/YomkLogger"),
               "服务表快照不再含 /YomkLogger");
 
         YOMK_TEST_CHECK(YomkAPI::newService<YomkLogger>() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
-        auto restored = YomkAPI::LOGGER_INFO_LOGGERS("console");
+        auto restored = YomkAPI::listLoggers("console");
         // loggers 按类型查询，行内容即 logger 纯名（YomkLogger::loggers 不再拼接类型后缀）
         YOMK_TEST_CHECK(restored.m_status == YomkResponse::eOk && contains(unpackStringArray(restored), "MainLogger"),
               "重注册后 LOGGER API 恢复且含 MainLogger");
@@ -271,10 +271,10 @@ int main()
         auto postCtx = YomkAPI::CONTEXT_SET("drain_key", yomkmsg::String::shared(std::string("x")));
         YOMK_TEST_CHECK(postCtx.m_status == YomkResponse::eInvalid && postCtx.m_msg == "YomkServer is not init",
               "shutdown 后 CONTEXT_SET 回归 eInvalid + 守卫消息");
-        auto postLog = YomkAPI::LOGGER_INFO_ALL();
+        auto postLog = YomkAPI::getAllLoggerInfo();
         YOMK_TEST_CHECK(postLog.m_status == YomkResponse::eInvalid && postLog.m_msg == "YomkServer is not init",
               "shutdown 后 LOGGER API 回归 eInvalid + 守卫消息");
-        auto postInfo = YomkAPI::SERVER_INFO_ALL();
+        auto postInfo = YomkAPI::getAllServerInfo();
         YOMK_TEST_CHECK(postInfo.m_status == YomkResponse::eInvalid && postInfo.m_msg == "YomkServer is not init",
               "shutdown 后 SERVER_INFO API 回归 eInvalid + 守卫消息");
 

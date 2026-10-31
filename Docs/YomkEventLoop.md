@@ -10,9 +10,9 @@
 | `YomkAPI::EVENTLOOP_START(name, defaultFunc, "MsgName")` | 启动并指定默认处理函数与消息类型名元数据 |
 | `YomkAPI::EVENTLOOP_POST(name, pkg, func, tag)` | 非阻塞投递异步任务；tag 可选，仅内省可见，用于观察队列 |
 | `YomkAPI::EVENTLOOP_POST_WAIT(name, pkg, func, tag)` | 阻塞投递任务，等待任务在循环中执行完毕返回结果 |
-| `YomkAPI::EVENTLOOP_INFO_LOOP(name)` | 查询循环状态与队列积压 |
-| `YomkAPI::EVENTLOOP_INFO_LOOP(name, n)` | 同上，第二个参数可选：列出队首 N 个事件的 tag |
-| `YomkAPI::EVENTLOOP_INFO_LOOPS()` / `YomkAPI::EVENTLOOP_INFO_ALL()` | 循环清单 / 全量状态自省（EventLoopInfoList 结构化包） |
+| `YomkAPI::getEventLoopInfo(name)` | 查询循环状态与队列积压 |
+| `YomkAPI::getEventLoopInfo(name, n)` | 同上，第二个参数可选：列出队首 N 个事件的 tag |
+| `YomkAPI::listEventLoops()` / `YomkAPI::getAllEventLoopInfo()` | 循环清单 / 全量状态自省（EventLoopInfoList 结构化包） |
 | `YomkAPI::EVENTLOOP_STOP(name)` | 停止（停线程但保留队列事件，再次 START 续跑） |
 | `YomkAPI::EVENTLOOP_DESTROY(name)` | 销毁（停线程并清空队列、移出循环表，不可续跑） |
 
@@ -34,7 +34,7 @@ YomkResponse resp = YomkAPI::EVENTLOOP_POST_WAIT("TaskLoop", nullptr, [](YomkPkg
 });
 
 // 查询循环状态与队列积压（第二个参数可选：列出队首 N 个事件的 tag）
-YomkAPI::EVENTLOOP_INFO_LOOP("TaskLoop");  // msg 如 "TaskLoop running:on pending:0 defaultFunc:on nextNEventTag(3): "
+YomkAPI::getEventLoopInfo("TaskLoop");  // msg 如 "TaskLoop running:on pending:0 defaultFunc:on nextNEventTag(3): "
 
 // 停止（停线程但保留队列事件，再次 START 续跑）与销毁（停线程并清空队列、移出循环表，不可续跑）
 YomkAPI::EVENTLOOP_STOP("TaskLoop");
