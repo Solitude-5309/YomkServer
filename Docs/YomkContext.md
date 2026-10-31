@@ -8,7 +8,7 @@
 |---|---|
 | `YOMK_CONTEXT_CREATE(key, pkg)` | 创建上下文键值 |
 | `YOMK_CONTEXT_SET(key, pkg)` | 设置上下文值（整体替换） |
-| `YOMK_CONTEXT_GET(MsgName, key, defaultValue)` | 读取只读快照；key 不存在时返回兜底默认值 |
+| `YomkAPI::CONTEXT_GET<yomkmsg::MsgName>(key, defaultValue)` | 读取只读快照；key 不存在时返回兜底默认值 |
 | `YOMK_CONTEXT_SET_CHECKER(key, func)` | 注册变更前校验门控 |
 | `YOMK_CONTEXT_ON_CHECKER()` / `YOMK_CONTEXT_OFF_CHECKER()` | 开关全局校验器（checker 保留但不生效） |
 | `YOMK_CONTEXT_SET_MONITOR(key, func, async)` | 注册变更后监听器（追加式可注册多个） |
@@ -24,7 +24,7 @@ YOMK_CONTEXT_CREATE("config", yomkmsg::String::shared("init_value"));
 YOMK_CONTEXT_SET("config", yomkmsg::String::shared("new_value"));
 
 // 2. 读取上下文（只读快照；key 不存在时返回兜底默认值）
-auto val = YOMK_CONTEXT_GET(String, "config", nullptr);
+auto val = YomkAPI::CONTEXT_GET<yomkmsg::String>("config", nullptr);
 
 // 3. 注册变更前校验门控（Checker）
 YOMK_CONTEXT_SET_CHECKER("config", [](const yomk::Context &ctx) {
@@ -51,7 +51,7 @@ YOMK_CONTEXT_DESTROY("config");  // 删除键
 
 - **创建与设置**：key 已存在返回 `eNo=1` "key already exists"；value 为空返回 `eNo=1` "value is empty"；值类型须与现值一致，否则 `eNo` "context type not match"。
 - **组名约定**：所有 Context API 的最后一个参数为组名，缺省 `"main"`；键所属组随 `ContextKeyInfo.m_group` 一并内省返回。空组名返回 `eNo=1` "group name is empty"；非 main 组首次寻址即自动创建（惰性、不支持销毁、组名唯一，同名寻址复用同组），监控池每组自持（每组一个单线程池，随建组只增不减）。
-- **读取快照勿原地修改**：`YOMK_CONTEXT_GET` 返回只读快照，改动请构造新对象再 `YOMK_CONTEXT_SET`，勿原地修改（否则与并发读竞争、可能崩溃）。
+- **读取快照勿原地修改**：`YomkAPI::CONTEXT_GET` 返回只读快照，改动请构造新对象再 `YOMK_CONTEXT_SET`，勿原地修改（否则与并发读竞争、可能崩溃）。
 - **Checker 生效条件**：全局开关 ON 且该 key 已设置时才生效；在写锁内门控，回调内重入 set 会死锁。
 - **Monitor 执行语义**：`async=false` 锁外即时执行，`async=true` 单线程池按提交序送达；仅通知发生了一次 set，并回传该次 set 的键值快照，不保证快照实时性。
 - **销毁后行为**：删除键后操作返回 `eNo=1`（key is not exist）。

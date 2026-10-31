@@ -268,7 +268,7 @@ int main()
 
         // CONTEXT_GET 特殊形态：守卫返回值即调用方默认值（指针一致）
         std::shared_ptr<yomkmsg::String> ctxDefault = std::make_shared<yomkmsg::String>("guard_default");
-        std::shared_ptr<yomkmsg::String> ctxGot = YomkAPI::CONTEXT_GET<yomkmsg::String>("String", "guard_key", ctxDefault);
+        std::shared_ptr<yomkmsg::String> ctxGot = YomkAPI::CONTEXT_GET<yomkmsg::String>("guard_key", ctxDefault);
         YOMK_TEST_CHECK(ctxGot == ctxDefault, "CONTEXT_GET 未初始化原样返回调用方默认值");
     }
 

@@ -162,7 +162,7 @@ int ret = YOMK_DEL_SERVICE("/XxxService");
 int XxxService::init() {
     installFunc("/my_func", &XxxService::myFunc);  // 本服务 funcMap 已自动弱绑定
     // 注册到 FunctionPool：弱绑定，服务删除后回调自动失效
-    YOMK_FUNCTIONPOOL_REGISTER("my_work", weakFunc(&XxxService::myFunc));
+    YomkAPI::FUNCTIONPOOL_REGISTER("my_work", weakFunc(&XxxService::myFunc));
     // Context checker/monitor 签名不同，同一 weakFunc 自动适配：
     // 服务删除后 checker 默认放行（eAccept），monitor 丢弃
     YOMK_CONTEXT_SET_CHECKER("key", weakFunc(&XxxService::myCheck));

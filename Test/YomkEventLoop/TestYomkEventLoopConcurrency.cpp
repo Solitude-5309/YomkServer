@@ -372,7 +372,7 @@ int main()
         auto server = YOMK_INIT(1);
         YOMK_TEST_CHECK(server != nullptr, "S5 YOMK_INIT 返回非空服务器");
 
-        auto startResp = YOMK_EVENTLOOP_START("conc_loop", nullptr);
+        auto startResp = YomkAPI::EVENTLOOP_START("conc_loop", nullptr);
         YOMK_TEST_CHECK(startResp.m_status == YomkResponse::eOk, "S5 START conc_loop 返回 eOk");
 
         std::atomic<int> apiPostOk{0};

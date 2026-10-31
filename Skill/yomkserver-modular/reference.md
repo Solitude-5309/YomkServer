@@ -185,16 +185,16 @@ class YomkService {
 | `YOMK_SERVER_P` / `YOMK_SERVER_PTR` | 获取 Server 指针 |
 
 ### Context
-| 宏 | 说明 |
+| API | 说明 |
 |----|------|
 | `YOMK_CONTEXT_CREATE(key, val[, group])` | 创建 K-V（key 已存在返回 eNo；val 为 nullptr 拒绝创建返回 eNo；值类型与同 key 现值不一致返回 eNo "context type not match"） |
-| `YOMK_CONTEXT_GET(MsgName, key, def[, group])` | 获取值（**返回值对象发布后只读**：改动请新建对象再 `YOMK_CONTEXT_SET`，勿原地改；key 不存在时返回兜底默认值 def，调用方永不拿到空指针） |
+| `YomkAPI::CONTEXT_GET<yomkmsg::MsgName>(key, def[, group])` | 获取值（消息类型经 `T::kName` 内省匹配 key，类型只写一次；**返回值对象发布后只读**：改动请新建对象再 `YOMK_CONTEXT_SET`，勿原地改；key 不存在时返回兜底默认值 def，调用方永不拿到空指针） |
 | `YOMK_CONTEXT_SET(key, val[, group])` | 设置值 |
 | `YOMK_CONTEXT_DESTROY(key[, group])` | 销毁（key 不存在返回 eNo） |
 | `YOMK_CONTEXT_ON/OFF_CHECKER([group])` | 开关检查器（全局开关 ON 且该 key 已设置 checker 时才生效） |
 | `YOMK_CONTEXT_SET_CHECKER(key, func[, group])` | 设置检查函数（返回 eAccept 放行 / eReject 拦截，拦截后 set 返回 eNo 且 monitor 不触发）。**checker 在写锁内门控：回调内重入 set（含跨键环）会死锁**，区别于 monitor 的递归栈溢出 |
 | `YOMK_CONTEXT_ON/OFF_MONITOR([group])` | 开关监控器 |
-| `YOMK_CONTEXT_SET_MONITOR(key, func, async[, group])` | 设置监控函数（async 省略默认 false）。**语义**：仅通知发生了一次 set，并回传该次键值快照（不保证实时）；顺序上异步恒按 set 提交序保序，同步并发下不保证跨线程序。**回调约束**：快照仅回调期有效（留存请拷贝）；值对象只读勿原地改；需最新值在回调内 `YOMK_CONTEXT_GET` 重读；异常被吞不影响 set；校验/拒绝用 checker。**两种模式**：同步（默认）——锁外内联、及时，回调内重入 set 会递归（长链栈溢出）；异步——写锁内入单线程监控池、set 返回后按提交序执行、deinit/`YOMK_SHUTDOWN` 排空不丢，适合耗时回调与状态机回写 |
+| `YOMK_CONTEXT_SET_MONITOR(key, func, async[, group])` | 设置监控函数（async 省略默认 false）。**语义**：仅通知发生了一次 set，并回传该次键值快照（不保证实时）；顺序上异步恒按 set 提交序保序，同步并发下不保证跨线程序。**回调约束**：快照仅回调期有效（留存请拷贝）；值对象只读勿原地改；需最新值在回调内 `YomkAPI::CONTEXT_GET` 重读；异常被吞不影响 set；校验/拒绝用 checker。**两种模式**：同步（默认）——锁外内联、及时，回调内重入 set 会递归（长链栈溢出）；异步——写锁内入单线程监控池、set 返回后按提交序执行、deinit/`YOMK_SHUTDOWN` 排空不丢，适合耗时回调与状态机回写 |
 | `YOMK_CONTEXT_INFO_KEYS([group])` | 内省：组内 key 列表（返回 StringArray） |
 | `YOMK_CONTEXT_INFO_KEY(key[, group])` | 内省：单 key 元信息（结构化 ContextKeyInfo 包：m_key/m_typeName/m_checkerOn/m_monitorCount/m_asyncMonitorCount/m_group，m_msg 恒 "ok"） |
 | `YOMK_CONTEXT_INFO_GROUPS()` | 内省：全部组名清单（返回 StringArray） |
@@ -203,9 +203,9 @@ class YomkService {
 组名约定：上表所有 `[group]` 为可选组名尾参，**组名永远是最后一个参数、缺省 `"main"`**；空组名返回 eNo "group name is empty"，非 main 组首次寻址即自动创建（惰性、不支持销毁、组名唯一，监控池每组自持）。
 
 ### EventLoop
-| 宏 | 说明 |
+| API | 说明 |
 |----|------|
-| `YOMK_EVENTLOOP_START(name, defaultFunc)` / `(name, defaultFunc, MsgName)` | 启动（运行中幂等；对已停止未销毁的循环为重启：新开线程按 FIFO 续跑保留的积压事件、不丢失；可选末位 MsgName 声明默认处理函数期望的消息类型，字符串化后仅作内省元数据，一参/两参旧调用零改动） |
+| `YomkAPI::EVENTLOOP_START(name[, defaultFunc][, "MsgName"])` | 启动（运行中幂等；对已停止未销毁的循环为重启：新开线程按 FIFO 续跑保留的积压事件、不丢失；可选末位 "MsgName" 字符串字面量声明默认处理函数期望的消息类型，仅作内省元数据） |
 | `YOMK_EVENTLOOP_STOP(name)` | 停止（仅退出工作线程、不清队列：未执行事件保留至下次 START 续跑；停止期间投递被拒） |
 | `YOMK_EVENTLOOP_POST(name, pkg, handle, tag="")` | 异步投递（handle/tag 均可省略，tag 仅作内省标记；循环未运行投递被拒返 eNo） |
 | `YOMK_EVENTLOOP_POST_WAIT(name, pkg, handle, tag="")` | 同步投递（tag 同上；未运行被拒返 eNo，销毁丢弃排队事件时等待者同样被释放） |
@@ -215,9 +215,9 @@ class YomkService {
 | `YOMK_EVENTLOOP_INFO_ALL()` | 内省：全量循环元信息（EventLoopInfoList 结构化包，元素为单查同款 EventLoopInfo，m_nextTags 取 3 条，m_msg 恒 "ok"） |
 
 ### FunctionPool
-| 宏 | 说明 |
+| API | 说明 |
 |----|------|
-| `YOMK_FUNCTIONPOOL_REGISTER(name, func)` / `(name, func, MsgName)` / `(name, func, MsgName, Description)` | 注册（三参声明期望消息类型、四参追加函数说明，字符串化后仅作内省元数据，不参与运行时校验；两参旧调用零改动；说明经 INFO_NAME 数据段透出）。**同名重复注册即运行时热替换，无需先注销** |
+| `YomkAPI::FUNCTIONPOOL_REGISTER(name, func[, "MsgName"][, "Description"])` | 注册（三参声明期望消息类型、四参追加函数说明，字符串字面量仅作内省元数据，不参与运行时校验；说明经 INFO_NAME 数据段透出）。**同名重复注册即运行时热替换，无需先注销** |
 | `YOMK_FUNCTIONPOOL_UNREGISTER(name)` | 注销（未注册返回 eNo，空名 eInvalid） |
 | `YOMK_FUNCTIONPOOL_CALL(name, pkg)` | 调用（未注册 eNo，空名 eInvalid；pkg 原样透传可为 nullptr；用户函数异常原样穿透到调用方，需自行 try/catch） |
 | `YOMK_FUNCTIONPOOL_INFO_NAMES()` | 内省：注册函数名列表（返回 StringArray） |

@@ -18,14 +18,14 @@
  *
  * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
  *
- * 场景 1 showArmLineStart      [YOMK_EVENTLOOP_START(3参) / INFO_LOOP]
+ * 场景 1 showArmLineStart      [EVENTLOOP_START(3参) / INFO_LOOP]
  *        产线开班：启动运动指令循环（默认处理函数 + MsgName 元数据），INFO_LOOP
  *        确认专用线程就绪；重复 START 同名循环为幂等重启（eOk 不报错）。
  * 场景 2 showArmMotionQueue    [YOMK_EVENTLOOP_POST / INFO_LOOP(n)]
  *        连续下发 5 条运动指令：POST 立即返回不阻塞；INFO_LOOP(n) 观察队列
  *        积压与队首 tag 预览；第 1 条指令执行时递归投递 3 条微调指令排到
  *        队尾——消费顺序自证同循环 FIFO。
- * 场景 3 showArmDualLoop       [YOMK_EVENTLOOP_START(2参) / POST]
+ * 场景 3 showArmDualLoop       [EVENTLOOP_START(2参) / POST]
  *        双循环并行：示教器循环用 2 参 START（默认处理函数、无 MsgName 元数据），
  *        与运动循环同时投递——两循环日志交错、线程 id 不同，同循环 FIFO、
  *        跨循环彼此并行。
@@ -250,12 +250,12 @@ static void showArmLineStart()
     logScene(
         1,
         "产线开班启动运动循环",
-        "YOMK_EVENTLOOP_START(3参) / INFO_LOOP",
+        "EVENTLOOP_START(3参) / INFO_LOOP",
         "开班时主控模块启动运动指令循环：START 为该名称新建一条专用线程并注册默认处理函数，"
         "MsgName 仅作内省元数据；对已存在名称再次 START 是幂等重启。");
 
     logAction(
-        "启动运动指令循环", "START motionLoop", [&] { return YOMK_EVENTLOOP_START("motionLoop", motionHandle, String); });
+        "启动运动指令循环", "START motionLoop", [&] { return YomkAPI::EVENTLOOP_START("motionLoop", motionHandle, "String"); });
 
     logAction("查看循环运行状态");
     YomkResponse resp = YOMK_EVENTLOOP_INFO_LOOP("motionLoop");
@@ -269,7 +269,7 @@ static void showArmLineStart()
 
     // 重复启动同名循环：幂等重启，不报错也不影响线程与队列
     logAction(
-        "重复启动同名循环", "START motionLoop (重复)", [&] { return YOMK_EVENTLOOP_START("motionLoop", motionHandle, String); });
+        "重复启动同名循环", "START motionLoop (重复)", [&] { return YomkAPI::EVENTLOOP_START("motionLoop", motionHandle, "String"); });
     logVerify("对已存在名称再次 START -> eOk：幂等重启，线程与队列不受影响");
 }
 
@@ -323,11 +323,11 @@ static void showArmDualLoop()
     logScene(
         3,
         "双循环并行",
-        "YOMK_EVENTLOOP_START(2参) / POST",
+        "EVENTLOOP_START(2参) / POST",
         "示教器模块独立于主控：teachLoop 用 2 参 START（默认处理函数、无 MsgName 元数据）；"
         "两个循环各自专用线程，同循环内 FIFO、跨循环彼此并行。");
 
-    logAction("启动示教器循环", "START teachLoop", [&] { return YOMK_EVENTLOOP_START("teachLoop", teachHandle); });
+    logAction("启动示教器循环", "START teachLoop", [&] { return YomkAPI::EVENTLOOP_START("teachLoop", teachHandle); });
 
     std::ostringstream ossThreadId;
     ossThreadId << "主线程 id: " << std::this_thread::get_id();
@@ -417,7 +417,7 @@ static void showArmLinePause()
         "停止态投递被拒", "POST motionLoop (已停止)", [&] { return YOMK_EVENTLOOP_POST("motionLoop", yomkmsg::String::shared("rejected")); });
     logVerify("停止后投递 -> eNo(event loop not running, post rejected)：循环未运行不接收新事件");
 
-    logAction("恢复运行（续跑）", "START motionLoop (续跑)", [&] { return YOMK_EVENTLOOP_START("motionLoop", motionHandle, String); });
+    logAction("恢复运行（续跑）", "START motionLoop (续跑)", [&] { return YomkAPI::EVENTLOOP_START("motionLoop", motionHandle, "String"); });
     YOMK_INFO_TAG("arm.demo", "等待保留事件被续跑消化...");
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
 

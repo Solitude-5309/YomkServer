@@ -6,8 +6,8 @@
 
 | API | 说明 |
 |---|---|
-| `YOMK_EVENTLOOP_START(name)` | 启动事件循环 |
-| `YOMK_EVENTLOOP_START(name, defaultFunc, MsgName)` | 启动并指定默认处理函数与消息类型名元数据 |
+| `YomkAPI::EVENTLOOP_START(name)` | 启动事件循环 |
+| `YomkAPI::EVENTLOOP_START(name, defaultFunc, "MsgName")` | 启动并指定默认处理函数与消息类型名元数据 |
 | `YOMK_EVENTLOOP_POST(name, pkg, func, tag)` | 非阻塞投递异步任务；tag 可选，仅内省可见，用于观察队列 |
 | `YOMK_EVENTLOOP_POST_WAIT(name, pkg, func, tag)` | 阻塞投递任务，等待任务在循环中执行完毕返回结果 |
 | `YOMK_EVENTLOOP_INFO_LOOP(name)` | 查询循环状态与队列积压 |
@@ -20,7 +20,7 @@
 
 ```cpp
 // 启动事件循环（对已存在名称再次 START 为幂等重启）
-YOMK_EVENTLOOP_START("TaskLoop");
+YomkAPI::EVENTLOOP_START("TaskLoop");
 
 // 非阻塞投递异步任务（tag 可选：仅内省可见，用于观察队列）
 YOMK_EVENTLOOP_POST("TaskLoop", yomkmsg::String::shared("task1"), [](YomkPkgPtr pkg) {
@@ -44,7 +44,7 @@ YOMK_EVENTLOOP_DESTROY("TaskLoop");
 ## 注意事项
 
 - 同一循环内事件按 FIFO 顺序执行，不同循环之间彼此并行。
-- 对已存在名称再次 `YOMK_EVENTLOOP_START` 为幂等重启。
+- 对已存在名称再次 `YomkAPI::EVENTLOOP_START` 为幂等重启。
 - 停止后投递返回 `eNo=1`（event loop not running）；销毁后操作返回 `eNo=1`（event loop not exist）。
 - 服务成员函数注册为事件处理函数时须用 `weakFunc(&Class::Method)` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
