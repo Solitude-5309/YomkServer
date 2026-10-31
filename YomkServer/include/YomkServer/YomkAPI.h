@@ -505,7 +505,7 @@ public:
     }
     // 获取上下文值（只读快照），改动请构造新对象再 CONTEXT_SET，勿原地修改（否则与并发读竞争、可能崩溃）
     template <typename T>
-    static std::shared_ptr<T> CONTEXT_GET(const std::string& msgName, const std::string& ctxName,
+    static std::shared_ptr<T> CONTEXT_GET(const std::string& ctxName,
         std::shared_ptr<T> ctxDefault, const std::string& groupName = "main")
     {
         if (!requireServer())
@@ -517,7 +517,7 @@ public:
         if (response.m_status == YomkResponse::eOk)
         {
             std::shared_ptr<T> ctxData = nullptr;
-            if (response.m_data && response.m_data->name() == msgName)
+            if (response.m_data && response.m_data->name() == T::kName)
             {
                 ctxData = std::dynamic_pointer_cast<T>(response.m_data);
             }
@@ -946,7 +946,6 @@ private:
 #define YOMK_LOGGER_INFO_GLOBAL(...) YomkAPI::LOGGER_INFO_GLOBAL(__VA_ARGS__)
 #define YOMK_FILE_LOG_DELETE(...) YomkAPI::FILE_LOG_DELETE(__VA_ARGS__)
 #define YOMK_CONTEXT_CREATE(...) YomkAPI::CONTEXT_CREATE(__VA_ARGS__)
-#define YOMK_CONTEXT_GET(MsgName, ...) YomkAPI::CONTEXT_GET<yomkmsg::MsgName>(#MsgName, __VA_ARGS__)
 #define YOMK_CONTEXT_SET(...) YomkAPI::CONTEXT_SET(__VA_ARGS__)
 #define YOMK_CONTEXT_ON_CHECKER(...) YomkAPI::CONTEXT_ON_CHECKER(__VA_ARGS__)
 #define YOMK_CONTEXT_OFF_CHECKER(...) YomkAPI::CONTEXT_OFF_CHECKER(__VA_ARGS__)
@@ -959,15 +958,6 @@ private:
 #define YOMK_CONTEXT_INFO_KEY(...) YomkAPI::CONTEXT_INFO_KEY(__VA_ARGS__)
 #define YOMK_CONTEXT_INFO_GROUPS() YomkAPI::CONTEXT_INFO_GROUPS()
 #define YOMK_CONTEXT_INFO_ALL() YomkAPI::CONTEXT_INFO_ALL()
-#define YOMK_EVENTLOOP_START_SELECT(_1, _2, _3, NAME, ...) NAME
-#define YOMK_EVENTLOOP_START(...)                                                                                    \
-    YOMK_EVENTLOOP_START_SELECT(__VA_ARGS__, YOMK_EVENTLOOP_START_3, YOMK_EVENTLOOP_START_2, YOMK_EVENTLOOP_START_1) \
-    (__VA_ARGS__)
-#define YOMK_EVENTLOOP_START_1(eventLoopName) YomkAPI::EVENTLOOP_START(eventLoopName)
-#define YOMK_EVENTLOOP_START_2(eventLoopName, defaultServiceFunc) \
-    YomkAPI::EVENTLOOP_START(eventLoopName, defaultServiceFunc)
-#define YOMK_EVENTLOOP_START_3(eventLoopName, defaultServiceFunc, MsgName) \
-    YomkAPI::EVENTLOOP_START(eventLoopName, defaultServiceFunc, #MsgName)
 #define YOMK_EVENTLOOP_STOP(...) YomkAPI::EVENTLOOP_STOP(__VA_ARGS__)
 #define YOMK_EVENTLOOP_POST(...) YomkAPI::EVENTLOOP_POST(__VA_ARGS__)
 #define YOMK_EVENTLOOP_POST_WAIT(...) YomkAPI::EVENTLOOP_POST_WAIT(__VA_ARGS__)
@@ -975,14 +965,6 @@ private:
 #define YOMK_EVENTLOOP_INFO_LOOPS() YomkAPI::EVENTLOOP_INFO_LOOPS()
 #define YOMK_EVENTLOOP_INFO_LOOP(...) YomkAPI::EVENTLOOP_INFO_LOOP(__VA_ARGS__)
 #define YOMK_EVENTLOOP_INFO_ALL() YomkAPI::EVENTLOOP_INFO_ALL()
-#define YOMK_FUNCTIONPOOL_REGISTER_SELECT(_1, _2, _3, _4, NAME, ...) NAME
-#define YOMK_FUNCTIONPOOL_REGISTER(...)                                                                                            \
-    YOMK_FUNCTIONPOOL_REGISTER_SELECT(__VA_ARGS__, YOMK_FUNCTIONPOOL_REGISTER_4, YOMK_FUNCTIONPOOL_REGISTER_3, YOMK_FUNCTIONPOOL_REGISTER_2) \
-    (__VA_ARGS__)
-#define YOMK_FUNCTIONPOOL_REGISTER_2(funcName, func) YomkAPI::FUNCTIONPOOL_REGISTER(funcName, func)
-#define YOMK_FUNCTIONPOOL_REGISTER_3(funcName, func, MsgName) YomkAPI::FUNCTIONPOOL_REGISTER(funcName, func, #MsgName)
-#define YOMK_FUNCTIONPOOL_REGISTER_4(funcName, func, MsgName, Description) \
-    YomkAPI::FUNCTIONPOOL_REGISTER(funcName, func, #MsgName, Description)
 #define YOMK_FUNCTIONPOOL_UNREGISTER(...) YomkAPI::FUNCTIONPOOL_UNREGISTER(__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_CALL(...) YomkAPI::FUNCTIONPOOL_CALL(__VA_ARGS__)
 #define YOMK_FUNCTIONPOOL_INFO_NAMES() YomkAPI::FUNCTIONPOOL_INFO_NAMES()

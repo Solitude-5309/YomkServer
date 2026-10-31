@@ -23,7 +23,7 @@
  * 场景 1 showArmBootCreate      [YOMK_CONTEXT_CREATE]
  *        控制柜上电，主控模块写入初始状态（模式/速度倍率/伺服状态）；
  *        重复创建同名键被拒——创建是排他的，更新请用 SET。
- * 场景 2 showArmReadStatus      [YOMK_CONTEXT_GET]
+ * 场景 2 showArmReadStatus      [YomkAPI::CONTEXT_GET]
  *        示教器读速度倍率命中只读快照；查询未上线负载模块的键返回兜底
  *        默认值（指针相等自证兜底路径，调用方永不拿到空指针）。
  * 场景 3 showArmUpdateStatus    [YOMK_CONTEXT_SET]
@@ -325,7 +325,7 @@ static void showArmReadStatus()
     logScene(
         2,
         "示教器读取状态",
-        "YOMK_CONTEXT_GET",
+        "YomkAPI::CONTEXT_GET",
         "示教器启动时读取机械臂状态：命中返回只读快照；负载称重模块尚未上线，查询其键返回"
         "兜底默认值——调用方永不拿到空指针。");
 
@@ -333,11 +333,11 @@ static void showArmReadStatus()
     yomkmsg::Float64Ptr ratioFallback = yomkmsg::Float64::shared(0.0);
 
     logAction("示教器读取速度倍率");
-    yomkmsg::Float64Ptr ratio = YOMK_CONTEXT_GET(Float64, "arm.speed_ratio", ratioFallback);
+    yomkmsg::Float64Ptr ratio = YomkAPI::CONTEXT_GET<yomkmsg::Float64>("arm.speed_ratio", ratioFallback);
     logGet("arm.speed_ratio", fmtF64(ratio->d), ratio == ratioFallback);
 
     logAction("示教器查询未上线的负载模块");
-    yomkmsg::Float64Ptr payload = YOMK_CONTEXT_GET(Float64, "arm.payload_kg", ratioFallback);
+    yomkmsg::Float64Ptr payload = YomkAPI::CONTEXT_GET<yomkmsg::Float64>("arm.payload_kg", ratioFallback);
     logGet("arm.payload_kg", fmtF64(payload->d), payload == ratioFallback);
     logVerify("查询未注册的键 -> 返回兜底默认值 0.0（指针相等），调用方永不拿到空指针");
 }
@@ -355,7 +355,7 @@ static void showArmUpdateStatus()
     // 示教器先前读到的旧快照（0.5）——SET 之后它不应被改动
     yomkmsg::Float64Ptr ratioFallback = yomkmsg::Float64::shared(0.0);
     logAction("示教器留存当前倍率快照");
-    yomkmsg::Float64Ptr oldSnapshot = YOMK_CONTEXT_GET(Float64, "arm.speed_ratio", ratioFallback);
+    yomkmsg::Float64Ptr oldSnapshot = YomkAPI::CONTEXT_GET<yomkmsg::Float64>("arm.speed_ratio", ratioFallback);
     logGet("arm.speed_ratio", fmtF64(oldSnapshot->d), oldSnapshot == ratioFallback);
 
     logAction("切入自动模式", "SET arm.mode", [&] { return YOMK_CONTEXT_SET("arm.mode", yomkmsg::String::shared("auto")); });
@@ -363,7 +363,7 @@ static void showArmUpdateStatus()
 
     // 新旧快照对比：验证 SET 的整体替换语义（业务结论，不限于单次接口调用）
     logAction("新旧快照对比");
-    yomkmsg::Float64Ptr fresh = YOMK_CONTEXT_GET(Float64, "arm.speed_ratio", ratioFallback);
+    yomkmsg::Float64Ptr fresh = YomkAPI::CONTEXT_GET<yomkmsg::Float64>("arm.speed_ratio", ratioFallback);
     logGet("arm.speed_ratio 旧快照", fmtF64(oldSnapshot->d), oldSnapshot == ratioFallback);
     logGet("arm.speed_ratio 新快照", fmtF64(fresh->d), fresh == ratioFallback);
     logVerify("SET 整体替换值对象：留存快照保持 0.5 不变，新读取得到 0.8——旧快照即冻结");
@@ -410,7 +410,7 @@ static void showArmGuardSpeedRatio()
         [&] { return YOMK_CONTEXT_SET("arm.speed_ratio", yomkmsg::Float64::shared(1.2)); });
     logAction("确认被拒后倍率保持不变");
     yomkmsg::Float64Ptr ratioFallback = yomkmsg::Float64::shared(0.0);
-    yomkmsg::Float64Ptr ratio = YOMK_CONTEXT_GET(Float64, "arm.speed_ratio", ratioFallback);
+    yomkmsg::Float64Ptr ratio = YomkAPI::CONTEXT_GET<yomkmsg::Float64>("arm.speed_ratio", ratioFallback);
     logGet("arm.speed_ratio", fmtF64(ratio->d), ratio == ratioFallback);
     logVerify("超限写入 -> eNo(checker reject set context) 且值保持 0.9 未变；arm.guard 日志给出拒绝理由");
 
@@ -602,7 +602,7 @@ static void showArmTaskCleanup()
     // 销毁后行为：GET 回落兜底默认值
     yomkmsg::StringPtr modeFallback = yomkmsg::String::shared("unknown");
     logAction("确认销毁后读取回落");
-    yomkmsg::StringPtr mode = YOMK_CONTEXT_GET(String, "arm.mode", modeFallback);
+    yomkmsg::StringPtr mode = YomkAPI::CONTEXT_GET<yomkmsg::String>("arm.mode", modeFallback);
     logGet("arm.mode", mode ? mode->d : "(null)", mode == modeFallback);
     logVerify("销毁后 GET -> 返回兜底默认值（指针相等），键已消失");
 

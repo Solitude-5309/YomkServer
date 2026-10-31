@@ -98,7 +98,7 @@ int main()
     // get：正常 get
     {
         auto defaultValue = yomkmsg::String::shared(std::string("default"));
-        auto got = YOMK_CONTEXT_GET(String, "str_key", defaultValue);
+        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("str_key", defaultValue);
         YOMK_TEST_CHECK(got != nullptr, "get 正常返回非空");
         YOMK_TEST_CHECK(got && got->d == "hello", "get 正常返回原始 value");
     }
@@ -106,7 +106,7 @@ int main()
     // get：不存在 key，返回默认 value
     {
         auto defaultValue = yomkmsg::String::shared(std::string("default"));
-        auto got = YOMK_CONTEXT_GET(String, "no_such_key", defaultValue);
+        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("no_such_key", defaultValue);
         YOMK_TEST_CHECK(got != nullptr, "get 不存在 key 返回默认值指针非空");
         YOMK_TEST_CHECK(got && got->d == "default", "get 不存在 key 返回默认值");
     }
@@ -114,7 +114,7 @@ int main()
     // get：空 key，返回默认 value
     {
         auto defaultValue = yomkmsg::String::shared(std::string("default"));
-        auto got = YOMK_CONTEXT_GET(String, "", defaultValue);
+        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("", defaultValue);
         YOMK_TEST_CHECK(got != nullptr, "get 空 key 返回默认值指针非空");
         YOMK_TEST_CHECK(got && got->d == "default", "get 空 key 返回默认值");
     }
@@ -124,7 +124,7 @@ int main()
         auto cr = YOMK_CONTEXT_CREATE("mismatch_key", yomkmsg::String::shared(std::string("strval")));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mismatch_key（String 值）成功");
         auto intDefault = yomkmsg::Int32::shared(777);
-        auto got = YOMK_CONTEXT_GET(Int32, "mismatch_key", intDefault);
+        auto got = YomkAPI::CONTEXT_GET<yomkmsg::Int32>("mismatch_key", intDefault);
         YOMK_TEST_CHECK(got != nullptr && got == intDefault, "get 类型不匹配返回调用方默认值（指针一致）");
         YOMK_TEST_CHECK(got && got->d == 777, "get 类型不匹配默认值内容保持 777");
         YOMK_TEST_CHECK(YOMK_CONTEXT_DESTROY("mismatch_key").m_status == YomkResponse::eOk, "销毁 mismatch_key（防污染后续 keys 计数）");
@@ -135,7 +135,7 @@ int main()
         auto cr = YOMK_CONTEXT_CREATE("mismatch_key2", yomkmsg::Bool::shared(true));
         YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "创建 mismatch_key2（Bool 值）成功");
         auto strDefault = yomkmsg::String::shared(std::string("fallback"));
-        auto got = YOMK_CONTEXT_GET(String, "mismatch_key2", strDefault);
+        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("mismatch_key2", strDefault);
         YOMK_TEST_CHECK(got != nullptr && got == strDefault, "get 第二变体类型不匹配返回默认值（指针一致）");
         YOMK_TEST_CHECK(got && got->d == "fallback", "get 第二变体默认值内容保持 fallback");
         YOMK_TEST_CHECK(YOMK_CONTEXT_DESTROY("mismatch_key2").m_status == YomkResponse::eOk, "销毁 mismatch_key2（防污染后续 keys 计数）");
@@ -148,7 +148,7 @@ int main()
         YOMK_TEST_CHECK(resp.m_msg == "set context success", "set 成功消息一致");
 
         auto defaultValue = yomkmsg::String::shared(std::string("default"));
-        auto got = YOMK_CONTEXT_GET(String, "str_key", defaultValue);
+        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("str_key", defaultValue);
         YOMK_TEST_CHECK(got && got->d == "world", "set 后 get 返回新 value");
     }
 

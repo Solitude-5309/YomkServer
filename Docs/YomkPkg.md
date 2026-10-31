@@ -42,7 +42,7 @@ return {YomkResponse::eOk, "hello " + info->d.name};
 
 ## 注意事项
 
-- 消息按类型名（宏的 `MsgName` 参数）在运行期匹配；`installFunc("/x", &C::m, "MsgName")` 第三参、`YOMK_FUNCTIONPOOL_REGISTER`、`YOMK_EVENTLOOP_START` 三参形式声明的期望消息类型名与此一致，供自省识别（`installFunc` 另有第四参为函数说明字符串，仅内省透传不解析）。
+- 消息按类型名（宏的 `MsgName` 参数）在运行期匹配；`installFunc("/x", &C::m, "MsgName")` 第三参、`YomkAPI::FUNCTIONPOOL_REGISTER`、`YomkAPI::EVENTLOOP_START` 三参形式声明的期望消息类型名与此一致，供自省识别（`installFunc` 另有第四参为函数说明字符串，仅内省透传不解析）。
 - `YomkMsg` 生成的消息类支持拷贝与移动构造（移动语义）。
 
 ## 完整示例

@@ -312,7 +312,7 @@ int main()
         g_execCount.store(0);
         auto server = YOMK_INIT(1);
         YOMK_TEST_CHECK(server != nullptr, "S5 YOMK_INIT 返回非空服务器");
-        YOMK_TEST_CHECK(YOMK_EVENTLOOP_START("stress_loop", nullptr).m_status == YomkResponse::eOk, "S5 START 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_START("stress_loop", nullptr).m_status == YomkResponse::eOk, "S5 START 返回 eOk");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)

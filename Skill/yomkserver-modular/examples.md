@@ -247,7 +247,7 @@ int ConfigService::init()
 
 YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
 {
-    auto ctxVal = YOMK_CONTEXT_GET(String, CTX_CONFIG_PATH, nullptr);
+    auto ctxVal = YomkAPI::CONTEXT_GET<yomkmsg::String>(CTX_CONFIG_PATH, nullptr);
     if (!ctxVal)
         return YomkResponse(YomkResponse::eNo, "config_path not found in context");
     m_configPath = ctxVal->d;
@@ -623,7 +623,7 @@ int MyService::init() {
 - **共同语义**：
   - monitor 仅通知发生了一次 set 事件，并回传该次 set 的键值快照——**不保证快照是最新值**；快照仅回调期有效，需留存请在回调内拷贝 ctx。
   - **值对象一经 set 发布即只读**：get/monitor 拿到的都别名同一对象；改动请构造新对象再 `YOMK_CONTEXT_SET`，勿原地修改（否则与并发读竞争、可能崩溃）。
-  - 需最新值请在回调内用 `YOMK_CONTEXT_GET` 重读；回调抛异常会被框架吞掉记日志、不影响 set 结果；校验/拒绝请用 checker，勿用 monitor。
+  - 需最新值请在回调内用 `YomkAPI::CONTEXT_GET` 重读；回调抛异常会被框架吞掉记日志、不影响 set 结果；校验/拒绝请用 checker，勿用 monitor。
 - **同步（默认，async 省略或 false）**：
   - 在 set 调用线程上锁外内联执行、通知及时；顺序 set 下按调用序通知，**并发 set 下不保证跨线程顺序**。
   - 回调内可安全调用 `get`/`keys` 等，但**重入 `set`（含跨键环）会递归**，不收敛长链将栈溢出。
@@ -645,7 +645,7 @@ YomkResponse taskHandler(YomkPkgPtr pkg) {
 }
 
 // 启动事件循环
-YOMK_EVENTLOOP_START("worker_loop", taskHandler);
+YomkAPI::EVENTLOOP_START("worker_loop", taskHandler);
 
 // 异步投递
 YOMK_EVENTLOOP_POST("worker_loop", yomkmsg::String::shared("task_1"));
@@ -678,7 +678,7 @@ YomkResponse validateAmount(YomkPkgPtr pkg) {
 }
 
 // 注册 + 调用
-YOMK_FUNCTIONPOOL_REGISTER("validate_amount", validateAmount);
+YomkAPI::FUNCTIONPOOL_REGISTER("validate_amount", validateAmount);
 YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("validate_amount", yomkmsg::String::shared("100.5"));
 
 // 注销（注销后调用返回 eNo: funcName is not register）
@@ -689,7 +689,7 @@ YOMK_FUNCTIONPOOL_UNREGISTER("validate_amount");
 
 ```cpp
 int MyService::init() {
-    YOMK_FUNCTIONPOOL_REGISTER("my_work", weakFunc(&MyService::doWork));
+    YomkAPI::FUNCTIONPOOL_REGISTER("my_work", weakFunc(&MyService::doWork));
     return 0;
 }
 
@@ -756,15 +756,15 @@ resp = YOMK_CONTEXT_INFO_GROUPS();
 resp = YOMK_CONTEXT_INFO_ALL();
 ```
 
-注意：`YOMK_CONTEXT_CREATE(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YOMK_CONTEXT_GET`。完整验证见 `Test/YomkContext/TestYomkContextCRUD.cpp`。
+注意：`YOMK_CONTEXT_CREATE(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YomkAPI::CONTEXT_GET`。完整验证见 `Test/YomkContext/TestYomkContextCRUD.cpp`。
 
 ### EventLoop 模块内省
 
-`/YomkEventLoop` 服务自身提供循环级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）。Event 可携带 tag 标记（POST 末位可选参数，缺省空，旧调用零改动）；启动时也可用三参宏声明默认处理函数期望的消息类型：
+`/YomkEventLoop` 服务自身提供循环级内省（既有功能函数均已用尾参补齐类型名，服务器层内省同步可见）。Event 可携带 tag 标记（POST 末位可选参数，缺省空，旧调用零改动）；启动时也可用末位 "MsgName" 字符串字面量声明默认处理函数期望的消息类型：
 
 ```cpp
-YOMK_EVENTLOOP_START("loop_a", nullptr);
-YOMK_EVENTLOOP_START("loop_b", defaultHandle, String);  // 声明默认处理函数期望类型，内省可见 [String]
+YomkAPI::EVENTLOOP_START("loop_a", nullptr);
+YomkAPI::EVENTLOOP_START("loop_b", defaultHandle, "String");  // 声明默认处理函数期望类型，内省可见 [String]
 
 // 投递事件时可选打 tag（tag 仅作内省标记，不参与路由/处理）
 YOMK_EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle, "tag1");
@@ -787,12 +787,12 @@ resp = YOMK_EVENTLOOP_INFO_ALL();
 
 ### FunctionPool 模块内省
 
-`/YomkFunctionPool` 服务自身提供注册表级内省（既有功能函数均已用三参宏补齐类型名，服务器层内省同步可见）。注册时可用三参宏声明期望消息类型、四参宏追加函数说明（与 installFunc 第三/四参语义同款，仅作内省元数据，不参与运行时校验）：
+`/YomkFunctionPool` 服务自身提供注册表级内省（既有功能函数均已用尾参补齐类型名，服务器层内省同步可见）。注册时可用第三参声明期望消息类型、第四参追加函数说明（与 installFunc 第三/四参语义同款，仅作内省元数据，不参与运行时校验）：
 
 ```cpp
-YOMK_FUNCTIONPOOL_REGISTER("func_a", funcA, String);  // 声明期望类型，内省可见 [String]
-YOMK_FUNCTIONPOOL_REGISTER("func_desc", funcA, String, "函数说明");  // 四参：说明挂 INFO_NAME 数据段
-YOMK_FUNCTIONPOOL_REGISTER("func_b", funcB);          // 两参旧写法零改动，内省无括号后缀
+YomkAPI::FUNCTIONPOOL_REGISTER("func_a", funcA, "String");  // 声明期望类型，内省可见 [String]
+YomkAPI::FUNCTIONPOOL_REGISTER("func_desc", funcA, "String", "函数说明");  // 四参：说明挂 INFO_NAME 数据段
+YomkAPI::FUNCTIONPOOL_REGISTER("func_b", funcB);          // 不声明类型，内省无括号后缀
 
 // 注册函数名列表（返回 StringArray）
 YomkResponse resp = YOMK_FUNCTIONPOOL_INFO_NAMES();    // arr->d: ["func_a", "func_b", "func_desc"]

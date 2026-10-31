@@ -6,9 +6,9 @@
 
 | API | 说明 |
 |---|---|
-| `YOMK_FUNCTIONPOOL_REGISTER(name, func)` | 注册函数 |
-| `YOMK_FUNCTIONPOOL_REGISTER(name, func, MsgName)` | 注册并声明期望的消息类型名（仅作内省元数据） |
-| `YOMK_FUNCTIONPOOL_REGISTER(name, func, MsgName, Description)` | 同上，追加函数说明（自由字符串，INFO_NAME 数据段可读） |
+| `YomkAPI::FUNCTIONPOOL_REGISTER(name, func)` | 注册函数 |
+| `YomkAPI::FUNCTIONPOOL_REGISTER(name, func, "MsgName")` | 注册并声明期望的消息类型名（仅作内省元数据） |
+| `YomkAPI::FUNCTIONPOOL_REGISTER(name, func, "MsgName", "Description")` | 同上，追加函数说明（自由字符串，INFO_NAME 数据段可读） |
 | `YOMK_FUNCTIONPOOL_CALL(name, pkg)` | 按名调用函数（返回值即函数返回值）；未注册的名字返回 `eNo=1` |
 | `YOMK_FUNCTIONPOOL_UNREGISTER(name)` | 按名字从函数表移除 |
 | `YOMK_FUNCTIONPOOL_INFO_NAMES()` | 获取全部函数名 |
@@ -19,7 +19,7 @@
 
 ```cpp
 // 注册函数（第三参可选：声明期望的消息类型名；第四参可选：函数说明，均仅作内省元数据）
-YOMK_FUNCTIONPOOL_REGISTER("calcSum", [](YomkPkgPtr pkg) {
+YomkAPI::FUNCTIONPOOL_REGISTER("calcSum", [](YomkPkgPtr pkg) {
     return YomkResponse{YomkResponse::eOk, "result"};
 });
 
@@ -27,7 +27,7 @@ YOMK_FUNCTIONPOOL_REGISTER("calcSum", [](YomkPkgPtr pkg) {
 YomkResponse resp = YOMK_FUNCTIONPOOL_CALL("calcSum", nullptr);
 
 // 同名重复注册即运行时热替换，无需注销
-YOMK_FUNCTIONPOOL_REGISTER("calcSum", newFunc);
+YomkAPI::FUNCTIONPOOL_REGISTER("calcSum", newFunc);
 
 // 注销（按名字从函数表移除）
 YOMK_FUNCTIONPOOL_UNREGISTER("calcSum");

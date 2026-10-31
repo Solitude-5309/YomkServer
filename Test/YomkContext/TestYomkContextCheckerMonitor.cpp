@@ -176,7 +176,7 @@ int main()
         YOMK_TEST_CHECK(g_checkerCalls.load() == 1, "reject-checker 被调用 1 次");
 
         // value 未变（仍为 accepted）
-        auto got = YOMK_CONTEXT_GET(String, "ck_key", yomkmsg::String::shared(std::string("default")));
+        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("ck_key", yomkmsg::String::shared(std::string("default")));
         YOMK_TEST_CHECK(got && got->d == "accepted", "reject 后 value 保持不变");
     }
 
@@ -189,7 +189,7 @@ int main()
         auto resp = YOMK_CONTEXT_SET("ck_nochecker", yomkmsg::String::shared(std::string("v1")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "全局开启 checker 但未设 checker 的 key set 视为 accept（不崩溃）");
 
-        auto got = YOMK_CONTEXT_GET(String, "ck_nochecker", yomkmsg::String::shared(std::string("default")));
+        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("ck_nochecker", yomkmsg::String::shared(std::string("default")));
         YOMK_TEST_CHECK(got && got->d == "v1", "空 checker 守卫下 value 正常更新");
     }
 
@@ -200,7 +200,7 @@ int main()
         auto resp = YOMK_CONTEXT_SET("ck_key", yomkmsg::String::shared(std::string("after_off")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "checker 关闭后 reject-checker 不生效，set 成功");
 
-        auto got = YOMK_CONTEXT_GET(String, "ck_key", yomkmsg::String::shared(std::string("default")));
+        auto got = YomkAPI::CONTEXT_GET<yomkmsg::String>("ck_key", yomkmsg::String::shared(std::string("default")));
         YOMK_TEST_CHECK(got && got->d == "after_off", "checker 关闭后 value 更新成功");
     }
 
@@ -416,7 +416,7 @@ int main()
         YOMK_TEST_CHECK(reached, "并发 set 后异步 monitor 在等待窗口内全部触发（计数 == 总提交数）");
 
         // 所有写线程已 join，CONTEXT_GET 终值稳定
-        auto finalVal = YOMK_CONTEXT_GET(String, "mon_conc", yomkmsg::String::shared(std::string("default")));
+        auto finalVal = YomkAPI::CONTEXT_GET<yomkmsg::String>("mon_conc", yomkmsg::String::shared(std::string("default")));
         YOMK_TEST_CHECK(finalVal && !finalVal->d.empty(), "读取 mon_conc 终值成功");
 
         {

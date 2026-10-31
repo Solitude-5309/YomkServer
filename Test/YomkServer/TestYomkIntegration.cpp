@@ -176,7 +176,7 @@ int main()
         YOMK_TEST_CHECK(g_reentryAsyncCalls.load() == K, "异步 monitor 计数守恒 == K");
         YOMK_TEST_CHECK(g_reentrySyncCalls.load() == K, "重入 SET 触发同步 monitor 计数守恒 == K");
 
-        auto last = YOMK_CONTEXT_GET(String, "reentry_out", yomkmsg::String::shared(std::string("")));
+        auto last = YomkAPI::CONTEXT_GET<yomkmsg::String>("reentry_out", yomkmsg::String::shared(std::string("")));
         YOMK_TEST_CHECK(last != nullptr && last->d == "out_" + std::to_string(K),
               "重入写入末值可读（异步 monitor 按提交序保序，末次重入为 out_K）");
 
@@ -215,7 +215,7 @@ int main()
         YOMK_TEST_CHECK(!ec, "S1 临时目录创建成功: " + tmpDir.string());
 
         // 事件积压（不等待执行完成；积压处理语义不保证全执行，仅验证 shutdown 有限时间返回）
-        YOMK_TEST_CHECK(YOMK_EVENTLOOP_START("integration_loop").m_status == YomkResponse::eOk, "启动 integration_loop");
+        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_START("integration_loop").m_status == YomkResponse::eOk, "启动 integration_loop");
         bool postOk = true;
         for (int i = 0; i < 100; ++i)
         {

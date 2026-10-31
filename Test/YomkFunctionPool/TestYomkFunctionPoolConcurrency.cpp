@@ -166,7 +166,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s1OkCount.store(0);
 
         YOMK_TEST_CHECK(
-            YOMK_FUNCTIONPOOL_REGISTER("c1_probe", s1ProbeFunc).m_status == YomkResponse::eOk,
+            YomkAPI::FUNCTIONPOOL_REGISTER("c1_probe", s1ProbeFunc).m_status == YomkResponse::eOk,
             "S1: 注册 c1_probe 成功");
 
         // 多线程并发 CALL（shared_lock 并发读 + std::function 拷贝）
@@ -199,10 +199,10 @@ int main(int /*argc*/, char** /*argv*/)
         g_s1OuterOkCount.store(0);
 
         YOMK_TEST_CHECK(
-            YOMK_FUNCTIONPOOL_REGISTER("c1_inner", s1InnerFunc).m_status == YomkResponse::eOk,
+            YomkAPI::FUNCTIONPOOL_REGISTER("c1_inner", s1InnerFunc).m_status == YomkResponse::eOk,
             "S1: 注册 c1_inner 成功");
         YOMK_TEST_CHECK(
-            YOMK_FUNCTIONPOOL_REGISTER("c1_outer", s1OuterFunc).m_status == YomkResponse::eOk,
+            YomkAPI::FUNCTIONPOOL_REGISTER("c1_outer", s1OuterFunc).m_status == YomkResponse::eOk,
             "S1: 注册 c1_outer（内部嵌套 CALL c1_inner）成功");
 
         constexpr int kNestedThreads = 4;
@@ -253,7 +253,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s2Stop.store(false);
 
         YOMK_TEST_CHECK(
-            YOMK_FUNCTIONPOOL_REGISTER("c2_func", s2V1Func).m_status == YomkResponse::eOk,
+            YomkAPI::FUNCTIONPOOL_REGISTER("c2_func", s2V1Func).m_status == YomkResponse::eOk,
             "S2: 注册 c2_func 为 v1 实现");
 
         // 启动 caller 线程（持续 CALL 直到 g_s2Stop）
@@ -277,9 +277,9 @@ int main(int /*argc*/, char** /*argv*/)
         for (int round = 0; round < kUpdateRounds; ++round)
         {
             if (round % 2 == 0)
-                YOMK_FUNCTIONPOOL_REGISTER("c2_func", s2V2Func);
+                YomkAPI::FUNCTIONPOOL_REGISTER("c2_func", s2V2Func);
             else
-                YOMK_FUNCTIONPOOL_REGISTER("c2_func", s2V1Func);
+                YomkAPI::FUNCTIONPOOL_REGISTER("c2_func", s2V1Func);
             // 短暂让步让 caller 线程有机会执行
             std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
@@ -315,7 +315,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s3ExecCount.store(0);
 
         YOMK_TEST_CHECK(
-            YOMK_FUNCTIONPOOL_REGISTER("c3_gated", s3GatedFunc).m_status == YomkResponse::eOk,
+            YomkAPI::FUNCTIONPOOL_REGISTER("c3_gated", s3GatedFunc).m_status == YomkResponse::eOk,
             "S3: 注册 c3_gated（gate 函数：体内自旋等待释放）");
 
         // 启动 caller 线程：CALL c3_gated → 进入 gate 函数 → 自旋等待
@@ -376,7 +376,7 @@ int main(int /*argc*/, char** /*argv*/)
                     for (int round = 0; round < kChurnRounds; ++round)
                     {
                         std::string name = "c4_t" + std::to_string(t) + "_" + std::to_string(round);
-                        YOMK_FUNCTIONPOOL_REGISTER(name, s5ProbeFunc);
+                        YomkAPI::FUNCTIONPOOL_REGISTER(name, s5ProbeFunc);
                         // 短暂让步让内省线程有机会观测
                         if (round % 10 == 9)
                             std::this_thread::sleep_for(std::chrono::microseconds(50));
@@ -455,7 +455,7 @@ int main(int /*argc*/, char** /*argv*/)
                 {
                     for (int i = 0; i < kRounds; ++i)
                     {
-                        auto resp = YOMK_FUNCTIONPOOL_REGISTER("c5_probe", s5ProbeFunc);
+                        auto resp = YomkAPI::FUNCTIONPOOL_REGISTER("c5_probe", s5ProbeFunc);
                         if (resp.m_status == YomkResponse::eOk)
                             g_s5RegOk.fetch_add(1, std::memory_order_relaxed);
                     }

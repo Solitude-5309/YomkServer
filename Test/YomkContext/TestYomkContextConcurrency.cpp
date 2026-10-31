@@ -101,7 +101,7 @@ int main()
                     {
                         if (i % 2 == 0)
                         {
-                            auto v = YOMK_CONTEXT_GET(String, "conc_rw", yomkmsg::String::shared(std::string("")));
+                            auto v = YomkAPI::CONTEXT_GET<yomkmsg::String>("conc_rw", yomkmsg::String::shared(std::string("")));
                             // conc_rw 始终存在且值为非空 String，命中 eOk 路径返回非空值
                             if (v && !v->d.empty())
                                 ++okGet;
@@ -426,7 +426,7 @@ int main()
                         {
                             case 0:
                             {
-                                auto v = YOMK_CONTEXT_GET(String, key, yomkmsg::String::shared(std::string("")));
+                                auto v = YomkAPI::CONTEXT_GET<yomkmsg::String>(key, yomkmsg::String::shared(std::string("")));
                                 if (v && !v->d.empty())
                                     ++okOps;
                                 else

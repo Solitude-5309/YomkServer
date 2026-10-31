@@ -18,16 +18,16 @@
  *
  * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
  *
- * 场景 1 showArmToolRegister  [YOMK_FUNCTIONPOOL_REGISTER(2参) / CALL]
+ * 场景 1 showArmToolRegister  [FUNCTIONPOOL_REGISTER(2参) / CALL]
  *        开班建工具柜：登记"负载合计"工具后按名调用，入参流进函数、结果流回
  *        调用方（msg 与 data 双份）——跨模块共享的最小闭环。
- * 场景 2 showArmToolMeta      [YOMK_FUNCTIONPOOL_REGISTER(4参) / INFO_NAME / CALL]
+ * 场景 2 showArmToolMeta      [FUNCTIONPOOL_REGISTER(4参) / INFO_NAME / CALL]
  *        带元数据登记班次握手工具：MsgName 与说明仅作内省元数据，调用时框架
  *        不做类型校验；INFO_NAME 单查逐字段确认。
  * 场景 3 showArmToolNullGuard [YOMK_FUNCTIONPOOL_CALL(nullptr)]
  *        空参守卫：CALL 传 nullptr，函数内解包宏判空自动返回 eNo——统一契约
  *        无需函数自己写 if；arm.tool 无日志自证函数体未执行。
- * 场景 4 showArmToolHotSwap   [YOMK_FUNCTIONPOOL_REGISTER(3参) / INFO_NAME / CALL]
+ * 场景 4 showArmToolHotSwap   [FUNCTIONPOOL_REGISTER(3参) / INFO_NAME / CALL]
  *        班中工具升级：同名再注册即热替换（无需注销），CALL 走新实现；MsgName
  *        与说明元数据随新注册整体刷新（未传说明则清空）。
  * 场景 5 showArmToolDashboard [INFO_NAMES / INFO_NAME / INFO_ALL]
@@ -206,14 +206,14 @@ static void showArmToolRegister()
     logScene(
         1,
         "开班登记工具函数",
-        "YOMK_FUNCTIONPOOL_REGISTER(2参) / CALL",
+        "FUNCTIONPOOL_REGISTER(2参) / CALL",
         "开班时主控模块把负载合计工具按名登记进函数池：REGISTER 只登记不执行，"
         "CALL 才按名调用——入参消息包流进函数，返回值原样流回调用方，跨模块共享"
         "无需感知对方实现。");
 
     logAction(
         "登记负载合计工具 tool.payloadSum", "REGISTER tool.payloadSum",
-        [&] { return YOMK_FUNCTIONPOOL_REGISTER("tool.payloadSum", payloadSum); });
+        [&] { return YomkAPI::FUNCTIONPOOL_REGISTER("tool.payloadSum", payloadSum); });
 
     logAction(
         "调用负载合计工具 tool.payloadSum", "CALL tool.payloadSum",
@@ -227,13 +227,13 @@ static void showArmToolMeta()
     logScene(
         2,
         "带元数据登记工具",
-        "YOMK_FUNCTIONPOOL_REGISTER(4参) / INFO_NAME / CALL",
+        "FUNCTIONPOOL_REGISTER(4参) / INFO_NAME / CALL",
         "班次握手工具登记时声明期望消息类型与用途说明：MsgName 与说明仅作内省"
         "元数据，调用时框架不做类型校验；INFO_NAME 单查可逐字段读取元信息。");
 
     logAction(
         "登记班次握手工具 tool.handshake（带元数据）", "REGISTER tool.handshake (4参)",
-        [&] { return YOMK_FUNCTIONPOOL_REGISTER("tool.handshake", handshake, String, "班次握手：向指定操作工回执问候"); });
+        [&] { return YomkAPI::FUNCTIONPOOL_REGISTER("tool.handshake", handshake, "String", "班次握手：向指定操作工回执问候"); });
 
     logAction("查看握手工具元信息");
     YomkResponse resp = YOMK_FUNCTIONPOOL_INFO_NAME("tool.handshake");
@@ -272,7 +272,7 @@ static void showArmToolHotSwap()
     logScene(
         4,
         "工具函数热升级",
-        "YOMK_FUNCTIONPOOL_REGISTER(3参) / INFO_NAME / CALL",
+        "FUNCTIONPOOL_REGISTER(3参) / INFO_NAME / CALL",
         "班中问候口径升级：对已注册名字再次 REGISTER 即热替换函数本体，无需先"
         "注销；MsgName 与说明元数据随新注册整体刷新，随后调用走新实现。");
 
@@ -293,7 +293,7 @@ static void showArmToolHotSwap()
 
     logAction(
         "热替换班次握手工具 tool.handshake（V2）", "REGISTER tool.handshake (V2, 3参)",
-        [&] { return YOMK_FUNCTIONPOOL_REGISTER("tool.handshake", handshakeV2, String); });
+        [&] { return YomkAPI::FUNCTIONPOOL_REGISTER("tool.handshake", handshakeV2, "String"); });
     logVerify("already exist 提示 + eOk：同名重复注册即运行时热替换，无需先注销");
 
     logAction("复查握手工具元信息");
