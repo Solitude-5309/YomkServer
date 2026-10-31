@@ -13,7 +13,7 @@
 | `YomkAPI::CONTEXT_ON_CHECKER()` / `YomkAPI::CONTEXT_OFF_CHECKER()` | 开关全局校验器（checker 保留但不生效） |
 | `YomkAPI::CONTEXT_SET_MONITOR(key, func, async)` | 注册变更后监听器（追加式可注册多个） |
 | `YomkAPI::CONTEXT_ON_MONITOR()` / `YomkAPI::CONTEXT_OFF_MONITOR()` | 开关全局监控（monitor 保留但不执行） |
-| `YomkAPI::CONTEXT_INFO_KEYS()` / `YomkAPI::CONTEXT_INFO_KEY(key)` / `YomkAPI::CONTEXT_INFO_ALL()` | 运行期自省 |
+| `YomkAPI::listContextKeys()` / `YomkAPI::getContextInfo(key)` / `YomkAPI::getAllContextInfo()` | 运行期自省 |
 | `YomkAPI::CONTEXT_DESTROY(key)` | 删除键 |
 
 ## 使用示例
@@ -40,10 +40,10 @@ YomkAPI::CONTEXT_SET_MONITOR("config", [](const yomk::Context &ctx) {
 YomkAPI::CONTEXT_ON_MONITOR();  // 开启全局监控；YomkAPI::CONTEXT_OFF_MONITOR() 关闭（monitor 保留但不执行）
 
 // 5. 运行期自省与销毁
-YomkAPI::CONTEXT_INFO_KEYS();        // 组内全部键名清单（缺省 main 组）
-YomkAPI::CONTEXT_INFO_KEY("config"); // 单键元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"；含所属组 m_group）
-YomkAPI::CONTEXT_INFO_GROUPS();      // 全部组名清单（StringArray）
-YomkAPI::CONTEXT_INFO_ALL();         // 跨组聚合：ContextGroupInfoList 两层结构（组名 + 该组全部键元信息）
+YomkAPI::listContextKeys();        // 组内全部键名清单（缺省 main 组）
+YomkAPI::getContextInfo("config"); // 单键元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"；含所属组 m_group）
+YomkAPI::listContextGroups();      // 全部组名清单（StringArray）
+YomkAPI::getAllContextInfo();         // 跨组聚合：ContextGroupInfoList 两层结构（组名 + 该组全部键元信息）
 YomkAPI::CONTEXT_DESTROY("config");  // 删除键
 ```
 

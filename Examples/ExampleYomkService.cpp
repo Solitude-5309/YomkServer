@@ -65,7 +65,7 @@
  *   YomkAPI::boot(boot)                            启动编排（before -> start -> after）
  *   YomkAPI::request() / YomkAPI::asyncRequest()          同步 / 异步请求
  *   YomkAPI::serverInstance().get() / YomkAPI::serverInstance()            全局单例
- *   YomkAPI::SERVER_INFO_SERVICES / FUNCTIONS / FUNCTION / ALL  调用拓扑自省
+ *   YomkAPI::listServices / FUNCTIONS / FUNCTION / ALL  调用拓扑自省
  *   installFunc("/x", &C::m[, "Msg"][, "desc"]) / weakFunc(&Class::Method) / 成员 request  服务侧 API
  */
 
@@ -236,7 +236,7 @@ static void showArmPowerOnRegister()
     logVerify("arm.boot 三段日志夹在开始行与结果行之间：BOOT 按 before→start→after 顺序执行");
 
     logAction("复查控制柜在册服务清单");
-    YomkResponse namesResp = YomkAPI::SERVER_INFO_SERVICES();
+    YomkResponse namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
     auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
     if (nameArr)
@@ -353,7 +353,7 @@ static void showArmIntrospect()
         "ExampleYomkServerInfo）。");
 
     logAction("查阅运动工位职能清单");
-    YomkResponse funcsResp = YomkAPI::SERVER_INFO_FUNCTIONS("/MotionService");
+    YomkResponse funcsResp = YomkAPI::listServiceFunctions("/MotionService");
     logResp("INFO_FUNCTIONS /MotionService", funcsResp);
     auto listPkg = yomk::unPack<yomkmsg::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
@@ -366,7 +366,7 @@ static void showArmIntrospect()
     logVerify("msgName 即 installFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /echo 两字段为(未指定)");
 
     logAction("调阅运动指令函数名片");
-    YomkResponse resp = YomkAPI::SERVER_INFO_FUNCTION("/MotionService/move");
+    YomkResponse resp = YomkAPI::getServiceFunctionInfoByUrl("/MotionService/move");
     logResp("INFO_FUNCTION /MotionService/move", resp);
     auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
     if (info)
@@ -447,7 +447,7 @@ static void showArmPowerOff()
         "，日志宏随之静默——静默段正是演示效果。");
 
     logAction("导出收班终态拓扑（摘要）");
-    YomkResponse allResp = YomkAPI::SERVER_INFO_ALL();
+    YomkResponse allResp = YomkAPI::getAllServerInfo();
     logResp("INFO_ALL", allResp);
     auto list = yomk::unPack<yomkmsg::ServerServiceInfoList>(allResp.m_data);
     if (list)

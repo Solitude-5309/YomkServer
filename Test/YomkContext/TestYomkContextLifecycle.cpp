@@ -181,7 +181,7 @@ int main()
         YOMK_TEST_CHECK(!hasService(names, "/ThrowContext"), "回滚后 serviceNames 不含 /ThrowContext（无残留）");
 
         // 进程存活、/YomkContext 仍可用
-        auto resp = YomkAPI::CONTEXT_INFO_KEYS();
+        auto resp = YomkAPI::listContextKeys();
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "异常回滚后 /YomkContext 仍可用");
     }
 

@@ -398,7 +398,7 @@ int main()
             // 投递完成后补足最少轮询数；轮询窗口仍覆盖并发投递期，且补足期间 worker 仍在消化队列
             while (!stopPoll.load() || pollCount.load() < 50)
             {
-                auto r = YomkAPI::EVENTLOOP_INFO_LOOP("conc_loop");
+                auto r = YomkAPI::getEventLoopInfo("conc_loop");
                 pollCount.fetch_add(1);
                 auto info = yomk::unPack<yomkmsg::EventLoopInfo>(r.m_data);
                 if (r.m_status == YomkResponse::eOk && info && info->d.m_running)

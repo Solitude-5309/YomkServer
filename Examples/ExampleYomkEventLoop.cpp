@@ -258,7 +258,7 @@ static void showArmLineStart()
         "启动运动指令循环", "START motionLoop", [&] { return YomkAPI::EVENTLOOP_START("motionLoop", motionHandle, "String"); });
 
     logAction("查看循环运行状态");
-    YomkResponse resp = YomkAPI::EVENTLOOP_INFO_LOOP("motionLoop");
+    YomkResponse resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop", resp);
     auto info = yomk::unPack<yomkmsg::EventLoopInfo>(resp.m_data);
     if (info)
@@ -294,7 +294,7 @@ static void showArmMotionQueue()
     }
 
     logAction("立即观察队列积压");
-    YomkResponse resp = YomkAPI::EVENTLOOP_INFO_LOOP("motionLoop", 5);
+    YomkResponse resp = YomkAPI::getEventLoopInfo("motionLoop", 5);
     logResp("INFO_LOOP motionLoop(5)", resp);
     auto backlog = yomk::unPack<yomkmsg::EventLoopInfo>(resp.m_data);
     if (backlog)
@@ -307,7 +307,7 @@ static void showArmMotionQueue()
     std::this_thread::sleep_for(std::chrono::milliseconds(1800));
 
     logAction("排空后复查");
-    resp = YomkAPI::EVENTLOOP_INFO_LOOP("motionLoop", 5);
+    resp = YomkAPI::getEventLoopInfo("motionLoop", 5);
     logResp("INFO_LOOP motionLoop(5)", resp);
     auto drained = yomk::unPack<yomkmsg::EventLoopInfo>(resp.m_data);
     if (drained)
@@ -404,7 +404,7 @@ static void showArmLinePause()
     logAction("暂停运动循环", "STOP motionLoop", [&] { return YomkAPI::EVENTLOOP_STOP("motionLoop"); });
 
     logAction("查看暂停后状态");
-    YomkResponse resp = YomkAPI::EVENTLOOP_INFO_LOOP("motionLoop");
+    YomkResponse resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop", resp);
     auto paused = yomk::unPack<yomkmsg::EventLoopInfo>(resp.m_data);
     if (paused)
@@ -422,7 +422,7 @@ static void showArmLinePause()
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
 
     logAction("确认积压已消化");
-    resp = YomkAPI::EVENTLOOP_INFO_LOOP("motionLoop");
+    resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop", resp);
     auto resumed = yomk::unPack<yomkmsg::EventLoopInfo>(resp.m_data);
     if (resumed)
@@ -444,7 +444,7 @@ static void showArmDashboard()
 
     // 循环名清单（StringArray 结构化包）
     logAction("巡检循环名清单");
-    YomkResponse loopsResp = YomkAPI::EVENTLOOP_INFO_LOOPS();
+    YomkResponse loopsResp = YomkAPI::listEventLoops();
     logResp("INFO_LOOPS", loopsResp);
     auto loopArr = yomk::unPack<yomkmsg::StringArray>(loopsResp.m_data);
     if (loopArr)
@@ -457,7 +457,7 @@ static void showArmDashboard()
 
     // 单循环抽查：运动循环（含队列 tag 预览，队列空时 nextTags 为空表）
     logAction("抽查运动循环详情");
-    YomkResponse loopResp = YomkAPI::EVENTLOOP_INFO_LOOP("motionLoop", 3);
+    YomkResponse loopResp = YomkAPI::getEventLoopInfo("motionLoop", 3);
     logResp("INFO_LOOP motionLoop(3)", loopResp);
     auto loopInfo = yomk::unPack<yomkmsg::EventLoopInfo>(loopResp.m_data);
     if (loopInfo)
@@ -468,7 +468,7 @@ static void showArmDashboard()
 
     // 全量导出（EventLoopInfoList 结构化包），逐循环展开全部字段
     logAction("全量导出循环状态");
-    YomkResponse allResp = YomkAPI::EVENTLOOP_INFO_ALL();
+    YomkResponse allResp = YomkAPI::getAllEventLoopInfo();
     logResp("INFO_ALL", allResp);
     auto allArr = yomk::unPack<yomkmsg::EventLoopInfoList>(allResp.m_data);
     if (allArr)
@@ -494,7 +494,7 @@ static void showArmLineOff()
     logAction("销毁示教循环", "DESTROY teachLoop", [&] { return YomkAPI::EVENTLOOP_DESTROY("teachLoop"); });
 
     logAction("巡检清单确认已清空");
-    YomkResponse loopsResp = YomkAPI::EVENTLOOP_INFO_LOOPS();
+    YomkResponse loopsResp = YomkAPI::listEventLoops();
     logResp("INFO_LOOPS", loopsResp);
     auto loopArr = yomk::unPack<yomkmsg::StringArray>(loopsResp.m_data);
     logVerify(loopArr && loopArr->d.empty() ? "循环清单已空：机械臂班次结束，全部专用线程已下线" : "循环清单非空：存在未销毁循环");
@@ -503,7 +503,7 @@ static void showArmLineOff()
         "已销毁循环投递被拒", "POST motionLoop (已销毁)", [&] { return YomkAPI::EVENTLOOP_POST("motionLoop", yomkmsg::String::shared("any")); });
     logAction("已销毁循环停止被拒", "STOP motionLoop (已销毁)", [&] { return YomkAPI::EVENTLOOP_STOP("motionLoop"); });
     logAction("已销毁循环查询被拒");
-    YomkResponse resp = YomkAPI::EVENTLOOP_INFO_LOOP("motionLoop");
+    YomkResponse resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop (已销毁)", resp);
     logVerify("对已销毁循环的一切操作 -> eNo(event loop not exist)：not-found 惯例，销毁不可续跑");
 }

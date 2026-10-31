@@ -11,9 +11,9 @@
 | `YomkAPI::FUNCTIONPOOL_REGISTER(name, func, "MsgName", "Description")` | 同上，追加函数说明（自由字符串，INFO_NAME 数据段可读） |
 | `YomkAPI::FUNCTIONPOOL_CALL(name, pkg)` | 按名调用函数（返回值即函数返回值）；未注册的名字返回 `eNo=1` |
 | `YomkAPI::FUNCTIONPOOL_UNREGISTER(name)` | 按名字从函数表移除 |
-| `YomkAPI::FUNCTIONPOOL_INFO_NAMES()` | 获取全部函数名 |
-| `YomkAPI::FUNCTIONPOOL_INFO_NAME(name)` | 查询单个已注册函数元信息 |
-| `YomkAPI::FUNCTIONPOOL_INFO_ALL()` | 查询全部已注册函数元信息（FuncInfoList 结构化包） |
+| `YomkAPI::listFunctionNames()` | 获取全部函数名 |
+| `YomkAPI::getFunctionInfo(name)` | 查询单个已注册函数元信息 |
+| `YomkAPI::getAllFunctionInfo()` | 查询全部已注册函数元信息（FuncInfoList 结构化包） |
 
 ## 使用示例
 

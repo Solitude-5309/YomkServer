@@ -711,22 +711,22 @@ int DemoService::init()
 }
 
 // 服务列表（返回 StringArray）
-YomkResponse resp = YomkAPI::SERVER_INFO_SERVICES();
+YomkResponse resp = YomkAPI::listServices();
 auto arr = yomk::unPack<yomkmsg::StringArray>(resp.m_data);  // arr->d: ["/DemoService", "/YomkServerInfo", ...]
 
 // 指定服务的函数列表（FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
-resp = YomkAPI::SERVER_INFO_FUNCTIONS("/DemoService");
+resp = YomkAPI::listServiceFunctions("/DemoService");
 // listPkg->d（按注册名字典序）：{"/no_type","",""}、{"/with_desc","String","对函数的说明"}、{"/with_type","String",""}
 
 // 单函数元信息查询（结构化 FuncInfo 包：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
-resp = YomkAPI::SERVER_INFO_FUNCTION("/DemoService/with_type");  // eOk，m_msgName = "String"
-resp = YomkAPI::SERVER_INFO_FUNCTION("/DemoService/with_desc");  // eOk，m_msgName = "String"，m_description = "对函数的说明"（四参说明）
-resp = YomkAPI::SERVER_INFO_FUNCTION("/DemoService/no_type");    // eOk，m_msgName 为空串（未声明），m_description 为空
-resp = YomkAPI::SERVER_INFO_FUNCTION("/DemoService/not_exist");  // eNo
+resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/with_type");  // eOk，m_msgName = "String"
+resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/with_desc");  // eOk，m_msgName = "String"，m_description = "对函数的说明"（四参说明）
+resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/no_type");    // eOk，m_msgName 为空串（未声明），m_description 为空
+resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/not_exist");  // eNo
 
 // 全量拓扑：ServerServiceInfoList 层级包（m_serviceName 服务名 + m_funcs 函数元信息列表，
 // 与 INFO_FUNCTION 单查同族）
-resp = YomkAPI::SERVER_INFO_ALL();
+resp = YomkAPI::getAllServerInfo();
 ```
 
 说明：FunctionPool 动态注册的函数无类型信息，内省显示为空；模块内层内省由各模块自行实现（四个内置模块均已完成，见下）。完整验证见 `Test/YomkServerInfo/TestYomkServerInfoLifecycle.cpp`。
@@ -741,17 +741,17 @@ YomkAPI::CONTEXT_SET_CHECKER("str_key", myChecker);
 YomkAPI::CONTEXT_SET_MONITOR("str_key", myMonitor, true);
 
 // key 列表（返回 StringArray；末位可选组名，缺省 main）
-YomkResponse resp = YomkAPI::CONTEXT_INFO_KEYS();   // arr->d: ["str_key"]
+YomkResponse resp = YomkAPI::listContextKeys();   // arr->d: ["str_key"]
 
 // 单 key 元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"，数据走 m_data；含所属组 m_group）
-resp = YomkAPI::CONTEXT_INFO_KEY("str_key");        // eOk，解包 ContextKeyInfo：m_key="str_key" m_typeName="String" ...
-resp = YomkAPI::CONTEXT_INFO_KEY("not_exist");      // eNo
+resp = YomkAPI::getContextInfo("str_key");        // eOk，解包 ContextKeyInfo：m_key="str_key" m_typeName="String" ...
+resp = YomkAPI::getContextInfo("not_exist");      // eNo
 
 // 组名清单（返回 StringArray）
-resp = YomkAPI::CONTEXT_INFO_GROUPS();
+resp = YomkAPI::listContextGroups();
 
 // 跨组聚合：ContextGroupInfoList 两层结构化包（组名 m_groupName + 该组全部键元信息 m_keys）
-resp = YomkAPI::CONTEXT_INFO_ALL();
+resp = YomkAPI::getAllContextInfo();
 ```
 
 注意：`YomkAPI::CONTEXT_CREATE(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YomkAPI::CONTEXT_GET`。完整验证见 `Test/YomkContext/TestYomkContextCRUD.cpp`。
@@ -769,16 +769,16 @@ YomkAPI::EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle, "ta
 YomkAPI::EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle);  // 不打 tag，旧写法直接编译
 
 // 循环名列表（返回 StringArray）
-YomkResponse resp = YomkAPI::EVENTLOOP_INFO_LOOPS();   // arr->d: ["loop_a", "loop_b"]
+YomkResponse resp = YomkAPI::listEventLoops();   // arr->d: ["loop_a", "loop_b"]
 
 // 单循环元信息：EventLoopInfo 结构化包（m_loopName/m_running/m_pending/m_hasDefaultFunc/m_msgName/m_nextTags）
 // m_nextTags 存原值取 n 条（队列不足 n 时全部列出），n 缺省 3；m_msg 恒 "ok"
-resp = YomkAPI::EVENTLOOP_INFO_LOOP("loop_a");
-resp = YomkAPI::EVENTLOOP_INFO_LOOP("loop_a", 5);
-resp = YomkAPI::EVENTLOOP_INFO_LOOP("not_exist");       // eNo
+resp = YomkAPI::getEventLoopInfo("loop_a");
+resp = YomkAPI::getEventLoopInfo("loop_a", 5);
+resp = YomkAPI::getEventLoopInfo("not_exist");       // eNo
 
 // 全量循环元信息：EventLoopInfoList 结构化包，元素为单查同款 EventLoopInfo
-resp = YomkAPI::EVENTLOOP_INFO_ALL();
+resp = YomkAPI::getAllEventLoopInfo();
 ```
 
 注意：自动生成的事件 id 对用户无意义，内省不展示；内省只读，`stop()` 会清空队列，观察排队 tag 需保持循环运行。完整验证见 `Test/YomkEventLoop/TestYomkEventLoopLifecycle.cpp`。
@@ -793,16 +793,16 @@ YomkAPI::FUNCTIONPOOL_REGISTER("func_desc", funcA, "String", "函数说明");  /
 YomkAPI::FUNCTIONPOOL_REGISTER("func_b", funcB);          // 不声明类型，内省无括号后缀
 
 // 注册函数名列表（返回 StringArray）
-YomkResponse resp = YomkAPI::FUNCTIONPOOL_INFO_NAMES();    // arr->d: ["func_a", "func_b", "func_desc"]
+YomkResponse resp = YomkAPI::listFunctionNames();    // arr->d: ["func_a", "func_b", "func_desc"]
 
 // 单函数元信息查询：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，m_data 恒挂），未注册 eNo
-resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("func_a");           // eOk，解包 FuncInfo：m_funcName="func_a" m_msgName="String"
-resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("func_desc");        // eOk，解包 FuncInfo：m_description="函数说明"
-resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("func_b");           // eOk，解包 FuncInfo：m_msgName/m_description 空
-resp = YomkAPI::FUNCTIONPOOL_INFO_NAME("not_exist");        // eNo
+resp = YomkAPI::getFunctionInfo("func_a");           // eOk，解包 FuncInfo：m_funcName="func_a" m_msgName="String"
+resp = YomkAPI::getFunctionInfo("func_desc");        // eOk，解包 FuncInfo：m_description="函数说明"
+resp = YomkAPI::getFunctionInfo("func_b");           // eOk，解包 FuncInfo：m_msgName/m_description 空
+resp = YomkAPI::getFunctionInfo("not_exist");        // eNo
 
 // 全量函数元信息：FuncInfoList 结构化包（元素为单查同款 FuncInfo）
-resp = YomkAPI::FUNCTIONPOOL_INFO_ALL();
+resp = YomkAPI::getAllFunctionInfo();
 ```
 
 注意：内省只读；注销后函数立即从内省结果中消失。完整验证见 `Test/YomkFunctionPool/TestYomkFunctionPoolLifecycle.cpp`。
@@ -816,34 +816,34 @@ YomkAPI::createFileLogger("/tmp", "info_logger");                          // �
 YOMK_INFO_TAG("auto_logger", "hello");  // tag 兼容双填：按需自动创建同名控制台日志器并显示 [auto_logger]
 
 // 日志器列表：按类型查询（返回 StringArray，行内容即纯名，字典序）
-YomkResponse resp = YomkAPI::LOGGER_INFO_LOGGERS("console");
+YomkResponse resp = YomkAPI::listLoggers("console");
 // arr->d: ["MainLogger", "auto_logger"]
-resp = YomkAPI::LOGGER_INFO_LOGGERS("file");
+resp = YomkAPI::listLoggers("file");
 // arr->d: ["info_logger"]
 
 // 单日志器元信息：按类型单表精确查（两表允许同名），LoggerInfo 结构化包（m_loggerName/m_type/m_dir，m_msg 恒 "ok"）
-resp = YomkAPI::LOGGER_INFO_LOGGER("MainLogger", "console");  // eOk, m_type="console"，m_dir 为空串
-resp = YomkAPI::LOGGER_INFO_LOGGER("info_logger", "file");    // eOk, m_type="file"，m_dir="/tmp"
-resp = YomkAPI::LOGGER_INFO_LOGGER("not_exist", "console");   // eNo
+resp = YomkAPI::getLoggerInfo("MainLogger", "console");  // eOk, m_type="console"，m_dir 为空串
+resp = YomkAPI::getLoggerInfo("info_logger", "file");    // eOk, m_type="file"，m_dir="/tmp"
+resp = YomkAPI::getLoggerInfo("not_exist", "console");   // eNo
 
 // 全量日志器清单：LoggerInfoList（vector<LoggerInfo>，元素为单查同款，每条内嵌状态段）
 // console 条目 m_loggerState 承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态；
 // file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态
-resp = YomkAPI::LOGGER_INFO_ALL();
+resp = YomkAPI::getAllLoggerInfo();
 
 // 全局主闸状态单查：LoggerState 独立包（四级别主闸开关 + proxyOn），
 // 独立于逐器门控层——条目 on 但无输出/未落盘时查此接口确认对应侧主闸是否关断（两层归因）
-resp = YomkAPI::LOGGER_INFO_GLOBAL();           // 缺省 = "console"：控制台侧主闸 + 控制台代理态
-resp = YomkAPI::LOGGER_INFO_GLOBAL("file");     // 文件侧主闸 + 文件代理态（两套各自独立）
+resp = YomkAPI::getGlobalLoggerLevel();           // 缺省 = "console"：控制台侧主闸 + 控制台代理态
+resp = YomkAPI::getGlobalLoggerLevel("file");     // 文件侧主闸 + 文件代理态（两套各自独立）
 YomkAPI::disableConsoleLogInfo("auto_logger");  // 具名关断：仅门控该日志器，不影响全局主闸
-resp = YomkAPI::LOGGER_INFO_LOGGER("auto_logger", "console");  // 条目报逐器 infoOff
+resp = YomkAPI::getLoggerInfo("auto_logger", "console");  // 条目报逐器 infoOff
 YomkAPI::enableConsoleLogInfo("auto_logger");   // 具名恢复
 // 文件开关同款双模式：无参 = 文件全局主闸，具名 = 仅门控该文件日志器
 YomkAPI::disableFileLogInfo("info_logger");     // 具名关断文件器：INFO 不再写入缓冲
 YomkAPI::enableFileLogInfo("info_logger");      // 具名恢复
 ```
 
-注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关两级并联且控制台/文件两套相互独立——`YomkAPI::enable/disableConsoleLog*()` 与 `YomkAPI::enable/disableFileLog*()` 各自无参作用于对应侧全局主闸、具名仅门控该日志器（未命中 eNo，不惰性创建），输出/落盘取两层 AND；`/all` 条目 m_loggerState 报逐器门控层真值（无参翻转不影响条目，proxyOn 各报对应侧代理态），全局主闸态经 `YomkAPI::LOGGER_INFO_GLOBAL(type)` 按 type 分流查询（缺省/"console" 控制台侧、"file" 文件侧）。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
+注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关两级并联且控制台/文件两套相互独立——`YomkAPI::enable/disableConsoleLog*()` 与 `YomkAPI::enable/disableFileLog*()` 各自无参作用于对应侧全局主闸、具名仅门控该日志器（未命中 eNo，不惰性创建），输出/落盘取两层 AND；`/all` 条目 m_loggerState 报逐器门控层真值（无参翻转不影响条目，proxyOn 各报对应侧代理态），全局主闸态经 `YomkAPI::getGlobalLoggerLevel(type)` 按 type 分流查询（缺省/"console" 控制台侧、"file" 文件侧）。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
 
 ## 示例6：文件日志
 

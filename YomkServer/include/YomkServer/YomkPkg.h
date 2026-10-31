@@ -156,7 +156,7 @@ struct Eventloop
     std::string m_msgName;  // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
 };
 
-// 事件循环内省元信息（EVENTLOOP_INFO_LOOP 返回数据）
+// 事件循环内省元信息（getEventLoopInfo 返回数据）
 struct EventLoopInfo
 {
     std::string m_loopName;               // 循环名
@@ -214,14 +214,14 @@ struct LoggerState
     bool m_proxyOn = false;
 };
 
-// 日志器单查请求（LOGGER_INFO_LOGGER 请求数据：名 + 类型，两表允许同名须按类型区分）
+// 日志器单查请求（getLoggerInfo 请求数据：名 + 类型，两表允许同名须按类型区分）
 struct LoggerQuery
 {
     std::string m_loggerName;
     std::string m_type;  // 类型："console" 或 "file"
 };
 
-// 日志器内省元信息（LOGGER_INFO_LOGGER 单查返回数据，LOGGER_INFO_ALL 清单元素）
+// 日志器内省元信息（getLoggerInfo 单查返回数据，getAllLoggerInfo 清单元素）
 struct LoggerInfo
 {
     std::string m_loggerName;  // 日志器名
@@ -241,7 +241,7 @@ struct Context
     std::string m_group = "main";  // key 所属组名（缺省 main）
 };
 
-// Context 键内省元信息（CONTEXT_INFO_KEY 单查返回数据；同时是 ContextGroupInfo.m_keys 清单元素）
+// Context 键内省元信息（getContextInfo 单查返回数据；同时是 ContextGroupInfo.m_keys 清单元素）
 struct ContextKeyInfo
 {
     std::string m_key;                    // 键名
@@ -279,14 +279,14 @@ struct ContextGroupKey
     std::string m_key;             // 键名
 };
 
-// Context 组级内省条目（CONTEXT_INFO_ALL 返回数据元素：组名 + 该组下全部键元信息，对齐 ServerServiceInfo）
+// Context 组级内省条目（getAllContextInfo 返回数据元素：组名 + 该组下全部键元信息，对齐 ServerServiceInfo）
 struct ContextGroupInfo
 {
     std::string m_groupName;             // 组名
     std::vector<ContextKeyInfo> m_keys;  // 该组全部键的内省元信息（map 字典序）
 };
 
-// 服务级内省条目（SERVER_INFO_ALL 返回数据元素：服务名 + 该服务注册的函数元信息列表）
+// 服务级内省条目（getAllServerInfo 返回数据元素：服务名 + 该服务注册的函数元信息列表）
 struct ServerServiceInfo
 {
     std::string m_serviceName;      // 服务名（带 / 前缀，如 "/FmtSrv"）
@@ -303,12 +303,12 @@ struct VoidPointer
 YomkMsg(yomk::Function, Function, d);
 YomkMsg(yomk::CallFunction, CallFunction, d);
 YomkMsg(yomk::FuncInfo, FuncInfo, d);
-// FunctionPool 全量函数内省（FUNCTIONPOOL_INFO_ALL 返回数据；函数总数由 d.size() 承载）
+// FunctionPool 全量函数内省（getAllFunctionInfo 返回数据；函数总数由 d.size() 承载）
 YomkMsg(std::vector<yomk::FuncInfo>, FuncInfoList, d);
 YomkMsg(yomk::Event, Event, d);
 YomkMsg(yomk::Eventloop, Eventloop, d);
 YomkMsg(yomk::EventLoopInfo, EventLoopInfo, d);
-// EventLoop 全量循环内省（EVENTLOOP_INFO_ALL 返回数据；m_nextTags 取 3 条与单查缺省一致）
+// EventLoop 全量循环内省（getAllEventLoopInfo 返回数据；m_nextTags 取 3 条与单查缺省一致）
 YomkMsg(std::vector<yomk::EventLoopInfo>, EventLoopInfoList, d);
 YomkMsg(yomk::LogFile, LogFile, d);
 YomkMsg(yomk::Log, Log, d);
@@ -316,9 +316,9 @@ YomkMsg(yomk::ConsoleLogProxy, ConsoleLogProxy, d);
 YomkMsg(yomk::FileLogProxy, FileLogProxy, d);
 YomkMsg(yomk::LoggerQuery, LoggerQuery, d);
 YomkMsg(yomk::LoggerInfo, LoggerInfo, d);
-// Logger 控制台全局主闸态（LOGGER_INFO_GLOBAL 返回数据：四级别主闸开关 + proxy）
+// Logger 控制台全局主闸态（getGlobalLoggerLevel 返回数据：四级别主闸开关 + proxy）
 YomkMsg(yomk::LoggerState, LoggerState, d);
-// Logger 全量内省（LOGGER_INFO_ALL 返回数据；元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段）
+// Logger 全量内省（getAllLoggerInfo 返回数据；元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段）
 YomkMsg(std::vector<yomk::LoggerInfo>, LoggerInfoList, d);
 YomkMsg(yomk::Context, Context, d);
 // Context 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键，组名缺省 main）
@@ -328,9 +328,9 @@ YomkMsg(yomk::ContextKeyInfo, ContextKeyInfo, d);
 YomkMsg(std::vector<yomk::ContextKeyInfo>, ContextKeyInfoList, d);
 // Context 组级内省条目（ContextGroupInfoList 元素；层级为组 → 键元信息）
 YomkMsg(yomk::ContextGroupInfo, ContextGroupInfo, d);
-// Context 组级全量内省（CONTEXT_INFO_ALL 返回数据）
+// Context 组级全量内省（getAllContextInfo 返回数据）
 YomkMsg(std::vector<yomk::ContextGroupInfo>, ContextGroupInfoList, d);
-// ServerInfo 全量拓扑内省（SERVER_INFO_ALL 返回数据；层级为服务 → 函数元信息）
+// ServerInfo 全量拓扑内省（getAllServerInfo 返回数据；层级为服务 → 函数元信息）
 YomkMsg(std::vector<yomk::ServerServiceInfo>, ServerServiceInfoList, d);
 YomkMsg(yomk::ContextChecker, ContextChecker, d);
 YomkMsg(yomk::ContextMonitor, ContextMonitor, d);

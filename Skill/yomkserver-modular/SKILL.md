@@ -201,13 +201,13 @@ int XxxService::init() {
 }
 
 // 服务列表（返回 StringArray）
-YomkResponse resp = YomkAPI::SERVER_INFO_SERVICES();
+YomkResponse resp = YomkAPI::listServices();
 // 指定服务的函数列表（FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
-resp = YomkAPI::SERVER_INFO_FUNCTIONS("/XxxService");
+resp = YomkAPI::listServiceFunctions("/XxxService");
 // 单函数元信息查询（命中返回结构化 FuncInfo 包：m_msgName=类型名、m_description=四参说明，m_msg 恒 "ok"）
-resp = YomkAPI::SERVER_INFO_FUNCTION("/XxxService/my_func");
+resp = YomkAPI::getServiceFunctionInfoByUrl("/XxxService/my_func");
 // 全量拓扑（ServerServiceInfoList 层级包：m_serviceName 服务名 + m_funcs 函数元信息列表）
-resp = YomkAPI::SERVER_INFO_ALL();
+resp = YomkAPI::getAllServerInfo();
 ```
 
 服务器层内省之外，四个内置模块（Context/EventLoop/FunctionPool/Logger）均提供模块内层内省（各自的 `YomkAPI::*_INFO_*()` 接口：key/循环/函数/日志器列表、单条元信息、全量内省——均返回结构化包），返回数据形态与示例见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。

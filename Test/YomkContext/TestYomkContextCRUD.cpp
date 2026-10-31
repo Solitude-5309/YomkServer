@@ -58,8 +58,8 @@ int main()
     YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
 
     // 验证 /YomkContext 已注册
-    auto infoAll = YomkAPI::SERVER_INFO_ALL();
-    YOMK_TEST_CHECK(infoAll.m_status == YomkResponse::eOk, "SERVER_INFO_ALL 返回 eOk");
+    auto infoAll = YomkAPI::getAllServerInfo();
+    YOMK_TEST_CHECK(infoAll.m_status == YomkResponse::eOk, "getAllServerInfo 返回 eOk");
 
     // create：正常创建 String 类型 value
     {
@@ -175,7 +175,7 @@ int main()
 
     // keys：包含已创建 key
     {
-        auto resp = YomkAPI::CONTEXT_INFO_KEYS();
+        auto resp = YomkAPI::listContextKeys();
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "keys 返回 eOk");
         auto arr = yomk::unPack<yomkmsg::StringArray>(resp.m_data);
         YOMK_TEST_CHECK(arr != nullptr, "keys 数据为 StringArray");
@@ -186,7 +186,7 @@ int main()
 
     // keyInfo：正常 key（结构化返回，m_msg 恒 "ok"，数据走 m_data）
     {
-        auto resp = YomkAPI::CONTEXT_INFO_KEY("str_key");
+        auto resp = YomkAPI::getContextInfo("str_key");
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "keyInfo 正常 key 返回 eOk");
         YOMK_TEST_CHECK(resp.m_msg == "ok", "keyInfo 命中 m_msg 恒为 ok");
         auto info = yomk::unPack<yomkmsg::ContextKeyInfo>(resp.m_data);
@@ -201,21 +201,21 @@ int main()
 
     // keyInfo：空 key
     {
-        auto resp = YomkAPI::CONTEXT_INFO_KEY("");
+        auto resp = YomkAPI::getContextInfo("");
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "keyInfo 空 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is empty", "keyInfo 空 key 错误消息一致");
     }
 
     // keyInfo：不存在 key
     {
-        auto resp = YomkAPI::CONTEXT_INFO_KEY("no_such_key");
+        auto resp = YomkAPI::getContextInfo("no_such_key");
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eNo, "keyInfo 不存在 key 返回 eNo");
         YOMK_TEST_CHECK(resp.m_msg == "key is not exist", "keyInfo 不存在 key 错误消息一致");
     }
 
     // listAll：跨组聚合（组 → 键元信息两层结构化包，m_msg 恒 "ok"）
     {
-        auto resp = YomkAPI::CONTEXT_INFO_ALL();
+        auto resp = YomkAPI::getAllContextInfo();
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "listAll 返回 eOk");
         YOMK_TEST_CHECK(resp.m_msg == "ok", "listAll 成功消息恒为 ok");
         auto arr = yomk::unPack<yomkmsg::ContextGroupInfoList>(resp.m_data);
@@ -268,7 +268,7 @@ int main()
 
     // keys：销毁后只剩一个 key
     {
-        auto resp = YomkAPI::CONTEXT_INFO_KEYS();
+        auto resp = YomkAPI::listContextKeys();
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "keys 销毁后返回 eOk");
         auto arr = yomk::unPack<yomkmsg::StringArray>(resp.m_data);
         YOMK_TEST_CHECK(arr && arr->d.size() == 1, "keys 销毁后返回 1 个 key");
@@ -284,7 +284,7 @@ int main()
 
     // keys：全部销毁后为空
     {
-        auto resp = YomkAPI::CONTEXT_INFO_KEYS();
+        auto resp = YomkAPI::listContextKeys();
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk, "keys 全部销毁后返回 eOk");
         auto arr = yomk::unPack<yomkmsg::StringArray>(resp.m_data);
         YOMK_TEST_CHECK(arr && arr->d.empty(), "keys 全部销毁后返回空数组");

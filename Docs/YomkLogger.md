@@ -28,10 +28,10 @@
 
 | API | 说明 |
 |---|---|
-| `YomkAPI::LOGGER_INFO_LOGGERS(type)` | 按类型获取日志器名列表（type: `"console"`/`"file"`，返回 StringArray 纯名字典序；非法类型 eNo） |
-| `YomkAPI::LOGGER_INFO_LOGGER(name, type)` | 按类型单查指定日志器（type: `"console"`/`"file"`；两表允许同名，单表精确查找不 fallback；未注册或非法 type 均 eNo） |
-| `YomkAPI::LOGGER_INFO_ALL()` | 查询全部日志器及开关配置状态（LoggerInfoList 清单：元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段——console 条目承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态，file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态） |
-| `YomkAPI::LOGGER_INFO_GLOBAL(type = "console")` | 查询全局主闸状态（type = "file" 查文件侧、type = "console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 eNo。返回 LoggerState 独立包：四级别主闸开关 + proxyOn；独立于逐器门控层，与 INFO_ALL/INFO_LOGGER 条目配合完成两层归因） |
+| `YomkAPI::listLoggers(type)` | 按类型获取日志器名列表（type: `"console"`/`"file"`，返回 StringArray 纯名字典序；非法类型 eNo） |
+| `YomkAPI::getLoggerInfo(name, type)` | 按类型单查指定日志器（type: `"console"`/`"file"`；两表允许同名，单表精确查找不 fallback；未注册或非法 type 均 eNo） |
+| `YomkAPI::getAllLoggerInfo()` | 查询全部日志器及开关配置状态（LoggerInfoList 清单：元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段——console 条目承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态，file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态） |
+| `YomkAPI::getGlobalLoggerLevel(type = "console")` | 查询全局主闸状态（type = "file" 查文件侧、type = "console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 eNo。返回 LoggerState 独立包：四级别主闸开关 + proxyOn；独立于逐器门控层，与 INFO_ALL/INFO_LOGGER 条目配合完成两层归因） |
 
 ## 使用示例
 
@@ -85,7 +85,7 @@ YomkAPI::setFileLogProxy(nullptr); // 传 nullptr 卸载文件代理，恢复默
 
 - tag 即控制台日志器名，首次使用自动创建。
 - 级别开关两级并联：无参作用于全局主闸（框架全局），具名作用于单个日志器（逐器门控）；输出/落盘取两层 AND。控制台开关（enable/disableConsoleLog*）只影响控制台输出，文件开关（enable/disableFileLog*）只影响文件写入，两套开关相互独立。
-- 内省归因：INFO_ALL/INFO_LOGGER 条目报逐器门控层真值（console/file 条目各自独立，未做具名开关恒全 on；proxyOn 各报对应侧代理态）；条目 on 但无输出/未落盘时查 `YomkAPI::LOGGER_INFO_GLOBAL("console"/"file")` 确认对应侧主闸是否关断——两层状态各自真实呈现，可唯一归因。
+- 内省归因：INFO_ALL/INFO_LOGGER 条目报逐器门控层真值（console/file 条目各自独立，未做具名开关恒全 on；proxyOn 各报对应侧代理态）；条目 on 但无输出/未落盘时查 `YomkAPI::getGlobalLoggerLevel("console"/"file")` 确认对应侧主闸是否关断——两层状态各自真实呈现，可唯一归因。
 - `YomkAPI::flushFileLog` 显式刷盘；日志器释放时亦会自动落盘。
 - `YomkAPI::deleteFileLogger` 同名清 console + file 两表；不删磁盘 `.log` 文件。
 - 代理回调返回 `false` 表示消费此日志不再默认输出（控制台代理）或不再落盘（文件代理）；返回 `true` 继续框架默认行为。控制台代理与文件代理相互独立，传 `nullptr` 或空 std::function 即卸载。

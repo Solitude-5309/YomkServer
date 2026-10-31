@@ -38,7 +38,7 @@
  * 场景 6 showArmReportPose      [YomkAPI::CONTEXT_SET_MONITOR(async=true)]
  *        数字孪生异步上报末端位姿：单线程池按 set 提交序保序送达，
  *        执行线程是池线程——上报不阻塞运动控制回路。
- * 场景 7 showArmDashboard       [YomkAPI::CONTEXT_INFO_KEYS / INFO_KEY / INFO_ALL]
+ * 场景 7 showArmDashboard       [YomkAPI::listContextKeys / INFO_KEY / INFO_ALL]
  *        产线运维面板：键名清单、单键结构化元信息（含未命中 eNo 分支）、
  *        全量导出——框架只回结构化数据，展示格式由用户定义。
  * 场景 8 showArmTaskCleanup     [YomkAPI::CONTEXT_DESTROY]
@@ -530,12 +530,12 @@ static void showArmDashboard()
     logScene(
         7,
         "产线运维面板",
-        "YomkAPI::CONTEXT_INFO_KEYS / INFO_KEY / INFO_ALL",
+        "YomkAPI::listContextKeys / INFO_KEY / INFO_ALL",
         "运维面板巡检：INFO_KEYS 拉取键名清单；INFO_KEY 抽查单键注册详情（结构化 "
         "ContextKeyInfo）；INFO_ALL 全量导出——框架只回结构化数据，展示格式由用户定义。");
 
     // 键名清单（StringArray 结构化包）
-    YomkResponse keysResp = logAction("巡检键名清单", "INFO_KEYS", [&] { return YomkAPI::CONTEXT_INFO_KEYS(); });
+    YomkResponse keysResp = logAction("巡检键名清单", "INFO_KEYS", [&] { return YomkAPI::listContextKeys(); });
     auto keyArr = yomk::unPack<yomkmsg::StringArray>(keysResp.m_data);
     if (keyArr)
     {
@@ -547,7 +547,7 @@ static void showArmDashboard()
 
     // 单键抽查：速度倍率——场景 4 挂的门控回调仍在键上
     YomkResponse ratioResp = logAction(
-        "抽查速度倍率注册详情", "INFO_KEY arm.speed_ratio", [&] { return YomkAPI::CONTEXT_INFO_KEY("arm.speed_ratio"); });
+        "抽查速度倍率注册详情", "INFO_KEY arm.speed_ratio", [&] { return YomkAPI::getContextInfo("arm.speed_ratio"); });
     auto ratioInfo = yomk::unPack<yomkmsg::ContextKeyInfo>(ratioResp.m_data);
     if (ratioInfo)
     {
@@ -557,7 +557,7 @@ static void showArmDashboard()
 
     // 单键抽查：末端位姿——异步上报 monitor 已追加
     YomkResponse poseResp = logAction(
-        "抽查末端位姿注册详情", "INFO_KEY arm.tcp_pose", [&] { return YomkAPI::CONTEXT_INFO_KEY("arm.tcp_pose"); });
+        "抽查末端位姿注册详情", "INFO_KEY arm.tcp_pose", [&] { return YomkAPI::getContextInfo("arm.tcp_pose"); });
     auto poseInfo = yomk::unPack<yomkmsg::ContextKeyInfo>(poseResp.m_data);
     if (poseInfo)
     {
@@ -566,11 +566,11 @@ static void showArmDashboard()
     logVerify("arm.tcp_pose：monitors=1、async=1（场景 6 的异步上报仍在，async 是 monitors 中异步的数量）");
 
     // 未命中惯例：查询未注册键返回 eNo
-    logAction("查询未注册键", "INFO_KEY arm.ghost", [&] { return YomkAPI::CONTEXT_INFO_KEY("arm.ghost"); });
+    logAction("查询未注册键", "INFO_KEY arm.ghost", [&] { return YomkAPI::getContextInfo("arm.ghost"); });
     logVerify("查询未注册的键 -> eNo(key is not exist)");
 
     // 全量导出（组 → 键元信息两层结构化包），逐组逐键展开全部字段
-    YomkResponse allResp = logAction("全量导出键值表", "INFO_ALL", [&] { return YomkAPI::CONTEXT_INFO_ALL(); });
+    YomkResponse allResp = logAction("全量导出键值表", "INFO_ALL", [&] { return YomkAPI::getAllContextInfo(); });
     auto allArr = yomk::unPack<yomkmsg::ContextGroupInfoList>(allResp.m_data);
     if (allArr)
     {
@@ -614,7 +614,7 @@ static void showArmTaskCleanup()
     logVerify("重复销毁同名键 -> eNo(key is not exist)");
 
     // 收尾确认：键值表已空，会话闭环
-    YomkResponse keysResp = logAction("收尾确认键值表已空", "INFO_KEYS", [&] { return YomkAPI::CONTEXT_INFO_KEYS(); });
+    YomkResponse keysResp = logAction("收尾确认键值表已空", "INFO_KEYS", [&] { return YomkAPI::listContextKeys(); });
     auto keyArr = yomk::unPack<yomkmsg::StringArray>(keysResp.m_data);
     logVerify(keyArr && keyArr->d.empty() ? "键值表已空：机械臂会话结束，共享状态全部下线" : "键值表非空：存在未清理键");
 }

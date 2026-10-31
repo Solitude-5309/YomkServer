@@ -464,7 +464,7 @@ int main()
         std::thread stopper([] { YomkAPI::EVENTLOOP_STOP("api_loop"); });
         auto infoOf = []()
         {
-            auto r = YomkAPI::EVENTLOOP_INFO_LOOP("api_loop");
+            auto r = YomkAPI::getEventLoopInfo("api_loop");
             auto info = yomk::unPack<yomkmsg::EventLoopInfo>(r.m_data);
             return info;
         };
@@ -494,7 +494,7 @@ int main()
 
         // 越界数字 tagCount（D3 回归）：stoul 越界不再崩溃，回退默认 3；
         // 冻结窗口队列 2 条（c1/c2），回退 tagCount=3 >= 2 截断不生效全部列出
-        auto oob = YomkAPI::EVENTLOOP_INFO_LOOP("api_loop 99999999999999999999");
+        auto oob = YomkAPI::getEventLoopInfo("api_loop 99999999999999999999");
         YOMK_TEST_CHECK(oob.m_status == YomkResponse::eOk, "越界数字 tagCount 返回 eOk（不崩溃）");
         YOMK_TEST_CHECK(oob.m_msg == "ok", "越界数字 tagCount 命中 m_msg 恒为 ok");
         auto oobInfo = yomk::unPack<yomkmsg::EventLoopInfo>(oob.m_data);
@@ -505,7 +505,7 @@ int main()
               "越界数字 tagCount 快照 tag 原值一致（c1/c2）");
 
         // tagCount 截断语义：N < 队列条数时截断队列头 N 条（冻结窗口队列 2 条）
-        auto trunc = YomkAPI::EVENTLOOP_INFO_LOOP("api_loop", 1);
+        auto trunc = YomkAPI::getEventLoopInfo("api_loop", 1);
         auto truncInfo = yomk::unPack<yomkmsg::EventLoopInfo>(trunc.m_data);
         YOMK_TEST_CHECK(truncInfo && truncInfo->d.m_nextTags.size() == 1 && truncInfo->d.m_nextTags[0] == "c1",
               "tagCount=1 截断队列头 1 条 tag");
@@ -543,16 +543,16 @@ int main()
                 YomkResponse::eNo,
             "POST_WAIT 不存在循环返回 eNo");
         YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_DESTROY("no_such").m_status == YomkResponse::eNo, "DESTROY 不存在循环返回 eNo");
-        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_INFO_LOOP("no_such").m_status == YomkResponse::eNo, "INFO_LOOP 不存在循环返回 eNo");
+        YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("no_such").m_status == YomkResponse::eNo, "INFO_LOOP 不存在循环返回 eNo");
 
         // INFO_LOOP 数字 tagCount 路径："name N" 字符串解析与类型化重载、大数值（合法范围）；
         // 结构化返回：解析健壮性体现为 eOk 且 m_msg 恒 "ok"（该窗口队列已清空，截断语义已在冻结窗口验证）
-        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_INFO_LOOP("api_loop 5").m_msg == "ok", "字符串数字路径解析 tagCount=5");
-        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_INFO_LOOP("api_loop", 7).m_msg == "ok", "类型化重载解析 tagCount=7");
-        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_INFO_LOOP("api_loop 1000000").m_msg == "ok", "大数值 tagCount 正常解析（合法范围内）");
+        YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("api_loop 5").m_msg == "ok", "字符串数字路径解析 tagCount=5");
+        YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("api_loop", 7).m_msg == "ok", "类型化重载解析 tagCount=7");
+        YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("api_loop 1000000").m_msg == "ok", "大数值 tagCount 正常解析（合法范围内）");
 
         // INFO_LOOPS：api_loop 存活时列表包含其名（loops() 遍历路径；销毁后移除验证见段尾）
-        auto loopsAliveResp = YomkAPI::EVENTLOOP_INFO_LOOPS();
+        auto loopsAliveResp = YomkAPI::listEventLoops();
         YOMK_TEST_CHECK(loopsAliveResp.m_status == YomkResponse::eOk, "INFO_LOOPS 返回 eOk");
         auto loopsAliveArr = yomk::unPack<yomkmsg::StringArray>(loopsAliveResp.m_data);
         bool loopsFound = false;
@@ -569,7 +569,7 @@ int main()
         YOMK_TEST_CHECK(loopsAliveArr != nullptr && loopsFound, "INFO_LOOPS 列表包含 api_loop");
 
         // INFO_ALL：结构化 EventLoopInfoList，包含 api_loop 条目
-        auto allResp = YomkAPI::EVENTLOOP_INFO_ALL();
+        auto allResp = YomkAPI::getAllEventLoopInfo();
         YOMK_TEST_CHECK(allResp.m_status == YomkResponse::eOk, "INFO_ALL 返回 eOk");
         YOMK_TEST_CHECK(allResp.m_msg == "ok", "INFO_ALL 成功消息恒为 ok");
         auto allArr = yomk::unPack<yomkmsg::EventLoopInfoList>(allResp.m_data);
@@ -595,13 +595,13 @@ int main()
         YOMK_TEST_CHECK(
             waitUntil([] { return !orderSnapshot().empty() && orderSnapshot().back() == "empty"; }, 2000),
             "空循环名事件正常执行");
-        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_INFO_LOOP("").m_status == YomkResponse::eOk, "INFO_LOOP 空循环名返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("").m_status == YomkResponse::eOk, "INFO_LOOP 空循环名返回 eOk");
         YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_DESTROY("").m_status == YomkResponse::eOk, "DESTROY 空循环名返回 eOk");
 
         // 超长循环名边界（65536 字符）：生命周期各接口 eOk 且结构化返回完整回显
         std::string longName(65536, 'L');
         YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_START(longName, nullptr).m_status == YomkResponse::eOk, "START 超长循环名返回 eOk");
-        auto longInfo = YomkAPI::EVENTLOOP_INFO_LOOP(longName);
+        auto longInfo = YomkAPI::getEventLoopInfo(longName);
         YOMK_TEST_CHECK(longInfo.m_status == YomkResponse::eOk, "INFO_LOOP 超长循环名返回 eOk");
         auto longLoopInfo = yomk::unPack<yomkmsg::EventLoopInfo>(longInfo.m_data);
         YOMK_TEST_CHECK(longLoopInfo && longLoopInfo->d.m_loopName == longName, "INFO_LOOP 完整回显超长循环名");
@@ -609,7 +609,7 @@ int main()
 
         // 销毁移除条目
         YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_DESTROY("api_loop").m_status == YomkResponse::eOk, "DESTROY api_loop 返回 eOk");
-        auto loopsResp = YomkAPI::EVENTLOOP_INFO_LOOPS();
+        auto loopsResp = YomkAPI::listEventLoops();
         YOMK_TEST_CHECK(loopsResp.m_status == YomkResponse::eOk, "INFO_LOOPS 返回 eOk");
         auto loopsArr = yomk::unPack<yomkmsg::StringArray>(loopsResp.m_data);
         bool removed = true;
@@ -636,7 +636,7 @@ int main()
         auto afterDel = YomkAPI::EVENTLOOP_START("/L2");
         YOMK_TEST_CHECK(afterDel.m_status == YomkResponse::eNo && afterDel.m_msg == "service not found: /YomkEventLoop",
               "删除后 EVENTLOOP API 服务级 eNo + 精确消息");
-        auto srvArr = yomk::unPack<yomkmsg::StringArray>(YomkAPI::SERVER_INFO_SERVICES().m_data);
+        auto srvArr = yomk::unPack<yomkmsg::StringArray>(YomkAPI::listServices().m_data);
         bool evtLoopGone = true;
         if (srvArr)
         {

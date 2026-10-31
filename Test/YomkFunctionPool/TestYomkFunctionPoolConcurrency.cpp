@@ -395,7 +395,7 @@ int main(int /*argc*/, char** /*argv*/)
                 {
                     for (int round = 0; round < kIntrospectRounds; ++round)
                     {
-                        auto resp = YomkAPI::FUNCTIONPOOL_INFO_ALL();
+                        auto resp = YomkAPI::getAllFunctionInfo();
                         if (resp.m_status == YomkResponse::eOk && resp.m_data)
                         {
                             auto arr = yomk::unPack<yomkmsg::FuncInfoList>(resp.m_data);
@@ -503,7 +503,7 @@ int main(int /*argc*/, char** /*argv*/)
             {
                 for (int i = 0; i < kRounds; ++i)
                 {
-                    auto resp = YomkAPI::FUNCTIONPOOL_INFO_NAMES();
+                    auto resp = YomkAPI::listFunctionNames();
                     if (resp.m_status == YomkResponse::eOk)
                         g_s5IntrospectCount.fetch_add(1, std::memory_order_relaxed);
                     std::this_thread::sleep_for(std::chrono::microseconds(100));

@@ -169,7 +169,7 @@ int main()
         bool allGone = true;
         for (int t = 0; t < T; ++t)
         {
-            auto r = YomkAPI::CONTEXT_INFO_KEY("conc_cd_" + std::to_string(t));
+            auto r = YomkAPI::getContextInfo("conc_cd_" + std::to_string(t));
             if (r.m_status != YomkResponse::eNo)
                 allGone = false;
         }
@@ -246,7 +246,7 @@ int main()
                         }
                         else
                         {
-                            auto r = YomkAPI::CONTEXT_INFO_KEY("conc_ck");
+                            auto r = YomkAPI::getContextInfo("conc_ck");
                             if (r.m_status == YomkResponse::eOk)
                                 ++okReader;
                             else
@@ -379,7 +379,7 @@ int main()
             "conc_a",
             [](const yomk::Context&)
             {
-                auto r = YomkAPI::CONTEXT_INFO_KEY("conc_b");
+                auto r = YomkAPI::getContextInfo("conc_b");
                 if (r.m_status == YomkResponse::eOk)
                     ++g_reentrantOk;
             });
@@ -444,7 +444,7 @@ int main()
                             }
                             case 2:
                             {
-                                auto r = YomkAPI::CONTEXT_INFO_KEYS();
+                                auto r = YomkAPI::listContextKeys();
                                 if (r.m_status == YomkResponse::eOk)
                                     ++okOps;
                                 else
@@ -453,7 +453,7 @@ int main()
                             }
                             case 3:
                             {
-                                auto r = YomkAPI::CONTEXT_INFO_KEY(key);
+                                auto r = YomkAPI::getContextInfo(key);
                                 if (r.m_status == YomkResponse::eOk)
                                     ++okOps;
                                 else
@@ -462,7 +462,7 @@ int main()
                             }
                             case 4:
                             {
-                                auto r = YomkAPI::CONTEXT_INFO_ALL();
+                                auto r = YomkAPI::getAllContextInfo();
                                 if (r.m_status == YomkResponse::eOk)
                                     ++okOps;
                                 else
@@ -510,13 +510,13 @@ int main()
         YOMK_TEST_CHECK(okOps.load() == T * K, "8.3 全部操作成功计数守恒");
 
         // 最终一致性：keyspace 仍存在、临时键已销毁
-        bool keyspaceOk = (YomkAPI::CONTEXT_INFO_KEY("stress_0").m_status == YomkResponse::eOk) &&
-                          (YomkAPI::CONTEXT_INFO_KEY("stress_" + std::to_string(M - 1)).m_status == YomkResponse::eOk);
+        bool keyspaceOk = (YomkAPI::getContextInfo("stress_0").m_status == YomkResponse::eOk) &&
+                          (YomkAPI::getContextInfo("stress_" + std::to_string(M - 1)).m_status == YomkResponse::eOk);
         YOMK_TEST_CHECK(keyspaceOk, "8.4 压力后 keyspace 仍存在");
         bool tmpGone = true;
         for (int t = 0; t < T; ++t)
         {
-            if (YomkAPI::CONTEXT_INFO_KEY("stress_tmp_" + std::to_string(t)).m_status != YomkResponse::eNo)
+            if (YomkAPI::getContextInfo("stress_tmp_" + std::to_string(t)).m_status != YomkResponse::eNo)
                 tmpGone = false;
         }
         YOMK_TEST_CHECK(tmpGone, "8.5 压力后临时键全部销毁");
