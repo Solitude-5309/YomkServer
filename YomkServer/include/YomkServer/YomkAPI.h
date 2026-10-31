@@ -883,8 +883,8 @@ private:
         return *h;
     }
 };
-#define STRINGIFY(x) #x
-#define TO_STRING(x) STRINGIFY(x)
+#define YOMK_STRINGIFY(x) #x
+#define YOMK_TO_STRING(x) YOMK_STRINGIFY(x)
 #define YOMK_VERSION YomkAPI::version()
 #define YOMK_INIT(...) YomkAPI::init(__VA_ARGS__)
 #define YOMK_SHUTDOWN(...) YomkAPI::shutdown(__VA_ARGS__)
@@ -914,32 +914,32 @@ private:
 #define YOMK_OFF_FILE_LOG_WARN(...) YomkAPI::OFF_FILE_LOG_WARN(__VA_ARGS__)
 #define YOMK_OFF_FILE_LOG_ERROR(...) YomkAPI::OFF_FILE_LOG_ERROR(__VA_ARGS__)
 #define YOMK_OFF_FILE_LOG_DEBUG(...) YomkAPI::OFF_FILE_LOG_DEBUG(__VA_ARGS__)
-#define YOMK_INFO(...) YomkAPI::CONSOLE_LOG_INFO_TAG("MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_INFO_TAG(tag, ...) YomkAPI::CONSOLE_LOG_INFO_TAG(tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_WARN(...) YomkAPI::CONSOLE_LOG_WARN_TAG("MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_WARN_TAG(tag, ...) YomkAPI::CONSOLE_LOG_WARN_TAG(tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_ERROR(...) YomkAPI::CONSOLE_LOG_ERROR_TAG("MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_ERROR_TAG(tag, ...) YomkAPI::CONSOLE_LOG_ERROR_TAG(tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_DEBUG(...) YomkAPI::CONSOLE_LOG_DEBUG_TAG("MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
-#define YOMK_DEBUG_TAG(tag, ...) YomkAPI::CONSOLE_LOG_DEBUG_TAG(tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_INFO(...) YomkAPI::CONSOLE_LOG_INFO_TAG("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_INFO_TAG(tag, ...) YomkAPI::CONSOLE_LOG_INFO_TAG(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_WARN(...) YomkAPI::CONSOLE_LOG_WARN_TAG("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_WARN_TAG(tag, ...) YomkAPI::CONSOLE_LOG_WARN_TAG(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_ERROR(...) YomkAPI::CONSOLE_LOG_ERROR_TAG("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_ERROR_TAG(tag, ...) YomkAPI::CONSOLE_LOG_ERROR_TAG(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_DEBUG(...) YomkAPI::CONSOLE_LOG_DEBUG_TAG("MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
+#define YOMK_DEBUG_TAG(tag, ...) YomkAPI::CONSOLE_LOG_DEBUG_TAG(tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_LOG_CREATE(...) YomkAPI::FILE_LOG_CREATE(__VA_ARGS__)
 #define YOMK_FILE_LOG_WRITE(...) YomkAPI::FILE_LOG_WRITE(__VA_ARGS__)
 #define YOMK_FILE_INFO(file, ...) \
-    YomkAPI::FILE_LOG_INFO_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::FILE_LOG_INFO_TAG(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_INFO_TAG(file, tag, ...) \
-    YomkAPI::FILE_LOG_INFO_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::FILE_LOG_INFO_TAG(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_WARN(file, ...) \
-    YomkAPI::FILE_LOG_WARN_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::FILE_LOG_WARN_TAG(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_WARN_TAG(file, tag, ...) \
-    YomkAPI::FILE_LOG_WARN_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::FILE_LOG_WARN_TAG(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_ERROR(file, ...) \
-    YomkAPI::FILE_LOG_ERROR_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::FILE_LOG_ERROR_TAG(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_ERROR_TAG(file, tag, ...) \
-    YomkAPI::FILE_LOG_ERROR_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::FILE_LOG_ERROR_TAG(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_DEBUG(file, ...) \
-    YomkAPI::FILE_LOG_DEBUG_TAG(file, "MainLogger", "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::FILE_LOG_DEBUG_TAG(file, "MainLogger", "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_FILE_DEBUG_TAG(file, tag, ...) \
-    YomkAPI::FILE_LOG_DEBUG_TAG(file, tag, "[" TO_STRING(__LINE__) "]", __VA_ARGS__)
+    YomkAPI::FILE_LOG_DEBUG_TAG(file, tag, "[" YOMK_TO_STRING(__LINE__) "]", __VA_ARGS__)
 #define YOMK_LOGGER_INFO_LOGGERS(type) YomkAPI::LOGGER_INFO_LOGGERS(type)
 #define YOMK_LOGGER_INFO_LOGGER(...) YomkAPI::LOGGER_INFO_LOGGER(__VA_ARGS__)
 #define YOMK_LOGGER_INFO_ALL() YomkAPI::LOGGER_INFO_ALL()
