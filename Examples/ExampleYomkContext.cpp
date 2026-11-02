@@ -108,7 +108,8 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
     YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
 }
 
-// API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
+// API 结果行（YomkResponse 版）：INFO 查询等仍返回 YomkResponse 的调用打印 status/msg
+// （数据形态各异，由调用处按需展开）。
 // status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const YomkResponse& resp)
 {
@@ -130,14 +131,26 @@ static void logResp(const std::string& api, const YomkResponse& resp)
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
-// 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+// ResStatus 版结果行：CONTEXT_API 9 方法 ResStatus 化后直接返回三态（失败原因经错误日志承载，无 msg）
+static void logResp(const std::string& api, YomkResponse::ResStatus status)
+{
+    const char* name = status == YomkResponse::ResStatus::Successed ? "ResStatus::Successed"
+                     : status == YomkResponse::ResStatus::Failed    ? "ResStatus::Failed"
+                                                                    : "ResStatus::Invalid";
+    YOMK_INFO_TAG("arm.demo", "[" + api + "] status: " + name);
+}
+
+// 操作日志（模板版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；同步 checker/monitor 回调插入的日志被夹在开始行与
-// 结果行之间，归属一目了然，读者顺着日志读即可理解，无需回看代码
-static YomkResponse logAction(const std::string& op, const std::string& api, const std::function<YomkResponse()>& call)
+// 结果行之间，归属一目了然，读者顺着日志读即可理解，无需回看代码。
+// 闭环 14-3：CONTEXT_API 9 方法返回 ResStatus，INFO 查询仍返回 YomkResponse，
+// 模板化使两类返回各自路由到对应 logResp 重载，调用点零改动
+template <typename F>
+static auto logAction(const std::string& op, const std::string& api, F&& call)
 {
     YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
-    YomkResponse resp = call();
+    auto resp = call();
     logResp(api, resp);
     return resp;
 }
@@ -193,16 +206,16 @@ static void logKeyInfo(const std::string& api, const yomk::ContextKeyInfo& info)
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
-// CREATE 幂等化封装：键已存在（ResStatus::Failed "key already exists"）视为就绪跳过。
+// CREATE 幂等化封装：键已存在（排他 ResStatus::Failed）视为就绪跳过。
 // 本身即 YomkAPI::createContext 的工程化用法：排他 ResStatus::Failed 在正式代码中按"已初始化"
 // 处理而非错误——后启动的模块靠它安全补建自己关心的键。
 static void ensureKey(const std::string& op, const std::string& key, YomkPkgPtr value)
 {
-    YomkResponse resp = logAction(op, "CREATE " + key, [&] { return YomkAPI::createContext(key, value); });
-    if (resp.m_status != YomkResponse::ResStatus::Successed)
+    auto status = logAction(op, "CREATE " + key, [&] { return YomkAPI::createContext(key, value); });
+    if (status != YomkResponse::ResStatus::Successed)
     {
         std::ostringstream oss;
-        oss << "[ensureKey] " << key << " 已存在，跳过创建（" << resp.m_msg << "）";
+        oss << "[ensureKey] " << key << " 已存在，跳过创建";
         YOMK_INFO_TAG("arm.demo", oss.str());
     }
 }

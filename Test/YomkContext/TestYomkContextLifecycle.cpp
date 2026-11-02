@@ -97,7 +97,7 @@ int main()
     {
         YomkAPI::enableContextMonitor();
         auto cr = YomkAPI::createContext("life_base", yomkmsg::String::shared(std::string("b0")));
-        YOMK_TEST_CHECK(cr.m_status == YomkResponse::ResStatus::Successed, "创建 life_base 成功");
+        YOMK_TEST_CHECK(cr == YomkResponse::ResStatus::Successed, "创建 life_base 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(
@@ -115,7 +115,7 @@ int main()
     {
         YomkAPI::enableContextMonitor();
         auto cr = YomkAPI::createContext("life_drain", yomkmsg::String::shared(std::string("d0")));
-        YOMK_TEST_CHECK(cr.m_status == YomkResponse::ResStatus::Successed, "创建 life_drain 成功");
+        YOMK_TEST_CHECK(cr == YomkResponse::ResStatus::Successed, "创建 life_drain 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(
@@ -158,7 +158,7 @@ int main()
 
         YomkAPI::enableContextMonitor();
         auto cr = YomkAPI::createContext("life_rebuild", yomkmsg::String::shared(std::string("r0")));
-        YOMK_TEST_CHECK(cr.m_status == YomkResponse::ResStatus::Successed, "重新注册后创建 life_rebuild 成功");
+        YOMK_TEST_CHECK(cr == YomkResponse::ResStatus::Successed, "重新注册后创建 life_rebuild 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(

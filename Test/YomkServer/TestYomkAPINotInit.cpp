@@ -171,31 +171,31 @@ int main()
             YomkAPI::deleteFileLogger("guard_logger") == YomkResponse::ResStatus::Invalid,
             "deleteFileLogger 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::createContext("guard_key", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::createContext("guard_key", nullptr) == YomkResponse::ResStatus::Invalid,
             "createContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::setContext("guard_key", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::setContext("guard_key", nullptr) == YomkResponse::ResStatus::Invalid,
             "setContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::destroyContext("guard_key").m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::destroyContext("guard_key") == YomkResponse::ResStatus::Invalid,
             "destroyContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::enableContextChecker().m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::enableContextChecker() == YomkResponse::ResStatus::Invalid,
             "enableContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::disableContextChecker().m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::disableContextChecker() == YomkResponse::ResStatus::Invalid,
             "disableContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::setContextChecker("guard_key", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::setContextChecker("guard_key", nullptr) == YomkResponse::ResStatus::Invalid,
             "setContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::enableContextMonitor().m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::enableContextMonitor() == YomkResponse::ResStatus::Invalid,
             "enableContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::disableContextMonitor().m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::disableContextMonitor() == YomkResponse::ResStatus::Invalid,
             "disableContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::setContextMonitor("guard_key", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::setContextMonitor("guard_key", nullptr) == YomkResponse::ResStatus::Invalid,
             "setContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::listContextKeys().m_status == YomkResponse::ResStatus::Invalid,

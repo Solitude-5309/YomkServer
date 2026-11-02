@@ -493,14 +493,14 @@ public:
     // CONTEXT_API
 public:
     // 创建上下文键值（groupName 缺省 "main"；组名约定永远是 API 最后一个参数，下同）
-    static YomkResponse createContext(
+    static YomkResponse::ResStatus createContext(
         const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request("/YomkContext/create", yomkmsg::Context::shared(yomk::Context{ctxName, ctx, groupName}));
+        return requestStatus("/YomkContext/create", yomkmsg::Context::shared(yomk::Context{ctxName, ctx, groupName}));
     }
     // 获取上下文值（只读快照），改动请构造新对象再 setContext，勿原地修改（否则与并发读竞争、可能崩溃）
     template <typename T>
@@ -532,79 +532,79 @@ public:
         }
     }
     // 设置上下文值（整体替换）
-    static YomkResponse setContext(
+    static YomkResponse::ResStatus setContext(
         const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request("/YomkContext/set", yomkmsg::Context::shared(yomk::Context{ctxName, ctx, groupName}));
+        return requestStatus("/YomkContext/set", yomkmsg::Context::shared(yomk::Context{ctxName, ctx, groupName}));
     }
     // 开关上下文校验门控
-    static YomkResponse enableContextChecker(const std::string& groupName = "main")
+    static YomkResponse::ResStatus enableContextChecker(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request("/YomkContext/turn_on_checker", yomkmsg::String::shared(groupName));
+        return requestStatus("/YomkContext/turn_on_checker", yomkmsg::String::shared(groupName));
     }
-    static YomkResponse disableContextChecker(const std::string& groupName = "main")
+    static YomkResponse::ResStatus disableContextChecker(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request("/YomkContext/turn_off_checker", yomkmsg::String::shared(groupName));
+        return requestStatus("/YomkContext/turn_off_checker", yomkmsg::String::shared(groupName));
     }
     // 设置上下文校验门控回调
-    static YomkResponse setContextChecker(
+    static YomkResponse::ResStatus setContextChecker(
         const std::string& ctxName, YomkContextCheckerFunc checker, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request(
+        return requestStatus(
             "/YomkContext/set_checker", yomkmsg::ContextChecker::shared(yomk::ContextChecker{ctxName, checker, groupName}));
     }
     // 开关上下文变更监听器
-    static YomkResponse enableContextMonitor(const std::string& groupName = "main")
+    static YomkResponse::ResStatus enableContextMonitor(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request("/YomkContext/turn_on_monitor", yomkmsg::String::shared(groupName));
+        return requestStatus("/YomkContext/turn_on_monitor", yomkmsg::String::shared(groupName));
     }
-    static YomkResponse disableContextMonitor(const std::string& groupName = "main")
+    static YomkResponse::ResStatus disableContextMonitor(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request("/YomkContext/turn_off_monitor", yomkmsg::String::shared(groupName));
+        return requestStatus("/YomkContext/turn_off_monitor", yomkmsg::String::shared(groupName));
     }
     // 设置上下文变更监听回调（async=true 为异步通知），仅通知发生了一次 set 事件，并回传该次 set 的键值快照——不保证快照实时性；顺序上异步恒按 set 提交序送达、同步在并发 set 下不保证跨线程序。
-    static YomkResponse setContextMonitor(const std::string& ctxName, YomkContextMonitorFunc monitor,
+    static YomkResponse::ResStatus setContextMonitor(const std::string& ctxName, YomkContextMonitorFunc monitor,
         bool async = false, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request("/YomkContext/set_monitor",
+        return requestStatus("/YomkContext/set_monitor",
             yomkmsg::ContextMonitor::shared(yomk::ContextMonitor{ctxName, monitor, async, groupName}));
     }
     // 销毁指定上下文键
-    static YomkResponse destroyContext(const std::string& ctxName, const std::string& groupName = "main")
+    static YomkResponse::ResStatus destroyContext(const std::string& ctxName, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request(
+        return requestStatus(
             "/YomkContext/destroy", yomkmsg::ContextGroupKey::shared(yomk::ContextGroupKey{groupName, ctxName}));
     }
     // 获取全部上下文键名
