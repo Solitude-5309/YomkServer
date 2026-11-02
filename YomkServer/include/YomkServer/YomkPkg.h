@@ -149,7 +149,7 @@ struct Event
     }
 };
 
-struct Eventloop
+struct EventLoop
 {
     std::string m_eventloopName;
     YomkServiceFunc m_defaultServiceFunc;
@@ -306,7 +306,7 @@ YomkMsg(yomk::FuncInfo, FuncInfo, d);
 // FunctionPool 全量函数内省（getAllFunctionInfo 返回数据；函数总数由 d.size() 承载）
 YomkMsg(std::vector<yomk::FuncInfo>, FuncInfoList, d);
 YomkMsg(yomk::Event, Event, d);
-YomkMsg(yomk::Eventloop, Eventloop, d);
+YomkMsg(yomk::EventLoop, EventLoop, d);
 YomkMsg(yomk::EventLoopInfo, EventLoopInfo, d);
 // EventLoop 全量循环内省（getAllEventLoopInfo 返回数据；m_nextTags 取 3 条与单查缺省一致）
 YomkMsg(std::vector<yomk::EventLoopInfo>, EventLoopInfoList, d);
@@ -339,7 +339,7 @@ YomkMsg(yomk::VoidPointer, VoidPointer, d);
 // Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 YomkAPI::setContextMonitor
 typedef std::function<void(const yomk::Context& ctx)> YomkContextMonitorFunc;
 // Context checker 回调：返回 eAccept/eReject 门控 set；详见 YomkAPI::setContextChecker
-typedef std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)> YomkContextCheckFunc;
+typedef std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)> YomkContextCheckerFunc;
 typedef std::function<bool(const yomk::Log& log)> YomkConsoleLogProxyFunc;
 // 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 YomkAPI::setFileLogProxy
 typedef std::function<bool(const yomk::Log& log)> YomkFileLogProxyFunc;

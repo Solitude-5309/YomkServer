@@ -29,7 +29,7 @@ public:
     {
         std::string key;
         YomkPkgPtr value;
-        YomkContextCheckFunc checker;
+        YomkContextCheckerFunc checker;
         std::vector<ContextMonitor> monitors;
     };
 
@@ -59,7 +59,7 @@ public:
     void turnOnMonitor();
     void turnOffMonitor();
     // 返回：0 成功 / 1 key 为空 / 2 checkFunc 为空 / 3 key 不存在
-    int setChecker(const std::string& key, YomkContextCheckFunc checkFunc);
+    int setChecker(const std::string& key, YomkContextCheckerFunc checkFunc);
     // 返回：0 成功 / 1 key 为空 / 2 monitorFunc 为空 / 3 key 不存在
     int setMonitor(const std::string& key, YomkContextMonitorFunc monitorFunc, bool asyncMonitor);
     // 键名清单快照

@@ -561,7 +561,7 @@ public:
     }
     // 设置上下文校验门控回调
     static YomkResponse setContextChecker(
-        const std::string& ctxName, YomkContextCheckFunc checker, const std::string& groupName = "main")
+        const std::string& ctxName, YomkContextCheckerFunc checker, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
@@ -658,7 +658,7 @@ public:
         }
         return request(
             "/YomkEventLoop/start",
-            yomkmsg::Eventloop::shared(yomk::Eventloop{eventLoopName, m_defaultServiceFunc, msgName}));
+            yomkmsg::EventLoop::shared(yomk::EventLoop{eventLoopName, m_defaultServiceFunc, msgName}));
     }
     // 停止事件循环线程（保留未执行事件）
     static YomkResponse stopEventLoop(const std::string& eventLoopName)

@@ -282,9 +282,9 @@ int main()
         YOMK_TEST_CHECK(f.m_funcName.empty() && f.m_msgName.empty() && !f.m_func, "Function 默认：名称/消息名空、func 空");
         yomk::CallFunction cf;
         YOMK_TEST_CHECK(cf.m_funcName.empty() && cf.m_pkg == nullptr, "CallFunction 默认：名称空、pkg 空");
-        yomk::Eventloop el;
+        yomk::EventLoop el;
         YOMK_TEST_CHECK(el.m_eventloopName.empty() && el.m_msgName.empty() && !el.m_defaultServiceFunc,
-              "Eventloop 默认：名称/消息名空、默认 func 空");
+              "EventLoop 默认：名称/消息名空、默认 func 空");
         yomk::LogFile lf;
         YOMK_TEST_CHECK(lf.m_logger.empty() && lf.m_dir.empty(), "LogFile 默认：logger/dir 空");
         // Log::m_level 为无类内初始化的 POD enum，默认值不稳定，不作值断言

@@ -5,7 +5,6 @@
 #include "YomkServer.h"
 #include <map>
 #include <shared_mutex>
-using namespace yomk;
 class YomkContext : public YomkService
 {
 public:

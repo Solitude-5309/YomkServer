@@ -11,7 +11,7 @@ YomkEventLoop::YomkEventLoop(YomkServer* server) : YomkService(server)
 
 int YomkEventLoop::init()
 {
-    installFunc("/start", &YomkEventLoop::start, "Eventloop");
+    installFunc("/start", &YomkEventLoop::start, "EventLoop");
     installFunc("/stop", &YomkEventLoop::stop, "String");
     installFunc("/post", &YomkEventLoop::post, "Event");
     installFunc("/post_wait", &YomkEventLoop::postWait, "Event");
@@ -25,10 +25,10 @@ int YomkEventLoop::init()
 
 YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
 {
-    auto eventloop = yomk::unPack<yomkmsg::Eventloop>(pkg);
+    auto eventloop = yomk::unPack<yomkmsg::EventLoop>(pkg);
     if (!eventloop)
     {
-        return {YomkResponse::eNo, "pkg is null or pkg is not Eventloop"};
+        return {YomkResponse::eNo, "pkg is null or pkg is not EventLoop"};
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(eventloop->d.m_eventloopName);

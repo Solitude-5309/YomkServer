@@ -8,7 +8,6 @@
 #include "FileLogger.h"
 #include "YomkDefine.h"
 #include "YomkServer.h"
-using namespace yomk;
 class YomkLogger : public YomkService
 {
 public:
@@ -29,12 +28,12 @@ private:
     YomkResponse offConsoleLogByLevel(YomkPkgPtr pkg);
     YomkResponse onConsoleLogByLevel(YomkPkgPtr pkg);
     // 具名开关唯一写入口：按名查表逐器门控（未命中 eNo 不惰性创建，不触碰全局主闸）
-    YomkResponse setNamedConsoleLevel(const std::string& loggerName, Log::ELogLevel level, bool on);
+    YomkResponse setNamedConsoleLevel(const std::string& loggerName, yomk::Log::ELogLevel level, bool on);
 
     YomkResponse offFileLogByLevel(YomkPkgPtr pkg);
     YomkResponse onFileLogByLevel(YomkPkgPtr pkg);
     // 文件侧具名开关唯一写入口：语义与 setNamedConsoleLevel 对称（未命中 eNo 不惰性创建）
-    YomkResponse setNamedFileLevel(const std::string& loggerName, Log::ELogLevel level, bool on);
+    YomkResponse setNamedFileLevel(const std::string& loggerName, yomk::Log::ELogLevel level, bool on);
 
 private:
     YomkResponse loggers(YomkPkgPtr pkg);
@@ -44,16 +43,16 @@ private:
     YomkResponse fileGlobalState(YomkPkgPtr pkg);
     // 取控制台全局主闸态：四个级别开关独立 atomic + proxy 叶子锁，均在表锁外独立作用域取
     // （/console_global_state 端点返回体）
-    LoggerState currentConsoleState();
+    yomk::LoggerState currentConsoleState();
     // 取单条 console 条目状态：四级别 = logger.isLevelOn 逐器层真值（条目不做两层 AND 代算），
     // proxyOn 由调用点在表锁外取好传入
-    LoggerState namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn);
+    yomk::LoggerState namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn);
     // 取文件全局主闸态（/file_global_state 端点返回体）：四个级别开关独立 atomic，
     // 与控制台主闸相互独立；proxyOn 为文件代理态（独立叶子锁，与控制台代理各自独立）
-    LoggerState currentFileState();
+    yomk::LoggerState currentFileState();
     // 取单条 file 条目状态：四级别 = logger.isLevelOn 逐器层真值（条目不做两层 AND 代算），
     // proxyOn 由调用点传入（文件代理态）
-    LoggerState namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn);
+    yomk::LoggerState namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn);
 
 private:
     // 锁序约定：需要同时读取两张 logger 表时（listAll 内省快照），

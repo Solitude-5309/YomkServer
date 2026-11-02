@@ -117,7 +117,7 @@ namespace yomk {
 **回调签名：**
 ```cpp
 typedef std::function<void(const yomk::Context& ctx)> YomkContextMonitorFunc;
-typedef std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)> YomkContextCheckFunc;
+typedef std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)> YomkContextCheckerFunc;
 typedef std::function<bool(const yomk::Log& log)> YomkConsoleLogProxyFunc;
 ```
 

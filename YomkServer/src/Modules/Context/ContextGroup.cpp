@@ -218,7 +218,7 @@ void ContextGroup::turnOffMonitor()
     m_monitorEnabled.store(false);
 }
 
-int ContextGroup::setChecker(const std::string& key, YomkContextCheckFunc checkFunc)
+int ContextGroup::setChecker(const std::string& key, YomkContextCheckerFunc checkFunc)
 {
     if (key.empty())
     {

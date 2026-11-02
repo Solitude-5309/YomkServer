@@ -2,6 +2,9 @@
 
 #include <iostream>
 
+// yomk 命名空间引入收口在 .cpp（头文件不得 using，防止与全局 ::EventLoop 撞名二义性外泄）
+using namespace yomk;
+
 // 初始化列表须按 YomkLogger.h 声明序书写（-Wreorder）
 YomkLogger::YomkLogger(YomkServer* server)
     : YomkService(server),
