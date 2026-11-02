@@ -112,12 +112,12 @@ int main()
     // ============ Section 1: CRUD 闭环 ============
     {
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("fp_echo", echoFunc).m_status == YomkResponse::ResStatus::Successed, "REGISTER 注册函数返回 ResStatus::Successed");
+            YomkAPI::registerFunction("fp_echo", echoFunc) == YomkResponse::ResStatus::Successed, "REGISTER 注册函数返回 ResStatus::Successed");
         auto resp = YomkAPI::callFunction("fp_echo", yomkmsg::String::shared(std::string("hello_fp")));
         YOMK_TEST_CHECK(resp.m_status == YomkResponse::ResStatus::Successed, "CALL 已注册函数返回 ResStatus::Successed");
         auto echoMsg = yomk::unPack<yomkmsg::String>(resp.m_data);
         YOMK_TEST_CHECK(echoMsg != nullptr && echoMsg->d == "hello_fp", "CALL 回传消息解包一致（echo 语义）");
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_echo").m_status == YomkResponse::ResStatus::Successed, "UNREGISTER 注销函数返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_echo") == YomkResponse::ResStatus::Successed, "UNREGISTER 注销函数返回 ResStatus::Successed");
         YOMK_TEST_CHECK(
             YomkAPI::callFunction("fp_echo", yomkmsg::String::shared(std::string("x"))).m_status == YomkResponse::ResStatus::Failed,
             "注销后 CALL 返回 ResStatus::Failed（FPC2 契约：not-found 统一 ResStatus::Failed）");
@@ -126,28 +126,27 @@ int main()
     // ============ Section 2: 注册边界与重复注册更新语义 ============
     {
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("", echoFunc).m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::registerFunction("", echoFunc) == YomkResponse::ResStatus::Invalid,
             "REGISTER 空函数名返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("fp_null", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::registerFunction("fp_null", nullptr) == YomkResponse::ResStatus::Invalid,
             "REGISTER null 函数返回 ResStatus::Invalid");
 
         // 重复注册 = 更新：CALL 走新实现
-        YOMK_TEST_CHECK(YomkAPI::registerFunction("fp_upd", v1Func).m_status == YomkResponse::ResStatus::Successed, "REGISTER v1 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::registerFunction("fp_upd", v1Func) == YomkResponse::ResStatus::Successed, "REGISTER v1 返回 ResStatus::Successed");
         YOMK_TEST_CHECK(YomkAPI::callFunction("fp_upd", nullptr).m_msg.find("v1") != std::string::npos, "CALL 走 v1 实现");
-        auto upd = YomkAPI::registerFunction("fp_upd", v2Func);
-        YOMK_TEST_CHECK(upd.m_status == YomkResponse::ResStatus::Successed, "重复 REGISTER 返回 ResStatus::Successed（更新语义）");
-        YOMK_TEST_CHECK(upd.m_msg.find("update") != std::string::npos, "重复 REGISTER 消息说明更新语义");
+        YOMK_TEST_CHECK(YomkAPI::registerFunction("fp_upd", v2Func) == YomkResponse::ResStatus::Successed,
+              "重复 REGISTER 返回 ResStatus::Successed（更新语义）");
         YOMK_TEST_CHECK(
             YomkAPI::callFunction("fp_upd", nullptr).m_msg.find("v2") != std::string::npos, "更新后 CALL 走 v2 实现");
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_upd").m_status == YomkResponse::ResStatus::Successed, "清理 fp_upd");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_upd") == YomkResponse::ResStatus::Successed, "清理 fp_upd");
     }
 
     // ============ Section 3: 注销边界 ============
     {
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("").m_status == YomkResponse::ResStatus::Invalid, "UNREGISTER 空函数名返回 ResStatus::Invalid");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("") == YomkResponse::ResStatus::Invalid, "UNREGISTER 空函数名返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::unregisterFunction("fp_never_registered").m_status == YomkResponse::ResStatus::Failed,
+            YomkAPI::unregisterFunction("fp_never_registered") == YomkResponse::ResStatus::Failed,
             "UNREGISTER 未注册名返回 ResStatus::Failed（FPC2 契约：not-found 统一 ResStatus::Failed）");
     }
 
@@ -163,18 +162,18 @@ int main()
 
         g_nullPkgSeen.store(0);
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("fp_probe", nullProbeFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("fp_probe", nullProbeFunc) == YomkResponse::ResStatus::Successed,
             "REGISTER 探针函数返回 ResStatus::Successed");
         YOMK_TEST_CHECK(YomkAPI::callFunction("fp_probe", nullptr).m_status == YomkResponse::ResStatus::Successed, "CALL m_pkg=nullptr 正常执行");
         YOMK_TEST_CHECK(g_nullPkgSeen.load() == 1, "函数收到 nullptr 入参（m_pkg 原样透传）");
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_probe").m_status == YomkResponse::ResStatus::Successed, "清理 fp_probe");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_probe") == YomkResponse::ResStatus::Successed, "清理 fp_probe");
     }
 
     // ============ Section 5: 内省三接口 ============
     {
         // 准备：一个无类型、一个有类型（经 3 参注册，见 S6 前置）
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("fp_plain", aliveFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("fp_plain", aliveFunc) == YomkResponse::ResStatus::Successed,
             "REGISTER 无类型函数 fp_plain");
 
         // INFO_NAMES：存活列表包含已注册名（空表陷阱教训：必须有存活条目时调用）
@@ -212,7 +211,7 @@ int main()
         size_t before = poolCount();
         YOMK_TEST_CHECK(before != SIZE_MAX, "INFO_ALL FuncInfoList 可解包");
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("fp_count_probe", aliveFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("fp_count_probe", aliveFunc) == YomkResponse::ResStatus::Successed,
             "REGISTER 计数探针函数");
         size_t after = poolCount();
         YOMK_TEST_CHECK(after == before + 1, "INFO_ALL 计数随注册 +1（共享池相对计数）");
@@ -231,14 +230,14 @@ int main()
             }
         }
         YOMK_TEST_CHECK(allArr != nullptr && allFound, "INFO_ALL 列表包含 fp_plain（m_msgName/m_description 均空）");
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_count_probe").m_status == YomkResponse::ResStatus::Successed, "清理 fp_count_probe");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_count_probe") == YomkResponse::ResStatus::Successed, "清理 fp_count_probe");
     }
 
     // ============ Section 6: REGISTER 2 参 / 3 参形态 ============
     {
         // 2 参：无类型声明
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("fp_two", aliveFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("fp_two", aliveFunc) == YomkResponse::ResStatus::Successed,
             "REGISTER 2 参（无类型）返回 ResStatus::Successed");
         auto twoResp = YomkAPI::getFunctionInfo("fp_two");
         auto twoInfo = yomk::unPack<yomkmsg::FuncInfo>(twoResp.m_data);
@@ -248,7 +247,7 @@ int main()
 
         // 3 参：声明期望消息类型名，INFO_NAME 显示 [类型]
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("fp_three", echoFunc, "String").m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("fp_three", echoFunc, "String") == YomkResponse::ResStatus::Successed,
             "REGISTER 3 参（String 类型）返回 ResStatus::Successed");
         auto threeResp = YomkAPI::getFunctionInfo("fp_three");
         auto threeInfo = yomk::unPack<yomkmsg::FuncInfo>(threeResp.m_data);
@@ -257,7 +256,7 @@ int main()
               "3 参注册 INFO_NAME 字段 m_msgName == \"String\"");
 
         // 4 参：追加函数说明，INFO_NAME m_msg 契约保持、说明挂数据段
-        YOMK_TEST_CHECK(YomkAPI::registerFunction("fp_desc", echoFunc, "String", "fp description").m_status == YomkResponse::ResStatus::Successed,
+        YOMK_TEST_CHECK(YomkAPI::registerFunction("fp_desc", echoFunc, "String", "fp description") == YomkResponse::ResStatus::Successed,
               "REGISTER 4 参（String 类型 + 说明）返回 ResStatus::Successed");
         auto infoDesc = YomkAPI::getFunctionInfo("fp_desc");
         YOMK_TEST_CHECK(infoDesc.m_status == YomkResponse::ResStatus::Successed && infoDesc.m_msg == "ok",
@@ -273,7 +272,7 @@ int main()
               "3 参注册（无说明）m_description 为空（结构化包恒挂）");
 
         // 覆盖语义：4 参后接 2 参同名热替换 → 类型后缀与说明均清除
-        YOMK_TEST_CHECK(YomkAPI::registerFunction("fp_desc", echoFunc).m_status == YomkResponse::ResStatus::Successed, "2 参覆盖 4 参注册返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::registerFunction("fp_desc", echoFunc) == YomkResponse::ResStatus::Successed, "2 参覆盖 4 参注册返回 ResStatus::Successed");
         auto infoPlain = YomkAPI::getFunctionInfo("fp_desc");
         auto plainInfo = yomk::unPack<yomkmsg::FuncInfo>(infoPlain.m_data);
         YOMK_TEST_CHECK(infoPlain.m_status == YomkResponse::ResStatus::Successed && infoPlain.m_msg == "ok" && plainInfo &&
@@ -282,15 +281,15 @@ int main()
               "2 参热替换清除类型与说明（结构化字段为空）");
 
         // 清理
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_two").m_status == YomkResponse::ResStatus::Successed, "清理 fp_two");
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_three").m_status == YomkResponse::ResStatus::Successed, "清理 fp_three");
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_desc").m_status == YomkResponse::ResStatus::Successed, "清理 fp_desc");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_two") == YomkResponse::ResStatus::Successed, "清理 fp_two");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_three") == YomkResponse::ResStatus::Successed, "清理 fp_three");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_desc") == YomkResponse::ResStatus::Successed, "清理 fp_desc");
     }
 
     // ============ Section 7: CALL 异常穿透契约（FPC2 已文档化为显式契约）============
     {
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("fp_throw", throwFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("fp_throw", throwFunc) == YomkResponse::ResStatus::Successed,
             "REGISTER 抛异常函数返回 ResStatus::Successed");
 
         // CALL 链五层（request→invoke→callFunction→用户函数）无 try/catch：
@@ -308,32 +307,32 @@ int main()
 
         // 穿透后池存活：正常注册与调用不受影响
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("fp_alive", aliveFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("fp_alive", aliveFunc) == YomkResponse::ResStatus::Successed,
             "异常穿透后 REGISTER 仍正常");
         YOMK_TEST_CHECK(
             YomkAPI::callFunction("fp_alive", nullptr).m_msg.find("alive") != std::string::npos,
             "异常穿透后 CALL 正常函数执行");
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_throw").m_status == YomkResponse::ResStatus::Successed, "清理 fp_throw");
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_alive").m_status == YomkResponse::ResStatus::Successed, "清理 fp_alive");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_throw") == YomkResponse::ResStatus::Successed, "清理 fp_throw");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_alive") == YomkResponse::ResStatus::Successed, "清理 fp_alive");
     }
 
     // ============ Section 8: 超长函数名边界 ============
     {
         std::string longName(65536, 'F');
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction(longName, aliveFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction(longName, aliveFunc) == YomkResponse::ResStatus::Successed,
             "REGISTER 65536 字节函数名返回 ResStatus::Successed");
         YOMK_TEST_CHECK(YomkAPI::callFunction(longName, nullptr).m_status == YomkResponse::ResStatus::Successed, "CALL 超长函数名返回 ResStatus::Successed");
         auto longInfo = YomkAPI::getFunctionInfo(longName);
         YOMK_TEST_CHECK(longInfo.m_status == YomkResponse::ResStatus::Successed, "INFO_NAME 超长函数名返回 ResStatus::Successed");
         auto longFuncInfo = yomk::unPack<yomkmsg::FuncInfo>(longInfo.m_data);
         YOMK_TEST_CHECK(longFuncInfo && longFuncInfo->d.m_funcName == longName, "INFO_NAME 完整回显超长函数名");
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction(longName).m_status == YomkResponse::ResStatus::Successed, "UNREGISTER 超长函数名返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction(longName) == YomkResponse::ResStatus::Successed, "UNREGISTER 超长函数名返回 ResStatus::Successed");
     }
 
     // ============ 收尾清理（不污染后续闭环/其他测试的共享池）============
     {
-        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_plain").m_status == YomkResponse::ResStatus::Successed, "清理 fp_plain");
+        YOMK_TEST_CHECK(YomkAPI::unregisterFunction("fp_plain") == YomkResponse::ResStatus::Successed, "清理 fp_plain");
     }
 
     YomkAPI::shutdown();

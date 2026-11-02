@@ -373,8 +373,7 @@ int main()
         auto server = YomkAPI::serverInstance();
         YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
 
-        auto startResp = YomkAPI::startEventLoop("conc_loop", nullptr);
-        YOMK_TEST_CHECK(startResp.m_status == YomkResponse::ResStatus::Successed, "S5 START conc_loop 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("conc_loop", nullptr) == YomkResponse::ResStatus::Successed, "S5 START conc_loop 返回 ResStatus::Successed");
 
         std::atomic<int> apiPostOk{0};
         std::atomic<int> pollCount{0};
@@ -385,8 +384,8 @@ int main()
         {
             for (int k = 0; k < 25; ++k)
             {
-                if (YomkAPI::postEvent("conc_loop", yomkmsg::String::shared(std::string("x")), countHandler(), "")
-                        .m_status == YomkResponse::ResStatus::Successed)
+                if (YomkAPI::postEvent("conc_loop", yomkmsg::String::shared(std::string("x")), countHandler(), "") ==
+                    YomkResponse::ResStatus::Successed)
                 {
                     apiPostOk.fetch_add(1);
                 }
@@ -440,7 +439,7 @@ int main()
                 " 首个失败样本: " + (g_pollFailSamples.empty() ? std::string("无") : g_pollFailSamples.front()) + "）");
         YOMK_TEST_CHECK(waitUntil([] { return g_execCount.load() == 100; }, 5000), "S5 API 层事件全部执行（100/100）");
 
-        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("conc_loop").m_status == YomkResponse::ResStatus::Successed, "S5 DESTROY conc_loop 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("conc_loop") == YomkResponse::ResStatus::Successed, "S5 DESTROY conc_loop 返回 ResStatus::Successed");
         YomkAPI::shutdown();
     }
 

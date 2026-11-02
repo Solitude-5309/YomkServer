@@ -67,7 +67,7 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
     YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
 }
 
-// API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
+// API 结果行（YomkResponse 版）：CALL 与 INFO 查询等仍返回 YomkResponse 的调用打印 status/msg（数据形态各异，由调用处按需展开）。
 // CALL 的返回值即被调函数的返回值——结果数据若挂 String 包则随行展示（如负载合计值）；
 // 其余内省包（StringArray/FuncInfo/FuncInfoList）形态各异，解包类型不匹配时静默不展示
 // status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
@@ -99,14 +99,27 @@ static void logResp(const std::string& api, const YomkResponse& resp)
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
-// 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+// ResStatus 版结果行：FUNCTIONPOOL_API 的 REGISTER/UNREGISTER 14-4 起 ResStatus 化，直接返回三态
+// （失败原因经错误日志承载，无 msg 可打）
+static void logResp(const std::string& api, YomkResponse::ResStatus status)
+{
+    const char* name = status == YomkResponse::ResStatus::Successed ? "ResStatus::Successed"
+                     : status == YomkResponse::ResStatus::Failed    ? "ResStatus::Failed"
+                                                                    : "ResStatus::Invalid";
+    YOMK_INFO_TAG("arm.demo", "[" + api + "] status: " + name);
+}
+
+// 操作日志（模板版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；CALL 在调用方线程同步执行被调函数，工具函数体的
-// arm.tool 日志被夹在开始行与结果行之间，归属一目了然，读者顺着日志读即可理解
-static YomkResponse logAction(const std::string& op, const std::string& api, const std::function<YomkResponse()>& call)
+// arm.tool 日志被夹在开始行与结果行之间，归属一目了然，读者顺着日志读即可理解。
+// 14-4：REGISTER/UNREGISTER 返回 ResStatus，CALL/INFO 查询仍返回 YomkResponse，
+// 模板化使两类返回各自路由到对应 logResp 重载，调用点零改动
+template <typename F>
+static auto logAction(const std::string& op, const std::string& api, F&& call)
 {
     YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
-    YomkResponse resp = call();
+    auto resp = call();
     logResp(api, resp);
     return resp;
 }

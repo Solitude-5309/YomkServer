@@ -30,11 +30,11 @@
  *        与运动循环同时投递——两循环日志交错、线程 id 不同，同循环 FIFO、
  *        跨循环彼此并行。
  * 场景 4 showArmMotionSyncWait [YomkAPI::postEventAndWait]
- *        回原点是关键动作：POST_WAIT 阻塞至事件在循环线程执行完毕才返回，
- *        Event 包三要素回传（eventId 单调递增 / loopName / 处理函数返回值）。
+ *        回原点是关键动作：POST_WAIT 阻塞至事件在循环线程执行完毕才返回
+ *        （14-4 起 API 仅回 ResStatus——返回即已执行）。
  * 场景 5 showArmTempHandler    [YomkAPI::postEventAndWait(临时函数)]
- *        紧急巡检例程投递时指定临时处理函数：优先于默认函数，返回临时函数
- *        的结果——同一循环可混用两种来源。
+ *        紧急巡检例程投递时指定临时处理函数：优先于默认函数，同一循环可
+ *        混用两种来源（处理函数返回值不再经 API 回传）。
  * 场景 6 showArmLinePause      [YomkAPI::stopEventLoop / START(续跑) / POST]
  *        班中暂停：STOP 只停线程、保留队列事件；停止后投递被拒；
  *        再次 START 续跑消化保留事件。
@@ -76,7 +76,7 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
     YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
 }
 
-// API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
+// API 结果行（YomkResponse 版）：INFO 查询等仍返回 YomkResponse 的调用打印 status/msg（数据形态各异，由调用处按需展开）。
 // status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const YomkResponse& resp)
 {
@@ -98,14 +98,27 @@ static void logResp(const std::string& api, const YomkResponse& resp)
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
-// 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+// ResStatus 版结果行：EVENTLOOP_API 操作接口 14-4 起 ResStatus 化，直接返回三态
+// （失败原因经错误日志承载，无 msg 可打）
+static void logResp(const std::string& api, YomkResponse::ResStatus status)
+{
+    const char* name = status == YomkResponse::ResStatus::Successed ? "ResStatus::Successed"
+                     : status == YomkResponse::ResStatus::Failed    ? "ResStatus::Failed"
+                                                                    : "ResStatus::Invalid";
+    YOMK_INFO_TAG("arm.demo", "[" + api + "] status: " + name);
+}
+
+// 操作日志（模板版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；循环线程执行的日志穿插其间，读者顺着日志读即可
-// 理解，无需回看代码
-static YomkResponse logAction(const std::string& op, const std::string& api, const std::function<YomkResponse()>& call)
+// 理解，无需回看代码。
+// 14-4：EVENTLOOP_API 操作接口返回 ResStatus，INFO 查询仍返回 YomkResponse，
+// 模板化使两类返回各自路由到对应 logResp 重载，调用点零改动
+template <typename F>
+static auto logAction(const std::string& op, const std::string& api, F&& call)
 {
     YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
-    YomkResponse resp = call();
+    auto resp = call();
     logResp(api, resp);
     return resp;
 }
@@ -152,28 +165,6 @@ static void logLoopInfo(const std::string& api, const yomk::EventLoopInfo& info)
         oss << (info.m_nextTags[i].empty() ? "-" : info.m_nextTags[i]);
     }
     oss << "]";
-    YOMK_INFO_TAG("arm.demo", oss.str());
-}
-
-// POST_WAIT 回传的 Event 包逐字段展开：eventId / loopName / response（处理函数返回值）
-static void logEvent(const YomkResponse& resp)
-{
-    auto event = yomk::unPack<yomkmsg::Event>(resp.m_data);
-    if (!event)
-    {
-        return;
-    }
-    std::ostringstream oss;
-    oss << "[Event] - eventId: " << event->d.m_eventId;
-    YOMK_INFO_TAG("arm.demo", oss.str());
-
-    oss.str("");
-    oss << "[Event]     loopName: " << event->d.m_eventLoopName;
-    YOMK_INFO_TAG("arm.demo", oss.str());
-
-    oss.str("");
-    oss << "[Event]     response: status=" << static_cast<int>(event->d.m_response.m_status) << ", msg=\"" << event->d.m_response.m_msg
-        << "\"";
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
@@ -357,12 +348,11 @@ static void showArmMotionSyncWait()
         "关键指令同步等待",
         "YomkAPI::postEventAndWait",
         "回原点是关键动作，必须确认执行完毕才能继续：POST_WAIT 阻塞至事件在循环线程"
-        "执行完毕，回传 Event 包三要素（eventId / loopName / 处理函数返回值）。");
+        "执行完毕才返回（14-4 起 API 仅回 ResStatus，回传 Event 载荷不再经 API 暴露）。");
 
-    YomkResponse resp = logAction(
+    logAction(
         "下发回原点指令并等待完成", "POST_WAIT motionLoop", [&] { return YomkAPI::postEventAndWait("motionLoop", yomkmsg::String::shared("goHome")); });
-    logEvent(resp);
-    logVerify("POST_WAIT 返回时回原点已在循环线程执行完毕（耗时 200ms），Event 包携带执行结果");
+    logVerify("POST_WAIT 返回时回原点已在循环线程执行完毕（耗时 200ms）——返回即已执行");
 }
 
 // 场景 5：紧急任务临时处理函数（优先于默认函数）
@@ -372,19 +362,18 @@ static void showArmTempHandler()
         5,
         "紧急任务临时处理函数",
         "YomkAPI::postEventAndWait(临时函数)",
-        "安全巡检例程无需占用运动处理函数：投递时指定临时处理函数则优先于默认函数，"
-        "返回临时函数的结果——同一循环可混用两种来源。");
+        "安全巡检例程无需占用运动处理函数：投递时指定临时处理函数则优先于默认函数"
+        "（14-4 起 API 仅回 ResStatus，处理函数返回值不再经 API 回传）。");
 
     // lambda 先赋给具名变量再传宏：返回值构造含逗号时，
     // 直接内联进宏会让预处理器把逗号误当实参分隔符
     YomkServiceFunc tempHandle = [](YomkPkgPtr) -> YomkResponse { return {YomkResponse::ResStatus::Successed, "tempHandle result"}; };
 
-    YomkResponse resp = logAction(
+    logAction(
         "投递紧急巡检任务（临时函数）",
         "POST_WAIT motionLoop (tempHandle)",
         [&] { return YomkAPI::postEventAndWait("motionLoop", yomkmsg::String::shared("safetyCheck"), tempHandle); });
-    logEvent(resp);
-    logVerify("response 为临时函数的结果（tempHandle result）而非默认函数结果：临时函数优先于默认函数");
+    logVerify("临时函数优先于默认函数执行（处理函数返回值不再经 API 回传）：POST_WAIT 返回即已执行");
 }
 
 // 场景 6：班中暂停与恢复（STOP / START 续跑）

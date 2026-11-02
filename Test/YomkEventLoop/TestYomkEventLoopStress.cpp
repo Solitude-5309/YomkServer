@@ -313,7 +313,7 @@ int main()
         YomkAPI::init(1);
         auto server = YomkAPI::serverInstance();
         YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("stress_loop", nullptr).m_status == YomkResponse::ResStatus::Successed, "S5 START 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("stress_loop", nullptr) == YomkResponse::ResStatus::Successed, "S5 START 返回 ResStatus::Successed");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
@@ -333,7 +333,7 @@ int main()
         recordBaseline(
             "S5 API-level end-to-end", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t0).count());
 
-        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("stress_loop").m_status == YomkResponse::ResStatus::Successed, "S5 DESTROY 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("stress_loop") == YomkResponse::ResStatus::Successed, "S5 DESTROY 返回 ResStatus::Successed");
         YomkAPI::shutdown();
     }
 

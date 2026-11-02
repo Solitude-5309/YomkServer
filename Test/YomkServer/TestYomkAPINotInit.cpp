@@ -207,21 +207,21 @@ int main()
             YomkAPI::getAllContextInfo().m_status == YomkResponse::ResStatus::Invalid,
             "getAllContextInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::startEventLoop("/guard_loop").m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::startEventLoop("/guard_loop") == YomkResponse::ResStatus::Invalid,
             "startEventLoop 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::stopEventLoop("/guard_loop").m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::stopEventLoop("/guard_loop") == YomkResponse::ResStatus::Invalid,
             "stopEventLoop 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::postEvent("/guard_loop", yomkmsg::String::shared(std::string("x"))).m_status ==
+            YomkAPI::postEvent("/guard_loop", yomkmsg::String::shared(std::string("x"))) ==
                 YomkResponse::ResStatus::Invalid,
             "YomkAPI::postEvent 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::postEventAndWait("/guard_loop", yomkmsg::String::shared(std::string("x"))).m_status ==
+            YomkAPI::postEventAndWait("/guard_loop", yomkmsg::String::shared(std::string("x"))) ==
                 YomkResponse::ResStatus::Invalid,
             "YomkAPI::postEventAndWait 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::destroyEventLoop("/guard_loop").m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::destroyEventLoop("/guard_loop") == YomkResponse::ResStatus::Invalid,
             "destroyEventLoop 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::listEventLoops().m_status == YomkResponse::ResStatus::Invalid,
@@ -236,10 +236,10 @@ int main()
             YomkAPI::getAllEventLoopInfo().m_status == YomkResponse::ResStatus::Invalid,
             "getAllEventLoopInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("/guard_func", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::registerFunction("/guard_func", nullptr) == YomkResponse::ResStatus::Invalid,
             "registerFunction 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::unregisterFunction("/guard_func").m_status == YomkResponse::ResStatus::Invalid,
+            YomkAPI::unregisterFunction("/guard_func") == YomkResponse::ResStatus::Invalid,
             "unregisterFunction 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::callFunction("/guard_func", yomkmsg::String::shared(std::string("x"))).m_status ==

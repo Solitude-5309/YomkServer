@@ -445,20 +445,21 @@ int main()
         resetOrder();
         resetGate();
 
-        auto startResp = YomkAPI::startEventLoop("api_loop", nullptr);
-        YOMK_TEST_CHECK(startResp.m_status == YomkResponse::ResStatus::Successed, "START api_loop 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("api_loop", nullptr) == YomkResponse::ResStatus::Successed, "START api_loop 返回 ResStatus::Successed");
 
-        auto postResp = YomkAPI::postEvent("api_loop", yomkmsg::String::shared(std::string("block")), gateHandler(), "b1");
-        YOMK_TEST_CHECK(postResp.m_status == YomkResponse::ResStatus::Successed, "POST 阻塞事件 b1 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(
+            YomkAPI::postEvent("api_loop", yomkmsg::String::shared(std::string("block")), gateHandler(), "b1") ==
+                YomkResponse::ResStatus::Successed,
+            "POST 阻塞事件 b1 返回 ResStatus::Successed");
         YOMK_TEST_CHECK(waitGateStarted(2000), "阻塞事件 b1 已进入执行");
 
         YOMK_TEST_CHECK(
-            YomkAPI::postEvent("api_loop", yomkmsg::String::shared(std::string("c1")), countingHandler("c1"), "c1")
-                    .m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::postEvent("api_loop", yomkmsg::String::shared(std::string("c1")), countingHandler("c1"), "c1") ==
+                YomkResponse::ResStatus::Successed,
             "POST 计数事件 c1 返回 ResStatus::Successed");
         YOMK_TEST_CHECK(
-            YomkAPI::postEvent("api_loop", yomkmsg::String::shared(std::string("c2")), countingHandler("c2"), "c2")
-                    .m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::postEvent("api_loop", yomkmsg::String::shared(std::string("c2")), countingHandler("c2"), "c2") ==
+                YomkResponse::ResStatus::Successed,
             "POST 计数事件 c2 返回 ResStatus::Successed");
 
         // 辅助线程 STOP：服务层 stop 内部 join 等待在途事件收尾
@@ -483,12 +484,12 @@ int main()
 
         // 停止态投递被拒（契约回归）：服务层映射 ResStatus::Failed，调用方可区分"已入队"与"被拒"
         YOMK_TEST_CHECK(
-            YomkAPI::postEvent("api_loop", yomkmsg::String::shared(std::string("rx")), countingHandler("rx"), "rx")
-                    .m_status == YomkResponse::ResStatus::Failed,
+            YomkAPI::postEvent("api_loop", yomkmsg::String::shared(std::string("rx")), countingHandler("rx"), "rx") ==
+                YomkResponse::ResStatus::Failed,
             "停止态 POST 返回 ResStatus::Failed（投递被拒）");
         YOMK_TEST_CHECK(
-            YomkAPI::postEventAndWait("api_loop", yomkmsg::String::shared(std::string("rx2")), countingHandler("rx2"), "rx2")
-                    .m_status == YomkResponse::ResStatus::Failed,
+            YomkAPI::postEventAndWait("api_loop", yomkmsg::String::shared(std::string("rx2")), countingHandler("rx2"), "rx2") ==
+                YomkResponse::ResStatus::Failed,
             "停止态 POST_WAIT 返回 ResStatus::Failed（被拒且不等待）");
         auto infoRejected = infoOf();
         YOMK_TEST_CHECK(infoRejected && infoRejected->d.m_pending == 2, "被拒投递未入队（pending 仍为 2）");
@@ -512,7 +513,7 @@ int main()
               "tagCount=1 截断队列头 1 条 tag");
 
         // 重启续跑：服务层 START 命中已存在条目即重启，积压按 FIFO 续跑
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("api_loop", nullptr).m_status == YomkResponse::ResStatus::Successed, "再次 START 返回 ResStatus::Successed（重启）");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("api_loop", nullptr) == YomkResponse::ResStatus::Successed, "再次 START 返回 ResStatus::Successed（重启）");
         YOMK_TEST_CHECK(
             waitUntil(
                 []
@@ -523,27 +524,24 @@ int main()
                 2000),
             "API 重启后积压按 FIFO 顺序续跑完成（c1 -> c2）");
 
-        // POST_WAIT 同步路径：返回即事件已执行完，回传 Event 携带执行结果
-        auto pw =
-            YomkAPI::postEventAndWait("api_loop", yomkmsg::String::shared(std::string("pw1")), countingHandler("pw1"), "pw1");
-        YOMK_TEST_CHECK(pw.m_status == YomkResponse::ResStatus::Successed, "POST_WAIT 返回 ResStatus::Successed");
-        auto pwEv = yomk::unPack<yomkmsg::Event>(pw.m_data);
-        YOMK_TEST_CHECK(pwEv != nullptr, "POST_WAIT 回传 Event 可解包");
-        YOMK_TEST_CHECK(pwEv->d.m_tag == "pw1", "POST_WAIT 回传事件 tag 一致");
-        YOMK_TEST_CHECK(pwEv->d.m_response.m_status == YomkResponse::ResStatus::Successed, "POST_WAIT 回传事件响应已填充");
+        // POST_WAIT 同步路径：14-4 起 API 仅回 ResStatus（回传 Event 载荷不再经 API 暴露），返回即事件已执行完
+        YOMK_TEST_CHECK(
+            YomkAPI::postEventAndWait("api_loop", yomkmsg::String::shared(std::string("pw1")), countingHandler("pw1"), "pw1") ==
+                YomkResponse::ResStatus::Successed,
+            "POST_WAIT 返回 ResStatus::Successed");
         YOMK_TEST_CHECK(!orderSnapshot().empty() && orderSnapshot().back() == "pw1", "POST_WAIT 返回即事件已执行（同步性）");
 
         // 不存在循环名：五个操作接口均 ResStatus::Failed（不影响既有循环与执行顺序观测）
-        YOMK_TEST_CHECK(YomkAPI::stopEventLoop("no_such").m_status == YomkResponse::ResStatus::Failed, "STOP 不存在循环返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(YomkAPI::stopEventLoop("no_such") == YomkResponse::ResStatus::Failed, "STOP 不存在循环返回 ResStatus::Failed");
         YOMK_TEST_CHECK(
-            YomkAPI::postEvent("no_such", yomkmsg::String::shared(std::string("x")), nullptr, "").m_status ==
+            YomkAPI::postEvent("no_such", yomkmsg::String::shared(std::string("x")), nullptr, "") ==
                 YomkResponse::ResStatus::Failed,
             "POST 不存在循环返回 ResStatus::Failed");
         YOMK_TEST_CHECK(
-            YomkAPI::postEventAndWait("no_such", yomkmsg::String::shared(std::string("x")), nullptr, "").m_status ==
+            YomkAPI::postEventAndWait("no_such", yomkmsg::String::shared(std::string("x")), nullptr, "") ==
                 YomkResponse::ResStatus::Failed,
             "POST_WAIT 不存在循环返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("no_such").m_status == YomkResponse::ResStatus::Failed, "DESTROY 不存在循环返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("no_such") == YomkResponse::ResStatus::Failed, "DESTROY 不存在循环返回 ResStatus::Failed");
         YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("no_such").m_status == YomkResponse::ResStatus::Failed, "INFO_LOOP 不存在循环返回 ResStatus::Failed");
 
         // INFO_LOOP 数字 tagCount 路径："name N" 字符串解析与类型化重载、大数值（合法范围）；
@@ -588,28 +586,28 @@ int main()
         YOMK_TEST_CHECK(allArr != nullptr && allFound, "INFO_ALL 列表包含 api_loop 条目");
 
         // 空循环名边界：空串为合法 map 键，全生命周期 ResStatus::Successed
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("", nullptr).m_status == YomkResponse::ResStatus::Successed, "START 空循环名返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("", nullptr) == YomkResponse::ResStatus::Successed, "START 空循环名返回 ResStatus::Successed");
         YOMK_TEST_CHECK(
-            YomkAPI::postEvent("", yomkmsg::String::shared(std::string("x")), countingHandler("empty"), "").m_status ==
+            YomkAPI::postEvent("", yomkmsg::String::shared(std::string("x")), countingHandler("empty"), "") ==
                 YomkResponse::ResStatus::Successed,
             "POST 空循环名返回 ResStatus::Successed");
         YOMK_TEST_CHECK(
             waitUntil([] { return !orderSnapshot().empty() && orderSnapshot().back() == "empty"; }, 2000),
             "空循环名事件正常执行");
         YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("").m_status == YomkResponse::ResStatus::Successed, "INFO_LOOP 空循环名返回 ResStatus::Successed");
-        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("").m_status == YomkResponse::ResStatus::Successed, "DESTROY 空循环名返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("") == YomkResponse::ResStatus::Successed, "DESTROY 空循环名返回 ResStatus::Successed");
 
         // 超长循环名边界（65536 字符）：生命周期各接口 ResStatus::Successed 且结构化返回完整回显
         std::string longName(65536, 'L');
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop(longName, nullptr).m_status == YomkResponse::ResStatus::Successed, "START 超长循环名返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop(longName, nullptr) == YomkResponse::ResStatus::Successed, "START 超长循环名返回 ResStatus::Successed");
         auto longInfo = YomkAPI::getEventLoopInfo(longName);
         YOMK_TEST_CHECK(longInfo.m_status == YomkResponse::ResStatus::Successed, "INFO_LOOP 超长循环名返回 ResStatus::Successed");
         auto longLoopInfo = yomk::unPack<yomkmsg::EventLoopInfo>(longInfo.m_data);
         YOMK_TEST_CHECK(longLoopInfo && longLoopInfo->d.m_loopName == longName, "INFO_LOOP 完整回显超长循环名");
-        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop(longName).m_status == YomkResponse::ResStatus::Successed, "DESTROY 超长循环名返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop(longName) == YomkResponse::ResStatus::Successed, "DESTROY 超长循环名返回 ResStatus::Successed");
 
         // 销毁移除条目
-        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("api_loop").m_status == YomkResponse::ResStatus::Successed, "DESTROY api_loop 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("api_loop") == YomkResponse::ResStatus::Successed, "DESTROY api_loop 返回 ResStatus::Successed");
         auto loopsResp = YomkAPI::listEventLoops();
         YOMK_TEST_CHECK(loopsResp.m_status == YomkResponse::ResStatus::Successed, "INFO_LOOPS 返回 ResStatus::Successed");
         auto loopsArr = yomk::unPack<yomkmsg::StringArray>(loopsResp.m_data);
@@ -629,14 +627,13 @@ int main()
 
     // ============ Section 11: delService("/YomkEventLoop") 残留 loop 收尾与重注册（API 段，P4）============
     {
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("/L1").m_status == YomkResponse::ResStatus::Successed, "启动 /L1（运行中）");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("/L1") == YomkResponse::ResStatus::Successed, "启动 /L1（运行中）");
 
         // 运行中删除内置服务：残留 /L1 loop 经析构兜底链收尾（YomkEventLoop 无 deinit override，
         // delService 锁外释放 -> ~YomkEventLoop -> m_loops 析构 -> ~EventLoop -> destroy -> join），无挂起即证
         YOMK_TEST_CHECK(YomkAPI::delService("/YomkEventLoop") == 0, "删除内置 /YomkEventLoop 返回 0");
-        auto afterDel = YomkAPI::startEventLoop("/L2");
-        YOMK_TEST_CHECK(afterDel.m_status == YomkResponse::ResStatus::Failed && afterDel.m_msg == "service not found: /YomkEventLoop",
-              "删除后 EVENTLOOP API 服务级 ResStatus::Failed + 精确消息");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("/L2") == YomkResponse::ResStatus::Failed,
+              "删除后 EVENTLOOP API 服务级 ResStatus::Failed（失败原因经错误日志承载）");
         auto srvArr = yomk::unPack<yomkmsg::StringArray>(YomkAPI::listServices().m_data);
         bool evtLoopGone = true;
         if (srvArr)
@@ -652,10 +649,11 @@ int main()
         YOMK_TEST_CHECK(srvArr != nullptr && evtLoopGone, "服务表快照不再含 /YomkEventLoop");
 
         YOMK_TEST_CHECK(YomkAPI::newService<YomkEventLoop>() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("/L2").m_status == YomkResponse::ResStatus::Successed, "重注册后 startEventLoop 恢复可用");
-        auto pwRelink =
-            YomkAPI::postEventAndWait("/L2", yomkmsg::String::shared(std::string("relink")), countingHandler("relink"), "relink");
-        YOMK_TEST_CHECK(pwRelink.m_status == YomkResponse::ResStatus::Successed, "重注册后 YomkAPI::postEventAndWait 全链路 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("/L2") == YomkResponse::ResStatus::Successed, "重注册后 startEventLoop 恢复可用");
+        YOMK_TEST_CHECK(
+            YomkAPI::postEventAndWait("/L2", yomkmsg::String::shared(std::string("relink")), countingHandler("relink"), "relink") ==
+                YomkResponse::ResStatus::Successed,
+            "重注册后 YomkAPI::postEventAndWait 全链路 ResStatus::Successed");
 
         YomkAPI::shutdown();
     }

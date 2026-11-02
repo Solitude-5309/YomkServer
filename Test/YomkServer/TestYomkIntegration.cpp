@@ -216,13 +216,13 @@ int main()
         YOMK_TEST_CHECK(!ec, "S1 临时目录创建成功: " + tmpDir.string());
 
         // 事件积压（不等待执行完成；积压处理语义不保证全执行，仅验证 shutdown 有限时间返回）
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("integration_loop").m_status == YomkResponse::ResStatus::Successed, "启动 integration_loop");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("integration_loop") == YomkResponse::ResStatus::Successed, "启动 integration_loop");
         bool postOk = true;
         for (int i = 0; i < 100; ++i)
         {
             if (YomkAPI::postEvent("integration_loop", nullptr,
-                                    [](YomkPkgPtr) { return YomkResponse(YomkResponse::ResStatus::Successed); })
-                     .m_status != YomkResponse::ResStatus::Successed)
+                                    [](YomkPkgPtr) { return YomkResponse(YomkResponse::ResStatus::Successed); }) !=
+                YomkResponse::ResStatus::Successed)
             {
                 postOk = false;
             }
@@ -266,9 +266,8 @@ int main()
               "shutdown 返回后文件日志已落盘且含标记串（析构 write）");
 
         // API 守卫级回归：serverSnapshot 已置空 → ResStatus::Invalid + "YomkServer is not init"
-        auto postLoop = YomkAPI::postEvent("integration_loop", nullptr, YomkServiceFunc());
-        YOMK_TEST_CHECK(postLoop.m_status == YomkResponse::ResStatus::Invalid && postLoop.m_msg == "YomkServer is not init",
-              "shutdown 后 YomkAPI::postEvent 回归 ResStatus::Invalid + 守卫消息");
+        YOMK_TEST_CHECK(YomkAPI::postEvent("integration_loop", nullptr, YomkServiceFunc()) == YomkResponse::ResStatus::Invalid,
+              "shutdown 后 YomkAPI::postEvent 回归 ResStatus::Invalid（失败原因经错误日志承载）");
         auto postCtx = YomkAPI::setContext("drain_key", yomkmsg::String::shared(std::string("x")));
         YOMK_TEST_CHECK(postCtx == YomkResponse::ResStatus::Invalid,
               "shutdown 后 setContext 回归 ResStatus::Invalid");

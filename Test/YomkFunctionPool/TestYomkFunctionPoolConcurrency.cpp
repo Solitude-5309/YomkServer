@@ -166,7 +166,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s1OkCount.store(0);
 
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("c1_probe", s1ProbeFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("c1_probe", s1ProbeFunc) == YomkResponse::ResStatus::Successed,
             "S1: 注册 c1_probe 成功");
 
         // 多线程并发 CALL（shared_lock 并发读 + std::function 拷贝）
@@ -199,10 +199,10 @@ int main(int /*argc*/, char** /*argv*/)
         g_s1OuterOkCount.store(0);
 
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("c1_inner", s1InnerFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("c1_inner", s1InnerFunc) == YomkResponse::ResStatus::Successed,
             "S1: 注册 c1_inner 成功");
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("c1_outer", s1OuterFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("c1_outer", s1OuterFunc) == YomkResponse::ResStatus::Successed,
             "S1: 注册 c1_outer（内部嵌套 CALL c1_inner）成功");
 
         constexpr int kNestedThreads = 4;
@@ -253,7 +253,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s2Stop.store(false);
 
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("c2_func", s2V1Func).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("c2_func", s2V1Func) == YomkResponse::ResStatus::Successed,
             "S2: 注册 c2_func 为 v1 实现");
 
         // 启动 caller 线程（持续 CALL 直到 g_s2Stop）
@@ -315,7 +315,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s3ExecCount.store(0);
 
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("c3_gated", s3GatedFunc).m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::registerFunction("c3_gated", s3GatedFunc) == YomkResponse::ResStatus::Successed,
             "S3: 注册 c3_gated（gate 函数：体内自旋等待释放）");
 
         // 启动 caller 线程：CALL c3_gated → 进入 gate 函数 → 自旋等待
@@ -331,9 +331,8 @@ int main(int /*argc*/, char** /*argv*/)
         YOMK_TEST_CHECK(g_s3GateStarted.load(), "S3: gate 函数已进入执行（callFunction 的 shared_lock 已释放，锁外调用中）");
 
         // 在 gate 函数执行期间 UNREGISTER——unique_lock 获取成功（无 shared_lock 持有者）
-        auto unregResp = YomkAPI::unregisterFunction("c3_gated");
         YOMK_TEST_CHECK(
-            unregResp.m_status == YomkResponse::ResStatus::Successed,
+            YomkAPI::unregisterFunction("c3_gated") == YomkResponse::ResStatus::Successed,
             "S3: 在途调用期间 UNREGISTER 成功（unique_lock 无阻塞——shared_lock 已释放）");
 
         // 释放 gate → 在途调用完成
@@ -455,8 +454,7 @@ int main(int /*argc*/, char** /*argv*/)
                 {
                     for (int i = 0; i < kRounds; ++i)
                     {
-                        auto resp = YomkAPI::registerFunction("c5_probe", s5ProbeFunc);
-                        if (resp.m_status == YomkResponse::ResStatus::Successed)
+                        if (YomkAPI::registerFunction("c5_probe", s5ProbeFunc) == YomkResponse::ResStatus::Successed)
                             g_s5RegOk.fetch_add(1, std::memory_order_relaxed);
                     }
                 });
@@ -487,10 +485,10 @@ int main(int /*argc*/, char** /*argv*/)
             {
                 for (int i = 0; i < kRounds; ++i)
                 {
-                    auto resp = YomkAPI::unregisterFunction("c5_probe");
-                    if (resp.m_status == YomkResponse::ResStatus::Successed)
+                    YomkResponse::ResStatus resp = YomkAPI::unregisterFunction("c5_probe");
+                    if (resp == YomkResponse::ResStatus::Successed)
                         g_s5UnregOk.fetch_add(1, std::memory_order_relaxed);
-                    else if (resp.m_status == YomkResponse::ResStatus::Failed)
+                    else if (resp == YomkResponse::ResStatus::Failed)
                         g_s5UnregNo.fetch_add(1, std::memory_order_relaxed);
                     // 短暂让步让 registerer 有机会重新注册
                     std::this_thread::sleep_for(std::chrono::microseconds(50));

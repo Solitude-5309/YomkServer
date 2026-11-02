@@ -646,30 +646,30 @@ public:
     // EVENTLOOP_API
 public:
     // 启动指定事件循环
-    static YomkResponse startEventLoop(
+    static YomkResponse::ResStatus startEventLoop(
         const std::string& eventLoopName,
         YomkServiceFunc m_defaultServiceFunc = nullptr,
         const std::string& msgName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request(
+        return requestStatus(
             "/YomkEventLoop/start",
             yomkmsg::EventLoop::shared(yomk::EventLoop{eventLoopName, m_defaultServiceFunc, msgName}));
     }
     // 停止事件循环线程（保留未执行事件）
-    static YomkResponse stopEventLoop(const std::string& eventLoopName)
+    static YomkResponse::ResStatus stopEventLoop(const std::string& eventLoopName)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request("/YomkEventLoop/stop", yomkmsg::String::shared(eventLoopName));
+        return requestStatus("/YomkEventLoop/stop", yomkmsg::String::shared(eventLoopName));
     }
     // 异步投递事件
-    static YomkResponse postEvent(
+    static YomkResponse::ResStatus postEvent(
         const std::string& eventLoopName,
         YomkPkgPtr eventData,
         YomkServiceFunc eventHandle = nullptr,
@@ -677,13 +677,13 @@ public:
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request(
+        return requestStatus(
             "/YomkEventLoop/post", yomkmsg::Event::shared(yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 同步投递事件（阻塞等待执行完成）
-    static YomkResponse postEventAndWait(
+    static YomkResponse::ResStatus postEventAndWait(
         const std::string& eventLoopName,
         YomkPkgPtr eventData,
         YomkServiceFunc eventHandle = nullptr,
@@ -691,19 +691,19 @@ public:
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request(
+        return requestStatus(
             "/YomkEventLoop/post_wait", yomkmsg::Event::shared(yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 销毁事件循环并清空队列
-    static YomkResponse destroyEventLoop(const std::string& eventLoopName)
+    static YomkResponse::ResStatus destroyEventLoop(const std::string& eventLoopName)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request("/YomkEventLoop/destroy", yomkmsg::String::shared(eventLoopName));
+        return requestStatus("/YomkEventLoop/destroy", yomkmsg::String::shared(eventLoopName));
     }
     // 获取全部事件循环名称列表
     static YomkResponse listEventLoops()
@@ -743,25 +743,25 @@ public:
     // FUNCTIONPOOL_API
 public:
     // 注册函数到全局函数池（msgName 声明期望消息类型；description 函数说明，内容使用者自定义，均可为空）
-    static YomkResponse registerFunction(
+    static YomkResponse::ResStatus registerFunction(
         const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
         const std::string& description = "")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request(
+        return requestStatus(
             "/YomkFunctionPool/register", yomkmsg::Function::shared(yomk::Function{funcName, func, msgName, description}));
     }
     // 从函数池注销函数
-    static YomkResponse unregisterFunction(const std::string& funcName)
+    static YomkResponse::ResStatus unregisterFunction(const std::string& funcName)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return YomkResponse::ResStatus::Invalid;
         }
-        return request("/YomkFunctionPool/unregister", yomkmsg::String::shared(funcName));
+        return requestStatus("/YomkFunctionPool/unregister", yomkmsg::String::shared(funcName));
     }
     // 调用函数池中注册的函数
     static YomkResponse callFunction(const std::string& funcName, YomkPkgPtr callData)
