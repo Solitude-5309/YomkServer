@@ -59,7 +59,7 @@ ProjectName/
 ├── typedefine/
 │   └── TypeDefine.h      // 公共常量/宏/类型
 ├── test/                 // 单元测试文件
-├── scripts/              // 项目辅助脚本
+├── Scripts/              // 项目辅助脚本
 ├── build_ubuntu.sh       // 一键编译（交互式，source执行）
 ├── setup.bash.in         // 环境脚本模板
 ├── CMakeLists.txt

@@ -167,7 +167,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/yomk
 cmake --build . -j
 sudo cmake --install .
 cd ..
-./scripts/install_env.sh /opt/yomk   # 安装校验 + YOMK_PREFIX_PATH 持久化 + 动态库搜索路径注册（与方式 1 共用）
+./Scripts/install_env.sh /opt/yomk   # 安装校验 + YOMK_PREFIX_PATH 持久化 + 动态库搜索路径注册（与方式 1 共用）
 ```
 
 说明：
