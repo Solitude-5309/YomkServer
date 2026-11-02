@@ -58,10 +58,12 @@ int main()
 {
     std::cout << "===== 1. init/call_once 单例承诺 =====" << std::endl;
     {
-        std::shared_ptr<YomkServer> first = YomkAPI::init(1);
+        YomkAPI::init(1);
+        std::shared_ptr<YomkServer> first = YomkAPI::serverInstance();
         YOMK_TEST_CHECK(first != nullptr, "首次 init(1) 返回非空单例");
 
-        std::shared_ptr<YomkServer> second = YomkAPI::init(4);
+        YomkAPI::init(4);
+        std::shared_ptr<YomkServer> second = YomkAPI::serverInstance();
         YOMK_TEST_CHECK(
             second != nullptr && second.get() == first.get(),
             "二次 init(4) 返回同一实例（asyncThreadCount 仅首次生效）");
@@ -112,7 +114,8 @@ int main()
         YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not init", "关闭后契约消息回归: " + resp.m_msg);
         YOMK_TEST_CHECK(YomkAPI::newService<DummySrv>() == -1, "关闭后 newService 守卫回归 -1");
 
-        YOMK_TEST_CHECK(YomkAPI::init() == nullptr, "关闭后 init 再调返回 nullptr（call_once 已消耗，不支持二次初始化）");
+        YomkAPI::init();
+        YOMK_TEST_CHECK(YomkAPI::serverInstance() == nullptr, "关闭后 init 再调不再重建，实例保持为空（call_once 已消耗，不支持二次初始化）");
     }
 
     std::cout << (g_failed == 0 ? "ALL PASSED" : "SOME FAILED") << " (" << g_failed << " failed)" << std::endl;

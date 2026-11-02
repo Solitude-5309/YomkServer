@@ -438,7 +438,8 @@ int main()
 
     // ============ Section 9: API 层停止保留 / 重启续跑 / 销毁移除 / 契约与边界 ============
     {
-        auto server = YomkAPI::init(1);
+        YomkAPI::init(1);
+        auto server = YomkAPI::serverInstance();
         YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
 
         resetOrder();

@@ -249,7 +249,8 @@ int main()
     }
 
     // ============ 单例初始化（S1-S5 共用，call_once 约束） ============
-    YOMK_TEST_CHECK(YomkAPI::init(1) != nullptr, "YomkAPI::init() 拉起单例与 5 个内置服务");
+    YomkAPI::init(1);
+    YOMK_TEST_CHECK(YomkAPI::serverInstance() != nullptr, "YomkAPI::init() 拉起单例与 5 个内置服务");
 
     // ============ S1. /services ============
     std::cout << "===== S1. /services 端点 =====" << std::endl;

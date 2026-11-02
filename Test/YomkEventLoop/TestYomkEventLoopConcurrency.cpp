@@ -369,7 +369,8 @@ int main()
     // ============ Section 5: API 层并发投递 + 内省轮询（宏）============
     {
         g_execCount.store(0);
-        auto server = YomkAPI::init(1);
+        YomkAPI::init(1);
+        auto server = YomkAPI::serverInstance();
         YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
 
         auto startResp = YomkAPI::startEventLoop("conc_loop", nullptr);

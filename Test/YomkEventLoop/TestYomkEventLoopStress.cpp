@@ -310,7 +310,8 @@ int main()
     // ============ Section 5: API 层 10 万级宏投递 ============
     {
         g_execCount.store(0);
-        auto server = YomkAPI::init(1);
+        YomkAPI::init(1);
+        auto server = YomkAPI::serverInstance();
         YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
         YOMK_TEST_CHECK(YomkAPI::startEventLoop("stress_loop", nullptr).m_status == YomkResponse::ResStatus::Successed, "S5 START 返回 ResStatus::Successed");
 

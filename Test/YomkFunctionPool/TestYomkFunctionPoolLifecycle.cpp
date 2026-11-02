@@ -105,7 +105,8 @@ static size_t poolCount()
 
 int main()
 {
-    auto server = YomkAPI::init(1);
+    YomkAPI::init(1);
+    auto server = YomkAPI::serverInstance();
     YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
 
     // ============ Section 1: CRUD 闭环 ============

@@ -126,7 +126,8 @@ static fs::path testTmpRoot()
 
 int main()
 {
-    auto server = YomkAPI::init(1);
+    YomkAPI::init(1);
+    auto server = YomkAPI::serverInstance();
     YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init(1) 返回非空服务器");
 
     const int K = 20;

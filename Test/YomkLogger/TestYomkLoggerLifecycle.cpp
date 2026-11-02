@@ -249,7 +249,8 @@ static fs::path testTmpRoot()
 
 int main()
 {
-    auto server = YomkAPI::init(1);
+    YomkAPI::init(1);
+    auto server = YomkAPI::serverInstance();
     YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
 
     // 临时目录（收尾 remove_all）

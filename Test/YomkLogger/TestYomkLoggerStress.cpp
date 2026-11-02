@@ -822,7 +822,8 @@ int main()
     // LG5：环境标注先于一切 [BASELINE] 输出，使本次所有性能数据可按环境归因
     std::cout << "[ENV] " << readEnvSnapshot() << std::endl;
 
-    auto server = YomkAPI::init(1);
+    YomkAPI::init(1);
+    auto server = YomkAPI::serverInstance();
     YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
 
     fs::path tmpDir = testTmpRoot() / ("yomk_logger_lg4_" + std::to_string(::getpid()));

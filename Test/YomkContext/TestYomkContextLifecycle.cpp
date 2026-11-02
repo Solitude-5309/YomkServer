@@ -80,7 +80,8 @@ static bool hasService(const std::vector<std::string>& names, const std::string&
 
 int main()
 {
-    auto server = YomkAPI::init(1);
+    YomkAPI::init(1);
+    auto server = YomkAPI::serverInstance();
     YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
 
     // ============ Section 1: init 效果（内省）============

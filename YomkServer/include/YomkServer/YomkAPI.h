@@ -31,7 +31,7 @@ public:
     // BOOT_API
 public:
     // 初始化框架单例并启动内置服务，asyncThreadCount 为异步请求线程池大小（0 表示自动检测）
-    static std::shared_ptr<YomkServer> init(std::size_t asyncThreadCount = 0)
+    static void init(std::size_t asyncThreadCount = 0)
     {
         static std::once_flag initFlag;
         std::call_once(
@@ -44,7 +44,6 @@ public:
                 setServer(server);
                 std::atexit([]() { holder().destroy(); });
             });
-        return serverSnapshot();
     }
     // 获取全局单例，未初始化返回 nullptr
     static std::shared_ptr<YomkServer> serverInstance() { return serverSnapshot(); }
