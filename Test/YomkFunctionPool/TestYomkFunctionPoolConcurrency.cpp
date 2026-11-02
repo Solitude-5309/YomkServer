@@ -97,7 +97,7 @@ static YomkResponse s1OuterFunc(YomkPkgPtr /*pkg*/)
 {
     // 嵌套重入：在已注册函数内部再 CALL 另一个已注册函数
     // callFunction 的 shared_lock 已释放（锁外调用），此处重新获取 shared_lock 安全
-    auto resp = YomkAPI::FUNCTIONPOOL_CALL("c1_inner", nullptr);
+    auto resp = YomkAPI::callFunction("c1_inner", nullptr);
     if (resp.m_status == YomkResponse::eOk)
     {
         g_s1OuterOkCount.fetch_add(1, std::memory_order_relaxed);
@@ -166,7 +166,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s1OkCount.store(0);
 
         YOMK_TEST_CHECK(
-            YomkAPI::FUNCTIONPOOL_REGISTER("c1_probe", s1ProbeFunc).m_status == YomkResponse::eOk,
+            YomkAPI::registerFunction("c1_probe", s1ProbeFunc).m_status == YomkResponse::eOk,
             "S1: 注册 c1_probe 成功");
 
         // 多线程并发 CALL（shared_lock 并发读 + std::function 拷贝）
@@ -179,7 +179,7 @@ int main(int /*argc*/, char** /*argv*/)
                 {
                     for (int i = 0; i < kCallsPerThread; ++i)
                     {
-                        auto resp = YomkAPI::FUNCTIONPOOL_CALL("c1_probe", nullptr);
+                        auto resp = YomkAPI::callFunction("c1_probe", nullptr);
                         if (resp.m_status == YomkResponse::eOk)
                             g_s1OkCount.fetch_add(1, std::memory_order_relaxed);
                     }
@@ -199,10 +199,10 @@ int main(int /*argc*/, char** /*argv*/)
         g_s1OuterOkCount.store(0);
 
         YOMK_TEST_CHECK(
-            YomkAPI::FUNCTIONPOOL_REGISTER("c1_inner", s1InnerFunc).m_status == YomkResponse::eOk,
+            YomkAPI::registerFunction("c1_inner", s1InnerFunc).m_status == YomkResponse::eOk,
             "S1: 注册 c1_inner 成功");
         YOMK_TEST_CHECK(
-            YomkAPI::FUNCTIONPOOL_REGISTER("c1_outer", s1OuterFunc).m_status == YomkResponse::eOk,
+            YomkAPI::registerFunction("c1_outer", s1OuterFunc).m_status == YomkResponse::eOk,
             "S1: 注册 c1_outer（内部嵌套 CALL c1_inner）成功");
 
         constexpr int kNestedThreads = 4;
@@ -218,7 +218,7 @@ int main(int /*argc*/, char** /*argv*/)
                 {
                     for (int i = 0; i < kNestedCallsPerThread; ++i)
                     {
-                        YomkAPI::FUNCTIONPOOL_CALL("c1_outer", nullptr);
+                        YomkAPI::callFunction("c1_outer", nullptr);
                     }
                 });
         }
@@ -232,11 +232,11 @@ int main(int /*argc*/, char** /*argv*/)
         YOMK_TEST_CHECK(g_s1OuterOkCount.load() == kNestedTotal, "S1: 嵌套重入 outer 全部成功回传 inner 结果");
 
         // 清理
-        YomkAPI::FUNCTIONPOOL_UNREGISTER("c1_probe");
-        YomkAPI::FUNCTIONPOOL_UNREGISTER("c1_inner");
-        YomkAPI::FUNCTIONPOOL_UNREGISTER("c1_outer");
+        YomkAPI::unregisterFunction("c1_probe");
+        YomkAPI::unregisterFunction("c1_inner");
+        YomkAPI::unregisterFunction("c1_outer");
         YOMK_TEST_CHECK(
-            YomkAPI::FUNCTIONPOOL_CALL("c1_probe", nullptr).m_status == YomkResponse::eNo, "S1: 清理后 c1_probe 已不存在");
+            YomkAPI::callFunction("c1_probe", nullptr).m_status == YomkResponse::eNo, "S1: 清理后 c1_probe 已不存在");
     }
 
     // ========================================================================
@@ -253,7 +253,7 @@ int main(int /*argc*/, char** /*argv*/)
         g_s2Stop.store(false);
 
         YOMK_TEST_CHECK(
-            YomkAPI::FUNCTIONPOOL_REGISTER("c2_func", s2V1Func).m_status == YomkResponse::eOk,
+            YomkAPI::registerFunction("c2_func", s2V1Func).m_status == YomkResponse::eOk,
             "S2: 注册 c2_func 为 v1 实现");
 
         // 启动 caller 线程（持续 CALL 直到 g_s2Stop）
@@ -266,7 +266,7 @@ int main(int /*argc*/, char** /*argv*/)
                 {
                     while (!g_s2Stop.load(std::memory_order_acquire))
                     {
-                        auto resp = YomkAPI::FUNCTIONPOOL_CALL("c2_func", nullptr);
+                        auto resp = YomkAPI::callFunction("c2_func", nullptr);
                         if (resp.m_status == YomkResponse::eOk)
                             g_s2TotalCalls.fetch_add(1, std::memory_order_relaxed);
                     }
@@ -277,9 +277,9 @@ int main(int /*argc*/, char** /*argv*/)
         for (int round = 0; round < kUpdateRounds; ++round)
         {
             if (round % 2 == 0)
-                YomkAPI::FUNCTIONPOOL_REGISTER("c2_func", s2V2Func);
+                YomkAPI::registerFunction("c2_func", s2V2Func);
             else
-                YomkAPI::FUNCTIONPOOL_REGISTER("c2_func", s2V1Func);
+                YomkAPI::registerFunction("c2_func", s2V1Func);
             // 短暂让步让 caller 线程有机会执行
             std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
@@ -301,8 +301,8 @@ int main(int /*argc*/, char** /*argv*/)
         YOMK_TEST_CHECK(total > 0, "S2: 总调用数 > 0（caller 线程确实执行了）");
 
         // 清理
-        YomkAPI::FUNCTIONPOOL_UNREGISTER("c2_func");
-        YOMK_TEST_CHECK(YomkAPI::FUNCTIONPOOL_CALL("c2_func", nullptr).m_status == YomkResponse::eNo, "S2: 清理后 c2_func 已不存在");
+        YomkAPI::unregisterFunction("c2_func");
+        YOMK_TEST_CHECK(YomkAPI::callFunction("c2_func", nullptr).m_status == YomkResponse::eNo, "S2: 清理后 c2_func 已不存在");
     }
 
     // ========================================================================
@@ -315,11 +315,11 @@ int main(int /*argc*/, char** /*argv*/)
         g_s3ExecCount.store(0);
 
         YOMK_TEST_CHECK(
-            YomkAPI::FUNCTIONPOOL_REGISTER("c3_gated", s3GatedFunc).m_status == YomkResponse::eOk,
+            YomkAPI::registerFunction("c3_gated", s3GatedFunc).m_status == YomkResponse::eOk,
             "S3: 注册 c3_gated（gate 函数：体内自旋等待释放）");
 
         // 启动 caller 线程：CALL c3_gated → 进入 gate 函数 → 自旋等待
-        std::thread caller([]() { YomkAPI::FUNCTIONPOOL_CALL("c3_gated", nullptr); });
+        std::thread caller([]() { YomkAPI::callFunction("c3_gated", nullptr); });
 
         // 等待 gate 函数开始执行（证明 shared_lock 已释放，函数在锁外执行中）
         int waitMs = 0;
@@ -331,7 +331,7 @@ int main(int /*argc*/, char** /*argv*/)
         YOMK_TEST_CHECK(g_s3GateStarted.load(), "S3: gate 函数已进入执行（callFunction 的 shared_lock 已释放，锁外调用中）");
 
         // 在 gate 函数执行期间 UNREGISTER——unique_lock 获取成功（无 shared_lock 持有者）
-        auto unregResp = YomkAPI::FUNCTIONPOOL_UNREGISTER("c3_gated");
+        auto unregResp = YomkAPI::unregisterFunction("c3_gated");
         YOMK_TEST_CHECK(
             unregResp.m_status == YomkResponse::eOk,
             "S3: 在途调用期间 UNREGISTER 成功（unique_lock 无阻塞——shared_lock 已释放）");
@@ -346,7 +346,7 @@ int main(int /*argc*/, char** /*argv*/)
 
         // 注销后新 CALL → eNo
         YOMK_TEST_CHECK(
-            YomkAPI::FUNCTIONPOOL_CALL("c3_gated", nullptr).m_status == YomkResponse::eNo,
+            YomkAPI::callFunction("c3_gated", nullptr).m_status == YomkResponse::eNo,
             "S3: 注销后新 CALL 返回 eNo（注销生效）");
     }
 
@@ -376,11 +376,11 @@ int main(int /*argc*/, char** /*argv*/)
                     for (int round = 0; round < kChurnRounds; ++round)
                     {
                         std::string name = "c4_t" + std::to_string(t) + "_" + std::to_string(round);
-                        YomkAPI::FUNCTIONPOOL_REGISTER(name, s5ProbeFunc);
+                        YomkAPI::registerFunction(name, s5ProbeFunc);
                         // 短暂让步让内省线程有机会观测
                         if (round % 10 == 9)
                             std::this_thread::sleep_for(std::chrono::microseconds(50));
-                        YomkAPI::FUNCTIONPOOL_UNREGISTER(name);
+                        YomkAPI::unregisterFunction(name);
                     }
                 });
         }
@@ -428,7 +428,7 @@ int main(int /*argc*/, char** /*argv*/)
         // 清理（churn 线程已自行注销，但确认池干净）
         for (int t = 0; t < kChurnThreads; ++t)
             for (int round = 0; round < kChurnRounds; ++round)
-                YomkAPI::FUNCTIONPOOL_UNREGISTER("c4_t" + std::to_string(t) + "_" + std::to_string(round));
+                YomkAPI::unregisterFunction("c4_t" + std::to_string(t) + "_" + std::to_string(round));
     }
 
     // ========================================================================
@@ -455,7 +455,7 @@ int main(int /*argc*/, char** /*argv*/)
                 {
                     for (int i = 0; i < kRounds; ++i)
                     {
-                        auto resp = YomkAPI::FUNCTIONPOOL_REGISTER("c5_probe", s5ProbeFunc);
+                        auto resp = YomkAPI::registerFunction("c5_probe", s5ProbeFunc);
                         if (resp.m_status == YomkResponse::eOk)
                             g_s5RegOk.fetch_add(1, std::memory_order_relaxed);
                     }
@@ -471,7 +471,7 @@ int main(int /*argc*/, char** /*argv*/)
                 {
                     for (int i = 0; i < kRounds; ++i)
                     {
-                        auto resp = YomkAPI::FUNCTIONPOOL_CALL("c5_probe", nullptr);
+                        auto resp = YomkAPI::callFunction("c5_probe", nullptr);
                         g_s5CallerTotal.fetch_add(1, std::memory_order_relaxed);
                         if (resp.m_status == YomkResponse::eOk)
                             g_s5CallerOk.fetch_add(1, std::memory_order_relaxed);
@@ -487,7 +487,7 @@ int main(int /*argc*/, char** /*argv*/)
             {
                 for (int i = 0; i < kRounds; ++i)
                 {
-                    auto resp = YomkAPI::FUNCTIONPOOL_UNREGISTER("c5_probe");
+                    auto resp = YomkAPI::unregisterFunction("c5_probe");
                     if (resp.m_status == YomkResponse::eOk)
                         g_s5UnregOk.fetch_add(1, std::memory_order_relaxed);
                     else if (resp.m_status == YomkResponse::eNo)
@@ -535,7 +535,7 @@ int main(int /*argc*/, char** /*argv*/)
         YOMK_TEST_CHECK(callerOk > 0, "S5: 至少部分 CALL 成功（registerer 在 unregistrer 间隙注册了函数）");
 
         // 清理
-        YomkAPI::FUNCTIONPOOL_UNREGISTER("c5_probe");
+        YomkAPI::unregisterFunction("c5_probe");
     }
 
     // ========================================================================

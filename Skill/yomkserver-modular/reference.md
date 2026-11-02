@@ -205,11 +205,11 @@ class YomkService {
 ### EventLoop
 | API | 说明 |
 |----|------|
-| `YomkAPI::EVENTLOOP_START(name[, defaultFunc][, "MsgName"])` | 启动（运行中幂等；对已停止未销毁的循环为重启：新开线程按 FIFO 续跑保留的积压事件、不丢失；可选末位 "MsgName" 字符串字面量声明默认处理函数期望的消息类型，仅作内省元数据） |
-| `YomkAPI::EVENTLOOP_STOP(name)` | 停止（仅退出工作线程、不清队列：未执行事件保留至下次 START 续跑；停止期间投递被拒） |
-| `YomkAPI::EVENTLOOP_POST(name, pkg, handle, tag="")` | 异步投递（handle/tag 均可省略，tag 仅作内省标记；循环未运行投递被拒返 eNo） |
-| `YomkAPI::EVENTLOOP_POST_WAIT(name, pkg, handle, tag="")` | 同步投递（tag 同上；未运行被拒返 eNo，销毁丢弃排队事件时等待者同样被释放） |
-| `YomkAPI::EVENTLOOP_DESTROY(name)` | 销毁（先停止退出线程、再清空未执行事件——不可续跑，并移除循环条目） |
+| `YomkAPI::startEventLoop(name[, defaultFunc][, "MsgName"])` | 启动（运行中幂等；对已停止未销毁的循环为重启：新开线程按 FIFO 续跑保留的积压事件、不丢失；可选末位 "MsgName" 字符串字面量声明默认处理函数期望的消息类型，仅作内省元数据） |
+| `YomkAPI::stopEventLoop(name)` | 停止（仅退出工作线程、不清队列：未执行事件保留至下次 START 续跑；停止期间投递被拒） |
+| `YomkAPI::postEvent(name, pkg, handle, tag="")` | 异步投递（handle/tag 均可省略，tag 仅作内省标记；循环未运行投递被拒返 eNo） |
+| `YomkAPI::postEventAndWait(name, pkg, handle, tag="")` | 同步投递（tag 同上；未运行被拒返 eNo，销毁丢弃排队事件时等待者同样被释放） |
+| `YomkAPI::destroyEventLoop(name)` | 销毁（先停止退出线程、再清空未执行事件——不可续跑，并移除循环条目） |
 | `YomkAPI::listEventLoops()` | 内省：事件循环名列表（返回 StringArray） |
 | `YomkAPI::getEventLoopInfo(name)` / `(name, n)` | 内省：单循环元信息（结构化 EventLoopInfo 包：m_loopName/m_running/m_pending/m_hasDefaultFunc/m_msgName/m_nextTags，m_nextTags 存原值取 n 条，n 缺省 3，m_msg 恒 "ok"，未命中返 eNo） |
 | `YomkAPI::getAllEventLoopInfo()` | 内省：全量循环元信息（EventLoopInfoList 结构化包，元素为单查同款 EventLoopInfo，m_nextTags 取 3 条，m_msg 恒 "ok"） |
@@ -217,9 +217,9 @@ class YomkService {
 ### FunctionPool
 | API | 说明 |
 |----|------|
-| `YomkAPI::FUNCTIONPOOL_REGISTER(name, func[, "MsgName"][, "Description"])` | 注册（三参声明期望消息类型、四参追加函数说明，字符串字面量仅作内省元数据，不参与运行时校验；说明经 INFO_NAME 数据段透出）。**同名重复注册即运行时热替换，无需先注销** |
-| `YomkAPI::FUNCTIONPOOL_UNREGISTER(name)` | 注销（未注册返回 eNo，空名 eInvalid） |
-| `YomkAPI::FUNCTIONPOOL_CALL(name, pkg)` | 调用（未注册 eNo，空名 eInvalid；pkg 原样透传可为 nullptr；用户函数异常原样穿透到调用方，需自行 try/catch） |
+| `YomkAPI::registerFunction(name, func[, "MsgName"][, "Description"])` | 注册（三参声明期望消息类型、四参追加函数说明，字符串字面量仅作内省元数据，不参与运行时校验；说明经 INFO_NAME 数据段透出）。**同名重复注册即运行时热替换，无需先注销** |
+| `YomkAPI::unregisterFunction(name)` | 注销（未注册返回 eNo，空名 eInvalid） |
+| `YomkAPI::callFunction(name, pkg)` | 调用（未注册 eNo，空名 eInvalid；pkg 原样透传可为 nullptr；用户函数异常原样穿透到调用方，需自行 try/catch） |
 | `YomkAPI::listFunctionNames()` | 内省：注册函数名列表（返回 StringArray） |
 | `YomkAPI::getFunctionInfo(name)` | 内省：单函数元信息查询（结构化 FuncInfo 包：m_funcName/m_msgName/m_description，m_msg 恒 "ok"，未注册 eNo） |
 | `YomkAPI::getAllFunctionInfo()` | 内省：全量函数元信息（FuncInfoList 结构化包，元素为单查同款 FuncInfo，总数由 d.size() 承载，m_msg 恒 "ok"） |

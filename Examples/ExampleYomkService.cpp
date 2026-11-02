@@ -45,11 +45,11 @@
  *        自省读取工位职能：4 参注册的 /move 带 MoveCmd 元数据与函数说明、
  *        2 参注册的 /echo 双空；INFO_FUNCTION 按 URL 调阅单张函数名片
  *        （内省细节详见 ExampleYomkServerInfo）。
- * 场景 6 showArmStationUpgrade [FUNCTIONPOOL_CALL / ADD_SERVICE]
+ * 场景 6 showArmStationUpgrade [callFunction / ADD_SERVICE]
  *        留痕工位升级：同名 ADD_SERVICE 即替换——替换前后直调钩子
  *        telemetry_hook（diag check V1→V2），[实例#N] 日志自证服务与
  *        钩子一并换新。
- * 场景 7 showArmStationOffline [DEL_SERVICE / FUNCTIONPOOL_CALL / REQUEST]
+ * 场景 7 showArmStationOffline [DEL_SERVICE / callFunction / REQUEST]
  *        留痕工位下线：DEL_SERVICE 删除即停——弱绑定钩子立即失效（eNo 不
  *        悬垂）、move 因留痕缺失失败沿调用链传播；重复注销返回 -1。
  * 场景 8 showArmPowerOff       [INFO_ALL / SHUTDOWN]
@@ -382,14 +382,14 @@ static void showArmStationUpgrade()
     logScene(
         6,
         "留痕工位升级",
-        "FUNCTIONPOOL_CALL / ADD_SERVICE",
+        "callFunction / ADD_SERVICE",
         "班中留痕工位升级换新：同名 ADD_SERVICE 即替换，旧实例下线、新实例"
         "接管并重挂同名钩子——替换前后直调钩子（diag check V1→V2）自证服务"
         "与钩子一并替换。");
 
     logAction(
-        "直调留痕钩子（替换前）", "FUNCTIONPOOL_CALL telemetry_hook (V1)",
-        [&] { return YomkAPI::FUNCTIONPOOL_CALL("telemetry_hook", yomkmsg::String::shared("diag check V1")); });
+        "直调留痕钩子（替换前）", "callFunction telemetry_hook (V1)",
+        [&] { return YomkAPI::callFunction("telemetry_hook", yomkmsg::String::shared("diag check V1")); });
     logVerify("留痕记录 [实例#1]：diag check V1——钩子由当前实例 init 注册、按名直调");
 
     logActionInt(
@@ -399,8 +399,8 @@ static void showArmStationUpgrade()
     logVerify("新实例 init 重挂 telemetry_hook，函数池直出 already exist -> update to current function：服务与钩子一并换新");
 
     logAction(
-        "直调留痕钩子（替换后）", "FUNCTIONPOOL_CALL telemetry_hook (V2)",
-        [&] { return YomkAPI::FUNCTIONPOOL_CALL("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
+        "直调留痕钩子（替换后）", "callFunction telemetry_hook (V2)",
+        [&] { return YomkAPI::callFunction("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
     logVerify("留痕记录 [实例#2]：diag check V2——旧实例已删除而钩子仍可用，钩子确已换新");
 }
 
@@ -410,7 +410,7 @@ static void showArmStationOffline()
     logScene(
         7,
         "留痕工位下线",
-        "DEL_SERVICE / FUNCTIONPOOL_CALL / REQUEST",
+        "DEL_SERVICE / callFunction / REQUEST",
         "班末留痕工位下线：DEL_SERVICE 删除即停——弱绑定钩子立即失效，运动"
         "调用链因留痕缺失断链传播；注销失败是普通返回值。");
 
@@ -424,8 +424,8 @@ static void showArmStationOffline()
     logVerify("服务已不存在 -> ret=-1：注销失败是普通返回值，不报错不崩溃");
 
     logAction(
-        "直调留痕钩子（已下线）", "FUNCTIONPOOL_CALL telemetry_hook (已下线)",
-        [&] { return YomkAPI::FUNCTIONPOOL_CALL("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
+        "直调留痕钩子（已下线）", "callFunction telemetry_hook (已下线)",
+        [&] { return YomkAPI::callFunction("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
     logVerify("钩子返回 eNo(service has been deleted or unregistered)：弱绑定失效，删除即停不悬垂");
 
     MoveCmd moveCmd{100.0, 50.0, 200.0, 0.8};

@@ -6,11 +6,11 @@
 
 | API | 说明 |
 |---|---|
-| `YomkAPI::FUNCTIONPOOL_REGISTER(name, func)` | 注册函数 |
-| `YomkAPI::FUNCTIONPOOL_REGISTER(name, func, "MsgName")` | 注册并声明期望的消息类型名（仅作内省元数据） |
-| `YomkAPI::FUNCTIONPOOL_REGISTER(name, func, "MsgName", "Description")` | 同上，追加函数说明（自由字符串，INFO_NAME 数据段可读） |
-| `YomkAPI::FUNCTIONPOOL_CALL(name, pkg)` | 按名调用函数（返回值即函数返回值）；未注册的名字返回 `eNo=1` |
-| `YomkAPI::FUNCTIONPOOL_UNREGISTER(name)` | 按名字从函数表移除 |
+| `YomkAPI::registerFunction(name, func)` | 注册函数 |
+| `YomkAPI::registerFunction(name, func, "MsgName")` | 注册并声明期望的消息类型名（仅作内省元数据） |
+| `YomkAPI::registerFunction(name, func, "MsgName", "Description")` | 同上，追加函数说明（自由字符串，INFO_NAME 数据段可读） |
+| `YomkAPI::callFunction(name, pkg)` | 按名调用函数（返回值即函数返回值）；未注册的名字返回 `eNo=1` |
+| `YomkAPI::unregisterFunction(name)` | 按名字从函数表移除 |
 | `YomkAPI::listFunctionNames()` | 获取全部函数名 |
 | `YomkAPI::getFunctionInfo(name)` | 查询单个已注册函数元信息 |
 | `YomkAPI::getAllFunctionInfo()` | 查询全部已注册函数元信息（FuncInfoList 结构化包） |
@@ -19,18 +19,18 @@
 
 ```cpp
 // 注册函数（第三参可选：声明期望的消息类型名；第四参可选：函数说明，均仅作内省元数据）
-YomkAPI::FUNCTIONPOOL_REGISTER("calcSum", [](YomkPkgPtr pkg) {
+YomkAPI::registerFunction("calcSum", [](YomkPkgPtr pkg) {
     return YomkResponse{YomkResponse::eOk, "result"};
 });
 
 // 调用函数（返回值即函数返回值；未注册的名字返回 eNo=1）
-YomkResponse resp = YomkAPI::FUNCTIONPOOL_CALL("calcSum", nullptr);
+YomkResponse resp = YomkAPI::callFunction("calcSum", nullptr);
 
 // 同名重复注册即运行时热替换，无需注销
-YomkAPI::FUNCTIONPOOL_REGISTER("calcSum", newFunc);
+YomkAPI::registerFunction("calcSum", newFunc);
 
 // 注销（按名字从函数表移除）
-YomkAPI::FUNCTIONPOOL_UNREGISTER("calcSum");
+YomkAPI::unregisterFunction("calcSum");
 ```
 
 ## 注意事项

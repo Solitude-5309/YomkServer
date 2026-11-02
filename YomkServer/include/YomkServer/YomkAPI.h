@@ -647,7 +647,7 @@ public:
     // EVENTLOOP_API
 public:
     // 启动指定事件循环
-    static YomkResponse EVENTLOOP_START(
+    static YomkResponse startEventLoop(
         const std::string& eventLoopName,
         YomkServiceFunc m_defaultServiceFunc = nullptr,
         const std::string& msgName = "")
@@ -661,7 +661,7 @@ public:
             yomkmsg::Eventloop::shared(yomk::Eventloop{eventLoopName, m_defaultServiceFunc, msgName}));
     }
     // 停止事件循环线程（保留未执行事件）
-    static YomkResponse EVENTLOOP_STOP(const std::string& eventLoopName)
+    static YomkResponse stopEventLoop(const std::string& eventLoopName)
     {
         if (!requireServer())
         {
@@ -670,7 +670,7 @@ public:
         return request("/YomkEventLoop/stop", yomkmsg::String::shared(eventLoopName));
     }
     // 异步投递事件
-    static YomkResponse EVENTLOOP_POST(
+    static YomkResponse postEvent(
         const std::string& eventLoopName,
         YomkPkgPtr eventData,
         YomkServiceFunc eventHandle = nullptr,
@@ -684,7 +684,7 @@ public:
             "/YomkEventLoop/post", yomkmsg::Event::shared(yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 同步投递事件（阻塞等待执行完成）
-    static YomkResponse EVENTLOOP_POST_WAIT(
+    static YomkResponse postEventAndWait(
         const std::string& eventLoopName,
         YomkPkgPtr eventData,
         YomkServiceFunc eventHandle = nullptr,
@@ -698,7 +698,7 @@ public:
             "/YomkEventLoop/post_wait", yomkmsg::Event::shared(yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 销毁事件循环并清空队列
-    static YomkResponse EVENTLOOP_DESTROY(const std::string& eventLoopName)
+    static YomkResponse destroyEventLoop(const std::string& eventLoopName)
     {
         if (!requireServer())
         {
@@ -744,7 +744,7 @@ public:
     // FUNCTIONPOOL_API
 public:
     // 注册函数到全局函数池（msgName 声明期望消息类型；description 函数说明，内容使用者自定义，均可为空）
-    static YomkResponse FUNCTIONPOOL_REGISTER(
+    static YomkResponse registerFunction(
         const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
         const std::string& description = "")
     {
@@ -756,7 +756,7 @@ public:
             "/YomkFunctionPool/register", yomkmsg::Function::shared(yomk::Function{funcName, func, msgName, description}));
     }
     // 从函数池注销函数
-    static YomkResponse FUNCTIONPOOL_UNREGISTER(const std::string& funcName)
+    static YomkResponse unregisterFunction(const std::string& funcName)
     {
         if (!requireServer())
         {
@@ -765,7 +765,7 @@ public:
         return request("/YomkFunctionPool/unregister", yomkmsg::String::shared(funcName));
     }
     // 调用函数池中注册的函数
-    static YomkResponse FUNCTIONPOOL_CALL(const std::string& funcName, YomkPkgPtr callData)
+    static YomkResponse callFunction(const std::string& funcName, YomkPkgPtr callData)
     {
         if (!requireServer())
         {

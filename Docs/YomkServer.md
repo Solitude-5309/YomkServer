@@ -69,7 +69,7 @@ YomkAPI::shutdown();
 int MyService::init()
 {
     // FunctionPool：服务删除后回调失效（返回 eNo）
-    YomkAPI::FUNCTIONPOOL_REGISTER("my_work", weakFunc(&MyService::myWork));
+    YomkAPI::registerFunction("my_work", weakFunc(&MyService::myWork));
 
     // Context checker/monitor 签名不同，同一 weakFunc 自动适配：删除后 checker 放行（eAccept）、monitor 丢弃
     YomkAPI::setContextChecker("key", weakFunc(&MyService::myCheck));

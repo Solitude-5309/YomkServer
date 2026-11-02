@@ -643,13 +643,13 @@ YomkResponse taskHandler(YomkPkgPtr pkg) {
 }
 
 // 启动事件循环
-YomkAPI::EVENTLOOP_START("worker_loop", taskHandler);
+YomkAPI::startEventLoop("worker_loop", taskHandler);
 
 // 异步投递
-YomkAPI::EVENTLOOP_POST("worker_loop", yomkmsg::String::shared("task_1"));
+YomkAPI::postEvent("worker_loop", yomkmsg::String::shared("task_1"));
 
 // 同步投递（等待结果）
-YomkResponse resp = YomkAPI::EVENTLOOP_POST_WAIT("worker_loop", yomkmsg::String::shared("task_2"));
+YomkResponse resp = YomkAPI::postEventAndWait("worker_loop", yomkmsg::String::shared("task_2"));
 if(resp.m_status == YomkResponse::eOk) {
     auto event = yomk::unPack<yomkmsg::Event>(resp.m_data);
     // event->d.m_response 即事件处理函数的返回值（POST_WAIT 将其带回给等待方）
@@ -657,10 +657,10 @@ if(resp.m_status == YomkResponse::eOk) {
 }
 
 // 停止：仅退出工作线程，未执行的排队事件保留在队列（再次 START 重启续跑，事件不丢失）
-YomkAPI::EVENTLOOP_STOP("worker_loop");
+YomkAPI::stopEventLoop("worker_loop");
 
 // 销毁：先停止退出工作线程、再清空未执行的排队事件（不可续跑），彻底释放
-YomkAPI::EVENTLOOP_DESTROY("worker_loop");
+YomkAPI::destroyEventLoop("worker_loop");
 ```
 
 ## 示例4：FunctionPool 公共函数池
@@ -676,24 +676,24 @@ YomkResponse validateAmount(YomkPkgPtr pkg) {
 }
 
 // 注册 + 调用
-YomkAPI::FUNCTIONPOOL_REGISTER("validate_amount", validateAmount);
-YomkResponse resp = YomkAPI::FUNCTIONPOOL_CALL("validate_amount", yomkmsg::String::shared("100.5"));
+YomkAPI::registerFunction("validate_amount", validateAmount);
+YomkResponse resp = YomkAPI::callFunction("validate_amount", yomkmsg::String::shared("100.5"));
 
 // 注销（注销后调用返回 eNo: funcName is not register）
-YomkAPI::FUNCTIONPOOL_UNREGISTER("validate_amount");
+YomkAPI::unregisterFunction("validate_amount");
 ```
 
 服务成员函数注册到 FunctionPool 时必须用 `weakFunc(&Class::Method)` 弱绑定，服务删除（`YomkAPI::delService()`）后回调自动失效而非悬垂 this 崩溃：
 
 ```cpp
 int MyService::init() {
-    YomkAPI::FUNCTIONPOOL_REGISTER("my_work", weakFunc(&MyService::doWork));
+    YomkAPI::registerFunction("my_work", weakFunc(&MyService::doWork));
     return 0;
 }
 
 void MyService::deinit() {
     // 可选：删除服务时框架自动调用，也可主动注销外部注册的回调
-    YomkAPI::FUNCTIONPOOL_UNREGISTER("my_work");
+    YomkAPI::unregisterFunction("my_work");
 }
 ```
 
@@ -761,12 +761,12 @@ resp = YomkAPI::getAllContextInfo();
 `/YomkEventLoop` 服务自身提供循环级内省（既有功能函数均已用尾参补齐类型名，服务器层内省同步可见）。Event 可携带 tag 标记（POST 末位可选参数，缺省空，旧调用零改动）；启动时也可用末位 "MsgName" 字符串字面量声明默认处理函数期望的消息类型：
 
 ```cpp
-YomkAPI::EVENTLOOP_START("loop_a", nullptr);
-YomkAPI::EVENTLOOP_START("loop_b", defaultHandle, "String");  // 声明默认处理函数期望类型，内省可见 [String]
+YomkAPI::startEventLoop("loop_a", nullptr);
+YomkAPI::startEventLoop("loop_b", defaultHandle, "String");  // 声明默认处理函数期望类型，内省可见 [String]
 
 // 投递事件时可选打 tag（tag 仅作内省标记，不参与路由/处理）
-YomkAPI::EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle, "tag1");
-YomkAPI::EVENTLOOP_POST("loop_a", yomkmsg::String::shared("data"), myHandle);  // 不打 tag，旧写法直接编译
+YomkAPI::postEvent("loop_a", yomkmsg::String::shared("data"), myHandle, "tag1");
+YomkAPI::postEvent("loop_a", yomkmsg::String::shared("data"), myHandle);  // 不打 tag，旧写法直接编译
 
 // 循环名列表（返回 StringArray）
 YomkResponse resp = YomkAPI::listEventLoops();   // arr->d: ["loop_a", "loop_b"]
@@ -788,9 +788,9 @@ resp = YomkAPI::getAllEventLoopInfo();
 `/YomkFunctionPool` 服务自身提供注册表级内省（既有功能函数均已用尾参补齐类型名，服务器层内省同步可见）。注册时可用第三参声明期望消息类型、第四参追加函数说明（与 installFunc 第三/四参语义同款，仅作内省元数据，不参与运行时校验）：
 
 ```cpp
-YomkAPI::FUNCTIONPOOL_REGISTER("func_a", funcA, "String");  // 声明期望类型，内省可见 [String]
-YomkAPI::FUNCTIONPOOL_REGISTER("func_desc", funcA, "String", "函数说明");  // 四参：说明挂 INFO_NAME 数据段
-YomkAPI::FUNCTIONPOOL_REGISTER("func_b", funcB);          // 不声明类型，内省无括号后缀
+YomkAPI::registerFunction("func_a", funcA, "String");  // 声明期望类型，内省可见 [String]
+YomkAPI::registerFunction("func_desc", funcA, "String", "函数说明");  // 四参：说明挂 INFO_NAME 数据段
+YomkAPI::registerFunction("func_b", funcB);          // 不声明类型，内省无括号后缀
 
 // 注册函数名列表（返回 StringArray）
 YomkResponse resp = YomkAPI::listFunctionNames();    // arr->d: ["func_a", "func_b", "func_desc"]

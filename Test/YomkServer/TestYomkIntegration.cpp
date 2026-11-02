@@ -9,7 +9,7 @@
  * S2. 删除内置服务契约与恢复：YomkAPI::delService("/YomkLogger") → 服务级 eNo + 精确消息；
  *     YomkAPI::newService<YomkLogger>() 无参重注册（new T(this) 注入 server 指针，构造函数
  *     固定名 "/YomkLogger" 生效）→ LOGGER API 恢复且全链路可用
- * S1. YomkAPI::shutdown() 全链路统一收尾（压轴）：YomkAPI::EVENTLOOP_POST 积压、FILE_LOG_INFO 缓冲、
+ * S1. YomkAPI::shutdown() 全链路统一收尾（压轴）：YomkAPI::postEvent 积压、FILE_LOG_INFO 缓冲、
  *     异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘（FileLogger
  *     析构 write）、API 回归 eInvalid + "YomkServer is not init"（API 守卫级：shutdown 内
  *     setServer(nullptr)，serverSnapshot 空守卫；服务级 eNo 仅出现在服务表内服务缺失时）、
@@ -215,11 +215,11 @@ int main()
         YOMK_TEST_CHECK(!ec, "S1 临时目录创建成功: " + tmpDir.string());
 
         // 事件积压（不等待执行完成；积压处理语义不保证全执行，仅验证 shutdown 有限时间返回）
-        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_START("integration_loop").m_status == YomkResponse::eOk, "启动 integration_loop");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("integration_loop").m_status == YomkResponse::eOk, "启动 integration_loop");
         bool postOk = true;
         for (int i = 0; i < 100; ++i)
         {
-            if (YomkAPI::EVENTLOOP_POST("integration_loop", nullptr,
+            if (YomkAPI::postEvent("integration_loop", nullptr,
                                     [](YomkPkgPtr) { return YomkResponse(YomkResponse::eOk); })
                      .m_status != YomkResponse::eOk)
             {
@@ -265,9 +265,9 @@ int main()
               "shutdown 返回后文件日志已落盘且含标记串（析构 write）");
 
         // API 守卫级回归：serverSnapshot 已置空 → eInvalid + "YomkServer is not init"
-        auto postLoop = YomkAPI::EVENTLOOP_POST("integration_loop", nullptr, YomkServiceFunc());
+        auto postLoop = YomkAPI::postEvent("integration_loop", nullptr, YomkServiceFunc());
         YOMK_TEST_CHECK(postLoop.m_status == YomkResponse::eInvalid && postLoop.m_msg == "YomkServer is not init",
-              "shutdown 后 YomkAPI::EVENTLOOP_POST 回归 eInvalid + 守卫消息");
+              "shutdown 后 YomkAPI::postEvent 回归 eInvalid + 守卫消息");
         auto postCtx = YomkAPI::setContext("drain_key", yomkmsg::String::shared(std::string("x")));
         YOMK_TEST_CHECK(postCtx.m_status == YomkResponse::eInvalid && postCtx.m_msg == "YomkServer is not init",
               "shutdown 后 setContext 回归 eInvalid + 守卫消息");

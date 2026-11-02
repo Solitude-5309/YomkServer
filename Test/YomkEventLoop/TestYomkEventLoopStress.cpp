@@ -8,7 +8,7 @@
  * 3. 10 万级纯积压路径：gate 占住 worker 使投递/消费速率解耦——纯测 post + 无界队列大规模增长/重分配
  *    （断言 pending:N 积压确认，释放后守恒）
  * 4. 大数据量字符串：4096 字节 tag × max(N/10,1000) 个事件（约数十 MB），无崩溃且守恒
- * 5. API 层 10 万级宏投递：YomkAPI::EVENTLOOP_POST 走完整路由+解包路径，计数守恒 + API 级 QPS 基线
+ * 5. API 层 10 万级宏投递：YomkAPI::postEvent 走完整路由+解包路径，计数守恒 + API 级 QPS 基线
  *
  * 说明：
  * - QPS/耗时基线仅以 [BASELINE] 行记录、不作断言（环境噪声使性能断言不可靠）；
@@ -312,12 +312,12 @@ int main()
         g_execCount.store(0);
         auto server = YomkAPI::init(1);
         YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
-        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_START("stress_loop", nullptr).m_status == YomkResponse::eOk, "S5 START 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("stress_loop", nullptr).m_status == YomkResponse::eOk, "S5 START 返回 eOk");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
         {
-            YomkAPI::EVENTLOOP_POST("stress_loop", yomkmsg::String::shared(std::string("payload")), countHandler(), "");
+            YomkAPI::postEvent("stress_loop", yomkmsg::String::shared(std::string("payload")), countHandler(), "");
         }
         auto t1 = std::chrono::steady_clock::now();
         bool drained = waitUntil([N] { return g_execCount.load() == static_cast<long>(N); }, 30000);
@@ -326,13 +326,13 @@ int main()
         YOMK_TEST_CHECK(drained, "S5 drain 完成（30s 看门狗）");
         YOMK_TEST_CHECK(g_execCount.load() == static_cast<long>(N), "S5 API 层计数守恒（N/N，路由+解包路径不丢失）");
         recordBaseline(
-            "S5 API-level post (YomkAPI::EVENTLOOP_POST)",
+            "S5 API-level post (YomkAPI::postEvent)",
             N,
             std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count());
         recordBaseline(
             "S5 API-level end-to-end", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t0).count());
 
-        YOMK_TEST_CHECK(YomkAPI::EVENTLOOP_DESTROY("stress_loop").m_status == YomkResponse::eOk, "S5 DESTROY 返回 eOk");
+        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("stress_loop").m_status == YomkResponse::eOk, "S5 DESTROY 返回 eOk");
         YomkAPI::shutdown();
     }
 

@@ -114,7 +114,7 @@ int main(int /*argc*/, char** /*argv*/)
         auto t0 = std::chrono::steady_clock::now();
         for (uint64_t i = 0; i < N; ++i)
         {
-            auto resp = YomkAPI::FUNCTIONPOOL_REGISTER(makeName("s1_func_", i), stressNoopFunc);
+            auto resp = YomkAPI::registerFunction(makeName("s1_func_", i), stressNoopFunc);
             if (resp.m_status == YomkResponse::eOk)
                 ++regOk;
         }
@@ -129,7 +129,7 @@ int main(int /*argc*/, char** /*argv*/)
         auto t2 = std::chrono::steady_clock::now();
         for (uint64_t i = 0; i < N; ++i)
         {
-            auto resp = YomkAPI::FUNCTIONPOOL_CALL("s1_func_0", nullptr);
+            auto resp = YomkAPI::callFunction("s1_func_0", nullptr);
             if (resp.m_status == YomkResponse::eOk)
                 ++callOk;
         }
@@ -144,7 +144,7 @@ int main(int /*argc*/, char** /*argv*/)
         auto t4 = std::chrono::steady_clock::now();
         for (uint64_t i = 0; i < N; ++i)
         {
-            auto resp = YomkAPI::FUNCTIONPOOL_UNREGISTER(makeName("s1_func_", i));
+            auto resp = YomkAPI::unregisterFunction(makeName("s1_func_", i));
             if (resp.m_status == YomkResponse::eOk)
                 ++unregOk;
         }
@@ -165,7 +165,7 @@ int main(int /*argc*/, char** /*argv*/)
         const uint64_t totalCalls = perThread * kThreads;
 
         g_s2ExecCount.store(0);
-        YomkAPI::FUNCTIONPOOL_REGISTER("s2_hot", stressCountFunc);
+        YomkAPI::registerFunction("s2_hot", stressCountFunc);
 
         auto t0 = std::chrono::steady_clock::now();
         std::vector<std::thread> workers;
@@ -177,7 +177,7 @@ int main(int /*argc*/, char** /*argv*/)
                 {
                     for (uint64_t i = 0; i < perThread; ++i)
                     {
-                        YomkAPI::FUNCTIONPOOL_CALL("s2_hot", nullptr);
+                        YomkAPI::callFunction("s2_hot", nullptr);
                     }
                 });
         }
@@ -191,7 +191,7 @@ int main(int /*argc*/, char** /*argv*/)
             g_s2ExecCount.load() == totalCalls,
             "S2: 并发 call 守恒 " + std::to_string(g_s2ExecCount.load()) + "/" + std::to_string(totalCalls));
 
-        YomkAPI::FUNCTIONPOOL_UNREGISTER("s2_hot");
+        YomkAPI::unregisterFunction("s2_hot");
     }
 
     // ========================================================================
@@ -205,13 +205,13 @@ int main(int /*argc*/, char** /*argv*/)
         for (uint64_t i = 0; i < N; ++i)
         {
             std::string name = makeName("s3_churn_", i);
-            if (YomkAPI::FUNCTIONPOOL_REGISTER(name, stressNoopFunc).m_status == YomkResponse::eOk)
+            if (YomkAPI::registerFunction(name, stressNoopFunc).m_status == YomkResponse::eOk)
                 ++regOk;
-            if (YomkAPI::FUNCTIONPOOL_CALL(name, nullptr).m_status == YomkResponse::eOk)
+            if (YomkAPI::callFunction(name, nullptr).m_status == YomkResponse::eOk)
                 ++callOk;
-            if (YomkAPI::FUNCTIONPOOL_UNREGISTER(name).m_status == YomkResponse::eOk)
+            if (YomkAPI::unregisterFunction(name).m_status == YomkResponse::eOk)
                 ++unregOk;
-            if (YomkAPI::FUNCTIONPOOL_CALL(name, nullptr).m_status == YomkResponse::eNo)
+            if (YomkAPI::callFunction(name, nullptr).m_status == YomkResponse::eNo)
                 ++postNo;
         }
         auto t1 = std::chrono::steady_clock::now();
@@ -237,11 +237,11 @@ int main(int /*argc*/, char** /*argv*/)
         auto t0 = std::chrono::steady_clock::now();
         for (uint64_t i = 0; i < rounds; ++i)
         {
-            if (YomkAPI::FUNCTIONPOOL_REGISTER(bigName, stressNoopFunc).m_status == YomkResponse::eOk)
+            if (YomkAPI::registerFunction(bigName, stressNoopFunc).m_status == YomkResponse::eOk)
                 ++regOk;
-            if (YomkAPI::FUNCTIONPOOL_CALL(bigName, nullptr).m_status == YomkResponse::eOk)
+            if (YomkAPI::callFunction(bigName, nullptr).m_status == YomkResponse::eOk)
                 ++callOk;
-            if (YomkAPI::FUNCTIONPOOL_UNREGISTER(bigName).m_status == YomkResponse::eOk)
+            if (YomkAPI::unregisterFunction(bigName).m_status == YomkResponse::eOk)
                 ++unregOk;
         }
         auto t1 = std::chrono::steady_clock::now();
@@ -253,7 +253,7 @@ int main(int /*argc*/, char** /*argv*/)
         YOMK_TEST_CHECK(unregOk == rounds, "S4: 大名 unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(rounds));
 
         // 最终确认已清理
-        YOMK_TEST_CHECK(YomkAPI::FUNCTIONPOOL_CALL(bigName, nullptr).m_status == YomkResponse::eNo, "S4: 大名最终已注销（eNo）");
+        YOMK_TEST_CHECK(YomkAPI::callFunction(bigName, nullptr).m_status == YomkResponse::eNo, "S4: 大名最终已注销（eNo）");
     }
 
     // ========================================================================
@@ -272,14 +272,14 @@ int main(int /*argc*/, char** /*argv*/)
             // register 10
             for (int k = 0; k < kGroupSize; ++k)
             {
-                auto resp = YomkAPI::FUNCTIONPOOL_REGISTER(makeName("s5_mix_", g * kGroupSize + k), stressNoopFunc);
+                auto resp = YomkAPI::registerFunction(makeName("s5_mix_", g * kGroupSize + k), stressNoopFunc);
                 if (resp.m_status == YomkResponse::eOk)
                     ++regOk;
             }
             // call 10
             for (int k = 0; k < kGroupSize; ++k)
             {
-                auto resp = YomkAPI::FUNCTIONPOOL_CALL(makeName("s5_mix_", g * kGroupSize + k), nullptr);
+                auto resp = YomkAPI::callFunction(makeName("s5_mix_", g * kGroupSize + k), nullptr);
                 if (resp.m_status == YomkResponse::eOk)
                     ++callOk;
             }
@@ -291,7 +291,7 @@ int main(int /*argc*/, char** /*argv*/)
             // unregister 10
             for (int k = 0; k < kGroupSize; ++k)
             {
-                auto resp = YomkAPI::FUNCTIONPOOL_UNREGISTER(makeName("s5_mix_", g * kGroupSize + k));
+                auto resp = YomkAPI::unregisterFunction(makeName("s5_mix_", g * kGroupSize + k));
                 if (resp.m_status == YomkResponse::eOk)
                     ++unregOk;
             }

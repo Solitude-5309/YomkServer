@@ -18,22 +18,22 @@
  *
  * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
  *
- * 场景 1 showArmToolRegister  [FUNCTIONPOOL_REGISTER(2参) / CALL]
+ * 场景 1 showArmToolRegister  [registerFunction(2参) / CALL]
  *        开班建工具柜：登记"负载合计"工具后按名调用，入参流进函数、结果流回
  *        调用方（msg 与 data 双份）——跨模块共享的最小闭环。
- * 场景 2 showArmToolMeta      [FUNCTIONPOOL_REGISTER(4参) / INFO_NAME / CALL]
+ * 场景 2 showArmToolMeta      [registerFunction(4参) / INFO_NAME / CALL]
  *        带元数据登记班次握手工具：MsgName 与说明仅作内省元数据，调用时框架
  *        不做类型校验；INFO_NAME 单查逐字段确认。
- * 场景 3 showArmToolNullGuard [YomkAPI::FUNCTIONPOOL_CALL(nullptr)]
+ * 场景 3 showArmToolNullGuard [YomkAPI::callFunction(nullptr)]
  *        空参守卫：CALL 传 nullptr，函数内解包宏判空自动返回 eNo——统一契约
  *        无需函数自己写 if；arm.tool 无日志自证函数体未执行。
- * 场景 4 showArmToolHotSwap   [FUNCTIONPOOL_REGISTER(3参) / INFO_NAME / CALL]
+ * 场景 4 showArmToolHotSwap   [registerFunction(3参) / INFO_NAME / CALL]
  *        班中工具升级：同名再注册即热替换（无需注销），CALL 走新实现；MsgName
  *        与说明元数据随新注册整体刷新（未传说明则清空）。
  * 场景 5 showArmToolDashboard [INFO_NAMES / INFO_NAME / INFO_ALL]
  *        运维面板：函数名清单（字典序）、单查未注册名字演示 eNo not-found、
  *        全量逐字段导出——框架只回结构化数据，展示格式由用户定义。
- * 场景 6 showArmToolCleanup   [YomkAPI::FUNCTIONPOOL_UNREGISTER / CALL / INFO_ALL]
+ * 场景 6 showArmToolCleanup   [YomkAPI::unregisterFunction / CALL / INFO_ALL]
  *        收班清柜：注销后调用、重复注销均返回 eNo（not-found 惯例）；
  *        INFO_ALL 确认清单已空，班次闭环。
  *
@@ -206,18 +206,18 @@ static void showArmToolRegister()
     logScene(
         1,
         "开班登记工具函数",
-        "FUNCTIONPOOL_REGISTER(2参) / CALL",
+        "registerFunction(2参) / CALL",
         "开班时主控模块把负载合计工具按名登记进函数池：REGISTER 只登记不执行，"
         "CALL 才按名调用——入参消息包流进函数，返回值原样流回调用方，跨模块共享"
         "无需感知对方实现。");
 
     logAction(
         "登记负载合计工具 tool.payloadSum", "REGISTER tool.payloadSum",
-        [&] { return YomkAPI::FUNCTIONPOOL_REGISTER("tool.payloadSum", payloadSum); });
+        [&] { return YomkAPI::registerFunction("tool.payloadSum", payloadSum); });
 
     logAction(
         "调用负载合计工具 tool.payloadSum", "CALL tool.payloadSum",
-        [&] { return YomkAPI::FUNCTIONPOOL_CALL("tool.payloadSum", yomkmsg::StringArray::shared(std::vector<std::string>{"12", "8", "5"})); });
+        [&] { return YomkAPI::callFunction("tool.payloadSum", yomkmsg::StringArray::shared(std::vector<std::string>{"12", "8", "5"})); });
     logVerify("arm.tool 日志夹在开始行与结果行之间——CALL 在调用方线程同步执行；返回值即函数返回值，msg 与 data 双份携带 payload=25kg");
 }
 
@@ -227,13 +227,13 @@ static void showArmToolMeta()
     logScene(
         2,
         "带元数据登记工具",
-        "FUNCTIONPOOL_REGISTER(4参) / INFO_NAME / CALL",
+        "registerFunction(4参) / INFO_NAME / CALL",
         "班次握手工具登记时声明期望消息类型与用途说明：MsgName 与说明仅作内省"
         "元数据，调用时框架不做类型校验；INFO_NAME 单查可逐字段读取元信息。");
 
     logAction(
         "登记班次握手工具 tool.handshake（带元数据）", "REGISTER tool.handshake (4参)",
-        [&] { return YomkAPI::FUNCTIONPOOL_REGISTER("tool.handshake", handshake, "String", "班次握手：向指定操作工回执问候"); });
+        [&] { return YomkAPI::registerFunction("tool.handshake", handshake, "String", "班次握手：向指定操作工回执问候"); });
 
     logAction("查看握手工具元信息");
     YomkResponse resp = YomkAPI::getFunctionInfo("tool.handshake");
@@ -247,7 +247,7 @@ static void showArmToolMeta()
 
     logAction(
         "调用班次握手工具 tool.handshake", "CALL tool.handshake",
-        [&] { return YomkAPI::FUNCTIONPOOL_CALL("tool.handshake", yomkmsg::String::shared("张工")); });
+        [&] { return YomkAPI::callFunction("tool.handshake", yomkmsg::String::shared("张工")); });
 }
 
 // 场景 3：空参调用统一守卫
@@ -256,13 +256,13 @@ static void showArmToolNullGuard()
     logScene(
         3,
         "空参调用统一守卫",
-        "YomkAPI::FUNCTIONPOOL_CALL(nullptr)",
+        "YomkAPI::callFunction(nullptr)",
         "误传空参调用握手工具：CALL 的入参消息包可为 nullptr，被调函数内的解包宏"
         "判空后自动返回 eNo——空参守卫是框架统一契约，无需函数自己写 if。");
 
     logAction(
         "空参调用握手工具 tool.handshake", "CALL tool.handshake (nullptr)",
-        [&] { return YomkAPI::FUNCTIONPOOL_CALL("tool.handshake", nullptr); });
+        [&] { return YomkAPI::callFunction("tool.handshake", nullptr); });
     logVerify("开始行与结果行之间无 arm.tool 日志：函数体未执行——eNo 来自函数入口解包宏判空，统一契约无需函数自己写 if");
 }
 
@@ -272,7 +272,7 @@ static void showArmToolHotSwap()
     logScene(
         4,
         "工具函数热升级",
-        "FUNCTIONPOOL_REGISTER(3参) / INFO_NAME / CALL",
+        "registerFunction(3参) / INFO_NAME / CALL",
         "班中问候口径升级：对已注册名字再次 REGISTER 即热替换函数本体，无需先"
         "注销；MsgName 与说明元数据随新注册整体刷新，随后调用走新实现。");
 
@@ -293,7 +293,7 @@ static void showArmToolHotSwap()
 
     logAction(
         "热替换班次握手工具 tool.handshake（V2）", "REGISTER tool.handshake (V2, 3参)",
-        [&] { return YomkAPI::FUNCTIONPOOL_REGISTER("tool.handshake", handshakeV2, "String"); });
+        [&] { return YomkAPI::registerFunction("tool.handshake", handshakeV2, "String"); });
     logVerify("already exist 提示 + eOk：同名重复注册即运行时热替换，无需先注销");
 
     logAction("复查握手工具元信息");
@@ -308,7 +308,7 @@ static void showArmToolHotSwap()
 
     logAction(
         "调用升级后的握手工具 tool.handshake", "CALL tool.handshake (V2)",
-        [&] { return YomkAPI::FUNCTIONPOOL_CALL("tool.handshake", yomkmsg::String::shared("张工")); });
+        [&] { return YomkAPI::callFunction("tool.handshake", yomkmsg::String::shared("张工")); });
     logVerify("arm.tool 日志为 V2 文案：热替换立即生效，旧实现不再被调用");
 }
 
@@ -360,27 +360,27 @@ static void showArmToolCleanup()
     logScene(
         6,
         "收班清柜注销",
-        "YomkAPI::FUNCTIONPOOL_UNREGISTER / CALL / INFO_ALL",
+        "YomkAPI::unregisterFunction / CALL / INFO_ALL",
         "收班下线全部工具：UNREGISTER 把函数移出池子；注销后调用、重复注销均"
         "返回 eNo（not-found 惯例）——eInvalid 仅用于参数无效；INFO_ALL 确认清柜。");
 
     logAction(
         "注销负载合计工具 tool.payloadSum", "UNREGISTER tool.payloadSum",
-        [&] { return YomkAPI::FUNCTIONPOOL_UNREGISTER("tool.payloadSum"); });
+        [&] { return YomkAPI::unregisterFunction("tool.payloadSum"); });
 
     logAction(
         "调用已注销工具 tool.payloadSum", "CALL tool.payloadSum (已注销)",
-        [&] { return YomkAPI::FUNCTIONPOOL_CALL("tool.payloadSum", nullptr); });
+        [&] { return YomkAPI::callFunction("tool.payloadSum", nullptr); });
     logVerify("已注销名字 -> eNo(funcName is not register)：开始行与结果行之间无 arm.tool 日志，函数已不在池中");
 
     logAction(
         "重复注销负载合计工具 tool.payloadSum", "UNREGISTER tool.payloadSum (重复)",
-        [&] { return YomkAPI::FUNCTIONPOOL_UNREGISTER("tool.payloadSum"); });
+        [&] { return YomkAPI::unregisterFunction("tool.payloadSum"); });
     logVerify("重复注销同样 -> eNo：not-found 是框架统一惯例，不报错也不崩溃");
 
     logAction(
         "注销班次握手工具 tool.handshake", "UNREGISTER tool.handshake",
-        [&] { return YomkAPI::FUNCTIONPOOL_UNREGISTER("tool.handshake"); });
+        [&] { return YomkAPI::unregisterFunction("tool.handshake"); });
 
     logAction("巡检清单确认已清空");
     YomkResponse allResp = YomkAPI::getAllFunctionInfo();
