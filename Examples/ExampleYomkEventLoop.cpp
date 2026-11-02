@@ -20,7 +20,7 @@
  *
  * 场景 1 showArmLineStart      [startEventLoop(3参) / INFO_LOOP]
  *        产线开班：启动运动指令循环（默认处理函数 + MsgName 元数据），INFO_LOOP
- *        确认专用线程就绪；重复 START 同名循环为幂等重启（eOk 不报错）。
+ *        确认专用线程就绪；重复 START 同名循环为幂等重启（ResStatus::Successed 不报错）。
  * 场景 2 showArmMotionQueue    [YomkAPI::postEvent / INFO_LOOP(n)]
  *        连续下发 5 条运动指令：POST 立即返回不阻塞；INFO_LOOP(n) 观察队列
  *        积压与队首 tag 预览；第 1 条指令执行时递归投递 3 条微调指令排到
@@ -43,7 +43,7 @@
  *        全量导出——框架只回结构化数据，展示格式由用户定义。
  * 场景 8 showArmLineOff        [YomkAPI::destroyEventLoop]
  *        收班：逐循环 DESTROY（停线程并清空队列、移出循环表，不可续跑）；
- *        对已销毁循环的一切操作均返回 eNo（not-found 惯例），清单确认已空。
+ *        对已销毁循环的一切操作均返回 ResStatus::Failed（not-found 惯例），清单确认已空。
  *
  * 循环规划（跨场景流转，模拟主控/示教器两模块各自专用线程）：
  *   motionLoop  START 3 参（motionHandle + String 元数据）  主控运动指令循环
@@ -77,22 +77,22 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 }
 
 // API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
-// status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
+// status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const YomkResponse& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << resp.m_status;
-    if (resp.m_status == YomkResponse::eOk)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
+    if (resp.m_status == YomkResponse::ResStatus::Successed)
     {
-        oss << "(eOk 成功)";
+        oss << "(ResStatus::Successed 成功)";
     }
-    else if (resp.m_status == YomkResponse::eNo)
+    else if (resp.m_status == YomkResponse::ResStatus::Failed)
     {
-        oss << "(eNo 拒绝或不存在)";
+        oss << "(ResStatus::Failed 拒绝或不存在)";
     }
     else
     {
-        oss << "(eInvalid 未初始化或参数无效)";
+        oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
     oss << ", msg=\"" << resp.m_msg << "\"";
     YOMK_INFO_TAG("arm.demo", oss.str());
@@ -172,7 +172,7 @@ static void logEvent(const YomkResponse& resp)
     YOMK_INFO_TAG("arm.demo", oss.str());
 
     oss.str("");
-    oss << "[Event]     response: status=" << event->d.m_response.m_status << ", msg=\"" << event->d.m_response.m_msg
+    oss << "[Event]     response: status=" << static_cast<int>(event->d.m_response.m_status) << ", msg=\"" << event->d.m_response.m_msg
         << "\"";
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
@@ -202,7 +202,7 @@ YomkResponse motionHandle(YomkPkgPtr pkg)
     auto cmd = yomk::unPack<yomkmsg::String>(pkg);
     if (!cmd)
     {
-        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+        return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     std::ostringstream oss;
     oss << "执行运动指令: " << cmd->d << "（循环线程 " << std::this_thread::get_id() << "）";
@@ -222,7 +222,7 @@ YomkResponse motionHandle(YomkPkgPtr pkg)
         YOMK_INFO_TAG("arm.motion", "指令 mv1 触发 3 条微调指令，已追加到队列尾部");
     }
 
-    return {YomkResponse::eOk, "eventHandle success. "};
+    return {YomkResponse::ResStatus::Successed, "eventHandle success. "};
 }
 
 // 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 START 2 参时指定）
@@ -231,12 +231,12 @@ YomkResponse teachHandle(YomkPkgPtr pkg)
     auto msg = yomk::unPack<yomkmsg::String>(pkg);
     if (!msg)
     {
-        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+        return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     std::ostringstream oss;
     oss << "示教器事件: " << msg->d << "（循环线程 " << std::this_thread::get_id() << "）";
     YOMK_INFO_TAG("arm.teach", oss.str());
-    return {YomkResponse::eOk, "teachHandle success"};
+    return {YomkResponse::ResStatus::Successed, "teachHandle success"};
 }
 
 // ---------------------------------------------------------------------------
@@ -270,7 +270,7 @@ static void showArmLineStart()
     // 重复启动同名循环：幂等重启，不报错也不影响线程与队列
     logAction(
         "重复启动同名循环", "START motionLoop (重复)", [&] { return YomkAPI::startEventLoop("motionLoop", motionHandle, "String"); });
-    logVerify("对已存在名称再次 START -> eOk：幂等重启，线程与队列不受影响");
+    logVerify("对已存在名称再次 START -> ResStatus::Successed：幂等重启，线程与队列不受影响");
 }
 
 // 场景 2：插补运动连续下发（异步投递 + 队列观察 + FIFO）
@@ -377,7 +377,7 @@ static void showArmTempHandler()
 
     // lambda 先赋给具名变量再传宏：返回值构造含逗号时，
     // 直接内联进宏会让预处理器把逗号误当实参分隔符
-    YomkServiceFunc tempHandle = [](YomkPkgPtr) -> YomkResponse { return {YomkResponse::eOk, "tempHandle result"}; };
+    YomkServiceFunc tempHandle = [](YomkPkgPtr) -> YomkResponse { return {YomkResponse::ResStatus::Successed, "tempHandle result"}; };
 
     YomkResponse resp = logAction(
         "投递紧急巡检任务（临时函数）",
@@ -415,7 +415,7 @@ static void showArmLinePause()
 
     logAction(
         "停止态投递被拒", "POST motionLoop (已停止)", [&] { return YomkAPI::postEvent("motionLoop", yomkmsg::String::shared("rejected")); });
-    logVerify("停止后投递 -> eNo(event loop not running, post rejected)：循环未运行不接收新事件");
+    logVerify("停止后投递 -> ResStatus::Failed(event loop not running, post rejected)：循环未运行不接收新事件");
 
     logAction("恢复运行（续跑）", "START motionLoop (续跑)", [&] { return YomkAPI::startEventLoop("motionLoop", motionHandle, "String"); });
     YOMK_INFO_TAG("arm.demo", "等待保留事件被续跑消化...");
@@ -488,7 +488,7 @@ static void showArmLineOff()
         "收班销毁",
         "YomkAPI::destroyEventLoop",
         "收班下线全部循环：DESTROY 停线程并清空队列、把循环移出循环表，不可续跑；"
-        "对已销毁循环的一切操作均返回 eNo（not-found 惯例）。");
+        "对已销毁循环的一切操作均返回 ResStatus::Failed（not-found 惯例）。");
 
     logAction("销毁运动循环", "DESTROY motionLoop", [&] { return YomkAPI::destroyEventLoop("motionLoop"); });
     logAction("销毁示教循环", "DESTROY teachLoop", [&] { return YomkAPI::destroyEventLoop("teachLoop"); });
@@ -505,7 +505,7 @@ static void showArmLineOff()
     logAction("已销毁循环查询被拒");
     YomkResponse resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop (已销毁)", resp);
-    logVerify("对已销毁循环的一切操作 -> eNo(event loop not exist)：not-found 惯例，销毁不可续跑");
+    logVerify("对已销毁循环的一切操作 -> ResStatus::Failed(event loop not exist)：not-found 惯例，销毁不可续跑");
 }
 
 int main(int argc, char* argv[])

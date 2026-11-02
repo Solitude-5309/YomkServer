@@ -9,7 +9,7 @@
  *    三参元数据（m_msgName）、四参函数说明（m_description）、
  *    两参覆盖清除残留信息、三参/四参覆盖恢复
  * 4. funcInfos 内省
- * 5. invoke：命中（自身响应 + pkg 透传回显）、非法名/未安装返回 eNo 契约消息
+ * 5. invoke：命中（自身响应 + pkg 透传回显）、非法名/未安装返回 ResStatus::Failed 契约消息
  * 6. 空服务器守卫：server==nullptr 构造后全部 !m_p 分支
  * 7. deleted 标志位语义（写侧置位归框架，弱绑定回调丢弃语义归 MC3）
  *
@@ -88,13 +88,13 @@ private:
         auto data = yomk::unPack<yomkmsg::String>(pkg);
         if (!data)
         {
-            return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+            return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
         }
-        return {YomkResponse::eOk, "echo:" + data->d};
+        return {YomkResponse::ResStatus::Successed, "echo:" + data->d};
     }
-    YomkResponse plain(YomkPkgPtr pkg) { return {YomkResponse::eOk, "plain"}; }
-    YomkResponse reinstall(YomkPkgPtr pkg) { return {YomkResponse::eOk, "reinstall"}; }
-    YomkResponse restore(YomkPkgPtr pkg) { return {YomkResponse::eOk, "restore"}; }
+    YomkResponse plain(YomkPkgPtr pkg) { return {YomkResponse::ResStatus::Successed, "plain"}; }
+    YomkResponse reinstall(YomkPkgPtr pkg) { return {YomkResponse::ResStatus::Successed, "reinstall"}; }
+    YomkResponse restore(YomkPkgPtr pkg) { return {YomkResponse::ResStatus::Successed, "restore"}; }
 };
 
 /**
@@ -149,11 +149,11 @@ static void testAddServiceWithName()
 static void testInstallFunc(DemoService* demo)
 {
     // 正常路径：运行时追加安装合法名
-    demo->installFunc("/manual", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::eOk, "manual"}; });
+    demo->installFunc("/manual", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::ResStatus::Successed, "manual"}; });
 
     // 非法名：空串与无 / 开头均被拒
-    demo->installFunc("", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::eOk, ""}; });
-    demo->installFunc("no_slash", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::eOk, ""}; });
+    demo->installFunc("", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::ResStatus::Successed, ""}; });
+    demo->installFunc("no_slash", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::ResStatus::Successed, ""}; });
 
     // 空函数对象：安装被拒（守卫修复后）
     demo->installFunc("/null_func", nullptr);
@@ -182,11 +182,11 @@ static void testInstallFunc(DemoService* demo)
           "三参安装说明缺省 m_description 为空");
 
     // 覆盖语义：四参注册后接两参覆盖 → 类型名与说明均清除；再四参恢复
-    demo->installFunc("/desc", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::eOk, "manual"}; });
+    demo->installFunc("/desc", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::ResStatus::Successed, "manual"}; });
     infos = demo->funcInfos();
     YOMK_TEST_CHECK(findFuncInfo(infos, "/desc", &msgName, &description) && msgName.empty() && description.empty(),
           "两参覆盖四参注册清除类型名与说明");
-    demo->installFunc("/desc", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::eOk, "manual"}; }, "String",
+    demo->installFunc("/desc", [](YomkPkgPtr pkg) { return YomkResponse{YomkResponse::ResStatus::Successed, "manual"}; }, "String",
                       "demo description");
     infos = demo->funcInfos();
     YOMK_TEST_CHECK(
@@ -200,39 +200,39 @@ static void testInvoke(DemoService* demo)
 {
     // 命中：返回函数自身响应
     YomkResponse resp = demo->invoke("/plain");
-    YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "plain", "invoke 命中，返回函数自身响应");
+    YOMK_TEST_CHECK(resp.m_status == YomkResponse::ResStatus::Successed && resp.m_msg == "plain", "invoke 命中，返回函数自身响应");
 
     // 命中：pkg 透传与解包回显（数据往返）
     resp = demo->invoke("/echo", yomkmsg::String::shared(std::string("hi")));
-    YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "echo:hi", "invoke 命中，pkg 透传解包回显正确");
+    YOMK_TEST_CHECK(resp.m_status == YomkResponse::ResStatus::Successed && resp.m_msg == "echo:hi", "invoke 命中，pkg 透传解包回显正确");
 
-    // 命中：函数内解包失败（pkg 为 nullptr）返回 eNo
+    // 命中：函数内解包失败（pkg 为 nullptr）返回 ResStatus::Failed
     resp = demo->invoke("/echo", nullptr);
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::eNo && resp.m_msg.find("pkg is null") != std::string::npos,
-        "invoke 命中但 pkg 为空，函数解包守卫返回 eNo");
+        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("pkg is null") != std::string::npos,
+        "invoke 命中但 pkg 为空，函数解包守卫返回 ResStatus::Failed");
 
-    // 异常路径：空名/无 / 开头返回 eNo + parse error 契约消息
+    // 异常路径：空名/无 / 开头返回 ResStatus::Failed + parse error 契约消息
     resp = demo->invoke("");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::eNo && resp.m_msg.find("parse error") != std::string::npos,
-        "invoke 空函数名返回 eNo 且 msg 含 parse error");
+        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("parse error") != std::string::npos,
+        "invoke 空函数名返回 ResStatus::Failed 且 msg 含 parse error");
     resp = demo->invoke("no_slash");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::eNo && resp.m_msg.find("parse error") != std::string::npos,
-        "invoke 无 / 开头函数名返回 eNo 且 msg 含 parse error");
+        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("parse error") != std::string::npos,
+        "invoke 无 / 开头函数名返回 ResStatus::Failed 且 msg 含 parse error");
 
-    // 异常路径：未安装函数返回 eNo + not found 契约消息
+    // 异常路径：未安装函数返回 ResStatus::Failed + not found 契约消息
     resp = demo->invoke("/not_exist");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::eNo && resp.m_msg.find("not found") != std::string::npos,
-        "invoke 未安装函数返回 eNo 且 msg 含 not found");
+        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("not found") != std::string::npos,
+        "invoke 未安装函数返回 ResStatus::Failed 且 msg 含 not found");
 
     // 空函数被拒后按未安装处理（对应守卫修复）
     resp = demo->invoke("/null_func");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::eNo && resp.m_msg.find("not found") != std::string::npos,
-        "invoke 被拒安装的空函数按未安装返回 eNo");
+        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("not found") != std::string::npos,
+        "invoke 被拒安装的空函数按未安装返回 ResStatus::Failed");
 }
 
 // 6. 空服务器守卫：server==nullptr 构造后全部空实现分支
@@ -249,12 +249,12 @@ static void testNullServerGuards()
 
     YomkResponse resp = srv.invoke("/x");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::eNo && resp.m_msg == "service is null",
-        "空实现 invoke 返回 eNo + service is null");
+        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg == "service is null",
+        "空实现 invoke 返回 ResStatus::Failed + service is null");
     resp = srv.request("/SomeService/func");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::eNo && resp.m_msg == "service is null",
-        "空实现 request 返回 eNo + service is null");
+        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg == "service is null",
+        "空实现 request 返回 ResStatus::Failed + service is null");
 }
 
 // 7. deleted 标志位语义（写侧置位归框架，弱绑定回调丢弃语义归 MC3）

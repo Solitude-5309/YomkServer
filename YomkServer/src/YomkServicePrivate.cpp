@@ -77,7 +77,7 @@ YomkResponse YomkServicePrivate::invoke(const std::string& funcName, YomkPkgPtr 
     if (funcName.empty() || funcName[0] != '/')
     {
         YOMK_ERR_POS_LOG("function name parse error: " + funcName + ", please start with /");
-        return {YomkResponse::eNo, "function name parse error: " + funcName + ", please start with /"};
+        return {YomkResponse::ResStatus::Failed, "function name parse error: " + funcName + ", please start with /"};
     }
 
     YomkServiceFunc tmpFunc = nullptr;
@@ -88,7 +88,7 @@ YomkResponse YomkServicePrivate::invoke(const std::string& funcName, YomkPkgPtr 
         {
             YOMK_ERR_POS_LOG(
                 "function not found -> " + funcName + ", please use installFunc to install this function.");
-            return {YomkResponse::eNo, "function not found: " + funcName};
+            return {YomkResponse::ResStatus::Failed, "function not found: " + funcName};
         }
         tmpFunc = iter->second;
     }
@@ -102,7 +102,7 @@ YomkResponse YomkServicePrivate::request(const std::string& url, YomkPkgPtr pkg)
     if (!server)
     {
         YOMK_ERR_POS_LOG("server has been destroyed, request ignored.");
-        return {YomkResponse::eNo, "server has been destroyed"};
+        return {YomkResponse::ResStatus::Failed, "server has been destroyed"};
     }
 
     return server->request(url, pkg);

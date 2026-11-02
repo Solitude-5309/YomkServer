@@ -6,12 +6,12 @@
 class ConsoleLogger
 {
 public:
-    enum ELogLevel : int
+    enum LogLevel : int
     {
-        eDebug,
-        eInfo,
-        eWarn,
-        eError,
+        Debug,
+        Info,
+        Warn,
+        Error,
     };
 
 public:
@@ -20,11 +20,11 @@ public:
     std::string getName() { return m_name; }
     void setName(const std::string& name) { m_name = name; }
     // 按器级别门控：setLevelOn 关断的级别在 log() 入口直接丢弃；unknown 级别按 Info 门控
-    void setLevelOn(ELogLevel logLevel, bool on);
-    bool isLevelOn(ELogLevel logLevel) const;
+    void setLevelOn(LogLevel logLevel, bool on);
+    bool isLevelOn(LogLevel logLevel) const;
 
 public:
-    void log(ELogLevel logLevel, const std::string& tag, const std::string& log);
+    void log(LogLevel logLevel, const std::string& tag, const std::string& log);
 
 private:
     std::string m_name;

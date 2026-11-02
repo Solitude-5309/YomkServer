@@ -4,7 +4,7 @@
  *
  * 上下文是全局共享的强类型键值状态机：把消息包按 key 存起来，任意位置按 key
  * 读写——机械臂系统中主控、示教器、安全 PLC、数字孪生正是这样共享状态。
- * 在此之上还有两道可选防线：变更前校验门控（Checker，返回 eReject 可拦截非法
+ * 在此之上还有两道可选防线：变更前校验门控（Checker，返回 CheckStatus::Reject 可拦截非法
  * 写入）与变更后通知（Monitor，写入成功后收到键值快照，同步/异步可选）。
  *
  * 本示例用"机械臂一次作业会话"贯穿 8 个场景：每个场景是一个 showXXX 小函数，
@@ -39,10 +39,10 @@
  *        数字孪生异步上报末端位姿：单线程池按 set 提交序保序送达，
  *        执行线程是池线程——上报不阻塞运动控制回路。
  * 场景 7 showArmDashboard       [YomkAPI::listContextKeys / INFO_KEY / INFO_ALL]
- *        产线运维面板：键名清单、单键结构化元信息（含未命中 eNo 分支）、
+ *        产线运维面板：键名清单、单键结构化元信息（含未命中 ResStatus::Failed 分支）、
  *        全量导出——框架只回结构化数据，展示格式由用户定义。
  * 场景 8 showArmTaskCleanup     [YomkAPI::destroyContext]
- *        下电流程逐键销毁；销毁后 GET 回落兜底默认值、重复销毁返回 eNo；
+ *        下电流程逐键销毁；销毁后 GET 回落兜底默认值、重复销毁返回 ResStatus::Failed；
  *        INFO_KEYS 确认键值表已空，会话闭环。
  *
  * 共享键规划（跨场景流转，模拟多模块共享同一份状态）：
@@ -109,22 +109,22 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 }
 
 // API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
-// status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
+// status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const YomkResponse& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << resp.m_status;
-    if (resp.m_status == YomkResponse::eOk)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
+    if (resp.m_status == YomkResponse::ResStatus::Successed)
     {
-        oss << "(eOk 成功)";
+        oss << "(ResStatus::Successed 成功)";
     }
-    else if (resp.m_status == YomkResponse::eNo)
+    else if (resp.m_status == YomkResponse::ResStatus::Failed)
     {
-        oss << "(eNo 拒绝或不存在)";
+        oss << "(ResStatus::Failed 拒绝或不存在)";
     }
     else
     {
-        oss << "(eInvalid 未初始化或参数无效)";
+        oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
     oss << ", msg=\"" << resp.m_msg << "\"";
     YOMK_INFO_TAG("arm.demo", oss.str());
@@ -193,13 +193,13 @@ static void logKeyInfo(const std::string& api, const yomk::ContextKeyInfo& info)
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
-// CREATE 幂等化封装：键已存在（eNo "key already exists"）视为就绪跳过。
-// 本身即 YomkAPI::createContext 的工程化用法：排他 eNo 在正式代码中按"已初始化"
+// CREATE 幂等化封装：键已存在（ResStatus::Failed "key already exists"）视为就绪跳过。
+// 本身即 YomkAPI::createContext 的工程化用法：排他 ResStatus::Failed 在正式代码中按"已初始化"
 // 处理而非错误——后启动的模块靠它安全补建自己关心的键。
 static void ensureKey(const std::string& op, const std::string& key, YomkPkgPtr value)
 {
     YomkResponse resp = logAction(op, "CREATE " + key, [&] { return YomkAPI::createContext(key, value); });
-    if (resp.m_status != YomkResponse::eOk)
+    if (resp.m_status != YomkResponse::ResStatus::Successed)
     {
         std::ostringstream oss;
         oss << "[ensureKey] " << key << " 已存在，跳过创建（" << resp.m_msg << "）";
@@ -213,27 +213,27 @@ static void ensureKey(const std::string& op, const std::string& key, YomkPkgPtr 
 // ---------------------------------------------------------------------------
 
 // 速度倍率安全门控：倍率是安全关键参数，超过 1.0（100%）有撞机风险，一律拒绝
-ContextChecker::ECheckStatus checkerSpeedRatio(const yomk::Context& ctx)
+ContextChecker::CheckStatus checkerSpeedRatio(const yomk::Context& ctx)
 {
     auto ratio = yomk::unPack<yomkmsg::Float64>(ctx.m_value);
     if (!ratio)
     {
         std::ostringstream oss;
-        oss << "checker: " << ctx.m_key << " 值不是 Float64，无法校验 -> eReject";
+        oss << "checker: " << ctx.m_key << " 值不是 Float64，无法校验 -> CheckStatus::Reject";
         YOMK_WARN_TAG("arm.guard", oss.str());
-        return ContextChecker::eReject;
+        return ContextChecker::CheckStatus::Reject;
     }
     if (ratio->d > 1.0)
     {
         std::ostringstream oss;
-        oss << "checker: " << ctx.m_key << "=" << fmtF64(ratio->d) << " 超过安全倍率 1.0（撞机风险）-> eReject";
+        oss << "checker: " << ctx.m_key << "=" << fmtF64(ratio->d) << " 超过安全倍率 1.0（撞机风险）-> CheckStatus::Reject";
         YOMK_WARN_TAG("arm.guard", oss.str());
-        return ContextChecker::eReject;
+        return ContextChecker::CheckStatus::Reject;
     }
     std::ostringstream oss;
-    oss << "checker: " << ctx.m_key << "=" << fmtF64(ratio->d) << " 在安全范围内 -> eAccept";
+    oss << "checker: " << ctx.m_key << "=" << fmtF64(ratio->d) << " 在安全范围内 -> CheckStatus::Accept";
     YOMK_INFO_TAG("arm.guard", oss.str());
-    return ContextChecker::eAccept;
+    return ContextChecker::CheckStatus::Accept;
 }
 
 // 安全 PLC 的上电告警：伺服电源指令属安全相关事件，收到快照即告警记录
@@ -311,12 +311,12 @@ static void showArmBootCreate()
         "CREATE arm.servo_power",
         [&] { return YomkAPI::createContext("arm.servo_power", yomkmsg::Bool::shared(false)); });
 
-    // 重复创建同名键：eNo "key already exists"，排他语义——更新请走 SET（见场景 3）
+    // 重复创建同名键：ResStatus::Failed "key already exists"，排他语义——更新请走 SET（见场景 3）
     logAction(
         "重复创建同名键",
         "CREATE arm.mode (重复)",
         [&] { return YomkAPI::createContext("arm.mode", yomkmsg::String::shared("auto")); });
-    logVerify("重复创建同名键 -> eNo(key already exists)：创建排他，更新请用 SET");
+    logVerify("重复创建同名键 -> ResStatus::Failed(key already exists)：创建排他，更新请用 SET");
 }
 
 // 场景 2：示教器 HMI 读取机械臂状态
@@ -373,7 +373,7 @@ static void showArmUpdateStatus()
         "误用类型改写运行模式",
         "SET arm.mode (Float64)",
         [&] { return YomkAPI::setContext("arm.mode", yomkmsg::Float64::shared(1.0)); });
-    logVerify("误用类型改写运行模式 -> eNo(context type not match)：强类型防误写");
+    logVerify("误用类型改写运行模式 -> ResStatus::Failed(context type not match)：强类型防误写");
 }
 
 // 场景 4：速度倍率安全门控（速度倍率是安全关键参数）
@@ -403,7 +403,7 @@ static void showArmGuardSpeedRatio()
         "写入合法倍率 0.9",
         "SET arm.speed_ratio=0.9",
         [&] { return YomkAPI::setContext("arm.speed_ratio", yomkmsg::Float64::shared(0.9)); });
-    logVerify("门控打开后合法值 0.9 -> arm.guard 日志 eAccept，写入成功");
+    logVerify("门控打开后合法值 0.9 -> arm.guard 日志 CheckStatus::Accept，写入成功");
     logAction(
         "尝试写入超限倍率 1.2",
         "SET arm.speed_ratio=1.2",
@@ -412,7 +412,7 @@ static void showArmGuardSpeedRatio()
     yomkmsg::Float64Ptr ratioFallback = yomkmsg::Float64::shared(0.0);
     yomkmsg::Float64Ptr ratio = YomkAPI::getContext<yomkmsg::Float64>("arm.speed_ratio", ratioFallback);
     logGet("arm.speed_ratio", fmtF64(ratio->d), ratio == ratioFallback);
-    logVerify("超限写入 -> eNo(checker reject set context) 且值保持 0.9 未变；arm.guard 日志给出拒绝理由");
+    logVerify("超限写入 -> ResStatus::Failed(checker reject set context) 且值保持 0.9 未变；arm.guard 日志给出拒绝理由");
 
     // 关闭全局门控（现场调试模式）：门控旁路，checker 仍在键上
     logAction("现场调试关闭门控", "OFF_CHECKER", [&] { return YomkAPI::disableContextChecker(); });
@@ -565,9 +565,9 @@ static void showArmDashboard()
     }
     logVerify("arm.tcp_pose：monitors=1、async=1（场景 6 的异步上报仍在，async 是 monitors 中异步的数量）");
 
-    // 未命中惯例：查询未注册键返回 eNo
+    // 未命中惯例：查询未注册键返回 ResStatus::Failed
     logAction("查询未注册键", "INFO_KEY arm.ghost", [&] { return YomkAPI::getContextInfo("arm.ghost"); });
-    logVerify("查询未注册的键 -> eNo(key is not exist)");
+    logVerify("查询未注册的键 -> ResStatus::Failed(key is not exist)");
 
     // 全量导出（组 → 键元信息两层结构化包），逐组逐键展开全部字段
     YomkResponse allResp = logAction("全量导出键值表", "INFO_ALL", [&] { return YomkAPI::getAllContextInfo(); });
@@ -591,7 +591,7 @@ static void showArmTaskCleanup()
         8,
         "下电清理",
         "YomkAPI::destroyContext",
-        "下电流程逐键销毁共享状态；销毁后一切操作按 not-found 惯例返回 eNo，"
+        "下电流程逐键销毁共享状态；销毁后一切操作按 not-found 惯例返回 ResStatus::Failed，"
         "GET 回落兜底默认值。");
 
     logAction("销毁末端位姿键", "DESTROY arm.tcp_pose", [&] { return YomkAPI::destroyContext("arm.tcp_pose"); });
@@ -611,7 +611,7 @@ static void showArmTaskCleanup()
         "重复销毁运行模式键",
         "DESTROY arm.mode (重复)",
         [&] { return YomkAPI::destroyContext("arm.mode"); });
-    logVerify("重复销毁同名键 -> eNo(key is not exist)");
+    logVerify("重复销毁同名键 -> ResStatus::Failed(key is not exist)");
 
     // 收尾确认：键值表已空，会话闭环
     YomkResponse keysResp = logAction("收尾确认键值表已空", "INFO_KEYS", [&] { return YomkAPI::listContextKeys(); });

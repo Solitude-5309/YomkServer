@@ -26,7 +26,7 @@
 
 | 字段 | 说明 |
 |---|---|
-| `m_status` | `eOk (0)`：调用成功；`eNo (1)`：目标服务或函数不存在、被拒绝或条件不满足；`eInvalid (-1)`：入参非法或服务器未初始化 |
+| `m_status` | `ResStatus::Successed (0)`：调用成功；`ResStatus::Failed (1)`：目标服务或函数不存在、被拒绝或条件不满足；`ResStatus::Invalid (-1)`：入参非法或服务器未初始化 |
 | `m_msg` | 状态描述文本 |
 | `m_data` | 可选的负载消息包（`YomkPkgPtr`） |
 
@@ -39,7 +39,7 @@
 
 // 同步调用
 YomkResponse resp = YomkAPI::request("/MyService/hello", pkg);
-if (resp.m_status == YomkResponse::eOk)
+if (resp.m_status == YomkResponse::ResStatus::Successed)
 {
     YOMK_INFO("Response received:", resp.m_msg);
 }
@@ -53,7 +53,7 @@ YomkAPI::asyncRequest("/MyService/hello", pkg, [](YomkResponse resp) {
 ### 服务生命周期
 
 ```cpp
-// 删除单个服务：从服务表移除，后续请求返回 eNo=1 "service not found: <服务名>"；名字不存在返回 -1
+// 删除单个服务：从服务表移除，后续请求返回 ResStatus::Failed=1 "service not found: <服务名>"；名字不存在返回 -1
 int ret = YomkAPI::delService("/MyService");
 
 // 关闭服务器：先停异步请求池（拒新 → 排空 → join），再清空服务表并逐个调用 deinit()
@@ -68,10 +68,10 @@ YomkAPI::shutdown();
 ```cpp
 int MyService::init()
 {
-    // FunctionPool：服务删除后回调失效（返回 eNo）
+    // FunctionPool：服务删除后回调失效（返回 ResStatus::Failed）
     YomkAPI::registerFunction("my_work", weakFunc(&MyService::myWork));
 
-    // Context checker/monitor 签名不同，同一 weakFunc 自动适配：删除后 checker 放行（eAccept）、monitor 丢弃
+    // Context checker/monitor 签名不同，同一 weakFunc 自动适配：删除后 checker 放行（CheckStatus::Accept）、monitor 丢弃
     YomkAPI::setContextChecker("key", weakFunc(&MyService::myCheck));
     YomkAPI::setContextMonitor("key", weakFunc(&MyService::myMonitor));
 
@@ -87,7 +87,7 @@ int MyService::init()
 - **deinit() 的四个触发时机**：`YomkAPI::delService()` 删除单个服务、`YomkAPI::shutdown()` 关闭全部服务、同名服务被 `YomkAPI::addService()` 替换（旧服务先 deinit 再装新服务）、忘记关闭时框架析构兜底。覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
 - **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃；`YomkAPI::shutdown()` 走排空语义，排空期回调照常执行；在途请求安全执行完毕后服务才析构。
 - **异步请求池大小**：`YomkAPI::init(n)` 的 `n` 为异步请求线程池大小（0 表示自动检测），仅首次初始化生效。
-- **弱绑定失效行为**：服务删除后，返回 `YomkResponse` 的回调得到 `eNo`，checker 回调放行（`eAccept`），void 回调直接丢弃，并打错误日志。
+- **弱绑定失效行为**：服务删除后，返回 `YomkResponse` 的回调得到 `ResStatus::Failed`，checker 回调放行（`CheckStatus::Accept`），void 回调直接丢弃，并打错误日志。
 - **弱绑定依赖服务的 `shared_ptr` 所有权**：在构造函数内调用（服务尚未注册到服务器）回调永不触发并打错误日志。
 
 ## 启动编排（YomkBoot）

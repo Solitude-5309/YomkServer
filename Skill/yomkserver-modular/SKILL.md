@@ -116,9 +116,9 @@ int XxxService::init() {
 }
 YomkResponse XxxService::myFunc(YomkPkgPtr pkg) {
     auto data = yomk::unPack<yomkmsg::MyData>(pkg);  // 解包（失败返回 nullptr，需判空）
-    if (!data) { return {YomkResponse::eNo, "pkg is null or pkg is not MyData"}; }
+    if (!data) { return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not MyData"}; }
     // 业务逻辑...
-    return YomkResponse(YomkResponse::eOk, "success");
+    return YomkResponse(YomkResponse::ResStatus::Successed, "success");
 }
 ```
 
@@ -164,7 +164,7 @@ int XxxService::init() {
     // 注册到 FunctionPool：弱绑定，服务删除后回调自动失效
     YomkAPI::registerFunction("my_work", weakFunc(&XxxService::myFunc));
     // Context checker/monitor 签名不同，同一 weakFunc 自动适配：
-    // 服务删除后 checker 默认放行（eAccept），monitor 丢弃
+    // 服务删除后 checker 默认放行（CheckStatus::Accept），monitor 丢弃
     YomkAPI::setContextChecker("key", weakFunc(&XxxService::myCheck));
     YomkAPI::setContextMonitor("key", weakFunc(&XxxService::myMonitor));
     // 异步响应回调同样适用
@@ -291,7 +291,7 @@ YomkMsg(数据类, 消息名称, 成员名);  // 在命名空间外定义
 5. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）
 6. 配置路径通过 Context 传递，不用构造参数
 7. 扩展库只负责处理逻辑，不关心数据来源，所有外部数据必须通过请求参数传入
-8. 返回值语义遵循框架状态码约定：not-found/拒绝用 eNo，参数非法用 eInvalid（详见 [reference.md](reference.md) "状态码约定"）
+8. 返回值语义遵循框架状态码约定：not-found/拒绝用 ResStatus::Failed，参数非法用 ResStatus::Invalid（详见 [reference.md](reference.md) "状态码约定"）
 
 ## 验证与质量
 

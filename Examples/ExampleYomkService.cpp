@@ -32,7 +32,7 @@
  *        在册清单（2 个业务工位排最前 + 5 个内置服务）。
  * 场景 2 showArmLinkCheck      [REQUEST]
  *        通讯自检与寻址异常：REQUEST 同步回环拿到回包 data；请求不存在的
- *        服务/函数分别得到 service/function not found——eNo 是普通返回值
+ *        服务/函数分别得到 service/function not found——ResStatus::Failed 是普通返回值
  *        不崩溃。
  * 场景 3 showArmAsyncTeach     [ASYNC_REQUEST]
  *        异步下发示教任务：发送即返回不阻塞控制回路，回调稍后在框架异步
@@ -50,11 +50,11 @@
  *        telemetry_hook（diag check V1→V2），[实例#N] 日志自证服务与
  *        钩子一并换新。
  * 场景 7 showArmStationOffline [DEL_SERVICE / callFunction / REQUEST]
- *        留痕工位下线：DEL_SERVICE 删除即停——弱绑定钩子立即失效（eNo 不
+ *        留痕工位下线：DEL_SERVICE 删除即停——弱绑定钩子立即失效（ResStatus::Failed 不
  *        悬垂）、move 因留痕缺失失败沿调用链传播；重复注销返回 -1。
  * 场景 8 showArmPowerOff       [INFO_ALL / SHUTDOWN]
  *        收班断电：INFO_ALL 看终态拓扑；预告后 SHUTDOWN 排空在途请求并
- *        释放全部服务，关闭后任何请求统一返回 eInvalid——日志宏随之静默，
+ *        释放全部服务，关闭后任何请求统一返回 ResStatus::Invalid——日志宏随之静默，
  *        静默段正是演示效果，示例日志到此为止。
  *
  * 涉及的 API 接口（YomkAPI.h）：
@@ -101,25 +101,25 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 // API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 // 回包挂 String data 时随行展示；结构化包（StringArray/FuncInfo/FuncInfoList/MoveResp）
 // 形态各异，解包类型不匹配时静默不展示
-// status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
+// status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const YomkResponse& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << resp.m_status;
-    if (resp.m_status == YomkResponse::eOk)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
+    if (resp.m_status == YomkResponse::ResStatus::Successed)
     {
-        oss << "(eOk 成功)";
+        oss << "(ResStatus::Successed 成功)";
     }
-    else if (resp.m_status == YomkResponse::eNo)
+    else if (resp.m_status == YomkResponse::ResStatus::Failed)
     {
-        oss << "(eNo 拒绝或不存在)";
+        oss << "(ResStatus::Failed 拒绝或不存在)";
     }
     else
     {
-        oss << "(eInvalid 未初始化或参数无效)";
+        oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
     oss << ", msg=\"" << resp.m_msg << "\"";
-    if (resp.m_status == YomkResponse::eOk && resp.m_data)
+    if (resp.m_status == YomkResponse::ResStatus::Successed && resp.m_data)
     {
         auto data = yomk::unPack<yomkmsg::String>(resp.m_data);
         if (data)
@@ -272,7 +272,7 @@ static void showArmLinkCheck()
     logAction(
         "请求运动服务不存在的函数", "REQUEST /MotionService/not_exist",
         [&] { return YomkAPI::request("/MotionService/not_exist", yomkmsg::String::shared("ping")); });
-    logVerify("两种 not-found 均为 eNo 且 msg 说明原因：寻址失败是普通返回值，不报错不崩溃");
+    logVerify("两种 not-found 均为 ResStatus::Failed 且 msg 说明原因：寻址失败是普通返回值，不报错不崩溃");
 }
 
 // 场景 3：异步下发示教任务（ASYNC_REQUEST 线程自证）
@@ -293,7 +293,7 @@ static void showArmAsyncTeach()
     YomkResponseFunc onTeachDone = [](YomkResponse resp)
     {
         std::ostringstream oss;
-        oss << "[ASYNC_REQUEST 回调] status=" << resp.m_status << ", msg=\"" << resp.m_msg
+        oss << "[ASYNC_REQUEST 回调] status=" << static_cast<int>(resp.m_status) << ", msg=\"" << resp.m_msg
             << "\"（池线程 id: " << std::this_thread::get_id() << "）";
         YOMK_INFO_TAG("arm.demo", oss.str());
     };
@@ -426,13 +426,13 @@ static void showArmStationOffline()
     logAction(
         "直调留痕钩子（已下线）", "callFunction telemetry_hook (已下线)",
         [&] { return YomkAPI::callFunction("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
-    logVerify("钩子返回 eNo(service has been deleted or unregistered)：弱绑定失效，删除即停不悬垂");
+    logVerify("钩子返回 ResStatus::Failed(service has been deleted or unregistered)：弱绑定失效，删除即停不悬垂");
 
     MoveCmd moveCmd{100.0, 50.0, 200.0, 0.8};
     logAction(
         "重发运动指令（留痕缺失）", "REQUEST /MotionService/move",
         [&] { return YomkAPI::request("/MotionService/move", yomkmsg::MoveCmd::shared(moveCmd)); });
-    logVerify("move 返回 eNo(move failed: ...)：留痕是运动的依赖前置，失败沿调用链传播");
+    logVerify("move 返回 ResStatus::Failed(move failed: ...)：留痕是运动的依赖前置，失败沿调用链传播");
 }
 
 // 场景 8：收班断电（INFO_ALL 终态 + SHUTDOWN 后守卫）
@@ -443,7 +443,7 @@ static void showArmPowerOff()
         "收班断电",
         "INFO_ALL / SHUTDOWN",
         "收班先看终态拓扑，再断电：SHUTDOWN 先停异步请求池（拒新→排空→join），"
-        "再逐个 deinit 并释放全部服务（幂等）；关闭后任何请求统一返回 eInvalid"
+        "再逐个 deinit 并释放全部服务（幂等）；关闭后任何请求统一返回 ResStatus::Invalid"
         "，日志宏随之静默——静默段正是演示效果。");
 
     logAction("导出收班终态拓扑（摘要）");
@@ -459,7 +459,7 @@ static void showArmPowerOff()
     }
     logVerify("6 个服务 = 5 个内置 + 1 个运动工位：留痕工位已在场景 7 下线，拓扑实时反映运行期服务表");
 
-    YOMK_INFO_TAG("arm.demo", "收班预告：SHUTDOWN 后框架已关闭，此后任何请求统一返回 eInvalid \"YomkServer is not init\"；");
+    YOMK_INFO_TAG("arm.demo", "收班预告：SHUTDOWN 后框架已关闭，此后任何请求统一返回 ResStatus::Invalid \"YomkServer is not init\"；");
     YOMK_INFO_TAG("arm.demo", "本示例所有日志宏随之静默——下面的静默段正是演示效果，示例日志至此结束，程序停在 getchar 等待回车退出");
 
     logAction(

@@ -57,23 +57,23 @@ using YomkPkgPtr = std::shared_ptr<YomkPkg>;
 class YomkResponse
 {
 public:
-    enum EResStatus
+    enum class ResStatus
     {
-        eInvalid = -1,
-        eOk = 0,
-        eNo = 1,
+        Invalid = -1,
+        Successed = 0,
+        Failed = 1,
     };
 
 public:
-    YomkResponse() : m_status(eInvalid), m_data(nullptr) {}
-    YomkResponse(EResStatus status, const std::string& msg = "", std::shared_ptr<YomkPkg> d = nullptr)
+    YomkResponse() : m_status(ResStatus::Invalid), m_data(nullptr) {}
+    YomkResponse(ResStatus status, const std::string& msg = "", std::shared_ptr<YomkPkg> d = nullptr)
         : m_status(status), m_msg(msg), m_data(d)
     {
     }
     virtual ~YomkResponse() {}
 
 public:
-    EResStatus m_status;  // 本次请求的状态
+    ResStatus m_status;  // 本次请求的状态
     std::string m_msg;    // 对状态的说明（不携带返回数据）
     YomkPkgPtr m_data;    // 携带的返回数据
 };
@@ -175,14 +175,14 @@ struct LogFile
 
 struct Log
 {
-    enum ELogLevel : int
+    enum class LogLevel : int
     {
-        eDebug,
-        eInfo,
-        eWarn,
-        eError,
+        Debug,
+        Info,
+        Warn,
+        Error,
     };
-    ELogLevel m_level;
+    LogLevel m_level;
     std::string m_log;
     std::string m_logger;  // 日志器名：服务端按其查找/惰性创建日志器实例
     std::string m_tag;  // 日志标签：随记录显示 [tag] 段，区别于 m_logger（末位追加，旧位置初始化兼容）
@@ -254,13 +254,13 @@ struct ContextKeyInfo
 
 struct ContextChecker
 {
-    enum ECheckStatus
+    enum class CheckStatus
     {
-        eAccept,
-        eReject
+        Accept,
+        Reject
     };
     std::string m_key;
-    std::function<ECheckStatus(const yomk::Context& ctx)> m_checkFunc;
+    std::function<CheckStatus(const yomk::Context& ctx)> m_checkFunc;
     std::string m_group = "main";  // 目标 key 所属组名（缺省 main）
 };
 
@@ -338,8 +338,8 @@ YomkMsg(yomk::VoidPointer, VoidPointer, d);
 
 // Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 YomkAPI::setContextMonitor
 using YomkContextMonitorFunc = std::function<void(const yomk::Context& ctx)>;
-// Context checker 回调：返回 eAccept/eReject 门控 set；详见 YomkAPI::setContextChecker
-using YomkContextCheckerFunc = std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)>;
+// Context checker 回调：返回 CheckStatus::Accept/CheckStatus::Reject 门控 set；详见 YomkAPI::setContextChecker
+using YomkContextCheckerFunc = std::function<yomk::ContextChecker::CheckStatus(const yomk::Context& ctx)>;
 using YomkConsoleLogProxyFunc = std::function<bool(const yomk::Log& log)>;
 // 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 YomkAPI::setFileLogProxy
 using YomkFileLogProxyFunc = std::function<bool(const yomk::Log& log)>;

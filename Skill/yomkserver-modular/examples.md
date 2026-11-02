@@ -111,7 +111,7 @@ int MyBoot::start()
 int MyBoot::after()
 {
     YomkResponse resp = YomkAPI::request("/ConfigService/load", nullptr);
-    if (resp.m_status != YomkResponse::eOk)
+    if (resp.m_status != YomkResponse::ResStatus::Successed)
     {
         YOMK_ERROR_TAG("MyBoot::after", "load config failed: ", resp.m_msg);
         return -1;
@@ -119,7 +119,7 @@ int MyBoot::after()
     YOMK_INFO_TAG("MyBoot::after", "started successfully.");
 
     resp = YomkAPI::request("/ConfigService/get", yomkmsg::ConfigKey::shared(ConfigKey{"name"}));
-    if (resp.m_status != YomkResponse::eOk)
+    if (resp.m_status != YomkResponse::ResStatus::Successed)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config name failed: ", resp.m_msg);
         return -1;
@@ -130,7 +130,7 @@ int MyBoot::after()
 
     // 测试版本号接口：获取并输出工程版本号（来自 CMake project() 定义的 VERSION，编译期注入）
     resp = YomkAPI::request("/ConfigService/version", nullptr);
-    if (resp.m_status != YomkResponse::eOk)
+    if (resp.m_status != YomkResponse::ResStatus::Successed)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get version failed: ", resp.m_msg);
         return -1;
@@ -140,7 +140,7 @@ int MyBoot::after()
     YOMK_INFO_TAG("MyBoot::after", "project version: ", version->d);
 
     resp = YomkAPI::request("/ConfigService/get", yomkmsg::ConfigKey::shared(ConfigKey{"description"}));
-    if (resp.m_status != YomkResponse::eOk)
+    if (resp.m_status != YomkResponse::ResStatus::Successed)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config description failed: ", resp.m_msg);
         return -1;
@@ -248,13 +248,13 @@ YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
 {
     auto ctxVal = YomkAPI::getContext<yomkmsg::String>(CTX_CONFIG_PATH, nullptr);
     if (!ctxVal)
-        return YomkResponse(YomkResponse::eNo, "config_path not found in context");
+        return YomkResponse(YomkResponse::ResStatus::Failed, "config_path not found in context");
     m_configPath = ctxVal->d;
 
     // 加载配置文件（纯文本 key: value 格式）
     std::ifstream ifs(m_configPath);
     if (!ifs.is_open())
-        return YomkResponse(YomkResponse::eNo, "failed to open: " + m_configPath);
+        return YomkResponse(YomkResponse::ResStatus::Failed, "failed to open: " + m_configPath);
 
     std::string line;
     while (std::getline(ifs, line))
@@ -270,29 +270,29 @@ YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
     }
     ifs.close();
     YOMK_INFO_TAG("ConfigService::loadConfig", "loaded: ", m_configPath);
-    return YomkResponse(YomkResponse::eOk, "ok");
+    return YomkResponse(YomkResponse::ResStatus::Successed, "ok");
 }
 
 YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
 {
     auto data = yomk::unPack<yomkmsg::ConfigKey>(pkg);
-    if (!data) { return {YomkResponse::eNo, "pkg is null or pkg is not ConfigKey"}; }
+    if (!data) { return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not ConfigKey"}; }
 
     auto it = m_configMap.find(data->req.key);
     if (it == m_configMap.end())
-        return YomkResponse(YomkResponse::eNo, "key not found: " + data->req.key);
+        return YomkResponse(YomkResponse::ResStatus::Failed, "key not found: " + data->req.key);
 
-    return YomkResponse(YomkResponse::eOk, "ok", yomkmsg::String::shared(it->second));
+    return YomkResponse(YomkResponse::ResStatus::Successed, "ok", yomkmsg::String::shared(it->second));
 }
 
 YomkResponse ConfigService::setConfig(YomkPkgPtr pkg)
 {
     auto data = yomk::unPack<yomkmsg::ConfigKeyValue>(pkg);
-    if (!data) { return {YomkResponse::eNo, "pkg is null or pkg is not ConfigKeyValue"}; }
+    if (!data) { return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not ConfigKeyValue"}; }
 
     m_configMap[data->req.key] = data->req.value;
     YOMK_INFO_TAG("ConfigService::setConfig", "set ", data->req.key, " = ", data->req.value);
-    return YomkResponse(YomkResponse::eOk, "ok");
+    return YomkResponse(YomkResponse::ResStatus::Successed, "ok");
 }
 
 YomkResponse ConfigService::reloadConfig(YomkPkgPtr pkg)
@@ -304,7 +304,7 @@ YomkResponse ConfigService::reloadConfig(YomkPkgPtr pkg)
 YomkResponse ConfigService::version(YomkPkgPtr pkg)
 {
     // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
-    return YomkResponse(YomkResponse::eOk, "ok", yomkmsg::String::shared(std::string(APP_VERSION)));
+    return YomkResponse(YomkResponse::ResStatus::Successed, "ok", yomkmsg::String::shared(std::string(APP_VERSION)));
 }
 ```
 
@@ -530,25 +530,25 @@ int UserService::init()
 YomkResponse UserService::getUser(YomkPkgPtr pkg)
 {
     auto query = yomk::unPack<yomkmsg::UserQuery>(pkg);
-    if (!query) { return {YomkResponse::eNo, "pkg is null or pkg is not UserQuery"}; }
+    if (!query) { return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not UserQuery"}; }
     YOMK_INFO_TAG("UserService::getUser", "query user: ", query->req.userId);
 
     // 业务逻辑...
     UserInfo info{query->req.userId, "Alice", 25};
-    return YomkResponse(YomkResponse::eOk, "ok", yomkmsg::UserInfo::shared(info));
+    return YomkResponse(YomkResponse::ResStatus::Successed, "ok", yomkmsg::UserInfo::shared(info));
 }
 
 YomkResponse UserService::createUser(YomkPkgPtr pkg)
 {
     auto user = yomk::unPack<yomkmsg::UserInfo>(pkg);
-    if (!user) { return {YomkResponse::eNo, "pkg is null or pkg is not UserInfo"}; }
+    if (!user) { return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not UserInfo"}; }
     YOMK_INFO_TAG("UserService::createUser", "create user: ", user->d.name);
 
     // 跨服务调用示例：读取配置
     YomkResponse cfgResp = YomkAPI::request("/ConfigService/get",
         yomkmsg::ConfigKey::shared(ConfigKey{"server.name"}));
 
-    return YomkResponse(YomkResponse::eOk, "user created");
+    return YomkResponse(YomkResponse::ResStatus::Successed, "user created");
 }
 ```
 
@@ -582,10 +582,10 @@ add_executable(${PROJECT_NAME}
 
 ```cpp
 // 检查函数：只允许非空字符串
-ContextChecker::ECheckStatus nonEmptyChecker(const yomk::Context& ctx) {
+ContextChecker::CheckStatus nonEmptyChecker(const yomk::Context& ctx) {
     auto val = yomk::unPack<yomkmsg::String>(ctx.m_value);
-    if(!val || val->d.empty()) return ContextChecker::eReject;
-    return ContextChecker::eAccept;
+    if(!val || val->d.empty()) return ContextChecker::CheckStatus::Reject;
+    return ContextChecker::CheckStatus::Accept;
 }
 
 // 监控函数：记录变更
@@ -637,9 +637,9 @@ int MyService::init() {
 // 事件处理函数
 YomkResponse taskHandler(YomkPkgPtr pkg) {
     auto taskData = yomk::unPack<yomkmsg::String>(pkg);
-    if (!taskData) { return {YomkResponse::eNo, "pkg is null or pkg is not String"}; }
+    if (!taskData) { return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"}; }
     YOMK_DEBUG_TAG("TaskHandler", "processing in thread: ", std::this_thread::get_id());
-    return {YomkResponse::eOk, "task done"};
+    return {YomkResponse::ResStatus::Successed, "task done"};
 }
 
 // 启动事件循环
@@ -650,7 +650,7 @@ YomkAPI::postEvent("worker_loop", yomkmsg::String::shared("task_1"));
 
 // 同步投递（等待结果）
 YomkResponse resp = YomkAPI::postEventAndWait("worker_loop", yomkmsg::String::shared("task_2"));
-if(resp.m_status == YomkResponse::eOk) {
+if(resp.m_status == YomkResponse::ResStatus::Successed) {
     auto event = yomk::unPack<yomkmsg::Event>(resp.m_data);
     // event->d.m_response 即事件处理函数的返回值（POST_WAIT 将其带回给等待方）
     if(event) YOMK_INFO("event result: ", event->d.m_response.m_msg);
@@ -669,17 +669,17 @@ YomkAPI::destroyEventLoop("worker_loop");
 // 定义公共函数
 YomkResponse validateAmount(YomkPkgPtr pkg) {
     auto amountStr = yomk::unPack<yomkmsg::String>(pkg);
-    if (!amountStr) { return {YomkResponse::eNo, "pkg is null or pkg is not String"}; }
+    if (!amountStr) { return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"}; }
     double amount = std::stod(amountStr->d);
-    if(amount <= 0) return {YomkResponse::eNo, "invalid amount"};
-    return {YomkResponse::eOk, "valid"};
+    if(amount <= 0) return {YomkResponse::ResStatus::Failed, "invalid amount"};
+    return {YomkResponse::ResStatus::Successed, "valid"};
 }
 
 // 注册 + 调用
 YomkAPI::registerFunction("validate_amount", validateAmount);
 YomkResponse resp = YomkAPI::callFunction("validate_amount", yomkmsg::String::shared("100.5"));
 
-// 注销（注销后调用返回 eNo: funcName is not register）
+// 注销（注销后调用返回 ResStatus::Failed: funcName is not register）
 YomkAPI::unregisterFunction("validate_amount");
 ```
 
@@ -719,10 +719,10 @@ resp = YomkAPI::listServiceFunctions("/DemoService");
 // listPkg->d（按注册名字典序）：{"/no_type","",""}、{"/with_desc","String","对函数的说明"}、{"/with_type","String",""}
 
 // 单函数元信息查询（结构化 FuncInfo 包：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
-resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/with_type");  // eOk，m_msgName = "String"
-resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/with_desc");  // eOk，m_msgName = "String"，m_description = "对函数的说明"（四参说明）
-resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/no_type");    // eOk，m_msgName 为空串（未声明），m_description 为空
-resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/not_exist");  // eNo
+resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/with_type");  // ResStatus::Successed，m_msgName = "String"
+resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/with_desc");  // ResStatus::Successed，m_msgName = "String"，m_description = "对函数的说明"（四参说明）
+resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/no_type");    // ResStatus::Successed，m_msgName 为空串（未声明），m_description 为空
+resp = YomkAPI::getServiceFunctionInfoByUrl("/DemoService/not_exist");  // ResStatus::Failed
 
 // 全量拓扑：ServerServiceInfoList 层级包（m_serviceName 服务名 + m_funcs 函数元信息列表，
 // 与 INFO_FUNCTION 单查同族）
@@ -744,8 +744,8 @@ YomkAPI::setContextMonitor("str_key", myMonitor, true);
 YomkResponse resp = YomkAPI::listContextKeys();   // arr->d: ["str_key"]
 
 // 单 key 元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"，数据走 m_data；含所属组 m_group）
-resp = YomkAPI::getContextInfo("str_key");        // eOk，解包 ContextKeyInfo：m_key="str_key" m_typeName="String" ...
-resp = YomkAPI::getContextInfo("not_exist");      // eNo
+resp = YomkAPI::getContextInfo("str_key");        // ResStatus::Successed，解包 ContextKeyInfo：m_key="str_key" m_typeName="String" ...
+resp = YomkAPI::getContextInfo("not_exist");      // ResStatus::Failed
 
 // 组名清单（返回 StringArray）
 resp = YomkAPI::listContextGroups();
@@ -754,7 +754,7 @@ resp = YomkAPI::listContextGroups();
 resp = YomkAPI::getAllContextInfo();
 ```
 
-注意：`YomkAPI::createContext(key, nullptr)` 值为空时创建被拒绝（eNo），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YomkAPI::getContext`。完整验证见 `Test/YomkContext/TestYomkContextCRUD.cpp`。
+注意：`YomkAPI::createContext(key, nullptr)` 值为空时创建被拒绝（ResStatus::Failed），该 key 不会出现在内省结果中；内省只读，取实际值仍走 `YomkAPI::getContext`。完整验证见 `Test/YomkContext/TestYomkContextCRUD.cpp`。
 
 ### EventLoop 模块内省
 
@@ -775,7 +775,7 @@ YomkResponse resp = YomkAPI::listEventLoops();   // arr->d: ["loop_a", "loop_b"]
 // m_nextTags 存原值取 n 条（队列不足 n 时全部列出），n 缺省 3；m_msg 恒 "ok"
 resp = YomkAPI::getEventLoopInfo("loop_a");
 resp = YomkAPI::getEventLoopInfo("loop_a", 5);
-resp = YomkAPI::getEventLoopInfo("not_exist");       // eNo
+resp = YomkAPI::getEventLoopInfo("not_exist");       // ResStatus::Failed
 
 // 全量循环元信息：EventLoopInfoList 结构化包，元素为单查同款 EventLoopInfo
 resp = YomkAPI::getAllEventLoopInfo();
@@ -795,11 +795,11 @@ YomkAPI::registerFunction("func_b", funcB);          // 不声明类型，内省
 // 注册函数名列表（返回 StringArray）
 YomkResponse resp = YomkAPI::listFunctionNames();    // arr->d: ["func_a", "func_b", "func_desc"]
 
-// 单函数元信息查询：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，m_data 恒挂），未注册 eNo
-resp = YomkAPI::getFunctionInfo("func_a");           // eOk，解包 FuncInfo：m_funcName="func_a" m_msgName="String"
-resp = YomkAPI::getFunctionInfo("func_desc");        // eOk，解包 FuncInfo：m_description="函数说明"
-resp = YomkAPI::getFunctionInfo("func_b");           // eOk，解包 FuncInfo：m_msgName/m_description 空
-resp = YomkAPI::getFunctionInfo("not_exist");        // eNo
+// 单函数元信息查询：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，m_data 恒挂），未注册 ResStatus::Failed
+resp = YomkAPI::getFunctionInfo("func_a");           // ResStatus::Successed，解包 FuncInfo：m_funcName="func_a" m_msgName="String"
+resp = YomkAPI::getFunctionInfo("func_desc");        // ResStatus::Successed，解包 FuncInfo：m_description="函数说明"
+resp = YomkAPI::getFunctionInfo("func_b");           // ResStatus::Successed，解包 FuncInfo：m_msgName/m_description 空
+resp = YomkAPI::getFunctionInfo("not_exist");        // ResStatus::Failed
 
 // 全量函数元信息：FuncInfoList 结构化包（元素为单查同款 FuncInfo）
 resp = YomkAPI::getAllFunctionInfo();
@@ -822,9 +822,9 @@ resp = YomkAPI::listLoggers("file");
 // arr->d: ["info_logger"]
 
 // 单日志器元信息：按类型单表精确查（两表允许同名），LoggerInfo 结构化包（m_loggerName/m_type/m_dir，m_msg 恒 "ok"）
-resp = YomkAPI::getLoggerInfo("MainLogger", "console");  // eOk, m_type="console"，m_dir 为空串
-resp = YomkAPI::getLoggerInfo("info_logger", "file");    // eOk, m_type="file"，m_dir="/tmp"
-resp = YomkAPI::getLoggerInfo("not_exist", "console");   // eNo
+resp = YomkAPI::getLoggerInfo("MainLogger", "console");  // ResStatus::Successed, m_type="console"，m_dir 为空串
+resp = YomkAPI::getLoggerInfo("info_logger", "file");    // ResStatus::Successed, m_type="file"，m_dir="/tmp"
+resp = YomkAPI::getLoggerInfo("not_exist", "console");   // ResStatus::Failed
 
 // 全量日志器清单：LoggerInfoList（vector<LoggerInfo>，元素为单查同款，每条内嵌状态段）
 // console 条目 m_loggerState 承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态；
@@ -843,7 +843,7 @@ YomkAPI::disableFileLogInfo("info_logger");     // 具名关断文件器：INFO 
 YomkAPI::enableFileLogInfo("info_logger");      // 具名恢复
 ```
 
-注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关两级并联且控制台/文件两套相互独立——`YomkAPI::enable/disableConsoleLog*()` 与 `YomkAPI::enable/disableFileLog*()` 各自无参作用于对应侧全局主闸、具名仅门控该日志器（未命中 eNo，不惰性创建），输出/落盘取两层 AND；`/all` 条目 m_loggerState 报逐器门控层真值（无参翻转不影响条目，proxyOn 各报对应侧代理态），全局主闸态经 `YomkAPI::getGlobalLoggerLevel(type)` 按 type 分流查询（缺省/"console" 控制台侧、"file" 文件侧）。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
+注意：内省只读；控制台 TAG 宏为兼容双填——tag 同时填 Log::m_tag（随记录显示的标签）与 Log::m_logger（按需创建的日志器名，即 tag 原样；行号在日志正文前缀，不参与命名）；文件 TAG 宏 Log::m_logger=文件名、Log::m_tag=tag，由日志器统一拼接 [tag] 段；级别开关两级并联且控制台/文件两套相互独立——`YomkAPI::enable/disableConsoleLog*()` 与 `YomkAPI::enable/disableFileLog*()` 各自无参作用于对应侧全局主闸、具名仅门控该日志器（未命中 ResStatus::Failed，不惰性创建），输出/落盘取两层 AND；`/all` 条目 m_loggerState 报逐器门控层真值（无参翻转不影响条目，proxyOn 各报对应侧代理态），全局主闸态经 `YomkAPI::getGlobalLoggerLevel(type)` 按 type 分流查询（缺省/"console" 控制台侧、"file" 文件侧）。完整验证见 `Test/YomkLogger/TestYomkLoggerLifecycle.cpp`。
 
 ## 示例6：文件日志
 
@@ -861,8 +861,8 @@ YomkAPI::enableFileLogInfo("app_log");   // 具名恢复
 // 删除日志器：单端点同时清理 console/file 两表；文件日志器移除时析构自动落盘
 // （未 flush 的缓冲内容不丢），但不删除磁盘上的 .log 文件（数据保全，清理归调用方）
 YomkResponse del = YomkAPI::deleteFileLogger("app_log");
-// eOk, msg: "deleted console:0 file:1"
-YomkAPI::deleteFileLogger("app_log");   // eNo, msg: "logger not found."（已删除）
+// ResStatus::Successed, msg: "deleted console:0 file:1"
+YomkAPI::deleteFileLogger("app_log");   // ResStatus::Failed, msg: "logger not found."（已删除）
 // 注："MainLogger" 无特殊保护，删除后下次写控制台日志会惰性重建
 
 // 自定义控制台日志代理
@@ -877,7 +877,7 @@ YomkAPI::setConsoleLogProxy(nullptr);
 
 // 文件日志代理：与控制台代理相互独立，回调返回 false 拦截该条不落盘、true 穿透默认落盘
 YomkAPI::setFileLogProxy([](const yomk::Log& log) {
-    return log.m_level != yomk::Log::eDebug;  // 拦截 DEBUG 不落盘，其余放行
+    return log.m_level != yomk::Log::LogLevel::Debug;  // 拦截 DEBUG 不落盘，其余放行
 });
 // 卸载文件代理：传 nullptr 或空 std::function 即恢复默认落盘，
 // GLOBAL("file") 单查的 proxyOn 随之回到 false
@@ -948,7 +948,7 @@ int XxxService::init()
 YomkResponse XxxService::version(YomkPkgPtr pkg)
 {
     std::string version = "ExtensionName v" EXTENSION_VERSION;
-    return YomkResponse(YomkResponse::eOk, "ok", yomkmsg::String::shared(version));
+    return YomkResponse(YomkResponse::ResStatus::Successed, "ok", yomkmsg::String::shared(version));
 }
 ```
 
@@ -992,7 +992,7 @@ int main(int argc, char *argv[])
 
     // 测试版本查询
     YomkResponse resp = YomkAPI::request("/XxxService/version", nullptr);
-    if (resp.m_status == YomkResponse::eOk)
+    if (resp.m_status == YomkResponse::ResStatus::Successed)
     {
         auto version = yomk::unPack<yomkmsg::String>(resp.m_data);
         std::cout << "[PASS] version: " << version->d << std::endl;
@@ -1292,7 +1292,7 @@ int main(int argc, char *argv[])
 
     // 版本查询请求
     YomkResponse resp = YomkAPI::request("/XxxService/version", nullptr);
-    if (resp.m_status == YomkResponse::eOk)
+    if (resp.m_status == YomkResponse::ResStatus::Successed)
     {
         auto version = yomk::unPack<yomkmsg::String>(resp.m_data);
         std::cout << "version: " << version->d << std::endl; // 输出: ExtensionName v0.0.1

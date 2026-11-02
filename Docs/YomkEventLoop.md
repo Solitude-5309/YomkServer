@@ -25,12 +25,12 @@ YomkAPI::startEventLoop("TaskLoop");
 // 非阻塞投递异步任务（tag 可选：仅内省可见，用于观察队列）
 YomkAPI::postEvent("TaskLoop", yomkmsg::String::shared("task1"), [](YomkPkgPtr pkg) {
     // 在 TaskLoop 专用线程中顺序执行
-    return YomkResponse{YomkResponse::eOk};
+    return YomkResponse{YomkResponse::ResStatus::Successed};
 }, "billing");
 
 // 阻塞投递任务（等待任务在循环中执行完毕返回结果）
 YomkResponse resp = YomkAPI::postEventAndWait("TaskLoop", nullptr, [](YomkPkgPtr) {
-    return YomkResponse{YomkResponse::eOk, "done"};
+    return YomkResponse{YomkResponse::ResStatus::Successed, "done"};
 });
 
 // 查询循环状态与队列积压（第二个参数可选：列出队首 N 个事件的 tag）
@@ -45,7 +45,7 @@ YomkAPI::destroyEventLoop("TaskLoop");
 
 - 同一循环内事件按 FIFO 顺序执行，不同循环之间彼此并行。
 - 对已存在名称再次 `YomkAPI::startEventLoop` 为幂等重启。
-- 停止后投递返回 `eNo=1`（event loop not running）；销毁后操作返回 `eNo=1`（event loop not exist）。
+- 停止后投递返回 `ResStatus::Failed=1`（event loop not running）；销毁后操作返回 `ResStatus::Failed=1`（event loop not exist）。
 - 服务成员函数注册为事件处理函数时须用 `weakFunc(&Class::Method)` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 完整示例

@@ -25,7 +25,7 @@
  *        ERROR 告警递进；默认 tag 与自定义 tag 双填兼容，[行号] 随行定位。
  * 场景 2 showArmSilentMode  [disable/enableConsoleLog*（无参/具名）+ getGlobalLoggerLevel + getLoggerInfo]
  *        产线静默模式：全局静默四级别逐级全关（空窗由 WARN/ERROR 锚点桥接，调用仍返回
- *        eOk）；逐级恢复后单查 MainLogger 状态段复查五开关全 on；随后逐器静默——具名
+ *        ResStatus::Successed）；逐级恢复后单查 MainLogger 状态段复查五开关全 on；随后逐器静默——具名
  *        关断 arm.joint 仅其报文消失（MainLogger/arm.demo 对照不受影响），
  *        getGlobalLoggerLevel 报主闸全 on 与条目 infoOff 两层归因唯一。
  * 场景 3 showArmBlackbox    [setConsoleLogProxy / setFileLogProxy / createFileLogger / WRITE]
@@ -38,7 +38,7 @@
  *        吞条而文件主闸仍 on——两层归因，恢复后落盘回归。
  * 场景 5 showArmLoggerDashboard [listLoggers / LOGGER / ALL + getGlobalLoggerLevel("console"/"file")]
  *        运维面板：console/file 清单（字典序）、单查结构化 LoggerInfo（含未
- *        注册 eNo）、全量导出——console/file 条目各自承载逐器门控层真值与
+ *        注册 ResStatus::Failed）、全量导出——console/file 条目各自承载逐器门控层真值与
  *        对应侧代理态，再查 getGlobalLoggerLevel 按 type 复核两套主闸态，
  *        两层一起看全。
  * 场景 6 showArmLogCleanup  [deleteFileLogger + 惰性重建]
@@ -81,22 +81,22 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 
 // API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 // 日志宏的结果行自带流向证据：代理消费 msg="console log proxy is success."、放行 msg="success."。
-// status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
+// status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const YomkResponse& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << resp.m_status;
-    if (resp.m_status == YomkResponse::eOk)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
+    if (resp.m_status == YomkResponse::ResStatus::Successed)
     {
-        oss << "(eOk 成功)";
+        oss << "(ResStatus::Successed 成功)";
     }
-    else if (resp.m_status == YomkResponse::eNo)
+    else if (resp.m_status == YomkResponse::ResStatus::Failed)
     {
-        oss << "(eNo 拒绝或不存在)";
+        oss << "(ResStatus::Failed 拒绝或不存在)";
     }
     else
     {
-        oss << "(eInvalid 未初始化或参数无效)";
+        oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
     oss << ", msg=\"" << resp.m_msg << "\"";
     YOMK_INFO_TAG("arm.demo", oss.str());
@@ -180,11 +180,11 @@ static void logFileContent(const fs::path& path)
 bool blackboxProxy(const yomk::Log& log)
 {
     // WARN/ERROR 关键事件：预拼一行（原文 + tag）转写黑匣子，控制台不再输出
-    if (log.m_level == yomk::Log::eWarn || log.m_level == yomk::Log::eError)
+    if (log.m_level == yomk::Log::LogLevel::Warn || log.m_level == yomk::Log::LogLevel::Error)
     {
         std::ostringstream oss;
         oss << log.m_log << " (tag: " << log.m_tag << ")";
-        if (log.m_level == yomk::Log::eWarn)
+        if (log.m_level == yomk::Log::LogLevel::Warn)
         {
             YOMK_FILE_WARN("blackbox", oss.str());
         }
@@ -195,7 +195,7 @@ bool blackboxProxy(const yomk::Log& log)
         return false;
     }
     // DEBUG 噪声：直接消费丢弃
-    if (log.m_level == yomk::Log::eDebug)
+    if (log.m_level == yomk::Log::LogLevel::Debug)
     {
         return false;
     }
@@ -211,7 +211,7 @@ bool blackboxProxy(const yomk::Log& log)
 // ---------------------------------------------------------------------------
 bool fileDebugProxy(const yomk::Log& log)
 {
-    return log.m_level != yomk::Log::eDebug;  // 仅拦截 DEBUG，其余放行
+    return log.m_level != yomk::Log::LogLevel::Debug;  // 仅拦截 DEBUG，其余放行
 }
 
 // ---------------------------------------------------------------------------
@@ -257,12 +257,12 @@ static void showArmSilentMode()
         2,
         "产线静默模式",
         "disable/enableConsoleLog*（无参/具名） + getGlobalLoggerLevel + getLoggerInfo",
-        "夜间无人值守降噪：四级别逐级全关（调用仍返回 eOk，仅输出被抑制），"
+        "夜间无人值守降噪：四级别逐级全关（调用仍返回 ResStatus::Successed，仅输出被抑制），"
         "空窗段无任何控制台输出；恢复后单查状态段复查五开关全 on。");
 
     // 先关 DEBUG 详单（最常用的降噪手段）
     logAction("关闭 DEBUG 详单（产线静默）", "disableConsoleLogDebug", [&] { return YomkAPI::disableConsoleLogDebug(); });
-    logVerify("随后的 DEBUG 调用（静默段）仍返回 eOk 但不再输出：级别开关只抑制输出、不影响调用成功");
+    logVerify("随后的 DEBUG 调用（静默段）仍返回 ResStatus::Successed 但不再输出：级别开关只抑制输出、不影响调用成功");
 
     YOMK_WARN_TAG("arm.demo", "继续降噪：INFO/WARN/ERROR 也将逐级关闭，空窗期间操作照常执行");
     YOMK_ERROR_TAG("arm.demo", "最后一条可见日志：ERROR 关闭后全静默，恢复后汇报空窗详情");
@@ -271,7 +271,7 @@ static void showArmSilentMode()
     logAction("关闭 WARN 隐患预警", "disableConsoleLogWarn", [&] { return YomkAPI::disableConsoleLogWarn(); });
     logAction("关闭 ERROR 故障告警", "disableConsoleLogError", [&] { return YomkAPI::disableConsoleLogError(); });
 
-    // 全静默段：以下 4 条调用成功返回 eOk，控制台一行都不出现
+    // 全静默段：以下 4 条调用成功返回 ResStatus::Successed，控制台一行都不出现
     YOMK_INFO("你看不到我：INFO 已关闭");
     YOMK_WARN("你看不到我：WARN 已关闭");
     YOMK_ERROR("你看不到我：ERROR 已关闭");
@@ -281,7 +281,7 @@ static void showArmSilentMode()
     YomkAPI::enableConsoleLogError();
     YomkAPI::enableConsoleLogInfo();
     YOMK_INFO_TAG("arm.demo",
-        "静默解除：空窗期间已按序执行 OFF_INFO/WARN/ERROR 与 4 条演示调用，全部返回 eOk——"
+        "静默解除：空窗期间已按序执行 OFF_INFO/WARN/ERROR 与 4 条演示调用，全部返回 ResStatus::Successed——"
         "恢复 WARN/DEBUG 后复查");
     logAction("恢复 WARN 隐患预警", "enableConsoleLogWarn", [&] { return YomkAPI::enableConsoleLogWarn(); });
     logAction("恢复 DEBUG 详单", "enableConsoleLogDebug", [&] { return YomkAPI::enableConsoleLogDebug(); });
@@ -507,7 +507,7 @@ static void showArmLoggerDashboard()
     logAction("单查未注册日志器 ghost");
     resp = YomkAPI::getLoggerInfo("ghost", "console");
     logResp("getLoggerInfo ghost(console)", resp);
-    logVerify("未注册名字 -> eNo(logger not found.)：not-found 是框架统一惯例");
+    logVerify("未注册名字 -> ResStatus::Failed(logger not found.)：not-found 是框架统一惯例");
 
     logAction("全量导出日志器状态");
     resp = YomkAPI::getAllLoggerInfo();
@@ -565,7 +565,7 @@ static void showArmLogCleanup(const std::string& logDir)
     logVerify("msg=deleted console:0 file:1：blackbox 只在 file 表，DELETE 报告两表各自清理数");
 
     logAction("清档未注册日志器 ghost", "deleteFileLogger ghost", [&] { return YomkAPI::deleteFileLogger("ghost"); });
-    logVerify("两表均未命中 -> eNo(logger not found.)：not-found 是框架统一惯例");
+    logVerify("两表均未命中 -> ResStatus::Failed(logger not found.)：not-found 是框架统一惯例");
 
     logAction("清档默认日志器 MainLogger", "deleteFileLogger MainLogger", [&] { return YomkAPI::deleteFileLogger("MainLogger"); });
     logVerify("msg=deleted console:1 file:0：MainLogger 只在 console 表（框架预创建）");

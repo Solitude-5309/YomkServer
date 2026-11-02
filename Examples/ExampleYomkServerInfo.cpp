@@ -27,11 +27,11 @@
  * 场景 2 showArmStationFunctions [INFO_FUNCTIONS]
  *        工位职能清单：FuncInfoList 结构化清单（4 参注册的 /quality_check
  *        带 QualityCheckReq 元数据与函数说明，2 参注册的 /report 双空）；
- *        不存在的工位返回空清单 eOk，空服务名返回 eInvalid。
+ *        不存在的工位返回空清单 ResStatus::Successed，空服务名返回 ResStatus::Invalid。
  * 场景 3 showArmFuncLookup      [INFO_FUNCTION]
  *        函数名片单查：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，
  *        m_msgName=期望消息类型名、m_description=函数说明）；4 种坏 URL 均
- *        返回 eNo（url 解析失败 / 目标不存在），是普通返回值不崩溃。
+ *        返回 ResStatus::Failed（url 解析失败 / 目标不存在），是普通返回值不崩溃。
  * 场景 4 showArmPlantTopology   [INFO_ALL]
  *        全厂拓扑总览：ServerServiceInfoList 层级包逐服务逐函数导出——
  *        排障时一次看清"哪些工位在册、各自能干什么"。
@@ -40,7 +40,7 @@
  *        注销不存在的服务返回 -1——自省读的是运行期服务表。
  * 场景 6 showArmPowerOff        [SHUTDOWN / INFO_SERVICES]
  *        收班断电：SHUTDOWN 排空在途请求并释放全部服务，关闭后任何自省调用
- *        统一返回 eInvalid "YomkServer is not init"；日志宏随之静默——
+ *        统一返回 ResStatus::Invalid "YomkServer is not init"；日志宏随之静默——
  *        静默即演示效果，收班预告已提前说明，示例日志到此为止。
  *
  * 演示服务规划（机械臂产线装配工位，跨场景流转）：
@@ -78,25 +78,25 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 // API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 // 清单类返回挂 String data 时随行展示；结构化包（StringArray/FuncInfo/FuncInfoList/
 // ServerServiceInfoList）形态各异，解包类型不匹配时静默不展示
-// status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
+// status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const YomkResponse& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << resp.m_status;
-    if (resp.m_status == YomkResponse::eOk)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
+    if (resp.m_status == YomkResponse::ResStatus::Successed)
     {
-        oss << "(eOk 成功)";
+        oss << "(ResStatus::Successed 成功)";
     }
-    else if (resp.m_status == YomkResponse::eNo)
+    else if (resp.m_status == YomkResponse::ResStatus::Failed)
     {
-        oss << "(eNo 拒绝或不存在)";
+        oss << "(ResStatus::Failed 拒绝或不存在)";
     }
     else
     {
-        oss << "(eInvalid 未初始化或参数无效)";
+        oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
     oss << ", msg=\"" << resp.m_msg << "\"";
-    if (resp.m_status == YomkResponse::eOk && resp.m_data)
+    if (resp.m_status == YomkResponse::ResStatus::Successed && resp.m_data)
     {
         auto data = yomk::unPack<yomkmsg::String>(resp.m_data);
         if (data)
@@ -252,12 +252,12 @@ public:
         auto status = yomk::unPack<yomkmsg::String>(pkg);
         if (!status)
         {
-            return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+            return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
         }
         std::ostringstream oss;
         oss << "工位状态上报：收到 \"" << status->d << "\"";
         YOMK_INFO_TAG("arm.station", oss.str());
-        return {YomkResponse::eOk, "station report received: " + status->d};
+        return {YomkResponse::ResStatus::Successed, "station report received: " + status->d};
     }
 
     // 质量抽检：解包 QualityCheckReq，按件抽检并回执结论
@@ -266,12 +266,12 @@ public:
         auto data = yomk::unPack<yomkmsg::QualityCheckReq>(pkg);
         if (!data)
         {
-            return {YomkResponse::eNo, "pkg is null or pkg is not QualityCheckReq"};
+            return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not QualityCheckReq"};
         }
         std::ostringstream oss;
         oss << "质量抽检执行：工位 " << data->req.m_station << " 抽检 " << data->req.m_count << " 件";
         YOMK_INFO_TAG("arm.station", oss.str());
-        return {YomkResponse::eOk,
+        return {YomkResponse::ResStatus::Successed,
             "quality check passed: " + data->req.m_station + ", " + std::to_string(data->req.m_count) + " pcs"};
     }
 };
@@ -359,12 +359,12 @@ static void showArmStationFunctions()
     logAction("查阅不存在工位 /GhostStation 的职能清单");
     funcsResp = YomkAPI::listServiceFunctions("/GhostStation");
     logResp("INFO_FUNCTIONS /GhostStation", funcsResp);
-    logVerify("服务不存在 -> 空清单 eOk：查询失败不崩溃，仍是普通返回值");
+    logVerify("服务不存在 -> 空清单 ResStatus::Successed：查询失败不崩溃，仍是普通返回值");
 
     logAction("以空服务名查阅职能清单");
     funcsResp = YomkAPI::listServiceFunctions("");
     logResp("INFO_FUNCTIONS (空服务名)", funcsResp);
-    logVerify("空服务名 -> eInvalid(srvName is empty)：参数无效与目标不存在是两种不同状态");
+    logVerify("空服务名 -> ResStatus::Invalid(srvName is empty)：参数无效与目标不存在是两种不同状态");
 }
 
 // 场景 3：功能函数名片单查（INFO_FUNCTION 命中契约 + 4 种坏 URL）
@@ -376,7 +376,7 @@ static void showArmFuncLookup()
         "INFO_FUNCTION",
         "按 URL 调阅单个函数的名片：命中返回结构化 FuncInfo 包（m_msg 恒 ok），"
         "msgName 与 description 承载注册时声明的元数据；url 解析失败与目标"
-        "不存在均为 eNo。");
+        "不存在均为 ResStatus::Failed。");
 
     logAction("调阅质量抽检函数名片");
     YomkResponse resp = YomkAPI::getServiceFunctionInfoByUrl("/ArmStation/quality_check");
@@ -409,7 +409,7 @@ static void showArmFuncLookup()
 
     logAction("以函数不存在的 url 单查", "INFO_FUNCTION /ArmStation/ghost (函数不存在)",
         [&] { return YomkAPI::getServiceFunctionInfoByUrl("/ArmStation/ghost"); });
-    logVerify("4 种坏 URL 均为 eNo 且 msg 说明原因：url 解析失败 / 目标不存在是普通返回值，不报错不崩溃");
+    logVerify("4 种坏 URL 均为 ResStatus::Failed 且 msg 说明原因：url 解析失败 / 目标不存在是普通返回值，不报错不崩溃");
 }
 
 // 场景 4：全厂拓扑总览（INFO_ALL）
@@ -481,17 +481,17 @@ static void showArmPowerOff()
         "收班断电",
         "SHUTDOWN / INFO_SERVICES",
         "收班断电前先预告：SHUTDOWN 排空在途请求并释放全部服务（幂等），"
-        "关闭后框架单例清空，任何自省调用统一返回 eInvalid——本条守卫演示"
+        "关闭后框架单例清空，任何自省调用统一返回 ResStatus::Invalid——本条守卫演示"
         "将在静默中完成，静默即演示效果。");
 
-    YOMK_INFO_TAG("arm.demo", "收班预告：SHUTDOWN 后框架已关闭，此后任何自省调用统一返回 eInvalid \"YomkServer is not init\"；");
+    YOMK_INFO_TAG("arm.demo", "收班预告：SHUTDOWN 后框架已关闭，此后任何自省调用统一返回 ResStatus::Invalid \"YomkServer is not init\"；");
     YOMK_INFO_TAG("arm.demo", "本示例所有日志宏随之静默——下面的静默段正是演示效果，示例日志至此结束，程序停在 getchar 等待回车退出");
 
     logAction(
         "收班断电：优雅关闭框架", "SHUTDOWN + INFO_SERVICES (关闭后守卫)",
         [&] {
             YomkAPI::shutdown();
-            return YomkAPI::listServices();  // eInvalid：结果行随日志宏静默，行为已由收班预告说明
+            return YomkAPI::listServices();  // ResStatus::Invalid：结果行随日志宏静默，行为已由收班预告说明
         });
 }
 

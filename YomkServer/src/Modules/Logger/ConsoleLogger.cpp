@@ -19,20 +19,20 @@ ConsoleLogger::ConsoleLogger()
 
 ConsoleLogger::~ConsoleLogger() {}
 
-void ConsoleLogger::setLevelOn(ELogLevel logLevel, bool on)
+void ConsoleLogger::setLevelOn(LogLevel logLevel, bool on)
 {
     switch (logLevel)
     {
-        case eDebug:
+        case LogLevel::Debug:
             m_showDebugLog.store(on);
             break;
-        case eInfo:
+        case LogLevel::Info:
             m_showInfoLog.store(on);
             break;
-        case eWarn:
+        case LogLevel::Warn:
             m_showWarnLog.store(on);
             break;
-        case eError:
+        case LogLevel::Error:
             m_showErrorLog.store(on);
             break;
         default:
@@ -42,42 +42,42 @@ void ConsoleLogger::setLevelOn(ELogLevel logLevel, bool on)
     }
 }
 
-bool ConsoleLogger::isLevelOn(ELogLevel logLevel) const
+bool ConsoleLogger::isLevelOn(LogLevel logLevel) const
 {
     switch (logLevel)
     {
-        case eDebug:
+        case LogLevel::Debug:
             return m_showDebugLog.load();
-        case eInfo:
+        case LogLevel::Info:
             return m_showInfoLog.load();
-        case eWarn:
+        case LogLevel::Warn:
             return m_showWarnLog.load();
-        case eError:
+        case LogLevel::Error:
             return m_showErrorLog.load();
         default:
             return m_showInfoLog.load();
     }
 }
 
-void ConsoleLogger::log(ELogLevel logLevel, const std::string& tag, const std::string& log)
+void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::string& log)
 {
     // 级别门控随 sink 自持：关断级别直接丢弃不输出（unknown 级别按 Info 门控，
     // 与下方 default 降级语义一致）；判定在类级锁外完成，atomic 读无新锁
     switch (logLevel)
     {
-        case eDebug:
+        case LogLevel::Debug:
             if (!m_showDebugLog.load())
                 return;
             break;
-        case eInfo:
+        case LogLevel::Info:
             if (!m_showInfoLog.load())
                 return;
             break;
-        case eWarn:
+        case LogLevel::Warn:
             if (!m_showWarnLog.load())
                 return;
             break;
-        case eError:
+        case LogLevel::Error:
             if (!m_showErrorLog.load())
                 return;
             break;
@@ -99,16 +99,16 @@ void ConsoleLogger::log(ELogLevel logLevel, const std::string& tag, const std::s
     std::lock_guard<std::mutex> lock(s_mutex);
     switch (logLevel)
     {
-        case eDebug:
+        case LogLevel::Debug:
             std::cout << timeStr << " [Debug] [" << tagShown << "] " << log << std::endl;
             break;
-        case eInfo:
+        case LogLevel::Info:
             std::cout << timeStr << " [Info ] [" << tagShown << "] " << log << std::endl;
             break;
-        case eWarn:
+        case LogLevel::Warn:
             std::cout << timeStr << " [Warn ] [" << tagShown << "] " << log << std::endl;
             break;
-        case eError:
+        case LogLevel::Error:
             std::cout << timeStr << " [Error] [" << tagShown << "] " << log << std::endl;
             break;
         default:

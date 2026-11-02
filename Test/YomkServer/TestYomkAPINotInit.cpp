@@ -5,12 +5,12 @@
  * 覆盖内容：
  * 1. version() 免初始化可调用（不依赖单例，返回非空版本号）
  * 2. 未初始化守卫默认值：serverInstance() 为空、shutdown() 安全空转（幂等）；
- *    request 返回 eInvalid + 契约消息 "YomkServer is not init"；asyncRequest 静默返回
+ *    request 返回 ResStatus::Invalid + 契约消息 "YomkServer is not init"；asyncRequest 静默返回
  *    回调不触发；newService/addService/delService 返回 -1
  * 3. 模块 API 守卫：五模块全量（P1 补齐 Context/ServerInfo 共 14 条，原代表条目保留）——
  *    EventLoop 9 入口、FunctionPool 6 入口、Logger 23 入口（LG2 补齐原 19 项计数，LG4 新增
  *    deleteFileLogger（LG6 由 LOGGER_DELETE 改名））、Context 12 入口 + GET 特殊形态、
- *    ServerInfo 4 入口；YomkResponse 形态 → eInvalid；
+ *    ServerInfo 4 入口；YomkResponse 形态 → ResStatus::Invalid；
  *    getContext 形态 → 原样返回调用方默认值，同一守卫宏展开书面豁免
  *
  * 说明：call_once 不可逆，未初始化态须独占进程（本程序全程不调 init）；addService 传裸指针
@@ -78,7 +78,7 @@ int main()
     std::cout << "===== 3. request/asyncRequest 未初始化守卫 =====" << std::endl;
     {
         YomkResponse resp = YomkAPI::request("/Any/func", nullptr);
-        YOMK_TEST_CHECK(resp.m_status == YomkResponse::eInvalid, "request 未初始化返回 eInvalid");
+        YOMK_TEST_CHECK(resp.m_status == YomkResponse::ResStatus::Invalid, "request 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not init", "request 未初始化契约消息: " + resp.m_msg);
 
         YomkAPI::asyncRequest("/Any/func", nullptr, [](YomkResponse) { ++g_asyncCbCount; });
@@ -105,166 +105,166 @@ int main()
         // 五模块入口级全量（P1 收口：Logger 23 / EventLoop 9 / FunctionPool 6 /
         // Context 12 + GET 特殊形态 / ServerInfo 4）
         YOMK_TEST_CHECK(
-            YomkAPI::setConsoleLogProxy(nullptr).m_status == YomkResponse::eInvalid,
-            "setConsoleLogProxy 未初始化返回 eInvalid");
+            YomkAPI::setConsoleLogProxy(nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            "setConsoleLogProxy 未初始化返回 ResStatus::Invalid");
         YomkResponse logResp = YomkAPI::emitConsoleLogInfo("tag", "hello");
-        YOMK_TEST_CHECK(logResp.m_status == YomkResponse::eInvalid, "emitConsoleLogInfo 未初始化返回 eInvalid");
+        YOMK_TEST_CHECK(logResp.m_status == YomkResponse::ResStatus::Invalid, "emitConsoleLogInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(logResp.m_msg == "YomkServer is not init", "模块 API 守卫契约消息同根: " + logResp.m_msg);
         YOMK_TEST_CHECK(
-            YomkAPI::emitConsoleLogWarn("tag", "hello").m_status == YomkResponse::eInvalid,
-            "emitConsoleLogWarn 未初始化返回 eInvalid");
+            YomkAPI::emitConsoleLogWarn("tag", "hello").m_status == YomkResponse::ResStatus::Invalid,
+            "emitConsoleLogWarn 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitConsoleLogError("tag", "hello").m_status == YomkResponse::eInvalid,
-            "emitConsoleLogError 未初始化返回 eInvalid");
+            YomkAPI::emitConsoleLogError("tag", "hello").m_status == YomkResponse::ResStatus::Invalid,
+            "emitConsoleLogError 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitConsoleLogDebug("tag", "hello").m_status == YomkResponse::eInvalid,
-            "emitConsoleLogDebug 未初始化返回 eInvalid");
+            YomkAPI::emitConsoleLogDebug("tag", "hello").m_status == YomkResponse::ResStatus::Invalid,
+            "emitConsoleLogDebug 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::createFileLogger("/tmp", "guard.log").m_status == YomkResponse::eInvalid,
-            "createFileLogger 未初始化返回 eInvalid");
+            YomkAPI::createFileLogger("/tmp", "guard.log").m_status == YomkResponse::ResStatus::Invalid,
+            "createFileLogger 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::flushFileLog("guard.log").m_status == YomkResponse::eInvalid,
-            "flushFileLog 未初始化返回 eInvalid");
+            YomkAPI::flushFileLog("guard.log").m_status == YomkResponse::ResStatus::Invalid,
+            "flushFileLog 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogInfo("guard.log", "tag", "hello").m_status == YomkResponse::eInvalid,
-            "emitFileLogInfo 未初始化返回 eInvalid");
+            YomkAPI::emitFileLogInfo("guard.log", "tag", "hello").m_status == YomkResponse::ResStatus::Invalid,
+            "emitFileLogInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogWarn("guard.log", "tag", "hello").m_status == YomkResponse::eInvalid,
-            "emitFileLogWarn 未初始化返回 eInvalid");
+            YomkAPI::emitFileLogWarn("guard.log", "tag", "hello").m_status == YomkResponse::ResStatus::Invalid,
+            "emitFileLogWarn 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogError("guard.log", "tag", "hello").m_status == YomkResponse::eInvalid,
-            "emitFileLogError 未初始化返回 eInvalid");
+            YomkAPI::emitFileLogError("guard.log", "tag", "hello").m_status == YomkResponse::ResStatus::Invalid,
+            "emitFileLogError 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogDebug("guard.log", "tag", "hello").m_status == YomkResponse::eInvalid,
-            "emitFileLogDebug 未初始化返回 eInvalid");
+            YomkAPI::emitFileLogDebug("guard.log", "tag", "hello").m_status == YomkResponse::ResStatus::Invalid,
+            "emitFileLogDebug 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::disableConsoleLogInfo().m_status == YomkResponse::eInvalid,
-            "disableConsoleLogInfo 未初始化返回 eInvalid");
+            YomkAPI::disableConsoleLogInfo().m_status == YomkResponse::ResStatus::Invalid,
+            "disableConsoleLogInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::disableConsoleLogWarn().m_status == YomkResponse::eInvalid,
-            "disableConsoleLogWarn 未初始化返回 eInvalid");
+            YomkAPI::disableConsoleLogWarn().m_status == YomkResponse::ResStatus::Invalid,
+            "disableConsoleLogWarn 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::disableConsoleLogError().m_status == YomkResponse::eInvalid,
-            "disableConsoleLogError 未初始化返回 eInvalid");
+            YomkAPI::disableConsoleLogError().m_status == YomkResponse::ResStatus::Invalid,
+            "disableConsoleLogError 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::disableConsoleLogDebug().m_status == YomkResponse::eInvalid,
-            "disableConsoleLogDebug 未初始化返回 eInvalid");
+            YomkAPI::disableConsoleLogDebug().m_status == YomkResponse::ResStatus::Invalid,
+            "disableConsoleLogDebug 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::enableConsoleLogInfo().m_status == YomkResponse::eInvalid,
-            "enableConsoleLogInfo 未初始化返回 eInvalid");
+            YomkAPI::enableConsoleLogInfo().m_status == YomkResponse::ResStatus::Invalid,
+            "enableConsoleLogInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::enableConsoleLogWarn().m_status == YomkResponse::eInvalid,
-            "enableConsoleLogWarn 未初始化返回 eInvalid");
+            YomkAPI::enableConsoleLogWarn().m_status == YomkResponse::ResStatus::Invalid,
+            "enableConsoleLogWarn 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::enableConsoleLogError().m_status == YomkResponse::eInvalid,
-            "enableConsoleLogError 未初始化返回 eInvalid");
+            YomkAPI::enableConsoleLogError().m_status == YomkResponse::ResStatus::Invalid,
+            "enableConsoleLogError 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::enableConsoleLogDebug().m_status == YomkResponse::eInvalid,
-            "enableConsoleLogDebug 未初始化返回 eInvalid");
+            YomkAPI::enableConsoleLogDebug().m_status == YomkResponse::ResStatus::Invalid,
+            "enableConsoleLogDebug 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listLoggers("console").m_status == YomkResponse::eInvalid,
-            "listLoggers 未初始化返回 eInvalid");
+            YomkAPI::listLoggers("console").m_status == YomkResponse::ResStatus::Invalid,
+            "listLoggers 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getLoggerInfo("guard_logger", "console").m_status == YomkResponse::eInvalid,
-            "getLoggerInfo 未初始化返回 eInvalid");
-        YOMK_TEST_CHECK(YomkAPI::getAllLoggerInfo().m_status == YomkResponse::eInvalid, "getAllLoggerInfo 未初始化返回 eInvalid");
+            YomkAPI::getLoggerInfo("guard_logger", "console").m_status == YomkResponse::ResStatus::Invalid,
+            "getLoggerInfo 未初始化返回 ResStatus::Invalid");
+        YOMK_TEST_CHECK(YomkAPI::getAllLoggerInfo().m_status == YomkResponse::ResStatus::Invalid, "getAllLoggerInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::deleteFileLogger("guard_logger").m_status == YomkResponse::eInvalid,
-            "deleteFileLogger 未初始化返回 eInvalid");
+            YomkAPI::deleteFileLogger("guard_logger").m_status == YomkResponse::ResStatus::Invalid,
+            "deleteFileLogger 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::createContext("guard_key", nullptr).m_status == YomkResponse::eInvalid,
-            "createContext 未初始化返回 eInvalid");
+            YomkAPI::createContext("guard_key", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            "createContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::setContext("guard_key", nullptr).m_status == YomkResponse::eInvalid,
-            "setContext 未初始化返回 eInvalid");
+            YomkAPI::setContext("guard_key", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            "setContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::destroyContext("guard_key").m_status == YomkResponse::eInvalid,
-            "destroyContext 未初始化返回 eInvalid");
+            YomkAPI::destroyContext("guard_key").m_status == YomkResponse::ResStatus::Invalid,
+            "destroyContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::enableContextChecker().m_status == YomkResponse::eInvalid,
-            "enableContextChecker 未初始化返回 eInvalid");
+            YomkAPI::enableContextChecker().m_status == YomkResponse::ResStatus::Invalid,
+            "enableContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::disableContextChecker().m_status == YomkResponse::eInvalid,
-            "disableContextChecker 未初始化返回 eInvalid");
+            YomkAPI::disableContextChecker().m_status == YomkResponse::ResStatus::Invalid,
+            "disableContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::setContextChecker("guard_key", nullptr).m_status == YomkResponse::eInvalid,
-            "setContextChecker 未初始化返回 eInvalid");
+            YomkAPI::setContextChecker("guard_key", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            "setContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::enableContextMonitor().m_status == YomkResponse::eInvalid,
-            "enableContextMonitor 未初始化返回 eInvalid");
+            YomkAPI::enableContextMonitor().m_status == YomkResponse::ResStatus::Invalid,
+            "enableContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::disableContextMonitor().m_status == YomkResponse::eInvalid,
-            "disableContextMonitor 未初始化返回 eInvalid");
+            YomkAPI::disableContextMonitor().m_status == YomkResponse::ResStatus::Invalid,
+            "disableContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::setContextMonitor("guard_key", nullptr).m_status == YomkResponse::eInvalid,
-            "setContextMonitor 未初始化返回 eInvalid");
+            YomkAPI::setContextMonitor("guard_key", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            "setContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listContextKeys().m_status == YomkResponse::eInvalid,
-            "listContextKeys 未初始化返回 eInvalid");
+            YomkAPI::listContextKeys().m_status == YomkResponse::ResStatus::Invalid,
+            "listContextKeys 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getContextInfo("guard_key").m_status == YomkResponse::eInvalid,
-            "getContextInfo 未初始化返回 eInvalid");
+            YomkAPI::getContextInfo("guard_key").m_status == YomkResponse::ResStatus::Invalid,
+            "getContextInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getAllContextInfo().m_status == YomkResponse::eInvalid,
-            "getAllContextInfo 未初始化返回 eInvalid");
+            YomkAPI::getAllContextInfo().m_status == YomkResponse::ResStatus::Invalid,
+            "getAllContextInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::startEventLoop("/guard_loop").m_status == YomkResponse::eInvalid,
-            "startEventLoop 未初始化返回 eInvalid");
+            YomkAPI::startEventLoop("/guard_loop").m_status == YomkResponse::ResStatus::Invalid,
+            "startEventLoop 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::stopEventLoop("/guard_loop").m_status == YomkResponse::eInvalid,
-            "stopEventLoop 未初始化返回 eInvalid");
+            YomkAPI::stopEventLoop("/guard_loop").m_status == YomkResponse::ResStatus::Invalid,
+            "stopEventLoop 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::postEvent("/guard_loop", yomkmsg::String::shared(std::string("x"))).m_status ==
-                YomkResponse::eInvalid,
-            "YomkAPI::postEvent 未初始化返回 eInvalid");
+                YomkResponse::ResStatus::Invalid,
+            "YomkAPI::postEvent 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::postEventAndWait("/guard_loop", yomkmsg::String::shared(std::string("x"))).m_status ==
-                YomkResponse::eInvalid,
-            "YomkAPI::postEventAndWait 未初始化返回 eInvalid");
+                YomkResponse::ResStatus::Invalid,
+            "YomkAPI::postEventAndWait 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::destroyEventLoop("/guard_loop").m_status == YomkResponse::eInvalid,
-            "destroyEventLoop 未初始化返回 eInvalid");
+            YomkAPI::destroyEventLoop("/guard_loop").m_status == YomkResponse::ResStatus::Invalid,
+            "destroyEventLoop 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listEventLoops().m_status == YomkResponse::eInvalid,
-            "listEventLoops 未初始化返回 eInvalid");
+            YomkAPI::listEventLoops().m_status == YomkResponse::ResStatus::Invalid,
+            "listEventLoops 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getEventLoopInfo("/guard_loop").m_status == YomkResponse::eInvalid,
-            "getEventLoopInfo(name) 未初始化返回 eInvalid");
+            YomkAPI::getEventLoopInfo("/guard_loop").m_status == YomkResponse::ResStatus::Invalid,
+            "getEventLoopInfo(name) 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getEventLoopInfo("/guard_loop", 5).m_status == YomkResponse::eInvalid,
-            "getEventLoopInfo(name, n) 未初始化返回 eInvalid");
+            YomkAPI::getEventLoopInfo("/guard_loop", 5).m_status == YomkResponse::ResStatus::Invalid,
+            "getEventLoopInfo(name, n) 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getAllEventLoopInfo().m_status == YomkResponse::eInvalid,
-            "getAllEventLoopInfo 未初始化返回 eInvalid");
+            YomkAPI::getAllEventLoopInfo().m_status == YomkResponse::ResStatus::Invalid,
+            "getAllEventLoopInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("/guard_func", nullptr).m_status == YomkResponse::eInvalid,
-            "registerFunction 未初始化返回 eInvalid");
+            YomkAPI::registerFunction("/guard_func", nullptr).m_status == YomkResponse::ResStatus::Invalid,
+            "registerFunction 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::unregisterFunction("/guard_func").m_status == YomkResponse::eInvalid,
-            "unregisterFunction 未初始化返回 eInvalid");
+            YomkAPI::unregisterFunction("/guard_func").m_status == YomkResponse::ResStatus::Invalid,
+            "unregisterFunction 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::callFunction("/guard_func", yomkmsg::String::shared(std::string("x"))).m_status ==
-                YomkResponse::eInvalid,
-            "callFunction 未初始化返回 eInvalid");
+                YomkResponse::ResStatus::Invalid,
+            "callFunction 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listFunctionNames().m_status == YomkResponse::eInvalid,
-            "listFunctionNames 未初始化返回 eInvalid");
+            YomkAPI::listFunctionNames().m_status == YomkResponse::ResStatus::Invalid,
+            "listFunctionNames 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getFunctionInfo("/guard_func").m_status == YomkResponse::eInvalid,
-            "getFunctionInfo 未初始化返回 eInvalid");
+            YomkAPI::getFunctionInfo("/guard_func").m_status == YomkResponse::ResStatus::Invalid,
+            "getFunctionInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getAllFunctionInfo().m_status == YomkResponse::eInvalid,
-            "getAllFunctionInfo 未初始化返回 eInvalid");
-        YOMK_TEST_CHECK(YomkAPI::getAllServerInfo().m_status == YomkResponse::eInvalid, "getAllServerInfo 未初始化返回 eInvalid");
+            YomkAPI::getAllFunctionInfo().m_status == YomkResponse::ResStatus::Invalid,
+            "getAllFunctionInfo 未初始化返回 ResStatus::Invalid");
+        YOMK_TEST_CHECK(YomkAPI::getAllServerInfo().m_status == YomkResponse::ResStatus::Invalid, "getAllServerInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listServices().m_status == YomkResponse::eInvalid,
-            "listServices 未初始化返回 eInvalid");
+            YomkAPI::listServices().m_status == YomkResponse::ResStatus::Invalid,
+            "listServices 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listServiceFunctions("/guard_srv").m_status == YomkResponse::eInvalid,
-            "listServiceFunctions 未初始化返回 eInvalid");
+            YomkAPI::listServiceFunctions("/guard_srv").m_status == YomkResponse::ResStatus::Invalid,
+            "listServiceFunctions 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getServiceFunctionInfoByUrl("/guard_srv/f").m_status == YomkResponse::eInvalid,
-            "getServiceFunctionInfoByUrl 未初始化返回 eInvalid");
+            YomkAPI::getServiceFunctionInfoByUrl("/guard_srv/f").m_status == YomkResponse::ResStatus::Invalid,
+            "getServiceFunctionInfoByUrl 未初始化返回 ResStatus::Invalid");
 
         // getContext 特殊形态：守卫返回值即调用方默认值（指针一致）
         std::shared_ptr<yomkmsg::String> ctxDefault = std::make_shared<yomkmsg::String>("guard_default");

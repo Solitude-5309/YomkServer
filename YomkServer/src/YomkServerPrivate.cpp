@@ -119,7 +119,7 @@ YomkResponse YomkServerPrivate::request(const std::string& srvName, const std::s
         if (iter == m_serviceMap.end())
         {
             YOMK_ERR_POS_LOG("service not found. " + srvName + ", please start the service.");
-            return YomkResponse(YomkResponse::eNo, "service not found: " + srvName);
+            return YomkResponse(YomkResponse::ResStatus::Failed, "service not found: " + srvName);
         }
         srv = iter->second;
     }

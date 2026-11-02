@@ -25,16 +25,16 @@
  *        带元数据登记班次握手工具：MsgName 与说明仅作内省元数据，调用时框架
  *        不做类型校验；INFO_NAME 单查逐字段确认。
  * 场景 3 showArmToolNullGuard [YomkAPI::callFunction(nullptr)]
- *        空参守卫：CALL 传 nullptr，函数内解包宏判空自动返回 eNo——统一契约
+ *        空参守卫：CALL 传 nullptr，函数内解包宏判空自动返回 ResStatus::Failed——统一契约
  *        无需函数自己写 if；arm.tool 无日志自证函数体未执行。
  * 场景 4 showArmToolHotSwap   [registerFunction(3参) / INFO_NAME / CALL]
  *        班中工具升级：同名再注册即热替换（无需注销），CALL 走新实现；MsgName
  *        与说明元数据随新注册整体刷新（未传说明则清空）。
  * 场景 5 showArmToolDashboard [INFO_NAMES / INFO_NAME / INFO_ALL]
- *        运维面板：函数名清单（字典序）、单查未注册名字演示 eNo not-found、
+ *        运维面板：函数名清单（字典序）、单查未注册名字演示 ResStatus::Failed not-found、
  *        全量逐字段导出——框架只回结构化数据，展示格式由用户定义。
  * 场景 6 showArmToolCleanup   [YomkAPI::unregisterFunction / CALL / INFO_ALL]
- *        收班清柜：注销后调用、重复注销均返回 eNo（not-found 惯例）；
+ *        收班清柜：注销后调用、重复注销均返回 ResStatus::Failed（not-found 惯例）；
  *        INFO_ALL 确认清单已空，班次闭环。
  *
  * 工具函数规划（跨场景流转，模拟多模块共享同一批无状态工具）：
@@ -70,25 +70,25 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 // API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 // CALL 的返回值即被调函数的返回值——结果数据若挂 String 包则随行展示（如负载合计值）；
 // 其余内省包（StringArray/FuncInfo/FuncInfoList）形态各异，解包类型不匹配时静默不展示
-// status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
+// status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const YomkResponse& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << resp.m_status;
-    if (resp.m_status == YomkResponse::eOk)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
+    if (resp.m_status == YomkResponse::ResStatus::Successed)
     {
-        oss << "(eOk 成功)";
+        oss << "(ResStatus::Successed 成功)";
     }
-    else if (resp.m_status == YomkResponse::eNo)
+    else if (resp.m_status == YomkResponse::ResStatus::Failed)
     {
-        oss << "(eNo 拒绝或不存在)";
+        oss << "(ResStatus::Failed 拒绝或不存在)";
     }
     else
     {
-        oss << "(eInvalid 未初始化或参数无效)";
+        oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
     oss << ", msg=\"" << resp.m_msg << "\"";
-    if (resp.m_status == YomkResponse::eOk && resp.m_data)
+    if (resp.m_status == YomkResponse::ResStatus::Successed && resp.m_data)
     {
         auto data = yomk::unPack<yomkmsg::String>(resp.m_data);
         if (data)
@@ -156,11 +156,11 @@ static void logVerify(const std::string& text)
 // 入参 StringArray 各轴负载（kg），合计结果同时放进 msg 与 m_data——调用方两者都能拿到
 YomkResponse payloadSum(YomkPkgPtr pkg)
 {
-    // 解包入参：宏已自动判空，失败自动返回 {eNo, "错误信息"}（空参守卫见场景 3）
+    // 解包入参：宏已自动判空，失败自动返回 {ResStatus::Failed, "错误信息"}（空参守卫见场景 3）
     auto loads = yomk::unPack<yomkmsg::StringArray>(pkg);
     if (!loads)
     {
-        return {YomkResponse::eNo, "pkg is null or pkg is not StringArray"};
+        return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not StringArray"};
     }
 
     std::ostringstream oss;
@@ -178,7 +178,7 @@ YomkResponse payloadSum(YomkPkgPtr pkg)
     YOMK_INFO_TAG("arm.tool", oss.str());
 
     // msg 描述结果，m_data 携带结果数据——调用方两者都能拿到
-    return {YomkResponse::eOk, "payload=" + std::to_string(totalKg) + "kg", yomkmsg::String::shared(std::to_string(totalKg))};
+    return {YomkResponse::ResStatus::Successed, "payload=" + std::to_string(totalKg) + "kg", yomkmsg::String::shared(std::to_string(totalKg))};
 }
 
 // 班次握手工具：演示带元数据的登记与调用（场景 2 以 4 参形式登记，场景 4 被热替换）
@@ -187,12 +187,12 @@ YomkResponse handshake(YomkPkgPtr pkg)
     auto worker = yomk::unPack<yomkmsg::String>(pkg);
     if (!worker)
     {
-        return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+        return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     std::ostringstream oss;
     oss << "班次握手工具执行：向 " << worker->d << " 回执问候";
     YOMK_INFO_TAG("arm.tool", oss.str());
-    return {YomkResponse::eOk, "shift hello, " + worker->d};
+    return {YomkResponse::ResStatus::Successed, "shift hello, " + worker->d};
 }
 
 // ---------------------------------------------------------------------------
@@ -258,12 +258,12 @@ static void showArmToolNullGuard()
         "空参调用统一守卫",
         "YomkAPI::callFunction(nullptr)",
         "误传空参调用握手工具：CALL 的入参消息包可为 nullptr，被调函数内的解包宏"
-        "判空后自动返回 eNo——空参守卫是框架统一契约，无需函数自己写 if。");
+        "判空后自动返回 ResStatus::Failed——空参守卫是框架统一契约，无需函数自己写 if。");
 
     logAction(
         "空参调用握手工具 tool.handshake", "CALL tool.handshake (nullptr)",
         [&] { return YomkAPI::callFunction("tool.handshake", nullptr); });
-    logVerify("开始行与结果行之间无 arm.tool 日志：函数体未执行——eNo 来自函数入口解包宏判空，统一契约无需函数自己写 if");
+    logVerify("开始行与结果行之间无 arm.tool 日志：函数体未执行——ResStatus::Failed 来自函数入口解包宏判空，统一契约无需函数自己写 if");
 }
 
 // 场景 4：同名热替换（班中工具升级）
@@ -283,18 +283,18 @@ static void showArmToolHotSwap()
         auto worker = yomk::unPack<yomkmsg::String>(pkg);
         if (!worker)
         {
-            return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+            return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
         }
         std::ostringstream oss;
         oss << "班次握手工具 V2 执行：向 " << worker->d << " 升级问候";
         YOMK_INFO_TAG("arm.tool", oss.str());
-        return {YomkResponse::eOk, "shift hello V2, " + worker->d};
+        return {YomkResponse::ResStatus::Successed, "shift hello V2, " + worker->d};
     };
 
     logAction(
         "热替换班次握手工具 tool.handshake（V2）", "REGISTER tool.handshake (V2, 3参)",
         [&] { return YomkAPI::registerFunction("tool.handshake", handshakeV2, "String"); });
-    logVerify("already exist 提示 + eOk：同名重复注册即运行时热替换，无需先注销");
+    logVerify("already exist 提示 + ResStatus::Successed：同名重复注册即运行时热替换，无需先注销");
 
     logAction("复查握手工具元信息");
     YomkResponse resp = YomkAPI::getFunctionInfo("tool.handshake");
@@ -320,7 +320,7 @@ static void showArmToolDashboard()
         "工具柜运维面板",
         "INFO_NAMES / INFO_NAME / INFO_ALL",
         "运维面板巡检：INFO_NAMES 拉取函数名清单；INFO_NAME 单查工具元信息"
-        "（未注册名字演示 eNo）；INFO_ALL 全量导出——框架只回结构化数据，"
+        "（未注册名字演示 ResStatus::Failed）；INFO_ALL 全量导出——框架只回结构化数据，"
         "展示格式由用户定义。");
 
     logAction("巡检函数名清单");
@@ -339,7 +339,7 @@ static void showArmToolDashboard()
     logAction("单查未注册工具 tool.ghost");
     YomkResponse resp = YomkAPI::getFunctionInfo("tool.ghost");
     logResp("INFO_NAME tool.ghost", resp);
-    logVerify("未注册名字 -> eNo(funcName is not register)：not-found 是框架统一惯例");
+    logVerify("未注册名字 -> ResStatus::Failed(funcName is not register)：not-found 是框架统一惯例");
 
     logAction("全量导出工具元信息");
     resp = YomkAPI::getAllFunctionInfo();
@@ -362,7 +362,7 @@ static void showArmToolCleanup()
         "收班清柜注销",
         "YomkAPI::unregisterFunction / CALL / INFO_ALL",
         "收班下线全部工具：UNREGISTER 把函数移出池子；注销后调用、重复注销均"
-        "返回 eNo（not-found 惯例）——eInvalid 仅用于参数无效；INFO_ALL 确认清柜。");
+        "返回 ResStatus::Failed（not-found 惯例）——ResStatus::Invalid 仅用于参数无效；INFO_ALL 确认清柜。");
 
     logAction(
         "注销负载合计工具 tool.payloadSum", "UNREGISTER tool.payloadSum",
@@ -371,12 +371,12 @@ static void showArmToolCleanup()
     logAction(
         "调用已注销工具 tool.payloadSum", "CALL tool.payloadSum (已注销)",
         [&] { return YomkAPI::callFunction("tool.payloadSum", nullptr); });
-    logVerify("已注销名字 -> eNo(funcName is not register)：开始行与结果行之间无 arm.tool 日志，函数已不在池中");
+    logVerify("已注销名字 -> ResStatus::Failed(funcName is not register)：开始行与结果行之间无 arm.tool 日志，函数已不在池中");
 
     logAction(
         "重复注销负载合计工具 tool.payloadSum", "UNREGISTER tool.payloadSum (重复)",
         [&] { return YomkAPI::unregisterFunction("tool.payloadSum"); });
-    logVerify("重复注销同样 -> eNo：not-found 是框架统一惯例，不报错也不崩溃");
+    logVerify("重复注销同样 -> ResStatus::Failed：not-found 是框架统一惯例，不报错也不崩溃");
 
     logAction(
         "注销班次握手工具 tool.handshake", "UNREGISTER tool.handshake",

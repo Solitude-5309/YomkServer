@@ -137,8 +137,8 @@ int ContextGroup::set(const std::string& key, YomkPkgPtr value)
     // 避免对空 std::function 调用抛 std::bad_function_call 击穿 set 调用链
     if (m_checkerEnabled.load() && itContext->second.checker)
     {
-        ContextChecker::ECheckStatus checkStatus = itContext->second.checker(data);
-        if (checkStatus == ContextChecker::eReject)
+        ContextChecker::CheckStatus checkStatus = itContext->second.checker(data);
+        if (checkStatus == ContextChecker::CheckStatus::Reject)
         {
             return 4;
         }

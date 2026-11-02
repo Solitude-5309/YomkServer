@@ -9,7 +9,7 @@
 | `YomkAPI::registerFunction(name, func)` | 注册函数 |
 | `YomkAPI::registerFunction(name, func, "MsgName")` | 注册并声明期望的消息类型名（仅作内省元数据） |
 | `YomkAPI::registerFunction(name, func, "MsgName", "Description")` | 同上，追加函数说明（自由字符串，INFO_NAME 数据段可读） |
-| `YomkAPI::callFunction(name, pkg)` | 按名调用函数（返回值即函数返回值）；未注册的名字返回 `eNo=1` |
+| `YomkAPI::callFunction(name, pkg)` | 按名调用函数（返回值即函数返回值）；未注册的名字返回 `ResStatus::Failed=1` |
 | `YomkAPI::unregisterFunction(name)` | 按名字从函数表移除 |
 | `YomkAPI::listFunctionNames()` | 获取全部函数名 |
 | `YomkAPI::getFunctionInfo(name)` | 查询单个已注册函数元信息 |
@@ -20,10 +20,10 @@
 ```cpp
 // 注册函数（第三参可选：声明期望的消息类型名；第四参可选：函数说明，均仅作内省元数据）
 YomkAPI::registerFunction("calcSum", [](YomkPkgPtr pkg) {
-    return YomkResponse{YomkResponse::eOk, "result"};
+    return YomkResponse{YomkResponse::ResStatus::Successed, "result"};
 });
 
-// 调用函数（返回值即函数返回值；未注册的名字返回 eNo=1）
+// 调用函数（返回值即函数返回值；未注册的名字返回 ResStatus::Failed=1）
 YomkResponse resp = YomkAPI::callFunction("calcSum", nullptr);
 
 // 同名重复注册即运行时热替换，无需注销
@@ -36,7 +36,7 @@ YomkAPI::unregisterFunction("calcSum");
 ## 注意事项
 
 - 同名重复注册即运行时热替换，无需先注销。
-- 未注册的名字调用返回 `eNo=1`。
+- 未注册的名字调用返回 `ResStatus::Failed=1`。
 - 服务成员函数注册到函数池时须用 `weakFunc(&Class::Method)` 弱绑定——服务删除后回调自动失效，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 完整示例

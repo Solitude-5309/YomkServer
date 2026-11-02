@@ -150,7 +150,7 @@ YomkResponse YomkServer::request(const std::string& url, YomkPkgPtr pkg)
     std::string errMsg;
     if (!parseRequestUrl(url, srvName, tmpFuncName, errMsg))
     {
-        return YomkResponse(YomkResponse::eNo, errMsg);
+        return YomkResponse(YomkResponse::ResStatus::Failed, errMsg);
     }
 
     return m_p->request(srvName, tmpFuncName, pkg);

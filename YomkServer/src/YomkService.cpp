@@ -83,7 +83,7 @@ YomkResponse YomkService::invoke(const std::string& funcName, YomkPkgPtr pkg)
     if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
-        return YomkResponse(YomkResponse::eNo, "service is null");
+        return YomkResponse(YomkResponse::ResStatus::Failed, "service is null");
     }
     return m_p->invoke(funcName, pkg);
 }
@@ -93,7 +93,7 @@ YomkResponse YomkService::request(const std::string& url, YomkPkgPtr pkg)
     if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
-        return YomkResponse(YomkResponse::eNo, "service is null");
+        return YomkResponse(YomkResponse::ResStatus::Failed, "service is null");
     }
     return m_p->request(url, pkg);
 }

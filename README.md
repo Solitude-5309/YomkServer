@@ -57,9 +57,9 @@ public:
         auto msg = yomk::unPack<yomkmsg::String>(pkg); // 类型校验与解包；类型不匹配时 msg 为 nullptr，需自行判空
         if (!msg)
         {
-            return {YomkResponse::eNo, "pkg is not String"};
+            return {YomkResponse::ResStatus::Failed, "pkg is not String"};
         }
-        return {YomkResponse::eOk, "hello " + msg->d};
+        return {YomkResponse::ResStatus::Successed, "hello " + msg->d};
     }
 };
 
@@ -73,7 +73,7 @@ int main()
 
     // 3. 同步请求服务
     YomkResponse ret = YomkAPI::request("/MyService/hello", yomkmsg::String::shared("yomk"));
-    if (ret.m_status == YomkResponse::eOk)
+    if (ret.m_status == YomkResponse::ResStatus::Successed)
     {
         YOMK_INFO("Response received:", ret.m_msg);
     }
@@ -95,7 +95,7 @@ int main()
 所有服务间交互均遵循统一的请求响应抽象：
 
 - **URL 寻址**：格式为 `"/服务名/函数名"`，如 `"/MyService/hello"`。
-- **返回值 `YomkResponse`**：`m_status`（`eOk (0)` 调用成功；`eNo (1)` 目标服务或函数不存在、被拒绝或条件不满足；`eInvalid (-1)` 入参非法或服务器未初始化）、`m_msg` 状态描述文本、`m_data` 可选负载消息包。
+- **返回值 `YomkResponse`**：`m_status`（`ResStatus::Successed (0)` 调用成功；`ResStatus::Failed (1)` 目标服务或函数不存在、被拒绝或条件不满足；`ResStatus::Invalid (-1)` 入参非法或服务器未初始化）、`m_msg` 状态描述文本、`m_data` 可选负载消息包。
 - **同步调用** `YomkAPI::request()` 阻塞返回；**异步调用** `YomkAPI::asyncRequest()` 投递到框架内置线程池并发执行，不阻塞当前线程。
 
 详见 [服务总线](Docs/YomkServer.md)。
@@ -114,7 +114,7 @@ int main()
 
 ### 4. 共享上下文 (YomkContext)
 
-跨服务强类型键值存储：创建/读取/设置/销毁，内置变更前校验门控（Checker，支持 eAccept / eReject 拦截）与变更后监听（Monitor，同步/异步），支持运行期自省。
+跨服务强类型键值存储：创建/读取/设置/销毁，内置变更前校验门控（Checker，支持 CheckStatus::Accept / CheckStatus::Reject 拦截）与变更后监听（Monitor，同步/异步），支持运行期自省。
 
 详见 [共享上下文](Docs/YomkContext.md)。
 

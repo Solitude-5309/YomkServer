@@ -6,13 +6,13 @@
  * S3. asyncRequest 回调内重入：异步 monitor 回调（监控池线程）内同步 YomkAPI::setContext 重入
  *     /YomkContext/set 并触发另一键的同步 monitor——不死锁、异步/同步计数守恒、
  *     异步按提交序保序（末值可读）
- * S2. 删除内置服务契约与恢复：YomkAPI::delService("/YomkLogger") → 服务级 eNo + 精确消息；
+ * S2. 删除内置服务契约与恢复：YomkAPI::delService("/YomkLogger") → 服务级 ResStatus::Failed + 精确消息；
  *     YomkAPI::newService<YomkLogger>() 无参重注册（new T(this) 注入 server 指针，构造函数
  *     固定名 "/YomkLogger" 生效）→ LOGGER API 恢复且全链路可用
  * S1. YomkAPI::shutdown() 全链路统一收尾（压轴）：YomkAPI::postEvent 积压、FILE_LOG_INFO 缓冲、
  *     异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘（FileLogger
- *     析构 write）、API 回归 eInvalid + "YomkServer is not init"（API 守卫级：shutdown 内
- *     setServer(nullptr)，serverSnapshot 空守卫；服务级 eNo 仅出现在服务表内服务缺失时）、
+ *     析构 write）、API 回归 ResStatus::Invalid + "YomkServer is not init"（API 守卫级：shutdown 内
+ *     setServer(nullptr)，serverSnapshot 空守卫；服务级 ResStatus::Failed 仅出现在服务表内服务缺失时）、
  *     二次 shutdown 幂等
  *
  * 执行顺序约束：YomkAPI::init 为 static once_flag + call_once（单进程仅首次生效，shutdown 后
@@ -75,11 +75,11 @@ static bool readFile(const fs::path& path, std::string& out)
     return true;
 }
 
-// StringArray 响应解包（非 eOk/解包失败返回空表）
+// StringArray 响应解包（非 ResStatus::Successed/解包失败返回空表）
 static std::vector<std::string> unpackStringArray(const YomkResponse& resp)
 {
     std::vector<std::string> names;
-    if (resp.m_status != YomkResponse::eOk || !resp.m_data)
+    if (resp.m_status != YomkResponse::ResStatus::Successed || !resp.m_data)
     {
         return names;
     }
@@ -134,10 +134,10 @@ int main()
     // ============ S3. asyncRequest 回调内重入（异步 monitor 回调同步重入 /YomkContext/set） ============
     std::cout << "===== S3. asyncRequest 回调内重入 =====" << std::endl;
     {
-        YOMK_TEST_CHECK(YomkAPI::enableContextMonitor().m_status == YomkResponse::eOk, "开启 monitor 开关");
-        YOMK_TEST_CHECK(YomkAPI::createContext("reentry_key", yomkmsg::String::shared(std::string("k0"))).m_status == YomkResponse::eOk,
+        YOMK_TEST_CHECK(YomkAPI::enableContextMonitor().m_status == YomkResponse::ResStatus::Successed, "开启 monitor 开关");
+        YOMK_TEST_CHECK(YomkAPI::createContext("reentry_key", yomkmsg::String::shared(std::string("k0"))).m_status == YomkResponse::ResStatus::Successed,
               "创建 reentry_key 成功");
-        YOMK_TEST_CHECK(YomkAPI::createContext("reentry_out", yomkmsg::String::shared(std::string("out_init"))).m_status == YomkResponse::eOk,
+        YOMK_TEST_CHECK(YomkAPI::createContext("reentry_out", yomkmsg::String::shared(std::string("out_init"))).m_status == YomkResponse::ResStatus::Successed,
               "创建 reentry_out 成功");
 
         g_reentryAsyncCalls.store(0);
@@ -164,12 +164,12 @@ int main()
         for (int i = 0; i < K; ++i)
         {
             if (YomkAPI::setContext("reentry_key", yomkmsg::String::shared(std::string("k") + std::to_string(i))).m_status !=
-                YomkResponse::eOk)
+                YomkResponse::ResStatus::Successed)
             {
                 allSetOk = false;
             }
         }
-        YOMK_TEST_CHECK(allSetOk, "K 次投递 SET 全部 eOk");
+        YOMK_TEST_CHECK(allSetOk, "K 次投递 SET 全部 ResStatus::Successed");
 
         YOMK_TEST_CHECK(waitUntil([&]() { return g_reentrySyncCalls.load() == K; }, 5000),
               "重入链路在限时内收敛（不死锁，测试自然完成即证）");
@@ -180,10 +180,10 @@ int main()
         YOMK_TEST_CHECK(last != nullptr && last->d == "out_" + std::to_string(K),
               "重入写入末值可读（异步 monitor 按提交序保序，末次重入为 out_K）");
 
-        bool cleanupOk = YomkAPI::disableContextMonitor().m_status == YomkResponse::eOk &&
-                         YomkAPI::destroyContext("reentry_key").m_status == YomkResponse::eOk &&
-                         YomkAPI::destroyContext("reentry_out").m_status == YomkResponse::eOk;
-        YOMK_TEST_CHECK(cleanupOk, "S3 清场：OFF_MONITOR 与两键 DESTROY 全部 eOk");
+        bool cleanupOk = YomkAPI::disableContextMonitor().m_status == YomkResponse::ResStatus::Successed &&
+                         YomkAPI::destroyContext("reentry_key").m_status == YomkResponse::ResStatus::Successed &&
+                         YomkAPI::destroyContext("reentry_out").m_status == YomkResponse::ResStatus::Successed;
+        YOMK_TEST_CHECK(cleanupOk, "S3 清场：OFF_MONITOR 与两键 DESTROY 全部 ResStatus::Successed");
     }
 
     // ============ S2. 删除内置服务契约与恢复（/YomkLogger，对齐 P0 S6 手法） ============
@@ -191,19 +191,19 @@ int main()
     {
         YOMK_TEST_CHECK(YomkAPI::delService("/YomkLogger") == 0, "删除内置 /YomkLogger 返回 0");
         auto afterDel = YomkAPI::listLoggers("console");
-        YOMK_TEST_CHECK(afterDel.m_status == YomkResponse::eNo && afterDel.m_msg == "service not found: /YomkLogger",
-              "删除后 LOGGER API 服务级 eNo + 精确消息");
+        YOMK_TEST_CHECK(afterDel.m_status == YomkResponse::ResStatus::Failed && afterDel.m_msg == "service not found: /YomkLogger",
+              "删除后 LOGGER API 服务级 ResStatus::Failed + 精确消息");
         YOMK_TEST_CHECK(!contains(unpackStringArray(YomkAPI::listServices()), "/YomkLogger"),
               "服务表快照不再含 /YomkLogger");
 
         YOMK_TEST_CHECK(YomkAPI::newService<YomkLogger>() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
         auto restored = YomkAPI::listLoggers("console");
         // loggers 按类型查询，行内容即 logger 纯名（YomkLogger::loggers 不再拼接类型后缀）
-        YOMK_TEST_CHECK(restored.m_status == YomkResponse::eOk && contains(unpackStringArray(restored), "MainLogger"),
+        YOMK_TEST_CHECK(restored.m_status == YomkResponse::ResStatus::Successed && contains(unpackStringArray(restored), "MainLogger"),
               "重注册后 LOGGER API 恢复且含 MainLogger");
         YOMK_TEST_CHECK(YomkAPI::emitConsoleLogInfo("MainLogger", "[integration]", "s2 relink marker").m_status ==
-                  YomkResponse::eOk,
-              "重注册后日志 API 全链路可用（console_log eOk）");
+                  YomkResponse::ResStatus::Successed,
+              "重注册后日志 API 全链路可用（console_log ResStatus::Successed）");
     }
 
     // ============ S1. YomkAPI::shutdown() 全链路统一收尾（压轴：call_once 后不可再 init） ============
@@ -215,29 +215,29 @@ int main()
         YOMK_TEST_CHECK(!ec, "S1 临时目录创建成功: " + tmpDir.string());
 
         // 事件积压（不等待执行完成；积压处理语义不保证全执行，仅验证 shutdown 有限时间返回）
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("integration_loop").m_status == YomkResponse::eOk, "启动 integration_loop");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("integration_loop").m_status == YomkResponse::ResStatus::Successed, "启动 integration_loop");
         bool postOk = true;
         for (int i = 0; i < 100; ++i)
         {
             if (YomkAPI::postEvent("integration_loop", nullptr,
-                                    [](YomkPkgPtr) { return YomkResponse(YomkResponse::eOk); })
-                     .m_status != YomkResponse::eOk)
+                                    [](YomkPkgPtr) { return YomkResponse(YomkResponse::ResStatus::Successed); })
+                     .m_status != YomkResponse::ResStatus::Successed)
             {
                 postOk = false;
             }
         }
-        YOMK_TEST_CHECK(postOk, "100 个积压事件全部 POST eOk");
+        YOMK_TEST_CHECK(postOk, "100 个积压事件全部 POST ResStatus::Successed");
 
         // 文件日志：FILE_LOG_INFO 仅入缓冲，FileLogger 析构 write 落盘
         // （createFileLogger 第二参为日志器名，实际文件 = <dir>/<名>.log，由 FileLogger 自动追加后缀）
-        YOMK_TEST_CHECK(YomkAPI::createFileLogger(tmpDir.string(), "integration_file").m_status == YomkResponse::eOk,
-              "createFileLogger 返回 eOk");
-        YOMK_TEST_CHECK(YOMK_FILE_INFO("integration_file", "s1_shutdown_flush_marker").m_status == YomkResponse::eOk,
-              "FILE_LOG_INFO 入缓冲返回 eOk（日志器名与 CREATE 一致）");
+        YOMK_TEST_CHECK(YomkAPI::createFileLogger(tmpDir.string(), "integration_file").m_status == YomkResponse::ResStatus::Successed,
+              "createFileLogger 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YOMK_FILE_INFO("integration_file", "s1_shutdown_flush_marker").m_status == YomkResponse::ResStatus::Successed,
+              "FILE_LOG_INFO 入缓冲返回 ResStatus::Successed（日志器名与 CREATE 一致）");
 
         // 异步 monitor 投递（shutdown 排空断言主体；S3 清场时全局开关已关，此处需重新开启）
-        YOMK_TEST_CHECK(YomkAPI::enableContextMonitor().m_status == YomkResponse::eOk, "重新开启 monitor 开关");
-        YOMK_TEST_CHECK(YomkAPI::createContext("drain_key", yomkmsg::String::shared(std::string("d0"))).m_status == YomkResponse::eOk,
+        YOMK_TEST_CHECK(YomkAPI::enableContextMonitor().m_status == YomkResponse::ResStatus::Successed, "重新开启 monitor 开关");
+        YOMK_TEST_CHECK(YomkAPI::createContext("drain_key", yomkmsg::String::shared(std::string("d0"))).m_status == YomkResponse::ResStatus::Successed,
               "创建 drain_key 成功");
         g_drainCalls.store(0);
         YomkAPI::setContextMonitor(
@@ -248,12 +248,12 @@ int main()
         for (int i = 0; i < N; ++i)
         {
             if (YomkAPI::setContext("drain_key", yomkmsg::String::shared(std::string("d") + std::to_string(i))).m_status !=
-                YomkResponse::eOk)
+                YomkResponse::ResStatus::Successed)
             {
                 drainSetOk = false;
             }
         }
-        YOMK_TEST_CHECK(drainSetOk, "N 次异步通知投递全部 eOk");
+        YOMK_TEST_CHECK(drainSetOk, "N 次异步通知投递全部 ResStatus::Successed");
 
         // 统一收尾：排空异步 monitor + 落盘文件日志 + 清空服务表
         YomkAPI::shutdown();
@@ -264,19 +264,19 @@ int main()
         YOMK_TEST_CHECK(readOk && fileContent.find("s1_shutdown_flush_marker") != std::string::npos,
               "shutdown 返回后文件日志已落盘且含标记串（析构 write）");
 
-        // API 守卫级回归：serverSnapshot 已置空 → eInvalid + "YomkServer is not init"
+        // API 守卫级回归：serverSnapshot 已置空 → ResStatus::Invalid + "YomkServer is not init"
         auto postLoop = YomkAPI::postEvent("integration_loop", nullptr, YomkServiceFunc());
-        YOMK_TEST_CHECK(postLoop.m_status == YomkResponse::eInvalid && postLoop.m_msg == "YomkServer is not init",
-              "shutdown 后 YomkAPI::postEvent 回归 eInvalid + 守卫消息");
+        YOMK_TEST_CHECK(postLoop.m_status == YomkResponse::ResStatus::Invalid && postLoop.m_msg == "YomkServer is not init",
+              "shutdown 后 YomkAPI::postEvent 回归 ResStatus::Invalid + 守卫消息");
         auto postCtx = YomkAPI::setContext("drain_key", yomkmsg::String::shared(std::string("x")));
-        YOMK_TEST_CHECK(postCtx.m_status == YomkResponse::eInvalid && postCtx.m_msg == "YomkServer is not init",
-              "shutdown 后 setContext 回归 eInvalid + 守卫消息");
+        YOMK_TEST_CHECK(postCtx.m_status == YomkResponse::ResStatus::Invalid && postCtx.m_msg == "YomkServer is not init",
+              "shutdown 后 setContext 回归 ResStatus::Invalid + 守卫消息");
         auto postLog = YomkAPI::getAllLoggerInfo();
-        YOMK_TEST_CHECK(postLog.m_status == YomkResponse::eInvalid && postLog.m_msg == "YomkServer is not init",
-              "shutdown 后 LOGGER API 回归 eInvalid + 守卫消息");
+        YOMK_TEST_CHECK(postLog.m_status == YomkResponse::ResStatus::Invalid && postLog.m_msg == "YomkServer is not init",
+              "shutdown 后 LOGGER API 回归 ResStatus::Invalid + 守卫消息");
         auto postInfo = YomkAPI::getAllServerInfo();
-        YOMK_TEST_CHECK(postInfo.m_status == YomkResponse::eInvalid && postInfo.m_msg == "YomkServer is not init",
-              "shutdown 后 SERVER_INFO API 回归 eInvalid + 守卫消息");
+        YOMK_TEST_CHECK(postInfo.m_status == YomkResponse::ResStatus::Invalid && postInfo.m_msg == "YomkServer is not init",
+              "shutdown 后 SERVER_INFO API 回归 ResStatus::Invalid + 守卫消息");
 
         YomkAPI::shutdown();  // 幂等：二次调用空转安全
         YOMK_TEST_CHECK(true, "shutdown 二次调用幂等无崩溃");

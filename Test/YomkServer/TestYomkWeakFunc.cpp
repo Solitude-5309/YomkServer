@@ -4,8 +4,8 @@
  *
  * 覆盖内容：
  * 1. 存活路径：服务存活时四种返回值回调均真实执行（weakFunc lambda 与 weakFunc 成员函数指针绑定两种方式）
- * 2. 销毁丢弃（引用计数路径）：服务析构后回调丢弃——void 不执行、YomkResponse 返回 eNo+契约消息、
- *    ECheckStatus 默认放行 eAccept、其他类型返回 Ret{} 默认值
+ * 2. 销毁丢弃（引用计数路径）：服务析构后回调丢弃——void 不执行、YomkResponse 返回 ResStatus::Failed+契约消息、
+ *    CheckStatus 默认放行 CheckStatus::Accept、其他类型返回 Ret{} 默认值
  * 3. 删除即停（注销标志路径）：持 shared_ptr 不释放经框架删除置位注销标志，回调同样立即丢弃（双层判活标志层独立生效）
  * 4. installFunc 自动弱绑定串联：注销后 invoke 返回丢弃契约消息（真实功能函数路径）
  * 5. 构造期告警分支：构造期内调用 weakFunc（weak_from_this 未生效），绑定永久失效、回调永不执行
@@ -63,11 +63,11 @@ public:
     // weakFunc 成员函数指针绑定真实执行计数
     std::atomic<int> memberCount{0};
 
-    YomkResponse workResp(YomkPkgPtr pkg) { return {YomkResponse::eOk, "alive"}; }
+    YomkResponse workResp(YomkPkgPtr pkg) { return {YomkResponse::ResStatus::Successed, "alive"}; }
     YomkResponse memberWork(YomkPkgPtr pkg)
     {
         memberCount.fetch_add(1);
-        return {YomkResponse::eOk, "member"};
+        return {YomkResponse::ResStatus::Successed, "member"};
     }
 
     // weakFunc 成员函数指针绑定（外流注册主路径）
@@ -90,7 +90,7 @@ public:
             [this](YomkPkgPtr pkg) -> YomkResponse
             {
                 count.fetch_add(1);
-                return {YomkResponse::eOk, "ctor"};
+                return {YomkResponse::ResStatus::Successed, "ctor"};
             });
     }
 
@@ -112,13 +112,13 @@ static void testAliveCallbacks(YomkServer* server)
         [&respCount](YomkPkgPtr pkg)
         {
             respCount.fetch_add(1);
-            return YomkResponse{YomkResponse::eOk, "alive"};
+            return YomkResponse{YomkResponse::ResStatus::Successed, "alive"};
         });
-    std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context&)> cbCheck = srv->weakFunc(
+    std::function<yomk::ContextChecker::CheckStatus(const yomk::Context&)> cbCheck = srv->weakFunc(
         [&checkCount](const yomk::Context& ctx)
         {
             checkCount.fetch_add(1);
-            return yomk::ContextChecker::eReject;
+            return yomk::ContextChecker::CheckStatus::Reject;
         });
     std::function<int(YomkPkgPtr)> cbInt = srv->weakFunc(
         [&intCount](YomkPkgPtr pkg)
@@ -131,18 +131,18 @@ static void testAliveCallbacks(YomkServer* server)
     cbVoid();
     yomk::Context ctx{"key", nullptr};
     YomkResponse resp = cbResp(nullptr);
-    yomk::ContextChecker::ECheckStatus status = cbCheck(ctx);
+    yomk::ContextChecker::CheckStatus status = cbCheck(ctx);
     int intRet = cbInt(nullptr);
     YomkResponse memberResp = cbMember(nullptr);
 
     YOMK_TEST_CHECK(voidCount.load() == 1, "存活：void 回调真实执行");
     YOMK_TEST_CHECK(
-        respCount.load() == 1 && resp.m_status == YomkResponse::eOk && resp.m_msg == "alive",
+        respCount.load() == 1 && resp.m_status == YomkResponse::ResStatus::Successed && resp.m_msg == "alive",
         "存活：YomkResponse 回调正常执行");
-    YOMK_TEST_CHECK(checkCount.load() == 1 && status == yomk::ContextChecker::eReject, "存活：ECheckStatus 回调返回真实值");
+    YOMK_TEST_CHECK(checkCount.load() == 1 && status == yomk::ContextChecker::CheckStatus::Reject, "存活：CheckStatus 回调返回真实值");
     YOMK_TEST_CHECK(intCount.load() == 1 && intRet == 42, "存活：其他返回值类型回调返回真实值");
     YOMK_TEST_CHECK(
-        srv->memberCount.load() == 1 && memberResp.m_status == YomkResponse::eOk && memberResp.m_msg == "member",
+        srv->memberCount.load() == 1 && memberResp.m_status == YomkResponse::ResStatus::Successed && memberResp.m_msg == "member",
         "存活：weakFunc 成员函数指针绑定回调真实执行");
 }
 
@@ -156,7 +156,7 @@ static void testDestroyDiscard(YomkServer* server)
 
     std::function<void()> cbVoid;
     std::function<YomkResponse(YomkPkgPtr)> cbResp;
-    std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context&)> cbCheck;
+    std::function<yomk::ContextChecker::CheckStatus(const yomk::Context&)> cbCheck;
     std::function<int(YomkPkgPtr)> cbInt;
     std::function<YomkResponse(YomkPkgPtr)> cbMember;
     {
@@ -166,13 +166,13 @@ static void testDestroyDiscard(YomkServer* server)
             [&respCount](YomkPkgPtr pkg)
             {
                 respCount.fetch_add(1);
-                return YomkResponse{YomkResponse::eOk, "alive"};
+                return YomkResponse{YomkResponse::ResStatus::Successed, "alive"};
             });
         cbCheck = srv->weakFunc(
             [&checkCount](const yomk::Context& ctx)
             {
                 checkCount.fetch_add(1);
-                return yomk::ContextChecker::eReject;
+                return yomk::ContextChecker::CheckStatus::Reject;
             });
         cbInt = srv->weakFunc(
             [&intCount](YomkPkgPtr pkg)
@@ -186,21 +186,21 @@ static void testDestroyDiscard(YomkServer* server)
     cbVoid();
     yomk::Context ctx{"key", nullptr};
     YomkResponse resp = cbResp(nullptr);
-    yomk::ContextChecker::ECheckStatus status = cbCheck(ctx);
+    yomk::ContextChecker::CheckStatus status = cbCheck(ctx);
     int intRet = cbInt(nullptr);
     YomkResponse memberResp = cbMember(nullptr);
 
     YOMK_TEST_CHECK(voidCount.load() == 0, "销毁：void 回调丢弃，副作用计数未变化");
     YOMK_TEST_CHECK(
-        respCount.load() == 0 && resp.m_status == YomkResponse::eNo &&
+        respCount.load() == 0 && resp.m_status == YomkResponse::ResStatus::Failed &&
             resp.m_msg.find(DISCARD_MSG) != std::string::npos,
-        "销毁：YomkResponse 回调丢弃，返回 eNo + 契约消息");
+        "销毁：YomkResponse 回调丢弃，返回 ResStatus::Failed + 契约消息");
     YOMK_TEST_CHECK(
-        checkCount.load() == 0 && status == yomk::ContextChecker::eAccept,
-        "销毁：ECheckStatus 回调丢弃，默认放行 eAccept");
+        checkCount.load() == 0 && status == yomk::ContextChecker::CheckStatus::Accept,
+        "销毁：CheckStatus 回调丢弃，默认放行 CheckStatus::Accept");
     YOMK_TEST_CHECK(intCount.load() == 0 && intRet == 0, "销毁：其他返回值类型回调丢弃，返回 Ret{} 默认值");
     YOMK_TEST_CHECK(
-        memberResp.m_status == YomkResponse::eNo && memberResp.m_msg.find(DISCARD_MSG) != std::string::npos,
+        memberResp.m_status == YomkResponse::ResStatus::Failed && memberResp.m_msg.find(DISCARD_MSG) != std::string::npos,
         "销毁：weakFunc 成员函数指针绑定回调丢弃");
 }
 
@@ -218,7 +218,7 @@ static void testMarkDeletedDiscard(YomkServer* server)
     // 注销前：自动弱绑定 invoke 命中执行
     YomkResponse aliveResp = srv->invoke("/installed");
     YOMK_TEST_CHECK(
-        aliveResp.m_status == YomkResponse::eOk && aliveResp.m_msg == "alive",
+        aliveResp.m_status == YomkResponse::ResStatus::Successed && aliveResp.m_msg == "alive",
         "注销前：installFunc 自动弱绑定 invoke 命中执行");
 
     std::function<void()> cbVoid = srv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
@@ -226,7 +226,7 @@ static void testMarkDeletedDiscard(YomkServer* server)
         [&respCount](YomkPkgPtr pkg)
         {
             respCount.fetch_add(1);
-            return YomkResponse{YomkResponse::eOk, "alive"};
+            return YomkResponse{YomkResponse::ResStatus::Successed, "alive"};
         });
 
     // 持 shared_ptr 不释放，经框架删除置位注销标志（双层判活标志层独立于引用计数）
@@ -238,11 +238,11 @@ static void testMarkDeletedDiscard(YomkServer* server)
 
     YOMK_TEST_CHECK(voidCount.load() == 0, "删除即停：void 回调立即丢弃，副作用计数未变化");
     YOMK_TEST_CHECK(
-        respCount.load() == 0 && resp.m_status == YomkResponse::eNo &&
+        respCount.load() == 0 && resp.m_status == YomkResponse::ResStatus::Failed &&
             resp.m_msg.find(DISCARD_MSG) != std::string::npos,
         "删除即停：YomkResponse 回调立即丢弃（删除即停）");
     YOMK_TEST_CHECK(
-        invokeResp.m_status == YomkResponse::eNo && invokeResp.m_msg.find(DISCARD_MSG) != std::string::npos,
+        invokeResp.m_status == YomkResponse::ResStatus::Failed && invokeResp.m_msg.find(DISCARD_MSG) != std::string::npos,
         "删除即停：自动弱绑定 invoke 返回丢弃契约消息");
 }
 
@@ -254,7 +254,7 @@ static void testConstructorWeakFunc(YomkServer* server)
 
     YOMK_TEST_CHECK(srv->count.load() == 0, "构造期告警：回调从未执行，副作用计数为零");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::eNo && resp.m_msg.find(DISCARD_MSG) != std::string::npos,
+        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find(DISCARD_MSG) != std::string::npos,
         "构造期告警：绑定永久失效，持有后调用仍返回丢弃契约消息");
 }
 

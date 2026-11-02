@@ -94,7 +94,7 @@ public:
     YomkResponse ping(YomkPkgPtr)
     {
         ++g_hit;
-        return {YomkResponse::eOk, "pong"};
+        return {YomkResponse::ResStatus::Successed, "pong"};
     }
 
     YomkResponse echo(YomkPkgPtr pkg)
@@ -103,9 +103,9 @@ public:
         auto sp = yomk::unPack<yomkmsg::String>(pkg);
         if (!sp)
         {
-            return {YomkResponse::eNo, "pkg is null or pkg is not String"};
+            return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
         }
-        return {YomkResponse::eOk, sp->d};
+        return {YomkResponse::ResStatus::Successed, sp->d};
     }
 };
 
@@ -118,7 +118,7 @@ static int registerConcSrv(std::shared_ptr<YomkServer> server, const std::string
 
 static bool isExpectedNoResponse(const YomkResponse& r)
 {
-    if (r.m_status != YomkResponse::eNo)
+    if (r.m_status != YomkResponse::ResStatus::Failed)
         return false;
     // 并发注册窗口：YomkServer::addService 先入表后 init，request 可能在函数安装前命中服务，
     // 返回 function not found；这是框架设计窗口（非崩溃/悬垂缺陷），纳入可接受集合
@@ -149,13 +149,13 @@ int main()
                         if (i % 2 == 0)
                         {
                             auto r = server->request("/PingSrv/ping");
-                            if (r.m_status == YomkResponse::eOk && r.m_msg == "pong")
+                            if (r.m_status == YomkResponse::ResStatus::Successed && r.m_msg == "pong")
                                 ++okCount;
                         }
                         else
                         {
                             auto r = server->request("/PingSrv/echo", yomkmsg::String::shared("x"));
-                            if (r.m_status == YomkResponse::eOk && r.m_msg == "x")
+                            if (r.m_status == YomkResponse::ResStatus::Successed && r.m_msg == "x")
                                 ++okCount;
                         }
                     }
@@ -164,7 +164,7 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        YOMK_TEST_CHECK(okCount.load() == kThreads * kPerThread, "1.2 concurrent sync request all eOk");
+        YOMK_TEST_CHECK(okCount.load() == kThreads * kPerThread, "1.2 concurrent sync request all ResStatus::Successed");
         YOMK_TEST_CHECK(g_hit.load() == kThreads * kPerThread, "1.3 hit count equals total requests");
         server->shutdown();
     }
@@ -190,7 +190,7 @@ int main()
                             yomkmsg::String::shared("a"),
                             [](YomkResponse r)
                             {
-                                if (r.m_status == YomkResponse::eOk)
+                                if (r.m_status == YomkResponse::ResStatus::Successed)
                                     ++g_fired;
                             });
                     }
@@ -222,7 +222,7 @@ int main()
                     while (!stop.load())
                     {
                         auto r = server->request("/PingSrv/ping");
-                        if (r.m_status == YomkResponse::eOk)
+                        if (r.m_status == YomkResponse::ResStatus::Successed)
                             ++okCount;
                         else if (!isExpectedNoResponse(r))
                             ++g_illegal;
@@ -267,7 +267,7 @@ int main()
                     while (!stop.load())
                     {
                         auto r = server->request("/EchoSrv/echo", yomkmsg::String::shared("loop"));
-                        if (r.m_status == YomkResponse::eOk && r.m_msg == "loop")
+                        if (r.m_status == YomkResponse::ResStatus::Successed && r.m_msg == "loop")
                             ++okCount;
                         else
                             ++g_illegal;
@@ -310,7 +310,7 @@ int main()
                         yomkmsg::String::shared("s"),
                         [](YomkResponse r)
                         {
-                            if (r.m_status == YomkResponse::eOk)
+                            if (r.m_status == YomkResponse::ResStatus::Successed)
                                 ++g_fired;
                         });
                     ++g_posted;
@@ -346,7 +346,7 @@ int main()
                 yomkmsg::String::shared("s"),
                 [](YomkResponse r)
                 {
-                    if (r.m_status == YomkResponse::eOk)
+                    if (r.m_status == YomkResponse::ResStatus::Successed)
                         ++g_fired;
                 });
         }
@@ -372,10 +372,10 @@ int main()
                 while (!afterDel.load())
                 {
                     YomkResponse r = g_weakCb(nullptr);
-                    if (r.m_status == YomkResponse::eOk && r.m_msg == "pong")
+                    if (r.m_status == YomkResponse::ResStatus::Successed && r.m_msg == "pong")
                         ++g_fired;
                     else if (
-                        r.m_status == YomkResponse::eNo && r.m_msg.find("deleted or unregistered") != std::string::npos)
+                        r.m_status == YomkResponse::ResStatus::Failed && r.m_msg.find("deleted or unregistered") != std::string::npos)
                         ++g_rejected;
                     ++g_posted;
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -431,7 +431,7 @@ int main()
                 if (mod == 0)
                 {
                     auto r = server->request("/StressSrv/ping");
-                    if (r.m_status == YomkResponse::eOk)
+                    if (r.m_status == YomkResponse::ResStatus::Successed)
                         ++(*ok);
                 }
                 else if (mod == 1)
@@ -441,7 +441,7 @@ int main()
                         yomkmsg::String::shared("stress"),
                         [fired](YomkResponse r)
                         {
-                            if (r.m_status == YomkResponse::eOk)
+                            if (r.m_status == YomkResponse::ResStatus::Successed)
                                 ++(*fired);
                         });
                     ++(*posted);
@@ -493,7 +493,7 @@ int main()
                 "server2 async callbacks stable after shutdown"),
             "7.4 server2 async callbacks stable after shutdown");
 
-        YOMK_TEST_CHECK(ok1.load() > 0, "7.5 server1 stress requests got eOk");
+        YOMK_TEST_CHECK(ok1.load() > 0, "7.5 server1 stress requests got ResStatus::Successed");
         YOMK_TEST_CHECK(fired1.load() <= posted1.load(), "7.6 server1 async no duplicate execution");
         YOMK_TEST_CHECK(fired2.load() <= posted2.load(), "7.7 server2 async no duplicate execution after shutdown");
         // server1 由作用域析构兜底；server2 已显式 shutdown

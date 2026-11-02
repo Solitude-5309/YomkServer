@@ -61,20 +61,20 @@ bool FileLogger::init()
     return true;
 }
 
-void FileLogger::setLevelOn(ELogLevel logLevel, bool on)
+void FileLogger::setLevelOn(LogLevel logLevel, bool on)
 {
     switch (logLevel)
     {
-        case eDebug:
+        case LogLevel::Debug:
             m_showDebugLog.store(on);
             break;
-        case eInfo:
+        case LogLevel::Info:
             m_showInfoLog.store(on);
             break;
-        case eWarn:
+        case LogLevel::Warn:
             m_showWarnLog.store(on);
             break;
-        case eError:
+        case LogLevel::Error:
             m_showErrorLog.store(on);
             break;
         default:
@@ -84,43 +84,43 @@ void FileLogger::setLevelOn(ELogLevel logLevel, bool on)
     }
 }
 
-bool FileLogger::isLevelOn(ELogLevel logLevel) const
+bool FileLogger::isLevelOn(LogLevel logLevel) const
 {
     switch (logLevel)
     {
-        case eDebug:
+        case LogLevel::Debug:
             return m_showDebugLog.load();
-        case eInfo:
+        case LogLevel::Info:
             return m_showInfoLog.load();
-        case eWarn:
+        case LogLevel::Warn:
             return m_showWarnLog.load();
-        case eError:
+        case LogLevel::Error:
             return m_showErrorLog.load();
         default:
             return m_showInfoLog.load();
     }
 }
 
-void FileLogger::log(ELogLevel logLevel, const std::string& tag, const std::string& log)
+void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::string& log)
 {
     // 级别门控随 sink 自持：关断级别直接丢弃不落缓冲（unknown 级别按 Info 门控，
     // 与下方 default 降级语义一致）；判定在缓冲锁外完成，atomic 读无新锁，
     // 位置在取时间戳之前避免白算
     switch (logLevel)
     {
-        case eDebug:
+        case LogLevel::Debug:
             if (!m_showDebugLog.load())
                 return;
             break;
-        case eInfo:
+        case LogLevel::Info:
             if (!m_showInfoLog.load())
                 return;
             break;
-        case eWarn:
+        case LogLevel::Warn:
             if (!m_showWarnLog.load())
                 return;
             break;
-        case eError:
+        case LogLevel::Error:
             if (!m_showErrorLog.load())
                 return;
             break;
@@ -146,16 +146,16 @@ void FileLogger::log(ELogLevel logLevel, const std::string& tag, const std::stri
     };
     switch (logLevel)
     {
-        case eDebug:
+        case LogLevel::Debug:
             appendLine(" [Debug] ");
             break;
-        case eInfo:
+        case LogLevel::Info:
             appendLine(" [Info ] ");
             break;
-        case eWarn:
+        case LogLevel::Warn:
             appendLine(" [Warn ] ");
             break;
-        case eError:
+        case LogLevel::Error:
             appendLine(" [Error] ");
             break;
         default:

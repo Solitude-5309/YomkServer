@@ -87,7 +87,7 @@ int main()
     {
         resetGlobals();
         auto cr = YomkAPI::createContext("conc_rw", yomkmsg::String::shared(std::string("v_init")));
-        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "1.1 创建 conc_rw 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::ResStatus::Successed, "1.1 创建 conc_rw 成功");
 
         const int T = 8, K = 500;
         std::atomic<int> okGet{0}, okSet{0};
@@ -102,7 +102,7 @@ int main()
                         if (i % 2 == 0)
                         {
                             auto v = YomkAPI::getContext<yomkmsg::String>("conc_rw", yomkmsg::String::shared(std::string("")));
-                            // conc_rw 始终存在且值为非空 String，命中 eOk 路径返回非空值
+                            // conc_rw 始终存在且值为非空 String，命中 ResStatus::Successed 路径返回非空值
                             if (v && !v->d.empty())
                                 ++okGet;
                             else
@@ -113,7 +113,7 @@ int main()
                             auto r = YomkAPI::setContext(
                                 "conc_rw",
                                 yomkmsg::String::shared(std::string("v") + std::to_string(t) + "_" + std::to_string(i)));
-                            if (r.m_status == YomkResponse::eOk)
+                            if (r.m_status == YomkResponse::ResStatus::Successed)
                                 ++okSet;
                             else
                                 ++g_illegal;
@@ -125,8 +125,8 @@ int main()
             th.join();
 
         int expectEach = T * (K / 2);
-        YOMK_TEST_CHECK(okGet.load() == expectEach, "1.2 并发 get 全部 eOk");
-        YOMK_TEST_CHECK(okSet.load() == expectEach, "1.3 并发 set 全部 eOk");
+        YOMK_TEST_CHECK(okGet.load() == expectEach, "1.2 并发 get 全部 ResStatus::Successed");
+        YOMK_TEST_CHECK(okSet.load() == expectEach, "1.3 并发 set 全部 ResStatus::Successed");
         YOMK_TEST_CHECK(g_illegal.load() == 0, "1.4 无非法响应");
     }
 
@@ -146,12 +146,12 @@ int main()
                     for (int i = 0; i < K; ++i)
                     {
                         auto c = YomkAPI::createContext(key, yomkmsg::String::shared(std::string("x")));
-                        if (c.m_status == YomkResponse::eOk)
+                        if (c.m_status == YomkResponse::ResStatus::Successed)
                             ++okCreate;
                         else
                             ++g_illegal;
                         auto d = YomkAPI::destroyContext(key);
-                        if (d.m_status == YomkResponse::eOk)
+                        if (d.m_status == YomkResponse::ResStatus::Successed)
                             ++okDestroy;
                         else
                             ++g_illegal;
@@ -161,8 +161,8 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        YOMK_TEST_CHECK(okCreate.load() == T * K, "2.1 并发 create 全部 eOk");
-        YOMK_TEST_CHECK(okDestroy.load() == T * K, "2.2 并发 destroy 全部 eOk");
+        YOMK_TEST_CHECK(okCreate.load() == T * K, "2.1 并发 create 全部 ResStatus::Successed");
+        YOMK_TEST_CHECK(okDestroy.load() == T * K, "2.2 并发 destroy 全部 ResStatus::Successed");
         YOMK_TEST_CHECK(g_illegal.load() == 0, "2.3 无非法响应");
 
         // 各专属键最终均已销毁（无泄漏）
@@ -170,7 +170,7 @@ int main()
         for (int t = 0; t < T; ++t)
         {
             auto r = YomkAPI::getContextInfo("conc_cd_" + std::to_string(t));
-            if (r.m_status != YomkResponse::eNo)
+            if (r.m_status != YomkResponse::ResStatus::Failed)
                 allGone = false;
         }
         YOMK_TEST_CHECK(allGone, "2.4 独立键全部销毁，keys 无残留");
@@ -181,7 +181,7 @@ int main()
     {
         resetGlobals();
         auto cr = YomkAPI::createContext("conc_mon", yomkmsg::String::shared(std::string("m0")));
-        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "3.1 创建 conc_mon 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::ResStatus::Successed, "3.1 创建 conc_mon 成功");
         YomkAPI::enableContextMonitor();
 
         const int T = 8, K = 100;  // 共 T*K 个同步 monitor 并发 push_back
@@ -196,7 +196,7 @@ int main()
                     {
                         auto r = YomkAPI::setContextMonitor(
                             "conc_mon", [](const yomk::Context&) { ++g_syncMon; }, /*async=*/false);
-                        if (r.m_status == YomkResponse::eOk)
+                        if (r.m_status == YomkResponse::ResStatus::Successed)
                             ++okMon;
                         else
                             ++g_illegal;
@@ -206,13 +206,13 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        YOMK_TEST_CHECK(okMon.load() == T * K, "3.2 并发 setMonitor 全部 eOk");
+        YOMK_TEST_CHECK(okMon.load() == T * K, "3.2 并发 setMonitor 全部 ResStatus::Successed");
         YOMK_TEST_CHECK(g_illegal.load() == 0, "3.3 无非法响应");
 
         // 单次 set 触发全部已注册 monitor：计数 == 注册次数，证明并发 push_back 无丢失/损坏
         g_syncMon.store(0);
         auto sr = YomkAPI::setContext("conc_mon", yomkmsg::String::shared(std::string("m1")));
-        YOMK_TEST_CHECK(sr.m_status == YomkResponse::eOk, "3.4 触发 set 返回 eOk");
+        YOMK_TEST_CHECK(sr.m_status == YomkResponse::ResStatus::Successed, "3.4 触发 set 返回 ResStatus::Successed");
         YOMK_TEST_CHECK(g_syncMon.load() == T * K, "3.5 并发注册的 monitor 全部落地（计数 == 注册次数）");
         YomkAPI::disableContextMonitor();
     }
@@ -222,7 +222,7 @@ int main()
     {
         resetGlobals();
         auto cr = YomkAPI::createContext("conc_ck", yomkmsg::String::shared(std::string("c0")));
-        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "4.1 创建 conc_ck 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::ResStatus::Successed, "4.1 创建 conc_ck 成功");
 
         const int T = 16, K = 100;  // 半数写 checker、半数读 keyInfo
         std::atomic<int> okWriter{0}, okReader{0};
@@ -238,8 +238,8 @@ int main()
                         if (writer)
                         {
                             auto r = YomkAPI::setContextChecker(
-                                "conc_ck", [](const yomk::Context&) { return ContextChecker::eAccept; });
-                            if (r.m_status == YomkResponse::eOk)
+                                "conc_ck", [](const yomk::Context&) { return ContextChecker::CheckStatus::Accept; });
+                            if (r.m_status == YomkResponse::ResStatus::Successed)
                                 ++okWriter;
                             else
                                 ++g_illegal;
@@ -247,7 +247,7 @@ int main()
                         else
                         {
                             auto r = YomkAPI::getContextInfo("conc_ck");
-                            if (r.m_status == YomkResponse::eOk)
+                            if (r.m_status == YomkResponse::ResStatus::Successed)
                                 ++okReader;
                             else
                                 ++g_illegal;
@@ -258,8 +258,8 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        YOMK_TEST_CHECK(okWriter.load() == (T / 2) * K, "4.2 并发 setChecker 全部 eOk");
-        YOMK_TEST_CHECK(okReader.load() == (T / 2) * K, "4.3 并发 keyInfo 全部 eOk");
+        YOMK_TEST_CHECK(okWriter.load() == (T / 2) * K, "4.2 并发 setChecker 全部 ResStatus::Successed");
+        YOMK_TEST_CHECK(okReader.load() == (T / 2) * K, "4.3 并发 keyInfo 全部 ResStatus::Successed");
         YOMK_TEST_CHECK(g_illegal.load() == 0, "4.4 读写并发无非法响应、无崩溃");
 
         // 并发注册后 checker 仍有效：开启 checker 后单次 set 调用 checker 一次
@@ -270,10 +270,10 @@ int main()
             [](const yomk::Context&)
             {
                 ++g_checkerCalls;
-                return ContextChecker::eAccept;
+                return ContextChecker::CheckStatus::Accept;
             });
         auto sr = YomkAPI::setContext("conc_ck", yomkmsg::String::shared(std::string("c1")));
-        YOMK_TEST_CHECK(sr.m_status == YomkResponse::eOk, "4.5 并发注册后 set 仍 eOk");
+        YOMK_TEST_CHECK(sr.m_status == YomkResponse::ResStatus::Successed, "4.5 并发注册后 set 仍 ResStatus::Successed");
         YOMK_TEST_CHECK(g_checkerCalls.load() == 1, "4.6 checker 有效并被调用 1 次");
         YomkAPI::disableContextChecker();
     }
@@ -283,13 +283,13 @@ int main()
     {
         resetGlobals();
         auto cr = YomkAPI::createContext("conc_setck", yomkmsg::String::shared(std::string("s0")));
-        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "5.1 创建 conc_setck 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::ResStatus::Successed, "5.1 创建 conc_setck 成功");
         YomkAPI::setContextChecker(
             "conc_setck",
             [](const yomk::Context&)
             {
                 ++g_checkerCalls;
-                return ContextChecker::eAccept;
+                return ContextChecker::CheckStatus::Accept;
             });
         YomkAPI::enableContextChecker();
 
@@ -306,7 +306,7 @@ int main()
                     {
                         auto r =
                             YomkAPI::setContext("conc_setck", yomkmsg::String::shared(std::string("s") + std::to_string(i)));
-                        if (r.m_status == YomkResponse::eOk)
+                        if (r.m_status == YomkResponse::ResStatus::Successed)
                             ++okSet;
                         else
                             ++g_illegal;
@@ -316,7 +316,7 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        YOMK_TEST_CHECK(okSet.load() == T * K, "5.2 并发 set 全部 eOk");
+        YOMK_TEST_CHECK(okSet.load() == T * K, "5.2 并发 set 全部 ResStatus::Successed");
         YOMK_TEST_CHECK(g_checkerCalls.load() == T * K, "5.3 checker 调用次数 == set 次数（unique_lock 内串行）");
         YOMK_TEST_CHECK(g_illegal.load() == 0, "5.4 无非法响应");
         YomkAPI::disableContextChecker();
@@ -327,7 +327,7 @@ int main()
     {
         resetGlobals();
         auto cr = YomkAPI::createContext("conc_setmon", yomkmsg::String::shared(std::string("n0")));
-        YOMK_TEST_CHECK(cr.m_status == YomkResponse::eOk, "6.1 创建 conc_setmon 成功");
+        YOMK_TEST_CHECK(cr.m_status == YomkResponse::ResStatus::Successed, "6.1 创建 conc_setmon 成功");
         YomkAPI::setContextMonitor(
             "conc_setmon", [](const yomk::Context&) { ++g_syncMon; }, /*async=*/false);
         YomkAPI::setContextMonitor(
@@ -348,7 +348,7 @@ int main()
                     {
                         auto r =
                             YomkAPI::setContext("conc_setmon", yomkmsg::String::shared(std::string("n") + std::to_string(i)));
-                        if (r.m_status == YomkResponse::eOk)
+                        if (r.m_status == YomkResponse::ResStatus::Successed)
                             ++okSet;
                         else
                             ++g_illegal;
@@ -358,7 +358,7 @@ int main()
         for (auto& th : workers)
             th.join();
 
-        YOMK_TEST_CHECK(okSet.load() == T * K, "6.2 并发 set 全部 eOk");
+        YOMK_TEST_CHECK(okSet.load() == T * K, "6.2 并发 set 全部 ResStatus::Successed");
         YOMK_TEST_CHECK(g_syncMon.load() == T * K, "6.3 同步 monitor 计数 == set 次数");
         bool asyncOk = waitFor([&] { return g_asyncMon.load() == T * K; }, 10000, "async monitor count");
         YOMK_TEST_CHECK(asyncOk, "6.4 异步 monitor 计数 == set 次数（单线程池排空）");
@@ -372,7 +372,7 @@ int main()
         resetGlobals();
         auto cra = YomkAPI::createContext("conc_a", yomkmsg::String::shared(std::string("a0")));
         auto crb = YomkAPI::createContext("conc_b", yomkmsg::String::shared(std::string("b0")));
-        YOMK_TEST_CHECK(cra.m_status == YomkResponse::eOk && crb.m_status == YomkResponse::eOk, "7.1 创建 conc_a/conc_b 成功");
+        YOMK_TEST_CHECK(cra.m_status == YomkResponse::ResStatus::Successed && crb.m_status == YomkResponse::ResStatus::Successed, "7.1 创建 conc_a/conc_b 成功");
 
         // conc_a 的同步 monitor 内重入 Context API（读 conc_b）：set 已在锁外执行 monitor，不应死锁
         YomkAPI::setContextMonitor(
@@ -380,14 +380,14 @@ int main()
             [](const yomk::Context&)
             {
                 auto r = YomkAPI::getContextInfo("conc_b");
-                if (r.m_status == YomkResponse::eOk)
+                if (r.m_status == YomkResponse::ResStatus::Successed)
                     ++g_reentrantOk;
             });
         YomkAPI::enableContextMonitor();
 
         g_reentrantOk.store(0);
         auto sr = YomkAPI::setContext("conc_a", yomkmsg::String::shared(std::string("a1")));
-        YOMK_TEST_CHECK(sr.m_status == YomkResponse::eOk, "7.2 set(conc_a) 返回 eOk（monitor 重入未死锁）");
+        YOMK_TEST_CHECK(sr.m_status == YomkResponse::ResStatus::Successed, "7.2 set(conc_a) 返回 ResStatus::Successed（monitor 重入未死锁）");
         YOMK_TEST_CHECK(g_reentrantOk.load() == 1, "7.3 monitor 内重入 INFO_KEY(conc_b) 成功 1 次");
         YomkAPI::disableContextMonitor();
     }
@@ -401,7 +401,7 @@ int main()
         {
             auto cr = YomkAPI::createContext(
                 "stress_" + std::to_string(n), yomkmsg::String::shared(std::string("init") + std::to_string(n)));
-            if (cr.m_status != YomkResponse::eOk)
+            if (cr.m_status != YomkResponse::ResStatus::Successed)
                 ++g_illegal;
         }
         YOMK_TEST_CHECK(g_illegal.load() == 0, "8.1 预建 keyspace 成功");
@@ -436,7 +436,7 @@ int main()
                             case 1:
                             {
                                 auto r = YomkAPI::setContext(key, yomkmsg::String::shared(std::string("sv")));
-                                if (r.m_status == YomkResponse::eOk)
+                                if (r.m_status == YomkResponse::ResStatus::Successed)
                                     ++okOps;
                                 else
                                     ++g_illegal;
@@ -445,7 +445,7 @@ int main()
                             case 2:
                             {
                                 auto r = YomkAPI::listContextKeys();
-                                if (r.m_status == YomkResponse::eOk)
+                                if (r.m_status == YomkResponse::ResStatus::Successed)
                                     ++okOps;
                                 else
                                     ++g_illegal;
@@ -454,7 +454,7 @@ int main()
                             case 3:
                             {
                                 auto r = YomkAPI::getContextInfo(key);
-                                if (r.m_status == YomkResponse::eOk)
+                                if (r.m_status == YomkResponse::ResStatus::Successed)
                                     ++okOps;
                                 else
                                     ++g_illegal;
@@ -463,7 +463,7 @@ int main()
                             case 4:
                             {
                                 auto r = YomkAPI::getAllContextInfo();
-                                if (r.m_status == YomkResponse::eOk)
+                                if (r.m_status == YomkResponse::ResStatus::Successed)
                                     ++okOps;
                                 else
                                     ++g_illegal;
@@ -472,8 +472,8 @@ int main()
                             case 5:
                             {
                                 auto r = YomkAPI::setContextChecker(
-                                    key, [](const yomk::Context&) { return ContextChecker::eAccept; });
-                                if (r.m_status == YomkResponse::eOk)
+                                    key, [](const yomk::Context&) { return ContextChecker::CheckStatus::Accept; });
+                                if (r.m_status == YomkResponse::ResStatus::Successed)
                                     ++okOps;
                                 else
                                     ++g_illegal;
@@ -482,7 +482,7 @@ int main()
                             case 6:
                             {
                                 auto r = YomkAPI::setContextMonitor(key, [](const yomk::Context&) {});
-                                if (r.m_status == YomkResponse::eOk)
+                                if (r.m_status == YomkResponse::ResStatus::Successed)
                                     ++okOps;
                                 else
                                     ++g_illegal;
@@ -493,7 +493,7 @@ int main()
                                 std::string tk = "stress_tmp_" + std::to_string(t);
                                 auto c = YomkAPI::createContext(tk, yomkmsg::String::shared(std::string("tmp")));
                                 auto d = YomkAPI::destroyContext(tk);
-                                if (c.m_status == YomkResponse::eOk && d.m_status == YomkResponse::eOk)
+                                if (c.m_status == YomkResponse::ResStatus::Successed && d.m_status == YomkResponse::ResStatus::Successed)
                                     ++okOps;
                                 else
                                     ++g_illegal;
@@ -510,13 +510,13 @@ int main()
         YOMK_TEST_CHECK(okOps.load() == T * K, "8.3 全部操作成功计数守恒");
 
         // 最终一致性：keyspace 仍存在、临时键已销毁
-        bool keyspaceOk = (YomkAPI::getContextInfo("stress_0").m_status == YomkResponse::eOk) &&
-                          (YomkAPI::getContextInfo("stress_" + std::to_string(M - 1)).m_status == YomkResponse::eOk);
+        bool keyspaceOk = (YomkAPI::getContextInfo("stress_0").m_status == YomkResponse::ResStatus::Successed) &&
+                          (YomkAPI::getContextInfo("stress_" + std::to_string(M - 1)).m_status == YomkResponse::ResStatus::Successed);
         YOMK_TEST_CHECK(keyspaceOk, "8.4 压力后 keyspace 仍存在");
         bool tmpGone = true;
         for (int t = 0; t < T; ++t)
         {
-            if (YomkAPI::getContextInfo("stress_tmp_" + std::to_string(t)).m_status != YomkResponse::eNo)
+            if (YomkAPI::getContextInfo("stress_tmp_" + std::to_string(t)).m_status != YomkResponse::ResStatus::Failed)
                 tmpGone = false;
         }
         YOMK_TEST_CHECK(tmpGone, "8.5 压力后临时键全部销毁");

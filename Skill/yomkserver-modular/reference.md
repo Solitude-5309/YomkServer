@@ -7,8 +7,8 @@ using YomkPkgPtr = std::shared_ptr<YomkPkg>;  // 消息包指针
 
 class YomkResponse {
 public:
-    enum EResStatus { eInvalid = -1, eOk = 0, eNo = 1 };
-    EResStatus m_status;  // 本次请求的状态
+    enum ResStatus { ResStatus::Invalid = -1, ResStatus::Successed = 0, ResStatus::Failed = 1 };
+    ResStatus m_status;  // 本次请求的状态
     std::string m_msg;    // 对状态的说明（不携带返回数据）
     YomkPkgPtr m_data;    // 携带的返回数据
 };
@@ -25,12 +25,12 @@ using YomkResponseFunc = std::function<void(YomkResponse response)>;
 
 | 状态 | 值 | 语义 |
 |------|----|------|
-| `eOk` | 0 | 调用成功 |
-| `eNo` | 1 | not-found / 目标不存在 / 被拒绝 / 条件不满足 |
-| `eInvalid` | -1 | 入参非法（空名、nullptr 等）或服务器未初始化 |
+| `ResStatus::Successed` | 0 | 调用成功 |
+| `ResStatus::Failed` | 1 | not-found / 目标不存在 / 被拒绝 / 条件不满足 |
+| `ResStatus::Invalid` | -1 | 入参非法（空名、nullptr 等）或服务器未初始化 |
 
-- 未初始化（未 `YomkAPI::init()`）时调用任意 `YomkAPI::` 接口：同步请求返回 `eInvalid`，msg 为 `"YomkServer is not init"`；异步请求直接丢弃（框架测试 TestYomkAPINotInit 覆盖此行为）。
-- 判断"目标是否存在"用 `eNo`，判断"参数是否合法"用 `eInvalid`，不要混用。
+- 未初始化（未 `YomkAPI::init()`）时调用任意 `YomkAPI::` 接口：同步请求返回 `ResStatus::Invalid`，msg 为 `"YomkServer is not init"`；异步请求直接丢弃（框架测试 TestYomkAPINotInit 覆盖此行为）。
+- 判断"目标是否存在"用 `ResStatus::Failed`，判断"参数是否合法"用 `ResStatus::Invalid`，不要混用。
 
 ## YomkMsg 宏
 
@@ -68,8 +68,8 @@ weakFunc(&Class::Method)         // 弱绑定成员函数（不装入 funcMap）
 // 回调触发时先 weak_ptr.lock() 判活，服务已删除则安全丢弃，不会悬垂 this 崩溃。
 // weakFunc 是泛型模板，返回的泛型 lambda 按调用处目标 std::function 类型隐式转换，
 // 同一函数自动适配全部回调签名：功能函数/FunctionPool/EventLoop（YomkResponse(YomkPkgPtr)，
-// 删除后返回 eNo）、异步响应（void(YomkResponse)，丢弃）、Context checker
-// （ECheckStatus(const Context&)，删除后默认放行 eAccept）、Context monitor（void，丢弃）。
+// 删除后返回 ResStatus::Failed）、异步响应（void(YomkResponse)，丢弃）、Context checker
+// （CheckStatus(const Context&)，删除后默认放行 CheckStatus::Accept）、Context monitor（void，丢弃）。
 
 namespace yomk {
 struct FuncInfo {  // 功能函数元信息（调试内省用），预留扩展（如安全性校验）
@@ -92,11 +92,11 @@ namespace yomk {
     };
     // m_logger=日志器名（服务端按其选择/惰性创建日志器实例）；m_tag=记录标签（随记录显示 [tag]）
     // 控制台 TAG 宏兼容双填（m_logger=tag 且 m_tag=tag）；文件 TAG 宏 m_logger=文件名、m_tag=tag
-    struct Log { enum ELogLevel{eDebug,eInfo,eWarn,eError}; ELogLevel m_level; std::string m_log; std::string m_logger; std::string m_tag; };
+    struct Log { enum LogLevel{LogLevel::Debug,LogLevel::Info,LogLevel::Warn,LogLevel::Error}; LogLevel m_level; std::string m_log; std::string m_logger; std::string m_tag; };
     struct Context { std::string m_key; YomkPkgPtr m_value; };
     struct ContextChecker {
-        enum ECheckStatus{eAccept, eReject};
-        std::string m_key; std::function<ECheckStatus(const Context&)> m_checkFunc;
+        enum CheckStatus{CheckStatus::Accept, CheckStatus::Reject};
+        std::string m_key; std::function<CheckStatus(const Context&)> m_checkFunc;
     };
     struct ContextMonitor { std::string m_key; std::function<void(Context)> m_contextMonitorFunc; bool m_asyncMonitor; };
 }
@@ -117,7 +117,7 @@ namespace yomk {
 **回调签名：**
 ```cpp
 using YomkContextMonitorFunc = std::function<void(const yomk::Context& ctx)>;
-using YomkContextCheckerFunc = std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)>;
+using YomkContextCheckerFunc = std::function<yomk::ContextChecker::CheckStatus(const yomk::Context& ctx)>;
 using YomkConsoleLogProxyFunc = std::function<bool(const yomk::Log& log)>;
 ```
 
@@ -187,12 +187,12 @@ class YomkService {
 ### Context
 | API | 说明 |
 |----|------|
-| `YomkAPI::createContext(key, val[, group])` | 创建 K-V（key 已存在返回 eNo；val 为 nullptr 拒绝创建返回 eNo；值类型与同 key 现值不一致返回 eNo "context type not match"） |
+| `YomkAPI::createContext(key, val[, group])` | 创建 K-V（key 已存在返回 ResStatus::Failed；val 为 nullptr 拒绝创建返回 ResStatus::Failed；值类型与同 key 现值不一致返回 ResStatus::Failed "context type not match"） |
 | `YomkAPI::getContext<yomkmsg::MsgName>(key, def[, group])` | 获取值（消息类型经 `T::kName` 内省匹配 key，类型只写一次；**返回值对象发布后只读**：改动请新建对象再 `YomkAPI::setContext`，勿原地改；key 不存在时返回兜底默认值 def，调用方永不拿到空指针） |
 | `YomkAPI::setContext(key, val[, group])` | 设置值 |
-| `YomkAPI::destroyContext(key[, group])` | 销毁（key 不存在返回 eNo） |
+| `YomkAPI::destroyContext(key[, group])` | 销毁（key 不存在返回 ResStatus::Failed） |
 | `YomkAPI::CONTEXT_ON/OFF_CHECKER([group])` | 开关检查器（全局开关 ON 且该 key 已设置 checker 时才生效） |
-| `YomkAPI::setContextChecker(key, func[, group])` | 设置检查函数（返回 eAccept 放行 / eReject 拦截，拦截后 set 返回 eNo 且 monitor 不触发）。**checker 在写锁内门控：回调内重入 set（含跨键环）会死锁**，区别于 monitor 的递归栈溢出 |
+| `YomkAPI::setContextChecker(key, func[, group])` | 设置检查函数（返回 CheckStatus::Accept 放行 / CheckStatus::Reject 拦截，拦截后 set 返回 ResStatus::Failed 且 monitor 不触发）。**checker 在写锁内门控：回调内重入 set（含跨键环）会死锁**，区别于 monitor 的递归栈溢出 |
 | `YomkAPI::CONTEXT_ON/OFF_MONITOR([group])` | 开关监控器 |
 | `YomkAPI::setContextMonitor(key, func, async[, group])` | 设置监控函数（async 省略默认 false）。**语义**：仅通知发生了一次 set，并回传该次键值快照（不保证实时）；顺序上异步恒按 set 提交序保序，同步并发下不保证跨线程序。**回调约束**：快照仅回调期有效（留存请拷贝）；值对象只读勿原地改；需最新值在回调内 `YomkAPI::getContext` 重读；异常被吞不影响 set；校验/拒绝用 checker。**两种模式**：同步（默认）——锁外内联、及时，回调内重入 set 会递归（长链栈溢出）；异步——写锁内入单线程监控池、set 返回后按提交序执行、deinit/`YomkAPI::shutdown()` 排空不丢，适合耗时回调与状态机回写 |
 | `YomkAPI::listContextKeys([group])` | 内省：组内 key 列表（返回 StringArray） |
@@ -200,28 +200,28 @@ class YomkService {
 | `YomkAPI::listContextGroups()` | 内省：全部组名清单（返回 StringArray） |
 | `YomkAPI::getAllContextInfo()` | 内省：跨组聚合（ContextGroupInfoList 两层结构化包：组名 m_groupName + 该组全部键元信息 m_keys，m_msg 恒 "ok"） |
 
-组名约定：上表所有 `[group]` 为可选组名尾参，**组名永远是最后一个参数、缺省 `"main"`**；空组名返回 eNo "group name is empty"，非 main 组首次寻址即自动创建（惰性、不支持销毁、组名唯一，监控池每组自持）。
+组名约定：上表所有 `[group]` 为可选组名尾参，**组名永远是最后一个参数、缺省 `"main"`**；空组名返回 ResStatus::Failed "group name is empty"，非 main 组首次寻址即自动创建（惰性、不支持销毁、组名唯一，监控池每组自持）。
 
 ### EventLoop
 | API | 说明 |
 |----|------|
 | `YomkAPI::startEventLoop(name[, defaultFunc][, "MsgName"])` | 启动（运行中幂等；对已停止未销毁的循环为重启：新开线程按 FIFO 续跑保留的积压事件、不丢失；可选末位 "MsgName" 字符串字面量声明默认处理函数期望的消息类型，仅作内省元数据） |
 | `YomkAPI::stopEventLoop(name)` | 停止（仅退出工作线程、不清队列：未执行事件保留至下次 START 续跑；停止期间投递被拒） |
-| `YomkAPI::postEvent(name, pkg, handle, tag="")` | 异步投递（handle/tag 均可省略，tag 仅作内省标记；循环未运行投递被拒返 eNo） |
-| `YomkAPI::postEventAndWait(name, pkg, handle, tag="")` | 同步投递（tag 同上；未运行被拒返 eNo，销毁丢弃排队事件时等待者同样被释放） |
+| `YomkAPI::postEvent(name, pkg, handle, tag="")` | 异步投递（handle/tag 均可省略，tag 仅作内省标记；循环未运行投递被拒返 ResStatus::Failed） |
+| `YomkAPI::postEventAndWait(name, pkg, handle, tag="")` | 同步投递（tag 同上；未运行被拒返 ResStatus::Failed，销毁丢弃排队事件时等待者同样被释放） |
 | `YomkAPI::destroyEventLoop(name)` | 销毁（先停止退出线程、再清空未执行事件——不可续跑，并移除循环条目） |
 | `YomkAPI::listEventLoops()` | 内省：事件循环名列表（返回 StringArray） |
-| `YomkAPI::getEventLoopInfo(name)` / `(name, n)` | 内省：单循环元信息（结构化 EventLoopInfo 包：m_loopName/m_running/m_pending/m_hasDefaultFunc/m_msgName/m_nextTags，m_nextTags 存原值取 n 条，n 缺省 3，m_msg 恒 "ok"，未命中返 eNo） |
+| `YomkAPI::getEventLoopInfo(name)` / `(name, n)` | 内省：单循环元信息（结构化 EventLoopInfo 包：m_loopName/m_running/m_pending/m_hasDefaultFunc/m_msgName/m_nextTags，m_nextTags 存原值取 n 条，n 缺省 3，m_msg 恒 "ok"，未命中返 ResStatus::Failed） |
 | `YomkAPI::getAllEventLoopInfo()` | 内省：全量循环元信息（EventLoopInfoList 结构化包，元素为单查同款 EventLoopInfo，m_nextTags 取 3 条，m_msg 恒 "ok"） |
 
 ### FunctionPool
 | API | 说明 |
 |----|------|
 | `YomkAPI::registerFunction(name, func[, "MsgName"][, "Description"])` | 注册（三参声明期望消息类型、四参追加函数说明，字符串字面量仅作内省元数据，不参与运行时校验；说明经 INFO_NAME 数据段透出）。**同名重复注册即运行时热替换，无需先注销** |
-| `YomkAPI::unregisterFunction(name)` | 注销（未注册返回 eNo，空名 eInvalid） |
-| `YomkAPI::callFunction(name, pkg)` | 调用（未注册 eNo，空名 eInvalid；pkg 原样透传可为 nullptr；用户函数异常原样穿透到调用方，需自行 try/catch） |
+| `YomkAPI::unregisterFunction(name)` | 注销（未注册返回 ResStatus::Failed，空名 ResStatus::Invalid） |
+| `YomkAPI::callFunction(name, pkg)` | 调用（未注册 ResStatus::Failed，空名 ResStatus::Invalid；pkg 原样透传可为 nullptr；用户函数异常原样穿透到调用方，需自行 try/catch） |
 | `YomkAPI::listFunctionNames()` | 内省：注册函数名列表（返回 StringArray） |
-| `YomkAPI::getFunctionInfo(name)` | 内省：单函数元信息查询（结构化 FuncInfo 包：m_funcName/m_msgName/m_description，m_msg 恒 "ok"，未注册 eNo） |
+| `YomkAPI::getFunctionInfo(name)` | 内省：单函数元信息查询（结构化 FuncInfo 包：m_funcName/m_msgName/m_description，m_msg 恒 "ok"，未注册 ResStatus::Failed） |
 | `YomkAPI::getAllFunctionInfo()` | 内省：全量函数元信息（FuncInfoList 结构化包，元素为单查同款 FuncInfo，总数由 d.size() 承载，m_msg 恒 "ok"） |
 
 ### ServerInfo（调试内省）
@@ -241,12 +241,12 @@ class YomkService {
 | `YOMK_FILE_INFO/WARN/ERROR/DEBUG(file, ...)` | 文件日志（默认 tag=MainLogger） |
 | `YOMK_FILE_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(file, tag, ...)` | 文件日志自定义 tag（Log::m_logger=file、Log::m_tag=tag，由日志器统一拼接 [tag] 段） |
 | `YomkAPI::flushFileLog(file)` | 刷新到磁盘 |
-| `YomkAPI::ON/disableConsoleLogInfo/WARN/ERROR/DEBUG()` | 开关控制台级别：无参 = 全局主闸（框架全局），传日志器名 = 仅门控该器（具名未命中 eNo "console logger not found."，不惰性创建） |
-| `YomkAPI::ON/disableFileLogInfo/WARN/ERROR/DEBUG(name = "")` | 开关文件日志级别：无参 = 文件全局主闸（框架全局），传文件日志器名 = 仅门控该器（具名未命中 eNo "file logger not found."，不惰性创建；两层 AND 后才写入内存缓冲） |
+| `YomkAPI::ON/disableConsoleLogInfo/WARN/ERROR/DEBUG()` | 开关控制台级别：无参 = 全局主闸（框架全局），传日志器名 = 仅门控该器（具名未命中 ResStatus::Failed "console logger not found."，不惰性创建） |
+| `YomkAPI::ON/disableFileLogInfo/WARN/ERROR/DEBUG(name = "")` | 开关文件日志级别：无参 = 文件全局主闸（框架全局），传文件日志器名 = 仅门控该器（具名未命中 ResStatus::Failed "file logger not found."，不惰性创建；两层 AND 后才写入内存缓冲） |
 | `YomkAPI::setFileLogProxy(func)` | 文件日志代理（回调返回 false 拦截该条不落盘、返回 true 穿透走默认落盘；传 nullptr 或空 std::function 即卸载代理、恢复框架默认落盘，GLOBAL("file") 单查 proxyOn 随之为 false；与控制台代理相互独立） |
 | `YomkAPI::setConsoleLogProxy(func)` | 日志代理（回调返回 false 拦截该条日志、框架不做默认输出，返回 true 则放行；传 nullptr 或空 std::function 即卸载代理、恢复框架默认输出，内省状态段 m_loggerState.m_proxyOn 随之为 false） |
-| `YomkAPI::listLoggers(type)` | 内省：按类型查日志器名列表（type 取 `"console"` 或 `"file"`，返回 StringArray，行内容即纯名字典序；非法类型 eNo） |
-| `YomkAPI::getLoggerInfo(name, type)` | 内省：按类型单表查日志器元信息（type 取 `"console"`/`"file"`；结构化 LoggerInfo 包：m_loggerName/m_type/m_dir，m_msg 恒 "ok"，未注册或非法 type 均 eNo；两表允许同名，不 fallback） |
+| `YomkAPI::listLoggers(type)` | 内省：按类型查日志器名列表（type 取 `"console"` 或 `"file"`，返回 StringArray，行内容即纯名字典序；非法类型 ResStatus::Failed） |
+| `YomkAPI::getLoggerInfo(name, type)` | 内省：按类型单表查日志器元信息（type 取 `"console"`/`"file"`；结构化 LoggerInfo 包：m_loggerName/m_type/m_dir，m_msg 恒 "ok"，未注册或非法 type 均 ResStatus::Failed；两表允许同名，不 fallback） |
 | `YomkAPI::getAllLoggerInfo()` | 内省：全量日志器清单（LoggerInfoList：vector<LoggerInfo>，元素为单查同款，每条内嵌 LoggerState 状态段——console 条目承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态，file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态，m_msg 恒 "ok"） |
-| `YomkAPI::getGlobalLoggerLevel(type = "console")` | 内省：全局主闸状态单查（type="file" 查文件侧、type="console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 eNo。LoggerState 独立包：四级别主闸开关 + proxyOn，m_msg "ok"；独立于逐器门控层，与 ALL/INFO_LOGGER 条目配合两层归因） |
-| `YomkAPI::deleteFileLogger(name)` | 删除日志器（同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 eNo；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |
+| `YomkAPI::getGlobalLoggerLevel(type = "console")` | 内省：全局主闸状态单查（type="file" 查文件侧、type="console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 ResStatus::Failed。LoggerState 独立包：四级别主闸开关 + proxyOn，m_msg "ok"；独立于逐器门控层，与 ALL/INFO_LOGGER 条目配合两层归因） |
+| `YomkAPI::deleteFileLogger(name)` | 删除日志器（同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 ResStatus::Failed；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |

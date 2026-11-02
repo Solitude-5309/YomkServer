@@ -27,13 +27,13 @@ private:
     YomkResponse deleteLogger(YomkPkgPtr pkg);
     YomkResponse offConsoleLogByLevel(YomkPkgPtr pkg);
     YomkResponse onConsoleLogByLevel(YomkPkgPtr pkg);
-    // 具名开关唯一写入口：按名查表逐器门控（未命中 eNo 不惰性创建，不触碰全局主闸）
-    YomkResponse setNamedConsoleLevel(const std::string& loggerName, yomk::Log::ELogLevel level, bool on);
+    // 具名开关唯一写入口：按名查表逐器门控（未命中 ResStatus::Failed 不惰性创建，不触碰全局主闸）
+    YomkResponse setNamedConsoleLevel(const std::string& loggerName, yomk::Log::LogLevel level, bool on);
 
     YomkResponse offFileLogByLevel(YomkPkgPtr pkg);
     YomkResponse onFileLogByLevel(YomkPkgPtr pkg);
-    // 文件侧具名开关唯一写入口：语义与 setNamedConsoleLevel 对称（未命中 eNo 不惰性创建）
-    YomkResponse setNamedFileLevel(const std::string& loggerName, yomk::Log::ELogLevel level, bool on);
+    // 文件侧具名开关唯一写入口：语义与 setNamedConsoleLevel 对称（未命中 ResStatus::Failed 不惰性创建）
+    YomkResponse setNamedFileLevel(const std::string& loggerName, yomk::Log::LogLevel level, bool on);
 
 private:
     YomkResponse loggers(YomkPkgPtr pkg);

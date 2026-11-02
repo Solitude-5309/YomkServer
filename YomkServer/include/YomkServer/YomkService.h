@@ -57,9 +57,9 @@ public:
                     return;
                 else if constexpr (std::is_same_v<Ret, YomkResponse>)
                     return YomkResponse{
-                        YomkResponse::eNo, "service has been deleted or unregistered, callback ignored."};
-                else if constexpr (std::is_same_v<Ret, yomk::ContextChecker::ECheckStatus>)
-                    return yomk::ContextChecker::eAccept;
+                        YomkResponse::ResStatus::Failed, "service has been deleted or unregistered, callback ignored."};
+                else if constexpr (std::is_same_v<Ret, yomk::ContextChecker::CheckStatus>)
+                    return yomk::ContextChecker::CheckStatus::Accept;
                 else
                     return Ret{};
             }

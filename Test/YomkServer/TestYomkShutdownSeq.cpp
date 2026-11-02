@@ -88,8 +88,8 @@ public:
     }
 
 private:
-    YomkResponse ping(YomkPkgPtr pkg) { return {YomkResponse::eOk, "pong"}; }
-    YomkResponse work(YomkPkgPtr pkg) { return {YomkResponse::eOk, "work"}; }
+    YomkResponse ping(YomkPkgPtr pkg) { return {YomkResponse::ResStatus::Successed, "pong"}; }
+    YomkResponse work(YomkPkgPtr pkg) { return {YomkResponse::ResStatus::Successed, "work"}; }
 };
 
 /**
@@ -119,7 +119,7 @@ private:
         {
             m_server->asyncRequest("/SpawnSrv/spawn");
         }
-        return {YomkResponse::eOk, "spawn"};
+        return {YomkResponse::ResStatus::Successed, "spawn"};
     }
 
     YomkServer* m_server;
@@ -158,7 +158,7 @@ static void testDrainSemantics()
         "排空语义：deinit 时 isDeleted() 为 false（shutdown 不置 markDeleted，与删除即停对比）");
     YOMK_TEST_CHECK(probed.load() == true, "排空：弱绑定探针回调已执行");
     YOMK_TEST_CHECK(
-        g_weakRespDuringDrain.m_status == YomkResponse::eOk && g_weakRespDuringDrain.m_msg == "work",
+        g_weakRespDuringDrain.m_status == YomkResponse::ResStatus::Successed && g_weakRespDuringDrain.m_msg == "work",
         "排空期弱绑定回调照常执行（对比 delService 后丢弃）");
 }
 
@@ -178,8 +178,8 @@ static void testRejectAfterShutdown()
 
     YomkResponse resp = server->request("/DrainSrv/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::eNo && resp.m_msg.find("service not found") != std::string::npos,
-        "现状文档化：shutdown 后同步 request 返回 eNo + service not found（表已清空，非专用文案）");
+        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
+        "现状文档化：shutdown 后同步 request 返回 ResStatus::Failed + service not found（表已清空，非专用文案）");
     YOMK_TEST_CHECK(server->serviceNames().empty(), "shutdown 后服务表已清空");
 }
 
