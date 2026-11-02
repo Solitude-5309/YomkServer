@@ -582,6 +582,13 @@ static bool isLegalStatus(const YomkResponse& resp)
            resp.m_status == YomkResponse::ResStatus::Failed;
 }
 
+// LOG_API ResStatus 化后的三态重载（emit/create/flush/delete 直接返回三态）
+static bool isLegalStatus(YomkResponse::ResStatus status)
+{
+    return status == YomkResponse::ResStatus::Invalid || status == YomkResponse::ResStatus::Successed ||
+           status == YomkResponse::ResStatus::Failed;
+}
+
 // 时间戳格式精确校验：行首 25 字符须为 "[dddd-dd-dd dd:dd:dd.ddd]"（V3：P4-b 等价性）
 static bool checkTimeFormat(const std::string& line)
 {
@@ -906,7 +913,7 @@ int main()
                 auto t0 = Clock::now();
                 for (uint64_t i = createdA; i < cp; ++i)
                 {
-                    if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1a_marker").m_status ==
+                    if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1a_marker") ==
                         YomkResponse::ResStatus::Successed)
                     {
                         ++okA;
@@ -985,7 +992,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N; ++i)
             {
-                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1b_marker").m_status ==
+                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1b_marker") ==
                     YomkResponse::ResStatus::Successed)
                 {
                     ++okB;
@@ -997,7 +1004,7 @@ int main()
         YOMK_TEST_CHECK(okB == N, "S1B: 命中写 ResStatus::Successed 守恒 " + std::to_string(okB) + "/" + std::to_string(N));
 
         // ---- Phase C：级别 OFF 短路（开关关断后仍 ResStatus::Successed，但不产生输出）----
-        YOMK_TEST_CHECK(YomkAPI::disableConsoleLogInfo().m_status == YomkResponse::ResStatus::Successed, "S1C: OFF info 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::disableConsoleLogInfo() == YomkResponse::ResStatus::Successed, "S1C: OFF info 返回 ResStatus::Successed");
         {
             const uint64_t kProbe = 100;
             const uint64_t probe = (kProbe < N) ? kProbe : N;
@@ -1021,7 +1028,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N; ++i)
             {
-                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1c_marker").m_status ==
+                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1c_marker") ==
                     YomkResponse::ResStatus::Successed)
                 {
                     ++okC;
@@ -1031,11 +1038,11 @@ int main()
         }
         recordBaseline("S1C_console_level_off_shortcut", N, elapsedC);
         YOMK_TEST_CHECK(okC == N, "S1C: 级别 OFF 短路仍 ResStatus::Successed 守恒 " + std::to_string(okC) + "/" + std::to_string(N));
-        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo().m_status == YomkResponse::ResStatus::Successed, "S1C: 恢复 ON info 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo() == YomkResponse::ResStatus::Successed, "S1C: 恢复 ON info 返回 ResStatus::Successed");
 
         // ---- Phase D：proxy 短路（置于 console 末相：本测试安装后不卸载，靠恒置 true 穿透
         // 避免影响后续 Section；P4-e 的卸载语义由 Lifecycle S3 覆盖）----
-        YOMK_TEST_CHECK(YomkAPI::setConsoleLogProxy(lg4Proxy).m_status == YomkResponse::ResStatus::Successed, "S1D: 安装计数 proxy 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::setConsoleLogProxy(lg4Proxy) == YomkResponse::ResStatus::Successed, "S1D: 安装计数 proxy 返回 ResStatus::Successed");
         g_proxyReturn.store(false);
         g_proxyHits.store(0);
         uint64_t okD = 0;
@@ -1045,7 +1052,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N; ++i)
             {
-                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1d_marker").m_status ==
+                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1d_marker") ==
                     YomkResponse::ResStatus::Successed)
                 {
                     ++okD;
@@ -1081,7 +1088,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N; ++i)
             {
-                if (YomkAPI::emitConsoleLogInfo(hotTag, "lg4s1e_marker").m_status == YomkResponse::ResStatus::Successed)
+                if (YomkAPI::emitConsoleLogInfo(hotTag, "lg4s1e_marker") == YomkResponse::ResStatus::Successed)
                 {
                     ++okE;
                 }
@@ -1112,7 +1119,7 @@ int main()
             for (uint64_t i = 0; i < N; ++i)
             {
                 const std::string& dir = shardDirs[static_cast<size_t>(i / kShardSize)];
-                if (YomkAPI::createFileLogger(dir, makeName("lg4s2_fl_", i)).m_status == YomkResponse::ResStatus::Successed)
+                if (YomkAPI::createFileLogger(dir, makeName("lg4s2_fl_", i)) == YomkResponse::ResStatus::Successed)
                 {
                     ++okA;
                 }
@@ -1131,7 +1138,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < M; ++i)
             {
-                if (YomkAPI::createFileLogger(s2Single.string(), makeName("lg4s2_single_", i)).m_status == YomkResponse::ResStatus::Successed)
+                if (YomkAPI::createFileLogger(s2Single.string(), makeName("lg4s2_single_", i)) == YomkResponse::ResStatus::Successed)
                 {
                     ++okB;
                 }
@@ -1189,8 +1196,8 @@ int main()
             {
                 for (uint64_t k = 0; k < K; ++k)
                 {
-                    if (YomkAPI::emitFileLogInfo(sinks[static_cast<size_t>(k)], "lg4s3a", "line_" + std::to_string(r))
-                            .m_status == YomkResponse::ResStatus::Successed)
+                    if (YomkAPI::emitFileLogInfo(sinks[static_cast<size_t>(k)], "lg4s3a", "line_" + std::to_string(r)) ==
+                        YomkResponse::ResStatus::Successed)
                     {
                         ++okA;
                     }
@@ -1211,7 +1218,7 @@ int main()
         fs::create_directories(s3Dir, ec);
         const std::string bigName = "lg4s3_big";
         YOMK_TEST_CHECK(
-            YomkAPI::createFileLogger(s3Dir.string(), bigName).m_status == YomkResponse::ResStatus::Successed, "S3B: 大缓冲 logger 创建 ResStatus::Successed");
+            YomkAPI::createFileLogger(s3Dir.string(), bigName) == YomkResponse::ResStatus::Successed, "S3B: 大缓冲 logger 创建 ResStatus::Successed");
         const fs::path bigPath = s3Dir / (bigName + ".log");
         const uint64_t bigLines = 2 * N;
         uint64_t okB = 0;
@@ -1221,7 +1228,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < bigLines; ++i)
             {
-                if (YomkAPI::emitFileLogInfo(bigName, "lg4s3b", "line_" + std::to_string(i)).m_status ==
+                if (YomkAPI::emitFileLogInfo(bigName, "lg4s3b", "line_" + std::to_string(i)) ==
                     YomkResponse::ResStatus::Successed)
                 {
                     ++okB;
@@ -1232,7 +1239,7 @@ int main()
         recordBaseline("S3B_file_buffer_fill_big", bigLines, elapsedB);
         YOMK_TEST_CHECK(okB == bigLines, "S3B: 大缓冲填充 ResStatus::Successed 守恒 " + std::to_string(okB) + "/" + std::to_string(bigLines));
 
-        YomkResponse flushBig(YomkResponse::ResStatus::Invalid);
+        auto flushBig = YomkResponse::ResStatus::Invalid;
         double elapsedFlush = 0.0;
         {
             ThreadSafeCoutCapture cap(true);
@@ -1240,7 +1247,7 @@ int main()
             flushBig = YomkAPI::flushFileLog(bigName);
             elapsedFlush = msSince(t0);
         }
-        YOMK_TEST_CHECK(flushBig.m_status == YomkResponse::ResStatus::Successed, "S3B: 大缓冲一次落盘 ResStatus::Successed");
+        YOMK_TEST_CHECK(flushBig == YomkResponse::ResStatus::Successed, "S3B: 大缓冲一次落盘 ResStatus::Successed");
         {
             std::error_code sizeEc;
             const uintmax_t bytes = fs::file_size(bigPath, sizeEc);
@@ -1266,7 +1273,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t k = 0; k < K; ++k)
             {
-                if (YomkAPI::flushFileLog(sinks[static_cast<size_t>(k)]).m_status == YomkResponse::ResStatus::Successed)
+                if (YomkAPI::flushFileLog(sinks[static_cast<size_t>(k)]) == YomkResponse::ResStatus::Successed)
                 {
                     ++okC;
                 }
@@ -1304,7 +1311,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N; ++i)
             {
-                if (YomkAPI::flushFileLog(bigName).m_status == YomkResponse::ResStatus::Successed)
+                if (YomkAPI::flushFileLog(bigName) == YomkResponse::ResStatus::Successed)
                 {
                     ++okD;
                 }
@@ -1432,7 +1439,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < D; ++i)
             {
-                if (YomkAPI::createFileLogger(s4Solo.string(), makeName("lg4s4d_solo_", i)).m_status == YomkResponse::ResStatus::Successed)
+                if (YomkAPI::createFileLogger(s4Solo.string(), makeName("lg4s4d_solo_", i)) == YomkResponse::ResStatus::Successed)
                 {
                     ++soloOk;
                 }
@@ -1484,7 +1491,7 @@ int main()
             for (uint64_t i = 0; i < D; ++i)
             {
                 const auto c0 = Clock::now();
-                if (YomkAPI::createFileLogger(s4Conc.string(), makeName("lg4s4d_fl_", i)).m_status == YomkResponse::ResStatus::Successed)
+                if (YomkAPI::createFileLogger(s4Conc.string(), makeName("lg4s4d_fl_", i)) == YomkResponse::ResStatus::Successed)
                 {
                     g_s4dCreateOk.fetch_add(1, std::memory_order_relaxed);
                 }
@@ -1548,19 +1555,19 @@ int main()
                             const std::string name = "lg4s5_t" + std::to_string(t) + "_r" + std::to_string(r);
 
                             auto rc = YomkAPI::emitConsoleLogInfo(name, "lg4s5_console");
-                            if (rc.m_status == YomkResponse::ResStatus::Successed)
+                            if (rc == YomkResponse::ResStatus::Successed)
                                 g_s5ConsoleOk.fetch_add(1, std::memory_order_relaxed);
                             else if (!isLegalStatus(rc))
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
 
                             auto rf = YomkAPI::createFileLogger(s5DirStr, name);
-                            if (rf.m_status == YomkResponse::ResStatus::Successed)
+                            if (rf == YomkResponse::ResStatus::Successed)
                                 g_s5FileOk.fetch_add(1, std::memory_order_relaxed);
                             else if (!isLegalStatus(rf))
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
 
                             auto rl = YomkAPI::emitFileLogInfo(name, "lg4s5", "file_line");
-                            if (rl.m_status == YomkResponse::ResStatus::Successed)
+                            if (rl == YomkResponse::ResStatus::Successed)
                                 g_s5LogOk.fetch_add(1, std::memory_order_relaxed);
                             else if (!isLegalStatus(rl))
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1576,7 +1583,7 @@ int main()
 
                             // 同名同时命中两表：单端点一次删除 console + file
                             auto rd = YomkAPI::deleteFileLogger(name);
-                            if (rd.m_status == YomkResponse::ResStatus::Successed)
+                            if (rd == YomkResponse::ResStatus::Successed)
                                 g_s5DeleteOk.fetch_add(1, std::memory_order_relaxed);
                             else if (!isLegalStatus(rd))
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1636,7 +1643,7 @@ int main()
             auto recycle = [&delConsoleOk, &delFileOk, &delBad](const std::string& name, bool expectFile)
             {
                 auto r = YomkAPI::deleteFileLogger(name);
-                if (r.m_status == YomkResponse::ResStatus::Successed)
+                if (r == YomkResponse::ResStatus::Successed)
                 {
                     if (expectFile)
                         ++delFileOk;
@@ -1692,14 +1699,14 @@ int main()
                 }
                 for (const auto& name : consoleLines)
                 {
-                    if (YomkAPI::deleteFileLogger(name).m_status == YomkResponse::ResStatus::Successed)
+                    if (YomkAPI::deleteFileLogger(name) == YomkResponse::ResStatus::Successed)
                     {
                         ++residualDeleted;
                     }
                 }
                 for (const auto& name : fileLines)
                 {
-                    if (YomkAPI::deleteFileLogger(name).m_status == YomkResponse::ResStatus::Successed)
+                    if (YomkAPI::deleteFileLogger(name) == YomkResponse::ResStatus::Successed)
                     {
                         ++residualDeleted;
                     }

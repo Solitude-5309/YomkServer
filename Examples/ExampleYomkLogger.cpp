@@ -102,14 +102,26 @@ static void logResp(const std::string& api, const YomkResponse& resp)
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
-// 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+// ResStatus 版结果行：LOG_API ResStatus 化后直接返回三态（失败原因经错误日志承载，无 msg）
+static void logResp(const std::string& api, YomkResponse::ResStatus status)
+{
+    const char* name = status == YomkResponse::ResStatus::Successed ? "ResStatus::Successed"
+                     : status == YomkResponse::ResStatus::Failed    ? "ResStatus::Failed"
+                                                                    : "ResStatus::Invalid";
+    YOMK_INFO_TAG("arm.demo", "[" + api + "] status: " + name);
+}
+
+// 操作日志（模板版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；被演示的日志行（控制台）夹在开始行与结果行之间，
-// 归属一目了然，读者顺着日志读即可理解，无需回看代码
-static YomkResponse logAction(const std::string& op, const std::string& api, const std::function<YomkResponse()>& call)
+// 归属一目了然，读者顺着日志读即可理解，无需回看代码。
+// 闭环 14-2：LOG_API 29 方法返回 ResStatus，INFO 查询仍返回 YomkResponse，
+// 模板化使两类返回各自路由到对应 logResp 重载，调用点零改动
+template <typename F>
+static auto logAction(const std::string& op, const std::string& api, F&& call)
 {
     YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
-    YomkResponse resp = call();
+    auto resp = call();
     logResp(api, resp);
     return resp;
 }
