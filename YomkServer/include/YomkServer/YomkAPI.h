@@ -111,11 +111,11 @@ public:
         return server->delService(srvName);
     }
     // 初始化并执行启动编排流程
-    static int boot(YomkBoot* boot = nullptr)
+    static int boot(YomkBoot* cfg = nullptr)
     {
         init();
 
-        std::unique_ptr<YomkBoot> bootGuard(boot);
+        std::unique_ptr<YomkBoot> bootGuard(cfg);
         if (!bootGuard)
             return 0;
 

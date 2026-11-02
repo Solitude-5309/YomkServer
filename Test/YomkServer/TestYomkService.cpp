@@ -244,7 +244,7 @@ static void testNullServerGuards()
     srv.asyncRequest("/SomeService/func");                                 // 不应崩溃
 
     YOMK_TEST_CHECK(srv.name().empty(), "空实现 name() 返回空串");
-    YOMK_TEST_CHECK(srv.deleted() == true, "空实现 deleted() 返回 true（视同已失效）");
+    YOMK_TEST_CHECK(srv.isDeleted() == true, "空实现 isDeleted() 返回 true（视同已失效）");
     YOMK_TEST_CHECK(srv.funcInfos().empty(), "空实现 funcInfos() 返回空表");
 
     YomkResponse resp = srv.invoke("/x");
@@ -264,10 +264,10 @@ static void testDeletedFlag()
     YOMK_TEST_CHECK(YomkAPI::addService(raw, "/FlagDemo") == 0, "注册成功返回 0");
     // 经 shared_from_this 与框架共享所有权：删除后本副本使服务对象仍存活
     std::shared_ptr<YomkService> srv = raw->shared_from_this();
-    YOMK_TEST_CHECK(srv->deleted() == false, "新构造服务 deleted() 初始为 false");
+    YOMK_TEST_CHECK(srv->isDeleted() == false, "新构造服务 isDeleted() 初始为 false");
     // 框架删除在 deinit 前置位注销标志，本副本保持引用未归零
     YOMK_TEST_CHECK(YomkAPI::delService("/FlagDemo") == 0, "删除成功返回 0");
-    YOMK_TEST_CHECK(srv->deleted() == true, "框架删除后 deleted() 为 true（标志层独立于引用计数）");
+    YOMK_TEST_CHECK(srv->isDeleted() == true, "框架删除后 isDeleted() 为 true（标志层独立于引用计数）");
 }
 
 int main()

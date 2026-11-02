@@ -38,7 +38,7 @@ void YomkService::name(const std::string& name)
     m_p->name(name);
 }
 
-bool YomkService::deleted() const
+bool YomkService::isDeleted() const
 {
     if (!m_p)
     {

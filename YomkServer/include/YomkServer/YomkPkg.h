@@ -32,7 +32,7 @@
             return std::make_shared<MsgName>(std::forward<A>(a)...);              \
         }                                                                         \
     };                                                                            \
-    typedef std::shared_ptr<MsgName> MsgName##Ptr;                                \
+    using MsgName##Ptr = std::shared_ptr<MsgName>;                                \
     }
 
 class YomkServer;
@@ -51,7 +51,7 @@ public:
 protected:
     std::string m_name;
 };
-typedef std::shared_ptr<YomkPkg> YomkPkgPtr;
+using YomkPkgPtr = std::shared_ptr<YomkPkg>;
 
 // 请求调用结果对象（m_status 表示本次请求的状态；m_msg 对状态的说明；m_data 携带的返回数据）
 class YomkResponse
@@ -77,12 +77,12 @@ public:
     std::string m_msg;    // 对状态的说明（不携带返回数据）
     YomkPkgPtr m_data;    // 携带的返回数据
 };
-typedef std::shared_ptr<YomkResponse> YomkResponsePtr;
+using YomkResponsePtr = std::shared_ptr<YomkResponse>;
 
 // 功能函数签名：入参为请求消息包（可为 nullptr），返回 YomkResponse
-typedef std::function<YomkResponse(YomkPkgPtr pkg)> YomkServiceFunc;
+using YomkServiceFunc = std::function<YomkResponse(YomkPkgPtr pkg)>;
 // 异步响应回调签名：request 完成后回传结果
-typedef std::function<void(YomkResponse response)> YomkResponseFunc;
+using YomkResponseFunc = std::function<void(YomkResponse response)>;
 
 namespace yomk
 {
@@ -337,12 +337,12 @@ YomkMsg(yomk::ContextMonitor, ContextMonitor, d);
 YomkMsg(yomk::VoidPointer, VoidPointer, d);
 
 // Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 YomkAPI::setContextMonitor
-typedef std::function<void(const yomk::Context& ctx)> YomkContextMonitorFunc;
+using YomkContextMonitorFunc = std::function<void(const yomk::Context& ctx)>;
 // Context checker 回调：返回 eAccept/eReject 门控 set；详见 YomkAPI::setContextChecker
-typedef std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)> YomkContextCheckerFunc;
-typedef std::function<bool(const yomk::Log& log)> YomkConsoleLogProxyFunc;
+using YomkContextCheckerFunc = std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)>;
+using YomkConsoleLogProxyFunc = std::function<bool(const yomk::Log& log)>;
 // 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 YomkAPI::setFileLogProxy
-typedef std::function<bool(const yomk::Log& log)> YomkFileLogProxyFunc;
+using YomkFileLogProxyFunc = std::function<bool(const yomk::Log& log)>;
 
 // 内置标准类型消息包（成员名均为 d）
 YomkMsg(bool, Bool, d);

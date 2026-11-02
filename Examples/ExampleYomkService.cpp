@@ -62,7 +62,7 @@
  *   YomkAPI::newService<T>(name)                  创建并注册服务（最常用）
  *   YomkAPI::addService(ptr, name)                注册已有实例（同名即替换）
  *   YomkAPI::delService(name)                     注销服务（删除即停）
- *   YomkAPI::boot(boot)                            启动编排（before -> start -> after）
+ *   YomkAPI::boot(cfg)                             启动编排（before -> start -> after）
  *   YomkAPI::request() / YomkAPI::asyncRequest()          同步 / 异步请求
  *   YomkAPI::serverInstance().get() / YomkAPI::serverInstance()            全局单例
  *   YomkAPI::listServices / FUNCTIONS / FUNCTION / ALL  调用拓扑自省

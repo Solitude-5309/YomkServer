@@ -4,7 +4,7 @@
  *
  * 覆盖内容：
  * 1. 排空语义：shutdown 阻塞至在途异步任务全部执行完毕才返回；shutdown 路径不置位
- *    markDeleted（deinit 时 deleted() == false，与 delService 删除即停对比实证）；
+ *    markDeleted（deinit 时 isDeleted() == false，与 delService 删除即停对比实证）；
  *    排空期弱绑定回调照常执行
  * 2. 拒新：shutdown 后 asyncRequest 被拒（回调永不触发，日志 "async request ignored"）；
  *    shutdown 后同步 request 返回 "service not found"（现状文档化：表已清空，非专用文案）
@@ -48,7 +48,7 @@ static int g_failed = 0;
 // ---- 文件级观测变量（每节首重置；写于池线程、读于 shutdown/析构 join 之后，无并发读写） ----
 static std::atomic<int> g_taskCount{0};                   // 异步任务回调到达计数
 static std::atomic<int> g_deinitCount{0};                 // 服务 deinit 调用次数
-static std::atomic<bool> g_deletedOnDeinit{false};        // deinit 时刻 deleted() 状态
+static std::atomic<bool> g_deletedOnDeinit{false};        // deinit 时刻 isDeleted() 状态
 static std::atomic<int> g_spawnExec{0};                   // /spawn 真实执行次数
 static std::function<YomkResponse(YomkPkgPtr)> g_weakCb;  // init 时存下的弱绑定回调
 static YomkResponse g_weakRespDuringDrain;                // 排空期弱绑定回调执行结果
@@ -64,7 +64,7 @@ static void resetGlobals()
 }
 
 /**
- * @brief 排空演示服务：/ping 固定响应、/work 供弱绑定探针；deinit 记录计数与 deleted() 状态
+ * @brief 排空演示服务：/ping 固定响应、/work 供弱绑定探针；deinit 记录计数与 isDeleted() 状态
  */
 class DrainSrv : public YomkService
 {
@@ -84,7 +84,7 @@ public:
     virtual void deinit() override
     {
         g_deinitCount.fetch_add(1);
-        g_deletedOnDeinit.store(deleted());  // shutdown 排空语义应为 false（对比 delService 的 true）
+        g_deletedOnDeinit.store(isDeleted());  // shutdown 排空语义应为 false（对比 delService 的 true）
     }
 
 private:
@@ -155,7 +155,7 @@ static void testDrainSemantics()
     YOMK_TEST_CHECK(g_deinitCount.load() == 1, "排空：池停止后服务 deinit 被调用一次");
     YOMK_TEST_CHECK(
         g_deletedOnDeinit.load() == false,
-        "排空语义：deinit 时 deleted() 为 false（shutdown 不置 markDeleted，与删除即停对比）");
+        "排空语义：deinit 时 isDeleted() 为 false（shutdown 不置 markDeleted，与删除即停对比）");
     YOMK_TEST_CHECK(probed.load() == true, "排空：弱绑定探针回调已执行");
     YOMK_TEST_CHECK(
         g_weakRespDuringDrain.m_status == YomkResponse::eOk && g_weakRespDuringDrain.m_msg == "work",

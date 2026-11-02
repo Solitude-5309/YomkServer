@@ -55,7 +55,7 @@ static int g_failed = 0;
 // ---- 文件级观测变量：init/deinit 次序与状态、注入开关（均为单线程节内使用） ----
 static std::atomic<int> g_initCount{0};             // init 调用次数
 static std::atomic<int> g_deinitCount{0};           // deinit 调用次数
-static std::atomic<bool> g_deletedOnDeinit{false};  // deinit 时刻 deleted() 状态
+static std::atomic<bool> g_deletedOnDeinit{false};  // deinit 时刻 isDeleted() 状态
 static std::atomic<int> g_pingCount{0};             // /ping 真实执行次数
 static int g_initRet = 0;                           // init 返回值注入：0 成功 / -1 失败
 static int g_initThrow = 0;                         // init 异常注入：0 不抛 / 1 bad_alloc / 2 runtime_error
@@ -131,7 +131,7 @@ public:
     virtual void deinit() override
     {
         g_deinitCount.fetch_add(1);
-        g_deletedOnDeinit.store(deleted());  // markDeleted 应先于 deinit（承诺实证）
+        g_deletedOnDeinit.store(isDeleted());  // markDeleted 应先于 deinit（承诺实证）
     }
 
 private:
@@ -281,7 +281,7 @@ static void testReplaceSameName()
     YOMK_TEST_CHECK(server->newService<RouteSrv>("/Dup") == 0, "同名第二实例注册（替换）返回 0");
     YOMK_TEST_CHECK(g_initCount.load() == initBefore + 1, "替换：新服务 init 在旧服务清理后被调用");
     YOMK_TEST_CHECK(g_deinitCount.load() == 1, "替换：旧服务 deinit 被调用");
-    YOMK_TEST_CHECK(g_deletedOnDeinit.load() == true, "替换：旧服务 deinit 时 deleted() 已为 true（先 markDeleted 承诺实证）");
+    YOMK_TEST_CHECK(g_deletedOnDeinit.load() == true, "替换：旧服务 deinit 时 isDeleted() 已为 true（先 markDeleted 承诺实证）");
 
     YomkResponse resp = server->request("/Dup/ping");
     YOMK_TEST_CHECK(resp.m_status == YomkResponse::eOk && resp.m_msg == "pong", "替换：新服务可路由");

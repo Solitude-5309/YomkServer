@@ -27,7 +27,7 @@ public:
     void name(const std::string& name);
     std::string name();
     // 检查服务是否已标记注销
-    bool deleted() const;
+    bool isDeleted() const;
 
 public:
     // 服务初始化（在其中注册功能函数），返回 0 成功
@@ -50,7 +50,7 @@ public:
         {
             using Ret = decltype(func(args...));
             auto self = weakSelf.lock();
-            if (!self || self->deleted())
+            if (!self || self->isDeleted())
             {
                 YOMK_ERR_POS_LOG("service has been deleted or unregistered, callback ignored.");
                 if constexpr (std::is_void_v<Ret>)

@@ -3,7 +3,7 @@
 ## 核心类型
 
 ```cpp
-typedef std::shared_ptr<YomkPkg> YomkPkgPtr;  // 消息包指针
+using YomkPkgPtr = std::shared_ptr<YomkPkg>;  // 消息包指针
 
 class YomkResponse {
 public:
@@ -13,8 +13,8 @@ public:
     YomkPkgPtr m_data;    // 携带的返回数据
 };
 
-typedef std::function<YomkResponse(YomkPkgPtr pkg)> YomkServiceFunc;
-typedef std::function<void(YomkResponse response)> YomkResponseFunc;
+using YomkServiceFunc = std::function<YomkResponse(YomkPkgPtr pkg)>;
+using YomkResponseFunc = std::function<void(YomkResponse response)>;
 ```
 
 字段语义（固化口径）：`m_status` 表示本次请求的状态；`m_msg` 仅作对状态的说明（成功 `"ok"`、错误为契约消息），**返回数据一律放 `m_data`**。
@@ -43,7 +43,7 @@ YomkMsg(DataType, MsgName, VarName);
 ```cpp
 yomkmsg::MsgName::shared(...)  // 创建消息包 shared_ptr（类内静态工厂）
 yomkmsg::MsgName               // 消息包类名（独立 yomkmsg 命名空间）
-yomkmsg::MsgNamePtr            // 指针类型 typedef
+yomkmsg::MsgNamePtr            // 指针类型别名（using）
 yomkmsg::MsgName(...)          // 栈对象直接构造
 ```
 
@@ -116,9 +116,9 @@ namespace yomk {
 
 **回调签名：**
 ```cpp
-typedef std::function<void(const yomk::Context& ctx)> YomkContextMonitorFunc;
-typedef std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)> YomkContextCheckerFunc;
-typedef std::function<bool(const yomk::Log& log)> YomkConsoleLogProxyFunc;
+using YomkContextMonitorFunc = std::function<void(const yomk::Context& ctx)>;
+using YomkContextCheckerFunc = std::function<yomk::ContextChecker::ECheckStatus(const yomk::Context& ctx)>;
+using YomkConsoleLogProxyFunc = std::function<bool(const yomk::Log& log)>;
 ```
 
 ## 核心类
@@ -152,7 +152,7 @@ class YomkService {
     YomkService(YomkServer* server);
     void name(const std::string& name);
     std::string name();
-    bool deleted() const;  // 服务是否已被标记注销（YomkAPI::delService() / 同名替换置位）
+    bool isDeleted() const;  // 服务是否已被标记注销（YomkAPI::delService() / 同名替换置位）
     virtual int init() = 0;
     virtual void deinit() {}  // 删除服务时由框架在锁外调用，覆写用于停线程/注销外部资源
     template<typename Func> auto weakFunc(Func func);  // 泛型弱绑定守卫（适配签名清单见上方 weakFunc 注释）
@@ -175,7 +175,7 @@ class YomkService {
 | API | 说明 |
 |----|------|
 | `YomkAPI::init()` | 初始化（自动启动内置服务）；可选参数透传至 `init(asyncThreadCount)` 配置异步线程池大小 |
-| `YomkAPI::boot(boot)` | Boot 生命周期初始化 |
+| `YomkAPI::boot(cfg)` | Boot 生命周期初始化 |
 | `YomkAPI::newService<T>(name)` | 注册服务（模板）；返回 0 成功 / -1 失败（如 init 失败自动回滚） |
 | `YomkAPI::addService(srv, name)` | 注册服务（实例）；服务指针所有权移交框架（注册成功后以 shared_ptr 持有），同一指针禁止重复注册（双重释放）；同名替换时旧服务先被锁外 deinit 再安装新服务；返回 0 成功 / -1 失败（如 init 失败自动回滚） |
 | `YomkAPI::delService(name)` | 删除服务（后续请求返回 service not found，外流弱绑定回调立即失效：置位注销标志后即使强引用未归零也丢弃，同名替换同语义；YomkAPI::shutdown() 走排空语义不置位） |
