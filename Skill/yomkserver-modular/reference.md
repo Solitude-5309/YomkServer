@@ -94,8 +94,8 @@ namespace yomk {
     // 控制台 TAG 宏兼容双填（m_logger=tag 且 m_tag=tag）；文件 TAG 宏 m_logger=文件名、m_tag=tag
     struct Log { enum LogLevel{LogLevel::Debug,LogLevel::Info,LogLevel::Warn,LogLevel::Error}; LogLevel m_level; std::string m_log; std::string m_logger; std::string m_tag; };
     struct Context { std::string m_key; YomkPkgPtr m_value; };
+    enum class CheckStatus{Accept, Reject}; // Context checker 门控结论（独立对外枚举）
     struct ContextChecker {
-        enum CheckStatus{CheckStatus::Accept, CheckStatus::Reject};
         std::string m_key; std::function<CheckStatus(const Context&)> m_checkFunc;
     };
     struct ContextMonitor { std::string m_key; std::function<void(Context)> m_contextMonitorFunc; bool m_asyncMonitor; };
@@ -117,7 +117,7 @@ namespace yomk {
 **回调签名：**
 ```cpp
 using YomkContextMonitorFunc = std::function<void(const yomk::Context& ctx)>;
-using YomkContextCheckerFunc = std::function<yomk::ContextChecker::CheckStatus(const yomk::Context& ctx)>;
+using YomkContextCheckerFunc = std::function<yomk::CheckStatus(const yomk::Context& ctx)>;
 using YomkConsoleLogProxyFunc = std::function<bool(const yomk::Log& log)>;
 ```
 

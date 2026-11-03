@@ -582,10 +582,10 @@ add_executable(${PROJECT_NAME}
 
 ```cpp
 // 检查函数：只允许非空字符串
-ContextChecker::CheckStatus nonEmptyChecker(const yomk::Context& ctx) {
+yomk::CheckStatus nonEmptyChecker(const yomk::Context& ctx) {
     auto val = yomk::unPack<yomkmsg::String>(ctx.m_value);
-    if(!val || val->d.empty()) return ContextChecker::CheckStatus::Reject;
-    return ContextChecker::CheckStatus::Accept;
+    if(!val || val->d.empty()) return yomk::CheckStatus::Reject;
+    return yomk::CheckStatus::Accept;
 }
 
 // 监控函数：记录变更

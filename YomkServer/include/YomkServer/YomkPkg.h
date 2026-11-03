@@ -253,7 +253,7 @@ struct ContextKeyInfo
 };
 
 // Context checker 门控结论（独立对外枚举：用户在 YomkContextCheckerFunc 回调中直接书写
-// yomk::CheckStatus，不随内部载荷 ContextChecker 私有化（见闭环 15-3））
+// yomk::CheckStatus，不随内部载荷 ContextChecker 私有化）
 enum class CheckStatus
 {
     Accept,

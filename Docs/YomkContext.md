@@ -29,7 +29,7 @@ auto val = YomkAPI::getContext<yomkmsg::String>("config", nullptr);
 // 3. 注册变更前校验门控（Checker）
 YomkAPI::setContextChecker("config", [](const yomk::Context &ctx) {
     // 返回 CheckStatus::Accept 放行修改；返回 CheckStatus::Reject 拦截（set 返回 ResStatus::Failed=1 "checker reject set context"，monitor 不触发）
-    return yomk::ContextChecker::CheckStatus::Accept;
+    return yomk::CheckStatus::Accept;
 });
 YomkAPI::enableContextChecker();  // 开启全局校验器；YomkAPI::disableContextChecker() 关闭（checker 保留但不生效）
 
