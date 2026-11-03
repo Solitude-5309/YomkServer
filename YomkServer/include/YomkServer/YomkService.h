@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "YomkDefine.h"
+#include "YomkExport.h"
 #include "YomkPkg.h"
 
 class YomkServer;

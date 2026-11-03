@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "YomkDefine.h"
+#include "YomkExport.h"
 #include "YomkLogTime.h"
 
 // 类级共享锁定义：跨实例行级原子的唯一互斥点（见 ConsoleLogger.h 成员注释）

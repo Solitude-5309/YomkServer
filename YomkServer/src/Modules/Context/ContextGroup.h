@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "../../YomkSimpleThreadPool.h"
-#include "YomkDefine.h"
+#include "YomkExport.h"
 #include "YomkPkg.h"
 
 class ContextGroup;

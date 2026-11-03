@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "YomkDefine.h"
+#include "YomkExport.h"
 
 YomkSimpleThreadPool::YomkSimpleThreadPool(std::size_t threadCount)
 {

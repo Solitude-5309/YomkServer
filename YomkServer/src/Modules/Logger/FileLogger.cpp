@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "YomkDefine.h"
+#include "YomkExport.h"
 #include "YomkLogTime.h"
 namespace fs = std::filesystem;
 

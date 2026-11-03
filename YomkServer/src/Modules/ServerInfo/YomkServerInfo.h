@@ -1,6 +1,6 @@
 #pragma once
 
-#include "YomkDefine.h"
+#include "YomkExport.h"
 #include "YomkServer.h"
 
 class YomkServerInfo : public YomkService

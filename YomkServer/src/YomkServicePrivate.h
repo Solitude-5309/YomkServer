@@ -5,7 +5,7 @@
 #include <shared_mutex>
 #include <string>
 
-#include "YomkDefine.h"
+#include "YomkExport.h"
 #include "YomkPkg.h"
 
 class YomkServer;

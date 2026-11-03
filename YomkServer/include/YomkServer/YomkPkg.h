@@ -8,35 +8,6 @@
 #include <utility>
 #include <vector>
 
-// 消息包类型定义宏
-// 类型自带 kName、内置 shared 静态工厂；独立 yomkmsg 命名空间避免与
-// yomk 中的载荷/框架类型重名，消息类名无需下划线后缀
-#define YomkMsg(DataType, MsgName, VarName)                                       \
-    namespace yomkmsg                                                             \
-    {                                                                             \
-    class MsgName : public ::YomkPkg                                              \
-    {                                                                             \
-    public:                                                                       \
-        static constexpr const char* kName = #MsgName;                            \
-        MsgName() { m_name = kName; }                                             \
-        MsgName(const DataType& value) : VarName(value) { m_name = kName; }       \
-        MsgName(DataType&& value) : VarName(std::move(value)) { m_name = kName; } \
-        virtual ~MsgName() {}                                                     \
-                                                                                  \
-    public:                                                                       \
-        DataType VarName{};                                                       \
-                                                                                  \
-        template <typename... A>                                                  \
-        static std::shared_ptr<MsgName> shared(A&&... a)                          \
-        {                                                                         \
-            return std::make_shared<MsgName>(std::forward<A>(a)...);              \
-        }                                                                         \
-    };                                                                            \
-    using MsgName##Ptr = std::shared_ptr<MsgName>;                                \
-    }
-
-class YomkServer;
-
 // 消息包基类
 class YomkPkg
 {
@@ -74,8 +45,8 @@ public:
 
 public:
     ResStatus m_status;  // 本次请求的状态
-    std::string m_msg;    // 对状态的说明（不携带返回数据）
-    YomkPkgPtr m_data;    // 携带的返回数据
+    std::string m_msg;   // 对状态的说明（不携带返回数据）
+    YomkPkgPtr m_data;   // 携带的返回数据
 };
 using YomkResponsePtr = std::shared_ptr<YomkResponse>;
 
@@ -83,6 +54,33 @@ using YomkResponsePtr = std::shared_ptr<YomkResponse>;
 using YomkServiceFunc = std::function<YomkResponse(YomkPkgPtr pkg)>;
 // 异步响应回调签名：request 完成后回传结果
 using YomkResponseFunc = std::function<void(YomkResponse response)>;
+
+// 消息包类型定义宏
+// 类型自带 kName、内置 shared 静态工厂；独立 yomkmsg 命名空间避免与
+// yomk 中的载荷/框架类型重名，消息类名无需下划线后缀
+#define YomkMsg(DataType, MsgName, VarName)                                       \
+    namespace yomkmsg                                                             \
+    {                                                                             \
+    class MsgName : public ::YomkPkg                                              \
+    {                                                                             \
+    public:                                                                       \
+        static constexpr const char* kName = #MsgName;                            \
+        MsgName() { m_name = kName; }                                             \
+        MsgName(const DataType& value) : VarName(value) { m_name = kName; }       \
+        MsgName(DataType&& value) : VarName(std::move(value)) { m_name = kName; } \
+        virtual ~MsgName() {}                                                     \
+                                                                                  \
+    public:                                                                       \
+        DataType VarName{};                                                       \
+                                                                                  \
+        template <typename... A>                                                  \
+        static std::shared_ptr<MsgName> shared(A&&... a)                          \
+        {                                                                         \
+            return std::make_shared<MsgName>(std::forward<A>(a)...);              \
+        }                                                                         \
+    };                                                                            \
+    using MsgName##Ptr = std::shared_ptr<MsgName>;                                \
+    }
 
 namespace yomk
 {

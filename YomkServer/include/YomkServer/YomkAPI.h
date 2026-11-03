@@ -6,7 +6,7 @@
 #include <sstream>
 #include <type_traits>
 
-#include "YomkDefine.h"
+#include "YomkExport.h"
 #include "YomkPkg.h"
 #include "YomkServer.h"
 #include "YomkService.h"

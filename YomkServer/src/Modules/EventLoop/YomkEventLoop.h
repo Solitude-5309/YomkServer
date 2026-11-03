@@ -3,7 +3,7 @@
 #include <shared_mutex>
 
 #include "EventLoop.h"
-#include "YomkDefine.h"
+#include "YomkExport.h"
 #include "YomkServer.h"
 
 class YomkEventLoop : public YomkService
