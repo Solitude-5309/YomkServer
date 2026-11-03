@@ -4,7 +4,7 @@
 #include <iostream>
 
 // 定点引入所需类型，避免在头文件中 using namespace
-using yomk::ContextChecker;
+using yomk::CheckStatus;
 
 ContextGroup::ContextGroup(std::string name)
     : m_name(std::move(name)), m_checkerEnabled(false), m_monitorEnabled(false),
@@ -137,8 +137,8 @@ int ContextGroup::set(const std::string& key, YomkPkgPtr value)
     // 避免对空 std::function 调用抛 std::bad_function_call 击穿 set 调用链
     if (m_checkerEnabled.load() && itContext->second.checker)
     {
-        ContextChecker::CheckStatus checkStatus = itContext->second.checker(data);
-        if (checkStatus == ContextChecker::CheckStatus::Reject)
+        CheckStatus checkStatus = itContext->second.checker(data);
+        if (checkStatus == CheckStatus::Reject)
         {
             return 4;
         }

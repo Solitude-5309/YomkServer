@@ -64,7 +64,7 @@
 #include "YomkAPI.h"
 
 // 定点引入所需类型，避免全局 using
-using yomk::ContextChecker;
+using yomk::CheckStatus;
 
 // ---------------------------------------------------------------------------
 // 辅助输出：全部走 YomkLogger 控制台日志（YOMK_INFO_TAG 等），无 std::cout。
@@ -226,7 +226,7 @@ static void ensureKey(const std::string& op, const std::string& key, YomkPkgPtr 
 // ---------------------------------------------------------------------------
 
 // 速度倍率安全门控：倍率是安全关键参数，超过 1.0（100%）有撞机风险，一律拒绝
-ContextChecker::CheckStatus checkerSpeedRatio(const yomk::Context& ctx)
+CheckStatus checkerSpeedRatio(const yomk::Context& ctx)
 {
     auto ratio = yomk::unPack<yomkmsg::Float64>(ctx.m_value);
     if (!ratio)
@@ -234,19 +234,19 @@ ContextChecker::CheckStatus checkerSpeedRatio(const yomk::Context& ctx)
         std::ostringstream oss;
         oss << "checker: " << ctx.m_key << " 值不是 Float64，无法校验 -> CheckStatus::Reject";
         YOMK_WARN_TAG("arm.guard", oss.str());
-        return ContextChecker::CheckStatus::Reject;
+        return CheckStatus::Reject;
     }
     if (ratio->d > 1.0)
     {
         std::ostringstream oss;
         oss << "checker: " << ctx.m_key << "=" << fmtF64(ratio->d) << " 超过安全倍率 1.0（撞机风险）-> CheckStatus::Reject";
         YOMK_WARN_TAG("arm.guard", oss.str());
-        return ContextChecker::CheckStatus::Reject;
+        return CheckStatus::Reject;
     }
     std::ostringstream oss;
     oss << "checker: " << ctx.m_key << "=" << fmtF64(ratio->d) << " 在安全范围内 -> CheckStatus::Accept";
     YOMK_INFO_TAG("arm.guard", oss.str());
-    return ContextChecker::CheckStatus::Accept;
+    return CheckStatus::Accept;
 }
 
 // 安全 PLC 的上电告警：伺服电源指令属安全相关事件，收到快照即告警记录

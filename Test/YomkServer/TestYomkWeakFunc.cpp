@@ -114,11 +114,11 @@ static void testAliveCallbacks(YomkServer* server)
             respCount.fetch_add(1);
             return YomkResponse{YomkResponse::ResStatus::Successed, "alive"};
         });
-    std::function<yomk::ContextChecker::CheckStatus(const yomk::Context&)> cbCheck = srv->weakFunc(
+    std::function<yomk::CheckStatus(const yomk::Context&)> cbCheck = srv->weakFunc(
         [&checkCount](const yomk::Context& ctx)
         {
             checkCount.fetch_add(1);
-            return yomk::ContextChecker::CheckStatus::Reject;
+            return yomk::CheckStatus::Reject;
         });
     std::function<int(YomkPkgPtr)> cbInt = srv->weakFunc(
         [&intCount](YomkPkgPtr pkg)
@@ -131,7 +131,7 @@ static void testAliveCallbacks(YomkServer* server)
     cbVoid();
     yomk::Context ctx{"key", nullptr};
     YomkResponse resp = cbResp(nullptr);
-    yomk::ContextChecker::CheckStatus status = cbCheck(ctx);
+    yomk::CheckStatus status = cbCheck(ctx);
     int intRet = cbInt(nullptr);
     YomkResponse memberResp = cbMember(nullptr);
 
@@ -139,7 +139,7 @@ static void testAliveCallbacks(YomkServer* server)
     YOMK_TEST_CHECK(
         respCount.load() == 1 && resp.m_status == YomkResponse::ResStatus::Successed && resp.m_msg == "alive",
         "存活：YomkResponse 回调正常执行");
-    YOMK_TEST_CHECK(checkCount.load() == 1 && status == yomk::ContextChecker::CheckStatus::Reject, "存活：CheckStatus 回调返回真实值");
+    YOMK_TEST_CHECK(checkCount.load() == 1 && status == yomk::CheckStatus::Reject, "存活：CheckStatus 回调返回真实值");
     YOMK_TEST_CHECK(intCount.load() == 1 && intRet == 42, "存活：其他返回值类型回调返回真实值");
     YOMK_TEST_CHECK(
         srv->memberCount.load() == 1 && memberResp.m_status == YomkResponse::ResStatus::Successed && memberResp.m_msg == "member",
@@ -156,7 +156,7 @@ static void testDestroyDiscard(YomkServer* server)
 
     std::function<void()> cbVoid;
     std::function<YomkResponse(YomkPkgPtr)> cbResp;
-    std::function<yomk::ContextChecker::CheckStatus(const yomk::Context&)> cbCheck;
+    std::function<yomk::CheckStatus(const yomk::Context&)> cbCheck;
     std::function<int(YomkPkgPtr)> cbInt;
     std::function<YomkResponse(YomkPkgPtr)> cbMember;
     {
@@ -172,7 +172,7 @@ static void testDestroyDiscard(YomkServer* server)
             [&checkCount](const yomk::Context& ctx)
             {
                 checkCount.fetch_add(1);
-                return yomk::ContextChecker::CheckStatus::Reject;
+                return yomk::CheckStatus::Reject;
             });
         cbInt = srv->weakFunc(
             [&intCount](YomkPkgPtr pkg)
@@ -186,7 +186,7 @@ static void testDestroyDiscard(YomkServer* server)
     cbVoid();
     yomk::Context ctx{"key", nullptr};
     YomkResponse resp = cbResp(nullptr);
-    yomk::ContextChecker::CheckStatus status = cbCheck(ctx);
+    yomk::CheckStatus status = cbCheck(ctx);
     int intRet = cbInt(nullptr);
     YomkResponse memberResp = cbMember(nullptr);
 
@@ -196,7 +196,7 @@ static void testDestroyDiscard(YomkServer* server)
             resp.m_msg.find(DISCARD_MSG) != std::string::npos,
         "销毁：YomkResponse 回调丢弃，返回 ResStatus::Failed + 契约消息");
     YOMK_TEST_CHECK(
-        checkCount.load() == 0 && status == yomk::ContextChecker::CheckStatus::Accept,
+        checkCount.load() == 0 && status == yomk::CheckStatus::Accept,
         "销毁：CheckStatus 回调丢弃，默认放行 CheckStatus::Accept");
     YOMK_TEST_CHECK(intCount.load() == 0 && intRet == 0, "销毁：其他返回值类型回调丢弃，返回 Ret{} 默认值");
     YOMK_TEST_CHECK(

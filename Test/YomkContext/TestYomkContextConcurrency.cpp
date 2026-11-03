@@ -30,7 +30,7 @@
 
 #include "YomkAPI.h"
 
-using yomk::ContextChecker;
+using yomk::CheckStatus;
 
 static int g_failed = 0;
 
@@ -239,7 +239,7 @@ int main()
                         if (writer)
                         {
                             auto r = YomkAPI::setContextChecker(
-                                "conc_ck", [](const yomk::Context&) { return ContextChecker::CheckStatus::Accept; });
+                                "conc_ck", [](const yomk::Context&) { return CheckStatus::Accept; });
                             if (r == YomkResponse::ResStatus::Successed)
                                 ++okWriter;
                             else
@@ -271,7 +271,7 @@ int main()
             [](const yomk::Context&)
             {
                 ++g_checkerCalls;
-                return ContextChecker::CheckStatus::Accept;
+                return CheckStatus::Accept;
             });
         auto sr = YomkAPI::setContext("conc_ck", yomkmsg::String::shared(std::string("c1")));
         YOMK_TEST_CHECK(sr == YomkResponse::ResStatus::Successed, "4.5 并发注册后 set 仍 ResStatus::Successed");
@@ -290,7 +290,7 @@ int main()
             [](const yomk::Context&)
             {
                 ++g_checkerCalls;
-                return ContextChecker::CheckStatus::Accept;
+                return CheckStatus::Accept;
             });
         YomkAPI::enableContextChecker();
 
@@ -473,7 +473,7 @@ int main()
                             case 5:
                             {
                                 auto r = YomkAPI::setContextChecker(
-                                    key, [](const yomk::Context&) { return ContextChecker::CheckStatus::Accept; });
+                                    key, [](const yomk::Context&) { return CheckStatus::Accept; });
                                 if (r == YomkResponse::ResStatus::Successed)
                                     ++okOps;
                                 else

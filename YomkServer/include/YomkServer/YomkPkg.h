@@ -252,13 +252,16 @@ struct ContextKeyInfo
     std::string m_group = "main";         // key 所属组名
 };
 
+// Context checker 门控结论（独立对外枚举：用户在 YomkContextCheckerFunc 回调中直接书写
+// yomk::CheckStatus，不随内部载荷 ContextChecker 私有化（见闭环 15-3））
+enum class CheckStatus
+{
+    Accept,
+    Reject
+};
+
 struct ContextChecker
 {
-    enum class CheckStatus
-    {
-        Accept,
-        Reject
-    };
     std::string m_key;
     std::function<CheckStatus(const yomk::Context& ctx)> m_checkFunc;
     std::string m_group = "main";  // 目标 key 所属组名（缺省 main）
@@ -339,7 +342,7 @@ YomkMsg(yomk::VoidPointer, VoidPointer, d);
 // Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 YomkAPI::setContextMonitor
 using YomkContextMonitorFunc = std::function<void(const yomk::Context& ctx)>;
 // Context checker 回调：返回 CheckStatus::Accept/CheckStatus::Reject 门控 set；详见 YomkAPI::setContextChecker
-using YomkContextCheckerFunc = std::function<yomk::ContextChecker::CheckStatus(const yomk::Context& ctx)>;
+using YomkContextCheckerFunc = std::function<yomk::CheckStatus(const yomk::Context& ctx)>;
 using YomkConsoleLogProxyFunc = std::function<bool(const yomk::Log& log)>;
 // 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 YomkAPI::setFileLogProxy
 using YomkFileLogProxyFunc = std::function<bool(const yomk::Log& log)>;

@@ -35,7 +35,7 @@
 
 #include "YomkAPI.h"
 
-using yomk::ContextChecker;
+using yomk::CheckStatus;
 
 static int g_failed = 0;
 
@@ -116,17 +116,17 @@ int main()
         auto cr = YomkAPI::createContext("ck_key", yomkmsg::String::shared(std::string("init")));
         YOMK_TEST_CHECK(cr == YomkResponse::ResStatus::Successed, "创建 ck_key 成功");
 
-        auto emptyKey = YomkAPI::setContextChecker("", [](const yomk::Context&) { return ContextChecker::CheckStatus::Accept; });
+        auto emptyKey = YomkAPI::setContextChecker("", [](const yomk::Context&) { return CheckStatus::Accept; });
         YOMK_TEST_CHECK(emptyKey == YomkResponse::ResStatus::Failed, "set_checker 空 key 返回 ResStatus::Failed");
 
         auto nullFunc = YomkAPI::setContextChecker("ck_key", nullptr);
         YOMK_TEST_CHECK(nullFunc == YomkResponse::ResStatus::Failed, "set_checker null checkFunc 返回 ResStatus::Failed");
 
         auto noKey =
-            YomkAPI::setContextChecker("no_such_key", [](const yomk::Context&) { return ContextChecker::CheckStatus::Accept; });
+            YomkAPI::setContextChecker("no_such_key", [](const yomk::Context&) { return CheckStatus::Accept; });
         YOMK_TEST_CHECK(noKey == YomkResponse::ResStatus::Failed, "set_checker 不存在 key 返回 ResStatus::Failed");
 
-        auto ok = YomkAPI::setContextChecker("ck_key", [](const yomk::Context&) { return ContextChecker::CheckStatus::Accept; });
+        auto ok = YomkAPI::setContextChecker("ck_key", [](const yomk::Context&) { return CheckStatus::Accept; });
         YOMK_TEST_CHECK(ok == YomkResponse::ResStatus::Successed, "set_checker 正常设置返回 ResStatus::Successed");
     }
 
@@ -147,7 +147,7 @@ int main()
             [](const yomk::Context&)
             {
                 ++g_checkerCalls;
-                return ContextChecker::CheckStatus::Accept;
+                return CheckStatus::Accept;
             });
         YomkAPI::enableContextChecker();
 
@@ -162,7 +162,7 @@ int main()
             [](const yomk::Context&)
             {
                 ++g_checkerCalls;
-                return ContextChecker::CheckStatus::Reject;
+                return CheckStatus::Reject;
             });
         g_checkerCalls.store(0);
         auto rejectSet = YomkAPI::setContext("ck_key", yomkmsg::String::shared(std::string("rejected")));
