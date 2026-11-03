@@ -31,7 +31,7 @@ YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
         return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not EventLoop"};
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
-    auto itEventLoop = m_eventLoop.find(eventloop->d.m_eventloopName);
+    auto itEventLoop = m_eventLoop.find(eventloop->d.m_eventLoopName);
     if (itEventLoop != m_eventLoop.end())
     {
         itEventLoop->second->start();
@@ -41,7 +41,7 @@ YomkResponse YomkEventLoop::start(YomkPkgPtr pkg)
     EventLoopPtr eventLoop = std::make_shared<EventLoop>();
     eventLoop->setDefaultServiceFunc(eventloop->d.m_defaultServiceFunc, eventloop->d.m_msgName);
     eventLoop->start();
-    m_eventLoop.emplace(eventloop->d.m_eventloopName, eventLoop);
+    m_eventLoop.emplace(eventloop->d.m_eventLoopName, eventLoop);
 
     return YomkResponse(YomkResponse::ResStatus::Successed, "event loop start success");
 }

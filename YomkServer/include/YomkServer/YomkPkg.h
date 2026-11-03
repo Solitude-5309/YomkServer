@@ -151,7 +151,7 @@ struct Event
 
 struct EventLoop
 {
-    std::string m_eventloopName;
+    std::string m_eventLoopName;
     YomkServiceFunc m_defaultServiceFunc;
     std::string m_msgName;  // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
 };

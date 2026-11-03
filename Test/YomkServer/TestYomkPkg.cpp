@@ -283,7 +283,7 @@ int main()
         yomk::CallFunction cf;
         YOMK_TEST_CHECK(cf.m_funcName.empty() && cf.m_pkg == nullptr, "CallFunction 默认：名称空、pkg 空");
         yomk::EventLoop el;
-        YOMK_TEST_CHECK(el.m_eventloopName.empty() && el.m_msgName.empty() && !el.m_defaultServiceFunc,
+        YOMK_TEST_CHECK(el.m_eventLoopName.empty() && el.m_msgName.empty() && !el.m_defaultServiceFunc,
               "EventLoop 默认：名称/消息名空、默认 func 空");
         yomk::LogFile lf;
         YOMK_TEST_CHECK(lf.m_logger.empty() && lf.m_dir.empty(), "LogFile 默认：logger/dir 空");
