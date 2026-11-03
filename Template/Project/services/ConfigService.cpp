@@ -32,18 +32,18 @@ int ConfigService::init()
     return 0;
 }
 
-YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
+yomk::Response ConfigService::loadConfig(YomkPkgPtr pkg)
 {
     // 从 Context 获取配置文件路径
     auto ctxVal = YomkAPI::getContext<yomkmsg::String>(CTX_CONFIG_PATH, nullptr);
     if (!ctxVal)
-        return YomkResponse(YomkResponse::ResStatus::Failed, "config_path not found in context");
+        return yomk::Response(yomk::ResStatus::Failed, "config_path not found in context");
     m_configPath = ctxVal->d;
 
     // 加载配置文件（纯文本 key: value 格式）
     std::ifstream ifs(m_configPath);
     if (!ifs.is_open())
-        return YomkResponse(YomkResponse::ResStatus::Failed, "failed to open: " + m_configPath);
+        return yomk::Response(yomk::ResStatus::Failed, "failed to open: " + m_configPath);
 
     std::string line;
     while (std::getline(ifs, line))
@@ -61,47 +61,47 @@ YomkResponse ConfigService::loadConfig(YomkPkgPtr pkg)
     }
     ifs.close();
     YOMK_INFO_TAG("ConfigService::loadConfig", "loaded: ", m_configPath);
-    return YomkResponse(YomkResponse::ResStatus::Successed, "ok");
+    return yomk::Response(yomk::ResStatus::Succeeded, "ok");
 }
 
-YomkResponse ConfigService::getConfig(YomkPkgPtr pkg)
+yomk::Response ConfigService::getConfig(YomkPkgPtr pkg)
 {
     auto data = yomk::unPack<yomkmsg::ConfigKey>(pkg);
     if (!data)
     {
-        return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not ConfigKey"};
+        return {yomk::ResStatus::Failed, "pkg is null or pkg is not ConfigKey"};
     }
 
     auto it = m_configMap.find(data->req.key);
     if (it == m_configMap.end())
     {
-        return YomkResponse(YomkResponse::ResStatus::Failed, "key not found: " + data->req.key);
+        return yomk::Response(yomk::ResStatus::Failed, "key not found: " + data->req.key);
     }
 
-    return YomkResponse(YomkResponse::ResStatus::Successed, "ok", yomkmsg::String::shared(it->second));
+    return yomk::Response(yomk::ResStatus::Succeeded, "ok", yomkmsg::String::shared(it->second));
 }
 
-YomkResponse ConfigService::setConfig(YomkPkgPtr pkg)
+yomk::Response ConfigService::setConfig(YomkPkgPtr pkg)
 {
     auto data = yomk::unPack<yomkmsg::ConfigKeyValue>(pkg);
     if (!data)
     {
-        return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not ConfigKeyValue"};
+        return {yomk::ResStatus::Failed, "pkg is null or pkg is not ConfigKeyValue"};
     }
 
     m_configMap[data->req.key] = data->req.value;
     YOMK_INFO_TAG("ConfigService::setConfig", "set ", data->req.key, " = ", data->req.value);
-    return YomkResponse(YomkResponse::ResStatus::Successed, "ok");
+    return yomk::Response(yomk::ResStatus::Succeeded, "ok");
 }
 
-YomkResponse ConfigService::reloadConfig(YomkPkgPtr pkg)
+yomk::Response ConfigService::reloadConfig(YomkPkgPtr pkg)
 {
     m_configMap.clear();
     return loadConfig(nullptr);
 }
 
-YomkResponse ConfigService::version(YomkPkgPtr pkg)
+yomk::Response ConfigService::version(YomkPkgPtr pkg)
 {
     // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
-    return YomkResponse(YomkResponse::ResStatus::Successed, "ok", yomkmsg::String::shared(std::string(APP_VERSION)));
+    return yomk::Response(yomk::ResStatus::Succeeded, "ok", yomkmsg::String::shared(std::string(APP_VERSION)));
 }

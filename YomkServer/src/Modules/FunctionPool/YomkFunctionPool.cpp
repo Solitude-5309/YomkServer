@@ -19,17 +19,17 @@ int YomkFunctionPool::init()
     return 0;
 }
 
-YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
+yomk::Response YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
 {
     auto yFunc = yomk::unPack<yomkmsg::Function>(pkg);
     if (!yFunc)
     {
-        return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not Function"};
+        return {yomk::ResStatus::Failed, "pkg is null or pkg is not Function"};
     }
     if (yFunc->d.m_funcName.empty() || yFunc->d.m_func == nullptr)
     {
         YOMK_ERR_POS_LOG("funcName or func is empty, please check Function.m_funcName");
-        return YomkResponse(YomkResponse::ResStatus::Invalid, "funcName or func is empty");
+        return yomk::Response(yomk::ResStatus::Invalid, "funcName or func is empty");
     }
 
     std::unique_lock<std::shared_mutex> lock(m_functionsMutex);
@@ -41,23 +41,23 @@ YomkResponse YomkFunctionPool::registerFunction(YomkPkgPtr pkg)
         itFunc->second.m_msgName = yFunc->d.m_msgName;
         itFunc->second.m_description = yFunc->d.m_description;
         YOMK_ERR_POS_LOG("function name: " + yFunc->d.m_funcName + " is already exist, update to current function");
-        return YomkResponse(YomkResponse::ResStatus::Successed, "find function name is already exist, update to current function");
+        return yomk::Response(yomk::ResStatus::Succeeded, "find function name is already exist, update to current function");
     }
     m_functions.emplace(yFunc->d.m_funcName, PoolFuncInfo{yFunc->d.m_func, yFunc->d.m_msgName, yFunc->d.m_description});
-    return {YomkResponse::ResStatus::Successed, "register function success"};
+    return {yomk::ResStatus::Succeeded, "register function success"};
 }
 
-YomkResponse YomkFunctionPool::unRegisterFunction(YomkPkgPtr pkg)
+yomk::Response YomkFunctionPool::unRegisterFunction(YomkPkgPtr pkg)
 {
     auto yFuncName = yomk::unPack<yomkmsg::String>(pkg);
     if (!yFuncName)
     {
-        return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     if (yFuncName->d.empty())
     {
         YOMK_ERR_POS_LOG("funcName is empty, please check String");
-        return YomkResponse(YomkResponse::ResStatus::Invalid, "funcName is empty");
+        return yomk::Response(yomk::ResStatus::Invalid, "funcName is empty");
     }
 
     std::unique_lock<std::shared_mutex> lock(m_functionsMutex);
@@ -66,23 +66,23 @@ YomkResponse YomkFunctionPool::unRegisterFunction(YomkPkgPtr pkg)
     {
         YOMK_ERR_POS_LOG("funcName: " + yFuncName->d + " is not register, can not unregister");
         // 名字有效但未注册：ResStatus::Failed（与 funcInfo/Context/EventLoop 的 not-found 惯例一致；ResStatus::Invalid 仅用于参数无效）
-        return YomkResponse(YomkResponse::ResStatus::Failed, "funcName is not register");
+        return yomk::Response(yomk::ResStatus::Failed, "funcName is not register");
     }
     m_functions.erase(itFunc);
-    return {YomkResponse::ResStatus::Successed, "unregister function success"};
+    return {yomk::ResStatus::Succeeded, "unregister function success"};
 }
 
-YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
+yomk::Response YomkFunctionPool::callFunction(YomkPkgPtr pkg)
 {
     auto yCallFunc = yomk::unPack<yomkmsg::CallFunction>(pkg);
     if (!yCallFunc)
     {
-        return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not CallFunction"};
+        return {yomk::ResStatus::Failed, "pkg is null or pkg is not CallFunction"};
     }
     if (yCallFunc->d.m_funcName.empty())
     {
         YOMK_ERR_POS_LOG("funcName is empty, please check CallFunction.m_funcName");
-        return YomkResponse(YomkResponse::ResStatus::Invalid, "funcName is empty");
+        return yomk::Response(yomk::ResStatus::Invalid, "funcName is empty");
     }
 
     YomkServiceFunc copyFunc;
@@ -94,7 +94,7 @@ YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
             YOMK_ERR_POS_LOG(
                 "funcName: " + yCallFunc->d.m_funcName + " is not register, please check CallFunction.m_funcName");
             // 名字有效但未注册：ResStatus::Failed（not-found 框架惯例；ResStatus::Invalid 仅用于参数无效）
-            return YomkResponse(YomkResponse::ResStatus::Failed, "funcName is not register");
+            return yomk::Response(yomk::ResStatus::Failed, "funcName is not register");
         }
         copyFunc = itFunc->second.m_func;
     }
@@ -103,7 +103,7 @@ YomkResponse YomkFunctionPool::callFunction(YomkPkgPtr pkg)
 }
 
 // 内省：列出全部注册函数名
-YomkResponse YomkFunctionPool::funcNames(YomkPkgPtr pkg)
+yomk::Response YomkFunctionPool::funcNames(YomkPkgPtr pkg)
 {
     std::vector<std::string> funcNames;
     {
@@ -113,21 +113,21 @@ YomkResponse YomkFunctionPool::funcNames(YomkPkgPtr pkg)
             funcNames.push_back(iter.first);
         }
     }
-    return {YomkResponse::ResStatus::Successed, "ok", yomkmsg::StringArray::shared(funcNames)};
+    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::StringArray::shared(funcNames)};
 }
 
 // 内省：单个函数元信息查询，命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，数据走 m_data）
-YomkResponse YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
+yomk::Response YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
 {
     auto yFuncName = yomk::unPack<yomkmsg::String>(pkg);
     if (!yFuncName)
     {
-        return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     if (yFuncName->d.empty())
     {
         YOMK_ERR_POS_LOG("funcName is empty, please check String");
-        return YomkResponse(YomkResponse::ResStatus::Invalid, "funcName is empty");
+        return yomk::Response(yomk::ResStatus::Invalid, "funcName is empty");
     }
 
     std::shared_lock<std::shared_mutex> lock(m_functionsMutex);
@@ -135,18 +135,18 @@ YomkResponse YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
     if (itFunc == m_functions.end())
     {
         YOMK_ERR_POS_LOG("funcName: " + yFuncName->d + " is not register, please check funcName");
-        return YomkResponse(YomkResponse::ResStatus::Failed, "funcName is not register");
+        return yomk::Response(yomk::ResStatus::Failed, "funcName is not register");
     }
     // 命中：结构化包恒挂，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
     yomk::FuncInfo info;
     info.m_funcName = yFuncName->d;
     info.m_msgName = itFunc->second.m_msgName;
     info.m_description = itFunc->second.m_description;
-    return {YomkResponse::ResStatus::Successed, "ok", yomkmsg::FuncInfo::shared(info)};
+    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::FuncInfo::shared(info)};
 }
 
 // 内省：全量函数元信息，锁内构造结构化快照（m_msg 恒 "ok"，数据走 m_data；总数由 d.size() 承载）
-YomkResponse YomkFunctionPool::listAll(YomkPkgPtr pkg)
+yomk::Response YomkFunctionPool::listAll(YomkPkgPtr pkg)
 {
     std::vector<yomk::FuncInfo> infos;
     {
@@ -161,5 +161,5 @@ YomkResponse YomkFunctionPool::listAll(YomkPkgPtr pkg)
             infos.push_back(std::move(info));
         }
     }
-    return {YomkResponse::ResStatus::Successed, "ok", yomkmsg::FuncInfoList::shared(infos)};
+    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::FuncInfoList::shared(infos)};
 }

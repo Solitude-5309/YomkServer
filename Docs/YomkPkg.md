@@ -35,9 +35,9 @@ auto pkg = yomkmsg::UserInfoMsg::shared(UserInfo{1001, "Alice"});
 auto info = yomk::unPack<yomkmsg::UserInfoMsg>(pkg); // 类型校验与解包；类型不匹配时 info 为 nullptr，需自行判空
 if (!info)
 {
-    return {YomkResponse::ResStatus::Failed, "pkg is not UserInfoMsg"};
+    return {yomk::ResStatus::Failed, "pkg is not UserInfoMsg"};
 }
-return {YomkResponse::ResStatus::Successed, "hello " + info->d.name};
+return {yomk::ResStatus::Succeeded, "hello " + info->d.name};
 ```
 
 ## 注意事项

@@ -97,7 +97,7 @@ int main()
     {
         YomkAPI::enableContextMonitor();
         auto cr = YomkAPI::createContext("life_base", yomkmsg::String::shared(std::string("b0")));
-        YOMK_TEST_CHECK(cr == YomkResponse::ResStatus::Successed, "创建 life_base 成功");
+        YOMK_TEST_CHECK(cr == yomk::ResStatus::Succeeded, "创建 life_base 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(
@@ -115,7 +115,7 @@ int main()
     {
         YomkAPI::enableContextMonitor();
         auto cr = YomkAPI::createContext("life_drain", yomkmsg::String::shared(std::string("d0")));
-        YOMK_TEST_CHECK(cr == YomkResponse::ResStatus::Successed, "创建 life_drain 成功");
+        YOMK_TEST_CHECK(cr == yomk::ResStatus::Succeeded, "创建 life_drain 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(
@@ -138,7 +138,7 @@ int main()
     // ============ Section 4: 删除后不可路由 + 重复删除契约 ============
     {
         auto resp = YomkAPI::request("/YomkContext/keys", nullptr);
-        YOMK_TEST_CHECK(resp.m_status == YomkResponse::ResStatus::Failed, "删除后请求 /YomkContext 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Failed, "删除后请求 /YomkContext 返回 ResStatus::Failed");
         YOMK_TEST_CHECK(resp.m_msg == "service not found: /YomkContext", "删除后消息为 service not found: /YomkContext");
 
         auto names = YomkAPI::serverInstance()->serviceNames();
@@ -158,7 +158,7 @@ int main()
 
         YomkAPI::enableContextMonitor();
         auto cr = YomkAPI::createContext("life_rebuild", yomkmsg::String::shared(std::string("r0")));
-        YOMK_TEST_CHECK(cr == YomkResponse::ResStatus::Successed, "重新注册后创建 life_rebuild 成功");
+        YOMK_TEST_CHECK(cr == yomk::ResStatus::Succeeded, "重新注册后创建 life_rebuild 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(
@@ -183,7 +183,7 @@ int main()
 
         // 进程存活、/YomkContext 仍可用
         auto resp = YomkAPI::listContextKeys();
-        YOMK_TEST_CHECK(resp.m_status == YomkResponse::ResStatus::Successed, "异常回滚后 /YomkContext 仍可用");
+        YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded, "异常回滚后 /YomkContext 仍可用");
     }
 
     YomkAPI::shutdown();

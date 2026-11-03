@@ -34,35 +34,37 @@
     using MsgName##Ptr = std::shared_ptr<MsgName>;                                \
     }
 
-// 请求调用结果对象（m_status 表示本次请求的状态；m_msg 对状态的说明；m_data 携带的返回数据）
-class YomkResponse
+namespace yomk
 {
-public:
-    enum class ResStatus
-    {
-        Invalid = -1,
-        Successed = 0,
-        Failed = 1,
-    };
 
-public:
-    YomkResponse() : m_status(ResStatus::Invalid), m_data(nullptr) {}
-    YomkResponse(ResStatus status, const std::string& msg = "", std::shared_ptr<YomkPkg> d = nullptr)
+// 服务响应状态（用户在服务实现与响应检查中直接书写，独立对外枚举，不随载荷私有化）
+enum class ResStatus
+{
+    Invalid = -1,
+    Succeeded = 0,
+    Failed = 1,
+};
+
+// 服务响应载荷（所有功能函数的返回值：m_status 表示本次请求的状态，
+// m_msg 对状态的说明，m_data 携带的返回数据）
+struct Response
+{
+    Response() = default;
+    Response(ResStatus status, const std::string& msg = "", YomkPkgPtr d = nullptr)
         : m_status(status), m_msg(msg), m_data(d)
     {
     }
-    virtual ~YomkResponse() {}
-
-public:
-    ResStatus m_status;  // 本次请求的状态
-    std::string m_msg;   // 对状态的说明（不携带返回数据）
-    YomkPkgPtr m_data;   // 携带的返回数据
+    ResStatus m_status = ResStatus::Invalid;  // 本次请求的状态
+    std::string m_msg;                        // 对状态的说明（不携带返回数据）
+    YomkPkgPtr m_data = nullptr;              // 携带的返回数据
 };
-using YomkResponsePtr = std::shared_ptr<YomkResponse>;
-// 功能函数签名：入参为请求消息包（可为 nullptr），返回 YomkResponse
-using YomkServiceFunc = std::function<YomkResponse(YomkPkgPtr pkg)>;
+
+}  // namespace yomk
+
+// 功能函数签名：入参为请求消息包（可为 nullptr），返回 yomk::Response
+using YomkServiceFunc = std::function<yomk::Response(YomkPkgPtr pkg)>;
 // 异步响应回调签名：request 完成后回传结果
-using YomkResponseFunc = std::function<void(YomkResponse response)>;
+using YomkResponseFunc = std::function<void(yomk::Response response)>;
 
 namespace yomk
 {
@@ -108,7 +110,7 @@ struct Event
     YomkPkgPtr m_pkg;
     YomkServiceFunc m_serviceFunc;
     std::uint64_t m_eventId = 0;
-    YomkResponse m_response;
+    Response m_response;
     std::function<void()> m_waitCallback;
     std::string m_tag;
     Event() : m_eventLoopName(""), m_pkg(nullptr), m_serviceFunc(nullptr), m_waitCallback(nullptr), m_tag("") {}
@@ -287,6 +289,8 @@ struct VoidPointer
 // 自定义消息不在此定义，经 YomkPkg.h 的 YomkMsg 宏自行声明。
 
 // ============ 框架载荷消息包 ============
+// 服务响应载荷包（功能函数返回值的包形态，供响应作为消息存储/传递）
+YomkMsg(yomk::Response, Response, d);
 YomkMsg(yomk::Function, Function, d);
 YomkMsg(yomk::CallFunction, CallFunction, d);
 YomkMsg(yomk::FuncInfo, FuncInfo, d);

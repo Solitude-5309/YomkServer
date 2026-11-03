@@ -25,7 +25,7 @@
  *        ERROR 告警递进；默认 tag 与自定义 tag 双填兼容，[行号] 随行定位。
  * 场景 2 showArmSilentMode  [disable/enableConsoleLog*（无参/具名）+ getGlobalLoggerLevel + getLoggerInfo]
  *        产线静默模式：全局静默四级别逐级全关（空窗由 WARN/ERROR 锚点桥接，调用仍返回
- *        ResStatus::Successed）；逐级恢复后单查 MainLogger 状态段复查五开关全 on；随后逐器静默——具名
+ *        ResStatus::Succeeded）；逐级恢复后单查 MainLogger 状态段复查五开关全 on；随后逐器静默——具名
  *        关断 arm.joint 仅其报文消失（MainLogger/arm.demo 对照不受影响），
  *        getGlobalLoggerLevel 报主闸全 on 与条目 infoOff 两层归因唯一。
  * 场景 3 showArmBlackbox    [setConsoleLogProxy / setFileLogProxy / createFileLogger / WRITE]
@@ -79,18 +79,18 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
     YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
 }
 
-// API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
+// API 结果行：打印 yomk::Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 // 日志宏的结果行自带流向证据：代理消费 msg="console log proxy is success."、放行 msg="success."。
-// status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
-static void logResp(const std::string& api, const YomkResponse& resp)
+// status 三态：0=ResStatus::Succeeded 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
+static void logResp(const std::string& api, const yomk::Response& resp)
 {
     std::ostringstream oss;
     oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
-    if (resp.m_status == YomkResponse::ResStatus::Successed)
+    if (resp.m_status == yomk::ResStatus::Succeeded)
     {
-        oss << "(ResStatus::Successed 成功)";
+        oss << "(ResStatus::Succeeded 成功)";
     }
-    else if (resp.m_status == YomkResponse::ResStatus::Failed)
+    else if (resp.m_status == yomk::ResStatus::Failed)
     {
         oss << "(ResStatus::Failed 拒绝或不存在)";
     }
@@ -103,10 +103,10 @@ static void logResp(const std::string& api, const YomkResponse& resp)
 }
 
 // ResStatus 版结果行：LOG_API ResStatus 化后直接返回三态（失败原因经错误日志承载，无 msg）
-static void logResp(const std::string& api, YomkResponse::ResStatus status)
+static void logResp(const std::string& api, yomk::ResStatus status)
 {
-    const char* name = status == YomkResponse::ResStatus::Successed ? "ResStatus::Successed"
-                     : status == YomkResponse::ResStatus::Failed    ? "ResStatus::Failed"
+    const char* name = status == yomk::ResStatus::Succeeded ? "ResStatus::Succeeded"
+                     : status == yomk::ResStatus::Failed    ? "ResStatus::Failed"
                                                                     : "ResStatus::Invalid";
     YOMK_INFO_TAG("arm.demo", "[" + api + "] status: " + name);
 }
@@ -115,7 +115,7 @@ static void logResp(const std::string& api, YomkResponse::ResStatus status)
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；被演示的日志行（控制台）夹在开始行与结果行之间，
 // 归属一目了然，读者顺着日志读即可理解，无需回看代码。
-// 闭环 14-2：LOG_API 29 方法返回 ResStatus，INFO 查询仍返回 YomkResponse，
+// 闭环 14-2：LOG_API 29 方法返回 ResStatus，INFO 查询仍返回 yomk::Response，
 // 模板化使两类返回各自路由到对应 logResp 重载，调用点零改动
 template <typename F>
 static auto logAction(const std::string& op, const std::string& api, F&& call)
@@ -269,12 +269,12 @@ static void showArmSilentMode()
         2,
         "产线静默模式",
         "disable/enableConsoleLog*（无参/具名） + getGlobalLoggerLevel + getLoggerInfo",
-        "夜间无人值守降噪：四级别逐级全关（调用仍返回 ResStatus::Successed，仅输出被抑制），"
+        "夜间无人值守降噪：四级别逐级全关（调用仍返回 ResStatus::Succeeded，仅输出被抑制），"
         "空窗段无任何控制台输出；恢复后单查状态段复查五开关全 on。");
 
     // 先关 DEBUG 详单（最常用的降噪手段）
     logAction("关闭 DEBUG 详单（产线静默）", "disableConsoleLogDebug", [&] { return YomkAPI::disableConsoleLogDebug(); });
-    logVerify("随后的 DEBUG 调用（静默段）仍返回 ResStatus::Successed 但不再输出：级别开关只抑制输出、不影响调用成功");
+    logVerify("随后的 DEBUG 调用（静默段）仍返回 ResStatus::Succeeded 但不再输出：级别开关只抑制输出、不影响调用成功");
 
     YOMK_WARN_TAG("arm.demo", "继续降噪：INFO/WARN/ERROR 也将逐级关闭，空窗期间操作照常执行");
     YOMK_ERROR_TAG("arm.demo", "最后一条可见日志：ERROR 关闭后全静默，恢复后汇报空窗详情");
@@ -283,7 +283,7 @@ static void showArmSilentMode()
     logAction("关闭 WARN 隐患预警", "disableConsoleLogWarn", [&] { return YomkAPI::disableConsoleLogWarn(); });
     logAction("关闭 ERROR 故障告警", "disableConsoleLogError", [&] { return YomkAPI::disableConsoleLogError(); });
 
-    // 全静默段：以下 4 条调用成功返回 ResStatus::Successed，控制台一行都不出现
+    // 全静默段：以下 4 条调用成功返回 ResStatus::Succeeded，控制台一行都不出现
     YOMK_INFO("你看不到我：INFO 已关闭");
     YOMK_WARN("你看不到我：WARN 已关闭");
     YOMK_ERROR("你看不到我：ERROR 已关闭");
@@ -293,13 +293,13 @@ static void showArmSilentMode()
     YomkAPI::enableConsoleLogError();
     YomkAPI::enableConsoleLogInfo();
     YOMK_INFO_TAG("arm.demo",
-        "静默解除：空窗期间已按序执行 OFF_INFO/WARN/ERROR 与 4 条演示调用，全部返回 ResStatus::Successed——"
+        "静默解除：空窗期间已按序执行 OFF_INFO/WARN/ERROR 与 4 条演示调用，全部返回 ResStatus::Succeeded——"
         "恢复 WARN/DEBUG 后复查");
     logAction("恢复 WARN 隐患预警", "enableConsoleLogWarn", [&] { return YomkAPI::enableConsoleLogWarn(); });
     logAction("恢复 DEBUG 详单", "enableConsoleLogDebug", [&] { return YomkAPI::enableConsoleLogDebug(); });
 
     logAction("复查 MainLogger 开关状态");
-    YomkResponse resp = YomkAPI::getLoggerInfo("MainLogger", "console");
+    yomk::Response resp = YomkAPI::getLoggerInfo("MainLogger", "console");
     logResp("getLoggerInfo MainLogger(console)", resp);
     auto info = yomk::unPack<yomkmsg::LoggerInfo>(resp.m_data);
     if (info)
@@ -316,7 +316,7 @@ static void showArmSilentMode()
     YOMK_INFO_TAG("arm.demo", "arm.joint 已逐器静默：arm.demo 叙事与 MainLogger 输出不受影响（对照锚点）");
 
     logAction("复查全局主闸状态");
-    YomkResponse gResp = YomkAPI::getGlobalLoggerLevel();
+    yomk::Response gResp = YomkAPI::getGlobalLoggerLevel();
     logResp("getGlobalLoggerLevel", gResp);
     auto gs = yomk::unPack<yomkmsg::LoggerState>(gResp.m_data);
     if (gs)
@@ -327,7 +327,7 @@ static void showArmSilentMode()
             << " error=" << (gs->d.m_errorOn ? "on" : "off") << " proxy=" << (gs->d.m_proxyOn ? "on" : "off");
         YOMK_INFO_TAG("arm.demo", oss.str());
     }
-    YomkResponse jResp = YomkAPI::getLoggerInfo("arm.joint", "console");
+    yomk::Response jResp = YomkAPI::getLoggerInfo("arm.joint", "console");
     auto jInfo = yomk::unPack<yomkmsg::LoggerInfo>(jResp.m_data);
     if (jInfo)
     {
@@ -364,7 +364,7 @@ static void showArmBlackbox(const std::string& logDir)
         "4 条演示中仅 INFO 出现在控制台，WARN/ERROR 已转写黑匣子");
 
     logAction("查看代理安装状态");
-    YomkResponse resp = YomkAPI::getLoggerInfo("MainLogger", "console");
+    yomk::Response resp = YomkAPI::getLoggerInfo("MainLogger", "console");
     logResp("getLoggerInfo MainLogger(console)", resp);
     auto proxyInfo = yomk::unPack<yomkmsg::LoggerInfo>(resp.m_data);
     if (proxyInfo)
@@ -448,7 +448,7 @@ static void showArmShiftLog(const std::string& logDir)
     // 存档静默段：文件具名关断期间 INFO 静默吞条（msg 仍 success.），文件主闸仍 on——两层归因
     logAction("存档静默：具名关断 shiftlog 的 INFO", "disableFileLogInfo shiftlog", [&] { return YomkAPI::disableFileLogInfo("shiftlog"); });
     logAction("静默期间存档通报（INFO，被门控吞掉）", "YOMK_FILE_INFO shiftlog", [&] { return YOMK_FILE_INFO("shiftlog", "静默期间此行不应落盘"); });
-    YomkResponse resp = YomkAPI::getGlobalLoggerLevel("file");
+    yomk::Response resp = YomkAPI::getGlobalLoggerLevel("file");
     logResp("getGlobalLoggerLevel file", resp);
     auto fgs = yomk::unPack<yomkmsg::LoggerState>(resp.m_data);
     if (fgs)
@@ -481,7 +481,7 @@ static void showArmLoggerDashboard()
         "分流单查控制台/文件两套主闸态，与条目逐器真值两层一起看全。");
 
     logAction("巡检控制台日志器清单");
-    YomkResponse consoleResp = YomkAPI::listLoggers("console");
+    yomk::Response consoleResp = YomkAPI::listLoggers("console");
     logResp("listLoggers console", consoleResp);
     auto consoleArr = yomk::unPack<yomkmsg::StringArray>(consoleResp.m_data);
     if (consoleArr)
@@ -494,7 +494,7 @@ static void showArmLoggerDashboard()
     logVerify("MainLogger（预创建）与 arm.demo/arm.joint（tag 惰性创建）均在列：清单按名字字典序排列");
 
     logAction("巡检文件日志器清单");
-    YomkResponse fileResp = YomkAPI::listLoggers("file");
+    yomk::Response fileResp = YomkAPI::listLoggers("file");
     logResp("listLoggers file", fileResp);
     auto fileArr = yomk::unPack<yomkmsg::StringArray>(fileResp.m_data);
     if (fileArr)
@@ -507,7 +507,7 @@ static void showArmLoggerDashboard()
     logVerify("blackbox 与 shiftlog 在列：控制台与文件是两张独立的日志器表");
 
     logAction("单查班次存档器 shiftlog");
-    YomkResponse resp = YomkAPI::getLoggerInfo("shiftlog", "file");
+    yomk::Response resp = YomkAPI::getLoggerInfo("shiftlog", "file");
     logResp("getLoggerInfo shiftlog(file)", resp);
     auto shiftInfo = yomk::unPack<yomkmsg::LoggerInfo>(resp.m_data);
     if (shiftInfo)
@@ -589,7 +589,7 @@ static void showArmLogCleanup(const std::string& logDir)
 
     logAction("再写默认日志（验证惰性重建）", "YOMK_INFO", [&] { return YOMK_INFO("MainLogger recreated on demand"); });
     logAction("复查控制台清单确认重建");
-    YomkResponse resp = YomkAPI::listLoggers("console");
+    yomk::Response resp = YomkAPI::listLoggers("console");
     logResp("listLoggers console", resp);
     auto consoleArr = yomk::unPack<yomkmsg::StringArray>(resp.m_data);
     if (consoleArr)

@@ -104,7 +104,7 @@ public:
     virtual ~XxxService() {}
     virtual int init() override;
 private:
-    YomkResponse myFunc(YomkPkgPtr pkg);
+    yomk::Response myFunc(YomkPkgPtr pkg);
 };
 
 // .cpp
@@ -114,11 +114,11 @@ int XxxService::init() {
     YOMK_INFO_TAG("XxxService::init", "install func [ /my_func ] to", name());
     return 0;
 }
-YomkResponse XxxService::myFunc(YomkPkgPtr pkg) {
+yomk::Response XxxService::myFunc(YomkPkgPtr pkg) {
     auto data = yomk::unPack<yomkmsg::MyData>(pkg);  // 解包（失败返回 nullptr，需判空）
-    if (!data) { return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not MyData"}; }
+    if (!data) { return {yomk::ResStatus::Failed, "pkg is null or pkg is not MyData"}; }
     // 业务逻辑...
-    return YomkResponse(YomkResponse::ResStatus::Successed, "success");
+    return yomk::Response(yomk::ResStatus::Succeeded, "success");
 }
 ```
 
@@ -144,9 +144,9 @@ add_executable(${PROJECT_NAME}
 
 ```cpp
 // 同步
-YomkResponse resp = YomkAPI::request("/XxxService/my_func", yomkmsg::MyData::shared(MyData{"hello", 1}));
+yomk::Response resp = YomkAPI::request("/XxxService/my_func", yomkmsg::MyData::shared(MyData{"hello", 1}));
 // 异步
-YomkAPI::asyncRequest("/XxxService/my_func", yomkmsg::MyData::shared(MyData{"hello", 1}), [](YomkResponse resp) { });
+YomkAPI::asyncRequest("/XxxService/my_func", yomkmsg::MyData::shared(MyData{"hello", 1}), [](yomk::Response resp) { });
 ```
 
 ### 服务删除与弱绑定回调
@@ -201,7 +201,7 @@ int XxxService::init() {
 }
 
 // 服务列表（返回 StringArray）
-YomkResponse resp = YomkAPI::listServices();
+yomk::Response resp = YomkAPI::listServices();
 // 指定服务的函数列表（FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
 resp = YomkAPI::listServiceFunctions("/XxxService");
 // 单函数元信息查询（命中返回结构化 FuncInfo 包：m_msgName=类型名、m_description=四参说明，m_msg 恒 "ok"）

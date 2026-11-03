@@ -73,7 +73,7 @@ static YomkServiceFunc countHandler()
     return [](YomkPkgPtr)
     {
         g_execCount.fetch_add(1);
-        return YomkResponse(YomkResponse::ResStatus::Successed, "counted");
+        return yomk::Response(yomk::ResStatus::Succeeded, "counted");
     };
 }
 
@@ -96,7 +96,7 @@ static YomkServiceFunc gateHandler()
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
-        return YomkResponse(YomkResponse::ResStatus::Successed, "gate done");
+        return yomk::Response(yomk::ResStatus::Succeeded, "gate done");
     };
 }
 
@@ -313,7 +313,7 @@ int main()
         YomkAPI::init(1);
         auto server = YomkAPI::serverInstance();
         YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("stress_loop", nullptr) == YomkResponse::ResStatus::Successed, "S5 START 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("stress_loop", nullptr) == yomk::ResStatus::Succeeded, "S5 START 返回 ResStatus::Succeeded");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
@@ -333,7 +333,7 @@ int main()
         recordBaseline(
             "S5 API-level end-to-end", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t0).count());
 
-        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("stress_loop") == YomkResponse::ResStatus::Successed, "S5 DESTROY 返回 ResStatus::Successed");
+        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("stress_loop") == yomk::ResStatus::Succeeded, "S5 DESTROY 返回 ResStatus::Succeeded");
         YomkAPI::shutdown();
     }
 

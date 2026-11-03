@@ -50,8 +50,8 @@ static std::atomic<int> g_taskCount{0};                   // 异步任务回调�
 static std::atomic<int> g_deinitCount{0};                 // 服务 deinit 调用次数
 static std::atomic<bool> g_deletedOnDeinit{false};        // deinit 时刻 isDeleted() 状态
 static std::atomic<int> g_spawnExec{0};                   // /spawn 真实执行次数
-static std::function<YomkResponse(YomkPkgPtr)> g_weakCb;  // init 时存下的弱绑定回调
-static YomkResponse g_weakRespDuringDrain;                // 排空期弱绑定回调执行结果
+static std::function<yomk::Response(YomkPkgPtr)> g_weakCb;  // init 时存下的弱绑定回调
+static yomk::Response g_weakRespDuringDrain;                // 排空期弱绑定回调执行结果
 
 static void resetGlobals()
 {
@@ -60,7 +60,7 @@ static void resetGlobals()
     g_deletedOnDeinit.store(false);
     g_spawnExec.store(0);
     g_weakCb = nullptr;
-    g_weakRespDuringDrain = YomkResponse{};
+    g_weakRespDuringDrain = yomk::Response{};
 }
 
 /**
@@ -88,8 +88,8 @@ public:
     }
 
 private:
-    YomkResponse ping(YomkPkgPtr pkg) { return {YomkResponse::ResStatus::Successed, "pong"}; }
-    YomkResponse work(YomkPkgPtr pkg) { return {YomkResponse::ResStatus::Successed, "work"}; }
+    yomk::Response ping(YomkPkgPtr pkg) { return {yomk::ResStatus::Succeeded, "pong"}; }
+    yomk::Response work(YomkPkgPtr pkg) { return {yomk::ResStatus::Succeeded, "work"}; }
 };
 
 /**
@@ -111,7 +111,7 @@ public:
     }
 
 private:
-    YomkResponse spawn(YomkPkgPtr pkg)
+    yomk::Response spawn(YomkPkgPtr pkg)
     {
         g_spawnExec.fetch_add(1);
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -119,7 +119,7 @@ private:
         {
             m_server->asyncRequest("/SpawnSrv/spawn");
         }
-        return {YomkResponse::ResStatus::Successed, "spawn"};
+        return {yomk::ResStatus::Succeeded, "spawn"};
     }
 
     YomkServer* m_server;
@@ -138,7 +138,7 @@ static void testDrainSemantics()
         server->asyncRequest(
             "/DrainSrv/ping",
             nullptr,
-            [&probed](YomkResponse resp)
+            [&probed](yomk::Response resp)
             {
                 g_taskCount.fetch_add(1);
                 if (!probed.exchange(true))
@@ -158,7 +158,7 @@ static void testDrainSemantics()
         "排空语义：deinit 时 isDeleted() 为 false（shutdown 不置 markDeleted，与删除即停对比）");
     YOMK_TEST_CHECK(probed.load() == true, "排空：弱绑定探针回调已执行");
     YOMK_TEST_CHECK(
-        g_weakRespDuringDrain.m_status == YomkResponse::ResStatus::Successed && g_weakRespDuringDrain.m_msg == "work",
+        g_weakRespDuringDrain.m_status == yomk::ResStatus::Succeeded && g_weakRespDuringDrain.m_msg == "work",
         "排空期弱绑定回调照常执行（对比 delService 后丢弃）");
 }
 
@@ -172,13 +172,13 @@ static void testRejectAfterShutdown()
 
     std::atomic<int> rejectCbCount{0};
     server->asyncRequest(
-        "/DrainSrv/ping", nullptr, [&rejectCbCount](YomkResponse resp) { rejectCbCount.fetch_add(1); });
+        "/DrainSrv/ping", nullptr, [&rejectCbCount](yomk::Response resp) { rejectCbCount.fetch_add(1); });
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     YOMK_TEST_CHECK(rejectCbCount.load() == 0, "拒新：shutdown 后 asyncRequest 回调永不触发（日志 async request ignored 实证）");
 
-    YomkResponse resp = server->request("/DrainSrv/ping");
+    yomk::Response resp = server->request("/DrainSrv/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
         "现状文档化：shutdown 后同步 request 返回 ResStatus::Failed + service not found（表已清空，非专用文案）");
     YOMK_TEST_CHECK(server->serviceNames().empty(), "shutdown 后服务表已清空");
 }
@@ -205,7 +205,7 @@ static void testDestructorFallback()
         server->newService<DrainSrv>("/DrainSrv");
         for (int i = 0; i < 20; ++i)
         {
-            server->asyncRequest("/DrainSrv/ping", nullptr, [](YomkResponse resp) { g_taskCount.fetch_add(1); });
+            server->asyncRequest("/DrainSrv/ping", nullptr, [](yomk::Response resp) { g_taskCount.fetch_add(1); });
         }
         // 不显式 shutdown 直接离开作用域：~YomkServerPrivate 兜底触发 shutdown；
         // 在途任务持有 YomkServerPrivate 的 shared_ptr 副本，实际析构可能延迟至

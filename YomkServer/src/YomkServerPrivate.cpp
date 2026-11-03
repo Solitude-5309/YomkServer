@@ -110,7 +110,7 @@ bool YomkServerPrivate::postRequestTask(std::function<void()> task)
     return m_requestPool.post(std::move(task));
 }
 
-YomkResponse YomkServerPrivate::request(const std::string& srvName, const std::string& funcName, YomkPkgPtr pkg)
+yomk::Response YomkServerPrivate::request(const std::string& srvName, const std::string& funcName, YomkPkgPtr pkg)
 {
     std::shared_ptr<YomkService> srv;
     {
@@ -119,7 +119,7 @@ YomkResponse YomkServerPrivate::request(const std::string& srvName, const std::s
         if (iter == m_serviceMap.end())
         {
             YOMK_ERR_POS_LOG("service not found. " + srvName + ", please start the service.");
-            return YomkResponse(YomkResponse::ResStatus::Failed, "service not found: " + srvName);
+            return yomk::Response(yomk::ResStatus::Failed, "service not found: " + srvName);
         }
         srv = iter->second;
     }

@@ -156,43 +156,43 @@ public:
         return server->asyncRequest(url, pkg, func);
     }
     // 同步请求服务功能函数
-    static YomkResponse request(const std::string& url, YomkPkgPtr pkg)
+    static yomk::Response request(const std::string& url, YomkPkgPtr pkg)
     {
         auto server = serverSnapshot();
         if (!server)
         {
             YOMK_ERR_POS_LOG("YomkServer is not init");
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return server->request(url, pkg);
     }
     // LOG_API
 public:
     // 设置控制台日志代理回调（传 nullptr 恢复默认输出，取消代理回调）
-    static YomkResponse::ResStatus setConsoleLogProxy(YomkConsoleLogProxyFunc func)
+    static yomk::ResStatus setConsoleLogProxy(YomkConsoleLogProxyFunc func)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/set_console_log_proxy", yomkmsg::ConsoleLogProxy::shared(yomk::ConsoleLogProxy{func}));
     }
     // 设置文件日志代理回调（传 nullptr 恢复默认落盘，取消代理回调；与控制台代理相互独立）
-    static YomkResponse::ResStatus setFileLogProxy(YomkFileLogProxyFunc func)
+    static yomk::ResStatus setFileLogProxy(YomkFileLogProxyFunc func)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/set_file_log_proxy", yomkmsg::FileLogProxy::shared(yomk::FileLogProxy{func}));
     }
     // 控制台日志输出
     template <typename... Args>
-    static YomkResponse::ResStatus emitConsoleLogInfo(const std::string& tag, const std::string& fileLine, Args&&... args)
+    static yomk::ResStatus emitConsoleLogInfo(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         std::ostringstream oss;
         oss << fileLine;
@@ -200,11 +200,11 @@ public:
         return requestStatus("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Info, oss.str(), tag, tag}));
     }
     template <typename... Args>
-    static YomkResponse::ResStatus emitConsoleLogWarn(const std::string& tag, const std::string& fileLine, Args&&... args)
+    static yomk::ResStatus emitConsoleLogWarn(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         std::ostringstream oss;
         oss << fileLine;
@@ -212,11 +212,11 @@ public:
         return requestStatus("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Warn, oss.str(), tag, tag}));
     }
     template <typename... Args>
-    static YomkResponse::ResStatus emitConsoleLogError(const std::string& tag, const std::string& fileLine, Args&&... args)
+    static yomk::ResStatus emitConsoleLogError(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         std::ostringstream oss;
         oss << fileLine;
@@ -224,11 +224,11 @@ public:
         return requestStatus("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Error, oss.str(), tag, tag}));
     }
     template <typename... Args>
-    static YomkResponse::ResStatus emitConsoleLogDebug(const std::string& tag, const std::string& fileLine, Args&&... args)
+    static yomk::ResStatus emitConsoleLogDebug(const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         std::ostringstream oss;
         oss << fileLine;
@@ -236,30 +236,30 @@ public:
         return requestStatus("/YomkLogger/console_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Debug, oss.str(), tag, tag}));
     }
     // 创建文件日志器
-    static YomkResponse::ResStatus createFileLogger(const std::string& logDir, const std::string& logFile)
+    static yomk::ResStatus createFileLogger(const std::string& logDir, const std::string& logFile)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/create_file_logger", yomkmsg::LogFile::shared(yomk::LogFile{logFile, logDir}));
     }
     // 将指定日志器的缓冲落盘
-    static YomkResponse::ResStatus flushFileLog(const std::string& logFile)
+    static yomk::ResStatus flushFileLog(const std::string& logFile)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/write_file_log", yomkmsg::String::shared(logFile));
     }
     template <typename... Args>
-    static YomkResponse::ResStatus emitFileLogInfo(
+    static yomk::ResStatus emitFileLogInfo(
         const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         std::ostringstream oss;
         oss << fileLine;
@@ -267,12 +267,12 @@ public:
         return requestStatus("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Info, oss.str(), logFile, tag}));
     }
     template <typename... Args>
-    static YomkResponse::ResStatus emitFileLogWarn(
+    static yomk::ResStatus emitFileLogWarn(
         const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         std::ostringstream oss;
         oss << fileLine;
@@ -280,12 +280,12 @@ public:
         return requestStatus("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Warn, oss.str(), logFile, tag}));
     }
     template <typename... Args>
-    static YomkResponse::ResStatus emitFileLogError(
+    static yomk::ResStatus emitFileLogError(
         const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         std::ostringstream oss;
         oss << fileLine;
@@ -293,12 +293,12 @@ public:
         return requestStatus("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Error, oss.str(), logFile, tag}));
     }
     template <typename... Args>
-    static YomkResponse::ResStatus emitFileLogDebug(
+    static yomk::ResStatus emitFileLogDebug(
         const std::string& logFile, const std::string& tag, const std::string& fileLine, Args&&... args)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         std::ostringstream oss;
         oss << fileLine;
@@ -306,170 +306,170 @@ public:
         return requestStatus("/YomkLogger/file_log", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Debug, oss.str(), logFile, tag}));
     }
     // 开关各级别控制台日志（loggerName 空 = 全局主闸，与既有无参语义一致；具名 = 逐器门控）
-    static YomkResponse::ResStatus enableConsoleLogDebug(const std::string& loggerName = "")
+    static yomk::ResStatus enableConsoleLogDebug(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Debug, "", loggerName}));
     }
-    static YomkResponse::ResStatus enableConsoleLogInfo(const std::string& loggerName = "")
+    static yomk::ResStatus enableConsoleLogInfo(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Info, "", loggerName}));
     }
-    static YomkResponse::ResStatus enableConsoleLogWarn(const std::string& loggerName = "")
+    static yomk::ResStatus enableConsoleLogWarn(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Warn, "", loggerName}));
     }
-    static YomkResponse::ResStatus enableConsoleLogError(const std::string& loggerName = "")
+    static yomk::ResStatus enableConsoleLogError(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/on_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Error, "", loggerName}));
     }
-    static YomkResponse::ResStatus disableConsoleLogDebug(const std::string& loggerName = "")
+    static yomk::ResStatus disableConsoleLogDebug(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Debug, "", loggerName}));
     }
-    static YomkResponse::ResStatus disableConsoleLogInfo(const std::string& loggerName = "")
+    static yomk::ResStatus disableConsoleLogInfo(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Info, "", loggerName}));
     }
-    static YomkResponse::ResStatus disableConsoleLogWarn(const std::string& loggerName = "")
+    static yomk::ResStatus disableConsoleLogWarn(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Warn, "", loggerName}));
     }
-    static YomkResponse::ResStatus disableConsoleLogError(const std::string& loggerName = "")
+    static yomk::ResStatus disableConsoleLogError(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/off_console_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Error, "", loggerName}));
     }
     // 开关各级别文件日志（loggerName 空 = 文件全局主闸；具名 = 逐器门控，未知名返回 ResStatus::Failed）
-    static YomkResponse::ResStatus enableFileLogDebug(const std::string& loggerName = "")
+    static yomk::ResStatus enableFileLogDebug(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Debug, "", loggerName}));
     }
-    static YomkResponse::ResStatus enableFileLogInfo(const std::string& loggerName = "")
+    static yomk::ResStatus enableFileLogInfo(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Info, "", loggerName}));
     }
-    static YomkResponse::ResStatus enableFileLogWarn(const std::string& loggerName = "")
+    static yomk::ResStatus enableFileLogWarn(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Warn, "", loggerName}));
     }
-    static YomkResponse::ResStatus enableFileLogError(const std::string& loggerName = "")
+    static yomk::ResStatus enableFileLogError(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/on_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Error, "", loggerName}));
     }
-    static YomkResponse::ResStatus disableFileLogDebug(const std::string& loggerName = "")
+    static yomk::ResStatus disableFileLogDebug(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Debug, "", loggerName}));
     }
-    static YomkResponse::ResStatus disableFileLogInfo(const std::string& loggerName = "")
+    static yomk::ResStatus disableFileLogInfo(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Info, "", loggerName}));
     }
-    static YomkResponse::ResStatus disableFileLogWarn(const std::string& loggerName = "")
+    static yomk::ResStatus disableFileLogWarn(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Warn, "", loggerName}));
     }
-    static YomkResponse::ResStatus disableFileLogError(const std::string& loggerName = "")
+    static yomk::ResStatus disableFileLogError(const std::string& loggerName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/off_file_log_by_level", yomkmsg::Log::shared(yomk::Log{yomk::Log::LogLevel::Error, "", loggerName}));
     }
     // 按类型获取日志器名列表（type: "console"/"file"，仅返回该类型的纯名）
-    static YomkResponse listLoggers(const std::string& type)
+    static yomk::Response listLoggers(const std::string& type)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkLogger/loggers", yomkmsg::String::shared(type));
     }
     // 查询指定日志器状态（type: "console"/"file"；两表允许同名，须按类型精确单查）
-    static YomkResponse getLoggerInfo(const std::string& loggerName, const std::string& type)
+    static yomk::Response getLoggerInfo(const std::string& loggerName, const std::string& type)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkLogger/logger", yomkmsg::LoggerQuery::shared(yomk::LoggerQuery{loggerName, type}));
     }
     // 查询全部日志器及逐器门控状态（返回 LoggerInfoList 清单，每条内嵌 LoggerState 状态段：
     // console 条目为控制台逐器门控层真值，file 条目为文件逐器门控层真值）
-    static YomkResponse getAllLoggerInfo()
+    static yomk::Response getAllLoggerInfo()
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkLogger/all", nullptr);
     }
     // 查询全局主闸状态（4 级别 + proxy；type: "console"/"file"，两套主闸相互独立供两层归因；
     // 缺省 "console" 与历史无参语义一致，未知 type 返回 ResStatus::Failed）
-    static YomkResponse getGlobalLoggerLevel(const std::string& type = "console")
+    static yomk::Response getGlobalLoggerLevel(const std::string& type = "console")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         if (type == "file")
         {
@@ -479,26 +479,26 @@ public:
         {
             return request("/YomkLogger/console_global_state", nullptr);
         }
-        return YomkResponse(YomkResponse::ResStatus::Failed, "unknown logger type.");
+        return yomk::Response(yomk::ResStatus::Failed, "unknown logger type.");
     }
     // 删除指定日志器
-    static YomkResponse::ResStatus deleteFileLogger(const std::string& loggerName)
+    static yomk::ResStatus deleteFileLogger(const std::string& loggerName)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkLogger/delete_logger", yomkmsg::String::shared(loggerName));
     }
     // CONTEXT_API
 public:
     // 创建上下文键值（groupName 缺省 "main"；组名约定永远是 API 最后一个参数，下同）
-    static YomkResponse::ResStatus createContext(
+    static yomk::ResStatus createContext(
         const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkContext/create", yomkmsg::Context::shared(yomk::Context{ctxName, ctx, groupName}));
     }
@@ -511,9 +511,9 @@ public:
         {
             return ctxDefault;
         }
-        YomkResponse response =
+        yomk::Response response =
             request("/YomkContext/get", yomkmsg::Context::shared(yomk::Context{ctxName, ctxDefault, groupName}));
-        if (response.m_status == YomkResponse::ResStatus::Successed)
+        if (response.m_status == yomk::ResStatus::Succeeded)
         {
             std::shared_ptr<T> ctxData = nullptr;
             if (response.m_data && response.m_data->name() == T::kName)
@@ -532,144 +532,144 @@ public:
         }
     }
     // 设置上下文值（整体替换）
-    static YomkResponse::ResStatus setContext(
+    static yomk::ResStatus setContext(
         const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkContext/set", yomkmsg::Context::shared(yomk::Context{ctxName, ctx, groupName}));
     }
     // 开关上下文校验门控
-    static YomkResponse::ResStatus enableContextChecker(const std::string& groupName = "main")
+    static yomk::ResStatus enableContextChecker(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkContext/turn_on_checker", yomkmsg::String::shared(groupName));
     }
-    static YomkResponse::ResStatus disableContextChecker(const std::string& groupName = "main")
+    static yomk::ResStatus disableContextChecker(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkContext/turn_off_checker", yomkmsg::String::shared(groupName));
     }
     // 设置上下文校验门控回调
-    static YomkResponse::ResStatus setContextChecker(
+    static yomk::ResStatus setContextChecker(
         const std::string& ctxName, YomkContextCheckerFunc checker, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus(
             "/YomkContext/set_checker", yomkmsg::ContextChecker::shared(yomk::ContextChecker{ctxName, checker, groupName}));
     }
     // 开关上下文变更监听器
-    static YomkResponse::ResStatus enableContextMonitor(const std::string& groupName = "main")
+    static yomk::ResStatus enableContextMonitor(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkContext/turn_on_monitor", yomkmsg::String::shared(groupName));
     }
-    static YomkResponse::ResStatus disableContextMonitor(const std::string& groupName = "main")
+    static yomk::ResStatus disableContextMonitor(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkContext/turn_off_monitor", yomkmsg::String::shared(groupName));
     }
     // 设置上下文变更监听回调（async=true 为异步通知），仅通知发生了一次 set 事件，并回传该次 set 的键值快照——不保证快照实时性；顺序上异步恒按 set 提交序送达、同步在并发 set 下不保证跨线程序。
-    static YomkResponse::ResStatus setContextMonitor(const std::string& ctxName, YomkContextMonitorFunc monitor,
+    static yomk::ResStatus setContextMonitor(const std::string& ctxName, YomkContextMonitorFunc monitor,
         bool async = false, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkContext/set_monitor",
             yomkmsg::ContextMonitor::shared(yomk::ContextMonitor{ctxName, monitor, async, groupName}));
     }
     // 销毁指定上下文键
-    static YomkResponse::ResStatus destroyContext(const std::string& ctxName, const std::string& groupName = "main")
+    static yomk::ResStatus destroyContext(const std::string& ctxName, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus(
             "/YomkContext/destroy", yomkmsg::ContextGroupKey::shared(yomk::ContextGroupKey{groupName, ctxName}));
     }
     // 获取全部上下文键名
-    static YomkResponse listContextKeys(const std::string& groupName = "main")
+    static yomk::Response listContextKeys(const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkContext/keys", yomkmsg::String::shared(groupName));
     }
     // 查询指定上下文键状态
-    static YomkResponse getContextInfo(const std::string& ctxName, const std::string& groupName = "main")
+    static yomk::Response getContextInfo(const std::string& ctxName, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkContext/key", yomkmsg::ContextGroupKey::shared(yomk::ContextGroupKey{groupName, ctxName}));
     }
     // 查询全部组名清单（返回 StringArray，对齐 listEventLoops 形态）
-    static YomkResponse listContextGroups()
+    static yomk::Response listContextGroups()
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkContext/groups", nullptr);
     }
     // 查询全部组及其全部键的内省元信息（跨组聚合：返回 ContextGroupInfoList，层级为组 → 键元信息）
-    static YomkResponse getAllContextInfo()
+    static yomk::Response getAllContextInfo()
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkContext/all", nullptr);
     }
     // EVENTLOOP_API
 public:
     // 启动指定事件循环
-    static YomkResponse::ResStatus startEventLoop(
+    static yomk::ResStatus startEventLoop(
         const std::string& eventLoopName,
         YomkServiceFunc m_defaultServiceFunc = nullptr,
         const std::string& msgName = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus(
             "/YomkEventLoop/start",
             yomkmsg::EventLoop::shared(yomk::EventLoop{eventLoopName, m_defaultServiceFunc, msgName}));
     }
     // 停止事件循环线程（保留未执行事件）
-    static YomkResponse::ResStatus stopEventLoop(const std::string& eventLoopName)
+    static yomk::ResStatus stopEventLoop(const std::string& eventLoopName)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkEventLoop/stop", yomkmsg::String::shared(eventLoopName));
     }
     // 异步投递事件
-    static YomkResponse::ResStatus postEvent(
+    static yomk::ResStatus postEvent(
         const std::string& eventLoopName,
         YomkPkgPtr eventData,
         YomkServiceFunc eventHandle = nullptr,
@@ -677,13 +677,13 @@ public:
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus(
             "/YomkEventLoop/post", yomkmsg::Event::shared(yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 同步投递事件（阻塞等待执行完成）
-    static YomkResponse::ResStatus postEventAndWait(
+    static yomk::ResStatus postEventAndWait(
         const std::string& eventLoopName,
         YomkPkgPtr eventData,
         YomkServiceFunc eventHandle = nullptr,
@@ -691,150 +691,150 @@ public:
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus(
             "/YomkEventLoop/post_wait", yomkmsg::Event::shared(yomk::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 销毁事件循环并清空队列
-    static YomkResponse::ResStatus destroyEventLoop(const std::string& eventLoopName)
+    static yomk::ResStatus destroyEventLoop(const std::string& eventLoopName)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkEventLoop/destroy", yomkmsg::String::shared(eventLoopName));
     }
     // 获取全部事件循环名称列表
-    static YomkResponse listEventLoops()
+    static yomk::Response listEventLoops()
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkEventLoop/loops", nullptr);
     }
     // 查询指定事件循环状态与事件积压数
-    static YomkResponse getEventLoopInfo(const std::string& eventLoopName)
+    static yomk::Response getEventLoopInfo(const std::string& eventLoopName)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkEventLoop/loop", yomkmsg::String::shared(eventLoopName));
     }
-    static YomkResponse getEventLoopInfo(const std::string& eventLoopName, size_t tagCount)
+    static yomk::Response getEventLoopInfo(const std::string& eventLoopName, size_t tagCount)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkEventLoop/loop", yomkmsg::String::shared(eventLoopName + " " + std::to_string(tagCount)));
     }
     // 查询全部事件循环状态
-    static YomkResponse getAllEventLoopInfo()
+    static yomk::Response getAllEventLoopInfo()
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkEventLoop/all", nullptr);
     }
     // FUNCTIONPOOL_API
 public:
     // 注册函数到全局函数池（msgName 声明期望消息类型；description 函数说明，内容使用者自定义，均可为空）
-    static YomkResponse::ResStatus registerFunction(
+    static yomk::ResStatus registerFunction(
         const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
         const std::string& description = "")
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus(
             "/YomkFunctionPool/register", yomkmsg::Function::shared(yomk::Function{funcName, func, msgName, description}));
     }
     // 从函数池注销函数
-    static YomkResponse::ResStatus unregisterFunction(const std::string& funcName)
+    static yomk::ResStatus unregisterFunction(const std::string& funcName)
     {
         if (!requireServer())
         {
-            return YomkResponse::ResStatus::Invalid;
+            return yomk::ResStatus::Invalid;
         }
         return requestStatus("/YomkFunctionPool/unregister", yomkmsg::String::shared(funcName));
     }
     // 调用函数池中注册的函数
-    static YomkResponse callFunction(const std::string& funcName, YomkPkgPtr callData)
+    static yomk::Response callFunction(const std::string& funcName, YomkPkgPtr callData)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkFunctionPool/call", yomkmsg::CallFunction::shared(yomk::CallFunction{funcName, callData}));
     }
     // 获取函数池中全部函数名
-    static YomkResponse listFunctionNames()
+    static yomk::Response listFunctionNames()
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkFunctionPool/names", nullptr);
     }
     // 查询单个已注册函数元信息
-    static YomkResponse getFunctionInfo(const std::string& funcName)
+    static yomk::Response getFunctionInfo(const std::string& funcName)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkFunctionPool/name", yomkmsg::String::shared(funcName));
     }
     // 查询全部已注册函数元信息
-    static YomkResponse getAllFunctionInfo()
+    static yomk::Response getAllFunctionInfo()
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkFunctionPool/all", nullptr);
     }
     // SERVER_INFO_API
 public:
     // 查询所有服务名称
-    static YomkResponse listServices()
+    static yomk::Response listServices()
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkServerInfo/services", nullptr);
     }
     // 查询指定服务的全部功能函数（返回 FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，
     // 与 /function 单查、/all 聚合、函数池内省同族；m_msg 恒 "ok"，不存在服务为空清单）
-    static YomkResponse listServiceFunctions(const std::string& srvName)
+    static yomk::Response listServiceFunctions(const std::string& srvName)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkServerInfo/functions", yomkmsg::String::shared(srvName));
     }
     // 查询指定功能函数元信息
-    static YomkResponse getServiceFunctionInfoByUrl(const std::string& url)
+    static yomk::Response getServiceFunctionInfoByUrl(const std::string& url)
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkServerInfo/function", yomkmsg::String::shared(url));
     }
     // 查询框架全量服务及功能函数拓扑
-    static YomkResponse getAllServerInfo()
+    static yomk::Response getAllServerInfo()
     {
         if (!requireServer())
         {
-            return YomkResponse(YomkResponse::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::Response(yomk::ResStatus::Invalid, "YomkServer is not init");
         }
         return request("/YomkServerInfo/all", nullptr);
     }
@@ -854,10 +854,10 @@ private:
         return false;
     }
     // 同步请求并收敛为三态：失败原因经错误日志承载，返回值仅保留 ResStatus
-    static YomkResponse::ResStatus requestStatus(const std::string& url, YomkPkgPtr pkg)
+    static yomk::ResStatus requestStatus(const std::string& url, YomkPkgPtr pkg)
     {
-        YomkResponse resp = request(url, std::move(pkg));
-        if (resp.m_status != YomkResponse::ResStatus::Successed)
+        yomk::Response resp = request(url, std::move(pkg));
+        if (resp.m_status != yomk::ResStatus::Succeeded)
         {
             YOMK_ERR_POS_LOG((resp.m_msg.empty() ? "request failed" : resp.m_msg));
         }

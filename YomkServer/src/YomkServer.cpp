@@ -143,14 +143,14 @@ std::map<std::string, yomk::FuncInfo> YomkServer::serviceFuncInfos(const std::st
     return m_p->serviceFuncInfos(srvName);
 }
 
-YomkResponse YomkServer::request(const std::string& url, YomkPkgPtr pkg)
+yomk::Response YomkServer::request(const std::string& url, YomkPkgPtr pkg)
 {
     std::string srvName;
     std::string tmpFuncName;
     std::string errMsg;
     if (!parseRequestUrl(url, srvName, tmpFuncName, errMsg))
     {
-        return YomkResponse(YomkResponse::ResStatus::Failed, errMsg);
+        return yomk::Response(yomk::ResStatus::Failed, errMsg);
     }
 
     return m_p->request(srvName, tmpFuncName, pkg);

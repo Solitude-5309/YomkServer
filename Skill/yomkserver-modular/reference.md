@@ -5,16 +5,16 @@
 ```cpp
 using YomkPkgPtr = std::shared_ptr<YomkPkg>;  // 消息包指针
 
-class YomkResponse {
+class yomk::Response {
 public:
-    enum ResStatus { ResStatus::Invalid = -1, ResStatus::Successed = 0, ResStatus::Failed = 1 };
+    enum ResStatus { ResStatus::Invalid = -1, ResStatus::Succeeded = 0, ResStatus::Failed = 1 };
     ResStatus m_status;  // 本次请求的状态
     std::string m_msg;    // 对状态的说明（不携带返回数据）
     YomkPkgPtr m_data;    // 携带的返回数据
 };
 
-using YomkServiceFunc = std::function<YomkResponse(YomkPkgPtr pkg)>;
-using YomkResponseFunc = std::function<void(YomkResponse response)>;
+using YomkServiceFunc = std::function<yomk::Response(YomkPkgPtr pkg)>;
+using YomkResponseFunc = std::function<void(yomk::Response response)>;
 ```
 
 字段语义（固化口径）：`m_status` 表示本次请求的状态；`m_msg` 仅作对状态的说明（成功 `"ok"`、错误为契约消息），**返回数据一律放 `m_data`**。
@@ -25,7 +25,7 @@ using YomkResponseFunc = std::function<void(YomkResponse response)>;
 
 | 状态 | 值 | 语义 |
 |------|----|------|
-| `ResStatus::Successed` | 0 | 调用成功 |
+| `ResStatus::Succeeded` | 0 | 调用成功 |
 | `ResStatus::Failed` | 1 | not-found / 目标不存在 / 被拒绝 / 条件不满足 |
 | `ResStatus::Invalid` | -1 | 入参非法（空名、nullptr 等）或服务器未初始化 |
 
@@ -67,8 +67,8 @@ weakFunc(&Class::Method)         // 弱绑定成员函数（不装入 funcMap）
 // installFunc 内部经 weakFunc 绑定成员函数（等价 weakFunc(bind(&Func, this, _1))）：
 // 回调触发时先 weak_ptr.lock() 判活，服务已删除则安全丢弃，不会悬垂 this 崩溃。
 // weakFunc 是泛型模板，返回的泛型 lambda 按调用处目标 std::function 类型隐式转换，
-// 同一函数自动适配全部回调签名：功能函数/FunctionPool/EventLoop（YomkResponse(YomkPkgPtr)，
-// 删除后返回 ResStatus::Failed）、异步响应（void(YomkResponse)，丢弃）、Context checker
+// 同一函数自动适配全部回调签名：功能函数/FunctionPool/EventLoop（yomk::Response(YomkPkgPtr)，
+// 删除后返回 ResStatus::Failed）、异步响应（void(yomk::Response)，丢弃）、Context checker
 // （CheckStatus(const Context&)，删除后默认放行 CheckStatus::Accept）、Context monitor（void，丢弃）。
 
 namespace yomk {
@@ -87,7 +87,7 @@ namespace yomk {
     struct Event {
         std::string m_eventLoopName; YomkPkgPtr m_pkg;
         YomkServiceFunc m_serviceFunc; std::uint64_t m_eventId;
-        YomkResponse m_response; std::function<void()> m_waitCallback;
+        yomk::Response m_response; std::function<void()> m_waitCallback;
         std::string m_tag; // 用户事件标记，POST 时可选传入，仅用于内省展示
     };
     // m_logger=日志器名（服务端按其选择/惰性创建日志器实例）；m_tag=记录标签（随记录显示 [tag]）
@@ -137,7 +137,7 @@ class YomkServer {
     void shutdown();  // 优雅关闭：停请求池（拒新->排空->join）后锁外逐个 deinit（Context 在其中自停监控池），幂等
     std::vector<std::string> serviceNames();  // 内省：全部服务名
     std::map<std::string, yomk::FuncInfo> serviceFuncInfos(const std::string& srvName);  // 内省：指定服务的函数元信息
-    YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
+    yomk::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 };
 
@@ -163,8 +163,8 @@ class YomkService {
     void installFunc(const std::string& funcName, Res (Class::*func)(Arg), const std::string& msgName = "",
                      const std::string& description = "");  // 成员函数指针直装："/x", &C::m[, "Msg"][, "desc"]
     std::map<std::string, yomk::FuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
-    YomkResponse invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);  // 直接调用本服务的功能函数（不经 URL 路由）
-    YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
+    yomk::Response invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);  // 直接调用本服务的功能函数（不经 URL 路由）
+    yomk::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 };
 ```

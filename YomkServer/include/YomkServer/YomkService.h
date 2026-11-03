@@ -55,9 +55,9 @@ public:
                 YOMK_ERR_POS_LOG("service has been deleted or unregistered, callback ignored.");
                 if constexpr (std::is_void_v<Ret>)
                     return;
-                else if constexpr (std::is_same_v<Ret, YomkResponse>)
-                    return YomkResponse{
-                        YomkResponse::ResStatus::Failed, "service has been deleted or unregistered, callback ignored."};
+                else if constexpr (std::is_same_v<Ret, yomk::Response>)
+                    return yomk::Response{
+                        yomk::ResStatus::Failed, "service has been deleted or unregistered, callback ignored."};
                 else if constexpr (std::is_same_v<Ret, yomk::CheckStatus>)
                     return yomk::CheckStatus::Accept;
                 else
@@ -90,9 +90,9 @@ public:
     // 获取本服务已注册功能函数元信息
     std::map<std::string, yomk::FuncInfo> funcInfos();
     // 直接调用本服务的功能函数
-    YomkResponse invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
+    yomk::Response invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
     // 发起同步请求
-    YomkResponse request(const std::string& url, YomkPkgPtr pkg = nullptr);
+    yomk::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
     // 发起异步请求
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 

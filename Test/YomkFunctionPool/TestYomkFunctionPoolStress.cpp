@@ -73,15 +73,15 @@ static std::atomic<uint64_t> g_s2ExecCount{0};
 // ============================================================================
 // 测试用函数
 // ============================================================================
-static YomkResponse stressNoopFunc(YomkPkgPtr /*pkg*/)
+static yomk::Response stressNoopFunc(YomkPkgPtr /*pkg*/)
 {
-    return YomkResponse(YomkResponse::ResStatus::Successed, "ok");
+    return yomk::Response(yomk::ResStatus::Succeeded, "ok");
 }
 
-static YomkResponse stressCountFunc(YomkPkgPtr /*pkg*/)
+static yomk::Response stressCountFunc(YomkPkgPtr /*pkg*/)
 {
     g_s2ExecCount.fetch_add(1, std::memory_order_relaxed);
-    return YomkResponse(YomkResponse::ResStatus::Successed, "ok");
+    return yomk::Response(yomk::ResStatus::Succeeded, "ok");
 }
 
 // ============================================================================
@@ -114,7 +114,7 @@ int main(int /*argc*/, char** /*argv*/)
         auto t0 = std::chrono::steady_clock::now();
         for (uint64_t i = 0; i < N; ++i)
         {
-            if (YomkAPI::registerFunction(makeName("s1_func_", i), stressNoopFunc) == YomkResponse::ResStatus::Successed)
+            if (YomkAPI::registerFunction(makeName("s1_func_", i), stressNoopFunc) == yomk::ResStatus::Succeeded)
                 ++regOk;
         }
         auto t1 = std::chrono::steady_clock::now();
@@ -129,7 +129,7 @@ int main(int /*argc*/, char** /*argv*/)
         for (uint64_t i = 0; i < N; ++i)
         {
             auto resp = YomkAPI::callFunction("s1_func_0", nullptr);
-            if (resp.m_status == YomkResponse::ResStatus::Successed)
+            if (resp.m_status == yomk::ResStatus::Succeeded)
                 ++callOk;
         }
         auto t3 = std::chrono::steady_clock::now();
@@ -143,7 +143,7 @@ int main(int /*argc*/, char** /*argv*/)
         auto t4 = std::chrono::steady_clock::now();
         for (uint64_t i = 0; i < N; ++i)
         {
-            if (YomkAPI::unregisterFunction(makeName("s1_func_", i)) == YomkResponse::ResStatus::Successed)
+            if (YomkAPI::unregisterFunction(makeName("s1_func_", i)) == yomk::ResStatus::Succeeded)
                 ++unregOk;
         }
         auto t5 = std::chrono::steady_clock::now();
@@ -203,13 +203,13 @@ int main(int /*argc*/, char** /*argv*/)
         for (uint64_t i = 0; i < N; ++i)
         {
             std::string name = makeName("s3_churn_", i);
-            if (YomkAPI::registerFunction(name, stressNoopFunc) == YomkResponse::ResStatus::Successed)
+            if (YomkAPI::registerFunction(name, stressNoopFunc) == yomk::ResStatus::Succeeded)
                 ++regOk;
-            if (YomkAPI::callFunction(name, nullptr).m_status == YomkResponse::ResStatus::Successed)
+            if (YomkAPI::callFunction(name, nullptr).m_status == yomk::ResStatus::Succeeded)
                 ++callOk;
-            if (YomkAPI::unregisterFunction(name) == YomkResponse::ResStatus::Successed)
+            if (YomkAPI::unregisterFunction(name) == yomk::ResStatus::Succeeded)
                 ++unregOk;
-            if (YomkAPI::callFunction(name, nullptr).m_status == YomkResponse::ResStatus::Failed)
+            if (YomkAPI::callFunction(name, nullptr).m_status == yomk::ResStatus::Failed)
                 ++postNo;
         }
         auto t1 = std::chrono::steady_clock::now();
@@ -235,11 +235,11 @@ int main(int /*argc*/, char** /*argv*/)
         auto t0 = std::chrono::steady_clock::now();
         for (uint64_t i = 0; i < rounds; ++i)
         {
-            if (YomkAPI::registerFunction(bigName, stressNoopFunc) == YomkResponse::ResStatus::Successed)
+            if (YomkAPI::registerFunction(bigName, stressNoopFunc) == yomk::ResStatus::Succeeded)
                 ++regOk;
-            if (YomkAPI::callFunction(bigName, nullptr).m_status == YomkResponse::ResStatus::Successed)
+            if (YomkAPI::callFunction(bigName, nullptr).m_status == yomk::ResStatus::Succeeded)
                 ++callOk;
-            if (YomkAPI::unregisterFunction(bigName) == YomkResponse::ResStatus::Successed)
+            if (YomkAPI::unregisterFunction(bigName) == yomk::ResStatus::Succeeded)
                 ++unregOk;
         }
         auto t1 = std::chrono::steady_clock::now();
@@ -251,7 +251,7 @@ int main(int /*argc*/, char** /*argv*/)
         YOMK_TEST_CHECK(unregOk == rounds, "S4: 大名 unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(rounds));
 
         // 最终确认已清理
-        YOMK_TEST_CHECK(YomkAPI::callFunction(bigName, nullptr).m_status == YomkResponse::ResStatus::Failed, "S4: 大名最终已注销（ResStatus::Failed）");
+        YOMK_TEST_CHECK(YomkAPI::callFunction(bigName, nullptr).m_status == yomk::ResStatus::Failed, "S4: 大名最终已注销（ResStatus::Failed）");
     }
 
     // ========================================================================
@@ -271,25 +271,25 @@ int main(int /*argc*/, char** /*argv*/)
             for (int k = 0; k < kGroupSize; ++k)
             {
                 if (YomkAPI::registerFunction(makeName("s5_mix_", g * kGroupSize + k), stressNoopFunc) ==
-                    YomkResponse::ResStatus::Successed)
+                    yomk::ResStatus::Succeeded)
                     ++regOk;
             }
             // call 10
             for (int k = 0; k < kGroupSize; ++k)
             {
                 auto resp = YomkAPI::callFunction(makeName("s5_mix_", g * kGroupSize + k), nullptr);
-                if (resp.m_status == YomkResponse::ResStatus::Successed)
+                if (resp.m_status == yomk::ResStatus::Succeeded)
                     ++callOk;
             }
             // introspect
-            if (YomkAPI::listFunctionNames().m_status == YomkResponse::ResStatus::Successed)
+            if (YomkAPI::listFunctionNames().m_status == yomk::ResStatus::Succeeded)
                 ++infoNamesOk;
-            if (YomkAPI::getAllFunctionInfo().m_status == YomkResponse::ResStatus::Successed)
+            if (YomkAPI::getAllFunctionInfo().m_status == yomk::ResStatus::Succeeded)
                 ++infoAllOk;
             // unregister 10
             for (int k = 0; k < kGroupSize; ++k)
             {
-                if (YomkAPI::unregisterFunction(makeName("s5_mix_", g * kGroupSize + k)) == YomkResponse::ResStatus::Successed)
+                if (YomkAPI::unregisterFunction(makeName("s5_mix_", g * kGroupSize + k)) == yomk::ResStatus::Succeeded)
                     ++unregOk;
             }
         }

@@ -59,7 +59,7 @@ static std::atomic<bool> g_deletedOnDeinit{false};  // deinit 时刻 isDeleted()
 static std::atomic<int> g_pingCount{0};             // /ping 真实执行次数
 static int g_initRet = 0;                           // init 返回值注入：0 成功 / -1 失败
 static int g_initThrow = 0;                         // init 异常注入：0 不抛 / 1 bad_alloc / 2 runtime_error
-static std::function<YomkResponse(YomkPkgPtr)> g_weakCb;  // init 时存下的弱绑定回调（删除即停端到端）
+static std::function<yomk::Response(YomkPkgPtr)> g_weakCb;  // init 时存下的弱绑定回调（删除即停端到端）
 
 static void resetGlobals()
 {
@@ -135,19 +135,19 @@ public:
     }
 
 private:
-    YomkResponse ping(YomkPkgPtr pkg)
+    yomk::Response ping(YomkPkgPtr pkg)
     {
         g_pingCount.fetch_add(1);
-        return {YomkResponse::ResStatus::Successed, "pong"};
+        return {yomk::ResStatus::Succeeded, "pong"};
     }
-    YomkResponse echo(YomkPkgPtr pkg)
+    yomk::Response echo(YomkPkgPtr pkg)
     {
         auto data = yomk::unPack<yomkmsg::String>(pkg);
         if (!data)
         {
-            return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
+            return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
         }
-        return {YomkResponse::ResStatus::Successed, "echo:" + data->d};
+        return {yomk::ResStatus::Succeeded, "echo:" + data->d};
     }
 };
 
@@ -159,47 +159,47 @@ static void testUrlParseBoundaries()
     YOMK_TEST_CHECK(server->newService<RouteSrv>("/RouteSrv") == 0, "注册路由演示服务成功");
 
     // 空串 / 无 / 开头：please start with / 契约
-    YomkResponse resp = server->request("");
+    yomk::Response resp = server->request("");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("please start with /") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("please start with /") != std::string::npos,
         "request 空 url 返回 ResStatus::Failed + please start with /");
     resp = server->request("no_slash/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("please start with /") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("please start with /") != std::string::npos,
         "request 无 / 开头 url 返回 ResStatus::Failed + please start with /");
 
     // 无第二 /：not found service name 契约
     resp = server->request("/");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("not found service name") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("not found service name") != std::string::npos,
         "request \"/\" 返回 ResStatus::Failed + not found service name");
     resp = server->request("/Only");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("not found service name") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("not found service name") != std::string::npos,
         "request \"/Only\"（无第二 /）返回 ResStatus::Failed + not found service name");
 
     // 多段路径：srvName="/RouteSrv"、funcName="/b/c" 未安装 → not found（语义现状）
     resp = server->request("/RouteSrv/b/c");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("not found") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("not found") != std::string::npos,
         "request 多段路径 funcName=\"/b/c\" 未安装返回 ResStatus::Failed + not found");
 
     // 服务未注册：service not found 契约
     resp = server->request("/NoSuch/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
         "request 未注册服务返回 ResStatus::Failed + service not found");
 
     // 合法命中 + pkg 透传端到端
     resp = server->request("/RouteSrv/ping");
-    YOMK_TEST_CHECK(resp.m_status == YomkResponse::ResStatus::Successed && resp.m_msg == "pong", "request 合法 url 命中返回 ResStatus::Successed + pong");
+    YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded && resp.m_msg == "pong", "request 合法 url 命中返回 ResStatus::Succeeded + pong");
     resp = server->request("/RouteSrv/echo", yomkmsg::String::shared(std::string("hi")));
-    YOMK_TEST_CHECK(resp.m_status == YomkResponse::ResStatus::Successed && resp.m_msg == "echo:hi", "request 携 pkg 路由透传，解包回显往返正确");
+    YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded && resp.m_msg == "echo:hi", "request 携 pkg 路由透传，解包回显往返正确");
 
     // 超长 URL（4096 级服务名）：不崩溃，走 service not found
     resp = server->request("/" + std::string(4096, 'x') + "/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
         "request 超长 url 不崩溃，返回 ResStatus::Failed + service not found");
 }
 
@@ -212,20 +212,20 @@ static void testAsyncRequestParse()
 
     // 非法 url：回调永不触发（解析失败直接丢弃）
     std::atomic<int> badCbCount{0};
-    server->asyncRequest("bad_url", nullptr, [&badCbCount](YomkResponse resp) { badCbCount.fetch_add(1); });
+    server->asyncRequest("bad_url", nullptr, [&badCbCount](yomk::Response resp) { badCbCount.fetch_add(1); });
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     YOMK_TEST_CHECK(badCbCount.load() == 0, "asyncRequest 非法 url：回调永不触发");
 
-    // 合法 url：回调到达并收到 ResStatus::Successed（promise + 超时保护）
-    std::promise<YomkResponse> prom;
+    // 合法 url：回调到达并收到 ResStatus::Succeeded（promise + 超时保护）
+    std::promise<yomk::Response> prom;
     auto fut = prom.get_future();
-    server->asyncRequest("/RouteSrv/ping", nullptr, [&prom](YomkResponse resp) { prom.set_value(resp); });
+    server->asyncRequest("/RouteSrv/ping", nullptr, [&prom](yomk::Response resp) { prom.set_value(resp); });
     bool ready = fut.wait_for(std::chrono::seconds(2)) == std::future_status::ready;
     YOMK_TEST_CHECK(ready, "asyncRequest 合法 url：回调在超时窗口内到达");
     if (ready)
     {
-        YomkResponse resp = fut.get();
-        YOMK_TEST_CHECK(resp.m_status == YomkResponse::ResStatus::Successed && resp.m_msg == "pong", "asyncRequest 回调收到 ResStatus::Successed + pong");
+        yomk::Response resp = fut.get();
+        YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded && resp.m_msg == "pong", "asyncRequest 回调收到 ResStatus::Succeeded + pong");
     }
 
     // func 为空分支：请求仍被执行（fire-and-forget）
@@ -283,8 +283,8 @@ static void testReplaceSameName()
     YOMK_TEST_CHECK(g_deinitCount.load() == 1, "替换：旧服务 deinit 被调用");
     YOMK_TEST_CHECK(g_deletedOnDeinit.load() == true, "替换：旧服务 deinit 时 isDeleted() 已为 true（先 markDeleted 承诺实证）");
 
-    YomkResponse resp = server->request("/Dup/ping");
-    YOMK_TEST_CHECK(resp.m_status == YomkResponse::ResStatus::Successed && resp.m_msg == "pong", "替换：新服务可路由");
+    yomk::Response resp = server->request("/Dup/ping");
+    YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded && resp.m_msg == "pong", "替换：新服务可路由");
     YOMK_TEST_CHECK(nameCount(server->serviceNames(), "/Dup") == 1, "替换：serviceNames 中该名仅一条");
 
     // 替换 + 新服务 init 失败：旧已删、新回滚、表为空（语义文档化：不恢复旧服务）
@@ -295,7 +295,7 @@ static void testReplaceSameName()
     YOMK_TEST_CHECK(!nameIn(server->serviceNames(), "/Dup"), "替换失败后该名为空（旧服务不恢复，语义文档化）");
     resp = server->request("/Dup/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
         "替换失败后请求返回 ResStatus::Failed + service not found");
     g_initRet = 0;
 }
@@ -314,9 +314,9 @@ static void testDelService()
     YOMK_TEST_CHECK(g_deinitCount.load() == 1, "delService 触发 deinit（锁外清理）");
     YOMK_TEST_CHECK(g_deletedOnDeinit.load() == true, "delService：markDeleted 先于 deinit");
 
-    YomkResponse resp = server->request("/Del/ping");
+    yomk::Response resp = server->request("/Del/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
         "删除后请求返回 ResStatus::Failed + service not found");
     YOMK_TEST_CHECK(!nameIn(server->serviceNames(), "/Del"), "删除后 serviceNames 不含该名");
     YOMK_TEST_CHECK(server->delService("/Del") == -1, "重复删除返回 -1");
@@ -324,7 +324,7 @@ static void testDelService()
     // 删除即停端到端：服务已被框架析构，全局弱绑定回调丢弃
     resp = g_weakCb(nullptr);
     YOMK_TEST_CHECK(
-        resp.m_status == YomkResponse::ResStatus::Failed && resp.m_msg.find("deleted or unregistered") != std::string::npos,
+        resp.m_status == yomk::ResStatus::Failed && resp.m_msg.find("deleted or unregistered") != std::string::npos,
         "delService 后弱绑定回调丢弃（删除即停端到端，兑现 MC3 预埋）");
     g_weakCb = nullptr;
 }
@@ -357,7 +357,7 @@ static void testNewServiceTemplate()
     resetGlobals();
 
     YOMK_TEST_CHECK(server->newService<RouteSrv>("/Tpl") == 0, "newService 有名注册返回 0");
-    YOMK_TEST_CHECK(server->request("/Tpl/ping").m_status == YomkResponse::ResStatus::Successed, "newService 有名注册可路由");
+    YOMK_TEST_CHECK(server->request("/Tpl/ping").m_status == yomk::ResStatus::Succeeded, "newService 有名注册可路由");
 
     // 无名：以空名注册。URL 解析保证 srvName 至少含 /，空名服务永不可达——现状文档化，不修复仅记录
     YOMK_TEST_CHECK(server->newService<RouteSrv>() == 0, "newService 无名返回 0（以空名注册，现状文档化）");

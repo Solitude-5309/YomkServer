@@ -15,8 +15,8 @@ int main(int argc, char* argv[])
     YomkAPI::newService<ExtensionService>();
 
     // 测试版本查询
-    YomkResponse resp = YomkAPI::request("/ExtensionService/version", nullptr);
-    if (resp.m_status == YomkResponse::ResStatus::Successed)
+    yomk::Response resp = YomkAPI::request("/ExtensionService/version", nullptr);
+    if (resp.m_status == yomk::ResStatus::Succeeded)
     {
         auto version = yomk::unPack<yomkmsg::String>(resp.m_data);
         std::cout << "[PASS] version: " << version->d << std::endl;

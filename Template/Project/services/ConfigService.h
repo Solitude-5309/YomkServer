@@ -15,11 +15,11 @@ public:
     virtual int init() override;
 
 private:
-    YomkResponse loadConfig(YomkPkgPtr pkg);
-    YomkResponse getConfig(YomkPkgPtr pkg);
-    YomkResponse setConfig(YomkPkgPtr pkg);
-    YomkResponse reloadConfig(YomkPkgPtr pkg);
-    YomkResponse version(YomkPkgPtr pkg);
+    yomk::Response loadConfig(YomkPkgPtr pkg);
+    yomk::Response getConfig(YomkPkgPtr pkg);
+    yomk::Response setConfig(YomkPkgPtr pkg);
+    yomk::Response reloadConfig(YomkPkgPtr pkg);
+    yomk::Response version(YomkPkgPtr pkg);
 
     std::string m_configPath;
     std::unordered_map<std::string, std::string> m_configMap;

@@ -17,12 +17,12 @@ public:
     virtual int init() override;
 
 private:
-    YomkResponse registerFunction(YomkPkgPtr pkg);
-    YomkResponse unRegisterFunction(YomkPkgPtr pkg);
-    YomkResponse callFunction(YomkPkgPtr pkg);
-    YomkResponse funcNames(YomkPkgPtr pkg);
-    YomkResponse funcInfo(YomkPkgPtr pkg);
-    YomkResponse listAll(YomkPkgPtr pkg);
+    yomk::Response registerFunction(YomkPkgPtr pkg);
+    yomk::Response unRegisterFunction(YomkPkgPtr pkg);
+    yomk::Response callFunction(YomkPkgPtr pkg);
+    yomk::Response funcNames(YomkPkgPtr pkg);
+    yomk::Response funcInfo(YomkPkgPtr pkg);
+    yomk::Response listAll(YomkPkgPtr pkg);
 
 private:
     // 池中函数条目：函数本体 + 期望消息类型名 + 函数说明（内省元数据，均可为空）

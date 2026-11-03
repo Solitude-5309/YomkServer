@@ -20,11 +20,11 @@
 ```cpp
 // 注册函数（第三参可选：声明期望的消息类型名；第四参可选：函数说明，均仅作内省元数据）
 YomkAPI::registerFunction("calcSum", [](YomkPkgPtr pkg) {
-    return YomkResponse{YomkResponse::ResStatus::Successed, "result"};
+    return yomk::Response{yomk::ResStatus::Succeeded, "result"};
 });
 
 // 调用函数（返回值即函数返回值；未注册的名字返回 ResStatus::Failed=1）
-YomkResponse resp = YomkAPI::callFunction("calcSum", nullptr);
+yomk::Response resp = YomkAPI::callFunction("calcSum", nullptr);
 
 // 同名重复注册即运行时热替换，无需注销
 YomkAPI::registerFunction("calcSum", newFunc);

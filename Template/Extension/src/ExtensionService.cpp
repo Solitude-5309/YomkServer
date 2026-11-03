@@ -12,8 +12,8 @@ int ExtensionService::init()
     return 0;
 }
 
-YomkResponse ExtensionService::version(YomkPkgPtr pkg)
+yomk::Response ExtensionService::version(YomkPkgPtr pkg)
 {
     std::string version = "TemplateExtension v" EXTENSION_VERSION;
-    return YomkResponse(YomkResponse::ResStatus::Successed, "ok", yomkmsg::String::shared(version));
+    return yomk::Response(yomk::ResStatus::Succeeded, "ok", yomkmsg::String::shared(version));
 }

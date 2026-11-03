@@ -27,7 +27,7 @@
  * 场景 2 showArmStationFunctions [INFO_FUNCTIONS]
  *        工位职能清单：FuncInfoList 结构化清单（4 参注册的 /quality_check
  *        带 QualityCheckReq 元数据与函数说明，2 参注册的 /report 双空）；
- *        不存在的工位返回空清单 ResStatus::Successed，空服务名返回 ResStatus::Invalid。
+ *        不存在的工位返回空清单 ResStatus::Succeeded，空服务名返回 ResStatus::Invalid。
  * 场景 3 showArmFuncLookup      [INFO_FUNCTION]
  *        函数名片单查：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，
  *        m_msgName=期望消息类型名、m_description=函数说明）；4 种坏 URL 均
@@ -75,19 +75,19 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
     YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
 }
 
-// API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
+// API 结果行：打印 yomk::Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 // 清单类返回挂 String data 时随行展示；结构化包（StringArray/FuncInfo/FuncInfoList/
 // ServerServiceInfoList）形态各异，解包类型不匹配时静默不展示
-// status 三态：0=ResStatus::Successed 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
-static void logResp(const std::string& api, const YomkResponse& resp)
+// status 三态：0=ResStatus::Succeeded 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
+static void logResp(const std::string& api, const yomk::Response& resp)
 {
     std::ostringstream oss;
     oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
-    if (resp.m_status == YomkResponse::ResStatus::Successed)
+    if (resp.m_status == yomk::ResStatus::Succeeded)
     {
-        oss << "(ResStatus::Successed 成功)";
+        oss << "(ResStatus::Succeeded 成功)";
     }
-    else if (resp.m_status == YomkResponse::ResStatus::Failed)
+    else if (resp.m_status == yomk::ResStatus::Failed)
     {
         oss << "(ResStatus::Failed 拒绝或不存在)";
     }
@@ -96,7 +96,7 @@ static void logResp(const std::string& api, const YomkResponse& resp)
         oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
     oss << ", msg=\"" << resp.m_msg << "\"";
-    if (resp.m_status == YomkResponse::ResStatus::Successed && resp.m_data)
+    if (resp.m_status == yomk::ResStatus::Succeeded && resp.m_data)
     {
         auto data = yomk::unPack<yomkmsg::String>(resp.m_data);
         if (data)
@@ -107,14 +107,14 @@ static void logResp(const std::string& api, const YomkResponse& resp)
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
-// 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+// 操作日志（yomk::Response 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；REQUEST 在调用方线程同步执行工位函数，arm.station
 // 日志被夹在开始行与结果行之间，归属一目了然，读者顺着日志读即可理解
-static YomkResponse logAction(const std::string& op, const std::string& api, const std::function<YomkResponse()>& call)
+static yomk::Response logAction(const std::string& op, const std::string& api, const std::function<yomk::Response()>& call)
 {
     YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
-    YomkResponse resp = call();
+    yomk::Response resp = call();
     logResp(api, resp);
     return resp;
 }
@@ -180,7 +180,7 @@ static void logTopologyFunc(const std::string& api, const yomk::FuncInfo& info)
     YOMK_INFO_TAG("arm.demo", "[" + api + "]" + line);
 }
 
-static void logTopology(const std::string& api, const YomkResponse& resp)
+static void logTopology(const std::string& api, const yomk::Response& resp)
 {
     auto list = yomk::unPack<yomkmsg::ServerServiceInfoList>(resp.m_data);
     if (!list)
@@ -247,31 +247,31 @@ public:
     }
 
     // 工位状态上报：收到状态文本回执确认
-    YomkResponse report(YomkPkgPtr pkg)
+    yomk::Response report(YomkPkgPtr pkg)
     {
         auto status = yomk::unPack<yomkmsg::String>(pkg);
         if (!status)
         {
-            return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not String"};
+            return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
         }
         std::ostringstream oss;
         oss << "工位状态上报：收到 \"" << status->d << "\"";
         YOMK_INFO_TAG("arm.station", oss.str());
-        return {YomkResponse::ResStatus::Successed, "station report received: " + status->d};
+        return {yomk::ResStatus::Succeeded, "station report received: " + status->d};
     }
 
     // 质量抽检：解包 QualityCheckReq，按件抽检并回执结论
-    YomkResponse qualityCheck(YomkPkgPtr pkg)
+    yomk::Response qualityCheck(YomkPkgPtr pkg)
     {
         auto data = yomk::unPack<yomkmsg::QualityCheckReq>(pkg);
         if (!data)
         {
-            return {YomkResponse::ResStatus::Failed, "pkg is null or pkg is not QualityCheckReq"};
+            return {yomk::ResStatus::Failed, "pkg is null or pkg is not QualityCheckReq"};
         }
         std::ostringstream oss;
         oss << "质量抽检执行：工位 " << data->req.m_station << " 抽检 " << data->req.m_count << " 件";
         YOMK_INFO_TAG("arm.station", oss.str());
-        return {YomkResponse::ResStatus::Successed,
+        return {yomk::ResStatus::Succeeded,
             "quality check passed: " + data->req.m_station + ", " + std::to_string(data->req.m_count) + " pcs"};
     }
 };
@@ -293,7 +293,7 @@ static void showArmPlantRoster()
         "注册即可调用。");
 
     logAction("开班点名：查询产线在册服务");
-    YomkResponse namesResp = YomkAPI::listServices();
+    yomk::Response namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
     auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
     if (nameArr)
@@ -344,7 +344,7 @@ static void showArmStationFunctions()
         "元数据，2 参注册的 /report 双空，差异一目了然。");
 
     logAction("查阅装配工位职能清单");
-    YomkResponse funcsResp = YomkAPI::listServiceFunctions("/ArmStation");
+    yomk::Response funcsResp = YomkAPI::listServiceFunctions("/ArmStation");
     logResp("INFO_FUNCTIONS /ArmStation", funcsResp);
     auto listPkg = yomk::unPack<yomkmsg::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
@@ -359,7 +359,7 @@ static void showArmStationFunctions()
     logAction("查阅不存在工位 /GhostStation 的职能清单");
     funcsResp = YomkAPI::listServiceFunctions("/GhostStation");
     logResp("INFO_FUNCTIONS /GhostStation", funcsResp);
-    logVerify("服务不存在 -> 空清单 ResStatus::Successed：查询失败不崩溃，仍是普通返回值");
+    logVerify("服务不存在 -> 空清单 ResStatus::Succeeded：查询失败不崩溃，仍是普通返回值");
 
     logAction("以空服务名查阅职能清单");
     funcsResp = YomkAPI::listServiceFunctions("");
@@ -379,7 +379,7 @@ static void showArmFuncLookup()
         "不存在均为 ResStatus::Failed。");
 
     logAction("调阅质量抽检函数名片");
-    YomkResponse resp = YomkAPI::getServiceFunctionInfoByUrl("/ArmStation/quality_check");
+    yomk::Response resp = YomkAPI::getServiceFunctionInfoByUrl("/ArmStation/quality_check");
     logResp("INFO_FUNCTION /ArmStation/quality_check", resp);
     auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
     if (info)
@@ -424,7 +424,7 @@ static void showArmPlantTopology()
         "调用拓扑。");
 
     logAction("导出全厂服务拓扑");
-    YomkResponse allResp = YomkAPI::getAllServerInfo();
+    yomk::Response allResp = YomkAPI::getAllServerInfo();
     logResp("INFO_ALL", allResp);
     logTopology("INFO_ALL", allResp);
     logVerify("6 个服务 = 5 个内置 + 1 个装配工位，函数名带 / 前缀、带元数据的附 [MsgName] 标注——层级自上而下逐服务展开");
@@ -444,7 +444,7 @@ static void showArmLiveView()
     logActionInt("装配工位下线：注销 /ArmStation", "DEL_SERVICE /ArmStation", [] { return YomkAPI::delService("/ArmStation"); });
 
     logAction("复查在册服务清单");
-    YomkResponse namesResp = YomkAPI::listServices();
+    yomk::Response namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
     auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
     if (nameArr)
@@ -457,7 +457,7 @@ static void showArmLiveView()
     logVerify("清单回到 5 项内置服务：删除即时生效，无需重启");
 
     logAction("复查全厂拓扑终态");
-    YomkResponse allResp = YomkAPI::getAllServerInfo();
+    yomk::Response allResp = YomkAPI::getAllServerInfo();
     logResp("INFO_ALL", allResp);
     auto list = yomk::unPack<yomkmsg::ServerServiceInfoList>(allResp.m_data);
     if (list)
