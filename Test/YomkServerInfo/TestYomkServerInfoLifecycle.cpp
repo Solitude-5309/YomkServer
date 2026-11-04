@@ -40,7 +40,7 @@
 #include <vector>
 
 #include "Modules/ServerInfo/YomkServerInfo.h"
-#include "YomkAPI.h"
+#include "YomkApi.h"
 
 static int g_failed = 0;
 

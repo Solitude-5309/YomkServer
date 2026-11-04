@@ -30,7 +30,7 @@ ProjectName/
 
 ### main.cpp
 ```cpp
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 #include "boot/MyBoot.h"
 
 using namespace yomk;
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 ### boot/MyBoot.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 
 using namespace yomk;
 
@@ -165,7 +165,7 @@ constexpr const char *const CTX_CONFIG_PATH = "config_path";
 ### msgs/YomkMsgs.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 
 // 定义完所有的结构体后，统一注册YomkMsg
 // ConfigService 消息包
@@ -187,7 +187,7 @@ YomkMsg(ConfigKeyValue, ConfigKeyValue, req);
 ### services/ConfigService.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 #include <unordered_map>
 #include "msgs/YomkMsgs.h"
 
@@ -491,7 +491,7 @@ YomkMsg(UserInfo, UserInfo, d);
 ### 2. 创建服务（services/UserService.h）
 ```cpp
 #pragma once
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 #include "msgs/YomkMsgs.h"
 
 using namespace yomk;
@@ -912,7 +912,7 @@ ExtensionName/
 ### include/XxxService.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 
 using namespace yomk;
 
@@ -976,7 +976,7 @@ target_link_libraries(TestExtensionName PRIVATE ExtensionName::ExtensionName Yom
 
 ### test/TestExtensionName.cpp
 ```cpp
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 #include <ExtensionName/XxxService.h>
 #include <iostream>
 
@@ -1277,7 +1277,7 @@ ExtensionName/
 将以下完整程序拷贝为 main.cpp，安装扩展后可直接编译运行：
 
 ```cpp
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 #include <ExtensionName/XxxService.h>
 #include <iostream>
 

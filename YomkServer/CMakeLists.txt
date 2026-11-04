@@ -21,7 +21,7 @@ set(LIB_INSTALL_DIR lib)
 include_directories(${YomkServer_INCLUDE})
 
 set(YomkServer_SOURCES 
-    ${YomkServer_SRC}/YomkAPI.cpp
+    ${YomkServer_SRC}/YomkApi.cpp
     ${YomkServer_SRC}/YomkServer.cpp
     ${YomkServer_SRC}/YomkServerPrivate.cpp
     ${YomkServer_SRC}/YomkService.cpp

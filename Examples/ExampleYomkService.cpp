@@ -57,7 +57,7 @@
  *        释放全部服务，关闭后任何请求统一返回 ResStatus::Invalid——日志宏随之静默，
  *        静默段正是演示效果，示例日志到此为止。
  *
- * 涉及的 API 接口（YomkAPI.h）：
+ * 涉及的 API 接口（YomkApi.h）：
  *   YomkAPI::init() / YomkAPI::shutdown() / YomkAPI::version()   框架生命周期
  *   YomkAPI::newService<T>(name)                  创建并注册服务（最常用）
  *   YomkAPI::addService(ptr, name)                注册已有实例（同名即替换）
@@ -75,7 +75,7 @@
 #include <string>
 #include <thread>
 
-#include "YomkAPI.h"
+#include "YomkApi.h"
 #include "boot/ArmBoot.h"
 #include "msgs/ArmMsgs.h"
 #include "services/MotionService.h"

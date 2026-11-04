@@ -13,7 +13,7 @@
  *
  * 设计边界（契约内使用，非缺陷）：
  * - churn 仅单线程做 start/stop——start/stop 线程安全契约为调用方串行化（并发 start×2 竞争 m_worker
- *   move-assign 有 terminate 风险，YomkAPI.h 未声明其线程安全）；
+ *   move-assign 有 terminate 风险，YomkApi.h 未声明其线程安全）；
  * - churn 不含 destroy——丢弃已接受事件会破坏计数守恒语义，其等待者释放已由 Lifecycle Section 10 覆盖。
  *
  * 说明：白盒段直连内部类 EventLoop（CMake 已含 src 目录）；API 段 YomkAPI::init() 单例拉起内置 /YomkEventLoop，
@@ -37,7 +37,7 @@
 #include <vector>
 
 #include "Modules/EventLoop/EventLoop.h"
-#include "YomkAPI.h"
+#include "YomkApi.h"
 
 static int g_failed = 0;
 

@@ -18,7 +18,7 @@ description: 基于YomkServer框架的模块化C++17工程编程。核心理念"
 | **YomkFunctionPool** | 动态函数池（运行时注册/热替换） |
 | **YomkLogger** | 多级别、多输出日志 |
 
-唯一头文件：`#include <YomkServer/YomkAPI.h>`，框架命名空间：`using namespace yomk;`；`YomkMsg` 生成类型使用独立命名空间 `yomkmsg`。
+唯一头文件：`#include <YomkServer/YomkApi.h>`，框架命名空间：`using namespace yomk;`；`YomkMsg` 生成类型使用独立命名空间 `yomkmsg`。
 
 ## 任务一：生成工程模板
 

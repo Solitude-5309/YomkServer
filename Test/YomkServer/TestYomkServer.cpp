@@ -34,7 +34,7 @@
 #include <thread>
 #include <vector>
 
-#include "YomkAPI.h"
+#include "YomkApi.h"
 
 static int g_failed = 0;
 

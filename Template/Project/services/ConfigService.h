@@ -1,5 +1,5 @@
 #pragma once
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 
 #include <unordered_map>
 

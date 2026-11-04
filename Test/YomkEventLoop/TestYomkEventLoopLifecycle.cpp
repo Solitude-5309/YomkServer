@@ -49,7 +49,7 @@
 
 // YomkEventLoop.h 传递包含 EventLoop.h（两模块头均无 include guard，不可双包含）
 #include "Modules/EventLoop/YomkEventLoop.h"
-#include "YomkAPI.h"
+#include "YomkApi.h"
 
 static int g_failed = 0;
 

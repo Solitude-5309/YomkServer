@@ -47,7 +47,7 @@ TemplateExtension/
 将以下完整程序拷贝为 main.cpp，安装扩展后可直接编译运行：
 
 ```cpp
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 #include <TemplateExtension/ExtensionService.h>
 #include <iostream>
 

@@ -32,7 +32,7 @@
 #include <sstream>
 #include <string>
 
-#include "YomkAPI.h"
+#include "YomkApi.h"
 
 namespace fs = std::filesystem;
 

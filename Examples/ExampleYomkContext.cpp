@@ -61,7 +61,7 @@
 #include <thread>
 #include <vector>
 
-#include "YomkAPI.h"
+#include "YomkApi.h"
 
 // 定点引入所需类型，避免全局 using
 using yomk::CheckStatus;

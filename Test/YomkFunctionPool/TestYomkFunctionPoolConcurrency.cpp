@@ -21,7 +21,7 @@
 #include <thread>
 #include <vector>
 
-#include "YomkAPI.h"
+#include "YomkApi.h"
 
 // ============================================================================
 // 测试基础设施

@@ -32,7 +32,7 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 ### 1. 最小完整示例
 
 ```cpp
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 #include <iostream>
 
 // 自定义服务
@@ -279,5 +279,5 @@ target_link_libraries(my_app PRIVATE YomkServer::YomkServer)
 在源码中引用公共头文件：
 
 ```cpp
-#include <YomkServer/YomkAPI.h>
+#include <YomkServer/YomkApi.h>
 ```
