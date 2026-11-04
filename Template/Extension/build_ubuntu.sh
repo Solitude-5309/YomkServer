@@ -1,9 +1,16 @@
 #!/bin/bash
 # 一键编译脚本（交互式）
-# 用法: source build_ubuntu.sh
+# 用法: source build_ubuntu.sh（也兼容直接执行 ./build_ubuntu.sh，两种方式失败均正确退出）
 # 依次交互询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取环境变量 YOMK_PREFIX_PATH，可修改
 # 扩展库与 YomkServer 安装到一起（头文件由 YomkServer::YomkServer 的 INTERFACE include 统一提供）
 # 安装后将扩展 lib 注册到系统动态库搜索路径（复用 yomk.conf）并刷新 ldconfig 缓存，新开任意终端即可找到扩展 so
+
+# 兼容直接执行：脚本内部以 return 表达失败（source 语义），直接执行时 return 在顶层非法
+# 且不会终止脚本（失败后继续打印成功横幅）——转交 source 方式运行并透传退出码
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bash -c "source '${BASH_SOURCE[0]}'"
+    exit $?
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_NAME="TemplateExtension"
@@ -62,6 +69,9 @@ fi
 
 # 编译安装主库
 mkdir -p "${BUILD_DIR}"
+# 清除历史运行可能遗留的暂存安装目录（如 build/install/）——其中陈旧的包配置/头文件
+# 会经 find_package 缓存（TemplateExtension_DIR）或目录搜索遮蔽真实安装路径，导致用旧 API 编译
+rm -rf "${BUILD_DIR}/install"
 cd "${BUILD_DIR}" || return 1
 
 cmake "${SCRIPT_DIR}" -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" -DCMAKE_PREFIX_PATH="${YOMK_SERVER_PATH}"
@@ -82,7 +92,11 @@ fi
 YOMK_LDCONF_FILE="/etc/ld.so.conf.d/yomk.conf"
 if ! grep -qxF "${INSTALL_DIR}/lib" "${YOMK_LDCONF_FILE}" 2>/dev/null; then
     echo "-- 注册动态库搜索路径: ${YOMK_LDCONF_FILE}"
-    echo "${INSTALL_DIR}/lib" | sudo tee -a "${YOMK_LDCONF_FILE}" >/dev/null
+    if ! echo "${INSTALL_DIR}/lib" | sudo tee -a "${YOMK_LDCONF_FILE}" >/dev/null; then
+        echo "错误: 动态库搜索路径注册失败"
+        cd "${_ORIG_DIR}"
+        return 1
+    fi
 fi
 # 刷新动态库缓存：新增的 so 不会自动进入 ld.so.cache，必须重新执行 ldconfig
 echo "-- 刷新动态库缓存 (ldconfig)..."
@@ -98,7 +112,10 @@ if [ "${BUILD_TEST}" = "ON" ]; then
     mkdir -p "${TEST_BUILD_DIR}"
     cd "${TEST_BUILD_DIR}" || return 1
 
-    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}"
+    # -U 清除上次运行缓存下来的包定位（TemplateExtension_DIR/YomkServer_DIR），
+    # 强制按本次 CMAKE_PREFIX_PATH 重新查找，避免 find_package 钉死在陈旧安装目录
+    cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}" \
+        -UTemplateExtension_DIR -UYomkServer_DIR
     if [ $? -ne 0 ]; then
         echo "测试程序 cmake 配置失败"
         cd "${_ORIG_DIR}"

@@ -41,6 +41,7 @@ configure_file(
     ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
     @ONLY
 )
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
+# PROGRAMS 形态安装（默认 755）：FILES 形态默认 644，setup.bash 装出后无执行位无法直接执行
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/setup.bash
     DESTINATION .
 )

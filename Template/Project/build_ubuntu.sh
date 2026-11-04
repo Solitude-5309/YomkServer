@@ -1,8 +1,15 @@
 #!/bin/bash
 # 一键编译脚本（交互式）
-# 用法: source build_ubuntu.sh
+# 用法: source build_ubuntu.sh（也兼容直接执行 ./build_ubuntu.sh，两种方式失败均正确退出）
 # 交互询问 YomkServer 安装路径（前置路径），默认取环境变量 YOMK_PREFIX_PATH，可修改
 # 安装路径固定为工程源码目录下的 install/（CMakeLists.txt 已强制）
+
+# 兼容直接执行：脚本内部以 return 表达失败（source 语义），直接执行时 return 在顶层非法
+# 且不会终止脚本（失败后继续打印成功横幅）——转交 source 方式运行并透传退出码
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    bash -c "source '${BASH_SOURCE[0]}'"
+    exit $?
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/build"
