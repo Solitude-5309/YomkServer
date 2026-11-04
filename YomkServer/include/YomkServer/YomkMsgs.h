@@ -207,7 +207,7 @@ struct LoggerQuery
 struct LoggerInfo
 {
     std::string m_loggerName;  // 日志器名
-    std::string m_type;        // 类型："console" 或 "file"（与 INFO_LOGGERS 的类型参数同名）
+    std::string m_type;        // 类型："console" 或 "file"（与 listLoggers/getLoggerInfo 的类型参数同名）
     std::string m_dir;         // file 类型的日志目录（console 时为空串）
     // 状态段：console 条目承载控制台逐器门控层真值（console 全局主闸态经
     // /console_global_state 查询）；file 条目承载文件逐器门控层真值（file 全局主闸态

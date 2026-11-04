@@ -250,7 +250,7 @@ class YomkService {
 | `YomkAPI::listLoggers(type)` | 内省：按类型查日志器名列表（type 取 `"console"` 或 `"file"`，返回 StringArray，行内容即纯名字典序；非法类型 ResStatus::Failed） |
 | `YomkAPI::getLoggerInfo(name, type)` | 内省：按类型单表查日志器元信息（type 取 `"console"`/`"file"`；结构化 LoggerInfo 包：m_loggerName/m_type/m_dir，m_msg 恒 "ok"，未注册或非法 type 均 ResStatus::Failed；两表允许同名，不 fallback） |
 | `YomkAPI::getAllLoggerInfo()` | 内省：全量日志器清单（LoggerInfoList：vector<LoggerInfo>，元素为单查同款，每条内嵌 LoggerState 状态段——console 条目承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态，file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态，m_msg 恒 "ok"） |
-| `YomkAPI::getGlobalLoggerLevel(type = "console")` | 内省：全局主闸状态单查（type="file" 查文件侧、type="console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 ResStatus::Failed。LoggerState 独立包：四级别主闸开关 + proxyOn，m_msg "ok"；独立于逐器门控层，与 ALL/INFO_LOGGER 条目配合两层归因） |
+| `YomkAPI::getGlobalLoggerLevel(type = "console")` | 内省：全局主闸状态单查（type="file" 查文件侧、type="console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 ResStatus::Failed。LoggerState 独立包：四级别主闸开关 + proxyOn，m_msg "ok"；独立于逐器门控层，与 `getLoggerInfo`/`getAllLoggerInfo` 条目配合两层归因） |
 | `YomkAPI::deleteFileLogger(name)` | 删除日志器（同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 ResStatus::Failed；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |
 | `YomkAPI::setLocLineEnabled(bool)` | 开/关日志位置前缀行号段（默认开，与既有输出兼容）；进程级开关，对控制台与文件日志同时生效 |
 | `YomkAPI::setLocFileEnabled(bool)` | 开/关位置前缀文件名段（默认关；文件名取 basename），其余同上 |

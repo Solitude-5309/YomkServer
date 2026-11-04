@@ -9,7 +9,7 @@
  * S2. 删除内置服务契约与恢复：YomkAPI::delService("/YomkLogger") → 服务级 ResStatus::Failed + 精确消息；
  *     YomkAPI::newService<YomkLogger>() 无参重注册（new T(this) 注入 server 指针，构造函数
  *     固定名 "/YomkLogger" 生效）→ LOGGER API 恢复且全链路可用
- * S1. YomkAPI::shutdown() 全链路统一收尾（压轴）：YomkAPI::postEvent 积压、FILE_LOG_INFO 缓冲、
+ * S1. YomkAPI::shutdown() 全链路统一收尾（压轴）：YomkAPI::postEvent 积压、YOMK_FILE_INFO 缓冲、
  *     异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘（FileLogger
  *     析构 write）、API 回归 ResStatus::Invalid + "YomkServer is not init"（API 守卫级：shutdown 内
  *     setServer(nullptr)，serverSnapshot 空守卫；服务级 ResStatus::Failed 仅出现在服务表内服务缺失时）、
@@ -229,12 +229,12 @@ int main()
         }
         YOMK_TEST_CHECK(postOk, "100 个积压事件全部 POST ResStatus::Succeeded");
 
-        // 文件日志：FILE_LOG_INFO 仅入缓冲，FileLogger 析构 write 落盘
+        // 文件日志：YOMK_FILE_INFO 仅入缓冲，FileLogger 析构 write 落盘
         // （createFileLogger 第二参为日志器名，实际文件 = <dir>/<名>.log，由 FileLogger 自动追加后缀）
         YOMK_TEST_CHECK(YomkAPI::createFileLogger(tmpDir.string(), "integration_file") == yomk::ResStatus::Succeeded,
               "createFileLogger 返回 ResStatus::Succeeded");
         YOMK_TEST_CHECK(YOMK_FILE_INFO("integration_file", "s1_shutdown_flush_marker") == yomk::ResStatus::Succeeded,
-              "FILE_LOG_INFO 入缓冲返回 ResStatus::Succeeded（日志器名与 CREATE 一致）");
+              "YOMK_FILE_INFO 入缓冲返回 ResStatus::Succeeded（日志器名与 CREATE 一致）");
 
         // 异步 monitor 投递（shutdown 排空断言主体；S3 清场时全局开关已关，此处需重新开启）
         YOMK_TEST_CHECK(YomkAPI::enableContextMonitor() == yomk::ResStatus::Succeeded, "重新开启 monitor 开关");

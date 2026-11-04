@@ -17,7 +17,7 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 | [YomkServer / YomkService](Docs/YomkServer.md) | 服务总线核心：服务注册与 `"/服务名/函数名"` URL 路由、同步/异步请求分发、服务生命周期管理（deinit / 优雅关闭） |
 | [YomkPkg](Docs/YomkPkg.md) | 强类型消息包：`YomkMsg` 宏声明自定义消息，内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
 | [YomkBoot](Docs/YomkServer.md) | 启动编排：before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程 |
-| [YomkLogger](Docs/YomkLogger.md) | 日志系统：控制台与文件双输出、四级级别开关、自定义 tag、日志代理拦截与日志器自省 |
+| [YomkLogger](Docs/YomkLogger.md) | 日志系统：控制台与文件双输出、四级级别开关、自定义 tag、日志代理拦截、位置前缀开关与日志器自省 |
 | [YomkContext](Docs/YomkContext.md) | 共享上下文：跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步） |
 | [YomkEventLoop](Docs/YomkEventLoop.md) | 线程隔离事件循环：具名单线程 FIFO 执行队列，循环间彼此并行，支持停启续跑与队列积压观测 |
 | [YomkFunctionPool](Docs/YomkFunctionPool.md) | 动态函数池：跨服务扁平函数注册中心，同名重注册即运行时热替换，按名直接调用 |
@@ -108,7 +108,7 @@ int main()
 
 ### 3. 日志系统 (YomkLogger)
 
-控制台与文件双输出、四级（INFO / WARN / ERROR / DEBUG）级别开关、自定义 tag、控制台日志代理拦截；`YOMK_INFO`、`YomkAPI::createFileLogger` 等接口开箱即用。
+控制台与文件双输出、四级（INFO / WARN / ERROR / DEBUG）级别开关、自定义 tag、控制台/文件日志代理拦截、日志器位置前缀开关与日志器自省；`YOMK_INFO`、`YomkAPI::createFileLogger` 等接口开箱即用。
 
 详见 [日志系统](Docs/YomkLogger.md)。
 
