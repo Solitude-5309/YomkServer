@@ -21,7 +21,7 @@ public:
     void setDefaultServiceFunc(YomkServiceFunc serviceFunc, const std::string& msgName);
     std::string infoLine(const std::string& loopName, size_t tagCount);
         // 结构化内省快照：填充事件循环元信息（getEventLoopInfo 返回数据）；tag 存原值，空串保留
-        void infoSnapshot(yomk::EventLoopInfo& info, size_t tagCount);
+        void infoSnapshot(yomk::payload::EventLoopInfo& info, size_t tagCount);
     void run();
 
 private:

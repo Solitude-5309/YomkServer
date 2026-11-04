@@ -343,7 +343,7 @@ static std::vector<std::string> unpackLines(const yomk::payload::Response& resp)
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listPkg)
+static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listPkg)
 {
     if (!listPkg)
     {
@@ -736,7 +736,7 @@ int main()
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
                         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
-                        const yomk::LoggerState* st = firstConsoleState(listPkg);
+                        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
                         if (st && !st->m_proxyOn)
                         {
                             g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
@@ -1248,7 +1248,7 @@ int main()
                             auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
                             if (listPkg)
                             {
-                                const yomk::LoggerState* st = firstConsoleState(listPkg);
+                                const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
                                 if (st == nullptr || !st->m_proxyOn)
                                 {
                                     g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
@@ -1511,7 +1511,7 @@ int main()
              finalGs->d.m_warnOn && finalGs->d.m_errorOn && finalGs->d.m_proxyOn),
             "S5: 收尾四级别全 ON 后全局主闸状态全 on（含 S3 已设的 proxyOn）");
         auto finalListPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
-        const yomk::LoggerState* finalSt = firstConsoleState(finalListPkg);
+        const yomk::payload::LoggerState* finalSt = firstConsoleState(finalListPkg);
         YOMK_TEST_CHECK(
             (finalSt != nullptr && finalSt->m_debugOn && finalSt->m_infoOn &&
              finalSt->m_warnOn && finalSt->m_errorOn && finalSt->m_proxyOn),

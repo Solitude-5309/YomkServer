@@ -135,7 +135,7 @@ static void logAction(const std::string& op)
 
 // 自省结果展开：单个日志器 LoggerInfo 的字段逐行展示（名称行 + type/状态行），
 // getLoggerInfo 与 getAllLoggerInfo 共用；console 条目状态段单行承载五开关
-static void logLoggerInfo(const std::string& api, const yomk::LoggerInfo& info)
+static void logLoggerInfo(const std::string& api, const yomk::payload::LoggerInfo& info)
 {
     std::ostringstream oss;
     oss << "[" << api << "] - " << info.m_loggerName;
@@ -152,7 +152,7 @@ static void logLoggerInfo(const std::string& api, const yomk::LoggerInfo& info)
         YOMK_INFO_TAG("arm.demo", oss.str());
         return;
     }
-    const yomk::LoggerState& state = info.m_loggerState;
+    const yomk::payload::LoggerState& state = info.m_loggerState;
     oss.str("");
     oss << "[" << api << "]     state: debug=" << (state.m_debugOn ? "on" : "off")
         << " info=" << (state.m_infoOn ? "on" : "off") << " warn=" << (state.m_warnOn ? "on" : "off")

@@ -5,7 +5,6 @@
 
 #include "msgs/YomkMsgs.h"
 
-using namespace yomk;
 using namespace yomk::payload;
 
 class ConfigService : public YomkService

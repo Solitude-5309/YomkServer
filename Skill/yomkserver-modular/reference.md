@@ -136,7 +136,7 @@ class YomkServer {
     int delService(const std::string& srvName);  // 删除服务（锁外调 deinit 后析构）
     void shutdown();  // 优雅关闭：停请求池（拒新->排空->join）后锁外逐个 deinit（Context 在其中自停监控池），幂等
     std::vector<std::string> serviceNames();  // 内省：全部服务名
-    std::map<std::string, yomk::FuncInfo> serviceFuncInfos(const std::string& srvName);  // 内省：指定服务的函数元信息
+    std::map<std::string, yomk::payload::FuncInfo> serviceFuncInfos(const std::string& srvName);  // 内省：指定服务的函数元信息
     yomk::payload::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 };
@@ -162,7 +162,7 @@ class YomkService {
     template<typename Class, typename Res, typename Arg>
     void installFunc(const std::string& funcName, Res (Class::*func)(Arg), const std::string& msgName = "",
                      const std::string& description = "");  // 成员函数指针直装："/x", &C::m[, "Msg"][, "desc"]
-    std::map<std::string, yomk::FuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
+    std::map<std::string, yomk::payload::FuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
     yomk::payload::Response invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);  // 直接调用本服务的功能函数（不经 URL 路由）
     yomk::payload::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);

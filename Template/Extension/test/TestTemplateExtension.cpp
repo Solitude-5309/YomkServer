@@ -3,7 +3,6 @@
 
 #include <iostream>
 
-using namespace yomk;
 using namespace yomk::payload;
 
 static int g_pass = 0;

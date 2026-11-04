@@ -133,7 +133,7 @@ static void logAction(const std::string& op)
 
 // 自省结果展开：单个函数 FuncInfo 的全部字段逐行展示（函数名行 + 字段行），
 // INFO_NAME 与 INFO_ALL 共用；紧随其结果行输出，函数名行以 "-" 起头、字段行缩进对齐
-static void logFuncInfo(const std::string& api, const yomk::FuncInfo& info)
+static void logFuncInfo(const std::string& api, const yomk::payload::FuncInfo& info)
 {
     std::ostringstream oss;
     oss << "[" << api << "] - " << info.m_funcName;

@@ -180,7 +180,7 @@ static size_t loggersTotal()
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listPkg)
+static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listPkg)
 {
     if (!listPkg)
     {
@@ -402,7 +402,7 @@ YOMK_TEST_CHECK(
     {
         auto allResp = YomkAPI::getAllLoggerInfo();
         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
-        const yomk::LoggerState* st = firstConsoleState(listPkg);
+        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && !st->m_proxyOn),
             "proxy 设置前 ALL 控制台状态全 on + proxyOff");
@@ -440,7 +440,7 @@ YOMK_TEST_CHECK(
     {
         auto allResp = YomkAPI::getAllLoggerInfo();
         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
-        const yomk::LoggerState* st = firstConsoleState(listPkg);
+        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(st != nullptr && st->m_proxyOn, "proxy 设置后 ALL 状态 proxyOn");
     }
 
@@ -469,7 +469,7 @@ YOMK_TEST_CHECK(
             "setConsoleLogProxy(nullptr) 卸载返回 ResStatus::Succeeded");
         auto allResp = YomkAPI::getAllLoggerInfo();
         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
-        const yomk::LoggerState* st = firstConsoleState(listPkg);
+        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             st != nullptr && !st->m_proxyOn,
             "卸载后 ALL 状态回到 proxyOff（P4-e 前恒报 proxyOn）");
@@ -501,7 +501,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(YomkAPI::setConsoleLogProxy(proxy) == yomk::payload::ResStatus::Succeeded, "重装代理返回 ResStatus::Succeeded（卸载可逆）");
         auto allResp = YomkAPI::getAllLoggerInfo();
         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
-        const yomk::LoggerState* st = firstConsoleState(listPkg);
+        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             st != nullptr && st->m_proxyOn,
             "重装后 ALL 状态恢复 proxyOn（S4-S7 不变量已复位）");
@@ -675,7 +675,7 @@ YOMK_TEST_CHECK(
     {
         auto allResp = YomkAPI::getAllLoggerInfo();
         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
-        const yomk::LoggerState* st = firstConsoleState(listPkg);
+        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
             "ALL 控制台状态全 on（S3 已设 proxy）");
@@ -800,7 +800,7 @@ YOMK_TEST_CHECK(
         "on 非法级别 ResStatus::Succeeded + 错误提示（default 活分支）");
     auto allResp = YomkAPI::getAllLoggerInfo();
     auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
-    const yomk::LoggerState* st = firstConsoleState(listPkg);
+    const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
     YOMK_TEST_CHECK(
         (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
         "非法级别 off/on 无副作用（ALL 控制台状态仍全 on）");
@@ -1016,7 +1016,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(YomkAPI::deleteFileLogger(name) == yomk::payload::ResStatus::Succeeded, "S8: 计数用例删除 ResStatus::Succeeded");
         YOMK_TEST_CHECK(loggersTotal() == before, "S8: 删除后 LOGGERS 行数回落（递减守恒）");
         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
-        const yomk::LoggerState* st = firstConsoleState(listPkg);
+        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             (listPkg != nullptr && listPkg->d.size() == before && st != nullptr && st->m_debugOn &&
              st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),

@@ -378,7 +378,7 @@ yomk::payload::Response YomkContext::keyInfo(YomkPkgPtr pkg)
         return fail;
     }
 
-    yomk::ContextKeyInfo info;
+    yomk::payload::ContextKeyInfo info;
     // 返回码映射（约定见 ContextGroup::keyInfo）：0 命中 / 1 key 为空 / 2 key 不存在
     int rc = group->keyInfo(groupKey->d.m_key, info);
     if (rc == 1)
@@ -396,8 +396,8 @@ yomk::payload::Response YomkContext::listAll(YomkPkgPtr pkg)
 {
     // 跨组聚合：组 → 键元信息两层结构（对齐 getAllServerInfo 的 ServerServiceInfo 范式）；
     // main 组条目恒在首位，自定义组按 map 字典序追加（锁内拷指针、锁外取快照）
-    std::vector<yomk::ContextGroupInfo> groups;
-    yomk::ContextGroupInfo mainInfo;
+    std::vector<yomk::payload::ContextGroupInfo> groups;
+    yomk::payload::ContextGroupInfo mainInfo;
     mainInfo.m_groupName = m_main.name();
     mainInfo.m_keys = m_main.listAll();
     groups.push_back(std::move(mainInfo));
@@ -413,7 +413,7 @@ yomk::payload::Response YomkContext::listAll(YomkPkgPtr pkg)
     }
     for (const auto& group : customGroups)
     {
-        yomk::ContextGroupInfo info;
+        yomk::payload::ContextGroupInfo info;
         info.m_groupName = group->name();
         info.m_keys = group->listAll();
         groups.push_back(std::move(info));

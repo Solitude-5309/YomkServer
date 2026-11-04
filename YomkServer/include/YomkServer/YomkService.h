@@ -37,7 +37,7 @@ protected:
     {
         installFunc(funcName, weakFunc(func), msgName, description);
     }
-    std::map<std::string, yomk::FuncInfo> funcInfos();
+    std::map<std::string, yomk::payload::FuncInfo> funcInfos();
     yomk::payload::Response invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
     yomk::payload::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);

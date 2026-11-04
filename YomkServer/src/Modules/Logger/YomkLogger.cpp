@@ -3,7 +3,6 @@
 #include <iostream>
 
 // yomk 命名空间引入收口在 .cpp（头文件不得 using，防止与全局 ::EventLoop 撞名二义性外泄）
-using namespace yomk;
 using namespace yomk::payload;
 
 // 初始化列表须按 YomkLogger.h 声明序书写（-Wreorder）
@@ -586,7 +585,7 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkPkgPtr pkg)
     }
     // 按类型单表精确查找：两表允许同名，不再先 console 后 file 双表 fallback（同名歧义由 type 消除）；
     // 命中：锁内构造结构化快照，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
-    yomk::LoggerInfo info;
+    yomk::payload::LoggerInfo info;
     info.m_loggerName = query->d.m_loggerName;
     if (query->d.m_type == "console")
     {
@@ -645,7 +644,7 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkPkgPtr pkg)
 // proxy 叶子锁独立作用域
 LoggerState YomkLogger::currentConsoleState()
 {
-    yomk::LoggerState state;
+    yomk::payload::LoggerState state;
     state.m_debugOn = m_showConsoleDebugLog.load();
     state.m_infoOn = m_showConsoleInfoLog.load();
     state.m_warnOn = m_showConsoleWarningLog.load();
@@ -661,7 +660,7 @@ LoggerState YomkLogger::currentConsoleState()
 // 取单条 console 条目状态：四级别为逐器门控层真值（logger.isLevelOn），proxyOn 由调用点传入
 LoggerState YomkLogger::namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn)
 {
-    yomk::LoggerState state;
+    yomk::payload::LoggerState state;
     state.m_debugOn = consoleLogger->isLevelOn(ConsoleLogger::LogLevel::Debug);
     state.m_infoOn = consoleLogger->isLevelOn(ConsoleLogger::LogLevel::Info);
     state.m_warnOn = consoleLogger->isLevelOn(ConsoleLogger::LogLevel::Warn);
@@ -674,7 +673,7 @@ LoggerState YomkLogger::namedConsoleState(const ConsoleLoggerPtr& consoleLogger,
 // 文件代理态读侧与写侧互斥（叶子锁独立作用域，与控制台 proxyOn 各自独立）
 LoggerState YomkLogger::currentFileState()
 {
-    yomk::LoggerState state;
+    yomk::payload::LoggerState state;
     state.m_debugOn = m_showFileDebugLog.load();
     state.m_infoOn = m_showFileInfoLog.load();
     state.m_warnOn = m_showFileWarningLog.load();
@@ -690,7 +689,7 @@ LoggerState YomkLogger::currentFileState()
 // 取单条 file 条目状态：四级别为逐器门控层真值（logger.isLevelOn），proxyOn 由调用点传入
 LoggerState YomkLogger::namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn)
 {
-    yomk::LoggerState state;
+    yomk::payload::LoggerState state;
     state.m_debugOn = fileLogger->isLevelOn(FileLogger::LogLevel::Debug);
     state.m_infoOn = fileLogger->isLevelOn(FileLogger::LogLevel::Info);
     state.m_warnOn = fileLogger->isLevelOn(FileLogger::LogLevel::Warn);
@@ -715,7 +714,7 @@ yomk::payload::Response YomkLogger::listAll(YomkPkgPtr pkg)
         std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
         fileProxyOn = m_fileLogProxy;
     }
-    std::vector<yomk::LoggerInfo> loggers;
+    std::vector<yomk::payload::LoggerInfo> loggers;
     {
         // 按锁序嵌套双读锁取跨段快照，逐条构造 LoggerInfo（与 loggerInfo 命中分支同构）
         std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
@@ -723,7 +722,7 @@ yomk::payload::Response YomkLogger::listAll(YomkPkgPtr pkg)
         loggers.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
         for (auto& iter : m_consoleLoggers)
         {
-            yomk::LoggerInfo info;
+            yomk::payload::LoggerInfo info;
             info.m_loggerName = iter.first;
             info.m_type = "console";
             info.m_loggerState = namedConsoleState(iter.second, proxyOn);
@@ -731,7 +730,7 @@ yomk::payload::Response YomkLogger::listAll(YomkPkgPtr pkg)
         }
         for (auto& iter : m_fileLoggers)
         {
-            yomk::LoggerInfo info;
+            yomk::payload::LoggerInfo info;
             info.m_loggerName = iter.first;
             info.m_type = "file";
             info.m_dir = iter.second->getDir();

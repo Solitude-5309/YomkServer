@@ -65,9 +65,9 @@ public:
     // 键名清单快照
     std::vector<std::string> keys();
     // 命中时填充 info 结构化快照；返回：0 命中 / 1 key 为空 / 2 key 不存在
-    int keyInfo(const std::string& key, yomk::ContextKeyInfo& info);
+    int keyInfo(const std::string& key, yomk::payload::ContextKeyInfo& info);
     // 全量键元信息快照
-    std::vector<yomk::ContextKeyInfo> listAll();
+    std::vector<yomk::payload::ContextKeyInfo> listAll();
 
 private:
     std::string m_name;

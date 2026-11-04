@@ -192,7 +192,7 @@ yomk::payload::Response YomkEventLoop::loopInfo(YomkPkgPtr pkg)
     }
 
     // 命中：结构化快照，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
-    yomk::EventLoopInfo info;
+    yomk::payload::EventLoopInfo info;
     info.m_loopName = loopName;
     eventLoop->infoSnapshot(info, tagCount);
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::EventLoopInfo::shared(info)};
@@ -212,11 +212,11 @@ yomk::payload::Response YomkEventLoop::listAll(YomkPkgPtr pkg)
         }
     }
 
-    std::vector<yomk::EventLoopInfo> infos;
+    std::vector<yomk::payload::EventLoopInfo> infos;
     infos.reserve(eventLoops.size());
     for (size_t i = 0; i < eventLoops.size(); ++i)
     {
-        yomk::EventLoopInfo info;
+        yomk::payload::EventLoopInfo info;
         info.m_loopName = loopNames[i];
         eventLoops[i]->infoSnapshot(info, 3);
         infos.push_back(std::move(info));

@@ -138,7 +138,7 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "funcName is not register");
     }
     // 命中：结构化包恒挂，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
-    yomk::FuncInfo info;
+    yomk::payload::FuncInfo info;
     info.m_funcName = yFuncName->d;
     info.m_msgName = itFunc->second.m_msgName;
     info.m_description = itFunc->second.m_description;
@@ -148,13 +148,13 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkPkgPtr pkg)
 // 内省：全量函数元信息，锁内构造结构化快照（m_msg 恒 "ok"，数据走 m_data；总数由 d.size() 承载）
 yomk::payload::Response YomkFunctionPool::listAll(YomkPkgPtr pkg)
 {
-    std::vector<yomk::FuncInfo> infos;
+    std::vector<yomk::payload::FuncInfo> infos;
     {
         std::shared_lock<std::shared_mutex> lock(m_functionsMutex);
         infos.reserve(m_functions.size());
         for (auto& iter : m_functions)
         {
-            yomk::FuncInfo info;
+            yomk::payload::FuncInfo info;
             info.m_funcName = iter.first;
             info.m_msgName = iter.second.m_msgName;
             info.m_description = iter.second.m_description;

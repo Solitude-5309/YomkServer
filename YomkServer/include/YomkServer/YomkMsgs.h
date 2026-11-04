@@ -196,30 +196,6 @@ struct VoidPointer
     void* m_ptr = nullptr;
 };
 
-}  // namespace payload
-}  // namespace yomk
-
-namespace yomk
-{
-namespace msgs
-{
-
-template <class Msg>
-std::shared_ptr<Msg> unPack(const YomkPkgPtr& pkg)
-{
-    if (pkg && pkg->name() == Msg::kName)
-    {
-        return std::dynamic_pointer_cast<Msg>(pkg);
-    }
-    return nullptr;
-}
-
-}  // namespace msgs
-}  // namespace yomk
-
-namespace yomk
-{
-
 struct FuncInfo
 {
     std::string m_funcName;     // 功能函数名（/开头）
@@ -276,6 +252,25 @@ struct ServerServiceInfo
     std::vector<FuncInfo> m_funcs;  // 函数元信息（与 /function 单查同族，m_funcName 带 / 前缀 url 段）
 };
 
+}  // namespace payload
+}  // namespace yomk
+
+namespace yomk
+{
+namespace msgs
+{
+
+template <class Msg>
+std::shared_ptr<Msg> unPack(const YomkPkgPtr& pkg)
+{
+    if (pkg && pkg->name() == Msg::kName)
+    {
+        return std::dynamic_pointer_cast<Msg>(pkg);
+    }
+    return nullptr;
+}
+
+}  // namespace msgs
 }  // namespace yomk
 
 // SDK 消息包目录：框架载荷包 + 内置标准类型包（成员名均为 d）。
@@ -286,36 +281,36 @@ struct ServerServiceInfo
 YomkMsg(yomk::payload::Response, Response, d);
 YomkMsg(yomk::payload::Function, Function, d);
 YomkMsg(yomk::payload::CallFunction, CallFunction, d);
-YomkMsg(yomk::FuncInfo, FuncInfo, d);
+YomkMsg(yomk::payload::FuncInfo, FuncInfo, d);
 // FunctionPool 全量函数内省（getAllFunctionInfo 返回数据；函数总数由 d.size() 承载）
-YomkMsg(std::vector<yomk::FuncInfo>, FuncInfoList, d);
+YomkMsg(std::vector<yomk::payload::FuncInfo>, FuncInfoList, d);
 YomkMsg(yomk::payload::Event, Event, d);
 YomkMsg(yomk::payload::EventLoop, EventLoop, d);
-YomkMsg(yomk::EventLoopInfo, EventLoopInfo, d);
+YomkMsg(yomk::payload::EventLoopInfo, EventLoopInfo, d);
 // EventLoop 全量循环内省（getAllEventLoopInfo 返回数据；m_nextTags 取 3 条与单查缺省一致）
-YomkMsg(std::vector<yomk::EventLoopInfo>, EventLoopInfoList, d);
+YomkMsg(std::vector<yomk::payload::EventLoopInfo>, EventLoopInfoList, d);
 YomkMsg(yomk::payload::LogFile, LogFile, d);
 YomkMsg(yomk::payload::Log, Log, d);
 YomkMsg(yomk::payload::ConsoleLogProxy, ConsoleLogProxy, d);
 YomkMsg(yomk::payload::FileLogProxy, FileLogProxy, d);
 YomkMsg(yomk::payload::LoggerQuery, LoggerQuery, d);
-YomkMsg(yomk::LoggerInfo, LoggerInfo, d);
+YomkMsg(yomk::payload::LoggerInfo, LoggerInfo, d);
 // Logger 控制台全局主闸态（getGlobalLoggerLevel 返回数据：四级别主闸开关 + proxy）
-YomkMsg(yomk::LoggerState, LoggerState, d);
+YomkMsg(yomk::payload::LoggerState, LoggerState, d);
 // Logger 全量内省（getAllLoggerInfo 返回数据；元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段）
-YomkMsg(std::vector<yomk::LoggerInfo>, LoggerInfoList, d);
+YomkMsg(std::vector<yomk::payload::LoggerInfo>, LoggerInfoList, d);
 YomkMsg(yomk::payload::Context, Context, d);
 // Context 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键，组名缺省 main）
 YomkMsg(yomk::payload::ContextGroupKey, ContextGroupKey, d);
-YomkMsg(yomk::ContextKeyInfo, ContextKeyInfo, d);
+YomkMsg(yomk::payload::ContextKeyInfo, ContextKeyInfo, d);
 // Context 键元信息清单（ContextGroupInfo.m_keys 的元素类型）
-YomkMsg(std::vector<yomk::ContextKeyInfo>, ContextKeyInfoList, d);
+YomkMsg(std::vector<yomk::payload::ContextKeyInfo>, ContextKeyInfoList, d);
 // Context 组级内省条目（ContextGroupInfoList 元素；层级为组 → 键元信息）
-YomkMsg(yomk::ContextGroupInfo, ContextGroupInfo, d);
+YomkMsg(yomk::payload::ContextGroupInfo, ContextGroupInfo, d);
 // Context 组级全量内省（getAllContextInfo 返回数据）
-YomkMsg(std::vector<yomk::ContextGroupInfo>, ContextGroupInfoList, d);
+YomkMsg(std::vector<yomk::payload::ContextGroupInfo>, ContextGroupInfoList, d);
 // ServerInfo 全量拓扑内省（getAllServerInfo 返回数据；层级为服务 → 函数元信息）
-YomkMsg(std::vector<yomk::ServerServiceInfo>, ServerServiceInfoList, d);
+YomkMsg(std::vector<yomk::payload::ServerServiceInfo>, ServerServiceInfoList, d);
 YomkMsg(yomk::payload::ContextChecker, ContextChecker, d);
 YomkMsg(yomk::payload::ContextMonitor, ContextMonitor, d);
 YomkMsg(yomk::payload::VoidPointer, VoidPointer, d);

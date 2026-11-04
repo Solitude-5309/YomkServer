@@ -726,7 +726,7 @@ static uint64_t introspectionRounds(uint64_t entries)
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listPkg)
+static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listPkg)
 {
     if (!listPkg)
     {
@@ -1370,7 +1370,7 @@ int main()
              gsPkg->d.m_errorOn && gsPkg->d.m_proxyOn),
             "S4B: 全局主闸状态全 on（proxy 已在 S1D 安装）");
         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
-        const yomk::LoggerState* st = firstConsoleState(listPkg);
+        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
             "S4B: ALL 首条 console 条目逐器门控真值全 on（未做具名开关，含 proxyOn）");

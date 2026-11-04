@@ -178,7 +178,7 @@ static void logVerify(const std::string& text)
 
 // 自省结果展开：单键 ContextKeyInfo 的全部字段逐行展示（键名行 + 5 个字段行），
 // INFO_KEY 与 INFO_ALL 共用；紧随其结果行输出，键名行以 "-" 起头、字段行缩进对齐
-static void logKeyInfo(const std::string& api, const yomk::ContextKeyInfo& info)
+static void logKeyInfo(const std::string& api, const yomk::payload::ContextKeyInfo& info)
 {
     std::ostringstream oss;
     oss << "[" << api << "] - " << info.m_key;

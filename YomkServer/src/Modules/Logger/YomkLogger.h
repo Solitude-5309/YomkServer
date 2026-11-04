@@ -43,16 +43,16 @@ private:
     yomk::payload::Response fileGlobalState(YomkPkgPtr pkg);
     // 取控制台全局主闸态：四个级别开关独立 atomic + proxy 叶子锁，均在表锁外独立作用域取
     // （/console_global_state 端点返回体）
-    yomk::LoggerState currentConsoleState();
+    yomk::payload::LoggerState currentConsoleState();
     // 取单条 console 条目状态：四级别 = logger.isLevelOn 逐器层真值（条目不做两层 AND 代算），
     // proxyOn 由调用点在表锁外取好传入
-    yomk::LoggerState namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn);
+    yomk::payload::LoggerState namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn);
     // 取文件全局主闸态（/file_global_state 端点返回体）：四个级别开关独立 atomic，
     // 与控制台主闸相互独立；proxyOn 为文件代理态（独立叶子锁，与控制台代理各自独立）
-    yomk::LoggerState currentFileState();
+    yomk::payload::LoggerState currentFileState();
     // 取单条 file 条目状态：四级别 = logger.isLevelOn 逐器层真值（条目不做两层 AND 代算），
     // proxyOn 由调用点传入（文件代理态）
-    yomk::LoggerState namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn);
+    yomk::payload::LoggerState namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn);
 
 private:
     // 锁序约定：需要同时读取两张 logger 表时（listAll 内省快照），

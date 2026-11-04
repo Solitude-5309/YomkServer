@@ -132,7 +132,7 @@ static void logAction(const std::string& op)
 
 // 自省结果展开：单循环 EventLoopInfo 的全部字段逐行展示（循环名行 + 字段行），
 // INFO_LOOP 与 INFO_ALL 共用；紧随其结果行输出，循环名行以 "-" 起头、字段行缩进对齐
-static void logLoopInfo(const std::string& api, const yomk::EventLoopInfo& info)
+static void logLoopInfo(const std::string& api, const yomk::payload::EventLoopInfo& info)
 {
     std::ostringstream oss;
     oss << "[" << api << "] - " << info.m_loopName;

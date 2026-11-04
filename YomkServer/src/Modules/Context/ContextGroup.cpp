@@ -292,7 +292,7 @@ std::vector<std::string> ContextGroup::keys()
     return keyList;
 }
 
-int ContextGroup::keyInfo(const std::string& key, yomk::ContextKeyInfo& info)
+int ContextGroup::keyInfo(const std::string& key, yomk::payload::ContextKeyInfo& info)
 {
     if (key.empty())
     {
@@ -309,7 +309,7 @@ int ContextGroup::keyInfo(const std::string& key, yomk::ContextKeyInfo& info)
     }
     // 命中：锁内填充结构化快照（info 重置后逐字段赋值，出参回传全部元数据）
     const auto& ctx = itContext->second;
-    info = yomk::ContextKeyInfo();
+    info = yomk::payload::ContextKeyInfo();
     info.m_key = ctx.key;
     info.m_typeName = ctx.value ? ctx.value->name() : "";
     info.m_checkerOn = static_cast<bool>(ctx.checker);
@@ -326,16 +326,16 @@ int ContextGroup::keyInfo(const std::string& key, yomk::ContextKeyInfo& info)
 }
 
 // 内省：全量键元信息快照，锁内构造、值返回（快照携带所属组名）
-std::vector<yomk::ContextKeyInfo> ContextGroup::listAll()
+std::vector<yomk::payload::ContextKeyInfo> ContextGroup::listAll()
 {
-    std::vector<yomk::ContextKeyInfo> infos;
+    std::vector<yomk::payload::ContextKeyInfo> infos;
     {
         std::shared_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         infos.reserve(m_contexts.size());
         for (auto& iter : m_contexts)
         {
             const auto& ctx = iter.second;
-            yomk::ContextKeyInfo info;
+            yomk::payload::ContextKeyInfo info;
             info.m_key = ctx.key;
             info.m_typeName = ctx.value ? ctx.value->name() : "";
             info.m_checkerOn = static_cast<bool>(ctx.checker);

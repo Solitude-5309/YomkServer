@@ -146,7 +146,7 @@ static void logStringLine(const std::string& api, const std::string& line)
 // 自省结果展开：单个函数 FuncInfo 的全部字段逐行展示（函数名行 + 字段行），
 // FUNCTIONS 清单与 FUNCTION 单查共用；紧随其结果行输出，函数名行以 "-" 起头、
 // 字段行缩进对齐，元数据为空时兜底"(未指定)"
-static void logFuncInfo(const std::string& api, const yomk::FuncInfo& info)
+static void logFuncInfo(const std::string& api, const yomk::payload::FuncInfo& info)
 {
     std::ostringstream oss;
     oss << "[" << api << "] - " << info.m_funcName;
@@ -168,7 +168,7 @@ static void logSrvLine(const std::string& api, const std::string& srvName)
     YOMK_INFO_TAG("arm.demo", "[" + api + "] - " + srvName);
 }
 
-static void logTopologyFunc(const std::string& api, const yomk::FuncInfo& info)
+static void logTopologyFunc(const std::string& api, const yomk::payload::FuncInfo& info)
 {
     // 二级函数行退两级空格：相对服务名行（"- " 前缀，内容起始差 2 字符）再深一层，
     // 层级差 4 字符在长日志前缀下依然分明
