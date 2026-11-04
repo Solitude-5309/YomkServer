@@ -54,7 +54,7 @@ public:
     // 功能函数统一签名：yomk::Response(YomkPkgPtr pkg)
     yomk::Response hello(YomkPkgPtr pkg)
     {
-        auto msg = yomk::unPack<yomkmsg::String>(pkg); // 类型校验与解包；类型不匹配时 msg 为 nullptr，需自行判空
+        auto msg = yomk::unPack<yomk::msgs::String>(pkg); // 类型校验与解包；类型不匹配时 msg 为 nullptr，需自行判空
         if (!msg)
         {
             return {yomk::ResStatus::Failed, "pkg is not String"};
@@ -72,7 +72,7 @@ int main()
     YomkAPI::newService<MyService>();
 
     // 3. 同步请求服务
-    yomk::Response ret = YomkAPI::request("/MyService/hello", yomkmsg::String::shared("yomk"));
+    yomk::Response ret = YomkAPI::request("/MyService/hello", yomk::msgs::String::shared("yomk"));
     if (ret.m_status == yomk::ResStatus::Succeeded)
     {
         YOMK_INFO("Response received:", ret.m_msg);
@@ -102,7 +102,7 @@ int main()
 
 ### 2. 消息包 (YomkPkg)
 
-服务与事件循环间传递强类型数据：`YomkMsg(DataType, MsgName, VarName)` 宏声明自定义消息，`yomkmsg::消息名::shared(...)` 构造消息包，`yomk::unPack<yomkmsg::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型。
+服务与事件循环间传递强类型数据：`YomkMsg(DataType, MsgName, VarName)` 宏声明自定义消息，`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::unPack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型。
 
 详见 [消息包](Docs/YomkPkg.md)。
 

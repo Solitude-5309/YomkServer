@@ -90,7 +90,7 @@ static void logResp(const std::string& api, const yomk::Response& resp)
     oss << ", msg=\"" << resp.m_msg << "\"";
     if (resp.m_status == yomk::ResStatus::Succeeded && resp.m_data)
     {
-        auto data = yomk::unPack<yomkmsg::String>(resp.m_data);
+        auto data = yomk::unPack<yomk::msgs::String>(resp.m_data);
         if (data)
         {
             oss << ", data=\"" << data->d << "\"";
@@ -170,7 +170,7 @@ static void logVerify(const std::string& text)
 yomk::Response payloadSum(YomkPkgPtr pkg)
 {
     // 解包入参：宏已自动判空，失败自动返回 {ResStatus::Failed, "错误信息"}（空参守卫见场景 3）
-    auto loads = yomk::unPack<yomkmsg::StringArray>(pkg);
+    auto loads = yomk::unPack<yomk::msgs::StringArray>(pkg);
     if (!loads)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not StringArray"};
@@ -191,13 +191,13 @@ yomk::Response payloadSum(YomkPkgPtr pkg)
     YOMK_INFO_TAG("arm.tool", oss.str());
 
     // msg 描述结果，m_data 携带结果数据——调用方两者都能拿到
-    return {yomk::ResStatus::Succeeded, "payload=" + std::to_string(totalKg) + "kg", yomkmsg::String::shared(std::to_string(totalKg))};
+    return {yomk::ResStatus::Succeeded, "payload=" + std::to_string(totalKg) + "kg", yomk::msgs::String::shared(std::to_string(totalKg))};
 }
 
 // 班次握手工具：演示带元数据的登记与调用（场景 2 以 4 参形式登记，场景 4 被热替换）
 yomk::Response handshake(YomkPkgPtr pkg)
 {
-    auto worker = yomk::unPack<yomkmsg::String>(pkg);
+    auto worker = yomk::unPack<yomk::msgs::String>(pkg);
     if (!worker)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -230,7 +230,7 @@ static void showArmToolRegister()
 
     logAction(
         "调用负载合计工具 tool.payloadSum", "CALL tool.payloadSum",
-        [&] { return YomkAPI::callFunction("tool.payloadSum", yomkmsg::StringArray::shared(std::vector<std::string>{"12", "8", "5"})); });
+        [&] { return YomkAPI::callFunction("tool.payloadSum", yomk::msgs::StringArray::shared(std::vector<std::string>{"12", "8", "5"})); });
     logVerify("arm.tool 日志夹在开始行与结果行之间——CALL 在调用方线程同步执行；返回值即函数返回值，msg 与 data 双份携带 payload=25kg");
 }
 
@@ -251,7 +251,7 @@ static void showArmToolMeta()
     logAction("查看握手工具元信息");
     yomk::Response resp = YomkAPI::getFunctionInfo("tool.handshake");
     logResp("INFO_NAME tool.handshake", resp);
-    auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
+    auto info = yomk::unPack<yomk::msgs::FuncInfo>(resp.m_data);
     if (info)
     {
         logFuncInfo("INFO_NAME", info->d);
@@ -260,7 +260,7 @@ static void showArmToolMeta()
 
     logAction(
         "调用班次握手工具 tool.handshake", "CALL tool.handshake",
-        [&] { return YomkAPI::callFunction("tool.handshake", yomkmsg::String::shared("张工")); });
+        [&] { return YomkAPI::callFunction("tool.handshake", yomk::msgs::String::shared("张工")); });
 }
 
 // 场景 3：空参调用统一守卫
@@ -293,7 +293,7 @@ static void showArmToolHotSwap()
     // 直接内联进宏会让预处理器把逗号误当实参分隔符
     YomkServiceFunc handshakeV2 = [](YomkPkgPtr pkg) -> yomk::Response
     {
-        auto worker = yomk::unPack<yomkmsg::String>(pkg);
+        auto worker = yomk::unPack<yomk::msgs::String>(pkg);
         if (!worker)
         {
             return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -312,7 +312,7 @@ static void showArmToolHotSwap()
     logAction("复查握手工具元信息");
     yomk::Response resp = YomkAPI::getFunctionInfo("tool.handshake");
     logResp("INFO_NAME tool.handshake", resp);
-    auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
+    auto info = yomk::unPack<yomk::msgs::FuncInfo>(resp.m_data);
     if (info)
     {
         logFuncInfo("INFO_NAME", info->d);
@@ -321,7 +321,7 @@ static void showArmToolHotSwap()
 
     logAction(
         "调用升级后的握手工具 tool.handshake", "CALL tool.handshake (V2)",
-        [&] { return YomkAPI::callFunction("tool.handshake", yomkmsg::String::shared("张工")); });
+        [&] { return YomkAPI::callFunction("tool.handshake", yomk::msgs::String::shared("张工")); });
     logVerify("arm.tool 日志为 V2 文案：热替换立即生效，旧实现不再被调用");
 }
 
@@ -339,7 +339,7 @@ static void showArmToolDashboard()
     logAction("巡检函数名清单");
     yomk::Response namesResp = YomkAPI::listFunctionNames();
     logResp("INFO_NAMES", namesResp);
-    auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::unPack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr)
     {
         for (const auto& funcName : nameArr->d)
@@ -357,7 +357,7 @@ static void showArmToolDashboard()
     logAction("全量导出工具元信息");
     resp = YomkAPI::getAllFunctionInfo();
     logResp("INFO_ALL", resp);
-    auto allArr = yomk::unPack<yomkmsg::FuncInfoList>(resp.m_data);
+    auto allArr = yomk::unPack<yomk::msgs::FuncInfoList>(resp.m_data);
     if (allArr)
     {
         for (const auto& info : allArr->d)
@@ -398,7 +398,7 @@ static void showArmToolCleanup()
     logAction("巡检清单确认已清空");
     yomk::Response allResp = YomkAPI::getAllFunctionInfo();
     logResp("INFO_ALL", allResp);
-    auto allArr = yomk::unPack<yomkmsg::FuncInfoList>(allResp.m_data);
+    auto allArr = yomk::unPack<yomk::msgs::FuncInfoList>(allResp.m_data);
     logVerify(allArr && allArr->d.empty() ? "函数清单已空：班次结束，工具柜清空，班次闭环" : "函数清单非空：存在未注销工具");
 }
 

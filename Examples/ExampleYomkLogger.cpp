@@ -301,7 +301,7 @@ static void showArmSilentMode()
     logAction("复查 MainLogger 开关状态");
     yomk::Response resp = YomkAPI::getLoggerInfo("MainLogger", "console");
     logResp("getLoggerInfo MainLogger(console)", resp);
-    auto info = yomk::unPack<yomkmsg::LoggerInfo>(resp.m_data);
+    auto info = yomk::unPack<yomk::msgs::LoggerInfo>(resp.m_data);
     if (info)
     {
         logLoggerInfo("getLoggerInfo", info->d);
@@ -318,7 +318,7 @@ static void showArmSilentMode()
     logAction("复查全局主闸状态");
     yomk::Response gResp = YomkAPI::getGlobalLoggerLevel();
     logResp("getGlobalLoggerLevel", gResp);
-    auto gs = yomk::unPack<yomkmsg::LoggerState>(gResp.m_data);
+    auto gs = yomk::unPack<yomk::msgs::LoggerState>(gResp.m_data);
     if (gs)
     {
         std::ostringstream oss;
@@ -328,7 +328,7 @@ static void showArmSilentMode()
         YOMK_INFO_TAG("arm.demo", oss.str());
     }
     yomk::Response jResp = YomkAPI::getLoggerInfo("arm.joint", "console");
-    auto jInfo = yomk::unPack<yomkmsg::LoggerInfo>(jResp.m_data);
+    auto jInfo = yomk::unPack<yomk::msgs::LoggerInfo>(jResp.m_data);
     if (jInfo)
     {
         logLoggerInfo("getLoggerInfo arm.joint", jInfo->d);
@@ -366,7 +366,7 @@ static void showArmBlackbox(const std::string& logDir)
     logAction("查看代理安装状态");
     yomk::Response resp = YomkAPI::getLoggerInfo("MainLogger", "console");
     logResp("getLoggerInfo MainLogger(console)", resp);
-    auto proxyInfo = yomk::unPack<yomkmsg::LoggerInfo>(resp.m_data);
+    auto proxyInfo = yomk::unPack<yomk::msgs::LoggerInfo>(resp.m_data);
     if (proxyInfo)
     {
         logLoggerInfo("getLoggerInfo", proxyInfo->d);
@@ -383,7 +383,7 @@ static void showArmBlackbox(const std::string& logDir)
     logAction("复查代理状态");
     resp = YomkAPI::getLoggerInfo("MainLogger", "console");
     logResp("getLoggerInfo MainLogger(console)", resp);
-    auto offInfo = yomk::unPack<yomkmsg::LoggerInfo>(resp.m_data);
+    auto offInfo = yomk::unPack<yomk::msgs::LoggerInfo>(resp.m_data);
     if (offInfo)
     {
         logLoggerInfo("getLoggerInfo", offInfo->d);
@@ -394,7 +394,7 @@ static void showArmBlackbox(const std::string& logDir)
     logAction("安装文件日志代理", "setFileLogProxy fileDebugProxy", [&] { return YomkAPI::setFileLogProxy(fileDebugProxy); });
     resp = YomkAPI::getGlobalLoggerLevel("file");
     logResp("getGlobalLoggerLevel file", resp);
-    auto fgs = yomk::unPack<yomkmsg::LoggerState>(resp.m_data);
+    auto fgs = yomk::unPack<yomk::msgs::LoggerState>(resp.m_data);
     if (fgs)
     {
         std::ostringstream oss;
@@ -450,7 +450,7 @@ static void showArmShiftLog(const std::string& logDir)
     logAction("静默期间存档通报（INFO，被门控吞掉）", "YOMK_FILE_INFO shiftlog", [&] { return YOMK_FILE_INFO("shiftlog", "静默期间此行不应落盘"); });
     yomk::Response resp = YomkAPI::getGlobalLoggerLevel("file");
     logResp("getGlobalLoggerLevel file", resp);
-    auto fgs = yomk::unPack<yomkmsg::LoggerState>(resp.m_data);
+    auto fgs = yomk::unPack<yomk::msgs::LoggerState>(resp.m_data);
     if (fgs)
     {
         std::ostringstream oss;
@@ -483,7 +483,7 @@ static void showArmLoggerDashboard()
     logAction("巡检控制台日志器清单");
     yomk::Response consoleResp = YomkAPI::listLoggers("console");
     logResp("listLoggers console", consoleResp);
-    auto consoleArr = yomk::unPack<yomkmsg::StringArray>(consoleResp.m_data);
+    auto consoleArr = yomk::unPack<yomk::msgs::StringArray>(consoleResp.m_data);
     if (consoleArr)
     {
         for (const auto& loggerName : consoleArr->d)
@@ -496,7 +496,7 @@ static void showArmLoggerDashboard()
     logAction("巡检文件日志器清单");
     yomk::Response fileResp = YomkAPI::listLoggers("file");
     logResp("listLoggers file", fileResp);
-    auto fileArr = yomk::unPack<yomkmsg::StringArray>(fileResp.m_data);
+    auto fileArr = yomk::unPack<yomk::msgs::StringArray>(fileResp.m_data);
     if (fileArr)
     {
         for (const auto& loggerName : fileArr->d)
@@ -509,7 +509,7 @@ static void showArmLoggerDashboard()
     logAction("单查班次存档器 shiftlog");
     yomk::Response resp = YomkAPI::getLoggerInfo("shiftlog", "file");
     logResp("getLoggerInfo shiftlog(file)", resp);
-    auto shiftInfo = yomk::unPack<yomkmsg::LoggerInfo>(resp.m_data);
+    auto shiftInfo = yomk::unPack<yomk::msgs::LoggerInfo>(resp.m_data);
     if (shiftInfo)
     {
         logLoggerInfo("getLoggerInfo", shiftInfo->d);
@@ -524,7 +524,7 @@ static void showArmLoggerDashboard()
     logAction("全量导出日志器状态");
     resp = YomkAPI::getAllLoggerInfo();
     logResp("getAllLoggerInfo", resp);
-    auto allArr = yomk::unPack<yomkmsg::LoggerInfoList>(resp.m_data);
+    auto allArr = yomk::unPack<yomk::msgs::LoggerInfoList>(resp.m_data);
     if (allArr)
     {
         for (const auto& info : allArr->d)
@@ -538,7 +538,7 @@ static void showArmLoggerDashboard()
     logAction("复查控制台侧全局主闸状态");
     resp = YomkAPI::getGlobalLoggerLevel("console");
     logResp("getGlobalLoggerLevel console", resp);
-    auto gs = yomk::unPack<yomkmsg::LoggerState>(resp.m_data);
+    auto gs = yomk::unPack<yomk::msgs::LoggerState>(resp.m_data);
     if (gs)
     {
         std::ostringstream oss;
@@ -550,7 +550,7 @@ static void showArmLoggerDashboard()
     logAction("复查文件侧全局主闸状态");
     resp = YomkAPI::getGlobalLoggerLevel("file");
     logResp("getGlobalLoggerLevel file", resp);
-    auto fgs = yomk::unPack<yomkmsg::LoggerState>(resp.m_data);
+    auto fgs = yomk::unPack<yomk::msgs::LoggerState>(resp.m_data);
     if (fgs)
     {
         std::ostringstream oss;
@@ -591,7 +591,7 @@ static void showArmLogCleanup(const std::string& logDir)
     logAction("复查控制台清单确认重建");
     yomk::Response resp = YomkAPI::listLoggers("console");
     logResp("listLoggers console", resp);
-    auto consoleArr = yomk::unPack<yomkmsg::StringArray>(resp.m_data);
+    auto consoleArr = yomk::unPack<yomk::msgs::StringArray>(resp.m_data);
     if (consoleArr)
     {
         for (const auto& loggerName : consoleArr->d)

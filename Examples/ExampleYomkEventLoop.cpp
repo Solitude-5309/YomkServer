@@ -190,7 +190,7 @@ static void logLoopLine(const std::string& api, const std::string& loopName)
 // 第 1 条指令执行时递归投递 3 条微调指令排到队尾——同循环 FIFO 的直观证据
 yomk::Response motionHandle(YomkPkgPtr pkg)
 {
-    auto cmd = yomk::unPack<yomkmsg::String>(pkg);
+    auto cmd = yomk::unPack<yomk::msgs::String>(pkg);
     if (!cmd)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -208,7 +208,7 @@ yomk::Response motionHandle(YomkPkgPtr pkg)
         for (int i = 1; i <= 3; ++i)
         {
             YomkAPI::postEvent(
-                "motionLoop", yomkmsg::String::shared("fine" + std::to_string(i)), nullptr, "fine" + std::to_string(i));
+                "motionLoop", yomk::msgs::String::shared("fine" + std::to_string(i)), nullptr, "fine" + std::to_string(i));
         }
         YOMK_INFO_TAG("arm.motion", "指令 mv1 触发 3 条微调指令，已追加到队列尾部");
     }
@@ -219,7 +219,7 @@ yomk::Response motionHandle(YomkPkgPtr pkg)
 // 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 START 2 参时指定）
 yomk::Response teachHandle(YomkPkgPtr pkg)
 {
-    auto msg = yomk::unPack<yomkmsg::String>(pkg);
+    auto msg = yomk::unPack<yomk::msgs::String>(pkg);
     if (!msg)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -251,7 +251,7 @@ static void showArmLineStart()
     logAction("查看循环运行状态");
     yomk::Response resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop", resp);
-    auto info = yomk::unPack<yomkmsg::EventLoopInfo>(resp.m_data);
+    auto info = yomk::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (info)
     {
         logLoopInfo("INFO_LOOP", info->d);
@@ -281,13 +281,13 @@ static void showArmMotionQueue()
         logAction(
             "下发运动指令 " + cmd,
             "POST motionLoop",
-            [&] { return YomkAPI::postEvent("motionLoop", yomkmsg::String::shared(cmd), nullptr, cmd); });
+            [&] { return YomkAPI::postEvent("motionLoop", yomk::msgs::String::shared(cmd), nullptr, cmd); });
     }
 
     logAction("立即观察队列积压");
     yomk::Response resp = YomkAPI::getEventLoopInfo("motionLoop", 5);
     logResp("INFO_LOOP motionLoop(5)", resp);
-    auto backlog = yomk::unPack<yomkmsg::EventLoopInfo>(resp.m_data);
+    auto backlog = yomk::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (backlog)
     {
         logLoopInfo("INFO_LOOP", backlog->d);
@@ -300,7 +300,7 @@ static void showArmMotionQueue()
     logAction("排空后复查");
     resp = YomkAPI::getEventLoopInfo("motionLoop", 5);
     logResp("INFO_LOOP motionLoop(5)", resp);
-    auto drained = yomk::unPack<yomkmsg::EventLoopInfo>(resp.m_data);
+    auto drained = yomk::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (drained)
     {
         logLoopInfo("INFO_LOOP", drained->d);
@@ -327,13 +327,13 @@ static void showArmDualLoop()
     // 两循环交错投递：各自专用线程并行消费，日志交错出现；
     // 操作行带指令名，与循环线程的消费日志一一对应
     logAction(
-        "主控下发轨迹指令 track1", "POST motionLoop", [&] { return YomkAPI::postEvent("motionLoop", yomkmsg::String::shared("track1"), nullptr, "track1"); });
+        "主控下发轨迹指令 track1", "POST motionLoop", [&] { return YomkAPI::postEvent("motionLoop", yomk::msgs::String::shared("track1"), nullptr, "track1"); });
     logAction(
-        "示教器记录示教点 point1", "POST teachLoop", [&] { return YomkAPI::postEvent("teachLoop", yomkmsg::String::shared("point1"), nullptr, "point1"); });
+        "示教器记录示教点 point1", "POST teachLoop", [&] { return YomkAPI::postEvent("teachLoop", yomk::msgs::String::shared("point1"), nullptr, "point1"); });
     logAction(
-        "主控下发轨迹指令 track2", "POST motionLoop", [&] { return YomkAPI::postEvent("motionLoop", yomkmsg::String::shared("track2"), nullptr, "track2"); });
+        "主控下发轨迹指令 track2", "POST motionLoop", [&] { return YomkAPI::postEvent("motionLoop", yomk::msgs::String::shared("track2"), nullptr, "track2"); });
     logAction(
-        "示教器记录示教点 point2", "POST teachLoop", [&] { return YomkAPI::postEvent("teachLoop", yomkmsg::String::shared("point2"), nullptr, "point2"); });
+        "示教器记录示教点 point2", "POST teachLoop", [&] { return YomkAPI::postEvent("teachLoop", yomk::msgs::String::shared("point2"), nullptr, "point2"); });
 
     YOMK_INFO_TAG("arm.demo", "等待两循环消费（各 2 条 x 200ms）...");
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
@@ -351,7 +351,7 @@ static void showArmMotionSyncWait()
         "执行完毕才返回（14-4 起 API 仅回 ResStatus，回传 Event 载荷不再经 API 暴露）。");
 
     logAction(
-        "下发回原点指令并等待完成", "POST_WAIT motionLoop", [&] { return YomkAPI::postEventAndWait("motionLoop", yomkmsg::String::shared("goHome")); });
+        "下发回原点指令并等待完成", "POST_WAIT motionLoop", [&] { return YomkAPI::postEventAndWait("motionLoop", yomk::msgs::String::shared("goHome")); });
     logVerify("POST_WAIT 返回时回原点已在循环线程执行完毕（耗时 200ms）——返回即已执行");
 }
 
@@ -372,7 +372,7 @@ static void showArmTempHandler()
     logAction(
         "投递紧急巡检任务（临时函数）",
         "POST_WAIT motionLoop (tempHandle)",
-        [&] { return YomkAPI::postEventAndWait("motionLoop", yomkmsg::String::shared("safetyCheck"), tempHandle); });
+        [&] { return YomkAPI::postEventAndWait("motionLoop", yomk::msgs::String::shared("safetyCheck"), tempHandle); });
     logVerify("临时函数优先于默认函数执行（处理函数返回值不再经 API 回传）：POST_WAIT 返回即已执行");
 }
 
@@ -387,15 +387,15 @@ static void showArmLinePause()
 
     // 投递 2 条积压指令后立即暂停：线程停止但事件保留在队列
     logAction(
-        "下发待消化指令 hold1", "POST motionLoop", [&] { return YomkAPI::postEvent("motionLoop", yomkmsg::String::shared("hold1"), nullptr, "hold1"); });
+        "下发待消化指令 hold1", "POST motionLoop", [&] { return YomkAPI::postEvent("motionLoop", yomk::msgs::String::shared("hold1"), nullptr, "hold1"); });
     logAction(
-        "下发待消化指令 hold2", "POST motionLoop", [&] { return YomkAPI::postEvent("motionLoop", yomkmsg::String::shared("hold2"), nullptr, "hold2"); });
+        "下发待消化指令 hold2", "POST motionLoop", [&] { return YomkAPI::postEvent("motionLoop", yomk::msgs::String::shared("hold2"), nullptr, "hold2"); });
     logAction("暂停运动循环", "STOP motionLoop", [&] { return YomkAPI::stopEventLoop("motionLoop"); });
 
     logAction("查看暂停后状态");
     yomk::Response resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop", resp);
-    auto paused = yomk::unPack<yomkmsg::EventLoopInfo>(resp.m_data);
+    auto paused = yomk::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (paused)
     {
         logLoopInfo("INFO_LOOP", paused->d);
@@ -403,7 +403,7 @@ static void showArmLinePause()
     logVerify("running=off 且积压事件保留在队列：STOP 只停线程不清队列，可续跑");
 
     logAction(
-        "停止态投递被拒", "POST motionLoop (已停止)", [&] { return YomkAPI::postEvent("motionLoop", yomkmsg::String::shared("rejected")); });
+        "停止态投递被拒", "POST motionLoop (已停止)", [&] { return YomkAPI::postEvent("motionLoop", yomk::msgs::String::shared("rejected")); });
     logVerify("停止后投递 -> ResStatus::Failed(event loop not running, post rejected)：循环未运行不接收新事件");
 
     logAction("恢复运行（续跑）", "START motionLoop (续跑)", [&] { return YomkAPI::startEventLoop("motionLoop", motionHandle, "String"); });
@@ -413,7 +413,7 @@ static void showArmLinePause()
     logAction("确认积压已消化");
     resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop", resp);
-    auto resumed = yomk::unPack<yomkmsg::EventLoopInfo>(resp.m_data);
+    auto resumed = yomk::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (resumed)
     {
         logLoopInfo("INFO_LOOP", resumed->d);
@@ -435,7 +435,7 @@ static void showArmDashboard()
     logAction("巡检循环名清单");
     yomk::Response loopsResp = YomkAPI::listEventLoops();
     logResp("INFO_LOOPS", loopsResp);
-    auto loopArr = yomk::unPack<yomkmsg::StringArray>(loopsResp.m_data);
+    auto loopArr = yomk::unPack<yomk::msgs::StringArray>(loopsResp.m_data);
     if (loopArr)
     {
         for (const auto& loopName : loopArr->d)
@@ -448,7 +448,7 @@ static void showArmDashboard()
     logAction("抽查运动循环详情");
     yomk::Response loopResp = YomkAPI::getEventLoopInfo("motionLoop", 3);
     logResp("INFO_LOOP motionLoop(3)", loopResp);
-    auto loopInfo = yomk::unPack<yomkmsg::EventLoopInfo>(loopResp.m_data);
+    auto loopInfo = yomk::unPack<yomk::msgs::EventLoopInfo>(loopResp.m_data);
     if (loopInfo)
     {
         logLoopInfo("INFO_LOOP", loopInfo->d);
@@ -459,7 +459,7 @@ static void showArmDashboard()
     logAction("全量导出循环状态");
     yomk::Response allResp = YomkAPI::getAllEventLoopInfo();
     logResp("INFO_ALL", allResp);
-    auto allArr = yomk::unPack<yomkmsg::EventLoopInfoList>(allResp.m_data);
+    auto allArr = yomk::unPack<yomk::msgs::EventLoopInfoList>(allResp.m_data);
     if (allArr)
     {
         for (const auto& info : allArr->d)
@@ -485,11 +485,11 @@ static void showArmLineOff()
     logAction("巡检清单确认已清空");
     yomk::Response loopsResp = YomkAPI::listEventLoops();
     logResp("INFO_LOOPS", loopsResp);
-    auto loopArr = yomk::unPack<yomkmsg::StringArray>(loopsResp.m_data);
+    auto loopArr = yomk::unPack<yomk::msgs::StringArray>(loopsResp.m_data);
     logVerify(loopArr && loopArr->d.empty() ? "循环清单已空：机械臂班次结束，全部专用线程已下线" : "循环清单非空：存在未销毁循环");
 
     logAction(
-        "已销毁循环投递被拒", "POST motionLoop (已销毁)", [&] { return YomkAPI::postEvent("motionLoop", yomkmsg::String::shared("any")); });
+        "已销毁循环投递被拒", "POST motionLoop (已销毁)", [&] { return YomkAPI::postEvent("motionLoop", yomk::msgs::String::shared("any")); });
     logAction("已销毁循环停止被拒", "STOP motionLoop (已销毁)", [&] { return YomkAPI::stopEventLoop("motionLoop"); });
     logAction("已销毁循环查询被拒");
     yomk::Response resp = YomkAPI::getEventLoopInfo("motionLoop");

@@ -121,7 +121,7 @@ static void logResp(const std::string& api, const yomk::Response& resp)
     oss << ", msg=\"" << resp.m_msg << "\"";
     if (resp.m_status == yomk::ResStatus::Succeeded && resp.m_data)
     {
-        auto data = yomk::unPack<yomkmsg::String>(resp.m_data);
+        auto data = yomk::unPack<yomk::msgs::String>(resp.m_data);
         if (data)
         {
             oss << ", data=\"" << data->d << "\"";
@@ -238,7 +238,7 @@ static void showArmPowerOnRegister()
     logAction("复查控制柜在册服务清单");
     yomk::Response namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
-    auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::unPack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -262,16 +262,16 @@ static void showArmLinkCheck()
 
     logAction(
         "通讯自检：请求运动服务回环", "REQUEST /MotionService/echo",
-        [&] { return YomkAPI::request("/MotionService/echo", yomkmsg::String::shared("ping")); });
+        [&] { return YomkAPI::request("/MotionService/echo", yomk::msgs::String::shared("ping")); });
     logVerify("arm.motion 日志夹在开始行与结果行之间——REQUEST 在调用方线程同步执行；回包 data 携带回显文本");
 
     logAction(
         "请求不存在的服务 /GhostService", "REQUEST /GhostService/echo",
-        [&] { return YomkAPI::request("/GhostService/echo", yomkmsg::String::shared("ping")); });
+        [&] { return YomkAPI::request("/GhostService/echo", yomk::msgs::String::shared("ping")); });
 
     logAction(
         "请求运动服务不存在的函数", "REQUEST /MotionService/not_exist",
-        [&] { return YomkAPI::request("/MotionService/not_exist", yomkmsg::String::shared("ping")); });
+        [&] { return YomkAPI::request("/MotionService/not_exist", yomk::msgs::String::shared("ping")); });
     logVerify("两种 not-found 均为 ResStatus::Failed 且 msg 说明原因：寻址失败是普通返回值，不报错不崩溃");
 }
 
@@ -299,7 +299,7 @@ static void showArmAsyncTeach()
     };
 
     logAction("异步下发示教点自检请求");
-    YomkAPI::asyncRequest("/MotionService/echo", yomkmsg::String::shared("teach point #1"), onTeachDone);
+    YomkAPI::asyncRequest("/MotionService/echo", yomk::msgs::String::shared("teach point #1"), onTeachDone);
     logVerify("ASYNC_REQUEST 无同步结果行：发送即返回，控制回路不等回调");
 
     // 等待异步回调送达，保证回调日志先于下一条验证行出现、可读
@@ -322,11 +322,11 @@ static void showArmMoveChain()
     MoveCmd moveCmd{100.0, 50.0, 200.0, 0.8};
     yomk::Response moveResp = logAction(
         "下发运动指令：运动到 (100.0, 50.0, 200.0)mm", "REQUEST /MotionService/move",
-        [&] { return YomkAPI::request("/MotionService/move", yomkmsg::MoveCmd::shared(moveCmd)); });
+        [&] { return YomkAPI::request("/MotionService/move", yomk::msgs::MoveCmd::shared(moveCmd)); });
 
     logAction("展开到位回执 MoveResp");
     std::ostringstream oss;
-    auto respPkg = yomk::unPack<yomkmsg::MoveResp>(moveResp.m_data);
+    auto respPkg = yomk::unPack<yomk::msgs::MoveResp>(moveResp.m_data);
     if (respPkg)
     {
         oss << "[REQUEST /MotionService/move] | MoveResp 到位 (" << respPkg->resp.m_reachX << ", "
@@ -355,7 +355,7 @@ static void showArmIntrospect()
     logAction("查阅运动工位职能清单");
     yomk::Response funcsResp = YomkAPI::listServiceFunctions("/MotionService");
     logResp("INFO_FUNCTIONS /MotionService", funcsResp);
-    auto listPkg = yomk::unPack<yomkmsg::FuncInfoList>(funcsResp.m_data);
+    auto listPkg = yomk::unPack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
     {
         for (const auto& func : listPkg->d)
@@ -368,7 +368,7 @@ static void showArmIntrospect()
     logAction("调阅运动指令函数名片");
     yomk::Response resp = YomkAPI::getServiceFunctionInfoByUrl("/MotionService/move");
     logResp("INFO_FUNCTION /MotionService/move", resp);
-    auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
+    auto info = yomk::unPack<yomk::msgs::FuncInfo>(resp.m_data);
     if (info)
     {
         logFuncInfo("INFO_FUNCTION", info->d);
@@ -389,7 +389,7 @@ static void showArmStationUpgrade()
 
     logAction(
         "直调留痕钩子（替换前）", "callFunction telemetry_hook (V1)",
-        [&] { return YomkAPI::callFunction("telemetry_hook", yomkmsg::String::shared("diag check V1")); });
+        [&] { return YomkAPI::callFunction("telemetry_hook", yomk::msgs::String::shared("diag check V1")); });
     logVerify("留痕记录 [实例#1]：diag check V1——钩子由当前实例 init 注册、按名直调");
 
     logActionInt(
@@ -400,7 +400,7 @@ static void showArmStationUpgrade()
 
     logAction(
         "直调留痕钩子（替换后）", "callFunction telemetry_hook (V2)",
-        [&] { return YomkAPI::callFunction("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
+        [&] { return YomkAPI::callFunction("telemetry_hook", yomk::msgs::String::shared("diag check V2")); });
     logVerify("留痕记录 [实例#2]：diag check V2——旧实例已删除而钩子仍可用，钩子确已换新");
 }
 
@@ -425,13 +425,13 @@ static void showArmStationOffline()
 
     logAction(
         "直调留痕钩子（已下线）", "callFunction telemetry_hook (已下线)",
-        [&] { return YomkAPI::callFunction("telemetry_hook", yomkmsg::String::shared("diag check V2")); });
+        [&] { return YomkAPI::callFunction("telemetry_hook", yomk::msgs::String::shared("diag check V2")); });
     logVerify("钩子返回 ResStatus::Failed(service has been deleted or unregistered)：弱绑定失效，删除即停不悬垂");
 
     MoveCmd moveCmd{100.0, 50.0, 200.0, 0.8};
     logAction(
         "重发运动指令（留痕缺失）", "REQUEST /MotionService/move",
-        [&] { return YomkAPI::request("/MotionService/move", yomkmsg::MoveCmd::shared(moveCmd)); });
+        [&] { return YomkAPI::request("/MotionService/move", yomk::msgs::MoveCmd::shared(moveCmd)); });
     logVerify("move 返回 ResStatus::Failed(move failed: ...)：留痕是运动的依赖前置，失败沿调用链传播");
 }
 
@@ -449,7 +449,7 @@ static void showArmPowerOff()
     logAction("导出收班终态拓扑（摘要）");
     yomk::Response allResp = YomkAPI::getAllServerInfo();
     logResp("INFO_ALL", allResp);
-    auto list = yomk::unPack<yomkmsg::ServerServiceInfoList>(allResp.m_data);
+    auto list = yomk::unPack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
     if (list)
     {
         for (const auto& srv : list->d)
@@ -466,7 +466,7 @@ static void showArmPowerOff()
         "收班断电：优雅关闭框架", "SHUTDOWN + REQUEST (关闭后守卫)",
         [&] {
             YomkAPI::shutdown();
-            return YomkAPI::request("/MotionService/echo", yomkmsg::String::shared("after shutdown"));
+            return YomkAPI::request("/MotionService/echo", yomk::msgs::String::shared("after shutdown"));
         });
 }
 

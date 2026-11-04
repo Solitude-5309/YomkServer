@@ -35,7 +35,7 @@ int ConfigService::init()
 yomk::Response ConfigService::loadConfig(YomkPkgPtr pkg)
 {
     // 从 Context 获取配置文件路径
-    auto ctxVal = YomkAPI::getContext<yomkmsg::String>(CTX_CONFIG_PATH, nullptr);
+    auto ctxVal = YomkAPI::getContext<yomk::msgs::String>(CTX_CONFIG_PATH, nullptr);
     if (!ctxVal)
         return yomk::Response(yomk::ResStatus::Failed, "config_path not found in context");
     m_configPath = ctxVal->d;
@@ -66,7 +66,7 @@ yomk::Response ConfigService::loadConfig(YomkPkgPtr pkg)
 
 yomk::Response ConfigService::getConfig(YomkPkgPtr pkg)
 {
-    auto data = yomk::unPack<yomkmsg::ConfigKey>(pkg);
+    auto data = yomk::unPack<yomk::msgs::ConfigKey>(pkg);
     if (!data)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not ConfigKey"};
@@ -78,12 +78,12 @@ yomk::Response ConfigService::getConfig(YomkPkgPtr pkg)
         return yomk::Response(yomk::ResStatus::Failed, "key not found: " + data->req.key);
     }
 
-    return yomk::Response(yomk::ResStatus::Succeeded, "ok", yomkmsg::String::shared(it->second));
+    return yomk::Response(yomk::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(it->second));
 }
 
 yomk::Response ConfigService::setConfig(YomkPkgPtr pkg)
 {
-    auto data = yomk::unPack<yomkmsg::ConfigKeyValue>(pkg);
+    auto data = yomk::unPack<yomk::msgs::ConfigKeyValue>(pkg);
     if (!data)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not ConfigKeyValue"};
@@ -103,5 +103,5 @@ yomk::Response ConfigService::reloadConfig(YomkPkgPtr pkg)
 yomk::Response ConfigService::version(YomkPkgPtr pkg)
 {
     // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
-    return yomk::Response(yomk::ResStatus::Succeeded, "ok", yomkmsg::String::shared(std::string(APP_VERSION)));
+    return yomk::Response(yomk::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(std::string(APP_VERSION)));
 }

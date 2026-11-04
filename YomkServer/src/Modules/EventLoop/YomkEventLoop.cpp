@@ -25,7 +25,7 @@ int YomkEventLoop::init()
 
 yomk::Response YomkEventLoop::start(YomkPkgPtr pkg)
 {
-    auto eventloop = yomk::unPack<yomkmsg::EventLoop>(pkg);
+    auto eventloop = yomk::unPack<yomk::msgs::EventLoop>(pkg);
     if (!eventloop)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not EventLoop"};
@@ -48,7 +48,7 @@ yomk::Response YomkEventLoop::start(YomkPkgPtr pkg)
 
 yomk::Response YomkEventLoop::stop(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    auto str = yomk::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -67,7 +67,7 @@ yomk::Response YomkEventLoop::stop(YomkPkgPtr pkg)
 
 yomk::Response YomkEventLoop::post(YomkPkgPtr pkg)
 {
-    auto event = yomk::unPack<yomkmsg::Event>(pkg);
+    auto event = yomk::unPack<yomk::msgs::Event>(pkg);
     if (!event)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Event"};
@@ -91,7 +91,7 @@ yomk::Response YomkEventLoop::post(YomkPkgPtr pkg)
 
 yomk::Response YomkEventLoop::postWait(YomkPkgPtr pkg)
 {
-    auto event = yomk::unPack<yomkmsg::Event>(pkg);
+    auto event = yomk::unPack<yomk::msgs::Event>(pkg);
     if (!event)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Event"};
@@ -115,7 +115,7 @@ yomk::Response YomkEventLoop::postWait(YomkPkgPtr pkg)
 
 yomk::Response YomkEventLoop::destroy(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    auto str = yomk::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -145,13 +145,13 @@ yomk::Response YomkEventLoop::loops(YomkPkgPtr pkg)
             loopNames.push_back(item.first);
         }
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::StringArray::shared(loopNames)};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(loopNames)};
 }
 
 // 内省：单个事件循环元信息，入参 String 格式：循环名 或 循环名 N（N 缺省 3）
 yomk::Response YomkEventLoop::loopInfo(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    auto str = yomk::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -195,7 +195,7 @@ yomk::Response YomkEventLoop::loopInfo(YomkPkgPtr pkg)
     yomk::EventLoopInfo info;
     info.m_loopName = loopName;
     eventLoop->infoSnapshot(info, tagCount);
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::EventLoopInfo::shared(info)};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::EventLoopInfo::shared(info)};
 }
 
 // 内省：全部事件循环元信息，锁内拷贝快照、锁外逐循环取结构化快照（m_msg 恒 "ok"，数据走 m_data）
@@ -221,5 +221,5 @@ yomk::Response YomkEventLoop::listAll(YomkPkgPtr pkg)
         eventLoops[i]->infoSnapshot(info, 3);
         infos.push_back(std::move(info));
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::EventLoopInfoList::shared(infos)};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::EventLoopInfoList::shared(infos)};
 }

@@ -8,7 +8,7 @@
 |---|---|
 | `YomkAPI::createContext(key, pkg)` | 创建上下文键值 |
 | `YomkAPI::setContext(key, pkg)` | 设置上下文值（整体替换） |
-| `YomkAPI::getContext<yomkmsg::MsgName>(key, defaultValue)` | 读取只读快照；key 不存在时返回兜底默认值 |
+| `YomkAPI::getContext<yomk::msgs::MsgName>(key, defaultValue)` | 读取只读快照；key 不存在时返回兜底默认值 |
 | `YomkAPI::setContextChecker(key, func)` | 注册变更前校验门控 |
 | `YomkAPI::enableContextChecker()` / `YomkAPI::disableContextChecker()` | 开关全局校验器（checker 保留但不生效） |
 | `YomkAPI::setContextMonitor(key, func, async)` | 注册变更后监听器（追加式可注册多个） |
@@ -20,11 +20,11 @@
 
 ```cpp
 // 1. 创建与设置上下文键值
-YomkAPI::createContext("config", yomkmsg::String::shared("init_value"));
-YomkAPI::setContext("config", yomkmsg::String::shared("new_value"));
+YomkAPI::createContext("config", yomk::msgs::String::shared("init_value"));
+YomkAPI::setContext("config", yomk::msgs::String::shared("new_value"));
 
 // 2. 读取上下文（只读快照；key 不存在时返回兜底默认值）
-auto val = YomkAPI::getContext<yomkmsg::String>("config", nullptr);
+auto val = YomkAPI::getContext<yomk::msgs::String>("config", nullptr);
 
 // 3. 注册变更前校验门控（Checker）
 YomkAPI::setContextChecker("config", [](const yomk::Context &ctx) {

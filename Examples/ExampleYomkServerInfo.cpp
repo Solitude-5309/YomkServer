@@ -98,7 +98,7 @@ static void logResp(const std::string& api, const yomk::Response& resp)
     oss << ", msg=\"" << resp.m_msg << "\"";
     if (resp.m_status == yomk::ResStatus::Succeeded && resp.m_data)
     {
-        auto data = yomk::unPack<yomkmsg::String>(resp.m_data);
+        auto data = yomk::unPack<yomk::msgs::String>(resp.m_data);
         if (data)
         {
             oss << ", data=\"" << data->d << "\"";
@@ -182,7 +182,7 @@ static void logTopologyFunc(const std::string& api, const yomk::FuncInfo& info)
 
 static void logTopology(const std::string& api, const yomk::Response& resp)
 {
-    auto list = yomk::unPack<yomkmsg::ServerServiceInfoList>(resp.m_data);
+    auto list = yomk::unPack<yomk::msgs::ServerServiceInfoList>(resp.m_data);
     if (!list)
     {
         return;
@@ -249,7 +249,7 @@ public:
     // 工位状态上报：收到状态文本回执确认
     yomk::Response report(YomkPkgPtr pkg)
     {
-        auto status = yomk::unPack<yomkmsg::String>(pkg);
+        auto status = yomk::unPack<yomk::msgs::String>(pkg);
         if (!status)
         {
             return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -263,7 +263,7 @@ public:
     // 质量抽检：解包 QualityCheckReq，按件抽检并回执结论
     yomk::Response qualityCheck(YomkPkgPtr pkg)
     {
-        auto data = yomk::unPack<yomkmsg::QualityCheckReq>(pkg);
+        auto data = yomk::unPack<yomk::msgs::QualityCheckReq>(pkg);
         if (!data)
         {
             return {yomk::ResStatus::Failed, "pkg is null or pkg is not QualityCheckReq"};
@@ -295,7 +295,7 @@ static void showArmPlantRoster()
     logAction("开班点名：查询产线在册服务");
     yomk::Response namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
-    auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::unPack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -310,7 +310,7 @@ static void showArmPlantRoster()
     logAction("复查在册服务清单");
     namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
-    auto nameArr2 = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
+    auto nameArr2 = yomk::unPack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr2)
     {
         for (const auto& srvName : nameArr2->d)
@@ -322,13 +322,13 @@ static void showArmPlantRoster()
 
     logAction(
         "试运行工位功能：状态上报", "REQUEST /ArmStation/report",
-        [&] { return YomkAPI::request("/ArmStation/report", yomkmsg::String::shared("joint ready")); });
+        [&] { return YomkAPI::request("/ArmStation/report", yomk::msgs::String::shared("joint ready")); });
 
     // 入参先赋具名变量：聚合初始化含逗号，直接内联进宏会被预处理器误当实参分隔符
     QualityCheckReq checkReq{"S3", 5};
     logAction(
         "试运行工位功能：质量抽检", "REQUEST /ArmStation/quality_check",
-        [&] { return YomkAPI::request("/ArmStation/quality_check", yomkmsg::QualityCheckReq::shared(checkReq)); });
+        [&] { return YomkAPI::request("/ArmStation/quality_check", yomk::msgs::QualityCheckReq::shared(checkReq)); });
     logVerify("arm.station 日志夹在开始行与结果行之间——REQUEST 在调用方线程同步执行；返回值即函数返回值，msg 携带回执");
 }
 
@@ -346,7 +346,7 @@ static void showArmStationFunctions()
     logAction("查阅装配工位职能清单");
     yomk::Response funcsResp = YomkAPI::listServiceFunctions("/ArmStation");
     logResp("INFO_FUNCTIONS /ArmStation", funcsResp);
-    auto listPkg = yomk::unPack<yomkmsg::FuncInfoList>(funcsResp.m_data);
+    auto listPkg = yomk::unPack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
     {
         for (const auto& func : listPkg->d)
@@ -381,7 +381,7 @@ static void showArmFuncLookup()
     logAction("调阅质量抽检函数名片");
     yomk::Response resp = YomkAPI::getServiceFunctionInfoByUrl("/ArmStation/quality_check");
     logResp("INFO_FUNCTION /ArmStation/quality_check", resp);
-    auto info = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
+    auto info = yomk::unPack<yomk::msgs::FuncInfo>(resp.m_data);
     if (info)
     {
         logFuncInfo("INFO_FUNCTION", info->d);
@@ -391,7 +391,7 @@ static void showArmFuncLookup()
     logAction("调阅状态上报函数名片");
     resp = YomkAPI::getServiceFunctionInfoByUrl("/ArmStation/report");
     logResp("INFO_FUNCTION /ArmStation/report", resp);
-    auto reportInfo = yomk::unPack<yomkmsg::FuncInfo>(resp.m_data);
+    auto reportInfo = yomk::unPack<yomk::msgs::FuncInfo>(resp.m_data);
     if (reportInfo)
     {
         logFuncInfo("INFO_FUNCTION", reportInfo->d);
@@ -446,7 +446,7 @@ static void showArmLiveView()
     logAction("复查在册服务清单");
     yomk::Response namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
-    auto nameArr = yomk::unPack<yomkmsg::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::unPack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -459,7 +459,7 @@ static void showArmLiveView()
     logAction("复查全厂拓扑终态");
     yomk::Response allResp = YomkAPI::getAllServerInfo();
     logResp("INFO_ALL", allResp);
-    auto list = yomk::unPack<yomkmsg::ServerServiceInfoList>(allResp.m_data);
+    auto list = yomk::unPack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
     if (list)
     {
         for (const auto& srv : list->d)

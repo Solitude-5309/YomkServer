@@ -37,7 +37,7 @@ void TelemetryService::deinit()
 
 yomk::Response TelemetryService::record(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomkmsg::String>(pkg);  // String 为框架内置消息类型
+    auto str = yomk::unPack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
     if (!str)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};

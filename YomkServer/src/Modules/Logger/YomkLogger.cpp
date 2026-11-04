@@ -50,7 +50,7 @@ int YomkLogger::init()
 
 yomk::Response YomkLogger::consoleLog(YomkPkgPtr pkg)
 {
-    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    auto log = yomk::unPack<yomk::msgs::Log>(pkg);
     if (!log)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -127,7 +127,7 @@ yomk::Response YomkLogger::consoleLog(YomkPkgPtr pkg)
 
 yomk::Response YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
 {
-    auto consoleLogProxy = yomk::unPack<yomkmsg::ConsoleLogProxy>(pkg);
+    auto consoleLogProxy = yomk::unPack<yomk::msgs::ConsoleLogProxy>(pkg);
     if (!consoleLogProxy)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not ConsoleLogProxy"};
@@ -142,7 +142,7 @@ yomk::Response YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
 
 yomk::Response YomkLogger::setFileLogProxy(YomkPkgPtr pkg)
 {
-    auto fileLogProxy = yomk::unPack<yomkmsg::FileLogProxy>(pkg);
+    auto fileLogProxy = yomk::unPack<yomk::msgs::FileLogProxy>(pkg);
     if (!fileLogProxy)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not FileLogProxy"};
@@ -157,7 +157,7 @@ yomk::Response YomkLogger::setFileLogProxy(YomkPkgPtr pkg)
 
 yomk::Response YomkLogger::createFileLogger(YomkPkgPtr pkg)
 {
-    auto logFile = yomk::unPack<yomkmsg::LogFile>(pkg);
+    auto logFile = yomk::unPack<yomk::msgs::LogFile>(pkg);
     if (!logFile)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not LogFile"};
@@ -196,7 +196,7 @@ yomk::Response YomkLogger::createFileLogger(YomkPkgPtr pkg)
 
 yomk::Response YomkLogger::fileLog(YomkPkgPtr pkg)
 {
-    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    auto log = yomk::unPack<yomk::msgs::Log>(pkg);
     if (!log)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -261,7 +261,7 @@ yomk::Response YomkLogger::fileLog(YomkPkgPtr pkg)
 
 yomk::Response YomkLogger::writeFileLog(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    auto str = yomk::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -280,7 +280,7 @@ yomk::Response YomkLogger::writeFileLog(YomkPkgPtr pkg)
 
 yomk::Response YomkLogger::deleteLogger(YomkPkgPtr pkg)
 {
-    auto yName = yomk::unPack<yomkmsg::String>(pkg);
+    auto yName = yomk::unPack<yomk::msgs::String>(pkg);
     if (!yName)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -328,7 +328,7 @@ yomk::Response YomkLogger::deleteLogger(YomkPkgPtr pkg)
 
 yomk::Response YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
 {
-    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    auto log = yomk::unPack<yomk::msgs::Log>(pkg);
     if (!log)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -365,7 +365,7 @@ yomk::Response YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
 
 yomk::Response YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
 {
-    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    auto log = yomk::unPack<yomk::msgs::Log>(pkg);
     if (!log)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -437,7 +437,7 @@ yomk::Response YomkLogger::setNamedConsoleLevel(const std::string& loggerName, L
 
 yomk::Response YomkLogger::offFileLogByLevel(YomkPkgPtr pkg)
 {
-    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    auto log = yomk::unPack<yomk::msgs::Log>(pkg);
     if (!log)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -474,7 +474,7 @@ yomk::Response YomkLogger::offFileLogByLevel(YomkPkgPtr pkg)
 
 yomk::Response YomkLogger::onFileLogByLevel(YomkPkgPtr pkg)
 {
-    auto log = yomk::unPack<yomkmsg::Log>(pkg);
+    auto log = yomk::unPack<yomk::msgs::Log>(pkg);
     if (!log)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -546,7 +546,7 @@ yomk::Response YomkLogger::setNamedFileLevel(const std::string& loggerName, Log:
 
 yomk::Response YomkLogger::loggers(YomkPkgPtr pkg)
 {
-    auto type = yomk::unPack<yomkmsg::String>(pkg);
+    auto type = yomk::unPack<yomk::msgs::String>(pkg);
     if (!type)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -573,12 +573,12 @@ yomk::Response YomkLogger::loggers(YomkPkgPtr pkg)
     }
     // 单表为 std::map，中序遍历天然字典序，无需排序（选型见 YomkLogger.h）
     // move 入包消除全量拷贝
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::StringArray::shared(std::move(names))};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(std::move(names))};
 }
 
 yomk::Response YomkLogger::loggerInfo(YomkPkgPtr pkg)
 {
-    auto query = yomk::unPack<yomkmsg::LoggerQuery>(pkg);
+    auto query = yomk::unPack<yomk::msgs::LoggerQuery>(pkg);
     if (!query)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not LoggerQuery"};
@@ -609,7 +609,7 @@ yomk::Response YomkLogger::loggerInfo(YomkPkgPtr pkg)
         }
         info.m_type = "console";
         info.m_loggerState = namedConsoleState(consoleLogger, proxyOn);
-        return {yomk::ResStatus::Succeeded, "ok", yomkmsg::LoggerInfo::shared(std::move(info))};
+        return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::LoggerInfo::shared(std::move(info))};
     }
     if (query->d.m_type == "file")
     {
@@ -634,7 +634,7 @@ yomk::Response YomkLogger::loggerInfo(YomkPkgPtr pkg)
         info.m_type = "file";
         info.m_dir = fileLogger->getDir();
         info.m_loggerState = namedFileState(fileLogger, proxyOn);
-        return {yomk::ResStatus::Succeeded, "ok", yomkmsg::LoggerInfo::shared(std::move(info))};
+        return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::LoggerInfo::shared(std::move(info))};
     }
     YOMK_ERR_POS_LOG("unknown logger type: " + query->d.m_type + ".");
     return yomk::Response(yomk::ResStatus::Failed, "unknown logger type.");
@@ -739,19 +739,19 @@ yomk::Response YomkLogger::listAll(YomkPkgPtr pkg)
         }
     }
     // std::map 天然字典序（console 段在前、file 段在后）；m_msg 恒 "ok"，数据走 m_data
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::LoggerInfoList::shared(std::move(loggers))};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::LoggerInfoList::shared(std::move(loggers))};
 }
 
 // 控制台全局主闸态内省（无参形态同 /all；m_msg 恒 "ok"，LoggerState 包走 m_data）
 yomk::Response YomkLogger::consoleGlobalState(YomkPkgPtr pkg)
 {
     (void)pkg;
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::LoggerState::shared(currentConsoleState())};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::LoggerState::shared(currentConsoleState())};
 }
 
 // 文件全局主闸态内省（无参形态同 /all；m_msg 恒 "ok"，LoggerState 包走 m_data）
 yomk::Response YomkLogger::fileGlobalState(YomkPkgPtr pkg)
 {
     (void)pkg;
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::LoggerState::shared(currentFileState())};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::LoggerState::shared(currentFileState())};
 }

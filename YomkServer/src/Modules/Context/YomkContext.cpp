@@ -82,7 +82,7 @@ ContextGroup* YomkContext::findGroup(const std::string& groupName, yomk::Respons
 
 yomk::Response YomkContext::create(YomkPkgPtr pkg)
 {
-    auto context = yomk::unPack<yomkmsg::Context>(pkg);
+    auto context = yomk::unPack<yomk::msgs::Context>(pkg);
     if (!context)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Context"};
@@ -113,7 +113,7 @@ yomk::Response YomkContext::create(YomkPkgPtr pkg)
 
 yomk::Response YomkContext::destroy(YomkPkgPtr pkg)
 {
-    auto groupKey = yomk::unPack<yomkmsg::ContextGroupKey>(pkg);
+    auto groupKey = yomk::unPack<yomk::msgs::ContextGroupKey>(pkg);
     if (!groupKey)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not ContextGroupKey"};
@@ -136,7 +136,7 @@ yomk::Response YomkContext::destroy(YomkPkgPtr pkg)
 
 yomk::Response YomkContext::get(YomkPkgPtr pkg)
 {
-    auto context = yomk::unPack<yomkmsg::Context>(pkg);
+    auto context = yomk::unPack<yomk::msgs::Context>(pkg);
     if (!context)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Context"};
@@ -164,7 +164,7 @@ yomk::Response YomkContext::get(YomkPkgPtr pkg)
 
 yomk::Response YomkContext::set(YomkPkgPtr pkg)
 {
-    auto context = yomk::unPack<yomkmsg::Context>(pkg);
+    auto context = yomk::unPack<yomk::msgs::Context>(pkg);
     if (!context)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not Context"};
@@ -199,7 +199,7 @@ yomk::Response YomkContext::set(YomkPkgPtr pkg)
 
 yomk::Response YomkContext::turnOnChecker(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    auto str = yomk::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -217,7 +217,7 @@ yomk::Response YomkContext::turnOnChecker(YomkPkgPtr pkg)
 
 yomk::Response YomkContext::turnOffChecker(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    auto str = yomk::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -235,7 +235,7 @@ yomk::Response YomkContext::turnOffChecker(YomkPkgPtr pkg)
 
 yomk::Response YomkContext::turnOnMonitor(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    auto str = yomk::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -253,7 +253,7 @@ yomk::Response YomkContext::turnOnMonitor(YomkPkgPtr pkg)
 
 yomk::Response YomkContext::turnOffMonitor(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    auto str = yomk::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -271,7 +271,7 @@ yomk::Response YomkContext::turnOffMonitor(YomkPkgPtr pkg)
 
 yomk::Response YomkContext::setChecker(YomkPkgPtr pkg)
 {
-    auto checker = yomk::unPack<yomkmsg::ContextChecker>(pkg);
+    auto checker = yomk::unPack<yomk::msgs::ContextChecker>(pkg);
     if (!checker)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not ContextChecker"};
@@ -302,7 +302,7 @@ yomk::Response YomkContext::setChecker(YomkPkgPtr pkg)
 
 yomk::Response YomkContext::setMonitor(YomkPkgPtr pkg)
 {
-    auto monitor = yomk::unPack<yomkmsg::ContextMonitor>(pkg);
+    auto monitor = yomk::unPack<yomk::msgs::ContextMonitor>(pkg);
     if (!monitor)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not ContextMonitor"};
@@ -343,12 +343,12 @@ yomk::Response YomkContext::groups(YomkPkgPtr pkg)
             groupNames.push_back(iter.first);
         }
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::StringArray::shared(groupNames)};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(groupNames)};
 }
 
 yomk::Response YomkContext::keys(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomkmsg::String>(pkg);
+    auto str = yomk::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -361,12 +361,12 @@ yomk::Response YomkContext::keys(YomkPkgPtr pkg)
     }
 
     std::vector<std::string> keyList = group->keys();
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::StringArray::shared(keyList)};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(keyList)};
 }
 
 yomk::Response YomkContext::keyInfo(YomkPkgPtr pkg)
 {
-    auto groupKey = yomk::unPack<yomkmsg::ContextGroupKey>(pkg);
+    auto groupKey = yomk::unPack<yomk::msgs::ContextGroupKey>(pkg);
     if (!groupKey)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not ContextGroupKey"};
@@ -389,7 +389,7 @@ yomk::Response YomkContext::keyInfo(YomkPkgPtr pkg)
     {
         return yomk::Response(yomk::ResStatus::Failed, "key is not exist");
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::ContextKeyInfo::shared(info)};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::ContextKeyInfo::shared(info)};
 }
 
 yomk::Response YomkContext::listAll(YomkPkgPtr pkg)
@@ -418,5 +418,5 @@ yomk::Response YomkContext::listAll(YomkPkgPtr pkg)
         info.m_keys = group->listAll();
         groups.push_back(std::move(info));
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::ContextGroupInfoList::shared(std::move(groups))};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::ContextGroupInfoList::shared(std::move(groups))};
 }

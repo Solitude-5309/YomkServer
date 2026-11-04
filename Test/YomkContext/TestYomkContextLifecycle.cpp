@@ -96,15 +96,15 @@ int main()
     // ============ Section 2: 基线运行（异步 monitor 池工作）============
     {
         YomkAPI::enableContextMonitor();
-        auto cr = YomkAPI::createContext("life_base", yomkmsg::String::shared(std::string("b0")));
+        auto cr = YomkAPI::createContext("life_base", yomk::msgs::String::shared(std::string("b0")));
         YOMK_TEST_CHECK(cr == yomk::ResStatus::Succeeded, "创建 life_base 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(
             "life_base", [](const yomk::Context&) { ++g_asyncCalls; }, /*async=*/true);
 
-        YomkAPI::setContext("life_base", yomkmsg::String::shared(std::string("b1")));
-        YomkAPI::setContext("life_base", yomkmsg::String::shared(std::string("b2")));
+        YomkAPI::setContext("life_base", yomk::msgs::String::shared(std::string("b1")));
+        YomkAPI::setContext("life_base", yomk::msgs::String::shared(std::string("b2")));
 
         bool reached = waitForCount(g_asyncCalls, 2, 2000);
         YOMK_TEST_CHECK(reached && g_asyncCalls.load() == 2, "基线：异步 monitor 池正常工作（计数 == 2）");
@@ -114,7 +114,7 @@ int main()
     // ============ Section 3: delService 触发 deinit + 排空 ============
     {
         YomkAPI::enableContextMonitor();
-        auto cr = YomkAPI::createContext("life_drain", yomkmsg::String::shared(std::string("d0")));
+        auto cr = YomkAPI::createContext("life_drain", yomk::msgs::String::shared(std::string("d0")));
         YOMK_TEST_CHECK(cr == yomk::ResStatus::Succeeded, "创建 life_drain 成功");
 
         g_asyncCalls.store(0);
@@ -124,7 +124,7 @@ int main()
         const int N = 50;
         for (int i = 0; i < N; ++i)
         {
-            YomkAPI::setContext("life_drain", yomkmsg::String::shared(std::string("d") + std::to_string(i)));
+            YomkAPI::setContext("life_drain", yomk::msgs::String::shared(std::string("d") + std::to_string(i)));
         }
 
         // 立即删除服务：触发 markDeleted + deinit 排空 monitor 池
@@ -157,16 +157,16 @@ int main()
         YOMK_TEST_CHECK(infos.size() == 14, "重新注册后 init 重新装配 14 个功能函数");
 
         YomkAPI::enableContextMonitor();
-        auto cr = YomkAPI::createContext("life_rebuild", yomkmsg::String::shared(std::string("r0")));
+        auto cr = YomkAPI::createContext("life_rebuild", yomk::msgs::String::shared(std::string("r0")));
         YOMK_TEST_CHECK(cr == yomk::ResStatus::Succeeded, "重新注册后创建 life_rebuild 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(
             "life_rebuild", [](const yomk::Context&) { ++g_asyncCalls; }, /*async=*/true);
 
-        YomkAPI::setContext("life_rebuild", yomkmsg::String::shared(std::string("r1")));
-        YomkAPI::setContext("life_rebuild", yomkmsg::String::shared(std::string("r2")));
-        YomkAPI::setContext("life_rebuild", yomkmsg::String::shared(std::string("r3")));
+        YomkAPI::setContext("life_rebuild", yomk::msgs::String::shared(std::string("r1")));
+        YomkAPI::setContext("life_rebuild", yomk::msgs::String::shared(std::string("r2")));
+        YomkAPI::setContext("life_rebuild", yomk::msgs::String::shared(std::string("r3")));
 
         bool reached = waitForCount(g_asyncCalls, 3, 2000);
         YOMK_TEST_CHECK(reached && g_asyncCalls.load() == 3, "重新注册后 monitor 池重建可用（计数 == 3）");

@@ -41,19 +41,19 @@ YomkMsg(DataType, MsgName, VarName);
 
 **构造与类型引用（全名，无辅助宏）：**
 ```cpp
-yomkmsg::MsgName::shared(...)  // 创建消息包 shared_ptr（类内静态工厂）
-yomkmsg::MsgName               // 消息包类名（独立 yomkmsg 命名空间）
-yomkmsg::MsgNamePtr            // 指针类型别名（using）
-yomkmsg::MsgName(...)          // 栈对象直接构造
+yomk::msgs::MsgName::shared(...)  // 创建消息包 shared_ptr（类内静态工厂）
+yomk::msgs::MsgName               // 消息包类名（yomk::msgs 命名空间）
+yomk::msgs::MsgNamePtr            // 指针类型别名（using）
+yomk::msgs::MsgName(...)          // 栈对象直接构造
 ```
 
-> **入包语义**：`yomkmsg::MsgName` 包类型同时提供 `const DataType &` 与 `DataType &&` 两种构造，`yomkmsg::MsgName::shared(std::move(data))` 即移动入包（大对象可避免拷贝）；传左值时重载决议仍选中 `const&` 版本，行为与逐值拷贝一致。
+> **入包语义**：`yomk::msgs::MsgName` 包类型同时提供 `const DataType &` 与 `DataType &&` 两种构造，`yomk::msgs::MsgName::shared(std::move(data))` 即移动入包（大对象可避免拷贝）；传左值时重载决议仍选中 `const&` 版本，行为与逐值拷贝一致。
 
-> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomkmsg::MsgName`（类）与 `yomkmsg::MsgNamePtr`（指针），与 `yomk` 中的载荷/框架类型隔离以避免重名，引用一律写全名；裸写 `MsgName` 会报 `'MsgName' has not been declared`。消息名称作为字符串字面量仍出现在 `installFunc` 第三参位置（`installFunc` 第三参为手写字符串字面量）；解包由 `yomk::unPack<yomkmsg::MsgName>` 模板实参承担（类型即名字，无需字符串）；框架内运行时字符串解包已内联展开（原 `YomkUnPackPkgT` 宏随闭环 7 删除）。
+> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomk::msgs::MsgName`（类）与 `yomk::msgs::MsgNamePtr`（指针），与 `yomk` 中的载荷/框架类型隔离以避免重名，引用一律写全名；裸写 `MsgName` 会报 `'MsgName' has not been declared`。消息名称作为字符串字面量仍出现在 `installFunc` 第三参位置（`installFunc` 第三参为手写字符串字面量）；解包由 `yomk::unPack<yomk::msgs::MsgName>` 模板实参承担（类型即名字，无需字符串）；框架内运行时字符串解包已内联展开（原 `YomkUnPackPkgT` 宏随闭环 7 删除）。
 
 **解包：**
 ```cpp
-yomk::unPack<yomkmsg::MsgName>(pkg)          // 按消息类型解包模板：返回 shared_ptr，失败返回 nullptr（不自动 return，需手动判空）
+yomk::unPack<yomk::msgs::MsgName>(pkg)          // 按消息类型解包模板：返回 shared_ptr，失败返回 nullptr（不自动 return，需手动判空）
 ```
 
 **installFunc / weakFunc：**
@@ -188,7 +188,7 @@ class YomkService {
 | API | 说明 |
 |----|------|
 | `YomkAPI::createContext(key, val[, group])` | 创建 K-V（key 已存在返回 ResStatus::Failed；val 为 nullptr 拒绝创建返回 ResStatus::Failed；值类型与同 key 现值不一致返回 ResStatus::Failed "context type not match"） |
-| `YomkAPI::getContext<yomkmsg::MsgName>(key, def[, group])` | 获取值（消息类型经 `T::kName` 内省匹配 key，类型只写一次；**返回值对象发布后只读**：改动请新建对象再 `YomkAPI::setContext`，勿原地改；key 不存在时返回兜底默认值 def，调用方永不拿到空指针） |
+| `YomkAPI::getContext<yomk::msgs::MsgName>(key, def[, group])` | 获取值（消息类型经 `T::kName` 内省匹配 key，类型只写一次；**返回值对象发布后只读**：改动请新建对象再 `YomkAPI::setContext`，勿原地改；key 不存在时返回兜底默认值 def，调用方永不拿到空指针） |
 | `YomkAPI::setContext(key, val[, group])` | 设置值 |
 | `YomkAPI::destroyContext(key[, group])` | 销毁（key 不存在返回 ResStatus::Failed） |
 | `YomkAPI::CONTEXT_ON/OFF_CHECKER([group])` | 开关检查器（全局开关 ON 且该 key 已设置 checker 时才生效） |

@@ -26,12 +26,12 @@ yomk::Response YomkServerInfo::listServices(YomkPkgPtr pkg)
         YOMK_ERR_POS_LOG("server has been destroyed, list services ignored.");
         return {yomk::ResStatus::Failed, "server has been destroyed"};
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::StringArray::shared(server->serviceNames())};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(server->serviceNames())};
 }
 
 yomk::Response YomkServerInfo::listFunctions(YomkPkgPtr pkg)
 {
-    auto ySrvName = yomk::unPack<yomkmsg::String>(pkg);
+    auto ySrvName = yomk::unPack<yomk::msgs::String>(pkg);
     if (!ySrvName)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -55,12 +55,12 @@ yomk::Response YomkServerInfo::listFunctions(YomkPkgPtr pkg)
     {
         funcs.push_back(iter.second);
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::FuncInfoList::shared(std::move(funcs))};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfoList::shared(std::move(funcs))};
 }
 
 yomk::Response YomkServerInfo::functionInfo(YomkPkgPtr pkg)
 {
-    auto yUrl = yomk::unPack<yomkmsg::String>(pkg);
+    auto yUrl = yomk::unPack<yomk::msgs::String>(pkg);
     if (!yUrl)
     {
         return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -106,7 +106,7 @@ yomk::Response YomkServerInfo::functionInfo(YomkPkgPtr pkg)
             info.m_funcName = funcName;
             info.m_msgName = iter->second.m_msgName;
             info.m_description = iter->second.m_description;
-            return {yomk::ResStatus::Succeeded, "ok", yomkmsg::FuncInfo::shared(info)};
+            return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfo::shared(info)};
         }
     }
 
@@ -140,5 +140,5 @@ yomk::Response YomkServerInfo::listAll(YomkPkgPtr pkg)
         infos.push_back(std::move(srv));
     }
     // m_msg 恒 "ok"，数据走 m_data（结构化层级包：服务 → 函数元信息）
-    return {yomk::ResStatus::Succeeded, "ok", yomkmsg::ServerServiceInfoList::shared(std::move(infos))};
+    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::ServerServiceInfoList::shared(std::move(infos))};
 }

@@ -94,7 +94,7 @@ private:
     // String 解包回显：验证 pkg 透传往返
     yomk::Response echo(YomkPkgPtr pkg)
     {
-        auto data = yomk::unPack<yomkmsg::String>(pkg);
+        auto data = yomk::unPack<yomk::msgs::String>(pkg);
         if (!data)
         {
             return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -219,7 +219,7 @@ static void testInvoke(DemoService* demo)
     YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded && resp.m_msg == "plain", "invoke 命中，返回函数自身响应");
 
     // 命中：pkg 透传与解包回显（数据往返）
-    resp = demo->invoke("/echo", yomkmsg::String::shared(std::string("hi")));
+    resp = demo->invoke("/echo", yomk::msgs::String::shared(std::string("hi")));
     YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded && resp.m_msg == "echo:hi", "invoke 命中，pkg 透传解包回显正确");
 
     // 命中：函数内解包失败（pkg 为 nullptr）返回 ResStatus::Failed

@@ -213,11 +213,11 @@ int main()
             YomkAPI::stopEventLoop("/guard_loop") == yomk::ResStatus::Invalid,
             "stopEventLoop 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::postEvent("/guard_loop", yomkmsg::String::shared(std::string("x"))) ==
+            YomkAPI::postEvent("/guard_loop", yomk::msgs::String::shared(std::string("x"))) ==
                 yomk::ResStatus::Invalid,
             "YomkAPI::postEvent 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::postEventAndWait("/guard_loop", yomkmsg::String::shared(std::string("x"))) ==
+            YomkAPI::postEventAndWait("/guard_loop", yomk::msgs::String::shared(std::string("x"))) ==
                 yomk::ResStatus::Invalid,
             "YomkAPI::postEventAndWait 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
@@ -242,7 +242,7 @@ int main()
             YomkAPI::unregisterFunction("/guard_func") == yomk::ResStatus::Invalid,
             "unregisterFunction 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::callFunction("/guard_func", yomkmsg::String::shared(std::string("x"))).m_status ==
+            YomkAPI::callFunction("/guard_func", yomk::msgs::String::shared(std::string("x"))).m_status ==
                 yomk::ResStatus::Invalid,
             "callFunction 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
@@ -266,8 +266,8 @@ int main()
             "getServiceFunctionInfoByUrl 未初始化返回 ResStatus::Invalid");
 
         // getContext 特殊形态：守卫返回值即调用方默认值（指针一致）
-        std::shared_ptr<yomkmsg::String> ctxDefault = std::make_shared<yomkmsg::String>("guard_default");
-        std::shared_ptr<yomkmsg::String> ctxGot = YomkAPI::getContext<yomkmsg::String>("guard_key", ctxDefault);
+        std::shared_ptr<yomk::msgs::String> ctxDefault = std::make_shared<yomk::msgs::String>("guard_default");
+        std::shared_ptr<yomk::msgs::String> ctxGot = YomkAPI::getContext<yomk::msgs::String>("guard_key", ctxDefault);
         YOMK_TEST_CHECK(ctxGot == ctxDefault, "getContext 未初始化原样返回调用方默认值");
     }
 

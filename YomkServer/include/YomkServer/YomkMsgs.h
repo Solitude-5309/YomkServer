@@ -9,7 +9,9 @@
 #include "YomkPkg.h"
 
 #define YomkMsg(DataType, MsgName, VarName)                                       \
-    namespace yomkmsg                                                             \
+    namespace yomk                                                                \
+    {                                                                             \
+    namespace msgs                                                                \
     {                                                                             \
     class MsgName : public ::YomkPkg                                              \
     {                                                                             \
@@ -30,6 +32,7 @@
         }                                                                         \
     };                                                                            \
     using MsgName##Ptr = std::shared_ptr<MsgName>;                                \
+    }                                                                             \
     }
 
 namespace yomk
@@ -84,7 +87,7 @@ struct Function
     std::string m_funcName;
     YomkServiceFunc m_func;
     std::string m_msgName;
-    std::string m_description;  
+    std::string m_description;
 };
 
 struct CallFunction
