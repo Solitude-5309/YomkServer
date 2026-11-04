@@ -10,7 +10,8 @@
  * 3. 开关矩阵：3 开关 × 开/关 8 组合逐组断言精确前缀
  *    （[N] / [file:N] / [file:N:main] / [N:main] / [file] / [main] / 全关无前缀），收尾恢复默认
  * 4. emit 直调隔离：模拟 Concurrency/Stress 直调形态（{} 实参 + 显式 tag），
- *    自定义级别全覆盖；开关不影响直调显式内容
+ *    自定义级别全覆盖；开关不影响直调显式内容；快拼接逐类型护栏
+ *    （bool/char/负整型/uint64/浮点/自定义 fallback 类型输出精确匹配）
  *
  * 说明：位置捕获机制 = emit 函数 pack 之前的固定参数 SourceLoc（聚合 + NSDMI），
  *       调用点 {} 在调用行聚合初始化完成捕获；宏在调用行展开注入 {}，
@@ -70,6 +71,17 @@ public:
 private:
     std::stringstream m_ss;
     std::streambuf* m_old;
+};
+
+// S4 快拼接 fallback 护栏：可流输出自定义类型（非算术、不可转 const char*/std::string，
+// 走 emit 层的单参 ostringstream 回退路径）
+struct LgLStreamable
+{
+    int v;
+    friend std::ostream& operator<<(std::ostream& os, const LgLStreamable& s)
+    {
+        return os << "cust<" << s.v << ">";
+    }
 };
 
 static fs::path testTmpRoot()
@@ -327,7 +339,7 @@ int main()
             }
             else
             {
-                // 全关：无位置前缀，content 以空格开头（format() 空串 + 分隔空格）
+                // 全关：无位置前缀，content 以空格开头（appendTo 不追加 + 分隔空格）
                 expect = "[MainLogger]  lgL_s3_---";
                 ok = out.find(expect) != std::string::npos;
             }
@@ -356,6 +368,20 @@ int main()
         YOMK_TEST_CHECK(out.find(" lgL_s4_info") != std::string::npos, "直调 INFO marker 输出");
         YOMK_TEST_CHECK(out.find(" lgL_s4_warn") != std::string::npos, "直调 WARN marker 输出");
         YOMK_TEST_CHECK(out.find(" lgL_s4_error") != std::string::npos, "直调 ERROR marker 输出");
+
+        // 快拼接逐类型护栏：bool（true/false，用户定版语义）、char（字符本体）、
+        // 负整型（含 INT_MIN）、无符号 64 位上界、浮点（%g/%Lg）、自定义类型（fallback）
+        {
+            CoutCapture cap;
+            const unsigned typesLine = __LINE__ + 1;
+            YomkAPI::emitConsoleLogInfo("lgLTag", {}, "lgL_s4_types", true, false, 'a', -42,
+                -2147483648, 18446744073709551615ULL, 3.5, 1.5L, LgLStreamable{7});
+            const std::string out = cap.str();
+            YOMK_TEST_CHECK(out.find("[" + std::to_string(typesLine) + "] lgL_s4_types true false"
+                                     " a -42 -2147483648 18446744073709551615 3.5 1.5 cust<7>")
+                                    != std::string::npos,
+                "逐类型快拼接输出精确匹配 (bool/char/int/uint64/double/long double/fallback)");
+        }
     }
 
     // ============ 收尾清理 ============

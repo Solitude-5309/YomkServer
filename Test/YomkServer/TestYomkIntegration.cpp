@@ -278,6 +278,18 @@ int main()
         YOMK_TEST_CHECK(postInfo.m_status == yomk::ResStatus::Invalid && postInfo.m_msg == "YomkServer is not init",
               "shutdown 后 SERVER_INFO API 回归 ResStatus::Invalid + 守卫消息");
 
+        // 跨线程守卫语义：shutdown 返回后另起线程调用，epoch 已传播（happens-before
+        // 链：setServer 锁外 fetch_add(release) → 本线程 join 前创建子线程 → 子线程
+        // acquire load），确定性走慢路径拿到空快照 → 守卫消息逐字节保留
+        {
+            yomk::Response crossResp(yomk::ResStatus::Succeeded);
+            std::thread worker([&crossResp]() { crossResp = YomkAPI::getAllLoggerInfo(); });
+            worker.join();
+            YOMK_TEST_CHECK(crossResp.m_status == yomk::ResStatus::Invalid &&
+                                crossResp.m_msg == "YomkServer is not init",
+                  "shutdown 后跨线程 LOGGER API 回归 ResStatus::Invalid + 守卫消息（epoch 传播）");
+        }
+
         YomkAPI::shutdown();  // 幂等：二次调用空转安全
         YOMK_TEST_CHECK(true, "shutdown 二次调用幂等无崩溃");
 
