@@ -78,22 +78,22 @@ std::map<std::string, yomk::FuncInfo> YomkService::funcInfos()
     return m_p->funcInfos();
 }
 
-yomk::Response YomkService::invoke(const std::string& funcName, YomkPkgPtr pkg)
+yomk::payload::Response YomkService::invoke(const std::string& funcName, YomkPkgPtr pkg)
 {
     if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
-        return yomk::Response(yomk::ResStatus::Failed, "service is null");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "service is null");
     }
     return m_p->invoke(funcName, pkg);
 }
 
-yomk::Response YomkService::request(const std::string& url, YomkPkgPtr pkg)
+yomk::payload::Response YomkService::request(const std::string& url, YomkPkgPtr pkg)
 {
     if (!m_p)
     {
         YOMK_ERR_POS_LOG("service is null, please check service");
-        return yomk::Response(yomk::ResStatus::Failed, "service is null");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "service is null");
     }
     return m_p->request(url, pkg);
 }

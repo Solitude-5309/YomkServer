@@ -14,25 +14,25 @@ int MotionService::init()
     return 0;
 }
 
-yomk::Response MotionService::echo(YomkPkgPtr pkg)
+yomk::payload::Response MotionService::echo(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
+    auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
     if (!str)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     std::ostringstream oss;
     oss << "通讯自检回环：收到 \"" << str->d << "\"";
     YOMK_INFO_TAG("arm.motion", oss.str());
-    return {yomk::ResStatus::Succeeded, "echo success", yomk::msgs::String::shared("echo: " + str->d)};
+    return {yomk::payload::ResStatus::Succeeded, "echo success", yomk::msgs::String::shared("echo: " + str->d)};
 }
 
-yomk::Response MotionService::move(YomkPkgPtr pkg)
+yomk::payload::Response MotionService::move(YomkPkgPtr pkg)
 {
-    auto cmdPkg = yomk::unPack<yomk::msgs::MoveCmd>(pkg);
+    auto cmdPkg = yomk::msgs::unPack<yomk::msgs::MoveCmd>(pkg);
     if (!cmdPkg)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not MoveCmd"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not MoveCmd"};
     }
 
     std::ostringstream oss;
@@ -44,13 +44,13 @@ yomk::Response MotionService::move(YomkPkgPtr pkg)
     // 留痕是运动的依赖前置，留痕缺失时失败沿调用链传播
     oss.str("");
     oss << "运动留痕：move -> (" << cmdPkg->cmd.m_x << "," << cmdPkg->cmd.m_y << "," << cmdPkg->cmd.m_z << ")mm";
-    yomk::Response traceResp = request("/TelemetryService/record", yomk::msgs::String::shared(oss.str()));
-    if (traceResp.m_status != yomk::ResStatus::Succeeded)
+    yomk::payload::Response traceResp = request("/TelemetryService/record", yomk::msgs::String::shared(oss.str()));
+    if (traceResp.m_status != yomk::payload::ResStatus::Succeeded)
     {
         oss.str("");
         oss << "留痕失败：" << traceResp.m_msg;
         YOMK_INFO_TAG("arm.motion", oss.str());
-        return {yomk::ResStatus::Failed, "move failed: " + traceResp.m_msg};
+        return {yomk::payload::ResStatus::Failed, "move failed: " + traceResp.m_msg};
     }
     oss.str("");
     oss << "留痕回执：" << traceResp.m_msg;
@@ -58,5 +58,5 @@ yomk::Response MotionService::move(YomkPkgPtr pkg)
 
     // 到位回执：m_data 携带强类型 MoveResp，不止能传 String
     MoveResp respData{cmdPkg->cmd.m_x, cmdPkg->cmd.m_y, cmdPkg->cmd.m_z};
-    return {yomk::ResStatus::Succeeded, "move success", yomk::msgs::MoveResp::shared(respData)};
+    return {yomk::payload::ResStatus::Succeeded, "move success", yomk::msgs::MoveResp::shared(respData)};
 }

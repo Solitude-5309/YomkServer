@@ -8,7 +8,7 @@
 |---|---|
 | `YomkMsg(DataType, MsgName, VarName)` | 声明自定义消息类型（建议放置在命名空间之外） |
 | `yomk::msgs::MsgName::shared(...)` | 创建 `shared_ptr` 包装的消息包（类内静态工厂） |
-| `yomk::unPack<yomk::msgs::MsgName>(pkg)` | 按消息类型解包模板：返回 `std::shared_ptr<MsgName>`，pkg 为空或类型名不匹配时返回 `nullptr`，不提前返回；失败处理由调用方手写（如 `if (!ptr) return {...}`） |
+| `yomk::msgs::unPack<yomk::msgs::MsgName>(pkg)` | 按消息类型解包模板：返回 `std::shared_ptr<MsgName>`，pkg 为空或类型名不匹配时返回 `nullptr`，不提前返回；失败处理由调用方手写（如 `if (!ptr) return {...}`） |
 
 ## 内置标准类型
 
@@ -32,12 +32,12 @@ YomkMsg(UserInfo, UserInfoMsg, data);
 auto pkg = yomk::msgs::UserInfoMsg::shared(UserInfo{1001, "Alice"});
 
 // 3. 功能函数中校验并解包
-auto info = yomk::unPack<yomk::msgs::UserInfoMsg>(pkg); // 类型校验与解包；类型不匹配时 info 为 nullptr，需自行判空
+auto info = yomk::msgs::unPack<yomk::msgs::UserInfoMsg>(pkg); // 类型校验与解包；类型不匹配时 info 为 nullptr，需自行判空
 if (!info)
 {
-    return {yomk::ResStatus::Failed, "pkg is not UserInfoMsg"};
+    return {yomk::payload::ResStatus::Failed, "pkg is not UserInfoMsg"};
 }
-return {yomk::ResStatus::Succeeded, "hello " + info->d.name};
+return {yomk::payload::ResStatus::Succeeded, "hello " + info->d.name};
 ```
 
 ## 注意事项

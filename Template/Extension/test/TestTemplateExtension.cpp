@@ -4,6 +4,7 @@
 #include <iostream>
 
 using namespace yomk;
+using namespace yomk::payload;
 
 static int g_pass = 0;
 static int g_fail = 0;
@@ -15,10 +16,10 @@ int main(int argc, char* argv[])
     YomkAPI::newService<ExtensionService>();
 
     // 测试版本查询
-    yomk::Response resp = YomkAPI::request("/ExtensionService/version", nullptr);
-    if (resp.m_status == yomk::ResStatus::Succeeded)
+    yomk::payload::Response resp = YomkAPI::request("/ExtensionService/version", nullptr);
+    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
     {
-        auto version = yomk::unPack<yomk::msgs::String>(resp.m_data);
+        auto version = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
         std::cout << "[PASS] version: " << version->d << std::endl;
         g_pass++;
     }

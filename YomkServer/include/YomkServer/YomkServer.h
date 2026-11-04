@@ -37,7 +37,7 @@ public:
     void shutdown();
     std::vector<std::string> serviceNames();
     std::map<std::string, yomk::FuncInfo> serviceFuncInfos(const std::string& srvName);
-    yomk::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
+    yomk::payload::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
 private:

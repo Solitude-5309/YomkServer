@@ -2,6 +2,7 @@
 #include <YomkServer/YomkApi.h>
 
 using namespace yomk;
+using namespace yomk::payload;
 
 class MyBoot : public YomkBoot
 {

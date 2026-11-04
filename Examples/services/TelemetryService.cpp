@@ -35,15 +35,15 @@ void TelemetryService::deinit()
     YOMK_INFO_TAG("arm.telemetry", "deinit: telemetry service offline");
 }
 
-yomk::Response TelemetryService::record(YomkPkgPtr pkg)
+yomk::payload::Response TelemetryService::record(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
+    auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
     if (!str)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     std::ostringstream oss;
     oss << "留痕记录 [实例#" << m_id << "]：" << str->d;
     YOMK_INFO_TAG("arm.telemetry", oss.str());
-    return {yomk::ResStatus::Succeeded, "trace recorded"};
+    return {yomk::payload::ResStatus::Succeeded, "trace recorded"};
 }

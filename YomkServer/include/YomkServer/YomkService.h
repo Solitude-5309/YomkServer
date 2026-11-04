@@ -38,8 +38,8 @@ protected:
         installFunc(funcName, weakFunc(func), msgName, description);
     }
     std::map<std::string, yomk::FuncInfo> funcInfos();
-    yomk::Response invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
-    yomk::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
+    yomk::payload::Response invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
+    yomk::payload::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
     void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
     template <typename Class, typename Ret, typename Arg>
     auto weakFunc(Ret (Class::*func)(Arg))
@@ -67,11 +67,11 @@ protected:
                 YOMK_ERR_POS_LOG("service has been deleted or unregistered, callback ignored.");
                 if constexpr (std::is_void_v<Ret>)
                     return;
-                else if constexpr (std::is_same_v<Ret, yomk::Response>)
-                    return yomk::Response{
-                        yomk::ResStatus::Failed, "service has been deleted or unregistered, callback ignored."};
-                else if constexpr (std::is_same_v<Ret, yomk::CheckStatus>)
-                    return yomk::CheckStatus::Accept;
+                else if constexpr (std::is_same_v<Ret, yomk::payload::Response>)
+                    return yomk::payload::Response{
+                        yomk::payload::ResStatus::Failed, "service has been deleted or unregistered, callback ignored."};
+                else if constexpr (std::is_same_v<Ret, yomk::payload::CheckStatus>)
+                    return yomk::payload::CheckStatus::Accept;
                 else
                     return Ret{};
             }

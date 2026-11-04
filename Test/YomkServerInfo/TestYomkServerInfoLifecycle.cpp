@@ -99,10 +99,10 @@ static const yomk::FuncInfo* findFuncInfo(const yomk::ServerServiceInfo* srv, co
 }
 
 // 解包 StringArray 响应数据段（/services 的 m_data 为 StringArray 包）
-static std::vector<std::string> unpackStringArray(const yomk::Response& resp)
+static std::vector<std::string> unpackStringArray(const yomk::payload::Response& resp)
 {
     std::vector<std::string> lines;
-    if (resp.m_status != yomk::ResStatus::Succeeded || !resp.m_data)
+    if (resp.m_status != yomk::payload::ResStatus::Succeeded || !resp.m_data)
     {
         return lines;
     }
@@ -119,10 +119,10 @@ static std::vector<std::string> unpackStringArray(const yomk::Response& resp)
 }
 
 // 解包 FuncInfoList 响应数据段（/functions 的 m_data 为 FuncInfoList 结构化包）
-static std::vector<yomk::FuncInfo> unpackFuncInfoList(const yomk::Response& resp)
+static std::vector<yomk::FuncInfo> unpackFuncInfoList(const yomk::payload::Response& resp)
 {
     std::vector<yomk::FuncInfo> funcs;
-    if (resp.m_status != yomk::ResStatus::Succeeded || !resp.m_data)
+    if (resp.m_status != yomk::payload::ResStatus::Succeeded || !resp.m_data)
     {
         return funcs;
     }
@@ -169,20 +169,20 @@ public:
         return 0;
     }
 
-    yomk::Response ping(YomkPkgPtr pkg)
+    yomk::payload::Response ping(YomkPkgPtr pkg)
     {
         (void)pkg;
-        return {yomk::ResStatus::Succeeded, "pong"};
+        return {yomk::payload::ResStatus::Succeeded, "pong"};
     }
 
-    yomk::Response echo(YomkPkgPtr pkg)
+    yomk::payload::Response echo(YomkPkgPtr pkg)
     {
-        auto yText = yomk::unPack<yomk::msgs::String>(pkg);
+        auto yText = yomk::msgs::unPack<yomk::msgs::String>(pkg);
         if (!yText)
         {
-            return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+            return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
         }
-        return {yomk::ResStatus::Succeeded, yText->d};
+        return {yomk::payload::ResStatus::Succeeded, yText->d};
     }
 };
 
@@ -201,10 +201,10 @@ public:
         return 0;
     }
 
-    yomk::Response hit(YomkPkgPtr pkg)
+    yomk::payload::Response hit(YomkPkgPtr pkg)
     {
         (void)pkg;
-        return {yomk::ResStatus::Succeeded, "hit"};
+        return {yomk::payload::ResStatus::Succeeded, "hit"};
     }
 };
 
@@ -237,21 +237,21 @@ int main()
         server.reset();  // server 销毁，m_weakServer 失效；info 由测试持有仍存活
 
         auto rServices = info->invoke("/services", nullptr);
-        YOMK_TEST_CHECK(rServices.m_status == yomk::ResStatus::Failed && rServices.m_msg == "server has been destroyed",
+        YOMK_TEST_CHECK(rServices.m_status == yomk::payload::ResStatus::Failed && rServices.m_msg == "server has been destroyed",
               "/services server destroyed: ResStatus::Failed + 契约消息: " + rServices.m_msg);
 
         // /functions 先做空名校验，须传非空 srvName 越过前置校验到达 lock 失败点
         auto rFunctions = info->invoke("/functions", yomk::msgs::String::shared(std::string("/Any")));
-        YOMK_TEST_CHECK(rFunctions.m_status == yomk::ResStatus::Failed && rFunctions.m_msg == "server has been destroyed",
+        YOMK_TEST_CHECK(rFunctions.m_status == yomk::payload::ResStatus::Failed && rFunctions.m_msg == "server has been destroyed",
               "/functions server destroyed: ResStatus::Failed + 契约消息");
 
         // /function 先做 URL 解析校验，须传合法 url 越过前置校验到达 lock 失败点
         auto rFunction = info->invoke("/function", yomk::msgs::String::shared(std::string("/Any/f")));
-        YOMK_TEST_CHECK(rFunction.m_status == yomk::ResStatus::Failed && rFunction.m_msg == "server has been destroyed",
+        YOMK_TEST_CHECK(rFunction.m_status == yomk::payload::ResStatus::Failed && rFunction.m_msg == "server has been destroyed",
               "/function server destroyed: ResStatus::Failed + 契约消息");
 
         auto rAll = info->invoke("/all", nullptr);
-        YOMK_TEST_CHECK(rAll.m_status == yomk::ResStatus::Failed && rAll.m_msg == "server has been destroyed",
+        YOMK_TEST_CHECK(rAll.m_status == yomk::payload::ResStatus::Failed && rAll.m_msg == "server has been destroyed",
               "/all server destroyed: ResStatus::Failed + 契约消息");
 
         info.reset();
@@ -266,7 +266,7 @@ int main()
     std::cout << "===== S1. /services 端点 =====" << std::endl;
     {
         auto resp = YomkAPI::listServices();
-        YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded && resp.m_msg == "ok", "/services 返回 ResStatus::Succeeded + ok");
+        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_msg == "ok", "/services 返回 ResStatus::Succeeded + ok");
 
         auto names = unpackStringArray(resp);
         YOMK_TEST_CHECK(nameIn(names, "/YomkFunctionPool"), "/services 含内置 /YomkFunctionPool");
@@ -293,7 +293,7 @@ int main()
     std::cout << "===== S2. /functions 端点 =====" << std::endl;
     {
         auto resp = YomkAPI::listServiceFunctions("/FmtSrv");
-        YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded, "/functions(FmtSrv) 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "/functions(FmtSrv) 返回 ResStatus::Succeeded");
         auto funcs = unpackFuncInfoList(resp);
         YOMK_TEST_CHECK(funcs.size() == 2, "FmtSrv 恰 2 个功能函数: " + std::to_string(funcs.size()));
         const yomk::FuncInfo* echo = findFunc(funcs, "/echo");
@@ -303,23 +303,23 @@ int main()
         YOMK_TEST_CHECK(ping != nullptr && ping->m_msgName.empty(), "两参安装条目 /ping（m_msgName 空）");
 
         auto empty = YomkAPI::listServiceFunctions("");
-        YOMK_TEST_CHECK(empty.m_status == yomk::ResStatus::Invalid && empty.m_msg == "srvName is empty",
+        YOMK_TEST_CHECK(empty.m_status == yomk::payload::ResStatus::Invalid && empty.m_msg == "srvName is empty",
               "空 srvName 返回 ResStatus::Invalid + 契约消息: " + empty.m_msg);
 
         auto noSrv = YomkAPI::listServiceFunctions("/NoSuchSrv");
-        YOMK_TEST_CHECK(noSrv.m_status == yomk::ResStatus::Succeeded && unpackFuncInfoList(noSrv).empty(),
+        YOMK_TEST_CHECK(noSrv.m_status == yomk::payload::ResStatus::Succeeded && unpackFuncInfoList(noSrv).empty(),
               "不存在服务返回 ResStatus::Succeeded + 空列表（现状契约）");
 
         auto ctx = YomkAPI::listServiceFunctions("/YomkContext");
         auto ctxFuncs = unpackFuncInfoList(ctx);
         const yomk::FuncInfo* create = findFunc(ctxFuncs, "/create");
-        YOMK_TEST_CHECK(ctx.m_status == yomk::ResStatus::Succeeded && create != nullptr && create->m_msgName == "Context",
+        YOMK_TEST_CHECK(ctx.m_status == yomk::payload::ResStatus::Succeeded && create != nullptr && create->m_msgName == "Context",
               "内置 /YomkContext 含 /create 期望类型 Context");
         YOMK_TEST_CHECK(findFunc(ctxFuncs, "/keys") != nullptr, "内置 /YomkContext 无类型端点 /keys（m_msgName 空）");
 
         auto self = YomkAPI::listServiceFunctions("/YomkServerInfo");
         auto selfFuncs = unpackFuncInfoList(self);
-        YOMK_TEST_CHECK(self.m_status == yomk::ResStatus::Succeeded && selfFuncs.size() == 4,
+        YOMK_TEST_CHECK(self.m_status == yomk::payload::ResStatus::Succeeded && selfFuncs.size() == 4,
               "/YomkServerInfo 自身恰 4 个端点");
         const yomk::FuncInfo* function = findFunc(selfFuncs, "/function");
         YOMK_TEST_CHECK(function != nullptr && function->m_msgName == "String" && findFunc(selfFuncs, "/all") != nullptr,
@@ -330,50 +330,50 @@ int main()
     std::cout << "===== S3. /function 端点 =====" << std::endl;
     {
         auto hitTyped = YomkAPI::getServiceFunctionInfoByUrl("/FmtSrv/echo");
-        YOMK_TEST_CHECK(hitTyped.m_status == yomk::ResStatus::Succeeded && hitTyped.m_msg == "ok",
+        YOMK_TEST_CHECK(hitTyped.m_status == yomk::payload::ResStatus::Succeeded && hitTyped.m_msg == "ok",
               "命中三参函数：ResStatus::Succeeded 且 m_msg 恒为 ok");
-        auto typedInfo = yomk::unPack<yomk::msgs::FuncInfo>(hitTyped.m_data);
+        auto typedInfo = yomk::msgs::unPack<yomk::msgs::FuncInfo>(hitTyped.m_data);
         YOMK_TEST_CHECK(typedInfo != nullptr, "命中三参函数：数据为 FuncInfo 包");
         YOMK_TEST_CHECK(typedInfo && typedInfo->d.m_funcName == "/echo" && typedInfo->d.m_msgName == "String",
               "命中三参函数字段 m_funcName/m_msgName 一致");
 
         auto hitPlain = YomkAPI::getServiceFunctionInfoByUrl("/FmtSrv/ping");
-        YOMK_TEST_CHECK(hitPlain.m_status == yomk::ResStatus::Succeeded && hitPlain.m_msg == "ok",
+        YOMK_TEST_CHECK(hitPlain.m_status == yomk::payload::ResStatus::Succeeded && hitPlain.m_msg == "ok",
               "命中两参函数：ResStatus::Succeeded 且 m_msg 恒为 ok");
-        auto plainInfo = yomk::unPack<yomk::msgs::FuncInfo>(hitPlain.m_data);
+        auto plainInfo = yomk::msgs::unPack<yomk::msgs::FuncInfo>(hitPlain.m_data);
         YOMK_TEST_CHECK(plainInfo && plainInfo->d.m_funcName == "/ping" && plainInfo->d.m_msgName.empty(),
               "命中两参函数字段 m_funcName 一致且 m_msgName 为空");
 
         auto emptyUrl = YomkAPI::getServiceFunctionInfoByUrl("");
-        YOMK_TEST_CHECK(emptyUrl.m_status == yomk::ResStatus::Failed && emptyUrl.m_msg.find("please start with /") != std::string::npos,
+        YOMK_TEST_CHECK(emptyUrl.m_status == yomk::payload::ResStatus::Failed && emptyUrl.m_msg.find("please start with /") != std::string::npos,
               "空 url 返回 ResStatus::Failed + please start with /: " + emptyUrl.m_msg);
 
         auto noSlash = YomkAPI::getServiceFunctionInfoByUrl("abc");
-        YOMK_TEST_CHECK(noSlash.m_status == yomk::ResStatus::Failed && noSlash.m_msg.find("please start with /") != std::string::npos,
+        YOMK_TEST_CHECK(noSlash.m_status == yomk::payload::ResStatus::Failed && noSlash.m_msg.find("please start with /") != std::string::npos,
               "无 / 开头返回 ResStatus::Failed + please start with /");
 
         auto noFuncPart = YomkAPI::getServiceFunctionInfoByUrl("/FmtSrv");
-        YOMK_TEST_CHECK(noFuncPart.m_status == yomk::ResStatus::Failed &&
+        YOMK_TEST_CHECK(noFuncPart.m_status == yomk::payload::ResStatus::Failed &&
                   noFuncPart.m_msg.find("not found function name") != std::string::npos,
               "无第二个 / 返回 ResStatus::Failed + not found function name: " + noFuncPart.m_msg);
 
         auto noSrv = YomkAPI::getServiceFunctionInfoByUrl("/NoSuchSrv/f");
-        YOMK_TEST_CHECK(noSrv.m_status == yomk::ResStatus::Failed && noSrv.m_msg == "service not found: /NoSuchSrv",
+        YOMK_TEST_CHECK(noSrv.m_status == yomk::payload::ResStatus::Failed && noSrv.m_msg == "service not found: /NoSuchSrv",
               "服务不存在契约消息精确匹配: " + noSrv.m_msg);
 
         auto noFunc = YomkAPI::getServiceFunctionInfoByUrl("/FmtSrv/nope");
-        YOMK_TEST_CHECK(noFunc.m_status == yomk::ResStatus::Failed && noFunc.m_msg == "function not found: /FmtSrv/nope",
+        YOMK_TEST_CHECK(noFunc.m_status == yomk::payload::ResStatus::Failed && noFunc.m_msg == "function not found: /FmtSrv/nope",
               "函数不存在契约消息精确匹配: " + noFunc.m_msg);
 
         auto nullPkg = YomkAPI::request("/YomkServerInfo/function", nullptr);
-        YOMK_TEST_CHECK(nullPkg.m_status == yomk::ResStatus::Failed && nullPkg.m_msg.find("pkg is null") != std::string::npos,
+        YOMK_TEST_CHECK(nullPkg.m_status == yomk::payload::ResStatus::Failed && nullPkg.m_msg.find("pkg is null") != std::string::npos,
               "null pkg 返回 ResStatus::Failed + pkg is null（unPack 守卫）");
 
         // description 透出：四参安装的 /echo 命中时说明承载于 FuncInfo 包；无说明的 /ping 恒挂包但说明为空
         auto hitDesc = YomkAPI::getServiceFunctionInfoByUrl("/FmtSrv/echo");
-        YOMK_TEST_CHECK(hitDesc.m_status == yomk::ResStatus::Succeeded && hitDesc.m_msg == "ok",
+        YOMK_TEST_CHECK(hitDesc.m_status == yomk::payload::ResStatus::Succeeded && hitDesc.m_msg == "ok",
               "四参函数命中：m_msg 恒为 ok");
-        auto descInfo = yomk::unPack<yomk::msgs::FuncInfo>(hitDesc.m_data);
+        auto descInfo = yomk::msgs::unPack<yomk::msgs::FuncInfo>(hitDesc.m_data);
         YOMK_TEST_CHECK(descInfo && descInfo->d.m_msgName == "String", "四参函数命中：m_msgName == \"String\"");
         YOMK_TEST_CHECK(descInfo && descInfo->d.m_description == "echo demo description",
               "四参函数命中：m_description == \"echo demo description\"");
@@ -385,9 +385,9 @@ int main()
     std::cout << "===== S4. /all 端点 =====" << std::endl;
     {
         auto resp = YomkAPI::getAllServerInfo();
-        YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded && resp.m_msg == "ok", "/all 返回 ResStatus::Succeeded + ok");
+        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_msg == "ok", "/all 返回 ResStatus::Succeeded + ok");
 
-        auto list = yomk::unPack<yomk::msgs::ServerServiceInfoList>(resp.m_data);
+        auto list = yomk::msgs::unPack<yomk::msgs::ServerServiceInfoList>(resp.m_data);
         YOMK_TEST_CHECK(list != nullptr && !list->d.empty(), "/all 输出非空");
 
         // FmtSrv 段：按 m_serviceName 查条目，段内 map 字典序 /echo 在 /ping 前
@@ -438,7 +438,7 @@ int main()
             for (int round = 0; round < 200; ++round)
             {
                 auto services = YomkAPI::listServices();
-                if (services.m_status != yomk::ResStatus::Succeeded)
+                if (services.m_status != yomk::payload::ResStatus::Succeeded)
                 {
                     g_badStatus.fetch_add(1);
                 }
@@ -448,17 +448,17 @@ int main()
                 }
 
                 auto functions = YomkAPI::listServiceFunctions("/FmtSrv");
-                if (functions.m_status != yomk::ResStatus::Succeeded || unpackFuncInfoList(functions).size() != 2)
+                if (functions.m_status != yomk::payload::ResStatus::Succeeded || unpackFuncInfoList(functions).size() != 2)
                 {
                     g_badFuncs.fetch_add(1);
                 }
 
-                if (YomkAPI::getServiceFunctionInfoByUrl("/FmtSrv/ping").m_status != yomk::ResStatus::Succeeded)
+                if (YomkAPI::getServiceFunctionInfoByUrl("/FmtSrv/ping").m_status != yomk::payload::ResStatus::Succeeded)
                 {
                     g_badStatus.fetch_add(1);
                 }
 
-                if (YomkAPI::getAllServerInfo().m_status != yomk::ResStatus::Succeeded)
+                if (YomkAPI::getAllServerInfo().m_status != yomk::payload::ResStatus::Succeeded)
                 {
                     g_badStatus.fetch_add(1);
                 }
@@ -495,7 +495,7 @@ int main()
             }
         }
         YOMK_TEST_CHECK(!churnLeft, "churn 后服务表无 /Churn 残留");
-        YOMK_TEST_CHECK(YomkAPI::request("/FmtSrv/ping", nullptr).m_status == yomk::ResStatus::Succeeded,
+        YOMK_TEST_CHECK(YomkAPI::request("/FmtSrv/ping", nullptr).m_status == yomk::payload::ResStatus::Succeeded,
               "并发结束后 FmtSrv 仍可正常调用");
     }
 
@@ -505,7 +505,7 @@ int main()
         YOMK_TEST_CHECK(YomkAPI::delService("/YomkServerInfo") == 0, "删除内置 /YomkServerInfo 返回 0");
 
         auto deleted = YomkAPI::listServices();
-        YOMK_TEST_CHECK(deleted.m_status == yomk::ResStatus::Failed && deleted.m_msg == "service not found: /YomkServerInfo",
+        YOMK_TEST_CHECK(deleted.m_status == yomk::payload::ResStatus::Failed && deleted.m_msg == "service not found: /YomkServerInfo",
               "删除后内省端点不可路由: " + deleted.m_msg);
 
         YOMK_TEST_CHECK(!nameIn(YomkAPI::serverInstance()->serviceNames(), "/YomkServerInfo"),
@@ -516,10 +516,10 @@ int main()
               "newService 无参重注册返回 0（构造函数固定名生效）");
 
         auto restored = YomkAPI::listServices();
-        YOMK_TEST_CHECK(restored.m_status == yomk::ResStatus::Succeeded &&
+        YOMK_TEST_CHECK(restored.m_status == yomk::payload::ResStatus::Succeeded &&
                   nameIn(unpackStringArray(restored), "/YomkServerInfo"),
               "重注册后自举恢复：/services ResStatus::Succeeded 且含自身");
-        auto restoredAll = yomk::unPack<yomk::msgs::ServerServiceInfoList>(YomkAPI::getAllServerInfo().m_data);
+        auto restoredAll = yomk::msgs::unPack<yomk::msgs::ServerServiceInfoList>(YomkAPI::getAllServerInfo().m_data);
         YOMK_TEST_CHECK(findServiceInfo(restoredAll, "/YomkServerInfo") != nullptr,
               "重注册后 /all 含自身段（自举查询成功）");
     }
@@ -536,7 +536,7 @@ int main()
 
         auto longFuncs = YomkAPI::listServiceFunctions(longName);
         auto longFuncList = unpackFuncInfoList(longFuncs);
-        YOMK_TEST_CHECK(longFuncs.m_status == yomk::ResStatus::Succeeded && longFuncList.size() == 2,
+        YOMK_TEST_CHECK(longFuncs.m_status == yomk::payload::ResStatus::Succeeded && longFuncList.size() == 2,
               "超长名服务 /functions 返回 2 条目");
         const yomk::FuncInfo* longEcho = findFunc(longFuncList, "/echo");
         const yomk::FuncInfo* longPing = findFunc(longFuncList, "/ping");
@@ -546,13 +546,13 @@ int main()
             "超长名下函数条目字段完整");
 
         auto longFunction = YomkAPI::getServiceFunctionInfoByUrl(longName + "/ping");
-        YOMK_TEST_CHECK(longFunction.m_status == yomk::ResStatus::Succeeded && longFunction.m_msg == "ok",
+        YOMK_TEST_CHECK(longFunction.m_status == yomk::payload::ResStatus::Succeeded && longFunction.m_msg == "ok",
               "超长名下 /function URL 二段解析正确（m_msg 恒为 ok）");
-        auto longFuncInfo = yomk::unPack<yomk::msgs::FuncInfo>(longFunction.m_data);
+        auto longFuncInfo = yomk::msgs::unPack<yomk::msgs::FuncInfo>(longFunction.m_data);
         YOMK_TEST_CHECK(longFuncInfo && longFuncInfo->d.m_funcName == "/ping",
               "超长名下 URL 二段解析正确（m_funcName == \"/ping\"）");
 
-        auto longAll = yomk::unPack<yomk::msgs::ServerServiceInfoList>(YomkAPI::getAllServerInfo().m_data);
+        auto longAll = yomk::msgs::unPack<yomk::msgs::ServerServiceInfoList>(YomkAPI::getAllServerInfo().m_data);
         const yomk::ServerServiceInfo* longSrv = findServiceInfo(longAll, longName);
         YOMK_TEST_CHECK(longSrv != nullptr, "/all 含超长服务名条目（无截断）");
         YOMK_TEST_CHECK(longSrv && longSrv->m_funcs.size() == 2 && longSrv->m_funcs[0].m_funcName == "/echo" &&

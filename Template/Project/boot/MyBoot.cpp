@@ -40,8 +40,8 @@ int MyBoot::start()
 int MyBoot::after()
 {
     // 服务启动后加载配置文件
-    yomk::Response resp = YomkAPI::request("/ConfigService/load", nullptr);
-    if (resp.m_status != yomk::ResStatus::Succeeded)
+    yomk::payload::Response resp = YomkAPI::request("/ConfigService/load", nullptr);
+    if (resp.m_status != yomk::payload::ResStatus::Succeeded)
     {
         YOMK_ERROR_TAG("MyBoot::after", "load config failed: ", resp.m_msg);
         return -1;
@@ -49,34 +49,34 @@ int MyBoot::after()
     YOMK_INFO_TAG("MyBoot::after", "started successfully.");
 
     resp = YomkAPI::request("/ConfigService/get", yomk::msgs::ConfigKey::shared(ConfigKey{"name"}));
-    if (resp.m_status != yomk::ResStatus::Succeeded)
+    if (resp.m_status != yomk::payload::ResStatus::Succeeded)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config name failed: ", resp.m_msg);
         return -1;
     }
 
-    auto name = yomk::unPack<yomk::msgs::String>(resp.m_data);
+    auto name = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
     YOMK_INFO_TAG("MyBoot::after", "config name: ", name->d);
 
     // 测试版本号接口：获取并输出工程版本号（来自 CMake project() 定义的 VERSION，编译期注入）
     resp = YomkAPI::request("/ConfigService/version", nullptr);
-    if (resp.m_status != yomk::ResStatus::Succeeded)
+    if (resp.m_status != yomk::payload::ResStatus::Succeeded)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get version failed: ", resp.m_msg);
         return -1;
     }
 
-    auto version = yomk::unPack<yomk::msgs::String>(resp.m_data);
+    auto version = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
     YOMK_INFO_TAG("MyBoot::after", "project version: ", version->d);
 
     resp = YomkAPI::request("/ConfigService/get", yomk::msgs::ConfigKey::shared(ConfigKey{"description"}));
-    if (resp.m_status != yomk::ResStatus::Succeeded)
+    if (resp.m_status != yomk::payload::ResStatus::Succeeded)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config description failed: ", resp.m_msg);
         return -1;
     }
 
-    auto description = yomk::unPack<yomk::msgs::String>(resp.m_data);
+    auto description = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
     YOMK_INFO_TAG("MyBoot::after", "config description: ", description->d);
 
     return 0;

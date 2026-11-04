@@ -98,19 +98,19 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
     YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
 }
 
-// API 结果行：打印 yomk::Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
+// API 结果行：打印 yomk::payload::Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 // 回包挂 String data 时随行展示；结构化包（StringArray/FuncInfo/FuncInfoList/MoveResp）
 // 形态各异，解包类型不匹配时静默不展示
 // status 三态：0=ResStatus::Succeeded 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
-static void logResp(const std::string& api, const yomk::Response& resp)
+static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {
     std::ostringstream oss;
     oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
-    if (resp.m_status == yomk::ResStatus::Succeeded)
+    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
     {
         oss << "(ResStatus::Succeeded 成功)";
     }
-    else if (resp.m_status == yomk::ResStatus::Failed)
+    else if (resp.m_status == yomk::payload::ResStatus::Failed)
     {
         oss << "(ResStatus::Failed 拒绝或不存在)";
     }
@@ -119,9 +119,9 @@ static void logResp(const std::string& api, const yomk::Response& resp)
         oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
     oss << ", msg=\"" << resp.m_msg << "\"";
-    if (resp.m_status == yomk::ResStatus::Succeeded && resp.m_data)
+    if (resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_data)
     {
-        auto data = yomk::unPack<yomk::msgs::String>(resp.m_data);
+        auto data = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
         if (data)
         {
             oss << ", data=\"" << data->d << "\"";
@@ -130,14 +130,14 @@ static void logResp(const std::string& api, const yomk::Response& resp)
     YOMK_INFO_TAG("arm.demo", oss.str());
 }
 
-// 操作日志（yomk::Response 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+// 操作日志（yomk::payload::Response 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；同步 REQUEST/CALL 在调用方线程执行服务函数体，
 // arm.motion/arm.telemetry 等服务日志被夹在开始行与结果行之间，归属一目了然
-static yomk::Response logAction(const std::string& op, const std::string& api, const std::function<yomk::Response()>& call)
+static yomk::payload::Response logAction(const std::string& op, const std::string& api, const std::function<yomk::payload::Response()>& call)
 {
     YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
-    yomk::Response resp = call();
+    yomk::payload::Response resp = call();
     logResp(api, resp);
     return resp;
 }
@@ -236,9 +236,9 @@ static void showArmPowerOnRegister()
     logVerify("arm.boot 三段日志夹在开始行与结果行之间：BOOT 按 before→start→after 顺序执行");
 
     logAction("复查控制柜在册服务清单");
-    yomk::Response namesResp = YomkAPI::listServices();
+    yomk::payload::Response namesResp = YomkAPI::listServices();
     logResp("INFO_SERVICES", namesResp);
-    auto nameArr = yomk::unPack<yomk::msgs::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::msgs::unPack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -290,7 +290,7 @@ static void showArmAsyncTeach()
     YOMK_INFO_TAG("arm.demo", oss.str());
 
     // 回调先赋具名变量再传宏：函数体含逗号时直接内联进宏会被预处理器误当实参分隔符
-    YomkResponseFunc onTeachDone = [](yomk::Response resp)
+    YomkResponseFunc onTeachDone = [](yomk::payload::Response resp)
     {
         std::ostringstream oss;
         oss << "[ASYNC_REQUEST 回调] status=" << static_cast<int>(resp.m_status) << ", msg=\"" << resp.m_msg
@@ -320,13 +320,13 @@ static void showArmMoveChain()
 
     // 入参先赋具名变量：聚合初始化含逗号，直接内联进宏会被预处理器误当实参分隔符
     MoveCmd moveCmd{100.0, 50.0, 200.0, 0.8};
-    yomk::Response moveResp = logAction(
+    yomk::payload::Response moveResp = logAction(
         "下发运动指令：运动到 (100.0, 50.0, 200.0)mm", "REQUEST /MotionService/move",
         [&] { return YomkAPI::request("/MotionService/move", yomk::msgs::MoveCmd::shared(moveCmd)); });
 
     logAction("展开到位回执 MoveResp");
     std::ostringstream oss;
-    auto respPkg = yomk::unPack<yomk::msgs::MoveResp>(moveResp.m_data);
+    auto respPkg = yomk::msgs::unPack<yomk::msgs::MoveResp>(moveResp.m_data);
     if (respPkg)
     {
         oss << "[REQUEST /MotionService/move] | MoveResp 到位 (" << respPkg->resp.m_reachX << ", "
@@ -353,9 +353,9 @@ static void showArmIntrospect()
         "ExampleYomkServerInfo）。");
 
     logAction("查阅运动工位职能清单");
-    yomk::Response funcsResp = YomkAPI::listServiceFunctions("/MotionService");
+    yomk::payload::Response funcsResp = YomkAPI::listServiceFunctions("/MotionService");
     logResp("INFO_FUNCTIONS /MotionService", funcsResp);
-    auto listPkg = yomk::unPack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
+    auto listPkg = yomk::msgs::unPack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
     {
         for (const auto& func : listPkg->d)
@@ -366,9 +366,9 @@ static void showArmIntrospect()
     logVerify("msgName 即 installFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /echo 两字段为(未指定)");
 
     logAction("调阅运动指令函数名片");
-    yomk::Response resp = YomkAPI::getServiceFunctionInfoByUrl("/MotionService/move");
+    yomk::payload::Response resp = YomkAPI::getServiceFunctionInfoByUrl("/MotionService/move");
     logResp("INFO_FUNCTION /MotionService/move", resp);
-    auto info = yomk::unPack<yomk::msgs::FuncInfo>(resp.m_data);
+    auto info = yomk::msgs::unPack<yomk::msgs::FuncInfo>(resp.m_data);
     if (info)
     {
         logFuncInfo("INFO_FUNCTION", info->d);
@@ -447,9 +447,9 @@ static void showArmPowerOff()
         "，日志宏随之静默——静默段正是演示效果。");
 
     logAction("导出收班终态拓扑（摘要）");
-    yomk::Response allResp = YomkAPI::getAllServerInfo();
+    yomk::payload::Response allResp = YomkAPI::getAllServerInfo();
     logResp("INFO_ALL", allResp);
-    auto list = yomk::unPack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
+    auto list = yomk::msgs::unPack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
     if (list)
     {
         for (const auto& srv : list->d)

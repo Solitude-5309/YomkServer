@@ -152,10 +152,10 @@ int main()
             auto reT = YOMK_ERROR_TAG("lgLTag", "lgL_s1_error_tag");
             auto rd = YOMK_DEBUG("lgL_s1_debug");
             auto rdT = YOMK_DEBUG_TAG("lgLTag", "lgL_s1_debug_tag");
-            YOMK_TEST_CHECK(ri == yomk::ResStatus::Succeeded && riT == yomk::ResStatus::Succeeded &&
-                                rw == yomk::ResStatus::Succeeded && rwT == yomk::ResStatus::Succeeded &&
-                                re == yomk::ResStatus::Succeeded && reT == yomk::ResStatus::Succeeded &&
-                                rd == yomk::ResStatus::Succeeded && rdT == yomk::ResStatus::Succeeded,
+            YOMK_TEST_CHECK(ri == yomk::payload::ResStatus::Succeeded && riT == yomk::payload::ResStatus::Succeeded &&
+                                rw == yomk::payload::ResStatus::Succeeded && rwT == yomk::payload::ResStatus::Succeeded &&
+                                re == yomk::payload::ResStatus::Succeeded && reT == yomk::payload::ResStatus::Succeeded &&
+                                rd == yomk::payload::ResStatus::Succeeded && rdT == yomk::payload::ResStatus::Succeeded,
                 "四级 + _TAG 变体全部返回 ResStatus::Succeeded");
             const std::string out = cap.str();
             YOMK_TEST_CHECK(out.find("[" + std::to_string(infoLine) + "] lgL_s1_info") != std::string::npos,
@@ -210,8 +210,8 @@ int main()
             const unsigned emptyLine = __LINE__ + 1;
             auto r0 = YOMK_INFO("");
             auto rM = YOMK_INFO("i=", 42, "j=", 3.5, "end");
-            YOMK_TEST_CHECK(r0 == yomk::ResStatus::Succeeded, "零正文返回 Succeeded");
-            YOMK_TEST_CHECK(rM == yomk::ResStatus::Succeeded, "多参折叠返回 Succeeded");
+            YOMK_TEST_CHECK(r0 == yomk::payload::ResStatus::Succeeded, "零正文返回 Succeeded");
+            YOMK_TEST_CHECK(rM == yomk::payload::ResStatus::Succeeded, "多参折叠返回 Succeeded");
             const std::string out = cap.str();
             YOMK_TEST_CHECK(out.find("[" + std::to_string(emptyLine) + "] ") != std::string::npos,
                 "零正文输出仅 [行号] 前缀");
@@ -229,27 +229,27 @@ int main()
         fs::create_directories(logDir, ec);
         YOMK_TEST_CHECK(!ec, "S2 临时目录创建成功");
 
-        YOMK_TEST_CHECK(YomkAPI::createFileLogger(logDir.string(), logName) == yomk::ResStatus::Succeeded,
+        YOMK_TEST_CHECK(YomkAPI::createFileLogger(logDir.string(), logName) == yomk::payload::ResStatus::Succeeded,
             "createFileLogger 成功");
 
         const unsigned infoLine = __LINE__ + 1;
-        YOMK_TEST_CHECK(YOMK_FILE_INFO(logName, "lgL_s2_info") == yomk::ResStatus::Succeeded,
+        YOMK_TEST_CHECK(YOMK_FILE_INFO(logName, "lgL_s2_info") == yomk::payload::ResStatus::Succeeded,
             "YOMK_FILE_INFO 返回 Succeeded");
-        YOMK_TEST_CHECK(YOMK_FILE_INFO_TAG(logName, "lgLTag", "lgL_s2_info_tag") == yomk::ResStatus::Succeeded,
+        YOMK_TEST_CHECK(YOMK_FILE_INFO_TAG(logName, "lgLTag", "lgL_s2_info_tag") == yomk::payload::ResStatus::Succeeded,
             "YOMK_FILE_INFO_TAG 返回 Succeeded");
-        YOMK_TEST_CHECK(YOMK_FILE_WARN(logName, "lgL_s2_warn") == yomk::ResStatus::Succeeded, "YOMK_FILE_WARN");
-        YOMK_TEST_CHECK(YOMK_FILE_ERROR(logName, "lgL_s2_error") == yomk::ResStatus::Succeeded,
+        YOMK_TEST_CHECK(YOMK_FILE_WARN(logName, "lgL_s2_warn") == yomk::payload::ResStatus::Succeeded, "YOMK_FILE_WARN");
+        YOMK_TEST_CHECK(YOMK_FILE_ERROR(logName, "lgL_s2_error") == yomk::payload::ResStatus::Succeeded,
             "YOMK_FILE_ERROR");
-        YOMK_TEST_CHECK(YOMK_FILE_DEBUG(logName, "lgL_s2_debug") == yomk::ResStatus::Succeeded,
+        YOMK_TEST_CHECK(YOMK_FILE_DEBUG(logName, "lgL_s2_debug") == yomk::payload::ResStatus::Succeeded,
             "YOMK_FILE_DEBUG");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogInfo(logName, "MainLogger", {}, "lgL_s2_direct") == yomk::ResStatus::Succeeded,
+            YomkAPI::emitFileLogInfo(logName, "MainLogger", {}, "lgL_s2_direct") == yomk::payload::ResStatus::Succeeded,
             "直调 emitFileLogInfo({}) 返回 Succeeded");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogInfo(logName, "lgLTag", {}, "lgL_s2_direct_tag") == yomk::ResStatus::Succeeded,
+            YomkAPI::emitFileLogInfo(logName, "lgLTag", {}, "lgL_s2_direct_tag") == yomk::payload::ResStatus::Succeeded,
             "直调 emitFileLogInfo 自定义 tag 返回 Succeeded");
 
-        YOMK_TEST_CHECK(YomkAPI::flushFileLog(logName) == yomk::ResStatus::Succeeded, "flushFileLog 成功");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(logName) == yomk::payload::ResStatus::Succeeded, "flushFileLog 成功");
 
         bool readOk = false;
         const std::string content = readFile(logFile, readOk);
@@ -360,8 +360,8 @@ int main()
         auto ri = YomkAPI::emitConsoleLogInfo("lgLTag", {}, "lgL_s4_info");
         auto rw = YomkAPI::emitConsoleLogWarn("lgLTag", {}, "lgL_s4_warn");
         auto re = YomkAPI::emitConsoleLogError("lgLTag", {}, "lgL_s4_error");
-        YOMK_TEST_CHECK(rd == yomk::ResStatus::Succeeded && ri == yomk::ResStatus::Succeeded &&
-                            rw == yomk::ResStatus::Succeeded && re == yomk::ResStatus::Succeeded,
+        YOMK_TEST_CHECK(rd == yomk::payload::ResStatus::Succeeded && ri == yomk::payload::ResStatus::Succeeded &&
+                            rw == yomk::payload::ResStatus::Succeeded && re == yomk::payload::ResStatus::Succeeded,
             "直调四级（显式 tag + {}）全部返回 Succeeded");
         const std::string out = cap.str();
         YOMK_TEST_CHECK(out.find(" lgL_s4_debug") != std::string::npos, "直调 DEBUG marker 输出");

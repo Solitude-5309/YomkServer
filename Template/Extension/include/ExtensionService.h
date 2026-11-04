@@ -2,6 +2,7 @@
 #include <YomkServer/YomkApi.h>
 
 using namespace yomk;
+using namespace yomk::payload;
 
 class ExtensionService : public YomkService
 {
@@ -11,5 +12,5 @@ public:
     virtual int init() override;
 
 private:
-    yomk::Response version(YomkPkgPtr pkg);
+    yomk::payload::Response version(YomkPkgPtr pkg);
 };

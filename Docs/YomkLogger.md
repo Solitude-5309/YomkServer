@@ -65,16 +65,16 @@ YomkAPI::disableFileLogInfo("app");   // 具名关断：仅 app 的 INFO 不再�
 YomkAPI::enableFileLogInfo("app");
 
 // 控制台日志拦截/代理
-YomkAPI::setConsoleLogProxy([](const yomk::Log &log) {
-    if (log.m_level == yomk::Log::LogLevel::Debug)
+YomkAPI::setConsoleLogProxy([](const yomk::payload::Log &log) {
+    if (log.m_level == yomk::payload::LogLevel::Debug)
         return false; // 返回 false 表示消费此日志，不再默认输出
     return true;      // 返回 true 则继续走框架默认打印
 });
 YomkAPI::setConsoleLogProxy(nullptr); // 传 nullptr 卸载代理，恢复默认输出
 
 // 文件日志代理：返回 false 拦截该条不落盘，返回 true 穿透走默认落盘
-YomkAPI::setFileLogProxy([](const yomk::Log &log) {
-    if (log.m_level == yomk::Log::LogLevel::Debug)
+YomkAPI::setFileLogProxy([](const yomk::payload::Log &log) {
+    if (log.m_level == yomk::payload::LogLevel::Debug)
         return false; // 返回 false 表示拦截此条，不写入文件
     return true;      // 返回 true 则继续走框架默认落盘
 });

@@ -97,11 +97,11 @@ int main()
     {
         YomkAPI::enableContextMonitor();
         auto cr = YomkAPI::createContext("life_base", yomk::msgs::String::shared(std::string("b0")));
-        YOMK_TEST_CHECK(cr == yomk::ResStatus::Succeeded, "创建 life_base 成功");
+        YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "创建 life_base 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(
-            "life_base", [](const yomk::Context&) { ++g_asyncCalls; }, /*async=*/true);
+            "life_base", [](const yomk::payload::Context&) { ++g_asyncCalls; }, /*async=*/true);
 
         YomkAPI::setContext("life_base", yomk::msgs::String::shared(std::string("b1")));
         YomkAPI::setContext("life_base", yomk::msgs::String::shared(std::string("b2")));
@@ -115,11 +115,11 @@ int main()
     {
         YomkAPI::enableContextMonitor();
         auto cr = YomkAPI::createContext("life_drain", yomk::msgs::String::shared(std::string("d0")));
-        YOMK_TEST_CHECK(cr == yomk::ResStatus::Succeeded, "创建 life_drain 成功");
+        YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "创建 life_drain 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(
-            "life_drain", [](const yomk::Context&) { ++g_asyncCalls; }, /*async=*/true);
+            "life_drain", [](const yomk::payload::Context&) { ++g_asyncCalls; }, /*async=*/true);
 
         const int N = 50;
         for (int i = 0; i < N; ++i)
@@ -138,7 +138,7 @@ int main()
     // ============ Section 4: 删除后不可路由 + 重复删除契约 ============
     {
         auto resp = YomkAPI::request("/YomkContext/keys", nullptr);
-        YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Failed, "删除后请求 /YomkContext 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Failed, "删除后请求 /YomkContext 返回 ResStatus::Failed");
         YOMK_TEST_CHECK(resp.m_msg == "service not found: /YomkContext", "删除后消息为 service not found: /YomkContext");
 
         auto names = YomkAPI::serverInstance()->serviceNames();
@@ -158,11 +158,11 @@ int main()
 
         YomkAPI::enableContextMonitor();
         auto cr = YomkAPI::createContext("life_rebuild", yomk::msgs::String::shared(std::string("r0")));
-        YOMK_TEST_CHECK(cr == yomk::ResStatus::Succeeded, "重新注册后创建 life_rebuild 成功");
+        YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "重新注册后创建 life_rebuild 成功");
 
         g_asyncCalls.store(0);
         YomkAPI::setContextMonitor(
-            "life_rebuild", [](const yomk::Context&) { ++g_asyncCalls; }, /*async=*/true);
+            "life_rebuild", [](const yomk::payload::Context&) { ++g_asyncCalls; }, /*async=*/true);
 
         YomkAPI::setContext("life_rebuild", yomk::msgs::String::shared(std::string("r1")));
         YomkAPI::setContext("life_rebuild", yomk::msgs::String::shared(std::string("r2")));
@@ -183,7 +183,7 @@ int main()
 
         // 进程存活、/YomkContext 仍可用
         auto resp = YomkAPI::listContextKeys();
-        YOMK_TEST_CHECK(resp.m_status == yomk::ResStatus::Succeeded, "异常回滚后 /YomkContext 仍可用");
+        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "异常回滚后 /YomkContext 仍可用");
     }
 
     YomkAPI::shutdown();

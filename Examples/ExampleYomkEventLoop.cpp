@@ -76,17 +76,17 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
     YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
 }
 
-// API 结果行（yomk::Response 版）：INFO 查询等仍返回 yomk::Response 的调用打印 status/msg（数据形态各异，由调用处按需展开）。
+// API 结果行（yomk::payload::Response 版）：INFO 查询等仍返回 yomk::payload::Response 的调用打印 status/msg（数据形态各异，由调用处按需展开）。
 // status 三态：0=ResStatus::Succeeded 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
-static void logResp(const std::string& api, const yomk::Response& resp)
+static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {
     std::ostringstream oss;
     oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
-    if (resp.m_status == yomk::ResStatus::Succeeded)
+    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
     {
         oss << "(ResStatus::Succeeded 成功)";
     }
-    else if (resp.m_status == yomk::ResStatus::Failed)
+    else if (resp.m_status == yomk::payload::ResStatus::Failed)
     {
         oss << "(ResStatus::Failed 拒绝或不存在)";
     }
@@ -100,10 +100,10 @@ static void logResp(const std::string& api, const yomk::Response& resp)
 
 // ResStatus 版结果行：EVENTLOOP_API 操作接口 14-4 起 ResStatus 化，直接返回三态
 // （失败原因经错误日志承载，无 msg 可打）
-static void logResp(const std::string& api, yomk::ResStatus status)
+static void logResp(const std::string& api, yomk::payload::ResStatus status)
 {
-    const char* name = status == yomk::ResStatus::Succeeded ? "ResStatus::Succeeded"
-                     : status == yomk::ResStatus::Failed    ? "ResStatus::Failed"
+    const char* name = status == yomk::payload::ResStatus::Succeeded ? "ResStatus::Succeeded"
+                     : status == yomk::payload::ResStatus::Failed    ? "ResStatus::Failed"
                                                                     : "ResStatus::Invalid";
     YOMK_INFO_TAG("arm.demo", "[" + api + "] status: " + name);
 }
@@ -112,7 +112,7 @@ static void logResp(const std::string& api, yomk::ResStatus status)
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；循环线程执行的日志穿插其间，读者顺着日志读即可
 // 理解，无需回看代码。
-// 14-4：EVENTLOOP_API 操作接口返回 ResStatus，INFO 查询仍返回 yomk::Response，
+// 14-4：EVENTLOOP_API 操作接口返回 ResStatus，INFO 查询仍返回 yomk::payload::Response，
 // 模板化使两类返回各自路由到对应 logResp 重载，调用点零改动
 template <typename F>
 static auto logAction(const std::string& op, const std::string& api, F&& call)
@@ -181,19 +181,19 @@ static void logLoopLine(const std::string& api, const std::string& loopName)
 }
 
 // ---------------------------------------------------------------------------
-// 事件处理函数：签名统一为 yomk::Response(YomkPkgPtr)。
+// 事件处理函数：签名统一为 yomk::payload::Response(YomkPkgPtr)。
 // 可作为默认处理函数（启动时指定）或临时处理函数（投递时指定）。
 // ---------------------------------------------------------------------------
 
 // 运动指令处理函数：默认处理函数（场景 1 START 时指定）。
 // 模拟 200ms 运动耗时，让队列积压与 FIFO 消费顺序在日志中稳定可见；
 // 第 1 条指令执行时递归投递 3 条微调指令排到队尾——同循环 FIFO 的直观证据
-yomk::Response motionHandle(YomkPkgPtr pkg)
+yomk::payload::Response motionHandle(YomkPkgPtr pkg)
 {
-    auto cmd = yomk::unPack<yomk::msgs::String>(pkg);
+    auto cmd = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!cmd)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     std::ostringstream oss;
     oss << "执行运动指令: " << cmd->d << "（循环线程 " << std::this_thread::get_id() << "）";
@@ -213,21 +213,21 @@ yomk::Response motionHandle(YomkPkgPtr pkg)
         YOMK_INFO_TAG("arm.motion", "指令 mv1 触发 3 条微调指令，已追加到队列尾部");
     }
 
-    return {yomk::ResStatus::Succeeded, "eventHandle success. "};
+    return {yomk::payload::ResStatus::Succeeded, "eventHandle success. "};
 }
 
 // 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 START 2 参时指定）
-yomk::Response teachHandle(YomkPkgPtr pkg)
+yomk::payload::Response teachHandle(YomkPkgPtr pkg)
 {
-    auto msg = yomk::unPack<yomk::msgs::String>(pkg);
+    auto msg = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!msg)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     std::ostringstream oss;
     oss << "示教器事件: " << msg->d << "（循环线程 " << std::this_thread::get_id() << "）";
     YOMK_INFO_TAG("arm.teach", oss.str());
-    return {yomk::ResStatus::Succeeded, "teachHandle success"};
+    return {yomk::payload::ResStatus::Succeeded, "teachHandle success"};
 }
 
 // ---------------------------------------------------------------------------
@@ -249,9 +249,9 @@ static void showArmLineStart()
         "启动运动指令循环", "START motionLoop", [&] { return YomkAPI::startEventLoop("motionLoop", motionHandle, "String"); });
 
     logAction("查看循环运行状态");
-    yomk::Response resp = YomkAPI::getEventLoopInfo("motionLoop");
+    yomk::payload::Response resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop", resp);
-    auto info = yomk::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
+    auto info = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (info)
     {
         logLoopInfo("INFO_LOOP", info->d);
@@ -285,9 +285,9 @@ static void showArmMotionQueue()
     }
 
     logAction("立即观察队列积压");
-    yomk::Response resp = YomkAPI::getEventLoopInfo("motionLoop", 5);
+    yomk::payload::Response resp = YomkAPI::getEventLoopInfo("motionLoop", 5);
     logResp("INFO_LOOP motionLoop(5)", resp);
-    auto backlog = yomk::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
+    auto backlog = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (backlog)
     {
         logLoopInfo("INFO_LOOP", backlog->d);
@@ -300,7 +300,7 @@ static void showArmMotionQueue()
     logAction("排空后复查");
     resp = YomkAPI::getEventLoopInfo("motionLoop", 5);
     logResp("INFO_LOOP motionLoop(5)", resp);
-    auto drained = yomk::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
+    auto drained = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (drained)
     {
         logLoopInfo("INFO_LOOP", drained->d);
@@ -367,7 +367,7 @@ static void showArmTempHandler()
 
     // lambda 先赋给具名变量再传宏：返回值构造含逗号时，
     // 直接内联进宏会让预处理器把逗号误当实参分隔符
-    YomkServiceFunc tempHandle = [](YomkPkgPtr) -> yomk::Response { return {yomk::ResStatus::Succeeded, "tempHandle result"}; };
+    YomkServiceFunc tempHandle = [](YomkPkgPtr) -> yomk::payload::Response { return {yomk::payload::ResStatus::Succeeded, "tempHandle result"}; };
 
     logAction(
         "投递紧急巡检任务（临时函数）",
@@ -393,9 +393,9 @@ static void showArmLinePause()
     logAction("暂停运动循环", "STOP motionLoop", [&] { return YomkAPI::stopEventLoop("motionLoop"); });
 
     logAction("查看暂停后状态");
-    yomk::Response resp = YomkAPI::getEventLoopInfo("motionLoop");
+    yomk::payload::Response resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop", resp);
-    auto paused = yomk::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
+    auto paused = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (paused)
     {
         logLoopInfo("INFO_LOOP", paused->d);
@@ -413,7 +413,7 @@ static void showArmLinePause()
     logAction("确认积压已消化");
     resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop", resp);
-    auto resumed = yomk::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
+    auto resumed = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (resumed)
     {
         logLoopInfo("INFO_LOOP", resumed->d);
@@ -433,9 +433,9 @@ static void showArmDashboard()
 
     // 循环名清单（StringArray 结构化包）
     logAction("巡检循环名清单");
-    yomk::Response loopsResp = YomkAPI::listEventLoops();
+    yomk::payload::Response loopsResp = YomkAPI::listEventLoops();
     logResp("INFO_LOOPS", loopsResp);
-    auto loopArr = yomk::unPack<yomk::msgs::StringArray>(loopsResp.m_data);
+    auto loopArr = yomk::msgs::unPack<yomk::msgs::StringArray>(loopsResp.m_data);
     if (loopArr)
     {
         for (const auto& loopName : loopArr->d)
@@ -446,9 +446,9 @@ static void showArmDashboard()
 
     // 单循环抽查：运动循环（含队列 tag 预览，队列空时 nextTags 为空表）
     logAction("抽查运动循环详情");
-    yomk::Response loopResp = YomkAPI::getEventLoopInfo("motionLoop", 3);
+    yomk::payload::Response loopResp = YomkAPI::getEventLoopInfo("motionLoop", 3);
     logResp("INFO_LOOP motionLoop(3)", loopResp);
-    auto loopInfo = yomk::unPack<yomk::msgs::EventLoopInfo>(loopResp.m_data);
+    auto loopInfo = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(loopResp.m_data);
     if (loopInfo)
     {
         logLoopInfo("INFO_LOOP", loopInfo->d);
@@ -457,9 +457,9 @@ static void showArmDashboard()
 
     // 全量导出（EventLoopInfoList 结构化包），逐循环展开全部字段
     logAction("全量导出循环状态");
-    yomk::Response allResp = YomkAPI::getAllEventLoopInfo();
+    yomk::payload::Response allResp = YomkAPI::getAllEventLoopInfo();
     logResp("INFO_ALL", allResp);
-    auto allArr = yomk::unPack<yomk::msgs::EventLoopInfoList>(allResp.m_data);
+    auto allArr = yomk::msgs::unPack<yomk::msgs::EventLoopInfoList>(allResp.m_data);
     if (allArr)
     {
         for (const auto& info : allArr->d)
@@ -483,16 +483,16 @@ static void showArmLineOff()
     logAction("销毁示教循环", "DESTROY teachLoop", [&] { return YomkAPI::destroyEventLoop("teachLoop"); });
 
     logAction("巡检清单确认已清空");
-    yomk::Response loopsResp = YomkAPI::listEventLoops();
+    yomk::payload::Response loopsResp = YomkAPI::listEventLoops();
     logResp("INFO_LOOPS", loopsResp);
-    auto loopArr = yomk::unPack<yomk::msgs::StringArray>(loopsResp.m_data);
+    auto loopArr = yomk::msgs::unPack<yomk::msgs::StringArray>(loopsResp.m_data);
     logVerify(loopArr && loopArr->d.empty() ? "循环清单已空：机械臂班次结束，全部专用线程已下线" : "循环清单非空：存在未销毁循环");
 
     logAction(
         "已销毁循环投递被拒", "POST motionLoop (已销毁)", [&] { return YomkAPI::postEvent("motionLoop", yomk::msgs::String::shared("any")); });
     logAction("已销毁循环停止被拒", "STOP motionLoop (已销毁)", [&] { return YomkAPI::stopEventLoop("motionLoop"); });
     logAction("已销毁循环查询被拒");
-    yomk::Response resp = YomkAPI::getEventLoopInfo("motionLoop");
+    yomk::payload::Response resp = YomkAPI::getEventLoopInfo("motionLoop");
     logResp("INFO_LOOP motionLoop (已销毁)", resp);
     logVerify("对已销毁循环的一切操作 -> ResStatus::Failed(event loop not exist)：not-found 惯例，销毁不可续跑");
 }

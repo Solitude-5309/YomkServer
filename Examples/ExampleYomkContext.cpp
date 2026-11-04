@@ -64,7 +64,7 @@
 #include "YomkApi.h"
 
 // 定点引入所需类型，避免全局 using
-using yomk::CheckStatus;
+using yomk::payload::CheckStatus;
 
 // ---------------------------------------------------------------------------
 // 辅助输出：全部走 YomkLogger 控制台日志（YOMK_INFO_TAG 等），无 std::cout。
@@ -108,18 +108,18 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
     YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
 }
 
-// API 结果行（yomk::Response 版）：INFO 查询等仍返回 yomk::Response 的调用打印 status/msg
+// API 结果行（yomk::payload::Response 版）：INFO 查询等仍返回 yomk::payload::Response 的调用打印 status/msg
 // （数据形态各异，由调用处按需展开）。
 // status 三态：0=ResStatus::Succeeded 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
-static void logResp(const std::string& api, const yomk::Response& resp)
+static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {
     std::ostringstream oss;
     oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
-    if (resp.m_status == yomk::ResStatus::Succeeded)
+    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
     {
         oss << "(ResStatus::Succeeded 成功)";
     }
-    else if (resp.m_status == yomk::ResStatus::Failed)
+    else if (resp.m_status == yomk::payload::ResStatus::Failed)
     {
         oss << "(ResStatus::Failed 拒绝或不存在)";
     }
@@ -132,10 +132,10 @@ static void logResp(const std::string& api, const yomk::Response& resp)
 }
 
 // ResStatus 版结果行：CONTEXT_API 9 方法 ResStatus 化后直接返回三态（失败原因经错误日志承载，无 msg）
-static void logResp(const std::string& api, yomk::ResStatus status)
+static void logResp(const std::string& api, yomk::payload::ResStatus status)
 {
-    const char* name = status == yomk::ResStatus::Succeeded ? "ResStatus::Succeeded"
-                     : status == yomk::ResStatus::Failed    ? "ResStatus::Failed"
+    const char* name = status == yomk::payload::ResStatus::Succeeded ? "ResStatus::Succeeded"
+                     : status == yomk::payload::ResStatus::Failed    ? "ResStatus::Failed"
                                                                     : "ResStatus::Invalid";
     YOMK_INFO_TAG("arm.demo", "[" + api + "] status: " + name);
 }
@@ -144,7 +144,7 @@ static void logResp(const std::string& api, yomk::ResStatus status)
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；同步 checker/monitor 回调插入的日志被夹在开始行与
 // 结果行之间，归属一目了然，读者顺着日志读即可理解，无需回看代码。
-// 闭环 14-3：CONTEXT_API 9 方法返回 ResStatus，INFO 查询仍返回 yomk::Response，
+// 闭环 14-3：CONTEXT_API 9 方法返回 ResStatus，INFO 查询仍返回 yomk::payload::Response，
 // 模板化使两类返回各自路由到对应 logResp 重载，调用点零改动
 template <typename F>
 static auto logAction(const std::string& op, const std::string& api, F&& call)
@@ -155,13 +155,13 @@ static auto logAction(const std::string& op, const std::string& api, F&& call)
     return resp;
 }
 
-// 操作开始行（GET 等返回值非 yomk::Response 的操作）：由调用处随后打结果行
+// 操作开始行（GET 等返回值非 yomk::payload::Response 的操作）：由调用处随后打结果行
 static void logAction(const std::string& op)
 {
     YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
 }
 
-// GET 结果行：GET 返回 shared_ptr 而非 yomk::Response；
+// GET 结果行：GET 返回 shared_ptr 而非 yomk::payload::Response；
 // isDefault 由调用方比较返回指针与兜底默认值指针得出
 static void logGet(const std::string& key, const std::string& valueText, bool isDefault)
 {
@@ -212,7 +212,7 @@ static void logKeyInfo(const std::string& api, const yomk::ContextKeyInfo& info)
 static void ensureKey(const std::string& op, const std::string& key, YomkPkgPtr value)
 {
     auto status = logAction(op, "CREATE " + key, [&] { return YomkAPI::createContext(key, value); });
-    if (status != yomk::ResStatus::Succeeded)
+    if (status != yomk::payload::ResStatus::Succeeded)
     {
         std::ostringstream oss;
         oss << "[ensureKey] " << key << " 已存在，跳过创建";
@@ -226,9 +226,9 @@ static void ensureKey(const std::string& op, const std::string& key, YomkPkgPtr 
 // ---------------------------------------------------------------------------
 
 // 速度倍率安全门控：倍率是安全关键参数，超过 1.0（100%）有撞机风险，一律拒绝
-CheckStatus checkerSpeedRatio(const yomk::Context& ctx)
+CheckStatus checkerSpeedRatio(const yomk::payload::Context& ctx)
 {
-    auto ratio = yomk::unPack<yomk::msgs::Float64>(ctx.m_value);
+    auto ratio = yomk::msgs::unPack<yomk::msgs::Float64>(ctx.m_value);
     if (!ratio)
     {
         std::ostringstream oss;
@@ -250,9 +250,9 @@ CheckStatus checkerSpeedRatio(const yomk::Context& ctx)
 }
 
 // 安全 PLC 的上电告警：伺服电源指令属安全相关事件，收到快照即告警记录
-void monitorServoPowerAlarm(const yomk::Context& ctx)
+void monitorServoPowerAlarm(const yomk::payload::Context& ctx)
 {
-    auto power = yomk::unPack<yomk::msgs::Bool>(ctx.m_value);
+    auto power = yomk::msgs::unPack<yomk::msgs::Bool>(ctx.m_value);
     if (!power)
     {
         return;
@@ -265,9 +265,9 @@ void monitorServoPowerAlarm(const yomk::Context& ctx)
 
 // 操作黑匣子：记录每一次伺服电源指令的快照，供事后追溯；
 // 与告警回调同批执行，展示 SET_MONITOR 的追加式多播
-void monitorServoPowerLog(const yomk::Context& ctx)
+void monitorServoPowerLog(const yomk::payload::Context& ctx)
 {
-    auto power = yomk::unPack<yomk::msgs::Bool>(ctx.m_value);
+    auto power = yomk::msgs::unPack<yomk::msgs::Bool>(ctx.m_value);
     if (!power)
     {
         return;
@@ -280,9 +280,9 @@ void monitorServoPowerLog(const yomk::Context& ctx)
 
 // 数字孪生位姿上报：async=true 经单线程池送达（按 set 提交序保序），
 // 执行线程是池线程——上报动作不阻塞运动控制回路
-void monitorPoseTelemetry(const yomk::Context& ctx)
+void monitorPoseTelemetry(const yomk::payload::Context& ctx)
 {
-    auto pose = yomk::unPack<yomk::msgs::Float64Array>(ctx.m_value);
+    auto pose = yomk::msgs::unPack<yomk::msgs::Float64Array>(ctx.m_value);
     if (!pose)
     {
         return;
@@ -548,8 +548,8 @@ static void showArmDashboard()
         "ContextKeyInfo）；INFO_ALL 全量导出——框架只回结构化数据，展示格式由用户定义。");
 
     // 键名清单（StringArray 结构化包）
-    yomk::Response keysResp = logAction("巡检键名清单", "INFO_KEYS", [&] { return YomkAPI::listContextKeys(); });
-    auto keyArr = yomk::unPack<yomk::msgs::StringArray>(keysResp.m_data);
+    yomk::payload::Response keysResp = logAction("巡检键名清单", "INFO_KEYS", [&] { return YomkAPI::listContextKeys(); });
+    auto keyArr = yomk::msgs::unPack<yomk::msgs::StringArray>(keysResp.m_data);
     if (keyArr)
     {
         for (const auto& key : keyArr->d)
@@ -559,9 +559,9 @@ static void showArmDashboard()
     }
 
     // 单键抽查：速度倍率——场景 4 挂的门控回调仍在键上
-    yomk::Response ratioResp = logAction(
+    yomk::payload::Response ratioResp = logAction(
         "抽查速度倍率注册详情", "INFO_KEY arm.speed_ratio", [&] { return YomkAPI::getContextInfo("arm.speed_ratio"); });
-    auto ratioInfo = yomk::unPack<yomk::msgs::ContextKeyInfo>(ratioResp.m_data);
+    auto ratioInfo = yomk::msgs::unPack<yomk::msgs::ContextKeyInfo>(ratioResp.m_data);
     if (ratioInfo)
     {
         logKeyInfo("INFO_KEY", ratioInfo->d);
@@ -569,9 +569,9 @@ static void showArmDashboard()
     logVerify("arm.speed_ratio：checker=on（场景 4 的门控回调仍在）");
 
     // 单键抽查：末端位姿——异步上报 monitor 已追加
-    yomk::Response poseResp = logAction(
+    yomk::payload::Response poseResp = logAction(
         "抽查末端位姿注册详情", "INFO_KEY arm.tcp_pose", [&] { return YomkAPI::getContextInfo("arm.tcp_pose"); });
-    auto poseInfo = yomk::unPack<yomk::msgs::ContextKeyInfo>(poseResp.m_data);
+    auto poseInfo = yomk::msgs::unPack<yomk::msgs::ContextKeyInfo>(poseResp.m_data);
     if (poseInfo)
     {
         logKeyInfo("INFO_KEY", poseInfo->d);
@@ -583,8 +583,8 @@ static void showArmDashboard()
     logVerify("查询未注册的键 -> ResStatus::Failed(key is not exist)");
 
     // 全量导出（组 → 键元信息两层结构化包），逐组逐键展开全部字段
-    yomk::Response allResp = logAction("全量导出键值表", "INFO_ALL", [&] { return YomkAPI::getAllContextInfo(); });
-    auto allArr = yomk::unPack<yomk::msgs::ContextGroupInfoList>(allResp.m_data);
+    yomk::payload::Response allResp = logAction("全量导出键值表", "INFO_ALL", [&] { return YomkAPI::getAllContextInfo(); });
+    auto allArr = yomk::msgs::unPack<yomk::msgs::ContextGroupInfoList>(allResp.m_data);
     if (allArr)
     {
         for (const auto& group : allArr->d)
@@ -627,8 +627,8 @@ static void showArmTaskCleanup()
     logVerify("重复销毁同名键 -> ResStatus::Failed(key is not exist)");
 
     // 收尾确认：键值表已空，会话闭环
-    yomk::Response keysResp = logAction("收尾确认键值表已空", "INFO_KEYS", [&] { return YomkAPI::listContextKeys(); });
-    auto keyArr = yomk::unPack<yomk::msgs::StringArray>(keysResp.m_data);
+    yomk::payload::Response keysResp = logAction("收尾确认键值表已空", "INFO_KEYS", [&] { return YomkAPI::listContextKeys(); });
+    auto keyArr = yomk::msgs::unPack<yomk::msgs::StringArray>(keysResp.m_data);
     logVerify(keyArr && keyArr->d.empty() ? "键值表已空：机械臂会话结束，共享状态全部下线" : "键值表非空：存在未清理键");
 }
 

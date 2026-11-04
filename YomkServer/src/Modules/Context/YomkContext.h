@@ -18,25 +18,25 @@ public:
     virtual void deinit() override;
 
 private:
-    yomk::Response create(YomkPkgPtr pkg);
-    yomk::Response destroy(YomkPkgPtr pkg);
-    yomk::Response get(YomkPkgPtr pkg);
-    yomk::Response set(YomkPkgPtr pkg);
-    yomk::Response turnOnChecker(YomkPkgPtr pkg);
-    yomk::Response turnOffChecker(YomkPkgPtr pkg);
-    yomk::Response turnOnMonitor(YomkPkgPtr pkg);
-    yomk::Response turnOffMonitor(YomkPkgPtr pkg);
-    yomk::Response setChecker(YomkPkgPtr pkg);
-    yomk::Response setMonitor(YomkPkgPtr pkg);
-    yomk::Response groups(YomkPkgPtr pkg);
-    yomk::Response keys(YomkPkgPtr pkg);
-    yomk::Response keyInfo(YomkPkgPtr pkg);
-    yomk::Response listAll(YomkPkgPtr pkg);
+    yomk::payload::Response create(YomkPkgPtr pkg);
+    yomk::payload::Response destroy(YomkPkgPtr pkg);
+    yomk::payload::Response get(YomkPkgPtr pkg);
+    yomk::payload::Response set(YomkPkgPtr pkg);
+    yomk::payload::Response turnOnChecker(YomkPkgPtr pkg);
+    yomk::payload::Response turnOffChecker(YomkPkgPtr pkg);
+    yomk::payload::Response turnOnMonitor(YomkPkgPtr pkg);
+    yomk::payload::Response turnOffMonitor(YomkPkgPtr pkg);
+    yomk::payload::Response setChecker(YomkPkgPtr pkg);
+    yomk::payload::Response setMonitor(YomkPkgPtr pkg);
+    yomk::payload::Response groups(YomkPkgPtr pkg);
+    yomk::payload::Response keys(YomkPkgPtr pkg);
+    yomk::payload::Response keyInfo(YomkPkgPtr pkg);
+    yomk::payload::Response listAll(YomkPkgPtr pkg);
 
 private:
     // 组路由辅助：main 组成员直取；自定义组按名惰性自动创建（不支持销毁）；
     // 失败时 resp 携带错误响应并返回 nullptr
-    ContextGroup* findGroup(const std::string& groupName, yomk::Response& resp);
+    ContextGroup* findGroup(const std::string& groupName, yomk::payload::Response& resp);
 
     // 默认组 main：成员直取，不进组表、免查找；完整承载现有 Context 全部功能
     ContextGroup m_main;

@@ -73,7 +73,7 @@ static YomkServiceFunc countHandler()
     return [](YomkPkgPtr)
     {
         g_execCount.fetch_add(1);
-        return yomk::Response(yomk::ResStatus::Succeeded, "counted");
+        return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "counted");
     };
 }
 
@@ -96,7 +96,7 @@ static YomkServiceFunc gateHandler()
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
-        return yomk::Response(yomk::ResStatus::Succeeded, "gate done");
+        return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "gate done");
     };
 }
 
@@ -154,7 +154,7 @@ int main()
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
         {
-            loop.post(yomk::msgs::Event::shared(yomk::Event("st1", nullptr, countHandler(), "")));
+            loop.post(yomk::msgs::Event::shared(yomk::payload::Event("st1", nullptr, countHandler(), "")));
         }
         auto t1 = std::chrono::steady_clock::now();
         bool drained = waitUntil(
@@ -193,7 +193,7 @@ int main()
                     {
                         for (size_t k = 0; k < perThread; ++k)
                         {
-                            loop.post(yomk::msgs::Event::shared(yomk::Event("st2", nullptr, countHandler(), "")));
+                            loop.post(yomk::msgs::Event::shared(yomk::payload::Event("st2", nullptr, countHandler(), "")));
                         }
                     });
             }
@@ -230,14 +230,14 @@ int main()
 
         // gate 占住 worker：投递速率与消费速率解耦，纯测 post + 无界队列大规模增长/重分配
         YOMK_TEST_CHECK(
-            loop.post(yomk::msgs::Event::shared(yomk::Event("st3", nullptr, gateHandler(), "gate"))) == 0,
+            loop.post(yomk::msgs::Event::shared(yomk::payload::Event("st3", nullptr, gateHandler(), "gate"))) == 0,
             "S3 post gate 事件返回 0");
         YOMK_TEST_CHECK(waitGateStarted(2000), "S3 gate 已占住工作线程");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
         {
-            loop.post(yomk::msgs::Event::shared(yomk::Event("st3", nullptr, countHandler(), "")));
+            loop.post(yomk::msgs::Event::shared(yomk::payload::Event("st3", nullptr, countHandler(), "")));
         }
         auto t1 = std::chrono::steady_clock::now();
 
@@ -283,7 +283,7 @@ int main()
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < count; ++k)
         {
-            loop.post(yomk::msgs::Event::shared(yomk::Event("st4", nullptr, countHandler(), bigTag)));
+            loop.post(yomk::msgs::Event::shared(yomk::payload::Event("st4", nullptr, countHandler(), bigTag)));
         }
         auto t1 = std::chrono::steady_clock::now();
         bool drained = waitUntil(
@@ -313,7 +313,7 @@ int main()
         YomkAPI::init(1);
         auto server = YomkAPI::serverInstance();
         YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("stress_loop", nullptr) == yomk::ResStatus::Succeeded, "S5 START 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("stress_loop", nullptr) == yomk::payload::ResStatus::Succeeded, "S5 START 返回 ResStatus::Succeeded");
 
         auto t0 = std::chrono::steady_clock::now();
         for (size_t k = 0; k < N; ++k)
@@ -333,7 +333,7 @@ int main()
         recordBaseline(
             "S5 API-level end-to-end", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t0).count());
 
-        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("stress_loop") == yomk::ResStatus::Succeeded, "S5 DESTROY 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("stress_loop") == yomk::payload::ResStatus::Succeeded, "S5 DESTROY 返回 ResStatus::Succeeded");
         YomkAPI::shutdown();
     }
 

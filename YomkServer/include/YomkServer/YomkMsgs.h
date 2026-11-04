@@ -37,6 +37,8 @@
 
 namespace yomk
 {
+namespace payload
+{
 
 enum class ResStatus
 {
@@ -57,29 +59,44 @@ struct Response
     YomkPkgPtr m_data = nullptr;              // 携带的返回数据
 };
 
+}  // namespace payload
 }  // namespace yomk
 
-using YomkServiceFunc = std::function<yomk::Response(YomkPkgPtr pkg)>;
-using YomkResponseFunc = std::function<void(yomk::Response response)>;
+using YomkServiceFunc = std::function<yomk::payload::Response(YomkPkgPtr pkg)>;
+using YomkResponseFunc = std::function<void(yomk::payload::Response response)>;
 
 namespace yomk
 {
-
-template <class Msg>
-std::shared_ptr<Msg> unPack(const YomkPkgPtr& pkg)
+namespace payload
 {
-    if (pkg && pkg->name() == Msg::kName)
-    {
-        return std::dynamic_pointer_cast<Msg>(pkg);
-    }
-    return nullptr;
-}
 
-struct FuncInfo
+enum class CheckStatus
 {
-    std::string m_funcName;     // 功能函数名（/开头）
-    std::string m_msgName;      // 期望消息类型名（installFunc 第三参声明，可为空）
-    std::string m_description;  // 函数说明（installFunc 第四参声明，内容使用者自定义，可为空）
+    Accept,
+    Reject
+};
+
+enum class LogLevel : int
+{
+    Debug,
+    Info,
+    Warn,
+    Error,
+};
+
+struct Context
+{
+    std::string m_key;
+    YomkPkgPtr m_value;
+    std::string m_group = "main";  // key 所属组名（缺省 main）
+};
+
+struct Log
+{
+    LogLevel m_level;
+    std::string m_log;
+    std::string m_logger;  // 日志器名：服务端按其查找/惰性创建日志器实例
+    std::string m_tag;  // 日志标签：随记录显示 [tag] 段，区别于 m_logger（末位追加，旧位置初始化兼容）
 };
 
 struct Function
@@ -131,35 +148,10 @@ struct EventLoop
     std::string m_msgName;  // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
 };
 
-struct EventLoopInfo
-{
-    std::string m_loopName;               // 循环名
-    bool m_running = false;               // worker 是否运行中
-    std::size_t m_pending = 0;            // 积压事件数
-    bool m_hasDefaultFunc = false;        // 是否注册默认处理函数
-    std::string m_msgName;                // 默认处理函数期望消息类型名（可空）
-    std::vector<std::string> m_nextTags;  // 队列头起最多 tagCount 条事件 tag（存原值，空串保留）
-};
-
 struct LogFile
 {
     std::string m_logger;
     std::string m_dir;
-};
-
-struct Log
-{
-    enum class LogLevel : int
-    {
-        Debug,
-        Info,
-        Warn,
-        Error,
-    };
-    LogLevel m_level;
-    std::string m_log;
-    std::string m_logger;  // 日志器名：服务端按其查找/惰性创建日志器实例
-    std::string m_tag;  // 日志标签：随记录显示 [tag] 段，区别于 m_logger（末位追加，旧位置初始化兼容）
 };
 
 struct ConsoleLogProxy
@@ -172,56 +164,16 @@ struct FileLogProxy
     std::function<bool(const Log& log)> m_fileLogProxyFunc;
 };
 
-struct LoggerState
-{
-    bool m_debugOn = false;  // debug 级别开关
-    bool m_infoOn = false;   // info 级别开关
-    bool m_warnOn = false;   // warn 级别开关
-    bool m_errorOn = false;  // error 级别开关
-    bool m_proxyOn = false;
-};
-
 struct LoggerQuery
 {
     std::string m_loggerName;
     std::string m_type;
 };
 
-struct LoggerInfo
-{
-    std::string m_loggerName;  // 日志器名
-    std::string m_type;        // 类型："console" 或 "file"（与 listLoggers/getLoggerInfo 的类型参数同名）
-    std::string m_dir;         // file 类型的日志目录（console 时为空串）
-    LoggerState m_loggerState;
-};
-
-struct Context
-{
-    std::string m_key;
-    YomkPkgPtr m_value;
-    std::string m_group = "main";  // key 所属组名（缺省 main）
-};
-
-struct ContextKeyInfo
-{
-    std::string m_key;                    // 键名
-    std::string m_typeName;               // 值消息包类型名（值为空时为空串）
-    bool m_checkerOn = false;             // 门控是否开启
-    std::size_t m_monitorCount = 0;       // monitor 总数
-    std::size_t m_asyncMonitorCount = 0;  // 其中 async monitor 数
-    std::string m_group = "main";         // key 所属组名
-};
-
-enum class CheckStatus
-{
-    Accept,
-    Reject
-};
-
 struct ContextChecker
 {
     std::string m_key;
-    std::function<CheckStatus(const yomk::Context& ctx)> m_checkFunc;
+    std::function<CheckStatus(const yomk::payload::Context& ctx)> m_checkFunc;
     std::string m_group = "main";  // 目标 key 所属组名（缺省 main）
 };
 
@@ -239,6 +191,79 @@ struct ContextGroupKey
     std::string m_key;             // 键名
 };
 
+struct VoidPointer
+{
+    void* m_ptr = nullptr;
+};
+
+}  // namespace payload
+}  // namespace yomk
+
+namespace yomk
+{
+namespace msgs
+{
+
+template <class Msg>
+std::shared_ptr<Msg> unPack(const YomkPkgPtr& pkg)
+{
+    if (pkg && pkg->name() == Msg::kName)
+    {
+        return std::dynamic_pointer_cast<Msg>(pkg);
+    }
+    return nullptr;
+}
+
+}  // namespace msgs
+}  // namespace yomk
+
+namespace yomk
+{
+
+struct FuncInfo
+{
+    std::string m_funcName;     // 功能函数名（/开头）
+    std::string m_msgName;      // 期望消息类型名（installFunc 第三参声明，可为空）
+    std::string m_description;  // 函数说明（installFunc 第四参声明，内容使用者自定义，可为空）
+};
+
+struct EventLoopInfo
+{
+    std::string m_loopName;               // 循环名
+    bool m_running = false;               // worker 是否运行中
+    std::size_t m_pending = 0;            // 积压事件数
+    bool m_hasDefaultFunc = false;        // 是否注册默认处理函数
+    std::string m_msgName;                // 默认处理函数期望消息类型名（可空）
+    std::vector<std::string> m_nextTags;  // 队列头起最多 tagCount 条事件 tag（存原值，空串保留）
+};
+
+struct LoggerState
+{
+    bool m_debugOn = false;  // debug 级别开关
+    bool m_infoOn = false;   // info 级别开关
+    bool m_warnOn = false;   // warn 级别开关
+    bool m_errorOn = false;  // error 级别开关
+    bool m_proxyOn = false;
+};
+
+struct LoggerInfo
+{
+    std::string m_loggerName;  // 日志器名
+    std::string m_type;        // 类型："console" 或 "file"（与 listLoggers/getLoggerInfo 的类型参数同名）
+    std::string m_dir;         // file 类型的日志目录（console 时为空串）
+    LoggerState m_loggerState;
+};
+
+struct ContextKeyInfo
+{
+    std::string m_key;                    // 键名
+    std::string m_typeName;               // 值消息包类型名（值为空时为空串）
+    bool m_checkerOn = false;             // 门控是否开启
+    std::size_t m_monitorCount = 0;       // monitor 总数
+    std::size_t m_asyncMonitorCount = 0;  // 其中 async monitor 数
+    std::string m_group = "main";         // key 所属组名
+};
+
 struct ContextGroupInfo
 {
     std::string m_groupName;             // 组名
@@ -251,11 +276,6 @@ struct ServerServiceInfo
     std::vector<FuncInfo> m_funcs;  // 函数元信息（与 /function 单查同族，m_funcName 带 / 前缀 url 段）
 };
 
-struct VoidPointer
-{
-    void* m_ptr = nullptr;
-};
-
 }  // namespace yomk
 
 // SDK 消息包目录：框架载荷包 + 内置标准类型包（成员名均为 d）。
@@ -263,30 +283,30 @@ struct VoidPointer
 
 // ============ 框架载荷消息包 ============
 // 服务响应载荷包（功能函数返回值的包形态，供响应作为消息存储/传递）
-YomkMsg(yomk::Response, Response, d);
-YomkMsg(yomk::Function, Function, d);
-YomkMsg(yomk::CallFunction, CallFunction, d);
+YomkMsg(yomk::payload::Response, Response, d);
+YomkMsg(yomk::payload::Function, Function, d);
+YomkMsg(yomk::payload::CallFunction, CallFunction, d);
 YomkMsg(yomk::FuncInfo, FuncInfo, d);
 // FunctionPool 全量函数内省（getAllFunctionInfo 返回数据；函数总数由 d.size() 承载）
 YomkMsg(std::vector<yomk::FuncInfo>, FuncInfoList, d);
-YomkMsg(yomk::Event, Event, d);
-YomkMsg(yomk::EventLoop, EventLoop, d);
+YomkMsg(yomk::payload::Event, Event, d);
+YomkMsg(yomk::payload::EventLoop, EventLoop, d);
 YomkMsg(yomk::EventLoopInfo, EventLoopInfo, d);
 // EventLoop 全量循环内省（getAllEventLoopInfo 返回数据；m_nextTags 取 3 条与单查缺省一致）
 YomkMsg(std::vector<yomk::EventLoopInfo>, EventLoopInfoList, d);
-YomkMsg(yomk::LogFile, LogFile, d);
-YomkMsg(yomk::Log, Log, d);
-YomkMsg(yomk::ConsoleLogProxy, ConsoleLogProxy, d);
-YomkMsg(yomk::FileLogProxy, FileLogProxy, d);
-YomkMsg(yomk::LoggerQuery, LoggerQuery, d);
+YomkMsg(yomk::payload::LogFile, LogFile, d);
+YomkMsg(yomk::payload::Log, Log, d);
+YomkMsg(yomk::payload::ConsoleLogProxy, ConsoleLogProxy, d);
+YomkMsg(yomk::payload::FileLogProxy, FileLogProxy, d);
+YomkMsg(yomk::payload::LoggerQuery, LoggerQuery, d);
 YomkMsg(yomk::LoggerInfo, LoggerInfo, d);
 // Logger 控制台全局主闸态（getGlobalLoggerLevel 返回数据：四级别主闸开关 + proxy）
 YomkMsg(yomk::LoggerState, LoggerState, d);
 // Logger 全量内省（getAllLoggerInfo 返回数据；元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段）
 YomkMsg(std::vector<yomk::LoggerInfo>, LoggerInfoList, d);
-YomkMsg(yomk::Context, Context, d);
+YomkMsg(yomk::payload::Context, Context, d);
 // Context 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键，组名缺省 main）
-YomkMsg(yomk::ContextGroupKey, ContextGroupKey, d);
+YomkMsg(yomk::payload::ContextGroupKey, ContextGroupKey, d);
 YomkMsg(yomk::ContextKeyInfo, ContextKeyInfo, d);
 // Context 键元信息清单（ContextGroupInfo.m_keys 的元素类型）
 YomkMsg(std::vector<yomk::ContextKeyInfo>, ContextKeyInfoList, d);
@@ -296,17 +316,17 @@ YomkMsg(yomk::ContextGroupInfo, ContextGroupInfo, d);
 YomkMsg(std::vector<yomk::ContextGroupInfo>, ContextGroupInfoList, d);
 // ServerInfo 全量拓扑内省（getAllServerInfo 返回数据；层级为服务 → 函数元信息）
 YomkMsg(std::vector<yomk::ServerServiceInfo>, ServerServiceInfoList, d);
-YomkMsg(yomk::ContextChecker, ContextChecker, d);
-YomkMsg(yomk::ContextMonitor, ContextMonitor, d);
-YomkMsg(yomk::VoidPointer, VoidPointer, d);
+YomkMsg(yomk::payload::ContextChecker, ContextChecker, d);
+YomkMsg(yomk::payload::ContextMonitor, ContextMonitor, d);
+YomkMsg(yomk::payload::VoidPointer, VoidPointer, d);
 
 // Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 YomkAPI::setContextMonitor
-using YomkContextMonitorFunc = std::function<void(const yomk::Context& ctx)>;
+using YomkContextMonitorFunc = std::function<void(const yomk::payload::Context& ctx)>;
 // Context checker 回调：返回 CheckStatus::Accept/CheckStatus::Reject 门控 set；详见 YomkAPI::setContextChecker
-using YomkContextCheckerFunc = std::function<yomk::CheckStatus(const yomk::Context& ctx)>;
-using YomkConsoleLogProxyFunc = std::function<bool(const yomk::Log& log)>;
+using YomkContextCheckerFunc = std::function<yomk::payload::CheckStatus(const yomk::payload::Context& ctx)>;
+using YomkConsoleLogProxyFunc = std::function<bool(const yomk::payload::Log& log)>;
 // 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 YomkAPI::setFileLogProxy
-using YomkFileLogProxyFunc = std::function<bool(const yomk::Log& log)>;
+using YomkFileLogProxyFunc = std::function<bool(const yomk::payload::Log& log)>;
 
 // 内置标准类型消息包（成员名均为 d）
 YomkMsg(bool, Bool, d);

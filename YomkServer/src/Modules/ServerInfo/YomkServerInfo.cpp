@@ -18,35 +18,35 @@ int YomkServerInfo::init()
     return 0;
 }
 
-yomk::Response YomkServerInfo::listServices(YomkPkgPtr pkg)
+yomk::payload::Response YomkServerInfo::listServices(YomkPkgPtr pkg)
 {
     auto server = m_weakServer.lock();
     if (!server)
     {
         YOMK_ERR_POS_LOG("server has been destroyed, list services ignored.");
-        return {yomk::ResStatus::Failed, "server has been destroyed"};
+        return {yomk::payload::ResStatus::Failed, "server has been destroyed"};
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(server->serviceNames())};
+    return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(server->serviceNames())};
 }
 
-yomk::Response YomkServerInfo::listFunctions(YomkPkgPtr pkg)
+yomk::payload::Response YomkServerInfo::listFunctions(YomkPkgPtr pkg)
 {
-    auto ySrvName = yomk::unPack<yomk::msgs::String>(pkg);
+    auto ySrvName = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!ySrvName)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     if (ySrvName->d.empty())
     {
         YOMK_ERR_POS_LOG("srvName is empty, please check String.d");
-        return {yomk::ResStatus::Invalid, "srvName is empty"};
+        return {yomk::payload::ResStatus::Invalid, "srvName is empty"};
     }
 
     auto server = m_weakServer.lock();
     if (!server)
     {
         YOMK_ERR_POS_LOG("server has been destroyed, list functions ignored.");
-        return {yomk::ResStatus::Failed, "server has been destroyed"};
+        return {yomk::payload::ResStatus::Failed, "server has been destroyed"};
     }
 
     // 结构化清单：FuncInfo 三字段与 /function 单查、/all 聚合同族（m_funcName 带 / 前缀 url 段）
@@ -55,28 +55,28 @@ yomk::Response YomkServerInfo::listFunctions(YomkPkgPtr pkg)
     {
         funcs.push_back(iter.second);
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfoList::shared(std::move(funcs))};
+    return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfoList::shared(std::move(funcs))};
 }
 
-yomk::Response YomkServerInfo::functionInfo(YomkPkgPtr pkg)
+yomk::payload::Response YomkServerInfo::functionInfo(YomkPkgPtr pkg)
 {
-    auto yUrl = yomk::unPack<yomk::msgs::String>(pkg);
+    auto yUrl = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!yUrl)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     const std::string& url = yUrl->d;
     if (url.empty() || url[0] != '/')
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", please start with /");
-        return {yomk::ResStatus::Failed, "url parse error: " + url + ", please start with /"};
+        return {yomk::payload::ResStatus::Failed, "url parse error: " + url + ", please start with /"};
     }
 
     size_t posEnd = url.find('/', 1);
     if (posEnd == std::string::npos)
     {
         YOMK_ERR_POS_LOG("url parse error: " + url + ", not found function name.");
-        return {yomk::ResStatus::Failed, "url parse error: " + url + ", not found function name."};
+        return {yomk::payload::ResStatus::Failed, "url parse error: " + url + ", not found function name."};
     }
 
     std::string srvName = url.substr(0, posEnd);
@@ -86,7 +86,7 @@ yomk::Response YomkServerInfo::functionInfo(YomkPkgPtr pkg)
     if (!server)
     {
         YOMK_ERR_POS_LOG("server has been destroyed, function info ignored.");
-        return {yomk::ResStatus::Failed, "server has been destroyed"};
+        return {yomk::payload::ResStatus::Failed, "server has been destroyed"};
     }
 
     for (auto& name : server->serviceNames())
@@ -98,7 +98,7 @@ yomk::Response YomkServerInfo::functionInfo(YomkPkgPtr pkg)
             if (iter == infos.end())
             {
                 YOMK_ERR_POS_LOG("function not found -> " + url);
-                return {yomk::ResStatus::Failed, "function not found: " + url};
+                return {yomk::payload::ResStatus::Failed, "function not found: " + url};
             }
             // 命中：结构化包恒挂，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）；
             // 复用 yomk::FuncInfo 与 FunctionPool /name 单查端点同族
@@ -106,22 +106,22 @@ yomk::Response YomkServerInfo::functionInfo(YomkPkgPtr pkg)
             info.m_funcName = funcName;
             info.m_msgName = iter->second.m_msgName;
             info.m_description = iter->second.m_description;
-            return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfo::shared(info)};
+            return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfo::shared(info)};
         }
     }
 
     YOMK_ERR_POS_LOG("service not found -> " + srvName);
-    return {yomk::ResStatus::Failed, "service not found: " + srvName};
+    return {yomk::payload::ResStatus::Failed, "service not found: " + srvName};
 }
 
-yomk::Response YomkServerInfo::listAll(YomkPkgPtr pkg)
+yomk::payload::Response YomkServerInfo::listAll(YomkPkgPtr pkg)
 {
     (void)pkg;
     auto server = m_weakServer.lock();
     if (!server)
     {
         YOMK_ERR_POS_LOG("server has been destroyed, list all ignored.");
-        return {yomk::ResStatus::Failed, "server has been destroyed"};
+        return {yomk::payload::ResStatus::Failed, "server has been destroyed"};
     }
 
     // 同现实现取数锁序：serviceNames() 一次，再逐服务 serviceFuncInfos()；
@@ -140,5 +140,5 @@ yomk::Response YomkServerInfo::listAll(YomkPkgPtr pkg)
         infos.push_back(std::move(srv));
     }
     // m_msg 恒 "ok"，数据走 m_data（结构化层级包：服务 → 函数元信息）
-    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::ServerServiceInfoList::shared(std::move(infos))};
+    return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::ServerServiceInfoList::shared(std::move(infos))};
 }

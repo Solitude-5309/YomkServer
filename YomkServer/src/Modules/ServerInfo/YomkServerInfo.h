@@ -13,10 +13,10 @@ public:
     virtual int init() override;
 
 private:
-    yomk::Response listServices(YomkPkgPtr pkg);
-    yomk::Response listFunctions(YomkPkgPtr pkg);
-    yomk::Response functionInfo(YomkPkgPtr pkg);
-    yomk::Response listAll(YomkPkgPtr pkg);
+    yomk::payload::Response listServices(YomkPkgPtr pkg);
+    yomk::payload::Response listFunctions(YomkPkgPtr pkg);
+    yomk::payload::Response functionInfo(YomkPkgPtr pkg);
+    yomk::payload::Response listAll(YomkPkgPtr pkg);
 
 private:
     std::weak_ptr<YomkServer> m_weakServer;

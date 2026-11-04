@@ -3,6 +3,7 @@
 #include "boot/MyBoot.h"
 
 using namespace yomk;
+using namespace yomk::payload;
 
 int main(int argc, char* argv[])
 {

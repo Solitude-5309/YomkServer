@@ -22,7 +22,7 @@
 | `YomkAPI::request(url, pkg)` | 同步请求 |
 | `YomkAPI::asyncRequest(url, pkg, callback)` | 异步请求，投递到框架内置线程池并发执行，不阻塞当前线程 |
 
-返回值 `yomk::Response` 字段：
+返回值 `yomk::payload::Response` 字段：
 
 | 字段 | 说明 |
 |---|---|
@@ -38,14 +38,14 @@
 // URL 寻址：格式为 "/服务名/函数名"，如 "/MyService/hello"
 
 // 同步调用
-yomk::Response resp = YomkAPI::request("/MyService/hello", pkg);
-if (resp.m_status == yomk::ResStatus::Succeeded)
+yomk::payload::Response resp = YomkAPI::request("/MyService/hello", pkg);
+if (resp.m_status == yomk::payload::ResStatus::Succeeded)
 {
     YOMK_INFO("Response received:", resp.m_msg);
 }
 
 // 异步调用：投递到框架内置线程池并发执行，不阻塞当前线程
-YomkAPI::asyncRequest("/MyService/hello", pkg, [](yomk::Response resp) {
+YomkAPI::asyncRequest("/MyService/hello", pkg, [](yomk::payload::Response resp) {
     // 异步回调逻辑
 });
 ```
@@ -87,7 +87,7 @@ int MyService::init()
 - **deinit() 的四个触发时机**：`YomkAPI::delService()` 删除单个服务、`YomkAPI::shutdown()` 关闭全部服务、同名服务被 `YomkAPI::addService()` 替换（旧服务先 deinit 再装新服务）、忘记关闭时框架析构兜底。覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
 - **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃；`YomkAPI::shutdown()` 走排空语义，排空期回调照常执行；在途请求安全执行完毕后服务才析构。
 - **异步请求池大小**：`YomkAPI::init(n)` 的 `n` 为异步请求线程池大小（0 表示自动检测），仅首次初始化生效。
-- **弱绑定失效行为**：服务删除后，返回 `yomk::Response` 的回调得到 `ResStatus::Failed`，checker 回调放行（`CheckStatus::Accept`），void 回调直接丢弃，并打错误日志。
+- **弱绑定失效行为**：服务删除后，返回 `yomk::payload::Response` 的回调得到 `ResStatus::Failed`，checker 回调放行（`CheckStatus::Accept`），void 回调直接丢弃，并打错误日志。
 - **弱绑定依赖服务的 `shared_ptr` 所有权**：在构造函数内调用（服务尚未注册到服务器）回调永不触发并打错误日志。
 
 ## 启动编排（YomkBoot）

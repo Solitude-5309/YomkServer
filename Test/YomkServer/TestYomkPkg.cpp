@@ -11,7 +11,7 @@
  *     运行时类型名解包（原 YomkUnPackPkgT 宏逐字展开内联，闭环 7 随宏删除；
  *     含名匹配但动态类型不符的 cast 失败）
  * S3. Event 结构：默认/三参/四参构造、handle() 有无 serviceFunc、m_eventId 初值、m_waitCallback
- * S4. yomk::Response 契约：默认构造、枚举值序（ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1）、双参/三参构造
+ * S4. yomk::payload::Response 契约：默认构造、枚举值序（ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1）、双参/三参构造
  * S5. 框架结构体默认值（Log::m_level 无类内初始化不作值断言）+ 结构体消息包版 name 就位
  *
  * 说明：全程不调 YomkAPI::init()（纯类型/模板测试，不依赖单例）；YomkPkg::name() 公有 setter 用于
@@ -143,30 +143,30 @@ int main()
         fakeTypePkg->name("String");  // 名字伪造成 String（实际是 Int32，cast 必败）
 
         // --- unPack + 服务函数级手写判空：失败返回 ResStatus::Failed + 契约消息，命中需手动继续 ---
-        auto unpackResp = [](YomkPkgPtr pkg) -> yomk::Response
+        auto unpackResp = [](YomkPkgPtr pkg) -> yomk::payload::Response
         {
-            auto s = yomk::unPack<yomk::msgs::String>(pkg);
+            auto s = yomk::msgs::unPack<yomk::msgs::String>(pkg);
             if (!s)
             {
-                return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+                return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
             }
-            return yomk::Response(yomk::ResStatus::Succeeded, s->d);
+            return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, s->d);
         };
-        yomk::Response nullResp = unpackResp(nullptr);
-        YOMK_TEST_CHECK(nullResp.m_status == yomk::ResStatus::Failed && nullResp.m_msg == "pkg is null or pkg is not String",
+        yomk::payload::Response nullResp = unpackResp(nullptr);
+        YOMK_TEST_CHECK(nullResp.m_status == yomk::payload::ResStatus::Failed && nullResp.m_msg == "pkg is null or pkg is not String",
               "unPack null pkg：服务函数级判空返回 ResStatus::Failed + 契约消息");
-        yomk::Response nameMissResp = unpackResp(fakeNamePkg);
-        YOMK_TEST_CHECK(nameMissResp.m_status == yomk::ResStatus::Failed && nameMissResp.m_msg == "pkg is null or pkg is not String",
+        yomk::payload::Response nameMissResp = unpackResp(fakeNamePkg);
+        YOMK_TEST_CHECK(nameMissResp.m_status == yomk::payload::ResStatus::Failed && nameMissResp.m_msg == "pkg is null or pkg is not String",
               "unPack 名字不匹配：同款契约消息");
-        yomk::Response hitResp = unpackResp(okPkg);
-        YOMK_TEST_CHECK(hitResp.m_status == yomk::ResStatus::Succeeded && hitResp.m_msg == "hello",
+        yomk::payload::Response hitResp = unpackResp(okPkg);
+        YOMK_TEST_CHECK(hitResp.m_status == yomk::payload::ResStatus::Succeeded && hitResp.m_msg == "hello",
               "unPack 命中：解包指针可用且 d 正确");
 
         // --- unPack + 手写判空提前 return（标志位观测） ---
         bool reached = false;
         auto unpackVoid = [&](YomkPkgPtr pkg)
         {
-            auto s = yomk::unPack<yomk::msgs::String>(pkg);
+            auto s = yomk::msgs::unPack<yomk::msgs::String>(pkg);
             if (!s)
             {
                 return;
@@ -182,7 +182,7 @@ int main()
         std::string voidOut;
         auto unpackVoidHit = [&](YomkPkgPtr pkg)
         {
-            auto s = yomk::unPack<yomk::msgs::String>(pkg);
+            auto s = yomk::msgs::unPack<yomk::msgs::String>(pkg);
             if (!s)
             {
                 return;
@@ -193,15 +193,15 @@ int main()
         YOMK_TEST_CHECK(voidOut == "hello", "unPack 命中：解包指针可用");
 
         // --- unPack 直接调用：不提前 return（指针 nullptr，调用方手动判空） ---
-        auto nullPtr = yomk::unPack<yomk::msgs::String>(nullptr);
+        auto nullPtr = yomk::msgs::unPack<yomk::msgs::String>(nullptr);
         YOMK_TEST_CHECK(nullPtr == nullptr, "unPack null pkg：不提前返回，指针为 nullptr");
-        auto missPtr = yomk::unPack<yomk::msgs::String>(fakeNamePkg);
+        auto missPtr = yomk::msgs::unPack<yomk::msgs::String>(fakeNamePkg);
         YOMK_TEST_CHECK(missPtr == nullptr, "unPack 名字不匹配：指针为 nullptr（后续语句可达）");
-        auto hitPtr = yomk::unPack<yomk::msgs::String>(okPkg);
+        auto hitPtr = yomk::msgs::unPack<yomk::msgs::String>(okPkg);
         YOMK_TEST_CHECK(hitPtr != nullptr && hitPtr->d == "hello", "unPack 命中：指针非空且 d 正确");
 
         // --- unPack 名字匹配但动态类型不符：合并为单失败路径，返回 nullptr ---
-        auto typeMissPtr = yomk::unPack<yomk::msgs::String>(fakeTypePkg);
+        auto typeMissPtr = yomk::msgs::unPack<yomk::msgs::String>(fakeTypePkg);
         YOMK_TEST_CHECK(typeMissPtr == nullptr, "unPack 名匹配但动态类型不符：cast 失败指针 nullptr");
 
         // --- 运行时类型名解包（原 YomkUnPackPkgT 宏的逐字展开，闭环 7 随宏删除内联） ---
@@ -230,27 +230,27 @@ int main()
     // ============ S3. Event 结构契约 ============
     std::cout << "===== S3. Event 结构契约 =====" << std::endl;
     {
-        yomk::Event ev;
+        yomk::payload::Event ev;
         YOMK_TEST_CHECK(ev.m_eventLoopName.empty() && ev.m_pkg == nullptr && !ev.m_serviceFunc,
               "Event 默认构造：loop 名空/pkg 空/func 空");
-        YOMK_TEST_CHECK(ev.m_eventId == 0 && ev.m_tag.empty() && ev.m_response.m_status == yomk::ResStatus::Invalid && !ev.m_waitCallback,
+        YOMK_TEST_CHECK(ev.m_eventId == 0 && ev.m_tag.empty() && ev.m_response.m_status == yomk::payload::ResStatus::Invalid && !ev.m_waitCallback,
               "Event 默认构造：eventId 0/tag 空/response ResStatus::Invalid/waitCallback 空");
 
         int handled = 0;
-        yomk::Event ev3("/L1", yomk::msgs::String::shared(std::string("p")),
-                        [&handled](YomkPkgPtr) { ++handled; return yomk::Response(yomk::ResStatus::Succeeded, "handled"); });
+        yomk::payload::Event ev3("/L1", yomk::msgs::String::shared(std::string("p")),
+                        [&handled](YomkPkgPtr) { ++handled; return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "handled"); });
         YOMK_TEST_CHECK(ev3.m_eventLoopName == "/L1" && ev3.m_pkg != nullptr && ev3.m_eventId == 0 && ev3.m_tag.empty(),
               "Event 三参构造：字段透传，eventId 保持 0（入队时由框架分配）");
         ev3.handle();
-        YOMK_TEST_CHECK(handled == 1 && ev3.m_response.m_status == yomk::ResStatus::Succeeded && ev3.m_response.m_msg == "handled",
+        YOMK_TEST_CHECK(handled == 1 && ev3.m_response.m_status == yomk::payload::ResStatus::Succeeded && ev3.m_response.m_msg == "handled",
               "Event handle：执行 serviceFunc 并填充 response");
 
-        yomk::Event ev4("/L2", nullptr, YomkServiceFunc(), "tag1");
+        yomk::payload::Event ev4("/L2", nullptr, YomkServiceFunc(), "tag1");
         YOMK_TEST_CHECK(ev4.m_tag == "tag1" && !ev4.m_serviceFunc, "Event 四参构造：tag 透传，func 可空");
 
-        yomk::Event evSilent;
+        yomk::payload::Event evSilent;
         evSilent.handle();
-        YOMK_TEST_CHECK(evSilent.m_response.m_status == yomk::ResStatus::Invalid,
+        YOMK_TEST_CHECK(evSilent.m_response.m_status == yomk::payload::ResStatus::Invalid,
               "Event 默认 handle：无 serviceFunc 静默，response 不变");
 
         bool waited = false;
@@ -259,48 +259,48 @@ int main()
         YOMK_TEST_CHECK(waited, "Event waitCallback：可赋值并执行");
     }
 
-    // ============ S4. yomk::Response 契约 ============
-    std::cout << "===== S4. yomk::Response 契约 =====" << std::endl;
+    // ============ S4. yomk::payload::Response 契约 ============
+    std::cout << "===== S4. yomk::payload::Response 契约 =====" << std::endl;
     {
-        yomk::Response def;
-        YOMK_TEST_CHECK(def.m_status == yomk::ResStatus::Invalid && def.m_msg.empty() && def.m_data == nullptr,
-              "yomk::Response 默认构造：ResStatus::Invalid/msg 空/data 空");
-        YOMK_TEST_CHECK(static_cast<int>(yomk::ResStatus::Invalid) == -1 && static_cast<int>(yomk::ResStatus::Succeeded) == 0 && static_cast<int>(yomk::ResStatus::Failed) == 1,
+        yomk::payload::Response def;
+        YOMK_TEST_CHECK(def.m_status == yomk::payload::ResStatus::Invalid && def.m_msg.empty() && def.m_data == nullptr,
+              "yomk::payload::Response 默认构造：ResStatus::Invalid/msg 空/data 空");
+        YOMK_TEST_CHECK(static_cast<int>(yomk::payload::ResStatus::Invalid) == -1 && static_cast<int>(yomk::payload::ResStatus::Succeeded) == 0 && static_cast<int>(yomk::payload::ResStatus::Failed) == 1,
               "枚举值序契约：ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1");
-        yomk::Response two(yomk::ResStatus::Failed, "no msg");
-        YOMK_TEST_CHECK(two.m_status == yomk::ResStatus::Failed && two.m_msg == "no msg" && two.m_data == nullptr,
+        yomk::payload::Response two(yomk::payload::ResStatus::Failed, "no msg");
+        YOMK_TEST_CHECK(two.m_status == yomk::payload::ResStatus::Failed && two.m_msg == "no msg" && two.m_data == nullptr,
               "双参构造：status/msg 透传，data 默认空");
         auto dataPkg = yomk::msgs::String::shared(std::string("payload"));
-        yomk::Response three(yomk::ResStatus::Succeeded, "ok", dataPkg);
-        YOMK_TEST_CHECK(three.m_status == yomk::ResStatus::Succeeded && three.m_data == dataPkg, "三参构造：data 透传");
+        yomk::payload::Response three(yomk::payload::ResStatus::Succeeded, "ok", dataPkg);
+        YOMK_TEST_CHECK(three.m_status == yomk::payload::ResStatus::Succeeded && three.m_data == dataPkg, "三参构造：data 透传");
     }
 
     // ============ S5. 框架结构体默认值 ============
     std::cout << "===== S5. 框架结构体默认值 =====" << std::endl;
     {
-        yomk::Function f;
+        yomk::payload::Function f;
         YOMK_TEST_CHECK(f.m_funcName.empty() && f.m_msgName.empty() && !f.m_func, "Function 默认：名称/消息名空、func 空");
-        yomk::CallFunction cf;
+        yomk::payload::CallFunction cf;
         YOMK_TEST_CHECK(cf.m_funcName.empty() && cf.m_pkg == nullptr, "CallFunction 默认：名称空、pkg 空");
-        yomk::EventLoop el;
+        yomk::payload::EventLoop el;
         YOMK_TEST_CHECK(el.m_eventLoopName.empty() && el.m_msgName.empty() && !el.m_defaultServiceFunc,
               "EventLoop 默认：名称/消息名空、默认 func 空");
-        yomk::LogFile lf;
+        yomk::payload::LogFile lf;
         YOMK_TEST_CHECK(lf.m_logger.empty() && lf.m_dir.empty(), "LogFile 默认：logger/dir 空");
         // Log::m_level 为无类内初始化的 POD enum，默认值不稳定，不作值断言
-        yomk::Log lg;
+        yomk::payload::Log lg;
         YOMK_TEST_CHECK(lg.m_log.empty() && lg.m_logger.empty() && lg.m_tag.empty(),
               "Log 默认：内容/logger/tag 空（m_level 无默认初始化不断言）");
-        yomk::ConsoleLogProxy cp;
+        yomk::payload::ConsoleLogProxy cp;
         YOMK_TEST_CHECK(!cp.m_consoleLogProxyFunc, "ConsoleLogProxy 默认：代理 func 空");
-        yomk::Context ctx;
+        yomk::payload::Context ctx;
         YOMK_TEST_CHECK(ctx.m_key.empty() && ctx.m_value == nullptr, "Context 默认：key 空、value 空");
-        yomk::ContextChecker cck;
+        yomk::payload::ContextChecker cck;
         YOMK_TEST_CHECK(cck.m_key.empty() && !cck.m_checkFunc, "ContextChecker 默认：key 空、check func 空");
-        yomk::ContextMonitor cmo;
+        yomk::payload::ContextMonitor cmo;
         YOMK_TEST_CHECK(cmo.m_key.empty() && !cmo.m_contextMonitorFunc && cmo.m_asyncMonitor == false,
               "ContextMonitor 默认：key 空、func 空、async false");
-        yomk::VoidPointer vp;
+        yomk::payload::VoidPointer vp;
         YOMK_TEST_CHECK(vp.m_ptr == nullptr, "VoidPointer 默认：ptr 空");
 
         // 结构体消息包版：YomkMsg 宏生成的 name 就位且 d 默认构造

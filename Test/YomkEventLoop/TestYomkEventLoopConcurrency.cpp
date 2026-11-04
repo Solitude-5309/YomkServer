@@ -63,7 +63,7 @@ static YomkServiceFunc countHandler()
     return [](YomkPkgPtr)
     {
         g_execCount.fetch_add(1);
-        return yomk::Response(yomk::ResStatus::Succeeded, "counted");
+        return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "counted");
     };
 }
 
@@ -108,7 +108,7 @@ static YomkServiceFunc gateHandler()
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
-        return yomk::Response(yomk::ResStatus::Succeeded, "gate done");
+        return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "gate done");
     };
 }
 
@@ -161,12 +161,12 @@ int main()
         {
             for (int k = 0; k < 40; ++k)
             {
-                auto ev = yomk::msgs::Event::shared(yomk::Event("conc1", nullptr, nullptr, ""));
+                auto ev = yomk::msgs::Event::shared(yomk::payload::Event("conc1", nullptr, nullptr, ""));
                 yomk::msgs::Event* raw = ev.get();  // handler 执行期间 run() 持有 shared_ptr，裸指针安全
                 ev->d.m_serviceFunc = [raw](YomkPkgPtr)
                 {
                     recordExecId(raw->d.m_eventId);
-                    return yomk::Response(yomk::ResStatus::Succeeded, "ok");
+                    return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
                 };
                 if (loop.post(ev) == 0)
                 {
@@ -216,7 +216,7 @@ int main()
         YOMK_TEST_CHECK(loopB.start() == 0, "S2 loopB start 返回 0");
 
         // loopA 的 worker 被阻塞门占住
-        auto gate = yomk::msgs::Event::shared(yomk::Event("pa", nullptr, gateHandler(), "gate"));
+        auto gate = yomk::msgs::Event::shared(yomk::payload::Event("pa", nullptr, gateHandler(), "gate"));
         YOMK_TEST_CHECK(loopA.post(gate) == 0, "S2 loopA post 阻塞事件返回 0");
         YOMK_TEST_CHECK(waitGateStarted(2000), "S2 阻塞门已占住 loopA 的工作线程");
 
@@ -224,7 +224,7 @@ int main()
         for (int k = 0; k < 5; ++k)
         {
             YOMK_TEST_CHECK(
-                loopB.post(yomk::msgs::Event::shared(yomk::Event("pb", nullptr, countHandler(), ""))) == 0,
+                loopB.post(yomk::msgs::Event::shared(yomk::payload::Event("pb", nullptr, countHandler(), ""))) == 0,
                 "S2 loopB post 计数事件返回 0");
         }
         YOMK_TEST_CHECK(
@@ -234,7 +234,7 @@ int main()
         // 释放 loopA：gate 完成后 A 的后续事件恢复执行
         openGate();
         YOMK_TEST_CHECK(
-            loopA.post(yomk::msgs::Event::shared(yomk::Event("pa", nullptr, countHandler(), ""))) == 0,
+            loopA.post(yomk::msgs::Event::shared(yomk::payload::Event("pa", nullptr, countHandler(), ""))) == 0,
             "S2 loopA post 后续计数事件返回 0");
         YOMK_TEST_CHECK(
             waitUntil([] { return g_execCount.load() == 6; }, 2000), "S2 释放后 loopA 恢复执行（gate 完成+后续事件）");
@@ -258,13 +258,13 @@ int main()
         {
             for (int k = 0; k < 10; ++k)
             {
-                auto ev = yomk::msgs::Event::shared(yomk::Event("conc3", nullptr, countHandler(), ""));
+                auto ev = yomk::msgs::Event::shared(yomk::payload::Event("conc3", nullptr, countHandler(), ""));
                 int rc = loop.postWait(ev);
                 if (rc == 0)
                 {
                     waitRcOk.fetch_add(1);
                 }
-                if (ev->d.m_response.m_status == yomk::ResStatus::Succeeded)
+                if (ev->d.m_response.m_status == yomk::payload::ResStatus::Succeeded)
                 {
                     waitRespOk.fetch_add(1);
                 }
@@ -307,7 +307,7 @@ int main()
         {
             for (int k = 0; k < 500; ++k)
             {
-                auto ev = yomk::msgs::Event::shared(yomk::Event("conc4", nullptr, countHandler(), ""));
+                auto ev = yomk::msgs::Event::shared(yomk::payload::Event("conc4", nullptr, countHandler(), ""));
                 if (loop.post(ev) == 0)
                 {
                     acceptedPost.fetch_add(1);
@@ -319,7 +319,7 @@ int main()
         {
             for (int k = 0; k < 100; ++k)
             {
-                auto ev = yomk::msgs::Event::shared(yomk::Event("conc4", nullptr, countHandler(), ""));
+                auto ev = yomk::msgs::Event::shared(yomk::payload::Event("conc4", nullptr, countHandler(), ""));
                 if (loop.postWait(ev) == 0)
                 {
                     acceptedWait.fetch_add(1);  // 停止态返回 2 被拒：事件未入队不计数，直接投下一个
@@ -373,7 +373,7 @@ int main()
         auto server = YomkAPI::serverInstance();
         YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
 
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("conc_loop", nullptr) == yomk::ResStatus::Succeeded, "S5 START conc_loop 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::startEventLoop("conc_loop", nullptr) == yomk::payload::ResStatus::Succeeded, "S5 START conc_loop 返回 ResStatus::Succeeded");
 
         std::atomic<int> apiPostOk{0};
         std::atomic<int> pollCount{0};
@@ -385,7 +385,7 @@ int main()
             for (int k = 0; k < 25; ++k)
             {
                 if (YomkAPI::postEvent("conc_loop", yomk::msgs::String::shared(std::string("x")), countHandler(), "") ==
-                    yomk::ResStatus::Succeeded)
+                    yomk::payload::ResStatus::Succeeded)
                 {
                     apiPostOk.fetch_add(1);
                 }
@@ -400,8 +400,8 @@ int main()
             {
                 auto r = YomkAPI::getEventLoopInfo("conc_loop");
                 pollCount.fetch_add(1);
-                auto info = yomk::unPack<yomk::msgs::EventLoopInfo>(r.m_data);
-                if (r.m_status == yomk::ResStatus::Succeeded && info && info->d.m_running)
+                auto info = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(r.m_data);
+                if (r.m_status == yomk::payload::ResStatus::Succeeded && info && info->d.m_running)
                 {
                     pollOk.fetch_add(1);
                 }
@@ -439,7 +439,7 @@ int main()
                 " 首个失败样本: " + (g_pollFailSamples.empty() ? std::string("无") : g_pollFailSamples.front()) + "）");
         YOMK_TEST_CHECK(waitUntil([] { return g_execCount.load() == 100; }, 5000), "S5 API 层事件全部执行（100/100）");
 
-        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("conc_loop") == yomk::ResStatus::Succeeded, "S5 DESTROY conc_loop 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("conc_loop") == yomk::payload::ResStatus::Succeeded, "S5 DESTROY conc_loop 返回 ResStatus::Succeeded");
         YomkAPI::shutdown();
     }
 

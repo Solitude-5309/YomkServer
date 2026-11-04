@@ -4,7 +4,7 @@
 #include <iostream>
 
 // 定点引入所需类型，避免在头文件中 using namespace
-using yomk::CheckStatus;
+using yomk::payload::CheckStatus;
 
 ContextGroup::ContextGroup(std::string name)
     : m_name(std::move(name)), m_checkerEnabled(false), m_monitorEnabled(false),
@@ -115,7 +115,7 @@ int ContextGroup::set(const std::string& key, YomkPkgPtr value)
     }
 
     // 本次提交的键值快照：checker 校验与 monitor 通知统一回传该临时对象（等价于原请求包的 context->d）
-    yomk::Context data;
+    yomk::payload::Context data;
     data.m_key = key;
     data.m_value = value;
 

@@ -23,19 +23,19 @@ int YomkEventLoop::init()
     return 0;
 }
 
-yomk::Response YomkEventLoop::start(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::start(YomkPkgPtr pkg)
 {
-    auto eventloop = yomk::unPack<yomk::msgs::EventLoop>(pkg);
+    auto eventloop = yomk::msgs::unPack<yomk::msgs::EventLoop>(pkg);
     if (!eventloop)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not EventLoop"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not EventLoop"};
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(eventloop->d.m_eventLoopName);
     if (itEventLoop != m_eventLoop.end())
     {
         itEventLoop->second->start();
-        return yomk::Response(yomk::ResStatus::Succeeded, "event loop start success");
+        return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop start success");
     }
 
     EventLoopPtr eventLoop = std::make_shared<EventLoop>();
@@ -43,99 +43,99 @@ yomk::Response YomkEventLoop::start(YomkPkgPtr pkg)
     eventLoop->start();
     m_eventLoop.emplace(eventloop->d.m_eventLoopName, eventLoop);
 
-    return yomk::Response(yomk::ResStatus::Succeeded, "event loop start success");
+    return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop start success");
 }
 
-yomk::Response YomkEventLoop::stop(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::stop(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomk::msgs::String>(pkg);
+    auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
     if (itEventLoop == m_eventLoop.end())
     {
         YOMK_ERR_POS_LOG("event loop: " + str->d + " not exist, please check event loop name");
-        return yomk::Response(yomk::ResStatus::Failed, "event loop not exist");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not exist");
     }
     itEventLoop->second->stop();
 
-    return yomk::Response(yomk::ResStatus::Succeeded, "event loop stop success");
+    return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop stop success");
 }
 
-yomk::Response YomkEventLoop::post(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::post(YomkPkgPtr pkg)
 {
-    auto event = yomk::unPack<yomk::msgs::Event>(pkg);
+    auto event = yomk::msgs::unPack<yomk::msgs::Event>(pkg);
     if (!event)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not Event"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Event"};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(event->d.m_eventLoopName);
     if (itEventLoop == m_eventLoop.end())
     {
         YOMK_ERR_POS_LOG("event loop: " + event->d.m_eventLoopName + " not exist, please check event loop name");
-        return yomk::Response(yomk::ResStatus::Failed, "event loop not exist");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not exist");
     }
     // 内层返回码映射：0 成功；其余（实际仅 2=循环未运行被拒，事件为空不可达——API 宏总构造有效事件）统一 ResStatus::Failed
     int rc = itEventLoop->second->post(event);
     if (rc != 0)
     {
-        return yomk::Response(yomk::ResStatus::Failed, "event loop not running, post rejected");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not running, post rejected");
     }
 
-    return yomk::Response(yomk::ResStatus::Succeeded, "event loop post success");
+    return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop post success");
 }
 
-yomk::Response YomkEventLoop::postWait(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::postWait(YomkPkgPtr pkg)
 {
-    auto event = yomk::unPack<yomk::msgs::Event>(pkg);
+    auto event = yomk::msgs::unPack<yomk::msgs::Event>(pkg);
     if (!event)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not Event"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Event"};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(event->d.m_eventLoopName);
     if (itEventLoop == m_eventLoop.end())
     {
         YOMK_ERR_POS_LOG("event loop: " + event->d.m_eventLoopName + " not exist, please check event loop name");
-        return yomk::Response(yomk::ResStatus::Failed, "event loop not exist");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not exist");
     }
     // 内层返回码映射：0 成功（回传 event 携带执行结果）；其余统一 ResStatus::Failed（未入队未执行，不回传）
     int rc = itEventLoop->second->postWait(event);
     if (rc != 0)
     {
-        return yomk::Response(yomk::ResStatus::Failed, "event loop not running, post wait rejected");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not running, post wait rejected");
     }
 
-    return yomk::Response(yomk::ResStatus::Succeeded, "event loop post wait success", event);
+    return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop post wait success", event);
 }
 
-yomk::Response YomkEventLoop::destroy(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::destroy(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomk::msgs::String>(pkg);
+    auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
     if (itEventLoop == m_eventLoop.end())
     {
         YOMK_ERR_POS_LOG("event loop: " + str->d + " not exist, please check event loop name");
-        return yomk::Response(yomk::ResStatus::Failed, "event loop not exist");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not exist");
     }
 
     itEventLoop->second->destroy();
     m_eventLoop.erase(itEventLoop);
 
-    return yomk::Response(yomk::ResStatus::Succeeded, "event loop destroy success");
+    return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop destroy success");
 }
 
 // 内省：列出全部事件循环名
-yomk::Response YomkEventLoop::loops(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::loops(YomkPkgPtr pkg)
 {
     std::vector<std::string> loopNames;
     {
@@ -145,16 +145,16 @@ yomk::Response YomkEventLoop::loops(YomkPkgPtr pkg)
             loopNames.push_back(item.first);
         }
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(loopNames)};
+    return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(loopNames)};
 }
 
 // 内省：单个事件循环元信息，入参 String 格式：循环名 或 循环名 N（N 缺省 3）
-yomk::Response YomkEventLoop::loopInfo(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::loopInfo(YomkPkgPtr pkg)
 {
-    auto str = yomk::unPack<yomk::msgs::String>(pkg);
+    auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
     std::string input = str->d;
     std::string loopName = input;
@@ -186,7 +186,7 @@ yomk::Response YomkEventLoop::loopInfo(YomkPkgPtr pkg)
         if (itEventLoop == m_eventLoop.end())
         {
             YOMK_ERR_POS_LOG("event loop: " + loopName + " not exist, please check event loop name");
-            return yomk::Response(yomk::ResStatus::Failed, "event loop not exist");
+            return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not exist");
         }
         eventLoop = itEventLoop->second;
     }
@@ -195,11 +195,11 @@ yomk::Response YomkEventLoop::loopInfo(YomkPkgPtr pkg)
     yomk::EventLoopInfo info;
     info.m_loopName = loopName;
     eventLoop->infoSnapshot(info, tagCount);
-    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::EventLoopInfo::shared(info)};
+    return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::EventLoopInfo::shared(info)};
 }
 
 // 内省：全部事件循环元信息，锁内拷贝快照、锁外逐循环取结构化快照（m_msg 恒 "ok"，数据走 m_data）
-yomk::Response YomkEventLoop::listAll(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::listAll(YomkPkgPtr pkg)
 {
     std::vector<EventLoopPtr> eventLoops;
     std::vector<std::string> loopNames;
@@ -221,5 +221,5 @@ yomk::Response YomkEventLoop::listAll(YomkPkgPtr pkg)
         eventLoops[i]->infoSnapshot(info, 3);
         infos.push_back(std::move(info));
     }
-    return {yomk::ResStatus::Succeeded, "ok", yomk::msgs::EventLoopInfoList::shared(infos)};
+    return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::EventLoopInfoList::shared(infos)};
 }

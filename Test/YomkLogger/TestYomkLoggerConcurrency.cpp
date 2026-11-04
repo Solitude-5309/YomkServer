@@ -327,14 +327,14 @@ static uint64_t countLinesContaining(const std::vector<std::string>& lines, cons
 }
 
 // 解包 LOGGERS/ALL 的 StringArray；失败返回空 vector
-static std::vector<std::string> unpackLines(const yomk::Response& resp)
+static std::vector<std::string> unpackLines(const yomk::payload::Response& resp)
 {
     std::vector<std::string> lines;
-    if (resp.m_status != yomk::ResStatus::Succeeded || !resp.m_data)
+    if (resp.m_status != yomk::payload::ResStatus::Succeeded || !resp.m_data)
     {
         return lines;
     }
-    auto arr = yomk::unPack<yomk::msgs::StringArray>(resp.m_data);
+    auto arr = yomk::msgs::unPack<yomk::msgs::StringArray>(resp.m_data);
     if (arr)
     {
         lines = arr->d;
@@ -360,17 +360,17 @@ static const yomk::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr 
 }
 
 // 状态码是否属于框架合法集合 {ResStatus::Invalid, ResStatus::Succeeded, ResStatus::Failed}
-static bool isLegalStatus(const yomk::Response& resp)
+static bool isLegalStatus(const yomk::payload::Response& resp)
 {
-    return resp.m_status == yomk::ResStatus::Invalid || resp.m_status == yomk::ResStatus::Succeeded ||
-           resp.m_status == yomk::ResStatus::Failed;
+    return resp.m_status == yomk::payload::ResStatus::Invalid || resp.m_status == yomk::payload::ResStatus::Succeeded ||
+           resp.m_status == yomk::payload::ResStatus::Failed;
 }
 
 // LOG_API ResStatus 化后的三态重载（emit/create/flush/delete 直接返回三态）
-static bool isLegalStatus(yomk::ResStatus status)
+static bool isLegalStatus(yomk::payload::ResStatus status)
 {
-    return status == yomk::ResStatus::Invalid || status == yomk::ResStatus::Succeeded ||
-           status == yomk::ResStatus::Failed;
+    return status == yomk::payload::ResStatus::Invalid || status == yomk::payload::ResStatus::Succeeded ||
+           status == yomk::payload::ResStatus::Failed;
 }
 
 // 起始屏障：线程内调用，等待主线程放行（放大并发争用窗口）
@@ -406,13 +406,13 @@ static void resetGate()
 // ============================================================================
 // S3 用 proxy 函数（v1/v2 交替，均恒返回 true 穿透态）
 // ============================================================================
-static bool s3ProxyV1(const yomk::Log& /*log*/)
+static bool s3ProxyV1(const yomk::payload::Log& /*log*/)
 {
     g_s3V1Hits.fetch_add(1, std::memory_order_relaxed);
     return true;  // 穿透：继续走默认控制台输出，不影响后续 Section
 }
 
-static bool s3ProxyV2(const yomk::Log& /*log*/)
+static bool s3ProxyV2(const yomk::payload::Log& /*log*/)
 {
     g_s3V2Hits.fetch_add(1, std::memory_order_relaxed);
     return true;
@@ -456,7 +456,7 @@ int main()
 
         // 预热：主线程先创建该 tag 的 console logger，使并发段全部走 shared_lock 命中路径
         YOMK_TEST_CHECK(
-            YomkAPI::emitConsoleLogInfo(kTag, {}, "lg3s1_warmup") == yomk::ResStatus::Succeeded,
+            YomkAPI::emitConsoleLogInfo(kTag, {}, "lg3s1_warmup") == yomk::payload::ResStatus::Succeeded,
             "S1: 预热创建 console logger " + kTag);
 
         std::string out;
@@ -475,7 +475,7 @@ int main()
                         {
                             auto resp = YomkAPI::emitConsoleLogInfo(
                                 kTag, {}, "lg3s1_t" + std::to_string(t) + "_i" + std::to_string(i));
-                            if (resp == yomk::ResStatus::Succeeded)
+                            if (resp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s1OkCount.fetch_add(1, std::memory_order_relaxed);
                             }
@@ -568,7 +568,7 @@ int main()
                         {
                             auto resp = YomkAPI::emitConsoleLogInfo(
                                 kRaceTag, {}, "lg3s2a_t" + std::to_string(t) + "_i" + std::to_string(i));
-                            if (resp == yomk::ResStatus::Succeeded)
+                            if (resp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s2aOkCount.fetch_add(1, std::memory_order_relaxed);
                             }
@@ -601,9 +601,9 @@ int main()
         YOMK_TEST_CHECK(countBadOccurrence(raceMarkers) == 0, "S2a: 全部 marker 恰出现 1 次（不丢不重）");
 
         auto raceInfo = YomkAPI::getLoggerInfo(kRaceTag, "console");
-        auto racePkg = yomk::unPack<yomk::msgs::LoggerInfo>(raceInfo.m_data);
+        auto racePkg = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(raceInfo.m_data);
         YOMK_TEST_CHECK(
-            (raceInfo.m_status == yomk::ResStatus::Succeeded && racePkg && racePkg->d.m_type == "console"),
+            (raceInfo.m_status == yomk::payload::ResStatus::Succeeded && racePkg && racePkg->d.m_type == "console"),
             "S2a: LOGGER(" + kRaceTag + ") 命中 console 类型");
 
         // ---- S2b：分散创建——8 线程各自唯一 tag ----
@@ -631,7 +631,7 @@ int main()
                         {
                             auto resp = YomkAPI::emitConsoleLogInfo(
                                 tag, {}, "lg3s2b_t" + std::to_string(t) + "_i" + std::to_string(i));
-                            if (resp == yomk::ResStatus::Succeeded)
+                            if (resp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s2bOkCount.fetch_add(1, std::memory_order_relaxed);
                             }
@@ -663,8 +663,8 @@ int main()
         {
             std::string tag = "lg3_s2_t" + std::to_string(t);
             auto info = YomkAPI::getLoggerInfo(tag, "console");
-            auto spreadPkg = yomk::unPack<yomk::msgs::LoggerInfo>(info.m_data);
-            if (info.m_status != yomk::ResStatus::Succeeded || !spreadPkg || spreadPkg->d.m_type != "console")
+            auto spreadPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(info.m_data);
+            if (info.m_status != yomk::payload::ResStatus::Succeeded || !spreadPkg || spreadPkg->d.m_type != "console")
             {
                 allSpreadHit = false;
             }
@@ -699,7 +699,7 @@ int main()
 
         // 首次设置为 v1（此后进程内 proxy 恒为 on，v1/v2 交替更新 func）
         YOMK_TEST_CHECK(
-            YomkAPI::setConsoleLogProxy(s3ProxyV1) == yomk::ResStatus::Succeeded,
+            YomkAPI::setConsoleLogProxy(s3ProxyV1) == yomk::payload::ResStatus::Succeeded,
             "S3: setConsoleLogProxy(v1) 返回 ResStatus::Succeeded");
 
         // caller 线程：持续 console_log 直到 g_s3Stop
@@ -716,7 +716,7 @@ int main()
                         auto resp = YomkAPI::emitConsoleLogInfo(
                             kTag, {}, "lg3s3_t" + std::to_string(t) + "_i" + std::to_string(i));
                         g_s3LogTotal.fetch_add(1, std::memory_order_relaxed);
-                        if (resp == yomk::ResStatus::Succeeded)
+                        if (resp == yomk::payload::ResStatus::Succeeded)
                         {
                             g_s3LogOk.fetch_add(1, std::memory_order_relaxed);
                         }
@@ -735,7 +735,7 @@ int main()
                 {
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
-                        auto listPkg = yomk::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
+                        auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
                         const yomk::LoggerState* st = firstConsoleState(listPkg);
                         if (st && !st->m_proxyOn)
                         {
@@ -751,7 +751,7 @@ int main()
         {
             auto resp =
                 (round % 2 == 0) ? YomkAPI::setConsoleLogProxy(s3ProxyV2) : YomkAPI::setConsoleLogProxy(s3ProxyV1);
-            if (resp == yomk::ResStatus::Succeeded)
+            if (resp == yomk::payload::ResStatus::Succeeded)
             {
                 g_s3SetOk.fetch_add(1, std::memory_order_relaxed);
             }
@@ -827,11 +827,11 @@ int main()
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                         }
-                        if (resp == yomk::ResStatus::Succeeded)
+                        if (resp == yomk::payload::ResStatus::Succeeded)
                         {
                             g_s4aCreateOk.fetch_add(1, std::memory_order_relaxed);
                         }
-                        else if (resp == yomk::ResStatus::Failed)
+                        else if (resp == yomk::payload::ResStatus::Failed)
                         {
                             g_s4aCreateNo.fetch_add(1, std::memory_order_relaxed);
                         }
@@ -879,7 +879,7 @@ int main()
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                         }
-                        if (resp == yomk::ResStatus::Succeeded)
+                        if (resp == yomk::payload::ResStatus::Succeeded)
                         {
                             g_s4bCreateOk.fetch_add(1, std::memory_order_relaxed);
                         }
@@ -915,7 +915,7 @@ int main()
         g_s4cStop.store(false);
 
         YOMK_TEST_CHECK(
-            YomkAPI::createFileLogger(sinkDir.string(), kSinkName) == yomk::ResStatus::Succeeded,
+            YomkAPI::createFileLogger(sinkDir.string(), kSinkName) == yomk::payload::ResStatus::Succeeded,
             "S4c: 创建 sink file logger 成功");
 
         resetGate();
@@ -935,7 +935,7 @@ int main()
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                         }
-                        if (resp == yomk::ResStatus::Succeeded)
+                        if (resp == yomk::payload::ResStatus::Succeeded)
                         {
                             g_s4cLogOk.fetch_add(1, std::memory_order_relaxed);
                         }
@@ -958,7 +958,7 @@ int main()
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                         }
-                        if (resp == yomk::ResStatus::Succeeded)
+                        if (resp == yomk::payload::ResStatus::Succeeded)
                         {
                             g_s4cWriteOk.fetch_add(1, std::memory_order_relaxed);
                         }
@@ -979,7 +979,7 @@ int main()
         }
 
         // 收尾：把残余缓冲全部落盘
-        YOMK_TEST_CHECK(YomkAPI::flushFileLog(kSinkName) == yomk::ResStatus::Succeeded, "S4c: 收尾 WRITE 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(kSinkName) == yomk::payload::ResStatus::Succeeded, "S4c: 收尾 WRITE 返回 ResStatus::Succeeded");
 
         YOMK_TEST_CHECK(
             g_s4cLogOk.load() == kSinkTotal,
@@ -1013,7 +1013,7 @@ int main()
         g_s4dWriteOk.store(0);
 
         YOMK_TEST_CHECK(
-            YomkAPI::createFileLogger(multiDir.string(), kMultiName) == yomk::ResStatus::Succeeded,
+            YomkAPI::createFileLogger(multiDir.string(), kMultiName) == yomk::payload::ResStatus::Succeeded,
             "S4d: 创建 multi file logger 成功");
         for (uint64_t i = 0; i < kMultiLines; ++i)
         {
@@ -1037,7 +1037,7 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            if (resp == yomk::ResStatus::Succeeded)
+                            if (resp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s4dWriteOk.fetch_add(1, std::memory_order_relaxed);
                             }
@@ -1091,7 +1091,7 @@ int main()
         const std::string kFileSink = "lg3_s5_sink_file";
 
         // 四级别调用分发（级别号 0=debug 1=info 2=warn 3=error）
-        auto consoleLevel = [](int level, const std::string& tag, const std::string& msg) -> yomk::ResStatus
+        auto consoleLevel = [](int level, const std::string& tag, const std::string& msg) -> yomk::payload::ResStatus
         {
             switch (level)
             {
@@ -1105,7 +1105,7 @@ int main()
                     return YomkAPI::emitConsoleLogError(tag, {}, msg);
             }
         };
-        auto fileLevel = [](int level, const std::string& name, const std::string& msg) -> yomk::ResStatus
+        auto fileLevel = [](int level, const std::string& name, const std::string& msg) -> yomk::payload::ResStatus
         {
             switch (level)
             {
@@ -1119,7 +1119,7 @@ int main()
                     return YomkAPI::emitFileLogError(name, "lg3s5", {}, msg);
             }
         };
-        auto switchLevel = [](int level, bool turnOn) -> yomk::ResStatus
+        auto switchLevel = [](int level, bool turnOn) -> yomk::payload::ResStatus
         {
             if (turnOn)
             {
@@ -1151,10 +1151,10 @@ int main()
         // 预热 sink：churn 之外的所有日志调用一律使用已存在 logger，
         // 确保新 logger 只由 churn 线程“先 console 后 file”成对产生（判别式前提）
         YOMK_TEST_CHECK(
-            YomkAPI::emitConsoleLogInfo(kConsoleSink, {}, "lg3s5_warmup") == yomk::ResStatus::Succeeded,
+            YomkAPI::emitConsoleLogInfo(kConsoleSink, {}, "lg3s5_warmup") == yomk::payload::ResStatus::Succeeded,
             "S5: 预热 console sink logger 成功");
         YOMK_TEST_CHECK(
-            YomkAPI::createFileLogger(pairDir.string(), kFileSink) == yomk::ResStatus::Succeeded,
+            YomkAPI::createFileLogger(pairDir.string(), kFileSink) == yomk::payload::ResStatus::Succeeded,
             "S5: 预热 file sink logger 成功");
 
         // 基线快照（先 file 后 console：file 采样时刻早于 console，配合成对创建语义保证 C>=F 判别式有效）
@@ -1201,7 +1201,7 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            if (consoleResp == yomk::ResStatus::Succeeded)
+                            if (consoleResp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s5PairConsoleOk.fetch_add(1, std::memory_order_relaxed);
                             }
@@ -1211,11 +1211,11 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            if (fileResp == yomk::ResStatus::Succeeded)
+                            if (fileResp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s5PairFileOk.fetch_add(1, std::memory_order_relaxed);
                             }
-                            else if (fileResp == yomk::ResStatus::Failed)
+                            else if (fileResp == yomk::payload::ResStatus::Failed)
                             {
                                 g_s5PairFileNo.fetch_add(1, std::memory_order_relaxed);
                             }
@@ -1245,7 +1245,7 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            auto listPkg = yomk::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
+                            auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
                             if (listPkg)
                             {
                                 const yomk::LoggerState* st = firstConsoleState(listPkg);
@@ -1295,7 +1295,7 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            if (resp == yomk::ResStatus::Succeeded)
+                            if (resp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s5SwitchOk.fetch_add(1, std::memory_order_relaxed);
                             }
@@ -1320,7 +1320,7 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            if (resp == yomk::ResStatus::Succeeded)
+                            if (resp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s5ConsoleOk.fetch_add(1, std::memory_order_relaxed);
                             }
@@ -1344,7 +1344,7 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            if (resp == yomk::ResStatus::Succeeded)
+                            if (resp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s5FileOk.fetch_add(1, std::memory_order_relaxed);
                             }
@@ -1355,7 +1355,7 @@ int main()
                                 {
                                     g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                                 }
-                                if (writeResp == yomk::ResStatus::Succeeded)
+                                if (writeResp == yomk::payload::ResStatus::Succeeded)
                                 {
                                     g_s5WriteOk.fetch_add(1, std::memory_order_relaxed);
                                 }
@@ -1389,11 +1389,11 @@ int main()
         }
 
         // ---- 收尾：四级别全 ON + file sink 落盘 ----
-        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogDebug() == yomk::ResStatus::Succeeded, "S5: 收尾 ON debug ResStatus::Succeeded");
-        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo() == yomk::ResStatus::Succeeded, "S5: 收尾 ON info ResStatus::Succeeded");
-        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogWarn() == yomk::ResStatus::Succeeded, "S5: 收尾 ON warn ResStatus::Succeeded");
-        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogError() == yomk::ResStatus::Succeeded, "S5: 收尾 ON error ResStatus::Succeeded");
-        YOMK_TEST_CHECK(YomkAPI::flushFileLog(kFileSink) == yomk::ResStatus::Succeeded, "S5: 收尾 file sink WRITE ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogDebug() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON debug ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON info ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogWarn() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON warn ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogError() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON error ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(kFileSink) == yomk::payload::ResStatus::Succeeded, "S5: 收尾 file sink WRITE ResStatus::Succeeded");
 
         // ---- P3-a 判别式：对每个快照验证 C >= F（相对基线增量）----
         // 收尾时 churn 已结束、两表静态；采样顺序保持与快照线程一致（先 file 后 console）
@@ -1505,12 +1505,12 @@ int main()
         // ---- 最终一致性：全局主闸状态 + ALL 条目逐器真值 + 日志器数跨端点一致 + file sink 落盘守恒 ----
         // 条目改报逐器门控层真值后，"收尾全 ON" 验证语义迁移至 getGlobalLoggerLevel（全局主闸态）；
         // ALL 条目断言保留，验证未做具名开关时逐器真值恒 on（退化性基线）
-        auto finalGs = yomk::unPack<yomk::msgs::LoggerState>(YomkAPI::getGlobalLoggerLevel().m_data);
+        auto finalGs = yomk::msgs::unPack<yomk::msgs::LoggerState>(YomkAPI::getGlobalLoggerLevel().m_data);
         YOMK_TEST_CHECK(
             (finalGs != nullptr && finalGs->d.m_debugOn && finalGs->d.m_infoOn &&
              finalGs->d.m_warnOn && finalGs->d.m_errorOn && finalGs->d.m_proxyOn),
             "S5: 收尾四级别全 ON 后全局主闸状态全 on（含 S3 已设的 proxyOn）");
-        auto finalListPkg = yomk::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
+        auto finalListPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
         const yomk::LoggerState* finalSt = firstConsoleState(finalListPkg);
         YOMK_TEST_CHECK(
             (finalSt != nullptr && finalSt->m_debugOn && finalSt->m_infoOn &&
