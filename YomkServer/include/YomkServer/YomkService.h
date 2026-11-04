@@ -35,7 +35,10 @@ public:
     // 服务注销与资源释放
     virtual void deinit() {}
 
-public:
+protected:
+    // 框架协作面（基类↔派生类）：服务作者在子类 init()/成员内使用；
+    // 框架层经既有友元 YomkServerPrivate 访问。外部持有 YomkService* 者不可达，
+    // 外部调用统一走 URL 契约（YomkAPI::request / YomkServer::request）
     // 包装成员函数为 weak_ptr 安全回调，服务注销后自动忽略调用
     template <typename Func>
     auto weakFunc(Func func)

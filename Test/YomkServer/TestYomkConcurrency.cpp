@@ -83,6 +83,11 @@ class ConcSrv : public YomkService
 public:
     explicit ConcSrv(YomkServer* server = nullptr) : YomkService(server) {}
 
+    // 白盒再暴露：4.2 并发覆盖段经实例指针反复重装 /echo（被测语义即 installFunc 并发替换），
+    // 断言与竞态场景零变化
+    using YomkService::installFunc;
+    using YomkService::weakFunc;
+
     int init() override
     {
         installFunc("/ping", &ConcSrv::ping);

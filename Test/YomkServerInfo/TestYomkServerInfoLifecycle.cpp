@@ -3,9 +3,10 @@
  * @brief ServerInfo 模块生命周期与四端点功能基线测试（P0，从零新建——模块此前零专属覆盖）
  *
  * 覆盖内容（8 个 Section，76 断言）：
- * S0. server destroyed 分支（白盒直连）：测试自持 YomkServerInfo 实例（不经 addService），
+ * S0. server destroyed 分支（白盒直连）：测试自持 YomkServerInfo 子类实例（不经 addService），
  *     server 释放后 4 端点 invoke 逐一返回 ResStatus::Failed + "server has been destroyed"
- *     （m_weakServer.lock() 失败分支，invoke 为 YomkService public 方法可直连）
+ *     （m_weakServer.lock() 失败分支；YomkService 框架协作面已收紧为 protected，
+ *     经白盒子类 using 再暴露 invoke——该分支无 URL 通道可达，直调是唯一触达路径）
  * S1. /services：ResStatus::Succeeded + StringArray 含 5 内置服务；FmtSrv 注册后出现、删除后消失、重注册后出现
  * S2. /functions：FuncInfoList 结构化清单（m_funcName 带 / 前缀、m_msgName 类型名/空、
  *     m_description 四参说明）；空 srvName ResStatus::Invalid；不存在服务 ResStatus::Succeeded 空表；内置
@@ -214,6 +215,15 @@ static std::atomic<int> g_badStatus{0};  // 内省端点非法状态计数（应
 static std::atomic<int> g_missFmt{0};    // /services 快照丢失存活服务计数（应恒为 0）
 static std::atomic<int> g_badFuncs{0};   // /functions("/FmtSrv") 快照非 2 行计数（应恒为 0）
 
+// S0 白盒子类：server destroyed 分支仅可经直调 invoke 触达（URL 通道随 server 销毁不可达），
+// 以 using 把 invoke 提升回 public 供白盒断言；行为与 YomkServerInfo 完全一致
+class LifecycleTestInfo : public YomkServerInfo
+{
+public:
+    explicit LifecycleTestInfo(YomkServer* server) : YomkServerInfo(server) {}
+    using YomkService::invoke;
+};
+
 int main()
 {
     // ============ S0. server destroyed 分支（类级白盒，先于单例初始化） ============
@@ -221,7 +231,7 @@ int main()
     {
         auto server = YomkServer::create(1);
         // 测试自持实例（不经 addService），构造时绑定 server 弱引用
-        auto info = std::make_shared<YomkServerInfo>(server.get());
+        auto info = std::make_shared<LifecycleTestInfo>(server.get());
         YOMK_TEST_CHECK(info->init() == 0, "YomkServerInfo 独立实例 init 返回 0（4 端点已装配）");
 
         server.reset();  // server 销毁，m_weakServer 失效；info 由测试持有仍存活

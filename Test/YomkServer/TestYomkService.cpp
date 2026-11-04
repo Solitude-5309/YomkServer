@@ -66,6 +66,15 @@ class DemoService : public YomkService
 public:
     DemoService(YomkServer* server) : YomkService(server) { name("/DemoService"); }
 
+    // 白盒再暴露：本文件即"服务作者契约"单测，测试自由函数经实例指针驱动受测接口
+    // （YomkService 框架协作面已收紧为 protected；断言与被测语义零变化）
+    using YomkService::installFunc;
+    using YomkService::weakFunc;
+    using YomkService::funcInfos;
+    using YomkService::invoke;
+    using YomkService::request;
+    using YomkService::asyncRequest;
+
 public:
     virtual int init() override
     {
@@ -104,6 +113,13 @@ class NullSrv : public YomkService
 {
 public:
     NullSrv() : YomkService(nullptr) {}
+
+    // 白盒再暴露（同 DemoService）：空实现守卫分支经实例直驱断言
+    using YomkService::installFunc;
+    using YomkService::funcInfos;
+    using YomkService::invoke;
+    using YomkService::request;
+    using YomkService::asyncRequest;
 
 public:
     virtual int init() override { return 0; }

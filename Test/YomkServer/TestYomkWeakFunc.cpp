@@ -51,6 +51,11 @@ class BindSrv : public YomkService
 public:
     BindSrv(YomkServer* server) : YomkService(server) { name("/BindSrv"); }
 
+    // 白盒再暴露：weakFunc 生命周期语义（存活/丢弃/注销分支）只能持有回调句柄验证，
+    // invoke 契约消息断言需直调命中安装函数——均无 URL 通道可达；断言与被测语义零变化
+    using YomkService::weakFunc;
+    using YomkService::invoke;
+
 public:
     virtual int init() override
     {
@@ -215,14 +220,14 @@ static void testMarkDeletedDiscard(YomkServer* server)
     // 经 shared_from_this 与框架共享所有权：删除后本副本使服务对象仍存活
     std::shared_ptr<YomkService> srv = rawSrv->shared_from_this();
 
-    // 注销前：自动弱绑定 invoke 命中执行
-    yomk::Response aliveResp = srv->invoke("/installed");
+    // 注销前：自动弱绑定 invoke 命中执行（经 BindSrv 白盒再暴露；srv 基类副本仅承担生命周期）
+    yomk::Response aliveResp = rawSrv->invoke("/installed");
     YOMK_TEST_CHECK(
         aliveResp.m_status == yomk::ResStatus::Succeeded && aliveResp.m_msg == "alive",
         "注销前：installFunc 自动弱绑定 invoke 命中执行");
 
-    std::function<void()> cbVoid = srv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
-    std::function<yomk::Response(YomkPkgPtr)> cbResp = srv->weakFunc(
+    std::function<void()> cbVoid = rawSrv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
+    std::function<yomk::Response(YomkPkgPtr)> cbResp = rawSrv->weakFunc(
         [&respCount](YomkPkgPtr pkg)
         {
             respCount.fetch_add(1);
@@ -234,7 +239,7 @@ static void testMarkDeletedDiscard(YomkServer* server)
 
     cbVoid();
     yomk::Response resp = cbResp(nullptr);
-    yomk::Response invokeResp = srv->invoke("/installed");
+    yomk::Response invokeResp = rawSrv->invoke("/installed");
 
     YOMK_TEST_CHECK(voidCount.load() == 0, "删除即停：void 回调立即丢弃，副作用计数未变化");
     YOMK_TEST_CHECK(
