@@ -150,13 +150,9 @@ public:
     }
     // REQ_API
 public:
-    // 内置服务 URL 常量池：公开供绕过 API 语义函数、直接 request 的用户复用
-    // （一切皆请求——服务写完 request API 自动就有，URL 即公共契约）。
-    // 函数级 static 惰性构造一次、全程复用（C++11 静态初始化线程安全，
-    // 与 mtx()/holder() 同一惯用法），消除每次 request 调用的 URL 临时 std::string 堆分配
-    // （23 字符超 SSO 15 字符上限，实测 7.4→1.1 ns/调用）。访问器名 = 服务前缀
-    // （logger/ctx/loop/fp/srv）+ 路由段驼峰化；"all" 等跨服务重名路由靠前缀区分。
-    // server 层对 URL 仅做解析查找、不持有引用，静态生命周期无析构顺序风险
+    // 内置服务 URL 常量池：函数级 static 惰性构造、全程复用，消除每次调用的临时
+    // std::string 堆分配。访问器名 = 服务前缀 + 路由段驼峰化；server 层不持有引用，
+    // 静态生命周期无析构顺序风险
     struct Url
     {
         // /YomkLogger/*
@@ -237,29 +233,22 @@ public:
     }
     // LOG_API
 private:
-    // 调用点位置信息 + 渲染策略，仅模块内部使用，不对外暴露。
-    // 聚合体 + NSDMI（成员默认初始化器），无用户构造函数——调用点 {}
-    // 聚合初始化时 NSDMI 在【调用行】求值完成 file/line/func 捕获；
-    // 若在函数体内调用 __builtin_LINE()，捕获到的将是本头文件内部行号
+    // 调用点位置信息，仅模块内部使用。聚合体 + NSDMI：调用点 {} 初始化时在
+    // 【调用行】完成 file/line/func 捕获；若改在函数体内求值，捕获到的是本头文件行号
     struct SourceLoc
     {
         const char* filename = __builtin_FILE();
         unsigned line = __builtin_LINE();
         const char* funcname = __builtin_FUNCTION();
 
-        // 位置信息输出开关（进程级配置，atomic 保证线程安全）。
-        // 存储形态：静态成员函数 + 局部静态（Meyer's singleton 惯用法）——
-        // C++11 兼容且 header-only 无需类外定义；刻意不用 C++17 inline 变量，
-        // 使本模块新增代码整体保持 C++11 可编译。
-        // 注意：必须为 public——C++ 规定外围类对嵌套类的私有成员没有特殊
-        // 访问权（[class.access.nest]），YomkAPI 的公开 setter 需转发到这里；
-        // SourceLoc 整体为 private，用户无法命名该类型，公开成员不会外泄
+        // 位置信息输出开关（进程级配置，atomic 保证线程安全）。必须为 public：
+        // 外围类对嵌套类私有成员无特殊访问权（[class.access.nest]），YomkAPI 的
+        // setter 需转发到这里；SourceLoc 整体为 private，该类型用户无法命名
         static std::atomic<bool>& fileFlag() { static std::atomic<bool> v(false); return v; }
         static std::atomic<bool>& lineFlag() { static std::atomic<bool> v(true); return v; } // 默认开（与旧宏输出兼容）
         static std::atomic<bool>& funcFlag() { static std::atomic<bool> v(false); return v; }
 
-        // 取路径 basename（兼容 '/' 与 '\'），与主流日志（glog/spdlog）一致。
-        // strrchr 双查取靠后的分隔符，避免手写指针遍历（cppcoreguidelines 禁指针算术）
+        // 取路径 basename（兼容 '/' 与 '\'），与主流日志风格一致
         static const char* baseName(const char* path)
         {
             const char* slash = std::strrchr(path, '/');
@@ -273,9 +262,8 @@ private:
             return sep + 1;
         }
 
-        // 渲染：按开关将位置前缀原地追加到 out，顺序 file:line:func，冒号分隔，方括号包裹
-        // 默认配置（仅行号开）追加 "[123]"，与旧宏输出字节级一致；三项全关不追加任何字符。
-        // appendTo（而非返回串）形态：emit 路径直接在正文串上拼接，消除中间临时串
+        // 按开关将位置前缀 "[file:line:func]" 原地追加到 out；三项全关不追加。
+        // 默认配置（仅行号）输出 "[123]"，与旧宏输出字节级一致
         void appendTo(std::string& out) const
         {
             const bool hasFile = fileFlag().load(std::memory_order_relaxed);
@@ -315,23 +303,20 @@ private:
     // emit 正文起始预留容量：典型日志单行 64 字节内，预分配减少 string 扩容
     static std::size_t logContentReserve() { static const std::size_t v = 64; return v; }
 
-    // 逐参追加：在每个实参前补一个空格（与旧 ostringstream 路径 `oss << " " << arg`
-    // 的输出序列逐字节一致）。常用类型零分配直拼；整型手写 itoa；浮点 snprintf %g
-    // （已对 4M 随机样本验证与 ostream 输出逐字节一致）；其余任意可流输出类型回退
-    // 单参局部 ostringstream（罕见类型不计性能，能力不损失）。
-    // bool 刻意输出 true/false（用户定版），不沿用 ostream 默认 noboolalpha 的 1/0
+    // 逐参追加：每个实参前补一个空格，与旧 ostringstream 路径输出逐字节一致。
+    // 常用类型直拼，整型手写 itoa，浮点 snprintf，其余可流输出类型回退 ostringstream。
+    // bool 刻意输出 true/false（用户定版），不沿用 ostream 默认的 1/0
     static void appendLogArg(std::string& out, const char* v) { out += ' '; out += v; }
     static void appendLogArg(std::string& out, const std::string& v) { out += ' '; out += v; }
-    static void appendLogArg(std::string& out, char v) { out += ' '; out += v; } // ostream 输出字符本体
+    static void appendLogArg(std::string& out, char v) { out += ' '; out += v; }
     static void appendLogArg(std::string& out, bool v) { out += ' '; out += (v ? "true" : "false"); }
     template <typename T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
     static void appendLogArg(std::string& out, T v)
     {
         out += ' ';
-        // 手写 itoa：负号 + 十进制数字（无填充），与 ostream 默认输出一致
-        // 负数 magnitude 经 make_unsigned 取模法取得：对最小值（如 INT_MIN）取负是 UB，
-        // 转【无符号域】做 0 - raw 即 magnitude；符号判定仅对有符号类型做
-        // （is_signed 编译期短路，无符号 T 不做比较，避免回读误判高位值）
+        // 手写 itoa：负号 + 十进制数字，与 ostream 默认输出一致。负数 magnitude 在
+        // 无符号域取 0 - raw（对最小值取负是 UB）；符号判定 is_signed 编译期短路，
+        // 无符号类型不做回读比较
         using U = typename std::make_unsigned<T>::type;
         const U raw = static_cast<U>(v);
         const bool neg = std::is_signed<T>::value &&
@@ -361,8 +346,8 @@ private:
     static void appendLogArg(std::string& out, T v)
     {
         out += ' ';
-        // %g = general,6 位有效数字，与 ostream 默认输出一致（先前 4M 随机样本逐字节验证）；
-        // long double 需 %Lg。栈缓冲 64 字节足够（最长形如 -1.23457e-308）
+        // %g（6 位有效数字）与 ostream 默认输出一致；long double 需 %Lg。
+        // 栈缓冲 64 字节足够（最长形如 -1.23457e-308）
         constexpr std::size_t kFltBufSize = 64;
         std::array<char, kFltBufSize> buf = {};
         int n = 0;
@@ -382,7 +367,7 @@ private:
         }
     }
     // 回退重载：非算术、且不可转 const char*/std::string 的任意可流输出类型
-    // （enable_if 条件与非模板重载集互斥，避免与精确匹配重载二义）
+    // （enable_if 条件与非模板重载集互斥）
     template <typename T,
         typename std::enable_if<!std::is_arithmetic<T>::value && !std::is_convertible<T, const char*>::value
                                     && !std::is_convertible<T, const std::string&>::value,
@@ -400,8 +385,7 @@ public:
     static void setLocFileEnabled(bool on) { SourceLoc::fileFlag().store(on); }
     static void setLocLineEnabled(bool on) { SourceLoc::lineFlag().store(on); }
     static void setLocFuncEnabled(bool on) { SourceLoc::funcFlag().store(on); }
-    // 无 tag 日志宏的默认 tag 常量（仅宏内部使用；10 字符在 SSO 内本无堆分配，
-    // 静态复用仅为与 Url 常量池同惯用法，避免宏展开处重复字面量）
+    // 无 tag 日志宏的默认 tag 常量（仅宏内部使用）
     static const std::string& mainLoggerTag() { static const std::string t("MainLogger"); return t; }
 
 public:
@@ -1085,8 +1069,8 @@ public:
     }
 
 private:
-    // 全局版本号：server 注入（init）与置空（shutdown）统一经 setServer，写后
-    // fetch_add(1, release) 失效所有线程的 thread_local 缓存（热路径 acquire load 读）
+    // 全局版本号：server 注入与置空统一经 setServer，写后 fetch_add(1, release)
+    // 失效所有线程的 thread_local 缓存
     static std::atomic<uint64_t>& serverEpoch()
     {
         static std::atomic<uint64_t> e(0);
@@ -1094,12 +1078,10 @@ private:
     }
     static std::shared_ptr<YomkServer> serverSnapshot()
     {
-        // 每线程缓存快照：热路径 = 1 次 epoch acquire load + 缓存比对（实测 10.6 ns，
-        // 对比 mutex+拷贝 22.3/84.6 ns，见性能优化文档 §五）。慢路径仅 init 后首调
-        // 与失效后进入。陈旧窗口语义：并发 shutdown 时其他线程至多一调用命中缓存
-        // 保活的 server，返回服务级失败 "service not found"（服务表已清空），
-        // 无悬垂、无功能竞态。!cached 使空快照永不作为有效命中——未初始化期每次
-        // 调用仍走慢路径上锁查询，未初始化契约消息语义不变
+        // 每线程缓存快照，热路径仅 1 次 epoch acquire load + 比对；慢路径仅首调与
+        // 失效后进入。!cached 使空快照永不作为有效命中：未初始化期每次调用仍走慢
+        // 路径，契约消息语义不变。并发 shutdown 的陈旧窗口内至多一调用命中缓存
+        // 保活的 server，返回服务级失败，无悬垂
         thread_local std::shared_ptr<YomkServer> cached;
         thread_local uint64_t cachedEpoch = 0;
         const uint64_t e = serverEpoch().load(std::memory_order_acquire);

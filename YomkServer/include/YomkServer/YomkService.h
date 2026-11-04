@@ -13,7 +13,6 @@ class YomkServer;
 class YomkServerPrivate;
 class YomkServicePrivate;
 
-// 服务基类
 class YOMKSERVER_EXPORT YomkService : public std::enable_shared_from_this<YomkService>
 {
     friend class YomkServerPrivate;
@@ -23,23 +22,33 @@ public:
     virtual ~YomkService() {}
 
 public:
-    // 设置与获取服务名（URL 前缀）
     void name(const std::string& name);
     std::string name();
-    // 检查服务是否已标记注销
     bool isDeleted() const;
 
 public:
-    // 服务初始化（在其中注册功能函数），返回 0 成功
     virtual int init() = 0;
-    // 服务注销与资源释放
     virtual void deinit() {}
 
 protected:
-    // 框架协作面（基类↔派生类）：服务作者在子类 init()/成员内使用；
-    // 框架层经既有友元 YomkServerPrivate 访问。外部持有 YomkService* 者不可达，
-    // 外部调用统一走 URL 契约（YomkAPI::request / YomkServer::request）
-    // 包装成员函数为 weak_ptr 安全回调，服务注销后自动忽略调用
+    template <typename Class, typename Res, typename Arg>
+    void installFunc(const std::string& funcName, Res (Class::*func)(Arg), const std::string& msgName = "",
+                     const std::string& description = "")
+    {
+        installFunc(funcName, weakFunc(func), msgName, description);
+    }
+    std::map<std::string, yomk::FuncInfo> funcInfos();
+    yomk::Response invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
+    yomk::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
+    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    template <typename Class, typename Ret, typename Arg>
+    auto weakFunc(Ret (Class::*func)(Arg))
+    {
+        Class* self = static_cast<Class*>(this);
+        return weakFunc([self, func](Arg pkg) -> Ret { return (self->*func)(std::forward<Arg>(pkg)); });
+    }
+    void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
+                     const std::string& description = "");
     template <typename Func>
     auto weakFunc(Func func)
     {
@@ -69,36 +78,6 @@ protected:
             return func(std::forward<decltype(args)>(args)...);
         };
     }
-    // 成员函数指针重载：weakFunc(&Class::Method) 等价于 weakFunc(std::bind(&Class::Method, this, _1))，
-    // 内部委托上方泛型版，判活逻辑零重复（服务注销后自动忽略调用）
-    template <typename Class, typename Ret, typename Arg>
-    auto weakFunc(Ret (Class::*func)(Arg))
-    {
-        // 基类成员内的 this 为 YomkService*，须按成员指针所属类下转回调用方类型再绑定
-        // （调用点约定在本服务成员函数内，动态类型即 Class；无继承关系的类传入编译报错）
-        Class* self = static_cast<Class*>(this);
-        return weakFunc([self, func](Arg pkg) -> Ret { return (self->*func)(std::forward<Arg>(pkg)); });
-    }
-    // 注册功能函数（msgName 声明期望消息类型；description 函数说明，内容使用者自定义，均可为空）
-    void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
-                     const std::string& description = "");
-    // 成员函数指针重载：installFunc("/x", &Class::Method, ...) —— 弱绑定（weakFunc）收进 installFunc
-    // 内部，调用点无需手写 weakFunc；内部委托 weakFunc 成员指针重载（判活契约与旧宏 std::bind 版一致）
-    template <typename Class, typename Res, typename Arg>
-    void installFunc(const std::string& funcName, Res (Class::*func)(Arg), const std::string& msgName = "",
-                     const std::string& description = "")
-    {
-        installFunc(funcName, weakFunc(func), msgName, description);
-    }
-    // 获取本服务已注册功能函数元信息
-    std::map<std::string, yomk::FuncInfo> funcInfos();
-    // 直接调用本服务的功能函数
-    yomk::Response invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
-    // 发起同步请求
-    yomk::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
-    // 发起异步请求
-    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
-
 private:
     std::shared_ptr<YomkServicePrivate> m_p;
 };

@@ -7,9 +7,7 @@
 #include <vector>
 
 #include "YomkPkg.h"
-// 消息包类型定义宏
-// 类型自带 kName、内置 shared 静态工厂；独立 yomkmsg 命名空间避免与
-// yomk 中的载荷/框架类型重名，消息类名无需下划线后缀
+
 #define YomkMsg(DataType, MsgName, VarName)                                       \
     namespace yomkmsg                                                             \
     {                                                                             \
@@ -37,7 +35,6 @@
 namespace yomk
 {
 
-// 服务响应状态（用户在服务实现与响应检查中直接书写，独立对外枚举，不随载荷私有化）
 enum class ResStatus
 {
     Invalid = -1,
@@ -45,8 +42,6 @@ enum class ResStatus
     Failed = 1,
 };
 
-// 服务响应载荷（所有功能函数的返回值：m_status 表示本次请求的状态，
-// m_msg 对状态的说明，m_data 携带的返回数据）
 struct Response
 {
     Response() = default;
@@ -61,16 +56,12 @@ struct Response
 
 }  // namespace yomk
 
-// 功能函数签名：入参为请求消息包（可为 nullptr），返回 yomk::Response
 using YomkServiceFunc = std::function<yomk::Response(YomkPkgPtr pkg)>;
-// 异步响应回调签名：request 完成后回传结果
 using YomkResponseFunc = std::function<void(yomk::Response response)>;
 
 namespace yomk
 {
 
-// 按消息类型解包：消息名从 Msg::kName 内省，无需字符串实参；
-// pkg 为空或类型名不匹配时返回 nullptr（替代原解包宏，见《宏定义扫描报告.md》2.3/2.4）
 template <class Msg>
 std::shared_ptr<Msg> unPack(const YomkPkgPtr& pkg)
 {
@@ -81,7 +72,6 @@ std::shared_ptr<Msg> unPack(const YomkPkgPtr& pkg)
     return nullptr;
 }
 
-// 功能函数元信息（调试内省用）
 struct FuncInfo
 {
     std::string m_funcName;     // 功能函数名（/开头）
@@ -94,7 +84,7 @@ struct Function
     std::string m_funcName;
     YomkServiceFunc m_func;
     std::string m_msgName;
-    std::string m_description;  // 函数说明（installFunc 第四参声明，内容使用者自定义，可为空）
+    std::string m_description;  
 };
 
 struct CallFunction
@@ -138,7 +128,6 @@ struct EventLoop
     std::string m_msgName;  // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
 };
 
-// 事件循环内省元信息（getEventLoopInfo 返回数据）
 struct EventLoopInfo
 {
     std::string m_loopName;               // 循环名
@@ -175,44 +164,31 @@ struct ConsoleLogProxy
     std::function<bool(const Log& log)> m_consoleLogProxyFunc;
 };
 
-// 文件日志代理回调载体（setFileLogProxy 请求数据；语义与控制台代理对称，两代理各自独立）
 struct FileLogProxy
 {
     std::function<bool(const Log& log)> m_fileLogProxyFunc;
 };
 
-// Logger 日志器状态（debug/info/warn/error 四级别开关 + proxy；
-// console 条目承载控制台逐器门控层真值，console 全局主闸态经 /console_global_state 查询；
-// file 条目承载文件逐器门控层真值，file 全局主闸态经 /file_global_state 查询；
-// 两套主闸相互独立）
 struct LoggerState
 {
     bool m_debugOn = false;  // debug 级别开关
     bool m_infoOn = false;   // info 级别开关
     bool m_warnOn = false;   // warn 级别开关
     bool m_errorOn = false;  // error 级别开关
-    // 代理已安装：console_global_state 报控制台代理、file_global_state 报文件代理
-    // （两套代理态各自独立）
     bool m_proxyOn = false;
 };
 
-// 日志器单查请求（getLoggerInfo 请求数据：名 + 类型，两表允许同名须按类型区分）
 struct LoggerQuery
 {
     std::string m_loggerName;
-    std::string m_type;  // 类型："console" 或 "file"
+    std::string m_type;
 };
 
-// 日志器内省元信息（getLoggerInfo 单查返回数据，getAllLoggerInfo 清单元素）
 struct LoggerInfo
 {
     std::string m_loggerName;  // 日志器名
     std::string m_type;        // 类型："console" 或 "file"（与 listLoggers/getLoggerInfo 的类型参数同名）
     std::string m_dir;         // file 类型的日志目录（console 时为空串）
-    // 状态段：console 条目承载控制台逐器门控层真值（console 全局主闸态经
-    // /console_global_state 查询）；file 条目承载文件逐器门控层真值（file 全局主闸态
-    // 经 /file_global_state 查询）；m_proxyOn 语义随端点（console 条目报控制台代理、
-    // file 条目报文件代理，两套代理态各自独立）
     LoggerState m_loggerState;
 };
 
@@ -223,7 +199,6 @@ struct Context
     std::string m_group = "main";  // key 所属组名（缺省 main）
 };
 
-// Context 键内省元信息（getContextInfo 单查返回数据；同时是 ContextGroupInfo.m_keys 清单元素）
 struct ContextKeyInfo
 {
     std::string m_key;                    // 键名
@@ -234,8 +209,6 @@ struct ContextKeyInfo
     std::string m_group = "main";         // key 所属组名
 };
 
-// Context checker 门控结论（独立对外枚举：用户在 YomkContextCheckerFunc 回调中直接书写
-// yomk::CheckStatus，不随内部载荷 ContextChecker 私有化）
 enum class CheckStatus
 {
     Accept,
@@ -257,21 +230,18 @@ struct ContextMonitor
     std::string m_group = "main";  // 目标 key 所属组名（缺省 main）
 };
 
-// Context 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键）
 struct ContextGroupKey
 {
     std::string m_group = "main";  // 组名（缺省 main）
     std::string m_key;             // 键名
 };
 
-// Context 组级内省条目（getAllContextInfo 返回数据元素：组名 + 该组下全部键元信息，对齐 ServerServiceInfo）
 struct ContextGroupInfo
 {
     std::string m_groupName;             // 组名
     std::vector<ContextKeyInfo> m_keys;  // 该组全部键的内省元信息（map 字典序）
 };
 
-// 服务级内省条目（getAllServerInfo 返回数据元素：服务名 + 该服务注册的函数元信息列表）
 struct ServerServiceInfo
 {
     std::string m_serviceName;      // 服务名（带 / 前缀，如 "/FmtSrv"）
