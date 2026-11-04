@@ -913,7 +913,7 @@ int main()
                 auto t0 = Clock::now();
                 for (uint64_t i = createdA; i < cp; ++i)
                 {
-                    if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1a_marker") ==
+                    if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], {}, "lg4s1a_marker") ==
                         yomk::ResStatus::Succeeded)
                     {
                         ++okA;
@@ -952,7 +952,7 @@ int main()
                 ThreadSafeCoutCapture cap;
                 for (uint64_t i = 0; i < sample; ++i)
                 {
-                    YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1a2_" + std::to_string(i));
+                    YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], {}, "lg4s1a2_" + std::to_string(i));
                 }
                 out = cap.str();
             }
@@ -992,7 +992,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N; ++i)
             {
-                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1b_marker") ==
+                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], {}, "lg4s1b_marker") ==
                     yomk::ResStatus::Succeeded)
                 {
                     ++okB;
@@ -1013,7 +1013,7 @@ int main()
                 ThreadSafeCoutCapture cap;
                 for (uint64_t i = 0; i < probe; ++i)
                 {
-                    YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1c_off_marker");
+                    YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], {}, "lg4s1c_off_marker");
                 }
                 outOff = cap.str();
             }
@@ -1028,7 +1028,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N; ++i)
             {
-                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1c_marker") ==
+                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], {}, "lg4s1c_marker") ==
                     yomk::ResStatus::Succeeded)
                 {
                     ++okC;
@@ -1052,7 +1052,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N; ++i)
             {
-                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], "lg4s1d_marker") ==
+                if (YomkAPI::emitConsoleLogInfo(tags[static_cast<size_t>(i)], {}, "lg4s1d_marker") ==
                     yomk::ResStatus::Succeeded)
                 {
                     ++okD;
@@ -1071,7 +1071,7 @@ int main()
             std::string outThrough;
             {
                 ThreadSafeCoutCapture cap;
-                YomkAPI::emitConsoleLogInfo(hotTag, "lg4s1d_through_marker");
+                YomkAPI::emitConsoleLogInfo(hotTag, {}, "lg4s1d_through_marker");
                 outThrough = cap.str();
             }
             YOMK_TEST_CHECK(
@@ -1088,7 +1088,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < N; ++i)
             {
-                if (YomkAPI::emitConsoleLogInfo(hotTag, "lg4s1e_marker") == yomk::ResStatus::Succeeded)
+                if (YomkAPI::emitConsoleLogInfo(hotTag, {}, "lg4s1e_marker") == yomk::ResStatus::Succeeded)
                 {
                     ++okE;
                 }
@@ -1196,7 +1196,7 @@ int main()
             {
                 for (uint64_t k = 0; k < K; ++k)
                 {
-                    if (YomkAPI::emitFileLogInfo(sinks[static_cast<size_t>(k)], "lg4s3a", "line_" + std::to_string(r)) ==
+                    if (YomkAPI::emitFileLogInfo(sinks[static_cast<size_t>(k)], "lg4s3a", {}, "line_" + std::to_string(r)) ==
                         yomk::ResStatus::Succeeded)
                     {
                         ++okA;
@@ -1228,7 +1228,7 @@ int main()
             auto t0 = Clock::now();
             for (uint64_t i = 0; i < bigLines; ++i)
             {
-                if (YomkAPI::emitFileLogInfo(bigName, "lg4s3b", "line_" + std::to_string(i)) ==
+                if (YomkAPI::emitFileLogInfo(bigName, "lg4s3b", {}, "line_" + std::to_string(i)) ==
                     yomk::ResStatus::Succeeded)
                 {
                     ++okB;
@@ -1554,7 +1554,7 @@ int main()
                         {
                             const std::string name = "lg4s5_t" + std::to_string(t) + "_r" + std::to_string(r);
 
-                            auto rc = YomkAPI::emitConsoleLogInfo(name, "lg4s5_console");
+                            auto rc = YomkAPI::emitConsoleLogInfo(name, {}, "lg4s5_console");
                             if (rc == yomk::ResStatus::Succeeded)
                                 g_s5ConsoleOk.fetch_add(1, std::memory_order_relaxed);
                             else if (!isLegalStatus(rc))
@@ -1566,7 +1566,7 @@ int main()
                             else if (!isLegalStatus(rf))
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
 
-                            auto rl = YomkAPI::emitFileLogInfo(name, "lg4s5", "file_line");
+                            auto rl = YomkAPI::emitFileLogInfo(name, "lg4s5", {}, "file_line");
                             if (rl == yomk::ResStatus::Succeeded)
                                 g_s5LogOk.fetch_add(1, std::memory_order_relaxed);
                             else if (!isLegalStatus(rl))

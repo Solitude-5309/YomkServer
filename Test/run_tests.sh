@@ -138,6 +138,7 @@ TESTS=(
     # Logger 模块（含大量文件 IO 的 stress，压尾）
     TestYomkLoggerLifecycle
     TestYomkLoggerDirect
+    TestYomkLoggerLoc
     TestYomkLoggerConcurrency
     TestYomkLoggerStress
 )

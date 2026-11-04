@@ -362,7 +362,7 @@ YOMK_TEST_CHECK(
     std::string longTag(65536, 'T');
     CoutCapture cap;
     YOMK_TEST_CHECK(
-        YomkAPI::emitConsoleLogInfo(longTag, "lg1_s2_longtag_marker") == yomk::ResStatus::Succeeded,
+        YomkAPI::emitConsoleLogInfo(longTag, {}, "lg1_s2_longtag_marker") == yomk::ResStatus::Succeeded,
         "65536 字符超长 tag 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(cap.str().find("lg1_s2_longtag_marker") != std::string::npos, "超长 tag 日志正常输出");
     YOMK_TEST_CHECK(cap.str().find("[" + longTag + "]") != std::string::npos, "超长 tag 完整回显到输出行");
@@ -885,7 +885,7 @@ YOMK_TEST_CHECK(
     {
         auto r = yomk::ResStatus::Invalid;
         CoutCapture cap;
-        r = YomkAPI::emitConsoleLogInfo(logger, marker);
+        r = YomkAPI::emitConsoleLogInfo(logger, {}, marker);
         return r;
     };
 

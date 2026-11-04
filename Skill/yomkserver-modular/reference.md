@@ -240,6 +240,8 @@ class YomkService {
 | `YomkAPI::createFileLogger(dir, file)` | 创建文件日志 |
 | `YOMK_FILE_INFO/WARN/ERROR/DEBUG(file, ...)` | 文件日志（默认 tag=MainLogger） |
 | `YOMK_FILE_INFO_TAG/WARN_TAG/ERROR_TAG/DEBUG_TAG(file, tag, ...)` | 文件日志自定义 tag（Log::m_logger=file、Log::m_tag=tag，由日志器统一拼接 [tag] 段） |
+| `YomkAPI::emitConsoleLogInfo/Warn/Error/Debug(tag, {}, ...)` | emit 层直调，等价对应 YOMK_*_TAG 宏（tag=MainLogger 即无 tag 宏）；第二参 `{}` 在调用行捕获位置，漏写为编译错误不静默丢位置 |
+| `YomkAPI::emitFileLogInfo/Warn/Error/Debug(file, tag, {}, ...)` | emit 层直调，等价对应 YOMK_FILE_*_TAG 宏；`{}` 语义同控制台直调 |
 | `YomkAPI::flushFileLog(file)` | 刷新到磁盘 |
 | `YomkAPI::ON/disableConsoleLogInfo/WARN/ERROR/DEBUG()` | 开关控制台级别：无参 = 全局主闸（框架全局），传日志器名 = 仅门控该器（具名未命中 ResStatus::Failed "console logger not found."，不惰性创建） |
 | `YomkAPI::ON/disableFileLogInfo/WARN/ERROR/DEBUG(name = "")` | 开关文件日志级别：无参 = 文件全局主闸（框架全局），传文件日志器名 = 仅门控该器（具名未命中 ResStatus::Failed "file logger not found."，不惰性创建；两层 AND 后才写入内存缓冲） |
@@ -250,3 +252,6 @@ class YomkService {
 | `YomkAPI::getAllLoggerInfo()` | 内省：全量日志器清单（LoggerInfoList：vector<LoggerInfo>，元素为单查同款，每条内嵌 LoggerState 状态段——console 条目承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态，file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态，m_msg 恒 "ok"） |
 | `YomkAPI::getGlobalLoggerLevel(type = "console")` | 内省：全局主闸状态单查（type="file" 查文件侧、type="console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 ResStatus::Failed。LoggerState 独立包：四级别主闸开关 + proxyOn，m_msg "ok"；独立于逐器门控层，与 ALL/INFO_LOGGER 条目配合两层归因） |
 | `YomkAPI::deleteFileLogger(name)` | 删除日志器（同时清理 console/file 两表，msg `deleted console:c file:f`，均未命中 ResStatus::Failed；文件日志器移除时析构自动落盘，不删磁盘 .log 文件） |
+| `YomkAPI::setLocLineEnabled(bool)` | 开/关日志位置前缀行号段（默认开，与既有输出兼容）；进程级开关，对控制台与文件日志同时生效 |
+| `YomkAPI::setLocFileEnabled(bool)` | 开/关位置前缀文件名段（默认关；文件名取 basename），其余同上 |
+| `YomkAPI::setLocFuncEnabled(bool)` | 开/关位置前缀函数名段（默认关），其余同上；前缀按 `[file:line:func]` 顺序以 `:` 拼接，关断段整体省略（默认 `[N]`，全关无前缀） |

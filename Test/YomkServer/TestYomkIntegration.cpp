@@ -202,7 +202,7 @@ int main()
         // loggers 按类型查询，行内容即 logger 纯名（YomkLogger::loggers 不再拼接类型后缀）
         YOMK_TEST_CHECK(restored.m_status == yomk::ResStatus::Succeeded && contains(unpackStringArray(restored), "MainLogger"),
               "重注册后 LOGGER API 恢复且含 MainLogger");
-        YOMK_TEST_CHECK(YomkAPI::emitConsoleLogInfo("MainLogger", "[integration]", "s2 relink marker") ==
+        YOMK_TEST_CHECK(YomkAPI::emitConsoleLogInfo("MainLogger", {}, "[integration] s2 relink marker") ==
                   yomk::ResStatus::Succeeded,
               "重注册后日志 API 全链路可用（console_log ResStatus::Succeeded）");
     }

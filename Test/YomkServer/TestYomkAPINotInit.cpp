@@ -107,16 +107,16 @@ int main()
         YOMK_TEST_CHECK(
             YomkAPI::setConsoleLogProxy(nullptr) == yomk::ResStatus::Invalid,
             "setConsoleLogProxy 未初始化返回 ResStatus::Invalid");
-        auto logResp = YomkAPI::emitConsoleLogInfo("tag", "hello");
+        auto logResp = YomkAPI::emitConsoleLogInfo("tag", {}, "hello");
         YOMK_TEST_CHECK(logResp == yomk::ResStatus::Invalid, "emitConsoleLogInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitConsoleLogWarn("tag", "hello") == yomk::ResStatus::Invalid,
+            YomkAPI::emitConsoleLogWarn("tag", {}, "hello") == yomk::ResStatus::Invalid,
             "emitConsoleLogWarn 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitConsoleLogError("tag", "hello") == yomk::ResStatus::Invalid,
+            YomkAPI::emitConsoleLogError("tag", {}, "hello") == yomk::ResStatus::Invalid,
             "emitConsoleLogError 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitConsoleLogDebug("tag", "hello") == yomk::ResStatus::Invalid,
+            YomkAPI::emitConsoleLogDebug("tag", {}, "hello") == yomk::ResStatus::Invalid,
             "emitConsoleLogDebug 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::createFileLogger("/tmp", "guard.log") == yomk::ResStatus::Invalid,
@@ -125,16 +125,16 @@ int main()
             YomkAPI::flushFileLog("guard.log") == yomk::ResStatus::Invalid,
             "flushFileLog 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogInfo("guard.log", "tag", "hello") == yomk::ResStatus::Invalid,
+            YomkAPI::emitFileLogInfo("guard.log", "tag", {}, "hello") == yomk::ResStatus::Invalid,
             "emitFileLogInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogWarn("guard.log", "tag", "hello") == yomk::ResStatus::Invalid,
+            YomkAPI::emitFileLogWarn("guard.log", "tag", {}, "hello") == yomk::ResStatus::Invalid,
             "emitFileLogWarn 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogError("guard.log", "tag", "hello") == yomk::ResStatus::Invalid,
+            YomkAPI::emitFileLogError("guard.log", "tag", {}, "hello") == yomk::ResStatus::Invalid,
             "emitFileLogError 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogDebug("guard.log", "tag", "hello") == yomk::ResStatus::Invalid,
+            YomkAPI::emitFileLogDebug("guard.log", "tag", {}, "hello") == yomk::ResStatus::Invalid,
             "emitFileLogDebug 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::disableConsoleLogInfo() == yomk::ResStatus::Invalid,

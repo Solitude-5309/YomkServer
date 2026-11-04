@@ -1,0 +1,371 @@
+/**
+ * @file TestYomkLoggerLoc.cpp
+ * @brief 日志位置捕获机制测试（SourceLoc + emit 签名改造 + 宏注入 {}）
+ *
+ * 覆盖内容（4 个 Section）：
+ * 1. 默认配置（仅行号开）：宏注入行号与真实调用行逐行核对；四级 + _TAG 变体；
+ *    宏路径与 emit 直调路径同捕获窗输出结构一致（字节级兼容基线）；零正文/多参折叠
+ * 2. 文件日志双路径：createFileLogger → 宏 YOMK_FILE_* 与直调 emitFileLog*(..., {}, ...)
+ *    → flushFileLog → 落盘读回断言 [N] 前缀、marker 与 tag
+ * 3. 开关矩阵：3 开关 × 开/关 8 组合逐组断言精确前缀
+ *    （[N] / [file:N] / [file:N:main] / [N:main] / [file] / [main] / 全关无前缀），收尾恢复默认
+ * 4. emit 直调隔离：模拟 Concurrency/Stress 直调形态（{} 实参 + 显式 tag），
+ *    自定义级别全覆盖；开关不影响直调显式内容
+ *
+ * 说明：位置捕获机制 = emit 函数 pack 之前的固定参数 SourceLoc（聚合 + NSDMI），
+ *       调用点 {} 在调用行聚合初始化完成捕获；宏在调用行展开注入 {}，
+ *       故宏调用与直调的行号语义一致。默认输出与改造前旧宏（"[N]" 字面量拼接）字节级一致。
+ *
+ * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖），
+ *       CoutCapture / marker 断言 / 临时目录模式同 TestYomkLoggerLifecycle.cpp
+ */
+
+#include <unistd.h>
+
+#include <atomic>
+#include <cstdio>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+
+#include "YomkAPI.h"
+
+namespace fs = std::filesystem;
+
+static int g_failed = 0;
+
+#define YOMK_TEST_CHECK(cond, msg)                                                          \
+    do                                                                            \
+    {                                                                             \
+        if (!(cond))                                                              \
+        {                                                                         \
+            std::cout << "[FAIL] [line " << __LINE__ << "] " << msg << std::endl; \
+            ++g_failed;                                                           \
+        }                                                                         \
+        else                                                                      \
+        {                                                                         \
+            std::cout << "[ OK ] [line " << __LINE__ << "] " << msg << std::endl; \
+        }                                                                         \
+    } while (0)
+
+// cout 捕获（析构转储 [FAIL]，模式同 TestYomkLoggerLifecycle.cpp）
+class CoutCapture
+{
+public:
+    CoutCapture() : m_old(std::cout.rdbuf(m_ss.rdbuf())) {}
+    ~CoutCapture()
+    {
+        std::cout.rdbuf(m_old);
+        const std::string captured = m_ss.str();
+        if (captured.find("[FAIL]") != std::string::npos)
+        {
+            std::cout << captured << std::flush;
+        }
+    }
+    std::string str() const { return m_ss.str(); }
+
+private:
+    std::stringstream m_ss;
+    std::streambuf* m_old;
+};
+
+static fs::path testTmpRoot()
+{
+    const char* env = std::getenv("YOMK_TEST_TMP_ROOT");
+    return (env && *env) ? fs::path(env) : fs::temp_directory_path();
+}
+
+static std::string readFile(const fs::path& path, bool& ok)
+{
+    std::ifstream ifs(path);
+    ok = ifs.is_open();
+    std::stringstream ss;
+    ss << ifs.rdbuf();
+    return ss.str();
+}
+
+// 剥离日志行的时间戳与 [MainLogger] 后的 "[行号] " 段，用于宏路径与直调路径的结构等价对比
+// （时间戳毫秒级可能跨值，不参与对比）
+static std::string stripLineNo(const std::string& line)
+{
+    const size_t lvl = line.find("[Info ]");
+    if (lvl == std::string::npos)
+    {
+        return line;
+    }
+    const std::string head = "[MainLogger] [";
+    const size_t h = line.find(head, lvl);
+    if (h == std::string::npos)
+    {
+        return line;
+    }
+    const size_t close = line.find(']', h + head.size());
+    if (close == std::string::npos)
+    {
+        return line;
+    }
+    return "[Info ] [MainLogger] " + line.substr(close + 1);
+}
+
+int main()
+{
+    YomkAPI::init(1);
+    YOMK_TEST_CHECK(YomkAPI::serverInstance() != nullptr, "YomkAPI::init() 返回非空服务器");
+
+    // ============ Section 1: 默认配置（仅行号开） ============
+    {
+        // 行号精确捕获：expectLine 推算宏调用所在行
+        {
+            CoutCapture cap;
+            const unsigned expectLine = __LINE__ + 1;
+            YOMK_INFO("lgL_s1_line_marker");
+            const std::string out = cap.str();
+            YOMK_TEST_CHECK(out.find("[" + std::to_string(expectLine) + "] lgL_s1_line_marker") !=
+                                std::string::npos,
+                "宏注入行号与真实调用行一致 (" + std::to_string(expectLine) + ")");
+        }
+
+        // 四级 + _TAG 变体：返回值与格式
+        {
+            CoutCapture cap;
+            const unsigned infoLine = __LINE__ + 1;
+            auto ri = YOMK_INFO("lgL_s1_info");
+            auto riT = YOMK_INFO_TAG("lgLTag", "lgL_s1_info_tag");
+            auto rw = YOMK_WARN("lgL_s1_warn");
+            auto rwT = YOMK_WARN_TAG("lgLTag", "lgL_s1_warn_tag");
+            auto re = YOMK_ERROR("lgL_s1_error");
+            auto reT = YOMK_ERROR_TAG("lgLTag", "lgL_s1_error_tag");
+            auto rd = YOMK_DEBUG("lgL_s1_debug");
+            auto rdT = YOMK_DEBUG_TAG("lgLTag", "lgL_s1_debug_tag");
+            YOMK_TEST_CHECK(ri == yomk::ResStatus::Succeeded && riT == yomk::ResStatus::Succeeded &&
+                                rw == yomk::ResStatus::Succeeded && rwT == yomk::ResStatus::Succeeded &&
+                                re == yomk::ResStatus::Succeeded && reT == yomk::ResStatus::Succeeded &&
+                                rd == yomk::ResStatus::Succeeded && rdT == yomk::ResStatus::Succeeded,
+                "四级 + _TAG 变体全部返回 ResStatus::Succeeded");
+            const std::string out = cap.str();
+            YOMK_TEST_CHECK(out.find("[" + std::to_string(infoLine) + "] lgL_s1_info") != std::string::npos,
+                "INFO 输出含 [行号] 前缀与 marker");
+            YOMK_TEST_CHECK(out.find(" lgL_s1_info_tag") != std::string::npos, "INFO_TAG 自定义 tag 输出 marker");
+            YOMK_TEST_CHECK(out.find(" lgL_s1_warn") != std::string::npos, "WARN 输出 marker");
+            YOMK_TEST_CHECK(out.find(" lgL_s1_warn_tag") != std::string::npos, "WARN_TAG 输出 marker");
+            YOMK_TEST_CHECK(out.find(" lgL_s1_error") != std::string::npos, "ERROR 输出 marker");
+            YOMK_TEST_CHECK(out.find(" lgL_s1_error_tag") != std::string::npos, "ERROR_TAG 输出 marker");
+            YOMK_TEST_CHECK(out.find(" lgL_s1_debug") != std::string::npos, "DEBUG 输出 marker");
+            YOMK_TEST_CHECK(out.find(" lgL_s1_debug_tag") != std::string::npos, "DEBUG_TAG 输出 marker");
+        }
+
+        // 宏路径 vs 直调路径：同 marker 双发，剥离行号后两行应逐字节一致
+        {
+            CoutCapture cap;
+            const unsigned macroLine = __LINE__ + 1;
+            YOMK_INFO("lgL_s1_cmp");
+            const unsigned directLine = __LINE__ + 1;
+            YomkAPI::emitConsoleLogInfo("MainLogger", {}, "lgL_s1_cmp");
+            const std::string out = cap.str();
+            YOMK_TEST_CHECK(out.find("[" + std::to_string(macroLine) + "] lgL_s1_cmp") != std::string::npos,
+                "宏路径行号正确");
+            YOMK_TEST_CHECK(out.find("[" + std::to_string(directLine) + "] lgL_s1_cmp") != std::string::npos,
+                "直调路径 {} 行号正确");
+            std::string lineMacro;
+            std::string lineDirect;
+            std::istringstream iss(out);
+            std::string ln;
+            while (std::getline(iss, ln))
+            {
+                if (ln.find("lgL_s1_cmp") != std::string::npos)
+                {
+                    if (lineMacro.empty())
+                    {
+                        lineMacro = ln; // 第一条 = 宏路径
+                    }
+                    else
+                    {
+                        lineDirect = ln; // 第二条 = 直调路径
+                    }
+                }
+            }
+            YOMK_TEST_CHECK(!lineDirect.empty() && stripLineNo(lineMacro) == stripLineNo(lineDirect),
+                "宏路径与直调路径剥离行号后输出逐字节一致 [macro=" + stripLineNo(lineMacro) +
+                    "] [direct=" + stripLineNo(lineDirect) + "]");
+        }
+
+        // 零正文与多参折叠
+        {
+            CoutCapture cap;
+            const unsigned emptyLine = __LINE__ + 1;
+            auto r0 = YOMK_INFO("");
+            auto rM = YOMK_INFO("i=", 42, "j=", 3.5, "end");
+            YOMK_TEST_CHECK(r0 == yomk::ResStatus::Succeeded, "零正文返回 Succeeded");
+            YOMK_TEST_CHECK(rM == yomk::ResStatus::Succeeded, "多参折叠返回 Succeeded");
+            const std::string out = cap.str();
+            YOMK_TEST_CHECK(out.find("[" + std::to_string(emptyLine) + "] ") != std::string::npos,
+                "零正文输出仅 [行号] 前缀");
+            YOMK_TEST_CHECK(out.find("i= 42 j= 3.5 end") != std::string::npos, "多参按序折叠输出");
+        }
+    }
+
+    // ============ Section 2: 文件日志双路径（宏 + 直调） ============
+    {
+        const std::string logName = "lgL_s2"; // createFileLogger 落盘为 <dir>/<name>.log（init 补扩展名）
+        fs::path logFile =
+            testTmpRoot() / ("yomk_logger_lgL_" + std::to_string(::getpid())) / (logName + ".log");
+        fs::path logDir = logFile.parent_path();
+        std::error_code ec;
+        fs::create_directories(logDir, ec);
+        YOMK_TEST_CHECK(!ec, "S2 临时目录创建成功");
+
+        YOMK_TEST_CHECK(YomkAPI::createFileLogger(logDir.string(), logName) == yomk::ResStatus::Succeeded,
+            "createFileLogger 成功");
+
+        const unsigned infoLine = __LINE__ + 1;
+        YOMK_TEST_CHECK(YOMK_FILE_INFO(logName, "lgL_s2_info") == yomk::ResStatus::Succeeded,
+            "YOMK_FILE_INFO 返回 Succeeded");
+        YOMK_TEST_CHECK(YOMK_FILE_INFO_TAG(logName, "lgLTag", "lgL_s2_info_tag") == yomk::ResStatus::Succeeded,
+            "YOMK_FILE_INFO_TAG 返回 Succeeded");
+        YOMK_TEST_CHECK(YOMK_FILE_WARN(logName, "lgL_s2_warn") == yomk::ResStatus::Succeeded, "YOMK_FILE_WARN");
+        YOMK_TEST_CHECK(YOMK_FILE_ERROR(logName, "lgL_s2_error") == yomk::ResStatus::Succeeded,
+            "YOMK_FILE_ERROR");
+        YOMK_TEST_CHECK(YOMK_FILE_DEBUG(logName, "lgL_s2_debug") == yomk::ResStatus::Succeeded,
+            "YOMK_FILE_DEBUG");
+        YOMK_TEST_CHECK(
+            YomkAPI::emitFileLogInfo(logName, "MainLogger", {}, "lgL_s2_direct") == yomk::ResStatus::Succeeded,
+            "直调 emitFileLogInfo({}) 返回 Succeeded");
+        YOMK_TEST_CHECK(
+            YomkAPI::emitFileLogInfo(logName, "lgLTag", {}, "lgL_s2_direct_tag") == yomk::ResStatus::Succeeded,
+            "直调 emitFileLogInfo 自定义 tag 返回 Succeeded");
+
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(logName) == yomk::ResStatus::Succeeded, "flushFileLog 成功");
+
+        bool readOk = false;
+        const std::string content = readFile(logFile, readOk);
+        YOMK_TEST_CHECK(readOk, "落盘文件可读");
+        YOMK_TEST_CHECK(content.find("[" + std::to_string(infoLine) + "] lgL_s2_info") != std::string::npos,
+            "文件宏路径行号正确且含 marker (" + std::to_string(infoLine) + ")");
+        YOMK_TEST_CHECK(content.find(" lgL_s2_info_tag") != std::string::npos, "文件 INFO_TAG marker 落盘");
+        YOMK_TEST_CHECK(content.find(" lgL_s2_warn") != std::string::npos, "文件 WARN marker 落盘");
+        YOMK_TEST_CHECK(content.find(" lgL_s2_error") != std::string::npos, "文件 ERROR marker 落盘");
+        YOMK_TEST_CHECK(content.find(" lgL_s2_debug") != std::string::npos, "文件 DEBUG marker 落盘");
+        YOMK_TEST_CHECK(content.find(" lgL_s2_direct") != std::string::npos, "直调 marker 落盘");
+        YOMK_TEST_CHECK(content.find(" lgL_s2_direct_tag") != std::string::npos, "直调自定义 tag marker 落盘");
+
+        YomkAPI::deleteFileLogger(logName);
+        fs::remove_all(logDir, ec);
+    }
+
+    // ============ Section 3: 开关矩阵（3 开关 × 开/关 = 8 组合） ============
+    {
+        // (file, line, func) → 期望前缀（__FUNCTION__ 在 main 内恒为 main）
+        struct Combo
+        {
+            bool file;
+            bool line;
+            bool func;
+            const char* name;
+        };
+        const Combo combos[] = {
+            {false, true, false, "默认（仅行号）"},
+            {true, true, false, "file+line"},
+            {true, true, true, "file+line+func"},
+            {false, true, true, "line+func"},
+            {true, false, false, "仅 file"},
+            {false, false, true, "仅 func"},
+            {true, false, true, "file+func"},
+            {false, false, false, "全关"},
+        };
+        for (const auto& c : combos)
+        {
+            YomkAPI::setLocFileEnabled(c.file);
+            YomkAPI::setLocLineEnabled(c.line);
+            YomkAPI::setLocFuncEnabled(c.func);
+
+            CoutCapture cap;
+            const std::string marker = std::string("lgL_s3_") + (c.file ? "f" : "-") +
+                                       (c.line ? "l" : "-") + (c.func ? "n" : "-");
+            const unsigned expectLine = __LINE__ + 1;
+            YOMK_INFO(marker);
+            const std::string out = cap.str();
+
+            bool ok = false;
+            std::string expect;
+            if (c.file && c.line && c.func)
+            {
+                expect = "[TestYomkLoggerLoc.cpp:" + std::to_string(expectLine) + ":main] lgL_s3_fln";
+                ok = out.find(expect) != std::string::npos;
+            }
+            else if (c.file && c.line)
+            {
+                expect = "[TestYomkLoggerLoc.cpp:" + std::to_string(expectLine) + "] lgL_s3_fl-";
+                ok = out.find(expect) != std::string::npos;
+            }
+            else if (c.line && c.func)
+            {
+                expect = "[" + std::to_string(expectLine) + ":main] lgL_s3_-ln";
+                ok = out.find(expect) != std::string::npos;
+            }
+            else if (c.file && c.func)
+            {
+                expect = "[TestYomkLoggerLoc.cpp:main] lgL_s3_f-n"; // file:func（无行号段）
+                ok = out.find(expect) != std::string::npos;
+            }
+            else if (c.file)
+            {
+                expect = "[TestYomkLoggerLoc.cpp] lgL_s3_f--";
+                ok = out.find(expect) != std::string::npos;
+            }
+            else if (c.line)
+            {
+                expect = "[" + std::to_string(expectLine) + "] lgL_s3_-l-";
+                ok = out.find(expect) != std::string::npos;
+            }
+            else if (c.func)
+            {
+                expect = "[main] lgL_s3_--n";
+                ok = out.find(expect) != std::string::npos;
+            }
+            else
+            {
+                // 全关：无位置前缀，content 以空格开头（format() 空串 + 分隔空格）
+                expect = "[MainLogger]  lgL_s3_---";
+                ok = out.find(expect) != std::string::npos;
+            }
+            YOMK_TEST_CHECK(ok, "开关组合 (" + std::string(c.name) + ") 前缀精确匹配: " + expect);
+        }
+
+        // 收尾恢复默认
+        YomkAPI::setLocFileEnabled(false);
+        YomkAPI::setLocLineEnabled(true);
+        YomkAPI::setLocFuncEnabled(false);
+        YOMK_TEST_CHECK(true, "开关矩阵收尾恢复默认 (file=关/line=开/func=关)");
+    }
+
+    // ============ Section 4: emit 直调隔离（Concurrency/Stress 同形态） ============
+    {
+        CoutCapture cap;
+        auto rd = YomkAPI::emitConsoleLogDebug("lgLTag", {}, "lgL_s4_debug");
+        auto ri = YomkAPI::emitConsoleLogInfo("lgLTag", {}, "lgL_s4_info");
+        auto rw = YomkAPI::emitConsoleLogWarn("lgLTag", {}, "lgL_s4_warn");
+        auto re = YomkAPI::emitConsoleLogError("lgLTag", {}, "lgL_s4_error");
+        YOMK_TEST_CHECK(rd == yomk::ResStatus::Succeeded && ri == yomk::ResStatus::Succeeded &&
+                            rw == yomk::ResStatus::Succeeded && re == yomk::ResStatus::Succeeded,
+            "直调四级（显式 tag + {}）全部返回 Succeeded");
+        const std::string out = cap.str();
+        YOMK_TEST_CHECK(out.find(" lgL_s4_debug") != std::string::npos, "直调 DEBUG marker 输出");
+        YOMK_TEST_CHECK(out.find(" lgL_s4_info") != std::string::npos, "直调 INFO marker 输出");
+        YOMK_TEST_CHECK(out.find(" lgL_s4_warn") != std::string::npos, "直调 WARN marker 输出");
+        YOMK_TEST_CHECK(out.find(" lgL_s4_error") != std::string::npos, "直调 ERROR marker 输出");
+    }
+
+    // ============ 收尾清理 ============
+    YomkAPI::shutdown();
+
+    if (g_failed == 0)
+    {
+        std::cout << "TestYomkLoggerLoc all check passed." << std::endl;
+        return 0;
+    }
+    std::cout << "TestYomkLoggerLoc FAILED (" << g_failed << " checks failed)." << std::endl;
+    return 1;
+}

@@ -81,6 +81,26 @@ YomkAPI::setFileLogProxy([](const yomk::Log &log) {
 YomkAPI::setFileLogProxy(nullptr); // 传 nullptr 卸载文件代理，恢复默认落盘
 ```
 
+### 位置捕获与前缀开关
+
+日志宏在调用行注入位置捕获（`{}` 于该行聚合初始化），日志内容前缀默认 `[行号]`。前缀由 3 个进程级开关独立控制，对控制台与文件日志同时生效：
+
+| API | 说明 |
+|---|---|
+| `YomkAPI::setLocLineEnabled(bool)` | 开/关行号段（默认开，与既有输出兼容） |
+| `YomkAPI::setLocFileEnabled(bool)` | 开/关文件名段（默认关；文件名取 basename） |
+| `YomkAPI::setLocFuncEnabled(bool)` | 开/关函数名段（默认关） |
+
+前缀按 `[file:line:func]` 顺序以 `:` 拼接，关断的段整体省略（不留空位）：默认 `[N]`；开文件+行号为 `[main.cpp:N]`；仅函数为 `[main]`；全关无前缀。
+
+绕过宏直调 emit 层为等价形式（第二参 `{}` 在调用行完成位置捕获；漏写该参数为编译错误，不会静默丢失位置）：
+
+```cpp
+YomkAPI::emitConsoleLogInfo("MainLogger", {}, "server started");    // 等价 YOMK_INFO(...)
+YomkAPI::emitConsoleLogInfo("Network", {}, "connected:", 8080);     // 等价 YOMK_INFO_TAG("Network", ...)
+YomkAPI::emitFileLogInfo("app", "MainLogger", {}, "app started");   // 等价 YOMK_FILE_INFO("app", ...)
+```
+
 ## 注意事项
 
 - tag 即控制台日志器名，首次使用自动创建。
