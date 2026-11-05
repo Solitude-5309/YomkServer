@@ -3,8 +3,8 @@
  * @brief Logger 模块生命周期与契约基线测试（LG1 从零新建，LG2 审计处置后回填，LG4 补删除接口，LG6 补 proxy 卸载）
  *
  * 覆盖内容（11 个 Section + 1 个前置注入段，断言计数以运行实测为准）：
- * 1. 控制台日志基线：四级别宏输出格式（时间戳+[级别]+[logger]+[行号]）；
- *    级别开关 OFF→无输出仍 ResStatus::Succeeded→ON→恢复输出，四级别全覆盖
+ * 1. 控制台日志基线：六级别宏输出格式（时间戳+[级别]+[logger]+[行号]）；
+ *    级别开关 OFF→无输出仍 ResStatus::Succeeded→ON→恢复输出，六级别全覆盖
  * 2. 自定义 tag：新 tag 自动创建 console logger；65536 超长 tag；空内容日志
  * 2.5 非法级别 default 降级（P2-c 修复后）：proxy 设置前 raw 注入 level=99 →
  *    console_log default 降级 Info 输出 + ResStatus::Succeeded（S3 的 proxy 处于拦截态时会短路一切
@@ -303,8 +303,25 @@ int main()
          cap.str().find("lg1_s1_debug_marker") != std::string::npos),
         "DEBUG 输出格式与 marker");
 }
+{
+    // TRACE/FATAL 为六等级扩展新增：宏输出格式与四级同构
+    CoutCapture cap;
+    YOMK_TEST_CHECK(YOMK_TRACE("lg1_s1_trace_marker") == yomk::payload::ResStatus::Succeeded, "YOMK_TRACE 返回 ResStatus::Succeeded");
+    YOMK_TEST_CHECK(
+        (cap.str().find("[TRACE] [MainLogger]") != std::string::npos &&
+         cap.str().find("lg1_s1_trace_marker") != std::string::npos),
+        "TRACE 输出格式与 marker");
+}
+{
+    CoutCapture cap;
+    YOMK_TEST_CHECK(YOMK_FATAL("lg1_s1_fatal_marker") == yomk::payload::ResStatus::Succeeded, "YOMK_FATAL 返回 ResStatus::Succeeded");
+    YOMK_TEST_CHECK(
+        (cap.str().find("[FATAL] [MainLogger]") != std::string::npos &&
+         cap.str().find("lg1_s1_fatal_marker") != std::string::npos),
+        "FATAL 输出格式与 marker");
+}
 
-// 级别开关：OFF→无输出仍 ResStatus::Succeeded→ON→恢复输出（四级别逐一）
+// 级别开关：OFF→无输出仍 ResStatus::Succeeded→ON→恢复输出（六级别逐一）
 {
     YOMK_TEST_CHECK(YomkAPI::disableConsoleLogInfo() == yomk::payload::ResStatus::Succeeded, "disableConsoleLogInfo 返回 ResStatus::Succeeded");
     CoutCapture cap;
@@ -344,6 +361,29 @@ int main()
     CoutCapture cap2;
     YOMK_DEBUG("lg1_s1_on_debug_marker");
     YOMK_TEST_CHECK(cap2.str().find("lg1_s1_on_debug_marker") != std::string::npos, "DEBUG 级别重开后恢复输出");
+}
+{
+    // TRACE 主闸关断隔离：Trace 静默，其余五级不受影响（六等级扩展新增）
+    YOMK_TEST_CHECK(YomkAPI::disableConsoleLogTrace() == yomk::payload::ResStatus::Succeeded, "disableConsoleLogTrace 返回 ResStatus::Succeeded");
+    CoutCapture cap;
+    YOMK_TRACE("lg1_s1_off_trace_marker");
+    YOMK_DEBUG("lg1_s1_off_trace_debug_marker");
+    YOMK_TEST_CHECK(cap.str().find("lg1_s1_off_trace_marker") == std::string::npos, "TRACE 级别关闭后无输出");
+    YOMK_TEST_CHECK(cap.str().find("lg1_s1_off_trace_debug_marker") != std::string::npos, "关断 TRACE 不影响 DEBUG 等其余五级");
+    YomkAPI::enableConsoleLogTrace();
+    CoutCapture cap2;
+    YOMK_TRACE("lg1_s1_on_trace_marker");
+    YOMK_TEST_CHECK(cap2.str().find("lg1_s1_on_trace_marker") != std::string::npos, "TRACE 级别重开后恢复输出");
+}
+{
+    CoutCapture cap;
+    YOMK_TEST_CHECK(YomkAPI::disableConsoleLogFatal() == yomk::payload::ResStatus::Succeeded, "disableConsoleLogFatal 返回 ResStatus::Succeeded");
+    YOMK_FATAL("lg1_s1_off_fatal_marker");
+    YOMK_TEST_CHECK(cap.str().find("lg1_s1_off_fatal_marker") == std::string::npos, "FATAL 级别关闭后无输出");
+    YomkAPI::enableConsoleLogFatal();
+    CoutCapture cap2;
+    YOMK_FATAL("lg1_s1_on_fatal_marker");
+    YOMK_TEST_CHECK(cap2.str().find("lg1_s1_on_fatal_marker") != std::string::npos, "FATAL 级别重开后恢复输出");
 }
 }
 
@@ -404,8 +444,9 @@ YOMK_TEST_CHECK(
         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
-            (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && !st->m_proxyOn),
-            "proxy 设置前 ALL 控制台状态全 on + proxyOff");
+            (st != nullptr && st->m_traceOn && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn &&
+             st->m_fatalOn && !st->m_proxyOn),
+            "proxy 设置前 ALL 控制台状态六级全 on（m_traceOn/m_fatalOn 默认 true）+ proxyOff");
     }
 
     g_proxyHits.store(0);
@@ -520,7 +561,10 @@ YOMK_TEST_CHECK(
         "createFileLogger 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK((fs::exists(logFile) && fs::file_size(logFile, ec) == 0), "CREATE 后 <dir>/<name>.log 空文件已建");
 
-    // 四级别入缓冲：write 前文件仍空（缓冲语义）
+    // 六级别入缓冲：write 前文件仍空（缓冲语义）
+    YOMK_TEST_CHECK(
+        YOMK_FILE_TRACE("lg1_file_logger", "lg1_s4_trace_marker") == yomk::payload::ResStatus::Succeeded,
+        "FILE_TRACE 返回 ResStatus::Succeeded（六等级扩展新增）");
     YOMK_TEST_CHECK(
         YOMK_FILE_INFO("lg1_file_logger", "lg1_s4_info_marker ", 7) == yomk::payload::ResStatus::Succeeded,
         "FILE_INFO 返回 ResStatus::Succeeded");
@@ -529,6 +573,9 @@ YOMK_TEST_CHECK(
         YOMK_FILE_ERROR("lg1_file_logger", "lg1_s4_error_marker") == yomk::payload::ResStatus::Succeeded, "FILE_ERROR 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(
         YOMK_FILE_DEBUG("lg1_file_logger", "lg1_s4_debug_marker") == yomk::payload::ResStatus::Succeeded, "FILE_DEBUG 返回 ResStatus::Succeeded");
+    YOMK_TEST_CHECK(
+        YOMK_FILE_FATAL("lg1_file_logger", "lg1_s4_fatal_marker") == yomk::payload::ResStatus::Succeeded,
+        "FILE_FATAL 返回 ResStatus::Succeeded（六等级扩展新增）");
     YOMK_TEST_CHECK(fs::file_size(logFile, ec) == 0, "WRITE 前文件仍为空（stringstream 缓冲语义）");
 
     // 落盘：读回断言行数/行格式/marker/tag
@@ -536,7 +583,7 @@ YOMK_TEST_CHECK(
     bool readOk = false;
     std::string content = readFile(logFile, readOk);
     YOMK_TEST_CHECK(readOk, "落盘后日志文件可读");
-    YOMK_TEST_CHECK(countLines(content) == 4, "落盘内容恰 4 行（四级别各一）");
+    YOMK_TEST_CHECK(countLines(content) == 6, "落盘内容恰 6 行（六级别各一）");
     YOMK_TEST_CHECK(
         (content.find("[INFO ] [MainLogger]") != std::string::npos &&
          content.find("[INFO ] [MainLogger] [") != std::string::npos &&
@@ -556,8 +603,9 @@ YOMK_TEST_CHECK(
         "自定义 tag 行格式（[INFO ] [tag] [行号] 内容）");
     YOMK_TEST_CHECK(
         (content.find("[WARN ]") != std::string::npos && content.find("[ERROR]") != std::string::npos &&
-         content.find("[DEBUG]") != std::string::npos),
-        "Warn/Error/Debug 三级别行均在");
+         content.find("[DEBUG]") != std::string::npos && content.find("[TRACE]") != std::string::npos &&
+         content.find("[FATAL]") != std::string::npos),
+        "Warn/Error/Debug/Trace/Fatal 五级别行均在（Info 行已单独断言）");
     YOMK_TEST_CHECK(checkTimeFormat(content), "文件日志行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]");
 
     // 落盘后缓冲清空：再次 WRITE 文件不增长
@@ -677,8 +725,9 @@ YOMK_TEST_CHECK(
         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
-            (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
-            "ALL 控制台状态全 on（S3 已设 proxy）");
+            (st != nullptr && st->m_traceOn && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn &&
+             st->m_fatalOn && st->m_proxyOn),
+            "ALL 控制台状态六级全 on（S3 已设 proxy）");
     }
     {
         YomkAPI::disableConsoleLogInfo();
@@ -687,14 +736,16 @@ YOMK_TEST_CHECK(
         auto gResp = YomkAPI::getGlobalLoggerLevel();
         auto gs = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(
-            (gs != nullptr && gs->d.m_debugOn && !gs->d.m_infoOn && gs->d.m_warnOn && gs->d.m_errorOn && gs->d.m_proxyOn),
-            "OFF INFO 后全局主闸状态 infoOff（开关联动逐字段）");
+            (gs != nullptr && gs->d.m_traceOn && gs->d.m_debugOn && !gs->d.m_infoOn && gs->d.m_warnOn &&
+             gs->d.m_errorOn && gs->d.m_fatalOn && gs->d.m_proxyOn),
+            "OFF INFO 后全局主闸状态 infoOff（六级其余字段不受影响，开关联动逐字段）");
         YomkAPI::enableConsoleLogInfo();
         auto gResp2 = YomkAPI::getGlobalLoggerLevel();
         auto gs2 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp2.m_data);
         YOMK_TEST_CHECK(
-            (gs2 != nullptr && gs2->d.m_debugOn && gs2->d.m_infoOn && gs2->d.m_warnOn && gs2->d.m_errorOn && gs2->d.m_proxyOn),
-            "ON INFO 复原后全局主闸状态 infoOn");
+            (gs2 != nullptr && gs2->d.m_traceOn && gs2->d.m_debugOn && gs2->d.m_infoOn && gs2->d.m_warnOn &&
+             gs2->d.m_errorOn && gs2->d.m_fatalOn && gs2->d.m_proxyOn),
+            "ON INFO 复原后全局主闸状态 infoOn（六级全 on）");
     }
 }
 
@@ -1018,9 +1069,9 @@ YOMK_TEST_CHECK(
         auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
-            (listPkg != nullptr && listPkg->d.size() == before && st != nullptr && st->m_debugOn &&
-             st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
-            "S8: ALL 日志器数 = LOGGERS 行数，控制台状态全 on 不变");
+            (listPkg != nullptr && listPkg->d.size() == before && st != nullptr && st->m_traceOn && st->m_debugOn &&
+             st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_fatalOn && st->m_proxyOn),
+            "S8: ALL 日志器数 = LOGGERS 行数，控制台状态六级全 on 不变");
 
         // MainLogger 无特殊保护：可删；重建须走"空 logger 名回退"路径
         // （YOMK_INFO 宏的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）
@@ -1176,8 +1227,9 @@ YOMK_TEST_CHECK(
             "S9f: getGlobalLoggerLevel 返回 ResStatus::Succeeded + ok");
         auto gs = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(
-            (gs != nullptr && gs->d.m_debugOn && gs->d.m_infoOn && gs->d.m_warnOn && gs->d.m_errorOn),
-            "S9f: 全局主闸四级全 on");
+            (gs != nullptr && gs->d.m_traceOn && gs->d.m_debugOn && gs->d.m_infoOn && gs->d.m_warnOn &&
+             gs->d.m_errorOn && gs->d.m_fatalOn),
+            "S9f: 全局主闸六级全 on（m_traceOn/m_fatalOn 初值 true）");
         YOMK_TEST_CHECK(gs != nullptr && gs->d.m_proxyOn, "S9f: 全局态含 S3 已设 proxyOn");
         YOMK_TEST_CHECK(YomkAPI::disableConsoleLogDebug() == yomk::payload::ResStatus::Succeeded, "S9f: 无参 OFF_DEBUG 返回 ResStatus::Succeeded");
         auto gResp2 = YomkAPI::getGlobalLoggerLevel();
@@ -1187,6 +1239,44 @@ YOMK_TEST_CHECK(
         auto gResp3 = YomkAPI::getGlobalLoggerLevel();
         auto gs3 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp3.m_data);
         YOMK_TEST_CHECK(gs3 != nullptr && gs3->d.m_debugOn, "S9f: 主闸 ON_DEBUG 后全局态 debugOn");
+        // TRACE 主闸翻转联动（六等级扩展新增）
+        YOMK_TEST_CHECK(YomkAPI::disableConsoleLogTrace() == yomk::payload::ResStatus::Succeeded, "S9f: 无参 OFF_TRACE 返回 ResStatus::Succeeded");
+        auto gResp4 = YomkAPI::getGlobalLoggerLevel();
+        auto gs4 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp4.m_data);
+        YOMK_TEST_CHECK(gs4 != nullptr && !gs4->d.m_traceOn, "S9f: 主闸 OFF_TRACE 后全局态 traceOff");
+        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogTrace() == yomk::payload::ResStatus::Succeeded, "S9f: 无参 ON_TRACE 恢复 ResStatus::Succeeded");
+        auto gResp5 = YomkAPI::getGlobalLoggerLevel();
+        auto gs5 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp5.m_data);
+        YOMK_TEST_CHECK(gs5 != nullptr && gs5->d.m_traceOn, "S9f: 主闸 ON_TRACE 后全局态 traceOn");
+    }
+
+    // 9.7 具名 Trace 门控：关 tagA 的 trace，tagB 不受影响，条目逐器真值翻转（六等级扩展新增）
+    {
+        YOMK_TEST_CHECK(
+            YomkAPI::disableConsoleLogTrace(tagA) == yomk::payload::ResStatus::Succeeded,
+            "S9g: 具名 disableConsoleLogTrace(tagA) 返回 ResStatus::Succeeded");
+        {
+            CoutCapture cap;
+            YOMK_TEST_CHECK(
+                YOMK_TRACE_TAG(tagA, "lg1_s9g_off_a_marker") == yomk::payload::ResStatus::Succeeded,
+                "S9g: 具名关断后 tagA 调用仍 ResStatus::Succeeded");
+            YOMK_TEST_CHECK(
+                YOMK_TRACE_TAG(tagB, "lg1_s9g_off_b_marker") == yomk::payload::ResStatus::Succeeded,
+                "S9g: 具名关断后 tagB 调用 ResStatus::Succeeded");
+            YOMK_TEST_CHECK(cap.str().find("lg1_s9g_off_a_marker") == std::string::npos, "S9g: 具名关断后 tagA Trace 无输出");
+            YOMK_TEST_CHECK(cap.str().find("lg1_s9g_off_b_marker") != std::string::npos, "S9g: 具名关断不波及 tagB（逐器隔离）");
+        }
+        auto liResp = YomkAPI::getLoggerInfo(tagA, "console");
+        auto lp = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(liResp.m_data);
+        YOMK_TEST_CHECK(lp != nullptr && !lp->d.m_loggerState.m_traceOn, "S9g: 条目报逐器 traceOff（具名关断直接反映）");
+        YOMK_TEST_CHECK(
+            YomkAPI::enableConsoleLogTrace(tagA) == yomk::payload::ResStatus::Succeeded,
+            "S9g: 具名 enableConsoleLogTrace(tagA) 恢复 ResStatus::Succeeded");
+        {
+            CoutCapture cap;
+            YOMK_TRACE_TAG(tagA, "lg1_s9g_on_a_marker");
+            YOMK_TEST_CHECK(cap.str().find("lg1_s9g_on_a_marker") != std::string::npos, "S9g: 具名恢复后 tagA Trace 输出回归");
+        }
     }
 }
 
@@ -1327,8 +1417,9 @@ YOMK_TEST_CHECK(
             "S10f: getGlobalLoggerLevel(\"file\") 返回 ResStatus::Succeeded + ok");
         auto gs = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(
-            (gs != nullptr && gs->d.m_debugOn && gs->d.m_infoOn && gs->d.m_warnOn && gs->d.m_errorOn),
-            "S10f: 文件主闸四级全 on");
+            (gs != nullptr && gs->d.m_traceOn && gs->d.m_debugOn && gs->d.m_infoOn && gs->d.m_warnOn &&
+             gs->d.m_errorOn && gs->d.m_fatalOn),
+            "S10f: 文件主闸六级全 on（m_traceOn/m_fatalOn 初值 true）");
         YOMK_TEST_CHECK(
             gs != nullptr && !gs->d.m_proxyOn,
             "S10f: 文件态 proxyOn=false（文件代理未设置时恒 false）");
@@ -1340,17 +1431,55 @@ YOMK_TEST_CHECK(
         auto gResp3 = YomkAPI::getGlobalLoggerLevel("console");
         auto gc = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp3.m_data);
         YOMK_TEST_CHECK(
-            (gc != nullptr && gc->d.m_debugOn && gc->d.m_infoOn && gc->d.m_warnOn && gc->d.m_errorOn),
-            "S10f: 控制台主闸四级仍全 on（与文件主闸独立）");
+            (gc != nullptr && gc->d.m_traceOn && gc->d.m_debugOn && gc->d.m_infoOn && gc->d.m_warnOn &&
+             gc->d.m_errorOn && gc->d.m_fatalOn),
+            "S10f: 控制台主闸六级仍全 on（与文件主闸独立）");
         YOMK_TEST_CHECK(YomkAPI::enableFileLogDebug() == yomk::payload::ResStatus::Succeeded, "S10f: 无参 enableFileLogDebug 恢复 ResStatus::Succeeded");
         auto gResp4 = YomkAPI::getGlobalLoggerLevel("file");
         auto gs4 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp4.m_data);
         YOMK_TEST_CHECK(gs4 != nullptr && gs4->d.m_debugOn, "S10f: 文件主闸 ON_DEBUG 后文件态 debugOn");
+        // FATAL 文件主闸翻转联动（六等级扩展新增）
+        YOMK_TEST_CHECK(YomkAPI::disableFileLogFatal() == yomk::payload::ResStatus::Succeeded, "S10f: 无参 disableFileLogFatal 返回 ResStatus::Succeeded");
+        auto gResp5 = YomkAPI::getGlobalLoggerLevel("file");
+        auto gs5 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp5.m_data);
+        YOMK_TEST_CHECK(gs5 != nullptr && !gs5->d.m_fatalOn, "S10f: 文件主闸 OFF_FATAL 后文件态 fatalOff");
+        YOMK_TEST_CHECK(YomkAPI::enableFileLogFatal() == yomk::payload::ResStatus::Succeeded, "S10f: 无参 enableFileLogFatal 恢复 ResStatus::Succeeded");
+        auto gResp6 = YomkAPI::getGlobalLoggerLevel("file");
+        auto gs6 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp6.m_data);
+        YOMK_TEST_CHECK(gs6 != nullptr && gs6->d.m_fatalOn, "S10f: 文件主闸 ON_FATAL 后文件态 fatalOn");
         // 未知 type：客户端直返 ResStatus::Failed 不发请求
         auto badType = YomkAPI::getGlobalLoggerLevel("badtype");
         YOMK_TEST_CHECK(
             (badType.m_status == yomk::payload::ResStatus::Failed && badType.m_msg == "unknown logger type."),
             "S10f: 未知 type 返回 ResStatus::Failed unknown logger type.");
+    }
+
+    // 10.7 文件主闸 FATAL 关断隔离：Fatal 不落盘，其余级别不受影响，恢复后落盘回归（六等级扩展新增）
+    {
+        YOMK_TEST_CHECK(YomkAPI::disableFileLogFatal() == yomk::payload::ResStatus::Succeeded, "S10g: 无参 disableFileLogFatal 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(
+            YOMK_FILE_FATAL_TAG(flName, "lg1s10", "lg1_s10g_off_fatal_marker") == yomk::payload::ResStatus::Succeeded,
+            "S10g: 主闸关断后 FILE_FATAL 仍 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(
+            YOMK_FILE_ERROR_TAG(flName, "lg1s10", "lg1_s10g_error_marker") == yomk::payload::ResStatus::Succeeded,
+            "S10g: 关断 FATAL 后 FILE_ERROR 不受影响");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(flName) == yomk::payload::ResStatus::Succeeded, "S10g: WRITE ResStatus::Succeeded");
+        {
+            bool ok = false;
+            std::string content = readFile(s10LogFile, ok);
+            YOMK_TEST_CHECK(ok && content.find("lg1_s10g_off_fatal_marker") == std::string::npos, "S10g: 主闸 FATAL 关断后不落盘");
+            YOMK_TEST_CHECK(ok && content.find("lg1_s10g_error_marker") != std::string::npos, "S10g: ERROR 落盘不受影响");
+        }
+        YOMK_TEST_CHECK(YomkAPI::enableFileLogFatal() == yomk::payload::ResStatus::Succeeded, "S10g: 无参 enableFileLogFatal 恢复 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(
+            YOMK_FILE_FATAL_TAG(flName, "lg1s10", "lg1_s10g_on_fatal_marker") == yomk::payload::ResStatus::Succeeded,
+            "S10g: 主闸恢复后 FILE_FATAL ResStatus::Succeeded");
+        YOMK_TEST_CHECK(YomkAPI::flushFileLog(flName) == yomk::payload::ResStatus::Succeeded, "S10g: 恢复后 WRITE ResStatus::Succeeded");
+        {
+            bool ok = false;
+            std::string content = readFile(s10LogFile, ok);
+            YOMK_TEST_CHECK(ok && content.find("lg1_s10g_on_fatal_marker") != std::string::npos, "S10g: 主闸 FATAL 恢复后落盘回归");
+        }
     }
 }
 

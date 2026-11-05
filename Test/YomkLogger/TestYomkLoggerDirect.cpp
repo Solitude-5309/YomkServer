@@ -5,19 +5,19 @@
  * 覆盖内容（2 个类，18 组用例 56 断言）：
  * ConsoleLogger：
  * 1. 默认名 "MainLogger"、setName/getName
- * 2. 四级别输出（级别标签 [DEBUG]/[INFO ]/[WARN ]/[ERROR] + [名/tag] + 内容）
+ * 2. 六级别输出（级别标签 [TRACE]/[DEBUG]/[INFO ]/[WARN ]/[ERROR]/[FATAL] + [名/tag] + 内容）
  * 3. 非法级别 default 降级（P2-c 修复后回填）：log(LogLevel(99)) →
  *    "Unknown log level: 99" 提示 + 降级 Info 输出
  * 4. 时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]
  * 5. 超长名（4096）与空内容
  * 5a. tag 显示语义（m_tag 拆分回填）：tag 非空显示 [tag]、空 tag 回退 [日志器名]
- * 14. 级别门控（门控下沉新增）：14a 新实例四级默认全开；14b setLevelOn 关断隔离
+ * 14. 级别门控（门控下沉新增）：14a 新实例六级默认全开；14b setLevelOn 关断隔离
  *     （isLevelOn 反查 + 关断级别无输出、其余级别不受影响）；14c 恢复输出；
  *     14d unknown 级别按 Info 门控（关 Info 后 log(99) 门控层直接丢弃，无降级提示）
  * FileLogger：
  * 6. 默认名、setName/setDir/getDir
  * 7. init 建多级目录 + 空日志文件，返回 true（P2-b 修复后 bool 语义）
- * 8. log 四级别入缓冲（write 前不落盘）；非法级别 default 降级 Info 入缓冲（P2-c 回填）
+ * 8. log 六级别入缓冲（write 前不落盘）；非法级别 default 降级 Info 入缓冲（P2-c 回填）
  * 9. write 追加落盘后清空流（二次 write 文件不增长）
  * 10. 空流 write 不触碰文件；空内容 log 仍成行；1MB 超长内容往返
  * 11. 析构自动 write（缓冲落盘）
@@ -27,7 +27,7 @@
  *     返回 false 不抛异常，错误提示含 fs error 信息；dir 为普通文件时
  *     走 ofstream 打开失败分支（false + create log file failed）
  * 13a. tag 前缀语义（m_tag 拆分回填）：tag 非空行内追加 [tag] 段、空 tag 不加前缀
- * 15. 级别门控（门控下沉新增）：15a 新实例四级默认全开；15b setLevelOn 关断隔离
+ * 15. 级别门控（门控下沉新增）：15a 新实例六级默认全开；15b setLevelOn 关断隔离
  *     （isLevelOn 反查 + 关断级别不落盘、其余级别不受影响）；15c 恢复落盘；
  *     15d unknown 级别按 Info 门控（关 Info 后 log(99) 门控层直接丢弃，无降级提示）
  *
@@ -161,14 +161,19 @@ int main()
         logger.setName("lg1_direct_console");
         YOMK_TEST_CHECK(logger.getName() == "lg1_direct_console", "setName/getName 往返一致");
 
-        // 四级别输出：级别标签 + [名] + 内容
+        // 六级别输出：级别标签 + [名] + 内容（TRACE/FATAL 为六等级扩展新增）
         {
             CoutCapture cap;
+            logger.log(ConsoleLogger::LogLevel::Trace, "", "lg1_dc_trace_marker");
             logger.log(ConsoleLogger::LogLevel::Debug, "", "lg1_dc_debug_marker");
             logger.log(ConsoleLogger::LogLevel::Info, "", "lg1_dc_info_marker");
             logger.log(ConsoleLogger::LogLevel::Warn, "", "lg1_dc_warn_marker");
             logger.log(ConsoleLogger::LogLevel::Error, "", "lg1_dc_error_marker");
+            logger.log(ConsoleLogger::LogLevel::Fatal, "", "lg1_dc_fatal_marker");
             std::string out = cap.str();
+            YOMK_TEST_CHECK(
+                out.find("[TRACE] [lg1_direct_console] lg1_dc_trace_marker") != std::string::npos,
+                "LogLevel::Trace 输出行格式（[TRACE] [名] 内容）");
             YOMK_TEST_CHECK(
                 out.find("[DEBUG] [lg1_direct_console] lg1_dc_debug_marker") != std::string::npos,
                 "LogLevel::Debug 输出行格式（[DEBUG] [名] 内容）");
@@ -176,6 +181,9 @@ int main()
             YOMK_TEST_CHECK(out.find("[WARN ] [lg1_direct_console] lg1_dc_warn_marker") != std::string::npos, "LogLevel::Warn 输出行格式");
             YOMK_TEST_CHECK(
                 out.find("[ERROR] [lg1_direct_console] lg1_dc_error_marker") != std::string::npos, "LogLevel::Error 输出行格式");
+            YOMK_TEST_CHECK(
+                out.find("[FATAL] [lg1_direct_console] lg1_dc_fatal_marker") != std::string::npos,
+                "LogLevel::Fatal 输出行格式（[FATAL] [名] 内容）");
             YOMK_TEST_CHECK(checkTimeFormat(out), "控制台行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]");
         }
 
@@ -226,9 +234,10 @@ int main()
             ConsoleLogger gateLogger;
             gateLogger.setName("lg1_dc_gate");
             YOMK_TEST_CHECK(
-                (gateLogger.isLevelOn(ConsoleLogger::LogLevel::Debug) && gateLogger.isLevelOn(ConsoleLogger::LogLevel::Info) &&
-                 gateLogger.isLevelOn(ConsoleLogger::LogLevel::Warn) && gateLogger.isLevelOn(ConsoleLogger::LogLevel::Error)),
-                "14a: 新实例四级门控默认全开");
+                (gateLogger.isLevelOn(ConsoleLogger::LogLevel::Trace) && gateLogger.isLevelOn(ConsoleLogger::LogLevel::Debug) &&
+                 gateLogger.isLevelOn(ConsoleLogger::LogLevel::Info) && gateLogger.isLevelOn(ConsoleLogger::LogLevel::Warn) &&
+                 gateLogger.isLevelOn(ConsoleLogger::LogLevel::Error) && gateLogger.isLevelOn(ConsoleLogger::LogLevel::Fatal)),
+                "14a: 新实例六级别门控默认全开");
 
             // 14b 关断隔离：Info 关断后自身无输出，其余级别不受影响
             gateLogger.setLevelOn(ConsoleLogger::LogLevel::Info, false);
@@ -259,6 +268,32 @@ int main()
             YOMK_TEST_CHECK(
                 outGateOn.find("[INFO ] [lg1_dc_gate] lg1_dc_gate_on_marker") != std::string::npos,
                 "14c: 恢复后输出正常");
+
+            // 14c-2 Trace 关断隔离：Trace 关断后自身无输出，Fatal 等其余级别不受影响，恢复后输出回归
+            gateLogger.setLevelOn(ConsoleLogger::LogLevel::Trace, false);
+            YOMK_TEST_CHECK(!gateLogger.isLevelOn(ConsoleLogger::LogLevel::Trace), "14c-2: isLevelOn 反查 Trace 关断生效");
+            YOMK_TEST_CHECK(gateLogger.isLevelOn(ConsoleLogger::LogLevel::Fatal), "14c-2: 关断 Trace 不影响 Fatal 等其他级别");
+            std::string outGateTraceOff;
+            {
+                CoutCapture cap;
+                gateLogger.log(ConsoleLogger::LogLevel::Trace, "", "lg1_dc_gate_trace_off_marker");
+                gateLogger.log(ConsoleLogger::LogLevel::Fatal, "", "lg1_dc_gate_fatal_marker");
+                outGateTraceOff = cap.str();
+            }
+            YOMK_TEST_CHECK(outGateTraceOff.find("lg1_dc_gate_trace_off_marker") == std::string::npos, "14c-2: 关断 Trace 后无输出");
+            YOMK_TEST_CHECK(
+                outGateTraceOff.find("[FATAL] [lg1_dc_gate] lg1_dc_gate_fatal_marker") != std::string::npos,
+                "14c-2: Fatal 输出不受 Trace 关断影响");
+            gateLogger.setLevelOn(ConsoleLogger::LogLevel::Trace, true);
+            std::string outGateTraceOn;
+            {
+                CoutCapture cap;
+                gateLogger.log(ConsoleLogger::LogLevel::Trace, "", "lg1_dc_gate_trace_on_marker");
+                outGateTraceOn = cap.str();
+            }
+            YOMK_TEST_CHECK(
+                outGateTraceOn.find("[TRACE] [lg1_dc_gate] lg1_dc_gate_trace_on_marker") != std::string::npos,
+                "14c-2: Trace 恢复后输出正常");
 
             // 14d unknown 级别按 Info 门控：关 Info 后 log(99) 在门控层直接丢弃
             // （不进入 default 降级分支，无 Unknown log level 提示）；恢复后降级行为回归
@@ -305,11 +340,13 @@ int main()
             fs::exists(tmpDir / "fl_basic") && fs::exists(logFile) && fs::file_size(logFile, ec) == 0,
             "init 建多级目录与空日志文件");
 
-        // log 四级别：入缓冲不落盘
+        // log 六级别：入缓冲不落盘（Trace/Fatal 为六等级扩展新增）
+        fl.log(FileLogger::LogLevel::Trace, "", "lg1_df_trace_marker");
         fl.log(FileLogger::LogLevel::Debug, "", "lg1_df_debug_marker");
         fl.log(FileLogger::LogLevel::Info, "", "lg1_df_info_marker");
         fl.log(FileLogger::LogLevel::Warn, "", "lg1_df_warn_marker");
         fl.log(FileLogger::LogLevel::Error, "", "lg1_df_error_marker");
+        fl.log(FileLogger::LogLevel::Fatal, "", "lg1_df_fatal_marker");
         // 非法级别 default 降级 Info 入缓冲（P2-c 修复后回填，随下方 write 一并落盘；
         // YOMK_TEST_CHECK 须在捕获作用域外，否则断言输出被 rdbuf 重定向吞没）
         {
@@ -325,17 +362,19 @@ int main()
         }
         YOMK_TEST_CHECK(fs::file_size(logFile, ec) == 0, "write 前缓冲内容不落盘（文件仍空）");
 
-        // write：5 行落盘（四级别各一 + 非法级别降级 Info 一行），行格式与时间戳
+        // write：7 行落盘（六级别各一 + 非法级别降级 Info 一行），行格式与时间戳
         fl.write();
         bool readOk = false;
         std::string content = readFile(logFile, readOk);
         YOMK_TEST_CHECK(readOk, "write 后日志文件可读");
         YOMK_TEST_CHECK(
-            (content.find("[DEBUG] lg1_df_debug_marker") != std::string::npos &&
+            (content.find("[TRACE] lg1_df_trace_marker") != std::string::npos &&
+             content.find("[DEBUG] lg1_df_debug_marker") != std::string::npos &&
              content.find("[INFO ] lg1_df_info_marker") != std::string::npos &&
              content.find("[WARN ] lg1_df_warn_marker") != std::string::npos &&
-             content.find("[ERROR] lg1_df_error_marker") != std::string::npos),
-            "四级别行格式（时间戳+[级别]+内容）落盘");
+             content.find("[ERROR] lg1_df_error_marker") != std::string::npos &&
+             content.find("[FATAL] lg1_df_fatal_marker") != std::string::npos),
+            "六级别行格式（时间戳+[级别]+内容）落盘");
         YOMK_TEST_CHECK(
             content.find("[INFO ] lg1_df_badlevel_marker") != std::string::npos,
             "非法级别降级 Info 行落盘（P2-c 回填）");
@@ -478,11 +517,12 @@ int main()
             YOMK_TEST_CHECK(gateFl.init(), "15: 门控用例 FileLogger init 成功");
             fs::path gateLogFile = gateDir / "lg1_df_gate.log";
 
-            // 15a 新实例四级门控默认全开
+            // 15a 新实例六级门控默认全开
             YOMK_TEST_CHECK(
-                (gateFl.isLevelOn(FileLogger::LogLevel::Debug) && gateFl.isLevelOn(FileLogger::LogLevel::Info) &&
-                 gateFl.isLevelOn(FileLogger::LogLevel::Warn) && gateFl.isLevelOn(FileLogger::LogLevel::Error)),
-                "15a: 新实例四级门控默认全开");
+                (gateFl.isLevelOn(FileLogger::LogLevel::Trace) && gateFl.isLevelOn(FileLogger::LogLevel::Debug) &&
+                 gateFl.isLevelOn(FileLogger::LogLevel::Info) && gateFl.isLevelOn(FileLogger::LogLevel::Warn) &&
+                 gateFl.isLevelOn(FileLogger::LogLevel::Error) && gateFl.isLevelOn(FileLogger::LogLevel::Fatal)),
+                "15a: 新实例六级门控默认全开");
 
             // 15b 关断隔离：Info 关断后 log 不入缓冲（write 落盘不增长），其余级别不受影响
             gateFl.setLevelOn(FileLogger::LogLevel::Info, false);

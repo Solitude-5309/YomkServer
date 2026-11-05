@@ -1,6 +1,6 @@
 # YomkLogger(日志系统)
 
-框架内置开箱即用的控制台与文件日志输出，支持四级级别开关、自定义 tag、日志代理拦截与日志器自省。随 `YomkAPI::init()` 自动启动。
+框架内置开箱即用的控制台与文件日志输出，支持六级级别开关（Trace / Debug / Info / Warn / Error / Fatal，严重度升序）、自定义 tag、日志代理拦截与日志器自省。随 `YomkAPI::init()` 自动启动。
 
 ## API 速查
 
@@ -8,9 +8,9 @@
 
 | API | 说明 |
 |---|---|
-| `YOMK_INFO(...)` / `YOMK_WARN(...)` / `YOMK_ERROR(...)` / `YOMK_DEBUG(...)` | 四级控制台日志 |
-| `YOMK_INFO_TAG(tag, ...)` / `YOMK_WARN_TAG(...)` / `YOMK_ERROR_TAG(...)` / `YOMK_DEBUG_TAG(...)` | 带自定义 tag 的四级控制台日志 |
-| `YomkAPI::enableConsoleLogDebug()` / `YomkAPI::disableConsoleLogDebug()` | 开关控制台 DEBUG 级别（另有 INFO / WARN / ERROR 同名开关，共四级）；无参 = 全局主闸（框架全局），传日志器名 = 仅门控该器（具名未命中 ResStatus::Failed，不惰性创建） |
+| `YOMK_TRACE(...)` / `YOMK_DEBUG(...)` / `YOMK_INFO(...)` / `YOMK_WARN(...)` / `YOMK_ERROR(...)` / `YOMK_FATAL(...)` | 六级控制台日志 |
+| `YOMK_TRACE_TAG(tag, ...)` / `YOMK_DEBUG_TAG(...)` / `YOMK_INFO_TAG(...)` / `YOMK_WARN_TAG(...)` / `YOMK_ERROR_TAG(...)` / `YOMK_FATAL_TAG(...)` | 带自定义 tag 的六级控制台日志 |
+| `YomkAPI::enableConsoleLogDebug()` / `YomkAPI::disableConsoleLogDebug()` | 开关控制台 DEBUG 级别（另有 TRACE / INFO / WARN / ERROR / FATAL 同名开关，共六级）；无参 = 全局主闸（框架全局），传日志器名 = 仅门控该器（具名未命中 ResStatus::Failed，不惰性创建） |
 | `YomkAPI::setConsoleLogProxy(func)` | 设置控制台日志代理拦截；传 `nullptr` 卸载代理，恢复默认输出 |
 
 ### 文件日志
@@ -18,8 +18,8 @@
 | API | 说明 |
 |---|---|
 | `YomkAPI::createFileLogger(dir, name)` | 创建文件日志器 |
-| `YOMK_FILE_INFO(file, ...)` / `YOMK_FILE_WARN(...)` / `YOMK_FILE_ERROR(...)` / `YOMK_FILE_DEBUG(...)`（`_TAG` 变体传自定义 tag） | 写入指定日志器的内存缓冲（_TAG 变体由日志器统一拼接 [tag] 段） |
-| `YomkAPI::enableFileLogDebug(name = "")` / `YomkAPI::disableFileLogDebug(name = "")` | 开关文件日志级别（另有 INFO / WARN / ERROR 同名开关，共四级）；无参 = 文件全局主闸（框架全局），传文件日志器名 = 仅门控该器（具名未命中 ResStatus::Failed，不惰性创建） |
+| `YOMK_FILE_TRACE(file, ...)` / `YOMK_FILE_DEBUG(...)` / `YOMK_FILE_INFO(...)` / `YOMK_FILE_WARN(...)` / `YOMK_FILE_ERROR(...)` / `YOMK_FILE_FATAL(...)`（`_TAG` 变体传自定义 tag） | 写入指定日志器的内存缓冲（_TAG 变体由日志器统一拼接 [tag] 段） |
+| `YomkAPI::enableFileLogDebug(name = "")` / `YomkAPI::disableFileLogDebug(name = "")` | 开关文件日志级别（另有 TRACE / INFO / WARN / ERROR / FATAL 同名开关，共六级）；无参 = 文件全局主闸（框架全局），传文件日志器名 = 仅门控该器（具名未命中 ResStatus::Failed，不惰性创建） |
 | `YomkAPI::setFileLogProxy(func)` | 设置文件日志代理拦截（回调返回 false 该条不落盘、返回 true 穿透走默认落盘）；传 `nullptr` 或空 std::function 卸载代理，恢复默认落盘 |
 | `YomkAPI::flushFileLog(name)` | 显式刷盘 |
 | `YomkAPI::deleteFileLogger(name)` | 删除日志器 |
@@ -31,16 +31,18 @@
 | `YomkAPI::listLoggers(type)` | 按类型获取日志器名列表（type: `"console"`/`"file"`，返回 StringArray 纯名字典序；非法类型 ResStatus::Failed） |
 | `YomkAPI::getLoggerInfo(name, type)` | 按类型单查指定日志器（type: `"console"`/`"file"`；两表允许同名，单表精确查找不 fallback；未注册或非法 type 均 ResStatus::Failed） |
 | `YomkAPI::getAllLoggerInfo()` | 查询全部日志器及开关配置状态（LoggerInfoList 清单：元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段——console 条目承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态，file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态） |
-| `YomkAPI::getGlobalLoggerLevel(type = "console")` | 查询全局主闸状态（type = "file" 查文件侧、type = "console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 ResStatus::Failed。返回 LoggerState 独立包：四级别主闸开关 + proxyOn；独立于逐器门控层，与 `getLoggerInfo`/`getAllLoggerInfo` 条目配合完成两层归因） |
+| `YomkAPI::getGlobalLoggerLevel(type = "console")` | 查询全局主闸状态（type = "file" 查文件侧、type = "console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 ResStatus::Failed。返回 LoggerState 独立包：六级别主闸开关 + proxyOn；独立于逐器门控层，与 `getLoggerInfo`/`getAllLoggerInfo` 条目配合完成两层归因） |
 
 ## 使用示例
 
 ```cpp
 // 控制台日志
+YOMK_TRACE("entering state machine");   // 最细粒度跟踪
+YOMK_DEBUG("trace id:", 12345);
 YOMK_INFO("server port:", 8080);
 YOMK_WARN("resource running low");
 YOMK_ERROR("failed to connect");
-YOMK_DEBUG("trace id:", 12345);
+YOMK_FATAL("unrecoverable state");      // 致命错误
 // 指定 Tag：
 YOMK_INFO_TAG("Network", "connected to remote host");
 // 输出格式：[时间] [级别] [tag] [行号] 内容；tag 即控制台日志器名，首次使用自动创建

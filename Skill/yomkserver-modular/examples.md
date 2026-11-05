@@ -831,7 +831,7 @@ resp = YomkAPI::getLoggerInfo("not_exist", "console");   // ResStatus::Failed
 // file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态
 resp = YomkAPI::getAllLoggerInfo();
 
-// 全局主闸状态单查：LoggerState 独立包（四级别主闸开关 + proxyOn），
+// 全局主闸状态单查：LoggerState 独立包（六级别主闸开关 + proxyOn），
 // 独立于逐器门控层——条目 on 但无输出/未落盘时查此接口确认对应侧主闸是否关断（两层归因）
 resp = YomkAPI::getGlobalLoggerLevel();           // 缺省 = "console"：控制台侧主闸 + 控制台代理态
 resp = YomkAPI::getGlobalLoggerLevel("file");     // 文件侧主闸 + 文件代理态（两套各自独立）

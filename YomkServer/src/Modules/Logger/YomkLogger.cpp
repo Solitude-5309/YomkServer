@@ -716,7 +716,7 @@ LoggerState YomkLogger::currentConsoleState()
     return state;
 }
 
-// 取单条 console 条目状态：四级别为逐器门控层真值（logger.isLevelOn），proxyOn 由调用点传入
+// 取单条 console 条目状态：六级别为逐器门控层真值（logger.isLevelOn），proxyOn 由调用点传入
 LoggerState YomkLogger::namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn)
 {
     yomk::payload::LoggerState state;
@@ -749,7 +749,7 @@ LoggerState YomkLogger::currentFileState()
     return state;
 }
 
-// 取单条 file 条目状态：四级别为逐器门控层真值（logger.isLevelOn），proxyOn 由调用点传入
+// 取单条 file 条目状态：六级别为逐器门控层真值（logger.isLevelOn），proxyOn 由调用点传入
 LoggerState YomkLogger::namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn)
 {
     yomk::payload::LoggerState state;
