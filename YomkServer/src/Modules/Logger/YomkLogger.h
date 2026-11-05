@@ -70,16 +70,20 @@ private:
     std::shared_mutex m_consoleLoggersMutex;
     std::map<std::string, FileLoggerPtr> m_fileLoggers;
     std::shared_mutex m_fileLoggersMutex;
+    std::atomic<bool> m_showConsoleTraceLog;
     std::atomic<bool> m_showConsoleDebugLog;
     std::atomic<bool> m_showConsoleInfoLog;
     std::atomic<bool> m_showConsoleWarningLog;
     std::atomic<bool> m_showConsoleErrorLog;
+    std::atomic<bool> m_showConsoleFatalLog;
     // 文件日志全局主闸（第一层）：与控制台主闸相互独立，输出取主闸×逐器两层 AND；
     // 逐器门控随 FileLogger sink 自持（第二层）
+    std::atomic<bool> m_showFileTraceLog;
     std::atomic<bool> m_showFileDebugLog;
     std::atomic<bool> m_showFileInfoLog;
     std::atomic<bool> m_showFileWarningLog;
     std::atomic<bool> m_showFileErrorLog;
+    std::atomic<bool> m_showFileFatalLog;
     // proxy 字段专属锁：锁内拷贝快照、锁外调用回调，避免持锁重入；
     // 控制台与文件两套代理互不共锁，各自独立
     std::mutex m_consoleLogProxyMutex;

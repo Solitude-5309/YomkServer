@@ -9,14 +9,18 @@ using namespace yomk::payload;
 // 初始化列表须按 YomkLogger.h 声明序书写（-Wreorder）
 YomkLogger::YomkLogger(YomkServer* server)
     : YomkService(server),
+      m_showConsoleTraceLog(true),
       m_showConsoleDebugLog(true),
       m_showConsoleInfoLog(true),
       m_showConsoleWarningLog(true),
       m_showConsoleErrorLog(true),
+      m_showConsoleFatalLog(true),
+      m_showFileTraceLog(true),
       m_showFileDebugLog(true),
       m_showFileInfoLog(true),
       m_showFileWarningLog(true),
       m_showFileErrorLog(true),
+      m_showFileFatalLog(true),
       m_consoleLogProxy(false),
       m_consoleLogProxyFunc(nullptr),
       m_fileLogProxy(false),
@@ -100,6 +104,10 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
 
     switch (log->d.m_level)
     {
+        case LogLevel::Trace:
+            if (m_showConsoleTraceLog.load())
+                consoleLogger->log(ConsoleLogger::LogLevel::Trace, log->d.m_tag, log->d.m_log);
+            break;
         case LogLevel::Info:
             if (m_showConsoleInfoLog.load())
                 consoleLogger->log(ConsoleLogger::LogLevel::Info, log->d.m_tag, log->d.m_log);
@@ -115,6 +123,10 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
         case LogLevel::Debug:
             if (m_showConsoleDebugLog.load())
                 consoleLogger->log(ConsoleLogger::LogLevel::Debug, log->d.m_tag, log->d.m_log);
+            break;
+        case LogLevel::Fatal:
+            if (m_showConsoleFatalLog.load())
+                consoleLogger->log(ConsoleLogger::LogLevel::Fatal, log->d.m_tag, log->d.m_log);
             break;
         default:
             YOMK_DIAG_ERROR("unknown log level, use Info");
@@ -234,6 +246,10 @@ yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr pkg)
 
     switch (log->d.m_level)
     {
+        case LogLevel::Trace:
+            if (m_showFileTraceLog.load())
+                itLogger->second->log(FileLogger::LogLevel::Trace, log->d.m_tag, log->d.m_log);
+            break;
         case LogLevel::Info:
             if (m_showFileInfoLog.load())
                 itLogger->second->log(FileLogger::LogLevel::Info, log->d.m_tag, log->d.m_log);
@@ -249,6 +265,10 @@ yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr pkg)
         case LogLevel::Debug:
             if (m_showFileDebugLog.load())
                 itLogger->second->log(FileLogger::LogLevel::Debug, log->d.m_tag, log->d.m_log);
+            break;
+        case LogLevel::Fatal:
+            if (m_showFileFatalLog.load())
+                itLogger->second->log(FileLogger::LogLevel::Fatal, log->d.m_tag, log->d.m_log);
             break;
         default:
             YOMK_DIAG_ERROR("unknown log level, use Info");
@@ -344,6 +364,9 @@ yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr pkg)
     // 空名 = 全局主闸路径（与既有语义一致）
     switch (log->d.m_level)
     {
+        case LogLevel::Trace:
+            m_showConsoleTraceLog.store(false);
+            break;
         case LogLevel::Info:
             m_showConsoleInfoLog.store(false);
             break;
@@ -355,6 +378,9 @@ yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr pkg)
             break;
         case LogLevel::Debug:
             m_showConsoleDebugLog.store(false);
+            break;
+        case LogLevel::Fatal:
+            m_showConsoleFatalLog.store(false);
             break;
         default:
             YOMK_DIAG_ERROR("unknown log level, turn off failed.");
@@ -381,6 +407,9 @@ yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
     // 空名 = 全局主闸路径（与既有语义一致）
     switch (log->d.m_level)
     {
+        case LogLevel::Trace:
+            m_showConsoleTraceLog.store(true);
+            break;
         case LogLevel::Info:
             m_showConsoleInfoLog.store(true);
             break;
@@ -392,6 +421,9 @@ yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
             break;
         case LogLevel::Debug:
             m_showConsoleDebugLog.store(true);
+            break;
+        case LogLevel::Fatal:
+            m_showConsoleFatalLog.store(true);
             break;
         default:
             YOMK_DIAG_ERROR("unknown log level, turn on failed.");
@@ -417,6 +449,9 @@ yomk::payload::Response YomkLogger::setNamedConsoleLevel(const std::string& logg
 
     switch (level)
     {
+        case LogLevel::Trace:
+            consoleLogger->setLevelOn(ConsoleLogger::LogLevel::Trace, on);
+            break;
         case LogLevel::Info:
             consoleLogger->setLevelOn(ConsoleLogger::LogLevel::Info, on);
             break;
@@ -428,6 +463,9 @@ yomk::payload::Response YomkLogger::setNamedConsoleLevel(const std::string& logg
             break;
         case LogLevel::Debug:
             consoleLogger->setLevelOn(ConsoleLogger::LogLevel::Debug, on);
+            break;
+        case LogLevel::Fatal:
+            consoleLogger->setLevelOn(ConsoleLogger::LogLevel::Fatal, on);
             break;
         default:
             YOMK_DIAG_ERROR(std::string("unknown log level, turn ") + (on ? "on" : "off") + " failed.");
@@ -453,6 +491,9 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
     // 空名 = 全局主闸路径（与控制台侧双模式语义对称）
     switch (log->d.m_level)
     {
+        case LogLevel::Trace:
+            m_showFileTraceLog.store(false);
+            break;
         case LogLevel::Info:
             m_showFileInfoLog.store(false);
             break;
@@ -464,6 +505,9 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
             break;
         case LogLevel::Debug:
             m_showFileDebugLog.store(false);
+            break;
+        case LogLevel::Fatal:
+            m_showFileFatalLog.store(false);
             break;
         default:
             YOMK_DIAG_ERROR("unknown log level, turn off failed.");
@@ -490,6 +534,9 @@ yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
     // 空名 = 全局主闸路径（与控制台侧双模式语义对称）
     switch (log->d.m_level)
     {
+        case LogLevel::Trace:
+            m_showFileTraceLog.store(true);
+            break;
         case LogLevel::Info:
             m_showFileInfoLog.store(true);
             break;
@@ -501,6 +548,9 @@ yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
             break;
         case LogLevel::Debug:
             m_showFileDebugLog.store(true);
+            break;
+        case LogLevel::Fatal:
+            m_showFileFatalLog.store(true);
             break;
         default:
             YOMK_DIAG_ERROR("unknown log level, turn on failed.");
@@ -526,6 +576,9 @@ yomk::payload::Response YomkLogger::setNamedFileLevel(const std::string& loggerN
 
     switch (level)
     {
+        case LogLevel::Trace:
+            fileLogger->setLevelOn(FileLogger::LogLevel::Trace, on);
+            break;
         case LogLevel::Info:
             fileLogger->setLevelOn(FileLogger::LogLevel::Info, on);
             break;
@@ -537,6 +590,9 @@ yomk::payload::Response YomkLogger::setNamedFileLevel(const std::string& loggerN
             break;
         case LogLevel::Debug:
             fileLogger->setLevelOn(FileLogger::LogLevel::Debug, on);
+            break;
+        case LogLevel::Fatal:
+            fileLogger->setLevelOn(FileLogger::LogLevel::Fatal, on);
             break;
         default:
             YOMK_DIAG_ERROR(std::string("unknown log level, turn ") + (on ? "on" : "off") + " failed.");
@@ -646,10 +702,12 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
 LoggerState YomkLogger::currentConsoleState()
 {
     yomk::payload::LoggerState state;
+    state.m_traceOn = m_showConsoleTraceLog.load();
     state.m_debugOn = m_showConsoleDebugLog.load();
     state.m_infoOn = m_showConsoleInfoLog.load();
     state.m_warnOn = m_showConsoleWarningLog.load();
     state.m_errorOn = m_showConsoleErrorLog.load();
+    state.m_fatalOn = m_showConsoleFatalLog.load();
     {
         // proxy 状态读侧与写侧互斥（叶子锁）
         std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
@@ -662,10 +720,12 @@ LoggerState YomkLogger::currentConsoleState()
 LoggerState YomkLogger::namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn)
 {
     yomk::payload::LoggerState state;
+    state.m_traceOn = consoleLogger->isLevelOn(ConsoleLogger::LogLevel::Trace);
     state.m_debugOn = consoleLogger->isLevelOn(ConsoleLogger::LogLevel::Debug);
     state.m_infoOn = consoleLogger->isLevelOn(ConsoleLogger::LogLevel::Info);
     state.m_warnOn = consoleLogger->isLevelOn(ConsoleLogger::LogLevel::Warn);
     state.m_errorOn = consoleLogger->isLevelOn(ConsoleLogger::LogLevel::Error);
+    state.m_fatalOn = consoleLogger->isLevelOn(ConsoleLogger::LogLevel::Fatal);
     state.m_proxyOn = proxyOn;
     return state;
 }
@@ -675,10 +735,12 @@ LoggerState YomkLogger::namedConsoleState(const ConsoleLoggerPtr& consoleLogger,
 LoggerState YomkLogger::currentFileState()
 {
     yomk::payload::LoggerState state;
+    state.m_traceOn = m_showFileTraceLog.load();
     state.m_debugOn = m_showFileDebugLog.load();
     state.m_infoOn = m_showFileInfoLog.load();
     state.m_warnOn = m_showFileWarningLog.load();
     state.m_errorOn = m_showFileErrorLog.load();
+    state.m_fatalOn = m_showFileFatalLog.load();
     {
         // proxy 状态读侧与写侧互斥（叶子锁）
         std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
@@ -691,10 +753,12 @@ LoggerState YomkLogger::currentFileState()
 LoggerState YomkLogger::namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn)
 {
     yomk::payload::LoggerState state;
+    state.m_traceOn = fileLogger->isLevelOn(FileLogger::LogLevel::Trace);
     state.m_debugOn = fileLogger->isLevelOn(FileLogger::LogLevel::Debug);
     state.m_infoOn = fileLogger->isLevelOn(FileLogger::LogLevel::Info);
     state.m_warnOn = fileLogger->isLevelOn(FileLogger::LogLevel::Warn);
     state.m_errorOn = fileLogger->isLevelOn(FileLogger::LogLevel::Error);
+    state.m_fatalOn = fileLogger->isLevelOn(FileLogger::LogLevel::Fatal);
     state.m_proxyOn = proxyOn;
     return state;
 }

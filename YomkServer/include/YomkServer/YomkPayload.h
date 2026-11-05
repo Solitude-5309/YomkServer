@@ -50,10 +50,12 @@ enum class CheckStatus
 
 enum class LogLevel : int
 {
+    Trace,
     Debug,
     Info,
     Warn,
     Error,
+    Fatal,
 };
 
 struct Context
@@ -187,10 +189,12 @@ struct EventLoopInfo
 
 struct LoggerState
 {
+    bool m_traceOn = false;  // trace 级别开关
     bool m_debugOn = false;  // debug 级别开关
     bool m_infoOn = false;   // info 级别开关
     bool m_warnOn = false;   // warn 级别开关
     bool m_errorOn = false;  // error 级别开关
+    bool m_fatalOn = false;  // fatal 级别开关
     bool m_proxyOn = false;
 };
 

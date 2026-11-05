@@ -11,10 +11,12 @@ std::mutex ConsoleLogger::s_mutex;
 // 初始化列表须按 ConsoleLogger.h 声明序书写（-Wreorder）
 ConsoleLogger::ConsoleLogger()
     : m_name("MainLogger"),
+      m_showTraceLog(true),
       m_showDebugLog(true),
       m_showInfoLog(true),
       m_showWarnLog(true),
-      m_showErrorLog(true)
+      m_showErrorLog(true),
+      m_showFatalLog(true)
 {}
 
 ConsoleLogger::~ConsoleLogger() {}
@@ -23,6 +25,9 @@ void ConsoleLogger::setLevelOn(LogLevel logLevel, bool on)
 {
     switch (logLevel)
     {
+        case LogLevel::Trace:
+            m_showTraceLog.store(on);
+            break;
         case LogLevel::Debug:
             m_showDebugLog.store(on);
             break;
@@ -35,6 +40,9 @@ void ConsoleLogger::setLevelOn(LogLevel logLevel, bool on)
         case LogLevel::Error:
             m_showErrorLog.store(on);
             break;
+        case LogLevel::Fatal:
+            m_showFatalLog.store(on);
+            break;
         default:
             // unknown 级别按 Info 门控（与 log() 降级语义一致）
             m_showInfoLog.store(on);
@@ -46,6 +54,8 @@ bool ConsoleLogger::isLevelOn(LogLevel logLevel) const
 {
     switch (logLevel)
     {
+        case LogLevel::Trace:
+            return m_showTraceLog.load();
         case LogLevel::Debug:
             return m_showDebugLog.load();
         case LogLevel::Info:
@@ -54,6 +64,8 @@ bool ConsoleLogger::isLevelOn(LogLevel logLevel) const
             return m_showWarnLog.load();
         case LogLevel::Error:
             return m_showErrorLog.load();
+        case LogLevel::Fatal:
+            return m_showFatalLog.load();
         default:
             return m_showInfoLog.load();
     }
@@ -65,6 +77,10 @@ void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::st
     // 与下方 default 降级语义一致）；判定在类级锁外完成，atomic 读无新锁
     switch (logLevel)
     {
+        case LogLevel::Trace:
+            if (!m_showTraceLog.load())
+                return;
+            break;
         case LogLevel::Debug:
             if (!m_showDebugLog.load())
                 return;
@@ -79,6 +95,10 @@ void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::st
             break;
         case LogLevel::Error:
             if (!m_showErrorLog.load())
+                return;
+            break;
+        case LogLevel::Fatal:
+            if (!m_showFatalLog.load())
                 return;
             break;
         default:
@@ -99,6 +119,9 @@ void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::st
     std::lock_guard<std::mutex> lock(s_mutex);
     switch (logLevel)
     {
+        case LogLevel::Trace:
+            std::cout << timeStr << " " << YOMK_DIAG_TAG_TRACE << " [" << tagShown << "] " << log << std::endl;
+            break;
         case LogLevel::Debug:
             std::cout << timeStr << " " << YOMK_DIAG_TAG_DEBUG << " [" << tagShown << "] " << log << std::endl;
             break;
@@ -110,6 +133,9 @@ void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::st
             break;
         case LogLevel::Error:
             std::cout << timeStr << " " << YOMK_DIAG_TAG_ERROR << " [" << tagShown << "] " << log << std::endl;
+            break;
+        case LogLevel::Fatal:
+            std::cout << timeStr << " " << YOMK_DIAG_TAG_FATAL << " [" << tagShown << "] " << log << std::endl;
             break;
         default:
             YOMK_DIAG_ERROR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");

@@ -11,10 +11,12 @@ namespace fs = std::filesystem;
 // 初始化列表须按 FileLogger.h 声明序书写（-Wreorder）
 FileLogger::FileLogger()
     : m_name("MainLogger"),
+      m_showTraceLog(true),
       m_showDebugLog(true),
       m_showInfoLog(true),
       m_showWarnLog(true),
-      m_showErrorLog(true)
+      m_showErrorLog(true),
+      m_showFatalLog(true)
 {}
 
 FileLogger::~FileLogger()
@@ -65,6 +67,9 @@ void FileLogger::setLevelOn(LogLevel logLevel, bool on)
 {
     switch (logLevel)
     {
+        case LogLevel::Trace:
+            m_showTraceLog.store(on);
+            break;
         case LogLevel::Debug:
             m_showDebugLog.store(on);
             break;
@@ -77,6 +82,9 @@ void FileLogger::setLevelOn(LogLevel logLevel, bool on)
         case LogLevel::Error:
             m_showErrorLog.store(on);
             break;
+        case LogLevel::Fatal:
+            m_showFatalLog.store(on);
+            break;
         default:
             // unknown 级别按 Info 门控（与 log() 降级语义一致）
             m_showInfoLog.store(on);
@@ -88,6 +96,8 @@ bool FileLogger::isLevelOn(LogLevel logLevel) const
 {
     switch (logLevel)
     {
+        case LogLevel::Trace:
+            return m_showTraceLog.load();
         case LogLevel::Debug:
             return m_showDebugLog.load();
         case LogLevel::Info:
@@ -96,6 +106,8 @@ bool FileLogger::isLevelOn(LogLevel logLevel) const
             return m_showWarnLog.load();
         case LogLevel::Error:
             return m_showErrorLog.load();
+        case LogLevel::Fatal:
+            return m_showFatalLog.load();
         default:
             return m_showInfoLog.load();
     }
@@ -108,6 +120,10 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
     // 位置在取时间戳之前避免白算
     switch (logLevel)
     {
+        case LogLevel::Trace:
+            if (!m_showTraceLog.load())
+                return;
+            break;
         case LogLevel::Debug:
             if (!m_showDebugLog.load())
                 return;
@@ -122,6 +138,10 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
             break;
         case LogLevel::Error:
             if (!m_showErrorLog.load())
+                return;
+            break;
+        case LogLevel::Fatal:
+            if (!m_showFatalLog.load())
                 return;
             break;
         default:
@@ -146,6 +166,9 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
     };
     switch (logLevel)
     {
+        case LogLevel::Trace:
+            appendLine(" " YOMK_DIAG_TAG_TRACE " ");
+            break;
         case LogLevel::Debug:
             appendLine(" " YOMK_DIAG_TAG_DEBUG " ");
             break;
@@ -157,6 +180,9 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
             break;
         case LogLevel::Error:
             appendLine(" " YOMK_DIAG_TAG_ERROR " ");
+            break;
+        case LogLevel::Fatal:
+            appendLine(" " YOMK_DIAG_TAG_FATAL " ");
             break;
         default:
             YOMK_DIAG_ERROR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
