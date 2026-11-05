@@ -4,6 +4,7 @@
 #include <memory>
 #include <shared_mutex>
 #include <string>
+#include <string_view>
 
 #include "YomkDiag.h"
 #include "YomkMsgs.h"
@@ -30,10 +31,10 @@ public:
 public:
     void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
                      const std::string& description = "");
-    yomk::payload::Response invoke(const std::string& funcName, YomkMsgPtr pkg = nullptr);
+    yomk::payload::Response invoke(std::string_view funcName, YomkMsgPtr pkg = nullptr);
     std::map<std::string, yomk::payload::FuncInfo> funcInfos();
-    yomk::payload::Response request(const std::string& url, YomkMsgPtr pkg = nullptr);
-    void asyncRequest(const std::string& url, YomkMsgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    yomk::payload::Response request(std::string_view url, YomkMsgPtr pkg = nullptr);
+    void asyncRequest(std::string_view url, YomkMsgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
 protected:
     std::weak_ptr<YomkServer> m_weakServer;
@@ -42,7 +43,7 @@ protected:
     bool m_registered = false;
     // 删除/同名替换后为 true，weakFunc 判活叠加此标志（删除即停）
     std::atomic<bool> m_deleted{false};
-    std::map<std::string, YomkServiceFunc> m_funcMap;
-    std::map<std::string, yomk::payload::FuncInfo> m_funcInfoMap; // funcName -> 函数信息（类型名 + 说明）
+    std::map<std::string, YomkServiceFunc, std::less<>> m_funcMap;
+    std::map<std::string, yomk::payload::FuncInfo, std::less<>> m_funcInfoMap; // funcName -> 函数信息（类型名 + 说明）
     std::shared_mutex m_funcMapMtx;
 };

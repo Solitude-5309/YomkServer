@@ -24,11 +24,11 @@ YomkServer::~YomkServer()
 
 // 解析请求 url 为服务名与函数名（/ServiceName/func_name）；
 // 失败时记录日志并填充错误消息，返回 false（供 request 构造响应，供 asyncRequest 直接丢弃）
-static bool parseRequestUrl(const std::string& url, std::string& srvName, std::string& funcName, std::string& errMsg)
+static bool parseRequestUrl(std::string_view url, std::string_view& srvName, std::string_view& funcName, std::string& errMsg)
 {
     if (url.empty() || url[0] != '/')
     {
-        errMsg = "url parse error: " + url + ", please start with /";
+        errMsg = "url parse error: " + std::string(url) + ", please start with /";
         YOMK_DIAG_ERROR(errMsg);
         return false;
     }
@@ -36,7 +36,7 @@ static bool parseRequestUrl(const std::string& url, std::string& srvName, std::s
     size_t posEnd = url.find('/', 1);
     if (posEnd == std::string::npos)
     {
-        errMsg = "url parse error: " + url + ", not found service name.";
+        errMsg = "url parse error: " + std::string(url) + ", not found service name.";
         YOMK_DIAG_ERROR(errMsg);
         return false;
     }
@@ -144,10 +144,10 @@ std::map<std::string, yomk::payload::FuncInfo> YomkServer::serviceFuncInfos(cons
     return m_p->serviceFuncInfos(srvName);
 }
 
-yomk::payload::Response YomkServer::request(const std::string& url, YomkMsgPtr pkg)
+yomk::payload::Response YomkServer::request(std::string_view url, YomkMsgPtr pkg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
-    std::string srvName;
-    std::string tmpFuncName;
+    std::string_view srvName;
+    std::string_view tmpFuncName;
     std::string errMsg;
     if (!parseRequestUrl(url, srvName, tmpFuncName, errMsg))
     {
@@ -157,10 +157,10 @@ yomk::payload::Response YomkServer::request(const std::string& url, YomkMsgPtr p
     return m_p->request(srvName, tmpFuncName, pkg);
 }
 
-void YomkServer::asyncRequest(const std::string& url, YomkMsgPtr pkg, YomkResponseFunc func)
+void YomkServer::asyncRequest(std::string_view url, YomkMsgPtr pkg, YomkResponseFunc func)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
-    std::string srvName;
-    std::string tmpFuncName;
+    std::string_view srvName;
+    std::string_view tmpFuncName;
     std::string errMsg;
     if (!parseRequestUrl(url, srvName, tmpFuncName, errMsg))
     {
@@ -171,18 +171,18 @@ void YomkServer::asyncRequest(const std::string& url, YomkMsgPtr pkg, YomkRespon
     // 使用 weak_ptr 捕获，避免任务持有 shared_ptr 形成 pool->task->YomkServerPrivate
     // 的循环引用；lambda 执行前 lock() 判活，确保 YomkServerPrivate 仍在。
     std::weak_ptr<YomkServerPrivate> weakP = m_p;
-    auto callback = [srvName, tmpFuncName, pkg, weakP, func]()
+    auto callback = [srvNameS = std::string(srvName), tmpFuncNameS = std::string(tmpFuncName), pkg, weakP, func]()
     {
         auto p = weakP.lock();
         if (!p)
             return;
         if (func)
         {
-            func(p->request(srvName, tmpFuncName, pkg));
+            func(p->request(srvNameS, tmpFuncNameS, pkg));
         }
         else
         {
-            p->request(srvName, tmpFuncName, pkg);
+            p->request(srvNameS, tmpFuncNameS, pkg);
         }
     };
     if (!m_p->postRequestTask(callback))

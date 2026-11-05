@@ -111,7 +111,7 @@ bool YomkServerPrivate::postRequestTask(std::function<void()> task)
     return m_requestPool.post(std::move(task));
 }
 
-yomk::payload::Response YomkServerPrivate::request(const std::string& srvName, const std::string& funcName, YomkMsgPtr pkg)
+yomk::payload::Response YomkServerPrivate::request(std::string_view srvName, std::string_view funcName, YomkMsgPtr pkg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
     std::shared_ptr<YomkService> srv;
     {
@@ -119,8 +119,8 @@ yomk::payload::Response YomkServerPrivate::request(const std::string& srvName, c
         auto iter = m_serviceMap.find(srvName);
         if (iter == m_serviceMap.end())
         {
-            YOMK_DIAG_ERROR("service not found. " + srvName + ", please start the service.");
-            return yomk::payload::Response(yomk::payload::ResStatus::Failed, "service not found: " + srvName);
+            YOMK_DIAG_ERROR("service not found. " + std::string(srvName) + ", please start the service.");
+            return yomk::payload::Response(yomk::payload::ResStatus::Failed, "service not found: " + std::string(srvName));
         }
         srv = iter->second;
     }

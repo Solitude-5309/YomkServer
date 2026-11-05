@@ -5,6 +5,7 @@
 #include <memory>
 #include <shared_mutex>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "YomkMsgs.h"
@@ -32,12 +33,12 @@ public:
     // 框架内部投递口：异步请求池不对用户暴露。
     // 服务器已关闭或池已停止时返回 false，由调用方记日志丢弃
     bool postRequestTask(std::function<void()> task);
-    yomk::payload::Response request(const std::string& srvName, const std::string& funcName, YomkMsgPtr pkg = nullptr);
+    yomk::payload::Response request(std::string_view srvName, std::string_view funcName, YomkMsgPtr pkg = nullptr);
     std::vector<std::string> serviceNames();
     std::map<std::string, yomk::payload::FuncInfo> serviceFuncInfos(const std::string& srvName);
 
 private:
-    std::map<std::string, std::shared_ptr<YomkService>> m_serviceMap;
+    std::map<std::string, std::shared_ptr<YomkService>, std::less<>> m_serviceMap;
     std::shared_mutex m_serviceMapMtx;
     std::atomic<bool> m_shutdown{false};
     // 异步请求池：异步监控池归 Context 模块自持，随服务 deinit 停止

@@ -72,12 +72,12 @@ std::map<std::string, yomk::payload::FuncInfo> YomkServicePrivate::funcInfos()
     return infos;
 }
 
-yomk::payload::Response YomkServicePrivate::invoke(const std::string& funcName, YomkMsgPtr pkg)
+yomk::payload::Response YomkServicePrivate::invoke(std::string_view funcName, YomkMsgPtr pkg)
 {
     if (funcName.empty() || funcName[0] != '/')
     {
-        YOMK_DIAG_ERROR("function name parse error: " + funcName + ", please start with /");
-        return {yomk::payload::ResStatus::Failed, "function name parse error: " + funcName + ", please start with /"};
+        YOMK_DIAG_ERROR("function name parse error: " + std::string(funcName) + ", please start with /");
+        return {yomk::payload::ResStatus::Failed, "function name parse error: " + std::string(funcName) + ", please start with /"};
     }
 
     YomkServiceFunc tmpFunc = nullptr;
@@ -87,8 +87,8 @@ yomk::payload::Response YomkServicePrivate::invoke(const std::string& funcName, 
         if (iter == m_funcMap.end())
         {
             YOMK_DIAG_ERROR(
-                "function not found -> " + funcName + ", please use installFunc to install this function.");
-            return {yomk::payload::ResStatus::Failed, "function not found: " + funcName};
+                "function not found -> " + std::string(funcName) + ", please use installFunc to install this function.");
+            return {yomk::payload::ResStatus::Failed, "function not found: " + std::string(funcName)};
         }
         tmpFunc = iter->second;
     }
@@ -96,7 +96,7 @@ yomk::payload::Response YomkServicePrivate::invoke(const std::string& funcName, 
     return tmpFunc(pkg);
 }
 
-yomk::payload::Response YomkServicePrivate::request(const std::string& url, YomkMsgPtr pkg)
+yomk::payload::Response YomkServicePrivate::request(std::string_view url, YomkMsgPtr pkg)
 {
     auto server = m_weakServer.lock();
     if (!server)
@@ -108,7 +108,7 @@ yomk::payload::Response YomkServicePrivate::request(const std::string& url, Yomk
     return server->request(url, pkg);
 }
 
-void YomkServicePrivate::asyncRequest(const std::string& url, YomkMsgPtr pkg, YomkResponseFunc func)
+void YomkServicePrivate::asyncRequest(std::string_view url, YomkMsgPtr pkg, YomkResponseFunc func)
 {
     auto server = m_weakServer.lock();
     if (!server)

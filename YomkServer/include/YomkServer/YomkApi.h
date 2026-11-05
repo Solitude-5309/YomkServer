@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdlib>
 #include <memory>
+#include <string_view>
 #include <mutex>
 #include <string>
 
@@ -139,7 +140,7 @@ public:
     // REQ_API
 public:
     // 异步请求服务功能函数
-    static void asyncRequest(const std::string& url, YomkMsgPtr pkg, YomkResponseFunc func)
+    static void asyncRequest(std::string_view url, YomkMsgPtr pkg, YomkResponseFunc func)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
     {
         auto server = YomkServerRef::serverSnapshot();
         if (!server)
@@ -150,7 +151,7 @@ public:
         return server->asyncRequest(url, pkg, func);
     }
     // 同步请求服务功能函数
-    static yomk::payload::Response request(const std::string& url, YomkMsgPtr pkg)
+    static yomk::payload::Response request(std::string_view url, YomkMsgPtr pkg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
     {
         auto server = YomkServerRef::serverSnapshot();
         if (!server)
@@ -166,7 +167,7 @@ private:
     // （console 传 tag 占位 name 位，file 传 logFile）。转发方保证 console 时
     // logFile 参数即 tag，语义见各公共函数
     template <typename... Args>
-    static yomk::payload::ResStatus emitLog(const std::string& url, yomk::payload::LogLevel lv,
+    static yomk::payload::ResStatus emitLog(std::string_view url, yomk::payload::LogLevel lv,  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
@@ -189,9 +190,9 @@ private:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        const std::string& url = console
-            ? (on ? YomkUrl::loggerOnConsoleLogByLevel() : YomkUrl::loggerOffConsoleLogByLevel())
-            : (on ? YomkUrl::loggerOnFileLogByLevel() : YomkUrl::loggerOffFileLogByLevel());
+        std::string_view url = console
+            ? (on ? yomk::url::loggerOnConsoleLogByLevel : yomk::url::loggerOffConsoleLogByLevel)
+            : (on ? yomk::url::loggerOnFileLogByLevel : yomk::url::loggerOffFileLogByLevel);
         return requestStatus(url, yomk::msgs::Log::shared(yomk::payload::Log{lv, "", loggerName}));
     }
 
@@ -211,7 +212,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::loggerSetConsoleProxy(), yomk::msgs::ConsoleLogProxy::shared(yomk::payload::ConsoleLogProxy{func}));
+        return requestStatus(yomk::url::loggerSetConsoleProxy, yomk::msgs::ConsoleLogProxy::shared(yomk::payload::ConsoleLogProxy{func}));
     }
     // 设置文件日志代理回调（传 nullptr 恢复默认落盘，取消代理回调；与控制台代理相互独立）
     static yomk::payload::ResStatus setFileLogProxy(YomkFileLogProxyFunc func)
@@ -220,38 +221,38 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::loggerSetFileLogProxy(), yomk::msgs::FileLogProxy::shared(yomk::payload::FileLogProxy{func}));
+        return requestStatus(yomk::url::loggerSetFileLogProxy, yomk::msgs::FileLogProxy::shared(yomk::payload::FileLogProxy{func}));
     }
     // 控制台日志输出（emitLog 公共核心 + 单行转发，仅级别差异）
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogInfo(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Info, tag, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerConsoleLog, yomk::payload::LogLevel::Info, tag, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogWarn(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Warn, tag, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerConsoleLog, yomk::payload::LogLevel::Warn, tag, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogError(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Error, tag, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerConsoleLog, yomk::payload::LogLevel::Error, tag, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogDebug(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Debug, tag, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerConsoleLog, yomk::payload::LogLevel::Debug, tag, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogTrace(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Trace, tag, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerConsoleLog, yomk::payload::LogLevel::Trace, tag, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogFatal(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Fatal, tag, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerConsoleLog, yomk::payload::LogLevel::Fatal, tag, tag, loc, std::forward<Args>(args)...);
     }
     // 创建文件日志器
     static yomk::payload::ResStatus createFileLogger(const std::string& logDir, const std::string& logFile)
@@ -260,7 +261,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::loggerCreateFileLogger(), yomk::msgs::LogFile::shared(yomk::payload::LogFile{logFile, logDir}));
+        return requestStatus(yomk::url::loggerCreateFileLogger, yomk::msgs::LogFile::shared(yomk::payload::LogFile{logFile, logDir}));
     }
     // 将指定日志器的缓冲落盘
     static yomk::payload::ResStatus flushFileLog(const std::string& logFile)
@@ -269,44 +270,44 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::loggerWriteFileLog(), yomk::msgs::String::shared(logFile));
+        return requestStatus(yomk::url::loggerWriteFileLog, yomk::msgs::String::shared(logFile));
     }
     // 文件日志输出（emitLog 公共核心 + 单行转发，仅级别差异）
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogInfo(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Info, logFile, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerFileLog, yomk::payload::LogLevel::Info, logFile, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogWarn(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Warn, logFile, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerFileLog, yomk::payload::LogLevel::Warn, logFile, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogError(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Error, logFile, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerFileLog, yomk::payload::LogLevel::Error, logFile, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogDebug(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Debug, logFile, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerFileLog, yomk::payload::LogLevel::Debug, logFile, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogTrace(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Trace, logFile, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerFileLog, yomk::payload::LogLevel::Trace, logFile, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogFatal(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Fatal, logFile, tag, loc, std::forward<Args>(args)...);
+        return emitLog(yomk::url::loggerFileLog, yomk::payload::LogLevel::Fatal, logFile, tag, loc, std::forward<Args>(args)...);
     }
     // 开关各级别控制台日志（setLogByLevel 公共核心 + 单行转发；loggerName 空 = 全局主闸，具名 = 逐器门控）
     static yomk::payload::ResStatus enableConsoleLogInfo(const std::string& loggerName = "")
@@ -413,7 +414,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::loggerLoggers(), yomk::msgs::String::shared(type));
+        return request(yomk::url::loggerLoggers, yomk::msgs::String::shared(type));
     }
     // 查询指定日志器状态（type: "console"/"file"；两表允许同名，须按类型精确单查）
     static yomk::payload::Response getLoggerInfo(const std::string& loggerName, const std::string& type)
@@ -422,7 +423,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::loggerLogger(), yomk::msgs::LoggerQuery::shared(yomk::payload::LoggerQuery{loggerName, type}));
+        return request(yomk::url::loggerLogger, yomk::msgs::LoggerQuery::shared(yomk::payload::LoggerQuery{loggerName, type}));
     }
     // 查询全部日志器及逐器门控状态（返回 LoggerInfoList 清单，每条内嵌 LoggerState 状态段：
     // console 条目为控制台逐器门控层真值，file 条目为文件逐器门控层真值）
@@ -432,7 +433,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::loggerAll(), nullptr);
+        return request(yomk::url::loggerAll, nullptr);
     }
     // 查询全局主闸状态（4 级别 + proxy；type: "console"/"file"，两套主闸相互独立供两层归因；
     // 缺省 "console" 与历史无参语义一致，未知 type 返回 ResStatus::Failed）
@@ -444,11 +445,11 @@ public:
         }
         if (type == "file")
         {
-            return request(YomkUrl::loggerFileGlobalState(), nullptr);
+            return request(yomk::url::loggerFileGlobalState, nullptr);
         }
         if (type == "console")
         {
-            return request(YomkUrl::loggerConsoleGlobalState(), nullptr);
+            return request(yomk::url::loggerConsoleGlobalState, nullptr);
         }
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "unknown logger type.");
     }
@@ -459,7 +460,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::loggerDeleteLogger(), yomk::msgs::String::shared(loggerName));
+        return requestStatus(yomk::url::loggerDeleteLogger, yomk::msgs::String::shared(loggerName));
     }
     // CONTEXT_API
 public:
@@ -471,7 +472,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::ctxCreate(), yomk::msgs::Context::shared(yomk::payload::Context{ctxName, ctx, groupName}));
+        return requestStatus(yomk::url::ctxCreate, yomk::msgs::Context::shared(yomk::payload::Context{ctxName, ctx, groupName}));
     }
     // 获取上下文值（只读快照），改动请构造新对象再 setContext，勿原地修改（否则与并发读竞争、可能崩溃）
     template <typename T>
@@ -483,7 +484,7 @@ public:
             return ctxDefault;
         }
         yomk::payload::Response response =
-            request(YomkUrl::ctxGet(), yomk::msgs::Context::shared(yomk::payload::Context{ctxName, ctxDefault, groupName}));
+            request(yomk::url::ctxGet, yomk::msgs::Context::shared(yomk::payload::Context{ctxName, ctxDefault, groupName}));
         if (response.m_status == yomk::payload::ResStatus::Succeeded)
         {
             std::shared_ptr<T> ctxData = nullptr;
@@ -510,7 +511,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::ctxSet(), yomk::msgs::Context::shared(yomk::payload::Context{ctxName, ctx, groupName}));
+        return requestStatus(yomk::url::ctxSet, yomk::msgs::Context::shared(yomk::payload::Context{ctxName, ctx, groupName}));
     }
     // 开关上下文校验门控
     static yomk::payload::ResStatus enableContextChecker(const std::string& groupName = "main")
@@ -519,7 +520,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::ctxTurnOnChecker(), yomk::msgs::String::shared(groupName));
+        return requestStatus(yomk::url::ctxTurnOnChecker, yomk::msgs::String::shared(groupName));
     }
     static yomk::payload::ResStatus disableContextChecker(const std::string& groupName = "main")
     {
@@ -527,7 +528,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::ctxTurnOffChecker(), yomk::msgs::String::shared(groupName));
+        return requestStatus(yomk::url::ctxTurnOffChecker, yomk::msgs::String::shared(groupName));
     }
     // 设置上下文校验门控回调
     static yomk::payload::ResStatus setContextChecker(
@@ -538,7 +539,7 @@ public:
             return yomk::payload::ResStatus::Invalid;
         }
         return requestStatus(
-            YomkUrl::ctxSetChecker(), yomk::msgs::ContextChecker::shared(yomk::payload::ContextChecker{ctxName, checker, groupName}));
+            yomk::url::ctxSetChecker, yomk::msgs::ContextChecker::shared(yomk::payload::ContextChecker{ctxName, checker, groupName}));
     }
     // 开关上下文变更监听器
     static yomk::payload::ResStatus enableContextMonitor(const std::string& groupName = "main")
@@ -547,7 +548,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::ctxTurnOnMonitor(), yomk::msgs::String::shared(groupName));
+        return requestStatus(yomk::url::ctxTurnOnMonitor, yomk::msgs::String::shared(groupName));
     }
     static yomk::payload::ResStatus disableContextMonitor(const std::string& groupName = "main")
     {
@@ -555,7 +556,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::ctxTurnOffMonitor(), yomk::msgs::String::shared(groupName));
+        return requestStatus(yomk::url::ctxTurnOffMonitor, yomk::msgs::String::shared(groupName));
     }
     // 设置上下文变更监听回调（async=true 为异步通知），仅通知发生了一次 set 事件，并回传该次 set 的键值快照——不保证快照实时性；顺序上异步恒按 set 提交序送达、同步在并发 set 下不保证跨线程序。
     static yomk::payload::ResStatus setContextMonitor(const std::string& ctxName, YomkContextMonitorFunc monitor,
@@ -565,7 +566,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::ctxSetMonitor(),
+        return requestStatus(yomk::url::ctxSetMonitor,
             yomk::msgs::ContextMonitor::shared(yomk::payload::ContextMonitor{ctxName, monitor, async, groupName}));
     }
     // 销毁指定上下文键
@@ -576,7 +577,7 @@ public:
             return yomk::payload::ResStatus::Invalid;
         }
         return requestStatus(
-            YomkUrl::ctxDestroy(), yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{groupName, ctxName}));
+            yomk::url::ctxDestroy, yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{groupName, ctxName}));
     }
     // 获取全部上下文键名
     static yomk::payload::Response listContextKeys(const std::string& groupName = "main")
@@ -585,7 +586,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::ctxKeys(), yomk::msgs::String::shared(groupName));
+        return request(yomk::url::ctxKeys, yomk::msgs::String::shared(groupName));
     }
     // 查询指定上下文键状态
     static yomk::payload::Response getContextInfo(const std::string& ctxName, const std::string& groupName = "main")
@@ -594,7 +595,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::ctxKey(), yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{groupName, ctxName}));
+        return request(yomk::url::ctxKey, yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{groupName, ctxName}));
     }
     // 查询全部组名清单（返回 StringArray，对齐 listEventLoops 形态）
     static yomk::payload::Response listContextGroups()
@@ -603,7 +604,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::ctxGroups(), nullptr);
+        return request(yomk::url::ctxGroups, nullptr);
     }
     // 查询全部组及其全部键的内省元信息（跨组聚合：返回 ContextGroupInfoList，层级为组 → 键元信息）
     static yomk::payload::Response getAllContextInfo()
@@ -612,7 +613,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::ctxAll(), nullptr);
+        return request(yomk::url::ctxAll, nullptr);
     }
     // EVENTLOOP_API
 public:
@@ -627,7 +628,7 @@ public:
             return yomk::payload::ResStatus::Invalid;
         }
         return requestStatus(
-            YomkUrl::loopStart(),
+            yomk::url::loopStart,
             yomk::msgs::EventLoop::shared(yomk::payload::EventLoop{eventLoopName, m_defaultServiceFunc, msgName}));
     }
     // 停止事件循环线程（保留未执行事件）
@@ -637,7 +638,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::loopStop(), yomk::msgs::String::shared(eventLoopName));
+        return requestStatus(yomk::url::loopStop, yomk::msgs::String::shared(eventLoopName));
     }
     // 异步投递事件
     static yomk::payload::ResStatus postEvent(
@@ -651,7 +652,7 @@ public:
             return yomk::payload::ResStatus::Invalid;
         }
         return requestStatus(
-            YomkUrl::loopPost(), yomk::msgs::Event::shared(yomk::payload::Event(eventLoopName, eventData, eventHandle, tag)));
+            yomk::url::loopPost, yomk::msgs::Event::shared(yomk::payload::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 同步投递事件（阻塞等待执行完成）
     static yomk::payload::ResStatus postEventAndWait(
@@ -665,7 +666,7 @@ public:
             return yomk::payload::ResStatus::Invalid;
         }
         return requestStatus(
-            YomkUrl::loopPostWait(), yomk::msgs::Event::shared(yomk::payload::Event(eventLoopName, eventData, eventHandle, tag)));
+            yomk::url::loopPostWait, yomk::msgs::Event::shared(yomk::payload::Event(eventLoopName, eventData, eventHandle, tag)));
     }
     // 销毁事件循环并清空队列
     static yomk::payload::ResStatus destroyEventLoop(const std::string& eventLoopName)
@@ -674,7 +675,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::loopDestroy(), yomk::msgs::String::shared(eventLoopName));
+        return requestStatus(yomk::url::loopDestroy, yomk::msgs::String::shared(eventLoopName));
     }
     // 获取全部事件循环名称列表
     static yomk::payload::Response listEventLoops()
@@ -683,7 +684,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::loopLoops(), nullptr);
+        return request(yomk::url::loopLoops, nullptr);
     }
     // 查询指定事件循环状态与事件积压数
     static yomk::payload::Response getEventLoopInfo(const std::string& eventLoopName)
@@ -692,7 +693,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::loopLoop(), yomk::msgs::String::shared(eventLoopName));
+        return request(yomk::url::loopLoop, yomk::msgs::String::shared(eventLoopName));
     }
     static yomk::payload::Response getEventLoopInfo(const std::string& eventLoopName, size_t tagCount)
     {
@@ -700,7 +701,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::loopLoop(), yomk::msgs::String::shared(eventLoopName + " " + std::to_string(tagCount)));
+        return request(yomk::url::loopLoop, yomk::msgs::String::shared(eventLoopName + " " + std::to_string(tagCount)));
     }
     // 查询全部事件循环状态
     static yomk::payload::Response getAllEventLoopInfo()
@@ -709,7 +710,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::loopAll(), nullptr);
+        return request(yomk::url::loopAll, nullptr);
     }
     // FUNCTIONPOOL_API
 public:
@@ -723,7 +724,7 @@ public:
             return yomk::payload::ResStatus::Invalid;
         }
         return requestStatus(
-            YomkUrl::fpRegister(), yomk::msgs::Function::shared(yomk::payload::Function{funcName, func, msgName, description}));
+            yomk::url::fpRegister, yomk::msgs::Function::shared(yomk::payload::Function{funcName, func, msgName, description}));
     }
     // 从函数池注销函数
     static yomk::payload::ResStatus unregisterFunction(const std::string& funcName)
@@ -732,7 +733,7 @@ public:
         {
             return yomk::payload::ResStatus::Invalid;
         }
-        return requestStatus(YomkUrl::fpUnregister(), yomk::msgs::String::shared(funcName));
+        return requestStatus(yomk::url::fpUnregister, yomk::msgs::String::shared(funcName));
     }
     // 调用函数池中注册的函数
     static yomk::payload::Response callFunction(const std::string& funcName, YomkMsgPtr callData)
@@ -741,7 +742,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::fpCall(), yomk::msgs::CallFunction::shared(yomk::payload::CallFunction{funcName, callData}));
+        return request(yomk::url::fpCall, yomk::msgs::CallFunction::shared(yomk::payload::CallFunction{funcName, callData}));
     }
     // 获取函数池中全部函数名
     static yomk::payload::Response listFunctionNames()
@@ -750,7 +751,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::fpNames(), nullptr);
+        return request(yomk::url::fpNames, nullptr);
     }
     // 查询单个已注册函数元信息
     static yomk::payload::Response getFunctionInfo(const std::string& funcName)
@@ -759,7 +760,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::fpName(), yomk::msgs::String::shared(funcName));
+        return request(yomk::url::fpName, yomk::msgs::String::shared(funcName));
     }
     // 查询全部已注册函数元信息
     static yomk::payload::Response getAllFunctionInfo()
@@ -768,7 +769,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::fpAll(), nullptr);
+        return request(yomk::url::fpAll, nullptr);
     }
     // SERVER_INFO_API
 public:
@@ -779,7 +780,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::srvServices(), nullptr);
+        return request(yomk::url::srvServices, nullptr);
     }
     // 查询指定服务的全部功能函数（返回 FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，
     // 与 /function 单查、/all 聚合、函数池内省同族；m_msg 恒 "ok"，不存在服务为空清单）
@@ -789,7 +790,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::srvFunctions(), yomk::msgs::String::shared(srvName));
+        return request(yomk::url::srvFunctions, yomk::msgs::String::shared(srvName));
     }
     // 查询指定功能函数元信息
     static yomk::payload::Response getServiceFunctionInfoByUrl(const std::string& url)
@@ -798,7 +799,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::srvFunction(), yomk::msgs::String::shared(url));
+        return request(yomk::url::srvFunction, yomk::msgs::String::shared(url));
     }
     // 查询框架全量服务及功能函数拓扑
     static yomk::payload::Response getAllServerInfo()
@@ -807,7 +808,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
-        return request(YomkUrl::srvAll(), nullptr);
+        return request(yomk::url::srvAll, nullptr);
     }
 
 private:
@@ -820,7 +821,7 @@ private:
         return false;
     }
     // 同步请求并收敛为三态：失败原因经错误日志承载，返回值仅保留 ResStatus
-    static yomk::payload::ResStatus requestStatus(const std::string& url, YomkMsgPtr pkg)
+    static yomk::payload::ResStatus requestStatus(std::string_view url, YomkMsgPtr pkg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
     {
         yomk::payload::Response resp = request(url, std::move(pkg));
         if (resp.m_status != yomk::payload::ResStatus::Succeeded)
