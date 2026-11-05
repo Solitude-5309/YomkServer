@@ -196,7 +196,7 @@
  *   0 warning + 28/28 绿」为唯一判据，实测无一处暴露间接依赖、无一回退。
  * - P4-g（LG6 已修复）：内省端点原在 21 万条目下每次调用存在三重拷贝 —— listAll 的
  *   vector<string> → StringArray 包 → 测试侧 unpackLines 再拷一份，单次 ALL 的瞬时分配达数十 MB。
- *   LG6 两处收口：① YomkPkg.h 的 YOMK_DEFINE_MSG 宏补右值构造重载（向后兼容，左值实参仍逐字选中
+ *   LG6 两处收口：① YomkMsgs.h 的 YOMK_DEFINE_MSG 宏补右值构造重载（向后兼容，左值实参仍逐字选中
  *   const& 版本，既有调用点行为不变），使消息包的 shared(std::move(data)) 真正移动入包而非静默
  *   退化为拷贝；YomkLogger::loggers 与 listAll 的返回语句改为 std::move(lines)。② 本测试
  *   unpackLines 的 lines = arr->d 改为 std::move(arr->d)，消除第三重拷贝（resp.m_data 是
@@ -230,7 +230,7 @@
  *   N=100000 n=3 为 833854 → 672791 即 -19.3%），未过 V2 主判据「不慢于修复前」。已排除语义性
  *   退化，三条独立证据：① 归因变体 G（F 仅移除右值构造）在同批反而比 A 快 +6.9%、比 F 快
  *   +15.8%，即「加右值构造变慢」与「不加就变快」两个方向都无机制可解释（P3-b 只省一个必然
- *   可预测的分支，move 只会比 copy 便宜）；② 静态汇编对照（同一最小复现 TU 只切换 YomkPkg.h
+ *   可预测的分支，move 只会比 copy 便宜）；② 静态汇编对照（同一最小复现 TU 只切换 YomkMsgs.h
  *   是否含右值构造，-O3 -S，免疫于机器噪声）：含右值构造版 memcpy/memmove 调用 5 → 3、
  *   call 指令 143 → 136、汇编 2462 → 2353 行、operator new 恒为 5，即该改动使这条路径严格少做
  *   2 次字符串拷贝，只可能更快；③ 同一份从未修改的 A 二进制跨批中位数漂移

@@ -16,5 +16,3 @@ protected:
     std::string m_name;
 };
 using YomkMsgPtr = std::shared_ptr<YomkMsg>;
-
-#include "YomkMsgs.h"

@@ -6,7 +6,7 @@
 #include <string>
 
 #include "YomkExport.h"
-#include "YomkPkg.h"
+#include "YomkMsgs.h"
 
 class YomkServer;
 class YomkServicePrivate

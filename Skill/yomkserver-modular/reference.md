@@ -112,7 +112,7 @@ namespace yomk {
 | 浮点 | `Float32`, `Float64` |
 | 字符串 | `String` |
 
-每个标量均有对应 `XxxArray`（如 `Int32Array`, `StringArray`），完整清单见 `YomkServer/include/YomkServer/YomkPkg.h` 末段。
+每个标量均有对应 `XxxArray`（如 `Int32Array`, `StringArray`），完整清单见 `YomkServer/include/YomkServer/YomkMsgs.h` 末段。
 
 **回调签名：**
 ```cpp

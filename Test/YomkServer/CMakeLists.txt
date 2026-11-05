@@ -85,7 +85,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
         ${YomkServer_DIR}/src/Modules/Context/*.h
     )
 
-    # YomkContext-clang-tidy：-header-filter 限定仅报 Context 头，屏蔽 YomkPkg/YomkAPI 等已处理头噪音
+    # YomkContext-clang-tidy：-header-filter 限定仅报 Context 头，屏蔽 YomkMsg/YomkAPI 等已处理头噪音
     if(CLANG_TIDY_EXE)
         add_custom_target(YomkContext-clang-tidy
             COMMAND ${CLANG_TIDY_EXE}
@@ -126,7 +126,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
         ${YomkServer_DIR}/src/Modules/EventLoop/*.h
     )
 
-    # YomkEventLoop-clang-tidy：-header-filter 限定仅报 EventLoop 头，屏蔽 YomkPkg/YomkAPI 等已处理头噪音
+    # YomkEventLoop-clang-tidy：-header-filter 限定仅报 EventLoop 头，屏蔽 YomkMsg/YomkAPI 等已处理头噪音
     if(CLANG_TIDY_EXE)
         add_custom_target(YomkEventLoop-clang-tidy
             COMMAND ${CLANG_TIDY_EXE}
@@ -141,7 +141,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
     endif()
 
     # YomkEventLoop-cppcheck：参数与 MC9/MC6 扫描一致；额外补 include/YomkServer（真实构建的
-    # YomkServer_INCLUDE 路径，见 YomkServer/CMakeLists.txt）——EventLoop 头用裸 "YomkPkg.h" 包含，
+    # YomkServer_INCLUDE 路径，见 YomkServer/CMakeLists.txt）——EventLoop 头用裸 "YomkMsgs.h" 包含，
     # 缺此路径时包含解析失败被 missingInclude 抑制掩盖，头内类型未定义触发错误且分析降级
     if(CPPCHECK_EXE)
         add_custom_target(YomkEventLoop-cppcheck
@@ -363,17 +363,17 @@ target_link_libraries(TestYomkConcurrency PRIVATE
 )
 # -------------el TestYomkConcurrency ----------------
 
-# -------------sl TestYomkPkg ----------------
-set(TestYomkPkg_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkPkg.cpp
+# -------------sl TestYomkMsg ----------------
+set(TestYomkMsg_SOURCES 
+    ${TestYomkServer_DIR}/YomkServer/TestYomkMsg.cpp
 )
-add_executable(TestYomkPkg 
-    ${TestYomkPkg_SOURCES}
+add_executable(TestYomkMsg 
+    ${TestYomkMsg_SOURCES}
 )
-target_link_libraries(TestYomkPkg PRIVATE
+target_link_libraries(TestYomkMsg PRIVATE
     ${YomkServerLib}
 )
-# -------------el TestYomkPkg ----------------
+# -------------el TestYomkMsg ----------------
 
 # -------------sl TestYomkIntegration ----------------
 set(TestYomkIntegration_SOURCES 

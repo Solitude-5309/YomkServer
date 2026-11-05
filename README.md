@@ -15,7 +15,7 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 | 模块 | 简述 |
 |---|---|
 | [YomkServer / YomkService](Docs/YomkServer.md) | 服务总线核心：服务注册与 `"/服务名/函数名"` URL 路由、同步/异步请求分发、服务生命周期管理（deinit / 优雅关闭） |
-| [YomkMsg](Docs/YomkPkg.md) | 强类型消息包：`YOMK_DEFINE_MSG` 宏声明自定义消息，内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
+| [YomkMsg](Docs/YomkMsg.md) | 强类型消息包：`YOMK_DEFINE_MSG` 宏声明自定义消息，内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
 | [YomkBoot](Docs/YomkServer.md) | 启动编排：before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程 |
 | [YomkLogger](Docs/YomkLogger.md) | 日志系统：控制台与文件双输出、四级级别开关、自定义 tag、日志代理拦截、位置前缀开关与日志器自省 |
 | [YomkContext](Docs/YomkContext.md) | 共享上下文：跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步） |
@@ -104,7 +104,7 @@ int main()
 
 服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息，`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unPack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型。
 
-详见 [消息包](Docs/YomkPkg.md)。
+详见 [消息包](Docs/YomkMsg.md)。
 
 ### 3. 日志系统 (YomkLogger)
 
@@ -208,7 +208,7 @@ cmake --build . -j
 
 | 模块 | 测试目标 |
 |---|---|
-| YomkServer (11) | TestYomkSimpleThreadPool、TestYomkWeakFunc、TestYomkAPINotInit、TestYomkAPILifecycle、TestYomkBoot、TestYomkServer、TestYomkService、TestYomkShutdownSeq、TestYomkConcurrency、TestYomkPkg、TestYomkIntegration |
+| YomkServer (11) | TestYomkSimpleThreadPool、TestYomkWeakFunc、TestYomkAPINotInit、TestYomkAPILifecycle、TestYomkBoot、TestYomkServer、TestYomkService、TestYomkShutdownSeq、TestYomkConcurrency、TestYomkMsg、TestYomkIntegration |
 | YomkServerInfo (1) | TestYomkServerInfoLifecycle |
 | FunctionPool (3) | TestYomkFunctionPoolLifecycle、TestYomkFunctionPoolConcurrency、TestYomkFunctionPoolStress |
 | Context (4) | TestYomkContextCRUD、TestYomkContextCheckerMonitor、TestYomkContextLifecycle、TestYomkContextConcurrency |

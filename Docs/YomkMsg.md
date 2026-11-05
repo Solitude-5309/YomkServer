@@ -47,4 +47,4 @@ return {yomk::payload::ResStatus::Succeeded, "hello " + info->d.name};
 
 ## 完整示例
 
-最小完整示例见根目录 [README](../README.md) 的"快速上手"一节；内置类型的封包/解包行为验证见 `Test/YomkServer/TestYomkPkg.cpp`。
+最小完整示例见根目录 [README](../README.md) 的"快速上手"一节；内置类型的封包/解包行为验证见 `Test/YomkServer/TestYomkMsg.cpp`。

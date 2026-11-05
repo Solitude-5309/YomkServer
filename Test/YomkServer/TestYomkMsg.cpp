@@ -1,5 +1,5 @@
 /**
- * @file TestYomkPkg.cpp
+ * @file TestYomkMsg.cpp
  * @brief YomkMsg 消息包体系独立测试（正式全面测试，P2——标准类型全集/解包语义全分支此前散点触达，无独立覆盖）
  *
  * 覆盖内容（5 个 Section，约 66 断言）：
@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 
-#include "YomkPkg.h"
+#include "YomkMsgs.h"
 
 static int g_failed = 0;
 

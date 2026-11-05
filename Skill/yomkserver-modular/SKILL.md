@@ -280,7 +280,7 @@ YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定�
 
 注意：`YOMK_DEFINE_MSG` 展开生成的真实类型是独立命名空间中的 `yomk::msgs::消息名称` 与 `yomk::msgs::消息名称Ptr`，与 `yomk` 中的载荷/框架类型隔离以避免重名；引用须写全名，裸写消息名会报 not declared；消息名称作为字符串字面量仍用于 `installFunc` 第三参；解包由 `yomk::msgs::unPack<yomk::msgs::消息名称>` 模板实参承担（类型即名字，无需字符串），框架内运行时名解包已内联展开（原 `YomkUnPackPkgT` 宏随闭环 7 删除）。
 
-内置标准类型（成员名均为 `d`）：`Bool`, `Char`, `UChar`, `Byte`, `Int8`, `Uint8`, `Int16`, `Uint16`, `Int32`, `Uint32`, `Int64`, `Uint64`, `Float32`, `Float64`, `String` 及对应 `XxxArray` 类型（完整清单见 `YomkPkg.h` 末段）。
+内置标准类型（成员名均为 `d`）：`Bool`, `Char`, `UChar`, `Byte`, `Int8`, `Uint8`, `Int16`, `Uint16`, `Int32`, `Uint32`, `Int64`, `Uint64`, `Float32`, `Float64`, `String` 及对应 `XxxArray` 类型（完整清单见 `YomkMsgs.h` 末段）。
 
 ### 设计原则
 

@@ -118,7 +118,7 @@ TESTS=(
     TestYomkService
     TestYomkShutdownSeq
     TestYomkConcurrency
-    TestYomkPkg
+    TestYomkMsg
     TestYomkIntegration
     # ServerInfo 模块
     TestYomkServerInfoLifecycle
