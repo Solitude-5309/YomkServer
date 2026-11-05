@@ -7,9 +7,7 @@
 
 #include "YomkMsg.h"
 
-namespace yomk
-{
-namespace payload
+namespace yomk::payload
 {
 
 enum class ResStatus
@@ -31,15 +29,12 @@ struct Response
     YomkMsgPtr m_data = nullptr;              // 携带的返回数据
 };
 
-}  // namespace payload
-}  // namespace yomk
+}  // namespace yomk::payload
 
 using YomkServiceFunc = std::function<yomk::payload::Response(YomkMsgPtr pkg)>;
 using YomkResponseFunc = std::function<void(yomk::payload::Response response)>;
 
-namespace yomk
-{
-namespace payload
+namespace yomk::payload
 {
 
 enum class CheckStatus
@@ -228,8 +223,7 @@ struct ServerServiceInfo
     std::vector<FuncInfo> m_funcs;  // 函数元信息（与 /function 单查同族，m_funcName 带 / 前缀 url 段）
 };
 
-}  // namespace payload
-}  // namespace yomk
+}  // namespace yomk::payload
 
 // Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 YomkAPI::setContextMonitor
 using YomkContextMonitorFunc = std::function<void(const yomk::payload::Context& ctx)>;

@@ -6,9 +6,7 @@
 #include "YomkPayload.h"
 
 #define YOMK_DEFINE_MSG(DataType, MsgName, VarName)                               \
-    namespace yomk                                                                \
-    {                                                                             \
-    namespace msgs                                                                \
+    namespace yomk::msgs                                                          \
     {                                                                             \
     class MsgName : public ::YomkMsg                                              \
     {                                                                             \
@@ -29,12 +27,9 @@
         }                                                                         \
     };                                                                            \
     using MsgName##Ptr = std::shared_ptr<MsgName>;                                \
-    }                                                                             \
     }
 
-namespace yomk
-{
-namespace msgs
+namespace yomk::msgs
 {
 
 template <class Msg>
@@ -47,8 +42,7 @@ std::shared_ptr<Msg> unPack(const YomkMsgPtr& pkg)
     return nullptr;
 }
 
-}  // namespace msgs
-}  // namespace yomk
+}  // namespace yomk::msgs
 
 // SDK 消息包目录：框架载荷包 + 内置标准类型包（成员名均为 d）。
 // 自定义消息不在此定义，经本文件的 YOMK_DEFINE_MSG 宏自行声明。
