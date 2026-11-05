@@ -81,19 +81,19 @@ static std::atomic<uint64_t> g_s5IntrospectCount{0};
 // ============================================================================
 // S1 用函数
 // ============================================================================
-static yomk::payload::Response s1ProbeFunc(YomkPkgPtr /*pkg*/)
+static yomk::payload::Response s1ProbeFunc(YomkMsgPtr /*pkg*/)
 {
     g_s1ExecCount.fetch_add(1, std::memory_order_relaxed);
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "s1_ok");
 }
 
-static yomk::payload::Response s1InnerFunc(YomkPkgPtr /*pkg*/)
+static yomk::payload::Response s1InnerFunc(YomkMsgPtr /*pkg*/)
 {
     g_s1InnerCount.fetch_add(1, std::memory_order_relaxed);
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "s1_inner_ok");
 }
 
-static yomk::payload::Response s1OuterFunc(YomkPkgPtr /*pkg*/)
+static yomk::payload::Response s1OuterFunc(YomkMsgPtr /*pkg*/)
 {
     // 嵌套重入：在已注册函数内部再 CALL 另一个已注册函数
     // callFunction 的 shared_lock 已释放（锁外调用），此处重新获取 shared_lock 安全
@@ -108,13 +108,13 @@ static yomk::payload::Response s1OuterFunc(YomkPkgPtr /*pkg*/)
 // ============================================================================
 // S2 用函数
 // ============================================================================
-static yomk::payload::Response s2V1Func(YomkPkgPtr /*pkg*/)
+static yomk::payload::Response s2V1Func(YomkMsgPtr /*pkg*/)
 {
     g_s2V1Count.fetch_add(1, std::memory_order_relaxed);
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "v1");
 }
 
-static yomk::payload::Response s2V2Func(YomkPkgPtr /*pkg*/)
+static yomk::payload::Response s2V2Func(YomkMsgPtr /*pkg*/)
 {
     g_s2V2Count.fetch_add(1, std::memory_order_relaxed);
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "v2");
@@ -123,7 +123,7 @@ static yomk::payload::Response s2V2Func(YomkPkgPtr /*pkg*/)
 // ============================================================================
 // S3 用函数（gate 模式：函数体内自旋等待释放，制造"锁外执行中"的确定窗口）
 // ============================================================================
-static yomk::payload::Response s3GatedFunc(YomkPkgPtr /*pkg*/)
+static yomk::payload::Response s3GatedFunc(YomkMsgPtr /*pkg*/)
 {
     g_s3ExecCount.fetch_add(1, std::memory_order_relaxed);
     g_s3GateStarted.store(true, std::memory_order_release);
@@ -139,7 +139,7 @@ static yomk::payload::Response s3GatedFunc(YomkPkgPtr /*pkg*/)
 // ============================================================================
 // S5 用函数
 // ============================================================================
-static yomk::payload::Response s5ProbeFunc(YomkPkgPtr /*pkg*/)
+static yomk::payload::Response s5ProbeFunc(YomkMsgPtr /*pkg*/)
 {
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "s5_ok");
 }

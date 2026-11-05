@@ -38,9 +38,9 @@ protected:
         installFunc(funcName, weakFunc(func), msgName, description);
     }
     std::map<std::string, yomk::payload::FuncInfo> funcInfos();
-    yomk::payload::Response invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);
-    yomk::payload::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
-    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    yomk::payload::Response invoke(const std::string& funcName, YomkMsgPtr pkg = nullptr);
+    yomk::payload::Response request(const std::string& url, YomkMsgPtr pkg = nullptr);
+    void asyncRequest(const std::string& url, YomkMsgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
     template <typename Class, typename Ret, typename Arg>
     auto weakFunc(Ret (Class::*func)(Arg))
     {

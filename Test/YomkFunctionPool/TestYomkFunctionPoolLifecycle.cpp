@@ -53,13 +53,13 @@ static int g_failed = 0;
 static std::atomic<long> g_nullPkgSeen{0};
 
 // echo：回传入参 pkg（验证 CALL 消息透传与解包）
-static yomk::payload::Response echoFunc(YomkPkgPtr pkg)
+static yomk::payload::Response echoFunc(YomkMsgPtr pkg)
 {
     return {yomk::payload::ResStatus::Succeeded, "echo", pkg};
 }
 
 // probe：记录是否收到 nullptr 入参（验证 m_pkg=nullptr 透传）
-static yomk::payload::Response nullProbeFunc(YomkPkgPtr pkg)
+static yomk::payload::Response nullProbeFunc(YomkMsgPtr pkg)
 {
     if (pkg == nullptr)
     {
@@ -69,24 +69,24 @@ static yomk::payload::Response nullProbeFunc(YomkPkgPtr pkg)
 }
 
 // 版本函数：区分重复注册更新前后的实现
-static yomk::payload::Response v1Func(YomkPkgPtr)
+static yomk::payload::Response v1Func(YomkMsgPtr)
 {
     return {yomk::payload::ResStatus::Succeeded, "v1"};
 }
 
-static yomk::payload::Response v2Func(YomkPkgPtr)
+static yomk::payload::Response v2Func(YomkMsgPtr)
 {
     return {yomk::payload::ResStatus::Succeeded, "v2"};
 }
 
 // 抛异常函数：验证 CALL 链异常穿透契约（P2）
-static yomk::payload::Response throwFunc(YomkPkgPtr)
+static yomk::payload::Response throwFunc(YomkMsgPtr)
 {
     throw std::runtime_error("fp_boom");
 }
 
 // 正常存活函数
-static yomk::payload::Response aliveFunc(YomkPkgPtr)
+static yomk::payload::Response aliveFunc(YomkMsgPtr)
 {
     return {yomk::payload::ResStatus::Succeeded, "alive"};
 }

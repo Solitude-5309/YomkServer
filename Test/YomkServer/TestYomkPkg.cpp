@@ -1,6 +1,6 @@
 /**
  * @file TestYomkPkg.cpp
- * @brief YomkPkg 消息包体系独立测试（正式全面测试，P2——标准类型全集/解包语义全分支此前散点触达，无独立覆盖）
+ * @brief YomkMsg 消息包体系独立测试（正式全面测试，P2——标准类型全集/解包语义全分支此前散点触达，无独立覆盖）
  *
  * 覆盖内容（5 个 Section，约 66 断言）：
  * S1. 标准类型消息包全集（15 标量 + 15 Array = 30 类型）：逐类型构造 name() == 类型名 且
@@ -14,7 +14,7 @@
  * S4. yomk::payload::Response 契约：默认构造、枚举值序（ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1）、双参/三参构造
  * S5. 框架结构体默认值（Log::m_level 无类内初始化不作值断言）+ 结构体消息包版 name 就位
  *
- * 说明：全程不调 YomkAPI::init()（纯类型/模板测试，不依赖单例）；YomkPkg::name() 公有 setter 用于
+ * 说明：全程不调 YomkAPI::init()（纯类型/模板测试，不依赖单例）；YomkMsg::name() 公有 setter 用于
  *       伪造类型名以触达 unPack 的 dynamic_pointer_cast 失败分支（名字匹配但实际类型不符）
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
@@ -143,7 +143,7 @@ int main()
         fakeTypePkg->name("String");  // 名字伪造成 String（实际是 Int32，cast 必败）
 
         // --- unPack + 服务函数级手写判空：失败返回 ResStatus::Failed + 契约消息，命中需手动继续 ---
-        auto unpackResp = [](YomkPkgPtr pkg) -> yomk::payload::Response
+        auto unpackResp = [](YomkMsgPtr pkg) -> yomk::payload::Response
         {
             auto s = yomk::msgs::unPack<yomk::msgs::String>(pkg);
             if (!s)
@@ -164,7 +164,7 @@ int main()
 
         // --- unPack + 手写判空提前 return（标志位观测） ---
         bool reached = false;
-        auto unpackVoid = [&](YomkPkgPtr pkg)
+        auto unpackVoid = [&](YomkMsgPtr pkg)
         {
             auto s = yomk::msgs::unPack<yomk::msgs::String>(pkg);
             if (!s)
@@ -180,7 +180,7 @@ int main()
         unpackVoid(fakeNamePkg);
         YOMK_TEST_CHECK(reached == false, "unPack 名字不匹配：提前 return");
         std::string voidOut;
-        auto unpackVoidHit = [&](YomkPkgPtr pkg)
+        auto unpackVoidHit = [&](YomkMsgPtr pkg)
         {
             auto s = yomk::msgs::unPack<yomk::msgs::String>(pkg);
             if (!s)
@@ -238,7 +238,7 @@ int main()
 
         int handled = 0;
         yomk::payload::Event ev3("/L1", yomk::msgs::String::shared(std::string("p")),
-                        [&handled](YomkPkgPtr) { ++handled; return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "handled"); });
+                        [&handled](YomkMsgPtr) { ++handled; return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "handled"); });
         YOMK_TEST_CHECK(ev3.m_eventLoopName == "/L1" && ev3.m_pkg != nullptr && ev3.m_eventId == 0 && ev3.m_tag.empty(),
               "Event 三参构造：字段透传，eventId 保持 0（入队时由框架分配）");
         ev3.handle();
@@ -303,7 +303,7 @@ int main()
         yomk::payload::VoidPointer vp;
         YOMK_TEST_CHECK(vp.m_ptr == nullptr, "VoidPointer 默认：ptr 空");
 
-        // 结构体消息包版：YomkMsg 宏生成的 name 就位且 d 默认构造
+        // 结构体消息包版：YOMK_DEFINE_MSG 宏生成的 name 就位且 d 默认构造
         auto ctxPkg = yomk::msgs::Context::shared();
         YOMK_TEST_CHECK(ctxPkg->name() == "Context" && ctxPkg->d.m_key.empty(), "Context 消息包版：name 就位且 d 默认构造");
     }

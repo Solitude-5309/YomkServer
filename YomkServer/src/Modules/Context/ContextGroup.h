@@ -28,7 +28,7 @@ public:
     struct Context
     {
         std::string key;
-        YomkPkgPtr value;
+        YomkMsgPtr value;
         YomkContextCheckerFunc checker;
         std::vector<ContextMonitor> monitors;
     };
@@ -46,13 +46,13 @@ public:
 
 public:
     // 返回：0 成功 / 1 key 为空 / 2 value 为空 / 3 key 已存在
-    int create(const std::string& key, YomkPkgPtr value);
+    int create(const std::string& key, YomkMsgPtr value);
     // 返回：0 成功 / 1 key 不存在
     int destroy(const std::string& key);
     // 命中时 value 填现值，key 为空或未命中时填 defaultValue；返回：0 命中 / 1 key 为空 / 2 key 不存在
-    int get(const std::string& key, YomkPkgPtr defaultValue, YomkPkgPtr& value);
+    int get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPtr& value);
     // 返回：0 成功 / 1 key 为空 / 2 key 不存在 / 3 类型不匹配 / 4 checker 拒绝
-    int set(const std::string& key, YomkPkgPtr value);
+    int set(const std::string& key, YomkMsgPtr value);
     // 开关无失败分支
     void turnOnChecker();
     void turnOffChecker();

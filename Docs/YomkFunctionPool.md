@@ -19,7 +19,7 @@
 
 ```cpp
 // 注册函数（第三参可选：声明期望的消息类型名；第四参可选：函数说明，均仅作内省元数据）
-YomkAPI::registerFunction("calcSum", [](YomkPkgPtr pkg) {
+YomkAPI::registerFunction("calcSum", [](YomkMsgPtr pkg) {
     return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "result"};
 });
 

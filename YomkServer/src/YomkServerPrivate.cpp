@@ -110,7 +110,7 @@ bool YomkServerPrivate::postRequestTask(std::function<void()> task)
     return m_requestPool.post(std::move(task));
 }
 
-yomk::payload::Response YomkServerPrivate::request(const std::string& srvName, const std::string& funcName, YomkPkgPtr pkg)
+yomk::payload::Response YomkServerPrivate::request(const std::string& srvName, const std::string& funcName, YomkMsgPtr pkg)
 {
     std::shared_ptr<YomkService> srv;
     {

@@ -70,7 +70,7 @@ static std::atomic<long> g_execCount{0};
 
 static YomkServiceFunc countHandler()
 {
-    return [](YomkPkgPtr)
+    return [](YomkMsgPtr)
     {
         g_execCount.fetch_add(1);
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "counted");
@@ -89,7 +89,7 @@ static void resetGate()
 
 static YomkServiceFunc gateHandler()
 {
-    return [](YomkPkgPtr)
+    return [](YomkMsgPtr)
     {
         g_gateStarted.store(true);
         while (!g_gateRelease.load())

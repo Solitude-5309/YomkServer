@@ -50,7 +50,7 @@ static std::atomic<int> g_taskCount{0};                   // 异步任务回调�
 static std::atomic<int> g_deinitCount{0};                 // 服务 deinit 调用次数
 static std::atomic<bool> g_deletedOnDeinit{false};        // deinit 时刻 isDeleted() 状态
 static std::atomic<int> g_spawnExec{0};                   // /spawn 真实执行次数
-static std::function<yomk::payload::Response(YomkPkgPtr)> g_weakCb;  // init 时存下的弱绑定回调
+static std::function<yomk::payload::Response(YomkMsgPtr)> g_weakCb;  // init 时存下的弱绑定回调
 static yomk::payload::Response g_weakRespDuringDrain;                // 排空期弱绑定回调执行结果
 
 static void resetGlobals()
@@ -88,8 +88,8 @@ public:
     }
 
 private:
-    yomk::payload::Response ping(YomkPkgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "pong"}; }
-    yomk::payload::Response work(YomkPkgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "work"}; }
+    yomk::payload::Response ping(YomkMsgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "pong"}; }
+    yomk::payload::Response work(YomkMsgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "work"}; }
 };
 
 /**
@@ -111,7 +111,7 @@ public:
     }
 
 private:
-    yomk::payload::Response spawn(YomkPkgPtr pkg)
+    yomk::payload::Response spawn(YomkMsgPtr pkg)
     {
         g_spawnExec.fetch_add(1);
         std::this_thread::sleep_for(std::chrono::milliseconds(200));

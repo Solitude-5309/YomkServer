@@ -11,5 +11,5 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response version(YomkPkgPtr pkg);
+    yomk::payload::Response version(YomkMsgPtr pkg);
 };

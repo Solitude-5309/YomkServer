@@ -23,13 +23,13 @@
 YomkAPI::startEventLoop("TaskLoop");
 
 // 非阻塞投递异步任务（tag 可选：仅内省可见，用于观察队列）
-YomkAPI::postEvent("TaskLoop", yomk::msgs::String::shared("task1"), [](YomkPkgPtr pkg) {
+YomkAPI::postEvent("TaskLoop", yomk::msgs::String::shared("task1"), [](YomkMsgPtr pkg) {
     // 在 TaskLoop 专用线程中顺序执行
     return yomk::payload::Response{yomk::payload::ResStatus::Succeeded};
 }, "billing");
 
 // 阻塞投递任务（等待任务在循环中执行完毕返回结果）
-yomk::payload::Response resp = YomkAPI::postEventAndWait("TaskLoop", nullptr, [](YomkPkgPtr) {
+yomk::payload::Response resp = YomkAPI::postEventAndWait("TaskLoop", nullptr, [](YomkMsgPtr) {
     return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "done"};
 });
 

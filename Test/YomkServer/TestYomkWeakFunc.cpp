@@ -68,15 +68,15 @@ public:
     // weakFunc 成员函数指针绑定真实执行计数
     std::atomic<int> memberCount{0};
 
-    yomk::payload::Response workResp(YomkPkgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "alive"}; }
-    yomk::payload::Response memberWork(YomkPkgPtr pkg)
+    yomk::payload::Response workResp(YomkMsgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "alive"}; }
+    yomk::payload::Response memberWork(YomkMsgPtr pkg)
     {
         memberCount.fetch_add(1);
         return {yomk::payload::ResStatus::Succeeded, "member"};
     }
 
     // weakFunc 成员函数指针绑定（外流注册主路径）
-    std::function<yomk::payload::Response(YomkPkgPtr)> makeMemberCb() { return weakFunc(&BindSrv::memberWork); }
+    std::function<yomk::payload::Response(YomkMsgPtr)> makeMemberCb() { return weakFunc(&BindSrv::memberWork); }
 };
 
 /**
@@ -86,13 +86,13 @@ class CtorBindSrv : public YomkService
 {
 public:
     std::atomic<int> count{0};
-    std::function<yomk::payload::Response(YomkPkgPtr)> ctorCb;
+    std::function<yomk::payload::Response(YomkMsgPtr)> ctorCb;
 
     CtorBindSrv(YomkServer* server) : YomkService(server)
     {
         // 构造期 weak_from_this() 未生效：框架告警，绑定永久失效
         ctorCb = weakFunc(
-            [this](YomkPkgPtr pkg) -> yomk::payload::Response
+            [this](YomkMsgPtr pkg) -> yomk::payload::Response
             {
                 count.fetch_add(1);
                 return {yomk::payload::ResStatus::Succeeded, "ctor"};
@@ -113,8 +113,8 @@ static void testAliveCallbacks(YomkServer* server)
 
     auto srv = std::make_shared<BindSrv>(server);
     std::function<void()> cbVoid = srv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
-    std::function<yomk::payload::Response(YomkPkgPtr)> cbResp = srv->weakFunc(
-        [&respCount](YomkPkgPtr pkg)
+    std::function<yomk::payload::Response(YomkMsgPtr)> cbResp = srv->weakFunc(
+        [&respCount](YomkMsgPtr pkg)
         {
             respCount.fetch_add(1);
             return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "alive"};
@@ -125,13 +125,13 @@ static void testAliveCallbacks(YomkServer* server)
             checkCount.fetch_add(1);
             return yomk::payload::CheckStatus::Reject;
         });
-    std::function<int(YomkPkgPtr)> cbInt = srv->weakFunc(
-        [&intCount](YomkPkgPtr pkg)
+    std::function<int(YomkMsgPtr)> cbInt = srv->weakFunc(
+        [&intCount](YomkMsgPtr pkg)
         {
             intCount.fetch_add(1);
             return 42;
         });
-    std::function<yomk::payload::Response(YomkPkgPtr)> cbMember = srv->makeMemberCb();
+    std::function<yomk::payload::Response(YomkMsgPtr)> cbMember = srv->makeMemberCb();
 
     cbVoid();
     yomk::payload::Context ctx{"key", nullptr};
@@ -160,15 +160,15 @@ static void testDestroyDiscard(YomkServer* server)
     std::atomic<int> intCount{0};
 
     std::function<void()> cbVoid;
-    std::function<yomk::payload::Response(YomkPkgPtr)> cbResp;
+    std::function<yomk::payload::Response(YomkMsgPtr)> cbResp;
     std::function<yomk::payload::CheckStatus(const yomk::payload::Context&)> cbCheck;
-    std::function<int(YomkPkgPtr)> cbInt;
-    std::function<yomk::payload::Response(YomkPkgPtr)> cbMember;
+    std::function<int(YomkMsgPtr)> cbInt;
+    std::function<yomk::payload::Response(YomkMsgPtr)> cbMember;
     {
         auto srv = std::make_shared<BindSrv>(server);
         cbVoid = srv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
         cbResp = srv->weakFunc(
-            [&respCount](YomkPkgPtr pkg)
+            [&respCount](YomkMsgPtr pkg)
             {
                 respCount.fetch_add(1);
                 return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "alive"};
@@ -180,7 +180,7 @@ static void testDestroyDiscard(YomkServer* server)
                 return yomk::payload::CheckStatus::Reject;
             });
         cbInt = srv->weakFunc(
-            [&intCount](YomkPkgPtr pkg)
+            [&intCount](YomkMsgPtr pkg)
             {
                 intCount.fetch_add(1);
                 return 42;
@@ -227,8 +227,8 @@ static void testMarkDeletedDiscard(YomkServer* server)
         "注销前：installFunc 自动弱绑定 invoke 命中执行");
 
     std::function<void()> cbVoid = rawSrv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
-    std::function<yomk::payload::Response(YomkPkgPtr)> cbResp = rawSrv->weakFunc(
-        [&respCount](YomkPkgPtr pkg)
+    std::function<yomk::payload::Response(YomkMsgPtr)> cbResp = rawSrv->weakFunc(
+        [&respCount](YomkMsgPtr pkg)
         {
             respCount.fetch_add(1);
             return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "alive"};

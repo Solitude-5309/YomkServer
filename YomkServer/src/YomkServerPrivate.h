@@ -32,7 +32,7 @@ public:
     // 框架内部投递口：异步请求池不对用户暴露。
     // 服务器已关闭或池已停止时返回 false，由调用方记日志丢弃
     bool postRequestTask(std::function<void()> task);
-    yomk::payload::Response request(const std::string& srvName, const std::string& funcName, YomkPkgPtr pkg = nullptr);
+    yomk::payload::Response request(const std::string& srvName, const std::string& funcName, YomkMsgPtr pkg = nullptr);
     std::vector<std::string> serviceNames();
     std::map<std::string, yomk::payload::FuncInfo> serviceFuncInfos(const std::string& srvName);
 

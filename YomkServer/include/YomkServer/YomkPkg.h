@@ -2,11 +2,11 @@
 #include <memory>
 #include <string>
 
-class YomkPkg
+class YomkMsg
 {
 public:
-    YomkPkg() {}
-    virtual ~YomkPkg() {}
+    YomkMsg() {}
+    virtual ~YomkMsg() {}
 
 public:
     void name(const std::string& name) { m_name = name; }
@@ -15,6 +15,6 @@ public:
 protected:
     std::string m_name;
 };
-using YomkPkgPtr = std::shared_ptr<YomkPkg>;
+using YomkMsgPtr = std::shared_ptr<YomkMsg>;
 
 #include "YomkMsgs.h"

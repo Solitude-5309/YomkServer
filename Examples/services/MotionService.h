@@ -21,8 +21,8 @@ public:
     int init() override;
 
     // 通讯自检：收到字符串原样回显
-    yomk::payload::Response echo(YomkPkgPtr pkg);
+    yomk::payload::Response echo(YomkMsgPtr pkg);
 
     // 运动指令：先跨服务留痕，再返回 MoveResp 强类型到位回执
-    yomk::payload::Response move(YomkPkgPtr pkg);
+    yomk::payload::Response move(YomkMsgPtr pkg);
 };

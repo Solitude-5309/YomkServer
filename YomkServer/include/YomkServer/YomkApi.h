@@ -210,7 +210,7 @@ public:
         static const std::string& srvAll() { static const std::string u("/YomkServerInfo/all"); return u; }
     };
     // 异步请求服务功能函数
-    static void asyncRequest(const std::string& url, YomkPkgPtr pkg, YomkResponseFunc func)
+    static void asyncRequest(const std::string& url, YomkMsgPtr pkg, YomkResponseFunc func)
     {
         auto server = serverSnapshot();
         if (!server)
@@ -221,7 +221,7 @@ public:
         return server->asyncRequest(url, pkg, func);
     }
     // 同步请求服务功能函数
-    static yomk::payload::Response request(const std::string& url, YomkPkgPtr pkg)
+    static yomk::payload::Response request(const std::string& url, YomkMsgPtr pkg)
     {
         auto server = serverSnapshot();
         if (!server)
@@ -723,7 +723,7 @@ public:
 public:
     // 创建上下文键值（groupName 缺省 "main"；组名约定永远是 API 最后一个参数，下同）
     static yomk::payload::ResStatus createContext(
-        const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
+        const std::string& ctxName, YomkMsgPtr ctx, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
@@ -762,7 +762,7 @@ public:
     }
     // 设置上下文值（整体替换）
     static yomk::payload::ResStatus setContext(
-        const std::string& ctxName, YomkPkgPtr ctx, const std::string& groupName = "main")
+        const std::string& ctxName, YomkMsgPtr ctx, const std::string& groupName = "main")
     {
         if (!requireServer())
         {
@@ -900,7 +900,7 @@ public:
     // 异步投递事件
     static yomk::payload::ResStatus postEvent(
         const std::string& eventLoopName,
-        YomkPkgPtr eventData,
+        YomkMsgPtr eventData,
         YomkServiceFunc eventHandle = nullptr,
         const std::string& tag = "")
     {
@@ -914,7 +914,7 @@ public:
     // 同步投递事件（阻塞等待执行完成）
     static yomk::payload::ResStatus postEventAndWait(
         const std::string& eventLoopName,
-        YomkPkgPtr eventData,
+        YomkMsgPtr eventData,
         YomkServiceFunc eventHandle = nullptr,
         const std::string& tag = "")
     {
@@ -993,7 +993,7 @@ public:
         return requestStatus(Url::fpUnregister(), yomk::msgs::String::shared(funcName));
     }
     // 调用函数池中注册的函数
-    static yomk::payload::Response callFunction(const std::string& funcName, YomkPkgPtr callData)
+    static yomk::payload::Response callFunction(const std::string& funcName, YomkMsgPtr callData)
     {
         if (!requireServer())
         {
@@ -1102,7 +1102,7 @@ private:
         return false;
     }
     // 同步请求并收敛为三态：失败原因经错误日志承载，返回值仅保留 ResStatus
-    static yomk::payload::ResStatus requestStatus(const std::string& url, YomkPkgPtr pkg)
+    static yomk::payload::ResStatus requestStatus(const std::string& url, YomkMsgPtr pkg)
     {
         yomk::payload::Response resp = request(url, std::move(pkg));
         if (resp.m_status != yomk::payload::ResStatus::Succeeded)

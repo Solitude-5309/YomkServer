@@ -3,17 +3,17 @@
 ## 核心类型
 
 ```cpp
-using YomkPkgPtr = std::shared_ptr<YomkPkg>;  // 消息包指针
+using YomkMsgPtr = std::shared_ptr<YomkMsg>;  // 消息包指针
 
 class yomk::payload::Response {
 public:
     enum ResStatus { ResStatus::Invalid = -1, ResStatus::Succeeded = 0, ResStatus::Failed = 1 };
     ResStatus m_status;  // 本次请求的状态
     std::string m_msg;    // 对状态的说明（不携带返回数据）
-    YomkPkgPtr m_data;    // 携带的返回数据
+    YomkMsgPtr m_data;    // 携带的返回数据
 };
 
-using YomkServiceFunc = std::function<yomk::payload::Response(YomkPkgPtr pkg)>;
+using YomkServiceFunc = std::function<yomk::payload::Response(YomkMsgPtr pkg)>;
 using YomkResponseFunc = std::function<void(yomk::payload::Response response)>;
 ```
 
@@ -32,10 +32,10 @@ using YomkResponseFunc = std::function<void(yomk::payload::Response response)>;
 - 未初始化（未 `YomkAPI::init()`）时调用任意 `YomkAPI::` 接口：同步请求返回 `ResStatus::Invalid`，msg 为 `"YomkServer is not init"`；异步请求直接丢弃（框架测试 TestYomkAPINotInit 覆盖此行为）。
 - 判断"目标是否存在"用 `ResStatus::Failed`，判断"参数是否合法"用 `ResStatus::Invalid`，不要混用。
 
-## YomkMsg 宏
+## YOMK_DEFINE_MSG 宏
 
 ```cpp
-YomkMsg(DataType, MsgName, VarName);
+YOMK_DEFINE_MSG(DataType, MsgName, VarName);
 // DataType：数据类 | MsgName：消息名称（解包与全名引用使用此名） | VarName：成员变量名
 ```
 
@@ -49,7 +49,7 @@ yomk::msgs::MsgName(...)          // 栈对象直接构造
 
 > **入包语义**：`yomk::msgs::MsgName` 包类型同时提供 `const DataType &` 与 `DataType &&` 两种构造，`yomk::msgs::MsgName::shared(std::move(data))` 即移动入包（大对象可避免拷贝）；传左值时重载决议仍选中 `const&` 版本，行为与逐值拷贝一致。
 
-> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomk::msgs::MsgName`（类）与 `yomk::msgs::MsgNamePtr`（指针），与 `yomk` 中的载荷/框架类型隔离以避免重名，引用一律写全名；裸写 `MsgName` 会报 `'MsgName' has not been declared`。消息名称作为字符串字面量仍出现在 `installFunc` 第三参位置（`installFunc` 第三参为手写字符串字面量）；解包由 `yomk::msgs::unPack<yomk::msgs::MsgName>` 模板实参承担（类型即名字，无需字符串）；框架内运行时字符串解包已内联展开（原 `YomkUnPackPkgT` 宏随闭环 7 删除）。
+> **命名约定**：消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名。`YOMK_DEFINE_MSG` 展开生成的真实类型是独立命名空间中的 `yomk::msgs::MsgName`（类）与 `yomk::msgs::MsgNamePtr`（指针），与 `yomk` 中的载荷/框架类型隔离以避免重名，引用一律写全名；裸写 `MsgName` 会报 `'MsgName' has not been declared`。消息名称作为字符串字面量仍出现在 `installFunc` 第三参位置（`installFunc` 第三参为手写字符串字面量）；解包由 `yomk::msgs::unPack<yomk::msgs::MsgName>` 模板实参承担（类型即名字，无需字符串）；框架内运行时字符串解包已内联展开（原 `YomkUnPackPkgT` 宏随闭环 7 删除）。
 
 **解包：**
 ```cpp
@@ -67,7 +67,7 @@ weakFunc(&Class::Method)         // 弱绑定成员函数（不装入 funcMap）
 // installFunc 内部经 weakFunc 绑定成员函数（等价 weakFunc(bind(&Func, this, _1))）：
 // 回调触发时先 weak_ptr.lock() 判活，服务已删除则安全丢弃，不会悬垂 this 崩溃。
 // weakFunc 是泛型模板，返回的泛型 lambda 按调用处目标 std::function 类型隐式转换，
-// 同一函数自动适配全部回调签名：功能函数/FunctionPool/EventLoop（yomk::payload::Response(YomkPkgPtr)，
+// 同一函数自动适配全部回调签名：功能函数/FunctionPool/EventLoop（yomk::payload::Response(YomkMsgPtr)，
 // 删除后返回 ResStatus::Failed）、异步响应（void(yomk::payload::Response)，丢弃）、Context checker
 // （CheckStatus(const Context&)，删除后默认放行 CheckStatus::Accept）、Context monitor（void，丢弃）。
 
@@ -85,7 +85,7 @@ struct FuncInfo {  // 功能函数元信息（调试内省用），预留扩展�
 ```cpp
 namespace yomk {
     struct Event {
-        std::string m_eventLoopName; YomkPkgPtr m_pkg;
+        std::string m_eventLoopName; YomkMsgPtr m_pkg;
         YomkServiceFunc m_serviceFunc; std::uint64_t m_eventId;
         yomk::payload::Response m_response; std::function<void()> m_waitCallback;
         std::string m_tag; // 用户事件标记，POST 时可选传入，仅用于内省展示
@@ -93,7 +93,7 @@ namespace yomk {
     // m_logger=日志器名（服务端按其选择/惰性创建日志器实例）；m_tag=记录标签（随记录显示 [tag]）
     // 控制台 TAG 宏兼容双填（m_logger=tag 且 m_tag=tag）；文件 TAG 宏 m_logger=文件名、m_tag=tag
     struct Log { enum LogLevel{LogLevel::Debug,LogLevel::Info,LogLevel::Warn,LogLevel::Error}; LogLevel m_level; std::string m_log; std::string m_logger; std::string m_tag; };
-    struct Context { std::string m_key; YomkPkgPtr m_value; };
+    struct Context { std::string m_key; YomkMsgPtr m_value; };
     enum class CheckStatus{Accept, Reject}; // Context checker 门控结论（独立对外枚举）
     struct ContextChecker {
         std::string m_key; std::function<CheckStatus(const Context&)> m_checkFunc;
@@ -137,8 +137,8 @@ class YomkServer {
     void shutdown();  // 优雅关闭：停请求池（拒新->排空->join）后锁外逐个 deinit（Context 在其中自停监控池），幂等
     std::vector<std::string> serviceNames();  // 内省：全部服务名
     std::map<std::string, yomk::payload::FuncInfo> serviceFuncInfos(const std::string& srvName);  // 内省：指定服务的函数元信息
-    yomk::payload::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
-    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    yomk::payload::Response request(const std::string& url, YomkMsgPtr pkg = nullptr);
+    void asyncRequest(const std::string& url, YomkMsgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 };
 
 class YomkBoot {
@@ -163,9 +163,9 @@ class YomkService {
     void installFunc(const std::string& funcName, Res (Class::*func)(Arg), const std::string& msgName = "",
                      const std::string& description = "");  // 成员函数指针直装："/x", &C::m[, "Msg"][, "desc"]
     std::map<std::string, yomk::payload::FuncInfo> funcInfos();  // 内省：本服务函数元信息（funcName 为键）
-    yomk::payload::Response invoke(const std::string& funcName, YomkPkgPtr pkg = nullptr);  // 直接调用本服务的功能函数（不经 URL 路由）
-    yomk::payload::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
-    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    yomk::payload::Response invoke(const std::string& funcName, YomkMsgPtr pkg = nullptr);  // 直接调用本服务的功能函数（不经 URL 路由）
+    yomk::payload::Response request(const std::string& url, YomkMsgPtr pkg = nullptr);
+    void asyncRequest(const std::string& url, YomkMsgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 };
 ```
 

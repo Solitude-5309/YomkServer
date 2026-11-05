@@ -34,7 +34,7 @@ const std::string& ContextGroup::name() const
     return m_name;
 }
 
-int ContextGroup::create(const std::string& key, YomkPkgPtr value)
+int ContextGroup::create(const std::string& key, YomkMsgPtr value)
 {
     if (key.empty())
     {
@@ -83,7 +83,7 @@ int ContextGroup::destroy(const std::string& key)
     return 0;
 }
 
-int ContextGroup::get(const std::string& key, YomkPkgPtr defaultValue, YomkPkgPtr& value)
+int ContextGroup::get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPtr& value)
 {
     if (key.empty())
     {
@@ -106,7 +106,7 @@ int ContextGroup::get(const std::string& key, YomkPkgPtr defaultValue, YomkPkgPt
     return 0;
 }
 
-int ContextGroup::set(const std::string& key, YomkPkgPtr value)
+int ContextGroup::set(const std::string& key, YomkMsgPtr value)
 {
     if (key.empty())
     {

@@ -18,29 +18,29 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response consoleLog(YomkPkgPtr pkg);
-    yomk::payload::Response setConsoleLogProxy(YomkPkgPtr pkg);
-    yomk::payload::Response setFileLogProxy(YomkPkgPtr pkg);
-    yomk::payload::Response createFileLogger(YomkPkgPtr pkg);
-    yomk::payload::Response fileLog(YomkPkgPtr pkg);
-    yomk::payload::Response writeFileLog(YomkPkgPtr pkg);
-    yomk::payload::Response deleteLogger(YomkPkgPtr pkg);
-    yomk::payload::Response offConsoleLogByLevel(YomkPkgPtr pkg);
-    yomk::payload::Response onConsoleLogByLevel(YomkPkgPtr pkg);
+    yomk::payload::Response consoleLog(YomkMsgPtr pkg);
+    yomk::payload::Response setConsoleLogProxy(YomkMsgPtr pkg);
+    yomk::payload::Response setFileLogProxy(YomkMsgPtr pkg);
+    yomk::payload::Response createFileLogger(YomkMsgPtr pkg);
+    yomk::payload::Response fileLog(YomkMsgPtr pkg);
+    yomk::payload::Response writeFileLog(YomkMsgPtr pkg);
+    yomk::payload::Response deleteLogger(YomkMsgPtr pkg);
+    yomk::payload::Response offConsoleLogByLevel(YomkMsgPtr pkg);
+    yomk::payload::Response onConsoleLogByLevel(YomkMsgPtr pkg);
     // 具名开关唯一写入口：按名查表逐器门控（未命中 ResStatus::Failed 不惰性创建，不触碰全局主闸）
     yomk::payload::Response setNamedConsoleLevel(const std::string& loggerName, yomk::payload::LogLevel level, bool on);
 
-    yomk::payload::Response offFileLogByLevel(YomkPkgPtr pkg);
-    yomk::payload::Response onFileLogByLevel(YomkPkgPtr pkg);
+    yomk::payload::Response offFileLogByLevel(YomkMsgPtr pkg);
+    yomk::payload::Response onFileLogByLevel(YomkMsgPtr pkg);
     // 文件侧具名开关唯一写入口：语义与 setNamedConsoleLevel 对称（未命中 ResStatus::Failed 不惰性创建）
     yomk::payload::Response setNamedFileLevel(const std::string& loggerName, yomk::payload::LogLevel level, bool on);
 
 private:
-    yomk::payload::Response loggers(YomkPkgPtr pkg);
-    yomk::payload::Response loggerInfo(YomkPkgPtr pkg);
-    yomk::payload::Response listAll(YomkPkgPtr pkg);
-    yomk::payload::Response consoleGlobalState(YomkPkgPtr pkg);
-    yomk::payload::Response fileGlobalState(YomkPkgPtr pkg);
+    yomk::payload::Response loggers(YomkMsgPtr pkg);
+    yomk::payload::Response loggerInfo(YomkMsgPtr pkg);
+    yomk::payload::Response listAll(YomkMsgPtr pkg);
+    yomk::payload::Response consoleGlobalState(YomkMsgPtr pkg);
+    yomk::payload::Response fileGlobalState(YomkMsgPtr pkg);
     // 取控制台全局主闸态：四个级别开关独立 atomic + proxy 叶子锁，均在表锁外独立作用域取
     // （/console_global_state 端点返回体）
     yomk::payload::LoggerState currentConsoleState();

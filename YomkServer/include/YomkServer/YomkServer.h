@@ -37,8 +37,8 @@ public:
     void shutdown();
     std::vector<std::string> serviceNames();
     std::map<std::string, yomk::payload::FuncInfo> serviceFuncInfos(const std::string& srvName);
-    yomk::payload::Response request(const std::string& url, YomkPkgPtr pkg = nullptr);
-    void asyncRequest(const std::string& url, YomkPkgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    yomk::payload::Response request(const std::string& url, YomkMsgPtr pkg = nullptr);
+    void asyncRequest(const std::string& url, YomkMsgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
 
 private:
     YomkServer(std::size_t asyncThreadCount);

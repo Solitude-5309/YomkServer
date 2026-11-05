@@ -78,7 +78,7 @@ std::map<std::string, yomk::payload::FuncInfo> YomkService::funcInfos()
     return m_p->funcInfos();
 }
 
-yomk::payload::Response YomkService::invoke(const std::string& funcName, YomkPkgPtr pkg)
+yomk::payload::Response YomkService::invoke(const std::string& funcName, YomkMsgPtr pkg)
 {
     if (!m_p)
     {
@@ -88,7 +88,7 @@ yomk::payload::Response YomkService::invoke(const std::string& funcName, YomkPkg
     return m_p->invoke(funcName, pkg);
 }
 
-yomk::payload::Response YomkService::request(const std::string& url, YomkPkgPtr pkg)
+yomk::payload::Response YomkService::request(const std::string& url, YomkMsgPtr pkg)
 {
     if (!m_p)
     {
@@ -98,7 +98,7 @@ yomk::payload::Response YomkService::request(const std::string& url, YomkPkgPtr 
     return m_p->request(url, pkg);
 }
 
-void YomkService::asyncRequest(const std::string& url, YomkPkgPtr pkg, YomkResponseFunc func)
+void YomkService::asyncRequest(const std::string& url, YomkMsgPtr pkg, YomkResponseFunc func)
 {
     if (!m_p)
     {

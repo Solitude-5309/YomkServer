@@ -18,7 +18,7 @@ description: 基于YomkServer框架的模块化C++17工程编程。核心理念"
 | **YomkFunctionPool** | 动态函数池（运行时注册/热替换） |
 | **YomkLogger** | 多级别、多输出日志 |
 
-唯一头文件：`#include <YomkServer/YomkApi.h>`，框架命名空间：`using namespace yomk;`；`YomkMsg` 生成类型位于命名空间 `yomk::msgs`。
+唯一头文件：`#include <YomkServer/YomkApi.h>`，框架命名空间：`using namespace yomk;`；`YOMK_DEFINE_MSG` 生成类型位于命名空间 `yomk::msgs`。
 
 ## 任务一：生成工程模板
 
@@ -92,7 +92,7 @@ ProjectName/
 1. **定义消息包**（`msgs/YomkMsgs.h`）：
 ```cpp
 struct MyData { std::string field1; int field2; };
-YomkMsg(MyData, MyData, d);  // 参数：数据类, 消息名称, 成员变量名
+YOMK_DEFINE_MSG(MyData, MyData, d);  // 参数：数据类, 消息名称, 成员变量名
 ```
 
 2. **创建服务文件**（`services/XxxService.h` + `services/XxxService.cpp`）：
@@ -104,7 +104,7 @@ public:
     virtual ~XxxService() {}
     virtual int init() override;
 private:
-    yomk::payload::Response myFunc(YomkPkgPtr pkg);
+    yomk::payload::Response myFunc(YomkMsgPtr pkg);
 };
 
 // .cpp
@@ -114,7 +114,7 @@ int XxxService::init() {
     YOMK_INFO_TAG("XxxService::init", "install func [ /my_func ] to", name());
     return 0;
 }
-yomk::payload::Response XxxService::myFunc(YomkPkgPtr pkg) {
+yomk::payload::Response XxxService::myFunc(YomkMsgPtr pkg) {
     auto data = yomk::msgs::unPack<yomk::msgs::MyData>(pkg);  // 解包（失败返回 nullptr，需判空）
     if (!data) { return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not MyData"}; }
     // 业务逻辑...
@@ -269,16 +269,16 @@ ExtensionName/
 
 ## 编程规范
 
-### YomkMsg 消息包
+### YOMK_DEFINE_MSG 消息包
 
 ```cpp
-YomkMsg(数据类, 消息名称, 成员名);  // 在命名空间外定义
+YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定义
 ```
-消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名（如 `YomkMsg(MyData, MyData, d)`）。
+消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名（如 `YOMK_DEFINE_MSG(MyData, MyData, d)`）。
 - `yomk::msgs::消息名称::shared(数据类实例)` — 创建消息包（类内静态工厂）
 - `yomk::msgs::unPack<yomk::msgs::消息名称>(pkg)` — 解包模板，返回 shared_ptr，失败返回 nullptr（不自动 return，需手动判空处理）
 
-注意：`YomkMsg` 展开生成的真实类型是独立命名空间中的 `yomk::msgs::消息名称` 与 `yomk::msgs::消息名称Ptr`，与 `yomk` 中的载荷/框架类型隔离以避免重名；引用须写全名，裸写消息名会报 not declared；消息名称作为字符串字面量仍用于 `installFunc` 第三参；解包由 `yomk::msgs::unPack<yomk::msgs::消息名称>` 模板实参承担（类型即名字，无需字符串），框架内运行时名解包已内联展开（原 `YomkUnPackPkgT` 宏随闭环 7 删除）。
+注意：`YOMK_DEFINE_MSG` 展开生成的真实类型是独立命名空间中的 `yomk::msgs::消息名称` 与 `yomk::msgs::消息名称Ptr`，与 `yomk` 中的载荷/框架类型隔离以避免重名；引用须写全名，裸写消息名会报 not declared；消息名称作为字符串字面量仍用于 `installFunc` 第三参；解包由 `yomk::msgs::unPack<yomk::msgs::消息名称>` 模板实参承担（类型即名字，无需字符串），框架内运行时名解包已内联展开（原 `YomkUnPackPkgT` 宏随闭环 7 删除）。
 
 内置标准类型（成员名均为 `d`）：`Bool`, `Char`, `UChar`, `Byte`, `Int8`, `Uint8`, `Int16`, `Uint16`, `Int32`, `Uint32`, `Int64`, `Uint64`, `Float32`, `Float64`, `String` 及对应 `XxxArray` 类型（完整清单见 `YomkPkg.h` 末段）。
 

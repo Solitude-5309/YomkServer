@@ -48,7 +48,7 @@ int YomkLogger::init()
     return 0;
 }
 
-yomk::payload::Response YomkLogger::consoleLog(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
 {
     auto log = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
     if (!log)
@@ -125,7 +125,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkPkgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "success."};
 }
 
-yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr pkg)
 {
     auto consoleLogProxy = yomk::msgs::unPack<yomk::msgs::ConsoleLogProxy>(pkg);
     if (!consoleLogProxy)
@@ -140,7 +140,7 @@ yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkPkgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "success."};
 }
 
-yomk::payload::Response YomkLogger::setFileLogProxy(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr pkg)
 {
     auto fileLogProxy = yomk::msgs::unPack<yomk::msgs::FileLogProxy>(pkg);
     if (!fileLogProxy)
@@ -155,7 +155,7 @@ yomk::payload::Response YomkLogger::setFileLogProxy(YomkPkgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "success."};
 }
 
-yomk::payload::Response YomkLogger::createFileLogger(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr pkg)
 {
     auto logFile = yomk::msgs::unPack<yomk::msgs::LogFile>(pkg);
     if (!logFile)
@@ -194,7 +194,7 @@ yomk::payload::Response YomkLogger::createFileLogger(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success.");
 }
 
-yomk::payload::Response YomkLogger::fileLog(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr pkg)
 {
     auto log = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
     if (!log)
@@ -259,7 +259,7 @@ yomk::payload::Response YomkLogger::fileLog(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success.");
 }
 
-yomk::payload::Response YomkLogger::writeFileLog(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr pkg)
 {
     auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
@@ -278,7 +278,7 @@ yomk::payload::Response YomkLogger::writeFileLog(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success.");
 }
 
-yomk::payload::Response YomkLogger::deleteLogger(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr pkg)
 {
     auto yName = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!yName)
@@ -326,7 +326,7 @@ yomk::payload::Response YomkLogger::deleteLogger(YomkPkgPtr pkg)
         "deleted console:" + std::to_string(deletedConsole) + " file:" + std::to_string(deletedFile));
 }
 
-yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr pkg)
 {
     auto log = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
     if (!log)
@@ -363,7 +363,7 @@ yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success.");
 }
 
-yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
 {
     auto log = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
     if (!log)
@@ -435,7 +435,7 @@ yomk::payload::Response YomkLogger::setNamedConsoleLevel(const std::string& logg
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success.");
 }
 
-yomk::payload::Response YomkLogger::offFileLogByLevel(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
 {
     auto log = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
     if (!log)
@@ -472,7 +472,7 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success.");
 }
 
-yomk::payload::Response YomkLogger::onFileLogByLevel(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
 {
     auto log = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
     if (!log)
@@ -544,7 +544,7 @@ yomk::payload::Response YomkLogger::setNamedFileLevel(const std::string& loggerN
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success.");
 }
 
-yomk::payload::Response YomkLogger::loggers(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::loggers(YomkMsgPtr pkg)
 {
     auto type = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!type)
@@ -576,7 +576,7 @@ yomk::payload::Response YomkLogger::loggers(YomkPkgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(std::move(names))};
 }
 
-yomk::payload::Response YomkLogger::loggerInfo(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
 {
     auto query = yomk::msgs::unPack<yomk::msgs::LoggerQuery>(pkg);
     if (!query)
@@ -698,7 +698,7 @@ LoggerState YomkLogger::namedFileState(const FileLoggerPtr& fileLogger, bool pro
     return state;
 }
 
-yomk::payload::Response YomkLogger::listAll(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::listAll(YomkMsgPtr pkg)
 {
     (void)pkg;
     // LoggerState 内嵌每条 LoggerInfo：console 条目报控制台逐器门控层真值（namedConsoleState 逐条求值），
@@ -743,14 +743,14 @@ yomk::payload::Response YomkLogger::listAll(YomkPkgPtr pkg)
 }
 
 // 控制台全局主闸态内省（无参形态同 /all；m_msg 恒 "ok"，LoggerState 包走 m_data）
-yomk::payload::Response YomkLogger::consoleGlobalState(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::consoleGlobalState(YomkMsgPtr pkg)
 {
     (void)pkg;
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::LoggerState::shared(currentConsoleState())};
 }
 
 // 文件全局主闸态内省（无参形态同 /all；m_msg 恒 "ok"，LoggerState 包走 m_data）
-yomk::payload::Response YomkLogger::fileGlobalState(YomkPkgPtr pkg)
+yomk::payload::Response YomkLogger::fileGlobalState(YomkMsgPtr pkg)
 {
     (void)pkg;
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::LoggerState::shared(currentFileState())};

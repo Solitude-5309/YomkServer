@@ -60,7 +60,7 @@ static std::atomic<int> g_execCount{0};  // 计数 handler 执行总数（S2/S3/
 
 static YomkServiceFunc countHandler()
 {
-    return [](YomkPkgPtr)
+    return [](YomkMsgPtr)
     {
         g_execCount.fetch_add(1);
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "counted");
@@ -101,7 +101,7 @@ static void resetGate()
 
 static YomkServiceFunc gateHandler()
 {
-    return [](YomkPkgPtr)
+    return [](YomkMsgPtr)
     {
         g_gateStarted.store(true);
         while (!g_gateRelease.load())
@@ -163,7 +163,7 @@ int main()
             {
                 auto ev = yomk::msgs::Event::shared(yomk::payload::Event("conc1", nullptr, nullptr, ""));
                 yomk::msgs::Event* raw = ev.get();  // handler 执行期间 run() 持有 shared_ptr，裸指针安全
-                ev->d.m_serviceFunc = [raw](YomkPkgPtr)
+                ev->d.m_serviceFunc = [raw](YomkMsgPtr)
                 {
                     recordExecId(raw->d.m_eventId);
                     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");

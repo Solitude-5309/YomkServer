@@ -7,7 +7,7 @@ C++ Modular Fast Development Framework (C++17)
 YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服务开发框架。它采用"一切皆服务，一切皆请求"的设计理念，通过标准化的通信接口和灵活的模块机制，实现系统组件的高度解耦和动态组合。
 
 - **进程内服务总线**：服务（`YomkService`）注册到服务器（`YomkServer`），通过 URL 格式 `"/服务名/功能函数名"` 进行同步或异步调用。
-- **强类型化消息包**：业务数据通过 `YomkPkg` 及其派生类安全封装与传递，支持移动语义与动态类型转换。
+- **强类型化消息包**：业务数据通过 `YomkMsg` 及其派生类安全封装与传递，支持移动语义与动态类型转换。
 - **开箱即用内置能力**：框架初始化即自动装配日志系统、共享上下文、隔离事件循环、动态函数池以及服务自省机制。
 
 ### 模块清单
@@ -15,7 +15,7 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 | 模块 | 简述 |
 |---|---|
 | [YomkServer / YomkService](Docs/YomkServer.md) | 服务总线核心：服务注册与 `"/服务名/函数名"` URL 路由、同步/异步请求分发、服务生命周期管理（deinit / 优雅关闭） |
-| [YomkPkg](Docs/YomkPkg.md) | 强类型消息包：`YomkMsg` 宏声明自定义消息，内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
+| [YomkMsg](Docs/YomkPkg.md) | 强类型消息包：`YOMK_DEFINE_MSG` 宏声明自定义消息，内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
 | [YomkBoot](Docs/YomkServer.md) | 启动编排：before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程 |
 | [YomkLogger](Docs/YomkLogger.md) | 日志系统：控制台与文件双输出、四级级别开关、自定义 tag、日志代理拦截、位置前缀开关与日志器自省 |
 | [YomkContext](Docs/YomkContext.md) | 共享上下文：跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步） |
@@ -23,7 +23,7 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 | [YomkFunctionPool](Docs/YomkFunctionPool.md) | 动态函数池：跨服务扁平函数注册中心，同名重注册即运行时热替换，按名直接调用 |
 | [YomkServerInfo](Docs/YomkServerInfo.md) | 服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型 |
 
-核心层（YomkServer / YomkService / YomkPkg / YomkBoot）构成框架骨架；YomkLogger、YomkContext、YomkEventLoop、YomkFunctionPool、YomkServerInfo 均以内置服务形式随 `YomkAPI::init()` 自动启动、开箱即用，全部能力经 `YomkAPI::` 接口统一调用。
+核心层（YomkServer / YomkService / YomkMsg / YomkBoot）构成框架骨架；YomkLogger、YomkContext、YomkEventLoop、YomkFunctionPool、YomkServerInfo 均以内置服务形式随 `YomkAPI::init()` 自动启动、开箱即用，全部能力经 `YomkAPI::` 接口统一调用。
 
 ---
 
@@ -51,8 +51,8 @@ public:
         return 0; // 返回 0 表示服务初始化成功
     }
 
-    // 功能函数统一签名：yomk::payload::Response(YomkPkgPtr pkg)
-    yomk::payload::Response hello(YomkPkgPtr pkg)
+    // 功能函数统一签名：yomk::payload::Response(YomkMsgPtr pkg)
+    yomk::payload::Response hello(YomkMsgPtr pkg)
     {
         auto msg = yomk::msgs::unPack<yomk::msgs::String>(pkg); // 类型校验与解包；类型不匹配时 msg 为 nullptr，需自行判空
         if (!msg)
@@ -100,9 +100,9 @@ int main()
 
 详见 [服务总线](Docs/YomkServer.md)。
 
-### 2. 消息包 (YomkPkg)
+### 2. 消息包 (YomkMsg)
 
-服务与事件循环间传递强类型数据：`YomkMsg(DataType, MsgName, VarName)` 宏声明自定义消息，`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unPack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型。
+服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息，`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unPack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型。
 
 详见 [消息包](Docs/YomkPkg.md)。
 

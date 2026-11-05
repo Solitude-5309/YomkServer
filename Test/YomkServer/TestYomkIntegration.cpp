@@ -221,7 +221,7 @@ int main()
         for (int i = 0; i < 100; ++i)
         {
             if (YomkAPI::postEvent("integration_loop", nullptr,
-                                    [](YomkPkgPtr) { return yomk::payload::Response(yomk::payload::ResStatus::Succeeded); }) !=
+                                    [](YomkMsgPtr) { return yomk::payload::Response(yomk::payload::ResStatus::Succeeded); }) !=
                 yomk::payload::ResStatus::Succeeded)
             {
                 postOk = false;

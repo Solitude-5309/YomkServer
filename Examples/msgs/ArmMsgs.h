@@ -5,10 +5,10 @@
  * @file ArmMsgs.h
  * @brief 机械臂控制示例消息包定义
  *
- * 服务间传递的数据结构在此集中定义：普通结构体 + YomkMsg 宏
+ * 服务间传递的数据结构在此集中定义：普通结构体 + YOMK_DEFINE_MSG 宏
  * 即可注册为框架内可传输的消息包。
  *
- * YomkMsg(数据类型, 消息名, 成员变量名) 三参数含义：
+ * YOMK_DEFINE_MSG(数据类型, 消息名, 成员变量名) 三参数含义：
  * - 数据类型：实际承载数据的结构体
  * - 消息名：框架内类型识别名（供自省/校验用），注册后各辅助宏均以它为名
  * - 成员变量名：包内访问数据的入口，如 ptr->cmd.m_x
@@ -34,5 +34,5 @@ struct MoveResp
 // 注册后即可使用：
 // - 创建：yomk::msgs::MoveCmd::shared(moveCmd)（聚合初始化先赋具名变量，含逗号不能内联进宏）
 // - 解包：auto ptr = yomk::msgs::unPack<yomk::msgs::MoveCmd>(pkg)，通过 ptr->cmd.m_x 访问
-YomkMsg(::MoveCmd, MoveCmd, cmd);
-YomkMsg(::MoveResp, MoveResp, resp);
+YOMK_DEFINE_MSG(::MoveCmd, MoveCmd, cmd);
+YOMK_DEFINE_MSG(::MoveResp, MoveResp, resp);

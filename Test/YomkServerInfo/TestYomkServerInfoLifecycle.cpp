@@ -169,13 +169,13 @@ public:
         return 0;
     }
 
-    yomk::payload::Response ping(YomkPkgPtr pkg)
+    yomk::payload::Response ping(YomkMsgPtr pkg)
     {
         (void)pkg;
         return {yomk::payload::ResStatus::Succeeded, "pong"};
     }
 
-    yomk::payload::Response echo(YomkPkgPtr pkg)
+    yomk::payload::Response echo(YomkMsgPtr pkg)
     {
         auto yText = yomk::msgs::unPack<yomk::msgs::String>(pkg);
         if (!yText)
@@ -201,7 +201,7 @@ public:
         return 0;
     }
 
-    yomk::payload::Response hit(YomkPkgPtr pkg)
+    yomk::payload::Response hit(YomkMsgPtr pkg)
     {
         (void)pkg;
         return {yomk::payload::ResStatus::Succeeded, "hit"};

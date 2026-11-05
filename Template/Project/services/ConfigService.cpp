@@ -32,7 +32,7 @@ int ConfigService::init()
     return 0;
 }
 
-yomk::payload::Response ConfigService::loadConfig(YomkPkgPtr pkg)
+yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr pkg)
 {
     // 从 Context 获取配置文件路径
     auto ctxVal = YomkAPI::getContext<yomk::msgs::String>(CTX_CONFIG_PATH, nullptr);
@@ -64,7 +64,7 @@ yomk::payload::Response ConfigService::loadConfig(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
-yomk::payload::Response ConfigService::getConfig(YomkPkgPtr pkg)
+yomk::payload::Response ConfigService::getConfig(YomkMsgPtr pkg)
 {
     auto data = yomk::msgs::unPack<yomk::msgs::ConfigKey>(pkg);
     if (!data)
@@ -81,7 +81,7 @@ yomk::payload::Response ConfigService::getConfig(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(it->second));
 }
 
-yomk::payload::Response ConfigService::setConfig(YomkPkgPtr pkg)
+yomk::payload::Response ConfigService::setConfig(YomkMsgPtr pkg)
 {
     auto data = yomk::msgs::unPack<yomk::msgs::ConfigKeyValue>(pkg);
     if (!data)
@@ -94,13 +94,13 @@ yomk::payload::Response ConfigService::setConfig(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
-yomk::payload::Response ConfigService::reloadConfig(YomkPkgPtr pkg)
+yomk::payload::Response ConfigService::reloadConfig(YomkMsgPtr pkg)
 {
     m_configMap.clear();
     return loadConfig(nullptr);
 }
 
-yomk::payload::Response ConfigService::version(YomkPkgPtr pkg)
+yomk::payload::Response ConfigService::version(YomkMsgPtr pkg)
 {
     // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(std::string(APP_VERSION)));

@@ -103,7 +103,7 @@ static void resetGate()
 
 static YomkServiceFunc gateHandler()
 {
-    return [](YomkPkgPtr)
+    return [](YomkMsgPtr)
     {
         g_gateStarted.store(true);
         while (!g_gateRelease.load())
@@ -171,7 +171,7 @@ static bool waitUntil(const std::function<bool()>& pred, int timeoutMs)
 // 计数事件处理器：记录执行顺序
 static YomkServiceFunc countingHandler(const std::string& tag)
 {
-    return [tag](YomkPkgPtr)
+    return [tag](YomkMsgPtr)
     {
         recordOrder(tag);
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "counted: " + tag);
@@ -273,7 +273,7 @@ int main()
         EventLoop loop;
         YOMK_TEST_CHECK(loop.start() == 0, "start 返回 0");
 
-        auto recordId = [](YomkPkgPtr)
+        auto recordId = [](YomkMsgPtr)
         {
             recordThreadId();
             return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "id recorded");
@@ -330,7 +330,7 @@ int main()
             yomk::payload::Event(
                 "wb",
                 nullptr,
-                [&loop, inner](YomkPkgPtr)
+                [&loop, inner](YomkMsgPtr)
                 {
                     loop.postWait(inner);
                     recordOrder("outer");
@@ -362,13 +362,13 @@ int main()
         // postWait 不挂起
         auto thrower = yomk::msgs::Event::shared(
             yomk::payload::Event(
-                "wb", nullptr, [](YomkPkgPtr) -> yomk::payload::Response { throw std::runtime_error("boom"); }, "thr1"));
+                "wb", nullptr, [](YomkMsgPtr) -> yomk::payload::Response { throw std::runtime_error("boom"); }, "thr1"));
         YOMK_TEST_CHECK(loop.postWait(thrower) == 0, "handler 抛 std::exception 时 postWait 仍返回 0（异常被吞噬）");
 
         // 未知异常分支（非 std::exception）
         auto thrower2 = yomk::msgs::Event::shared(
             yomk::payload::Event(
-                "wb", nullptr, [](YomkPkgPtr) -> yomk::payload::Response { throw 42; }, "thr2"));
+                "wb", nullptr, [](YomkMsgPtr) -> yomk::payload::Response { throw 42; }, "thr2"));
         YOMK_TEST_CHECK(loop.post(thrower2) == 0, "post 抛未知异常事件返回 0");
 
         // 循环存活：后续正常事件仍执行

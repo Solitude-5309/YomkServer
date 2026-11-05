@@ -72,7 +72,7 @@ std::map<std::string, yomk::payload::FuncInfo> YomkServicePrivate::funcInfos()
     return infos;
 }
 
-yomk::payload::Response YomkServicePrivate::invoke(const std::string& funcName, YomkPkgPtr pkg)
+yomk::payload::Response YomkServicePrivate::invoke(const std::string& funcName, YomkMsgPtr pkg)
 {
     if (funcName.empty() || funcName[0] != '/')
     {
@@ -96,7 +96,7 @@ yomk::payload::Response YomkServicePrivate::invoke(const std::string& funcName, 
     return tmpFunc(pkg);
 }
 
-yomk::payload::Response YomkServicePrivate::request(const std::string& url, YomkPkgPtr pkg)
+yomk::payload::Response YomkServicePrivate::request(const std::string& url, YomkMsgPtr pkg)
 {
     auto server = m_weakServer.lock();
     if (!server)
@@ -108,7 +108,7 @@ yomk::payload::Response YomkServicePrivate::request(const std::string& url, Yomk
     return server->request(url, pkg);
 }
 
-void YomkServicePrivate::asyncRequest(const std::string& url, YomkPkgPtr pkg, YomkResponseFunc func)
+void YomkServicePrivate::asyncRequest(const std::string& url, YomkMsgPtr pkg, YomkResponseFunc func)
 {
     auto server = m_weakServer.lock();
     if (!server)

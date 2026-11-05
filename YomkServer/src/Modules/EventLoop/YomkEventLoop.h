@@ -16,14 +16,14 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response start(YomkPkgPtr pkg);
-    yomk::payload::Response stop(YomkPkgPtr pkg);
-    yomk::payload::Response post(YomkPkgPtr pkg);
-    yomk::payload::Response postWait(YomkPkgPtr pkg);
-    yomk::payload::Response destroy(YomkPkgPtr pkg);
-    yomk::payload::Response loops(YomkPkgPtr pkg);
-    yomk::payload::Response loopInfo(YomkPkgPtr pkg);
-    yomk::payload::Response listAll(YomkPkgPtr pkg);
+    yomk::payload::Response start(YomkMsgPtr pkg);
+    yomk::payload::Response stop(YomkMsgPtr pkg);
+    yomk::payload::Response post(YomkMsgPtr pkg);
+    yomk::payload::Response postWait(YomkMsgPtr pkg);
+    yomk::payload::Response destroy(YomkMsgPtr pkg);
+    yomk::payload::Response loops(YomkMsgPtr pkg);
+    yomk::payload::Response loopInfo(YomkMsgPtr pkg);
+    yomk::payload::Response listAll(YomkMsgPtr pkg);
 
 private:
     std::map<std::string, EventLoopPtr> m_eventLoop;

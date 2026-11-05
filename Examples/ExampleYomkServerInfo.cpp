@@ -225,7 +225,7 @@ struct QualityCheckReq
     std::int32_t m_count;   // 抽检件数
 };
 
-YomkMsg(::QualityCheckReq, QualityCheckReq, req);
+YOMK_DEFINE_MSG(::QualityCheckReq, QualityCheckReq, req);
 
 class ArmStationService : public YomkService
 {
@@ -247,7 +247,7 @@ public:
     }
 
     // 工位状态上报：收到状态文本回执确认
-    yomk::payload::Response report(YomkPkgPtr pkg)
+    yomk::payload::Response report(YomkMsgPtr pkg)
     {
         auto status = yomk::msgs::unPack<yomk::msgs::String>(pkg);
         if (!status)
@@ -261,7 +261,7 @@ public:
     }
 
     // 质量抽检：解包 QualityCheckReq，按件抽检并回执结论
-    yomk::payload::Response qualityCheck(YomkPkgPtr pkg)
+    yomk::payload::Response qualityCheck(YomkMsgPtr pkg)
     {
         auto data = yomk::msgs::unPack<yomk::msgs::QualityCheckReq>(pkg);
         if (!data)

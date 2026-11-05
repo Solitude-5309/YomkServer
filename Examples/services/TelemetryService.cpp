@@ -35,7 +35,7 @@ void TelemetryService::deinit()
     YOMK_INFO_TAG("arm.telemetry", "deinit: telemetry service offline");
 }
 
-yomk::payload::Response TelemetryService::record(YomkPkgPtr pkg)
+yomk::payload::Response TelemetryService::record(YomkMsgPtr pkg)
 {
     auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
     if (!str)

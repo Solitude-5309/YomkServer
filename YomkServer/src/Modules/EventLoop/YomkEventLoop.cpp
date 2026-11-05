@@ -23,7 +23,7 @@ int YomkEventLoop::init()
     return 0;
 }
 
-yomk::payload::Response YomkEventLoop::start(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::start(YomkMsgPtr pkg)
 {
     auto eventloop = yomk::msgs::unPack<yomk::msgs::EventLoop>(pkg);
     if (!eventloop)
@@ -46,7 +46,7 @@ yomk::payload::Response YomkEventLoop::start(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop start success");
 }
 
-yomk::payload::Response YomkEventLoop::stop(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::stop(YomkMsgPtr pkg)
 {
     auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
@@ -65,7 +65,7 @@ yomk::payload::Response YomkEventLoop::stop(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop stop success");
 }
 
-yomk::payload::Response YomkEventLoop::post(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::post(YomkMsgPtr pkg)
 {
     auto event = yomk::msgs::unPack<yomk::msgs::Event>(pkg);
     if (!event)
@@ -89,7 +89,7 @@ yomk::payload::Response YomkEventLoop::post(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop post success");
 }
 
-yomk::payload::Response YomkEventLoop::postWait(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::postWait(YomkMsgPtr pkg)
 {
     auto event = yomk::msgs::unPack<yomk::msgs::Event>(pkg);
     if (!event)
@@ -113,7 +113,7 @@ yomk::payload::Response YomkEventLoop::postWait(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop post wait success", event);
 }
 
-yomk::payload::Response YomkEventLoop::destroy(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::destroy(YomkMsgPtr pkg)
 {
     auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
@@ -135,7 +135,7 @@ yomk::payload::Response YomkEventLoop::destroy(YomkPkgPtr pkg)
 }
 
 // 内省：列出全部事件循环名
-yomk::payload::Response YomkEventLoop::loops(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::loops(YomkMsgPtr pkg)
 {
     std::vector<std::string> loopNames;
     {
@@ -149,7 +149,7 @@ yomk::payload::Response YomkEventLoop::loops(YomkPkgPtr pkg)
 }
 
 // 内省：单个事件循环元信息，入参 String 格式：循环名 或 循环名 N（N 缺省 3）
-yomk::payload::Response YomkEventLoop::loopInfo(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::loopInfo(YomkMsgPtr pkg)
 {
     auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
@@ -199,7 +199,7 @@ yomk::payload::Response YomkEventLoop::loopInfo(YomkPkgPtr pkg)
 }
 
 // 内省：全部事件循环元信息，锁内拷贝快照、锁外逐循环取结构化快照（m_msg 恒 "ok"，数据走 m_data）
-yomk::payload::Response YomkEventLoop::listAll(YomkPkgPtr pkg)
+yomk::payload::Response YomkEventLoop::listAll(YomkMsgPtr pkg)
 {
     std::vector<EventLoopPtr> eventLoops;
     std::vector<std::string> loopNames;

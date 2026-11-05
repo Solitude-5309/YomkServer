@@ -209,7 +209,7 @@ static void logKeyInfo(const std::string& api, const yomk::payload::ContextKeyIn
 // CREATE 幂等化封装：键已存在（排他 ResStatus::Failed）视为就绪跳过。
 // 本身即 YomkAPI::createContext 的工程化用法：排他 ResStatus::Failed 在正式代码中按"已初始化"
 // 处理而非错误——后启动的模块靠它安全补建自己关心的键。
-static void ensureKey(const std::string& op, const std::string& key, YomkPkgPtr value)
+static void ensureKey(const std::string& op, const std::string& key, YomkMsgPtr value)
 {
     auto status = logAction(op, "CREATE " + key, [&] { return YomkAPI::createContext(key, value); });
     if (status != yomk::payload::ResStatus::Succeeded)

@@ -181,14 +181,14 @@ static void logLoopLine(const std::string& api, const std::string& loopName)
 }
 
 // ---------------------------------------------------------------------------
-// 事件处理函数：签名统一为 yomk::payload::Response(YomkPkgPtr)。
+// 事件处理函数：签名统一为 yomk::payload::Response(YomkMsgPtr)。
 // 可作为默认处理函数（启动时指定）或临时处理函数（投递时指定）。
 // ---------------------------------------------------------------------------
 
 // 运动指令处理函数：默认处理函数（场景 1 START 时指定）。
 // 模拟 200ms 运动耗时，让队列积压与 FIFO 消费顺序在日志中稳定可见；
 // 第 1 条指令执行时递归投递 3 条微调指令排到队尾——同循环 FIFO 的直观证据
-yomk::payload::Response motionHandle(YomkPkgPtr pkg)
+yomk::payload::Response motionHandle(YomkMsgPtr pkg)
 {
     auto cmd = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!cmd)
@@ -217,7 +217,7 @@ yomk::payload::Response motionHandle(YomkPkgPtr pkg)
 }
 
 // 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 START 2 参时指定）
-yomk::payload::Response teachHandle(YomkPkgPtr pkg)
+yomk::payload::Response teachHandle(YomkMsgPtr pkg)
 {
     auto msg = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!msg)
@@ -367,7 +367,7 @@ static void showArmTempHandler()
 
     // lambda 先赋给具名变量再传宏：返回值构造含逗号时，
     // 直接内联进宏会让预处理器把逗号误当实参分隔符
-    YomkServiceFunc tempHandle = [](YomkPkgPtr) -> yomk::payload::Response { return {yomk::payload::ResStatus::Succeeded, "tempHandle result"}; };
+    YomkServiceFunc tempHandle = [](YomkMsgPtr) -> yomk::payload::Response { return {yomk::payload::ResStatus::Succeeded, "tempHandle result"}; };
 
     logAction(
         "投递紧急巡检任务（临时函数）",

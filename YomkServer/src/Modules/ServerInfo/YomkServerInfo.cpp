@@ -18,7 +18,7 @@ int YomkServerInfo::init()
     return 0;
 }
 
-yomk::payload::Response YomkServerInfo::listServices(YomkPkgPtr pkg)
+yomk::payload::Response YomkServerInfo::listServices(YomkMsgPtr pkg)
 {
     auto server = m_weakServer.lock();
     if (!server)
@@ -29,7 +29,7 @@ yomk::payload::Response YomkServerInfo::listServices(YomkPkgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(server->serviceNames())};
 }
 
-yomk::payload::Response YomkServerInfo::listFunctions(YomkPkgPtr pkg)
+yomk::payload::Response YomkServerInfo::listFunctions(YomkMsgPtr pkg)
 {
     auto ySrvName = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!ySrvName)
@@ -58,7 +58,7 @@ yomk::payload::Response YomkServerInfo::listFunctions(YomkPkgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfoList::shared(std::move(funcs))};
 }
 
-yomk::payload::Response YomkServerInfo::functionInfo(YomkPkgPtr pkg)
+yomk::payload::Response YomkServerInfo::functionInfo(YomkMsgPtr pkg)
 {
     auto yUrl = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!yUrl)
@@ -114,7 +114,7 @@ yomk::payload::Response YomkServerInfo::functionInfo(YomkPkgPtr pkg)
     return {yomk::payload::ResStatus::Failed, "service not found: " + srvName};
 }
 
-yomk::payload::Response YomkServerInfo::listAll(YomkPkgPtr pkg)
+yomk::payload::Response YomkServerInfo::listAll(YomkMsgPtr pkg)
 {
     (void)pkg;
     auto server = m_weakServer.lock();

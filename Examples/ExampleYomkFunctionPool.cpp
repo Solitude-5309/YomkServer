@@ -2,7 +2,7 @@
  * @file ExampleYomkFunctionPool.cpp
  * @brief YomkFunctionPool 动态函数池示例：机械臂产线背景的 6 个场景小示例（面向初学者）
  *
- * 函数池是一个跨模块共享的扁平函数中心：把符合 yomk::payload::Response(YomkPkgPtr) 签名的
+ * 函数池是一个跨模块共享的扁平函数中心：把符合 yomk::payload::Response(YomkMsgPtr) 签名的
  * 函数按名字注册进池子，之后在任意位置按名字调用——机械臂系统中主控、示教器、
  * 视觉工位正是这样共享无状态工具函数（负载合计、班次握手、位姿换算），彼此
  * 无需感知对方实现。同名重复注册即运行时热替换，无需先注销。
@@ -161,13 +161,13 @@ static void logVerify(const std::string& text)
 }
 
 // ---------------------------------------------------------------------------
-// 可注册进函数池的工具函数：签名统一为 yomk::payload::Response(YomkPkgPtr)，全部无状态。
+// 可注册进函数池的工具函数：签名统一为 yomk::payload::Response(YomkMsgPtr)，全部无状态。
 // CALL 在调用方线程同步执行，函数体的 arm.tool 日志会先于调用方结果行出现。
 // ---------------------------------------------------------------------------
 
 // 负载合计工具：跨模块共享的无状态计算函数（场景 1 以 2 参形式登记）。
 // 入参 StringArray 各轴负载（kg），合计结果同时放进 msg 与 m_data——调用方两者都能拿到
-yomk::payload::Response payloadSum(YomkPkgPtr pkg)
+yomk::payload::Response payloadSum(YomkMsgPtr pkg)
 {
     // 解包入参：宏已自动判空，失败自动返回 {ResStatus::Failed, "错误信息"}（空参守卫见场景 3）
     auto loads = yomk::msgs::unPack<yomk::msgs::StringArray>(pkg);
@@ -195,7 +195,7 @@ yomk::payload::Response payloadSum(YomkPkgPtr pkg)
 }
 
 // 班次握手工具：演示带元数据的登记与调用（场景 2 以 4 参形式登记，场景 4 被热替换）
-yomk::payload::Response handshake(YomkPkgPtr pkg)
+yomk::payload::Response handshake(YomkMsgPtr pkg)
 {
     auto worker = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!worker)
@@ -291,7 +291,7 @@ static void showArmToolHotSwap()
 
     // lambda 先赋给具名变量再传宏：返回值构造含逗号时，
     // 直接内联进宏会让预处理器把逗号误当实参分隔符
-    YomkServiceFunc handshakeV2 = [](YomkPkgPtr pkg) -> yomk::payload::Response
+    YomkServiceFunc handshakeV2 = [](YomkMsgPtr pkg) -> yomk::payload::Response
     {
         auto worker = yomk::msgs::unPack<yomk::msgs::String>(pkg);
         if (!worker)

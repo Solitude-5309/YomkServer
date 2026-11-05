@@ -1,12 +1,12 @@
-# YomkPkg(消息包)
+# YomkMsg(消息包)
 
-强类型消息包：业务数据通过 `YomkPkg` 及其派生类安全封装与传递，支持移动语义与动态类型转换，用于在服务与事件循环间传递数据。
+强类型消息包：业务数据通过 `YomkMsg` 及其派生类安全封装与传递，支持移动语义与动态类型转换，用于在服务与事件循环间传递数据。
 
 ## API 速查
 
 | API | 说明 |
 |---|---|
-| `YomkMsg(DataType, MsgName, VarName)` | 声明自定义消息类型（建议放置在命名空间之外） |
+| `YOMK_DEFINE_MSG(DataType, MsgName, VarName)` | 声明自定义消息类型（建议放置在命名空间之外） |
 | `yomk::msgs::MsgName::shared(...)` | 创建 `shared_ptr` 包装的消息包（类内静态工厂） |
 | `yomk::msgs::unPack<yomk::msgs::MsgName>(pkg)` | 按消息类型解包模板：返回 `std::shared_ptr<MsgName>`，pkg 为空或类型名不匹配时返回 `nullptr`，不提前返回；失败处理由调用方手写（如 `if (!ptr) return {...}`） |
 
@@ -26,7 +26,7 @@ struct UserInfo {
     int id;
     std::string name;
 };
-YomkMsg(UserInfo, UserInfoMsg, data);
+YOMK_DEFINE_MSG(UserInfo, UserInfoMsg, data);
 
 // 2. 构造与传递消息包（创建 shared_ptr 包装的消息包）
 auto pkg = yomk::msgs::UserInfoMsg::shared(UserInfo{1001, "Alice"});
@@ -43,7 +43,7 @@ return {yomk::payload::ResStatus::Succeeded, "hello " + info->d.name};
 ## 注意事项
 
 - 消息按类型名（宏的 `MsgName` 参数）在运行期匹配；`installFunc("/x", &C::m, "MsgName")` 第三参、`YomkAPI::registerFunction`、`YomkAPI::startEventLoop` 三参形式声明的期望消息类型名与此一致，供自省识别（`installFunc` 另有第四参为函数说明字符串，仅内省透传不解析）。
-- `YomkMsg` 生成的消息类支持拷贝与移动构造（移动语义）。
+- `YOMK_DEFINE_MSG` 生成的消息类支持拷贝与移动构造（移动语义）。
 
 ## 完整示例
 

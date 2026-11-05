@@ -167,7 +167,7 @@ constexpr const char *const CTX_CONFIG_PATH = "config_path";
 #pragma once
 #include <YomkServer/YomkApi.h>
 
-// 定义完所有的结构体后，统一注册YomkMsg
+// 定义完所有的结构体后，统一注册YOMK_DEFINE_MSG
 // ConfigService 消息包
 struct ConfigKey 
 { 
@@ -180,8 +180,8 @@ struct ConfigKeyValue
     std::string value; 
 };
 
-YomkMsg(ConfigKey, ConfigKey, req);
-YomkMsg(ConfigKeyValue, ConfigKeyValue, req);
+YOMK_DEFINE_MSG(ConfigKey, ConfigKey, req);
+YOMK_DEFINE_MSG(ConfigKeyValue, ConfigKeyValue, req);
 ```
 
 ### services/ConfigService.h
@@ -201,11 +201,11 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response loadConfig(YomkPkgPtr pkg);
-    yomk::payload::Response getConfig(YomkPkgPtr pkg);
-    yomk::payload::Response setConfig(YomkPkgPtr pkg);
-    yomk::payload::Response reloadConfig(YomkPkgPtr pkg);
-    yomk::payload::Response version(YomkPkgPtr pkg);
+    yomk::payload::Response loadConfig(YomkMsgPtr pkg);
+    yomk::payload::Response getConfig(YomkMsgPtr pkg);
+    yomk::payload::Response setConfig(YomkMsgPtr pkg);
+    yomk::payload::Response reloadConfig(YomkMsgPtr pkg);
+    yomk::payload::Response version(YomkMsgPtr pkg);
 
     std::string m_configPath;
     std::unordered_map<std::string, std::string> m_configMap;
@@ -244,7 +244,7 @@ int ConfigService::init()
     return 0;
 }
 
-yomk::payload::Response ConfigService::loadConfig(YomkPkgPtr pkg)
+yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr pkg)
 {
     auto ctxVal = YomkAPI::getContext<yomk::msgs::String>(CTX_CONFIG_PATH, nullptr);
     if (!ctxVal)
@@ -273,7 +273,7 @@ yomk::payload::Response ConfigService::loadConfig(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
-yomk::payload::Response ConfigService::getConfig(YomkPkgPtr pkg)
+yomk::payload::Response ConfigService::getConfig(YomkMsgPtr pkg)
 {
     auto data = yomk::msgs::unPack<yomk::msgs::ConfigKey>(pkg);
     if (!data) { return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ConfigKey"}; }
@@ -285,7 +285,7 @@ yomk::payload::Response ConfigService::getConfig(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(it->second));
 }
 
-yomk::payload::Response ConfigService::setConfig(YomkPkgPtr pkg)
+yomk::payload::Response ConfigService::setConfig(YomkMsgPtr pkg)
 {
     auto data = yomk::msgs::unPack<yomk::msgs::ConfigKeyValue>(pkg);
     if (!data) { return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ConfigKeyValue"}; }
@@ -295,13 +295,13 @@ yomk::payload::Response ConfigService::setConfig(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
-yomk::payload::Response ConfigService::reloadConfig(YomkPkgPtr pkg)
+yomk::payload::Response ConfigService::reloadConfig(YomkMsgPtr pkg)
 {
     m_configMap.clear();
     return loadConfig(nullptr);
 }
 
-yomk::payload::Response ConfigService::version(YomkPkgPtr pkg)
+yomk::payload::Response ConfigService::version(YomkMsgPtr pkg)
 {
     // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(std::string(APP_VERSION)));
@@ -470,7 +470,7 @@ ProjectName
 ### 1. 添加消息包（msgs/YomkMsgs.h 追加）
 ```cpp
 
-// 定义完所有的结构体后，统一注册YomkMsg
+// 定义完所有的结构体后，统一注册YOMK_DEFINE_MSG
 // UserService 消息包
 struct UserQuery 
 { 
@@ -484,8 +484,8 @@ struct UserInfo
     int age; 
 };
 
-YomkMsg(UserQuery, UserQuery, req);
-YomkMsg(UserInfo, UserInfo, d);
+YOMK_DEFINE_MSG(UserQuery, UserQuery, req);
+YOMK_DEFINE_MSG(UserInfo, UserInfo, d);
 ```
 
 ### 2. 创建服务（services/UserService.h）
@@ -504,8 +504,8 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response getUser(YomkPkgPtr pkg);
-    yomk::payload::Response createUser(YomkPkgPtr pkg);
+    yomk::payload::Response getUser(YomkMsgPtr pkg);
+    yomk::payload::Response createUser(YomkMsgPtr pkg);
 };
 ```
 
@@ -527,7 +527,7 @@ int UserService::init()
     return 0;
 }
 
-yomk::payload::Response UserService::getUser(YomkPkgPtr pkg)
+yomk::payload::Response UserService::getUser(YomkMsgPtr pkg)
 {
     auto query = yomk::msgs::unPack<yomk::msgs::UserQuery>(pkg);
     if (!query) { return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not UserQuery"}; }
@@ -538,7 +538,7 @@ yomk::payload::Response UserService::getUser(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::UserInfo::shared(info));
 }
 
-yomk::payload::Response UserService::createUser(YomkPkgPtr pkg)
+yomk::payload::Response UserService::createUser(YomkMsgPtr pkg)
 {
     auto user = yomk::msgs::unPack<yomk::msgs::UserInfo>(pkg);
     if (!user) { return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not UserInfo"}; }
@@ -635,7 +635,7 @@ int MyService::init() {
 
 ```cpp
 // 事件处理函数
-yomk::payload::Response taskHandler(YomkPkgPtr pkg) {
+yomk::payload::Response taskHandler(YomkMsgPtr pkg) {
     auto taskData = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!taskData) { return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"}; }
     YOMK_DEBUG_TAG("TaskHandler", "processing in thread: ", std::this_thread::get_id());
@@ -667,7 +667,7 @@ YomkAPI::destroyEventLoop("worker_loop");
 
 ```cpp
 // 定义公共函数
-yomk::payload::Response validateAmount(YomkPkgPtr pkg) {
+yomk::payload::Response validateAmount(YomkMsgPtr pkg) {
     auto amountStr = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!amountStr) { return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"}; }
     double amount = std::stod(amountStr->d);
@@ -924,7 +924,7 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response version(YomkPkgPtr pkg);
+    yomk::payload::Response version(YomkMsgPtr pkg);
 };
 ```
 
@@ -945,7 +945,7 @@ int XxxService::init()
     return 0;
 }
 
-yomk::payload::Response XxxService::version(YomkPkgPtr pkg)
+yomk::payload::Response XxxService::version(YomkMsgPtr pkg)
 {
     std::string version = "ExtensionName v" EXTENSION_VERSION;
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(version));

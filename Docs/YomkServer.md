@@ -28,7 +28,7 @@
 |---|---|
 | `m_status` | `ResStatus::Succeeded (0)`：调用成功；`ResStatus::Failed (1)`：目标服务或函数不存在、被拒绝或条件不满足；`ResStatus::Invalid (-1)`：入参非法或服务器未初始化 |
 | `m_msg` | 状态描述文本 |
-| `m_data` | 可选的负载消息包（`YomkPkgPtr`） |
+| `m_data` | 可选的负载消息包（`YomkMsgPtr`） |
 
 ## 使用示例
 

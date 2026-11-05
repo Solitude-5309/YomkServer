@@ -80,7 +80,7 @@ ContextGroup* YomkContext::findGroup(const std::string& groupName, yomk::payload
     return it->second.get();
 }
 
-yomk::payload::Response YomkContext::create(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::create(YomkMsgPtr pkg)
 {
     auto context = yomk::msgs::unPack<yomk::msgs::Context>(pkg);
     if (!context)
@@ -111,7 +111,7 @@ yomk::payload::Response YomkContext::create(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "create context success");
 }
 
-yomk::payload::Response YomkContext::destroy(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::destroy(YomkMsgPtr pkg)
 {
     auto groupKey = yomk::msgs::unPack<yomk::msgs::ContextGroupKey>(pkg);
     if (!groupKey)
@@ -134,7 +134,7 @@ yomk::payload::Response YomkContext::destroy(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "destroy context success");
 }
 
-yomk::payload::Response YomkContext::get(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::get(YomkMsgPtr pkg)
 {
     auto context = yomk::msgs::unPack<yomk::msgs::Context>(pkg);
     if (!context)
@@ -148,7 +148,7 @@ yomk::payload::Response YomkContext::get(YomkPkgPtr pkg)
         return fail;
     }
 
-    YomkPkgPtr value;
+    YomkMsgPtr value;
     // 返回码映射（约定见 ContextGroup::get）：0 命中 / 1 key 为空 / 2 key 不存在；未命中时 value 已被填为默认值
     int rc = group->get(context->d.m_key, context->d.m_value, value);
     if (rc == 1)
@@ -162,7 +162,7 @@ yomk::payload::Response YomkContext::get(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "get context success", value);
 }
 
-yomk::payload::Response YomkContext::set(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::set(YomkMsgPtr pkg)
 {
     auto context = yomk::msgs::unPack<yomk::msgs::Context>(pkg);
     if (!context)
@@ -197,7 +197,7 @@ yomk::payload::Response YomkContext::set(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "set context success");
 }
 
-yomk::payload::Response YomkContext::turnOnChecker(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::turnOnChecker(YomkMsgPtr pkg)
 {
     auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
@@ -215,7 +215,7 @@ yomk::payload::Response YomkContext::turnOnChecker(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "turn on checker success");
 }
 
-yomk::payload::Response YomkContext::turnOffChecker(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::turnOffChecker(YomkMsgPtr pkg)
 {
     auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
@@ -233,7 +233,7 @@ yomk::payload::Response YomkContext::turnOffChecker(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "turn off checker success");
 }
 
-yomk::payload::Response YomkContext::turnOnMonitor(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::turnOnMonitor(YomkMsgPtr pkg)
 {
     auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
@@ -251,7 +251,7 @@ yomk::payload::Response YomkContext::turnOnMonitor(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "turn on monitor success");
 }
 
-yomk::payload::Response YomkContext::turnOffMonitor(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::turnOffMonitor(YomkMsgPtr pkg)
 {
     auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
@@ -269,7 +269,7 @@ yomk::payload::Response YomkContext::turnOffMonitor(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "turn off monitor success");
 }
 
-yomk::payload::Response YomkContext::setChecker(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::setChecker(YomkMsgPtr pkg)
 {
     auto checker = yomk::msgs::unPack<yomk::msgs::ContextChecker>(pkg);
     if (!checker)
@@ -300,7 +300,7 @@ yomk::payload::Response YomkContext::setChecker(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "set checker success");
 }
 
-yomk::payload::Response YomkContext::setMonitor(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::setMonitor(YomkMsgPtr pkg)
 {
     auto monitor = yomk::msgs::unPack<yomk::msgs::ContextMonitor>(pkg);
     if (!monitor)
@@ -331,7 +331,7 @@ yomk::payload::Response YomkContext::setMonitor(YomkPkgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "set context monitor success");
 }
 
-yomk::payload::Response YomkContext::groups(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::groups(YomkMsgPtr pkg)
 {
     // 全部组名：main 恒在首位，自定义组按 map 字典序追加
     std::vector<std::string> groupNames;
@@ -346,7 +346,7 @@ yomk::payload::Response YomkContext::groups(YomkPkgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(groupNames)};
 }
 
-yomk::payload::Response YomkContext::keys(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::keys(YomkMsgPtr pkg)
 {
     auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
     if (!str)
@@ -364,7 +364,7 @@ yomk::payload::Response YomkContext::keys(YomkPkgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(keyList)};
 }
 
-yomk::payload::Response YomkContext::keyInfo(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr pkg)
 {
     auto groupKey = yomk::msgs::unPack<yomk::msgs::ContextGroupKey>(pkg);
     if (!groupKey)
@@ -392,7 +392,7 @@ yomk::payload::Response YomkContext::keyInfo(YomkPkgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::ContextKeyInfo::shared(info)};
 }
 
-yomk::payload::Response YomkContext::listAll(YomkPkgPtr pkg)
+yomk::payload::Response YomkContext::listAll(YomkMsgPtr pkg)
 {
     // 跨组聚合：组 → 键元信息两层结构（对齐 getAllServerInfo 的 ServerServiceInfo 范式）；
     // main 组条目恒在首位，自定义组按 map 字典序追加（锁内拷指针、锁外取快照）
