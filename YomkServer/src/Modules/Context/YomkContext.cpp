@@ -52,7 +52,7 @@ ContextGroup* YomkContext::findGroup(const std::string& groupName, yomk::payload
 {
     if (groupName.empty())
     {
-        YOMK_DIAG_ERR("group name is empty, please check Context.m_group.");
+        YOMK_DIAG_ERROR("group name is empty, please check Context.m_group.");
         resp = yomk::payload::Response(yomk::payload::ResStatus::Failed, "group name is empty");
         return nullptr;
     }

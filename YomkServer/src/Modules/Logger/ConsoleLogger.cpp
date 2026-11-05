@@ -100,20 +100,20 @@ void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::st
     switch (logLevel)
     {
         case LogLevel::Debug:
-            std::cout << timeStr << " [DEBUG] [" << tagShown << "] " << log << std::endl;
+            std::cout << timeStr << " " << YOMK_DIAG_TAG_DEBUG << " [" << tagShown << "] " << log << std::endl;
             break;
         case LogLevel::Info:
-            std::cout << timeStr << " [INFO ] [" << tagShown << "] " << log << std::endl;
+            std::cout << timeStr << " " << YOMK_DIAG_TAG_INFO << " [" << tagShown << "] " << log << std::endl;
             break;
         case LogLevel::Warn:
-            std::cout << timeStr << " [WARN ] [" << tagShown << "] " << log << std::endl;
+            std::cout << timeStr << " " << YOMK_DIAG_TAG_WARN << " [" << tagShown << "] " << log << std::endl;
             break;
         case LogLevel::Error:
-            std::cout << timeStr << " [ERROR] [" << tagShown << "] " << log << std::endl;
+            std::cout << timeStr << " " << YOMK_DIAG_TAG_ERROR << " [" << tagShown << "] " << log << std::endl;
             break;
         default:
-            YOMK_DIAG_ERR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
-            std::cout << timeStr << " [INFO ] [" << tagShown << "] " << log << std::endl;
+            YOMK_DIAG_ERROR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
+            std::cout << timeStr << " " << YOMK_DIAG_TAG_INFO << " [" << tagShown << "] " << log << std::endl;
             break;
     }
 }

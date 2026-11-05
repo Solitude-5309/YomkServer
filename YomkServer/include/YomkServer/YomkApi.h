@@ -72,7 +72,7 @@ public:
         auto server = serverSnapshot();
         if (!server)
         {
-            YOMK_DIAG_ERR("YomkServer is not init");
+            YOMK_DIAG_ERROR("YomkServer is not init");
             return -1;
         }
         return server->newService<T>(srvName);
@@ -83,13 +83,13 @@ public:
         auto server = serverSnapshot();
         if (!server)
         {
-            YOMK_DIAG_ERR("YomkServer is not init");
+            YOMK_DIAG_ERROR("YomkServer is not init");
             return -1;
         }
 
         if (!srv)
         {
-            YOMK_DIAG_ERR("YomkService is null");
+            YOMK_DIAG_ERROR("YomkService is null");
             return -1;
         }
 
@@ -104,13 +104,13 @@ public:
         auto server = serverSnapshot();
         if (!server)
         {
-            YOMK_DIAG_ERR("YomkServer is not init");
+            YOMK_DIAG_ERROR("YomkServer is not init");
             return -1;
         }
 
         if (srvName.empty())
         {
-            YOMK_DIAG_ERR("service name is empty");
+            YOMK_DIAG_ERROR("service name is empty");
             return -1;
         }
 
@@ -129,21 +129,21 @@ public:
         ret = bootGuard->before();
         if (ret != 0)
         {
-            YOMK_DIAG_ERR("YomkBoot before failed! ");
+            YOMK_DIAG_ERROR("YomkBoot before failed! ");
             return ret;
         }
 
         ret = bootGuard->start();
         if (ret != 0)
         {
-            YOMK_DIAG_ERR("YomkBoot start failed! ");
+            YOMK_DIAG_ERROR("YomkBoot start failed! ");
             return ret;
         }
 
         ret = bootGuard->after();
         if (ret != 0)
         {
-            YOMK_DIAG_ERR("YomkBoot after failed! ");
+            YOMK_DIAG_ERROR("YomkBoot after failed! ");
             return ret;
         }
 
@@ -216,7 +216,7 @@ public:
         auto server = serverSnapshot();
         if (!server)
         {
-            YOMK_DIAG_ERR("YomkServer is not init");
+            YOMK_DIAG_ERROR("YomkServer is not init");
             return;
         }
         return server->asyncRequest(url, pkg, func);
@@ -227,7 +227,7 @@ public:
         auto server = serverSnapshot();
         if (!server)
         {
-            YOMK_DIAG_ERR("YomkServer is not init");
+            YOMK_DIAG_ERROR("YomkServer is not init");
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
         }
         return server->request(url, pkg);
@@ -757,7 +757,7 @@ public:
         }
         else
         {
-            YOMK_DIAG_ERR("get context failed");
+            YOMK_DIAG_ERROR("get context failed");
             return ctxDefault;
         }
     }
@@ -1099,7 +1099,7 @@ private:
     {
         if (serverSnapshot())
             return true;
-        YOMK_DIAG_ERR("YomkServer is not init");
+        YOMK_DIAG_ERROR("YomkServer is not init");
         return false;
     }
     // 同步请求并收敛为三态：失败原因经错误日志承载，返回值仅保留 ResStatus
@@ -1108,7 +1108,7 @@ private:
         yomk::payload::Response resp = request(url, std::move(pkg));
         if (resp.m_status != yomk::payload::ResStatus::Succeeded)
         {
-            YOMK_DIAG_ERR((resp.m_msg.empty() ? "request failed" : resp.m_msg));
+            YOMK_DIAG_ERROR((resp.m_msg.empty() ? "request failed" : resp.m_msg));
         }
         return resp.m_status;
     }

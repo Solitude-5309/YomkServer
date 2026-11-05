@@ -29,7 +29,7 @@ static bool parseRequestUrl(const std::string& url, std::string& srvName, std::s
     if (url.empty() || url[0] != '/')
     {
         errMsg = "url parse error: " + url + ", please start with /";
-        YOMK_DIAG_ERR(errMsg);
+        YOMK_DIAG_ERROR(errMsg);
         return false;
     }
 
@@ -37,7 +37,7 @@ static bool parseRequestUrl(const std::string& url, std::string& srvName, std::s
     if (posEnd == std::string::npos)
     {
         errMsg = "url parse error: " + url + ", not found service name.";
-        YOMK_DIAG_ERR(errMsg);
+        YOMK_DIAG_ERROR(errMsg);
         return false;
     }
 
@@ -45,7 +45,7 @@ static bool parseRequestUrl(const std::string& url, std::string& srvName, std::s
     if (srvName.empty())
     {
         errMsg = "url parse error: srv is empty. ";
-        YOMK_DIAG_ERR(errMsg);
+        YOMK_DIAG_ERROR(errMsg);
         return false;
     }
 
@@ -53,7 +53,7 @@ static bool parseRequestUrl(const std::string& url, std::string& srvName, std::s
     if (funcName.empty())
     {
         errMsg = "url parse error: function name is empty";
-        YOMK_DIAG_ERR(errMsg);
+        YOMK_DIAG_ERROR(errMsg);
         return false;
     }
 
@@ -74,7 +74,7 @@ int YomkServer::startService(std::vector<std::string> srvNames)
         auto it = serviceCreators.find(srvName);
         if (it == serviceCreators.end())
         {
-            YOMK_DIAG_ERR("yomk does not support service: " + srvName);
+            YOMK_DIAG_ERROR("yomk does not support service: " + srvName);
             continue;
         }
 
@@ -91,7 +91,7 @@ int YomkServer::addService(YomkService* srv)
 {
     if (!srv)
     {
-        YOMK_DIAG_ERR("service is null, please check the service.");
+        YOMK_DIAG_ERROR("service is null, please check the service.");
         return -1;
     }
 
@@ -106,18 +106,18 @@ int YomkServer::addService(YomkService* srv)
     }
     catch (const std::exception& e)
     {
-        YOMK_DIAG_ERR("service init exception: " + srv->name() + ", what: " + e.what());
+        YOMK_DIAG_ERROR("service init exception: " + srv->name() + ", what: " + e.what());
         initRet = -1;
     }
     catch (...)
     {
-        YOMK_DIAG_ERR("service init unknown exception: " + srv->name());
+        YOMK_DIAG_ERROR("service init unknown exception: " + srv->name());
         initRet = -1;
     }
 
     if (initRet != 0)
     {
-        YOMK_DIAG_ERR("service init error: " + srv->name());
+        YOMK_DIAG_ERROR("service init error: " + srv->name());
         m_p->delService(srv->name());
         return -1;  // 回滚后向调用方传播失败
     }
@@ -187,6 +187,6 @@ void YomkServer::asyncRequest(const std::string& url, YomkMsgPtr pkg, YomkRespon
     };
     if (!m_p->postRequestTask(callback))
     {
-        YOMK_DIAG_ERR("server is shutting down, async request ignored.");
+        YOMK_DIAG_ERROR("server is shutting down, async request ignored.");
     }
 }

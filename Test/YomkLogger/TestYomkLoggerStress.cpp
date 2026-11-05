@@ -282,7 +282,7 @@
  *   计时值先存局部变量，出作用域后再打印。
  * - 唯一 tag 必须直调 YomkAPI::emitConsoleLogInfo（运行时拼名）：YOMK_INFO_TAG 宏会把 tag
  *   拼上调用点行号，循环体内所有轮次将共用同一 logger 名，构造不出 N 个唯一 tag。
- * - 库内部不使用 YOMK_INFO 家族宏（YOMK_DIAG_ERR 直写 cout），故 console 表起点恰为
+ * - 库内部不使用 YOMK_INFO 家族宏（YOMK_DIAG_ERROR 直写 cout），故 console 表起点恰为
  *   构造函数预置的 MainLogger，各 Section 可用绝对条目数守恒断言（起点已断言）。
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）

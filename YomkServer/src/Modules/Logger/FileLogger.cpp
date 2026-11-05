@@ -43,19 +43,19 @@ bool FileLogger::init()
         }
         else
         {
-            YOMK_DIAG_ERR("create log file failed: " + logFilePath);
+            YOMK_DIAG_ERROR("create log file failed: " + logFilePath);
             logFile.close();
             return false;
         }
     }
     catch (const fs::filesystem_error& e)
     {
-        YOMK_DIAG_ERR("init file logger fs error: " + logFilePath + ", " + e.what());
+        YOMK_DIAG_ERROR("init file logger fs error: " + logFilePath + ", " + e.what());
         return false;
     }
     catch (const std::exception& e)
     {
-        YOMK_DIAG_ERR("init file logger error: " + logFilePath + ", " + e.what());
+        YOMK_DIAG_ERROR("init file logger error: " + logFilePath + ", " + e.what());
         return false;
     }
     return true;
@@ -147,20 +147,20 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
     switch (logLevel)
     {
         case LogLevel::Debug:
-            appendLine(" [DEBUG] ");
+            appendLine(" " YOMK_DIAG_TAG_DEBUG " ");
             break;
         case LogLevel::Info:
-            appendLine(" [INFO ] ");
+            appendLine(" " YOMK_DIAG_TAG_INFO " ");
             break;
         case LogLevel::Warn:
-            appendLine(" [WARN ] ");
+            appendLine(" " YOMK_DIAG_TAG_WARN " ");
             break;
         case LogLevel::Error:
-            appendLine(" [ERROR] ");
+            appendLine(" " YOMK_DIAG_TAG_ERROR " ");
             break;
         default:
-            YOMK_DIAG_ERR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
-            appendLine(" [INFO ] ");
+            YOMK_DIAG_ERROR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
+            appendLine(" " YOMK_DIAG_TAG_INFO " ");
             break;
     }
 }
@@ -178,7 +178,7 @@ void FileLogger::write()
     if (!logFile.is_open())
     {
         // 开文件失败直接返回、不清缓冲（内容不丢，既有语义由 TestYomkLoggerDirect 断言）
-        YOMK_DIAG_ERR("open log file failed: " + m_dir + "/" + m_name + ".log");
+        YOMK_DIAG_ERROR("open log file failed: " + m_dir + "/" + m_name + ".log");
         return;
     }
     logFile << m_logBuffer;

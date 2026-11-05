@@ -29,7 +29,7 @@ yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr pkg)
     }
     if (yFunc->d.m_funcName.empty() || yFunc->d.m_func == nullptr)
     {
-        YOMK_DIAG_ERR("funcName or func is empty, please check Function.m_funcName");
+        YOMK_DIAG_ERROR("funcName or func is empty, please check Function.m_funcName");
         return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "funcName or func is empty");
     }
 
@@ -41,7 +41,7 @@ yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr pkg)
         itFunc->second.m_func = yFunc->d.m_func;
         itFunc->second.m_msgName = yFunc->d.m_msgName;
         itFunc->second.m_description = yFunc->d.m_description;
-        YOMK_DIAG_ERR("function name: " + yFunc->d.m_funcName + " is already exist, update to current function");
+        YOMK_DIAG_ERROR("function name: " + yFunc->d.m_funcName + " is already exist, update to current function");
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "find function name is already exist, update to current function");
     }
     m_functions.emplace(yFunc->d.m_funcName, PoolFuncInfo{yFunc->d.m_func, yFunc->d.m_msgName, yFunc->d.m_description});
@@ -57,7 +57,7 @@ yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr pkg)
     }
     if (yFuncName->d.empty())
     {
-        YOMK_DIAG_ERR("funcName is empty, please check String");
+        YOMK_DIAG_ERROR("funcName is empty, please check String");
         return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "funcName is empty");
     }
 
@@ -65,7 +65,7 @@ yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr pkg)
     auto itFunc = m_functions.find(yFuncName->d);
     if (itFunc == m_functions.end())
     {
-        YOMK_DIAG_ERR("funcName: " + yFuncName->d + " is not register, can not unregister");
+        YOMK_DIAG_ERROR("funcName: " + yFuncName->d + " is not register, can not unregister");
         // 名字有效但未注册：ResStatus::Failed（与 funcInfo/Context/EventLoop 的 not-found 惯例一致；ResStatus::Invalid 仅用于参数无效）
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "funcName is not register");
     }
@@ -82,7 +82,7 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
     }
     if (yCallFunc->d.m_funcName.empty())
     {
-        YOMK_DIAG_ERR("funcName is empty, please check CallFunction.m_funcName");
+        YOMK_DIAG_ERROR("funcName is empty, please check CallFunction.m_funcName");
         return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "funcName is empty");
     }
 
@@ -92,7 +92,7 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
         auto itFunc = m_functions.find(yCallFunc->d.m_funcName);
         if (itFunc == m_functions.end())
         {
-            YOMK_DIAG_ERR(
+            YOMK_DIAG_ERROR(
                 "funcName: " + yCallFunc->d.m_funcName + " is not register, please check CallFunction.m_funcName");
             // 名字有效但未注册：ResStatus::Failed（not-found 框架惯例；ResStatus::Invalid 仅用于参数无效）
             return yomk::payload::Response(yomk::payload::ResStatus::Failed, "funcName is not register");
@@ -127,7 +127,7 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
     }
     if (yFuncName->d.empty())
     {
-        YOMK_DIAG_ERR("funcName is empty, please check String");
+        YOMK_DIAG_ERROR("funcName is empty, please check String");
         return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "funcName is empty");
     }
 
@@ -135,7 +135,7 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
     auto itFunc = m_functions.find(yFuncName->d);
     if (itFunc == m_functions.end())
     {
-        YOMK_DIAG_ERR("funcName: " + yFuncName->d + " is not register, please check funcName");
+        YOMK_DIAG_ERROR("funcName: " + yFuncName->d + " is not register, please check funcName");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "funcName is not register");
     }
     // 命中：结构化包恒挂，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）

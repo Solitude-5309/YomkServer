@@ -39,12 +39,12 @@ int ContextGroup::create(const std::string& key, YomkMsgPtr value)
 {
     if (key.empty())
     {
-        YOMK_DIAG_ERR("key is empty, please check Context.m_key.");
+        YOMK_DIAG_ERROR("key is empty, please check Context.m_key.");
         return 1;
     }
     if (value == nullptr)
     {
-        YOMK_DIAG_ERR("value is empty, please check Context.m_value.");
+        YOMK_DIAG_ERROR("value is empty, please check Context.m_value.");
         return 2;
     }
 
@@ -52,7 +52,7 @@ int ContextGroup::create(const std::string& key, YomkMsgPtr value)
         std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         if (m_contexts.find(key) != m_contexts.end())
         {
-            YOMK_DIAG_ERR("YomkContext key: " + key + " already exists, please check Context.m_key.");
+            YOMK_DIAG_ERROR("YomkContext key: " + key + " already exists, please check Context.m_key.");
             return 3;
         }
 
@@ -75,7 +75,7 @@ int ContextGroup::destroy(const std::string& key)
         auto itContext = m_contexts.find(key);
         if (itContext == m_contexts.end())
         {
-            YOMK_DIAG_ERR("YomkContext key: " + key + " is not exist, please check key.");
+            YOMK_DIAG_ERROR("YomkContext key: " + key + " is not exist, please check key.");
             return 1;
         }
         m_contexts.erase(itContext);
@@ -89,7 +89,7 @@ int ContextGroup::get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPt
     if (key.empty())
     {
         value = defaultValue;
-        YOMK_DIAG_ERR("key is empty, please check Context.m_key.");
+        YOMK_DIAG_ERROR("key is empty, please check Context.m_key.");
         return 1;
     }
 
@@ -99,7 +99,7 @@ int ContextGroup::get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPt
     if (itContext == m_contexts.end())
     {
         value = defaultValue;
-        YOMK_DIAG_ERR("YomkContext key: " + key + " is not exist, please check Context.m_key.");
+        YOMK_DIAG_ERROR("YomkContext key: " + key + " is not exist, please check Context.m_key.");
         return 2;
     }
 
@@ -111,7 +111,7 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value)
 {
     if (key.empty())
     {
-        YOMK_DIAG_ERR("key is empty, please check Context.m_key.");
+        YOMK_DIAG_ERROR("key is empty, please check Context.m_key.");
         return 1;
     }
 
@@ -124,13 +124,13 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value)
     auto itContext = m_contexts.find(key);
     if (itContext == m_contexts.end())
     {
-        YOMK_DIAG_ERR("YomkContext key: " + key + " is not exist, please check Context.m_key.");
+        YOMK_DIAG_ERROR("YomkContext key: " + key + " is not exist, please check Context.m_key.");
         return 2;
     }
 
     if (itContext->second.value->name() != value->name())
     {
-        YOMK_DIAG_ERR("context: " + key + " type not match, please check Context.m_value.");
+        YOMK_DIAG_ERROR("context: " + key + " type not match, please check Context.m_value.");
         return 3;
     }
 
@@ -162,7 +162,7 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value)
                 auto monitorFunc = monitor.contextMonitorFunc;
                 if (!(m_monitorPool && m_monitorPool->post([monitorFunc, data]() { monitorFunc(data); })))
                 {
-                    YOMK_DIAG_ERR("context monitor pool is stopped, async monitor ignored.");
+                    YOMK_DIAG_ERROR("context monitor pool is stopped, async monitor ignored.");
                 }
             }
         }
@@ -186,11 +186,11 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value)
                 }
                 catch (const std::exception& e)
                 {
-                    YOMK_DIAG_ERR("sync monitor threw exception: " + std::string(e.what()) + ", ignored.");
+                    YOMK_DIAG_ERROR("sync monitor threw exception: " + std::string(e.what()) + ", ignored.");
                 }
                 catch (...)
                 {
-                    YOMK_DIAG_ERR("sync monitor threw unknown exception, ignored.");
+                    YOMK_DIAG_ERROR("sync monitor threw unknown exception, ignored.");
                 }
             }
         }
@@ -223,12 +223,12 @@ int ContextGroup::setChecker(const std::string& key, YomkContextCheckerFunc chec
 {
     if (key.empty())
     {
-        YOMK_DIAG_ERR("key is empty, please check ContextChecker.m_key.");
+        YOMK_DIAG_ERROR("key is empty, please check ContextChecker.m_key.");
         return 1;
     }
     if (checkFunc == nullptr)
     {
-        YOMK_DIAG_ERR("checkFunc is empty, please check ContextChecker.m_checkFunc.");
+        YOMK_DIAG_ERROR("checkFunc is empty, please check ContextChecker.m_checkFunc.");
         return 2;
     }
 
@@ -238,7 +238,7 @@ int ContextGroup::setChecker(const std::string& key, YomkContextCheckerFunc chec
         auto itContext = m_contexts.find(key);
         if (itContext == m_contexts.end())
         {
-            YOMK_DIAG_ERR(
+            YOMK_DIAG_ERROR(
                 "YomkContext key: " + key + " is not exist, please check ContextChecker.m_key.");
             return 3;
         }
@@ -253,12 +253,12 @@ int ContextGroup::setMonitor(const std::string& key, YomkContextMonitorFunc moni
 {
     if (key.empty())
     {
-        YOMK_DIAG_ERR("key is empty, please check ContextMonitor.m_key.");
+        YOMK_DIAG_ERROR("key is empty, please check ContextMonitor.m_key.");
         return 1;
     }
     if (monitorFunc == nullptr)
     {
-        YOMK_DIAG_ERR("context monitor function is empty, please check ContextMonitor.m_contextMonitorFunc.");
+        YOMK_DIAG_ERROR("context monitor function is empty, please check ContextMonitor.m_contextMonitorFunc.");
         return 2;
     }
 
@@ -268,7 +268,7 @@ int ContextGroup::setMonitor(const std::string& key, YomkContextMonitorFunc moni
         auto itContext = m_contexts.find(key);
         if (itContext == m_contexts.end())
         {
-            YOMK_DIAG_ERR(
+            YOMK_DIAG_ERROR(
                 "YomkContext key: " + key + " is not exist, please check ContextMonitor.m_key.");
             return 3;
         }
@@ -297,7 +297,7 @@ int ContextGroup::keyInfo(const std::string& key, yomk::payload::ContextKeyInfo&
 {
     if (key.empty())
     {
-        YOMK_DIAG_ERR("key is empty, please check String.d.");
+        YOMK_DIAG_ERROR("key is empty, please check String.d.");
         return 1;
     }
 
@@ -305,7 +305,7 @@ int ContextGroup::keyInfo(const std::string& key, yomk::payload::ContextKeyInfo&
     auto itContext = m_contexts.find(key);
     if (itContext == m_contexts.end())
     {
-        YOMK_DIAG_ERR("YomkContext key: " + key + " is not exist, please check key.");
+        YOMK_DIAG_ERROR("YomkContext key: " + key + " is not exist, please check key.");
         return 2;
     }
     // 命中：锁内填充结构化快照（info 重置后逐字段赋值，出参回传全部元数据）
