@@ -6,12 +6,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <new>
 #include <sstream>
 #include <string>
 #include <type_traits>
 
+#include "YomkBoot.h"
 #include "YomkExport.h"
 #include "YomkMsgs.h"
 #include "YomkServer.h"
@@ -19,16 +21,6 @@
 #include "YomkDiag.h"
 #include "YomkSourceLoc.h"
 #include "YomkUrl.h"
-
-// 启动编排接口：按 before -> start -> after 顺序执行
-class YOMKSERVER_EXPORT YomkBoot
-{
-public:
-    virtual ~YomkBoot() {}
-    virtual int before() = 0;
-    virtual int start() = 0;
-    virtual int after() = 0;
-};
 
 // YomkServer 全局统一入口与便捷调用类
 class YOMKSERVER_EXPORT YomkAPI
