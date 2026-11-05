@@ -461,6 +461,32 @@ public:
         (appendLogArg(content, std::forward<Args>(args)), ...);
         return requestStatus(Url::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Debug, std::move(content), tag, tag}));
     }
+    template <typename... Args>
+    static yomk::payload::ResStatus emitConsoleLogTrace(const std::string& tag, const SourceLoc& loc, Args&&... args)
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        std::string content;
+        content.reserve(logContentReserve());
+        loc.appendTo(content);
+        (appendLogArg(content, std::forward<Args>(args)), ...);
+        return requestStatus(Url::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, std::move(content), tag, tag}));
+    }
+    template <typename... Args>
+    static yomk::payload::ResStatus emitConsoleLogFatal(const std::string& tag, const SourceLoc& loc, Args&&... args)
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        std::string content;
+        content.reserve(logContentReserve());
+        loc.appendTo(content);
+        (appendLogArg(content, std::forward<Args>(args)), ...);
+        return requestStatus(Url::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, std::move(content), tag, tag}));
+    }
     // 创建文件日志器
     static yomk::payload::ResStatus createFileLogger(const std::string& logDir, const std::string& logFile)
     {
@@ -535,6 +561,34 @@ public:
         (appendLogArg(content, std::forward<Args>(args)), ...);
         return requestStatus(Url::loggerFileLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Debug, std::move(content), logFile, tag}));
     }
+    template <typename... Args>
+    static yomk::payload::ResStatus emitFileLogTrace(
+        const std::string& logFile, const std::string& tag, const SourceLoc& loc, Args&&... args)
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        std::string content;
+        content.reserve(logContentReserve());
+        loc.appendTo(content);
+        (appendLogArg(content, std::forward<Args>(args)), ...);
+        return requestStatus(Url::loggerFileLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, std::move(content), logFile, tag}));
+    }
+    template <typename... Args>
+    static yomk::payload::ResStatus emitFileLogFatal(
+        const std::string& logFile, const std::string& tag, const SourceLoc& loc, Args&&... args)
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        std::string content;
+        content.reserve(logContentReserve());
+        loc.appendTo(content);
+        (appendLogArg(content, std::forward<Args>(args)), ...);
+        return requestStatus(Url::loggerFileLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, std::move(content), logFile, tag}));
+    }
     // 开关各级别控制台日志（loggerName 空 = 全局主闸，与既有无参语义一致；具名 = 逐器门控）
     static yomk::payload::ResStatus enableConsoleLogDebug(const std::string& loggerName = "")
     {
@@ -600,6 +654,38 @@ public:
         }
         return requestStatus(Url::loggerOffConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Error, "", loggerName}));
     }
+    static yomk::payload::ResStatus enableConsoleLogTrace(const std::string& loggerName = "")
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        return requestStatus(Url::loggerOnConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, "", loggerName}));
+    }
+    static yomk::payload::ResStatus enableConsoleLogFatal(const std::string& loggerName = "")
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        return requestStatus(Url::loggerOnConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, "", loggerName}));
+    }
+    static yomk::payload::ResStatus disableConsoleLogTrace(const std::string& loggerName = "")
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        return requestStatus(Url::loggerOffConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, "", loggerName}));
+    }
+    static yomk::payload::ResStatus disableConsoleLogFatal(const std::string& loggerName = "")
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        return requestStatus(Url::loggerOffConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, "", loggerName}));
+    }
     // 开关各级别文件日志（loggerName 空 = 文件全局主闸；具名 = 逐器门控，未知名返回 ResStatus::Failed）
     static yomk::payload::ResStatus enableFileLogDebug(const std::string& loggerName = "")
     {
@@ -664,6 +750,38 @@ public:
             return yomk::payload::ResStatus::Invalid;
         }
         return requestStatus(Url::loggerOffFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Error, "", loggerName}));
+    }
+    static yomk::payload::ResStatus enableFileLogTrace(const std::string& loggerName = "")
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        return requestStatus(Url::loggerOnFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, "", loggerName}));
+    }
+    static yomk::payload::ResStatus enableFileLogFatal(const std::string& loggerName = "")
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        return requestStatus(Url::loggerOnFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, "", loggerName}));
+    }
+    static yomk::payload::ResStatus disableFileLogTrace(const std::string& loggerName = "")
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        return requestStatus(Url::loggerOffFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, "", loggerName}));
+    }
+    static yomk::payload::ResStatus disableFileLogFatal(const std::string& loggerName = "")
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        return requestStatus(Url::loggerOffFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, "", loggerName}));
     }
     // 按类型获取日志器名列表（type: "console"/"file"，仅返回该类型的纯名）
     static yomk::payload::Response listLoggers(const std::string& type)
@@ -1154,6 +1272,10 @@ private:
 #define YOMK_ERROR_TAG(tag, ...) YomkAPI::emitConsoleLogError(tag, {}, __VA_ARGS__)
 #define YOMK_DEBUG(...) YomkAPI::emitConsoleLogDebug(YomkAPI::mainLoggerTag(), {}, __VA_ARGS__)
 #define YOMK_DEBUG_TAG(tag, ...) YomkAPI::emitConsoleLogDebug(tag, {}, __VA_ARGS__)
+#define YOMK_TRACE(...) YomkAPI::emitConsoleLogTrace(YomkAPI::mainLoggerTag(), {}, __VA_ARGS__)
+#define YOMK_TRACE_TAG(tag, ...) YomkAPI::emitConsoleLogTrace(tag, {}, __VA_ARGS__)
+#define YOMK_FATAL(...) YomkAPI::emitConsoleLogFatal(YomkAPI::mainLoggerTag(), {}, __VA_ARGS__)
+#define YOMK_FATAL_TAG(tag, ...) YomkAPI::emitConsoleLogFatal(tag, {}, __VA_ARGS__)
 #define YOMK_FILE_INFO(file, ...) \
     YomkAPI::emitFileLogInfo(file, YomkAPI::mainLoggerTag(), {}, __VA_ARGS__)
 #define YOMK_FILE_INFO_TAG(file, tag, ...) \
@@ -1170,3 +1292,11 @@ private:
     YomkAPI::emitFileLogDebug(file, YomkAPI::mainLoggerTag(), {}, __VA_ARGS__)
 #define YOMK_FILE_DEBUG_TAG(file, tag, ...) \
     YomkAPI::emitFileLogDebug(file, tag, {}, __VA_ARGS__)
+#define YOMK_FILE_TRACE(file, ...) \
+    YomkAPI::emitFileLogTrace(file, YomkAPI::mainLoggerTag(), {}, __VA_ARGS__)
+#define YOMK_FILE_TRACE_TAG(file, tag, ...) \
+    YomkAPI::emitFileLogTrace(file, tag, {}, __VA_ARGS__)
+#define YOMK_FILE_FATAL(file, ...) \
+    YomkAPI::emitFileLogFatal(file, YomkAPI::mainLoggerTag(), {}, __VA_ARGS__)
+#define YOMK_FILE_FATAL_TAG(file, tag, ...) \
+    YomkAPI::emitFileLogFatal(file, tag, {}, __VA_ARGS__)
