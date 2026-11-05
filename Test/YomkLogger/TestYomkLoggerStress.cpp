@@ -177,7 +177,7 @@
  *   响应码与落盘内容、不校验 console 输出，该编排无需随本修复调整。
  * - P4-f（LG5 已修复）：localTimeFormatted() 原为 ConsoleLogger.cpp 与 FileLogger.cpp 中两处
  *   逐字同构的 static 实现（LG4 修 P4-b 时被迫两处同改，即重复代码的真实维护成本），LG5 抽取为
- *   模块内部头 YomkServer/src/Modules/Logger/YomkLogTime.h 的单一 inline 实现
+ *   共享头 YomkServer/include/YomkServer/YomkLogTime.h 的单一 inline 实现（Logger 与 YomkDiag 诊断通道共用）
  *   yomkLogLocalTimeFormatted()：函数体逐字搬迁未改一行；用 inline 而非 static 是为跨 TU 的
  *   单一定义（ODR），两 .cpp 各自内联展开 → 调用点开销与原 static 等价，且不新增编译单元
  *   （无需改 YomkServer/CMakeLists.txt 的源列表）；因 Logger 类均在全局命名空间而 inline 具

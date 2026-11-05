@@ -6,10 +6,10 @@
 #include <ctime>
 #include <string>
 
-// Logger 模块内部头（不对外安装）：本地时间戳 "[YYYY-MM-DD HH:MM:SS.mmm]" 的单一实现。
+// 本地时间戳 "[YYYY-MM-DD HH:MM:SS.mmm]" 的单一实现，Logger 模块与 YomkDiag 诊断通道共用。
 // localtime_r/_s 保证线程安全（std::localtime 返回静态 tm 非线程安全）；
 // snprintf 定长栈缓冲替代 stringstream + put_time（热路径主要单条开销）。
-// inline 保证跨 TU 单一定义（ODR），ConsoleLogger.cpp 与 FileLogger.cpp 各自内联展开；
+// inline 保证跨 TU 单一定义（ODR），各包含方各自内联展开；
 // yomkLog 前缀避免与其他 TU 的全局符号冲突
 inline std::string yomkLogLocalTimeFormatted()
 {
