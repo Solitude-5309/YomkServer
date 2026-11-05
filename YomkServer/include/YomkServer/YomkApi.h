@@ -1,24 +1,17 @@
 #pragma once
-#include <array>
-#include <atomic>
-#include <cstdint>
-#include <cstdio>
 #include <cstdlib>
-#include <cstring>
-#include <iostream>
 #include <memory>
 #include <mutex>
-#include <new>
-#include <sstream>
 #include <string>
-#include <type_traits>
 
 #include "YomkBoot.h"
 #include "YomkExport.h"
 #include "YomkMsgs.h"
 #include "YomkServer.h"
+#include "YomkServerRef.h"
 #include "YomkService.h"
 #include "YomkDiag.h"
+#include "YomkLogFmt.h"
 #include "YomkSourceLoc.h"
 #include "YomkUrl.h"
 
@@ -42,28 +35,28 @@ public:
                 auto server = YomkServer::create(asyncThreadCount);
                 server->startService(
                     {"/YomkFunctionPool", "/YomkContext", "/YomkEventLoop", "/YomkLogger", "/YomkServerInfo"});
-                setServer(server);
-                std::atexit([]() { holder().destroy(); });
+                YomkServerRef::setServer(server);
+                std::atexit([]() { YomkServerRef::holder().destroy(); });
             });
     }
     // 获取全局单例，未初始化返回 nullptr
-    static std::shared_ptr<YomkServer> serverInstance() { return serverSnapshot(); }
+    static std::shared_ptr<YomkServer> serverInstance() { return YomkServerRef::serverSnapshot(); }
     // 关闭服务器并释放所有服务
     static void shutdown()
     {
-        auto server = serverSnapshot();
+        auto server = YomkServerRef::serverSnapshot();
         if (!server)
         {
             return;
         }
         server->shutdown();
-        setServer(nullptr);
+        YomkServerRef::setServer(nullptr);
     }
     // 创建并注册指定类型的服务
     template <typename T>
     static int newService(const std::string& srvName = "")
     {
-        auto server = serverSnapshot();
+        auto server = YomkServerRef::serverSnapshot();
         if (!server)
         {
             YOMK_DIAG_ERROR("YomkServer is not init");
@@ -74,7 +67,7 @@ public:
     // 注册已有服务实例（所有权移交给框架）
     static int addService(YomkService* srv = nullptr, const std::string& srvName = "")
     {
-        auto server = serverSnapshot();
+        auto server = YomkServerRef::serverSnapshot();
         if (!server)
         {
             YOMK_DIAG_ERROR("YomkServer is not init");
@@ -95,7 +88,7 @@ public:
     // 按名称注销服务
     static int delService(const std::string& srvName = "")
     {
-        auto server = serverSnapshot();
+        auto server = YomkServerRef::serverSnapshot();
         if (!server)
         {
             YOMK_DIAG_ERROR("YomkServer is not init");
@@ -148,7 +141,7 @@ public:
     // 异步请求服务功能函数
     static void asyncRequest(const std::string& url, YomkMsgPtr pkg, YomkResponseFunc func)
     {
-        auto server = serverSnapshot();
+        auto server = YomkServerRef::serverSnapshot();
         if (!server)
         {
             YOMK_DIAG_ERROR("YomkServer is not init");
@@ -159,7 +152,7 @@ public:
     // 同步请求服务功能函数
     static yomk::payload::Response request(const std::string& url, YomkMsgPtr pkg)
     {
-        auto server = serverSnapshot();
+        auto server = YomkServerRef::serverSnapshot();
         if (!server)
         {
             YOMK_DIAG_ERROR("YomkServer is not init");
@@ -169,86 +162,6 @@ public:
     }
     // LOG_API
 private:
-    // emit 正文起始预留容量：典型日志单行 64 字节内，预分配减少 string 扩容
-    static std::size_t logContentReserve() { static const std::size_t v = 64; return v; }
-
-    // 逐参追加：每个实参前补一个空格，与旧 ostringstream 路径输出逐字节一致。
-    // 常用类型直拼，整型手写 itoa，浮点 snprintf，其余可流输出类型回退 ostringstream。
-    // bool 刻意输出 true/false（用户定版），不沿用 ostream 默认的 1/0
-    static void appendLogArg(std::string& out, const char* v) { out += ' '; out += v; }
-    static void appendLogArg(std::string& out, const std::string& v) { out += ' '; out += v; }
-    static void appendLogArg(std::string& out, char v) { out += ' '; out += v; }
-    static void appendLogArg(std::string& out, bool v) { out += ' '; out += (v ? "true" : "false"); }
-    template <typename T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
-    static void appendLogArg(std::string& out, T v)
-    {
-        out += ' ';
-        // 手写 itoa：负号 + 十进制数字，与 ostream 默认输出一致。负数 magnitude 在
-        // 无符号域取 0 - raw（对最小值取负是 UB）；符号判定 is_signed 编译期短路，
-        // 无符号类型不做回读比较
-        using U = typename std::make_unsigned<T>::type;
-        const U raw = static_cast<U>(v);
-        const bool neg = std::is_signed<T>::value &&
-                         static_cast<typename std::make_signed<U>::type>(raw) < 0;
-        U u = neg ? static_cast<U>(0) - raw : raw;
-        constexpr std::size_t kDigitBufSize = 24; // uint64 十进制至多 20 位，24 含余量
-        constexpr unsigned kDecBase = 10;
-        std::array<char, kDigitBufSize> digits = {};
-        std::size_t count = 0;
-        do
-        {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
-            digits[count++] = static_cast<char>('0' + u % kDecBase);
-            u /= kDecBase;
-        } while (u != 0);
-        if (neg)
-        {
-            out += '-';
-        }
-        while (count > 0)
-        {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
-            out += digits[--count];
-        }
-    }
-    template <typename T, typename std::enable_if<std::is_floating_point<T>::value, int>::type = 0>
-    static void appendLogArg(std::string& out, T v)
-    {
-        out += ' ';
-        // %g（6 位有效数字）与 ostream 默认输出一致；long double 需 %Lg。
-        // 栈缓冲 64 字节足够（最长形如 -1.23457e-308）
-        constexpr std::size_t kFltBufSize = 64;
-        std::array<char, kFltBufSize> buf = {};
-        int n = 0;
-        if (std::is_same<T, long double>::value)
-        {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-            n = std::snprintf(buf.data(), buf.size(), "%Lg", static_cast<long double>(v));
-        }
-        else
-        {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-            n = std::snprintf(buf.data(), buf.size(), "%g", static_cast<double>(v));
-        }
-        if (n > 0)
-        {
-            out.append(buf.data(), static_cast<std::size_t>(n));
-        }
-    }
-    // 回退重载：非算术、且不可转 const char*/std::string 的任意可流输出类型
-    // （enable_if 条件与非模板重载集互斥）
-    template <typename T,
-        typename std::enable_if<!std::is_arithmetic<T>::value && !std::is_convertible<T, const char*>::value
-                                    && !std::is_convertible<T, const std::string&>::value,
-            int>::type = 0>
-    static void appendLogArg(std::string& out, const T& v)
-    {
-        std::ostringstream oss;
-        oss << v;
-        out += ' ';
-        out += oss.str();
-    }
-
     // 日志 emit 公共核心：console/file 共用，差异仅 url 与 Log 的 name 字段
     // （console 传 tag 占位 name 位，file 传 logFile）。转发方保证 console 时
     // logFile 参数即 tag，语义见各公共函数
@@ -261,9 +174,9 @@ private:
             return yomk::payload::ResStatus::Invalid;
         }
         std::string content;
-        content.reserve(logContentReserve());
+        content.reserve(YomkLogFmt::logContentReserve());
         loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
+        (YomkLogFmt::appendLogArg(content, std::forward<Args>(args)), ...);
         return requestStatus(url, yomk::msgs::Log::shared(yomk::payload::Log{lv, std::move(content), logFile, tag}));
     }
     // 逐级别开关公共核心：console/file × on/off × 六级别共用。
@@ -898,34 +811,10 @@ public:
     }
 
 private:
-    // 全局版本号：server 注入与置空统一经 setServer，写后 fetch_add(1, release)
-    // 失效所有线程的 thread_local 缓存
-    static std::atomic<uint64_t>& serverEpoch()
-    {
-        static std::atomic<uint64_t> e(0);
-        return e;
-    }
-    static std::shared_ptr<YomkServer> serverSnapshot()
-    {
-        // 每线程缓存快照，热路径仅 1 次 epoch acquire load + 比对；慢路径仅首调与
-        // 失效后进入。!cached 使空快照永不作为有效命中：未初始化期每次调用仍走慢
-        // 路径，契约消息语义不变。并发 shutdown 的陈旧窗口内至多一调用命中缓存
-        // 保活的 server，返回服务级失败，无悬垂
-        thread_local std::shared_ptr<YomkServer> cached;
-        thread_local uint64_t cachedEpoch = 0;
-        const uint64_t e = serverEpoch().load(std::memory_order_acquire);
-        if (cachedEpoch != e || !cached)
-        {
-            std::lock_guard<std::mutex> lock(mtx());
-            cached = holder().server;
-            cachedEpoch = e;
-        }
-        return cached;
-    }
     // 守卫：单例未初始化时记日志并返回 false，调用方据此提前返回默认值
     static bool requireServer()
     {
-        if (serverSnapshot())
+        if (YomkServerRef::serverSnapshot())
             return true;
         YOMK_DIAG_ERROR("YomkServer is not init");
         return false;
@@ -939,37 +828,6 @@ private:
             YOMK_DIAG_ERROR((resp.m_msg.empty() ? "request failed" : resp.m_msg));
         }
         return resp.m_status;
-    }
-    static void setServer(std::shared_ptr<YomkServer> server)
-    {
-        {
-            std::lock_guard<std::mutex> lock(mtx());
-            holder().server = std::move(server);
-        }
-        serverEpoch().fetch_add(1, std::memory_order_release); // 锁外失效全部线程缓存
-    }
-    struct ServerHolder
-    {
-        void destroy()
-        {
-            std::shared_ptr<YomkServer> local;
-            {
-                std::lock_guard<std::mutex> lock(YomkAPI::mtx());
-                local = std::move(YomkAPI::holder().server);
-            }
-            local.reset();
-        }
-        std::shared_ptr<YomkServer> server;
-    };
-    static std::mutex& mtx()
-    {
-        static std::mutex* const m = new std::mutex;
-        return *m;
-    }
-    static ServerHolder& holder()
-    {
-        static ServerHolder* const h = new ServerHolder;
-        return *h;
     }
 };
 // 日志宏（正式 API）：在调用行展开，注入 {} 于该行完成位置捕获（file/line/func，
