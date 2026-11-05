@@ -249,6 +249,39 @@ private:
         out += oss.str();
     }
 
+    // 日志 emit 公共核心：console/file 共用，差异仅 url 与 Log 的 name 字段
+    // （console 传 tag 占位 name 位，file 传 logFile）。转发方保证 console 时
+    // logFile 参数即 tag，语义见各公共函数
+    template <typename... Args>
+    static yomk::payload::ResStatus emitLog(const std::string& url, yomk::payload::LogLevel lv,
+        const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        std::string content;
+        content.reserve(logContentReserve());
+        loc.appendTo(content);
+        (appendLogArg(content, std::forward<Args>(args)), ...);
+        return requestStatus(url, yomk::msgs::Log::shared(yomk::payload::Log{lv, std::move(content), logFile, tag}));
+    }
+    // 逐级别开关公共核心：console/file × on/off × 六级别共用。
+    // loggerName 空 = 全局主闸（与既有无参语义一致）；具名 = 逐器门控，
+    // 文件路径未知名返回 ResStatus::Failed
+    static yomk::payload::ResStatus setLogByLevel(
+        bool console, bool on, yomk::payload::LogLevel lv, const std::string& loggerName)
+    {
+        if (!requireServer())
+        {
+            return yomk::payload::ResStatus::Invalid;
+        }
+        const std::string& url = console
+            ? (on ? YomkUrl::loggerOnConsoleLogByLevel() : YomkUrl::loggerOffConsoleLogByLevel())
+            : (on ? YomkUrl::loggerOnFileLogByLevel() : YomkUrl::loggerOffFileLogByLevel());
+        return requestStatus(url, yomk::msgs::Log::shared(yomk::payload::Log{lv, "", loggerName}));
+    }
+
 public:
     // 位置信息输出开关，转发至 YomkSourceLoc 内部开关（进程级生效，线程安全）
     static void setLocFileEnabled(bool on) { YomkSourceLoc::fileFlag().store(on); }
@@ -276,84 +309,36 @@ public:
         }
         return requestStatus(YomkUrl::loggerSetFileLogProxy(), yomk::msgs::FileLogProxy::shared(yomk::payload::FileLogProxy{func}));
     }
-    // 控制台日志输出
+    // 控制台日志输出（emitLog 公共核心 + 单行转发，仅级别差异）
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogInfo(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, std::move(content), tag, tag}));
+        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Info, tag, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogWarn(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Warn, std::move(content), tag, tag}));
+        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Warn, tag, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogError(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Error, std::move(content), tag, tag}));
+        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Error, tag, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogDebug(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Debug, std::move(content), tag, tag}));
+        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Debug, tag, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogTrace(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, std::move(content), tag, tag}));
+        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Trace, tag, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitConsoleLogFatal(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, std::move(content), tag, tag}));
+        return emitLog(YomkUrl::loggerConsoleLog(), yomk::payload::LogLevel::Fatal, tag, tag, loc, std::forward<Args>(args)...);
     }
     // 创建文件日志器
     static yomk::payload::ResStatus createFileLogger(const std::string& logDir, const std::string& logFile)
@@ -373,283 +358,140 @@ public:
         }
         return requestStatus(YomkUrl::loggerWriteFileLog(), yomk::msgs::String::shared(logFile));
     }
+    // 文件日志输出（emitLog 公共核心 + 单行转发，仅级别差异）
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogInfo(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerFileLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, std::move(content), logFile, tag}));
+        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Info, logFile, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogWarn(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerFileLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Warn, std::move(content), logFile, tag}));
+        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Warn, logFile, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogError(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerFileLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Error, std::move(content), logFile, tag}));
+        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Error, logFile, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogDebug(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerFileLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Debug, std::move(content), logFile, tag}));
+        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Debug, logFile, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogTrace(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerFileLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, std::move(content), logFile, tag}));
+        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Trace, logFile, tag, loc, std::forward<Args>(args)...);
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogFatal(
         const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        std::string content;
-        content.reserve(logContentReserve());
-        loc.appendTo(content);
-        (appendLogArg(content, std::forward<Args>(args)), ...);
-        return requestStatus(YomkUrl::loggerFileLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, std::move(content), logFile, tag}));
+        return emitLog(YomkUrl::loggerFileLog(), yomk::payload::LogLevel::Fatal, logFile, tag, loc, std::forward<Args>(args)...);
     }
-    // 开关各级别控制台日志（loggerName 空 = 全局主闸，与既有无参语义一致；具名 = 逐器门控）
-    static yomk::payload::ResStatus enableConsoleLogDebug(const std::string& loggerName = "")
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Debug, "", loggerName}));
-    }
+    // 开关各级别控制台日志（setLogByLevel 公共核心 + 单行转发；loggerName 空 = 全局主闸，具名 = 逐器门控）
     static yomk::payload::ResStatus enableConsoleLogInfo(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "", loggerName}));
+        return setLogByLevel(true, true, yomk::payload::LogLevel::Info, loggerName);
     }
     static yomk::payload::ResStatus enableConsoleLogWarn(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Warn, "", loggerName}));
+        return setLogByLevel(true, true, yomk::payload::LogLevel::Warn, loggerName);
     }
     static yomk::payload::ResStatus enableConsoleLogError(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Error, "", loggerName}));
+        return setLogByLevel(true, true, yomk::payload::LogLevel::Error, loggerName);
     }
-    static yomk::payload::ResStatus disableConsoleLogDebug(const std::string& loggerName = "")
+    static yomk::payload::ResStatus enableConsoleLogDebug(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Debug, "", loggerName}));
-    }
-    static yomk::payload::ResStatus disableConsoleLogInfo(const std::string& loggerName = "")
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "", loggerName}));
-    }
-    static yomk::payload::ResStatus disableConsoleLogWarn(const std::string& loggerName = "")
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Warn, "", loggerName}));
-    }
-    static yomk::payload::ResStatus disableConsoleLogError(const std::string& loggerName = "")
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Error, "", loggerName}));
+        return setLogByLevel(true, true, yomk::payload::LogLevel::Debug, loggerName);
     }
     static yomk::payload::ResStatus enableConsoleLogTrace(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, "", loggerName}));
+        return setLogByLevel(true, true, yomk::payload::LogLevel::Trace, loggerName);
     }
     static yomk::payload::ResStatus enableConsoleLogFatal(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, "", loggerName}));
+        return setLogByLevel(true, true, yomk::payload::LogLevel::Fatal, loggerName);
+    }
+    static yomk::payload::ResStatus disableConsoleLogInfo(const std::string& loggerName = "")
+    {
+        return setLogByLevel(true, false, yomk::payload::LogLevel::Info, loggerName);
+    }
+    static yomk::payload::ResStatus disableConsoleLogWarn(const std::string& loggerName = "")
+    {
+        return setLogByLevel(true, false, yomk::payload::LogLevel::Warn, loggerName);
+    }
+    static yomk::payload::ResStatus disableConsoleLogError(const std::string& loggerName = "")
+    {
+        return setLogByLevel(true, false, yomk::payload::LogLevel::Error, loggerName);
+    }
+    static yomk::payload::ResStatus disableConsoleLogDebug(const std::string& loggerName = "")
+    {
+        return setLogByLevel(true, false, yomk::payload::LogLevel::Debug, loggerName);
     }
     static yomk::payload::ResStatus disableConsoleLogTrace(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, "", loggerName}));
+        return setLogByLevel(true, false, yomk::payload::LogLevel::Trace, loggerName);
     }
     static yomk::payload::ResStatus disableConsoleLogFatal(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffConsoleLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, "", loggerName}));
+        return setLogByLevel(true, false, yomk::payload::LogLevel::Fatal, loggerName);
     }
-    // 开关各级别文件日志（loggerName 空 = 文件全局主闸；具名 = 逐器门控，未知名返回 ResStatus::Failed）
-    static yomk::payload::ResStatus enableFileLogDebug(const std::string& loggerName = "")
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Debug, "", loggerName}));
-    }
+    // 开关各级别文件日志（setLogByLevel 公共核心 + 单行转发；loggerName 空 = 文件全局主闸，具名 = 逐器门控）
     static yomk::payload::ResStatus enableFileLogInfo(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "", loggerName}));
+        return setLogByLevel(false, true, yomk::payload::LogLevel::Info, loggerName);
     }
     static yomk::payload::ResStatus enableFileLogWarn(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Warn, "", loggerName}));
+        return setLogByLevel(false, true, yomk::payload::LogLevel::Warn, loggerName);
     }
     static yomk::payload::ResStatus enableFileLogError(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Error, "", loggerName}));
+        return setLogByLevel(false, true, yomk::payload::LogLevel::Error, loggerName);
     }
-    static yomk::payload::ResStatus disableFileLogDebug(const std::string& loggerName = "")
+    static yomk::payload::ResStatus enableFileLogDebug(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Debug, "", loggerName}));
-    }
-    static yomk::payload::ResStatus disableFileLogInfo(const std::string& loggerName = "")
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "", loggerName}));
-    }
-    static yomk::payload::ResStatus disableFileLogWarn(const std::string& loggerName = "")
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Warn, "", loggerName}));
-    }
-    static yomk::payload::ResStatus disableFileLogError(const std::string& loggerName = "")
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Error, "", loggerName}));
+        return setLogByLevel(false, true, yomk::payload::LogLevel::Debug, loggerName);
     }
     static yomk::payload::ResStatus enableFileLogTrace(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, "", loggerName}));
+        return setLogByLevel(false, true, yomk::payload::LogLevel::Trace, loggerName);
     }
     static yomk::payload::ResStatus enableFileLogFatal(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOnFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, "", loggerName}));
+        return setLogByLevel(false, true, yomk::payload::LogLevel::Fatal, loggerName);
+    }
+    static yomk::payload::ResStatus disableFileLogInfo(const std::string& loggerName = "")
+    {
+        return setLogByLevel(false, false, yomk::payload::LogLevel::Info, loggerName);
+    }
+    static yomk::payload::ResStatus disableFileLogWarn(const std::string& loggerName = "")
+    {
+        return setLogByLevel(false, false, yomk::payload::LogLevel::Warn, loggerName);
+    }
+    static yomk::payload::ResStatus disableFileLogError(const std::string& loggerName = "")
+    {
+        return setLogByLevel(false, false, yomk::payload::LogLevel::Error, loggerName);
+    }
+    static yomk::payload::ResStatus disableFileLogDebug(const std::string& loggerName = "")
+    {
+        return setLogByLevel(false, false, yomk::payload::LogLevel::Debug, loggerName);
     }
     static yomk::payload::ResStatus disableFileLogTrace(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, "", loggerName}));
+        return setLogByLevel(false, false, yomk::payload::LogLevel::Trace, loggerName);
     }
     static yomk::payload::ResStatus disableFileLogFatal(const std::string& loggerName = "")
     {
-        if (!requireServer())
-        {
-            return yomk::payload::ResStatus::Invalid;
-        }
-        return requestStatus(YomkUrl::loggerOffFileLogByLevel(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Fatal, "", loggerName}));
+        return setLogByLevel(false, false, yomk::payload::LogLevel::Fatal, loggerName);
     }
     // 按类型获取日志器名列表（type: "console"/"file"，仅返回该类型的纯名）
     static yomk::payload::Response listLoggers(const std::string& type)
