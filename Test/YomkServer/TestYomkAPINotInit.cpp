@@ -77,11 +77,11 @@ int main()
 
     std::cout << "===== 3. request/asyncRequest 未初始化守卫 =====" << std::endl;
     {
-        yomk::payload::Response resp = YomkAPI::request("/Any/func", nullptr);
+        yomk::payload::Response resp = yomk::server().url("/Any/func").request(nullptr);
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Invalid, "request 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not init", "request 未初始化契约消息: " + resp.m_msg);
 
-        YomkAPI::asyncRequest("/Any/func", nullptr, [](yomk::payload::Response) { ++g_asyncCbCount; });
+        yomk::server().url("/Any/func").async([](yomk::payload::Response) { ++g_asyncCbCount; }).request(nullptr);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         YOMK_TEST_CHECK(g_asyncCbCount.load() == 0, "asyncRequest 未初始化静默返回，回调不触发");
     }

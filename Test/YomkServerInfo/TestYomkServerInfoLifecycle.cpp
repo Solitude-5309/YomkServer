@@ -365,7 +365,7 @@ int main()
         YOMK_TEST_CHECK(noFunc.m_status == yomk::payload::ResStatus::Failed && noFunc.m_msg == "function not found: /FmtSrv/nope",
               "函数不存在契约消息精确匹配: " + noFunc.m_msg);
 
-        auto nullPkg = YomkAPI::request("/YomkServerInfo/function", nullptr);
+        auto nullPkg = yomk::server().url("/YomkServerInfo/function").request(nullptr);
         YOMK_TEST_CHECK(nullPkg.m_status == yomk::payload::ResStatus::Failed && nullPkg.m_msg.find("pkg is null") != std::string::npos,
               "null pkg 返回 ResStatus::Failed + pkg is null（unPack 守卫）");
 
@@ -495,7 +495,7 @@ int main()
             }
         }
         YOMK_TEST_CHECK(!churnLeft, "churn 后服务表无 /Churn 残留");
-        YOMK_TEST_CHECK(YomkAPI::request("/FmtSrv/ping", nullptr).m_status == yomk::payload::ResStatus::Succeeded,
+        YOMK_TEST_CHECK(yomk::server().url("/FmtSrv/ping").request(nullptr).m_status == yomk::payload::ResStatus::Succeeded,
               "并发结束后 FmtSrv 仍可正常调用");
     }
 

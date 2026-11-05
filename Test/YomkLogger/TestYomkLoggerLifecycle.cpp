@@ -423,9 +423,7 @@ YOMK_TEST_CHECK(
     yomk::payload::Response r(yomk::payload::ResStatus::Invalid);
     {
         CoutCapture cap;
-        r = YomkAPI::request(
-            "/YomkLogger/console_log",
-            yomk::msgs::Log::shared(yomk::payload::Log{static_cast<yomk::payload::LogLevel>(99), "lg1_s2p5_badlevel_marker", "MainLogger"}));
+        r = yomk::server().url("/YomkLogger/console_log").request(yomk::msgs::Log::shared(yomk::payload::Log{static_cast<yomk::payload::LogLevel>(99), "lg1_s2p5_badlevel_marker", "MainLogger"}));
         out = cap.str();
     }
     YOMK_TEST_CHECK(r.m_status == yomk::payload::ResStatus::Succeeded, "非法级别 99 console_log 返回 ResStatus::Succeeded（P2-c 修复后 default 活分支）");
@@ -807,9 +805,7 @@ YOMK_TEST_CHECK(
     yomk::payload::Response r(yomk::payload::ResStatus::Invalid);
     {
         CoutCapture cap;
-        r = YomkAPI::request(
-            "/YomkLogger/file_log",
-            yomk::msgs::Log::shared(
+        r = yomk::server().url("/YomkLogger/file_log").request(yomk::msgs::Log::shared(
                 yomk::payload::Log{static_cast<yomk::payload::LogLevel>(99), "lg1_s6_badlevel_marker", "lg1_s6_badlevel"}));
         out = cap.str();
     }
@@ -829,9 +825,7 @@ YOMK_TEST_CHECK(
     yomk::payload::Response rOff(yomk::payload::ResStatus::Invalid);
     {
         CoutCapture cap;
-        rOff = YomkAPI::request(
-            "/YomkLogger/off_console_log_by_level",
-            yomk::msgs::Log::shared(yomk::payload::Log{static_cast<yomk::payload::LogLevel>(99), "", ""}));
+        rOff = yomk::server().url("/YomkLogger/off_console_log_by_level").request(yomk::msgs::Log::shared(yomk::payload::Log{static_cast<yomk::payload::LogLevel>(99), "", ""}));
         outOff = cap.str();
     }
     YOMK_TEST_CHECK(
@@ -841,9 +835,7 @@ YOMK_TEST_CHECK(
     yomk::payload::Response rOn(yomk::payload::ResStatus::Invalid);
     {
         CoutCapture cap;
-        rOn = YomkAPI::request(
-            "/YomkLogger/on_console_log_by_level",
-            yomk::msgs::Log::shared(yomk::payload::Log{static_cast<yomk::payload::LogLevel>(99), "", ""}));
+        rOn = yomk::server().url("/YomkLogger/on_console_log_by_level").request(yomk::msgs::Log::shared(yomk::payload::Log{static_cast<yomk::payload::LogLevel>(99), "", ""}));
         outOn = cap.str();
     }
     YOMK_TEST_CHECK(
@@ -863,25 +855,25 @@ YOMK_TEST_CHECK(
     // console_log 收 nullptr 包 → unPack 空包分支 ResStatus::Failed
     {
         CoutCapture cap;
-        auto r = YomkAPI::request("/YomkLogger/console_log", nullptr);
+        auto r = yomk::server().url("/YomkLogger/console_log").request(nullptr);
         YOMK_TEST_CHECK(r.m_status == yomk::payload::ResStatus::Failed, "console_log nullptr 包返回 ResStatus::Failed");
         YOMK_TEST_CHECK(r.m_msg == "pkg is null or pkg is not Log", "console_log 空包契约消息");
     }
     // console_log 收错类型包（String）→ 同分支 ResStatus::Failed
     {
-        auto r = YomkAPI::request("/YomkLogger/console_log", yomk::msgs::String::shared(std::string("wrong")));
+        auto r = yomk::server().url("/YomkLogger/console_log").request(yomk::msgs::String::shared(std::string("wrong")));
         YOMK_TEST_CHECK(r.m_status == yomk::payload::ResStatus::Failed, "console_log 错类型包返回 ResStatus::Failed");
         YOMK_TEST_CHECK(r.m_msg == "pkg is null or pkg is not Log", "console_log 错类型包契约消息");
     }
     // file_log / write_file_log / create_file_logger / logger 空包
-    YOMK_TEST_CHECK(YomkAPI::request("/YomkLogger/file_log", nullptr).m_status == yomk::payload::ResStatus::Failed, "file_log nullptr 包返回 ResStatus::Failed");
+    YOMK_TEST_CHECK(yomk::server().url("/YomkLogger/file_log").request(nullptr).m_status == yomk::payload::ResStatus::Failed, "file_log nullptr 包返回 ResStatus::Failed");
     YOMK_TEST_CHECK(
-        YomkAPI::request("/YomkLogger/write_file_log", nullptr).m_status == yomk::payload::ResStatus::Failed,
+        yomk::server().url("/YomkLogger/write_file_log").request(nullptr).m_status == yomk::payload::ResStatus::Failed,
         "write_file_log nullptr 包返回 ResStatus::Failed");
     YOMK_TEST_CHECK(
-        YomkAPI::request("/YomkLogger/create_file_logger", nullptr).m_status == yomk::payload::ResStatus::Failed,
+        yomk::server().url("/YomkLogger/create_file_logger").request(nullptr).m_status == yomk::payload::ResStatus::Failed,
         "create_file_logger nullptr 包返回 ResStatus::Failed");
-    YOMK_TEST_CHECK(YomkAPI::request("/YomkLogger/logger", nullptr).m_status == yomk::payload::ResStatus::Failed, "logger nullptr 包返回 ResStatus::Failed");
+    YOMK_TEST_CHECK(yomk::server().url("/YomkLogger/logger").request(nullptr).m_status == yomk::payload::ResStatus::Failed, "logger nullptr 包返回 ResStatus::Failed");
     // console_log 空 logger 名 → 回退 MainLogger 分支（宏形态 tag 恒非空，raw 注入才可触达）
     // 注：YOMK_TEST_CHECK 须在捕获作用域外（否则断言输出被 rdbuf 重定向吞没）
     {
@@ -889,9 +881,7 @@ YOMK_TEST_CHECK(
         yomk::payload::Response r(yomk::payload::ResStatus::Invalid);
         {
             CoutCapture cap;
-            r = YomkAPI::request(
-                "/YomkLogger/console_log",
-                yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "lg1_s7_empty_logger_marker", ""}));
+            r = yomk::server().url("/YomkLogger/console_log").request(yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "lg1_s7_empty_logger_marker", ""}));
             out = cap.str();
         }
         YOMK_TEST_CHECK(r.m_status == yomk::payload::ResStatus::Succeeded, "console_log 空 logger 名返回 ResStatus::Succeeded（回退分支）");
@@ -908,7 +898,7 @@ YOMK_TEST_CHECK(
         yomk::payload::Response r(yomk::payload::ResStatus::Invalid);
         {
             CoutCapture cap;
-            r = YomkAPI::request("/YomkLogger/file_log", yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "x", ""}));
+            r = yomk::server().url("/YomkLogger/file_log").request(yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "x", ""}));
             out = cap.str();
         }
         YOMK_TEST_CHECK(
@@ -923,7 +913,7 @@ YOMK_TEST_CHECK(
         (emptyNameInfo.m_status == yomk::payload::ResStatus::Failed && emptyNameInfo.m_msg == "logger not found."),
         "LOGGER 空名返回 ResStatus::Failed + logger not found.（P2-a 处置后无幽灵 key）");
     // 未知端点 → invoke 路由层 ResStatus::Failed（服务前缀被路由剥离，消息仅含端点名）
-    auto unknown = YomkAPI::request("/YomkLogger/no_such_func", nullptr);
+    auto unknown = yomk::server().url("/YomkLogger/no_such_func").request(nullptr);
     YOMK_TEST_CHECK(unknown.m_status == yomk::payload::ResStatus::Failed, "未知端点返回 ResStatus::Failed（invoke not found）");
     YOMK_TEST_CHECK(unknown.m_msg == "function not found: /no_such_func", "未知端点契约消息（路由剥离服务前缀）");
 }
@@ -1083,9 +1073,7 @@ YOMK_TEST_CHECK(
         yomk::payload::Response rebuild(yomk::payload::ResStatus::Invalid);
         {
             CoutCapture cap;
-            rebuild = YomkAPI::request(
-                "/YomkLogger/console_log",
-                yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "lg1_s8_mainlogger_rebuild_marker", ""}));
+            rebuild = yomk::server().url("/YomkLogger/console_log").request(yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "lg1_s8_mainlogger_rebuild_marker", ""}));
             rebuildOut = cap.str();
         }
         YOMK_TEST_CHECK(rebuild.m_status == yomk::payload::ResStatus::Succeeded, "S8: MainLogger 删除后空名回退写入 ResStatus::Succeeded");
@@ -1102,11 +1090,11 @@ YOMK_TEST_CHECK(
 
     // 8.7 异常路径：空包 / 错类型包（unPack 契约分支）
     {
-        auto rNull = YomkAPI::request("/YomkLogger/delete_logger", nullptr);
+        auto rNull = yomk::server().url("/YomkLogger/delete_logger").request(nullptr);
         YOMK_TEST_CHECK(
             (rNull.m_status == yomk::payload::ResStatus::Failed && rNull.m_msg == "pkg is null or pkg is not String"),
             "S8: delete_logger nullptr 包返回 ResStatus::Failed + 契约消息");
-        auto rWrong = YomkAPI::request("/YomkLogger/delete_logger", yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "x", "y"}));
+        auto rWrong = yomk::server().url("/YomkLogger/delete_logger").request(yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "x", "y"}));
         YOMK_TEST_CHECK(
             (rWrong.m_status == yomk::payload::ResStatus::Failed && rWrong.m_msg == "pkg is null or pkg is not String"),
             "S8: delete_logger 错类型包（Log）返回 ResStatus::Failed + 契约消息");
