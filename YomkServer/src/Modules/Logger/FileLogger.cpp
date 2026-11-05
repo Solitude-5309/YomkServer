@@ -147,20 +147,20 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
     switch (logLevel)
     {
         case LogLevel::Debug:
-            appendLine(" [Debug] ");
+            appendLine(" [DEBUG] ");
             break;
         case LogLevel::Info:
-            appendLine(" [Info ] ");
+            appendLine(" [INFO ] ");
             break;
         case LogLevel::Warn:
-            appendLine(" [Warn ] ");
+            appendLine(" [WARN ] ");
             break;
         case LogLevel::Error:
-            appendLine(" [Error] ");
+            appendLine(" [ERROR] ");
             break;
         default:
             YOMK_DIAG_ERR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
-            appendLine(" [Info ] ");
+            appendLine(" [INFO ] ");
             break;
     }
 }

@@ -100,20 +100,20 @@ void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::st
     switch (logLevel)
     {
         case LogLevel::Debug:
-            std::cout << timeStr << " [Debug] [" << tagShown << "] " << log << std::endl;
+            std::cout << timeStr << " [DEBUG] [" << tagShown << "] " << log << std::endl;
             break;
         case LogLevel::Info:
-            std::cout << timeStr << " [Info ] [" << tagShown << "] " << log << std::endl;
+            std::cout << timeStr << " [INFO ] [" << tagShown << "] " << log << std::endl;
             break;
         case LogLevel::Warn:
-            std::cout << timeStr << " [Warn ] [" << tagShown << "] " << log << std::endl;
+            std::cout << timeStr << " [WARN ] [" << tagShown << "] " << log << std::endl;
             break;
         case LogLevel::Error:
-            std::cout << timeStr << " [Error] [" << tagShown << "] " << log << std::endl;
+            std::cout << timeStr << " [ERROR] [" << tagShown << "] " << log << std::endl;
             break;
         default:
             YOMK_DIAG_ERR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
-            std::cout << timeStr << " [Info ] [" << tagShown << "] " << log << std::endl;
+            std::cout << timeStr << " [INFO ] [" << tagShown << "] " << log << std::endl;
             break;
     }
 }

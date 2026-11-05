@@ -515,7 +515,7 @@ int main()
                 {
                     continue;  // 框架自身噪声行不参与判定
                 }
-                if (checkTimeFormat(line) && line.find("[Info ] [" + kTag + "]") != std::string::npos)
+                if (checkTimeFormat(line) && line.find("[INFO ] [" + kTag + "]") != std::string::npos)
                 {
                     ++intactLines;
                 }
@@ -527,7 +527,7 @@ int main()
         }
         YOMK_TEST_CHECK(
             brokenLines == 0,
-            "S1: 含 marker 的行全部完整（时间戳+[Info ]+[tag] 格式，撕裂行 " + std::to_string(brokenLines) + " 条）");
+            "S1: 含 marker 的行全部完整（时间戳+[INFO ]+[tag] 格式，撕裂行 " + std::to_string(brokenLines) + " 条）");
         YOMK_TEST_CHECK(
             intactLines == kTotal,
             "S1: 完整行数 == " + std::to_string(kTotal) + "（实际 " + std::to_string(intactLines) + "）");

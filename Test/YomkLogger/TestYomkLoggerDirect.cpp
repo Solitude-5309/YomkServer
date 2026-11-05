@@ -5,7 +5,7 @@
  * 覆盖内容（2 个类，18 组用例 56 断言）：
  * ConsoleLogger：
  * 1. 默认名 "MainLogger"、setName/getName
- * 2. 四级别输出（级别标签 [Debug]/[Info ]/[Warn ]/[Error] + [名/tag] + 内容）
+ * 2. 四级别输出（级别标签 [DEBUG]/[INFO ]/[WARN ]/[ERROR] + [名/tag] + 内容）
  * 3. 非法级别 default 降级（P2-c 修复后回填）：log(LogLevel(99)) →
  *    "Unknown log level: 99" 提示 + 降级 Info 输出
  * 4. 时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]
@@ -170,12 +170,12 @@ int main()
             logger.log(ConsoleLogger::LogLevel::Error, "", "lg1_dc_error_marker");
             std::string out = cap.str();
             YOMK_TEST_CHECK(
-                out.find("[Debug] [lg1_direct_console] lg1_dc_debug_marker") != std::string::npos,
-                "LogLevel::Debug 输出行格式（[Debug] [名] 内容）");
-            YOMK_TEST_CHECK(out.find("[Info ] [lg1_direct_console] lg1_dc_info_marker") != std::string::npos, "LogLevel::Info 输出行格式");
-            YOMK_TEST_CHECK(out.find("[Warn ] [lg1_direct_console] lg1_dc_warn_marker") != std::string::npos, "LogLevel::Warn 输出行格式");
+                out.find("[DEBUG] [lg1_direct_console] lg1_dc_debug_marker") != std::string::npos,
+                "LogLevel::Debug 输出行格式（[DEBUG] [名] 内容）");
+            YOMK_TEST_CHECK(out.find("[INFO ] [lg1_direct_console] lg1_dc_info_marker") != std::string::npos, "LogLevel::Info 输出行格式");
+            YOMK_TEST_CHECK(out.find("[WARN ] [lg1_direct_console] lg1_dc_warn_marker") != std::string::npos, "LogLevel::Warn 输出行格式");
             YOMK_TEST_CHECK(
-                out.find("[Error] [lg1_direct_console] lg1_dc_error_marker") != std::string::npos, "LogLevel::Error 输出行格式");
+                out.find("[ERROR] [lg1_direct_console] lg1_dc_error_marker") != std::string::npos, "LogLevel::Error 输出行格式");
             YOMK_TEST_CHECK(checkTimeFormat(out), "控制台行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]");
         }
 
@@ -192,7 +192,7 @@ int main()
                 out.find("Unknown log level: 99") != std::string::npos,
                 "非法级别 99 走 default 错误提示（P2-c 修复后活分支）");
             YOMK_TEST_CHECK(
-                out.find("[Info ] [lg1_direct_console] lg1_dc_badlevel_marker") != std::string::npos,
+                out.find("[INFO ] [lg1_direct_console] lg1_dc_badlevel_marker") != std::string::npos,
                 "非法级别降级 Info 输出 marker");
         }
 
@@ -204,7 +204,7 @@ int main()
             YOMK_TEST_CHECK(longLogger.getName() == longName, "4096 字符超长名 setName/getName 一致");
             CoutCapture cap;
             longLogger.log(ConsoleLogger::LogLevel::Info, "", "");
-            YOMK_TEST_CHECK(cap.str().find("[Info ] [" + longName + "] ") != std::string::npos, "超长名 + 空内容日志正常输出");
+            YOMK_TEST_CHECK(cap.str().find("[INFO ] [" + longName + "] ") != std::string::npos, "超长名 + 空内容日志正常输出");
         }
     
         // tag 显示语义（m_tag 拆分回填）：tag 非空显示 [tag]，空 tag 回退 [日志器名]
@@ -214,10 +214,10 @@ int main()
             logger.log(ConsoleLogger::LogLevel::Info, "", "lg1_dc_fallback_marker");
             std::string out = cap.str();
             YOMK_TEST_CHECK(
-                out.find("[Info ] [lg1_dc_tag] lg1_dc_tagged_marker") != std::string::npos,
+                out.find("[INFO ] [lg1_dc_tag] lg1_dc_tagged_marker") != std::string::npos,
                 "tag 非空显示 [tag]（m_tag 优先于日志器名）");
             YOMK_TEST_CHECK(
-                out.find("[Info ] [lg1_direct_console] lg1_dc_fallback_marker") != std::string::npos,
+                out.find("[INFO ] [lg1_direct_console] lg1_dc_fallback_marker") != std::string::npos,
                 "空 tag 回退显示 [日志器名]");
         }
 
@@ -244,7 +244,7 @@ int main()
             }
             YOMK_TEST_CHECK(outGateOff.find("lg1_dc_gate_off_marker") == std::string::npos, "14b: 关断级别无输出");
             YOMK_TEST_CHECK(
-                outGateOff.find("[Warn ] [lg1_dc_gate] lg1_dc_gate_warn_marker") != std::string::npos,
+                outGateOff.find("[WARN ] [lg1_dc_gate] lg1_dc_gate_warn_marker") != std::string::npos,
                 "14b: 未关断级别输出不受影响");
 
             // 14c 恢复：重开后输出恢复
@@ -257,7 +257,7 @@ int main()
                 outGateOn = cap.str();
             }
             YOMK_TEST_CHECK(
-                outGateOn.find("[Info ] [lg1_dc_gate] lg1_dc_gate_on_marker") != std::string::npos,
+                outGateOn.find("[INFO ] [lg1_dc_gate] lg1_dc_gate_on_marker") != std::string::npos,
                 "14c: 恢复后输出正常");
 
             // 14d unknown 级别按 Info 门控：关 Info 后 log(99) 在门控层直接丢弃
@@ -282,7 +282,7 @@ int main()
             }
             YOMK_TEST_CHECK(
                 outGateBad2.find("Unknown log level: 99") != std::string::npos &&
-                    outGateBad2.find("[Info ] [lg1_dc_gate] lg1_dc_gate_bad2_marker") != std::string::npos,
+                    outGateBad2.find("[INFO ] [lg1_dc_gate] lg1_dc_gate_bad2_marker") != std::string::npos,
                 "14d: 恢复后 unknown 级别回归 default 降级 Info 输出");
         }
     }
@@ -331,13 +331,13 @@ int main()
         std::string content = readFile(logFile, readOk);
         YOMK_TEST_CHECK(readOk, "write 后日志文件可读");
         YOMK_TEST_CHECK(
-            (content.find("[Debug] lg1_df_debug_marker") != std::string::npos &&
-             content.find("[Info ] lg1_df_info_marker") != std::string::npos &&
-             content.find("[Warn ] lg1_df_warn_marker") != std::string::npos &&
-             content.find("[Error] lg1_df_error_marker") != std::string::npos),
+            (content.find("[DEBUG] lg1_df_debug_marker") != std::string::npos &&
+             content.find("[INFO ] lg1_df_info_marker") != std::string::npos &&
+             content.find("[WARN ] lg1_df_warn_marker") != std::string::npos &&
+             content.find("[ERROR] lg1_df_error_marker") != std::string::npos),
             "四级别行格式（时间戳+[级别]+内容）落盘");
         YOMK_TEST_CHECK(
-            content.find("[Info ] lg1_df_badlevel_marker") != std::string::npos,
+            content.find("[INFO ] lg1_df_badlevel_marker") != std::string::npos,
             "非法级别降级 Info 行落盘（P2-c 回填）");
         YOMK_TEST_CHECK(checkTimeFormat(content), "文件日志行首时间戳格式");
 
@@ -352,8 +352,8 @@ int main()
         bool readOk2 = false;
         std::string content2 = readFile(logFile, readOk2);
         YOMK_TEST_CHECK(
-            readOk2 && content2.size() > sizeAfter && content2.substr(sizeAfter).find("[Info ] ") != std::string::npos,
-            "空内容日志追加成行（[Info ] 空内容）");
+            readOk2 && content2.size() > sizeAfter && content2.substr(sizeAfter).find("[INFO ] ") != std::string::npos,
+            "空内容日志追加成行（[INFO ] 空内容）");
 
         // 1MB 超长内容往返
         {
@@ -373,10 +373,10 @@ int main()
             bool readOkTag = false;
             std::string contentTag = readFile(logFile, readOkTag);
             YOMK_TEST_CHECK(
-                readOkTag && contentTag.find("[Info ] [lg1_df_tag] lg1_df_tagged_marker") != std::string::npos,
+                readOkTag && contentTag.find("[INFO ] [lg1_df_tag] lg1_df_tagged_marker") != std::string::npos,
                 "tag 非空行格式（[级别] [tag] 内容）");
             YOMK_TEST_CHECK(
-                contentTag.find("[Info ] lg1_df_untagged_marker") != std::string::npos,
+                contentTag.find("[INFO ] lg1_df_untagged_marker") != std::string::npos,
                 "空 tag 不加 [tag] 前缀");
         }
 
@@ -497,7 +497,7 @@ int main()
                 gateReadOk && gateContent.find("lg1_df_gate_off_marker") == std::string::npos,
                 "15b: 关断级别不落盘");
             YOMK_TEST_CHECK(
-                gateContent.find("[Warn ] lg1_df_gate_warn_marker") != std::string::npos,
+                gateContent.find("[WARN ] lg1_df_gate_warn_marker") != std::string::npos,
                 "15b: 未关断级别落盘不受影响");
 
             // 15c 恢复：重开后输出恢复
@@ -508,7 +508,7 @@ int main()
             bool gateReadOk2 = false;
             std::string gateContent2 = readFile(gateLogFile, gateReadOk2);
             YOMK_TEST_CHECK(
-                gateReadOk2 && gateContent2.find("[Info ] lg1_df_gate_on_marker") != std::string::npos,
+                gateReadOk2 && gateContent2.find("[INFO ] lg1_df_gate_on_marker") != std::string::npos,
                 "15c: 恢复后落盘正常");
 
             // 15d unknown 级别按 Info 门控：关 Info 后 log(99) 门控层直接丢弃
@@ -539,7 +539,7 @@ int main()
             std::string gateContent3 = readFile(gateLogFile, gateReadOk3);
             YOMK_TEST_CHECK(
                 outBadGate2.find("Unknown log level: 99") != std::string::npos &&
-                    gateContent3.find("[Info ] lg1_df_gate_bad2_marker") != std::string::npos,
+                    gateContent3.find("[INFO ] lg1_df_gate_bad2_marker") != std::string::npos,
                 "15d: 恢复后 unknown 级别回归 default 降级 Info 落盘");
         }
     }

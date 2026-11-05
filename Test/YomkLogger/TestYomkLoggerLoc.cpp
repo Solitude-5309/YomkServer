@@ -103,7 +103,7 @@ static std::string readFile(const fs::path& path, bool& ok)
 // （时间戳毫秒级可能跨值，不参与对比）
 static std::string stripLineNo(const std::string& line)
 {
-    const size_t lvl = line.find("[Info ]");
+    const size_t lvl = line.find("[INFO ]");
     if (lvl == std::string::npos)
     {
         return line;
@@ -119,7 +119,7 @@ static std::string stripLineNo(const std::string& line)
     {
         return line;
     }
-    return "[Info ] [MainLogger] " + line.substr(close + 1);
+    return "[INFO ] [MainLogger] " + line.substr(close + 1);
 }
 
 int main()

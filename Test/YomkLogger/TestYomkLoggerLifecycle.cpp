@@ -266,7 +266,7 @@ int main()
     YOMK_TEST_CHECK(r == yomk::payload::ResStatus::Succeeded, "YOMK_INFO 返回 ResStatus::Succeeded");
     std::string out = cap.str();
     YOMK_TEST_CHECK(out.find("lg1_s1_info_marker  42") != std::string::npos, "INFO 输出含 marker 与整数变参");
-    YOMK_TEST_CHECK(out.find("[Info ] [MainLogger] [") != std::string::npos, "INFO 输出格式 [Info ] [MainLogger] [行号]");
+    YOMK_TEST_CHECK(out.find("[INFO ] [MainLogger] [") != std::string::npos, "INFO 输出格式 [INFO ] [MainLogger] [行号]");
     bool fmtOk = false;
     std::istringstream iss(out);
     std::string line;
@@ -283,7 +283,7 @@ int main()
     CoutCapture cap;
     YOMK_TEST_CHECK(YOMK_WARN("lg1_s1_warn_marker") == yomk::payload::ResStatus::Succeeded, "YOMK_WARN 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(
-        (cap.str().find("[Warn ] [MainLogger]") != std::string::npos &&
+        (cap.str().find("[WARN ] [MainLogger]") != std::string::npos &&
          cap.str().find("lg1_s1_warn_marker") != std::string::npos),
         "WARN 输出格式与 marker");
 }
@@ -291,7 +291,7 @@ int main()
     CoutCapture cap;
     YOMK_TEST_CHECK(YOMK_ERROR("lg1_s1_error_marker") == yomk::payload::ResStatus::Succeeded, "YOMK_ERROR 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(
-        (cap.str().find("[Error] [MainLogger]") != std::string::npos &&
+        (cap.str().find("[ERROR] [MainLogger]") != std::string::npos &&
          cap.str().find("lg1_s1_error_marker") != std::string::npos),
         "ERROR 输出格式与 marker");
 }
@@ -299,7 +299,7 @@ int main()
     CoutCapture cap;
     YOMK_TEST_CHECK(YOMK_DEBUG("lg1_s1_debug_marker") == yomk::payload::ResStatus::Succeeded, "YOMK_DEBUG 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(
-        (cap.str().find("[Debug] [MainLogger]") != std::string::npos &&
+        (cap.str().find("[DEBUG] [MainLogger]") != std::string::npos &&
          cap.str().find("lg1_s1_debug_marker") != std::string::npos),
         "DEBUG 输出格式与 marker");
 }
@@ -392,7 +392,7 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(
         out.find("unknown log level, use Info") != std::string::npos, "console_log default 分支错误提示（降级 Info）");
     YOMK_TEST_CHECK(
-        out.find("[Info ] [MainLogger] lg1_s2p5_badlevel_marker") != std::string::npos,
+        out.find("[INFO ] [MainLogger] lg1_s2p5_badlevel_marker") != std::string::npos,
         "非法级别降级 Info 输出 marker");
 }
 
@@ -490,8 +490,8 @@ YOMK_TEST_CHECK(
             "卸载后 console_log 返回 ResStatus::Succeeded + success.（走默认路径而非代理短路）");
         YOMK_TEST_CHECK(out.find("lg6_s3_post_unload_marker") != std::string::npos, "卸载后恢复框架默认控制台输出");
         YOMK_TEST_CHECK(
-            out.find("[Info ] [MainLogger] [") != std::string::npos,
-            "卸载后输出为框架默认格式 <时间戳> [Info ] [logger] msg");
+            out.find("[INFO ] [MainLogger] [") != std::string::npos,
+            "卸载后输出为框架默认格式 <时间戳> [INFO ] [logger] msg");
         YOMK_TEST_CHECK(g_proxyHits.load() == hitsBefore, "卸载后代理不再被调用（原子命中数不增）");
     }
 
@@ -538,10 +538,10 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(readOk, "落盘后日志文件可读");
     YOMK_TEST_CHECK(countLines(content) == 4, "落盘内容恰 4 行（四级别各一）");
     YOMK_TEST_CHECK(
-        (content.find("[Info ] [MainLogger]") != std::string::npos &&
-         content.find("[Info ] [MainLogger] [") != std::string::npos &&
+        (content.find("[INFO ] [MainLogger]") != std::string::npos &&
+         content.find("[INFO ] [MainLogger] [") != std::string::npos &&
          content.find("lg1_s4_info_marker  7") != std::string::npos),
-        "Info 行格式（时间戳+[Info ]+[MainLogger]+[行号] 内容）——FILE_INFO 默认内容 tag 为 MainLogger，行号独立成段，"
+        "Info 行格式（时间戳+[INFO ]+[MainLogger]+[行号] 内容）——FILE_INFO 默认内容 tag 为 MainLogger，行号独立成段，"
         "logger 名仅作路由 key");
     // 自定义内容 tag 变体：FILE_INFO_TAG 的 tag 进内容行
     YOMK_TEST_CHECK(
@@ -551,12 +551,12 @@ YOMK_TEST_CHECK(
     bool readOkTag = false;
     std::string contentTag = readFile(logFile, readOkTag);
     YOMK_TEST_CHECK(
-        (readOkTag && contentTag.find("[Info ] [lg1CustomTag] [") != std::string::npos &&
+        (readOkTag && contentTag.find("[INFO ] [lg1CustomTag] [") != std::string::npos &&
          contentTag.find("lg1_s4_customtag_marker") != std::string::npos),
-        "自定义 tag 行格式（[Info ] [tag] [行号] 内容）");
+        "自定义 tag 行格式（[INFO ] [tag] [行号] 内容）");
     YOMK_TEST_CHECK(
-        (content.find("[Warn ]") != std::string::npos && content.find("[Error]") != std::string::npos &&
-         content.find("[Debug]") != std::string::npos),
+        (content.find("[WARN ]") != std::string::npos && content.find("[ERROR]") != std::string::npos &&
+         content.find("[DEBUG]") != std::string::npos),
         "Warn/Error/Debug 三级别行均在");
     YOMK_TEST_CHECK(checkTimeFormat(content), "文件日志行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]");
 
@@ -770,7 +770,7 @@ YOMK_TEST_CHECK(
     bool readOk = false;
     std::string content = readFile(badLevelDir / "lg1_s6_badlevel.log", readOk);
     YOMK_TEST_CHECK(
-        (readOk && countLines(content) == 1 && content.find("[Info ] lg1_s6_badlevel_marker") != std::string::npos),
+        (readOk && countLines(content) == 1 && content.find("[INFO ] lg1_s6_badlevel_marker") != std::string::npos),
         "非法级别降级 Info 落盘恰 1 行");
 
     // off/on 非法级别：default 仅记录错误，无副作用仍 ResStatus::Succeeded，开关状态不变

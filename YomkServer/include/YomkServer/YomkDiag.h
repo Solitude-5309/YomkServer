@@ -9,6 +9,6 @@
 #define YOMK_DIAG_ERR(msg)                                                                                                    \
     do                                                                                                                        \
     {                                                                                                                         \
-        std::cout << yomkLogLocalTimeFormatted() << " [Error] [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__   \
+        std::cout << yomkLogLocalTimeFormatted() << " [ERROR] [Yomk] [" << __FILE__ << ":" << __LINE__ << "] [" << __func__   \
                   << "] " << msg << std::endl;                                                                                \
     } while (0)
