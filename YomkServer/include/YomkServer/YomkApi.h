@@ -17,6 +17,7 @@
 #include "YomkServer.h"
 #include "YomkService.h"
 #include "YomkDiag.h"
+#include "YomkSourceLoc.h"
 #include "YomkUrl.h"
 
 // 启动编排接口：按 before -> start -> after 顺序执行
@@ -176,73 +177,6 @@ public:
     }
     // LOG_API
 private:
-    // 调用点位置信息，仅模块内部使用。聚合体 + NSDMI：调用点 {} 初始化时在
-    // 【调用行】完成 file/line/func 捕获；若改在函数体内求值，捕获到的是本头文件行号
-    struct SourceLoc
-    {
-        const char* filename = __builtin_FILE();
-        unsigned line = __builtin_LINE();
-        const char* funcname = __builtin_FUNCTION();
-
-        // 位置信息输出开关（进程级配置，atomic 保证线程安全）。必须为 public：
-        // 外围类对嵌套类私有成员无特殊访问权（[class.access.nest]），YomkAPI 的
-        // setter 需转发到这里；SourceLoc 整体为 private，该类型用户无法命名
-        static std::atomic<bool>& fileFlag() { static std::atomic<bool> v(false); return v; }
-        static std::atomic<bool>& lineFlag() { static std::atomic<bool> v(true); return v; } // 默认开（与旧宏输出兼容）
-        static std::atomic<bool>& funcFlag() { static std::atomic<bool> v(false); return v; }
-
-        // 取路径 basename（兼容 '/' 与 '\'），与主流日志风格一致
-        static const char* baseName(const char* path)
-        {
-            const char* slash = std::strrchr(path, '/');
-            const char* bslash = std::strrchr(path, '\\');
-            const char* sep = slash > bslash ? slash : bslash;
-            if (sep == nullptr)
-            {
-                return path;
-            }
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            return sep + 1;
-        }
-
-        // 按开关将位置前缀 "[file:line:func]" 原地追加到 out；三项全关不追加。
-        // 默认配置（仅行号）输出 "[123]"，与旧宏输出字节级一致
-        void appendTo(std::string& out) const
-        {
-            const bool hasFile = fileFlag().load(std::memory_order_relaxed);
-            const bool hasLine = lineFlag().load(std::memory_order_relaxed);
-            const bool hasFunc = funcFlag().load(std::memory_order_relaxed);
-            if (!hasFile && !hasLine && !hasFunc)
-            {
-                return; // 三项全关：无位置前缀
-            }
-
-            out += "[";
-            bool first = true;
-            auto append = [&out, &first](const std::string& part) {
-                if (!first)
-                {
-                    out += ":";
-                }
-                out += part;
-                first = false;
-            };
-            if (hasFile)
-            {
-                append(baseName(filename)); // 取 basename，主流日志风格
-            }
-            if (hasLine)
-            {
-                append(std::to_string(line));
-            }
-            if (hasFunc)
-            {
-                append(funcname);
-            }
-            out += "]";
-        }
-    };
-
     // emit 正文起始预留容量：典型日志单行 64 字节内，预分配减少 string 扩容
     static std::size_t logContentReserve() { static const std::size_t v = 64; return v; }
 
@@ -324,10 +258,10 @@ private:
     }
 
 public:
-    // 位置信息输出开关，转发至 SourceLoc 内部开关（进程级生效，线程安全）
-    static void setLocFileEnabled(bool on) { SourceLoc::fileFlag().store(on); }
-    static void setLocLineEnabled(bool on) { SourceLoc::lineFlag().store(on); }
-    static void setLocFuncEnabled(bool on) { SourceLoc::funcFlag().store(on); }
+    // 位置信息输出开关，转发至 YomkSourceLoc 内部开关（进程级生效，线程安全）
+    static void setLocFileEnabled(bool on) { YomkSourceLoc::fileFlag().store(on); }
+    static void setLocLineEnabled(bool on) { YomkSourceLoc::lineFlag().store(on); }
+    static void setLocFuncEnabled(bool on) { YomkSourceLoc::funcFlag().store(on); }
     // 无 tag 日志宏的默认 tag 常量（仅宏内部使用）
     static const std::string& mainLoggerTag() { static const std::string t("MainLogger"); return t; }
 
@@ -352,7 +286,7 @@ public:
     }
     // 控制台日志输出
     template <typename... Args>
-    static yomk::payload::ResStatus emitConsoleLogInfo(const std::string& tag, const SourceLoc& loc, Args&&... args)
+    static yomk::payload::ResStatus emitConsoleLogInfo(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -365,7 +299,7 @@ public:
         return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, std::move(content), tag, tag}));
     }
     template <typename... Args>
-    static yomk::payload::ResStatus emitConsoleLogWarn(const std::string& tag, const SourceLoc& loc, Args&&... args)
+    static yomk::payload::ResStatus emitConsoleLogWarn(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -378,7 +312,7 @@ public:
         return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Warn, std::move(content), tag, tag}));
     }
     template <typename... Args>
-    static yomk::payload::ResStatus emitConsoleLogError(const std::string& tag, const SourceLoc& loc, Args&&... args)
+    static yomk::payload::ResStatus emitConsoleLogError(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -391,7 +325,7 @@ public:
         return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Error, std::move(content), tag, tag}));
     }
     template <typename... Args>
-    static yomk::payload::ResStatus emitConsoleLogDebug(const std::string& tag, const SourceLoc& loc, Args&&... args)
+    static yomk::payload::ResStatus emitConsoleLogDebug(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -404,7 +338,7 @@ public:
         return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Debug, std::move(content), tag, tag}));
     }
     template <typename... Args>
-    static yomk::payload::ResStatus emitConsoleLogTrace(const std::string& tag, const SourceLoc& loc, Args&&... args)
+    static yomk::payload::ResStatus emitConsoleLogTrace(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -417,7 +351,7 @@ public:
         return requestStatus(YomkUrl::loggerConsoleLog(), yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Trace, std::move(content), tag, tag}));
     }
     template <typename... Args>
-    static yomk::payload::ResStatus emitConsoleLogFatal(const std::string& tag, const SourceLoc& loc, Args&&... args)
+    static yomk::payload::ResStatus emitConsoleLogFatal(const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -449,7 +383,7 @@ public:
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogInfo(
-        const std::string& logFile, const std::string& tag, const SourceLoc& loc, Args&&... args)
+        const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -463,7 +397,7 @@ public:
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogWarn(
-        const std::string& logFile, const std::string& tag, const SourceLoc& loc, Args&&... args)
+        const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -477,7 +411,7 @@ public:
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogError(
-        const std::string& logFile, const std::string& tag, const SourceLoc& loc, Args&&... args)
+        const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -491,7 +425,7 @@ public:
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogDebug(
-        const std::string& logFile, const std::string& tag, const SourceLoc& loc, Args&&... args)
+        const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -505,7 +439,7 @@ public:
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogTrace(
-        const std::string& logFile, const std::string& tag, const SourceLoc& loc, Args&&... args)
+        const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
@@ -519,7 +453,7 @@ public:
     }
     template <typename... Args>
     static yomk::payload::ResStatus emitFileLogFatal(
-        const std::string& logFile, const std::string& tag, const SourceLoc& loc, Args&&... args)
+        const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
     {
         if (!requireServer())
         {
