@@ -494,9 +494,10 @@ int main()
         auto infoRejected = infoOf();
         YOMK_TEST_CHECK(infoRejected && infoRejected->d.m_pending == 2, "被拒投递未入队（pending 仍为 2）");
 
-        // 越界数字 tagCount（D3 回归）：stoul 越界不再崩溃，回退默认 3；
-        // 冻结窗口队列 2 条（c1/c2），回退 tagCount=3 >= 2 截断不生效全部列出
-        auto oob = YomkAPI::getEventLoopInfo("api_loop 99999999999999999999");
+        // 类型化 tagCount（历史 D3 回归改造）："name N" 空格编码已移除，大值直接以
+        // size_t 传参（1e18 在合法范围内），不再经 stoul 解析、无越界回退路径；
+        // 冻结窗口队列 2 条（c1/c2），大 tagCount >= 2 截断不生效全部列出
+        auto oob = YomkAPI::getEventLoopInfo("api_loop", 1000000000000000000ULL);
         YOMK_TEST_CHECK(oob.m_status == yomk::payload::ResStatus::Succeeded, "越界数字 tagCount 返回 ResStatus::Succeeded（不崩溃）");
         YOMK_TEST_CHECK(oob.m_msg == "ok", "越界数字 tagCount 命中 m_msg 恒为 ok");
         auto oobInfo = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(oob.m_data);
@@ -544,11 +545,11 @@ int main()
         YOMK_TEST_CHECK(YomkAPI::destroyEventLoop("no_such") == yomk::payload::ResStatus::Failed, "DESTROY 不存在循环返回 ResStatus::Failed");
         YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("no_such").m_status == yomk::payload::ResStatus::Failed, "INFO_LOOP 不存在循环返回 ResStatus::Failed");
 
-        // INFO_LOOP 数字 tagCount 路径："name N" 字符串解析与类型化重载、大数值（合法范围）；
-        // 结构化返回：解析健壮性体现为 ResStatus::Succeeded 且 m_msg 恒 "ok"（该窗口队列已清空，截断语义已在冻结窗口验证）
-        YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("api_loop 5").m_msg == "ok", "字符串数字路径解析 tagCount=5");
-        YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("api_loop", 7).m_msg == "ok", "类型化重载解析 tagCount=7");
-        YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("api_loop 1000000").m_msg == "ok", "大数值 tagCount 正常解析（合法范围内）");
+        // INFO_LOOP 类型化查询：载荷为 EventLoopQuery（历史 String "name N" 空格编码已移除）
+        YOMK_TEST_CHECK(YomkAPI::getEventLoopInfo("api_loop", 7).m_msg == "ok", "类型化重载 tagCount=7");
+        YOMK_TEST_CHECK(
+            YomkAPI::getEventLoopInfo("api_loop 5").m_status == yomk::payload::ResStatus::Failed,
+            "数字后缀名称按字面量精确查询（不再解析空格编码）");
 
         // INFO_LOOPS：api_loop 存活时列表包含其名（loops() 遍历路径；销毁后移除验证见段尾）
         auto loopsAliveResp = YomkAPI::listEventLoops();

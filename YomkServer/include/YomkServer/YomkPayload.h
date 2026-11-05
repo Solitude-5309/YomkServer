@@ -117,6 +117,15 @@ struct EventLoop
     std::string m_msgName;  // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
 };
 
+// 事件循环单查载荷（/YomkEventLoop/loop 专用）：名称 + 队列头 tag 采样数。
+// 取代历史 String 载荷的 "name N" 空格拼接编码——名称含空格或数字后缀时
+// 启发式解析会误切，类型化字段无歧义
+struct EventLoopQuery
+{
+    std::string m_loopName;      // 循环名（按字面量精确匹配，不做任何切分）
+    std::size_t m_tagCount = 3;  // 队列头采样条数（缺省 3，与全量内省缺省一致）
+};
+
 struct LogFile
 {
     std::string m_logger;

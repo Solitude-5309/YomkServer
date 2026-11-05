@@ -58,6 +58,7 @@ YOMK_DEFINE_MSG(std::vector<yomk::payload::FuncInfo>, FuncInfoList, d);
 YOMK_DEFINE_MSG(yomk::payload::Event, Event, d);
 YOMK_DEFINE_MSG(yomk::payload::EventLoop, EventLoop, d);
 YOMK_DEFINE_MSG(yomk::payload::EventLoopInfo, EventLoopInfo, d);
+YOMK_DEFINE_MSG(yomk::payload::EventLoopQuery, EventLoopQuery, d);
 // EventLoop 全量循环内省（getAllEventLoopInfo 返回数据；m_nextTags 取 3 条与单查缺省一致）
 YOMK_DEFINE_MSG(std::vector<yomk::payload::EventLoopInfo>, EventLoopInfoList, d);
 YOMK_DEFINE_MSG(yomk::payload::LogFile, LogFile, d);

@@ -19,7 +19,7 @@ int YomkEventLoop::init()
     installFunc("/destroy", &YomkEventLoop::destroy, "String");
     // 调试内省接口，端点挂在本服务 funcMap
     installFunc("/loops", &YomkEventLoop::loops);
-    installFunc("/loop", &YomkEventLoop::loopInfo, "String");
+    installFunc("/loop", &YomkEventLoop::loopInfo, "EventLoopQuery");
     installFunc("/all", &YomkEventLoop::listAll);
     return 0;
 }
@@ -152,33 +152,14 @@ yomk::payload::Response YomkEventLoop::loops(YomkMsgPtr pkg)
 // 内省：单个事件循环元信息，入参 String 格式：循环名 或 循环名 N（N 缺省 3）
 yomk::payload::Response YomkEventLoop::loopInfo(YomkMsgPtr pkg)
 {
-    auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
-    if (!str)
+    auto query = yomk::msgs::unPack<yomk::msgs::EventLoopQuery>(pkg);
+    if (!query)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not EventLoopQuery"};
     }
-    std::string input = str->d;
-    std::string loopName = input;
-    size_t tagCount = 3;
-    size_t spacePos = input.rfind(' ');
-    if (spacePos != std::string::npos)
-    {
-        std::string countStr = input.substr(spacePos + 1);
-        if (!countStr.empty() && countStr.find_first_not_of("0123456789") == std::string::npos)
-        {
-            loopName = input.substr(0, spacePos);
-            // 纯数字但超过无符号范围时 stoul 抛 out_of_range（invalid_argument 不可达：
-            // 纯数字且非空已过滤），捕获回退默认 tagCount=3，避免异常穿透同步调用方崩溃
-            try
-            {
-                tagCount = static_cast<size_t>(std::stoul(countStr));
-            }
-            catch (const std::out_of_range&)
-            {
-                tagCount = 3;
-            }
-        }
-    }
+    // 名称按字面量精确匹配、采样数为类型化字段（历史 String "name N" 空格编码已移除）
+    const std::string& loopName = query->d.m_loopName;
+    size_t tagCount = query->d.m_tagCount;
 
     EventLoopPtr eventLoop;
     {
