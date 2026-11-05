@@ -5,12 +5,13 @@
 
 #include "YomkServer.h"
 #include "YomkServicePrivate.h"
+#include "YomkDiag.h"
 
 void YomkServerPrivate::addService(YomkService* srv)
 {
     if (!srv)
     {
-        YOMK_ERR_POS_LOG("service is null, please check the service.");
+        YOMK_DIAG_ERR("service is null, please check the service.");
         return;
     }
     std::shared_ptr<YomkService> oldSrv;
@@ -19,7 +20,7 @@ void YomkServerPrivate::addService(YomkService* srv)
         auto iter = m_serviceMap.find(srv->name());
         if (iter != m_serviceMap.end())
         {
-            YOMK_ERR_POS_LOG("service already exists -> " + srv->name() + ", update to current service");
+            YOMK_DIAG_ERR("service already exists -> " + srv->name() + ", update to current service");
             oldSrv = std::move(iter->second);
         }
         m_serviceMap[srv->name()].reset(srv);
@@ -51,7 +52,7 @@ int YomkServerPrivate::delService(const std::string& srvName)
         auto iter = m_serviceMap.find(srvName);
         if (iter == m_serviceMap.end())
         {
-            YOMK_ERR_POS_LOG("service not found, can not delete -> " + srvName);
+            YOMK_DIAG_ERR("service not found, can not delete -> " + srvName);
             return -1;
         }
         srv = std::move(iter->second);
@@ -118,7 +119,7 @@ yomk::payload::Response YomkServerPrivate::request(const std::string& srvName, c
         auto iter = m_serviceMap.find(srvName);
         if (iter == m_serviceMap.end())
         {
-            YOMK_ERR_POS_LOG("service not found. " + srvName + ", please start the service.");
+            YOMK_DIAG_ERR("service not found. " + srvName + ", please start the service.");
             return yomk::payload::Response(yomk::payload::ResStatus::Failed, "service not found: " + srvName);
         }
         srv = iter->second;
@@ -145,7 +146,7 @@ std::map<std::string, yomk::payload::FuncInfo> YomkServerPrivate::serviceFuncInf
         auto iter = m_serviceMap.find(srvName);
         if (iter == m_serviceMap.end())
         {
-            YOMK_ERR_POS_LOG("service not found. " + srvName + ", please start the service.");
+            YOMK_DIAG_ERR("service not found. " + srvName + ", please start the service.");
             return {};
         }
         srv = iter->second;

@@ -4,7 +4,6 @@
 #include <mutex>
 #include <shared_mutex>
 
-#include "YomkExport.h"
 #include "YomkServer.h"
 
 class YomkFunctionPool : public YomkService

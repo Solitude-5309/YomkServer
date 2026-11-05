@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include "YomkDiag.h"
 
 YomkEventLoop::YomkEventLoop(YomkServer* server) : YomkService(server)
 {
@@ -57,7 +58,7 @@ yomk::payload::Response YomkEventLoop::stop(YomkMsgPtr pkg)
     auto itEventLoop = m_eventLoop.find(str->d);
     if (itEventLoop == m_eventLoop.end())
     {
-        YOMK_ERR_POS_LOG("event loop: " + str->d + " not exist, please check event loop name");
+        YOMK_DIAG_ERR("event loop: " + str->d + " not exist, please check event loop name");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not exist");
     }
     itEventLoop->second->stop();
@@ -76,7 +77,7 @@ yomk::payload::Response YomkEventLoop::post(YomkMsgPtr pkg)
     auto itEventLoop = m_eventLoop.find(event->d.m_eventLoopName);
     if (itEventLoop == m_eventLoop.end())
     {
-        YOMK_ERR_POS_LOG("event loop: " + event->d.m_eventLoopName + " not exist, please check event loop name");
+        YOMK_DIAG_ERR("event loop: " + event->d.m_eventLoopName + " not exist, please check event loop name");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not exist");
     }
     // 内层返回码映射：0 成功；其余（实际仅 2=循环未运行被拒，事件为空不可达——API 宏总构造有效事件）统一 ResStatus::Failed
@@ -100,7 +101,7 @@ yomk::payload::Response YomkEventLoop::postWait(YomkMsgPtr pkg)
     auto itEventLoop = m_eventLoop.find(event->d.m_eventLoopName);
     if (itEventLoop == m_eventLoop.end())
     {
-        YOMK_ERR_POS_LOG("event loop: " + event->d.m_eventLoopName + " not exist, please check event loop name");
+        YOMK_DIAG_ERR("event loop: " + event->d.m_eventLoopName + " not exist, please check event loop name");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not exist");
     }
     // 内层返回码映射：0 成功（回传 event 携带执行结果）；其余统一 ResStatus::Failed（未入队未执行，不回传）
@@ -124,7 +125,7 @@ yomk::payload::Response YomkEventLoop::destroy(YomkMsgPtr pkg)
     auto itEventLoop = m_eventLoop.find(str->d);
     if (itEventLoop == m_eventLoop.end())
     {
-        YOMK_ERR_POS_LOG("event loop: " + str->d + " not exist, please check event loop name");
+        YOMK_DIAG_ERR("event loop: " + str->d + " not exist, please check event loop name");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not exist");
     }
 
@@ -185,7 +186,7 @@ yomk::payload::Response YomkEventLoop::loopInfo(YomkMsgPtr pkg)
         auto itEventLoop = m_eventLoop.find(loopName);
         if (itEventLoop == m_eventLoop.end())
         {
-            YOMK_ERR_POS_LOG("event loop: " + loopName + " not exist, please check event loop name");
+            YOMK_DIAG_ERR("event loop: " + loopName + " not exist, please check event loop name");
             return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop not exist");
         }
         eventLoop = itEventLoop->second;

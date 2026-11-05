@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 
-#include "YomkExport.h"
+#include "YomkDiag.h"
 
 EventLoop::EventLoop() : m_running(false), m_eventId(1) {}
 
@@ -16,7 +16,7 @@ int EventLoop::start()
 {
     if (m_running.load())
     {
-        YOMK_ERR_POS_LOG("EventLoop already running, please do not start it again");
+        YOMK_DIAG_ERR("EventLoop already running, please do not start it again");
         return 0;
     }
     m_running.store(true);
@@ -84,13 +84,13 @@ int EventLoop::post(yomk::msgs::EventPtr event)
 {
     if (!m_running.load())
     {
-        YOMK_ERR_POS_LOG("EventLoop not running, please start event loop.");
+        YOMK_DIAG_ERR("EventLoop not running, please start event loop.");
         return 2;  // 循环未运行投递被拒，与入队成功(0)/事件为空(1)区分，供上层映射错误码
     }
 
     if (!event)
     {
-        YOMK_ERR_POS_LOG("EventLoop: event is null, please check event");
+        YOMK_DIAG_ERR("EventLoop: event is null, please check event");
         return 1;
     }
 
@@ -116,13 +116,13 @@ int EventLoop::postWait(yomk::msgs::EventPtr event)
 {
     if (!m_running.load())
     {
-        YOMK_ERR_POS_LOG("EventLoop not running, please start event loop.");
+        YOMK_DIAG_ERR("EventLoop not running, please start event loop.");
         return 2;  // 循环未运行投递被拒，与入队成功(0)/事件为空(1)区分
     }
 
     if (!event)
     {
-        YOMK_ERR_POS_LOG("EventLoop: event is null, please check event");
+        YOMK_DIAG_ERR("EventLoop: event is null, please check event");
         return 1;
     }
 
@@ -134,7 +134,7 @@ int EventLoop::postWait(yomk::msgs::EventPtr event)
     }
     if (inWorkerThread)
     {
-        YOMK_ERR_POS_LOG(
+        YOMK_DIAG_ERR(
             "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve "
             "deadlock");
         event->d.handle();
@@ -235,7 +235,7 @@ void EventLoop::run()
         }
         if (!event)
         {
-            YOMK_ERR_POS_LOG("EventLoop: event is null, please check event");
+            YOMK_DIAG_ERR("EventLoop: event is null, please check event");
             continue;
         }
 
@@ -245,13 +245,13 @@ void EventLoop::run()
         }
         catch (const std::exception& e)
         {
-            YOMK_ERR_POS_LOG(
+            YOMK_DIAG_ERR(
                 "EventLoop: " + event->d.m_eventLoopName + " exec event id: " + std::to_string(event->d.m_eventId) +
                 " caught, what: " + std::string(e.what()));
         }
         catch (...)
         {
-            YOMK_ERR_POS_LOG("EventLoop: unknown exception caught");
+            YOMK_DIAG_ERR("EventLoop: unknown exception caught");
         }
 
         if (event->d.m_waitCallback)

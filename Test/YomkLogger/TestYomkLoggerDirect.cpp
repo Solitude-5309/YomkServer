@@ -58,6 +58,7 @@
 
 #include "ConsoleLogger.h"
 #include "FileLogger.h"
+#include "YomkDiag.h"
 
 namespace fs = std::filesystem;
 
@@ -179,7 +180,7 @@ int main()
         }
 
         // 非法级别 default 降级（P2-c 修复后回填）：枚举已加 : int，99 合法非 UB；
-        // YOMK_ERR_POS_LOG 直写 cout 可被捕获（YOMK_TEST_CHECK 须在捕获作用域外）
+        // YOMK_DIAG_ERR 直写 cout 可被捕获（YOMK_TEST_CHECK 须在捕获作用域外）
         {
             std::string out;
             {

@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "YomkExport.h"
+#include "YomkDiag.h"
 #include "YomkLogTime.h"
 
 // 类级共享锁定义：跨实例行级原子的唯一互斥点（见 ConsoleLogger.h 成员注释）
@@ -112,7 +112,7 @@ void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::st
             std::cout << timeStr << " [Error] [" << tagShown << "] " << log << std::endl;
             break;
         default:
-            YOMK_ERR_POS_LOG("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
+            YOMK_DIAG_ERR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
             std::cout << timeStr << " [Info ] [" << tagShown << "] " << log << std::endl;
             break;
     }

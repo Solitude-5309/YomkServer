@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "YomkService.h"
+#include "YomkExport.h"
 
 class YomkServerPrivate;
 class YOMKSERVER_EXPORT YomkServer : public std::enable_shared_from_this<YomkServer>

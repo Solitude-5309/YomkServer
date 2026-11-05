@@ -8,6 +8,7 @@
 
 #include "YomkExport.h"
 #include "YomkMsgs.h"
+#include "YomkDiag.h"
 
 class YomkServer;
 class YomkServerPrivate;
@@ -55,7 +56,7 @@ protected:
         std::weak_ptr<YomkService> weakSelf = weak_from_this();
         if (weakSelf.expired())
         {
-            YOMK_ERR_POS_LOG(
+            YOMK_DIAG_ERR(
                 "weakFunc called before service is owned by server (in constructor?), callback will never fire!");
         }
         return [weakSelf, func](auto&&... args) -> decltype(auto)
@@ -64,7 +65,7 @@ protected:
             auto self = weakSelf.lock();
             if (!self || self->isDeleted())
             {
-                YOMK_ERR_POS_LOG("service has been deleted or unregistered, callback ignored.");
+                YOMK_DIAG_ERR("service has been deleted or unregistered, callback ignored.");
                 if constexpr (std::is_void_v<Ret>)
                     return;
                 else if constexpr (std::is_same_v<Ret, yomk::payload::Response>)

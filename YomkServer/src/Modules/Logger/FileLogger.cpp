@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "YomkExport.h"
+#include "YomkDiag.h"
 #include "YomkLogTime.h"
 namespace fs = std::filesystem;
 
@@ -43,19 +43,19 @@ bool FileLogger::init()
         }
         else
         {
-            YOMK_ERR_POS_LOG("create log file failed: " + logFilePath);
+            YOMK_DIAG_ERR("create log file failed: " + logFilePath);
             logFile.close();
             return false;
         }
     }
     catch (const fs::filesystem_error& e)
     {
-        YOMK_ERR_POS_LOG("init file logger fs error: " + logFilePath + ", " + e.what());
+        YOMK_DIAG_ERR("init file logger fs error: " + logFilePath + ", " + e.what());
         return false;
     }
     catch (const std::exception& e)
     {
-        YOMK_ERR_POS_LOG("init file logger error: " + logFilePath + ", " + e.what());
+        YOMK_DIAG_ERR("init file logger error: " + logFilePath + ", " + e.what());
         return false;
     }
     return true;
@@ -159,7 +159,7 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
             appendLine(" [Error] ");
             break;
         default:
-            YOMK_ERR_POS_LOG("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
+            YOMK_DIAG_ERR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
             appendLine(" [Info ] ");
             break;
     }
@@ -178,7 +178,7 @@ void FileLogger::write()
     if (!logFile.is_open())
     {
         // 开文件失败直接返回、不清缓冲（内容不丢，既有语义由 TestYomkLoggerDirect 断言）
-        YOMK_ERR_POS_LOG("open log file failed: " + m_dir + "/" + m_name + ".log");
+        YOMK_DIAG_ERR("open log file failed: " + m_dir + "/" + m_name + ".log");
         return;
     }
     logFile << m_logBuffer;

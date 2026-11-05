@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "YomkExport.h"
+#include "YomkDiag.h"
 
 YomkSimpleThreadPool::YomkSimpleThreadPool(std::size_t threadCount)
 {
@@ -100,11 +100,11 @@ void YomkSimpleThreadPool::workerLoop()
         }
         catch (const std::exception& e)
         {
-            YOMK_ERR_POS_LOG("async task exception caught: " + std::string(e.what()));
+            YOMK_DIAG_ERR("async task exception caught: " + std::string(e.what()));
         }
         catch (...)
         {
-            YOMK_ERR_POS_LOG("async task unknown exception caught");
+            YOMK_DIAG_ERR("async task unknown exception caught");
         }
     }
 }

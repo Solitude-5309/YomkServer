@@ -4,6 +4,7 @@
 
 #include "YomkServer.h"
 #include "YomkServicePrivate.h"
+#include "YomkDiag.h"
 
 YomkService::YomkService(YomkServer* server) : m_p(nullptr)
 {
@@ -12,13 +13,13 @@ YomkService::YomkService(YomkServer* server) : m_p(nullptr)
         std::weak_ptr<YomkServer> weakServer = server->weak_from_this();
         if (weakServer.expired())
         {
-            YOMK_ERR_POS_LOG("server is not managed by shared_ptr, weak bind failed");
+            YOMK_DIAG_ERR("server is not managed by shared_ptr, weak bind failed");
         }
         m_p.reset(new YomkServicePrivate(weakServer));
     }
     else
     {
-        YOMK_ERR_POS_LOG("server is null");
+        YOMK_DIAG_ERR("server is null");
     }
 }
 
@@ -26,13 +27,13 @@ void YomkService::name(const std::string& name)
 {
     if (name.empty())
     {
-        YOMK_ERR_POS_LOG("name is empty, set name failed, use default name");
+        YOMK_DIAG_ERR("name is empty, set name failed, use default name");
         return;
     }
 
     if (!m_p)
     {
-        YOMK_ERR_POS_LOG("service is null, please check service");
+        YOMK_DIAG_ERR("service is null, please check service");
         return;
     }
     m_p->name(name);
@@ -51,7 +52,7 @@ std::string YomkService::name()
 {
     if (!m_p)
     {
-        YOMK_ERR_POS_LOG("service is null, please check service");
+        YOMK_DIAG_ERR("service is null, please check service");
         return "";
     }
     return m_p->name();
@@ -62,7 +63,7 @@ void YomkService::installFunc(const std::string& funcName, YomkServiceFunc func,
 {
     if (!m_p)
     {
-        YOMK_ERR_POS_LOG("service is null, please check service");
+        YOMK_DIAG_ERR("service is null, please check service");
         return;
     }
     m_p->installFunc(funcName, func, msgName, description);
@@ -72,7 +73,7 @@ std::map<std::string, yomk::payload::FuncInfo> YomkService::funcInfos()
 {
     if (!m_p)
     {
-        YOMK_ERR_POS_LOG("service is null, please check service");
+        YOMK_DIAG_ERR("service is null, please check service");
         return {};
     }
     return m_p->funcInfos();
@@ -82,7 +83,7 @@ yomk::payload::Response YomkService::invoke(const std::string& funcName, YomkMsg
 {
     if (!m_p)
     {
-        YOMK_ERR_POS_LOG("service is null, please check service");
+        YOMK_DIAG_ERR("service is null, please check service");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "service is null");
     }
     return m_p->invoke(funcName, pkg);
@@ -92,7 +93,7 @@ yomk::payload::Response YomkService::request(const std::string& url, YomkMsgPtr 
 {
     if (!m_p)
     {
-        YOMK_ERR_POS_LOG("service is null, please check service");
+        YOMK_DIAG_ERR("service is null, please check service");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "service is null");
     }
     return m_p->request(url, pkg);
@@ -102,7 +103,7 @@ void YomkService::asyncRequest(const std::string& url, YomkMsgPtr pkg, YomkRespo
 {
     if (!m_p)
     {
-        YOMK_ERR_POS_LOG("service is null, please check service");
+        YOMK_DIAG_ERR("service is null, please check service");
         return;
     }
     m_p->asyncRequest(url, pkg, func);
