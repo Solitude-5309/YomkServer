@@ -171,40 +171,40 @@ int main()
             YomkAPI::deleteFileLogger("guard_logger") == yomk::payload::ResStatus::Invalid,
             "deleteFileLogger 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::createContext("guard_key", nullptr) == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").create(nullptr) == yomk::payload::ResStatus::Invalid,
             "createContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::setContext("guard_key", nullptr) == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").set(nullptr) == yomk::payload::ResStatus::Invalid,
             "setContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::destroyContext("guard_key") == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").destroy() == yomk::payload::ResStatus::Invalid,
             "destroyContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::enableContextChecker() == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().checker().enable() == yomk::payload::ResStatus::Invalid,
             "enableContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::disableContextChecker() == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().checker().disable() == yomk::payload::ResStatus::Invalid,
             "disableContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::setContextChecker("guard_key", nullptr) == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").checker(nullptr) == yomk::payload::ResStatus::Invalid,
             "setContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::enableContextMonitor() == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().monitor().enable() == yomk::payload::ResStatus::Invalid,
             "enableContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::disableContextMonitor() == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().monitor().disable() == yomk::payload::ResStatus::Invalid,
             "disableContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::setContextMonitor("guard_key", nullptr) == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").monitor(nullptr) == yomk::payload::ResStatus::Invalid,
             "setContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listContextKeys().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().keys().m_status == yomk::payload::ResStatus::Invalid,
             "listContextKeys 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getContextInfo("guard_key").m_status == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").info().m_status == yomk::payload::ResStatus::Invalid,
             "getContextInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getAllContextInfo().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().all().m_status == yomk::payload::ResStatus::Invalid,
             "getAllContextInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::startEventLoop("/guard_loop") == yomk::payload::ResStatus::Invalid,
@@ -267,7 +267,7 @@ int main()
 
         // getContext 特殊形态：守卫返回值即调用方默认值（指针一致）
         std::shared_ptr<yomk::msgs::String> ctxDefault = std::make_shared<yomk::msgs::String>("guard_default");
-        std::shared_ptr<yomk::msgs::String> ctxGot = YomkAPI::getContext<yomk::msgs::String>("guard_key", ctxDefault);
+        std::shared_ptr<yomk::msgs::String> ctxGot = yomk::ctx().key("guard_key").type<yomk::msgs::String>().withDefault(ctxDefault).get();
         YOMK_TEST_CHECK(ctxGot == ctxDefault, "getContext 未初始化原样返回调用方默认值");
     }
 

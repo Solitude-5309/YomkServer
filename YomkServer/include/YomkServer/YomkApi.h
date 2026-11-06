@@ -8,6 +8,7 @@
 #include "YomkBoot.h"
 #include "YomkExport.h"
 #include "YomkMsgs.h"
+#include "YomkContextApi.h"
 #include "YomkRequest.h"
 #include "YomkServer.h"
 #include "YomkServerRef.h"
@@ -424,120 +425,8 @@ public:
     {
         return yomk::server().url(yomk::url::loggerDeleteLogger).status(yomk::msgs::String::shared(loggerName));
     }
-    // CONTEXT_API
-public:
-    // 创建上下文键值（groupName 缺省 "main"；组名约定永远是 API 最后一个参数，下同）
-    static yomk::payload::ResStatus createContext(
-        const std::string& ctxName, YomkMsgPtr ctx, const std::string& groupName = "main")
-    {
-        return yomk::server().url(yomk::url::ctxCreate).status(yomk::msgs::Context::shared(yomk::payload::Context{ctxName, ctx, groupName}));
-    }
-    // 获取上下文值（只读快照），改动请构造新对象再 setContext，勿原地修改（否则与并发读竞争、可能崩溃）
-    template <typename T>
-    static std::shared_ptr<T> getContext(const std::string& ctxName,
-        std::shared_ptr<T> ctxDefault, const std::string& groupName = "main")
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return ctxDefault;
-        }
-        yomk::payload::Response response =
-            yomk::server().url(yomk::url::ctxGet).request(yomk::msgs::Context::shared(yomk::payload::Context{ctxName, ctxDefault, groupName}));
-        if (response.m_status == yomk::payload::ResStatus::Succeeded)
-        {
-            std::shared_ptr<T> ctxData = nullptr;
-            if (response.m_data && response.m_data->name() == T::kName)
-            {
-                ctxData = std::dynamic_pointer_cast<T>(response.m_data);
-            }
-            if (ctxData)
-                return ctxData;
-            else
-                return ctxDefault;
-        }
-        else
-        {
-            YOMK_DIAG_ERROR("get context failed");
-            return ctxDefault;
-        }
-    }
-    // 设置上下文值（整体替换）
-    static yomk::payload::ResStatus setContext(
-        const std::string& ctxName, YomkMsgPtr ctx, const std::string& groupName = "main")
-    {
-        return yomk::server().url(yomk::url::ctxSet).status(yomk::msgs::Context::shared(yomk::payload::Context{ctxName, ctx, groupName}));
-    }
-    // 开关上下文校验门控
-    static yomk::payload::ResStatus enableContextChecker(const std::string& groupName = "main")
-    {
-        return yomk::server().url(yomk::url::ctxTurnOnChecker).status(yomk::msgs::String::shared(groupName));
-    }
-    static yomk::payload::ResStatus disableContextChecker(const std::string& groupName = "main")
-    {
-        return yomk::server().url(yomk::url::ctxTurnOffChecker).status(yomk::msgs::String::shared(groupName));
-    }
-    // 设置上下文校验门控回调
-    static yomk::payload::ResStatus setContextChecker(
-        const std::string& ctxName, YomkContextCheckerFunc checker, const std::string& groupName = "main")
-    {
-        return yomk::server().url(yomk::url::ctxSetChecker).status(yomk::msgs::ContextChecker::shared(yomk::payload::ContextChecker{ctxName, checker, groupName}));
-    }
-    // 开关上下文变更监听器
-    static yomk::payload::ResStatus enableContextMonitor(const std::string& groupName = "main")
-    {
-        return yomk::server().url(yomk::url::ctxTurnOnMonitor).status(yomk::msgs::String::shared(groupName));
-    }
-    static yomk::payload::ResStatus disableContextMonitor(const std::string& groupName = "main")
-    {
-        return yomk::server().url(yomk::url::ctxTurnOffMonitor).status(yomk::msgs::String::shared(groupName));
-    }
-    // 设置上下文变更监听回调（async=true 为异步通知），仅通知发生了一次 set 事件，并回传该次 set 的键值快照——不保证快照实时性；顺序上异步恒按 set 提交序送达、同步在并发 set 下不保证跨线程序。
-    static yomk::payload::ResStatus setContextMonitor(const std::string& ctxName, YomkContextMonitorFunc monitor,
-        bool async = false, const std::string& groupName = "main")
-    {
-        return yomk::server().url(yomk::url::ctxSetMonitor).status(yomk::msgs::ContextMonitor::shared(yomk::payload::ContextMonitor{ctxName, monitor, async, groupName}));
-    }
-    // 销毁指定上下文键
-    static yomk::payload::ResStatus destroyContext(const std::string& ctxName, const std::string& groupName = "main")
-    {
-        return yomk::server().url(yomk::url::ctxDestroy).status(yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{groupName, ctxName}));
-    }
-    // 获取全部上下文键名
-    static yomk::payload::Response listContextKeys(const std::string& groupName = "main")
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::ctxKeys).request(yomk::msgs::String::shared(groupName));
-    }
-    // 查询指定上下文键状态
-    static yomk::payload::Response getContextInfo(const std::string& ctxName, const std::string& groupName = "main")
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::ctxKey).request(yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{groupName, ctxName}));
-    }
-    // 查询全部组名清单（返回 StringArray，对齐 listEventLoops 形态）
-    static yomk::payload::Response listContextGroups()
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::ctxGroups).request(nullptr);
-    }
-    // 查询全部组及其全部键的内省元信息（跨组聚合：返回 ContextGroupInfoList，层级为组 → 键元信息）
-    static yomk::payload::Response getAllContextInfo()
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::ctxAll).request(nullptr);
-    }
+    // CONTEXT_API：已整体迁移至 YomkContextApi.h 的 yomk::ctx() 域（key/group 累积 +
+    // 写/读终结 + type<T>() 类型化分面），14 个成员已删、调用点全量切链式
     // EVENTLOOP_API
 public:
     // 启动指定事件循环

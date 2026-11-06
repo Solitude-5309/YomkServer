@@ -12,7 +12,7 @@ int MyBoot::before()
     // 通过 /proc/self/exe 获取可执行文件绝对路径
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
     std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.txt";
-    YomkAPI::createContext(CTX_CONFIG_PATH, yomk::msgs::String::shared(configPath.string()));
+    yomk::ctx().key(CTX_CONFIG_PATH).create(yomk::msgs::String::shared(configPath.string()));
     YOMK_INFO_TAG("MyBoot::before", "config path: ", configPath.string());
     return 0;
 }
