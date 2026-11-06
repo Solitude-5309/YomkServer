@@ -607,10 +607,10 @@ int main(int argc, char* argv[])
     yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / MainLogger=默认日志器 / "
         "arm.joint=关节模块（演示自定义 tag）/ blackbox、shiftlog=文件器");
 
-    // 日志目录：当前工作目录下的 YomkLog/（场景 3/4 创建文件日志器使用，目录由
-    // 框架自动创建）。不解析 argv[0]——裸名/相对路径启动时 canonical 解析不到
+    // 日志目录：当前工作目录下的 logs/（场景 3/4 创建文件日志器使用，目录由
+    // 框架自动创建；与 Docs/YomkLogger.md 示例的 dir("./logs") 同名）。不解析 argv[0]——裸名/相对路径启动时 canonical 解析不到
     // 真实路径会抛 filesystem_error，直接用 cwd 即可在启动控制台所在目录落盘
-    const std::string logDir = (fs::current_path() / "YomkLog").string();
+    const std::string logDir = (fs::current_path() / "logs").string();
 
     showArmLogLevels();
     showArmSilentMode();

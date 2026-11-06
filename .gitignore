@@ -5,6 +5,7 @@ bin/
 compile_commands.json
 .vscode/
 test_logs/
+logs/
 *~
 *.autosave
 *.a
