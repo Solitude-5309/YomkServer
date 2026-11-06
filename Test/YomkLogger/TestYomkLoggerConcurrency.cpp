@@ -448,7 +448,7 @@ int main()
         constexpr int kLogsPerThread = 200;
         constexpr uint64_t kTotal = kThreads * kLogsPerThread;
 
-        // 直接调 YomkAPI 静态函数而非 YOMK_INFO_TAG 宏：宏会把 tag 拼上调用点行号，
+        // 直接调 YomkAPI 静态函数而非 log().tag(...).info 宏：宏会把 tag 拼上调用点行号，
         // 预热与循环体分处两行将产生两个不同 logger 名，破坏"同一 logger 并发"前提
         const std::string kTag = "lg3_s1_shared";
 
@@ -456,7 +456,7 @@ int main()
 
         // 预热：主线程先创建该 tag 的 console logger，使并发段全部走 shared_lock 命中路径
         YOMK_TEST_CHECK(
-            YomkAPI::emitConsoleLogInfo(kTag, {}, "lg3s1_warmup") == yomk::payload::ResStatus::Succeeded,
+            yomk::log().tag(kTag).info("lg3s1_warmup") == yomk::payload::ResStatus::Succeeded,
             "S1: 预热创建 console logger " + kTag);
 
         std::string out;
@@ -473,8 +473,7 @@ int main()
                         waitGate(kThreads);
                         for (int i = 0; i < kLogsPerThread; ++i)
                         {
-                            auto resp = YomkAPI::emitConsoleLogInfo(
-                                kTag, {}, "lg3s1_t" + std::to_string(t) + "_i" + std::to_string(i));
+                            auto resp = yomk::log().tag(kTag).info("lg3s1_t" + std::to_string(t) + "_i" + std::to_string(i));
                             if (resp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s1OkCount.fetch_add(1, std::memory_order_relaxed);
@@ -533,7 +532,7 @@ int main()
             "S1: 完整行数 == " + std::to_string(kTotal) + "（实际 " + std::to_string(intactLines) + "）");
 
         // 同一 tag 仅一个 logger 实例（并发命中路径不重复创建；行内容即纯名）
-        auto loggersLines = unpackLines(YomkAPI::listLoggers("console"));
+        auto loggersLines = unpackLines(yomk::log_mgr().console().list());
         YOMK_TEST_CHECK(
             countLinesContaining(loggersLines, kTag) == 1,
             "S1: LOGGERS 中 " + kTag + " 恰 1 行（无重复实例）");
@@ -566,8 +565,7 @@ int main()
                         waitGate(kThreads);  // 屏障对齐：8 线程同时 miss → 同时升级独占锁
                         for (int i = 0; i < kLogsPerThread; ++i)
                         {
-                            auto resp = YomkAPI::emitConsoleLogInfo(
-                                kRaceTag, {}, "lg3s2a_t" + std::to_string(t) + "_i" + std::to_string(i));
+                            auto resp = yomk::log().tag(kRaceTag).info("lg3s2a_t" + std::to_string(t) + "_i" + std::to_string(i));
                             if (resp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s2aOkCount.fetch_add(1, std::memory_order_relaxed);
@@ -588,7 +586,7 @@ int main()
             "S2a: 争用创建全部 ResStatus::Succeeded == " + std::to_string(kTotal) + "（实际 " + std::to_string(g_s2aOkCount.load()) +
                 "）");
 
-        auto loggersLines = unpackLines(YomkAPI::listLoggers("console"));
+        auto loggersLines = unpackLines(yomk::log_mgr().console().list());
         YOMK_TEST_CHECK(
             countLinesContaining(loggersLines, kRaceTag) == 1,
             "S2a: LOGGERS 中 " + kRaceTag + " 恰 1 行——双检锁下并发 miss 仅创建一个实例");
@@ -600,7 +598,7 @@ int main()
                 "）——同一实例被并发复用无丢失");
         YOMK_TEST_CHECK(countBadOccurrence(raceMarkers) == 0, "S2a: 全部 marker 恰出现 1 次（不丢不重）");
 
-        auto raceInfo = YomkAPI::getLoggerInfo(kRaceTag, "console");
+        auto raceInfo = yomk::log_mgr().console(kRaceTag).get_info();
         auto racePkg = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(raceInfo.m_data);
         YOMK_TEST_CHECK(
             (raceInfo.m_status == yomk::payload::ResStatus::Succeeded && racePkg && racePkg->d.m_type == "console"),
@@ -612,8 +610,8 @@ int main()
         constexpr uint64_t kSpreadTotal = kSpreadThreads * kSpreadPerThread;
 
         g_s2bOkCount.store(0);
-        const uint64_t consoleBefore = unpackLines(YomkAPI::listLoggers("console")).size();
-        const uint64_t fileBefore = unpackLines(YomkAPI::listLoggers("file")).size();
+        const uint64_t consoleBefore = unpackLines(yomk::log_mgr().console().list()).size();
+        const uint64_t fileBefore = unpackLines(yomk::log_mgr().file().list()).size();
 
         {
             ThreadSafeCoutCapture cap;
@@ -629,8 +627,7 @@ int main()
                         waitGate(kSpreadThreads);
                         for (int i = 0; i < kSpreadPerThread; ++i)
                         {
-                            auto resp = YomkAPI::emitConsoleLogInfo(
-                                tag, {}, "lg3s2b_t" + std::to_string(t) + "_i" + std::to_string(i));
+                            auto resp = yomk::log().tag(tag).info("lg3s2b_t" + std::to_string(t) + "_i" + std::to_string(i));
                             if (resp == yomk::payload::ResStatus::Succeeded)
                             {
                                 g_s2bOkCount.fetch_add(1, std::memory_order_relaxed);
@@ -650,8 +647,8 @@ int main()
             "S2b: 分散创建全部 ResStatus::Succeeded == " + std::to_string(kSpreadTotal) + "（实际 " +
                 std::to_string(g_s2bOkCount.load()) + "）");
 
-        const uint64_t consoleAfter = unpackLines(YomkAPI::listLoggers("console")).size();
-        const uint64_t fileAfter = unpackLines(YomkAPI::listLoggers("file")).size();
+        const uint64_t consoleAfter = unpackLines(yomk::log_mgr().console().list()).size();
+        const uint64_t fileAfter = unpackLines(yomk::log_mgr().file().list()).size();
         YOMK_TEST_CHECK(
             consoleAfter - consoleBefore == kSpreadThreads,
             "S2b: console logger 新增恰 " + std::to_string(kSpreadThreads) + " 个（实际新增 " +
@@ -662,7 +659,7 @@ int main()
         for (int t = 0; t < kSpreadThreads; ++t)
         {
             std::string tag = "lg3_s2_t" + std::to_string(t);
-            auto info = YomkAPI::getLoggerInfo(tag, "console");
+            auto info = yomk::log_mgr().console(tag).get_info();
             auto spreadPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(info.m_data);
             if (info.m_status != yomk::payload::ResStatus::Succeeded || !spreadPkg || spreadPkg->d.m_type != "console")
             {
@@ -699,8 +696,8 @@ int main()
 
         // 首次设置为 v1（此后进程内 proxy 恒为 on，v1/v2 交替更新 func）
         YOMK_TEST_CHECK(
-            YomkAPI::setConsoleLogProxy(s3ProxyV1) == yomk::payload::ResStatus::Succeeded,
-            "S3: setConsoleLogProxy(v1) 返回 ResStatus::Succeeded");
+            yomk::log_mgr().console().proxy(s3ProxyV1).apply() == yomk::payload::ResStatus::Succeeded,
+            "S3: console().proxy(v1).apply() 返回 ResStatus::Succeeded");
 
         // caller 线程：持续 console_log 直到 g_s3Stop
         std::vector<std::thread> callers;
@@ -713,8 +710,7 @@ int main()
                     int i = 0;
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
-                        auto resp = YomkAPI::emitConsoleLogInfo(
-                            kTag, {}, "lg3s3_t" + std::to_string(t) + "_i" + std::to_string(i));
+                        auto resp = yomk::log().tag(kTag).info("lg3s3_t" + std::to_string(t) + "_i" + std::to_string(i));
                         g_s3LogTotal.fetch_add(1, std::memory_order_relaxed);
                         if (resp == yomk::payload::ResStatus::Succeeded)
                         {
@@ -735,7 +731,7 @@ int main()
                 {
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
-                        auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
+                        auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().m_data);
                         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
                         if (st && !st->m_proxyOn)
                         {
@@ -750,7 +746,7 @@ int main()
         for (int round = 0; round < kSetRounds; ++round)
         {
             auto resp =
-                (round % 2 == 0) ? YomkAPI::setConsoleLogProxy(s3ProxyV2) : YomkAPI::setConsoleLogProxy(s3ProxyV1);
+                (round % 2 == 0) ? yomk::log_mgr().console().proxy(s3ProxyV2).apply() : yomk::log_mgr().console().proxy(s3ProxyV1).apply();
             if (resp == yomk::payload::ResStatus::Succeeded)
             {
                 g_s3SetOk.fetch_add(1, std::memory_order_relaxed);
@@ -809,8 +805,8 @@ int main()
         g_s4aCreateOk.store(0);
         g_s4aCreateNo.store(0);
 
-        const uint64_t fileBeforeA = unpackLines(YomkAPI::listLoggers("file")).size();
-        const uint64_t consoleBeforeA = unpackLines(YomkAPI::listLoggers("console")).size();
+        const uint64_t fileBeforeA = unpackLines(yomk::log_mgr().file().list()).size();
+        const uint64_t consoleBeforeA = unpackLines(yomk::log_mgr().console().list()).size();
 
         resetGate();
         {
@@ -822,7 +818,7 @@ int main()
                     [&sameDir, &kSameName]()
                     {
                         waitGate(kThreads);  // 屏障对齐：8 线程同时争抢 unique_lock
-                        auto resp = YomkAPI::createFileLogger(sameDir.string(), kSameName);
+                        auto resp = yomk::log_mgr().dir(sameDir.string()).file(kSameName).create();
                         if (!isLegalStatus(resp))
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -853,8 +849,8 @@ int main()
                 std::to_string(g_s4aCreateNo.load()) + "）——unique_lock 互斥下重名检查守恒");
         YOMK_TEST_CHECK(fs::exists(sameDir / (kSameName + ".log")), "S4a: 胜出者日志文件已落盘");
 
-        const uint64_t fileAfterA = unpackLines(YomkAPI::listLoggers("file")).size();
-        const uint64_t consoleAfterA = unpackLines(YomkAPI::listLoggers("console")).size();
+        const uint64_t fileAfterA = unpackLines(yomk::log_mgr().file().list()).size();
+        const uint64_t consoleAfterA = unpackLines(yomk::log_mgr().console().list()).size();
         YOMK_TEST_CHECK(
             fileAfterA - fileBeforeA == 1,
             "S4a: file logger 仅新增 1 个（无重复注册，实际新增 " + std::to_string(fileAfterA - fileBeforeA) + "）");
@@ -874,7 +870,7 @@ int main()
                     [t, &spreadDir]()
                     {
                         waitGate(kThreads);
-                        auto resp = YomkAPI::createFileLogger(spreadDir.string(), "lg3_s4_t" + std::to_string(t));
+                        auto resp = yomk::log_mgr().dir(spreadDir.string()).file("lg3_s4_t" + std::to_string(t)).create();
                         if (!isLegalStatus(resp))
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -896,7 +892,7 @@ int main()
             g_s4bCreateOk.load() == kThreads,
             "S4b: 8 线程异名并发创建全部 ResStatus::Succeeded（实际 " + std::to_string(g_s4bCreateOk.load()) + "）");
 
-        const uint64_t fileAfterB = unpackLines(YomkAPI::listLoggers("file")).size();
+        const uint64_t fileAfterB = unpackLines(yomk::log_mgr().file().list()).size();
         YOMK_TEST_CHECK(
             fileAfterB - fileAfterA == kThreads,
             "S4b: file logger 新增恰 " + std::to_string(kThreads) + " 个（实际新增 " +
@@ -915,7 +911,7 @@ int main()
         g_s4cStop.store(false);
 
         YOMK_TEST_CHECK(
-            YomkAPI::createFileLogger(sinkDir.string(), kSinkName) == yomk::payload::ResStatus::Succeeded,
+            yomk::log_mgr().dir(sinkDir.string()).file(kSinkName).create() == yomk::payload::ResStatus::Succeeded,
             "S4c: 创建 sink file logger 成功");
 
         resetGate();
@@ -929,8 +925,7 @@ int main()
                     waitGate(kLogThreads);
                     for (int i = 0; i < kLogsPerThread; ++i)
                     {
-                        auto resp = YomkAPI::emitFileLogInfo(
-                            kSinkName, "lg3s4c", {}, "lg3s4c_t" + std::to_string(t) + "_i" + std::to_string(i));
+                        auto resp = yomk::log().to_sink(kSinkName).tag("lg3s4c").info("lg3s4c_t" + std::to_string(t) + "_i" + std::to_string(i));
                         if (!isLegalStatus(resp))
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -953,7 +948,7 @@ int main()
                 {
                     while (!g_s4cStop.load(std::memory_order_acquire))
                     {
-                        auto resp = YomkAPI::flushFileLog(kSinkName);
+                        auto resp = yomk::log_mgr().file(kSinkName).flush();
                         if (!isLegalStatus(resp))
                         {
                             g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -979,7 +974,7 @@ int main()
         }
 
         // 收尾：把残余缓冲全部落盘
-        YOMK_TEST_CHECK(YomkAPI::flushFileLog(kSinkName) == yomk::payload::ResStatus::Succeeded, "S4c: 收尾 WRITE 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(yomk::log_mgr().file(kSinkName).flush() == yomk::payload::ResStatus::Succeeded, "S4c: 收尾 WRITE 返回 ResStatus::Succeeded");
 
         YOMK_TEST_CHECK(
             g_s4cLogOk.load() == kSinkTotal,
@@ -1013,11 +1008,11 @@ int main()
         g_s4dWriteOk.store(0);
 
         YOMK_TEST_CHECK(
-            YomkAPI::createFileLogger(multiDir.string(), kMultiName) == yomk::payload::ResStatus::Succeeded,
+            yomk::log_mgr().dir(multiDir.string()).file(kMultiName).create() == yomk::payload::ResStatus::Succeeded,
             "S4d: 创建 multi file logger 成功");
         for (uint64_t i = 0; i < kMultiLines; ++i)
         {
-            YomkAPI::emitFileLogInfo(kMultiName, "lg3s4d", {}, "lg3s4d_i" + std::to_string(i));
+            yomk::log().to_sink(kMultiName).tag("lg3s4d").info("lg3s4d_i" + std::to_string(i));
         }
 
         resetGate();
@@ -1032,7 +1027,7 @@ int main()
                         waitGate(kWriterThreadsD);
                         for (int r = 0; r < kWriteRoundsD; ++r)
                         {
-                            auto resp = YomkAPI::flushFileLog(kMultiName);
+                            auto resp = yomk::log_mgr().file(kMultiName).flush();
                             if (!isLegalStatus(resp))
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1096,13 +1091,13 @@ int main()
             switch (level)
             {
                 case 0:
-                    return YomkAPI::emitConsoleLogDebug(tag, {}, msg);
+                    return yomk::log().tag(tag).debug(msg);
                 case 1:
-                    return YomkAPI::emitConsoleLogInfo(tag, {}, msg);
+                    return yomk::log().tag(tag).info(msg);
                 case 2:
-                    return YomkAPI::emitConsoleLogWarn(tag, {}, msg);
+                    return yomk::log().tag(tag).warn(msg);
                 default:
-                    return YomkAPI::emitConsoleLogError(tag, {}, msg);
+                    return yomk::log().tag(tag).error(msg);
             }
         };
         auto fileLevel = [](int level, const std::string& name, const std::string& msg) -> yomk::payload::ResStatus
@@ -1110,13 +1105,13 @@ int main()
             switch (level)
             {
                 case 0:
-                    return YomkAPI::emitFileLogDebug(name, "lg3s5", {}, msg);
+                    return yomk::log().to_sink(name).tag("lg3s5").debug(msg);
                 case 1:
-                    return YomkAPI::emitFileLogInfo(name, "lg3s5", {}, msg);
+                    return yomk::log().to_sink(name).tag("lg3s5").info(msg);
                 case 2:
-                    return YomkAPI::emitFileLogWarn(name, "lg3s5", {}, msg);
+                    return yomk::log().to_sink(name).tag("lg3s5").warn(msg);
                 default:
-                    return YomkAPI::emitFileLogError(name, "lg3s5", {}, msg);
+                    return yomk::log().to_sink(name).tag("lg3s5").error(msg);
             }
         };
         auto switchLevel = [](int level, bool turnOn) -> yomk::payload::ResStatus
@@ -1126,40 +1121,40 @@ int main()
                 switch (level)
                 {
                     case 0:
-                        return YomkAPI::enableConsoleLogDebug();
+                        return yomk::log_mgr().console().level(yomk::payload::LogLevel::Debug).enable();
                     case 1:
-                        return YomkAPI::enableConsoleLogInfo();
+                        return yomk::log_mgr().console().level(yomk::payload::LogLevel::Info).enable();
                     case 2:
-                        return YomkAPI::enableConsoleLogWarn();
+                        return yomk::log_mgr().console().level(yomk::payload::LogLevel::Warn).enable();
                     default:
-                        return YomkAPI::enableConsoleLogError();
+                        return yomk::log_mgr().console().level(yomk::payload::LogLevel::Error).enable();
                 }
             }
             switch (level)
             {
                 case 0:
-                    return YomkAPI::disableConsoleLogDebug();
+                    return yomk::log_mgr().console().level(yomk::payload::LogLevel::Debug).disable();
                 case 1:
-                    return YomkAPI::disableConsoleLogInfo();
+                    return yomk::log_mgr().console().level(yomk::payload::LogLevel::Info).disable();
                 case 2:
-                    return YomkAPI::disableConsoleLogWarn();
+                    return yomk::log_mgr().console().level(yomk::payload::LogLevel::Warn).disable();
                 default:
-                    return YomkAPI::disableConsoleLogError();
+                    return yomk::log_mgr().console().level(yomk::payload::LogLevel::Error).disable();
             }
         };
 
         // 预热 sink：churn 之外的所有日志调用一律使用已存在 logger，
         // 确保新 logger 只由 churn 线程“先 console 后 file”成对产生（判别式前提）
         YOMK_TEST_CHECK(
-            YomkAPI::emitConsoleLogInfo(kConsoleSink, {}, "lg3s5_warmup") == yomk::payload::ResStatus::Succeeded,
+            yomk::log().tag(kConsoleSink).info("lg3s5_warmup") == yomk::payload::ResStatus::Succeeded,
             "S5: 预热 console sink logger 成功");
         YOMK_TEST_CHECK(
-            YomkAPI::createFileLogger(pairDir.string(), kFileSink) == yomk::payload::ResStatus::Succeeded,
+            yomk::log_mgr().dir(pairDir.string()).file(kFileSink).create() == yomk::payload::ResStatus::Succeeded,
             "S5: 预热 file sink logger 成功");
 
         // 基线快照（先 file 后 console：file 采样时刻早于 console，配合成对创建语义保证 C>=F 判别式有效）
-        const uint64_t baseF = unpackLines(YomkAPI::listLoggers("file")).size();
-        const uint64_t baseC = unpackLines(YomkAPI::listLoggers("console")).size();
+        const uint64_t baseF = unpackLines(yomk::log_mgr().file().list()).size();
+        const uint64_t baseC = unpackLines(yomk::log_mgr().console().list()).size();
         YOMK_TEST_CHECK(
             (baseC > 0 && baseF > 0),
             "S5: 基线非空（console " + std::to_string(baseC) + " / file " + std::to_string(baseF) + "）");
@@ -1196,7 +1191,7 @@ int main()
                         for (int r = 0; r < kChurnRounds; ++r)
                         {
                             std::string name = "lg3_s5_pair_t" + std::to_string(t) + "_r" + std::to_string(r);
-                            auto consoleResp = YomkAPI::emitConsoleLogInfo(name, {}, "lg3s5_pair");
+                            auto consoleResp = yomk::log().tag(name).info("lg3s5_pair");
                             if (!isLegalStatus(consoleResp))
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1206,7 +1201,7 @@ int main()
                                 g_s5PairConsoleOk.fetch_add(1, std::memory_order_relaxed);
                             }
                             // 成对语义：console 先于 file（任意真实时刻 C(T) >= F(T)）
-                            auto fileResp = YomkAPI::createFileLogger(pairDir.string(), name);
+                            auto fileResp = yomk::log_mgr().dir(pairDir.string()).file(name).create();
                             if (!isLegalStatus(fileResp))
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1237,10 +1232,10 @@ int main()
                             IntrospectSnapshot snap{};
                             // 先 file 后 console：file 采样时刻早于 console；churn 成对创建先 console 后
                             // file 且两表只增不减，故相对基线增量 deltaC >= deltaF 恒成立（判别式有效前提）
-                            snap.fileLines = unpackLines(YomkAPI::listLoggers("file")).size();
-                            snap.consoleLines = unpackLines(YomkAPI::listLoggers("console")).size();
+                            snap.fileLines = unpackLines(yomk::log_mgr().file().list()).size();
+                            snap.consoleLines = unpackLines(yomk::log_mgr().console().list()).size();
 
-                            auto allResp = YomkAPI::getAllLoggerInfo();
+                            auto allResp = yomk::log_mgr().all();
                             if (!isLegalStatus(allResp))
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1350,7 +1345,7 @@ int main()
                             }
                             if (r % 20 == 19)
                             {
-                                auto writeResp = YomkAPI::flushFileLog(kFileSink);
+                                auto writeResp = yomk::log_mgr().file(kFileSink).flush();
                                 if (!isLegalStatus(writeResp))
                                 {
                                     g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
@@ -1389,16 +1384,16 @@ int main()
         }
 
         // ---- 收尾：四级别全 ON + file sink 落盘 ----
-        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogDebug() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON debug ResStatus::Succeeded");
-        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogInfo() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON info ResStatus::Succeeded");
-        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogWarn() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON warn ResStatus::Succeeded");
-        YOMK_TEST_CHECK(YomkAPI::enableConsoleLogError() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON error ResStatus::Succeeded");
-        YOMK_TEST_CHECK(YomkAPI::flushFileLog(kFileSink) == yomk::payload::ResStatus::Succeeded, "S5: 收尾 file sink WRITE ResStatus::Succeeded");
+        YOMK_TEST_CHECK(yomk::log_mgr().console().level(yomk::payload::LogLevel::Debug).enable() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON debug ResStatus::Succeeded");
+        YOMK_TEST_CHECK(yomk::log_mgr().console().level(yomk::payload::LogLevel::Info).enable() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON info ResStatus::Succeeded");
+        YOMK_TEST_CHECK(yomk::log_mgr().console().level(yomk::payload::LogLevel::Warn).enable() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON warn ResStatus::Succeeded");
+        YOMK_TEST_CHECK(yomk::log_mgr().console().level(yomk::payload::LogLevel::Error).enable() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON error ResStatus::Succeeded");
+        YOMK_TEST_CHECK(yomk::log_mgr().file(kFileSink).flush() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 file sink WRITE ResStatus::Succeeded");
 
         // ---- P3-a 判别式：对每个快照验证 C >= F（相对基线增量）----
         // 收尾时 churn 已结束、两表静态；采样顺序保持与快照线程一致（先 file 后 console）
-        const uint64_t finalF = unpackLines(YomkAPI::listLoggers("file")).size();
-        const uint64_t finalC = unpackLines(YomkAPI::listLoggers("console")).size();
+        const uint64_t finalF = unpackLines(yomk::log_mgr().file().list()).size();
+        const uint64_t finalC = unpackLines(yomk::log_mgr().console().list()).size();
         const uint64_t finalTotal = finalC + finalF;
 
         uint64_t loggersViolations = 0;  // LOGGERS 端点 F > C 违例
@@ -1503,14 +1498,14 @@ int main()
             "S5: 内省线程确实观测到 ALL（" + std::to_string(g_s5IntrospectOk.load()) + " 次）");
 
         // ---- 最终一致性：全局主闸状态 + ALL 条目逐器真值 + 日志器数跨端点一致 + file sink 落盘守恒 ----
-        // 条目改报逐器门控层真值后，"收尾全 ON" 验证语义迁移至 getGlobalLoggerLevel（全局主闸态）；
+        // 条目改报逐器门控层真值后，"收尾全 ON" 验证语义迁移至主闸 status()（log_mgr().console().status()）；
         // ALL 条目断言保留，验证未做具名开关时逐器真值恒 on（退化性基线）
-        auto finalGs = yomk::msgs::unPack<yomk::msgs::LoggerState>(YomkAPI::getGlobalLoggerLevel().m_data);
+        auto finalGs = yomk::msgs::unPack<yomk::msgs::LoggerState>(yomk::log_mgr().console().status().m_data);
         YOMK_TEST_CHECK(
             (finalGs != nullptr && finalGs->d.m_debugOn && finalGs->d.m_infoOn &&
              finalGs->d.m_warnOn && finalGs->d.m_errorOn && finalGs->d.m_proxyOn),
             "S5: 收尾四级别全 ON 后全局主闸状态全 on（含 S3 已设的 proxyOn）");
-        auto finalListPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(YomkAPI::getAllLoggerInfo().m_data);
+        auto finalListPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().m_data);
         const yomk::payload::LoggerState* finalSt = firstConsoleState(finalListPkg);
         YOMK_TEST_CHECK(
             (finalSt != nullptr && finalSt->m_debugOn && finalSt->m_infoOn &&

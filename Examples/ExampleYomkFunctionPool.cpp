@@ -51,7 +51,7 @@
 #include "YomkApi.h"
 
 // ---------------------------------------------------------------------------
-// 辅助输出：全部走 YomkLogger 控制台日志（YOMK_INFO_TAG 等），无 std::cout。
+// 辅助输出：全部走 YomkLogger 控制台日志（log().tag(...).info 等），无 std::cout。
 // 日志是最终面向用户的输出：每条自包含（谁+做什么+结果，关键数据随行）。
 // 格式敏感的行先用 ostringstream 拼好再单参输出，避免多参数自动空格
 // 把 "status=0" 拆成 "status= 0"。
@@ -60,11 +60,11 @@
 // 场景横幅：编号 + 标题 + 涉及接口，随后一行场景背景；横幅前留一个空行分隔场景
 static void logScene(int n, const std::string& title, const std::string& apis, const std::string& explain)
 {
-    YOMK_INFO_TAG("arm.demo", "");
+    yomk::log().tag("arm.demo").info("");
     std::ostringstream oss;
     oss << "========== 场景 " << n << "：" << title << "（" << apis << "）==========";
-    YOMK_INFO_TAG("arm.demo", oss.str());
-    YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
+    yomk::log().tag("arm.demo").info(oss.str());
+    yomk::log().tag("arm.demo").info("场景背景：" + explain);
 }
 
 // API 结果行（yomk::payload::Response 版）：CALL 与 INFO 查询等仍返回 yomk::payload::Response 的调用打印 status/msg（数据形态各异，由调用处按需展开）。
@@ -96,7 +96,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
             oss << ", data=\"" << data->d << "\"";
         }
     }
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // ResStatus 版结果行：FUNCTIONPOOL_API 的 REGISTER/UNREGISTER 14-4 起 ResStatus 化，直接返回三态
@@ -106,7 +106,7 @@ static void logResp(const std::string& api, yomk::payload::ResStatus status)
     const char* name = status == yomk::payload::ResStatus::Succeeded ? "ResStatus::Succeeded"
                      : status == yomk::payload::ResStatus::Failed    ? "ResStatus::Failed"
                                                                     : "ResStatus::Invalid";
-    YOMK_INFO_TAG("arm.demo", "[" + api + "] status: " + name);
+    yomk::log().tag("arm.demo").info("[" + api + "] status: " + name);
 }
 
 // 操作日志（模板版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
@@ -118,7 +118,7 @@ static void logResp(const std::string& api, yomk::payload::ResStatus status)
 template <typename F>
 static auto logAction(const std::string& op, const std::string& api, F&& call)
 {
-    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    yomk::log().tag("arm.demo").info("开始执行 " + op);
     auto resp = call();
     logResp(api, resp);
     return resp;
@@ -128,7 +128,7 @@ static auto logAction(const std::string& op, const std::string& api, F&& call)
 // 由调用处随后打结果行
 static void logAction(const std::string& op)
 {
-    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    yomk::log().tag("arm.demo").info("开始执行 " + op);
 }
 
 // 自省结果展开：单个函数 FuncInfo 的全部字段逐行展示（函数名行 + 字段行），
@@ -137,27 +137,27 @@ static void logFuncInfo(const std::string& api, const yomk::payload::FuncInfo& i
 {
     std::ostringstream oss;
     oss << "[" << api << "] - " << info.m_funcName;
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     msgName: " << (info.m_msgName.empty() ? "(未指定)" : info.m_msgName);
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     description: " << (info.m_description.empty() ? "(未指定)" : info.m_description);
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // INFO_NAMES 清单行：函数名列表逐行展示（" - " 无序列表风格）
 static void logFuncLine(const std::string& api, const std::string& funcName)
 {
-    YOMK_INFO_TAG("arm.demo", "[" + api + "] - " + funcName);
+    yomk::log().tag("arm.demo").info("[" + api + "] - " + funcName);
 }
 
 // 自证结论：期望与实际写在同一行，读者无需查源码即可确认框架行为
 static void logVerify(const std::string& text)
 {
-    YOMK_INFO_TAG("arm.demo", "[验证] " + text);
+    yomk::log().tag("arm.demo").info("[验证] " + text);
 }
 
 // ---------------------------------------------------------------------------
@@ -178,7 +178,7 @@ yomk::payload::Response payloadSum(YomkMsgPtr pkg)
 
     std::ostringstream oss;
     oss << "负载合计工具执行：收到 " << loads->d.size() << " 轴负载（调用方线程同步执行）";
-    YOMK_INFO_TAG("arm.tool", oss.str());
+    yomk::log().tag("arm.tool").info(oss.str());
 
     int totalKg = 0;
     for (const auto& load : loads->d)
@@ -188,7 +188,7 @@ yomk::payload::Response payloadSum(YomkMsgPtr pkg)
 
     oss.str("");
     oss << "负载合计工具完成：payload=" << totalKg << "kg";
-    YOMK_INFO_TAG("arm.tool", oss.str());
+    yomk::log().tag("arm.tool").info(oss.str());
 
     // msg 描述结果，m_data 携带结果数据——调用方两者都能拿到
     return {yomk::payload::ResStatus::Succeeded, "payload=" + std::to_string(totalKg) + "kg", yomk::msgs::String::shared(std::to_string(totalKg))};
@@ -204,7 +204,7 @@ yomk::payload::Response handshake(YomkMsgPtr pkg)
     }
     std::ostringstream oss;
     oss << "班次握手工具执行：向 " << worker->d << " 回执问候";
-    YOMK_INFO_TAG("arm.tool", oss.str());
+    yomk::log().tag("arm.tool").info(oss.str());
     return {yomk::payload::ResStatus::Succeeded, "shift hello, " + worker->d};
 }
 
@@ -300,7 +300,7 @@ static void showArmToolHotSwap()
         }
         std::ostringstream oss;
         oss << "班次握手工具 V2 执行：向 " << worker->d << " 升级问候";
-        YOMK_INFO_TAG("arm.tool", oss.str());
+        yomk::log().tag("arm.tool").info(oss.str());
         return {yomk::payload::ResStatus::Succeeded, "shift hello V2, " + worker->d};
     };
 
@@ -407,8 +407,8 @@ int main(int argc, char* argv[])
     // 初始化框架（函数池服务 /YomkFunctionPool 随之自动启动）
     YomkAPI::init();
 
-    YOMK_INFO_TAG("arm.demo", "机械臂产线 x YomkFunctionPool 示例：一次班次贯穿 6 个场景，覆盖全部函数池 API");
-    YOMK_INFO_TAG("arm.demo", "日志按 tag 分层：arm.demo=叙事与结果 / arm.tool=工具函数体（调用方线程同步执行）");
+    yomk::log().tag("arm.demo").info("机械臂产线 x YomkFunctionPool 示例：一次班次贯穿 6 个场景，覆盖全部函数池 API");
+    yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / arm.tool=工具函数体（调用方线程同步执行）");
 
     showArmToolRegister();
     showArmToolMeta();
@@ -417,7 +417,7 @@ int main(int argc, char* argv[])
     showArmToolDashboard();
     showArmToolCleanup();
 
-    YOMK_INFO_TAG("arm.demo", "========== 示例结束：按回车退出 ==========");
+    yomk::log().tag("arm.demo").info("========== 示例结束：按回车退出 ==========");
     getchar();
 
     return 0;

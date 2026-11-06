@@ -7,14 +7,14 @@ TelemetryService::TelemetryService(YomkServer* server) : YomkService(server), m_
     name("/TelemetryService");  // 服务名：URL 前缀，全局唯一
     std::ostringstream oss;
     oss << "留痕服务实例 #" << m_id << " 创建";
-    YOMK_INFO_TAG("arm.telemetry", oss.str());
+    yomk::log().tag("arm.telemetry").info(oss.str());
 }
 
 TelemetryService::~TelemetryService()
 {
     std::ostringstream oss;
     oss << "留痕服务实例 #" << m_id << " 析构";
-    YOMK_INFO_TAG("arm.telemetry", oss.str());
+    yomk::log().tag("arm.telemetry").info(oss.str());
     --s_instance;
 }
 
@@ -26,13 +26,13 @@ int TelemetryService::init()
     // 弱绑定注册到 FunctionPool：服务删除后 telemetry_hook 自动失效，不悬垂 this
     YomkAPI::registerFunction("telemetry_hook", weakFunc(&TelemetryService::record));
 
-    YOMK_INFO_TAG("arm.telemetry", "init: install /record, register weak-bound telemetry_hook");
+    yomk::log().tag("arm.telemetry").info("init: install /record, register weak-bound telemetry_hook");
     return 0;
 }
 
 void TelemetryService::deinit()
 {
-    YOMK_INFO_TAG("arm.telemetry", "deinit: telemetry service offline");
+    yomk::log().tag("arm.telemetry").info("deinit: telemetry service offline");
 }
 
 yomk::payload::Response TelemetryService::record(YomkMsgPtr pkg)
@@ -44,6 +44,6 @@ yomk::payload::Response TelemetryService::record(YomkMsgPtr pkg)
     }
     std::ostringstream oss;
     oss << "留痕记录 [实例#" << m_id << "]：" << str->d;
-    YOMK_INFO_TAG("arm.telemetry", oss.str());
+    yomk::log().tag("arm.telemetry").info(oss.str());
     return {yomk::payload::ResStatus::Succeeded, "trace recorded"};
 }

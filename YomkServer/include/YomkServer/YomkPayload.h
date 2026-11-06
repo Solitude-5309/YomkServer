@@ -205,7 +205,7 @@ struct LoggerState
 struct LoggerInfo
 {
     std::string m_loggerName;  // 日志器名
-    std::string m_type;        // 类型："console" 或 "file"（与 listLoggers/getLoggerInfo 的类型参数同名）
+    std::string m_type;        // 类型："console" 或 "file"（对应 log_mgr() 的 console/file 分面身份）
     std::string m_dir;         // file 类型的日志目录（console 时为空串）
     LoggerState m_loggerState;
 };
@@ -239,5 +239,5 @@ using YomkContextMonitorFunc = std::function<void(const yomk::payload::Context& 
 // Context checker 回调：返回 CheckStatus::Accept/CheckStatus::Reject 门控 set；详见 YomkAPI::setContextChecker
 using YomkContextCheckerFunc = std::function<yomk::payload::CheckStatus(const yomk::payload::Context& ctx)>;
 using YomkConsoleLogProxyFunc = std::function<bool(const yomk::payload::Log& log)>;
-// 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 YomkAPI::setFileLogProxy
+// 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 yomk::log_mgr().file().proxy().apply()
 using YomkFileLogProxyFunc = std::function<bool(const yomk::payload::Log& log)>;

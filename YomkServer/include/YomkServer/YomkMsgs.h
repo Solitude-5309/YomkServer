@@ -67,9 +67,9 @@ YOMK_DEFINE_MSG(yomk::payload::ConsoleLogProxy, ConsoleLogProxy, d);
 YOMK_DEFINE_MSG(yomk::payload::FileLogProxy, FileLogProxy, d);
 YOMK_DEFINE_MSG(yomk::payload::LoggerQuery, LoggerQuery, d);
 YOMK_DEFINE_MSG(yomk::payload::LoggerInfo, LoggerInfo, d);
-// Logger 控制台全局主闸态（getGlobalLoggerLevel 返回数据：六级别主闸开关 + proxy）
+// Logger 控制台全局主闸态（log_mgr().console()/file().status() 返回数据：六级别主闸开关 + proxy）
 YOMK_DEFINE_MSG(yomk::payload::LoggerState, LoggerState, d);
-// Logger 全量内省（getAllLoggerInfo 返回数据；元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段）
+// Logger 全量内省（log_mgr().all() 返回数据；元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段）
 YOMK_DEFINE_MSG(std::vector<yomk::payload::LoggerInfo>, LoggerInfoList, d);
 YOMK_DEFINE_MSG(yomk::payload::Context, Context, d);
 // Context 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键，组名缺省 main）

@@ -82,7 +82,7 @@
 #include "services/TelemetryService.h"
 
 // ---------------------------------------------------------------------------
-// 辅助输出：全部走 YomkLogger 控制台日志（YOMK_INFO_TAG 等），无 std::cout。
+// 辅助输出：全部走 YomkLogger 控制台日志（log().tag(...).info 等），无 std::cout。
 // 日志是最终面向用户的输出：每条自包含（谁+做什么+结果，关键数据随行）。
 // 格式敏感的行先用 ostringstream 拼好再单参输出，避免多参数自动空格
 // 把 "status=0" 拆成 "status= 0"。
@@ -91,11 +91,11 @@
 // 场景横幅：编号 + 标题 + 涉及接口，随后一行场景背景；横幅前留一个空行分隔场景
 static void logScene(int n, const std::string& title, const std::string& apis, const std::string& explain)
 {
-    YOMK_INFO_TAG("arm.demo", "");
+    yomk::log().tag("arm.demo").info("");
     std::ostringstream oss;
     oss << "========== 场景 " << n << "：" << title << "（" << apis << "）==========";
-    YOMK_INFO_TAG("arm.demo", oss.str());
-    YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
+    yomk::log().tag("arm.demo").info(oss.str());
+    yomk::log().tag("arm.demo").info("场景背景：" + explain);
 }
 
 // API 结果行：打印 yomk::payload::Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
@@ -127,7 +127,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
             oss << ", data=\"" << data->d << "\"";
         }
     }
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // 操作日志（yomk::payload::Response 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
@@ -136,7 +136,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
 // arm.motion/arm.telemetry 等服务日志被夹在开始行与结果行之间，归属一目了然
 static yomk::payload::Response logAction(const std::string& op, const std::string& api, const std::function<yomk::payload::Response()>& call)
 {
-    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    yomk::log().tag("arm.demo").info("开始执行 " + op);
     yomk::payload::Response resp = call();
     logResp(api, resp);
     return resp;
@@ -146,24 +146,24 @@ static yomk::payload::Response logAction(const std::string& op, const std::strin
 // 由调用处随后打结果行
 static void logAction(const std::string& op)
 {
-    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    yomk::log().tag("arm.demo").info("开始执行 " + op);
 }
 
 // 操作日志（int 返回版）：NEW_SERVICE/ADD_SERVICE/DEL_SERVICE/BOOT 等框架管理
 // 接口返回 int（0=成功，-1=失败），先打开始行再调用，结果行标注返回值
 static void logActionInt(const std::string& op, const std::string& api, const std::function<int()>& call)
 {
-    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    yomk::log().tag("arm.demo").info("开始执行 " + op);
     int ret = call();
     std::ostringstream oss;
     oss << "[" << api << "] ret=" << ret << (ret == 0 ? "(成功)" : "(失败)");
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // 服务清单行：StringArray 逐行展示（" - " 无序列表风格）
 static void logStringLine(const std::string& api, const std::string& line)
 {
-    YOMK_INFO_TAG("arm.demo", "[" + api + "] - " + line);
+    yomk::log().tag("arm.demo").info("[" + api + "] - " + line);
 }
 
 // 自省结果展开：单个函数 FuncInfo 的全部字段逐行展示（函数名行 + 字段行），
@@ -173,15 +173,15 @@ static void logFuncInfo(const std::string& api, const yomk::payload::FuncInfo& i
 {
     std::ostringstream oss;
     oss << "[" << api << "] - " << info.m_funcName;
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     msgName: " << (info.m_msgName.empty() ? "(未指定)" : info.m_msgName);
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     description: " << (info.m_description.empty() ? "(未指定)" : info.m_description);
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // 拓扑摘要行：服务名 + 函数计数（收班终态用，拓扑全量展开详见 ExampleYomkServerInfo）
@@ -189,13 +189,13 @@ static void logSrvBrief(const std::string& api, const std::string& srvName, std:
 {
     std::ostringstream oss;
     oss << "[" << api << "] - " << srvName << "（" << funcCount << " 个功能函数）";
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // 自证结论：期望与实际写在同一行，读者无需查源码即可确认框架行为
 static void logVerify(const std::string& text)
 {
-    YOMK_INFO_TAG("arm.demo", "[验证] " + text);
+    yomk::log().tag("arm.demo").info("[验证] " + text);
 }
 
 // ---------------------------------------------------------------------------
@@ -219,10 +219,10 @@ static void showArmPowerOnRegister()
     logAction("控制柜上电自检：读取框架版本与全局单例");
     std::ostringstream oss;
     oss << "[YomkAPI::version()] version=" << YomkAPI::version();
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
     oss.str("");
     oss << "[YomkAPI::serverInstance()] instance=" << (YomkAPI::serverInstance() ? "ready" : "null");
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
     logVerify("YomkAPI::init() 后单例就绪：YomkAPI::serverInstance() 可判空，YomkAPI::serverInstance().get() 供服务构造时取 server 指针");
 
     logActionInt(
@@ -287,7 +287,7 @@ static void showArmAsyncTeach()
 
     std::ostringstream oss;
     oss << "主线程 id: " << std::this_thread::get_id();
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     // 回调先赋具名变量再传宏：函数体含逗号时直接内联进宏会被预处理器误当实参分隔符
     YomkResponseFunc onTeachDone = [](yomk::payload::Response resp)
@@ -295,7 +295,7 @@ static void showArmAsyncTeach()
         std::ostringstream oss;
         oss << "[ASYNC_REQUEST 回调] status=" << static_cast<int>(resp.m_status) << ", msg=\"" << resp.m_msg
             << "\"（池线程 id: " << std::this_thread::get_id() << "）";
-        YOMK_INFO_TAG("arm.demo", oss.str());
+        yomk::log().tag("arm.demo").info(oss.str());
     };
 
     logAction("异步下发示教点自检请求");
@@ -336,7 +336,7 @@ static void showArmMoveChain()
     {
         oss << "[REQUEST /MotionService/move] | (no MoveResp data)";
     }
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
     logVerify("arm.motion 与 arm.telemetry 日志夹在开始行与结果行之间：调用链 main→/move→/record 同步执行；m_data 携带强类型 MoveResp");
 }
 
@@ -459,8 +459,8 @@ static void showArmPowerOff()
     }
     logVerify("6 个服务 = 5 个内置 + 1 个运动工位：留痕工位已在场景 7 下线，拓扑实时反映运行期服务表");
 
-    YOMK_INFO_TAG("arm.demo", "收班预告：SHUTDOWN 后框架已关闭，此后任何请求统一返回 ResStatus::Invalid \"YomkServer is not init\"；");
-    YOMK_INFO_TAG("arm.demo", "本示例所有日志宏随之静默——下面的静默段正是演示效果，示例日志至此结束，程序停在 getchar 等待回车退出");
+    yomk::log().tag("arm.demo").info("收班预告：SHUTDOWN 后框架已关闭，此后任何请求统一返回 ResStatus::Invalid \"YomkServer is not init\"；");
+    yomk::log().tag("arm.demo").info("本示例所有日志宏随之静默——下面的静默段正是演示效果，示例日志至此结束，程序停在 getchar 等待回车退出");
 
     logAction(
         "收班断电：优雅关闭框架", "SHUTDOWN + REQUEST (关闭后守卫)",
@@ -475,10 +475,8 @@ int main(int argc, char* argv[])
     // 初始化框架（/YomkServerInfo 等 5 个内置服务随之自动启动）
     YomkAPI::init();
 
-    YOMK_INFO_TAG("arm.demo", "机械臂控制 x YomkService 示例：控制柜一次上电会话贯穿 8 个场景，覆盖服务定义与调用全部用户接口");
-    YOMK_INFO_TAG(
-        "arm.demo",
-        "日志按 tag 分层：arm.demo=叙事与结果 / arm.boot=启动编排 / arm.motion=运动服务函数体 / "
+    yomk::log().tag("arm.demo").info("机械臂控制 x YomkService 示例：控制柜一次上电会话贯穿 8 个场景，覆盖服务定义与调用全部用户接口");
+    yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / arm.boot=启动编排 / arm.motion=运动服务函数体 / "
         "arm.telemetry=留痕服务函数体（同步调用在调用方线程执行）");
 
     showArmPowerOnRegister();

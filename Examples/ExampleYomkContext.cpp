@@ -67,7 +67,7 @@
 using yomk::payload::CheckStatus;
 
 // ---------------------------------------------------------------------------
-// 辅助输出：全部走 YomkLogger 控制台日志（YOMK_INFO_TAG 等），无 std::cout。
+// 辅助输出：全部走 YomkLogger 控制台日志（log().tag(...).info 等），无 std::cout。
 // 日志是最终面向用户的输出：每条自包含（谁+做什么+结果，关键数据随行）。
 // 格式敏感的行先用 ostringstream 拼好再单参输出，避免多参数自动空格
 // 把 "status=0" 拆成 "status= 0"。
@@ -101,11 +101,11 @@ static std::string fmtPose(const std::vector<double>& pose)
 // 场景横幅：编号 + 标题 + 涉及接口，随后一行场景背景；横幅前留一个空行分隔场景
 static void logScene(int n, const std::string& title, const std::string& apis, const std::string& explain)
 {
-    YOMK_INFO_TAG("arm.demo", "");
+    yomk::log().tag("arm.demo").info("");
     std::ostringstream oss;
     oss << "========== 场景 " << n << "：" << title << "（" << apis << "）==========";
-    YOMK_INFO_TAG("arm.demo", oss.str());
-    YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
+    yomk::log().tag("arm.demo").info(oss.str());
+    yomk::log().tag("arm.demo").info("场景背景：" + explain);
 }
 
 // API 结果行（yomk::payload::Response 版）：INFO 查询等仍返回 yomk::payload::Response 的调用打印 status/msg
@@ -128,7 +128,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
         oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
     oss << ", msg=\"" << resp.m_msg << "\"";
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // ResStatus 版结果行：CONTEXT_API 9 方法 ResStatus 化后直接返回三态（失败原因经错误日志承载，无 msg）
@@ -137,7 +137,7 @@ static void logResp(const std::string& api, yomk::payload::ResStatus status)
     const char* name = status == yomk::payload::ResStatus::Succeeded ? "ResStatus::Succeeded"
                      : status == yomk::payload::ResStatus::Failed    ? "ResStatus::Failed"
                                                                     : "ResStatus::Invalid";
-    YOMK_INFO_TAG("arm.demo", "[" + api + "] status: " + name);
+    yomk::log().tag("arm.demo").info("[" + api + "] status: " + name);
 }
 
 // 操作日志（模板版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
@@ -149,7 +149,7 @@ static void logResp(const std::string& api, yomk::payload::ResStatus status)
 template <typename F>
 static auto logAction(const std::string& op, const std::string& api, F&& call)
 {
-    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    yomk::log().tag("arm.demo").info("开始执行 " + op);
     auto resp = call();
     logResp(api, resp);
     return resp;
@@ -158,7 +158,7 @@ static auto logAction(const std::string& op, const std::string& api, F&& call)
 // 操作开始行（GET 等返回值非 yomk::payload::Response 的操作）：由调用处随后打结果行
 static void logAction(const std::string& op)
 {
-    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    yomk::log().tag("arm.demo").info("开始执行 " + op);
 }
 
 // GET 结果行：GET 返回 shared_ptr 而非 yomk::payload::Response；
@@ -167,13 +167,13 @@ static void logGet(const std::string& key, const std::string& valueText, bool is
 {
     std::ostringstream oss;
     oss << "[GET] " << key << " = " << valueText << (isDefault ? "（兜底默认值）" : "（命中）");
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // 自证结论：期望与实际写在同一行，读者无需查源码即可确认框架行为
 static void logVerify(const std::string& text)
 {
-    YOMK_INFO_TAG("arm.demo", "[验证] " + text);
+    yomk::log().tag("arm.demo").info("[验证] " + text);
 }
 
 // 自省结果展开：单键 ContextKeyInfo 的全部字段逐行展示（键名行 + 5 个字段行），
@@ -182,28 +182,28 @@ static void logKeyInfo(const std::string& api, const yomk::payload::ContextKeyIn
 {
     std::ostringstream oss;
     oss << "[" << api << "] - " << info.m_key;
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     // 类型名为空表示键值为空（尚未 set），防御展示
     oss.str("");
     oss << "[" << api << "]     type: " << (info.m_typeName.empty() ? "(空)" : info.m_typeName);
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     checker: " << (info.m_checkerOn ? "on" : "off");
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     monitors: " << info.m_monitorCount;
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     async: " << info.m_asyncMonitorCount;
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     group: " << info.m_group;
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // CREATE 幂等化封装：键已存在（排他 ResStatus::Failed）视为就绪跳过。
@@ -216,7 +216,7 @@ static void ensureKey(const std::string& op, const std::string& key, YomkMsgPtr 
     {
         std::ostringstream oss;
         oss << "[ensureKey] " << key << " 已存在，跳过创建";
-        YOMK_INFO_TAG("arm.demo", oss.str());
+        yomk::log().tag("arm.demo").info(oss.str());
     }
 }
 
@@ -233,19 +233,19 @@ CheckStatus checkerSpeedRatio(const yomk::payload::Context& ctx)
     {
         std::ostringstream oss;
         oss << "checker: " << ctx.m_key << " 值不是 Float64，无法校验 -> CheckStatus::Reject";
-        YOMK_WARN_TAG("arm.guard", oss.str());
+        yomk::log().tag("arm.guard").warn(oss.str());
         return CheckStatus::Reject;
     }
     if (ratio->d > 1.0)
     {
         std::ostringstream oss;
         oss << "checker: " << ctx.m_key << "=" << fmtF64(ratio->d) << " 超过安全倍率 1.0（撞机风险）-> CheckStatus::Reject";
-        YOMK_WARN_TAG("arm.guard", oss.str());
+        yomk::log().tag("arm.guard").warn(oss.str());
         return CheckStatus::Reject;
     }
     std::ostringstream oss;
     oss << "checker: " << ctx.m_key << "=" << fmtF64(ratio->d) << " 在安全范围内 -> CheckStatus::Accept";
-    YOMK_INFO_TAG("arm.guard", oss.str());
+    yomk::log().tag("arm.guard").info(oss.str());
     return CheckStatus::Accept;
 }
 
@@ -260,7 +260,7 @@ void monitorServoPowerAlarm(const yomk::payload::Context& ctx)
     const char* state = (power && power->d) ? "ON" : "OFF";
     std::ostringstream oss;
     oss << "[告警] 伺服电源指令: " << ctx.m_key << "=" << state << "（安全 PLC 收到本次写入快照）";
-    YOMK_WARN_TAG("arm.watch", oss.str());
+    yomk::log().tag("arm.watch").warn(oss.str());
 }
 
 // 操作黑匣子：记录每一次伺服电源指令的快照，供事后追溯；
@@ -275,7 +275,7 @@ void monitorServoPowerLog(const yomk::payload::Context& ctx)
     const char* state = (power && power->d) ? "ON" : "OFF";
     std::ostringstream oss;
     oss << "[黑匣子] 记录操作: " << ctx.m_key << "->" << state << "（追加式多播：与告警回调按注册序同批执行）";
-    YOMK_INFO_TAG("arm.watch", oss.str());
+    yomk::log().tag("arm.watch").info(oss.str());
 }
 
 // 数字孪生位姿上报：async=true 经单线程池送达（按 set 提交序保序），
@@ -291,13 +291,13 @@ void monitorPoseTelemetry(const yomk::payload::Context& ctx)
     {
         std::ostringstream oss;
         oss << "上报失败: " << ctx.m_key << " 值不是 Float64Array";
-        YOMK_WARN_TAG("arm.telemetry", oss.str());
+        yomk::log().tag("arm.telemetry").warn(oss.str());
         return;
     }
     std::ostringstream oss;
     oss << "位姿上报: " << ctx.m_key << "=" << fmtPose(pose->d) << "（池线程 " << std::this_thread::get_id()
         << "，按 set 提交序送达）";
-    YOMK_INFO_TAG("arm.telemetry", oss.str());
+    yomk::log().tag("arm.telemetry").info(oss.str());
 }
 
 // ---------------------------------------------------------------------------
@@ -511,7 +511,7 @@ static void showArmReportPose()
 
     std::ostringstream ossThreadId;
     ossThreadId << "主线程 id: " << std::this_thread::get_id();
-    YOMK_INFO_TAG("arm.demo", ossThreadId.str());
+    yomk::log().tag("arm.demo").info(ossThreadId.str());
 
     // 连续 3 次位姿更新（模拟插补运动）：提交序 #1 -> #2 -> #3
     logAction(
@@ -529,7 +529,7 @@ static void showArmReportPose()
         "SET arm.tcp_pose",
         [&] { return yomk::ctx().key("arm.tcp_pose").value(yomk::msgs::Float64Array::shared(std::vector<double>{150, 80, 250, 0, 0, 1, 0})).set(); });
 
-    YOMK_INFO_TAG("arm.demo", "等待异步上报送达（单线程池按提交序执行）...");
+    yomk::log().tag("arm.demo").info("等待异步上报送达（单线程池按提交序执行）...");
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     logVerify("3 条 arm.telemetry 日志按插补序 #1->#2->#3 到达且线程为池线程（与主线程 id 不同）——不阻塞控制回路");
 
@@ -554,7 +554,7 @@ static void showArmDashboard()
     {
         for (const auto& key : keyArr->d)
         {
-            YOMK_INFO_TAG("arm.demo", std::string("[INFO_KEYS] - ") + key);
+            yomk::log().tag("arm.demo").info(std::string("[INFO_KEYS] - ") + key);
         }
     }
 
@@ -637,8 +637,8 @@ int main(int argc, char* argv[])
     // 初始化框架（上下文服务 /YomkContext 随之自动启动）
     YomkAPI::init();
 
-    YOMK_INFO_TAG("arm.demo", "机械臂控制 x YomkContext 示例：一次作业会话贯穿 8 个场景，覆盖全部上下文 API");
-    YOMK_INFO_TAG("arm.demo", "日志按 tag 分层：arm.demo=叙事与结果 / arm.guard=校验 / arm.watch=通知 / arm.telemetry=上报");
+    yomk::log().tag("arm.demo").info("机械臂控制 x YomkContext 示例：一次作业会话贯穿 8 个场景，覆盖全部上下文 API");
+    yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / arm.guard=校验 / arm.watch=通知 / arm.telemetry=上报");
 
     showArmBootCreate();
     showArmReadStatus();
@@ -649,7 +649,7 @@ int main(int argc, char* argv[])
     showArmDashboard();
     showArmTaskCleanup();
 
-    YOMK_INFO_TAG("arm.demo", "========== 示例结束：按回车退出 ==========");
+    yomk::log().tag("arm.demo").info("========== 示例结束：按回车退出 ==========");
     getchar();
 
     return 0;

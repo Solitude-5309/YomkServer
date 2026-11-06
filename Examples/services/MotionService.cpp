@@ -10,7 +10,7 @@ int MotionService::init()
     // 2 参注册：无消息元数据；4 参注册：声明 /move 期望 MoveCmd 并附函数说明，供自省识别
     installFunc("/echo", &MotionService::echo);
     installFunc("/move", &MotionService::move, "MoveCmd", "运动控制：按指令运动到目标位姿并留痕");
-    YOMK_INFO_TAG("arm.motion", "init: install /echo (no meta), /move [MoveCmd] + description");
+    yomk::log().tag("arm.motion").info("init: install /echo (no meta), /move [MoveCmd] + description");
     return 0;
 }
 
@@ -23,7 +23,7 @@ yomk::payload::Response MotionService::echo(YomkMsgPtr pkg)
     }
     std::ostringstream oss;
     oss << "通讯自检回环：收到 \"" << str->d << "\"";
-    YOMK_INFO_TAG("arm.motion", oss.str());
+    yomk::log().tag("arm.motion").info(oss.str());
     return {yomk::payload::ResStatus::Succeeded, "echo success", yomk::msgs::String::shared("echo: " + str->d)};
 }
 
@@ -38,7 +38,7 @@ yomk::payload::Response MotionService::move(YomkMsgPtr pkg)
     std::ostringstream oss;
     oss << "运动指令执行：目标 (" << cmdPkg->cmd.m_x << ", " << cmdPkg->cmd.m_y << ", " << cmdPkg->cmd.m_z
         << ")mm，倍率 " << cmdPkg->cmd.m_speedRatio;
-    YOMK_INFO_TAG("arm.motion", oss.str());
+    yomk::log().tag("arm.motion").info(oss.str());
 
     // 跨服务调用：成员 request() 与全局请求链 yomk::server().url(u).msg(pkg).request() 等价，URL 直达留痕工位；
     // 留痕是运动的依赖前置，留痕缺失时失败沿调用链传播
@@ -49,12 +49,12 @@ yomk::payload::Response MotionService::move(YomkMsgPtr pkg)
     {
         oss.str("");
         oss << "留痕失败：" << traceResp.m_msg;
-        YOMK_INFO_TAG("arm.motion", oss.str());
+        yomk::log().tag("arm.motion").info(oss.str());
         return {yomk::payload::ResStatus::Failed, "move failed: " + traceResp.m_msg};
     }
     oss.str("");
     oss << "留痕回执：" << traceResp.m_msg;
-    YOMK_INFO_TAG("arm.motion", oss.str());
+    yomk::log().tag("arm.motion").info(oss.str());
 
     // 到位回执：m_data 携带强类型 MoveResp，不止能传 String
     MoveResp respData{cmdPkg->cmd.m_x, cmdPkg->cmd.m_y, cmdPkg->cmd.m_z};

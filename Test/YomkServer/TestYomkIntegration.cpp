@@ -9,7 +9,7 @@
  * S2. 删除内置服务契约与恢复：YomkAPI::delService("/YomkLogger") → 服务级 ResStatus::Failed + 精确消息；
  *     YomkAPI::newService<YomkLogger>() 无参重注册（new T(this) 注入 server 指针，构造函数
  *     固定名 "/YomkLogger" 生效）→ LOGGER API 恢复且全链路可用
- * S1. YomkAPI::shutdown() 全链路统一收尾（压轴）：YomkAPI::postEvent 积压、YOMK_FILE_INFO 缓冲、
+ * S1. YomkAPI::shutdown() 全链路统一收尾（压轴）：YomkAPI::postEvent 积压、log().to_sink(...).info 缓冲、
  *     异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘（FileLogger
  *     析构 write）、API 回归 ResStatus::Invalid + "YomkServer is not init"（API 守卫级：shutdown 内
  *     setServer(nullptr)，serverSnapshot 空守卫；服务级 ResStatus::Failed 仅出现在服务表内服务缺失时）、
@@ -186,18 +186,18 @@ int main()
     std::cout << "===== S2. 删除内置服务契约与恢复（/YomkLogger） =====" << std::endl;
     {
         YOMK_TEST_CHECK(YomkAPI::delService("/YomkLogger") == 0, "删除内置 /YomkLogger 返回 0");
-        auto afterDel = YomkAPI::listLoggers("console");
+        auto afterDel = yomk::log_mgr().console().list();
         YOMK_TEST_CHECK(afterDel.m_status == yomk::payload::ResStatus::Failed && afterDel.m_msg == "service not found: /YomkLogger",
               "删除后 LOGGER API 服务级 ResStatus::Failed + 精确消息");
         YOMK_TEST_CHECK(!contains(unpackStringArray(YomkAPI::listServices()), "/YomkLogger"),
               "服务表快照不再含 /YomkLogger");
 
         YOMK_TEST_CHECK(YomkAPI::newService<YomkLogger>() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
-        auto restored = YomkAPI::listLoggers("console");
+        auto restored = yomk::log_mgr().console().list();
         // loggers 按类型查询，行内容即 logger 纯名（YomkLogger::loggers 不再拼接类型后缀）
         YOMK_TEST_CHECK(restored.m_status == yomk::payload::ResStatus::Succeeded && contains(unpackStringArray(restored), "MainLogger"),
               "重注册后 LOGGER API 恢复且含 MainLogger");
-        YOMK_TEST_CHECK(YomkAPI::emitConsoleLogInfo("MainLogger", {}, "[integration] s2 relink marker") ==
+        YOMK_TEST_CHECK(yomk::log().tag("MainLogger").info("[integration] s2 relink marker") ==
                   yomk::payload::ResStatus::Succeeded,
               "重注册后日志 API 全链路可用（console_log ResStatus::Succeeded）");
     }
@@ -224,12 +224,12 @@ int main()
         }
         YOMK_TEST_CHECK(postOk, "100 个积压事件全部 POST ResStatus::Succeeded");
 
-        // 文件日志：YOMK_FILE_INFO 仅入缓冲，FileLogger 析构 write 落盘
-        // （createFileLogger 第二参为日志器名，实际文件 = <dir>/<名>.log，由 FileLogger 自动追加后缀）
-        YOMK_TEST_CHECK(YomkAPI::createFileLogger(tmpDir.string(), "integration_file") == yomk::payload::ResStatus::Succeeded,
-              "createFileLogger 返回 ResStatus::Succeeded");
-        YOMK_TEST_CHECK(YOMK_FILE_INFO("integration_file", "s1_shutdown_flush_marker") == yomk::payload::ResStatus::Succeeded,
-              "YOMK_FILE_INFO 入缓冲返回 ResStatus::Succeeded（日志器名与 CREATE 一致）");
+        // 文件日志：log().to_sink(...).info 仅入缓冲，FileLogger 析构 write 落盘
+        // （file() 分面为日志器名，实际文件 = <dir>/<名>.log，由 FileLogger 自动追加后缀）
+        YOMK_TEST_CHECK(yomk::log_mgr().dir(tmpDir.string()).file("integration_file").create() == yomk::payload::ResStatus::Succeeded,
+              "file().create() 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(yomk::log().to_sink("integration_file").info("s1_shutdown_flush_marker") == yomk::payload::ResStatus::Succeeded,
+              "log().to_sink(...).info 入缓冲返回 ResStatus::Succeeded（日志器名与 CREATE 一致）");
 
         // 异步 monitor 投递（shutdown 排空断言主体；S3 清场时全局开关已关，此处需重新开启）
         YOMK_TEST_CHECK(yomk::ctx().group().monitor().enable() == yomk::payload::ResStatus::Succeeded, "重新开启 monitor 开关");
@@ -264,7 +264,7 @@ int main()
         auto postCtx = yomk::ctx().key("drain_key").value(yomk::msgs::String::shared(std::string("x"))).set();
         YOMK_TEST_CHECK(postCtx == yomk::payload::ResStatus::Invalid,
               "shutdown 后 setContext 回归 ResStatus::Invalid");
-        auto postLog = YomkAPI::getAllLoggerInfo();
+        auto postLog = yomk::log_mgr().all();
         YOMK_TEST_CHECK(postLog.m_status == yomk::payload::ResStatus::Invalid && postLog.m_msg == "YomkServer is not init",
               "shutdown 后 LOGGER API 回归 ResStatus::Invalid + 守卫消息");
         auto postInfo = YomkAPI::getAllServerInfo();
@@ -276,7 +276,7 @@ int main()
         // acquire load），确定性走慢路径拿到空快照 → 守卫消息逐字节保留
         {
             yomk::payload::Response crossResp(yomk::payload::ResStatus::Succeeded);
-            std::thread worker([&crossResp]() { crossResp = YomkAPI::getAllLoggerInfo(); });
+            std::thread worker([&crossResp]() { crossResp = yomk::log_mgr().all(); });
             worker.join();
             YOMK_TEST_CHECK(crossResp.m_status == yomk::payload::ResStatus::Invalid &&
                                 crossResp.m_msg == "YomkServer is not init",

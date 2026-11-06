@@ -5,8 +5,8 @@
  * 覆盖内容（4 个 Section）：
  * 1. 默认配置（仅行号开）：宏注入行号与真实调用行逐行核对；四级 + _TAG 变体；
  *    宏路径与 emit 直调路径同捕获窗输出结构一致（字节级兼容基线）；零正文/多参折叠
- * 2. 文件日志双路径：createFileLogger → 宏 YOMK_FILE_* 与直调 emitFileLog*(..., {}, ...)
- *    → flushFileLog → 落盘读回断言 [N] 前缀、marker 与 tag
+ * 2. 文件日志双路径：log_mgr().dir().file().create() → log().to_sink(name) 发射与 emit 直调同源
+ *    → flush() → 落盘读回断言 [N] 前缀、marker 与 tag
  * 3. 开关矩阵：3 开关 × 开/关 8 组合逐组断言精确前缀
  *    （[N] / [file:N] / [file:N:main] / [N:main] / [file] / [main] / 全关无前缀），收尾恢复默认
  * 4. emit 直调隔离：模拟 Concurrency/Stress 直调形态（{} 实参 + 显式 tag），
@@ -133,7 +133,7 @@ int main()
         {
             CoutCapture cap;
             const unsigned expectLine = __LINE__ + 1;
-            YOMK_INFO("lgL_s1_line_marker");
+            yomk::log().info("lgL_s1_line_marker");
             const std::string out = cap.str();
             YOMK_TEST_CHECK(out.find("[" + std::to_string(expectLine) + "] lgL_s1_line_marker") !=
                                 std::string::npos,
@@ -144,14 +144,14 @@ int main()
         {
             CoutCapture cap;
             const unsigned infoLine = __LINE__ + 1;
-            auto ri = YOMK_INFO("lgL_s1_info");
-            auto riT = YOMK_INFO_TAG("lgLTag", "lgL_s1_info_tag");
-            auto rw = YOMK_WARN("lgL_s1_warn");
-            auto rwT = YOMK_WARN_TAG("lgLTag", "lgL_s1_warn_tag");
-            auto re = YOMK_ERROR("lgL_s1_error");
-            auto reT = YOMK_ERROR_TAG("lgLTag", "lgL_s1_error_tag");
-            auto rd = YOMK_DEBUG("lgL_s1_debug");
-            auto rdT = YOMK_DEBUG_TAG("lgLTag", "lgL_s1_debug_tag");
+            auto ri = yomk::log().info("lgL_s1_info");
+            auto riT = yomk::log().tag("lgLTag").info("lgL_s1_info_tag");
+            auto rw = yomk::log().warn("lgL_s1_warn");
+            auto rwT = yomk::log().tag("lgLTag").warn("lgL_s1_warn_tag");
+            auto re = yomk::log().error("lgL_s1_error");
+            auto reT = yomk::log().tag("lgLTag").error("lgL_s1_error_tag");
+            auto rd = yomk::log().debug("lgL_s1_debug");
+            auto rdT = yomk::log().tag("lgLTag").debug("lgL_s1_debug_tag");
             YOMK_TEST_CHECK(ri == yomk::payload::ResStatus::Succeeded && riT == yomk::payload::ResStatus::Succeeded &&
                                 rw == yomk::payload::ResStatus::Succeeded && rwT == yomk::payload::ResStatus::Succeeded &&
                                 re == yomk::payload::ResStatus::Succeeded && reT == yomk::payload::ResStatus::Succeeded &&
@@ -173,9 +173,9 @@ int main()
         {
             CoutCapture cap;
             const unsigned macroLine = __LINE__ + 1;
-            YOMK_INFO("lgL_s1_cmp");
+            yomk::log().info("lgL_s1_cmp");
             const unsigned directLine = __LINE__ + 1;
-            YomkAPI::emitConsoleLogInfo("MainLogger", {}, "lgL_s1_cmp");
+            yomk::log().tag("MainLogger").info("lgL_s1_cmp");
             const std::string out = cap.str();
             YOMK_TEST_CHECK(out.find("[" + std::to_string(macroLine) + "] lgL_s1_cmp") != std::string::npos,
                 "宏路径行号正确");
@@ -208,8 +208,8 @@ int main()
         {
             CoutCapture cap;
             const unsigned emptyLine = __LINE__ + 1;
-            auto r0 = YOMK_INFO("");
-            auto rM = YOMK_INFO("i=", 42, "j=", 3.5, "end");
+            auto r0 = yomk::log().info("");
+            auto rM = yomk::log().info("i=", 42, "j=", 3.5, "end");
             YOMK_TEST_CHECK(r0 == yomk::payload::ResStatus::Succeeded, "零正文返回 Succeeded");
             YOMK_TEST_CHECK(rM == yomk::payload::ResStatus::Succeeded, "多参折叠返回 Succeeded");
             const std::string out = cap.str();
@@ -221,7 +221,7 @@ int main()
 
     // ============ Section 2: 文件日志双路径（宏 + 直调） ============
     {
-        const std::string logName = "lgL_s2"; // createFileLogger 落盘为 <dir>/<name>.log（init 补扩展名）
+        const std::string logName = "lgL_s2"; // file().create() 落盘为 <dir>/<name>.log（init 补扩展名）
         fs::path logFile =
             testTmpRoot() / ("yomk_logger_lgL_" + std::to_string(::getpid())) / (logName + ".log");
         fs::path logDir = logFile.parent_path();
@@ -229,27 +229,27 @@ int main()
         fs::create_directories(logDir, ec);
         YOMK_TEST_CHECK(!ec, "S2 临时目录创建成功");
 
-        YOMK_TEST_CHECK(YomkAPI::createFileLogger(logDir.string(), logName) == yomk::payload::ResStatus::Succeeded,
-            "createFileLogger 成功");
+        YOMK_TEST_CHECK(yomk::log_mgr().dir(logDir.string()).file(logName).create() == yomk::payload::ResStatus::Succeeded,
+            "file().create() 成功");
 
         const unsigned infoLine = __LINE__ + 1;
-        YOMK_TEST_CHECK(YOMK_FILE_INFO(logName, "lgL_s2_info") == yomk::payload::ResStatus::Succeeded,
-            "YOMK_FILE_INFO 返回 Succeeded");
-        YOMK_TEST_CHECK(YOMK_FILE_INFO_TAG(logName, "lgLTag", "lgL_s2_info_tag") == yomk::payload::ResStatus::Succeeded,
-            "YOMK_FILE_INFO_TAG 返回 Succeeded");
-        YOMK_TEST_CHECK(YOMK_FILE_WARN(logName, "lgL_s2_warn") == yomk::payload::ResStatus::Succeeded, "YOMK_FILE_WARN");
-        YOMK_TEST_CHECK(YOMK_FILE_ERROR(logName, "lgL_s2_error") == yomk::payload::ResStatus::Succeeded,
-            "YOMK_FILE_ERROR");
-        YOMK_TEST_CHECK(YOMK_FILE_DEBUG(logName, "lgL_s2_debug") == yomk::payload::ResStatus::Succeeded,
-            "YOMK_FILE_DEBUG");
+        YOMK_TEST_CHECK(yomk::log().to_sink(logName).info("lgL_s2_info") == yomk::payload::ResStatus::Succeeded,
+            "log().to_sink(...).info 返回 Succeeded");
+        YOMK_TEST_CHECK(yomk::log().to_sink(logName).tag("lgLTag").info("lgL_s2_info_tag") == yomk::payload::ResStatus::Succeeded,
+            "log().to_sink(...).tag(...).info 返回 Succeeded");
+        YOMK_TEST_CHECK(yomk::log().to_sink(logName).warn("lgL_s2_warn") == yomk::payload::ResStatus::Succeeded, "log().to_sink(...).warn");
+        YOMK_TEST_CHECK(yomk::log().to_sink(logName).error("lgL_s2_error") == yomk::payload::ResStatus::Succeeded,
+            "log().to_sink(...).error");
+        YOMK_TEST_CHECK(yomk::log().to_sink(logName).debug("lgL_s2_debug") == yomk::payload::ResStatus::Succeeded,
+            "log().to_sink(...).debug");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogInfo(logName, "MainLogger", {}, "lgL_s2_direct") == yomk::payload::ResStatus::Succeeded,
-            "直调 emitFileLogInfo({}) 返回 Succeeded");
+            yomk::log().to_sink(logName).tag("MainLogger").info("lgL_s2_direct") == yomk::payload::ResStatus::Succeeded,
+            "to_sink({}) 发射返回 Succeeded");
         YOMK_TEST_CHECK(
-            YomkAPI::emitFileLogInfo(logName, "lgLTag", {}, "lgL_s2_direct_tag") == yomk::payload::ResStatus::Succeeded,
-            "直调 emitFileLogInfo 自定义 tag 返回 Succeeded");
+            yomk::log().to_sink(logName).tag("lgLTag").info("lgL_s2_direct_tag") == yomk::payload::ResStatus::Succeeded,
+            "to_sink + 自定义 tag 发射返回 Succeeded");
 
-        YOMK_TEST_CHECK(YomkAPI::flushFileLog(logName) == yomk::payload::ResStatus::Succeeded, "flushFileLog 成功");
+        YOMK_TEST_CHECK(yomk::log_mgr().file(logName).flush() == yomk::payload::ResStatus::Succeeded, "file().flush() 成功");
 
         bool readOk = false;
         const std::string content = readFile(logFile, readOk);
@@ -263,7 +263,7 @@ int main()
         YOMK_TEST_CHECK(content.find(" lgL_s2_direct") != std::string::npos, "直调 marker 落盘");
         YOMK_TEST_CHECK(content.find(" lgL_s2_direct_tag") != std::string::npos, "直调自定义 tag marker 落盘");
 
-        YomkAPI::deleteFileLogger(logName);
+        yomk::log_mgr().file(logName).remove();
         fs::remove_all(logDir, ec);
     }
 
@@ -289,15 +289,15 @@ int main()
         };
         for (const auto& c : combos)
         {
-            YomkAPI::setLocFileEnabled(c.file);
-            YomkAPI::setLocLineEnabled(c.line);
-            YomkAPI::setLocFuncEnabled(c.func);
+            yomk::log_mgr().location().show_file(c.file).apply();
+            yomk::log_mgr().location().show_line(c.line).apply();
+            yomk::log_mgr().location().show_func(c.func).apply();
 
             CoutCapture cap;
             const std::string marker = std::string("lgL_s3_") + (c.file ? "f" : "-") +
                                        (c.line ? "l" : "-") + (c.func ? "n" : "-");
             const unsigned expectLine = __LINE__ + 1;
-            YOMK_INFO(marker);
+            yomk::log().info(marker);
             const std::string out = cap.str();
 
             bool ok = false;
@@ -347,19 +347,19 @@ int main()
         }
 
         // 收尾恢复默认
-        YomkAPI::setLocFileEnabled(false);
-        YomkAPI::setLocLineEnabled(true);
-        YomkAPI::setLocFuncEnabled(false);
+        yomk::log_mgr().location().show_file(false).apply();
+        yomk::log_mgr().location().show_line(true).apply();
+        yomk::log_mgr().location().show_func(false).apply();
         YOMK_TEST_CHECK(true, "开关矩阵收尾恢复默认 (file=关/line=开/func=关)");
     }
 
     // ============ Section 4: emit 直调隔离（Concurrency/Stress 同形态） ============
     {
         CoutCapture cap;
-        auto rd = YomkAPI::emitConsoleLogDebug("lgLTag", {}, "lgL_s4_debug");
-        auto ri = YomkAPI::emitConsoleLogInfo("lgLTag", {}, "lgL_s4_info");
-        auto rw = YomkAPI::emitConsoleLogWarn("lgLTag", {}, "lgL_s4_warn");
-        auto re = YomkAPI::emitConsoleLogError("lgLTag", {}, "lgL_s4_error");
+        auto rd = yomk::log().tag("lgLTag").debug("lgL_s4_debug");
+        auto ri = yomk::log().tag("lgLTag").info("lgL_s4_info");
+        auto rw = yomk::log().tag("lgLTag").warn("lgL_s4_warn");
+        auto re = yomk::log().tag("lgLTag").error("lgL_s4_error");
         YOMK_TEST_CHECK(rd == yomk::payload::ResStatus::Succeeded && ri == yomk::payload::ResStatus::Succeeded &&
                             rw == yomk::payload::ResStatus::Succeeded && re == yomk::payload::ResStatus::Succeeded,
             "直调四级（显式 tag + {}）全部返回 Succeeded");
@@ -374,8 +374,7 @@ int main()
         {
             CoutCapture cap;
             const unsigned typesLine = __LINE__ + 1;
-            YomkAPI::emitConsoleLogInfo("lgLTag", {}, "lgL_s4_types", true, false, 'a', -42,
-                -2147483648, 18446744073709551615ULL, 3.5, 1.5L, LgLStreamable{7});
+            yomk::log().tag("lgLTag").info("lgL_s4_types", true, false, 'a', -42, -2147483648, 18446744073709551615ULL, 3.5, 1.5L, LgLStreamable{7});
             const std::string out = cap.str();
             YOMK_TEST_CHECK(out.find("[" + std::to_string(typesLine) + "] lgL_s4_types true false"
                                      " a -42 -2147483648 18446744073709551615 3.5 1.5 cust<7>")

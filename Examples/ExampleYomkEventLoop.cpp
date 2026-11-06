@@ -60,7 +60,7 @@
 #include "YomkApi.h"
 
 // ---------------------------------------------------------------------------
-// 辅助输出：全部走 YomkLogger 控制台日志（YOMK_INFO_TAG 等），无 std::cout。
+// 辅助输出：全部走 YomkLogger 控制台日志（log().tag(...).info 等），无 std::cout。
 // 日志是最终面向用户的输出：每条自包含（谁+做什么+结果，关键数据随行）。
 // 格式敏感的行先用 ostringstream 拼好再单参输出，避免多参数自动空格
 // 把 "status=0" 拆成 "status= 0"。
@@ -69,11 +69,11 @@
 // 场景横幅：编号 + 标题 + 涉及接口，随后一行场景背景；横幅前留一个空行分隔场景
 static void logScene(int n, const std::string& title, const std::string& apis, const std::string& explain)
 {
-    YOMK_INFO_TAG("arm.demo", "");
+    yomk::log().tag("arm.demo").info("");
     std::ostringstream oss;
     oss << "========== 场景 " << n << "：" << title << "（" << apis << "）==========";
-    YOMK_INFO_TAG("arm.demo", oss.str());
-    YOMK_INFO_TAG("arm.demo", "场景背景：" + explain);
+    yomk::log().tag("arm.demo").info(oss.str());
+    yomk::log().tag("arm.demo").info("场景背景：" + explain);
 }
 
 // API 结果行（yomk::payload::Response 版）：INFO 查询等仍返回 yomk::payload::Response 的调用打印 status/msg（数据形态各异，由调用处按需展开）。
@@ -95,7 +95,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
         oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
     oss << ", msg=\"" << resp.m_msg << "\"";
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // ResStatus 版结果行：EVENTLOOP_API 操作接口 14-4 起 ResStatus 化，直接返回三态
@@ -105,7 +105,7 @@ static void logResp(const std::string& api, yomk::payload::ResStatus status)
     const char* name = status == yomk::payload::ResStatus::Succeeded ? "ResStatus::Succeeded"
                      : status == yomk::payload::ResStatus::Failed    ? "ResStatus::Failed"
                                                                     : "ResStatus::Invalid";
-    YOMK_INFO_TAG("arm.demo", "[" + api + "] status: " + name);
+    yomk::log().tag("arm.demo").info("[" + api + "] status: " + name);
 }
 
 // 操作日志（模板版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
@@ -117,7 +117,7 @@ static void logResp(const std::string& api, yomk::payload::ResStatus status)
 template <typename F>
 static auto logAction(const std::string& op, const std::string& api, F&& call)
 {
-    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    yomk::log().tag("arm.demo").info("开始执行 " + op);
     auto resp = call();
     logResp(api, resp);
     return resp;
@@ -127,7 +127,7 @@ static auto logAction(const std::string& op, const std::string& api, F&& call)
 // 由调用处随后打结果行
 static void logAction(const std::string& op)
 {
-    YOMK_INFO_TAG("arm.demo", "开始执行 " + op);
+    yomk::log().tag("arm.demo").info("开始执行 " + op);
 }
 
 // 自省结果展开：单循环 EventLoopInfo 的全部字段逐行展示（循环名行 + 字段行），
@@ -136,23 +136,23 @@ static void logLoopInfo(const std::string& api, const yomk::payload::EventLoopIn
 {
     std::ostringstream oss;
     oss << "[" << api << "] - " << info.m_loopName;
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     running: " << (info.m_running ? "on" : "off");
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     pending: " << info.m_pending;
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     defaultFunc: " << (info.m_hasDefaultFunc ? "on" : "off");
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     msgName: " << (info.m_msgName.empty() ? "(未指定)" : info.m_msgName);
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
     oss << "[" << api << "]     nextTags: [";
@@ -165,19 +165,19 @@ static void logLoopInfo(const std::string& api, const yomk::payload::EventLoopIn
         oss << (info.m_nextTags[i].empty() ? "-" : info.m_nextTags[i]);
     }
     oss << "]";
-    YOMK_INFO_TAG("arm.demo", oss.str());
+    yomk::log().tag("arm.demo").info(oss.str());
 }
 
 // 自证结论：期望与实际写在同一行，读者无需查源码即可确认框架行为
 static void logVerify(const std::string& text)
 {
-    YOMK_INFO_TAG("arm.demo", "[验证] " + text);
+    yomk::log().tag("arm.demo").info("[验证] " + text);
 }
 
 // INFO_LOOPS 清单行：循环名列表逐行展示（- 无序列表风格）
 static void logLoopLine(const std::string& api, const std::string& loopName)
 {
-    YOMK_INFO_TAG("arm.demo", "[" + api + "] - " + loopName);
+    yomk::log().tag("arm.demo").info("[" + api + "] - " + loopName);
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +197,7 @@ yomk::payload::Response motionHandle(YomkMsgPtr pkg)
     }
     std::ostringstream oss;
     oss << "执行运动指令: " << cmd->d << "（循环线程 " << std::this_thread::get_id() << "）";
-    YOMK_INFO_TAG("arm.motion", oss.str());
+    yomk::log().tag("arm.motion").info(oss.str());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
@@ -210,7 +210,7 @@ yomk::payload::Response motionHandle(YomkMsgPtr pkg)
             YomkAPI::postEvent(
                 "motionLoop", yomk::msgs::String::shared("fine" + std::to_string(i)), nullptr, "fine" + std::to_string(i));
         }
-        YOMK_INFO_TAG("arm.motion", "指令 mv1 触发 3 条微调指令，已追加到队列尾部");
+        yomk::log().tag("arm.motion").info("指令 mv1 触发 3 条微调指令，已追加到队列尾部");
     }
 
     return {yomk::payload::ResStatus::Succeeded, "eventHandle success. "};
@@ -226,7 +226,7 @@ yomk::payload::Response teachHandle(YomkMsgPtr pkg)
     }
     std::ostringstream oss;
     oss << "示教器事件: " << msg->d << "（循环线程 " << std::this_thread::get_id() << "）";
-    YOMK_INFO_TAG("arm.teach", oss.str());
+    yomk::log().tag("arm.teach").info(oss.str());
     return {yomk::payload::ResStatus::Succeeded, "teachHandle success"};
 }
 
@@ -294,7 +294,7 @@ static void showArmMotionQueue()
     }
     logVerify("正在执行的事件不计入 pending，nextTags 列出待处理指令的 tag——POST 已返回而指令仍在排队");
 
-    YOMK_INFO_TAG("arm.demo", "等待队列排空，观察 arm.motion 日志的消费顺序：mv2..mv5 之后才是 fine1..fine3...");
+    yomk::log().tag("arm.demo").info("等待队列排空，观察 arm.motion 日志的消费顺序：mv2..mv5 之后才是 fine1..fine3...");
     std::this_thread::sleep_for(std::chrono::milliseconds(1800));
 
     logAction("排空后复查");
@@ -322,7 +322,7 @@ static void showArmDualLoop()
 
     std::ostringstream ossThreadId;
     ossThreadId << "主线程 id: " << std::this_thread::get_id();
-    YOMK_INFO_TAG("arm.demo", ossThreadId.str());
+    yomk::log().tag("arm.demo").info(ossThreadId.str());
 
     // 两循环交错投递：各自专用线程并行消费，日志交错出现；
     // 操作行带指令名，与循环线程的消费日志一一对应
@@ -335,7 +335,7 @@ static void showArmDualLoop()
     logAction(
         "示教器记录示教点 point2", "POST teachLoop", [&] { return YomkAPI::postEvent("teachLoop", yomk::msgs::String::shared("point2"), nullptr, "point2"); });
 
-    YOMK_INFO_TAG("arm.demo", "等待两循环消费（各 2 条 x 200ms）...");
+    yomk::log().tag("arm.demo").info("等待两循环消费（各 2 条 x 200ms）...");
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
     logVerify("arm.motion 与 arm.teach 日志交错出现且线程 id 均不同于主线程——跨循环彼此并行");
 }
@@ -407,7 +407,7 @@ static void showArmLinePause()
     logVerify("停止后投递 -> ResStatus::Failed(event loop not running, post rejected)：循环未运行不接收新事件");
 
     logAction("恢复运行（续跑）", "START motionLoop (续跑)", [&] { return YomkAPI::startEventLoop("motionLoop", motionHandle, "String"); });
-    YOMK_INFO_TAG("arm.demo", "等待保留事件被续跑消化...");
+    yomk::log().tag("arm.demo").info("等待保留事件被续跑消化...");
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
 
     logAction("确认积压已消化");
@@ -502,8 +502,8 @@ int main(int argc, char* argv[])
     // 初始化框架（事件循环服务 /YomkEventLoop 随之自动启动）
     YomkAPI::init();
 
-    YOMK_INFO_TAG("arm.demo", "机械臂产线 x YomkEventLoop 示例：一次班次贯穿 8 个场景，覆盖全部事件循环 API");
-    YOMK_INFO_TAG("arm.demo", "日志按 tag 分层：arm.demo=叙事与结果 / arm.motion=运动循环线程 / arm.teach=示教循环线程");
+    yomk::log().tag("arm.demo").info("机械臂产线 x YomkEventLoop 示例：一次班次贯穿 8 个场景，覆盖全部事件循环 API");
+    yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / arm.motion=运动循环线程 / arm.teach=示教循环线程");
 
     showArmLineStart();
     showArmMotionQueue();
@@ -514,7 +514,7 @@ int main(int argc, char* argv[])
     showArmDashboard();
     showArmLineOff();
 
-    YOMK_INFO_TAG("arm.demo", "========== 示例结束：按回车退出 ==========");
+    yomk::log().tag("arm.demo").info("========== 示例结束：按回车退出 ==========");
     getchar();
 
     return 0;

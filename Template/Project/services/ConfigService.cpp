@@ -28,7 +28,7 @@ int ConfigService::init()
     installFunc("/set", &ConfigService::setConfig);
     installFunc("/reload", &ConfigService::reloadConfig);
     installFunc("/version", &ConfigService::version);
-    YOMK_INFO_TAG("ConfigService::init", "install func [ /load /get /set /reload /version ] to", name());
+    yomk::log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to", name());
     return 0;
 }
 
@@ -60,7 +60,7 @@ yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr pkg)
             m_configMap[key] = value;
     }
     ifs.close();
-    YOMK_INFO_TAG("ConfigService::loadConfig", "loaded: ", m_configPath);
+    yomk::log().tag("ConfigService::loadConfig").info("loaded: ", m_configPath);
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
@@ -90,7 +90,7 @@ yomk::payload::Response ConfigService::setConfig(YomkMsgPtr pkg)
     }
 
     m_configMap[data->req.key] = data->req.value;
-    YOMK_INFO_TAG("ConfigService::setConfig", "set ", data->req.key, " = ", data->req.value);
+    yomk::log().tag("ConfigService::setConfig").info("set ", data->req.key, " = ", data->req.value);
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
