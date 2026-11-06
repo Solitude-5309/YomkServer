@@ -27,7 +27,7 @@ YomkLogger::YomkLogger(YomkServer* server)
       m_fileLogProxyFunc(nullptr)
 {
     name("/YomkLogger");
-    m_consoleLoggers["MainLogger"] = std::make_shared<ConsoleLogger>();
+    m_consoleLoggers["main"] = std::make_shared<ConsoleLogger>();
 }
 
 YomkLogger::~YomkLogger() {}
@@ -62,8 +62,8 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
     }
     if (logPkg->d.m_logger.empty())
     {
-        YOMK_DIAG_ERROR("console logger name is empty, use MainLogger");
-        logPkg->d.m_logger = "MainLogger";
+        YOMK_DIAG_ERROR("console logger name is empty, use main");
+        logPkg->d.m_logger = "main";
     }
 
     // 锁内拷贝 proxy 快照，锁外调用回调（避免用户回调持锁重入）

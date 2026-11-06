@@ -29,7 +29,7 @@
 // 计时值先存局部变量，出作用域后再打印。
 // - 唯一 tag 用 log().tag(t).info(...) 链式累积（运行时拼名，tag 为普通变量即可）。
 // - 库内部不使用 log().info 发射终端（YOMK_DIAG_ERROR 直写 cout），故 console 表起点恰为
-// 构造函数预置的 MainLogger，各 Section 可用绝对条目数守恒断言（起点已断言）。
+// 构造函数预置的 main，各 Section 可用绝对条目数守恒断言（起点已断言）。
 //
 // 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
@@ -607,13 +607,13 @@ int main()
         shardDirs.push_back((s2Dir / ("shard_" + std::to_string(s))).string());
     }
 
-    // 起点基线：库内部不使用 log().info 链式发射 → console 表恰为构造函数预置的 MainLogger
+    // 起点基线：库内部不使用 log().info 链式发射 → console 表恰为构造函数预置的 main
     {
         const uint64_t c = unpackLines(yomk::log_mgr().console().list()).size();
         const uint64_t f = unpackLines(yomk::log_mgr().file().list()).size();
         YOMK_TEST_CHECK(
             (c == 1 && f == 0),
-            "起点内省基线 console=1(MainLogger)/file=0（实测 " + std::to_string(c) + "/" + std::to_string(f) + "）");
+            "起点内省基线 console=1(main)/file=0（实测 " + std::to_string(c) + "/" + std::to_string(f) + "）");
     }
 
     // ========================================================================
@@ -667,7 +667,7 @@ int main()
             }
             createdA = cp;
 
-            // 扫描数据点：条目 = createdA 个 tag + MainLogger（此刻 file 侧仍为 0）
+            // 扫描数据点：条目 = createdA 个 tag + main（此刻 file 侧仍为 0）
             const uint64_t entries = createdA + 1;
             uint64_t badAll = 0;
             uint64_t linesAll = 0;
@@ -685,7 +685,7 @@ int main()
         const uint64_t consoleEntries = unpackLines(yomk::log_mgr().console().list()).size();
         YOMK_TEST_CHECK(
             consoleEntries == N + 1,
-            "S1A: console 表条目 = N + MainLogger（实测 " + std::to_string(consoleEntries) + "）");
+            "S1A: console 表条目 = N + main（实测 " + std::to_string(consoleEntries) + "）");
 
         // ---- Phase A2：内容守恒抽样（1000 行累积捕获）+ 时间戳格式精确校验----
         {
@@ -1427,7 +1427,7 @@ int main()
             "S5B: file 组回收 ResStatus::Succeeded 守恒 " + std::to_string(delFileOk) + "/" + std::to_string(N + M + 1 + 2 * D));
         YOMK_TEST_CHECK(delBad == 0, "S5B: 全量回收无非 ResStatus::Succeeded（异常 " + std::to_string(delBad) + " 次）");
 
-        // ---- Phase C：残量扫除（MainLogger）→ LOGGERS 行数为 0 ----
+        // ---- Phase C：残量扫除（main）→ LOGGERS 行数为 0 ----
         uint64_t residualDeleted = 0;
         {
             ThreadSafeCoutCapture cap(true);

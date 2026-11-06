@@ -10,7 +10,7 @@ namespace fs = std::filesystem;
 
 // 初始化列表须按 FileLogger.h 声明序书写（-Wreorder）
 FileLogger::FileLogger()
-    : m_name("MainLogger"),
+    : m_name("main"),
       m_showTraceLog(true),
       m_showDebugLog(true),
       m_showInfoLog(true),

@@ -87,7 +87,7 @@ int main()
 预期控制台输出（时间戳与行号按实际运行变化）：
 
 ```text
-[2026-11-06 10:00:00.000] [INFO ] [MainLogger] [52] Response received: hello yomk
+[2026-11-06 10:00:00.000] [INFO ] [main] [52] Response received: hello yomk
 ```
 
 异步请求只需在链中插入 `.async(回调)` 分面，投递后立即返回、结果经回调送达：

@@ -2,7 +2,7 @@
 //
 // 覆盖内容（2 个类，18 组用例 56 断言）：
 // ConsoleLogger：
-// 1. 默认名 "MainLogger"、setName/getName
+// 1. 默认名 "main"、setName/getName
 // 2. 六级别输出（级别标签 [TRACE]/[DEBUG]/[INFO ]/[WARN ]/[ERROR]/[FATAL] + [名/tag] + 内容）
 // 3. 非法级别 default 降级：log(LogLevel(99)) →
 // "Unknown log level: 99" 提示 + 降级 Info 输出
@@ -148,7 +148,7 @@ int main()
     // ============ ConsoleLogger 直连 ============
     {
         ConsoleLogger logger;
-        YOMK_TEST_CHECK(logger.getName() == "MainLogger", "ConsoleLogger 默认名 MainLogger");
+        YOMK_TEST_CHECK(logger.getName() == "main", "ConsoleLogger 默认名 main");
         logger.setName("lg1_direct_console");
         YOMK_TEST_CHECK(logger.getName() == "lg1_direct_console", "setName/getName 往返一致");
 
@@ -317,7 +317,7 @@ int main()
     {
         // 默认名与 setter/getter
         FileLogger fl;
-        YOMK_TEST_CHECK(fl.getName() == "MainLogger", "FileLogger 默认名 MainLogger");
+        YOMK_TEST_CHECK(fl.getName() == "main", "FileLogger 默认名 main");
         fl.setName("lg1_direct_file");
         fl.setDir((tmpDir / "fl_basic").string());
         YOMK_TEST_CHECK(

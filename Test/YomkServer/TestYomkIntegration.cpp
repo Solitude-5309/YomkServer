@@ -192,9 +192,9 @@ int main()
         YOMK_TEST_CHECK(yomk::server().srv<YomkLogger>().create() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
         auto restored = yomk::log_mgr().console().list();
         // loggers 按类型查询，行内容即 logger 纯名（YomkLogger::loggers 不再拼接类型后缀）
-        YOMK_TEST_CHECK(restored.m_status == yomk::payload::ResStatus::Succeeded && contains(unpackStringArray(restored), "MainLogger"),
-              "重注册后 LOGGER API 恢复且含 MainLogger");
-        YOMK_TEST_CHECK(yomk::log().tag("MainLogger").info("[integration] s2 relink marker") ==
+        YOMK_TEST_CHECK(restored.m_status == yomk::payload::ResStatus::Succeeded && contains(unpackStringArray(restored), "main"),
+              "重注册后 LOGGER API 恢复且含 main");
+        YOMK_TEST_CHECK(yomk::log().tag("main").info("[integration] s2 relink marker") ==
                   yomk::payload::ResStatus::Succeeded,
               "重注册后日志 API 全链路可用（console_log ResStatus::Succeeded）");
     }

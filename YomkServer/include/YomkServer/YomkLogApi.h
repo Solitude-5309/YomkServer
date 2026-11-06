@@ -21,7 +21,7 @@
  * yomk::log().info(...) 等 ×6（info / warn / error / debug / trace / fatal）
  * @li 返回三态 ResStatus; 未初始化返回 Invalid
  * @li 位置前缀在调用行捕获（默认仅行号 [N], 开关见"位置前缀"）
- * @li tag 缺省 MainLogger, .tag(t) 累积更换
+ * @li tag 缺省 main, .tag(t) 累积更换
  * @li 参数逐个追加（模板 pack, 无上限）, bool 输出 true/false
  *
  * @par 具名文件发射
@@ -122,7 +122,7 @@ class SinkLogBuilder
 {
     YomkSourceLoc m_loc;
     std::string m_sink;
-    std::string m_tag = "MainLogger";
+    std::string m_tag = "main";
 public:
     SinkLogBuilder(const YomkSourceLoc& loc, std::string_view sink)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
         : m_loc(loc), m_sink(sink)
@@ -130,7 +130,7 @@ public:
     }
     /**
      * @brief 累积日志 tag
-     * @param t tag 名, 缺省 MainLogger
+     * @param t tag 名, 缺省 main
      * @return 自身链式引用
      */
     SinkLogBuilder& tag(std::string_view t)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
@@ -178,7 +178,7 @@ public:
 class LogBuilder
 {
     YomkSourceLoc m_loc;                 // 域入口默认参数捕获的调用行位置
-    std::string m_tag = "MainLogger";
+    std::string m_tag = "main";
 public:
     explicit LogBuilder(const YomkSourceLoc& loc)
         : m_loc(loc)
@@ -186,7 +186,7 @@ public:
     }
     /**
      * @brief 累积日志 tag
-     * @param t tag 名, 缺省 MainLogger
+     * @param t tag 名, 缺省 main
      * @return 自身链式引用
      */
     LogBuilder& tag(std::string_view t)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster

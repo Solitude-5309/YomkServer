@@ -8,14 +8,14 @@
 
 | 链 | 行为 |
 |---|---|
-| `yomk::log().info(args...)` | 主控制台输出，tag 缺省 `MainLogger`（tag 即控制台日志器名，首次使用自动创建） |
+| `yomk::log().info(args...)` | 主控制台输出，tag 缺省 `main`（tag 即控制台日志器名，首次使用自动创建） |
 | `yomk::log().tag(t).info(args...)` | 指定 tag |
 | `yomk::log().to_sink(name).info(args...)` | 写入具名文件日志器（`Log` 六方法同理）；`.tag(t)` 可叠加；未知名返回 `Failed`，**不惰性创建**——文件日志器须先经 `log_mgr().dir().file().create()` 创建 |
 
 输出行格式：`[YYYY-MM-DD HH:MM:SS.mmm] [级别] [tag] [位置前缀] 内容`，级别标签定宽 5（如 `[INFO ]`）保证纵向对齐；位置前缀默认仅行号：
 
 ```text
-[2026-11-06 10:00:00.000] [INFO ] [MainLogger] [42] server port: 8080
+[2026-11-06 10:00:00.000] [INFO ] [main] [42] server port: 8080
 ```
 
 ## 管理链（yomk::log_mgr()）速查

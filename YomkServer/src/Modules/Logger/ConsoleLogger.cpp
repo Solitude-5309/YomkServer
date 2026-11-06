@@ -10,7 +10,7 @@ std::mutex ConsoleLogger::s_mutex;
 
 // 初始化列表须按 ConsoleLogger.h 声明序书写（-Wreorder）
 ConsoleLogger::ConsoleLogger()
-    : m_name("MainLogger"),
+    : m_name("main"),
       m_showTraceLog(true),
       m_showDebugLog(true),
       m_showInfoLog(true),

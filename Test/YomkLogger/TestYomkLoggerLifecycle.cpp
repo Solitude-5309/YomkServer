@@ -22,14 +22,14 @@
 // 双路径；非法级别注入（99 为合法值）：file_log/off/on 三处 default
 // 降级与无副作用实证
 // 7. 异常路径：console_log 收 nullptr 包 / 错类型包（String）均 ResStatus::Failed；console_log 空
-// logger 名回退 MainLogger / file_log 空名 ResStatus::Failed（raw 注入触达）；LOGGER 空名 ResStatus::Failed
+// logger 名回退 main / file_log 空名 ResStatus::Failed（raw 注入触达）；LOGGER 空名 ResStatus::Failed
 // （空名注册已被堵死）；未知端点 ResStatus::Failed
 // 8. logger 删除接口（/delete_logger）：空名 ResStatus::Invalid、两表未命中 ResStatus::Failed +
 // "logger not found."；console-only / file-only / 同名双表三种命中形态的 msg 计数
 // （"deleted console:c file:f"）；file 侧删除释放最后引用 → ~FileLogger 锁外自动落盘
 // （写 2 行未 flush 即删 → 文件恰 2 行，数据不丢）；重复删除幂等 ResStatus::Failed；删除后单查 ResStatus::Failed
-// 与 LOGGERS/ALL 行数递减守恒；console 惰性重建；MainLogger 无特殊保护（可删，重建须走
-// 空 logger 名回退路径——log().info 链的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）；
+// 与 LOGGERS/ALL 行数递减守恒；console 惰性重建；main 无特殊保护（可删，重建须走
+// 空 logger 名回退路径——log().info 链的 logger 名是裸 "main"，[行号] 拼在内容头部）；
 // delete_logger 空包/错类型包契约分支
 // 9. 服务级具名开关与全局态端点（两级主闸并联）：具名 OFF/ON 逐器隔离与恢复、未知名 ResStatus::Failed
 // （不惰性创建）、主闸×逐器组合两层归因（console().status() 报主闸 off 与条目逐器 on
@@ -250,7 +250,7 @@ int main()
     YOMK_TEST_CHECK(r == yomk::payload::ResStatus::Succeeded, "log().info 返回 ResStatus::Succeeded");
     std::string out = cap.str();
     YOMK_TEST_CHECK(out.find("lg1_s1_info_marker  42") != std::string::npos, "INFO 输出含 marker 与整数变参");
-    YOMK_TEST_CHECK(out.find("[INFO ] [MainLogger] [") != std::string::npos, "INFO 输出格式 [INFO ] [MainLogger] [行号]");
+    YOMK_TEST_CHECK(out.find("[INFO ] [main] [") != std::string::npos, "INFO 输出格式 [INFO ] [main] [行号]");
     bool fmtOk = false;
     std::istringstream iss(out);
     std::string line;
@@ -267,7 +267,7 @@ int main()
     CoutCapture cap;
     YOMK_TEST_CHECK(yomk::log().warn("lg1_s1_warn_marker") == yomk::payload::ResStatus::Succeeded, "log().warn 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(
-        (cap.str().find("[WARN ] [MainLogger]") != std::string::npos &&
+        (cap.str().find("[WARN ] [main]") != std::string::npos &&
          cap.str().find("lg1_s1_warn_marker") != std::string::npos),
         "WARN 输出格式与 marker");
 }
@@ -275,7 +275,7 @@ int main()
     CoutCapture cap;
     YOMK_TEST_CHECK(yomk::log().error("lg1_s1_error_marker") == yomk::payload::ResStatus::Succeeded, "log().error 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(
-        (cap.str().find("[ERROR] [MainLogger]") != std::string::npos &&
+        (cap.str().find("[ERROR] [main]") != std::string::npos &&
          cap.str().find("lg1_s1_error_marker") != std::string::npos),
         "ERROR 输出格式与 marker");
 }
@@ -283,7 +283,7 @@ int main()
     CoutCapture cap;
     YOMK_TEST_CHECK(yomk::log().debug("lg1_s1_debug_marker") == yomk::payload::ResStatus::Succeeded, "log().debug 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(
-        (cap.str().find("[DEBUG] [MainLogger]") != std::string::npos &&
+        (cap.str().find("[DEBUG] [main]") != std::string::npos &&
          cap.str().find("lg1_s1_debug_marker") != std::string::npos),
         "DEBUG 输出格式与 marker");
 }
@@ -292,7 +292,7 @@ int main()
     CoutCapture cap;
     YOMK_TEST_CHECK(yomk::log().trace("lg1_s1_trace_marker") == yomk::payload::ResStatus::Succeeded, "log().trace 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(
-        (cap.str().find("[TRACE] [MainLogger]") != std::string::npos &&
+        (cap.str().find("[TRACE] [main]") != std::string::npos &&
          cap.str().find("lg1_s1_trace_marker") != std::string::npos),
         "TRACE 输出格式与 marker");
 }
@@ -300,7 +300,7 @@ int main()
     CoutCapture cap;
     YOMK_TEST_CHECK(yomk::log().fatal("lg1_s1_fatal_marker") == yomk::payload::ResStatus::Succeeded, "log().fatal 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(
-        (cap.str().find("[FATAL] [MainLogger]") != std::string::npos &&
+        (cap.str().find("[FATAL] [main]") != std::string::npos &&
          cap.str().find("lg1_s1_fatal_marker") != std::string::npos),
         "FATAL 输出格式与 marker");
 }
@@ -407,14 +407,14 @@ YOMK_TEST_CHECK(
     yomk::payload::Response r(yomk::payload::ResStatus::Invalid);
     {
         CoutCapture cap;
-        r = yomk::server().url("/YomkLogger/console_log").msg(yomk::msgs::Log::shared(yomk::payload::Log{static_cast<yomk::payload::LogLevel>(99), "lg1_s2p5_badlevel_marker", "MainLogger"})).request();
+        r = yomk::server().url("/YomkLogger/console_log").msg(yomk::msgs::Log::shared(yomk::payload::Log{static_cast<yomk::payload::LogLevel>(99), "lg1_s2p5_badlevel_marker", "main"})).request();
         out = cap.str();
     }
     YOMK_TEST_CHECK(r.m_status == yomk::payload::ResStatus::Succeeded, "非法级别 99 console_log 返回 ResStatus::Succeeded（P2-c 修复后 default 活分支）");
     YOMK_TEST_CHECK(
         out.find("unknown log level, use Info") != std::string::npos, "console_log default 分支错误提示（降级 Info）");
     YOMK_TEST_CHECK(
-        out.find("[INFO ] [MainLogger] lg1_s2p5_badlevel_marker") != std::string::npos,
+        out.find("[INFO ] [main] lg1_s2p5_badlevel_marker") != std::string::npos,
         "非法级别降级 Info 输出 marker");
 }
 
@@ -513,7 +513,7 @@ YOMK_TEST_CHECK(
             "卸载后 console_log 返回 ResStatus::Succeeded + success.（走默认路径而非代理短路）");
         YOMK_TEST_CHECK(out.find("lg6_s3_post_unload_marker") != std::string::npos, "卸载后恢复框架默认控制台输出");
         YOMK_TEST_CHECK(
-            out.find("[INFO ] [MainLogger] [") != std::string::npos,
+            out.find("[INFO ] [main] [") != std::string::npos,
             "卸载后输出为框架默认格式 <时间戳> [INFO ] [logger] msg");
         YOMK_TEST_CHECK(g_proxyHits.load() == hitsBefore, "卸载后代理不再被调用（原子命中数不增）");
     }
@@ -567,10 +567,10 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(readOk, "落盘后日志文件可读");
     YOMK_TEST_CHECK(countLines(content) == 6, "落盘内容恰 6 行（六级别各一）");
     YOMK_TEST_CHECK(
-        (content.find("[INFO ] [MainLogger]") != std::string::npos &&
-         content.find("[INFO ] [MainLogger] [") != std::string::npos &&
+        (content.find("[INFO ] [main]") != std::string::npos &&
+         content.find("[INFO ] [main] [") != std::string::npos &&
          content.find("lg1_s4_info_marker  7") != std::string::npos),
-        "Info 行格式（时间戳+[INFO ]+[MainLogger]+[行号] 内容）——FILE_INFO 默认内容 tag 为 MainLogger，行号独立成段，"
+        "Info 行格式（时间戳+[INFO ]+[main]+[行号] 内容）——FILE_INFO 默认内容 tag 为 main，行号独立成段，"
         "logger 名仅作路由 key");
     // 自定义内容 tag 变体：FILE_INFO_TAG 的 tag 进内容行
     YOMK_TEST_CHECK(
@@ -649,7 +649,7 @@ YOMK_TEST_CHECK(
     {
         for (const auto& line : consoleArr->d)
         {
-            if (line == "MainLogger")
+            if (line == "main")
             {
                 hasMain = true;
             }
@@ -659,7 +659,7 @@ YOMK_TEST_CHECK(
             }
         }
     }
-    YOMK_TEST_CHECK((consoleArr != nullptr && hasMain), "LOGGERS(console) 含 MainLogger 行");
+    YOMK_TEST_CHECK((consoleArr != nullptr && hasMain), "LOGGERS(console) 含 main 行");
     YOMK_TEST_CHECK(hasTag, "LOGGERS(console) 含 S2 自建 tag logger 行");
     auto fileResp = yomk::log_mgr().file().list();
     YOMK_TEST_CHECK(fileResp.m_status == yomk::payload::ResStatus::Succeeded, "file().list() 返回 ResStatus::Succeeded");
@@ -678,14 +678,14 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(hasFile, "LOGGERS(file) 含 lg1_file_logger 行（dir 经 LOGGER 单查 m_dir 校验）");
 
     // LOGGER(name)：console/file 命中结构化返回（LoggerInfo 包，m_msg 恒 "ok"）与未注册
-    auto consoleInfo = yomk::log_mgr().console("MainLogger").get_info();
+    auto consoleInfo = yomk::log_mgr().console("main").get_info();
     YOMK_TEST_CHECK(
         (consoleInfo.m_status == yomk::payload::ResStatus::Succeeded && consoleInfo.m_msg == "ok"),
-        "LOGGER(MainLogger) 命中 m_msg 恒为 ok");
+        "LOGGER(main) 命中 m_msg 恒为 ok");
     auto consolePkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(consoleInfo.m_data);
-    YOMK_TEST_CHECK(consolePkg != nullptr, "LOGGER(MainLogger) 数据为 LoggerInfo 包");
-    YOMK_TEST_CHECK(consolePkg && consolePkg->d.m_loggerName == "MainLogger" && consolePkg->d.m_type == "console",
-          "LOGGER(MainLogger) 字段 loggerName/type 一致");
+    YOMK_TEST_CHECK(consolePkg != nullptr, "LOGGER(main) 数据为 LoggerInfo 包");
+    YOMK_TEST_CHECK(consolePkg && consolePkg->d.m_loggerName == "main" && consolePkg->d.m_type == "console",
+          "LOGGER(main) 字段 loggerName/type 一致");
     YOMK_TEST_CHECK(consolePkg && consolePkg->d.m_dir.empty(), "console 命中 m_dir 为空");
     auto fileInfo = yomk::log_mgr().file("lg1_file_logger").get_info();
     YOMK_TEST_CHECK(
@@ -858,7 +858,7 @@ YOMK_TEST_CHECK(
         yomk::server().url("/YomkLogger/create_file_logger").request().m_status == yomk::payload::ResStatus::Failed,
         "create_file_logger nullptr 包返回 ResStatus::Failed");
     YOMK_TEST_CHECK(yomk::server().url("/YomkLogger/logger").request().m_status == yomk::payload::ResStatus::Failed, "logger nullptr 包返回 ResStatus::Failed");
-    // console_log 空 logger 名 → 回退 MainLogger 分支（链式发射 tag 恒非空, raw 注入才可触达）
+    // console_log 空 logger 名 → 回退 main 分支（链式发射 tag 恒非空, raw 注入才可触达）
     // 注：YOMK_TEST_CHECK 须在捕获作用域外（否则断言输出被 rdbuf 重定向吞没）
     {
         std::string out;
@@ -870,11 +870,11 @@ YOMK_TEST_CHECK(
         }
         YOMK_TEST_CHECK(r.m_status == yomk::payload::ResStatus::Succeeded, "console_log 空 logger 名返回 ResStatus::Succeeded（回退分支）");
         YOMK_TEST_CHECK(
-            out.find("console logger name is empty, use MainLogger") != std::string::npos,
-            "空 logger 名错误提示（回退 MainLogger）");
+            out.find("console logger name is empty, use main") != std::string::npos,
+            "空 logger 名错误提示（回退 main）");
         YOMK_TEST_CHECK(
-            out.find("[MainLogger] lg1_s7_empty_logger_marker") != std::string::npos,
-            "空 logger 名回退 MainLogger 输出");
+            out.find("[main] lg1_s7_empty_logger_marker") != std::string::npos,
+            "空 logger 名回退 main 输出");
     }
     // file_log 空 logger 名 → ResStatus::Failed 分支（链式 file 参可传空串, raw 注入等价触达）
     {
@@ -1027,7 +1027,7 @@ YOMK_TEST_CHECK(
             "S8: 重复删除错误提示含 logger 名");
     }
 
-    // 8.6 内省行数递减守恒 + ALL 与 LOGGERS 行数关系 + MainLogger 删除后惰性重建
+    // 8.6 内省行数递减守恒 + ALL 与 LOGGERS 行数关系 + main 删除后惰性重建
     {
         fs::path dir = tmpDir / "s8_count";
         fs::create_directories(dir, ec);
@@ -1046,29 +1046,29 @@ YOMK_TEST_CHECK(
              st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_fatalOn && st->m_proxyOn),
             "S8: ALL 日志器数 = LOGGERS 行数，控制台状态六级全 on 不变");
 
-        // MainLogger 无特殊保护：可删；重建须走"空 logger 名回退"路径
-        // （log().info 链的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）
+        // main 无特殊保护：可删；重建须走"空 logger 名回退"路径
+        // （log().info 链的 logger 名是裸 "main"，[行号] 拼在内容头部）
         YOMK_TEST_CHECK(
-            yomk::log_mgr().file("MainLogger").remove() == yomk::payload::ResStatus::Succeeded,
-            "S8: MainLogger 可删除 ResStatus::Succeeded（无特殊保护）");
-        YOMK_TEST_CHECK(yomk::log_mgr().console("MainLogger").get_info().m_status == yomk::payload::ResStatus::Failed, "S8: MainLogger 删除后单查 ResStatus::Failed");
+            yomk::log_mgr().file("main").remove() == yomk::payload::ResStatus::Succeeded,
+            "S8: main 可删除 ResStatus::Succeeded（无特殊保护）");
+        YOMK_TEST_CHECK(yomk::log_mgr().console("main").get_info().m_status == yomk::payload::ResStatus::Failed, "S8: main 删除后单查 ResStatus::Failed");
         std::string rebuildOut;
         yomk::payload::Response rebuild(yomk::payload::ResStatus::Invalid);
         {
             CoutCapture cap;
-            rebuild = yomk::server().url("/YomkLogger/console_log").msg(yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "lg1_s8_mainlogger_rebuild_marker", ""})).request();
+            rebuild = yomk::server().url("/YomkLogger/console_log").msg(yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "lg1_s8_main_rebuild_marker", ""})).request();
             rebuildOut = cap.str();
         }
-        YOMK_TEST_CHECK(rebuild.m_status == yomk::payload::ResStatus::Succeeded, "S8: MainLogger 删除后空名回退写入 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(rebuild.m_status == yomk::payload::ResStatus::Succeeded, "S8: main 删除后空名回退写入 ResStatus::Succeeded");
         YOMK_TEST_CHECK(
-            yomk::log_mgr().console("MainLogger").get_info().m_status == yomk::payload::ResStatus::Succeeded,
-            "S8: MainLogger 惰性重建后单查恢复 ResStatus::Succeeded");
+            yomk::log_mgr().console("main").get_info().m_status == yomk::payload::ResStatus::Succeeded,
+            "S8: main 惰性重建后单查恢复 ResStatus::Succeeded");
         YOMK_TEST_CHECK(
-            rebuildOut.find("[MainLogger] lg1_s8_mainlogger_rebuild_marker") != std::string::npos,
-            "S8: 重建对象名确为 MainLogger（输出行 [MainLogger]）");
+            rebuildOut.find("[main] lg1_s8_main_rebuild_marker") != std::string::npos,
+            "S8: 重建对象名确为 main（输出行 [main]）");
         YOMK_TEST_CHECK(
             loggersTotal() == before,
-            "S8: MainLogger 删除+重建后行数回到基线（无泄漏无重复）");
+            "S8: main 删除+重建后行数回到基线（无泄漏无重复）");
     }
 
     // 8.7 异常路径：空包 / 错类型包（unpack 契约分支）

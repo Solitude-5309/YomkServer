@@ -96,7 +96,7 @@ static std::string readFile(const fs::path& path, bool& ok)
     return ss.str();
 }
 
-// 剥离日志行的时间戳与 [MainLogger] 后的 "[行号] " 段，用于双链发射的结构等价对比
+// 剥离日志行的时间戳与 [main] 后的 "[行号] " 段，用于双链发射的结构等价对比
 // （时间戳毫秒级可能跨值，不参与对比）
 static std::string stripLineNo(const std::string& line)
 {
@@ -105,7 +105,7 @@ static std::string stripLineNo(const std::string& line)
     {
         return line;
     }
-    const std::string head = "[MainLogger] [";
+    const std::string head = "[main] [";
     const size_t h = line.find(head, lvl);
     if (h == std::string::npos)
     {
@@ -116,7 +116,7 @@ static std::string stripLineNo(const std::string& line)
     {
         return line;
     }
-    return "[INFO ] [MainLogger] " + line.substr(close + 1);
+    return "[INFO ] [main] " + line.substr(close + 1);
 }
 
 int main()
@@ -172,7 +172,7 @@ int main()
             const unsigned macroLine = __LINE__ + 1;
             yomk::log().info("lgL_s1_cmp");
             const unsigned directLine = __LINE__ + 1;
-            yomk::log().tag("MainLogger").info("lgL_s1_cmp");
+            yomk::log().tag("main").info("lgL_s1_cmp");
             const std::string out = cap.str();
             YOMK_TEST_CHECK(out.find("[" + std::to_string(macroLine) + "] lgL_s1_cmp") != std::string::npos,
                 "缺省 tag 链行号正确");
@@ -240,7 +240,7 @@ int main()
         YOMK_TEST_CHECK(yomk::log().to_sink(logName).debug("lgL_s2_debug") == yomk::payload::ResStatus::Succeeded,
             "log().to_sink(...).debug");
         YOMK_TEST_CHECK(
-            yomk::log().to_sink(logName).tag("MainLogger").info("lgL_s2_direct") == yomk::payload::ResStatus::Succeeded,
+            yomk::log().to_sink(logName).tag("main").info("lgL_s2_direct") == yomk::payload::ResStatus::Succeeded,
             "to_sink({}) 发射返回 Succeeded");
         YOMK_TEST_CHECK(
             yomk::log().to_sink(logName).tag("lgLTag").info("lgL_s2_direct_tag") == yomk::payload::ResStatus::Succeeded,
@@ -337,7 +337,7 @@ int main()
             else
             {
                 // 全关：无位置前缀，content 以空格开头（appendTo 不追加 + 分隔空格）
-                expect = "[MainLogger]  lgL_s3_---";
+                expect = "[main]  lgL_s3_---";
                 ok = out.find(expect) != std::string::npos;
             }
             YOMK_TEST_CHECK(ok, "开关组合 (" + std::string(c.name) + ") 前缀精确匹配: " + expect);
