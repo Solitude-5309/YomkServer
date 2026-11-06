@@ -1,65 +1,69 @@
 # YomkContext(共享上下文)
 
-跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步），支持运行期自省与销毁。随 `YomkAPI::init()` 自动启动。
+跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步），支持分组隔离与运行期内省。随 `yomk::server().init()` 自动启动。全部操作经链式域入口 `yomk::ctx()`：`key/group/value` 累积定位目标，写路径终结（`create/set/destroy` 等）返回三态 `ResStatus`，类型化读终结 `get()` 返回 `shared_ptr<T>`。
 
-## API 速查
+## 链式语法速查
 
-| API | 说明 |
-|---|---|
-| `YomkAPI::createContext(key, pkg)` | 创建上下文键值 |
-| `YomkAPI::setContext(key, pkg)` | 设置上下文值（整体替换） |
-| `YomkAPI::getContext<yomk::msgs::MsgName>(key, defaultValue)` | 读取只读快照；key 不存在时返回兜底默认值 |
-| `YomkAPI::setContextChecker(key, func)` | 注册变更前校验门控 |
-| `YomkAPI::enableContextChecker()` / `YomkAPI::disableContextChecker()` | 开关全局校验器（checker 保留但不生效） |
-| `YomkAPI::setContextMonitor(key, func, async)` | 注册变更后监听器（追加式可注册多个） |
-| `YomkAPI::enableContextMonitor()` / `YomkAPI::disableContextMonitor()` | 开关全局监控（monitor 保留但不执行） |
-| `YomkAPI::listContextKeys()` / `YomkAPI::getContextInfo(key)` / `YomkAPI::getAllContextInfo()` | 运行期自省 |
-| `YomkAPI::destroyContext(key)` | 删除键 |
+| 场景 | 链 | 终结与返回 |
+|---|---|---|
+| 创建 | `yomk::ctx().key(k).group(g).value(pkg)` | `.create()` → `ResStatus`（g 省略 = 缺省 `"main"`） |
+| 设置（整体替换） | `yomk::ctx().key(k).group(g).value(pkg)` | `.set()` → `ResStatus` |
+| 类型化读 | `yomk::ctx().key(k).group(g).msg<T>()` | `.with_default(d).get()` → `shared_ptr<T>`；`.with_default` 可省略（未命中回退 `nullptr`） |
+| 销毁键 | `yomk::ctx().key(k).group(g)` | `.destroy()` → `ResStatus` |
+| 键级校验门控 | `yomk::ctx().key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus` |
+| 键级变更监听 | `yomk::ctx().key(k).group(g).monitor_fn(fn).async(on)` | `.apply()` → `ResStatus`；`.async(on)` 可省略 = 同步 |
+| 组级开关 | `yomk::ctx().group(g).checker()` / `.monitor()` | `.enable()` / `.disable()` → `ResStatus`（**建组默认关**，须显式开启才生效；回调保留不删除） |
+| 内省 | `yomk::ctx().group(g)` / `.key(k).group(g)` / — | `.keys()` 组内键名 / `.info()` 单键元信息 / `.groups()` 全部组名 / `.all()` 跨组聚合，均 → `Response` |
+
+键级回调（`checker_fn` / `monitor_fn`）与组级开关分面（`checker()` / `monitor()`）按命名分层，`apply()` 未累积任何回调时返回 `Invalid`。
 
 ## 使用示例
 
 ```cpp
-// 1. 创建与设置上下文键值
-YomkAPI::createContext("config", yomk::msgs::String::shared("init_value"));
-YomkAPI::setContext("config", yomk::msgs::String::shared("new_value"));
+yomk::server().init();
 
-// 2. 读取上下文（只读快照；key 不存在时返回兜底默认值）
-auto val = YomkAPI::getContext<yomk::msgs::String>("config", nullptr);
+// 1. 创建与设置
+yomk::ctx().key("config").value(yomk::msgs::String::shared("init_value")).create();
+yomk::ctx().key("config").value(yomk::msgs::String::shared("new_value")).set();
 
-// 3. 注册变更前校验门控（Checker）
-YomkAPI::setContextChecker("config", [](const yomk::payload::Context &ctx) {
-    // 返回 CheckStatus::Accept 放行修改；返回 CheckStatus::Reject 拦截（set 返回 ResStatus::Failed=1 "checker reject set context"，monitor 不触发）
+// 2. 类型化读（只读快照；未命中/类型不符/未初始化回退默认值）
+auto val = yomk::ctx().key("config").msg<yomk::msgs::String>().with_default(nullptr).get();
+
+// 3. 变更前校验门控：只能注册到已存在的键；组开关默认关，注册后须显式 enable
+yomk::ctx().key("config").checker_fn([](const yomk::payload::Context& ctx) {
+    // Accept 放行本次 set；Reject 拦截（set 返回 Failed "checker reject set context"，monitor 不触发）
     return yomk::payload::CheckStatus::Accept;
-});
-YomkAPI::enableContextChecker();  // 开启全局校验器；YomkAPI::disableContextChecker() 关闭（checker 保留但不生效）
+}).apply();
+yomk::ctx().group("main").checker().enable();
 
-// 4. 注册变更后监听器（Monitor）
-YomkAPI::setContextMonitor("config", [](const yomk::payload::Context &ctx) {
+// 4. 变更后监听（可注册多个，追加式）
+yomk::ctx().key("config").monitor_fn([](const yomk::payload::Context& ctx) {
     // 收到变更通知（本次 set 的键值快照）
-}, /*async=*/false);
-YomkAPI::enableContextMonitor();  // 开启全局监控；YomkAPI::disableContextMonitor() 关闭（monitor 保留但不执行）
+}).apply();                                            // 缺省同步执行
+yomk::ctx().group("main").monitor().enable();
 
-// 5. 运行期自省与销毁
-YomkAPI::listContextKeys();        // 组内全部键名清单（缺省 main 组）
-YomkAPI::getContextInfo("config"); // 单键元信息：结构化 ContextKeyInfo 包（m_msg 恒 "ok"；含所属组 m_group）
-YomkAPI::listContextGroups();      // 全部组名清单（StringArray）
-YomkAPI::getAllContextInfo();         // 跨组聚合：ContextGroupInfoList 两层结构（组名 + 该组全部键元信息）
-YomkAPI::destroyContext("config");  // 删除键
+// 5. 内省与销毁
+yomk::ctx().keys();                                    // 组内键名清单（StringArray，缺省 main 组）
+yomk::ctx().key("config").info();                      // 单键元信息（ContextKeyInfo，含所属组 m_group）
+yomk::ctx().groups();                                  // 全部组名（StringArray）
+yomk::ctx().all();                                     // 跨组聚合（ContextGroupInfoList：组 → 键元信息）
+yomk::ctx().key("config").destroy();                   // 删除键
 ```
 
 ## 注意事项
 
-- **创建与设置**：key 已存在返回 `ResStatus::Failed=1` "key already exists"；value 为空返回 `ResStatus::Failed=1` "value is empty"；值类型须与现值一致，否则 `ResStatus::Failed` "context type not match"。
-- **组名约定**：所有 Context API 的最后一个参数为组名，缺省 `"main"`；键所属组随 `ContextKeyInfo.m_group` 一并内省返回。空组名返回 `ResStatus::Failed=1` "group name is empty"；非 main 组首次寻址即自动创建（惰性、不支持销毁、组名唯一，同名寻址复用同组），监控池每组自持（每组一个单线程池，随建组只增不减）。
-- **读取快照勿原地修改**：`YomkAPI::getContext` 返回只读快照，改动请构造新对象再 `YomkAPI::setContext`，勿原地修改（否则与并发读竞争、可能崩溃）。
-- **Checker 生效条件**：全局开关 ON 且该 key 已设置时才生效；在写锁内门控，回调内重入 set 会死锁。
-- **Monitor 执行语义**：`async=false` 锁外即时执行，`async=true` 单线程池按提交序送达；仅通知发生了一次 set，并回传该次 set 的键值快照，不保证快照实时性。
-- **销毁后行为**：删除键后操作返回 `ResStatus::Failed=1`（key is not exist）。
+- **写路径失败契约**：键名为空 `Failed` "key is empty"；`create` 时 value 为空 `Failed` "value is empty"、键已存在 `Failed` "key already exists"；`set` 时键不存在 `Failed` "key is not exist"、值类型与现值不一致 `Failed` "context type not match"、被 checker 拦截 `Failed` "checker reject set context"。
+- **组名约定**：`.group()` 省略即缺省 `"main"`；空组名 `Failed` "group name is empty"。非 main 组首次寻址即惰性自动创建（组名唯一、同名寻址复用同组、**不支持销毁组**，组表只增不减），异步监控池每组自持（单线程）。
+- **读取快照勿原地修改**：`get()` 返回只读快照，改动请构造新消息对象再 `.set()`；原地修改与并发读竞争、可能崩溃。
+- **键级回调注册前提**：`checker_fn`/`monitor_fn` 只能注册到**已存在**的键（键不存在返回 `Failed` "key is not exist"），即先 `create()` 再注册。
+- **Checker 生效条件**：组级开关 ON **且**该键已注册 checker 才参与门控；门控在写锁内执行，**回调内重入 set 会死锁**。
+- **Monitor 执行语义**：`.async(true)` 经该组单线程池按 set 提交序保序送达；同步形态在写锁外即时执行，并发 set 下不保证跨线程序。仅通知"发生了一次 set"并回传该次键值快照，**不保证快照实时性**（读最新值请再走 `get()`）。
+- **类型化读自带校验**：`get()` 按运行期类型名比对 + 指针转换，`T` 须为 `YomkMsg` 派生（`static_assert` 编译期把关）。
 - 服务成员函数注册为 checker/monitor 时须用 `weakFunc(&Class::Method)` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 内部结构
 
-Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持，内省快照携带所属组名（`ContextKeyInfo.m_group`）。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表 `m_customGroup`（`map<string, ContextGroupPtr>` + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `findGroup` 定位 → 组实例委托"。`findGroup` 三段式：空组名返回 `ResStatus::Failed "group name is empty"`；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（组不支持销毁，map 只增不减，同名寻址复用同组，锁外裸指针长期安全）。
+Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 组级开关与单线程异步监控池均为每组自持，内省快照携带所属组名（`ContextKeyInfo.m_group`）。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表（map + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `findGroup` 定位 → 组实例委托"。`findGroup` 三段式：空组名返回 `Failed` "group name is empty"；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（锁外裸指针长期安全——组不销毁、表只增不减）。
 
 ## 完整示例
 

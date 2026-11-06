@@ -1,116 +1,97 @@
 # YomkLogger(日志系统)
 
-框架内置开箱即用的控制台与文件日志输出，支持六级级别开关（Trace / Debug / Info / Warn / Error / Fatal，严重度升序）、自定义 tag、日志代理拦截与日志器自省。随 `YomkAPI::init()` 自动启动。
+框架内置开箱即用的控制台与文件日志输出：六级级别开关（Trace / Debug / Info / Warn / Error / Fatal，严重度升序）、自定义 tag、日志代理拦截、位置前缀开关与日志器自省。随 `yomk::server().init()` 自动启动。能力分两个域入口：**发射**走 `yomk::log()`（写一条日志），**管理**走 `yomk::log_mgr()`（门控 / 代理 / 前缀 / 文件日志器生命周期 / 内省）。
 
-## API 速查
+## 发射链（yomk::log()）
 
-### 控制台日志
+`info / warn / error / debug / trace / fatal` 六个级别方法 × 模板参数包（参数逐个追加，无上限，`bool` 输出 `true/false`），终结返回三态 `ResStatus`（未初始化 `Invalid`）。域入口在**调用行**捕获位置前缀，须单表达式内联使用、不可缓存。
 
-| API | 说明 |
+| 链 | 行为 |
 |---|---|
-| `YOMK_TRACE(...)` / `YOMK_DEBUG(...)` / `YOMK_INFO(...)` / `YOMK_WARN(...)` / `YOMK_ERROR(...)` / `YOMK_FATAL(...)` | 六级控制台日志 |
-| `YOMK_TRACE_TAG(tag, ...)` / `YOMK_DEBUG_TAG(...)` / `YOMK_INFO_TAG(...)` / `YOMK_WARN_TAG(...)` / `YOMK_ERROR_TAG(...)` / `YOMK_FATAL_TAG(...)` | 带自定义 tag 的六级控制台日志 |
-| `YomkAPI::enableConsoleLogDebug()` / `YomkAPI::disableConsoleLogDebug()` | 开关控制台 DEBUG 级别（另有 TRACE / INFO / WARN / ERROR / FATAL 同名开关，共六级）；无参 = 全局主闸（框架全局），传日志器名 = 仅门控该器（具名未命中 ResStatus::Failed，不惰性创建） |
-| `YomkAPI::setConsoleLogProxy(func)` | 设置控制台日志代理拦截；传 `nullptr` 卸载代理，恢复默认输出 |
+| `yomk::log().info(args...)` | 主控制台输出，tag 缺省 `MainLogger`（tag 即控制台日志器名，首次使用自动创建） |
+| `yomk::log().tag(t).info(args...)` | 指定 tag |
+| `yomk::log().to_sink(name).info(args...)` | 写入具名文件日志器（`Log` 六方法同理）；`.tag(t)` 可叠加；未知名返回 `Failed`，**不惰性创建**——文件日志器须先经 `log_mgr().dir().file().create()` 创建 |
 
-### 文件日志
+输出行格式：`[YYYY-MM-DD HH:MM:SS.mmm] [级别] [tag] [位置前缀] 内容`，级别标签定宽 5（如 `[INFO ]`）保证纵向对齐；位置前缀默认仅行号：
 
-| API | 说明 |
+```text
+[2026-11-06 10:00:00.000] [INFO ] [MainLogger] [42] server port: 8080
+```
+
+## 管理链（yomk::log_mgr()）速查
+
+### 级别门控（console / file 两套完全独立；输出/落盘取两级 AND）
+
+| 链 | 说明 |
 |---|---|
-| `YomkAPI::createFileLogger(dir, name)` | 创建文件日志器 |
-| `YOMK_FILE_TRACE(file, ...)` / `YOMK_FILE_DEBUG(...)` / `YOMK_FILE_INFO(...)` / `YOMK_FILE_WARN(...)` / `YOMK_FILE_ERROR(...)` / `YOMK_FILE_FATAL(...)`（`_TAG` 变体传自定义 tag） | 写入指定日志器的内存缓冲（_TAG 变体由日志器统一拼接 [tag] 段） |
-| `YomkAPI::enableFileLogDebug(name = "")` / `YomkAPI::disableFileLogDebug(name = "")` | 开关文件日志级别（另有 TRACE / INFO / WARN / ERROR / FATAL 同名开关，共六级）；无参 = 文件全局主闸（框架全局），传文件日志器名 = 仅门控该器（具名未命中 ResStatus::Failed，不惰性创建） |
-| `YomkAPI::setFileLogProxy(func)` | 设置文件日志代理拦截（回调返回 false 该条不落盘、返回 true 穿透走默认落盘）；传 `nullptr` 或空 std::function 卸载代理，恢复默认落盘 |
-| `YomkAPI::flushFileLog(name)` | 显式刷盘 |
-| `YomkAPI::deleteFileLogger(name)` | 删除日志器 |
+| `yomk::log_mgr().console(name).level(lv).enable()` / `.disable()` | 控制台门控；`name` 省略/空 = 全局主闸（框架全局），具名 = 仅该日志器（逐器门控，未命中 `Failed`，不惰性创建）；`.level(lv)` 缺省 `Info` |
+| `yomk::log_mgr().file(name).level(lv).enable()` / `.disable()` | 文件侧同理：无具名 = 文件全局主闸，具名 = 逐器门控 |
 
-### 日志自省
+### 代理拦截与位置前缀
 
-| API | 说明 |
+| 链 | 说明 |
 |---|---|
-| `YomkAPI::listLoggers(type)` | 按类型获取日志器名列表（type: `"console"`/`"file"`，返回 StringArray 纯名字典序；非法类型 ResStatus::Failed） |
-| `YomkAPI::getLoggerInfo(name, type)` | 按类型单查指定日志器（type: `"console"`/`"file"`；两表允许同名，单表精确查找不 fallback；未注册或非法 type 均 ResStatus::Failed） |
-| `YomkAPI::getAllLoggerInfo()` | 查询全部日志器及开关配置状态（LoggerInfoList 清单：元素为单查同款 LoggerInfo，每条内嵌 LoggerState 状态段——console 条目承载控制台逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报控制台代理态，file 条目承载文件逐器门控层真值（未做具名开关恒全 on）且 proxyOn 报文件代理态） |
-| `YomkAPI::getGlobalLoggerLevel(type = "console")` | 查询全局主闸状态（type = "file" 查文件侧、type = "console" 或缺省查控制台侧，两套主闸/两套代理各自独立；未知 type 客户端直返 ResStatus::Failed。返回 LoggerState 独立包：六级别主闸开关 + proxyOn；独立于逐器门控层，与 `getLoggerInfo`/`getAllLoggerInfo` 条目配合完成两层归因） |
+| `yomk::log_mgr().console().proxy(fn).apply()` | 控制台代理：回调收 `const yomk::payload::Log&`，返回 `false` 消费该条不再默认输出、`true` 穿透走框架打印；`nullptr` 卸载恢复默认 |
+| `yomk::log_mgr().file().proxy(fn).apply()` | 文件代理同理（`false` 该条不落盘）；与控制台代理相互独立 |
+| `yomk::log_mgr().location().show_file(on).show_line(on).show_func(on).apply()` | 位置前缀三开关（进程级，控制台与文件同时生效；初值承接当前状态，一次性落定，`apply()` 恒 `Succeeded`）。前缀按 `[file:line:func]` 以 `:` 拼接，关断的段整体省略：默认仅行号 `[N]`；开文件+行号 `[main.cpp:N]`；三项全关无前缀 |
+
+### 文件日志器生命周期
+
+| 链 | 说明 |
+|---|---|
+| `yomk::log_mgr().dir(d).file(name).create()` | 创建文件日志器；`.dir()` 须先于 `.file()` 累积；空名/空目录 `Invalid`，同名重复创建 `Failed` |
+| `yomk::log_mgr().file(name).flush()` | 将该日志器内存缓冲落盘；未知名 `Failed` |
+| `yomk::log_mgr().file(name).remove()` | 删除日志器（同名 console + file 两表一并清除，两表皆未命中 `Failed`；**不删除磁盘 `.log` 文件**）；释放时自动落盘 |
+
+### 内省
+
+| 链 | 说明 |
+|---|---|
+| `yomk::log_mgr().console().list()` / `.file().list()` | 该类型全部日志器名（StringArray 字典序） |
+| `yomk::log_mgr().console(name).get_info()` / `.file(name).get_info()` | 单器状态 `LoggerInfo`（两表允许同名，须按类型精确单查；未注册 `Failed`） |
+| `yomk::log_mgr().console().status()` / `.file().status()` | 全局主闸状态 `LoggerState`（六级别开关 + `m_proxyOn`；与逐器门控层相互独立） |
+| `yomk::log_mgr().all()` | 全部日志器及逐器门控状态（LoggerInfoList；每条内嵌 `LoggerState` 状态段为该器门控层真值） |
 
 ## 使用示例
 
 ```cpp
-// 控制台日志
-YOMK_TRACE("entering state machine");   // 最细粒度跟踪
-YOMK_DEBUG("trace id:", 12345);
-YOMK_INFO("server port:", 8080);
-YOMK_WARN("resource running low");
-YOMK_ERROR("failed to connect");
-YOMK_FATAL("unrecoverable state");      // 致命错误
-// 指定 Tag：
-YOMK_INFO_TAG("Network", "connected to remote host");
-// 输出格式：[时间] [级别] [tag] [行号] 内容；tag 即控制台日志器名，首次使用自动创建
+yomk::server().init();
 
-// 开关指定日志级别（无参 = 全局主闸，框架全局）
-YomkAPI::disableConsoleLogDebug();
-YomkAPI::enableConsoleLogDebug();
-// 逐器门控：仅关断指定日志器（tag 即日志器名），其他日志器输出不受影响
-YomkAPI::disableConsoleLogInfo("Network");   // 具名关断
-YomkAPI::enableConsoleLogInfo("Network");    // 具名恢复
+// 控制台发射
+yomk::log().info("server port:", 8080);
+yomk::log().tag("Network").warn("resource running low");
+yomk::log().error("failed to connect:", false);        // bool 输出 false
 
-// 文件日志
-YomkAPI::createFileLogger("./logs", "app"); // 创建日志器
-YOMK_FILE_INFO("app", "app started");  // 写入内存缓冲
-YomkAPI::flushFileLog("app");            // 显式刷盘
-YomkAPI::deleteFileLogger("app");           // 删除日志器
+// 文件日志：先创建，再经 to_sink 写入，最后显式刷盘
+yomk::log_mgr().dir("./logs").file("app").create();
+yomk::log().to_sink("app").info("app started");
+yomk::log_mgr().file("app").flush();
 
-// 文件日志开关（无参 = 文件全局主闸，具名 = 逐器门控；两层 AND 后才写入）
-YomkAPI::disableFileLogDebug();       // 文件主闸关断：全部文件器 DEBUG 均不写入
-YomkAPI::enableFileLogDebug();
-YomkAPI::disableFileLogInfo("app");   // 具名关断：仅 app 的 INFO 不再写入，其他文件器不受影响
-YomkAPI::enableFileLogInfo("app");
+// 门控：关控制台全局 DEBUG，再单独恢复 Network 器的 DEBUG（两级 AND 都开才输出）
+yomk::log_mgr().console().level(yomk::payload::LogLevel::Debug).disable();
+yomk::log_mgr().console("Network").level(yomk::payload::LogLevel::Debug).enable();
 
-// 控制台日志拦截/代理
-YomkAPI::setConsoleLogProxy([](const yomk::payload::Log &log) {
-    if (log.m_level == yomk::payload::LogLevel::Debug)
-        return false; // 返回 false 表示消费此日志，不再默认输出
-    return true;      // 返回 true 则继续走框架默认打印
-});
-YomkAPI::setConsoleLogProxy(nullptr); // 传 nullptr 卸载代理，恢复默认输出
+// 代理：拦截全部 Debug 不进控制台
+yomk::log_mgr().console().proxy([](const yomk::payload::Log& log) {
+    return log.m_level != yomk::payload::LogLevel::Debug;   // false 消费该条
+}).apply();
+yomk::log_mgr().console().proxy(nullptr).apply();           // 卸载代理，恢复默认
 
-// 文件日志代理：返回 false 拦截该条不落盘，返回 true 穿透走默认落盘
-YomkAPI::setFileLogProxy([](const yomk::payload::Log &log) {
-    if (log.m_level == yomk::payload::LogLevel::Debug)
-        return false; // 返回 false 表示拦截此条，不写入文件
-    return true;      // 返回 true 则继续走框架默认落盘
-});
-YomkAPI::setFileLogProxy(nullptr); // 传 nullptr 卸载文件代理，恢复默认落盘
-```
+// 位置前缀：文件+行号+函数
+yomk::log_mgr().location().show_file(true).show_func(true).apply();
 
-### 位置捕获与前缀开关
-
-日志宏在调用行注入位置捕获（`{}` 于该行聚合初始化），日志内容前缀默认 `[行号]`。前缀由 3 个进程级开关独立控制，对控制台与文件日志同时生效：
-
-| API | 说明 |
-|---|---|
-| `YomkAPI::setLocLineEnabled(bool)` | 开/关行号段（默认开，与既有输出兼容） |
-| `YomkAPI::setLocFileEnabled(bool)` | 开/关文件名段（默认关；文件名取 basename） |
-| `YomkAPI::setLocFuncEnabled(bool)` | 开/关函数名段（默认关） |
-
-前缀按 `[file:line:func]` 顺序以 `:` 拼接，关断的段整体省略（不留空位）：默认 `[N]`；开文件+行号为 `[main.cpp:N]`；仅函数为 `[main]`；全关无前缀。
-
-绕过宏直调 emit 层为等价形式（第二参 `{}` 在调用行完成位置捕获；漏写该参数为编译错误，不会静默丢失位置）：
-
-```cpp
-YomkAPI::emitConsoleLogInfo("MainLogger", {}, "server started");    // 等价 YOMK_INFO(...)
-YomkAPI::emitConsoleLogInfo("Network", {}, "connected:", 8080);     // 等价 YOMK_INFO_TAG("Network", ...)
-YomkAPI::emitFileLogInfo("app", "MainLogger", {}, "app started");   // 等价 YOMK_FILE_INFO("app", ...)
+// 清理
+yomk::log_mgr().file("app").remove();
 ```
 
 ## 注意事项
 
-- tag 即控制台日志器名，首次使用自动创建。
-- 级别开关两级并联：无参作用于全局主闸（框架全局），具名作用于单个日志器（逐器门控）；输出/落盘取两层 AND。控制台开关（enable/disableConsoleLog*）只影响控制台输出，文件开关（enable/disableFileLog*）只影响文件写入，两套开关相互独立。
-- 内省归因：`getLoggerInfo`/`getAllLoggerInfo` 条目报逐器门控层真值（console/file 条目各自独立，未做具名开关恒全 on；proxyOn 各报对应侧代理态）；条目 on 但无输出/未落盘时查 `YomkAPI::getGlobalLoggerLevel("console"/"file")` 确认对应侧主闸是否关断——两层状态各自真实呈现，可唯一归因。
-- `YomkAPI::flushFileLog` 显式刷盘；日志器释放时亦会自动落盘。
-- `YomkAPI::deleteFileLogger` 同名清 console + file 两表；不删磁盘 `.log` 文件。
-- 代理回调返回 `false` 表示消费此日志不再默认输出（控制台代理）或不再落盘（文件代理）；返回 `true` 继续框架默认行为。控制台代理与文件代理相互独立，传 `nullptr` 或空 std::function 即卸载。
+- 发射链是**同步阻塞**的：内部经请求域投递至 Logger 内置服务，返回 `ResStatus` 表示该条已被受理（门控/代理在受理内生效）；高频路径可先门控再发射。
+- 两级门控并联：全局主闸（`console()/file()` 空名形态）与逐器门控（具名形态）做 AND；控制台开关只影响控制台、文件开关只影响文件。具名门控未命中日志器返回 `Failed`，不惰性创建。
+- 内省归因：`get_info`/`all()` 条目报**逐器门控层**真值（未做具名开关恒全 on）；条目 on 但无输出/未落盘时，查 `console()/file().status()` 确认对应侧**全局主闸**——两层状态各自独立，可唯一归因。
+- tag 即控制台日志器名、首次使用自动创建；文件日志器必须先 `create()`，向未知名发射返回 `Failed`。
+- 代理回调返回 `false` = 消费该条（控制台不再输出 / 文件不落盘），`true` = 穿透走框架默认行为；控制台与文件代理各自独立，`nullptr` 卸载。
+- `log()` 域入口在调用行捕获位置信息，链须单表达式内联，缓存 builder 会导致位置错误与悬垂。
 
 ## 完整示例
 
