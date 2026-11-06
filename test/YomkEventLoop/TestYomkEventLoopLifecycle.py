@@ -426,8 +426,8 @@ def section_9():
           "被拒投递未入队（pending 仍为 2）")
 
     # 越界数字 tagCount（D3 回归）：int 越界回退不再崩溃，回退默认 3；
-    # 冻结窗口（队列 2 条）一并验证截断与原值保留
-    oob = YomkApi.event_loop_info_loop("api_loop 99999999999999999999")
+    # 冻结窗口（队列 2 条）一并验证截断与原值保留（结构化 EventLoopQuery 字段投递）
+    oob = YomkApi.event_loop_info_loop("api_loop", 99999999999999999999)
     check(oob.status == ysp.ResStatus.eOk, "越界数字 tagCount 返回 eOk（不崩溃）")
     check(oob.msg == "ok", "越界数字 tagCount 命中 msg 恒为 ok")
     check(isinstance(oob.data, ysp.EventLoopInfo),
@@ -466,15 +466,15 @@ def section_9():
     check(YomkApi.event_loop_info_loop("no_such").status ==
           ysp.ResStatus.eNo, "INFO_LOOP 不存在循环返回 eNo")
 
-    # INFO_LOOP 数字 tagCount 路径："name N" 字符串解析与类型化重载、大数值（合法范围）：
-    # 解析健壮性以 eOk + msg 恒 "ok" 承载，截断语义由冻结窗口断言覆盖
-    r5 = YomkApi.event_loop_info_loop("api_loop 5")
+    # INFO_LOOP 数字 tagCount 路径（结构化 EventLoopQuery）：大数值（合法范围）与
+    # 常规采样数均以 eOk + msg 恒 "ok" 承载，截断语义由冻结窗口断言覆盖
+    r5 = YomkApi.event_loop_info_loop("api_loop", 5)
     check(r5.status == ysp.ResStatus.eOk and r5.msg == "ok",
-          "字符串数字路径解析 tagCount=5")
+          "结构化载荷解析 tagCount=5")
     r7 = YomkApi.event_loop_info_loop("api_loop", 7)
     check(r7.status == ysp.ResStatus.eOk and r7.msg == "ok",
-          "类型化重载解析 tagCount=7")
-    r1m = YomkApi.event_loop_info_loop("api_loop 1000000")
+          "结构化载荷解析 tagCount=7")
+    r1m = YomkApi.event_loop_info_loop("api_loop", 1000000)
     check(r1m.status == ysp.ResStatus.eOk and r1m.msg == "ok",
           "大数值 tagCount 正常解析（合法范围内）")
 

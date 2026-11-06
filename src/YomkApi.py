@@ -18,6 +18,7 @@ from YomkServerPy import (
     Function,
     CallFunction,
     EventLoopPkg,
+    EventLoopQuery,
     EventLoopInfo,
     Event,
     ConsoleLogProxy,
@@ -584,10 +585,10 @@ def event_loop_info_loops() -> YomkResponse:
 
 
 def event_loop_info_loop(event_loop_name: str, tag_count: Optional[int] = None) -> YomkResponse:
-    # 查询指定事件循环状态与事件积压数
+    # 内省：单个事件循环（结构化 EventLoopQuery：名称字面量精确匹配 + 采样数）
     if tag_count is not None:
-        return _api_request("/YomkEventLoop/loop", event_loop_name + " " + str(tag_count))
-    return _api_request("/YomkEventLoop/loop", event_loop_name)
+        return _api_request("/YomkEventLoop/loop", EventLoopQuery(event_loop_name, tag_count))
+    return _api_request("/YomkEventLoop/loop", EventLoopQuery(event_loop_name))
 
 
 def event_loop_info_all() -> YomkResponse:

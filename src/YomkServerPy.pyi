@@ -216,6 +216,14 @@ class EventLoopInfo:
                  msg_name: str = "", next_tags: List[str] = None) -> None: ...
 
 
+class EventLoopQuery:
+    # 事件循环单查载荷（/YomkEventLoop/loop 专用，对齐 C++ YomkPayload.h EventLoopQuery）
+    m_loopName: str  # 循环名（按字面量精确匹配，不做任何切分）
+    m_tagCount: int  # 队列头采样条数（缺省 3）
+
+    def __init__(self, loop_name: str = "", tag_count: int = 3) -> None: ...
+
+
 class LoggerInfo:
     logger_name: str  # 日志器名
     # 类型："console" 或 "file"（与 LOGGERS 行文本 [console]/[file] 对应）

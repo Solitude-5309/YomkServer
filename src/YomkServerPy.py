@@ -466,6 +466,14 @@ class EventLoopPkg:
         self.m_msgName = msg_name
 
 
+class EventLoopQuery:
+    # 事件循环单查载荷（/YomkEventLoop/loop 专用，对齐 C++ YomkPayload.h EventLoopQuery）：
+    # 名称 + 队列头 tag 采样数，类型化字段无解析歧义
+    def __init__(self, loop_name="", tag_count=3):
+        self.m_loopName = loop_name   # 循环名（按字面量精确匹配，不做任何切分）
+        self.m_tagCount = tag_count   # 队列头采样条数（缺省 3，与全量内省缺省一致）
+
+
 class EventLoopInfo:
     # 事件循环内省元信息（/YomkEventLoop/loop 与 /YomkEventLoop/all 返回数据）
     def __init__(self, loop_name="", running=False, pending=0,
@@ -1701,14 +1709,14 @@ class YomkEventLoop(YomkService):
         self.m_eventLoopMutex = rwlock.RWLockFair()
 
     def init(self):
-        self.install_func("/start", self.start, "Eventloop")
+        self.install_func("/start", self.start, "EventLoop")
         self.install_func("/stop", self.stop, "String")
         self.install_func("/post", self.post, "Event")
         self.install_func("/post_wait", self.post_wait, "Event")
         self.install_func("/destroy", self.destroy, "String")
         # 调试内省接口，端点挂在本服务 funcMap
         self.install_func("/loops", self.loops)
-        self.install_func("/loop", self.loop_info, "String")
+        self.install_func("/loop", self.loop_info, "EventLoopQuery")
         self.install_func("/all", self.list_all)
         return 0
 
@@ -1787,19 +1795,17 @@ class YomkEventLoop(YomkService):
         return YomkResponse(ResStatus.eOk, "ok", loop_names)
 
     def loop_info(self, pkg):
-        # 内省：单个事件循环元信息，入参格式 "循环名" 或 "循环名 N"（N 缺省 3）
-        input_str = pkg if pkg else ""
-        loop_name = input_str
+        # 内省：单个事件循环元信息，收结构化 EventLoopQuery（对齐 C++ YomkEventLoop.cpp
+        # loopInfo）：unpack 失败返回 eNo（契约消息对齐 C++ 字面量）；名称按字面量
+        # 精确匹配、不做任何切分；采样数越界回退默认 3（不抛不崩）
+        if not isinstance(pkg, EventLoopQuery):
+            return YomkResponse(ResStatus.eNo, "pkg is null or pkg is not EventLoopQuery.")
+        loop_name = pkg.m_loopName
+        # 归一化采样数：非 int（含 bool）或超 size_t 上限回退默认 3，与全量内省缺省一致
         tag_count = 3
-        space_pos = input_str.rfind(" ")
-        if space_pos != -1:
-            count_str = input_str[space_pos + 1:]
-            # 尾段非空纯 ASCII 数字才拆
-            if count_str and all(c in "0123456789" for c in count_str):
-                loop_name = input_str[:space_pos]
-                # 超过无符号上限时回退默认 3，不抛不崩
-                tag_count = int(count_str) if int(
-                    count_str) <= 2 ** 64 - 1 else 3
+        if isinstance(pkg.m_tagCount, int) and not isinstance(pkg.m_tagCount, bool) \
+                and 0 <= pkg.m_tagCount <= 2 ** 64 - 1:
+            tag_count = pkg.m_tagCount
 
         with self.m_eventLoopMutex.gen_rlock():
             if loop_name in self.m_eventLoop:
