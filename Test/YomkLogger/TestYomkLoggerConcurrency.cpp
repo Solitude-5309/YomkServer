@@ -430,9 +430,9 @@ static fs::path testTmpRoot()
 // ============================================================================
 int main()
 {
-    YomkAPI::init(1);
-    auto server = YomkAPI::serverInstance();
-    YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
+    yomk::server().async_thread(1).init();
+    auto server = yomk::server().instance();
+    YOMK_TEST_CHECK(server != nullptr, "yomk::server().init() 返回非空服务器");
 
     fs::path tmpDir = testTmpRoot() / ("yomk_logger_lg3_" + std::to_string(::getpid()));
     std::error_code ec;
@@ -448,7 +448,7 @@ int main()
         constexpr int kLogsPerThread = 200;
         constexpr uint64_t kTotal = kThreads * kLogsPerThread;
 
-        // 直接调 YomkAPI 静态函数而非 log().tag(...).info 宏：宏会把 tag 拼上调用点行号，
+        // 直接调日志模块静态函数而非 log().tag(...).info 宏：宏会把 tag 拼上调用点行号，
         // 预热与循环体分处两行将产生两个不同 logger 名，破坏"同一 logger 并发"前提
         const std::string kTag = "lg3_s1_shared";
 
@@ -1525,7 +1525,7 @@ int main()
                 std::to_string(sinkLines) + "）——级别翻转与并发 WRITE 下不丢不重");
     }
 
-    YomkAPI::shutdown();
+    yomk::server().shutdown();
 
     std::error_code rmEc;
     fs::remove_all(tmpDir, rmEc);

@@ -14,7 +14,7 @@
  *       单查 N/100 次 / 内省与 createFileLogger 并发相互阻塞量化）——P4-c 验证点
  * - S5：8 线程混合负载 churn（console 写 + file 建/写 + ALL 内省 + 删除 + 删除后单查）
  *       + 全量删除回收（分组 ResStatus::Succeeded 守恒 → 残量扫除 → LOGGERS 行数为 0 硬断言）
- * - S6：收尾（清理前磁盘足迹守恒 / YomkAPI::shutdown() 计时 / remove_all /
+ * - S6：收尾（清理前磁盘足迹守恒 / yomk::server().shutdown() 计时 / remove_all /
  *       临时目录不存在硬断言（用户口径：测试后临时文件全部清理干净）/ RSS 峰值）
  *
  * 规模经 YOMK_TEST_STRESS_SCALE 参数化（缺省 100000，clamp 下限 1000），对称激进口径：
@@ -829,9 +829,9 @@ int main()
     // LG5：环境标注先于一切 [BASELINE] 输出，使本次所有性能数据可按环境归因
     std::cout << "[ENV] " << readEnvSnapshot() << std::endl;
 
-    YomkAPI::init(1);
-    auto server = YomkAPI::serverInstance();
-    YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
+    yomk::server().async_thread(1).init();
+    auto server = yomk::server().instance();
+    YOMK_TEST_CHECK(server != nullptr, "yomk::server().init() 返回非空服务器");
 
     fs::path tmpDir = testTmpRoot() / ("yomk_logger_lg4_" + std::to_string(::getpid()));
     std::error_code ec;
@@ -1764,7 +1764,7 @@ int main()
         {
             ThreadSafeCoutCapture cap(true);
             auto t0 = Clock::now();
-            YomkAPI::shutdown();
+            yomk::server().shutdown();
             elapsedShutdown = msSince(t0);
         }
         std::cout << "[BASELINE] S6_shutdown: " << std::fixed << std::setprecision(1) << elapsedShutdown

@@ -9,7 +9,7 @@
  * - S4：并发内省 × 变更（all() 结构化快照持续可解包）
  * - S5：全量 churn 混合守恒（register/update/unregister/call/introspect 全并发）
  *
- * 装置：文件级原子计数/自旋门（TSan-clean），YomkAPI::init() 单例，段尾清理共享池。
+ * 装置：文件级原子计数/自旋门（TSan-clean），yomk::server().init() 单例，段尾清理共享池。
  */
 
 #include <atomic>
@@ -151,7 +151,7 @@ int main(int /*argc*/, char** /*argv*/)
 {
     std::cout << "=== TestYomkFunctionPoolConcurrency (FPC3) ===" << std::endl;
 
-    YomkAPI::init(1);
+    yomk::server().async_thread(1).init();
 
     // ========================================================================
     // Section 1：并发 call() 守恒 + 嵌套重入（只读路径）
@@ -539,7 +539,7 @@ int main(int /*argc*/, char** /*argv*/)
     // ========================================================================
     // 收尾
     // ========================================================================
-    YomkAPI::shutdown();
+    yomk::server().shutdown();
 
     std::cout << "\n=== Result: " << (g_total - g_failed) << "/" << g_total << " passed, " << g_failed
               << " failed ===" << std::endl;

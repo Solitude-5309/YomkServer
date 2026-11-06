@@ -234,9 +234,9 @@ struct ServerServiceInfo
 
 }  // namespace yomk::payload
 
-// Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 YomkAPI::setContextMonitor
+// Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 ctx().monitor_fn(fn).apply()
 using YomkContextMonitorFunc = std::function<void(const yomk::payload::Context& ctx)>;
-// Context checker 回调：返回 CheckStatus::Accept/CheckStatus::Reject 门控 set；详见 YomkAPI::setContextChecker
+// Context checker 回调：返回 CheckStatus::Accept/CheckStatus::Reject 门控 set；详见 ctx().checker_fn(fn).apply()
 using YomkContextCheckerFunc = std::function<yomk::payload::CheckStatus(const yomk::payload::Context& ctx)>;
 using YomkConsoleLogProxyFunc = std::function<bool(const yomk::payload::Log& log)>;
 // 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 yomk::log_mgr().file().proxy().apply()

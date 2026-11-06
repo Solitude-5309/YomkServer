@@ -15,7 +15,7 @@
  * - TSan 轨道守门以 YOMK_TEST_STRESS_SCALE=10000 降规模跑（大规模压力不在 TSan 下执行的既定约定，
  *   并发结构不变、多线程路径仍受 happens-before 验证）；ASan 全规模留覆盖率/sanitizer 收口闭环；
  * - 计数 handler 为文件级原子（TSan-clean 既有模式）；计时用 steady_clock；
- * - 白盒段直连内部类 EventLoop；API 段 YomkAPI::init() 单例，末尾 YomkAPI::shutdown() 收尾。
+ * - 白盒段直连内部类 EventLoop；API 段 yomk::server().init() 单例，末尾 yomk::server().shutdown() 收尾。
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
@@ -310,9 +310,9 @@ int main()
     // ============ Section 5: API 层 10 万级宏投递 ============
     {
         g_execCount.store(0);
-        YomkAPI::init(1);
-        auto server = YomkAPI::serverInstance();
-        YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
+        yomk::server().async_thread(1).init();
+        auto server = yomk::server().instance();
+        YOMK_TEST_CHECK(server != nullptr, "S5 yomk::server().init() 返回非空服务器");
         YOMK_TEST_CHECK(yomk::event_loop().loop("stress_loop").handle_fn(nullptr).start() == yomk::payload::ResStatus::Succeeded, "S5 START 返回 ResStatus::Succeeded");
 
         auto t0 = std::chrono::steady_clock::now();
@@ -334,7 +334,7 @@ int main()
             "S5 API-level end-to-end", N, std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t0).count());
 
         YOMK_TEST_CHECK(yomk::event_loop().loop("stress_loop").destroy() == yomk::payload::ResStatus::Succeeded, "S5 destroy() 返回 ResStatus::Succeeded");
-        YomkAPI::shutdown();
+        yomk::server().shutdown();
     }
 
     if (g_failed == 0)

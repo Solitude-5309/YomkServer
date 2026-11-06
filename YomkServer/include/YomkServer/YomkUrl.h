@@ -2,7 +2,7 @@
 #include <string_view>
 
 // 内置服务 URL 常量池：inline constexpr std::string_view 编译期常量——零运行时
-// 状态、零惰性初始化、零析构顺序问题。请求链（YomkAPI -> YomkServer -> parse ->
+// 状态、零惰性初始化、零析构顺序问题。请求链（yomk::server() -> YomkServer -> parse ->
 // invoke）全程 string_view 透传，服务/函数表以透明比较器异构查找，调用路径零堆分配。
 // 访问器名 = 服务前缀 + 路由段驼峰化。
 // 采用命名空间而非 struct：与 yomk::payload / yomk::msgs 对齐为协议层三件套；

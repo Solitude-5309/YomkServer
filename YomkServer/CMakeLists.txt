@@ -21,7 +21,6 @@ set(LIB_INSTALL_DIR lib)
 include_directories(${YomkServer_INCLUDE})
 
 set(YomkServer_SOURCES 
-    ${YomkServer_SRC}/YomkApi.cpp
     ${YomkServer_SRC}/YomkServer.cpp
     ${YomkServer_SRC}/YomkServerPrivate.cpp
     ${YomkServer_SRC}/YomkService.cpp
@@ -45,7 +44,7 @@ add_library(YomkServer SHARED
 target_compile_definitions(YomkServer PRIVATE YOMKSERVER_LIBRARY)
 
 # 编译期注入框架版本号（对应顶层 project(Yomk VERSION x.x.x) 定义的 VERSION），供 YOMK_VERSION 获取
-target_compile_definitions(YomkServer PRIVATE YOMKSERVER_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(YomkServer PUBLIC YOMKSERVER_VERSION="${PROJECT_VERSION}")  # 闭环 6：version() 终结进头文件内联，宏须对消费方可见
 
 # 导出头文件
 target_include_directories(YomkServer

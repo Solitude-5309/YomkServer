@@ -16,15 +16,15 @@
  *    停止态投递 ResStatus::Failed / get_info() 数字路径与越界回退 / list() 存活列表与销毁后移除 / all() /
  *    空循环名与超长循环名边界（ELC6 覆盖率回填：loops() 遍历路径需在 map 非空时调用）
  * 10. postWait×destroy 等待者释放：销毁清空队列时触发被丢弃事件的等待回调，等待者不永久挂起（看门狗）
- * 11. delService("/YomkEventLoop") 残留 loop 收尾与重注册（P4）：运行中删除内置服务——残留 loop 经
+ * 11. remove("/YomkEventLoop") 残留 loop 收尾与重注册（P4）：运行中删除内置服务——残留 loop 经
  *     析构兜底链收尾（无 deinit override，~YomkEventLoop -> m_loops 析构 -> ~EventLoop -> destroy），
  *     后续 EVENTLOOP API 服务级 ResStatus::Failed；无参重注册（new T(this) 注入）后 start()/post_wait() 全链路恢复
  * 12. ~EventLoop 析构兜底释放等待者（P4，白盒，看门狗）：不调 destroy 直接析构——~EventLoop 内部
  *     destroy 兜底同样触发被丢弃事件的等待回调，析构入口与显式入口共享释放契约（S10 的入口级补全）
  *
  * 说明：白盒段直连内部类 EventLoop（include Modules/EventLoop/EventLoop.h，CMake 已追加 src 目录），
- *       不触 YomkAPI::init()（类级测试与请求路由无关）；API 段使用 YomkAPI::init() 单例拉起内置 /YomkEventLoop，
- *       末尾 YomkAPI::shutdown() 收尾（call_once 约束，shutdown 后不可再初始化）。
+ *       不触 yomk::server().init()（类级测试与请求路由无关）；API 段使用 yomk::server().init() 单例拉起内置 /YomkEventLoop，
+ *       末尾 yomk::server().shutdown() 收尾（call_once 约束，shutdown 后不可再初始化）。
  *       停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询 infoLine 至 running:off
  *       确认 m_running 已置位后才释放阻塞事件，杜绝工作线程抢跑后续排队事件的竞态（确定性断言）。
  *       阻塞门与观测变量全部为文件级（同 g_asyncMutex 既有 TSan-clean 风格）：阻塞门用原子自旋实现，
@@ -438,9 +438,9 @@ int main()
 
     // ============ Section 9: API 层停止保留 / 重启续跑 / 销毁移除 / 契约与边界 ============
     {
-        YomkAPI::init(1);
-        auto server = YomkAPI::serverInstance();
-        YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
+        yomk::server().async_thread(1).init();
+        auto server = yomk::server().instance();
+        YOMK_TEST_CHECK(server != nullptr, "yomk::server().init() 返回非空服务器");
 
         resetOrder();
         resetGate();
@@ -626,16 +626,16 @@ int main()
         YOMK_TEST_CHECK(loopsArr != nullptr && removed, "销毁后 list() 不再包含 api_loop");
     }
 
-    // ============ Section 11: delService("/YomkEventLoop") 残留 loop 收尾与重注册（API 段，P4）============
+    // ============ Section 11: remove("/YomkEventLoop") 残留 loop 收尾与重注册（API 段，P4）============
     {
         YOMK_TEST_CHECK(yomk::event_loop().loop("/L1").start() == yomk::payload::ResStatus::Succeeded, "启动 /L1（运行中）");
 
         // 运行中删除内置服务：残留 /L1 loop 经析构兜底链收尾（YomkEventLoop 无 deinit override，
-        // delService 锁外释放 -> ~YomkEventLoop -> m_loops 析构 -> ~EventLoop -> destroy -> join），无挂起即证
-        YOMK_TEST_CHECK(YomkAPI::delService("/YomkEventLoop") == 0, "删除内置 /YomkEventLoop 返回 0");
+        // remove() 锁外释放 -> ~YomkEventLoop -> m_loops 析构 -> ~EventLoop -> destroy -> join），无挂起即证
+        YOMK_TEST_CHECK(yomk::server().srv_name("/YomkEventLoop").remove() == 0, "删除内置 /YomkEventLoop 返回 0");
         YOMK_TEST_CHECK(yomk::event_loop().loop("/L2").start() == yomk::payload::ResStatus::Failed,
               "删除后 EVENTLOOP API 服务级 ResStatus::Failed（失败原因经错误日志承载）");
-        auto srvArr = yomk::msgs::unPack<yomk::msgs::StringArray>(YomkAPI::listServices().m_data);
+        auto srvArr = yomk::msgs::unPack<yomk::msgs::StringArray>(yomk::server().services().m_data);
         bool evtLoopGone = true;
         if (srvArr)
         {
@@ -649,14 +649,14 @@ int main()
         }
         YOMK_TEST_CHECK(srvArr != nullptr && evtLoopGone, "服务表快照不再含 /YomkEventLoop");
 
-        YOMK_TEST_CHECK(YomkAPI::newService<YomkEventLoop>() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
+        YOMK_TEST_CHECK(yomk::server().srv<YomkEventLoop>().create() == 0, "create() 无参重注册返回 0（构造函数固定名生效）");
         YOMK_TEST_CHECK(yomk::event_loop().loop("/L2").start() == yomk::payload::ResStatus::Succeeded, "重注册后 start() 恢复可用");
         YOMK_TEST_CHECK(
             yomk::event_loop().msg(yomk::msgs::String::shared(std::string("relink"))).loop("/L2").handle_fn(countingHandler("relink")).tag("relink").post_wait() ==
                 yomk::payload::ResStatus::Succeeded,
             "重注册后 post_wait() 全链路 ResStatus::Succeeded");
 
-        YomkAPI::shutdown();
+        yomk::server().shutdown();
     }
 
     // ============ Section 10: postWait×destroy 释放等待者（白盒，看门狗防挂起）============

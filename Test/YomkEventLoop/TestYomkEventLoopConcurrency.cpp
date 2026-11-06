@@ -16,8 +16,8 @@
  *   move-assign 有 terminate 风险，YomkApi.h 未声明其线程安全）；
  * - churn 不含 destroy——丢弃已接受事件会破坏计数守恒语义，其等待者释放已由 Lifecycle Section 10 覆盖。
  *
- * 说明：白盒段直连内部类 EventLoop（CMake 已含 src 目录）；API 段 YomkAPI::init() 单例拉起内置 /YomkEventLoop，
- *       末尾 YomkAPI::shutdown() 收尾。测试装置为文件级（TSan-clean 既有验证模式）：计数用原子变量，
+ * 说明：白盒段直连内部类 EventLoop（CMake 已含 src 目录）；API 段 yomk::server().init() 单例拉起内置 /YomkEventLoop，
+ *       末尾 yomk::server().shutdown() 收尾。测试装置为文件级（TSan-clean 既有验证模式）：计数用原子变量，
  *       执行序列/完成标志向量用文件级互斥量且全部访问持锁（含断言快照）；阻塞门用原子自旋（1ms 粒度休眠），
  *       不用局部 mutex/cv 与 condition_variable::wait_for（本工具链 TSan 已知误报路径）；
  *       S1 的 handler 捕获事件裸指针——执行期间 run() 持有 shared_ptr 保证存活，无环引用无泄漏。
@@ -369,9 +369,9 @@ int main()
     // ============ Section 5: API 层并发投递 + 内省轮询（宏）============
     {
         g_execCount.store(0);
-        YomkAPI::init(1);
-        auto server = YomkAPI::serverInstance();
-        YOMK_TEST_CHECK(server != nullptr, "S5 YomkAPI::init() 返回非空服务器");
+        yomk::server().async_thread(1).init();
+        auto server = yomk::server().instance();
+        YOMK_TEST_CHECK(server != nullptr, "S5 yomk::server().init() 返回非空服务器");
 
         YOMK_TEST_CHECK(yomk::event_loop().loop("conc_loop").handle_fn(nullptr).start() == yomk::payload::ResStatus::Succeeded, "S5 START conc_loop 返回 ResStatus::Succeeded");
 
@@ -440,7 +440,7 @@ int main()
         YOMK_TEST_CHECK(waitUntil([] { return g_execCount.load() == 100; }, 5000), "S5 API 层事件全部执行（100/100）");
 
         YOMK_TEST_CHECK(yomk::event_loop().loop("conc_loop").destroy() == yomk::payload::ResStatus::Succeeded, "S5 destroy() conc_loop 返回 ResStatus::Succeeded");
-        YomkAPI::shutdown();
+        yomk::server().shutdown();
     }
 
     if (g_failed == 0)

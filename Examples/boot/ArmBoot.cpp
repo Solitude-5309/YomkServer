@@ -17,8 +17,8 @@ int ArmBoot::start()
     // 服务清单：key 为服务名（/ 开头），value 为创建服务实例的 lambda
     // 工程实践中把所有服务都登记在此，按 m_startSrvNames 按需启动
     static const std::map<std::string, std::function<YomkService*()>> serviceCreators = {
-        {"/MotionService", []() { return new MotionService(YomkAPI::serverInstance().get()); }},
-        {"/TelemetryService", []() { return new TelemetryService(YomkAPI::serverInstance().get()); }},
+        {"/MotionService", []() { return new MotionService(yomk::server().instance().get()); }},
+        {"/TelemetryService", []() { return new TelemetryService(yomk::server().instance().get()); }},
     };
 
     for (const auto& srvName : m_startSrvNames)
@@ -29,8 +29,8 @@ int ArmBoot::start()
             yomk::log().tag("arm.boot").error("unknown service in start list: ", srvName);
             return -1;  // 启动清单中出现未知服务，终止启动
         }
-        // YomkAPI::addService() 移交实例所有权并调用服务 init()
-        if (YomkAPI::addService(it->second(), srvName) != 0)
+        // yomk::server().add() 移交实例所有权并调用服务 init()
+        if (yomk::server().srv_name(srvName).srv_ptr(it->second()).add() != 0)
         {
             return -1;
         }

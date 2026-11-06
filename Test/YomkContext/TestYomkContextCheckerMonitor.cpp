@@ -17,7 +17,7 @@
  * 12. 并发 set 异步保序：锁内入队 ⇒ 末条异步通知收敛到最终值（C1 回归）
  * 13. 异步 monitor 排空（deinit）：shutdown 前排空全部异步任务
  *
- * 说明：全程使用 YomkAPI::init() 单例拉起内置 /YomkContext；异步排空用例置于末尾并调用 YomkAPI::shutdown()
+ * 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext；异步排空用例置于末尾并调用 yomk::server().shutdown()
  *       （call_once 约束，shutdown 后不可再初始化）；服务删除后重新注册/池重建归 MC3
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
@@ -107,9 +107,9 @@ int main()
 {
     resetGlobals();
 
-    YomkAPI::init(1);
-    auto server = YomkAPI::serverInstance();
-    YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
+    yomk::server().async_thread(1).init();
+    auto server = yomk::server().instance();
+    YOMK_TEST_CHECK(server != nullptr, "yomk::server().init() 返回非空服务器");
 
     // ============ Section 1: set_checker 边界 ============
     {
@@ -417,7 +417,7 @@ int main()
         }
 
         // 立即 shutdown，触发 Context deinit 排空 monitor 池
-        YomkAPI::shutdown();
+        yomk::server().shutdown();
 
         // shutdown 返回后排空已完成，计数应等于投递次数
         YOMK_TEST_CHECK(g_drainCalls.load() == N, "shutdown 排空后异步 monitor 计数 == 投递次数（无迟到、无丢失）");

@@ -14,7 +14,7 @@
  * S4. yomk::payload::Response 契约：默认构造、枚举值序（ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1）、双参/三参构造
  * S5. 框架结构体默认值（Log::m_level 无类内初始化不作值断言）+ 结构体消息包版 name 就位
  *
- * 说明：全程不调 YomkAPI::init()（纯类型/模板测试，不依赖单例）；YomkMsg::name() 公有 setter 用于
+ * 说明：全程不调 yomk::server().init()（纯类型/模板测试，不依赖单例）；YomkMsg::name() 公有 setter 用于
  *       伪造类型名以触达 unPack 的 dynamic_pointer_cast 失败分支（名字匹配但实际类型不符）
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）

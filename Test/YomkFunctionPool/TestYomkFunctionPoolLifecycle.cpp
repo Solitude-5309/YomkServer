@@ -16,7 +16,7 @@
  * 8. 超长名：65536 字符函数名全生命周期（install()/call()/get_info()/uninstall()）ResStatus::Succeeded 且完整回显
  *
  * 说明：YomkFunctionPool 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
- *       YomkAPI::init() 单例白盒直连；全部经 API 接口测试，同时覆盖 invoke 路由链，无覆盖损失。
+ *       yomk::server().init() 单例白盒直连；全部经 API 接口测试，同时覆盖 invoke 路由链，无覆盖损失。
  *       测试装置为文件级原子计数（TSan-clean 既有模式）。源码零改动：FPC1 审计登记的 P1
  *       （not-found 错误码不一致：unregister/call=ResStatus::Invalid vs funcInfo=ResStatus::Failed）与 P2（异常穿透）
  *       已于 FPC2 处置——P1 修复为统一 ResStatus::Failed（与 Context/EventLoop/路由层惯例一致），本文件断言
@@ -105,9 +105,9 @@ static size_t poolCount()
 
 int main()
 {
-    YomkAPI::init(1);
-    auto server = YomkAPI::serverInstance();
-    YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
+    yomk::server().async_thread(1).init();
+    auto server = yomk::server().instance();
+    YOMK_TEST_CHECK(server != nullptr, "yomk::server().init() 返回非空服务器");
 
     // ============ Section 1: CRUD 闭环 ============
     {
@@ -335,7 +335,7 @@ int main()
         YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_plain").uninstall() == yomk::payload::ResStatus::Succeeded, "清理 fp_plain");
     }
 
-    YomkAPI::shutdown();
+    yomk::server().shutdown();
 
     if (g_failed == 0)
     {

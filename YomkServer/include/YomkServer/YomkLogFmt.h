@@ -8,7 +8,7 @@
 
 // 日志正文格式化：起始预留容量 + 逐参追加的单一实现。
 // 独立成头：格式化定版逻辑（bool 输出 true/false、整型手写 itoa、浮点 %g）
-// 与 YomkAPI 表面无耦合，外部自行拼日志 content 亦可复用
+// 与链式表面无耦合，外部自行拼日志 content 亦可复用
 struct YomkLogFmt
 {
     // emit 正文起始预留容量：典型日志单行 64 字节内，预分配减少 string 扩容

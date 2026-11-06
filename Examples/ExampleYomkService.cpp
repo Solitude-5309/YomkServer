@@ -25,10 +25,10 @@
  *
  * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
  *
- * 场景 1 showArmPowerOnRegister [VERSION / SERVER_PTR / NEW_SERVICE / BOOT / INFO_SERVICES]
- *        控制柜上电与工位注册：框架版本与全局单例自检；NEW_SERVICE 一步创建
- *        并注册运动服务；BOOT 三阶段编排注册留痕服务（arm.boot 日志夹在开始
- *        行与结果行之间，before→start→after 顺序可见）；INFO_SERVICES 复查
+ * 场景 1 showArmPowerOnRegister [version() / instance() / create() / run() / services()]
+ *        控制柜上电与工位注册：框架版本与全局单例自检；create() 一步创建
+ *        并注册运动服务；run() 三阶段编排注册留痕服务（arm.boot 日志夹在开始
+ *        行与结果行之间，before→start→after 顺序可见）；services() 复查
  *        在册清单（2 个业务工位排最前 + 5 个内置服务）。
  * 场景 2 showArmLinkCheck      [REQUEST]
  *        通讯自检与寻址异常：REQUEST 同步回环拿到回包 data；请求不存在的
@@ -45,27 +45,27 @@
  *        自省读取工位职能：4 参注册的 /move 带 MoveCmd 元数据与函数说明、
  *        2 参注册的 /echo 双空；INFO_FUNCTION 按 URL 调阅单张函数名片
  *        （内省细节详见 ExampleYomkServerInfo）。
- * 场景 6 showArmStationUpgrade [call() / ADD_SERVICE]
- *        留痕工位升级：同名 ADD_SERVICE 即替换——替换前后直调钩子
+ * 场景 6 showArmStationUpgrade [call() / add()]
+ *        留痕工位升级：同名 add() 即替换——替换前后直调钩子
  *        telemetry_hook（diag check V1→V2），[实例#N] 日志自证服务与
  *        钩子一并换新。
- * 场景 7 showArmStationOffline [DEL_SERVICE / call() / REQUEST]
- *        留痕工位下线：DEL_SERVICE 删除即停——弱绑定钩子立即失效（ResStatus::Failed 不
+ * 场景 7 showArmStationOffline [remove() / call() / REQUEST]
+ *        留痕工位下线：remove() 删除即停——弱绑定钩子立即失效（ResStatus::Failed 不
  *        悬垂）、move 因留痕缺失失败沿调用链传播；重复注销返回 -1。
- * 场景 8 showArmPowerOff       [INFO_ALL / SHUTDOWN]
- *        收班断电：INFO_ALL 看终态拓扑；预告后 SHUTDOWN 排空在途请求并
+ * 场景 8 showArmPowerOff       [all() / shutdown()]
+ *        收班断电：all() 看终态拓扑；预告后 shutdown() 排空在途请求并
  *        释放全部服务，关闭后任何请求统一返回 ResStatus::Invalid——日志宏随之静默，
  *        静默段正是演示效果，示例日志到此为止。
  *
  * 涉及的 API 接口（YomkApi.h）：
- *   YomkAPI::init() / YomkAPI::shutdown() / YomkAPI::version()   框架生命周期
- *   YomkAPI::newService<T>(name)                  创建并注册服务（最常用）
- *   YomkAPI::addService(ptr, name)                注册已有实例（同名即替换）
- *   YomkAPI::delService(name)                     注销服务（删除即停）
- *   YomkAPI::boot(cfg)                             启动编排（before -> start -> after）
+ *   yomk::server().init() / yomk::server().shutdown() / yomk::server().version()   框架生命周期
+ *   yomk::server().srv<T>(name).create()                  创建并注册服务（最常用）
+ *   yomk::server().srv_name(name).srv_ptr(ptr).add()                注册已有实例（同名即替换）
+ *   yomk::server().srv_name(name).remove()                     注销服务（删除即停）
+ *   yomk::server().boot_ptr(cfg).run()                             启动编排（before -> start -> after）
  *   yomk::server().url(u).request(pkg) / .async(cb).request(pkg)  同步 / 异步请求
- *   YomkAPI::serverInstance().get() / YomkAPI::serverInstance()            全局单例
- *   YomkAPI::listServices / FUNCTIONS / FUNCTION / ALL  调用拓扑自省
+ *   yomk::server().instance().get() / yomk::server().instance()            全局单例
+ *   yomk::server().services() / functions() / get_info() / all()  调用拓扑自省
  *   installFunc("/x", &C::m[, "Msg"][, "desc"]) / weakFunc(&Class::Method) / 成员 request  服务侧 API
  */
 
@@ -149,7 +149,7 @@ static void logAction(const std::string& op)
     yomk::log().tag("arm.demo").info("开始执行 " + op);
 }
 
-// 操作日志（int 返回版）：NEW_SERVICE/ADD_SERVICE/DEL_SERVICE/BOOT 等框架管理
+// 操作日志（int 返回版）：create()/add()/remove()/run() 等框架管理
 // 接口返回 int（0=成功，-1=失败），先打开始行再调用，结果行标注返回值
 static void logActionInt(const std::string& op, const std::string& api, const std::function<int()>& call)
 {
@@ -167,7 +167,7 @@ static void logStringLine(const std::string& api, const std::string& line)
 }
 
 // 自省结果展开：单个函数 FuncInfo 的全部字段逐行展示（函数名行 + 字段行），
-// FUNCTIONS 清单与 FUNCTION 单查共用；紧随其结果行输出，函数名行以 "-" 起头、
+// functions() 清单与 get_info() 单查共用；紧随其结果行输出，函数名行以 "-" 起头、
 // 字段行缩进对齐，元数据为空时兜底"(未指定)"
 static void logFuncInfo(const std::string& api, const yomk::payload::FuncInfo& info)
 {
@@ -201,49 +201,49 @@ static void logVerify(const std::string& text)
 // ---------------------------------------------------------------------------
 // 8 个场景小示例：每个函数独立小闭环，可单独阅读；main 按上电会话顺序编排。
 // 工位流转：/MotionService 场景 1 注册，场景 2/3/4/5 请求与自省读它；
-// /TelemetryService 场景 1 经 BOOT 注册，场景 6 同名替换、场景 7 下线；
+// /TelemetryService 场景 1 经 run() 注册，场景 6 同名替换、场景 7 下线；
 // 场景 8 断电。
 // ---------------------------------------------------------------------------
 
-// 场景 1：控制柜上电与工位注册（自检 + NEW_SERVICE + BOOT + 在册清单）
+// 场景 1：控制柜上电与工位注册（自检 + create() + run() + 在册清单）
 static void showArmPowerOnRegister()
 {
     logScene(
         1,
         "控制柜上电与工位注册",
-        "VERSION / SERVER_PTR / NEW_SERVICE / BOOT / INFO_SERVICES",
+        "version() / instance() / create() / run() / services()",
         "控制柜上电先自检（框架版本、全局单例就绪），再把业务工位注册进框架："
-        "NEW_SERVICE 一步创建并注册运动服务；BOOT 按 before→start→after 三阶段"
-        "编排注册留痕服务；INFO_SERVICES 复查在册清单。");
+        "create() 一步创建并注册运动服务；run() 按 before→start→after 三阶段"
+        "编排注册留痕服务；services() 复查在册清单。");
 
     logAction("控制柜上电自检：读取框架版本与全局单例");
     std::ostringstream oss;
-    oss << "[YomkAPI::version()] version=" << YomkAPI::version();
+    oss << "[yomk::server().version()] version=" << yomk::server().version();
     yomk::log().tag("arm.demo").info(oss.str());
     oss.str("");
-    oss << "[YomkAPI::serverInstance()] instance=" << (YomkAPI::serverInstance() ? "ready" : "null");
+    oss << "[yomk::server().instance()] instance=" << (yomk::server().instance() ? "ready" : "null");
     yomk::log().tag("arm.demo").info(oss.str());
-    logVerify("YomkAPI::init() 后单例就绪：YomkAPI::serverInstance() 可判空，YomkAPI::serverInstance().get() 供服务构造时取 server 指针");
+    logVerify("yomk::server().init() 后单例就绪：yomk::server().instance() 可判空，yomk::server().instance().get() 供服务构造时取 server 指针");
 
     logActionInt(
-        "运动工位上线：一步创建并注册 /MotionService", "NEW_SERVICE /MotionService",
-        [] { return YomkAPI::newService<MotionService>(); });
+        "运动工位上线：一步创建并注册 /MotionService", "create() /MotionService",
+        [] { return yomk::server().srv<MotionService>().create(); });
     logVerify("返回 0 即注册成功：URL 前缀 /MotionService 生效，init() 已被框架调用（arm.motion 的 init 日志为证）");
 
     logActionInt(
-        "启动编排注册留痕工位 /TelemetryService", "BOOT ArmBoot",
-        [] { return YomkAPI::boot(new ArmBoot({"/TelemetryService"})); });
-    logVerify("arm.boot 三段日志夹在开始行与结果行之间：BOOT 按 before→start→after 顺序执行");
+        "启动编排注册留痕工位 /TelemetryService", "run() ArmBoot",
+        [] { return yomk::server().boot_ptr(new ArmBoot({"/TelemetryService"})).run(); });
+    logVerify("arm.boot 三段日志夹在开始行与结果行之间：run() 按 before→start→after 顺序执行");
 
     logAction("复查控制柜在册服务清单");
-    yomk::payload::Response namesResp = YomkAPI::listServices();
-    logResp("INFO_SERVICES", namesResp);
+    yomk::payload::Response namesResp = yomk::server().services();
+    logResp("services()", namesResp);
     auto nameArr = yomk::msgs::unPack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
         {
-            logStringLine("INFO_SERVICES", srvName);
+            logStringLine("services()", srvName);
         }
     }
     logVerify("清单 7 项 = 2 个业务工位（排最前）+ 5 个内置服务，按字典序排列");
@@ -353,7 +353,7 @@ static void showArmIntrospect()
         "ExampleYomkServerInfo）。");
 
     logAction("查阅运动工位职能清单");
-    yomk::payload::Response funcsResp = YomkAPI::listServiceFunctions("/MotionService");
+    yomk::payload::Response funcsResp = yomk::server().srv_name("/MotionService").functions();
     logResp("INFO_FUNCTIONS /MotionService", funcsResp);
     auto listPkg = yomk::msgs::unPack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
@@ -366,7 +366,7 @@ static void showArmIntrospect()
     logVerify("msgName 即 installFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /echo 两字段为(未指定)");
 
     logAction("调阅运动指令函数名片");
-    yomk::payload::Response resp = YomkAPI::getServiceFunctionInfoByUrl("/MotionService/move");
+    yomk::payload::Response resp = yomk::server().fn_url("/MotionService/move").get_info();
     logResp("INFO_FUNCTION /MotionService/move", resp);
     auto info = yomk::msgs::unPack<yomk::msgs::FuncInfo>(resp.m_data);
     if (info)
@@ -382,8 +382,8 @@ static void showArmStationUpgrade()
     logScene(
         6,
         "留痕工位升级",
-        "call() / ADD_SERVICE",
-        "班中留痕工位升级换新：同名 ADD_SERVICE 即替换，旧实例下线、新实例"
+        "call() / add()",
+        "班中留痕工位升级换新：同名 add() 即替换，旧实例下线、新实例"
         "接管并重挂同名钩子——替换前后直调钩子（diag check V1→V2）自证服务"
         "与钩子一并替换。");
 
@@ -393,8 +393,8 @@ static void showArmStationUpgrade()
     logVerify("留痕记录 [实例#1]：diag check V1——钩子由当前实例 init 注册、按名直调");
 
     logActionInt(
-        "留痕工位升级：同名注册替换 /TelemetryService", "ADD_SERVICE /TelemetryService",
-        [] { return YomkAPI::addService(new TelemetryService(YomkAPI::serverInstance().get()), "/TelemetryService"); });
+        "留痕工位升级：同名注册替换 /TelemetryService", "add() /TelemetryService",
+        [] { return yomk::server().srv_name("/TelemetryService").srv_ptr(new TelemetryService(yomk::server().instance().get())).add(); });
     logVerify("框架直出 service already exists -> update to current service：旧实例 markDeleted+deinit，实例 #1 随即析构");
     logVerify("新实例 init 重挂 telemetry_hook，函数池直出 already exist -> update to current function：服务与钩子一并换新");
 
@@ -410,17 +410,17 @@ static void showArmStationOffline()
     logScene(
         7,
         "留痕工位下线",
-        "DEL_SERVICE / call() / REQUEST",
-        "班末留痕工位下线：DEL_SERVICE 删除即停——弱绑定钩子立即失效，运动"
+        "remove() / call() / REQUEST",
+        "班末留痕工位下线：remove() 删除即停——弱绑定钩子立即失效，运动"
         "调用链因留痕缺失断链传播；注销失败是普通返回值。");
 
     logActionInt(
-        "留痕工位下线：注销 /TelemetryService", "DEL_SERVICE /TelemetryService",
-        [] { return YomkAPI::delService("/TelemetryService"); });
+        "留痕工位下线：注销 /TelemetryService", "remove() /TelemetryService",
+        [] { return yomk::server().srv_name("/TelemetryService").remove(); });
 
     logActionInt(
-        "重复注销已下线工位", "DEL_SERVICE /TelemetryService (重复)",
-        [] { return YomkAPI::delService("/TelemetryService"); });
+        "重复注销已下线工位", "remove() /TelemetryService (重复)",
+        [] { return yomk::server().srv_name("/TelemetryService").remove(); });
     logVerify("服务已不存在 -> ret=-1：注销失败是普通返回值，不报错不崩溃");
 
     logAction(
@@ -435,37 +435,37 @@ static void showArmStationOffline()
     logVerify("move 返回 ResStatus::Failed(move failed: ...)：留痕是运动的依赖前置，失败沿调用链传播");
 }
 
-// 场景 8：收班断电（INFO_ALL 终态 + SHUTDOWN 后守卫）
+// 场景 8：收班断电（all() 终态 + shutdown() 后守卫）
 static void showArmPowerOff()
 {
     logScene(
         8,
         "收班断电",
-        "INFO_ALL / SHUTDOWN",
-        "收班先看终态拓扑，再断电：SHUTDOWN 先停异步请求池（拒新→排空→join），"
+        "all() / shutdown()",
+        "收班先看终态拓扑，再断电：shutdown() 先停异步请求池（拒新→排空→join），"
         "再逐个 deinit 并释放全部服务（幂等）；关闭后任何请求统一返回 ResStatus::Invalid"
         "，日志宏随之静默——静默段正是演示效果。");
 
     logAction("导出收班终态拓扑（摘要）");
-    yomk::payload::Response allResp = YomkAPI::getAllServerInfo();
-    logResp("INFO_ALL", allResp);
+    yomk::payload::Response allResp = yomk::server().all();
+    logResp("all()", allResp);
     auto list = yomk::msgs::unPack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
     if (list)
     {
         for (const auto& srv : list->d)
         {
-            logSrvBrief("INFO_ALL", srv.m_serviceName, srv.m_funcs.size());
+            logSrvBrief("all()", srv.m_serviceName, srv.m_funcs.size());
         }
     }
     logVerify("6 个服务 = 5 个内置 + 1 个运动工位：留痕工位已在场景 7 下线，拓扑实时反映运行期服务表");
 
-    yomk::log().tag("arm.demo").info("收班预告：SHUTDOWN 后框架已关闭，此后任何请求统一返回 ResStatus::Invalid \"YomkServer is not init\"；");
+    yomk::log().tag("arm.demo").info("收班预告：shutdown() 后框架已关闭，此后任何请求统一返回 ResStatus::Invalid \"YomkServer is not init\"；");
     yomk::log().tag("arm.demo").info("本示例所有日志宏随之静默——下面的静默段正是演示效果，示例日志至此结束，程序停在 getchar 等待回车退出");
 
     logAction(
-        "收班断电：优雅关闭框架", "SHUTDOWN + REQUEST (关闭后守卫)",
+        "收班断电：优雅关闭框架", "shutdown() + REQUEST (关闭后守卫)",
         [&] {
-            YomkAPI::shutdown();
+            yomk::server().shutdown();
             return yomk::server().url("/MotionService/echo").msg(yomk::msgs::String::shared("after shutdown")).request();
         });
 }
@@ -473,7 +473,7 @@ static void showArmPowerOff()
 int main(int argc, char* argv[])
 {
     // 初始化框架（/YomkServerInfo 等 5 个内置服务随之自动启动）
-    YomkAPI::init();
+    yomk::server().init();
 
     yomk::log().tag("arm.demo").info("机械臂控制 x YomkService 示例：控制柜一次上电会话贯穿 8 个场景，覆盖服务定义与调用全部用户接口");
     yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / arm.boot=启动编排 / arm.motion=运动服务函数体 / "
@@ -488,7 +488,7 @@ int main(int argc, char* argv[])
     showArmStationOffline();
     showArmPowerOff();
 
-    // 场景 8 已 SHUTDOWN：日志宏全部静默，结束横幅不再可见——
+    // 场景 8 已 shutdown()：日志宏全部静默，结束横幅不再可见——
     // 结束预告已并入场景 8 的收班预告锚点，程序在此等待回车退出
     getchar();
 

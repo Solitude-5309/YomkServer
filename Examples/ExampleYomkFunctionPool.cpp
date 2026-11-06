@@ -405,7 +405,7 @@ static void showArmToolCleanup()
 int main(int argc, char* argv[])
 {
     // 初始化框架（函数池服务 /YomkFunctionPool 随之自动启动）
-    YomkAPI::init();
+    yomk::server().init();
 
     yomk::log().tag("arm.demo").info("机械臂产线 x YomkFunctionPool 示例：一次班次贯穿 6 个场景，覆盖全部函数池 API");
     yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / arm.tool=工具函数体（调用方线程同步执行）");

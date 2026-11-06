@@ -12,8 +12,8 @@
  * 7. 同步 monitor 重入安全（monitor 在锁外执行，内层 Context API 不死锁）
  * 8. N7 压力：8 线程 × 12500 ≈ 10 万级混合 Context 操作无崩溃/无挂起
  *
- * 说明：YomkAPI::init(1) 拉起单例 /YomkContext，全程经 YomkAPI::CONTEXT_* 宏多线程并发路由（真实 API 路径）；
- *       各 section 用独立 key 前缀，末尾 YomkAPI::shutdown()（call_once 约束，shutdown 后不可再初始化）；
+ * 说明：yomk::server().async_thread(1).init() 拉起单例 /YomkContext，全程经 yomk::ctx() 域链式 op多线程并发路由（真实 API 路径）；
+ *       各 section 用独立 key 前缀，末尾 yomk::server().shutdown()（call_once 约束，shutdown 后不可再初始化）；
  *       书面豁免：重入 checker（checker 内调用 Context API）自死锁，属设计约束（checker 在 unique_lock 内执行），不构造该用例
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
@@ -79,9 +79,9 @@ static bool waitFor(std::function<bool()> pred, int timeoutMs, const std::string
 
 int main()
 {
-    YomkAPI::init(1);
-    auto server = YomkAPI::serverInstance();
-    YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
+    yomk::server().async_thread(1).init();
+    auto server = yomk::server().instance();
+    YOMK_TEST_CHECK(server != nullptr, "yomk::server().init() 返回非空服务器");
 
     // ============ Section 1: 并发 get/set 共享键（读写锁竞争）============
     std::cout << "===== 1. 并发 get/set 共享键 =====" << std::endl;
@@ -509,7 +509,7 @@ int main()
         YOMK_TEST_CHECK(tmpGone, "8.5 压力后临时键全部销毁");
     }
 
-    YomkAPI::shutdown();
+    yomk::server().shutdown();
 
     if (g_failed == 0)
     {

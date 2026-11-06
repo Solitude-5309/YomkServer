@@ -2,20 +2,20 @@
  * @file TestYomkIntegration.cpp
  * @brief 跨模块端到端集成测试（正式全面测试，P3——单模块测试无法覆盖的跨模块路径与 shutdown 统一收尾）
  *
- * 覆盖内容（3 个 Section，单进程一次 YomkAPI::init(1)，断言以运行为准）：
+ * 覆盖内容（3 个 Section，单进程一次 yomk::server().async_thread(1).init()，断言以运行为准）：
  * S3. asyncRequest 回调内重入：异步 monitor 回调（监控池线程）内同步 yomk::ctx().key().set() 重入
  *     /YomkContext/set 并触发另一键的同步 monitor——不死锁、异步/同步计数守恒、
  *     异步按提交序保序（末值可读）
- * S2. 删除内置服务契约与恢复：YomkAPI::delService("/YomkLogger") → 服务级 ResStatus::Failed + 精确消息；
- *     YomkAPI::newService<YomkLogger>() 无参重注册（new T(this) 注入 server 指针，构造函数
+ * S2. 删除内置服务契约与恢复：yomk::server().srv_name("/YomkLogger").remove() → 服务级 ResStatus::Failed + 精确消息；
+ *     yomk::server().srv<YomkLogger>().create() 无参重注册（new T(this) 注入 server 指针，构造函数
  *     固定名 "/YomkLogger" 生效）→ LOGGER API 恢复且全链路可用
- * S1. YomkAPI::shutdown() 全链路统一收尾（压轴）：event_loop().post() 积压、log().to_sink(...).info 缓冲、
+ * S1. yomk::server().shutdown() 全链路统一收尾（压轴）：event_loop().post() 积压、log().to_sink(...).info 缓冲、
  *     异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘（FileLogger
  *     析构 write）、API 回归 ResStatus::Invalid + "YomkServer is not init"（API 守卫级：shutdown 内
  *     setServer(nullptr)，serverSnapshot 空守卫；服务级 ResStatus::Failed 仅出现在服务表内服务缺失时）、
  *     二次 shutdown 幂等
  *
- * 执行顺序约束：YomkAPI::init 为 static once_flag + call_once（单进程仅首次生效，shutdown 后
+ * 执行顺序约束：yomk::server().init() 为 static once_flag + call_once（单进程仅首次生效，shutdown 后
  *       再 init 返回空快照不可逆），故 shutdown 段必须压轴，重入/删除恢复段在其前完成
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
@@ -126,9 +126,9 @@ static fs::path testTmpRoot()
 
 int main()
 {
-    YomkAPI::init(1);
-    auto server = YomkAPI::serverInstance();
-    YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init(1) 返回非空服务器");
+    yomk::server().async_thread(1).init();
+    auto server = yomk::server().instance();
+    YOMK_TEST_CHECK(server != nullptr, "yomk::server().async_thread(1).init() 返回非空服务器");
 
     const int K = 20;
 
@@ -185,14 +185,14 @@ int main()
     // ============ S2. 删除内置服务契约与恢复（/YomkLogger，对齐 P0 S6 手法） ============
     std::cout << "===== S2. 删除内置服务契约与恢复（/YomkLogger） =====" << std::endl;
     {
-        YOMK_TEST_CHECK(YomkAPI::delService("/YomkLogger") == 0, "删除内置 /YomkLogger 返回 0");
+        YOMK_TEST_CHECK(yomk::server().srv_name("/YomkLogger").remove() == 0, "删除内置 /YomkLogger 返回 0");
         auto afterDel = yomk::log_mgr().console().list();
         YOMK_TEST_CHECK(afterDel.m_status == yomk::payload::ResStatus::Failed && afterDel.m_msg == "service not found: /YomkLogger",
               "删除后 LOGGER API 服务级 ResStatus::Failed + 精确消息");
-        YOMK_TEST_CHECK(!contains(unpackStringArray(YomkAPI::listServices()), "/YomkLogger"),
+        YOMK_TEST_CHECK(!contains(unpackStringArray(yomk::server().services()), "/YomkLogger"),
               "服务表快照不再含 /YomkLogger");
 
-        YOMK_TEST_CHECK(YomkAPI::newService<YomkLogger>() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
+        YOMK_TEST_CHECK(yomk::server().srv<YomkLogger>().create() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
         auto restored = yomk::log_mgr().console().list();
         // loggers 按类型查询，行内容即 logger 纯名（YomkLogger::loggers 不再拼接类型后缀）
         YOMK_TEST_CHECK(restored.m_status == yomk::payload::ResStatus::Succeeded && contains(unpackStringArray(restored), "MainLogger"),
@@ -202,8 +202,8 @@ int main()
               "重注册后日志 API 全链路可用（console_log ResStatus::Succeeded）");
     }
 
-    // ============ S1. YomkAPI::shutdown() 全链路统一收尾（压轴：call_once 后不可再 init） ============
-    std::cout << "===== S1. YomkAPI::shutdown() 全链路统一收尾（压轴） =====" << std::endl;
+    // ============ S1. yomk::server().shutdown() 全链路统一收尾（压轴：call_once 后不可再 init） ============
+    std::cout << "===== S1. yomk::server().shutdown() 全链路统一收尾（压轴） =====" << std::endl;
     {
         fs::path tmpDir = testTmpRoot() / ("yomk_integration_s1_" + std::to_string(::getpid()));
         std::error_code ec;
@@ -249,7 +249,7 @@ int main()
         YOMK_TEST_CHECK(drainSetOk, "N 次异步通知投递全部 ResStatus::Succeeded");
 
         // 统一收尾：排空异步 monitor + 落盘文件日志 + 清空服务表
-        YomkAPI::shutdown();
+        yomk::server().shutdown();
 
         YOMK_TEST_CHECK(g_drainCalls.load() == N, "shutdown 排空后异步 monitor 计数 == 投递次数（无迟到无丢失）");
         std::string fileContent;
@@ -266,7 +266,7 @@ int main()
         auto postLog = yomk::log_mgr().all();
         YOMK_TEST_CHECK(postLog.m_status == yomk::payload::ResStatus::Invalid && postLog.m_msg == "YomkServer is not init",
               "shutdown 后 LOGGER API 回归 ResStatus::Invalid + 守卫消息");
-        auto postInfo = YomkAPI::getAllServerInfo();
+        auto postInfo = yomk::server().all();
         YOMK_TEST_CHECK(postInfo.m_status == yomk::payload::ResStatus::Invalid && postInfo.m_msg == "YomkServer is not init",
               "shutdown 后 SERVER_INFO API 回归 ResStatus::Invalid + 守卫消息");
 
@@ -282,7 +282,7 @@ int main()
                   "shutdown 后跨线程 LOGGER API 回归 ResStatus::Invalid + 守卫消息（epoch 传播）");
         }
 
-        YomkAPI::shutdown();  // 幂等：二次调用空转安全
+        yomk::server().shutdown();  // 幂等：二次调用空转安全
         YOMK_TEST_CHECK(true, "shutdown 二次调用幂等无崩溃");
 
         fs::remove_all(tmpDir, ec);

@@ -102,7 +102,7 @@ int main(int /*argc*/, char** /*argv*/)
     const uint64_t N = stressScale();
     std::cout << "[CONFIG] YOMK_TEST_STRESS_SCALE = " << N << std::endl;
 
-    YomkAPI::init(1);
+    yomk::server().async_thread(1).init();
 
     // ========================================================================
     // Section 1：单线程 register + call 热路径 + unregister 吞吐
@@ -316,7 +316,7 @@ int main(int /*argc*/, char** /*argv*/)
     // ========================================================================
     // 收尾
     // ========================================================================
-    YomkAPI::shutdown();
+    yomk::server().shutdown();
 
     std::cout << "\n=== Result: " << (g_total - g_failed) << "/" << g_total << " passed, " << g_failed
               << " failed ===" << std::endl;

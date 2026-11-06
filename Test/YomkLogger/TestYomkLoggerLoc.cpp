@@ -124,8 +124,8 @@ static std::string stripLineNo(const std::string& line)
 
 int main()
 {
-    YomkAPI::init(1);
-    YOMK_TEST_CHECK(YomkAPI::serverInstance() != nullptr, "YomkAPI::init() 返回非空服务器");
+    yomk::server().async_thread(1).init();
+    YOMK_TEST_CHECK(yomk::server().instance() != nullptr, "yomk::server().init() 返回非空服务器");
 
     // ============ Section 1: 默认配置（仅行号开） ============
     {
@@ -384,7 +384,7 @@ int main()
     }
 
     // ============ 收尾清理 ============
-    YomkAPI::shutdown();
+    yomk::server().shutdown();
 
     if (g_failed == 0)
     {

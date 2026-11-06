@@ -1,6 +1,6 @@
 /**
  * @file TestYomkBoot.cpp
- * @brief YomkAPI::boot 三段失败短路/错误码透传/所有权测试（正式全面测试，MC6）
+ * @brief boot_ptr(cfg).run() 三段失败短路/错误码透传/所有权测试（正式全面测试，MC6）
  *
  * 覆盖内容：
  * 1. boot(nullptr)：内部隐式 init 路径，返回 0 且单例被初始化
@@ -84,15 +84,15 @@ int main()
 {
     std::cout << "===== 1. boot(nullptr) 隐式 init =====" << std::endl;
     {
-        YOMK_TEST_CHECK(YomkAPI::boot() == 0, "boot(nullptr) 返回 0（不经过三段）");
-        YOMK_TEST_CHECK(YomkAPI::serverInstance() != nullptr, "boot(nullptr) 内部隐式 init 路径，单例被初始化");
+        YOMK_TEST_CHECK(yomk::server().run() == 0, "boot(nullptr) 返回 0（不经过三段）");
+        YOMK_TEST_CHECK(yomk::server().instance() != nullptr, "boot(nullptr) 内部隐式 init 路径，单例被初始化");
     }
 
     std::cout << "===== 2. before 失败短路 =====" << std::endl;
     {
         resetGlobals();
         g_beforeRet = -1;
-        int ret = YomkAPI::boot(new BootRecorder);
+        int ret = yomk::server().boot_ptr(new BootRecorder).run();
         YOMK_TEST_CHECK(ret == -1, "before 失败返回原值 -1");
         YOMK_TEST_CHECK(g_beforeCount == 1, "before 执行 1 次");
         YOMK_TEST_CHECK(g_startCount == 0, "start 被短路未执行");
@@ -104,7 +104,7 @@ int main()
     {
         resetGlobals();
         g_startRet = -2;
-        int ret = YomkAPI::boot(new BootRecorder);
+        int ret = yomk::server().boot_ptr(new BootRecorder).run();
         YOMK_TEST_CHECK(ret == -2, "start 失败返回原值 -2（非 -1 错误码同样透传）");
         YOMK_TEST_CHECK(g_beforeCount == 1, "before 执行 1 次");
         YOMK_TEST_CHECK(g_startCount == 1, "start 执行 1 次");
@@ -116,7 +116,7 @@ int main()
     {
         resetGlobals();
         g_afterRet = -3;
-        int ret = YomkAPI::boot(new BootRecorder);
+        int ret = yomk::server().boot_ptr(new BootRecorder).run();
         YOMK_TEST_CHECK(ret == -3, "after 失败返回原值 -3");
         YOMK_TEST_CHECK(
             g_beforeCount == 1 && g_startCount == 1 && g_afterCount == 1, "三段各执行 1 次（after 为末段无短路语义）");
@@ -126,7 +126,7 @@ int main()
     std::cout << "===== 5. 全部成功执行序 =====" << std::endl;
     {
         resetGlobals();
-        int ret = YomkAPI::boot(new BootRecorder);
+        int ret = yomk::server().boot_ptr(new BootRecorder).run();
         YOMK_TEST_CHECK(ret == 0, "三段全部成功返回 0");
         YOMK_TEST_CHECK(
             g_order.size() == 3 && g_order[0] == "before" && g_order[1] == "start" && g_order[2] == "after",

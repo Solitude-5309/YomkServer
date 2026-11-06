@@ -13,8 +13,8 @@ struct YomkSourceLoc
     unsigned line = __builtin_LINE();
     const char* funcname = __builtin_FUNCTION();
 
-    // 位置信息输出开关（进程级配置，atomic 保证线程安全），YomkAPI 的
-    // setLoc*Enabled 转发到这里
+    // 位置信息输出开关（进程级配置，atomic 保证线程安全），log_mgr().location() 分面的
+    // show_* 开关转发到这里
     static std::atomic<bool>& fileFlag() { static std::atomic<bool> v(false); return v; }
     static std::atomic<bool>& lineFlag() { static std::atomic<bool> v(true); return v; } // 默认开（与旧宏输出兼容）
     static std::atomic<bool>& funcFlag() { static std::atomic<bool> v(false); return v; }

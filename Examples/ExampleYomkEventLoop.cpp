@@ -499,7 +499,7 @@ static void showArmLineOff()
 int main(int argc, char* argv[])
 {
     // 初始化框架（事件循环服务 /YomkEventLoop 随之自动启动）
-    YomkAPI::init();
+    yomk::server().init();
 
     yomk::log().tag("arm.demo").info("机械臂产线 x YomkEventLoop 示例：一次班次贯穿 8 个场景，覆盖全部事件循环 API");
     yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / arm.motion=运动循环线程 / arm.teach=示教循环线程");

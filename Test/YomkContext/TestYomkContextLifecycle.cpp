@@ -5,14 +5,14 @@
  * 覆盖内容：
  * 1. init 效果（内省）：内置 /YomkContext 注册、init 装配 14 个功能函数
  * 2. 基线运行：异步 monitor 池正常工作
- * 3. delService 触发 deinit + 排空：删除前投递的异步 monitor 全部排空执行
+ * 3. remove() 触发 deinit + 排空：删除前投递的异步 monitor 全部排空执行
  * 4. 删除后不可路由 + 重复删除契约：请求返回 service not found、重复删除返回 -1
- * 5. 重新注册 + monitor 池重建：newService<YomkContext> 后 init 重新装配、池重建可用
- * 6. 异常安全：派生服务 init() 抛 std::bad_alloc，addService try/catch 回滚无残留
+ * 5. 重新注册 + monitor 池重建：srv<YomkContext>().create() 后 init 重新装配、池重建可用
+ * 6. 异常安全：派生服务 init() 抛 std::bad_alloc，add() try/catch 回滚无残留
  *
- * 说明：全程使用 YomkAPI::init() 单例拉起内置 /YomkContext；需构造/派生内部类 YomkContext，
+ * 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext；需构造/派生内部类 YomkContext，
  *       故 include 非导出内部头 Modules/Context/YomkContext.h（CMake 已追加 src 目录）；
- *       末尾调用 YomkAPI::shutdown() 干净 deinit 重注册实例（call_once 约束，shutdown 后不可再初始化）
+ *       末尾调用 yomk::server().shutdown() 干净 deinit 重注册实例（call_once 约束，shutdown 后不可再初始化）
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
  */
@@ -46,7 +46,7 @@ static int g_failed = 0;
         }                                                                         \
     } while (0)
 
-// 派生自内部类 YomkContext，init() 抛 std::bad_alloc 以验证 addService 的 try/catch 回滚路径
+// 派生自内部类 YomkContext，init() 抛 std::bad_alloc 以验证 add() 的 try/catch 回滚路径
 // （模拟 YomkContext::init 内 make_unique<YomkSimpleThreadPool> 分配失败）
 class ThrowContext : public YomkContext
 {
@@ -80,16 +80,16 @@ static bool hasService(const std::vector<std::string>& names, const std::string&
 
 int main()
 {
-    YomkAPI::init(1);
-    auto server = YomkAPI::serverInstance();
-    YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
+    yomk::server().async_thread(1).init();
+    auto server = yomk::server().instance();
+    YOMK_TEST_CHECK(server != nullptr, "yomk::server().init() 返回非空服务器");
 
     // ============ Section 1: init 效果（内省）============
     {
-        auto names = YomkAPI::serverInstance()->serviceNames();
+        auto names = yomk::server().instance()->serviceNames();
         YOMK_TEST_CHECK(hasService(names, "/YomkContext"), "内置 /YomkContext 已注册");
 
-        auto infos = YomkAPI::serverInstance()->serviceFuncInfos("/YomkContext");
+        auto infos = yomk::server().instance()->serviceFuncInfos("/YomkContext");
         YOMK_TEST_CHECK(infos.size() == 14, "init 装配 14 个功能函数");
     }
 
@@ -110,7 +110,7 @@ int main()
         yomk::ctx().group().monitor().disable();
     }
 
-    // ============ Section 3: delService 触发 deinit + 排空 ============
+    // ============ Section 3: remove() 触发 deinit + 排空 ============
     {
         yomk::ctx().group().monitor().enable();
         auto cr = yomk::ctx().key("life_drain").value(yomk::msgs::String::shared(std::string("d0"))).create();
@@ -126,11 +126,11 @@ int main()
         }
 
         // 立即删除服务：触发 markDeleted + deinit 排空 monitor 池
-        int delRet = YomkAPI::delService("/YomkContext");
-        YOMK_TEST_CHECK(delRet == 0, "delService(/YomkContext) 返回 0");
+        int delRet = yomk::server().srv_name("/YomkContext").remove();
+        YOMK_TEST_CHECK(delRet == 0, "remove(/YomkContext) 返回 0");
 
-        // delService 返回后排空已完成，计数应等于投递次数（无丢失、无迟到）
-        YOMK_TEST_CHECK(g_asyncCalls.load() == N, "delService 排空后异步 monitor 计数 == 投递次数");
+        // remove() 返回后排空已完成，计数应等于投递次数（无丢失、无迟到）
+        YOMK_TEST_CHECK(g_asyncCalls.load() == N, "remove() 排空后异步 monitor 计数 == 投递次数");
     }
 
     // ============ Section 4: 删除后不可路由 + 重复删除契约 ============
@@ -139,19 +139,19 @@ int main()
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Failed, "删除后请求 /YomkContext 返回 ResStatus::Failed");
         YOMK_TEST_CHECK(resp.m_msg == "service not found: /YomkContext", "删除后消息为 service not found: /YomkContext");
 
-        auto names = YomkAPI::serverInstance()->serviceNames();
+        auto names = yomk::server().instance()->serviceNames();
         YOMK_TEST_CHECK(!hasService(names, "/YomkContext"), "serviceNames 不再包含 /YomkContext");
 
-        int delAgain = YomkAPI::delService("/YomkContext");
+        int delAgain = yomk::server().srv_name("/YomkContext").remove();
         YOMK_TEST_CHECK(delAgain == -1, "重复删除不存在服务返回 -1");
     }
 
     // ============ Section 5: 重新注册 + monitor 池重建 ============
     {
-        int reAdd = YomkAPI::newService<YomkContext>("/YomkContext");
+        int reAdd = yomk::server().srv<YomkContext>("/YomkContext").create();
         YOMK_TEST_CHECK(reAdd == 0, "重新注册 YomkContext 返回 0");
 
-        auto infos = YomkAPI::serverInstance()->serviceFuncInfos("/YomkContext");
+        auto infos = yomk::server().instance()->serviceFuncInfos("/YomkContext");
         YOMK_TEST_CHECK(infos.size() == 14, "重新注册后 init 重新装配 14 个功能函数");
 
         yomk::ctx().group().monitor().enable();
@@ -172,10 +172,10 @@ int main()
 
     // ============ Section 6: 异常安全（init 抛 bad_alloc 回滚）============
     {
-        int addRet = YomkAPI::addService(new ThrowContext(YomkAPI::serverInstance().get()), "/ThrowContext");
-        YOMK_TEST_CHECK(addRet == -1, "init 抛 bad_alloc 时 addService 返回 -1");
+        int addRet = yomk::server().srv_name("/ThrowContext").srv_ptr(new ThrowContext(yomk::server().instance().get())).add();
+        YOMK_TEST_CHECK(addRet == -1, "init 抛 bad_alloc 时 add() 返回 -1");
 
-        auto names = YomkAPI::serverInstance()->serviceNames();
+        auto names = yomk::server().instance()->serviceNames();
         YOMK_TEST_CHECK(!hasService(names, "/ThrowContext"), "回滚后 serviceNames 不含 /ThrowContext（无残留）");
 
         // 进程存活、/YomkContext 仍可用
@@ -183,7 +183,7 @@ int main()
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "异常回滚后 /YomkContext 仍可用");
     }
 
-    YomkAPI::shutdown();
+    yomk::server().shutdown();
 
     if (g_failed == 0)
     {

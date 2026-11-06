@@ -4,7 +4,7 @@
  *
  * 日志系统提供开箱即用的双路输出：控制台日志（四级级别 + tag 分层 + 代理拦截）
  * 与文件日志（内存缓冲 + 显式刷盘 + 级别门控 + 代理拦截），并附带日志器内省。
- * 随 YomkAPI::init() 自动启动。
+ * 随 yomk::server().init() 自动启动。
  * 机械臂产线中运行足迹走控制台（班前点检、班中预警、班后清档），关键事件另存
  * 黑匣子与班次存档（文件日志），运维班前班后用内看点检日志系统本身。
  *
@@ -604,7 +604,7 @@ static void showArmLogCleanup(const std::string& logDir)
 int main(int argc, char* argv[])
 {
     // 初始化框架（内置日志服务 /YomkLogger 随之自动启动，MainLogger 预创建）
-    YomkAPI::init();
+    yomk::server().init();
 
     yomk::log().tag("arm.demo").info("机械臂产线 x YomkLogger 示例：一次班次贯穿 6 个场景，覆盖全部日志 API");
     yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / MainLogger=默认日志器 / "

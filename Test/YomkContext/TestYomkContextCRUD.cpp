@@ -10,7 +10,7 @@
  * 4. set：正常 set、不存在 key、空 key、类型不匹配
  * 5. keys/listAll/keyInfo：随增删变化、空 key、不存在 key、字段断言
  *
- * 说明：全程使用 YomkAPI::init() 单例拉起内置 /YomkContext，测试通过 YomkAPI::CONTEXT_* API 接口调用；
+ * 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext，测试通过 yomk::ctx() 域链式 op 调用；
  *       不触发 checker/monitor，不触发 shutdown 排空（归 MC2/MC3）
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
@@ -54,13 +54,13 @@ static bool contains(const std::vector<std::string>& vec, const std::string& ite
 int main()
 {
     // 拉起内置服务 /YomkContext
-    YomkAPI::init(1);
-    auto server = YomkAPI::serverInstance();
-    YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
+    yomk::server().async_thread(1).init();
+    auto server = yomk::server().instance();
+    YOMK_TEST_CHECK(server != nullptr, "yomk::server().init() 返回非空服务器");
 
     // 验证 /YomkContext 已注册
-    auto infoAll = YomkAPI::getAllServerInfo();
-    YOMK_TEST_CHECK(infoAll.m_status == yomk::payload::ResStatus::Succeeded, "getAllServerInfo 返回 ResStatus::Succeeded");
+    auto infoAll = yomk::server().all();
+    YOMK_TEST_CHECK(infoAll.m_status == yomk::payload::ResStatus::Succeeded, "all() 返回 ResStatus::Succeeded");
 
     // create：正常创建 String 类型 value
     {
@@ -279,7 +279,7 @@ int main()
         YOMK_TEST_CHECK(arr && arr->d.empty(), "keys 全部销毁后返回空数组");
     }
 
-    YomkAPI::shutdown();
+    yomk::server().shutdown();
 
     if (g_failed == 0)
     {

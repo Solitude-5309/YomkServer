@@ -9,7 +9,7 @@
  *
  * 本示例用"机械臂一次作业会话"贯穿 8 个场景：每个场景是一个 showXXX 小函数，
  * 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
- * 全部 13 个 YomkAPI::CONTEXT_* 用户接口无一遗漏。
+ * 全部 13 个 yomk::ctx() 域链式 op 无一遗漏。
  *
  * 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.guard 校验 /
  * arm.watch 通知 / arm.telemetry 上报），日志流即执行序、顺着读就能明白：
@@ -635,7 +635,7 @@ static void showArmTaskCleanup()
 int main(int argc, char* argv[])
 {
     // 初始化框架（上下文服务 /YomkContext 随之自动启动）
-    YomkAPI::init();
+    yomk::server().init();
 
     yomk::log().tag("arm.demo").info("机械臂控制 x YomkContext 示例：一次作业会话贯穿 8 个场景，覆盖全部上下文 API");
     yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / arm.guard=校验 / arm.watch=通知 / arm.telemetry=上报");

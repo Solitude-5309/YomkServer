@@ -81,7 +81,7 @@ YOMK_DEFINE_MSG(std::vector<yomk::payload::ContextKeyInfo>, ContextKeyInfoList, 
 YOMK_DEFINE_MSG(yomk::payload::ContextGroupInfo, ContextGroupInfo, d);
 // Context 组级全量内省（getAllContextInfo 返回数据）
 YOMK_DEFINE_MSG(std::vector<yomk::payload::ContextGroupInfo>, ContextGroupInfoList, d);
-// ServerInfo 全量拓扑内省（getAllServerInfo 返回数据；层级为服务 → 函数元信息）
+// ServerInfo 全量拓扑内省（yomk::server().all() 返回数据；层级为服务 → 函数元信息）
 YOMK_DEFINE_MSG(std::vector<yomk::payload::ServerServiceInfo>, ServerServiceInfoList, d);
 YOMK_DEFINE_MSG(yomk::payload::ContextChecker, ContextChecker, d);
 YOMK_DEFINE_MSG(yomk::payload::ContextMonitor, ContextMonitor, d);

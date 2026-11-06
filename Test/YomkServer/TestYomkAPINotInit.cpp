@@ -1,19 +1,19 @@
 /**
  * @file TestYomkAPINotInit.cpp
- * @brief YomkAPI 未初始化守卫全集测试（正式全面测试，MC6）
+ * @brief 链式 API 未初始化守卫全集测试（正式全面测试，MC6）
  *
  * 覆盖内容：
  * 1. version() 免初始化可调用（不依赖单例，返回非空版本号）
- * 2. 未初始化守卫默认值：serverInstance() 为空、shutdown() 安全空转（幂等）；
+ * 2. 未初始化守卫默认值：instance()() 为空、shutdown() 安全空转（幂等）；
  *    request 返回 ResStatus::Invalid + 契约消息 "YomkServer is not init"；asyncRequest 静默返回
- *    回调不触发；newService/addService/delService 返回 -1
+ *    回调不触发；create()/add()/remove() 返回 -1
  * 3. 模块 API 守卫：五模块全量（P1 补齐 Context/ServerInfo 共 14 条，原代表条目保留）——
  *    EventLoop 9 入口、FunctionPool 6 入口、Logger 23 入口（LG2 补齐原 19 项计数，LG4 新增
  *    file().remove()（LG6 由 LOGGER_DELETE 改名））、Context 12 入口 + GET 特殊形态、
  *    ServerInfo 4 入口；yomk::payload::Response 形态 → ResStatus::Invalid；
  *    getContext 形态 → 原样返回调用方默认值，同一守卫宏展开书面豁免
  *
- * 说明：call_once 不可逆，未初始化态须独占进程（本程序全程不调 init）；addService 传裸指针
+ * 说明：call_once 不可逆，未初始化态须独占进程（本程序全程不调 init）；add() 传裸指针
  *       时守卫先于所有权接管返回，注册失败指针仍归调用方（测试侧 delete 验证不泄漏不崩溃）
  *
  * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
@@ -62,17 +62,17 @@ int main()
     {
         // YOMKSERVER_VERSION 为库私有编译定义（target_compile_definitions PRIVATE），
         // 测试侧不引用宏，以返回非空字符串实证免初始化可用
-        std::string ver = YomkAPI::version();
+        std::string ver = yomk::server().version();
         YOMK_TEST_CHECK(!ver.empty(), "version() 未初始化时返回非空版本号: " + ver);
     }
 
-    std::cout << "===== 2. serverInstance 与未初始化 shutdown 空转 =====" << std::endl;
+    std::cout << "===== 2. instance() 与未初始化 shutdown 空转 =====" << std::endl;
     {
-        YOMK_TEST_CHECK(YomkAPI::serverInstance() == nullptr, "serverInstance() 未初始化返回 nullptr");
+        YOMK_TEST_CHECK(yomk::server().instance() == nullptr, "instance()() 未初始化返回 nullptr");
 
         // 未初始化 shutdown 应安全空转（快照为空直接返回），不崩溃、不产生副作用
-        YomkAPI::shutdown();
-        YOMK_TEST_CHECK(YomkAPI::serverInstance() == nullptr, "shutdown() 未初始化空转，单例保持为空");
+        yomk::server().shutdown();
+        YOMK_TEST_CHECK(yomk::server().instance() == nullptr, "shutdown() 未初始化空转，单例保持为空");
     }
 
     std::cout << "===== 3. request/asyncRequest 未初始化守卫 =====" << std::endl;
@@ -88,16 +88,16 @@ int main()
 
     std::cout << "===== 4. 服务管理 API 未初始化守卫 =====" << std::endl;
     {
-        YOMK_TEST_CHECK(YomkAPI::newService<DummySrv>() == -1, "newService 未初始化返回 -1");
-        YOMK_TEST_CHECK(YomkAPI::addService(nullptr) == -1, "addService(nullptr) 未初始化返回 -1");
+        YOMK_TEST_CHECK(yomk::server().srv<DummySrv>().create() == -1, "create() 未初始化返回 -1");
+        YOMK_TEST_CHECK(yomk::server().srv_ptr(nullptr).add() == -1, "add(nullptr) 未初始化返回 -1");
 
         // 守卫先于所有权接管返回，指针仍归调用方：delete 验证不双重释放
         DummySrv* heapSrv = new DummySrv(nullptr);
-        YOMK_TEST_CHECK(YomkAPI::addService(heapSrv) == -1, "addService(裸指针) 未初始化返回 -1");
+        YOMK_TEST_CHECK(yomk::server().srv_ptr(heapSrv).add() == -1, "add(裸指针) 未初始化返回 -1");
         delete heapSrv;
         YOMK_TEST_CHECK(true, "守卫拒绝后调用方 delete 无泄漏无崩溃");
 
-        YOMK_TEST_CHECK(YomkAPI::delService("/Any") == -1, "delService 未初始化返回 -1");
+        YOMK_TEST_CHECK(yomk::server().srv_name("/Any").remove() == -1, "remove() 未初始化返回 -1");
     }
 
     std::cout << "===== 5. 模块 API 守卫（五模块全量 + getContext 特殊形态） =====" << std::endl;
@@ -254,16 +254,16 @@ int main()
         YOMK_TEST_CHECK(
             yomk::fn_pool().all().m_status == yomk::payload::ResStatus::Invalid,
             "fn_pool().all() 未初始化返回 ResStatus::Invalid");
-        YOMK_TEST_CHECK(YomkAPI::getAllServerInfo().m_status == yomk::payload::ResStatus::Invalid, "getAllServerInfo 未初始化返回 ResStatus::Invalid");
+        YOMK_TEST_CHECK(yomk::server().all().m_status == yomk::payload::ResStatus::Invalid, "server().all() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listServices().m_status == yomk::payload::ResStatus::Invalid,
-            "listServices 未初始化返回 ResStatus::Invalid");
+            yomk::server().services().m_status == yomk::payload::ResStatus::Invalid,
+            "server().services() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listServiceFunctions("/guard_srv").m_status == yomk::payload::ResStatus::Invalid,
-            "listServiceFunctions 未初始化返回 ResStatus::Invalid");
+            yomk::server().srv_name("/guard_srv").functions().m_status == yomk::payload::ResStatus::Invalid,
+            "server().functions() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getServiceFunctionInfoByUrl("/guard_srv/f").m_status == yomk::payload::ResStatus::Invalid,
-            "getServiceFunctionInfoByUrl 未初始化返回 ResStatus::Invalid");
+            yomk::server().fn_url("/guard_srv/f").get_info().m_status == yomk::payload::ResStatus::Invalid,
+            "server().get_info() 未初始化返回 ResStatus::Invalid");
 
         // getContext 特殊形态：守卫返回值即调用方默认值（指针一致）
         std::shared_ptr<yomk::msgs::String> ctxDefault = std::make_shared<yomk::msgs::String>("guard_default");

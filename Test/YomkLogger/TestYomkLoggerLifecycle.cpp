@@ -48,7 +48,7 @@
  *     用例末尾重装并回到穿透态
  *
  * 说明：YomkLogger 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
- *       YomkAPI::init() 单例白盒直连；全部经 API 接口/raw request 测试，同时覆盖 invoke 路由链，
+ *       yomk::server().init() 单例白盒直连；全部经 API 接口/raw request 测试，同时覆盖 invoke 路由链，
  *       无覆盖损失。ConsoleLogger/FileLogger 类直连白盒见 TestYomkLoggerDirect.cpp。
  *       控制台输出断言采用"唯一 marker + cout rdbuf 捕获"（框架自身日志构成背景噪声，
  *       正向断言查 marker 命中、负向断言查 marker 缺席，均不受噪声影响）。
@@ -249,9 +249,9 @@ static fs::path testTmpRoot()
 
 int main()
 {
-    YomkAPI::init(1);
-    auto server = YomkAPI::serverInstance();
-    YOMK_TEST_CHECK(server != nullptr, "YomkAPI::init() 返回非空服务器");
+    yomk::server().async_thread(1).init();
+    auto server = yomk::server().instance();
+    YOMK_TEST_CHECK(server != nullptr, "yomk::server().init() 返回非空服务器");
 
     // 临时目录（收尾 remove_all）
     fs::path tmpDir = testTmpRoot() / ("yomk_logger_lg1_" + std::to_string(::getpid()));
@@ -1570,7 +1570,7 @@ YOMK_TEST_CHECK(
 }
 
 // ============ 收尾清理 ============
-YomkAPI::shutdown();
+yomk::server().shutdown();
 fs::remove_all(tmpDir, ec);
 
 if (g_failed == 0)

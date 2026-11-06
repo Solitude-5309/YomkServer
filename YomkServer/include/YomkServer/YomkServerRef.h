@@ -7,8 +7,22 @@
 #include "YomkServer.h"
 
 // 进程级 YomkServer 持有器：epoch 失效 + thread_local 快照的单一实现。
-// 独立成头：生命周期机制与 YomkAPI 表面无耦合，可独立测试；
+// 独立成头：生命周期机制与表面层无耦合，可独立测试；
 // server 注入与置空统一经 setServer，仅依赖 YomkServer.h，不引入 diag 依赖
+//
+// 单例生命周期设计注记（供框架维护者参考，承自原 YomkApi.cpp，闭环 6 伞头退役时迁入）：
+// 1. 永生单例存储：mtx() 与 holder() 的锁/持有器经堆分配故意泄漏，不注册析构，
+//    进程退出前始终有效。背景：常规静态成员在退出期析构后，在途池任务再取快照会对
+//    已销毁的锁加锁（挂起，实证：worker 栈卡于 serverSnapshot 内 pthread_mutex_lock）；
+//    静态跨线程销毁窗口无法靠定义顺序根治。函数局部 static 保证首次使用即构造，
+//    未 init 时调用也安全（C++11 magic statics 线程安全）。
+// 2. 退出清理：yomk::server().init() 内经 atexit 注册 holder().destroy()（晚于库内
+//    普通静态析构执行），幂等（显式 shutdown 后再调仅空转）。destroy() 先在锁内置空
+//    快照并取出服务器，锁外再释放：置空后在途池任务（如异步 monitor 回调发起的迟到
+//    快照读）取空返回，避免释放路径（触发池排空 -> join）与任务并发拷贝同一 shared_ptr
+//    （段错误）；若持锁释放，则排空期间在途任务取快照抢同一把锁，与释放方互锁挂起。
+//    锁与持有器本体永不析构，在途任务的迟到快照读永远拿到可用锁与空快照，
+//    根除静态析构窗口内对已销毁锁加锁的挂起与对控制块的并发拷贝段错误。
 struct YomkServerRef
 {
     // 全局版本号：server 注入与置空统一经 setServer，写后 fetch_add(1, release)
