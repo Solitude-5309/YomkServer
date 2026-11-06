@@ -1,23 +1,20 @@
-/**
- * @file TestYomkContextConcurrency.cpp
- * @brief YomkContext 多线程并发功能测试与 10 万级压力测试（Context 模块 MC4）
- *
- * 覆盖内容：
- * 1. 并发 get/set 共享键（m_contextsMutex 读写锁竞争）
- * 2. 并发 create/destroy 独立键（map 结构变更）
- * 3. 并发 setMonitor 同键（修复验证：写 monitors 须 unique_lock，否则 push_back 竞争损坏）
- * 4. 并发 setChecker × keyInfo 同键（修复验证：写 checker 与读 checker/monitors 的读写竞争）
- * 5. 并发 set 触发 checker（checker 在 unique_lock 内串行调用）
- * 6. 并发 set 触发 sync + async monitor（同步计数确定、异步单线程池计数确定）
- * 7. 同步 monitor 重入安全（monitor 在锁外执行，内层 Context API 不死锁）
- * 8. N7 压力：8 线程 × 12500 ≈ 10 万级混合 Context 操作无崩溃/无挂起
- *
- * 说明：yomk::server().async_thread(1).init() 拉起单例 /YomkContext，全程经 yomk::ctx() 域链式 op多线程并发路由（真实 API 路径）；
- *       各 section 用独立 key 前缀，末尾 yomk::server().shutdown()（call_once 约束，shutdown 后不可再初始化）；
- *       书面豁免：重入 checker（checker 内调用 Context API）自死锁，属设计约束（checker 在 unique_lock 内执行），不构造该用例
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// YomkContext 多线程并发功能测试与 10 万级压力测试
+//
+// 覆盖内容：
+// 1. 并发 get/set 共享键（m_contextsMutex 读写锁竞争）
+// 2. 并发 create/destroy 独立键（map 结构变更）
+// 3. 并发 setMonitor 同键（修复验证：写 monitors 须 unique_lock，否则 push_back 竞争损坏）
+// 4. 并发 setChecker × keyInfo 同键（修复验证：写 checker 与读 checker/monitors 的读写竞争）
+// 5. 并发 set 触发 checker（checker 在 unique_lock 内串行调用）
+// 6. 并发 set 触发 sync + async monitor（同步计数确定、异步单线程池计数确定）
+// 7. 同步 monitor 重入安全（monitor 在锁外执行，内层 Context API 不死锁）
+// 8. N7 压力：8 线程 × 12500 ≈ 10 万级混合 Context 操作无崩溃/无挂起
+//
+// 说明：yomk::server().async_thread(1).init() 拉起单例 /YomkContext，全程经 yomk::ctx() 域链式 op多线程并发路由（真实 API 路径）；
+// 各 section 用独立 key 前缀，末尾 yomk::server().shutdown()（call_once 约束，shutdown 后不可再初始化）；
+// 书面豁免：重入 checker（checker 内调用 Context API）自死锁，属设计约束（checker 在 unique_lock 内执行），不构造该用例
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <chrono>

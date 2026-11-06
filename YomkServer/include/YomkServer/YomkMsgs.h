@@ -5,6 +5,13 @@
 #include "YomkMsg.h"
 #include "YomkPayload.h"
 
+/**
+ * @brief 定义消息类型：在 yomk::msgs 内生成 YomkMsg 派生类 MsgName
+ * @param DataType 载荷数据类型
+ * @param MsgName 消息类名（同时作为类型标识 kName, 供 unpack/动态查找比对）
+ * @param VarName 载荷成员名（框架约定统一为 d, 如 pkg->d）
+ * @note 生成类提供 shared(...) 工厂; 自定义消息仅此宏声明, 消息目录见本头下方
+ */
 #define YOMK_DEFINE_MSG(DataType, MsgName, VarName)                               \
     namespace yomk::msgs                                                          \
     {                                                                             \
@@ -32,6 +39,13 @@
 namespace yomk::msgs
 {
 
+/**
+ * @brief 按运行时类型名解包消息
+ * @tparam Msg 目标消息类（YOMK_DEFINE_MSG 生成）
+ * @param pkg 待解包消息指针
+ * @return 命中返回 shared_ptr<Msg>; pkg 为空或类型不符返回 nullptr
+ * @note 判空即用, 不抛异常
+ */
 template <class Msg>
 std::shared_ptr<Msg> unpack(const YomkMsgPtr& pkg)
 {
@@ -79,7 +93,7 @@ YOMK_DEFINE_MSG(yomk::payload::ContextKeyInfo, ContextKeyInfo, d);
 YOMK_DEFINE_MSG(std::vector<yomk::payload::ContextKeyInfo>, ContextKeyInfoList, d);
 // Context 组级内省条目（ContextGroupInfoList 元素；层级为组 → 键元信息）
 YOMK_DEFINE_MSG(yomk::payload::ContextGroupInfo, ContextGroupInfo, d);
-// Context 组级全量内省（getAllContextInfo 返回数据）
+// Context 组级全量内省（yomk::ctx().all() 返回数据）
 YOMK_DEFINE_MSG(std::vector<yomk::payload::ContextGroupInfo>, ContextGroupInfoList, d);
 // ServerInfo 全量拓扑内省（yomk::server().all() 返回数据；层级为服务 → 函数元信息）
 YOMK_DEFINE_MSG(std::vector<yomk::payload::ServerServiceInfo>, ServerServiceInfoList, d);

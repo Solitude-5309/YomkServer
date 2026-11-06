@@ -1,19 +1,16 @@
-/**
- * @file TestYomkAPILifecycle.cpp
- * @brief server() init/shutdown 单例生命周期测试（正式全面测试，MC6）
- *
- * 覆盖内容：
- * 1. call_once 三承诺：二次 init(n) 返回同一实例（asyncThreadCount 仅首次生效）；
- *    shutdown 后守卫回归未初始化态；关闭后 init 再调返回 nullptr（不支持二次初始化）
- * 2. 内置服务：init 拉起 /YomkFunctionPool /YomkContext /YomkEventLoop /YomkLogger /YomkServerInfo
- * 3. API 层独有守卫（已初始化态，区别于服务器层守卫）：add(nullptr) 返回 -1、
- *    remove("") 返回 -1；增删往返、重复删除与守卫放行至服务器层
- * 4. 幂等：二次 shutdown 不崩溃；进程退出 atexit 幂等清理（正常退出码 0 即证）
- *
- * 说明：本程序验证已初始化态与关闭后态，与 TestYomkAPINotInit（未初始化态）进程隔离
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// server() init/shutdown 单例生命周期测试
+//
+// 覆盖内容：
+// 1. call_once 三承诺：二次 init(n) 返回同一实例（asyncThreadCount 仅首次生效）；
+// shutdown 后守卫回归未初始化态；关闭后 init 再调返回 nullptr（不支持二次初始化）
+// 2. 内置服务：init 拉起 /YomkFunctionPool /YomkContext /YomkEventLoop /YomkLogger /YomkServerInfo
+// 3. API 层独有守卫（已初始化态，区别于服务器层守卫）：add(nullptr) 返回 -1、
+// remove("") 返回 -1；增删往返、重复删除与守卫放行至服务器层
+// 4. 幂等：二次 shutdown 不崩溃；进程退出 atexit 幂等清理（正常退出码 0 即证）
+//
+// 说明：本程序验证已初始化态与关闭后态，与 TestYomkAPINotInit（未初始化态）进程隔离
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <algorithm>
 #include <iostream>
@@ -44,9 +41,7 @@ static bool nameIn(const std::vector<std::string>& names, const std::string& nam
     return std::find(names.begin(), names.end(), name) != names.end();
 }
 
-/**
- * @brief 最小演示服务：API 层增删往返与二次初始化守卫用例载体
- */
+// 最小演示服务：API 层增删往返与二次初始化守卫用例载体
 class DummySrv : public YomkService
 {
 public:

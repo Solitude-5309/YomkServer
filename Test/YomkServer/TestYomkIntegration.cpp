@@ -1,25 +1,22 @@
-/**
- * @file TestYomkIntegration.cpp
- * @brief 跨模块端到端集成测试（正式全面测试，P3——单模块测试无法覆盖的跨模块路径与 shutdown 统一收尾）
- *
- * 覆盖内容（3 个 Section，单进程一次 yomk::server().async_thread(1).init()，断言以运行为准）：
- * S3. asyncRequest 回调内重入：异步 monitor 回调（监控池线程）内同步 yomk::ctx().key().set() 重入
- *     /YomkContext/set 并触发另一键的同步 monitor——不死锁、异步/同步计数守恒、
- *     异步按提交序保序（末值可读）
- * S2. 删除内置服务契约与恢复：yomk::server().srv_name("/YomkLogger").remove() → 服务级 ResStatus::Failed + 精确消息；
- *     yomk::server().srv<YomkLogger>().create() 无参重注册（new T(this) 注入 server 指针，构造函数
- *     固定名 "/YomkLogger" 生效）→ LOGGER API 恢复且全链路可用
- * S1. yomk::server().shutdown() 全链路统一收尾（压轴）：event_loop().post() 积压、log().to_sink(...).info 缓冲、
- *     异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘（FileLogger
- *     析构 write）、API 回归 ResStatus::Invalid + "YomkServer is not init"（API 守卫级：shutdown 内
- *     setServer(nullptr)，serverSnapshot 空守卫；服务级 ResStatus::Failed 仅出现在服务表内服务缺失时）、
- *     二次 shutdown 幂等
- *
- * 执行顺序约束：yomk::server().init() 为 static once_flag + call_once（单进程仅首次生效，shutdown 后
- *       再 init 返回空快照不可逆），故 shutdown 段必须压轴，重入/删除恢复段在其前完成
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// 跨模块端到端集成测试（单模块测试无法覆盖的跨模块路径与 shutdown 统一收尾）
+//
+// 覆盖内容（3 个 Section，单进程一次 yomk::server().async_thread(1).init()，断言以运行为准）：
+// S3. asyncRequest 回调内重入：异步 monitor 回调（监控池线程）内同步 yomk::ctx().key().set() 重入
+// /YomkContext/set 并触发另一键的同步 monitor——不死锁、异步/同步计数守恒、
+// 异步按提交序保序（末值可读）
+// S2. 删除内置服务契约与恢复：yomk::server().srv_name("/YomkLogger").remove() → 服务级 ResStatus::Failed + 精确消息；
+// yomk::server().srv<YomkLogger>().create() 无参重注册（new T(this) 注入 server 指针，构造函数
+// 固定名 "/YomkLogger" 生效）→ LOGGER API 恢复且全链路可用
+// S1. yomk::server().shutdown() 全链路统一收尾（压轴）：event_loop().post() 积压、log().to_sink(...).info 缓冲、
+// 异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘（FileLogger
+// 析构 write）、API 回归 ResStatus::Invalid + "YomkServer is not init"（API 守卫级：shutdown 内
+// setServer(nullptr)，serverSnapshot 空守卫；服务级 ResStatus::Failed 仅出现在服务表内服务缺失时）、
+// 二次 shutdown 幂等
+//
+// 执行顺序约束：yomk::server().init() 为 static once_flag + call_once（单进程仅首次生效，shutdown 后
+// 再 init 返回空快照不可逆），故 shutdown 段必须压轴，重入/删除恢复段在其前完成
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <chrono>
@@ -182,7 +179,7 @@ int main()
         YOMK_TEST_CHECK(cleanupOk, "S3 清场：OFF_MONITOR 与两键 DESTROY 全部 ResStatus::Succeeded");
     }
 
-    // ============ S2. 删除内置服务契约与恢复（/YomkLogger，对齐 P0 S6 手法） ============
+    // ============ S2. 删除内置服务契约与恢复（/YomkLogger） ============
     std::cout << "===== S2. 删除内置服务契约与恢复（/YomkLogger） =====" << std::endl;
     {
         YOMK_TEST_CHECK(yomk::server().srv_name("/YomkLogger").remove() == 0, "删除内置 /YomkLogger 返回 0");

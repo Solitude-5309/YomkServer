@@ -1,23 +1,20 @@
-/**
- * @file TestYomkShutdownSeq.cpp
- * @brief asyncRequest + shutdown 排空/幂等/拒新语义测试（正式全面测试，MC5）
- *
- * 覆盖内容：
- * 1. 排空语义：shutdown 阻塞至在途异步任务全部执行完毕才返回；shutdown 路径不置位
- *    markDeleted（deinit 时 isDeleted() == false，与 delService 删除即停对比实证）；
- *    排空期弱绑定回调照常执行
- * 2. 拒新：shutdown 后 asyncRequest 被拒（回调永不触发，日志 "async request ignored"）；
- *    shutdown 后同步 request 返回 "service not found"（现状文档化：表已清空，非专用文案）
- * 3. 幂等：连续两次 shutdown 仅一次 deinit（m_shutdown.exchange 保证不双重清理）
- * 4. 析构兜底：不显式 shutdown 直接析构，兜底触发排空与 deinit、无挂起
- * 5. 嵌套排空拒绝：排空期嵌套发起的 asyncRequest 因 m_shutdown 已置位被拒绝，不无限排空
- *
- * 说明：call_once 仅约束 yomk::server().init() 单例路径；本测试在类级直测 YomkServer::shutdown，
- *       各 YomkServer::create 实例自持独立 YomkServerPrivate::m_shutdown 互不影响，
- *       单进程多实例即可完成全部场景（API 级 yomk::server().shutdown() 归 MC6）；零源码变更
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// asyncRequest + shutdown 排空/幂等/拒新语义测试
+//
+// 覆盖内容：
+// 1. 排空语义：shutdown 阻塞至在途异步任务全部执行完毕才返回；shutdown 路径不置位
+// markDeleted（deinit 时 isDeleted() == false，与 delService 删除即停对比实证）；
+// 排空期弱绑定回调照常执行
+// 2. 拒新：shutdown 后 asyncRequest 被拒（回调永不触发，日志 "async request ignored"）；
+// shutdown 后同步 request 返回 "service not found"（现状文档化：表已清空，非专用文案）
+// 3. 幂等：连续两次 shutdown 仅一次 deinit（m_shutdown.exchange 保证不双重清理）
+// 4. 析构兜底：不显式 shutdown 直接析构，兜底触发排空与 deinit、无挂起
+// 5. 嵌套排空拒绝：排空期嵌套发起的 asyncRequest 因 m_shutdown 已置位被拒绝，不无限排空
+//
+// 说明：call_once 仅约束 yomk::server().init() 单例路径；本测试在类级直测 YomkServer::shutdown，
+// 各 YomkServer::create 实例自持独立 YomkServerPrivate::m_shutdown 互不影响，
+// 单进程多实例即可完成全部场景（API 级 yomk::server().shutdown() 归 TestYomkAPILifecycle）；零源码变更
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <chrono>
@@ -63,9 +60,7 @@ static void resetGlobals()
     g_weakRespDuringDrain = yomk::payload::Response{};
 }
 
-/**
- * @brief 排空演示服务：/ping 固定响应、/work 供弱绑定探针；deinit 记录计数与 isDeleted() 状态
- */
+// 排空演示服务：/ping 固定响应、/work 供弱绑定探针；deinit 记录计数与 isDeleted() 状态
 class DrainSrv : public YomkService
 {
 public:
@@ -92,12 +87,10 @@ private:
     yomk::payload::Response work(YomkMsgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "work"}; }
 };
 
-/**
- * @brief 嵌套投递演示服务：/spawn 执行时嵌套发起自身异步请求
- *
- * 休眠 200ms 保证嵌套投递发生在主线程进入 shutdown 之后的排空期（拒绝路径）；
- * 守护上限 50 保证即使拒绝承诺失效也不至无限循环挂起，失败形态为断言
- */
+// 嵌套投递演示服务：/spawn 执行时嵌套发起自身异步请求
+//
+// 休眠 200ms 保证嵌套投递发生在主线程进入 shutdown 之后的排空期（拒绝路径）；
+// 守护上限 50 保证即使拒绝承诺失效也不至无限循环挂起，失败形态为断言
 class SpawnSrv : public YomkService
 {
 public:

@@ -1,26 +1,23 @@
-/**
- * @file TestYomkServer.cpp
- * @brief YomkServer URL 解析路由与服务增删改查白盒测试（正式全面测试，MC4）
- *
- * 覆盖内容：
- * 1. parseRequestUrl 全边界（经公开 request 路径）：空串/无 / 开头/无第二 /、多段路径语义、
- *    合法命中与 pkg 透传端到端、超长 URL；"srv is empty"与"funcName is empty"两分支不可达
- *    （url[0]=='/' 且 posEnd>=1 保证 srvName 至少含 /、funcName 以 / 开头必非空），书面豁免
- * 2. asyncRequest 解析边界：非法 url 回调永不触发；合法 url 回调到达；func 为空分支
- * 3. addService 守卫与回滚：nullptr、init 返回 -1、init 抛 bad_alloc/runtime_error（修复后
- *    异常视同失败统一回滚，无半初始化残留、进程不终止）
- * 4. 同名替换：旧服务先 markDeleted 后 deinit、新服务后 init、表内唯一；
- *    替换+新服务 init 失败→旧不恢复、表为空（语义文档化）
- * 5. delService：不存在 -1、删除即停端到端（全局弱绑定回调丢弃，兑现 MC3 预埋）、重复删除 -1
- * 6. 内省：serviceNames 随增删变化、serviceFuncInfos 命中与元数据、不存在服务返回空表
- * 7. newService 模板：有名注册可路由；无名以空名注册（现状文档化：URL 不可达，不修复仅记录）
- * 8. startService：空表、不支持名 continue、内置 /YomkServerInfo creator 真实路径
- *
- * 说明：全程不触碰 shutdown/yomk::server().init()（服务器析构兜底），每节独立 YomkServer::create 实例，
- *       节首重置全局观测变量；排空/幂等/拒新语义归 MC5
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// YomkServer URL 解析路由与服务增删改查白盒测试
+//
+// 覆盖内容：
+// 1. parseRequestUrl 全边界（经公开 request 路径）：空串/无 / 开头/无第二 /、多段路径语义、
+// 合法命中与 pkg 透传端到端、超长 URL；"srv is empty"与"funcName is empty"两分支不可达
+// （url[0]=='/' 且 posEnd>=1 保证 srvName 至少含 /、funcName 以 / 开头必非空），书面豁免
+// 2. asyncRequest 解析边界：非法 url 回调永不触发；合法 url 回调到达；func 为空分支
+// 3. addService 守卫与回滚：nullptr、init 返回 -1、init 抛 bad_alloc/runtime_error（异常
+// 视同失败统一回滚，无半初始化残留、进程不终止）
+// 4. 同名替换：旧服务先 markDeleted 后 deinit、新服务后 init、表内唯一；
+// 替换+新服务 init 失败→旧不恢复、表为空（语义文档化）
+// 5. delService：不存在 -1、删除即停端到端（全局弱绑定回调丢弃，兑现 TestYomkWeakFunc 预埋）、重复删除 -1
+// 6. 内省：serviceNames 随增删变化、serviceFuncInfos 命中与元数据、不存在服务返回空表
+// 7. newService 模板：有名注册可路由；无名以空名注册（现状文档化：URL 不可达，不修复仅记录）
+// 8. startService：空表、不支持名 continue、内置 /YomkServerInfo creator 真实路径
+//
+// 说明：全程不触碰 shutdown/yomk::server().init()（服务器析构兜底），每节独立 YomkServer::create 实例，
+// 节首重置全局观测变量；排空/幂等/拒新语义归 TestYomkShutdownSeq
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <chrono>
@@ -97,9 +94,7 @@ static int nameCount(const std::vector<std::string>& names, const std::string& s
     return count;
 }
 
-/**
- * @brief 路由演示服务：/ping 固定响应、/echo 解包回显；init/deinit 记录观测变量
- */
+// 路由演示服务：/ping 固定响应、/echo 解包回显；init/deinit 记录观测变量
 class RouteSrv : public YomkService
 {
 public:
@@ -111,7 +106,7 @@ public:
         g_initCount.fetch_add(1);
         if (g_initThrow == 1)
         {
-            throw std::bad_alloc();  // N9：init 抛 bad_alloc（修复后应被捕获回滚）
+            throw std::bad_alloc();  // N9：init 抛 bad_alloc（应被捕获回滚）
         }
         if (g_initThrow == 2)
         {
@@ -203,7 +198,7 @@ static void testUrlParseBoundaries()
         "request 超长 url 不崩溃，返回 ResStatus::Failed + service not found");
 }
 
-// 2. asyncRequest 解析边界与到达（排空/关闭语义归 MC5）
+// 2. asyncRequest 解析边界与到达（排空/关闭语义归 TestYomkShutdownSeq）
 static void testAsyncRequestParse()
 {
     auto server = YomkServer::create(1);
@@ -251,7 +246,7 @@ static void testAddServiceGuardAndRollback()
     YOMK_TEST_CHECK(!nameIn(server->serviceNames(), "/FailRet"), "init 返回 -1：回滚后服务表无残留");
     YOMK_TEST_CHECK(g_deinitCount.load() == 1, "init 返回 -1：回滚路径触发 deinit");
 
-    // init 抛 bad_alloc：修复后异常视同失败，统一回滚
+    // init 抛 bad_alloc：异常视同失败，统一回滚
     g_initRet = 0;
     g_initThrow = 1;
     auto* badAllocSrv = new RouteSrv(server.get());
@@ -300,7 +295,7 @@ static void testReplaceSameName()
     g_initRet = 0;
 }
 
-// 5. delService：返回值契约 + 删除即停端到端（兑现 MC3 预埋）
+// 5. delService：返回值契约 + 删除即停端到端（兑现 TestYomkWeakFunc 预埋）
 static void testDelService()
 {
     auto server = YomkServer::create(1);

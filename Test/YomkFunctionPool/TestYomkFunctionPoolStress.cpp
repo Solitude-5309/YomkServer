@@ -1,17 +1,14 @@
-/**
- * @file TestYomkFunctionPoolStress.cpp
- * @brief YomkFunctionPool 压力测试（FPC4）
- *
- * 覆盖测试要求第 7 类（压力/吞吐/大数据量）：
- * - S1：单线程 register + call 热路径 + unregister 吞吐
- * - S2：多线程并发 call 吞吐（8 线程，shared_lock 争用观察）
- * - S3：全生命周期 churn（register→call→unregister→call(ResStatus::Failed) × N）
- * - S4：超大函数名压力（65536 字节）
- * - S5：API 端到端混合负载（register+call+introspect+unregister 交错）
- *
- * 规模经 YOMK_TEST_STRESS_SCALE 环境变量参数化（缺省 100000，clamp 下限 1000）。
- * 每 Section 记录 [BASELINE] 吞吐（ops/s）但不断言 timing（环境相关），仅断言守恒与正确性。
- */
+// YomkFunctionPool 压力测试
+//
+// 覆盖测试要求第 7 类（压力/吞吐/大数据量）：
+// - S1：单线程 register + call 热路径 + unregister 吞吐
+// - S2：多线程并发 call 吞吐（8 线程，shared_lock 争用观察）
+// - S3：全生命周期 churn（register→call→unregister→call(ResStatus::Failed) × N）
+// - S4：超大函数名压力（65536 字节）
+// - S5：API 端到端混合负载（register+call+introspect+unregister 交错）
+//
+// 规模经 YOMK_TEST_STRESS_SCALE 环境变量参数化（缺省 100000，clamp 下限 1000）。
+// 每 Section 记录 [BASELINE] 吞吐（ops/s）但不断言 timing（环境相关），仅断言守恒与正确性。
 
 #include <atomic>
 #include <chrono>

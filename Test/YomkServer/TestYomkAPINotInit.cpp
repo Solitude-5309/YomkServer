@@ -1,23 +1,19 @@
-/**
- * @file TestYomkAPINotInit.cpp
- * @brief 链式 API 未初始化守卫全集测试（正式全面测试，MC6）
- *
- * 覆盖内容：
- * 1. version() 免初始化可调用（不依赖单例，返回非空版本号）
- * 2. 未初始化守卫默认值：instance()() 为空、shutdown() 安全空转（幂等）；
- *    request 返回 ResStatus::Invalid + 契约消息 "YomkServer is not init"；asyncRequest 静默返回
- *    回调不触发；create()/add()/remove() 返回 -1
- * 3. 模块 API 守卫：五模块全量（P1 补齐 Context/ServerInfo 共 14 条，原代表条目保留）——
- *    EventLoop 9 入口、FunctionPool 6 入口、Logger 23 入口（LG2 补齐原 19 项计数，LG4 新增
- *    file().remove()（LG6 由 LOGGER_DELETE 改名））、Context 12 入口 + GET 特殊形态、
- *    ServerInfo 4 入口；yomk::payload::Response 形态 → ResStatus::Invalid；
- *    getContext 形态 → 原样返回调用方默认值，同一守卫宏展开书面豁免
- *
- * 说明：call_once 不可逆，未初始化态须独占进程（本程序全程不调 init）；add() 传裸指针
- *       时守卫先于所有权接管返回，注册失败指针仍归调用方（测试侧 delete 验证不泄漏不崩溃）
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// 链式 API 未初始化守卫全集测试
+//
+// 覆盖内容：
+// 1. version() 免初始化可调用（不依赖单例，返回非空版本号）
+// 2. 未初始化守卫默认值：instance()() 为空、shutdown() 安全空转（幂等）；
+// request 返回 ResStatus::Invalid + 契约消息 "YomkServer is not init"；asyncRequest 静默返回
+// 回调不触发；create()/add()/remove() 返回 -1
+// 3. 模块 API 守卫：五模块全量——
+// EventLoop 9 入口、FunctionPool 6 入口、Logger 23 入口、Context 12 入口 + GET 特殊形态、
+// ServerInfo 4 入口；yomk::payload::Response 形态 → ResStatus::Invalid；
+// 类型化读 get() 形态 → 原样返回调用方累积的默认值（同一 requireServer 守卫）
+//
+// 说明：call_once 不可逆，未初始化态须独占进程（本程序全程不调 init）；add() 传裸指针
+// 时守卫先于所有权接管返回，注册失败指针仍归调用方（测试侧 delete 验证不泄漏不崩溃）
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <chrono>
@@ -46,9 +42,7 @@ static int g_failed = 0;
 
 static std::atomic<int> g_asyncCbCount{0};  // 未初始化 asyncRequest 回调到达计数（应恒为 0）
 
-/**
- * @brief 最小演示服务：未初始化守卫用例的模板实参载体（守卫先于构造，init 不会被调用）
- */
+// 最小演示服务：未初始化守卫用例的模板实参载体（守卫先于构造，init 不会被调用）
 class DummySrv : public YomkService
 {
 public:
@@ -100,9 +94,9 @@ int main()
         YOMK_TEST_CHECK(yomk::server().srv_name("/Any").remove() == -1, "remove() 未初始化返回 -1");
     }
 
-    std::cout << "===== 5. 模块 API 守卫（五模块全量 + getContext 特殊形态） =====" << std::endl;
+    std::cout << "===== 5. 模块 API 守卫（五模块全量 + 类型化读 get() 特殊形态） =====" << std::endl;
     {
-        // 五模块入口级全量（P1 收口：Logger 23 / EventLoop 9 / FunctionPool 6 /
+        // 五模块入口级全量（Logger 23 / EventLoop 9 / FunctionPool 6 /
         // Context 12 + GET 特殊形态 / ServerInfo 4）
         YOMK_TEST_CHECK(
             yomk::log_mgr().console().proxy(nullptr).apply() == yomk::payload::ResStatus::Invalid,
@@ -199,10 +193,10 @@ int main()
             "setContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             yomk::ctx().keys().m_status == yomk::payload::ResStatus::Invalid,
-            "listContextKeys 未初始化返回 ResStatus::Invalid");
+            "ctx().keys() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             yomk::ctx().key("guard_key").info().m_status == yomk::payload::ResStatus::Invalid,
-            "getContextInfo 未初始化返回 ResStatus::Invalid");
+            "ctx().key().info() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             yomk::ctx().all().m_status == yomk::payload::ResStatus::Invalid,
             "getAllContextInfo 未初始化返回 ResStatus::Invalid");
@@ -265,10 +259,10 @@ int main()
             yomk::server().fn_url("/guard_srv/f").get_info().m_status == yomk::payload::ResStatus::Invalid,
             "server().get_info() 未初始化返回 ResStatus::Invalid");
 
-        // getContext 特殊形态：守卫返回值即调用方默认值（指针一致）
+        // 类型化读 get() 特殊形态：守卫返回值即调用方默认值（指针一致）
         std::shared_ptr<yomk::msgs::String> ctxDefault = std::make_shared<yomk::msgs::String>("guard_default");
         std::shared_ptr<yomk::msgs::String> ctxGot = yomk::ctx().key("guard_key").msg<yomk::msgs::String>().with_default(ctxDefault).get();
-        YOMK_TEST_CHECK(ctxGot == ctxDefault, "getContext 未初始化原样返回调用方默认值");
+        YOMK_TEST_CHECK(ctxGot == ctxDefault, "get() 未初始化原样返回调用方默认值");
     }
 
     std::cout << (g_failed == 0 ? "ALL PASSED" : "SOME FAILED") << " (" << g_failed << " failed)" << std::endl;

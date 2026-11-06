@@ -1,56 +1,53 @@
-/**
- * @file ExampleYomkLogger.cpp
- * @brief YomkLogger 日志系统示例：机械臂产线背景的 6 个场景小示例（面向初学者）
- *
- * 日志系统提供开箱即用的双路输出：控制台日志（四级级别 + tag 分层 + 代理拦截）
- * 与文件日志（内存缓冲 + 显式刷盘 + 级别门控 + 代理拦截），并附带日志器内省。
- * 随 yomk::server().init() 自动启动。
- * 机械臂产线中运行足迹走控制台（班前点检、班中预警、班后清档），关键事件另存
- * 黑匣子与班次存档（文件日志），运维班前班后用内看点检日志系统本身。
- *
- * 控制台输出格式四段：[时间] [级别] [tag] [行号] 内容——tag 即控制台日志器名，
- * 首次使用自动创建；宏自动把 [行号] 拼进内容开头，方便定位调用处。
- * 级别开关两级并联：无参作用于全局主闸（框架全局）、具名逐器门控单个日志器，
- * 输出/落盘取两层 AND；控制台开关与文件开关两套相互独立，文件开关只影响写入。
- *
- * 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 showXXX 小函数，
- * 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
- * 全部 40 个 YOMK 日志用户宏（控制台 8 / 开关 16 / 代理 2 / 文件 10 / 内省 4）
- * 无一遗漏。叙事日志统一走 arm.demo（YomkLogger 自身即演示对象）。
- *
- * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
- *
- * 场景 1 showArmLogLevels   [log().info/warn/error/debug + .tag(...) 版]
- *        班前点检报文分级：四级日志按 DEBUG 详单 -> INFO 通报 -> WARN 预警 ->
- *        ERROR 告警递进；默认 tag 与自定义 tag 双填兼容，[行号] 随行定位。
- * 场景 2 showArmSilentMode  [log_mgr() console 门控 enable/disable（主闸/具名）+ console().status() + get_info]
- *        产线静默模式：全局静默四级别逐级全关（空窗由 WARN/ERROR 锚点桥接，调用仍返回
- *        ResStatus::Succeeded）；逐级恢复后单查 MainLogger 状态段复查五开关全 on；随后逐器静默——具名
- *        关断 arm.joint 仅其报文消失（MainLogger/arm.demo 对照不受影响），
- *        console().status() 报主闸全 on 与条目 infoOff 两层归因唯一。
- * 场景 3 showArmBlackbox    [console().proxy / file().proxy / file().create / flush]
- *        安全黑匣子：代理把 WARN/ERROR 转写文件后消费、DEBUG 噪声消化、INFO
- *        放行——结果行 msg 区分消费与放行；传 nullptr 卸载恢复默认。文件代理段
- *        用 file().status() 复查 proxy 态并演示拦截/卸载，与控制台代理相互独立。
- * 场景 4 showArmShiftLog    [log().to_sink(...).info/warn/error/debug + .tag(...) 版 + log_mgr() 门控 enable/disable + file().status()]
- *        班次存档：双 tag 四级写入内存缓冲，显式 WRITE 刷盘；控制台 DEBUG 全关
- *        期间文件 DEBUG 照常落盘（两套开关独立）；文件具名关断期间 INFO 静默
- *        吞条而文件主闸仍 on——两层归因，恢复后落盘回归。
- * 场景 5 showArmLoggerDashboard [console().list / file().list / get_info / all + console()/file().status()]
- *        运维面板：console/file 清单（字典序）、单查结构化 LoggerInfo（含未
- *        注册 ResStatus::Failed）、全量导出——console/file 条目各自承载逐器门控层真值与
- *        对应侧代理态，再查 console().status()/file().status() 复核两套主闸态，
- *        两层一起看全。
- * 场景 6 showArmLogCleanup  [file().remove() + 惰性重建]
- *        收班清档：remove() 同名清 console+file 两表（返回各清了几条）、磁盘
- *        .log 保留；MainLogger 删除后再写自动重建（按名惰性创建）。
- *
- * tag 规划（arm.demo 叙事之外，演示对象按业务分层）：
- *   MainLogger  默认 tag（无 TAG 宏的日志归属）        框架预创建
- *   arm.joint   关节模块报文（场景 1/4 演示自定义 tag） 首次使用自动创建
- *   blackbox    安全黑匣子文件器（场景 3 创建/6 清档）  WARN/ERROR 转写落盘
- *   shiftlog    班次存档文件器（场景 4 创建/6 清档）    全级别存档落盘
- */
+// YomkLogger 日志系统示例：机械臂产线背景的 6 个场景小示例（面向初学者）
+//
+// 日志系统提供开箱即用的双路输出：控制台日志（四级级别 + tag 分层 + 代理拦截）
+// 与文件日志（内存缓冲 + 显式刷盘 + 级别门控 + 代理拦截），并附带日志器内省。
+// 随 yomk::server().init() 自动启动。
+// 机械臂产线中运行足迹走控制台（班前点检、班中预警、班后清档），关键事件另存
+// 黑匣子与班次存档（文件日志），运维班前班后用内看点检日志系统本身。
+//
+// 控制台输出格式四段：[时间] [级别] [tag] [行号] 内容——tag 即控制台日志器名，
+// 首次使用自动创建；宏自动把 [行号] 拼进内容开头，方便定位调用处。
+// 级别开关两级并联：无参作用于全局主闸（框架全局）、具名逐器门控单个日志器，
+// 输出/落盘取两层 AND；控制台开关与文件开关两套相互独立，文件开关只影响写入。
+//
+// 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 showXXX 小函数，
+// 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
+// 全部 40 个 YOMK 日志用户宏（控制台 8 / 开关 16 / 代理 2 / 文件 10 / 内省 4）
+// 无一遗漏。叙事日志统一走 arm.demo（YomkLogger 自身即演示对象）。
+//
+// 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
+//
+// 场景 1 showArmLogLevels   [log().info/warn/error/debug + .tag(...) 版]
+// 班前点检报文分级：四级日志按 DEBUG 详单 -> INFO 通报 -> WARN 预警 ->
+// ERROR 告警递进；默认 tag 与自定义 tag 双填兼容，[行号] 随行定位。
+// 场景 2 showArmSilentMode  [log_mgr() console 门控 enable/disable（主闸/具名）+ console().status() + get_info]
+// 产线静默模式：全局静默四级别逐级全关（空窗由 WARN/ERROR 锚点桥接，调用仍返回
+// ResStatus::Succeeded）；逐级恢复后单查 MainLogger 状态段复查五开关全 on；随后逐器静默——具名
+// 关断 arm.joint 仅其报文消失（MainLogger/arm.demo 对照不受影响），
+// console().status() 报主闸全 on 与条目 infoOff 两层归因唯一。
+// 场景 3 showArmBlackbox    [console().proxy / file().proxy / file().create / flush]
+// 安全黑匣子：代理把 WARN/ERROR 转写文件后消费、DEBUG 噪声消化、INFO
+// 放行——结果行 msg 区分消费与放行；传 nullptr 卸载恢复默认。文件代理段
+// 用 file().status() 复查 proxy 态并演示拦截/卸载，与控制台代理相互独立。
+// 场景 4 showArmShiftLog    [log().to_sink(...).info/warn/error/debug + .tag(...) 版 + log_mgr() 门控 enable/disable + file().status()]
+// 班次存档：双 tag 四级写入内存缓冲，显式 WRITE 刷盘；控制台 DEBUG 全关
+// 期间文件 DEBUG 照常落盘（两套开关独立）；文件具名关断期间 INFO 静默
+// 吞条而文件主闸仍 on——两层归因，恢复后落盘回归。
+// 场景 5 showArmLoggerDashboard [console().list / file().list / get_info / all + console()/file().status()]
+// 运维面板：console/file 清单（字典序）、单查结构化 LoggerInfo（含未
+// 注册 ResStatus::Failed）、全量导出——console/file 条目各自承载逐器门控层真值与
+// 对应侧代理态，再查 console().status()/file().status() 复核两套主闸态，
+// 两层一起看全。
+// 场景 6 showArmLogCleanup  [file().remove() + 惰性重建]
+// 收班清档：remove() 同名清 console+file 两表（返回各清了几条）、磁盘
+// .log 保留；MainLogger 删除后再写自动重建（按名惰性创建）。
+//
+// tag 规划（arm.demo 叙事之外，演示对象按业务分层）：
+// MainLogger  默认 tag（无 TAG 宏的日志归属）        框架预创建
+// arm.joint   关节模块报文（场景 1/4 演示自定义 tag） 首次使用自动创建
+// blackbox    安全黑匣子文件器（场景 3 创建/6 清档）  WARN/ERROR 转写落盘
+// shiftlog    班次存档文件器（场景 4 创建/6 清档）    全级别存档落盘
 
 #include <filesystem>
 #include <fstream>
@@ -115,8 +112,8 @@ static void logResp(const std::string& api, yomk::payload::ResStatus status)
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；被演示的日志行（控制台）夹在开始行与结果行之间，
 // 归属一目了然，读者顺着日志读即可理解，无需回看代码。
-// 闭环 14-2：LOG_API 29 方法返回 ResStatus，INFO 查询仍返回 yomk::payload::Response，
-// 模板化使两类返回各自路由到对应 logResp 重载，调用点零改动
+// LOG_API 29 方法返回 ResStatus，INFO 查询返回 yomk::payload::Response，
+// 模板使两类返回各自路由到对应 logResp 重载
 template <typename F>
 static auto logAction(const std::string& op, const std::string& api, F&& call)
 {

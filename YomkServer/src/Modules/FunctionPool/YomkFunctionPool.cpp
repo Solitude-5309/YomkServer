@@ -94,7 +94,7 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
         {
             YOMK_DIAG_ERROR(
                 "funcName: " + yCallFunc->d.m_funcName + " is not register, please check CallFunction.m_funcName");
-            // 名字有效但未注册：ResStatus::Failed（not-found 框架惯例；ResStatus::Invalid 仅用于参数无效）
+            // 未注册同 unregister：ResStatus::Failed（not-found 框架惯例；Invalid 仅用于参数无效）
             return yomk::payload::Response(yomk::payload::ResStatus::Failed, "funcName is not register");
         }
         copyFunc = itFunc->second.m_func;

@@ -1,21 +1,18 @@
-/**
- * @file TestYomkWeakFunc.cpp
- * @brief YomkService::weakFunc 弱绑定生命周期语义测试（正式全面测试，MC3）
- *
- * 覆盖内容：
- * 1. 存活路径：服务存活时四种返回值回调均真实执行（weakFunc lambda 与 weakFunc 成员函数指针绑定两种方式）
- * 2. 销毁丢弃（引用计数路径）：服务析构后回调丢弃——void 不执行、yomk::payload::Response 返回 ResStatus::Failed+契约消息、
- *    CheckStatus 默认放行 CheckStatus::Accept、其他类型返回 Ret{} 默认值
- * 3. 删除即停（注销标志路径）：持 shared_ptr 不释放经框架删除置位注销标志，回调同样立即丢弃（双层判活标志层独立生效）
- * 4. installFunc 自动弱绑定串联：注销后 invoke 返回丢弃契约消息（真实功能函数路径）
- * 5. 构造期告警分支：构造期内调用 weakFunc（weak_from_this 未生效），绑定永久失效、回调永不执行
- * 6. 丢弃不执行实证：所有丢弃用例均以副作用计数未变化断言，而非仅看返回值
- *
- * 说明：不依赖单例与服务器生命周期，YomkServer::create 直接持有，
- *       服务由测试手工 shared_ptr 控制销毁时机（避开 call_once 约束，单进程即可覆盖全部场景）
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// YomkService::weakFunc 弱绑定生命周期语义测试
+//
+// 覆盖内容：
+// 1. 存活路径：服务存活时四种返回值回调均真实执行（weakFunc lambda 与 weakFunc 成员函数指针绑定两种方式）
+// 2. 销毁丢弃（引用计数路径）：服务析构后回调丢弃——void 不执行、yomk::payload::Response 返回 ResStatus::Failed+契约消息、
+// CheckStatus 默认放行 CheckStatus::Accept、其他类型返回 Ret{} 默认值
+// 3. 删除即停（注销标志路径）：持 shared_ptr 不释放经框架删除置位注销标志，回调同样立即丢弃（双层判活标志层独立生效）
+// 4. installFunc 自动弱绑定串联：注销后 invoke 返回丢弃契约消息（真实功能函数路径）
+// 5. 构造期告警分支：构造期内调用 weakFunc（weak_from_this 未生效），绑定永久失效、回调永不执行
+// 6. 丢弃不执行实证：所有丢弃用例均以副作用计数未变化断言，而非仅看返回值
+//
+// 说明：不依赖单例与服务器生命周期，YomkServer::create 直接持有，
+// 服务由测试手工 shared_ptr 控制销毁时机（避开 call_once 约束，单进程即可覆盖全部场景）
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <functional>
@@ -43,9 +40,7 @@ static int g_failed = 0;
 // 弱绑定丢弃契约消息片段（四种返回值分支共用）
 static const std::string DISCARD_MSG = "deleted or unregistered";
 
-/**
- * @brief 弱绑定演示服务：供存活/销毁/注销场景绑定回调
- */
+// 弱绑定演示服务：供存活/销毁/注销场景绑定回调
 class BindSrv : public YomkService
 {
 public:
@@ -79,9 +74,7 @@ public:
     std::function<yomk::payload::Response(YomkMsgPtr)> makeMemberCb() { return weakFunc(&BindSrv::memberWork); }
 };
 
-/**
- * @brief 构造期绑定演示服务：构造函数内调用 weakFunc（weak_from_this 未生效，告警分支载体）
- */
+// 构造期绑定演示服务：构造函数内调用 weakFunc（weak_from_this 未生效，告警分支载体）
 class CtorBindSrv : public YomkService
 {
 public:
@@ -103,7 +96,7 @@ public:
     virtual int init() override { return 0; }
 };
 
-// 1. 存活路径：四种返回值回调与宏绑定回调均真实执行
+// 1. 存活路径：四种返回值回调与成员指针绑定回调均真实执行
 static void testAliveCallbacks(YomkServer* server)
 {
     std::atomic<int> voidCount{0};

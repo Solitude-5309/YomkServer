@@ -1,18 +1,15 @@
-/**
- * @file TestYomkBoot.cpp
- * @brief boot_ptr(cfg).run() 三段失败短路/错误码透传/所有权测试（正式全面测试，MC6）
- *
- * 覆盖内容：
- * 1. boot(nullptr)：内部隐式 init 路径，返回 0 且单例被初始化
- * 2. 三段失败短路：before/start/after 任一非 0 立即返回原值，后续段不执行
- *    （-1/-2/-3 三种错误码原值透传实证，验证非 -1 错误码同样穿透）
- * 3. 执行序：全部成功时严格 before → start → after
- * 4. 所有权：boot 以 unique_ptr 接管 YomkBoot*，调用结束后析构（dtor 计数实证）
- *
- * 说明：boot(nullptr) 消耗单例的 call_once，后续注入用例的 init 调用空转，无需隔离
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// boot_ptr(cfg).run() 三段失败短路/错误码透传/所有权测试
+//
+// 覆盖内容：
+// 1. boot(nullptr)：内部隐式 init 路径，返回 0 且单例被初始化
+// 2. 三段失败短路：before/start/after 任一非 0 立即返回原值，后续段不执行
+// （-1/-2/-3 三种错误码原值透传实证，验证非 -1 错误码同样穿透）
+// 3. 执行序：全部成功时严格 before → start → after
+// 4. 所有权：boot 以 unique_ptr 接管 YomkBoot*，调用结束后析构（dtor 计数实证）
+//
+// 说明：boot(nullptr) 消耗单例的 call_once，后续注入用例的 init 调用空转，无需隔离
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <iostream>
 #include <string>
@@ -53,9 +50,7 @@ static void resetGlobals()
     g_order.clear();
 }
 
-/**
- * @brief 三段记录器：各段计数与执行序入表，返回值由全局开关注入
- */
+// 三段记录器：各段计数与执行序入表，返回值由全局开关注入
 class BootRecorder : public YomkBoot
 {
 public:

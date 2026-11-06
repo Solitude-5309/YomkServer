@@ -1,54 +1,51 @@
-/**
- * @file ExampleYomkServerInfo.cpp
- * @brief YomkServerInfo 服务自省示例：机械臂产线背景的 6 个场景小示例（面向初学者）
- *
- * 服务自省即"运行期问框架"：/YomkServerInfo 是随 yomk::server().init() 自动启动的内置服务，
- * 提供服务清单、指定服务的功能函数清单、单函数元信息与全量拓扑四类查询——
- * 调试与运维时用它确认"产线上现在有哪些工位（服务）、每个功能函数期望什么
- * 消息类型"，无需翻源码即可掌握调用拓扑。
- *
- * 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 showXXX 小函数，
- * 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
- * 全部 4 个 yomk::server() 内省终结（services/functions/get_info/all）无一遗漏（服务注册/请求/注销/关闭
- * 作为自省对象的素材接口随之演示）。
- *
- * 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.station
- * 装配工位函数体），日志流即执行序、顺着读就能明白：每个操作先打"开始执行
- * xxx"——操作是用户视角的业务动作，随后结果行标注本次接口调用；REQUEST
- * 在调用方线程同步执行工位函数，arm.station 日志被夹在开始行与结果行之间，
- * 归属一目了然。
- *
- * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
- *
- * 场景 1 showArmPlantRoster     [services() / create() / REQUEST]
- *        开班点名与工位上线：内置服务清单打底，create() 注册装配工位后
- *        清单立即多一项；REQUEST 试运行 /report 与 /quality_check 证明注册
- *        即可调用（工位函数体 arm.station 日志夹在开始行与结果行之间）。
- * 场景 2 showArmStationFunctions [INFO_FUNCTIONS]
- *        工位职能清单：FuncInfoList 结构化清单（4 参注册的 /quality_check
- *        带 QualityCheckReq 元数据与函数说明，2 参注册的 /report 双空）；
- *        不存在的工位返回空清单 ResStatus::Succeeded，空服务名返回 ResStatus::Invalid。
- * 场景 3 showArmFuncLookup      [INFO_FUNCTION]
- *        函数名片单查：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，
- *        m_msgName=期望消息类型名、m_description=函数说明）；4 种坏 URL 均
- *        返回 ResStatus::Failed（url 解析失败 / 目标不存在），是普通返回值不崩溃。
- * 场景 4 showArmPlantTopology   [all()]
- *        全厂拓扑总览：ServerServiceInfoList 层级包逐服务逐函数导出——
- *        排障时一次看清"哪些工位在册、各自能干什么"。
- * 场景 5 showArmLiveView        [services() / all() / remove()]
- *        工位下线实时视图：remove() 后清单与拓扑立即少一项（无需重启），
- *        注销不存在的服务返回 -1——自省读的是运行期服务表。
- * 场景 6 showArmPowerOff        [shutdown() / services()]
- *        收班断电：shutdown() 排空在途请求并释放全部服务，关闭后任何自省调用
- *        统一返回 ResStatus::Invalid "YomkServer is not init"；日志宏随之静默——
- *        静默即演示效果，收班预告已提前说明，示例日志到此为止。
- *
- * 演示服务规划（机械臂产线装配工位，跨场景流转）：
- *   /ArmStation              create() 注册（场景 1）、remove() 下线（场景 5）
- *   /report        2 参注册  工位状态上报（入参 String 状态文本，回执确认；无元数据）
- *   /quality_check 4 参注册  质量抽检（入参 QualityCheckReq；声明期望消息类型
- *                            与函数说明，供场景 2/3 的自省识别）
- */
+// YomkServerInfo 服务自省示例：机械臂产线背景的 6 个场景小示例（面向初学者）
+//
+// 服务自省即"运行期问框架"：/YomkServerInfo 是随 yomk::server().init() 自动启动的内置服务，
+// 提供服务清单、指定服务的功能函数清单、单函数元信息与全量拓扑四类查询——
+// 调试与运维时用它确认"产线上现在有哪些工位（服务）、每个功能函数期望什么
+// 消息类型"，无需翻源码即可掌握调用拓扑。
+//
+// 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 showXXX 小函数，
+// 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
+// 全部 4 个 yomk::server() 内省终结（services/functions/get_info/all）无一遗漏（服务注册/请求/注销/关闭
+// 作为自省对象的素材接口随之演示）。
+//
+// 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.station
+// 装配工位函数体），日志流即执行序、顺着读就能明白：每个操作先打"开始执行
+// xxx"——操作是用户视角的业务动作，随后结果行标注本次接口调用；REQUEST
+// 在调用方线程同步执行工位函数，arm.station 日志被夹在开始行与结果行之间，
+// 归属一目了然。
+//
+// 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
+//
+// 场景 1 showArmPlantRoster     [services() / create() / REQUEST]
+// 开班点名与工位上线：内置服务清单打底，create() 注册装配工位后
+// 清单立即多一项；REQUEST 试运行 /report 与 /quality_check 证明注册
+// 即可调用（工位函数体 arm.station 日志夹在开始行与结果行之间）。
+// 场景 2 showArmStationFunctions [INFO_FUNCTIONS]
+// 工位职能清单：FuncInfoList 结构化清单（4 参注册的 /quality_check
+// 带 QualityCheckReq 元数据与函数说明，2 参注册的 /report 双空）；
+// 不存在的工位返回空清单 ResStatus::Succeeded，空服务名返回 ResStatus::Invalid。
+// 场景 3 showArmFuncLookup      [INFO_FUNCTION]
+// 函数名片单查：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，
+// m_msgName=期望消息类型名、m_description=函数说明）；4 种坏 URL 均
+// 返回 ResStatus::Failed（url 解析失败 / 目标不存在），是普通返回值不崩溃。
+// 场景 4 showArmPlantTopology   [all()]
+// 全厂拓扑总览：ServerServiceInfoList 层级包逐服务逐函数导出——
+// 排障时一次看清"哪些工位在册、各自能干什么"。
+// 场景 5 showArmLiveView        [services() / all() / remove()]
+// 工位下线实时视图：remove() 后清单与拓扑立即少一项（无需重启），
+// 注销不存在的服务返回 -1——自省读的是运行期服务表。
+// 场景 6 showArmPowerOff        [shutdown() / services()]
+// 收班断电：shutdown() 排空在途请求并释放全部服务，关闭后任何自省调用
+// 统一返回 ResStatus::Invalid "YomkServer is not init"；日志宏随之静默——
+// 静默即演示效果，收班预告已提前说明，示例日志到此为止。
+//
+// 演示服务规划（机械臂产线装配工位，跨场景流转）：
+// /ArmStation              create() 注册（场景 1）、remove() 下线（场景 5）
+// /report        2 参注册  工位状态上报（入参 String 状态文本，回执确认；无元数据）
+// /quality_check 4 参注册  质量抽检（入参 QualityCheckReq；声明期望消息类型
+// 与函数说明，供场景 2/3 的自省识别）
 
 #include <cstdint>
 #include <functional>

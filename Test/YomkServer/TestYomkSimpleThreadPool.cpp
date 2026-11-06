@@ -1,22 +1,19 @@
-/**
- * @file TestYomkSimpleThreadPool.cpp
- * @brief YomkSimpleThreadPool 白盒单元测试（正式全面测试，MC1）
- *
- * 覆盖内容：
- * 1. 构造：threadCount=0 默认（硬件并发数一半向上取整兜底 2）/ =1 / =4 均可执行任务
- * 2. post：未停止时返回 true 且任务全部执行；停止后返回 false（拒新）
- * 3. stop：排空语义（存量任务全部执行完毕才返回）；幂等（重复调用不崩溃）
- * 4. 析构兜底：未显式 stop 直接析构，兜底 join 不挂起
- * 5. 异常捕获：任务抛 std::exception / 非 std::exception 均被捕获记日志，进程不终止、后续任务继续执行
- * 6. 并发：多线程并发 post 与 stop 并发，接受数与执行数一致、无崩溃
- * 7. 大量任务：10 万级入队与执行无崩溃
- * 8. 高频 churn 探针（防线三）：stop 时序丢失唤醒放大器——纯空闲 churn（撞窗形态本体：worker 出生即挂起
- *    的 0 任务析构/显式停，线程数矩阵 {1,2,4}）、单任务守恒 churn（挂起/唤醒临界形态 + 析构排空）、
- *    忙时停与并发投递交错 churn（post/stop 持锁互斥回归探针）；规模经 YOMK_TEST_STRESS_SCALE
- *    环境变量参数化（缺省 10 万，run_tests.sh 快速模式 10000，clamp 下限 1000）
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// YomkSimpleThreadPool 白盒单元测试
+//
+// 覆盖内容：
+// 1. 构造：threadCount=0 默认（硬件并发数一半向上取整兜底 2）/ =1 / =4 均可执行任务
+// 2. post：未停止时返回 true 且任务全部执行；停止后返回 false（拒新）
+// 3. stop：排空语义（存量任务全部执行完毕才返回）；幂等（重复调用不崩溃）
+// 4. 析构兜底：未显式 stop 直接析构，兜底 join 不挂起
+// 5. 异常捕获：任务抛 std::exception / 非 std::exception 均被捕获记日志，进程不终止、后续任务继续执行
+// 6. 并发：多线程并发 post 与 stop 并发，接受数与执行数一致、无崩溃
+// 7. 大量任务：10 万级入队与执行无崩溃
+// 8. 高频 churn 探针（防线三）：stop 时序丢失唤醒放大器——纯空闲 churn（撞窗形态本体：worker 出生即挂起
+// 的 0 任务析构/显式停，线程数矩阵 {1,2,4}）、单任务守恒 churn（挂起/唤醒临界形态 + 析构排空）、
+// 忙时停与并发投递交错 churn（post/stop 持锁互斥回归探针）；规模经 YOMK_TEST_STRESS_SCALE
+// 环境变量参数化（缺省 10 万，run_tests.sh 快速模式 10000，clamp 下限 1000）
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <chrono>

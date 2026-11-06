@@ -36,7 +36,7 @@ private:
     std::string m_name;
     std::string m_dir;
     // 级别门控随 sink 自持（每实例独立、默认全开）：两级主闸并联架构的第二层（逐器门控），
-    // 第一层为 YomkLogger 文件全局主闸（后续闭环补齐），输出取两层 AND
+    // 第一层为 YomkLogger 文件全局主闸，输出取两层 AND
     std::atomic<bool> m_showTraceLog;
     std::atomic<bool> m_showDebugLog;
     std::atomic<bool> m_showInfoLog;

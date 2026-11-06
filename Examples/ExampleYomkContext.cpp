@@ -1,57 +1,54 @@
-/**
- * @file ExampleYomkContext.cpp
- * @brief YomkContext 共享上下文示例：机械臂控制背景的 8 个场景小示例（面向初学者）
- *
- * 上下文是全局共享的强类型键值状态机：把消息包按 key 存起来，任意位置按 key
- * 读写——机械臂系统中主控、示教器、安全 PLC、数字孪生正是这样共享状态。
- * 在此之上还有两道可选防线：变更前校验门控（Checker，返回 CheckStatus::Reject 可拦截非法
- * 写入）与变更后通知（Monitor，写入成功后收到键值快照，同步/异步可选）。
- *
- * 本示例用"机械臂一次作业会话"贯穿 8 个场景：每个场景是一个 showXXX 小函数，
- * 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
- * 全部 13 个 yomk::ctx() 域链式 op 无一遗漏。
- *
- * 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.guard 校验 /
- * arm.watch 通知 / arm.telemetry 上报），日志流即执行序、顺着读就能明白：
- * 每个操作先打"开始执行 xxx"——操作是用户视角的业务动作（可以是一个接口
- * 调用，也可以是多个接口调用组合成的完整动作），随后结果行标注本次接口
- * 调用；同步 checker/monitor 回调插入的日志被夹在两者之间，归属一目了然；
- * 异步通知则在结果行之后送达。
- *
- * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
- *
- * 场景 1 showArmBootCreate      [yomk::ctx().key().create()]
- *        控制柜上电，主控模块写入初始状态（模式/速度倍率/伺服状态）；
- *        重复创建同名键被拒——创建是排他的，更新请用 SET。
- * 场景 2 showArmReadStatus      [yomk::ctx().key().msg<T>().with_default().get()]
- *        示教器读速度倍率命中只读快照；查询未上线负载模块的键返回兜底
- *        默认值（指针相等自证兜底路径，调用方永不拿到空指针）。
- * 场景 3 showArmUpdateStatus    [yomk::ctx().key().set()]
- *        切自动模式并提速；误用 Float64 改 String 键被拒（强类型防误写）；
- *        SET 整体替换值对象——先前持有者冻结旧快照，无撕裂读。
- * 场景 4 showArmGuardSpeedRatio [yomk::ctx().key().checker() / ON_CHECKER / OFF_CHECKER]
- *        倍率超 1.0 有撞机风险：挂校验回调后，全局门控未开时不生效；
- *        ON 后超限被拒且值不变、合法值放行；OFF（现场调试）门控旁路。
- * 场景 5 showArmWatchServoPower [yomk::ctx().key().monitor_fn(fn).apply() / ON_MONITOR / OFF_MONITOR]
- *        安全 PLC 订阅伺服电源指令：追加式多播（上电告警 + 操作黑匣子）；
- *        全局开/关控制通知启停——OFF 后 monitor 保留但不执行。
- * 场景 6 showArmReportPose      [yomk::ctx().key().monitor_fn(fn).async(true).apply()]
- *        数字孪生异步上报末端位姿：单线程池按 set 提交序保序送达，
- *        执行线程是池线程——上报不阻塞运动控制回路。
- * 场景 7 showArmDashboard       [yomk::ctx().group().keys() / INFO_KEY / INFO_ALL]
- *        产线运维面板：键名清单、单键结构化元信息（含未命中 ResStatus::Failed 分支）、
- *        全量导出——框架只回结构化数据，展示格式由用户定义。
- * 场景 8 showArmTaskCleanup     [yomk::ctx().key().destroy()]
- *        下电流程逐键销毁；销毁后 GET 回落兜底默认值、重复销毁返回 ResStatus::Failed；
- *        INFO_KEYS 确认键值表已空，会话闭环。
- *
- * 共享键规划（跨场景流转，模拟多模块共享同一份状态）：
- *   arm.mode        String        运行模式（idle/teach/auto）
- *   arm.speed_ratio Float64       全局速度倍率 0.0~1.0
- *   arm.servo_power Bool          伺服电源指令状态
- *   arm.tcp_pose    Float64Array  末端位姿 [x,y,z,qx,qy,qz,qw]
- *   arm.payload_kg  Float64       末端负载 kg（全程未注册，作 GET 兜底演示）
- */
+// YomkContext 共享上下文示例：机械臂控制背景的 8 个场景小示例（面向初学者）
+//
+// 上下文是全局共享的强类型键值状态机：把消息包按 key 存起来，任意位置按 key
+// 读写——机械臂系统中主控、示教器、安全 PLC、数字孪生正是这样共享状态。
+// 在此之上还有两道可选防线：变更前校验门控（Checker，返回 CheckStatus::Reject 可拦截非法
+// 写入）与变更后通知（Monitor，写入成功后收到键值快照，同步/异步可选）。
+//
+// 本示例用"机械臂一次作业会话"贯穿 8 个场景：每个场景是一个 showXXX 小函数，
+// 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
+// 全部 13 个 yomk::ctx() 域链式 op 无一遗漏。
+//
+// 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.guard 校验 /
+// arm.watch 通知 / arm.telemetry 上报），日志流即执行序、顺着读就能明白：
+// 每个操作先打"开始执行 xxx"——操作是用户视角的业务动作（可以是一个接口
+// 调用，也可以是多个接口调用组合成的完整动作），随后结果行标注本次接口
+// 调用；同步 checker/monitor 回调插入的日志被夹在两者之间，归属一目了然；
+// 异步通知则在结果行之后送达。
+//
+// 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
+//
+// 场景 1 showArmBootCreate      [yomk::ctx().key().create()]
+// 控制柜上电，主控模块写入初始状态（模式/速度倍率/伺服状态）；
+// 重复创建同名键被拒——创建是排他的，更新请用 SET。
+// 场景 2 showArmReadStatus      [yomk::ctx().key().msg<T>().with_default().get()]
+// 示教器读速度倍率命中只读快照；查询未上线负载模块的键返回兜底
+// 默认值（指针相等自证兜底路径，调用方永不拿到空指针）。
+// 场景 3 showArmUpdateStatus    [yomk::ctx().key().set()]
+// 切自动模式并提速；误用 Float64 改 String 键被拒（强类型防误写）；
+// SET 整体替换值对象——先前持有者冻结旧快照，无撕裂读。
+// 场景 4 showArmGuardSpeedRatio [yomk::ctx().key().checker() / ON_CHECKER / OFF_CHECKER]
+// 倍率超 1.0 有撞机风险：挂校验回调后，全局门控未开时不生效；
+// ON 后超限被拒且值不变、合法值放行；OFF（现场调试）门控旁路。
+// 场景 5 showArmWatchServoPower [yomk::ctx().key().monitor_fn(fn).apply() / ON_MONITOR / OFF_MONITOR]
+// 安全 PLC 订阅伺服电源指令：追加式多播（上电告警 + 操作黑匣子）；
+// 全局开/关控制通知启停——OFF 后 monitor 保留但不执行。
+// 场景 6 showArmReportPose      [yomk::ctx().key().monitor_fn(fn).async(true).apply()]
+// 数字孪生异步上报末端位姿：单线程池按 set 提交序保序送达，
+// 执行线程是池线程——上报不阻塞运动控制回路。
+// 场景 7 showArmDashboard       [yomk::ctx().group().keys() / INFO_KEY / INFO_ALL]
+// 产线运维面板：键名清单、单键结构化元信息（含未命中 ResStatus::Failed 分支）、
+// 全量导出——框架只回结构化数据，展示格式由用户定义。
+// 场景 8 showArmTaskCleanup     [yomk::ctx().key().destroy()]
+// 下电流程逐键销毁；销毁后 GET 回落兜底默认值、重复销毁返回 ResStatus::Failed；
+// INFO_KEYS 确认键值表已空，会话闭环。
+//
+// 共享键规划（跨场景流转，模拟多模块共享同一份状态）：
+// arm.mode        String        运行模式（idle/teach/auto）
+// arm.speed_ratio Float64       全局速度倍率 0.0~1.0
+// arm.servo_power Bool          伺服电源指令状态
+// arm.tcp_pose    Float64Array  末端位姿 [x,y,z,qx,qy,qz,qw]
+// arm.payload_kg  Float64       末端负载 kg（全程未注册，作 GET 兜底演示）
 
 #include <chrono>
 #include <functional>
@@ -144,8 +141,8 @@ static void logResp(const std::string& api, yomk::payload::ResStatus status)
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；同步 checker/monitor 回调插入的日志被夹在开始行与
 // 结果行之间，归属一目了然，读者顺着日志读即可理解，无需回看代码。
-// 闭环 14-3：CONTEXT_API 9 方法返回 ResStatus，INFO 查询仍返回 yomk::payload::Response，
-// 模板化使两类返回各自路由到对应 logResp 重载，调用点零改动
+// CONTEXT_API 9 方法返回 ResStatus，INFO 查询返回 yomk::payload::Response，
+// 模板使两类返回各自路由到对应 logResp 重载
 template <typename F>
 static auto logAction(const std::string& op, const std::string& api, F&& call)
 {

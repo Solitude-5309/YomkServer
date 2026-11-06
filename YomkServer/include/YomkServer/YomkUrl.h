@@ -1,13 +1,9 @@
 #pragma once
 #include <string_view>
 
-// 内置服务 URL 常量池：inline constexpr std::string_view 编译期常量——零运行时
-// 状态、零惰性初始化、零析构顺序问题。请求链（yomk::server() -> YomkServer -> parse ->
-// invoke）全程 string_view 透传，服务/函数表以透明比较器异构查找，调用路径零堆分配。
-// 访问器名 = 服务前缀 + 路由段驼峰化。
-// 采用命名空间而非 struct：与 yomk::payload / yomk::msgs 对齐为协议层三件套；
-// namespace 开放可扩展——用户服务可直接在本命名空间内追加同风格常量，
-// 亦规避全局符号 YomkUrl 的重名风险
+// 内置服务 URL 常量池：inline constexpr std::string_view 编译期常量, 请求链全程
+// string_view 透传, 调用路径零堆分配。访问器名 = 服务前缀 + 路由段驼峰化。
+// 开放命名空间：用户自定义服务的 url 常量可按同风格直接追加在本命名空间内
 namespace yomk::url
 {
 // /YomkLogger/*

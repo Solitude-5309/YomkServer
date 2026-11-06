@@ -398,13 +398,13 @@ yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
     }
 
-    // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 ResStatus::Failed 不惰性创建）
+    // 具名请求：逐器门控路径（同 offConsoleLogByLevel）
     if (!logPkg->d.m_logger.empty())
     {
         return setNamedConsoleLevel(logPkg->d.m_logger, logPkg->d.m_level, true);
     }
 
-    // 空名 = 全局主闸路径（与既有语义一致）
+    // 空名 = 全局主闸路径（同上）
     switch (logPkg->d.m_level)
     {
         case LogLevel::Trace:
@@ -482,13 +482,13 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
     }
 
-    // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 ResStatus::Failed 不惰性创建）
+    // 具名请求：逐器门控路径（同 offConsoleLogByLevel）
     if (!logPkg->d.m_logger.empty())
     {
         return setNamedFileLevel(logPkg->d.m_logger, logPkg->d.m_level, false);
     }
 
-    // 空名 = 全局主闸路径（与控制台侧双模式语义对称）
+    // 空名 = 全局主闸路径（与控制台侧对称）
     switch (logPkg->d.m_level)
     {
         case LogLevel::Trace:
@@ -525,13 +525,13 @@ yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
     }
 
-    // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 ResStatus::Failed 不惰性创建）
+    // 具名请求：逐器门控路径（同 offConsoleLogByLevel）
     if (!logPkg->d.m_logger.empty())
     {
         return setNamedFileLevel(logPkg->d.m_logger, logPkg->d.m_level, true);
     }
 
-    // 空名 = 全局主闸路径（与控制台侧双模式语义对称）
+    // 空名 = 全局主闸路径（与控制台侧对称）
     switch (logPkg->d.m_level)
     {
         case LogLevel::Trace:
@@ -629,7 +629,6 @@ yomk::payload::Response YomkLogger::loggers(YomkMsgPtr pkg)
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "unknown logger type.");
     }
     // 单表为 std::map，中序遍历天然字典序，无需排序（选型见 YomkLogger.h）
-    // move 入包消除全量拷贝
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(std::move(names))};
 }
 
@@ -640,7 +639,7 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not LoggerQuery"};
     }
-    // 按类型单表精确查找：两表允许同名，不再先 console 后 file 双表 fallback（同名歧义由 type 消除）；
+    // 按类型单表精确查找：两表允许同名，同名歧义由 type 消除；
     // 命中：锁内构造结构化快照，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
     yomk::payload::LoggerInfo info;
     info.m_loggerName = query->d.m_loggerName;

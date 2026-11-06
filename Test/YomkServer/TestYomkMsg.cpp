@@ -1,24 +1,21 @@
-/**
- * @file TestYomkMsg.cpp
- * @brief YomkMsg 消息包体系独立测试（正式全面测试，P2——标准类型全集/解包语义全分支此前散点触达，无独立覆盖）
- *
- * 覆盖内容（5 个 Section，约 66 断言）：
- * S1. 标准类型消息包全集（15 标量 + 15 Array = 30 类型）：逐类型构造 name() == 类型名 且
- *     成员 d 值往返（Array 构造多元素断言 size 与元素）；默认构造零值代表（Int32/String）
- * S2. unpack 模板与运行时类型名解包全分支（错误消息精确断言）：
- *     unpack（null/名不匹配/名匹配但动态类型不符均返回 nullptr，命中返回解包指针）、
- *     服务函数级手写判空返回 ResStatus::Failed + 契约消息、手写判空提前 return（标志位观测）、
- *     运行时类型名解包（原 YomkUnPackPkgT 宏逐字展开内联，闭环 7 随宏删除；
- *     含名匹配但动态类型不符的 cast 失败）
- * S3. Event 结构：默认/三参/四参构造、handle() 有无 serviceFunc、m_eventId 初值、m_waitCallback
- * S4. yomk::payload::Response 契约：默认构造、枚举值序（ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1）、双参/三参构造
- * S5. 框架结构体默认值（Log::m_level 无类内初始化不作值断言）+ 结构体消息包版 name 就位
- *
- * 说明：全程不调 yomk::server().init()（纯类型/模板测试，不依赖单例）；YomkMsg::name() 公有 setter 用于
- *       伪造类型名以触达 unpack 的 dynamic_pointer_cast 失败分支（名字匹配但实际类型不符）
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// YomkMsg 消息包体系独立测试（标准类型全集/解包语义全分支的独立覆盖）
+//
+// 覆盖内容（5 个 Section，约 66 断言）：
+// S1. 标准类型消息包全集（15 标量 + 15 Array = 30 类型）：逐类型构造 name() == 类型名 且
+// 成员 d 值往返（Array 构造多元素断言 size 与元素）；默认构造零值代表（Int32/String）
+// S2. unpack 模板与运行时类型名解包全分支（错误消息精确断言）：
+// unpack（null/名不匹配/名匹配但动态类型不符均返回 nullptr，命中返回解包指针）、
+// 服务函数级手写判空返回 ResStatus::Failed + 契约消息、手写判空提前 return（标志位观测）、
+// 运行时类型名解包（按包 name() 匹配后 dynamic_pointer_cast；
+// 含名匹配但动态类型不符的 cast 失败）
+// S3. Event 结构：默认/三参/四参构造、handle() 有无 serviceFunc、m_eventId 初值、m_waitCallback
+// S4. yomk::payload::Response 契约：默认构造、枚举值序（ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1）、双参/三参构造
+// S5. 框架结构体默认值（Log::m_level 无类内初始化不作值断言）+ 结构体消息包版 name 就位
+//
+// 说明：全程不调 yomk::server().init()（纯类型/模板测试，不依赖单例）；YomkMsg::name() 公有 setter 用于
+// 伪造类型名以触达 unpack 的 dynamic_pointer_cast 失败分支（名字匹配但实际类型不符）
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <cstdint>
 #include <iostream>
@@ -204,7 +201,7 @@ int main()
         auto typeMissPtr = yomk::msgs::unpack<yomk::msgs::String>(fakeTypePkg);
         YOMK_TEST_CHECK(typeMissPtr == nullptr, "unpack 名匹配但动态类型不符：cast 失败指针 nullptr");
 
-        // --- 运行时类型名解包（原 YomkUnPackPkgT 宏的逐字展开，闭环 7 随宏删除内联） ---
+        // --- 运行时类型名解包（name() 匹配 + dynamic_pointer_cast） ---
         std::string rtName = "String";
         std::shared_ptr<yomk::msgs::String> tHit = nullptr;
         if (okPkg && okPkg->name() == rtName)

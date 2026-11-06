@@ -62,8 +62,8 @@ private:
     // 文件 proxyOn 均在表锁外先独立取 proxy 锁，沿用 proxy 锁独立作用域先释放的既有模式）；
     // m_consoleLogProxyMutex 与 m_fileLogProxyMutex 为叶子锁，其临界区内不得获取任何其他锁。
     // 后续维护新增嵌套时须沿用此序，否则有死锁风险。
-    // 容器选型：两表保持 std::map——曾实测改 unordered_map 致内省/删除路径数倍退化
-    // （S4A_loggers +116%、S5B_delete_all -40%、S5A_mixed_churn -58%），已回退；
+    // 容器选型：两表保持 std::map——改 unordered_map 实测致内省/删除路径数倍退化
+    // （S4A_loggers +116%、S5B_delete_all -40%、S5A_mixed_churn -58%）；
     // 完整消融数据见 TestYomkLoggerStress.cpp doc 头。map 中序遍历天然字典序，内省输出无需排序。
     // 锁序约定与容器类型无关，选型变化不影响死锁分析。
     std::map<std::string, ConsoleLoggerPtr> m_consoleLoggers;

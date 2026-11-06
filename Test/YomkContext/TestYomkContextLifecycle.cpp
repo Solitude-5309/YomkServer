@@ -1,21 +1,18 @@
-/**
- * @file TestYomkContextLifecycle.cpp
- * @brief YomkContext 服务生命周期与异常安全白盒测试（Context 模块 MC3）
- *
- * 覆盖内容：
- * 1. init 效果（内省）：内置 /YomkContext 注册、init 装配 14 个功能函数
- * 2. 基线运行：异步 monitor 池正常工作
- * 3. remove() 触发 deinit + 排空：删除前投递的异步 monitor 全部排空执行
- * 4. 删除后不可路由 + 重复删除契约：请求返回 service not found、重复删除返回 -1
- * 5. 重新注册 + monitor 池重建：srv<YomkContext>().create() 后 init 重新装配、池重建可用
- * 6. 异常安全：派生服务 init() 抛 std::bad_alloc，add() try/catch 回滚无残留
- *
- * 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext；需构造/派生内部类 YomkContext，
- *       故 include 非导出内部头 Modules/Context/YomkContext.h（CMake 已追加 src 目录）；
- *       末尾调用 yomk::server().shutdown() 干净 deinit 重注册实例（call_once 约束，shutdown 后不可再初始化）
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// YomkContext 服务生命周期与异常安全白盒测试
+//
+// 覆盖内容：
+// 1. init 效果（内省）：内置 /YomkContext 注册、init 装配 14 个功能函数
+// 2. 基线运行：异步 monitor 池正常工作
+// 3. remove() 触发 deinit + 排空：删除前投递的异步 monitor 全部排空执行
+// 4. 删除后不可路由 + 重复删除契约：请求返回 service not found、重复删除返回 -1
+// 5. 重新注册 + monitor 池重建：srv<YomkContext>().create() 后 init 重新装配、池重建可用
+// 6. 异常安全：派生服务 init() 抛 std::bad_alloc，add() try/catch 回滚无残留
+//
+// 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext；需构造/派生内部类 YomkContext，
+// 故 include 非导出内部头 Modules/Context/YomkContext.h（CMake 已追加 src 目录）；
+// 末尾调用 yomk::server().shutdown() 干净 deinit 重注册实例（call_once 约束，shutdown 后不可再初始化）
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <algorithm>
 #include <atomic>

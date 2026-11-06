@@ -6,17 +6,19 @@
 #include <string>
 #include <type_traits>
 
-// 日志正文格式化：起始预留容量 + 逐参追加的单一实现。
-// 独立成头：格式化定版逻辑（bool 输出 true/false、整型手写 itoa、浮点 %g）
-// 与链式表面无耦合，外部自行拼日志 content 亦可复用
+/**
+ * @brief 日志正文格式化：起始预留容量 + 逐参追加的单一实现
+ * @note 输出定版：实参间以单个空格分隔, bool 输出 true/false, 整型/浮点与 ostream 默认一致;
+ *     与链式表面无耦合, 外部自行拼接日志 content 亦可复用
+ */
 struct YomkLogFmt
 {
     // emit 正文起始预留容量：典型日志单行 64 字节内，预分配减少 string 扩容
     static std::size_t logContentReserve() { static const std::size_t v = 64; return v; }
 
-    // 逐参追加：每个实参前补一个空格，与旧 ostringstream 路径输出逐字节一致。
-    // 常用类型直拼，整型手写 itoa，浮点 snprintf，其余可流输出类型回退 ostringstream。
-    // bool 刻意输出 true/false（用户定版），不沿用 ostream 默认的 1/0
+    // 逐参追加：每个实参前补一个空格。
+    // 常用类型直拼, 整型手写 itoa, 浮点 snprintf, 其余可流输出类型回退 ostringstream。
+    // bool 刻意输出 true/false（用户定版）, 不沿用 ostream 默认的 1/0
     static void appendLogArg(std::string& out, const char* v) { out += ' '; out += v; }
     static void appendLogArg(std::string& out, const std::string& v) { out += ' '; out += v; }
     static void appendLogArg(std::string& out, char v) { out += ' '; out += v; }

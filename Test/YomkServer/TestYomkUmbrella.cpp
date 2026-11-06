@@ -1,16 +1,13 @@
-/**
- * @file TestYomkUmbrella.cpp
- * @brief 伞头自足性保障测试：仅包含 <YomkServer/YomkApi.h> 即可使用全部公开表面
- *
- * 决议背景（闭环 6 后用户要求）：外部用户只引入 YomkApi.h 一个框架头，就必须能触达
- * 六个域入口（server / ctx / log / log_mgr / event_loop / fn_pool）、YomkBoot /
- * YomkService / YomkServer 类型、YOMK_DEFINE_MSG / YOMK_DIAG_* 宏与 yomk::url /
- * yomk::payload 命名空间。本测试是这条保证的编译期锚点——任何人收窄伞头、新增公开头
- * 而漏进伞头、或把公开类型挪进未导出头，本文件编译即失败；运行段则对各面各打一枚
- * 代表性烟熏断言（写+读+守卫）。深度覆盖不归本测试（各域专项全面测试负责）。
- *
- * 纪律：除 C++ 标准头外，本文件禁止出现任何其它 #include；新增包含即违背测试初衷。
- */
+// 伞头自足性保障测试：仅包含 <YomkServer/YomkApi.h> 即可使用全部公开表面
+//
+// 契约：外部用户只引入 YomkApi.h 一个框架头，就必须能触达
+// 六个域入口（server / ctx / log / log_mgr / event_loop / fn_pool）、YomkBoot /
+// YomkService / YomkServer 类型、YOMK_DEFINE_MSG / YOMK_DIAG_* 宏与 yomk::url /
+// yomk::payload 命名空间。本测试是这条保证的编译期锚点——任何人收窄伞头、新增公开头
+// 而漏进伞头、或把公开类型挪进未导出头，本文件编译即失败；运行段则对各面各打一枚
+// 代表性烟熏断言（写+读+守卫）。深度覆盖不归本测试（各域专项全面测试负责）。
+//
+// 纪律：除 C++ 标准头外，本文件禁止出现任何其它 #include；新增包含即违背测试初衷。
 #include <iostream>
 #include <memory>
 #include <string>

@@ -1,20 +1,17 @@
-/**
- * @file TestYomkContextCRUD.cpp
- * @brief YomkContext CRUD 与边界值白盒测试（Context 模块 MC1）
- *
- * 覆盖内容：
- * 1. create：正常创建、空 key、空 value、重复 key
- * 2. destroy：正常销毁、不存在 key、空 key、重复销毁
- * 3. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）、
- *    类型不匹配（返回默认 value，P3 增补——ResStatus::Succeeded 路径运行时名解包失败）
- * 4. set：正常 set、不存在 key、空 key、类型不匹配
- * 5. keys/listAll/keyInfo：随增删变化、空 key、不存在 key、字段断言
- *
- * 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext，测试通过 yomk::ctx() 域链式 op 调用；
- *       不触发 checker/monitor，不触发 shutdown 排空（归 MC2/MC3）
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// YomkContext CRUD 与边界值白盒测试
+//
+// 覆盖内容：
+// 1. create：正常创建、空 key、空 value、重复 key
+// 2. destroy：正常销毁、不存在 key、空 key、重复销毁
+// 3. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）、
+// 类型不匹配（返回默认 value：ResStatus::Succeeded 路径运行时名解包失败）
+// 4. set：正常 set、不存在 key、空 key、类型不匹配
+// 5. keys/listAll/keyInfo：随增删变化、空 key、不存在 key、字段断言
+//
+// 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext，测试通过 yomk::ctx() 域链式 op 调用；
+// 不触发 checker/monitor，不触发 shutdown 排空（归 CheckerMonitor/Lifecycle 两测试）
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <iostream>
 #include <memory>
@@ -116,7 +113,7 @@ int main()
         YOMK_TEST_CHECK(got && got->d == "default", "get 空 key 返回默认值");
     }
 
-    // get：类型不匹配，返回调用方默认 value（ResStatus::Succeeded 路径运行时名解包失败，P3 增补）
+    // get：类型不匹配，返回调用方默认 value（ResStatus::Succeeded 路径运行时名解包失败）
     {
         auto cr = yomk::ctx().key("mismatch_key").value(yomk::msgs::String::shared(std::string("strval"))).create();
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "创建 mismatch_key（String 值）成功");

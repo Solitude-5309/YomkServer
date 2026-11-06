@@ -1,47 +1,44 @@
-/**
- * @file ExampleYomkFunctionPool.cpp
- * @brief YomkFunctionPool 动态函数池示例：机械臂产线背景的 6 个场景小示例（面向初学者）
- *
- * 函数池是一个跨模块共享的扁平函数中心：把符合 yomk::payload::Response(YomkMsgPtr) 签名的
- * 函数按名字注册进池子，之后在任意位置按名字调用——机械臂系统中主控、示教器、
- * 视觉工位正是这样共享无状态工具函数（负载合计、班次握手、位姿换算），彼此
- * 无需感知对方实现。同名重复注册即运行时热替换，无需先注销。
- *
- * 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 showXXX 小函数，
- * 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
- * yomk::fn_pool() 的 6 个终结 op（install() 含 name+fn / +msg_name / +description 二至四步形态）无一遗漏。
- *
- * 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.tool 工具函数体），
- * 日志流即执行序、顺着读就能明白：每个操作先打"开始执行 xxx"——操作是用户视角
- * 的业务动作，随后结果行标注本次接口调用；call() 在调用方线程同步执行被调函数，
- * 工具函数体的 arm.tool 日志被夹在开始行与结果行之间，归属一目了然。
- *
- * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
- *
- * 场景 1 showArmToolRegister  [install()(name+fn 二步) / call()]
- *        开班建工具柜：登记"负载合计"工具后按名调用，入参流进函数、结果流回
- *        调用方（msg 与 data 双份）——跨模块共享的最小闭环。
- * 场景 2 showArmToolMeta      [install()(四步带元数据) / get_info() / call()]
- *        带元数据登记班次握手工具：MsgName 与说明仅作内省元数据，调用时框架
- *        不做类型校验；get_info() 单查逐字段确认。
- * 场景 3 showArmToolNullGuard [msg(nullptr).call()]
- *        空参守卫：call() 传 nullptr，函数内解包宏判空自动返回 ResStatus::Failed——统一契约
- *        无需函数自己写 if；arm.tool 无日志自证函数体未执行。
- * 场景 4 showArmToolHotSwap   [install()(三步) / get_info() / call()]
- *        班中工具升级：同名再注册即热替换（无需注销），call() 走新实现；MsgName
- *        与说明元数据随新注册整体刷新（未传说明则清空）。
- * 场景 5 showArmToolDashboard [list() / get_info() / all()]
- *        运维面板：函数名清单（字典序）、单查未注册名字演示 ResStatus::Failed not-found、
- *        全量逐字段导出——框架只回结构化数据，展示格式由用户定义。
- * 场景 6 showArmToolCleanup   [uninstall() / call() / all()]
- *        收班清柜：注销后调用、重复注销均返回 ResStatus::Failed（not-found 惯例）；
- *        all() 确认清单已空，班次闭环。
- *
- * 工具函数规划（跨场景流转，模拟多模块共享同一批无状态工具）：
- *   tool.payloadSum  2 参注册        三轴负载合计（入参 StringArray 各轴 kg，出参合计）
- *   tool.handshake   4 参注册        班次握手（入参 String 操作工名，出参问候语）
- *   tool.handshake   3 参再注册(V2)  热替换为升级版问候（场景 4）
- */
+// YomkFunctionPool 动态函数池示例：机械臂产线背景的 6 个场景小示例（面向初学者）
+//
+// 函数池是一个跨模块共享的扁平函数中心：把符合 yomk::payload::Response(YomkMsgPtr) 签名的
+// 函数按名字注册进池子，之后在任意位置按名字调用——机械臂系统中主控、示教器、
+// 视觉工位正是这样共享无状态工具函数（负载合计、班次握手、位姿换算），彼此
+// 无需感知对方实现。同名重复注册即运行时热替换，无需先注销。
+//
+// 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 showXXX 小函数，
+// 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
+// yomk::fn_pool() 的 6 个终结 op（install() 含 name+fn / +msg_name / +description 二至四步形态）无一遗漏。
+//
+// 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.tool 工具函数体），
+// 日志流即执行序、顺着读就能明白：每个操作先打"开始执行 xxx"——操作是用户视角
+// 的业务动作，随后结果行标注本次接口调用；call() 在调用方线程同步执行被调函数，
+// 工具函数体的 arm.tool 日志被夹在开始行与结果行之间，归属一目了然。
+//
+// 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
+//
+// 场景 1 showArmToolRegister  [install()(name+fn 二步) / call()]
+// 开班建工具柜：登记"负载合计"工具后按名调用，入参流进函数、结果流回
+// 调用方（msg 与 data 双份）——跨模块共享的最小闭环。
+// 场景 2 showArmToolMeta      [install()(四步带元数据) / get_info() / call()]
+// 带元数据登记班次握手工具：MsgName 与说明仅作内省元数据，调用时框架
+// 不做类型校验；get_info() 单查逐字段确认。
+// 场景 3 showArmToolNullGuard [msg(nullptr).call()]
+// 空参守卫：call() 传 nullptr，函数内解包宏判空自动返回 ResStatus::Failed——统一契约
+// 无需函数自己写 if；arm.tool 无日志自证函数体未执行。
+// 场景 4 showArmToolHotSwap   [install()(三步) / get_info() / call()]
+// 班中工具升级：同名再注册即热替换（无需注销），call() 走新实现；MsgName
+// 与说明元数据随新注册整体刷新（未传说明则清空）。
+// 场景 5 showArmToolDashboard [list() / get_info() / all()]
+// 运维面板：函数名清单（字典序）、单查未注册名字演示 ResStatus::Failed not-found、
+// 全量逐字段导出——框架只回结构化数据，展示格式由用户定义。
+// 场景 6 showArmToolCleanup   [uninstall() / call() / all()]
+// 收班清柜：注销后调用、重复注销均返回 ResStatus::Failed（not-found 惯例）；
+// all() 确认清单已空，班次闭环。
+//
+// 工具函数规划（跨场景流转，模拟多模块共享同一批无状态工具）：
+// tool.payloadSum  2 参注册        三轴负载合计（入参 StringArray 各轴 kg，出参合计）
+// tool.handshake   4 参注册        班次握手（入参 String 操作工名，出参问候语）
+// tool.handshake   3 参再注册(V2)  热替换为升级版问候（场景 4）
 
 #include <functional>
 #include <sstream>

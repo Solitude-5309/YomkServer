@@ -1,74 +1,58 @@
-/**
- * @file TestYomkLoggerLifecycle.cpp
- * @brief Logger 模块生命周期与契约基线测试（LG1 从零新建，LG2 审计处置后回填，LG4 补删除接口，LG6 补 proxy 卸载）
- *
- * 覆盖内容（11 个 Section + 1 个前置注入段，断言计数以运行实测为准）：
- * 1. 控制台日志基线：六级别宏输出格式（时间戳+[级别]+[logger]+[行号]）；
- *    级别开关 OFF→无输出仍 ResStatus::Succeeded→ON→恢复输出，六级别全覆盖
- * 2. 自定义 tag：新 tag 自动创建 console logger；65536 超长 tag；空内容日志
- * 2.5 非法级别 default 降级（P2-c 修复后）：proxy 设置前 raw 注入 level=99 →
- *    console_log default 降级 Info 输出 + ResStatus::Succeeded（S3 的 proxy 处于拦截态时会短路一切
- *    console_log，故该 default 分支在本窗口触达）
- * 3. proxy 契约：console().proxy 拦截（false→ResStatus::Succeeded+"console log proxy is success."+无输出）
- *    与穿透（true→默认输出）；原子计数验证；all 内省 proxy:on；
- *    卸载（LG6/P4-e）：传 nullptr → ResStatus::Succeeded、all 首行回 proxy:off、恢复框架默认输出、
- *    代理不再被调用（原子命中数不增）；重装可逆。用例末尾重装并回到穿透态，
- *    以维持 S4-S7 依赖的「proxy:on + 穿透」不变量
- * 4. 文件日志闭环：CREATE 建空文件→四级别入缓冲（write 前文件仍空）→WRITE 落盘读回断言
- *    行数与行格式（含 FILE_INFO_TAG 自定义 tag 变体）；重复创建 ResStatus::Failed；未创建 logger 的
- *    to_sink 发射/flush ResStatus::Failed；P2-a/P2-b 处置验证（空名/空 dir ResStatus::Invalid、不可建 dir ResStatus::Failed
- *    且不注册幽灵 logger、失败后同名重试成功）
- * 5. 内省三端点：LOGGERS 按类型（console/file）纯名列表 / LOGGER(name) console/file 两格式与未注册 ResStatus::Failed /
- *    ALL 控制台状态段五 bool 与开关翻转联动 + 日志器清单段
- * 6. 边界值：变参 fold 传 INT_MAX/INT_MIN/0/-1/NaN/Inf/-Inf/-0.0；1MB 超大内容 console+file
- *    双路径；非法级别注入回填（P2-c 修复后 99 合法）：file_log/off/on 三处 default
- *    降级与无副作用实证
- * 7. 异常路径：console_log 收 nullptr 包 / 错类型包（String）均 ResStatus::Failed；console_log 空
- *    logger 名回退 MainLogger / file_log 空名 ResStatus::Failed（raw 注入触达）；LOGGER 空名 ResStatus::Failed
- *    （LG2 堵死空名注册后回填）；未知端点 ResStatus::Failed
- * 8. logger 删除接口（LG4 新增 /delete_logger）：空名 ResStatus::Invalid、两表未命中 ResStatus::Failed +
- *    "logger not found."；console-only / file-only / 同名双表三种命中形态的 msg 计数
- *    （"deleted console:c file:f"）；file 侧删除释放最后引用 → ~FileLogger 锁外自动落盘
- *    （写 2 行未 flush 即删 → 文件恰 2 行，数据不丢）；重复删除幂等 ResStatus::Failed；删除后单查 ResStatus::Failed
- *    与 LOGGERS/ALL 行数递减守恒；console 惰性重建；MainLogger 无特殊保护（可删，重建须走
- *    空 logger 名回退路径——log().info 宏的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）；
- *    delete_logger 空包/错类型包契约分支
- * 9. 服务级具名开关与全局态端点（两级主闸并联）：具名 OFF/ON 逐器隔离与恢复、未知名 ResStatus::Failed
- *    （不惰性创建）、主闸×逐器组合两层归因（console().status() 报主闸 off 与条目逐器 on
- *    各自真实呈现）、条目逐器真值与两层正交、console().status() 全局主闸态基线与主闸翻转联动
- * 10. 文件日志两级开关与全局态端点（与控制台同构）：具名 OFF/ON 文件逐器隔离与恢复（落盘文件实证）、
- *     未知名 ResStatus::Failed（不惰性创建）、文件主闸×逐器两层归因（file().status() 报文件主闸 off
- *     与条目逐器 on 各自真实呈现、两层 AND 不落盘）、具名关断不波及文件主闸（两层正交）、
- *     file().status()/console().status()）两套主闸态独立直证与主闸翻转联动
- * 11. 文件日志全局代理契约（与控制台 S3 同构，仅单一全局代理无逐器代理）：设置前基线
- *     （file().status() proxyOff 且 console().status() proxyOn 两套代理独立直证）、
- *     file().proxy 拦截（false→ResStatus::Succeeded+"file log proxy is success."+落盘 marker 缺席+原子计数）
- *     与穿透（true→默认落盘回归 + file().status() proxyOn）、卸载（LG6 镜像：nullptr→ResStatus::Succeeded、
- *     file().status() 回 proxyOff、恢复默认落盘、代理不再被调用原子命中数不增）、重装可逆；
- *     用例末尾重装并回到穿透态
- *
- * 说明：YomkLogger 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
- *       yomk::server().init() 单例白盒直连；全部经 API 接口/raw request 测试，同时覆盖 invoke 路由链，
- *       无覆盖损失。ConsoleLogger/FileLogger 类直连白盒见 TestYomkLoggerDirect.cpp。
- *       控制台输出断言采用"唯一 marker + cout rdbuf 捕获"（框架自身日志构成背景噪声，
- *       正向断言查 marker 命中、负向断言查 marker 缺席，均不受噪声影响）。
- *
- * LG1 审计登记 → LG2 处置状态（本文件断言已同步回填）：
- * - P1-a consoleLog 持 shared_lock emplace → 已修复：双检锁（shared 查找 miss 后升级
- *   unique 二次查找），写 map 仅在独占锁下；并发竞态验证归 LG3
- * - P1-b setConsoleLogProxy 无锁写 proxy 字段 → 已修复：专属 m_consoleLogProxyMutex，
- *   读侧锁内拷贝快照、锁外调用回调
- * - P1-c std::localtime 线程不安全 → 已修复：localtime_r（_WIN32 分支 localtime_s）
- * - P2-a createFileLogger 空名/空 dir 无校验 → 已修复：两者均 ResStatus::Invalid（"logger name is
- *   empty."/"logger dir is empty."），"" key 幽灵注册与 "/.log" 根路径拼接彻底堵死（S4 回填）
- * - P2-b FileLogger::init fs 异常穿透 → 已修复：init 改 bool 返回，异常捕获后 false，
- *   createFileLogger 对失败 ResStatus::Failed 且不注册（S4 回填；Direct 测试同步改写）
- * - P2-c LogLevel 枚举无固定底层类型（注入 99 即 UB，6 处 default 为死分支）→
- *   已修复：三处枚举加 : int，非法值注入合法化，default 降级 Info 分支转活
- *   （S2.5/S6 回填注入断言；console_log 的 default 由 S2.5 在 S3 安装代理之前触达）
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// Logger 模块生命周期与契约基线测试
+//
+// 覆盖内容（11 个 Section + 1 个前置注入段，断言计数以运行实测为准）：
+// 1. 控制台日志基线：六级别链式发射输出格式（时间戳+[级别]+[logger]+[行号]）；
+// 级别开关 OFF→无输出仍 ResStatus::Succeeded→ON→恢复输出，六级别全覆盖
+// 2. 自定义 tag：新 tag 自动创建 console logger；65536 超长 tag；空内容日志
+// 2.5 非法级别 default 降级：proxy 设置前 raw 注入 level=99 →
+// console_log default 降级 Info 输出 + ResStatus::Succeeded（S3 的 proxy 处于拦截态时会短路一切
+// console_log，故该 default 分支在本窗口触达）
+// 3. proxy 契约：console().proxy 拦截（false→ResStatus::Succeeded+"console log proxy is success."+无输出）
+// 与穿透（true→默认输出）；原子计数验证；all 内省 proxy:on；
+// 卸载：传 nullptr → ResStatus::Succeeded、all 首行回 proxy:off、恢复框架默认输出、
+// 代理不再被调用（原子命中数不增）；重装可逆。用例末尾重装并回到穿透态，
+// 以维持 S4-S7 依赖的「proxy:on + 穿透」不变量
+// 4. 文件日志闭环：CREATE 建空文件→四级别入缓冲（write 前文件仍空）→WRITE 落盘读回断言
+// 行数与行格式（含 FILE_INFO_TAG 自定义 tag 变体）；重复创建 ResStatus::Failed；未创建 logger 的
+// to_sink 发射/flush ResStatus::Failed（空名/空 dir ResStatus::Invalid、不可建 dir ResStatus::Failed
+// 且不注册幽灵 logger、失败后同名重试成功）
+// 5. 内省三端点：LOGGERS 按类型（console/file）纯名列表 / LOGGER(name) console/file 两格式与未注册 ResStatus::Failed /
+// ALL 控制台状态段五 bool 与开关翻转联动 + 日志器清单段
+// 6. 边界值：变参 fold 传 INT_MAX/INT_MIN/0/-1/NaN/Inf/-Inf/-0.0；1MB 超大内容 console+file
+// 双路径；非法级别注入（99 为合法值）：file_log/off/on 三处 default
+// 降级与无副作用实证
+// 7. 异常路径：console_log 收 nullptr 包 / 错类型包（String）均 ResStatus::Failed；console_log 空
+// logger 名回退 MainLogger / file_log 空名 ResStatus::Failed（raw 注入触达）；LOGGER 空名 ResStatus::Failed
+// （空名注册已被堵死）；未知端点 ResStatus::Failed
+// 8. logger 删除接口（/delete_logger）：空名 ResStatus::Invalid、两表未命中 ResStatus::Failed +
+// "logger not found."；console-only / file-only / 同名双表三种命中形态的 msg 计数
+// （"deleted console:c file:f"）；file 侧删除释放最后引用 → ~FileLogger 锁外自动落盘
+// （写 2 行未 flush 即删 → 文件恰 2 行，数据不丢）；重复删除幂等 ResStatus::Failed；删除后单查 ResStatus::Failed
+// 与 LOGGERS/ALL 行数递减守恒；console 惰性重建；MainLogger 无特殊保护（可删，重建须走
+// 空 logger 名回退路径——log().info 链的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）；
+// delete_logger 空包/错类型包契约分支
+// 9. 服务级具名开关与全局态端点（两级主闸并联）：具名 OFF/ON 逐器隔离与恢复、未知名 ResStatus::Failed
+// （不惰性创建）、主闸×逐器组合两层归因（console().status() 报主闸 off 与条目逐器 on
+// 各自真实呈现）、条目逐器真值与两层正交、console().status() 全局主闸态基线与主闸翻转联动
+// 10. 文件日志两级开关与全局态端点（与控制台同构）：具名 OFF/ON 文件逐器隔离与恢复（落盘文件实证）、
+// 未知名 ResStatus::Failed（不惰性创建）、文件主闸×逐器两层归因（file().status() 报文件主闸 off
+// 与条目逐器 on 各自真实呈现、两层 AND 不落盘）、具名关断不波及文件主闸（两层正交）、
+// file().status()/console().status()）两套主闸态独立直证与主闸翻转联动
+// 11. 文件日志全局代理契约（与控制台 S3 同构，仅单一全局代理无逐器代理）：设置前基线
+// （file().status() proxyOff 且 console().status() proxyOn 两套代理独立直证）、
+// file().proxy 拦截（false→ResStatus::Succeeded+"file log proxy is success."+落盘 marker 缺席+原子计数）
+// 与穿透（true→默认落盘回归 + file().status() proxyOn）、卸载（nullptr→ResStatus::Succeeded、
+// file().status() 回 proxyOff、恢复默认落盘、代理不再被调用原子命中数不增）、重装可逆；
+// 用例末尾重装并回到穿透态
+//
+// 说明：YomkLogger 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
+// yomk::server().init() 单例白盒直连；全部经 API 接口/raw request 测试，同时覆盖 invoke 路由链，
+// 无覆盖损失。ConsoleLogger/FileLogger 类直连白盒见 TestYomkLoggerDirect.cpp。
+// 控制台输出断言采用"唯一 marker + cout rdbuf 捕获"（框架自身日志构成背景噪声，
+// 正向断言查 marker 命中、负向断言查 marker 缺席，均不受噪声影响）。
+//
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <unistd.h>
 
@@ -260,7 +244,7 @@ int main()
     YOMK_TEST_CHECK(!ec, "临时目录创建成功: " + tmpDir.string());
 
     // ============ Section 1: 控制台日志基线（四级别 + 开关） ============
-    {// 四级别各一发（YOMK_* 宏把 "[行号]" 拼在内容头部），marker 唯一化断言
+    {// 四级别各一发（链式发射把 "[行号]" 拼在内容头部），marker 唯一化断言
      {CoutCapture cap;
     auto r = yomk::log().info("lg1_s1_info_marker ", 42);
     YOMK_TEST_CHECK(r == yomk::payload::ResStatus::Succeeded, "log().info 返回 ResStatus::Succeeded");
@@ -304,7 +288,7 @@ int main()
         "DEBUG 输出格式与 marker");
 }
 {
-    // TRACE/FATAL 为六等级扩展新增：宏输出格式与四级同构
+    // TRACE/FATAL：链式发射输出格式与四级同构
     CoutCapture cap;
     YOMK_TEST_CHECK(yomk::log().trace("lg1_s1_trace_marker") == yomk::payload::ResStatus::Succeeded, "log().trace 返回 ResStatus::Succeeded");
     YOMK_TEST_CHECK(
@@ -398,7 +382,7 @@ YOMK_TEST_CHECK(
     "新 tag 自动创建 console logger 并以其名输出");
 }
 {
-    // 宏形态 tag 参数字面量拼接（tag ":" 行号），运行时 string tag 走底层 API 直连
+    // 链式 tag 参数字面量传入（tag ":" 行号），运行时 string tag 走底层 API 直连
     std::string longTag(65536, 'T');
     CoutCapture cap;
     YOMK_TEST_CHECK(
@@ -414,10 +398,10 @@ YOMK_TEST_CHECK(
 }
 }
 
-// ============ Section 2.5: 非法级别 default 降级（P2-c 修复后回填，须在 S3 设置 proxy 前） ============
+// ============ Section 2.5: 非法级别 default 降级（须在 S3 设置 proxy 前） ============
 {
     // proxy 处于拦截态时会短路一切 console_log（含 switch 的 default 分支），故本节置于
-    // S3 安装代理之前，与代理后续处于何种态无关；LG6/P4-e 起代理可传 nullptr 卸载，
+    // S3 安装代理之前，与代理后续处于何种态无关；代理可传 nullptr 卸载，
     // 但本节顺序保持不变。枚举已加 : int 底层类型，99 为合法值非 UB
     std::string out;
     yomk::payload::Response r(yomk::payload::ResStatus::Invalid);
@@ -434,7 +418,7 @@ YOMK_TEST_CHECK(
         "非法级别降级 Info 输出 marker");
 }
 
-// ============ Section 3: proxy 契约（含 LG6/P4-e 卸载；末尾重装复位，S4-S7 仍为穿透态） ============
+// ============ Section 3: proxy 契约（含卸载；末尾重装复位，S4-S7 仍为穿透态） ============
 {
     // 设置前 all 内省 proxy:off
     {
@@ -483,7 +467,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(st != nullptr && st->m_proxyOn, "proxy 设置后 ALL 状态 proxyOn");
     }
 
-    // ---- LG6（P4-e）：proxy 可卸载 ----
+    // ---- proxy 可卸载 ----
     // 卸载前先把代理切回拦截态，确认它确实在链路上——否则「卸载后恢复默认输出」
     // 与「本来就是穿透态」无从区分
     {
@@ -621,7 +605,7 @@ YOMK_TEST_CHECK(
     auto noWrite = yomk::log_mgr().file("lg1_never_created").flush();
     YOMK_TEST_CHECK(noWrite == yomk::payload::ResStatus::Failed, "file().flush() 未创建 logger 返回 ResStatus::Failed");
 
-    // P2-a 处置验证（LG2 回填）：空名/空 dir 一律 ResStatus::Invalid，"" key 注册与
+    // 空名/空 dir 一律 ResStatus::Invalid，"" key 注册与
     // "/.log" 根路径拼接彻底堵死
     auto emptyBoth = yomk::log_mgr().dir("").file("").create();
     YOMK_TEST_CHECK(
@@ -636,7 +620,7 @@ YOMK_TEST_CHECK(
         emptyDir == yomk::payload::ResStatus::Invalid,
         "有效名+空 dir 创建返回 ResStatus::Invalid + logger dir is empty.（P2-a 已处置）");
 
-    // P2-b 处置验证（LG2 回填）：不可创建 dir → init 返回 false → ResStatus::Failed 且不注册幽灵 logger
+    // 不可创建 dir → init 返回 false → ResStatus::Failed 且不注册幽灵 logger
     auto badDir = yomk::log_mgr().dir("/proc/lg1_impossible/sub").file("lg1_bad_dir_logger").create();
     YOMK_TEST_CHECK(
         badDir == yomk::payload::ResStatus::Failed,
@@ -792,7 +776,7 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK((readOk && content.find(big) != std::string::npos), "1MB 内容完整落盘");
 }
 
-// 非法级别注入回填（P2-c 修复后）：枚举已加 : int，99 为合法值；
+// 非法级别注入：枚举已加 : int，99 为合法值；
 // file_log/off/on 三处 default 降级与无副作用实证
 // （console_log 的 default 已在 S2.5 于 proxy 设置前触达）
 {
@@ -874,7 +858,7 @@ YOMK_TEST_CHECK(
         yomk::server().url("/YomkLogger/create_file_logger").request().m_status == yomk::payload::ResStatus::Failed,
         "create_file_logger nullptr 包返回 ResStatus::Failed");
     YOMK_TEST_CHECK(yomk::server().url("/YomkLogger/logger").request().m_status == yomk::payload::ResStatus::Failed, "logger nullptr 包返回 ResStatus::Failed");
-    // console_log 空 logger 名 → 回退 MainLogger 分支（宏形态 tag 恒非空，raw 注入才可触达）
+    // console_log 空 logger 名 → 回退 MainLogger 分支（链式发射 tag 恒非空, raw 注入才可触达）
     // 注：YOMK_TEST_CHECK 须在捕获作用域外（否则断言输出被 rdbuf 重定向吞没）
     {
         std::string out;
@@ -892,7 +876,7 @@ YOMK_TEST_CHECK(
             out.find("[MainLogger] lg1_s7_empty_logger_marker") != std::string::npos,
             "空 logger 名回退 MainLogger 输出");
     }
-    // file_log 空 logger 名 → ResStatus::Failed 分支（宏形态 file 参可传空串，raw 注入等价触达）
+    // file_log 空 logger 名 → ResStatus::Failed 分支（链式 file 参可传空串, raw 注入等价触达）
     {
         std::string out;
         yomk::payload::Response r(yomk::payload::ResStatus::Invalid);
@@ -906,8 +890,7 @@ YOMK_TEST_CHECK(
             "file_log 空 logger 名返回 ResStatus::Failed + 契约消息");
         YOMK_TEST_CHECK(out.find("file logger name is empty.") != std::string::npos, "file_log 空名错误提示");
     }
-    // get_info 空名 → ResStatus::Failed（LG2 堵死空名注册后回填；
-    // LG1 时为 P2-a 幽灵 logger 命中 ResStatus::Succeeded 的现状固化）
+    // get_info 空名 → ResStatus::Failed（空名注册不可达，幽灵 logger 命中路径已堵死）
     auto emptyNameInfo = yomk::log_mgr().console("").get_info();
     YOMK_TEST_CHECK(
         (emptyNameInfo.m_status == yomk::payload::ResStatus::Failed && emptyNameInfo.m_msg == "logger not found."),
@@ -918,10 +901,10 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(unknown.m_msg == "function not found: /no_such_func", "未知端点契约消息（路由剥离服务前缀）");
 }
 
-// ============ Section 8: logger 删除接口（LG4 新增 /delete_logger 全语义） ============
+// ============ Section 8: logger 删除接口（/delete_logger 全语义） ============
 {
     // 控制台写入一律经此 lambda：捕获作用域内调用、作用域外取响应，
-    // 既避免输出噪声，也规避"YOMK_TEST_CHECK 在捕获域内被吞没"（LG1 教训）
+    // 既避免输出噪声，也规避 YOMK_TEST_CHECK 在捕获域内被吞没
     auto consoleInfo = [](const std::string& logger, const std::string& marker)
     {
         auto r = yomk::payload::ResStatus::Invalid;
@@ -930,7 +913,7 @@ YOMK_TEST_CHECK(
         return r;
     };
 
-    // 8.1 空名 → ResStatus::Invalid（与 createFileLogger 的 P2-a 空名惯例同口径）
+    // 8.1 空名 → ResStatus::Invalid（与 createFileLogger 空名惯例同口径）
     {
         std::string out;
         auto r = yomk::payload::ResStatus::Succeeded;
@@ -1064,7 +1047,7 @@ YOMK_TEST_CHECK(
             "S8: ALL 日志器数 = LOGGERS 行数，控制台状态六级全 on 不变");
 
         // MainLogger 无特殊保护：可删；重建须走"空 logger 名回退"路径
-        // （log().info 宏的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）
+        // （log().info 链的 logger 名是裸 "MainLogger"，[行号] 拼在内容头部）
         YOMK_TEST_CHECK(
             yomk::log_mgr().file("MainLogger").remove() == yomk::payload::ResStatus::Succeeded,
             "S8: MainLogger 可删除 ResStatus::Succeeded（无特殊保护）");
@@ -1435,7 +1418,7 @@ YOMK_TEST_CHECK(
         auto gResp6 = yomk::log_mgr().file().status();
         auto gs6 = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp6.m_data);
         YOMK_TEST_CHECK(gs6 != nullptr && gs6->d.m_fatalOn, "S10f: 文件主闸 ON_FATAL 后文件态 fatalOn");
-        // 未知 type 用例随 type 参数退役而删除：type 由分面身份承载，未知类型不可表达
+        // 未知类型不可表达：type 由分面身份承载
     }
 
     // 10.7 文件主闸 FATAL 关断隔离：Fatal 不落盘，其余级别不受影响，恢复后落盘回归（六等级扩展新增）
@@ -1531,7 +1514,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(gsF != nullptr && gsF->d.m_proxyOn, "S11c: 设置后 status()(\"file\") proxyOn");
     }
 
-    // 11.4 卸载（LG6 镜像）：先把代理切回拦截态确认在链路上，再传 nullptr 卸载
+    // 11.4 卸载：先把代理切回拦截态确认在链路上，再传 nullptr 卸载
     {
         g_fileProxyIntercept.store(true);
         auto r = yomk::log().to_sink(flName11).tag("lg1s11").info("lg1_s11d_pre_unload_marker");

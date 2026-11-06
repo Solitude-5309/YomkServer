@@ -14,7 +14,7 @@
 class ContextGroup;
 typedef std::shared_ptr<ContextGroup> ContextGroupPtr;
 
-// Context 底层实例组：完整承载原 YomkContext 的单组功能（键存储、checker/monitor 门控、自持异步监控池），
+// Context 底层实例组：承载单组功能（键存储、checker/monitor 门控、自持异步监控池），
 // 不继承 YomkService；YomkContext 按组名路由到 ContextGroup 实例（对齐 EventLoop 模块双层写法）
 class ContextGroup
 {
@@ -40,7 +40,6 @@ public:
     // 排空式停止监控池（拒新 -> 排空 -> join）：保证返回前存量异步监控任务已全部执行；stop 幂等，重复调用安全
     void stop();
 
-    // 组名
     const std::string& name() const;
 
 public:

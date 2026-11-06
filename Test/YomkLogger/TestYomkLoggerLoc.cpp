@@ -1,25 +1,22 @@
-/**
- * @file TestYomkLoggerLoc.cpp
- * @brief 日志位置捕获机制测试（SourceLoc + emit 签名改造 + 宏注入 {}）
- *
- * 覆盖内容（4 个 Section）：
- * 1. 默认配置（仅行号开）：宏注入行号与真实调用行逐行核对；四级 + _TAG 变体；
- *    宏路径与 emit 直调路径同捕获窗输出结构一致（字节级兼容基线）；零正文/多参折叠
- * 2. 文件日志双路径：log_mgr().dir().file().create() → log().to_sink(name) 发射与 emit 直调同源
- *    → flush() → 落盘读回断言 [N] 前缀、marker 与 tag
- * 3. 开关矩阵：3 开关 × 开/关 8 组合逐组断言精确前缀
- *    （[N] / [file:N] / [file:N:main] / [N:main] / [file] / [main] / 全关无前缀），收尾恢复默认
- * 4. emit 直调隔离：模拟 Concurrency/Stress 直调形态（{} 实参 + 显式 tag），
- *    自定义级别全覆盖；开关不影响直调显式内容；快拼接逐类型护栏
- *    （bool/char/负整型/uint64/浮点/自定义 fallback 类型输出精确匹配）
- *
- * 说明：位置捕获机制 = emit 函数 pack 之前的固定参数 SourceLoc（聚合 + NSDMI），
- *       调用点 {} 在调用行聚合初始化完成捕获；宏在调用行展开注入 {}，
- *       故宏调用与直调的行号语义一致。默认输出与改造前旧宏（"[N]" 字面量拼接）字节级一致。
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖），
- *       CoutCapture / marker 断言 / 临时目录模式同 TestYomkLoggerLifecycle.cpp
- */
+// 日志位置捕获机制测试（SourceLoc 调用行捕获 + emit 直调）
+//
+// 覆盖内容（4 个 Section）：
+// 1. 默认配置（仅行号开）：链式发射注入行号与真实调用行逐行核对；四级 + 自定义 tag 变体；
+// 缺省 tag 链与显式 tag 链同捕获窗输出结构一致（字节级兼容基线）；零正文/多参折叠
+// 2. 文件日志双路径：log_mgr().dir().file().create() → log().to_sink(name) 发射与 emit 直调同源
+// → flush() → 落盘读回断言 [N] 前缀、marker 与 tag
+// 3. 开关矩阵：3 开关 × 开/关 8 组合逐组断言精确前缀
+// （[N] / [file:N] / [file:N:main] / [N:main] / [file] / [main] / 全关无前缀），收尾恢复默认
+// 4. emit 直调隔离：模拟 Concurrency/Stress 直调形态（{} 实参 + 显式 tag），
+// 自定义级别全覆盖；开关不影响直调显式内容；快拼接逐类型护栏
+// （bool/char/负整型/uint64/浮点/自定义 fallback 类型输出精确匹配）
+//
+// 说明：位置捕获机制 = emit 函数 pack 之前的固定参数 SourceLoc（聚合 + NSDMI），
+// 调用点 {} 在调用行聚合初始化完成捕获；链式发射经域入口默认实参注入 {}，
+// 故链式调用与 emit 直调的行号语义一致。默认输出仅行号前缀 "[N]"。
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖），
+// CoutCapture / marker 断言 / 临时目录模式同 TestYomkLoggerLifecycle.cpp
 
 #include <unistd.h>
 
@@ -99,7 +96,7 @@ static std::string readFile(const fs::path& path, bool& ok)
     return ss.str();
 }
 
-// 剥离日志行的时间戳与 [MainLogger] 后的 "[行号] " 段，用于宏路径与直调路径的结构等价对比
+// 剥离日志行的时间戳与 [MainLogger] 后的 "[行号] " 段，用于双链发射的结构等价对比
 // （时间戳毫秒级可能跨值，不参与对比）
 static std::string stripLineNo(const std::string& line)
 {
@@ -129,7 +126,7 @@ int main()
 
     // ============ Section 1: 默认配置（仅行号开） ============
     {
-        // 行号精确捕获：expectLine 推算宏调用所在行
+        // 行号精确捕获：expectLine 推算发射调用所在行
         {
             CoutCapture cap;
             const unsigned expectLine = __LINE__ + 1;
@@ -137,7 +134,7 @@ int main()
             const std::string out = cap.str();
             YOMK_TEST_CHECK(out.find("[" + std::to_string(expectLine) + "] lgL_s1_line_marker") !=
                                 std::string::npos,
-                "宏注入行号与真实调用行一致 (" + std::to_string(expectLine) + ")");
+                "链式发射行号与真实调用行一致 (" + std::to_string(expectLine) + ")");
         }
 
         // 四级 + _TAG 变体：返回值与格式
@@ -169,7 +166,7 @@ int main()
             YOMK_TEST_CHECK(out.find(" lgL_s1_debug_tag") != std::string::npos, "DEBUG_TAG 输出 marker");
         }
 
-        // 宏路径 vs 直调路径：同 marker 双发，剥离行号后两行应逐字节一致
+        // 缺省 tag 链 vs 显式 tag 链：同 marker 双发，剥离行号后两行应逐字节一致
         {
             CoutCapture cap;
             const unsigned macroLine = __LINE__ + 1;
@@ -178,7 +175,7 @@ int main()
             yomk::log().tag("MainLogger").info("lgL_s1_cmp");
             const std::string out = cap.str();
             YOMK_TEST_CHECK(out.find("[" + std::to_string(macroLine) + "] lgL_s1_cmp") != std::string::npos,
-                "宏路径行号正确");
+                "缺省 tag 链行号正确");
             YOMK_TEST_CHECK(out.find("[" + std::to_string(directLine) + "] lgL_s1_cmp") != std::string::npos,
                 "直调路径 {} 行号正确");
             std::string lineMacro;
@@ -191,16 +188,16 @@ int main()
                 {
                     if (lineMacro.empty())
                     {
-                        lineMacro = ln; // 第一条 = 宏路径
+                        lineMacro = ln; // 第一条 = 缺省 tag 链
                     }
                     else
                     {
-                        lineDirect = ln; // 第二条 = 直调路径
+                        lineDirect = ln; // 第二条 = 显式 tag 链
                     }
                 }
             }
             YOMK_TEST_CHECK(!lineDirect.empty() && stripLineNo(lineMacro) == stripLineNo(lineDirect),
-                "宏路径与直调路径剥离行号后输出逐字节一致 [macro=" + stripLineNo(lineMacro) +
+                "双链剥离行号后输出逐字节一致 [macro=" + stripLineNo(lineMacro) +
                     "] [direct=" + stripLineNo(lineDirect) + "]");
         }
 
@@ -219,7 +216,7 @@ int main()
         }
     }
 
-    // ============ Section 2: 文件日志双路径（宏 + 直调） ============
+    // ============ Section 2: 文件日志发射与落盘读回（to_sink 链, 缺省/显式 tag） ============
     {
         const std::string logName = "lgL_s2"; // file().create() 落盘为 <dir>/<name>.log（init 补扩展名）
         fs::path logFile =
@@ -255,7 +252,7 @@ int main()
         const std::string content = readFile(logFile, readOk);
         YOMK_TEST_CHECK(readOk, "落盘文件可读");
         YOMK_TEST_CHECK(content.find("[" + std::to_string(infoLine) + "] lgL_s2_info") != std::string::npos,
-            "文件宏路径行号正确且含 marker (" + std::to_string(infoLine) + ")");
+            "文件链式发射行号正确且含 marker (" + std::to_string(infoLine) + ")");
         YOMK_TEST_CHECK(content.find(" lgL_s2_info_tag") != std::string::npos, "文件 INFO_TAG marker 落盘");
         YOMK_TEST_CHECK(content.find(" lgL_s2_warn") != std::string::npos, "文件 WARN marker 落盘");
         YOMK_TEST_CHECK(content.find(" lgL_s2_error") != std::string::npos, "文件 ERROR marker 落盘");

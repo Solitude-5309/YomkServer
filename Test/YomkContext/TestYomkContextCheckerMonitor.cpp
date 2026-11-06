@@ -1,27 +1,24 @@
-/**
- * @file TestYomkContextCheckerMonitor.cpp
- * @brief YomkContext checker 与 monitor（同步/异步）白盒测试（Context 模块 MC2）
- *
- * 覆盖内容：
- * 1. set_checker 边界：空 key、null checkFunc、不存在 key、正常设置
- * 2. turn_on_checker/turn_off_checker 开关语义
- * 3. checker accept/reject：accept 放行、reject 拦截且 value 不变
- * 4. 空 checker 守卫（对应前置修复）：全局开启 checker 后对未设 checker 的 key set 视为 accept，不崩溃
- * 5. checker 关闭后不生效
- * 6. set_monitor 边界：空 key、null func、不存在 key、正常设置
- * 7. turn_on_monitor/turn_off_monitor 开关语义
- * 8. 同步 monitor 触发（拿到最新数据）、关闭后不触发
- * 9. 同步 monitor 异常吞掉（std::exception 与非 std::exception）
- * 10. 多同步 monitor 按注册顺序触发
- * 11. 异步 monitor 触发与顺序（单线程池保序）
- * 12. 并发 set 异步保序：锁内入队 ⇒ 末条异步通知收敛到最终值（C1 回归）
- * 13. 异步 monitor 排空（deinit）：shutdown 前排空全部异步任务
- *
- * 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext；异步排空用例置于末尾并调用 yomk::server().shutdown()
- *       （call_once 约束，shutdown 后不可再初始化）；服务删除后重新注册/池重建归 MC3
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// YomkContext checker 与 monitor（同步/异步）白盒测试
+//
+// 覆盖内容：
+// 1. set_checker 边界：空 key、null checkFunc、不存在 key、正常设置
+// 2. turn_on_checker/turn_off_checker 开关语义
+// 3. checker accept/reject：accept 放行、reject 拦截且 value 不变
+// 4. 空 checker 守卫（对应前置修复）：全局开启 checker 后对未设 checker 的 key set 视为 accept，不崩溃
+// 5. checker 关闭后不生效
+// 6. set_monitor 边界：空 key、null func、不存在 key、正常设置
+// 7. turn_on_monitor/turn_off_monitor 开关语义
+// 8. 同步 monitor 触发（拿到最新数据）、关闭后不触发
+// 9. 同步 monitor 异常吞掉（std::exception 与非 std::exception）
+// 10. 多同步 monitor 按注册顺序触发
+// 11. 异步 monitor 触发与顺序（单线程池保序）
+// 12. 并发 set 异步保序：锁内入队 ⇒ 末条异步通知收敛到最终值（C1 回归）
+// 13. 异步 monitor 排空（deinit）：shutdown 前排空全部异步任务
+//
+// 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext；异步排空用例置于末尾并调用 yomk::server().shutdown()
+// （call_once 约束，shutdown 后不可再初始化）；服务删除后重新注册/池重建归 TestYomkContextLifecycle
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <chrono>
@@ -360,8 +357,8 @@ int main()
             }).async(/*async=*/true).apply();
 
         // N 个线程并发 set（各值可辨识）；C1 下异步入队在写锁内完成 ⇒ 入队序=提交序，
-        // 单线程 FIFO 池 ⇒ 末条异步通知 = 最后一次提交的值 = 最终 getContext 值。
-        // 旧实现（post 在解锁后）可能倒挂：先提交者后入队 ⇒ 末条 ≠ 终值。
+        // 单线程 FIFO 池 ⇒ 末条异步通知 = 最后一次提交的值 = 最终 ctx 值。
+        // 若入队发生在写锁释放后则可能倒挂：先提交者后入队 ⇒ 末条 ≠ 终值。
         const int kThreads = 8;
         const int kIters = 20;
         std::vector<std::thread> workers;
@@ -387,7 +384,7 @@ int main()
         bool reached = waitForCount(g_asyncCalls, kTotal, 15000);
         YOMK_TEST_CHECK(reached, "并发 set 后异步 monitor 在等待窗口内全部触发（计数 == 总提交数）");
 
-        // 所有写线程已 join，getContext 终值稳定
+        // 所有写线程已 join，ctx 终值稳定
         auto finalVal = yomk::ctx().key("mon_conc").msg<yomk::msgs::String>().with_default(yomk::msgs::String::shared(std::string("default"))).get();
         YOMK_TEST_CHECK(finalVal && !finalVal->d.empty(), "读取 mon_conc 终值成功");
 

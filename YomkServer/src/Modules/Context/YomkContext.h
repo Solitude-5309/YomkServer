@@ -37,7 +37,7 @@ private:
     // 失败时 resp 携带错误响应并返回 nullptr
     ContextGroup* findGroup(const std::string& groupName, yomk::payload::Response& resp);
 
-    // 默认组 main：成员直取，不进组表、免查找；完整承载现有 Context 全部功能
+    // 默认组 main：成员直取，不进组表、免查找；承载 Context 全部功能
     ContextGroup m_main;
 
     // 自定义组表：按组名惰性自动创建、不支持销毁（map 只增不减）；

@@ -125,7 +125,7 @@ yomk::payload::Response YomkServerInfo::listAll(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "server has been destroyed"};
     }
 
-    // 同现实现取数锁序：serviceNames() 一次，再逐服务 serviceFuncInfos()；
+    // 取数锁序：serviceNames() 一次，再逐服务 serviceFuncInfos()；
     // FuncInfo 三字段与 /function 单查同族整体拷贝（m_funcName 为带 / 前缀 url 段）
     std::vector<yomk::payload::ServerServiceInfo> infos;
     for (auto& srvName : server->serviceNames())

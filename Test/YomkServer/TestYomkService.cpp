@@ -1,20 +1,17 @@
-/**
- * @file TestYomkService.cpp
- * @brief YomkService 命名/函数注册/调用白盒单元测试（正式全面测试，MC2）
- *
- * 覆盖内容：
- * 1. 命名：注册前设置/读取、空名拒绝、yomk::server().add() 两参形式注册前改名
- * 2. 注册锁定：add() 成功后改名被拒（名字与注册键一致承诺）
- * 3. installFunc：合法名、非法名（空串/无 / 开头）拒绝、空函数拒绝、
- *    三参元数据（m_msgName）、四参函数说明（m_description）、
- *    两参覆盖清除残留信息、三参/四参覆盖恢复
- * 4. funcInfos 内省
- * 5. invoke：命中（自身响应 + pkg 透传回显）、非法名/未安装返回 ResStatus::Failed 契约消息
- * 6. 空服务器守卫：server==nullptr 构造后全部 !m_p 分支
- * 7. deleted 标志位语义（写侧置位归框架，弱绑定回调丢弃语义归 MC3）
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// YomkService 命名/函数注册/调用白盒单元测试
+//
+// 覆盖内容：
+// 1. 命名：注册前设置/读取、空名拒绝、yomk::server().add() 两参形式注册前改名
+// 2. 注册锁定：add() 成功后改名被拒（名字与注册键一致承诺）
+// 3. installFunc：合法名、非法名（空串/无 / 开头）拒绝、空函数拒绝、
+// 三参元数据（m_msgName）、四参函数说明（m_description）、
+// 两参覆盖清除残留信息、三参/四参覆盖恢复
+// 4. funcInfos 内省
+// 5. invoke：命中（自身响应 + pkg 透传回显）、非法名/未安装返回 ResStatus::Failed 契约消息
+// 6. 空服务器守卫：server==nullptr 构造后全部 !m_p 分支
+// 7. deleted 标志位语义（写侧置位归框架，弱绑定回调丢弃语义归 TestYomkWeakFunc）
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <iostream>
 #include <map>
@@ -58,9 +55,7 @@ static bool findFuncInfo(const std::map<std::string, yomk::payload::FuncInfo>& i
     return true;
 }
 
-/**
- * @brief 主演示服务：注册/调用/内省用例载体
- */
+// 主演示服务：注册/调用/内省用例载体
 class DemoService : public YomkService
 {
 public:
@@ -106,9 +101,7 @@ private:
     yomk::payload::Response restore(YomkMsgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "restore"}; }
 };
 
-/**
- * @brief 空服务器服务：以 nullptr 构造，验证全部空实现守卫分支（不注册）
- */
+// 空服务器服务：以 nullptr 构造，验证全部空实现守卫分支（不注册）
 class NullSrv : public YomkService
 {
 public:
@@ -125,9 +118,7 @@ public:
     virtual int init() override { return 0; }
 };
 
-/**
- * @brief 标志位服务：验证 deleted 判活（写侧置位归框架）
- */
+// 标志位服务：验证 deleted 判活（写侧置位归框架）
 class FlagSrv : public YomkService
 {
 public:
@@ -171,7 +162,7 @@ static void testInstallFunc(DemoService* demo)
     demo->installFunc("", [](YomkMsgPtr pkg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, ""}; });
     demo->installFunc("no_slash", [](YomkMsgPtr pkg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, ""}; });
 
-    // 空函数对象：安装被拒（守卫修复后）
+    // 空函数对象：安装被拒（空函数对象守卫）
     demo->installFunc("/null_func", nullptr);
 
     std::map<std::string, yomk::payload::FuncInfo> infos = demo->funcInfos();
@@ -273,7 +264,7 @@ static void testNullServerGuards()
         "空实现 request 返回 ResStatus::Failed + service is null");
 }
 
-// 7. deleted 标志位语义（写侧置位归框架，弱绑定回调丢弃语义归 MC3）
+// 7. deleted 标志位语义（写侧置位归框架，弱绑定回调丢弃语义归 TestYomkWeakFunc）
 static void testDeletedFlag()
 {
     auto* raw = new FlagSrv(yomk::server().instance().get());

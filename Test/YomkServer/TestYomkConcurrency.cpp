@@ -1,21 +1,18 @@
-/**
- * @file TestYomkConcurrency.cpp
- * @brief 多线程并发功能测试与 10 万级持续压测（正式全面测试，MC7）
- *
- * 覆盖内容：
- * 1. 并发同步 request 守恒（服务表/函数表 shared_mutex 读锁 + 副本保活）
- * 2. 并发 asyncRequest 不丢不重（请求池 + 服务表并发）
- * 3. request × add/del 并发：返回值合法集合内、无崩溃无悬垂
- * 4. request × installFunc 覆盖安装并发：function 副本原子替换无撕裂
- * 5. shutdown × 在途异步并发：排空完成后回调数稳定、shutdown 后投递全拒
- * 6. 删除即停并发形态：delService 后弱绑定回调立即丢弃、在途函数体收尾后停止
- * 7. N7 持续压测：8 线程 × 12500 次 ≈ 10 万级混合操作跨两个 server 实例
- *
- * 说明：类级并发测试不触 yomk::server().init()（与 MC5 同结论），单可执行文件多实例完成；
- *       时序敏感用例设有限等待窗口与守护上限，失败形态为断言非挂起；零源码变更
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// 多线程并发功能测试与 10 万级持续压测
+//
+// 覆盖内容：
+// 1. 并发同步 request 守恒（服务表/函数表 shared_mutex 读锁 + 副本保活）
+// 2. 并发 asyncRequest 不丢不重（请求池 + 服务表并发）
+// 3. request × add/del 并发：返回值合法集合内、无崩溃无悬垂
+// 4. request × installFunc 覆盖安装并发：function 副本原子替换无撕裂
+// 5. shutdown × 在途异步并发：排空完成后回调数稳定、shutdown 后投递全拒
+// 6. 删除即停并发形态：delService 后弱绑定回调立即丢弃、在途函数体收尾后停止
+// 7. N7 持续压测：8 线程 × 12500 次 ≈ 10 万级混合操作跨两个 server 实例
+//
+// 说明：类级并发测试不触 yomk::server().init()（与 TestYomkShutdownSeq 同结论），单可执行文件多实例完成；
+// 时序敏感用例设有限等待窗口与守护上限，失败形态为断言非挂起；零源码变更
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <algorithm>
 #include <atomic>
@@ -75,9 +72,7 @@ static bool waitFor(std::function<bool()> pred, int timeoutMs, const std::string
     return false;
 }
 
-/**
- * @brief 并发演示服务：/ping 固定响应、/echo String 回显；init 存下弱绑定回调
- */
+// 并发演示服务：/ping 固定响应、/echo String 回显；init 存下弱绑定回调
 class ConcSrv : public YomkService
 {
 public:

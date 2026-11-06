@@ -1,29 +1,25 @@
-/**
- * @file TestYomkFunctionPoolLifecycle.cpp
- * @brief FunctionPool 模块生命周期与 CRUD 基线测试（FPC1，从零新建——模块此前零专属覆盖）
- *
- * 覆盖内容（8 个 Section，约 55 断言）：
- * 1. CRUD 闭环：install() echo 函数 → call() 解包回传消息 → uninstall() → call() not-found
- * 2. 注册边界：空函数名 / null func 均 ResStatus::Invalid；重复注册为"更新"语义（call() 走新函数）
- * 3. 注销边界：空名 ResStatus::Invalid / 未注册名 ResStatus::Invalid（现状契约，P1 登记项）
- * 4. 调用边界：空名 ResStatus::Invalid / 未注册 ResStatus::Invalid（P1）/ CallFunction.m_pkg=nullptr 原样透传给函数
- * 5. 内省：list() 存活列表包含注册名（空表陷阱教训）/ get_info() 命中 "名 [类型]" 与
- *    无类型两种格式、未注册 ResStatus::Failed、空名 ResStatus::Invalid / all() FuncInfoList 相对计数与字段断言
- * 6. 注册形态：fn_name+fn 两步（无类型）/ +msg_name 三步（声明期望消息类型名）/
- *     +description 四步（追加函数说明，get_info() m_msg 契约保持 + 数据段可读）与同名热替换覆盖语义
- * 7. 异常契约：call() 链（request→invoke→callFunction→用户函数）无任何 try/catch，
- *    用户函数抛 std::exception 异常穿透直达调用方——测试侧捕获 what 验证；随后正常 call() 验证池存活
- * 8. 超长名：65536 字符函数名全生命周期（install()/call()/get_info()/uninstall()）ResStatus::Succeeded 且完整回显
- *
- * 说明：YomkFunctionPool 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
- *       yomk::server().init() 单例白盒直连；全部经 API 接口测试，同时覆盖 invoke 路由链，无覆盖损失。
- *       测试装置为文件级原子计数（TSan-clean 既有模式）。源码零改动：FPC1 审计登记的 P1
- *       （not-found 错误码不一致：unregister/call=ResStatus::Invalid vs funcInfo=ResStatus::Failed）与 P2（异常穿透）
- *       已于 FPC2 处置——P1 修复为统一 ResStatus::Failed（与 Context/EventLoop/路由层惯例一致），本文件断言
- *       同步回填；P2 文档化为显式契约（S7 固化行为不变）。
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// FunctionPool 模块生命周期与 CRUD 基线测试
+//
+// 覆盖内容（8 个 Section，约 55 断言）：
+// 1. CRUD 闭环：install() echo 函数 → call() 解包回传消息 → uninstall() → call() not-found
+// 2. 注册边界：空函数名 / null func 均 ResStatus::Invalid；重复注册为"更新"语义（call() 走新函数）
+// 3. 注销边界：空名 ResStatus::Invalid / 未注册名 ResStatus::Invalid（现状契约）
+// 4. 调用边界：空名 ResStatus::Invalid / 未注册 ResStatus::Invalid/ CallFunction.m_pkg=nullptr 原样透传给函数
+// 5. 内省：list() 存活列表包含注册名（空表陷阱教训）/ get_info() 命中 "名 [类型]" 与
+// 无类型两种格式、未注册 ResStatus::Failed、空名 ResStatus::Invalid / all() FuncInfoList 相对计数与字段断言
+// 6. 注册形态：fn_name+fn 两步（无类型）/ +msg_name 三步（声明期望消息类型名）/
+// +description 四步（追加函数说明，get_info() m_msg 契约保持 + 数据段可读）与同名热替换覆盖语义
+// 7. 异常契约：call() 链（request→invoke→callFunction→用户函数）无任何 try/catch，
+// 用户函数抛 std::exception 异常穿透直达调用方——测试侧捕获 what 验证；随后正常 call() 验证池存活
+// 8. 超长名：65536 字符函数名全生命周期（install()/call()/get_info()/uninstall()）ResStatus::Succeeded 且完整回显
+//
+// 说明：YomkFunctionPool 是 YomkService 子类（构造绑定 server->weak_from_this()），无法脱离
+// yomk::server().init() 单例白盒直连；全部经 API 接口测试，同时覆盖 invoke 路由链，无覆盖损失。
+// 测试装置为文件级原子计数（TSan-clean 既有模式）。契约：not-found 统一返回
+// ResStatus::Failed（与 Context/EventLoop/路由层惯例一致）；call() 异常穿透直达调用方，
+// 为显式契约（S7 固化）。
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <iostream>
@@ -79,7 +75,7 @@ static yomk::payload::Response v2Func(YomkMsgPtr)
     return {yomk::payload::ResStatus::Succeeded, "v2"};
 }
 
-// 抛异常函数：验证 call() 链异常穿透契约（P2）
+// 抛异常函数：验证 call() 链异常穿透契约
 static yomk::payload::Response throwFunc(YomkMsgPtr)
 {
     throw std::runtime_error("fp_boom");
@@ -286,14 +282,14 @@ int main()
         YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_desc").uninstall() == yomk::payload::ResStatus::Succeeded, "清理 fp_desc");
     }
 
-    // ============ Section 7: call() 异常穿透契约（FPC2 已文档化为显式契约）============
+    // ============ Section 7: call() 异常穿透契约（显式契约）============
     {
         YOMK_TEST_CHECK(
             yomk::fn_pool().fn_name("fp_throw").fn(throwFunc).install() == yomk::payload::ResStatus::Succeeded,
             "install() 抛异常函数返回 ResStatus::Succeeded");
 
         // call() 链五层（request→invoke→callFunction→用户函数）无 try/catch：
-        // 异常穿透直达调用方（区别于 EventLoop run() 的吞噬设计）——FPC2 契约文档化
+        // 异常穿透直达调用方（区别于 EventLoop run() 的吞噬设计）
         bool caught = false;
         try
         {

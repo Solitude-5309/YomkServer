@@ -1,35 +1,32 @@
-/**
- * @file TestYomkServerInfoLifecycle.cpp
- * @brief ServerInfo 模块生命周期与四端点功能基线测试（P0，从零新建——模块此前零专属覆盖）
- *
- * 覆盖内容（8 个 Section，76 断言）：
- * S0. server destroyed 分支（白盒直连）：测试自持 YomkServerInfo 子类实例（不经 add()），
- *     server 释放后 4 端点 invoke 逐一返回 ResStatus::Failed + "server has been destroyed"
- *     （m_weakServer.lock() 失败分支；YomkService 框架协作面已收紧为 protected，
- *     经白盒子类 using 再暴露 invoke——该分支无 URL 通道可达，直调是唯一触达路径）
- * S1. /services：ResStatus::Succeeded + StringArray 含 5 内置服务；FmtSrv 注册后出现、删除后消失、重注册后出现
- * S2. /functions：FuncInfoList 结构化清单（m_funcName 带 / 前缀、m_msgName 类型名/空、
- *     m_description 四参说明）；空 srvName ResStatus::Invalid；不存在服务 ResStatus::Succeeded 空表；内置
- *     /YomkContext 与 /YomkServerInfo 自身条目
- * S3. /function：命中时 m_msg 精确等于 msgName（特殊契约，非 "ok"）、无类型函数 m_msg 为空；
- *     四参函数说明挂入数据段（m_msg 契约保持）、无说明函数数据段为空；
- *     URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null pkg
- * S4. /all：ServerServiceInfoList 结构化包（按 m_serviceName 查条目；m_funcs map 字典序
- *     /echo 在 /ping 前，字段断言替代缩进行精确串）
- * S5. 轻量并发快照一致性：3 churn 线程 add/del × 3 内省线程轮询 4 端点（服务表 shared_mutex
- *     读写竞争），恒 ResStatus::Succeeded、/services 恒含存活服务、churn 后无残留
- * S6. 内置服务删除/重注册自举契约（对齐 Context Lifecycle S4/S5 模式）：删除后 4 端点不可路由、
- *     服务表快照反映删除；create() 无参重注册（构造函数固定名生效）后自举恢复
- * S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/services 行完整、/functions 条目字段、
- *     /function 长名下 URL 二段解析、/all 超长条目完整无截断
- *
- * 说明：S1-S5 经 yomk::server().init() 单例 + yomk::server() 内省终结走完整路由链；S0 类级直连
- *       （include Modules/ServerInfo/YomkServerInfo.h，CMake 已追加 src 目录），
- *       放在 yomk::server().shutdown() 之后以独立 create 实例隔离单例交互。
- *       并发段断言经原子计数器收集、节末单线程 YOMK_TEST_CHECK（TSan-clean 既有模式）。
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// ServerInfo 模块生命周期与四端点功能基线测试
+//
+// 覆盖内容（8 个 Section，76 断言）：
+// S0. server destroyed 分支（白盒直连）：测试自持 YomkServerInfo 子类实例（不经 add()），
+// server 释放后 4 端点 invoke 逐一返回 ResStatus::Failed + "server has been destroyed"
+// （m_weakServer.lock() 失败分支；YomkService 框架协作面已收紧为 protected，
+// 经白盒子类 using 再暴露 invoke——该分支无 URL 通道可达，直调是唯一触达路径）
+// S1. /services：ResStatus::Succeeded + StringArray 含 5 内置服务；FmtSrv 注册后出现、删除后消失、重注册后出现
+// S2. /functions：FuncInfoList 结构化清单（m_funcName 带 / 前缀、m_msgName 类型名/空、
+// m_description 四参说明）；空 srvName ResStatus::Invalid；不存在服务 ResStatus::Succeeded 空表；内置
+// /YomkContext 与 /YomkServerInfo 自身条目
+// S3. /function：命中时 m_msg 精确等于 msgName（特殊契约，非 "ok"）、无类型函数 m_msg 为空；
+// 四参函数说明挂入数据段（m_msg 契约保持）、无说明函数数据段为空；
+// URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null pkg
+// S4. /all：ServerServiceInfoList 结构化包（按 m_serviceName 查条目；m_funcs map 字典序
+// /echo 在 /ping 前，字段断言替代缩进行精确串）
+// S5. 轻量并发快照一致性：3 churn 线程 add/del × 3 内省线程轮询 4 端点（服务表 shared_mutex
+// 读写竞争），恒 ResStatus::Succeeded、/services 恒含存活服务、churn 后无残留
+// S6. 内置服务删除/重注册自举契约（对齐 Context Lifecycle S4/S5 模式）：删除后 4 端点不可路由、
+// 服务表快照反映删除；create() 无参重注册（构造函数固定名生效）后自举恢复
+// S7. 超长名内省边界（65536 字符服务名）：/services 行完整、/functions 条目字段、
+// /function 长名下 URL 二段解析、/all 超长条目完整无截断
+//
+// 说明：S1-S5 经 yomk::server().init() 单例 + yomk::server() 内省终结走完整路由链；S0 类级直连
+// （include Modules/ServerInfo/YomkServerInfo.h，CMake 已追加 src 目录），
+// 放在 yomk::server().shutdown() 之后以独立 create 实例隔离单例交互。
+// 并发段断言经原子计数器收集、节末单线程 YOMK_TEST_CHECK（TSan-clean 既有模式）。
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <algorithm>
 #include <atomic>
@@ -151,11 +148,9 @@ static const yomk::payload::FuncInfo* findFunc(const std::vector<yomk::payload::
     return nullptr;
 }
 
-/**
- * @brief 结构化清单演示服务：/ping 两参安装（无类型条目）+ /echo 四参安装
- *        （String 类型 + 说明 "echo demo description"），
- *        供 S2/S3/S4 条目字段精确断言与 description 透出断言使用
- */
+// 结构化清单演示服务：/ping 两参安装（无类型条目）+ /echo 四参安装
+// （String 类型 + 说明 "echo demo description"），
+// 供 S2/S3/S4 条目字段精确断言与 description 透出断言使用
 class FmtSrv : public YomkService
 {
 public:
@@ -186,9 +181,7 @@ public:
     }
 };
 
-/**
- * @brief churn 压力服务：最小 /hit 函数，供 S5 并发增删使用
- */
+// churn 压力服务：最小 /hit 函数，供 S5 并发增删使用
 class ChurnSrv : public YomkService
 {
 public:
@@ -524,7 +517,7 @@ int main()
               "重注册后 /all 含自身段（自举查询成功）");
     }
 
-    // ============ S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8） ============
+    // ============ S7. 超长名内省边界（65536 字符服务名） ============
     std::cout << "===== S7. 超长名内省边界（65536 字符服务名） =====" << std::endl;
     {
         const std::string longName = "/Long" + std::string(65531, 'x');

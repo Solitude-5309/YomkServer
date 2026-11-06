@@ -1,16 +1,13 @@
-/**
- * @file TestYomkFunctionPoolConcurrency.cpp
- * @brief YomkFunctionPool 并发正确性验证（FPC3）
- *
- * 覆盖测试要求第 5/10 类（TSan 数据竞争 + 多线程并发正确性）：
- * - S1：并发 call() 守恒（只读路径 shared_lock 并发拷贝）+ 嵌套重入（同线程二次 shared_lock）
- * - S2：并发 install() 更新 × call()（unique_lock 写 vs shared_lock 读交错，无 torn std::function）
- * - S3：并发 uninstall() × call()（锁外调用安全性——erase 后在途调用仍完成）
- * - S4：并发内省 × 变更（all() 结构化快照持续可解包）
- * - S5：全量 churn 混合守恒（register/update/unregister/call/introspect 全并发）
- *
- * 装置：文件级原子计数/自旋门（TSan-clean），yomk::server().init() 单例，段尾清理共享池。
- */
+// YomkFunctionPool 并发正确性验证
+//
+// 覆盖测试要求第 5/10 类（TSan 数据竞争 + 多线程并发正确性）：
+// - S1：并发 call() 守恒（只读路径 shared_lock 并发拷贝）+ 嵌套重入（同线程二次 shared_lock）
+// - S2：并发 install() 更新 × call()（unique_lock 写 vs shared_lock 读交错，无 torn std::function）
+// - S3：并发 uninstall() × call()（锁外调用安全性——erase 后在途调用仍完成）
+// - S4：并发内省 × 变更（all() 结构化快照持续可解包）
+// - S5：全量 churn 混合守恒（register/update/unregister/call/introspect 全并发）
+//
+// 装置：文件级原子计数/自旋门（TSan-clean），yomk::server().init() 单例，段尾清理共享池。
 
 #include <atomic>
 #include <chrono>
@@ -415,7 +412,7 @@ int main(int /*argc*/, char** /*argv*/)
         for (auto& th : introspectThreads)
             th.join();
 
-        // 验证快照收集（结构化单包自洽，原 declaredN/actualLines 校验内化为解包成功）
+        // 快照收集校验：结构化单包自洽，解包成功即校验通过
         size_t snapshotCount = 0;
         {
             std::lock_guard<std::mutex> lk(g_s4ObsMutex);

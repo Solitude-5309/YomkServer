@@ -152,7 +152,7 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
 
     std::string timeStr = yomkLogLocalTimeFormatted();
 
-    // tag 由日志器统一拼接（替代旧 API 层拼接）：空 tag 不加前缀，与旧行为一致
+    // tag 由日志器统一拼接：空 tag 不加前缀
     const std::string tagPrefix = tag.empty() ? "" : "[" + tag + "] ";
 
     std::lock_guard<std::mutex> lock(m_logBufferMutex);
@@ -203,7 +203,7 @@ void FileLogger::write()
     std::ofstream logFile(m_dir + "/" + m_name + ".log", std::ios_base::app);
     if (!logFile.is_open())
     {
-        // 开文件失败直接返回、不清缓冲（内容不丢，既有语义由 TestYomkLoggerDirect 断言）
+        // 开文件失败直接返回、不清缓冲（内容不丢，TestYomkLoggerDirect 断言此语义）
         YOMK_DIAG_ERROR("open log file failed: " + m_dir + "/" + m_name + ".log");
         return;
     }

@@ -149,7 +149,7 @@ yomk::payload::Response YomkEventLoop::loops(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(loopNames)};
 }
 
-// 内省：单个事件循环元信息，入参 String 格式：循环名 或 循环名 N（N 缺省 3）
+// 内省：单个事件循环元信息，入参 EventLoopQuery（循环名精确匹配 + tag 采样数，缺省 3）
 yomk::payload::Response YomkEventLoop::loopInfo(YomkMsgPtr pkg)
 {
     auto query = yomk::msgs::unpack<yomk::msgs::EventLoopQuery>(pkg);
@@ -157,7 +157,7 @@ yomk::payload::Response YomkEventLoop::loopInfo(YomkMsgPtr pkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not EventLoopQuery"};
     }
-    // 名称按字面量精确匹配、采样数为类型化字段（历史 String "name N" 空格编码已移除）
+    // 名称按字面量精确匹配、采样数为类型化字段
     const std::string& loopName = query->d.m_loopName;
     size_t tagCount = query->d.m_tagCount;
 

@@ -1,40 +1,37 @@
-/**
- * @file TestYomkEventLoopLifecycle.cpp
- * @brief EventLoop 三段语义（start 重启续跑 / stop 保留队列 / destroy 停后清空）白盒回归测试
- *
- * 覆盖内容（ELC2 缺陷修复后 12 个 Section）：
- * 1. stop 保留性：停止仅退出工作线程，未执行事件保留在队列（不执行、pending 不减）
- * 2. start 续跑性：对已停止未销毁的循环再次 start，积压按原 FIFO 顺序续跑（事件不丢失）
- * 3. destroy 清空性：销毁先停止退出线程再清空队列——排队事件永不执行、重启后无任何执行（不可续跑）
- * 4. start 幂等性：运行中再次 start 不新建线程（事件仍在原工作线程执行）
- * 5. postWait 同步语义：返回即事件已执行完（响应已填充、eventId 已赋）；null 事件返回 1
- * 6. worker 内 postWait 死锁防护：防护路径直接执行内层事件，不自等待
- * 7. run() 异常吞噬与存活：handler 抛 std::exception/未知异常被隔离，循环存活、postWait 不挂
- * 8. 未运行幂等 / 停止态拒收（post/postWait 返回 2）/ 默认处理函数 / infoSnapshot 类型化分支（默认函数标记与
- *    期望类型名、空 tag 原值保留、tagCount=0 与超队列长度）
- * 9. API 层路径：event_loop() 域下停止保留 / 重启续跑 / 销毁移除 / post_wait() 同步 / 不存在名 ResStatus::Failed /
- *    停止态投递 ResStatus::Failed / get_info() 数字路径与越界回退 / list() 存活列表与销毁后移除 / all() /
- *    空循环名与超长循环名边界（ELC6 覆盖率回填：loops() 遍历路径需在 map 非空时调用）
- * 10. postWait×destroy 等待者释放：销毁清空队列时触发被丢弃事件的等待回调，等待者不永久挂起（看门狗）
- * 11. remove("/YomkEventLoop") 残留 loop 收尾与重注册（P4）：运行中删除内置服务——残留 loop 经
- *     析构兜底链收尾（无 deinit override，~YomkEventLoop -> m_loops 析构 -> ~EventLoop -> destroy），
- *     后续 EVENTLOOP API 服务级 ResStatus::Failed；无参重注册（new T(this) 注入）后 start()/post_wait() 全链路恢复
- * 12. ~EventLoop 析构兜底释放等待者（P4，白盒，看门狗）：不调 destroy 直接析构——~EventLoop 内部
- *     destroy 兜底同样触发被丢弃事件的等待回调，析构入口与显式入口共享释放契约（S10 的入口级补全）
- *
- * 说明：白盒段直连内部类 EventLoop（include Modules/EventLoop/EventLoop.h，CMake 已追加 src 目录），
- *       不触 yomk::server().init()（类级测试与请求路由无关）；API 段使用 yomk::server().init() 单例拉起内置 /YomkEventLoop，
- *       末尾 yomk::server().shutdown() 收尾（call_once 约束，shutdown 后不可再初始化）。
- *       停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询 infoSnapshot 至 m_running==false
- *       确认 m_running 已置位后才释放阻塞事件，杜绝工作线程抢跑后续排队事件的竞态（确定性断言）。
- *       阻塞门与观测变量全部为文件级（同 g_asyncMutex 既有 TSan-clean 风格）：阻塞门用原子自旋实现，
- *       规避 std::condition_variable::wait_for 在 TSan 下的已知误报路径与各 section 局部互斥量
- *       栈槽地址复用导致的元数据串扰；工作线程自旋以 1ms 粒度休眠，开销可忽略。
- *       ELC2 已修复并回归：停止态投递可区分返回码（类 API 返回 2 / 宏层 ResStatus::Failed）、越界数字 tagCount 回退默认 3、
- *       postWait×destroy 等待者释放。
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// EventLoop 三段语义（start 重启续跑 / stop 保留队列 / destroy 停后清空）白盒回归测试
+//
+// 覆盖内容（12 个 Section）：
+// 1. stop 保留性：停止仅退出工作线程，未执行事件保留在队列（不执行、pending 不减）
+// 2. start 续跑性：对已停止未销毁的循环再次 start，积压按原 FIFO 顺序续跑（事件不丢失）
+// 3. destroy 清空性：销毁先停止退出线程再清空队列——排队事件永不执行、重启后无任何执行（不可续跑）
+// 4. start 幂等性：运行中再次 start 不新建线程（事件仍在原工作线程执行）
+// 5. postWait 同步语义：返回即事件已执行完（响应已填充、eventId 已赋）；null 事件返回 1
+// 6. worker 内 postWait 死锁防护：防护路径直接执行内层事件，不自等待
+// 7. run() 异常吞噬与存活：handler 抛 std::exception/未知异常被隔离，循环存活、postWait 不挂
+// 8. 未运行幂等 / 停止态拒收（post/postWait 返回 2）/ 默认处理函数 / infoSnapshot 类型化分支（默认函数标记与
+// 期望类型名、空 tag 原值保留、tagCount=0 与超队列长度）
+// 9. API 层路径：event_loop() 域下停止保留 / 重启续跑 / 销毁移除 / post_wait() 同步 / 不存在名 ResStatus::Failed /
+// 停止态投递 ResStatus::Failed / get_info() 数字路径与越界回退 / list() 存活列表与销毁后移除 / all() /
+// 空循环名与超长循环名边界（loops() 遍历路径需在 map 非空时调用）
+// 10. postWait×destroy 等待者释放：销毁清空队列时触发被丢弃事件的等待回调，等待者不永久挂起（看门狗）
+// 11. remove("/YomkEventLoop") 残留 loop 收尾与重注册（P4）：运行中删除内置服务——残留 loop 经
+// 析构兜底链收尾（无 deinit override，~YomkEventLoop -> m_loops 析构 -> ~EventLoop -> destroy），
+// 后续 EVENTLOOP API 服务级 ResStatus::Failed；无参重注册（new T(this) 注入）后 start()/post_wait() 全链路恢复
+// 12. ~EventLoop 析构兜底释放等待者（P4，白盒，看门狗）：不调 destroy 直接析构——~EventLoop 内部
+// destroy 兜底同样触发被丢弃事件的等待回调，析构入口与显式入口共享释放契约（S10 的入口级补全）
+//
+// 说明：白盒段直连内部类 EventLoop（include Modules/EventLoop/EventLoop.h，CMake 已追加 src 目录），
+// 不触 yomk::server().init()（类级测试与请求路由无关）；API 段使用 yomk::server().init() 单例拉起内置 /YomkEventLoop，
+// 末尾 yomk::server().shutdown() 收尾（call_once 约束，shutdown 后不可再初始化）。
+// 停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询 infoSnapshot 至 m_running==false
+// 确认 m_running 已置位后才释放阻塞事件，杜绝工作线程抢跑后续排队事件的竞态（确定性断言）。
+// 阻塞门与观测变量全部为文件级（同 g_asyncMutex 既有 TSan-clean 风格）：阻塞门用原子自旋实现，
+// 规避 std::condition_variable::wait_for 在 TSan 下的已知误报路径与各 section 局部互斥量
+// 栈槽地址复用导致的元数据串扰；工作线程自旋以 1ms 粒度休眠，开销可忽略。
+// 契约关键点：停止态投递可区分返回码（内部 EventLoop::post 返回 2 / API 层收敛为 ResStatus::Failed）、
+// 大值 tagCount 无回退（类型化直传, 截断不生效全部列出）、postWait×destroy 等待者释放。
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <chrono>
@@ -502,8 +499,7 @@ int main()
         auto infoRejected = infoOf();
         YOMK_TEST_CHECK(infoRejected && infoRejected->d.m_pending == 2, "被拒投递未入队（pending 仍为 2）");
 
-        // 类型化 tagCount（历史 D3 回归改造）："name N" 空格编码已移除，大值直接以
-        // size_t 传参（1e18 在合法范围内），不再经 stoul 解析、无越界回退路径；
+        // 类型化 tagCount：size_t 传参（1e18 在合法范围内），无越界回退路径；
         // 冻结窗口队列 2 条（c1/c2），大 tagCount >= 2 截断不生效全部列出
         auto oob = yomk::event_loop().loop("api_loop").tag_count(1000000000000000000ULL).get_info();
         YOMK_TEST_CHECK(oob.m_status == yomk::payload::ResStatus::Succeeded, "越界数字 tagCount 返回 ResStatus::Succeeded（不崩溃）");
@@ -553,7 +549,7 @@ int main()
         YOMK_TEST_CHECK(yomk::event_loop().loop("no_such").destroy() == yomk::payload::ResStatus::Failed, "destroy() 不存在循环返回 ResStatus::Failed");
         YOMK_TEST_CHECK(yomk::event_loop().loop("no_such").get_info().m_status == yomk::payload::ResStatus::Failed, "get_info() 不存在循环返回 ResStatus::Failed");
 
-        // get_info() 类型化查询：载荷为 EventLoopQuery（历史 String "name N" 空格编码已移除）
+        // get_info() 类型化查询：载荷为 EventLoopQuery
         YOMK_TEST_CHECK(yomk::event_loop().loop("api_loop").tag_count(7).get_info().m_msg == "ok", "类型化重载 tagCount=7");
         YOMK_TEST_CHECK(
             yomk::event_loop().loop("api_loop 5").get_info().m_status == yomk::payload::ResStatus::Failed,

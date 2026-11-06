@@ -1,24 +1,21 @@
-/**
- * @file TestYomkEventLoopStress.cpp
- * @brief EventLoop 压力测试（10 万级投递 + 大数据量 + QPS 基线记录）
- *
- * 覆盖内容（5 个 Section，规模 N 经 YOMK_TEST_STRESS_SCALE 环境变量参数化，缺省 100000）：
- * 1. 单线程 10 万级投递基线：post N 个 trivial 计数事件 → drain，计数守恒 + 入队/消费 QPS 基线记录
- * 2. 8 线程并发 10 万级：并发 post → drain，计数守恒 + 聚合 QPS 基线（高并发持续调用无崩溃）
- * 3. 10 万级纯积压路径：gate 占住 worker 使投递/消费速率解耦——纯测 post + 无界队列大规模增长/重分配
- *    （断言 pending==N 积压确认，释放后守恒）
- * 4. 大数据量字符串：4096 字节 tag × max(N/10,1000) 个事件（约数十 MB），无崩溃且守恒
- * 5. API 层 10 万级投递：event_loop().msg(data).loop(name).post() 走完整路由+解包路径，计数守恒 + API 级 QPS 基线
- *
- * 说明：
- * - QPS/耗时基线仅以 [BASELINE] 行记录、不作断言（环境噪声使性能断言不可靠）；
- * - TSan 轨道守门以 YOMK_TEST_STRESS_SCALE=10000 降规模跑（大规模压力不在 TSan 下执行的既定约定，
- *   并发结构不变、多线程路径仍受 happens-before 验证）；ASan 全规模留覆盖率/sanitizer 收口闭环；
- * - 计数 handler 为文件级原子（TSan-clean 既有模式）；计时用 steady_clock；
- * - 白盒段直连内部类 EventLoop；API 段 yomk::server().init() 单例，末尾 yomk::server().shutdown() 收尾。
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// EventLoop 压力测试（10 万级投递 + 大数据量 + QPS 基线记录）
+//
+// 覆盖内容（5 个 Section，规模 N 经 YOMK_TEST_STRESS_SCALE 环境变量参数化，缺省 100000）：
+// 1. 单线程 10 万级投递基线：post N 个 trivial 计数事件 → drain，计数守恒 + 入队/消费 QPS 基线记录
+// 2. 8 线程并发 10 万级：并发 post → drain，计数守恒 + 聚合 QPS 基线（高并发持续调用无崩溃）
+// 3. 10 万级纯积压路径：gate 占住 worker 使投递/消费速率解耦——纯测 post + 无界队列大规模增长/重分配
+// （断言 pending==N 积压确认，释放后守恒）
+// 4. 大数据量字符串：4096 字节 tag × max(N/10,1000) 个事件（约数十 MB），无崩溃且守恒
+// 5. API 层 10 万级投递：event_loop().msg(data).loop(name).post() 走完整路由+解包路径，计数守恒 + API 级 QPS 基线
+//
+// 说明：
+// - QPS/耗时基线仅以 [BASELINE] 行记录、不作断言（环境噪声使性能断言不可靠）；
+// - TSan 轨道守门以 YOMK_TEST_STRESS_SCALE=10000 降规模跑（大规模压力不在 TSan 下执行的既定约定，
+// 并发结构不变、多线程路径仍受 happens-before 验证）；ASan 全规模待覆盖率/sanitizer 构建收口；
+// - 计数 handler 为文件级原子（TSan-clean 既有模式）；计时用 steady_clock；
+// - 白盒段直连内部类 EventLoop；API 段 yomk::server().init() 单例，末尾 yomk::server().shutdown() 收尾。
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <chrono>
@@ -314,7 +311,7 @@ int main()
         loop.destroy();
     }
 
-    // ============ Section 5: API 层 10 万级宏投递 ============
+    // ============ Section 5: API 层 10 万级链式投递 ============
     {
         g_execCount.store(0);
         yomk::server().async_thread(1).init();

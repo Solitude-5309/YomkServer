@@ -1,73 +1,49 @@
-/**
- * @file TestYomkLoggerConcurrency.cpp
- * @brief Logger 模块多线程并发正确性验证（LG3，5 Section / 72 断言）
- *
- * 覆盖测试要求第 5/10 类（TSan 数据竞争 + 多线程并发正确性），5 个 Section：
- * - S1：并发 console_log 守恒 + 行完整性（只读命中路径，验证 ConsoleLogger::s_mutex 整行互斥）
- * - S2：并发新 tag 自动创建（P1-a 双检锁核心验证）——S2a 最大争用同一新 tag、S2b 分散唯一 tag
- * - S3：并发 proxy set × console_log × 内省（P1-b 专属锁核心验证，镜像 FPC3-S2 写读交错）
- * - S4：并发 file logger 创建 × 写入 × 落盘（S4a 同名争用恰一胜、S4c 2000 行不丢不重守恒）
- * - S5：全量 churn + P3-a 内省原子快照判别（成对创建 + C>=F 判别式量化实证修复有效性）
- *
- * P3-a（本闭环登记、已修复并双向量化实证）：loggers/listAll 原分段持两把锁（console 段
- *   + file 段），跨段非原子快照——file 段时刻 T2 晚于 console 段时刻 T1，并发创建时返回
- *   的行数组合可能从未真实存在过。已修为嵌套双锁（锁序 console -> file，锁序约定见
- *   YomkLogger.h 成员声明处注释），行数成为原子快照。
- *   判别式：churn 线程每轮"先 console 后 file"成对创建同名 logger，则任意真实时刻 T
- *   必有 C(T) >= F(T)；非原子分段快照会出现 F > C 违例。S5 断言违例数 == 0。
- *   实测（1800 对成对创建 / 331 快照）：修复前 LOGGERS 违例 8 个、ALL 违例 7 个；
- *   修复后连跑 5 次违例均为 0。
- *   灵敏度前提（关键）：违例要求"快照 console 段遍历耗时 W"完整覆盖"churn 一轮
- *   console→file 间隔 G"。实测 120 对时 W << G → 0 违例（假阴性，不可据此判定无缺陷），
- *   900 对时 2 违例，1800 对时 15 违例 → S5 规模不得下调至百级。
- *
- * P1-a/P1-b/P1-c（LG2 已修）的并发侧实证结论：S2a 八线程争用同一新 tag（1600 次）与
- *   S5（1800 个新 console logger 并发创建）下无重复实例、无丢日志；S3 写读交错
- *   v1Hits + v2Hits == log 总数（无 torn std::function）；TSan 构建下本二进制与
- *   Logger 其余两个二进制 + TestYomkConcurrency 均 0 race。
- *
- * P3-b（LG3 观察项 → LG6 已处置）：consoleLog 的 !result.second 防御分支（原 YomkLogger.cpp
- *   L82-83）——双检锁下进入独占锁后已二次查找确认 key 不存在，emplace 必成功，S2a/S2b
- *   的最大争用是其唯一可能触达场景。实测结论：在 S2a（1600 次争用同一新 tag）+
- *   S2b（8 个新 tag）+ S5（1800 个新 console logger 并发创建）全覆盖后，gcov 仍显示
- *   L82-83 为 #####（未执行）→ 确证为不可达的防御性死代码。LG6 已删除该 4 行（现为
- *   itLogger = m_consoleLoggers.emplace(...).first，仍复用 emplace 返回的迭代器，控制流拓扑
- *   与修复前逐字对应），双检锁本身与本文件的并发用例语义均不变。
- *
- * 设计边界（契约内使用，非缺陷）：
- * - 本测试全程不调用 /delete_logger（LG4 新增的删除端点由 Lifecycle S8 与 Stress S5
- *   覆盖）→ 不存在 FPC3-S3 那类"注销 × 在途调用"竞态，等价风险面由 S4a"同名创建争用"
- *   + S4c"并发写入 × 落盘交接"覆盖；
- * - proxy 安装后本测试全程不卸载（LG6/P4-e 起可传 nullptr 卸载，卸载语义由 Lifecycle S3
- *   覆盖）→ S3 置于 S1/S2 之后，且 v1/v2 均恒返回 true（穿透态），
- *   不影响 S4/S5 的输出与落盘断言；
- * - ALL 首行的 4 个级别开关是独立 atomic，其组合快照无原子保证（既有设计）→ S5 仅断言
- *   其格式合法与收尾精确串，不断言开关组合的瞬时原子性；
- * - 不同 console logger 并发写 std::cout 原会交错撕裂（无跨 logger 全局锁，LG6 时点的
- *   设计现状）——P4-h 已消除：ConsoleLogger::m_mutex 升级为类级 static s_mutex（全实例
- *   一把），跨实例行级原子成立；行完整性断言扩至跨 logger 段亦可做，本文件断言结构
- *   保持不变（同段口径依旧成立且更严）。
- *
- * 装置说明：
- * - ThreadSafeCoutCapture（本文件专用）：LG1 的 CoutCapture 把 std::cout 的 rdbuf 换成
- *   std::stringstream，而 stringbuf 无内部同步，多线程并发写会被 TSan 判为 data race
- *   （装置自身污染被测代码的 race 验收）。此处改用自带 mutex 的 streambuf 累积文本；
- *   rdbuf 替换由主线程单点完成（线程启动前构造、join 后析构）。
- *   断言可靠性依据：单次 std::cout << str 对应一次 xsputn（装置内加锁）→ marker 作为
- *   整体写入不被切断，故 marker 计数守恒在所有并发段可用；整行格式完整性依赖
- *   ConsoleLogger::s_mutex（P4-h 前为实例级 m_mutex，仅同一 logger 段可用；升级后
- *   全实例同一把，跨 logger 段同样可用）。
- * - 全部 YOMK_TEST_CHECK 在捕获作用域外（LG1 教训：捕获域内断言输出被 rdbuf 重定向吞没）。
- * - 其余沿用 FPC3 模式：文件级 atomic 计数/停止门/起始屏障（TSan-clean），
- *   std::mutex + std::vector 收集内省快照，临时目录收尾 remove_all。
- *
- * 规模与降档后备：S1/S2a 8×200、S4c 8×250、S5 churn 3×600（S5 规模是 P3-a 判别式的
- *   灵敏度前提，不可随意下调；其余对齐 FPC3 先例）。若 TSan 构建单次超 300s，仅下调
- *   I/O 密集段：S1/S2a 6×120、S4c 6×150，S5 churn 保持 3×600 不低于 3×300，
- *   并在本注释记录实际值。
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// Logger 模块多线程并发正确性验证（5 Section / 72 断言）
+//
+// 覆盖测试要求第 5/10 类（TSan 数据竞争 + 多线程并发正确性），5 个 Section：
+// - S1：并发 console_log 守恒 + 行完整性（只读命中路径，验证 ConsoleLogger::s_mutex 整行互斥）
+// - S2：并发新 tag 自动创建（双检锁核心验证）——S2a 最大争用同一新 tag、S2b 分散唯一 tag
+// - S3：并发 proxy set × console_log × 内省（proxy 专属锁核心验证）
+// - S4：并发 file logger 创建 × 写入 × 落盘（S4a 同名争用恰一胜、S4c 2000 行不丢不重守恒）
+// - S5：全量 churn + 内省原子快照判别（成对创建 + C>=F 判别式）
+//
+// S5 判别式（关键不变量）：churn 线程每轮"先 console 后 file"成对创建同名 logger，
+// 则任意真实时刻 T 必有 C(T) >= F(T)；内省 loggers/listAll 必须一次持锁取原子快照
+// （锁序 console -> file，约定见 YomkLogger.h 成员声明处注释），分段非原子快照会
+// 出现 F > C 违例。S5 断言违例数 == 0。
+// 灵敏度前提：违例要求"快照 console 段遍历耗时 W"完整覆盖"churn 一轮 console→file
+// 间隔 G"，小规模下 W << G 只会得到假阴性（不可据此判定无缺陷），违例数随规模上升 →
+// S5 规模不得下调至百级。
+//
+// 设计边界（契约内使用，非缺陷）：
+// - 本测试全程不调用 /delete_logger（删除端点由 Lifecycle S8 与 Stress S5
+// 覆盖）→ 不存在"注销 × 在途调用"竞态，等价风险面由 S4a"同名创建争用"
+// + S4c"并发写入 × 落盘交接"覆盖；
+// - proxy 安装后本测试全程不卸载（可传 nullptr 卸载，卸载语义由 Lifecycle S3
+// 覆盖）→ S3 置于 S1/S2 之后，且 v1/v2 均恒返回 true（穿透态），
+// 不影响 S4/S5 的输出与落盘断言；
+// - ALL 首行的 4 个级别开关是独立 atomic，其组合快照无原子保证（既有设计）→ S5 仅断言
+// 其格式合法与收尾精确串，不断言开关组合的瞬时原子性；
+// - 跨不同 console logger 并发写 std::cout 由 ConsoleLogger::s_mutex（类级 static，
+// 全实例一把锁）保证行级原子，行完整性断言跨 logger 段同样成立。
+//
+// 装置说明：
+// - ThreadSafeCoutCapture（本文件专用）：不用 stringbuf 累积文本（无内部同步，多线程
+// 并发写会被 TSan 判为 data race、装置自身污染验收），改用自带 mutex 的 streambuf；
+// rdbuf 替换由主线程单点完成（线程启动前构造、join 后析构）。
+// 断言可靠性依据：单次 std::cout << str 对应一次 xsputn（装置内加锁）→ marker 作为
+// 整体写入不被切断，故 marker 计数守恒在所有并发段可用；整行格式完整性依赖
+// ConsoleLogger::s_mutex（类级 static，全实例同一把，跨 logger 段同样可用）。
+// - 全部 YOMK_TEST_CHECK 在捕获作用域外（捕获域内断言输出会被 rdbuf 重定向吞没）。
+// - 其余装置模式：文件级 atomic 计数/停止门/起始屏障（TSan-clean），
+// std::mutex + std::vector 收集内省快照，临时目录收尾 remove_all。
+//
+// 规模与降档后备：S1/S2a 8×200、S4c 8×250、S5 churn 3×600（S5 规模是判别式的
+// 灵敏度前提，不可随意下调）。若 TSan 构建单次超 300s，仅下调
+// I/O 密集段：S1/S2a 6×120、S4c 6×150，S5 churn 保持 3×600 不低于 3×300，
+// 并在本注释记录实际值。
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <unistd.h>
 
@@ -107,7 +83,7 @@ static int g_total = 0;
     } while (0)
 
 // ============================================================================
-// 线程安全 cout 捕获（并发段专用，替代 LG1 的 stringstream 版 CoutCapture）
+// 线程安全 cout 捕获（并发段专用，自带 mutex 的 streambuf）
 // ============================================================================
 class ThreadSafeCoutCapture
 {
@@ -196,7 +172,7 @@ static std::atomic<uint64_t> g_s5WriteOk{0};
 static std::atomic<uint64_t> g_s5SwitchOk{0};
 static std::atomic<uint64_t> g_s5IntrospectOk{0};
 static std::atomic<uint64_t> g_s5BadStatus{0};            // 状态码不属于 {ResStatus::Succeeded,ResStatus::Failed,ResStatus::Invalid} 的次数
-static std::atomic<uint64_t> g_s5AtomicityViolations{0};  // P3-a 判别式违例（F > C）计数
+static std::atomic<uint64_t> g_s5AtomicityViolations{0};  // 判别式违例（F > C）计数
 static std::atomic<uint64_t> g_s5BadProxyState{0};        // ALL 控制台状态 proxyOn 校验失败计数
 static std::atomic<bool> g_s5Stop{false};                 // 内省线程停止门（churn 完成后置位）
 
@@ -448,8 +424,8 @@ int main()
         constexpr int kLogsPerThread = 200;
         constexpr uint64_t kTotal = kThreads * kLogsPerThread;
 
-        // 直接调日志模块静态函数而非 log().tag(...).info 宏：宏会把 tag 拼上调用点行号，
-        // 预热与循环体分处两行将产生两个不同 logger 名，破坏"同一 logger 并发"前提
+        // 预热与并发段统一走 log().tag(kTag) 链式发射：logger 名仅由 tag 承载
+        // （行号只进正文前缀, 不入名）, 全部线程命中同一 console logger
         const std::string kTag = "lg3_s1_shared";
 
         g_s1OkCount.store(0);
@@ -539,7 +515,7 @@ int main()
     }
 
     // ========================================================================
-    // Section 2：并发新 tag 自动创建（P1-a 双检锁核心验证）
+    // Section 2：并发新 tag 自动创建（双检锁核心验证）
     // ========================================================================
     std::cout << "\n--- S2: 并发新 tag 自动创建（P1-a 双检锁）---" << std::endl;
     {
@@ -668,16 +644,15 @@ int main()
         }
         YOMK_TEST_CHECK(allSpreadHit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 类型");
 
-        // ---- S2c：P3-b 判定登记（LG6 已收口）----
-        // S2a（同一新 tag 8 线程争用）与 S2b（8 个新 tag 并发创建）是 consoleLog 中
-        // !result.second 防御分支的唯一可能触达场景；双检锁在独占锁内已二次查找确认 key 不存在，
-        // emplace 必成功 → 该分支不可达，LG6 已删除该 4 行死代码，gcov 复查印证 YomkLogger.cpp 的
-        // ##### 洞由 2 归零；本组 S2a/S2b 即该删除的行为学佐证（删前删后均全绿、无 ResStatus::Failed 返回）。
+        // ---- S2c：双检锁 emplace 必成功语义的行为学覆盖 ----
+        // 双检锁在独占锁内已二次确认 key 不存在，emplace 必成功 → consoleLog 无
+        // "插入失败"分支；S2a（同一新 tag 8 线程争用）+ S2b（8 个新 tag 并发创建）
+        // 是其最大争用场景（均全绿、无 ResStatus::Failed 返回）。
         std::cout << "[INFO] S2c: P3-b(!result.second) 最大争用场景已覆盖，该死分支已于 LG6 删除" << std::endl;
     }
 
     // ========================================================================
-    // Section 3：并发 proxy set × console_log × 内省（P1-b 专属锁核心验证）
+    // Section 3：并发 proxy set × console_log × 内省（proxy 专属锁核心验证）
     // ========================================================================
     std::cout << "\n--- S3: 并发 proxy set × console_log × 内省 ---" << std::endl;
     {
@@ -1061,7 +1036,7 @@ int main()
     }
 
     // ========================================================================
-    // Section 5：全量 churn 混合 + P3-a 内省原子快照判别
+    // Section 5：全量 churn 混合 + 内省原子快照判别
     // ========================================================================
     std::cout << "\n--- S5: 全量 churn + P3-a 内省原子快照判别 ---" << std::endl;
     {
@@ -1390,7 +1365,7 @@ int main()
         YOMK_TEST_CHECK(yomk::log_mgr().console().level(yomk::payload::LogLevel::Error).enable() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 ON error ResStatus::Succeeded");
         YOMK_TEST_CHECK(yomk::log_mgr().file(kFileSink).flush() == yomk::payload::ResStatus::Succeeded, "S5: 收尾 file sink WRITE ResStatus::Succeeded");
 
-        // ---- P3-a 判别式：对每个快照验证 C >= F（相对基线增量）----
+        // ---- 判别式：对每个快照验证 C >= F（相对基线增量）----
         // 收尾时 churn 已结束、两表静态；采样顺序保持与快照线程一致（先 file 后 console）
         const uint64_t finalF = unpackLines(yomk::log_mgr().file().list()).size();
         const uint64_t finalC = unpackLines(yomk::log_mgr().console().list()).size();

@@ -10,6 +10,12 @@
 namespace yomk::payload
 {
 
+/**
+ * @brief 请求/操作三态收敛结果
+ * @li Invalid：参数无效或未初始化（框架层拦截, 未到服务端）
+ * @li Succeeded：成功
+ * @li Failed：服务端执行失败, 含 not-found（资源不存在按本值, Invalid 仅用于参数无效）
+ */
 enum class ResStatus
 {
     Invalid = -1,
@@ -17,6 +23,9 @@ enum class ResStatus
     Failed = 1,
 };
 
+/**
+ * @brief 统一应答包：状态 + 文字说明 + 数据载体
+ */
 struct Response
 {
     Response() = default;
@@ -65,7 +74,7 @@ struct Log
     LogLevel m_level;
     std::string m_log;
     std::string m_logger;  // 日志器名：服务端按其查找/惰性创建日志器实例
-    std::string m_tag;  // 日志标签：随记录显示 [tag] 段，区别于 m_logger（末位追加，旧位置初始化兼容）
+    std::string m_tag;  // 日志标签：随记录显示 [tag] 段，区别于 m_logger
 };
 
 struct Function
@@ -117,9 +126,7 @@ struct EventLoop
     std::string m_msgName;  // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
 };
 
-// 事件循环单查载荷（/YomkEventLoop/loop 专用）：名称 + 队列头 tag 采样数。
-// 取代历史 String 载荷的 "name N" 空格拼接编码——名称含空格或数字后缀时
-// 启发式解析会误切，类型化字段无歧义
+// 事件循环单查载荷（/YomkEventLoop/loop 专用）：名称 + 队列头 tag 采样数, 类型化字段无解析歧义
 struct EventLoopQuery
 {
     std::string m_loopName;      // 循环名（按字面量精确匹配，不做任何切分）
@@ -234,10 +241,30 @@ struct ServerServiceInfo
 
 }  // namespace yomk::payload
 
-// Context monitor 回调：仅通知发生了 set 并回传该次快照（不保证实时性；异步按提交序保序、同步并发下不保证序）；详见 ctx().monitor_fn(fn).apply()
+/**
+ * @brief Context 变更监听回调：仅通知发生了 set 并回传该次快照
+ * @param ctx 该次 set 的键值快照
+ * @note 不保证快照实时性；异步形态按提交序保序、同步形态并发下不保证序。详见 ctx().monitor_fn(fn).apply()
+ */
 using YomkContextMonitorFunc = std::function<void(const yomk::payload::Context& ctx)>;
-// Context checker 回调：返回 CheckStatus::Accept/CheckStatus::Reject 门控 set；详见 ctx().checker_fn(fn).apply()
+/**
+ * @brief Context 校验门控回调：门控 set 是否放行
+ * @param ctx 待写入的键值
+ * @return Accept 放行 / Reject 拒绝
+ * @note 详见 ctx().checker_fn(fn).apply()
+ */
 using YomkContextCheckerFunc = std::function<yomk::payload::CheckStatus(const yomk::payload::Context& ctx)>;
+/**
+ * @brief 控制台日志代理回调
+ * @param log 待输出的日志条目
+ * @return false 拦截该条不输出、true 穿透走默认输出
+ * @note 详见 yomk::log_mgr().console().proxy(fn).apply()
+ */
 using YomkConsoleLogProxyFunc = std::function<bool(const yomk::payload::Log& log)>;
-// 文件日志代理回调：返回 false 拦截该条不落盘、true 穿透走默认落盘；详见 yomk::log_mgr().file().proxy().apply()
+/**
+ * @brief 文件日志代理回调
+ * @param log 待落盘的日志条目
+ * @return false 拦截该条不落盘、true 穿透走默认落盘
+ * @note 详见 yomk::log_mgr().file().proxy(fn).apply()
+ */
 using YomkFileLogProxyFunc = std::function<bool(const yomk::payload::Log& log)>;

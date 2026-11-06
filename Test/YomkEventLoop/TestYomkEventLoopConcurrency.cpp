@@ -1,29 +1,26 @@
-/**
- * @file TestYomkEventLoopConcurrency.cpp
- * @brief EventLoop 多线程并发正确性测试（白盒 + API 层）
- *
- * 覆盖内容（5 个 Section）：
- * 1. 并发 post 保序 + 计数守恒：8 线程×40 事件并发投递，执行数==320 且执行序==eventId 严格递增序
- *    （单 worker FIFO + 锁内赋号入队，赋号序=入队序=执行序三序合一；严格递增蕴含 eventId 全局唯一）
- * 2. 多 loop 并行：loopA 的 worker 被阻塞门占住期间，loopB 事件仍完成——不同 loop 独立 worker 的确定性证明
- * 3. 并发 postWait：8 线程各 10 次同步投递全部看门狗内返回、响应已填充、总数守恒
- * 4. start/stop/post/postWait 混合 churn 无死锁：固定迭代计数（非墙钟时长），收尾 drain 后精确计数守恒
- *    executed==accepted（rc==0 必已入队、stop 保留、最终执行）
- * 5. API 层并发投递 + 内省轮询：4 线程并发 post() + 1 线程并发 get_info()（服务层 shared_lock 读路径稳定性）
- *
- * 设计边界（契约内使用，非缺陷）：
- * - churn 仅单线程做 start/stop——start/stop 线程安全契约为调用方串行化（并发 start×2 竞争 m_worker
- *   move-assign 有 terminate 风险，YomkApi.h 未声明其线程安全）；
- * - churn 不含 destroy——丢弃已接受事件会破坏计数守恒语义，其等待者释放已由 Lifecycle Section 10 覆盖。
- *
- * 说明：白盒段直连内部类 EventLoop（CMake 已含 src 目录）；API 段 yomk::server().init() 单例拉起内置 /YomkEventLoop，
- *       末尾 yomk::server().shutdown() 收尾。测试装置为文件级（TSan-clean 既有验证模式）：计数用原子变量，
- *       执行序列/完成标志向量用文件级互斥量且全部访问持锁（含断言快照）；阻塞门用原子自旋（1ms 粒度休眠），
- *       不用局部 mutex/cv 与 condition_variable::wait_for（本工具链 TSan 已知误报路径）；
- *       S1 的 handler 捕获事件裸指针——执行期间 run() 持有 shared_ptr 保证存活，无环引用无泄漏。
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// EventLoop 多线程并发正确性测试（白盒 + API 层）
+//
+// 覆盖内容（5 个 Section）：
+// 1. 并发 post 保序 + 计数守恒：8 线程×40 事件并发投递，执行数==320 且执行序==eventId 严格递增序
+// （单 worker FIFO + 锁内赋号入队，赋号序=入队序=执行序三序合一；严格递增蕴含 eventId 全局唯一）
+// 2. 多 loop 并行：loopA 的 worker 被阻塞门占住期间，loopB 事件仍完成——不同 loop 独立 worker 的确定性证明
+// 3. 并发 postWait：8 线程各 10 次同步投递全部看门狗内返回、响应已填充、总数守恒
+// 4. start/stop/post/postWait 混合 churn 无死锁：固定迭代计数（非墙钟时长），收尾 drain 后精确计数守恒
+// executed==accepted（rc==0 必已入队、stop 保留、最终执行）
+// 5. API 层并发投递 + 内省轮询：4 线程并发 post() + 1 线程并发 get_info()（服务层 shared_lock 读路径稳定性）
+//
+// 设计边界（契约内使用，非缺陷）：
+// - churn 仅单线程做 start/stop——start/stop 线程安全契约为调用方串行化（并发 start×2 竞争 m_worker
+// move-assign 有 terminate 风险，YomkApi.h 未声明其线程安全）；
+// - churn 不含 destroy——丢弃已接受事件会破坏计数守恒语义，其等待者释放已由 Lifecycle Section 10 覆盖。
+//
+// 说明：白盒段直连内部类 EventLoop（CMake 已含 src 目录）；API 段 yomk::server().init() 单例拉起内置 /YomkEventLoop，
+// 末尾 yomk::server().shutdown() 收尾。测试装置为文件级（TSan-clean 既有验证模式）：计数用原子变量，
+// 执行序列/完成标志向量用文件级互斥量且全部访问持锁（含断言快照）；阻塞门用原子自旋（1ms 粒度休眠），
+// 不用局部 mutex/cv 与 condition_variable::wait_for（本工具链 TSan 已知误报路径）；
+// S1 的 handler 捕获事件裸指针——执行期间 run() 持有 shared_ptr 保证存活，无环引用无泄漏。
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <atomic>
 #include <chrono>

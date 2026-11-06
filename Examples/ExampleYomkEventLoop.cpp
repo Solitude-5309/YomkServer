@@ -1,54 +1,51 @@
-/**
- * @file ExampleYomkEventLoop.cpp
- * @brief YomkEventLoop 线程隔离事件循环示例：机械臂产线班次背景的 8 个场景小示例（面向初学者）
- *
- * 事件循环为特定业务提供一条单线程 FIFO 执行队列：投递进同一循环的
- * 事件按入队顺序在该循环的专用线程中逐个执行，循环之间彼此并行，
- * 适合把"必须串行"的业务（如运动指令序列、示教器操作流水）从锁竞争里解耦出来。
- *
- * 本示例用"机械臂产线一次班次"贯穿 8 个场景：每个场景是一个 showXXX 小函数，
- * 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
- * yomk::event_loop() 的 8 个终结 op（start/stop/post/post_wait/destroy/list/get_info/all）无一遗漏。
- *
- * 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.motion 运动
- * 循环线程 / arm.teach 示教循环线程），日志流即执行序、顺着读就能明白：
- * 每个操作先打"开始执行 xxx"——操作是用户视角的业务动作（可以是一个接口
- * 调用，也可以是多个接口调用组合成的完整动作），随后结果行标注本次接口
- * 调用；循环线程执行的日志穿插其间，线程 id 自证执行位置。
- *
- * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
- *
- * 场景 1 showArmLineStart      [loop(name).handle_fn(fn).msg_name(m).start() / get_info()]
- *        产线开班：启动运动指令循环（默认处理函数 + MsgName 元数据），get_info()
- *        确认专用线程就绪；重复 start() 同名循环为幂等重启（ResStatus::Succeeded 不报错）。
- * 场景 2 showArmMotionQueue    [msg(data).loop(name).post() / tag_count(n).get_info()]
- *        连续下发 5 条运动指令：post() 立即返回不阻塞；tag_count(n).get_info() 观察队列
- *        积压与队首 tag 预览；第 1 条指令执行时递归投递 3 条微调指令排到
- *        队尾——消费顺序自证同循环 FIFO。
- * 场景 3 showArmDualLoop       [loop(name).handle_fn(fn).start() / post()]
- *        双循环并行：示教器循环省 msg_name() 累积（默认处理函数、无消息名元数据），
- *        与运动循环同时投递——两循环日志交错、线程 id 不同，同循环 FIFO、
- *        跨循环彼此并行。
- * 场景 4 showArmMotionSyncWait [msg(data).loop(name).post_wait()]
- *        回原点是关键动作：post_wait() 阻塞至事件在循环线程执行完毕才返回
- *        （14-4 起 API 仅回 ResStatus——返回即已执行）。
- * 场景 5 showArmTempHandler    [loop(name).handle_fn(fn).post_wait()（临时函数）]
- *        紧急巡检例程投递时指定临时处理函数：优先于默认函数，同一循环可
- *        混用两种来源（处理函数返回值不再经 API 回传）。
- * 场景 6 showArmLinePause      [loop(name).stop() / 再 start() 续跑 / post()]
- *        班中暂停：stop() 只停线程、保留队列事件；停止后投递被拒；
- *        再次 start() 续跑消化保留事件。
- * 场景 7 showArmDashboard      [list() / loop(name).get_info() / all()]
- *        产线运维面板：循环名清单、单循环详情（含队列 tag 预览）、
- *        全量导出——框架只回结构化数据，展示格式由用户定义。
- * 场景 8 showArmLineOff        [loop(name).destroy()]
- *        收班：逐循环 destroy()（停线程并清空队列、移出循环表，不可续跑）；
- *        对已销毁循环的一切操作均返回 ResStatus::Failed（not-found 惯例），清单确认已空。
- *
- * 循环规划（跨场景流转，模拟主控/示教器两模块各自专用线程）：
- *   motionLoop  start() 三累积（motionHandle + String 元数据）  主控运动指令循环
- *   teachLoop   start() 省 msg_name（teachHandle，无消息名元数据） 示教器循环
- */
+// YomkEventLoop 线程隔离事件循环示例：机械臂产线班次背景的 8 个场景小示例（面向初学者）
+//
+// 事件循环为特定业务提供一条单线程 FIFO 执行队列：投递进同一循环的
+// 事件按入队顺序在该循环的专用线程中逐个执行，循环之间彼此并行，
+// 适合把"必须串行"的业务（如运动指令序列、示教器操作流水）从锁竞争里解耦出来。
+//
+// 本示例用"机械臂产线一次班次"贯穿 8 个场景：每个场景是一个 showXXX 小函数，
+// 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
+// yomk::event_loop() 的 8 个终结 op（start/stop/post/post_wait/destroy/list/get_info/all）无一遗漏。
+//
+// 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.motion 运动
+// 循环线程 / arm.teach 示教循环线程），日志流即执行序、顺着读就能明白：
+// 每个操作先打"开始执行 xxx"——操作是用户视角的业务动作（可以是一个接口
+// 调用，也可以是多个接口调用组合成的完整动作），随后结果行标注本次接口
+// 调用；循环线程执行的日志穿插其间，线程 id 自证执行位置。
+//
+// 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
+//
+// 场景 1 showArmLineStart      [loop(name).handle_fn(fn).msg_name(m).start() / get_info()]
+// 产线开班：启动运动指令循环（默认处理函数 + MsgName 元数据），get_info()
+// 确认专用线程就绪；重复 start() 同名循环为幂等重启（ResStatus::Succeeded 不报错）。
+// 场景 2 showArmMotionQueue    [msg(data).loop(name).post() / tag_count(n).get_info()]
+// 连续下发 5 条运动指令：post() 立即返回不阻塞；tag_count(n).get_info() 观察队列
+// 积压与队首 tag 预览；第 1 条指令执行时递归投递 3 条微调指令排到
+// 队尾——消费顺序自证同循环 FIFO。
+// 场景 3 showArmDualLoop       [loop(name).handle_fn(fn).start() / post()]
+// 双循环并行：示教器循环省 msg_name() 累积（默认处理函数、无消息名元数据），
+// 与运动循环同时投递——两循环日志交错、线程 id 不同，同循环 FIFO、
+// 跨循环彼此并行。
+// 场景 4 showArmMotionSyncWait [msg(data).loop(name).post_wait()]
+// 回原点是关键动作：post_wait() 阻塞至事件在循环线程执行完毕才返回
+// （14-4 起 API 仅回 ResStatus——返回即已执行）。
+// 场景 5 showArmTempHandler    [loop(name).handle_fn(fn).post_wait()（临时函数）]
+// 紧急巡检例程投递时指定临时处理函数：优先于默认函数，同一循环可
+// 混用两种来源（处理函数返回值不再经 API 回传）。
+// 场景 6 showArmLinePause      [loop(name).stop() / 再 start() 续跑 / post()]
+// 班中暂停：stop() 只停线程、保留队列事件；停止后投递被拒；
+// 再次 start() 续跑消化保留事件。
+// 场景 7 showArmDashboard      [list() / loop(name).get_info() / all()]
+// 产线运维面板：循环名清单、单循环详情（含队列 tag 预览）、
+// 全量导出——框架只回结构化数据，展示格式由用户定义。
+// 场景 8 showArmLineOff        [loop(name).destroy()]
+// 收班：逐循环 destroy()（停线程并清空队列、移出循环表，不可续跑）；
+// 对已销毁循环的一切操作均返回 ResStatus::Failed（not-found 惯例），清单确认已空。
+//
+// 循环规划（跨场景流转，模拟主控/示教器两模块各自专用线程）：
+// motionLoop  start() 三累积（motionHandle + String 元数据）  主控运动指令循环
+// teachLoop   start() 省 msg_name（teachHandle，无消息名元数据） 示教器循环
 
 #include <chrono>
 #include <functional>

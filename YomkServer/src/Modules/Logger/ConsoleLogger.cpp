@@ -109,13 +109,13 @@ void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::st
 
     std::string timeStr = yomkLogLocalTimeFormatted();
 
-    // tag 优先显示；空 tag 回退日志器名，保持旧行为
+    // tag 优先显示；空 tag 回退日志器名
     const std::string& tagShown = tag.empty() ? m_name : tag;
 
     // 类级共享锁下整条 << 链直写：跨实例行级原子。stdout 底层 stdio 锁本已逐片段
     // 串行（未调 sync_with_stdio(false)），显式行级锁仅收编互斥粒度，不新增串行化
-    // 资源；不留中间缓冲——锁外 ostringstream 拼行形态经 P4-h 实测为负优化
-    // （S1E -28%：三次堆分配 + str() 整行拷贝 ~0.5μs/条），已回退为直写
+    // 资源；不留中间缓冲——锁外 ostringstream 拼行形态实测为负优化
+    // （S1E -28%：三次堆分配 + str() 整行拷贝 ~0.5μs/条），故直写
     std::lock_guard<std::mutex> lock(s_mutex);
     switch (logLevel)
     {

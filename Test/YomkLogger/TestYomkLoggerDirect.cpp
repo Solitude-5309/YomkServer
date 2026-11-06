@@ -1,50 +1,41 @@
-/**
- * @file TestYomkLoggerDirect.cpp
- * @brief Logger 模块 ConsoleLogger/FileLogger 类直连白盒测试（LG1 新建，LG2 回填）
- *
- * 覆盖内容（2 个类，18 组用例 56 断言）：
- * ConsoleLogger：
- * 1. 默认名 "MainLogger"、setName/getName
- * 2. 六级别输出（级别标签 [TRACE]/[DEBUG]/[INFO ]/[WARN ]/[ERROR]/[FATAL] + [名/tag] + 内容）
- * 3. 非法级别 default 降级（P2-c 修复后回填）：log(LogLevel(99)) →
- *    "Unknown log level: 99" 提示 + 降级 Info 输出
- * 4. 时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]
- * 5. 超长名（4096）与空内容
- * 5a. tag 显示语义（m_tag 拆分回填）：tag 非空显示 [tag]、空 tag 回退 [日志器名]
- * 14. 级别门控（门控下沉新增）：14a 新实例六级默认全开；14b setLevelOn 关断隔离
- *     （isLevelOn 反查 + 关断级别无输出、其余级别不受影响）；14c 恢复输出；
- *     14d unknown 级别按 Info 门控（关 Info 后 log(99) 门控层直接丢弃，无降级提示）
- * FileLogger：
- * 6. 默认名、setName/setDir/getDir
- * 7. init 建多级目录 + 空日志文件，返回 true（P2-b 修复后 bool 语义）
- * 8. log 六级别入缓冲（write 前不落盘）；非法级别 default 降级 Info 入缓冲（P2-c 回填）
- * 9. write 追加落盘后清空流（二次 write 文件不增长）
- * 10. 空流 write 不触碰文件；空内容 log 仍成行；1MB 超长内容往返
- * 11. 析构自动 write（缓冲落盘）
- * 12. write 打不开文件分支（dir 为普通文件路径）：错误提示 + 流保留不丢，
- *     setDir 恢复有效目录后补写成功
- * 13. P2-b 处置验证（LG2 回填）：init 对不可创建目录（/proc 下嵌套路径）
- *     返回 false 不抛异常，错误提示含 fs error 信息；dir 为普通文件时
- *     走 ofstream 打开失败分支（false + create log file failed）
- * 13a. tag 前缀语义（m_tag 拆分回填）：tag 非空行内追加 [tag] 段、空 tag 不加前缀
- * 15. 级别门控（门控下沉新增）：15a 新实例六级默认全开；15b setLevelOn 关断隔离
- *     （isLevelOn 反查 + 关断级别不落盘、其余级别不受影响）；15c 恢复落盘；
- *     15d unknown 级别按 Info 门控（关 Info 后 log(99) 门控层直接丢弃，无降级提示）
- *
- * 说明：ConsoleLogger/FileLogger 为库内部实现类，符号已从 libYomkServer.so 导出
- *       （nm -D 核实），测试侧经源码模块 include 路径直连构造，不经框架单例
- *       （无 yomk::server().init()，两自包含类不依赖服务器）。cout 断言用"唯一 marker +
- *       rdbuf 捕获"。异常安全说明：两类无裸资源（string/stringstream/mutex
- *       自管理），bad_alloc 注入书面豁免（见 LG1 计划第 1 节）。
- *
- * LG1 审计登记 → LG2 处置状态（本文件断言已同步回填）：
- * P1-c（log 内 std::localtime → 已改 localtime_r/_WIN32 localtime_s，时间戳格式断言不变）、
- * P2-b（init fs 异常穿透 → 已改 bool 返回 + 异常捕获，用例 13 回填）、
- * P2-c（LogLevel 无固定底层类型 → 三处枚举已加 : int，99 为合法值，
- * 两类 log() 的 default 降级分支转活，用例 3/8 回填注入断言）。
- *
- * 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
- */
+// Logger 模块 ConsoleLogger/FileLogger 类直连白盒测试
+//
+// 覆盖内容（2 个类，18 组用例 56 断言）：
+// ConsoleLogger：
+// 1. 默认名 "MainLogger"、setName/getName
+// 2. 六级别输出（级别标签 [TRACE]/[DEBUG]/[INFO ]/[WARN ]/[ERROR]/[FATAL] + [名/tag] + 内容）
+// 3. 非法级别 default 降级：log(LogLevel(99)) →
+// "Unknown log level: 99" 提示 + 降级 Info 输出
+// 4. 时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]
+// 5. 超长名（4096）与空内容
+// 5a. tag 显示语义：tag 非空显示 [tag]、空 tag 回退 [日志器名]
+// 14. 级别门控（门控下沉新增）：14a 新实例六级默认全开；14b setLevelOn 关断隔离
+// （isLevelOn 反查 + 关断级别无输出、其余级别不受影响）；14c 恢复输出；
+// 14d unknown 级别按 Info 门控（关 Info 后 log(99) 门控层直接丢弃，无降级提示）
+// FileLogger：
+// 6. 默认名、setName/setDir/getDir
+// 7. init 建多级目录 + 空日志文件，返回 true（bool 语义）
+// 8. log 六级别入缓冲（write 前不落盘）；非法级别 default 降级 Info 入缓冲
+// 9. write 追加落盘后清空流（二次 write 文件不增长）
+// 10. 空流 write 不触碰文件；空内容 log 仍成行；1MB 超长内容往返
+// 11. 析构自动 write（缓冲落盘）
+// 12. write 打不开文件分支（dir 为普通文件路径）：错误提示 + 流保留不丢，
+// setDir 恢复有效目录后补写成功
+// 13. init 对不可创建目录（/proc 下嵌套路径）
+// 返回 false 不抛异常，错误提示含 fs error 信息；dir 为普通文件时
+// 走 ofstream 打开失败分支（false + create log file failed）
+// 13a. tag 前缀语义：tag 非空行内追加 [tag] 段、空 tag 不加前缀
+// 15. 级别门控（门控下沉新增）：15a 新实例六级默认全开；15b setLevelOn 关断隔离
+// （isLevelOn 反查 + 关断级别不落盘、其余级别不受影响）；15c 恢复落盘；
+// 15d unknown 级别按 Info 门控（关 Info 后 log(99) 门控层直接丢弃，无降级提示）
+//
+// 说明：ConsoleLogger/FileLogger 为库内部实现类，符号已从 libYomkServer.so 导出
+// （nm -D 核实），测试侧经源码模块 include 路径直连构造，不经框架单例
+// （无 yomk::server().init()，两自包含类不依赖服务器）。cout 断言用"唯一 marker +
+// rdbuf 捕获"。异常安全说明：两类无裸资源（string/stringstream/mutex
+// 自管理），bad_alloc 注入书面豁免。
+//
+// 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
 #include <unistd.h>
 
@@ -187,7 +178,7 @@ int main()
             YOMK_TEST_CHECK(checkTimeFormat(out), "控制台行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]");
         }
 
-        // 非法级别 default 降级（P2-c 修复后回填）：枚举已加 : int，99 合法非 UB；
+        // 非法级别 default 降级：枚举已加 : int，99 合法非 UB；
         // YOMK_DIAG_ERROR 直写 cout 可被捕获（YOMK_TEST_CHECK 须在捕获作用域外）
         {
             std::string out;
@@ -215,7 +206,7 @@ int main()
             YOMK_TEST_CHECK(cap.str().find("[INFO ] [" + longName + "] ") != std::string::npos, "超长名 + 空内容日志正常输出");
         }
     
-        // tag 显示语义（m_tag 拆分回填）：tag 非空显示 [tag]，空 tag 回退 [日志器名]
+        // tag 显示语义：tag 非空显示 [tag]，空 tag 回退 [日志器名]
         {
             CoutCapture cap;
             logger.log(ConsoleLogger::LogLevel::Info, "lg1_dc_tag", "lg1_dc_tagged_marker");
@@ -333,7 +324,7 @@ int main()
             fl.getName() == "lg1_direct_file" && fl.getDir() == (tmpDir / "fl_basic").string(),
             "setName/setDir/getDir 往返一致");
 
-        // init：多级目录 + 空日志文件，返回 true（P2-b 修复后 bool 语义）
+        // init：多级目录 + 空日志文件，返回 true（bool 语义）
         YOMK_TEST_CHECK(fl.init(), "init 成功返回 true（P2-b 修复后 bool 语义）");
         fs::path logFile = tmpDir / "fl_basic" / "lg1_direct_file.log";
         YOMK_TEST_CHECK(
@@ -347,7 +338,7 @@ int main()
         fl.log(FileLogger::LogLevel::Warn, "", "lg1_df_warn_marker");
         fl.log(FileLogger::LogLevel::Error, "", "lg1_df_error_marker");
         fl.log(FileLogger::LogLevel::Fatal, "", "lg1_df_fatal_marker");
-        // 非法级别 default 降级 Info 入缓冲（P2-c 修复后回填，随下方 write 一并落盘；
+        // 非法级别 default 降级 Info 入缓冲（随下方 write 一并落盘；
         // YOMK_TEST_CHECK 须在捕获作用域外，否则断言输出被 rdbuf 重定向吞没）
         {
             std::string outBad;
@@ -404,7 +395,7 @@ int main()
             YOMK_TEST_CHECK(readOk3 && content3.find(big) != std::string::npos, "1MB 超长内容完整落盘");
         }
 
-        // tag 前缀语义（m_tag 拆分回填）：tag 非空行内追加 [tag] 段，空 tag 不加前缀
+        // tag 前缀语义：tag 非空行内追加 [tag] 段，空 tag 不加前缀
         {
             fl.log(FileLogger::LogLevel::Info, "lg1_df_tag", "lg1_df_tagged_marker");
             fl.log(FileLogger::LogLevel::Info, "", "lg1_df_untagged_marker");
@@ -467,9 +458,9 @@ int main()
             YOMK_TEST_CHECK(readOk5 && content5.find("lg1_df_dtor_marker") != std::string::npos, "析构自动 write，缓冲内容落盘");
         }
 
-        // P2-b 处置验证（LG2 回填）：init 对不可创建目录返回 false 不抛异常
+        // init 对不可创建目录返回 false 不抛异常
         // /proc 下嵌套新目录：非 root create_directories 必抛 fs_error（EACCES/EPERM），
-        // 修复后被 init 内部捕获并转 false + 错误提示（YOMK_TEST_CHECK 在捕获作用域外）
+        // 由 init 内部捕获并转 false + 错误提示（YOMK_TEST_CHECK 在捕获作用域外）
         {
             FileLogger badFl;
             badFl.setName("lg1_badinit");
@@ -485,7 +476,7 @@ int main()
             YOMK_TEST_CHECK(out.find("init file logger fs error") != std::string::npos, "init 失败错误提示含 fs error 信息");
         }
 
-        // P2-b 第二条失败路径：dir 为普通文件（exists 为 true 不走 create_directories，
+        // 第二条失败路径：dir 为普通文件（exists 为 true 不走 create_directories，
         // 但 ofstream 打开 <普通文件>/<名>.log 必失败 ENOTDIR）→ false + create log file failed
         {
             fs::path regularDir = tmpDir / "fl_init_regular";

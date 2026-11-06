@@ -1,73 +1,70 @@
-/**
- * @file ExampleYomkService.cpp
- * @brief YomkService 服务定义与调用示例：机械臂控制背景的 8 个场景小示例（面向初学者）
- *
- * "一切皆服务"：把业务逻辑封装为 YomkService 子类，注册到框架后任意位置用
- * URL "/服务名/函数名" 同步或异步调用。框架自动完成路由、弱绑定安全（服务
- * 删除后回调失效不崩溃）与调用拓扑自省——机械臂控制柜里主控、运动控制、
- * 留痕黑匣子正是这样协作的独立工位。
- *
- * 多服务工程结构（组织方式本身也是教程）：
- * - msgs/ArmMsgs.h             消息包定义（服务间传输的数据结构）
- * - services/MotionService     运动服务（被 main 直接请求，内部跨服务调留痕）
- * - services/TelemetryService  留痕服务（被 MotionService 调用，含弱绑定回调）
- * - boot/ArmBoot               启动编排（before -> start -> after 三阶段）
- *
- * 本示例按"控制柜一次上电会话"贯穿 8 个场景：每个场景是一个 showXXX 小函数，
- * 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；服务
- * 生命周期与请求类用户接口全部覆盖（自省细节另见 ExampleYomkServerInfo）。
- *
- * 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.boot 启动编排 /
- * arm.motion 运动服务函数体 / arm.telemetry 留痕服务函数体），日志流即执行序、
- * 顺着读就能明白：每个操作先打"开始执行 xxx"——操作是用户视角的业务动作，
- * 随后结果行标注本次接口调用；同步 REQUEST/call() 在调用方线程执行服务函数体，
- * 服务日志被夹在开始行与结果行之间，归属一目了然。
- *
- * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
- *
- * 场景 1 showArmPowerOnRegister [version() / instance() / create() / run() / services()]
- *        控制柜上电与工位注册：框架版本与全局单例自检；create() 一步创建
- *        并注册运动服务；run() 三阶段编排注册留痕服务（arm.boot 日志夹在开始
- *        行与结果行之间，before→start→after 顺序可见）；services() 复查
- *        在册清单（2 个业务工位排最前 + 5 个内置服务）。
- * 场景 2 showArmLinkCheck      [REQUEST]
- *        通讯自检与寻址异常：REQUEST 同步回环拿到回包 data；请求不存在的
- *        服务/函数分别得到 service/function not found——ResStatus::Failed 是普通返回值
- *        不崩溃。
- * 场景 3 showArmAsyncTeach     [ASYNC_REQUEST]
- *        异步下发示教任务：发送即返回不阻塞控制回路，回调稍后在框架异步
- *        线程池执行——主线程与池线程 id 对比自证。
- * 场景 4 showArmMoveChain      [REQUEST / 成员 request() / 强类型回包]
- *        运动指令调用链：一次 REQUEST 触发 main→/move→/record 调用链
- *        （arm.motion/arm.telemetry 日志夹在中间），回包 m_data 携带强类型
- *        MoveResp——m_data 不止能传 String。
- * 场景 5 showArmIntrospect     [INFO_FUNCTIONS / INFO_FUNCTION]
- *        自省读取工位职能：4 参注册的 /move 带 MoveCmd 元数据与函数说明、
- *        2 参注册的 /echo 双空；INFO_FUNCTION 按 URL 调阅单张函数名片
- *        （内省细节详见 ExampleYomkServerInfo）。
- * 场景 6 showArmStationUpgrade [call() / add()]
- *        留痕工位升级：同名 add() 即替换——替换前后直调钩子
- *        telemetry_hook（diag check V1→V2），[实例#N] 日志自证服务与
- *        钩子一并换新。
- * 场景 7 showArmStationOffline [remove() / call() / REQUEST]
- *        留痕工位下线：remove() 删除即停——弱绑定钩子立即失效（ResStatus::Failed 不
- *        悬垂）、move 因留痕缺失失败沿调用链传播；重复注销返回 -1。
- * 场景 8 showArmPowerOff       [all() / shutdown()]
- *        收班断电：all() 看终态拓扑；预告后 shutdown() 排空在途请求并
- *        释放全部服务，关闭后任何请求统一返回 ResStatus::Invalid——日志宏随之静默，
- *        静默段正是演示效果，示例日志到此为止。
- *
- * 涉及的 API 接口（YomkApi.h）：
- *   yomk::server().init() / yomk::server().shutdown() / yomk::server().version()   框架生命周期
- *   yomk::server().srv<T>(name).create()                  创建并注册服务（最常用）
- *   yomk::server().srv_name(name).srv_ptr(ptr).add()                注册已有实例（同名即替换）
- *   yomk::server().srv_name(name).remove()                     注销服务（删除即停）
- *   yomk::server().boot_ptr(cfg).run()                             启动编排（before -> start -> after）
- *   yomk::server().url(u).request(pkg) / .async(cb).request(pkg)  同步 / 异步请求
- *   yomk::server().instance().get() / yomk::server().instance()            全局单例
- *   yomk::server().services() / functions() / get_info() / all()  调用拓扑自省
- *   installFunc("/x", &C::m[, "Msg"][, "desc"]) / weakFunc(&Class::Method) / 成员 request  服务侧 API
- */
+// YomkService 服务定义与调用示例：机械臂控制背景的 8 个场景小示例（面向初学者）
+//
+// "一切皆服务"：把业务逻辑封装为 YomkService 子类，注册到框架后任意位置用
+// URL "/服务名/函数名" 同步或异步调用。框架自动完成路由、弱绑定安全（服务
+// 删除后回调失效不崩溃）与调用拓扑自省——机械臂控制柜里主控、运动控制、
+// 留痕黑匣子正是这样协作的独立工位。
+//
+// 多服务工程结构（组织方式本身也是教程）：
+// - msgs/ArmMsgs.h             消息包定义（服务间传输的数据结构）
+// - services/MotionService     运动服务（被 main 直接请求，内部跨服务调留痕）
+// - services/TelemetryService  留痕服务（被 MotionService 调用，含弱绑定回调）
+// - boot/ArmBoot               启动编排（before -> start -> after 三阶段）
+//
+// 本示例按"控制柜一次上电会话"贯穿 8 个场景：每个场景是一个 showXXX 小函数，
+// 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；服务
+// 生命周期与请求类用户接口全部覆盖（自省细节另见 ExampleYomkServerInfo）。
+//
+// 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.boot 启动编排 /
+// arm.motion 运动服务函数体 / arm.telemetry 留痕服务函数体），日志流即执行序、
+// 顺着读就能明白：每个操作先打"开始执行 xxx"——操作是用户视角的业务动作，
+// 随后结果行标注本次接口调用；同步 REQUEST/call() 在调用方线程执行服务函数体，
+// 服务日志被夹在开始行与结果行之间，归属一目了然。
+//
+// 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
+//
+// 场景 1 showArmPowerOnRegister [version() / instance() / create() / run() / services()]
+// 控制柜上电与工位注册：框架版本与全局单例自检；create() 一步创建
+// 并注册运动服务；run() 三阶段编排注册留痕服务（arm.boot 日志夹在开始
+// 行与结果行之间，before→start→after 顺序可见）；services() 复查
+// 在册清单（2 个业务工位排最前 + 5 个内置服务）。
+// 场景 2 showArmLinkCheck      [REQUEST]
+// 通讯自检与寻址异常：REQUEST 同步回环拿到回包 data；请求不存在的
+// 服务/函数分别得到 service/function not found——ResStatus::Failed 是普通返回值
+// 不崩溃。
+// 场景 3 showArmAsyncTeach     [ASYNC_REQUEST]
+// 异步下发示教任务：发送即返回不阻塞控制回路，回调稍后在框架异步
+// 线程池执行——主线程与池线程 id 对比自证。
+// 场景 4 showArmMoveChain      [REQUEST / 成员 request() / 强类型回包]
+// 运动指令调用链：一次 REQUEST 触发 main→/move→/record 调用链
+// （arm.motion/arm.telemetry 日志夹在中间），回包 m_data 携带强类型
+// MoveResp——m_data 不止能传 String。
+// 场景 5 showArmIntrospect     [INFO_FUNCTIONS / INFO_FUNCTION]
+// 自省读取工位职能：4 参注册的 /move 带 MoveCmd 元数据与函数说明、
+// 2 参注册的 /echo 双空；INFO_FUNCTION 按 URL 调阅单张函数名片
+// （内省细节详见 ExampleYomkServerInfo）。
+// 场景 6 showArmStationUpgrade [call() / add()]
+// 留痕工位升级：同名 add() 即替换——替换前后直调钩子
+// telemetry_hook（diag check V1→V2），[实例#N] 日志自证服务与
+// 钩子一并换新。
+// 场景 7 showArmStationOffline [remove() / call() / REQUEST]
+// 留痕工位下线：remove() 删除即停——弱绑定钩子立即失效（ResStatus::Failed 不
+// 悬垂）、move 因留痕缺失失败沿调用链传播；重复注销返回 -1。
+// 场景 8 showArmPowerOff       [all() / shutdown()]
+// 收班断电：all() 看终态拓扑；预告后 shutdown() 排空在途请求并
+// 释放全部服务，关闭后任何请求统一返回 ResStatus::Invalid——日志发射随之静默，
+// 静默段正是演示效果，示例日志到此为止。
+//
+// 涉及的 API 接口（YomkApi.h）：
+// yomk::server().init() / yomk::server().shutdown() / yomk::server().version()   框架生命周期
+// yomk::server().srv<T>(name).create()                  创建并注册服务（最常用）
+// yomk::server().srv_name(name).srv_ptr(ptr).add()                注册已有实例（同名即替换）
+// yomk::server().srv_name(name).remove()                     注销服务（删除即停）
+// yomk::server().boot_ptr(cfg).run()                             启动编排（before -> start -> after）
+// yomk::server().url(u).request(pkg) / .async(cb).request(pkg)  同步 / 异步请求
+// yomk::server().instance().get() / yomk::server().instance()            全局单例
+// yomk::server().services() / functions() / get_info() / all()  调用拓扑自省
+// installFunc("/x", &C::m[, "Msg"][, "desc"]) / weakFunc(&Class::Method) / 成员 request  服务侧 API
 
 #include <chrono>
 #include <functional>
