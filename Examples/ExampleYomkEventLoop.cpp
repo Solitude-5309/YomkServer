@@ -190,7 +190,7 @@ static void logLoopLine(const std::string& api, const std::string& loopName)
 // 第 1 条指令执行时递归投递 3 条微调指令排到队尾——同循环 FIFO 的直观证据
 yomk::payload::Response motionHandle(YomkMsgPtr pkg)
 {
-    auto cmd = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+    auto cmd = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!cmd)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -218,7 +218,7 @@ yomk::payload::Response motionHandle(YomkMsgPtr pkg)
 // 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 省 msg_name start() 时指定）
 yomk::payload::Response teachHandle(YomkMsgPtr pkg)
 {
-    auto msg = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+    auto msg = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!msg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -250,7 +250,7 @@ static void showArmLineStart()
     logAction("查看循环运行状态");
     yomk::payload::Response resp = yomk::event_loop().loop("motionLoop").get_info();
     logResp("loop(motionLoop).get_info()", resp);
-    auto info = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
+    auto info = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (info)
     {
         logLoopInfo("get_info()", info->d);
@@ -286,7 +286,7 @@ static void showArmMotionQueue()
     logAction("立即观察队列积压");
     yomk::payload::Response resp = yomk::event_loop().loop("motionLoop").tag_count(5).get_info();
     logResp("loop(motionLoop).tag_count(5).get_info()", resp);
-    auto backlog = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
+    auto backlog = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (backlog)
     {
         logLoopInfo("get_info()", backlog->d);
@@ -299,7 +299,7 @@ static void showArmMotionQueue()
     logAction("排空后复查");
     resp = yomk::event_loop().loop("motionLoop").tag_count(5).get_info();
     logResp("loop(motionLoop).tag_count(5).get_info()", resp);
-    auto drained = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
+    auto drained = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (drained)
     {
         logLoopInfo("get_info()", drained->d);
@@ -394,7 +394,7 @@ static void showArmLinePause()
     logAction("查看暂停后状态");
     yomk::payload::Response resp = yomk::event_loop().loop("motionLoop").get_info();
     logResp("loop(motionLoop).get_info()", resp);
-    auto paused = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
+    auto paused = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (paused)
     {
         logLoopInfo("get_info()", paused->d);
@@ -412,7 +412,7 @@ static void showArmLinePause()
     logAction("确认积压已消化");
     resp = yomk::event_loop().loop("motionLoop").get_info();
     logResp("loop(motionLoop).get_info()", resp);
-    auto resumed = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(resp.m_data);
+    auto resumed = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(resp.m_data);
     if (resumed)
     {
         logLoopInfo("get_info()", resumed->d);
@@ -434,7 +434,7 @@ static void showArmDashboard()
     logAction("巡检循环名清单");
     yomk::payload::Response loopsResp = yomk::event_loop().list();
     logResp("list()", loopsResp);
-    auto loopArr = yomk::msgs::unPack<yomk::msgs::StringArray>(loopsResp.m_data);
+    auto loopArr = yomk::msgs::unpack<yomk::msgs::StringArray>(loopsResp.m_data);
     if (loopArr)
     {
         for (const auto& loopName : loopArr->d)
@@ -447,7 +447,7 @@ static void showArmDashboard()
     logAction("抽查运动循环详情");
     yomk::payload::Response loopResp = yomk::event_loop().loop("motionLoop").tag_count(3).get_info();
     logResp("loop(motionLoop).tag_count(3).get_info()", loopResp);
-    auto loopInfo = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(loopResp.m_data);
+    auto loopInfo = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(loopResp.m_data);
     if (loopInfo)
     {
         logLoopInfo("get_info()", loopInfo->d);
@@ -458,7 +458,7 @@ static void showArmDashboard()
     logAction("全量导出循环状态");
     yomk::payload::Response allResp = yomk::event_loop().all();
     logResp("all()", allResp);
-    auto allArr = yomk::msgs::unPack<yomk::msgs::EventLoopInfoList>(allResp.m_data);
+    auto allArr = yomk::msgs::unpack<yomk::msgs::EventLoopInfoList>(allResp.m_data);
     if (allArr)
     {
         for (const auto& info : allArr->d)
@@ -484,7 +484,7 @@ static void showArmLineOff()
     logAction("巡检清单确认已清空");
     yomk::payload::Response loopsResp = yomk::event_loop().list();
     logResp("list()", loopsResp);
-    auto loopArr = yomk::msgs::unPack<yomk::msgs::StringArray>(loopsResp.m_data);
+    auto loopArr = yomk::msgs::unpack<yomk::msgs::StringArray>(loopsResp.m_data);
     logVerify(loopArr && loopArr->d.empty() ? "循环清单已空：机械臂班次结束，全部专用线程已下线" : "循环清单非空：存在未销毁循环");
 
     logAction(

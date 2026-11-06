@@ -567,7 +567,7 @@ static std::vector<std::string> unpackLines(const yomk::payload::Response& resp)
     {
         return lines;
     }
-    auto arr = yomk::msgs::unPack<yomk::msgs::StringArray>(resp.m_data);
+    auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);
     if (arr)
     {
         lines = std::move(arr->d);
@@ -759,7 +759,7 @@ static LatencyStat measureIntrospection(uint64_t rounds, bool useAll, uint64_t& 
         }
         if (useAll)
         {
-            auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(resp.m_data);
+            auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(resp.m_data);
             lastLines = listPkg ? listPkg->d.size() : 0;
         }
         else
@@ -1364,12 +1364,12 @@ int main()
         // 结构化后数据段形态不同（LoggerInfo vs 纯名行），逐行字符串比对改为数量与类型计数比对；
         // S4 阶段表内条目不再增删，console/file 两端点各自单锁快照后计数等价；
         // 条目改报逐器门控层真值后，"全 on" 验证语义迁移至主闸 status()（log_mgr().console().status()）
-        auto gsPkg = yomk::msgs::unPack<yomk::msgs::LoggerState>(yomk::log_mgr().console().status().m_data);
+        auto gsPkg = yomk::msgs::unpack<yomk::msgs::LoggerState>(yomk::log_mgr().console().status().m_data);
         YOMK_TEST_CHECK(
             (gsPkg != nullptr && gsPkg->d.m_debugOn && gsPkg->d.m_infoOn && gsPkg->d.m_warnOn &&
              gsPkg->d.m_errorOn && gsPkg->d.m_proxyOn),
             "S4B: 全局主闸状态全 on（proxy 已在 S1D 安装）");
-        auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().m_data);
+        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().m_data);
         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
@@ -1468,7 +1468,7 @@ int main()
                         g_s4dSnapBadStatus.fetch_add(1, std::memory_order_relaxed);
                         continue;
                     }
-                    auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(resp.m_data);
+                    auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(resp.m_data);
                     const uint64_t lines = listPkg ? listPkg->d.size() : 0;
                     g_s4dSnapCount.fetch_add(1, std::memory_order_relaxed);
                     if (lines < prevLines)

@@ -475,7 +475,7 @@ int main()
         auto infoOf = []()
         {
             auto r = yomk::event_loop().loop("api_loop").get_info();
-            auto info = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(r.m_data);
+            auto info = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(r.m_data);
             return info;
         };
         YOMK_TEST_CHECK(
@@ -508,7 +508,7 @@ int main()
         auto oob = yomk::event_loop().loop("api_loop").tag_count(1000000000000000000ULL).get_info();
         YOMK_TEST_CHECK(oob.m_status == yomk::payload::ResStatus::Succeeded, "越界数字 tagCount 返回 ResStatus::Succeeded（不崩溃）");
         YOMK_TEST_CHECK(oob.m_msg == "ok", "越界数字 tagCount 命中 m_msg 恒为 ok");
-        auto oobInfo = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(oob.m_data);
+        auto oobInfo = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(oob.m_data);
         YOMK_TEST_CHECK(oobInfo != nullptr, "越界数字 tagCount 解包 EventLoopInfo 成功");
         YOMK_TEST_CHECK(oobInfo && oobInfo->d.m_pending == 2, "越界数字串不影响循环状态（pending 仍为 2）");
         YOMK_TEST_CHECK(oobInfo && oobInfo->d.m_nextTags.size() == 2, "越界数字 tagCount 回退默认 3（队列 2 条全部列出）");
@@ -517,7 +517,7 @@ int main()
 
         // tagCount 截断语义：N < 队列条数时截断队列头 N 条（冻结窗口队列 2 条）
         auto trunc = yomk::event_loop().loop("api_loop").tag_count(1).get_info();
-        auto truncInfo = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(trunc.m_data);
+        auto truncInfo = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(trunc.m_data);
         YOMK_TEST_CHECK(truncInfo && truncInfo->d.m_nextTags.size() == 1 && truncInfo->d.m_nextTags[0] == "c1",
               "tagCount=1 截断队列头 1 条 tag");
 
@@ -562,7 +562,7 @@ int main()
         // list()：api_loop 存活时列表包含其名（loops() 遍历路径；销毁后移除验证见段尾）
         auto loopsAliveResp = yomk::event_loop().list();
         YOMK_TEST_CHECK(loopsAliveResp.m_status == yomk::payload::ResStatus::Succeeded, "list() 返回 ResStatus::Succeeded");
-        auto loopsAliveArr = yomk::msgs::unPack<yomk::msgs::StringArray>(loopsAliveResp.m_data);
+        auto loopsAliveArr = yomk::msgs::unpack<yomk::msgs::StringArray>(loopsAliveResp.m_data);
         bool loopsFound = false;
         if (loopsAliveArr)
         {
@@ -580,7 +580,7 @@ int main()
         auto allResp = yomk::event_loop().all();
         YOMK_TEST_CHECK(allResp.m_status == yomk::payload::ResStatus::Succeeded, "all() 返回 ResStatus::Succeeded");
         YOMK_TEST_CHECK(allResp.m_msg == "ok", "all() 成功消息恒为 ok");
-        auto allArr = yomk::msgs::unPack<yomk::msgs::EventLoopInfoList>(allResp.m_data);
+        auto allArr = yomk::msgs::unpack<yomk::msgs::EventLoopInfoList>(allResp.m_data);
         bool allFound = false;
         if (allArr)
         {
@@ -611,7 +611,7 @@ int main()
         YOMK_TEST_CHECK(yomk::event_loop().loop(longName).handle_fn(nullptr).start() == yomk::payload::ResStatus::Succeeded, "START 超长循环名返回 ResStatus::Succeeded");
         auto longInfo = yomk::event_loop().loop(longName).get_info();
         YOMK_TEST_CHECK(longInfo.m_status == yomk::payload::ResStatus::Succeeded, "get_info() 超长循环名返回 ResStatus::Succeeded");
-        auto longLoopInfo = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(longInfo.m_data);
+        auto longLoopInfo = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(longInfo.m_data);
         YOMK_TEST_CHECK(longLoopInfo && longLoopInfo->d.m_loopName == longName, "get_info() 完整回显超长循环名");
         YOMK_TEST_CHECK(yomk::event_loop().loop(longName).destroy() == yomk::payload::ResStatus::Succeeded, "destroy() 超长循环名返回 ResStatus::Succeeded");
 
@@ -619,7 +619,7 @@ int main()
         YOMK_TEST_CHECK(yomk::event_loop().loop("api_loop").destroy() == yomk::payload::ResStatus::Succeeded, "destroy() api_loop 返回 ResStatus::Succeeded");
         auto loopsResp = yomk::event_loop().list();
         YOMK_TEST_CHECK(loopsResp.m_status == yomk::payload::ResStatus::Succeeded, "list() 返回 ResStatus::Succeeded");
-        auto loopsArr = yomk::msgs::unPack<yomk::msgs::StringArray>(loopsResp.m_data);
+        auto loopsArr = yomk::msgs::unpack<yomk::msgs::StringArray>(loopsResp.m_data);
         bool removed = true;
         if (loopsArr)
         {
@@ -643,7 +643,7 @@ int main()
         YOMK_TEST_CHECK(yomk::server().srv_name("/YomkEventLoop").remove() == 0, "删除内置 /YomkEventLoop 返回 0");
         YOMK_TEST_CHECK(yomk::event_loop().loop("/L2").start() == yomk::payload::ResStatus::Failed,
               "删除后 EVENTLOOP API 服务级 ResStatus::Failed（失败原因经错误日志承载）");
-        auto srvArr = yomk::msgs::unPack<yomk::msgs::StringArray>(yomk::server().services().m_data);
+        auto srvArr = yomk::msgs::unpack<yomk::msgs::StringArray>(yomk::server().services().m_data);
         bool evtLoopGone = true;
         if (srvArr)
         {

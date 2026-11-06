@@ -22,7 +22,7 @@ int YomkFunctionPool::init()
 
 yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr pkg)
 {
-    auto yFunc = yomk::msgs::unPack<yomk::msgs::Function>(pkg);
+    auto yFunc = yomk::msgs::unpack<yomk::msgs::Function>(pkg);
     if (!yFunc)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Function"};
@@ -50,7 +50,7 @@ yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr pkg)
 {
-    auto yFuncName = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+    auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yFuncName)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -75,7 +75,7 @@ yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
 {
-    auto yCallFunc = yomk::msgs::unPack<yomk::msgs::CallFunction>(pkg);
+    auto yCallFunc = yomk::msgs::unpack<yomk::msgs::CallFunction>(pkg);
     if (!yCallFunc)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not CallFunction"};
@@ -120,7 +120,7 @@ yomk::payload::Response YomkFunctionPool::funcNames(YomkMsgPtr pkg)
 // 内省：单个函数元信息查询，命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，数据走 m_data）
 yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
 {
-    auto yFuncName = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+    auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yFuncName)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};

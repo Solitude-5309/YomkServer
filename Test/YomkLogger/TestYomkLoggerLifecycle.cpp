@@ -164,7 +164,7 @@ static size_t countLines(const std::string& text)
 static std::vector<std::string> unpackLines(const yomk::payload::Response& resp)
 {
     std::vector<std::string> lines;
-    auto arr = yomk::msgs::unPack<yomk::msgs::StringArray>(resp.m_data);
+    auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);
     if (arr != nullptr)
     {
         lines = arr->d;
@@ -439,7 +439,7 @@ YOMK_TEST_CHECK(
     // 设置前 all 内省 proxy:off
     {
         auto allResp = yomk::log_mgr().all();
-        auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
+        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.m_data);
         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->m_traceOn && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn &&
@@ -478,7 +478,7 @@ YOMK_TEST_CHECK(
     // 设置后 all 内省 proxy:on
     {
         auto allResp = yomk::log_mgr().all();
-        auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
+        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.m_data);
         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(st != nullptr && st->m_proxyOn, "proxy 设置后 ALL 状态 proxyOn");
     }
@@ -507,7 +507,7 @@ YOMK_TEST_CHECK(
             yomk::log_mgr().console().proxy(nullptr).apply() == yomk::payload::ResStatus::Succeeded,
             "console().proxy(nullptr).apply() 卸载返回 ResStatus::Succeeded");
         auto allResp = yomk::log_mgr().all();
-        auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
+        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.m_data);
         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             st != nullptr && !st->m_proxyOn,
@@ -539,7 +539,7 @@ YOMK_TEST_CHECK(
         g_proxyIntercept.store(false);
         YOMK_TEST_CHECK(yomk::log_mgr().console().proxy(proxy).apply() == yomk::payload::ResStatus::Succeeded, "重装代理返回 ResStatus::Succeeded（卸载可逆）");
         auto allResp = yomk::log_mgr().all();
-        auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
+        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.m_data);
         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             st != nullptr && st->m_proxyOn,
@@ -658,7 +658,7 @@ YOMK_TEST_CHECK(
     // LOGGERS：按类型查询，行内容即 logger 纯名
     auto consoleResp = yomk::log_mgr().console().list();
     YOMK_TEST_CHECK(consoleResp.m_status == yomk::payload::ResStatus::Succeeded, "console().list() 返回 ResStatus::Succeeded");
-    auto consoleArr = yomk::msgs::unPack<yomk::msgs::StringArray>(consoleResp.m_data);
+    auto consoleArr = yomk::msgs::unpack<yomk::msgs::StringArray>(consoleResp.m_data);
     bool hasMain = false;
     bool hasTag = false;
     if (consoleArr)
@@ -679,7 +679,7 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(hasTag, "LOGGERS(console) 含 S2 自建 tag logger 行");
     auto fileResp = yomk::log_mgr().file().list();
     YOMK_TEST_CHECK(fileResp.m_status == yomk::payload::ResStatus::Succeeded, "file().list() 返回 ResStatus::Succeeded");
-    auto fileArr = yomk::msgs::unPack<yomk::msgs::StringArray>(fileResp.m_data);
+    auto fileArr = yomk::msgs::unpack<yomk::msgs::StringArray>(fileResp.m_data);
     bool hasFile = false;
     if (fileArr)
     {
@@ -698,7 +698,7 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(
         (consoleInfo.m_status == yomk::payload::ResStatus::Succeeded && consoleInfo.m_msg == "ok"),
         "LOGGER(MainLogger) 命中 m_msg 恒为 ok");
-    auto consolePkg = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(consoleInfo.m_data);
+    auto consolePkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(consoleInfo.m_data);
     YOMK_TEST_CHECK(consolePkg != nullptr, "LOGGER(MainLogger) 数据为 LoggerInfo 包");
     YOMK_TEST_CHECK(consolePkg && consolePkg->d.m_loggerName == "MainLogger" && consolePkg->d.m_type == "console",
           "LOGGER(MainLogger) 字段 loggerName/type 一致");
@@ -707,7 +707,7 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(
         (fileInfo.m_status == yomk::payload::ResStatus::Succeeded && fileInfo.m_msg == "ok"),
         "LOGGER(lg1_file_logger) 命中 m_msg 恒为 ok");
-    auto filePkg = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(fileInfo.m_data);
+    auto filePkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(fileInfo.m_data);
     YOMK_TEST_CHECK(filePkg != nullptr, "LOGGER(lg1_file_logger) 数据为 LoggerInfo 包");
     YOMK_TEST_CHECK(filePkg && filePkg->d.m_loggerName == "lg1_file_logger" && filePkg->d.m_type == "file",
           "LOGGER(lg1_file_logger) 字段 loggerName/type 一致");
@@ -720,7 +720,7 @@ YOMK_TEST_CHECK(
     // ALL：控制台状态字段与开关翻转联动（逐字段断言）
     {
         auto allResp = yomk::log_mgr().all();
-        auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
+        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.m_data);
         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->m_traceOn && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn &&
@@ -732,14 +732,14 @@ YOMK_TEST_CHECK(
         // 主闸翻转与条目解耦后，翻转联动取数迁移至主闸 status()（log_mgr().console().status()）；
         // 条目改报逐器层真值，不受无参翻转影响（正交性在 Section 9 直证）
         auto gResp = yomk::log_mgr().console().status();
-        auto gs = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp.m_data);
+        auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(
             (gs != nullptr && gs->d.m_traceOn && gs->d.m_debugOn && !gs->d.m_infoOn && gs->d.m_warnOn &&
              gs->d.m_errorOn && gs->d.m_fatalOn && gs->d.m_proxyOn),
             "OFF INFO 后全局主闸状态 infoOff（六级其余字段不受影响，开关联动逐字段）");
         yomk::log_mgr().console().level(yomk::payload::LogLevel::Info).enable();
         auto gResp2 = yomk::log_mgr().console().status();
-        auto gs2 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp2.m_data);
+        auto gs2 = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp2.m_data);
         YOMK_TEST_CHECK(
             (gs2 != nullptr && gs2->d.m_traceOn && gs2->d.m_debugOn && gs2->d.m_infoOn && gs2->d.m_warnOn &&
              gs2->d.m_errorOn && gs2->d.m_fatalOn && gs2->d.m_proxyOn),
@@ -842,7 +842,7 @@ YOMK_TEST_CHECK(
         (rOn.m_status == yomk::payload::ResStatus::Succeeded && outOn.find("unknown log level, turn on failed.") != std::string::npos),
         "on 非法级别 ResStatus::Succeeded + 错误提示（default 活分支）");
     auto allResp = yomk::log_mgr().all();
-    auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(allResp.m_data);
+    auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.m_data);
     const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
     YOMK_TEST_CHECK(
         (st != nullptr && st->m_debugOn && st->m_infoOn && st->m_warnOn && st->m_errorOn && st->m_proxyOn),
@@ -852,7 +852,7 @@ YOMK_TEST_CHECK(
 
 // ============ Section 7: 异常路径（空包 / 错类型包 / 未知端点） ============
 {
-    // console_log 收 nullptr 包 → unPack 空包分支 ResStatus::Failed
+    // console_log 收 nullptr 包 → unpack 空包分支 ResStatus::Failed
     {
         CoutCapture cap;
         auto r = yomk::server().url("/YomkLogger/console_log").request();
@@ -1056,7 +1056,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(loggersTotal() == before + 2, "S8: 双表各建一个 → LOGGERS 行数 +2");
         YOMK_TEST_CHECK(yomk::log_mgr().file(name).remove() == yomk::payload::ResStatus::Succeeded, "S8: 计数用例删除 ResStatus::Succeeded");
         YOMK_TEST_CHECK(loggersTotal() == before, "S8: 删除后 LOGGERS 行数回落（递减守恒）");
-        auto listPkg = yomk::msgs::unPack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().m_data);
+        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().m_data);
         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
         YOMK_TEST_CHECK(
             (listPkg != nullptr && listPkg->d.size() == before && st != nullptr && st->m_traceOn && st->m_debugOn &&
@@ -1088,7 +1088,7 @@ YOMK_TEST_CHECK(
             "S8: MainLogger 删除+重建后行数回到基线（无泄漏无重复）");
     }
 
-    // 8.7 异常路径：空包 / 错类型包（unPack 契约分支）
+    // 8.7 异常路径：空包 / 错类型包（unpack 契约分支）
     {
         auto rNull = yomk::server().url("/YomkLogger/delete_logger").request();
         YOMK_TEST_CHECK(
@@ -1166,10 +1166,10 @@ YOMK_TEST_CHECK(
                 "S9d: 主闸 OFF + 逐器 ON → 仍无输出（两层 AND）");
         }
         auto gResp = yomk::log_mgr().console().status();
-        auto gs = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp.m_data);
+        auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(gs != nullptr && !gs->d.m_infoOn, "S9d: console().status() 报主闸 infoOff");
         auto liResp = yomk::log_mgr().console(tagA).get_info();
-        auto lp = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(liResp.m_data);
+        auto lp = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(liResp.m_data);
         YOMK_TEST_CHECK(
             lp != nullptr && lp->d.m_loggerState.m_infoOn,
             "S9d: 条目报逐器 infoOn（与主闸态相反，两层归因唯一）");
@@ -1188,19 +1188,19 @@ YOMK_TEST_CHECK(
     // 9.5 条目逐器真值与两层正交：具名关断直接反映在条目、不波及全局态
     {
         auto liAResp = yomk::log_mgr().console(tagA).get_info();
-        auto la = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(liAResp.m_data);
+        auto la = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(liAResp.m_data);
         YOMK_TEST_CHECK(la != nullptr && la->d.m_loggerState.m_infoOn, "S9e: tagA 条目 infoOn（具名恢复后逐器态）");
         auto liBResp = yomk::log_mgr().console(tagB).get_info();
-        auto lb = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(liBResp.m_data);
+        auto lb = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(liBResp.m_data);
         YOMK_TEST_CHECK(
             lb != nullptr && lb->d.m_loggerState.m_infoOn,
             "S9e: tagB 条目 infoOn（未被具名触碰恒 true）");
         YOMK_TEST_CHECK(yomk::log_mgr().console(tagA).level(yomk::payload::LogLevel::Info).disable() == yomk::payload::ResStatus::Succeeded, "S9e: 再次具名关断 tagA 返回 ResStatus::Succeeded");
         auto gResp = yomk::log_mgr().console().status();
-        auto gs = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp.m_data);
+        auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(gs != nullptr && gs->d.m_infoOn, "S9e: 具名关断不影响全局主闸（两层正交）");
         auto liA2Resp = yomk::log_mgr().console(tagA).get_info();
-        auto la2 = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(liA2Resp.m_data);
+        auto la2 = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(liA2Resp.m_data);
         YOMK_TEST_CHECK(
             la2 != nullptr && !la2->d.m_loggerState.m_infoOn,
             "S9e: tagA 条目报逐器 infoOff（具名关断直接反映）");
@@ -1213,7 +1213,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             (gResp.m_status == yomk::payload::ResStatus::Succeeded && gResp.m_msg == "ok"),
             "S9f: console().status() 返回 ResStatus::Succeeded + ok");
-        auto gs = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp.m_data);
+        auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(
             (gs != nullptr && gs->d.m_traceOn && gs->d.m_debugOn && gs->d.m_infoOn && gs->d.m_warnOn &&
              gs->d.m_errorOn && gs->d.m_fatalOn),
@@ -1221,20 +1221,20 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(gs != nullptr && gs->d.m_proxyOn, "S9f: 全局态含 S3 已设 proxyOn");
         YOMK_TEST_CHECK(yomk::log_mgr().console().level(yomk::payload::LogLevel::Debug).disable() == yomk::payload::ResStatus::Succeeded, "S9f: 无参 OFF_DEBUG 返回 ResStatus::Succeeded");
         auto gResp2 = yomk::log_mgr().console().status();
-        auto gs2 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp2.m_data);
+        auto gs2 = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp2.m_data);
         YOMK_TEST_CHECK(gs2 != nullptr && !gs2->d.m_debugOn, "S9f: 主闸 OFF_DEBUG 后全局态 debugOff");
         YOMK_TEST_CHECK(yomk::log_mgr().console().level(yomk::payload::LogLevel::Debug).enable() == yomk::payload::ResStatus::Succeeded, "S9f: 无参 ON_DEBUG 恢复 ResStatus::Succeeded");
         auto gResp3 = yomk::log_mgr().console().status();
-        auto gs3 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp3.m_data);
+        auto gs3 = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp3.m_data);
         YOMK_TEST_CHECK(gs3 != nullptr && gs3->d.m_debugOn, "S9f: 主闸 ON_DEBUG 后全局态 debugOn");
         // TRACE 主闸翻转联动（六等级扩展新增）
         YOMK_TEST_CHECK(yomk::log_mgr().console().level(yomk::payload::LogLevel::Trace).disable() == yomk::payload::ResStatus::Succeeded, "S9f: 无参 OFF_TRACE 返回 ResStatus::Succeeded");
         auto gResp4 = yomk::log_mgr().console().status();
-        auto gs4 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp4.m_data);
+        auto gs4 = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp4.m_data);
         YOMK_TEST_CHECK(gs4 != nullptr && !gs4->d.m_traceOn, "S9f: 主闸 OFF_TRACE 后全局态 traceOff");
         YOMK_TEST_CHECK(yomk::log_mgr().console().level(yomk::payload::LogLevel::Trace).enable() == yomk::payload::ResStatus::Succeeded, "S9f: 无参 ON_TRACE 恢复 ResStatus::Succeeded");
         auto gResp5 = yomk::log_mgr().console().status();
-        auto gs5 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp5.m_data);
+        auto gs5 = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp5.m_data);
         YOMK_TEST_CHECK(gs5 != nullptr && gs5->d.m_traceOn, "S9f: 主闸 ON_TRACE 后全局态 traceOn");
     }
 
@@ -1255,7 +1255,7 @@ YOMK_TEST_CHECK(
             YOMK_TEST_CHECK(cap.str().find("lg1_s9g_off_b_marker") != std::string::npos, "S9g: 具名关断不波及 tagB（逐器隔离）");
         }
         auto liResp = yomk::log_mgr().console(tagA).get_info();
-        auto lp = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(liResp.m_data);
+        auto lp = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(liResp.m_data);
         YOMK_TEST_CHECK(lp != nullptr && !lp->d.m_loggerState.m_traceOn, "S9g: 条目报逐器 traceOff（具名关断直接反映）");
         YOMK_TEST_CHECK(
             yomk::log_mgr().console(tagA).level(yomk::payload::LogLevel::Trace).enable() == yomk::payload::ResStatus::Succeeded,
@@ -1284,7 +1284,7 @@ YOMK_TEST_CHECK(
         "S10a: 具名 disableFileLogInfo(fl) 返回 ResStatus::Succeeded");
     {
         auto liResp = yomk::log_mgr().file(flName).get_info();
-        auto lp = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(liResp.m_data);
+        auto lp = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(liResp.m_data);
         YOMK_TEST_CHECK(
             lp != nullptr && !lp->d.m_loggerState.m_infoOn && lp->d.m_loggerState.m_warnOn,
             "S10a: 单查条目 infoOff 且 warnOn（文件逐器门控真值）");
@@ -1313,7 +1313,7 @@ YOMK_TEST_CHECK(
         "S10b: 具名 file(fl).level(Info).enable() 返回 ResStatus::Succeeded");
     {
         auto liResp = yomk::log_mgr().file(flName).get_info();
-        auto lp = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(liResp.m_data);
+        auto lp = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(liResp.m_data);
         YOMK_TEST_CHECK(lp != nullptr && lp->d.m_loggerState.m_infoOn, "S10b: 条目 infoOn 恢复");
     }
     YOMK_TEST_CHECK(
@@ -1336,7 +1336,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             onNo == yomk::payload::ResStatus::Failed,
             "S10c: 具名 ON 未知名返回 ResStatus::Failed");
-        auto arr = yomk::msgs::unPack<yomk::msgs::StringArray>(yomk::log_mgr().file().list().m_data);
+        auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(yomk::log_mgr().file().list().m_data);
         bool ghostFound = false;
         if (arr)
         {
@@ -1356,10 +1356,10 @@ YOMK_TEST_CHECK(
     {
         YOMK_TEST_CHECK(yomk::log_mgr().file().level(yomk::payload::LogLevel::Info).disable() == yomk::payload::ResStatus::Succeeded, "S10d: 无参 OFF（文件主闸）返回 ResStatus::Succeeded");
         auto gResp = yomk::log_mgr().file().status();
-        auto gs = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp.m_data);
+        auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(gs != nullptr && !gs->d.m_infoOn, "S10d: file().status() 报文件主闸 infoOff");
         auto liResp = yomk::log_mgr().file(flName).get_info();
-        auto lp = yomk::msgs::unPack<yomk::msgs::LoggerInfo>(liResp.m_data);
+        auto lp = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(liResp.m_data);
         YOMK_TEST_CHECK(
             lp != nullptr && lp->d.m_loggerState.m_infoOn,
             "S10d: 条目报逐器 infoOn（与文件主闸态相反，两层归因唯一）");
@@ -1392,7 +1392,7 @@ YOMK_TEST_CHECK(
     {
         YOMK_TEST_CHECK(yomk::log_mgr().file(flName).level(yomk::payload::LogLevel::Info).disable() == yomk::payload::ResStatus::Succeeded, "S10e: 再次具名关断返回 ResStatus::Succeeded");
         auto gResp = yomk::log_mgr().file().status();
-        auto gs = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp.m_data);
+        auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(gs != nullptr && gs->d.m_infoOn, "S10e: 具名关断不影响文件主闸（两层正交）");
         YOMK_TEST_CHECK(yomk::log_mgr().file(flName).level(yomk::payload::LogLevel::Info).enable() == yomk::payload::ResStatus::Succeeded, "S10e: 具名恢复 ResStatus::Succeeded（状态复原）");
     }
@@ -1403,7 +1403,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             (gResp.m_status == yomk::payload::ResStatus::Succeeded && gResp.m_msg == "ok"),
             "S10f: file().status() 返回 ResStatus::Succeeded + ok");
-        auto gs = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp.m_data);
+        auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp.m_data);
         YOMK_TEST_CHECK(
             (gs != nullptr && gs->d.m_traceOn && gs->d.m_debugOn && gs->d.m_infoOn && gs->d.m_warnOn &&
              gs->d.m_errorOn && gs->d.m_fatalOn),
@@ -1413,27 +1413,27 @@ YOMK_TEST_CHECK(
             "S10f: 文件态 proxyOn=false（文件代理未设置时恒 false）");
         YOMK_TEST_CHECK(yomk::log_mgr().file().level(yomk::payload::LogLevel::Debug).disable() == yomk::payload::ResStatus::Succeeded, "S10f: 无参 disableFileLogDebug 返回 ResStatus::Succeeded");
         auto gResp2 = yomk::log_mgr().file().status();
-        auto gs2 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp2.m_data);
+        auto gs2 = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp2.m_data);
         YOMK_TEST_CHECK(gs2 != nullptr && !gs2->d.m_debugOn, "S10f: 文件主闸 OFF_DEBUG 后文件态 debugOff");
         // 两套主闸独立直证：文件主闸翻转不波及控制台主闸
         auto gResp3 = yomk::log_mgr().console().status();
-        auto gc = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp3.m_data);
+        auto gc = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp3.m_data);
         YOMK_TEST_CHECK(
             (gc != nullptr && gc->d.m_traceOn && gc->d.m_debugOn && gc->d.m_infoOn && gc->d.m_warnOn &&
              gc->d.m_errorOn && gc->d.m_fatalOn),
             "S10f: 控制台主闸六级仍全 on（与文件主闸独立）");
         YOMK_TEST_CHECK(yomk::log_mgr().file().level(yomk::payload::LogLevel::Debug).enable() == yomk::payload::ResStatus::Succeeded, "S10f: 主闸 file().level(Debug).enable() 恢复 ResStatus::Succeeded");
         auto gResp4 = yomk::log_mgr().file().status();
-        auto gs4 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp4.m_data);
+        auto gs4 = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp4.m_data);
         YOMK_TEST_CHECK(gs4 != nullptr && gs4->d.m_debugOn, "S10f: 文件主闸 ON_DEBUG 后文件态 debugOn");
         // FATAL 文件主闸翻转联动（六等级扩展新增）
         YOMK_TEST_CHECK(yomk::log_mgr().file().level(yomk::payload::LogLevel::Fatal).disable() == yomk::payload::ResStatus::Succeeded, "S10f: 无参 disableFileLogFatal 返回 ResStatus::Succeeded");
         auto gResp5 = yomk::log_mgr().file().status();
-        auto gs5 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp5.m_data);
+        auto gs5 = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp5.m_data);
         YOMK_TEST_CHECK(gs5 != nullptr && !gs5->d.m_fatalOn, "S10f: 文件主闸 OFF_FATAL 后文件态 fatalOff");
         YOMK_TEST_CHECK(yomk::log_mgr().file().level(yomk::payload::LogLevel::Fatal).enable() == yomk::payload::ResStatus::Succeeded, "S10f: 主闸 file().level(Fatal).enable() 恢复 ResStatus::Succeeded");
         auto gResp6 = yomk::log_mgr().file().status();
-        auto gs6 = yomk::msgs::unPack<yomk::msgs::LoggerState>(gResp6.m_data);
+        auto gs6 = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp6.m_data);
         YOMK_TEST_CHECK(gs6 != nullptr && gs6->d.m_fatalOn, "S10f: 文件主闸 ON_FATAL 后文件态 fatalOn");
         // 未知 type 用例随 type 参数退役而删除：type 由分面身份承载，未知类型不可表达
     }
@@ -1480,10 +1480,10 @@ YOMK_TEST_CHECK(
     // 11.1 设置前基线：文件代理未设置 + 两套代理独立直证
     {
         auto gRespF = yomk::log_mgr().file().status();
-        auto gsF = yomk::msgs::unPack<yomk::msgs::LoggerState>(gRespF.m_data);
+        auto gsF = yomk::msgs::unpack<yomk::msgs::LoggerState>(gRespF.m_data);
         YOMK_TEST_CHECK(gsF != nullptr && !gsF->d.m_proxyOn, "S11a: 设置前 status()(\"file\") proxyOff");
         auto gRespC = yomk::log_mgr().console().status();
-        auto gsC = yomk::msgs::unPack<yomk::msgs::LoggerState>(gRespC.m_data);
+        auto gsC = yomk::msgs::unpack<yomk::msgs::LoggerState>(gRespC.m_data);
         YOMK_TEST_CHECK(
             gsC != nullptr && gsC->d.m_proxyOn,
             "S11a: 设置前 status()(\"console\") proxyOn（S3 重装态），两套代理独立直证");
@@ -1527,7 +1527,7 @@ YOMK_TEST_CHECK(
         }
         YOMK_TEST_CHECK(g_fileProxyHits.load() == 2, "S11c: 文件 proxy 累计被调用 2 次");
         auto gRespF = yomk::log_mgr().file().status();
-        auto gsF = yomk::msgs::unPack<yomk::msgs::LoggerState>(gRespF.m_data);
+        auto gsF = yomk::msgs::unpack<yomk::msgs::LoggerState>(gRespF.m_data);
         YOMK_TEST_CHECK(gsF != nullptr && gsF->d.m_proxyOn, "S11c: 设置后 status()(\"file\") proxyOn");
     }
 
@@ -1542,7 +1542,7 @@ YOMK_TEST_CHECK(
             yomk::log_mgr().file().proxy(nullptr).apply() == yomk::payload::ResStatus::Succeeded,
             "S11d: file().proxy(nullptr).apply() 卸载返回 ResStatus::Succeeded");
         auto gRespF = yomk::log_mgr().file().status();
-        auto gsF = yomk::msgs::unPack<yomk::msgs::LoggerState>(gRespF.m_data);
+        auto gsF = yomk::msgs::unpack<yomk::msgs::LoggerState>(gRespF.m_data);
         YOMK_TEST_CHECK(gsF != nullptr && !gsF->d.m_proxyOn, "S11d: 卸载后 status()(\"file\") 回 proxyOff");
         const long hitsBefore = g_fileProxyHits.load();
         YOMK_TEST_CHECK(
@@ -1564,7 +1564,7 @@ YOMK_TEST_CHECK(
         g_fileProxyIntercept.store(false);
         YOMK_TEST_CHECK(yomk::log_mgr().file().proxy(fileProxy).apply() == yomk::payload::ResStatus::Succeeded, "S11e: 重装文件代理返回 ResStatus::Succeeded（卸载可逆）");
         auto gRespF = yomk::log_mgr().file().status();
-        auto gsF = yomk::msgs::unPack<yomk::msgs::LoggerState>(gRespF.m_data);
+        auto gsF = yomk::msgs::unpack<yomk::msgs::LoggerState>(gRespF.m_data);
         YOMK_TEST_CHECK(gsF != nullptr && gsF->d.m_proxyOn, "S11e: 重装后 status()(\"file\") 恢复 proxyOn");
     }
 }

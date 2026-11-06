@@ -94,7 +94,7 @@ private:
     // String 解包回显：验证 pkg 透传往返
     yomk::payload::Response echo(YomkMsgPtr pkg)
     {
-        auto data = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+        auto data = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!data)
         {
             return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};

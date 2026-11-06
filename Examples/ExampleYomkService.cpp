@@ -121,7 +121,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
     oss << ", msg=\"" << resp.m_msg << "\"";
     if (resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_data)
     {
-        auto data = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
+        auto data = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
         if (data)
         {
             oss << ", data=\"" << data->d << "\"";
@@ -238,7 +238,7 @@ static void showArmPowerOnRegister()
     logAction("复查控制柜在册服务清单");
     yomk::payload::Response namesResp = yomk::server().services();
     logResp("services()", namesResp);
-    auto nameArr = yomk::msgs::unPack<yomk::msgs::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -326,7 +326,7 @@ static void showArmMoveChain()
 
     logAction("展开到位回执 MoveResp");
     std::ostringstream oss;
-    auto respPkg = yomk::msgs::unPack<yomk::msgs::MoveResp>(moveResp.m_data);
+    auto respPkg = yomk::msgs::unpack<yomk::msgs::MoveResp>(moveResp.m_data);
     if (respPkg)
     {
         oss << "[REQUEST /MotionService/move] | MoveResp 到位 (" << respPkg->resp.m_reachX << ", "
@@ -355,7 +355,7 @@ static void showArmIntrospect()
     logAction("查阅运动工位职能清单");
     yomk::payload::Response funcsResp = yomk::server().srv_name("/MotionService").functions();
     logResp("INFO_FUNCTIONS /MotionService", funcsResp);
-    auto listPkg = yomk::msgs::unPack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
+    auto listPkg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
     {
         for (const auto& func : listPkg->d)
@@ -368,7 +368,7 @@ static void showArmIntrospect()
     logAction("调阅运动指令函数名片");
     yomk::payload::Response resp = yomk::server().fn_url("/MotionService/move").get_info();
     logResp("INFO_FUNCTION /MotionService/move", resp);
-    auto info = yomk::msgs::unPack<yomk::msgs::FuncInfo>(resp.m_data);
+    auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.m_data);
     if (info)
     {
         logFuncInfo("INFO_FUNCTION", info->d);
@@ -449,7 +449,7 @@ static void showArmPowerOff()
     logAction("导出收班终态拓扑（摘要）");
     yomk::payload::Response allResp = yomk::server().all();
     logResp("all()", allResp);
-    auto list = yomk::msgs::unPack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
+    auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
     if (list)
     {
         for (const auto& srv : list->d)

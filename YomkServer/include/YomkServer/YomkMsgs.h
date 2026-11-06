@@ -33,7 +33,7 @@ namespace yomk::msgs
 {
 
 template <class Msg>
-std::shared_ptr<Msg> unPack(const YomkMsgPtr& pkg)
+std::shared_ptr<Msg> unpack(const YomkMsgPtr& pkg)
 {
     if (pkg && pkg->name() == Msg::kName)
     {

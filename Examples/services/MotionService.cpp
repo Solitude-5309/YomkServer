@@ -16,7 +16,7 @@ int MotionService::init()
 
 yomk::payload::Response MotionService::echo(YomkMsgPtr pkg)
 {
-    auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
+    auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
     if (!str)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -29,7 +29,7 @@ yomk::payload::Response MotionService::echo(YomkMsgPtr pkg)
 
 yomk::payload::Response MotionService::move(YomkMsgPtr pkg)
 {
-    auto cmdPkg = yomk::msgs::unPack<yomk::msgs::MoveCmd>(pkg);
+    auto cmdPkg = yomk::msgs::unpack<yomk::msgs::MoveCmd>(pkg);
     if (!cmdPkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not MoveCmd"};

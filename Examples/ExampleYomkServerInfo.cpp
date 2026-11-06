@@ -98,7 +98,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
     oss << ", msg=\"" << resp.m_msg << "\"";
     if (resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_data)
     {
-        auto data = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
+        auto data = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
         if (data)
         {
             oss << ", data=\"" << data->d << "\"";
@@ -182,7 +182,7 @@ static void logTopologyFunc(const std::string& api, const yomk::payload::FuncInf
 
 static void logTopology(const std::string& api, const yomk::payload::Response& resp)
 {
-    auto list = yomk::msgs::unPack<yomk::msgs::ServerServiceInfoList>(resp.m_data);
+    auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(resp.m_data);
     if (!list)
     {
         return;
@@ -249,7 +249,7 @@ public:
     // 工位状态上报：收到状态文本回执确认
     yomk::payload::Response report(YomkMsgPtr pkg)
     {
-        auto status = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+        auto status = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!status)
         {
             return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -263,7 +263,7 @@ public:
     // 质量抽检：解包 QualityCheckReq，按件抽检并回执结论
     yomk::payload::Response qualityCheck(YomkMsgPtr pkg)
     {
-        auto data = yomk::msgs::unPack<yomk::msgs::QualityCheckReq>(pkg);
+        auto data = yomk::msgs::unpack<yomk::msgs::QualityCheckReq>(pkg);
         if (!data)
         {
             return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not QualityCheckReq"};
@@ -295,7 +295,7 @@ static void showArmPlantRoster()
     logAction("开班点名：查询产线在册服务");
     yomk::payload::Response namesResp = yomk::server().services();
     logResp("services()", namesResp);
-    auto nameArr = yomk::msgs::unPack<yomk::msgs::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -310,7 +310,7 @@ static void showArmPlantRoster()
     logAction("复查在册服务清单");
     namesResp = yomk::server().services();
     logResp("services()", namesResp);
-    auto nameArr2 = yomk::msgs::unPack<yomk::msgs::StringArray>(namesResp.m_data);
+    auto nameArr2 = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr2)
     {
         for (const auto& srvName : nameArr2->d)
@@ -346,7 +346,7 @@ static void showArmStationFunctions()
     logAction("查阅装配工位职能清单");
     yomk::payload::Response funcsResp = yomk::server().srv_name("/ArmStation").functions();
     logResp("INFO_FUNCTIONS /ArmStation", funcsResp);
-    auto listPkg = yomk::msgs::unPack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
+    auto listPkg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
     {
         for (const auto& func : listPkg->d)
@@ -381,7 +381,7 @@ static void showArmFuncLookup()
     logAction("调阅质量抽检函数名片");
     yomk::payload::Response resp = yomk::server().fn_url("/ArmStation/quality_check").get_info();
     logResp("INFO_FUNCTION /ArmStation/quality_check", resp);
-    auto info = yomk::msgs::unPack<yomk::msgs::FuncInfo>(resp.m_data);
+    auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.m_data);
     if (info)
     {
         logFuncInfo("INFO_FUNCTION", info->d);
@@ -391,7 +391,7 @@ static void showArmFuncLookup()
     logAction("调阅状态上报函数名片");
     resp = yomk::server().fn_url("/ArmStation/report").get_info();
     logResp("INFO_FUNCTION /ArmStation/report", resp);
-    auto reportInfo = yomk::msgs::unPack<yomk::msgs::FuncInfo>(resp.m_data);
+    auto reportInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.m_data);
     if (reportInfo)
     {
         logFuncInfo("INFO_FUNCTION", reportInfo->d);
@@ -446,7 +446,7 @@ static void showArmLiveView()
     logAction("复查在册服务清单");
     yomk::payload::Response namesResp = yomk::server().services();
     logResp("services()", namesResp);
-    auto nameArr = yomk::msgs::unPack<yomk::msgs::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -459,7 +459,7 @@ static void showArmLiveView()
     logAction("复查全厂拓扑终态");
     yomk::payload::Response allResp = yomk::server().all();
     logResp("all()", allResp);
-    auto list = yomk::msgs::unPack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
+    auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
     if (list)
     {
         for (const auto& srv : list->d)

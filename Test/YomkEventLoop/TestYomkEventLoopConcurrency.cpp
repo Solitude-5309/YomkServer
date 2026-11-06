@@ -408,7 +408,7 @@ int main()
             {
                 auto r = yomk::event_loop().loop("conc_loop").get_info();
                 pollCount.fetch_add(1);
-                auto info = yomk::msgs::unPack<yomk::msgs::EventLoopInfo>(r.m_data);
+                auto info = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(r.m_data);
                 if (r.m_status == yomk::payload::ResStatus::Succeeded && info && info->d.m_running)
                 {
                     pollOk.fetch_add(1);

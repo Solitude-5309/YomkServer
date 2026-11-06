@@ -397,7 +397,7 @@ int main(int /*argc*/, char** /*argv*/)
                         auto resp = yomk::fn_pool().all();
                         if (resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_data)
                         {
-                            auto arr = yomk::msgs::unPack<yomk::msgs::FuncInfoList>(resp.m_data);
+                            auto arr = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(resp.m_data);
                             if (arr)
                             {
                                 // 单包快照：锁内构造的 FuncInfoList 天然原子（条目数即快照规模）

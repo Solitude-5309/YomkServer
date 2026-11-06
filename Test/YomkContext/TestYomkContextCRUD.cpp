@@ -170,7 +170,7 @@ int main()
     {
         auto resp = yomk::ctx().keys();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "keys 返回 ResStatus::Succeeded");
-        auto arr = yomk::msgs::unPack<yomk::msgs::StringArray>(resp.m_data);
+        auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);
         YOMK_TEST_CHECK(arr != nullptr, "keys 数据为 StringArray");
         YOMK_TEST_CHECK(arr && arr->d.size() == 2, "keys 返回 2 个 key");
         YOMK_TEST_CHECK(arr && contains(arr->d, "str_key"), "keys 包含 str_key");
@@ -182,7 +182,7 @@ int main()
         auto resp = yomk::ctx().key("str_key").info();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "keyInfo 正常 key 返回 ResStatus::Succeeded");
         YOMK_TEST_CHECK(resp.m_msg == "ok", "keyInfo 命中 m_msg 恒为 ok");
-        auto info = yomk::msgs::unPack<yomk::msgs::ContextKeyInfo>(resp.m_data);
+        auto info = yomk::msgs::unpack<yomk::msgs::ContextKeyInfo>(resp.m_data);
         YOMK_TEST_CHECK(info != nullptr, "keyInfo 数据为 ContextKeyInfo 包");
         YOMK_TEST_CHECK(info && info->d.m_key == "str_key", "keyInfo 字段 m_key 一致");
         YOMK_TEST_CHECK(info && info->d.m_typeName == "String", "keyInfo 字段 m_typeName 一致");
@@ -211,7 +211,7 @@ int main()
         auto resp = yomk::ctx().all();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "listAll 返回 ResStatus::Succeeded");
         YOMK_TEST_CHECK(resp.m_msg == "ok", "listAll 成功消息恒为 ok");
-        auto arr = yomk::msgs::unPack<yomk::msgs::ContextGroupInfoList>(resp.m_data);
+        auto arr = yomk::msgs::unpack<yomk::msgs::ContextGroupInfoList>(resp.m_data);
         YOMK_TEST_CHECK(arr != nullptr, "listAll 数据为 ContextGroupInfoList");
         YOMK_TEST_CHECK(arr && arr->d.size() == 1, "listAll 返回 1 个组信息");
         YOMK_TEST_CHECK(arr && arr->d[0].m_groupName == "main", "listAll 组名为 main");
@@ -259,7 +259,7 @@ int main()
     {
         auto resp = yomk::ctx().keys();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "keys 销毁后返回 ResStatus::Succeeded");
-        auto arr = yomk::msgs::unPack<yomk::msgs::StringArray>(resp.m_data);
+        auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);
         YOMK_TEST_CHECK(arr && arr->d.size() == 1, "keys 销毁后返回 1 个 key");
         YOMK_TEST_CHECK(arr && contains(arr->d, "str_key"), "keys 销毁后仍包含 str_key");
         YOMK_TEST_CHECK(arr && !contains(arr->d, "int_key"), "keys 销毁后不含 int_key");
@@ -275,7 +275,7 @@ int main()
     {
         auto resp = yomk::ctx().keys();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "keys 全部销毁后返回 ResStatus::Succeeded");
-        auto arr = yomk::msgs::unPack<yomk::msgs::StringArray>(resp.m_data);
+        auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);
         YOMK_TEST_CHECK(arr && arr->d.empty(), "keys 全部销毁后返回空数组");
     }
 

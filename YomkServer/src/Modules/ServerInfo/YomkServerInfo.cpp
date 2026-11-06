@@ -32,7 +32,7 @@ yomk::payload::Response YomkServerInfo::listServices(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkServerInfo::listFunctions(YomkMsgPtr pkg)
 {
-    auto ySrvName = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+    auto ySrvName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!ySrvName)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -61,7 +61,7 @@ yomk::payload::Response YomkServerInfo::listFunctions(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkServerInfo::functionInfo(YomkMsgPtr pkg)
 {
-    auto yUrl = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+    auto yUrl = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yUrl)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};

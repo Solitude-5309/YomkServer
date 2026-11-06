@@ -55,7 +55,7 @@ int YomkLogger::init()
 
 yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
 {
-    auto logPkg = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
+    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -140,7 +140,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr pkg)
 {
-    auto consoleLogProxy = yomk::msgs::unPack<yomk::msgs::ConsoleLogProxy>(pkg);
+    auto consoleLogProxy = yomk::msgs::unpack<yomk::msgs::ConsoleLogProxy>(pkg);
     if (!consoleLogProxy)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ConsoleLogProxy"};
@@ -155,7 +155,7 @@ yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr pkg)
 {
-    auto fileLogProxy = yomk::msgs::unPack<yomk::msgs::FileLogProxy>(pkg);
+    auto fileLogProxy = yomk::msgs::unpack<yomk::msgs::FileLogProxy>(pkg);
     if (!fileLogProxy)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not FileLogProxy"};
@@ -170,7 +170,7 @@ yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr pkg)
 {
-    auto logFile = yomk::msgs::unPack<yomk::msgs::LogFile>(pkg);
+    auto logFile = yomk::msgs::unpack<yomk::msgs::LogFile>(pkg);
     if (!logFile)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not LogFile"};
@@ -209,7 +209,7 @@ yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr pkg)
 {
-    auto logPkg = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
+    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -282,7 +282,7 @@ yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr pkg)
 {
-    auto str = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+    auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -301,7 +301,7 @@ yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr pkg)
 {
-    auto yName = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+    auto yName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yName)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -349,7 +349,7 @@ yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr pkg)
 {
-    auto logPkg = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
+    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -392,7 +392,7 @@ yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
 {
-    auto logPkg = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
+    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -476,7 +476,7 @@ yomk::payload::Response YomkLogger::setNamedConsoleLevel(const std::string& logg
 
 yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
 {
-    auto logPkg = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
+    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -519,7 +519,7 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
 {
-    auto logPkg = yomk::msgs::unPack<yomk::msgs::Log>(pkg);
+    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
@@ -603,7 +603,7 @@ yomk::payload::Response YomkLogger::setNamedFileLevel(const std::string& loggerN
 
 yomk::payload::Response YomkLogger::loggers(YomkMsgPtr pkg)
 {
-    auto type = yomk::msgs::unPack<yomk::msgs::String>(pkg);
+    auto type = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!type)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
@@ -635,7 +635,7 @@ yomk::payload::Response YomkLogger::loggers(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
 {
-    auto query = yomk::msgs::unPack<yomk::msgs::LoggerQuery>(pkg);
+    auto query = yomk::msgs::unpack<yomk::msgs::LoggerQuery>(pkg);
     if (!query)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not LoggerQuery"};
