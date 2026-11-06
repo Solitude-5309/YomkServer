@@ -6,7 +6,7 @@
  * 1. 单线程 10 万级投递基线：post N 个 trivial 计数事件 → drain，计数守恒 + 入队/消费 QPS 基线记录
  * 2. 8 线程并发 10 万级：并发 post → drain，计数守恒 + 聚合 QPS 基线（高并发持续调用无崩溃）
  * 3. 10 万级纯积压路径：gate 占住 worker 使投递/消费速率解耦——纯测 post + 无界队列大规模增长/重分配
- *    （断言 pending:N 积压确认，释放后守恒）
+ *    （断言 pending==N 积压确认，释放后守恒）
  * 4. 大数据量字符串：4096 字节 tag × max(N/10,1000) 个事件（约数十 MB），无崩溃且守恒
  * 5. API 层 10 万级投递：event_loop().msg(data).loop(name).post() 走完整路由+解包路径，计数守恒 + API 级 QPS 基线
  *
@@ -119,6 +119,14 @@ static void openGate()
 }
 
 // 轮询等待谓词成立，超时返回最终谓词值
+// 类型化观测快照（替代 infoLine 人读状态行解析通道）：与内省终结同一锁域取数
+static yomk::payload::EventLoopInfo loopSnap(EventLoop& loop, std::size_t tagCount = 3)
+{
+    yomk::payload::EventLoopInfo info;
+    loop.infoSnapshot(info, tagCount);
+    return info;
+}
+
 static bool waitUntil(const std::function<bool()>& pred, int timeoutMs)
 {
     for (int i = 0; i < timeoutMs; ++i)
@@ -161,7 +169,7 @@ int main()
             [&loop, N]
             {
                 return g_execCount.load() == static_cast<long>(N) &&
-                       loop.infoLine("st1", 0).find("pending:0") != std::string::npos;
+                       loopSnap(loop, 0).m_pending == 0;
             },
             30000);
         auto t2 = std::chrono::steady_clock::now();
@@ -207,7 +215,7 @@ int main()
             [&loop, N]
             {
                 return g_execCount.load() == static_cast<long>(N) &&
-                       loop.infoLine("st2", 0).find("pending:0") != std::string::npos;
+                       loopSnap(loop, 0).m_pending == 0;
             },
             30000);
         auto t2 = std::chrono::steady_clock::now();
@@ -241,17 +249,16 @@ int main()
         }
         auto t1 = std::chrono::steady_clock::now();
 
-        std::string line = loop.infoLine("st3", 0);
         YOMK_TEST_CHECK(
-            line.find("pending:" + std::to_string(N)) != std::string::npos,
-            "S3 积压确认（pending:N==" + std::to_string(N) + "，无界队列大规模增长无崩溃）");
+            loopSnap(loop, 0).m_pending == static_cast<std::size_t>(N),
+            "S3 积压确认（pending==N==" + std::to_string(N) + "，无界队列大规模增长无崩溃）");
 
         openGate();
         bool drained = waitUntil(
             [&loop, N]
             {
                 return g_execCount.load() == static_cast<long>(N) &&
-                       loop.infoLine("st3", 0).find("pending:0") != std::string::npos;
+                       loopSnap(loop, 0).m_pending == 0;
             },
             30000);
         auto t2 = std::chrono::steady_clock::now();
@@ -290,7 +297,7 @@ int main()
             [&loop, count]
             {
                 return g_execCount.load() == static_cast<long>(count) &&
-                       loop.infoLine("st4", 0).find("pending:0") != std::string::npos;
+                       loopSnap(loop, 0).m_pending == 0;
             },
             30000);
         auto t2 = std::chrono::steady_clock::now();

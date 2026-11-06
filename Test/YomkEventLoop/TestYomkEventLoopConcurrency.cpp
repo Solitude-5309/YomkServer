@@ -131,6 +131,14 @@ static void openGate()
 }
 
 // 轮询等待谓词成立，超时返回最终谓词值
+// 类型化观测快照（替代 infoLine 人读状态行解析通道）：与内省终结同一锁域取数
+static yomk::payload::EventLoopInfo loopSnap(EventLoop& loop, std::size_t tagCount = 3)
+{
+    yomk::payload::EventLoopInfo info;
+    loop.infoSnapshot(info, tagCount);
+    return info;
+}
+
 static bool waitUntil(const std::function<bool()>& pred, int timeoutMs)
 {
     for (int i = 0; i < timeoutMs; ++i)
@@ -187,7 +195,7 @@ int main()
         YOMK_TEST_CHECK(postOk.load() == 320, "S1 并发 post 全部返回 0（320/320）");
 
         YOMK_TEST_CHECK(
-            waitUntil([&loop] { return loop.infoLine("conc1", 0).find("pending:0") != std::string::npos; }, 5000),
+            waitUntil([&loop] { return loopSnap(loop, 0).m_pending == 0; }, 5000),
             "S1 队列排空（drain 完成）");
 
         auto ids = execIdsSnapshot();
@@ -289,7 +297,7 @@ int main()
         YOMK_TEST_CHECK(waitRcOk.load() == 80, "S3 全部 postWait 返回 0（80/80）");
         YOMK_TEST_CHECK(waitRespOk.load() == 80, "S3 全部返回时响应已填充 ResStatus::Succeeded（80/80）");
         YOMK_TEST_CHECK(g_execCount.load() == 80, "S3 总执行数守恒（80/80）");
-        YOMK_TEST_CHECK(loop.infoLine("conc3", 0).find("pending:0") != std::string::npos, "S3 完成后 pending:0");
+        YOMK_TEST_CHECK(loopSnap(loop, 0).m_pending == 0, "S3 完成后 pending==0");
 
         loop.destroy();
     }
@@ -355,7 +363,7 @@ int main()
             waitUntil(
                 [&loop, expected] {
                     return g_execCount.load() == expected &&
-                           loop.infoLine("conc4", 0).find("pending:0") != std::string::npos;
+                           loopSnap(loop, 0).m_pending == 0;
                 },
                 5000),
             "S4 churn 后队列排空（drain 完成）");
