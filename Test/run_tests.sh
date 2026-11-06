@@ -120,6 +120,7 @@ TESTS=(
     TestYomkConcurrency
     TestYomkMsg
     TestYomkIntegration
+    TestYomkUmbrella
     # ServerInfo 模块
     TestYomkServerInfoLifecycle
     # FunctionPool 模块

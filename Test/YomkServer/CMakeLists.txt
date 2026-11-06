@@ -387,4 +387,17 @@ target_link_libraries(TestYomkIntegration PRIVATE
 )
 # -------------el TestYomkIntegration ----------------
 
+# -------------sl TestYomkUmbrella ----------------
+# 伞头自足性保障：仅含 YomkApi.h 编译 + 全域烟熏（伞头收窄/公开头漏收即编译失败）
+set(TestYomkUmbrella_SOURCES
+    ${TestYomkServer_DIR}/YomkServer/TestYomkUmbrella.cpp
+)
+add_executable(TestYomkUmbrella
+    ${TestYomkUmbrella_SOURCES}
+)
+target_link_libraries(TestYomkUmbrella PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkUmbrella ----------------
+
 # 测试程序仅供框架内部开发验证使用，不执行 install
