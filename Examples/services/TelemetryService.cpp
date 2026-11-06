@@ -24,7 +24,7 @@ int TelemetryService::init()
     installFunc("/record", &TelemetryService::record);
 
     // 弱绑定注册到 FunctionPool：服务删除后 telemetry_hook 自动失效，不悬垂 this
-    YomkAPI::registerFunction("telemetry_hook", weakFunc(&TelemetryService::record));
+    yomk::fn_pool().fn_name("telemetry_hook").fn(weakFunc(&TelemetryService::record)).install();
 
     yomk::log().tag("arm.telemetry").info("init: install /record, register weak-bound telemetry_hook");
     return 0;

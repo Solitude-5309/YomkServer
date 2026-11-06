@@ -10,6 +10,7 @@
 #include "YomkMsgs.h"
 #include "YomkContextApi.h"
 #include "YomkEventLoopApi.h"
+#include "YomkFunctionPoolApi.h"
 #include "YomkLogApi.h"
 #include "YomkRequest.h"
 #include "YomkServer.h"
@@ -151,56 +152,10 @@ public:
     // EVENTLOOP_API：已整体迁移至 YomkEventLoopApi.h 的 yomk::event_loop() 域（loop(name) 分面 +
     // 参数前置累积、终结 op 无参；postAndWait 更名 post_wait、info 更名 get_info，
     // getEventLoopInfo 双重载合并为 tag_count 累积（省略 = 缺省 3）），9 个成员已删、调用点全量切链式
-    // FUNCTIONPOOL_API
-public:
-    // 注册函数到全局函数池（msgName 声明期望消息类型；description 函数说明，内容使用者自定义，均可为空）
-    static yomk::payload::ResStatus registerFunction(
-        const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
-        const std::string& description = "")
-    {
-        return yomk::server().url(yomk::url::fpRegister).msg(yomk::msgs::Function::shared(yomk::payload::Function{funcName, func, msgName, description})).status();
-    }
-    // 从函数池注销函数
-    static yomk::payload::ResStatus unregisterFunction(const std::string& funcName)
-    {
-        return yomk::server().url(yomk::url::fpUnregister).msg(yomk::msgs::String::shared(funcName)).status();
-    }
-    // 调用函数池中注册的函数
-    static yomk::payload::Response callFunction(const std::string& funcName, YomkMsgPtr callData)
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::fpCall).msg(yomk::msgs::CallFunction::shared(yomk::payload::CallFunction{funcName, callData})).request();
-    }
-    // 获取函数池中全部函数名
-    static yomk::payload::Response listFunctionNames()
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::fpNames).request();
-    }
-    // 查询单个已注册函数元信息
-    static yomk::payload::Response getFunctionInfo(const std::string& funcName)
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::fpName).msg(yomk::msgs::String::shared(funcName)).request();
-    }
-    // 查询全部已注册函数元信息
-    static yomk::payload::Response getAllFunctionInfo()
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::fpAll).request();
-    }
+    // FUNCTIONPOOL_API：已整体迁移至 YomkFunctionPoolApi.h 的 yomk::fn_pool() 域（fn_name(name)
+    // 承载函数名 + 参数前置累积、终结 op 无参；register/unregister 更名 install/uninstall——
+    // register 为 C++ 保留字，getFunctionInfo 更名 get_info 对齐 log/event_loop 域），
+    // 6 个成员已删、调用点全量切链式
     // SERVER_INFO_API
 public:
     // 查询所有服务名称

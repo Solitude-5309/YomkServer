@@ -53,7 +53,7 @@ YOMK_DEFINE_MSG(yomk::payload::Response, Response, d);
 YOMK_DEFINE_MSG(yomk::payload::Function, Function, d);
 YOMK_DEFINE_MSG(yomk::payload::CallFunction, CallFunction, d);
 YOMK_DEFINE_MSG(yomk::payload::FuncInfo, FuncInfo, d);
-// FunctionPool 全量函数内省（getAllFunctionInfo 返回数据；函数总数由 d.size() 承载）
+// FunctionPool 全量函数内省（yomk::fn_pool().all() 返回数据；函数总数由 d.size() 承载）
 YOMK_DEFINE_MSG(std::vector<yomk::payload::FuncInfo>, FuncInfoList, d);
 YOMK_DEFINE_MSG(yomk::payload::Event, Event, d);
 YOMK_DEFINE_MSG(yomk::payload::EventLoop, EventLoop, d);

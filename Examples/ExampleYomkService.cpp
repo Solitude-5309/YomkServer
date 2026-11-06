@@ -20,7 +20,7 @@
  * 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.boot 启动编排 /
  * arm.motion 运动服务函数体 / arm.telemetry 留痕服务函数体），日志流即执行序、
  * 顺着读就能明白：每个操作先打"开始执行 xxx"——操作是用户视角的业务动作，
- * 随后结果行标注本次接口调用；同步 REQUEST/CALL 在调用方线程执行服务函数体，
+ * 随后结果行标注本次接口调用；同步 REQUEST/call() 在调用方线程执行服务函数体，
  * 服务日志被夹在开始行与结果行之间，归属一目了然。
  *
  * 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
@@ -45,11 +45,11 @@
  *        自省读取工位职能：4 参注册的 /move 带 MoveCmd 元数据与函数说明、
  *        2 参注册的 /echo 双空；INFO_FUNCTION 按 URL 调阅单张函数名片
  *        （内省细节详见 ExampleYomkServerInfo）。
- * 场景 6 showArmStationUpgrade [callFunction / ADD_SERVICE]
+ * 场景 6 showArmStationUpgrade [call() / ADD_SERVICE]
  *        留痕工位升级：同名 ADD_SERVICE 即替换——替换前后直调钩子
  *        telemetry_hook（diag check V1→V2），[实例#N] 日志自证服务与
  *        钩子一并换新。
- * 场景 7 showArmStationOffline [DEL_SERVICE / callFunction / REQUEST]
+ * 场景 7 showArmStationOffline [DEL_SERVICE / call() / REQUEST]
  *        留痕工位下线：DEL_SERVICE 删除即停——弱绑定钩子立即失效（ResStatus::Failed 不
  *        悬垂）、move 因留痕缺失失败沿调用链传播；重复注销返回 -1。
  * 场景 8 showArmPowerOff       [INFO_ALL / SHUTDOWN]
@@ -132,7 +132,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
 
 // 操作日志（yomk::payload::Response 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
-// 结果行标注本次接口调用；同步 REQUEST/CALL 在调用方线程执行服务函数体，
+// 结果行标注本次接口调用；同步 REQUEST/call() 在调用方线程执行服务函数体，
 // arm.motion/arm.telemetry 等服务日志被夹在开始行与结果行之间，归属一目了然
 static yomk::payload::Response logAction(const std::string& op, const std::string& api, const std::function<yomk::payload::Response()>& call)
 {
@@ -382,14 +382,14 @@ static void showArmStationUpgrade()
     logScene(
         6,
         "留痕工位升级",
-        "callFunction / ADD_SERVICE",
+        "call() / ADD_SERVICE",
         "班中留痕工位升级换新：同名 ADD_SERVICE 即替换，旧实例下线、新实例"
         "接管并重挂同名钩子——替换前后直调钩子（diag check V1→V2）自证服务"
         "与钩子一并替换。");
 
     logAction(
-        "直调留痕钩子（替换前）", "callFunction telemetry_hook (V1)",
-        [&] { return YomkAPI::callFunction("telemetry_hook", yomk::msgs::String::shared("diag check V1")); });
+        "直调留痕钩子（替换前）", "call() telemetry_hook (V1)",
+        [&] { return yomk::fn_pool().fn_name("telemetry_hook").msg(yomk::msgs::String::shared("diag check V1")).call(); });
     logVerify("留痕记录 [实例#1]：diag check V1——钩子由当前实例 init 注册、按名直调");
 
     logActionInt(
@@ -399,8 +399,8 @@ static void showArmStationUpgrade()
     logVerify("新实例 init 重挂 telemetry_hook，函数池直出 already exist -> update to current function：服务与钩子一并换新");
 
     logAction(
-        "直调留痕钩子（替换后）", "callFunction telemetry_hook (V2)",
-        [&] { return YomkAPI::callFunction("telemetry_hook", yomk::msgs::String::shared("diag check V2")); });
+        "直调留痕钩子（替换后）", "call() telemetry_hook (V2)",
+        [&] { return yomk::fn_pool().fn_name("telemetry_hook").msg(yomk::msgs::String::shared("diag check V2")).call(); });
     logVerify("留痕记录 [实例#2]：diag check V2——旧实例已删除而钩子仍可用，钩子确已换新");
 }
 
@@ -410,7 +410,7 @@ static void showArmStationOffline()
     logScene(
         7,
         "留痕工位下线",
-        "DEL_SERVICE / callFunction / REQUEST",
+        "DEL_SERVICE / call() / REQUEST",
         "班末留痕工位下线：DEL_SERVICE 删除即停——弱绑定钩子立即失效，运动"
         "调用链因留痕缺失断链传播；注销失败是普通返回值。");
 
@@ -424,8 +424,8 @@ static void showArmStationOffline()
     logVerify("服务已不存在 -> ret=-1：注销失败是普通返回值，不报错不崩溃");
 
     logAction(
-        "直调留痕钩子（已下线）", "callFunction telemetry_hook (已下线)",
-        [&] { return YomkAPI::callFunction("telemetry_hook", yomk::msgs::String::shared("diag check V2")); });
+        "直调留痕钩子（已下线）", "call() telemetry_hook (已下线)",
+        [&] { return yomk::fn_pool().fn_name("telemetry_hook").msg(yomk::msgs::String::shared("diag check V2")).call(); });
     logVerify("钩子返回 ResStatus::Failed(service has been deleted or unregistered)：弱绑定失效，删除即停不悬垂");
 
     MoveCmd moveCmd{100.0, 50.0, 200.0, 0.8};

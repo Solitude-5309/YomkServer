@@ -236,24 +236,24 @@ int main()
             yomk::event_loop().all().m_status == yomk::payload::ResStatus::Invalid,
             "all() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::registerFunction("/guard_func", nullptr) == yomk::payload::ResStatus::Invalid,
-            "registerFunction 未初始化返回 ResStatus::Invalid");
+            yomk::fn_pool().fn_name("/guard_func").fn(nullptr).install() == yomk::payload::ResStatus::Invalid,
+            "fn_pool().install() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::unregisterFunction("/guard_func") == yomk::payload::ResStatus::Invalid,
-            "unregisterFunction 未初始化返回 ResStatus::Invalid");
+            yomk::fn_pool().fn_name("/guard_func").uninstall() == yomk::payload::ResStatus::Invalid,
+            "fn_pool().uninstall() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::callFunction("/guard_func", yomk::msgs::String::shared(std::string("x"))).m_status ==
+            yomk::fn_pool().fn_name("/guard_func").msg(yomk::msgs::String::shared(std::string("x"))).call().m_status ==
                 yomk::payload::ResStatus::Invalid,
-            "callFunction 未初始化返回 ResStatus::Invalid");
+            "fn_pool().call() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listFunctionNames().m_status == yomk::payload::ResStatus::Invalid,
-            "listFunctionNames 未初始化返回 ResStatus::Invalid");
+            yomk::fn_pool().list().m_status == yomk::payload::ResStatus::Invalid,
+            "fn_pool().list() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getFunctionInfo("/guard_func").m_status == yomk::payload::ResStatus::Invalid,
-            "getFunctionInfo 未初始化返回 ResStatus::Invalid");
+            yomk::fn_pool().fn_name("/guard_func").get_info().m_status == yomk::payload::ResStatus::Invalid,
+            "fn_pool().get_info() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getAllFunctionInfo().m_status == yomk::payload::ResStatus::Invalid,
-            "getAllFunctionInfo 未初始化返回 ResStatus::Invalid");
+            yomk::fn_pool().all().m_status == yomk::payload::ResStatus::Invalid,
+            "fn_pool().all() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(YomkAPI::getAllServerInfo().m_status == yomk::payload::ResStatus::Invalid, "getAllServerInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::listServices().m_status == yomk::payload::ResStatus::Invalid,
