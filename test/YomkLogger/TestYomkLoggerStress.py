@@ -312,11 +312,11 @@ def main():
     shard_dirs = [os.path.join(s2_dir, "shard_" + str(s))
                   for s in range(shard_count)]
 
-    # 起点基线：库内部不使用 LOG 家族宏 → console 表恰为构造函数预置的 MainLogger
+    # 起点基线：库内部不使用 LOG 家族宏 → console 表恰为构造函数预置的 main
     base_c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
     base_f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
     check(base_c == 1 and base_f == 0,
-          f"起点内省基线 console=1(MainLogger)/file=0（实测 {base_c}/{base_f}）")
+          f"起点内省基线 console=1(main)/file=0（实测 {base_c}/{base_f}）")
 
     # ========================================================================
     # S1：console 侧规模与热路径
@@ -347,7 +347,7 @@ def main():
             elapsed_a += (time.perf_counter() - t0) * 1000.0
         created_a = cp
 
-        # 扫描数据点：条目 = created_a 个 tag + MainLogger（此刻 file 侧仍为 0）；
+        # 扫描数据点：条目 = created_a 个 tag + main（此刻 file 侧仍为 0）；
         # ALL data 为 list[LoggerInfo]，清单条数 = 条目数
         entries = created_a + 1
         stat_all, bad_all, lines_all = measure_introspection(
@@ -363,7 +363,7 @@ def main():
 
     console_entries = len(unpack_lines(YomkApi.logger_info_loggers("console")))
     check(console_entries == n + 1,
-          f"S1A: console 表条目 = N + MainLogger（实测 {console_entries}）")
+          f"S1A: console 表条目 = N + main（实测 {console_entries}）")
 
     # ---- Phase A2：内容守恒抽样（1000 行累积捕获）+ 时间戳格式精确校验 ----
     sample = min(1000, n)
@@ -881,7 +881,7 @@ def main():
           f"S5B: file 组回收 eOk 守恒 {del_file_ok}/{n + m + 1 + 2 * d}")
     check(del_bad == 0, f"S5B: 全量回收无非 eOk（异常 {del_bad} 次）")
 
-    # ---- Phase C：残量扫除（MainLogger）→ LOGGERS 行数为 0 ----
+    # ---- Phase C：残量扫除（main）→ LOGGERS 行数为 0 ----
     residual_deleted = 0
     with contextlib.redirect_stdout(io.StringIO()):
         for _round in range(3):

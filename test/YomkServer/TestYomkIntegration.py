@@ -152,9 +152,9 @@ def test_s2_restore():
     check(new_service(YomkLogger) == 0,
           "new_service 无参重注册返回 0（构造函数固定名生效）")
     restored = logger_info_loggers("console")
-    check(restored.status == ResStatus.eOk and "MainLogger" in (restored.data or []),
-          "重注册后 LOGGER API 恢复且含 MainLogger")
-    check(console_log_info_tag("MainLogger", "[integration]",
+    check(restored.status == ResStatus.eOk and "main" in (restored.data or []),
+          "重注册后 LOGGER API 恢复且含 main")
+    check(console_log_info_tag("main", "[integration]",
                                "s2 relink marker").status == ResStatus.eOk,
           "重注册后日志 API 全链路可用（console_log eOk）")
 

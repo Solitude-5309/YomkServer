@@ -5,7 +5,7 @@ TestYomkLoggerDirect.py —— ConsoleLogger / FileLogger 类直连测试
 （LG1 轮交付）
 
 覆盖内容：
-1. ConsoleLogger 直连：默认名 MainLogger、setName/getName 往返、四级别输出行格式 +
+1. ConsoleLogger 直连：默认名 main、setName/getName 往返、四级别输出行格式 +
    时间戳格式、非法级别 99 default 错误提示 + 降级 Info、4096 超长名 + 空内容、
    tag 显示语义（非空 [tag] 优先 / 空 tag 回退 [日志器名]）、级别门控（默认全开 /
    关断隔离 / 恢复 / unknown 按 Info 门控直接丢弃无降级提示）
@@ -61,7 +61,7 @@ def capture(func):
 def check_time_format(content):
     # 每条日志行行首时间戳 [YYYY-MM-DD HH:MM:SS.mmm]
     for line in content.splitlines():
-        if "[Debug]" in line or "[Info ]" in line or "[Warn ]" in line or "[Error]" in line:
+        if "[DEBUG]" in line or "[INFO ]" in line or "[WARN ]" in line or "[ERROR]" in line:
             if not TIME_RE.match(line):
                 return False
     return True
@@ -85,7 +85,7 @@ def main():
 
     # ============ ConsoleLogger 直连 ============
     logger = ConsoleLogger()
-    check(logger.get_name() == "MainLogger", "ConsoleLogger 默认名 MainLogger")
+    check(logger.get_name() == "main", "ConsoleLogger 默认名 main")
     logger.set_name("lg1_direct_console")
     check(logger.get_name() == "lg1_direct_console", "setName/getName 往返一致")
 
@@ -94,18 +94,18 @@ def main():
                            logger.log(Log.eInfo, "", "lg1_dc_info_marker"),
                            logger.log(Log.eWarn, "", "lg1_dc_warn_marker"),
                            logger.log(Log.eError, "", "lg1_dc_error_marker")))
-    check("[Debug] [lg1_direct_console] lg1_dc_debug_marker" in out,
-          "eDebug 输出行格式（[Debug] [名] 内容）")
-    check("[Info ] [lg1_direct_console] lg1_dc_info_marker" in out, "eInfo 输出行格式")
-    check("[Warn ] [lg1_direct_console] lg1_dc_warn_marker" in out, "eWarn 输出行格式")
-    check("[Error] [lg1_direct_console] lg1_dc_error_marker" in out, "eError 输出行格式")
+    check("[DEBUG] [lg1_direct_console] lg1_dc_debug_marker" in out,
+          "eDebug 输出行格式（[DEBUG] [名] 内容）")
+    check("[INFO ] [lg1_direct_console] lg1_dc_info_marker" in out, "eInfo 输出行格式")
+    check("[WARN ] [lg1_direct_console] lg1_dc_warn_marker" in out, "eWarn 输出行格式")
+    check("[ERROR] [lg1_direct_console] lg1_dc_error_marker" in out, "eError 输出行格式")
     check(check_time_format(out), "控制台行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]")
 
     # 非法级别 default 降级：YOMK_ERR_POS_LOG 直写 cout 可被捕获（CHECK 在捕获外）
     out = capture(lambda: logger.log(99, "", "lg1_dc_badlevel_marker"))
     check("Unknown log level: 99" in out,
           "非法级别 99 走 default 错误提示（P2-c 修复后活分支）")
-    check("[Info ] [lg1_direct_console] lg1_dc_badlevel_marker" in out,
+    check("[INFO ] [lg1_direct_console] lg1_dc_badlevel_marker" in out,
           "非法级别降级 Info 输出 marker")
 
     # 超长名（4096）与空内容
@@ -114,14 +114,14 @@ def main():
     long_logger.set_name(long_name)
     check(long_logger.get_name() == long_name, "4096 字符超长名 setName/getName 一致")
     out = capture(lambda: long_logger.log(Log.eInfo, "", ""))
-    check(("[Info ] [" + long_name + "] ") in out, "超长名 + 空内容日志正常输出")
+    check(("[INFO ] [" + long_name + "] ") in out, "超长名 + 空内容日志正常输出")
 
     # tag 显示语义：tag 非空显示 [tag]，空 tag 回退 [日志器名]
     out = capture(lambda: (logger.log(Log.eInfo, "lg1_dc_tag", "lg1_dc_tagged_marker"),
                            logger.log(Log.eInfo, "", "lg1_dc_fallback_marker")))
-    check("[Info ] [lg1_dc_tag] lg1_dc_tagged_marker" in out,
+    check("[INFO ] [lg1_dc_tag] lg1_dc_tagged_marker" in out,
           "tag 非空显示 [tag]（m_tag 优先于日志器名）")
-    check("[Info ] [lg1_direct_console] lg1_dc_fallback_marker" in out,
+    check("[INFO ] [lg1_direct_console] lg1_dc_fallback_marker" in out,
           "空 tag 回退显示 [日志器名]")
 
     # 级别门控：默认全开 → 关断隔离 → 恢复 → unknown 按 Info 门控
@@ -143,7 +143,7 @@ def main():
         gate_logger.log(Log.eInfo, "", "lg1_dc_gate_off_marker"),
         gate_logger.log(Log.eWarn, "", "lg1_dc_gate_warn_marker")))
     check("lg1_dc_gate_off_marker" not in out_gate_off, "14b: 关断级别无输出")
-    check("[Warn ] [lg1_dc_gate] lg1_dc_gate_warn_marker" in out_gate_off,
+    check("[WARN ] [lg1_dc_gate] lg1_dc_gate_warn_marker" in out_gate_off,
           "14b: 未关断级别输出不受影响")
 
     # 14c 恢复：重开后输出恢复
@@ -151,7 +151,7 @@ def main():
     check(gate_logger.is_level_on(Log.eInfo), "14c: is_level_on 反查恢复生效")
     out_gate_on = capture(
         lambda: gate_logger.log(Log.eInfo, "", "lg1_dc_gate_on_marker"))
-    check("[Info ] [lg1_dc_gate] lg1_dc_gate_on_marker" in out_gate_on,
+    check("[INFO ] [lg1_dc_gate] lg1_dc_gate_on_marker" in out_gate_on,
           "14c: 恢复后输出正常")
 
     # 14d unknown 级别按 Info 门控：关 Info 后 log(99) 在门控层直接丢弃
@@ -166,12 +166,12 @@ def main():
     out_gate_bad2 = capture(
         lambda: gate_logger.log(99, "", "lg1_dc_gate_bad2_marker"))
     check("Unknown log level: 99" in out_gate_bad2 and
-          "[Info ] [lg1_dc_gate] lg1_dc_gate_bad2_marker" in out_gate_bad2,
+          "[INFO ] [lg1_dc_gate] lg1_dc_gate_bad2_marker" in out_gate_bad2,
           "14d: 恢复后 unknown 级别回归 default 降级 Info 输出")
 
     # ============ FileLogger 直连 ============
     fl = FileLogger()
-    check(fl.get_name() == "MainLogger", "FileLogger 默认名 MainLogger")
+    check(fl.get_name() == "main", "FileLogger 默认名 main")
     fl.set_name("lg1_direct_file")
     fl.set_dir(os.path.join(tmp_dir, "fl_basic"))
     check(fl.get_name() == "lg1_direct_file" and
@@ -199,12 +199,12 @@ def main():
     # write：5 行落盘（四级别各一 + 非法级别降级 Info 一行）
     fl.write()
     content = read_file(log_file)
-    check("[Debug] lg1_df_debug_marker" in content and
-          "[Info ] lg1_df_info_marker" in content and
-          "[Warn ] lg1_df_warn_marker" in content and
-          "[Error] lg1_df_error_marker" in content,
+    check("[DEBUG] lg1_df_debug_marker" in content and
+          "[INFO ] lg1_df_info_marker" in content and
+          "[WARN ] lg1_df_warn_marker" in content and
+          "[ERROR] lg1_df_error_marker" in content,
           "四级别行格式（时间戳+[级别]+内容）落盘")
-    check("[Info ] lg1_df_badlevel_marker" in content,
+    check("[INFO ] lg1_df_badlevel_marker" in content,
           "非法级别降级 Info 行落盘（P2-c 回填）")
     check(check_time_format(content), "文件日志行首时间戳格式")
 
@@ -218,8 +218,8 @@ def main():
     fl.log(Log.eInfo, "", "")
     fl.write()
     content2 = read_file(log_file)
-    check(len(content2) > size_after and "[Info ] " in content2[size_after:],
-          "空内容日志追加成行（[Info ] 空内容）")
+    check(len(content2) > size_after and "[INFO ] " in content2[size_after:],
+          "空内容日志追加成行（[INFO ] 空内容）")
 
     # 1MB 超长内容往返
     big = "B" * (1024 * 1024)
@@ -233,9 +233,9 @@ def main():
     fl.log(Log.eInfo, "", "lg1_df_untagged_marker")
     fl.write()
     content_tag = read_file(log_file)
-    check("[Info ] [lg1_df_tag] lg1_df_tagged_marker" in content_tag,
+    check("[INFO ] [lg1_df_tag] lg1_df_tagged_marker" in content_tag,
           "tag 非空行格式（[级别] [tag] 内容）")
-    check("[Info ] lg1_df_untagged_marker" in content_tag, "空 tag 不加 [tag] 前缀")
+    check("[INFO ] lg1_df_untagged_marker" in content_tag, "空 tag 不加 [tag] 前缀")
 
     # write 打不开文件分支：dir 指向普通文件路径 -> 错误提示 + 缓冲保留不丢
     regular_file = os.path.join(tmp_dir, "fl_regular")
@@ -323,7 +323,7 @@ def main():
     gate_fl.write()
     gate_content = read_file(gate_log_file)
     check("lg1_df_gate_off_marker" not in gate_content, "15b: 关断级别不落盘")
-    check("[Warn ] lg1_df_gate_warn_marker" in gate_content,
+    check("[WARN ] lg1_df_gate_warn_marker" in gate_content,
           "15b: 未关断级别落盘不受影响")
 
     # 15c 恢复：重开后输出恢复
@@ -332,7 +332,7 @@ def main():
     gate_fl.log(Log.eInfo, "", "lg1_df_gate_on_marker")
     gate_fl.write()
     gate_content2 = read_file(gate_log_file)
-    check("[Info ] lg1_df_gate_on_marker" in gate_content2, "15c: 恢复后落盘正常")
+    check("[INFO ] lg1_df_gate_on_marker" in gate_content2, "15c: 恢复后落盘正常")
 
     # 15d unknown 级别按 Info 门控：关 Info 后 log(99) 门控层直接丢弃
     # （不进入 default 降级分支，无 Unknown log level 提示）；恢复后降级行为回归
@@ -352,7 +352,7 @@ def main():
     gate_content3 = read_file(gate_log_file)
     check("Unknown log level: 99" in out_bad_gate2,
           "15d: 恢复后 unknown 级别回归 default 降级提示")
-    check("[Info ] lg1_df_gate_bad2_marker" in gate_content3,
+    check("[INFO ] lg1_df_gate_bad2_marker" in gate_content3,
           "15d: 恢复后降级 Info 行落盘")
 
     # ============ 收尾清理 ============

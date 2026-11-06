@@ -4,6 +4,7 @@ build/
 bin/
 .vscode/
 .qoder/
+.trae/
 *~
 *.autosave
 *.a

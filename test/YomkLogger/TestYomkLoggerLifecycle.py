@@ -28,7 +28,7 @@ eNo 不惰性创建、主闸×逐器两层归因、条目逐器真值与两层�
 - S8.4 析构落盘确定性：服务层 delete_logger
   锁外显式释放最后引用，返回前 __del__ 已落盘（C2 语义保证）
 - file 日志便捷口径：file_log_info_tag(file,
-  "MainLogger", *args) 为固定缺省 tag 形态；file_log_info_tag(file, tag, *args)
+  "main", *args) 为固定缺省 tag 形态；file_log_info_tag(file, tag, *args)
   为自定义 tag 形态
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
@@ -102,12 +102,12 @@ def main():
 
     # ============ Section 1: 控制台日志基线（四级别 + 开关） ============
     r, out = capture(lambda: YomkApi.console_log_info_tag(
-        "MainLogger", "lg1_s1_info_marker ", 42))
+        "main", "lg1_s1_info_marker ", 42))
     check(r.status == ResStatus.eOk, "YOMK_INFO 返回 eOk")
     check(r.msg == "success.", "YOMK_INFO 契约消息 success.")
     check("lg1_s1_info_marker  42" in out, "INFO 输出含 marker 与整数变参")
-    check("[Info ] [MainLogger] [" in out,
-          "INFO 输出格式 [Info ] [MainLogger] [行号]")
+    check("[INFO ] [main] [" in out,
+          "INFO 输出格式 [INFO ] [main] [行号]")
     fmt_ok = False
     for line in out.splitlines():
         if "lg1_s1_info_marker" in line:
@@ -115,31 +115,31 @@ def main():
     check(fmt_ok, "INFO 输出行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]")
 
     r, out = capture(lambda: YomkApi.console_log_warn_tag(
-        "MainLogger", "lg1_s1_warn_marker"))
+        "main", "lg1_s1_warn_marker"))
     check(r.status == ResStatus.eOk, "YOMK_WARN 返回 eOk")
-    check("[Warn ] [MainLogger]" in out and "lg1_s1_warn_marker" in out,
+    check("[WARN ] [main]" in out and "lg1_s1_warn_marker" in out,
           "WARN 输出格式与 marker")
     r, out = capture(lambda: YomkApi.console_log_error_tag(
-        "MainLogger", "lg1_s1_error_marker"))
+        "main", "lg1_s1_error_marker"))
     check(r.status == ResStatus.eOk, "YOMK_ERROR 返回 eOk")
-    check("[Error] [MainLogger]" in out and "lg1_s1_error_marker" in out,
+    check("[ERROR] [main]" in out and "lg1_s1_error_marker" in out,
           "ERROR 输出格式与 marker")
     r, out = capture(lambda: YomkApi.console_log_debug_tag(
-        "MainLogger", "lg1_s1_debug_marker"))
+        "main", "lg1_s1_debug_marker"))
     check(r.status == ResStatus.eOk, "YOMK_DEBUG 返回 eOk")
-    check("[Debug] [MainLogger]" in out and "lg1_s1_debug_marker" in out,
+    check("[DEBUG] [main]" in out and "lg1_s1_debug_marker" in out,
           "DEBUG 输出格式与 marker")
 
     # 级别开关：OFF -> 无输出仍 eOk -> ON -> 恢复输出（四级别逐一）
     for off_fn, on_fn, log_fn, name in [
         (YomkApi.off_console_log_info, YomkApi.on_console_log_info,
-         lambda m: YomkApi.console_log_info_tag("MainLogger", m), "INFO"),
+         lambda m: YomkApi.console_log_info_tag("main", m), "INFO"),
         (YomkApi.off_console_log_warn, YomkApi.on_console_log_warn,
-         lambda m: YomkApi.console_log_warn_tag("MainLogger", m), "WARN"),
+         lambda m: YomkApi.console_log_warn_tag("main", m), "WARN"),
         (YomkApi.off_console_log_error, YomkApi.on_console_log_error,
-         lambda m: YomkApi.console_log_error_tag("MainLogger", m), "ERROR"),
+         lambda m: YomkApi.console_log_error_tag("main", m), "ERROR"),
         (YomkApi.off_console_log_debug, YomkApi.on_console_log_debug,
-         lambda m: YomkApi.console_log_debug_tag("MainLogger", m), "DEBUG"),
+         lambda m: YomkApi.console_log_debug_tag("main", m), "DEBUG"),
     ]:
         check(off_fn().status == ResStatus.eOk,
               f"OFF_CONSOLE_LOG_{name} 返回 eOk")
@@ -172,12 +172,12 @@ def main():
 
     # ============ Section 2.5: 非法级别 default 降级（须在 S3 设 proxy 前） ============
     r, out = capture(lambda: YomkApi.request(
-        "/YomkLogger/console_log", Log(99, "lg1_s2p5_badlevel_marker", "MainLogger")))
+        "/YomkLogger/console_log", Log(99, "lg1_s2p5_badlevel_marker", "main")))
     check(r.status == ResStatus.eOk,
           "非法级别 99 console_log 返回 eOk（P2-c 修复后 default 活分支）")
     check("unknown log level, use Info" in out,
           "console_log default 分支错误提示（降级 Info）")
-    check("[Info ] [MainLogger] lg1_s2p5_badlevel_marker" in out,
+    check("[INFO ] [main] lg1_s2p5_badlevel_marker" in out,
           "非法级别降级 Info 输出 marker")
 
     # ============ Section 3: proxy 契约（LG6/P4-e 卸载；末尾重装复位） ============
@@ -202,7 +202,7 @@ def main():
 
     # 拦截态：proxy 返回 False -> eOk + 专属消息 + 无控制台输出
     r, out = capture(lambda: YomkApi.console_log_info_tag(
-        "MainLogger", "lg1_s3_intercept_marker"))
+        "main", "lg1_s3_intercept_marker"))
     check(r.status == ResStatus.eOk, "拦截态 console_log 返回 eOk")
     check(r.msg == "console log proxy is success.",
           "拦截态契约消息 console log proxy is success.")
@@ -212,7 +212,7 @@ def main():
     # 穿透态：proxy 返回 True -> 走默认输出
     proxy_state["intercept"] = False
     r, out = capture(lambda: YomkApi.console_log_info_tag(
-        "MainLogger", "lg1_s3_pass_marker"))
+        "main", "lg1_s3_pass_marker"))
     check(r.status == ResStatus.eOk and r.msg == "success.",
           "穿透态 console_log 返回 eOk + success.")
     check("lg1_s3_pass_marker" in out, "穿透态恢复默认控制台输出")
@@ -224,7 +224,7 @@ def main():
     # LG6（P4-e）：卸载前先把代理切回拦截态，确认代理确实在链路上
     proxy_state["intercept"] = True
     r, out = capture(lambda: YomkApi.console_log_info_tag(
-        "MainLogger", "lg6_s3_pre_unload_marker"))
+        "main", "lg6_s3_pre_unload_marker"))
     check(r.status == ResStatus.eOk and r.msg == "console log proxy is success.",
           "卸载前拦截态契约消息（代理确实在链路上）")
     check("lg6_s3_pre_unload_marker" not in out, "卸载前拦截态无默认控制台输出")
@@ -238,12 +238,12 @@ def main():
     # 卸载后：恢复框架默认输出，且代理不再被调用
     hits_before = len(proxy_hits)
     r, out = capture(lambda: YomkApi.console_log_info_tag(
-        "MainLogger", "lg6_s3_post_unload_marker"))
+        "main", "lg6_s3_post_unload_marker"))
     check(r.status == ResStatus.eOk and r.msg == "success.",
           "卸载后 console_log 返回 eOk + success.（走默认路径而非代理短路）")
     check("lg6_s3_post_unload_marker" in out, "卸载后恢复框架默认控制台输出")
-    check("[Info ] [MainLogger] [" in out,
-          "卸载后输出为框架默认格式 <时间戳> [Info ] [logger] msg")
+    check("[INFO ] [main] [" in out,
+          "卸载后输出为框架默认格式 <时间戳> [INFO ] [logger] msg")
     check(len(proxy_hits) == hits_before, "卸载后代理不再被调用（命中数不增）")
 
     # 复位：重装同一代理并回到穿透态，维持 S4-S7 依赖的 proxy:on + 穿透不变量
@@ -264,13 +264,13 @@ def main():
           "CREATE 后 <dir>/<name>.log 空文件已建")
 
     # 四级别入缓冲：write 前文件仍空（缓冲语义）
-    check(YomkApi.file_log_info_tag("lg1_file_logger", "MainLogger", "lg1_s4_info_marker ", 7).status
+    check(YomkApi.file_log_info_tag("lg1_file_logger", "main", "lg1_s4_info_marker ", 7).status
           == ResStatus.eOk, "FILE_INFO 返回 eOk")
-    check(YomkApi.file_log_warn_tag("lg1_file_logger", "MainLogger", "lg1_s4_warn_marker").status
+    check(YomkApi.file_log_warn_tag("lg1_file_logger", "main", "lg1_s4_warn_marker").status
           == ResStatus.eOk, "FILE_WARN 返回 eOk")
-    check(YomkApi.file_log_error_tag("lg1_file_logger", "MainLogger", "lg1_s4_error_marker").status
+    check(YomkApi.file_log_error_tag("lg1_file_logger", "main", "lg1_s4_error_marker").status
           == ResStatus.eOk, "FILE_ERROR 返回 eOk")
-    check(YomkApi.file_log_debug_tag("lg1_file_logger", "MainLogger", "lg1_s4_debug_marker").status
+    check(YomkApi.file_log_debug_tag("lg1_file_logger", "main", "lg1_s4_debug_marker").status
           == ResStatus.eOk, "FILE_DEBUG 返回 eOk")
     check(os.path.getsize(log_file) == 0, "WRITE 前文件仍为空（缓冲语义）")
 
@@ -279,20 +279,20 @@ def main():
           "FILE_LOG_WRITE 返回 eOk")
     content = read_file(log_file)
     check(count_lines(content) == 4, "落盘内容恰 4 行（四级别各一）")
-    check("[Info ] [MainLogger]" in content and "[Info ] [MainLogger] [" in content and
+    check("[INFO ] [main]" in content and "[INFO ] [main] [" in content and
           "lg1_s4_info_marker  7" in content,
-          "Info 行格式（时间戳+[Info ]+[MainLogger]+[行号] 内容）——FILE_INFO 默认内容 tag 为 "
-          "MainLogger，行号独立成段，logger 名仅作路由 key")
+          "Info 行格式（时间戳+[INFO ]+[main]+[行号] 内容）——FILE_INFO 默认内容 tag 为 "
+          "main，行号独立成段，logger 名仅作路由 key")
     check(YomkApi.file_log_info_tag("lg1_file_logger", "lg1CustomTag", "lg1_s4_customtag_marker").status
           == ResStatus.eOk, "FILE_INFO_TAG 自定义 tag 返回 eOk")
     check(YomkApi.file_log_write("lg1_file_logger").status == ResStatus.eOk,
           "自定义 tag 内容 WRITE eOk")
     content_tag = read_file(log_file)
-    check("[Info ] [lg1CustomTag] [" in content_tag and "lg1_s4_customtag_marker" in content_tag,
-          "自定义 tag 行格式（[Info ] [tag] [行号] 内容）")
-    check("[Warn ]" in content and "[Error]" in content and "[Debug]" in content,
+    check("[INFO ] [lg1CustomTag] [" in content_tag and "lg1_s4_customtag_marker" in content_tag,
+          "自定义 tag 行格式（[INFO ] [tag] [行号] 内容）")
+    check("[WARN ]" in content and "[ERROR]" in content and "[DEBUG]" in content,
           "Warn/Error/Debug 三级别行均在")
-    check(all(check_time_format(l) for l in content.splitlines() if "[Info ]" in l),
+    check(all(check_time_format(l) for l in content.splitlines() if "[INFO ]" in l),
           "文件日志行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]")
 
     # 落盘后缓冲清空：再次 WRITE 文件不增长
@@ -308,7 +308,7 @@ def main():
 
     # 未创建 logger：FILE_LOG / FILE_LOG_WRITE 均 eNo
     no_logger = YomkApi.file_log_info_tag(
-        "lg1_never_created", "MainLogger", "x")
+        "lg1_never_created", "main", "x")
     check(no_logger.status == ResStatus.eNo, "FILE_LOG 未创建 logger 返回 eNo")
     check(no_logger.msg == "file logger not found.", "FILE_LOG not-found 契约消息")
     no_write = YomkApi.file_log_write("lg1_never_created")
@@ -345,8 +345,8 @@ def main():
     console_resp = YomkApi.logger_info_loggers("console")
     check(console_resp.status == ResStatus.eOk,
           "LOGGER_INFO_LOGGERS(console) 返回 eOk")
-    check("MainLogger" in console_resp.data,
-          "LOGGERS(console) 含 MainLogger 纯名行")
+    check("main" in console_resp.data,
+          "LOGGERS(console) 含 main 纯名行")
     check(any(l.startswith("lg1_tag_logger") for l in console_resp.data),
           "LOGGERS(console) 含 S2 自建 tag logger 纯名行")
     file_resp = YomkApi.logger_info_loggers("file")
@@ -354,15 +354,15 @@ def main():
           and "lg1_file_logger" in file_resp.data,
           "LOGGERS(file) 含 lg1_file_logger 纯名行（dir 经 LOGGER_INFO_LOGGER 查询断言覆盖）")
 
-    console_info = YomkApi.logger_info_logger("MainLogger", "console")
+    console_info = YomkApi.logger_info_logger("main", "console")
     check(console_info.status == ResStatus.eOk and console_info.msg == "ok",
-          "LOGGER(MainLogger) 命中 msg 恒为 ok")
+          "LOGGER(main) 命中 msg 恒为 ok")
     check(isinstance(console_info.data, LoggerInfo),
-          "LOGGER(MainLogger) 数据为 LoggerInfo 包")
+          "LOGGER(main) 数据为 LoggerInfo 包")
     check(console_info.data is not None
-          and console_info.data.logger_name == "MainLogger"
+          and console_info.data.logger_name == "main"
           and console_info.data.type == "console",
-          "LOGGER(MainLogger) 字段 logger_name/type 一致")
+          "LOGGER(main) 字段 logger_name/type 一致")
     check(console_info.data is not None and console_info.data.dir == "",
           "console 命中 dir 为空")
     file_info = YomkApi.logger_info_logger("lg1_file_logger", "file")
@@ -419,7 +419,7 @@ def main():
     os.makedirs(big_dir, exist_ok=True)
     check(YomkApi.file_log_create(big_dir, "lg1_big_logger").status == ResStatus.eOk,
           "超大内容用 file logger 创建 eOk")
-    check(YomkApi.file_log_info_tag("lg1_big_logger", "MainLogger", big).status == ResStatus.eOk,
+    check(YomkApi.file_log_info_tag("lg1_big_logger", "main", big).status == ResStatus.eOk,
           "1MB 超大内容文件日志返回 eOk")
     check(YomkApi.file_log_write("lg1_big_logger").status == ResStatus.eOk,
           "超大内容 WRITE 返回 eOk")
@@ -440,7 +440,7 @@ def main():
     check(YomkApi.file_log_write("lg1_s6_badlevel").status == ResStatus.eOk,
           "非法级别落盘 WRITE eOk")
     content = read_file(os.path.join(bad_level_dir, "lg1_s6_badlevel.log"))
-    check(count_lines(content) == 1 and "[Info ] lg1_s6_badlevel_marker" in content,
+    check(count_lines(content) == 1 and "[INFO ] lg1_s6_badlevel_marker" in content,
           "非法级别降级 Info 落盘恰 1 行")
 
     # off/on 非法级别：default 仅记录错误，无副作用仍 eOk，开关状态不变
@@ -471,14 +471,14 @@ def main():
           "create_file_logger nullptr 包返回 eNo")
     check(YomkApi.request("/YomkLogger/logger", None).status == ResStatus.eNo,
           "logger nullptr 包返回 eNo")
-    # console_log 空 logger 名 -> 回退 MainLogger 分支（raw 注入才可触达）
+    # console_log 空 logger 名 -> 回退 main 分支（raw 注入才可触达）
     r, out = capture(lambda: YomkApi.request(
         "/YomkLogger/console_log", Log(Log.eInfo, "lg1_s7_empty_logger_marker", "")))
     check(r.status == ResStatus.eOk, "console_log 空 logger 名返回 eOk（回退分支）")
-    check("console logger name is empty, use MainLogger" in out,
-          "空 logger 名错误提示（回退 MainLogger）")
-    check("[MainLogger] lg1_s7_empty_logger_marker" in out,
-          "空 logger 名回退 MainLogger 输出")
+    check("console logger name is empty, use main" in out,
+          "空 logger 名错误提示（回退 main）")
+    check("[main] lg1_s7_empty_logger_marker" in out,
+          "空 logger 名回退 main 输出")
     # file_log 空 logger 名 -> eNo 分支
     r, out = capture(lambda: YomkApi.request(
         "/YomkLogger/file_log", Log(Log.eInfo, "x", "")))
@@ -573,7 +573,7 @@ def main():
     check("logger: lg1_s8_both_tables not found." in out2,
           "S8: 重复删除错误提示含 logger 名")
 
-    # 8.6 内省行数递减守恒 + ALL 与 LOGGERS 行数关系 + MainLogger 删除后惰性重建
+    # 8.6 内省行数递减守恒 + ALL 与 LOGGERS 行数关系 + main 删除后惰性重建
     dir86 = os.path.join(tmp_dir, "s8_count")
     os.makedirs(dir86, exist_ok=True)
     name = "lg1_s8_count"
@@ -601,20 +601,20 @@ def main():
           c and c.debug_on and c.info_on and c.warn_on and c.error_on and c.proxy_on,
           "S8: ALL 清单条数 == LOGGERS 行数，console 条目状态段全 on 不变")
 
-    # MainLogger 无特殊保护：可删；重建须走"空 logger 名回退"路径
-    check(YomkApi.file_log_delete("MainLogger").status == ResStatus.eOk,
-          "S8: MainLogger 可删除 eOk（无特殊保护）")
-    check(YomkApi.logger_info_logger("MainLogger", "console").status == ResStatus.eNo,
-          "S8: MainLogger 删除后单查 eNo")
+    # main 无特殊保护：可删；重建须走"空 logger 名回退"路径
+    check(YomkApi.file_log_delete("main").status == ResStatus.eOk,
+          "S8: main 可删除 eOk（无特殊保护）")
+    check(YomkApi.logger_info_logger("main", "console").status == ResStatus.eNo,
+          "S8: main 删除后单查 eNo")
     r, rebuild_out = capture(lambda: YomkApi.request(
         "/YomkLogger/console_log", Log(Log.eInfo, "lg1_s8_mainlogger_rebuild_marker", "")))
-    check(r.status == ResStatus.eOk, "S8: MainLogger 删除后空名回退写入 eOk")
-    check(YomkApi.logger_info_logger("MainLogger", "console").status == ResStatus.eOk,
-          "S8: MainLogger 惰性重建后单查恢复 eOk")
-    check("[MainLogger] lg1_s8_mainlogger_rebuild_marker" in rebuild_out,
-          "S8: 重建对象名确为 MainLogger（输出行 [MainLogger]）")
+    check(r.status == ResStatus.eOk, "S8: main 删除后空名回退写入 eOk")
+    check(YomkApi.logger_info_logger("main", "console").status == ResStatus.eOk,
+          "S8: main 惰性重建后单查恢复 eOk")
+    check("[main] lg1_s8_mainlogger_rebuild_marker" in rebuild_out,
+          "S8: 重建对象名确为 main（输出行 [main]）")
     check(lg_total() == before,
-          "S8: MainLogger 删除+重建后行数回到基线（无泄漏无重复）")
+          "S8: main 删除+重建后行数回到基线（无泄漏无重复）")
 
     # 8.7 异常路径：空包 / 错类型包（YomkUnPackPkgResponse 契约分支）
     r_null = YomkApi.request("/YomkLogger/delete_logger", None)

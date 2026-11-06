@@ -21,6 +21,11 @@ class ResStatus(Enum):
     eInvalid = -1
     eOk = 0
     eNo = 1
+    # C++ 口径别名（YomkPayload.h ResStatus：Invalid=-1/Succeeded=0/Failed=1），
+    # 与 eInvalid/eOk/eNo 逐一同值；新代码一律用 C++ 口径，eOk/eNo 保留向后兼容
+    Succeeded = 0
+    Failed = 1
+    Invalid = -1
 
 
 class YomkResponse:
@@ -481,12 +486,14 @@ class LogFile:
 
 
 class Log:
-    # :Log：ELogLevel 固定 int 底层类型（eDebug=0/eInfo=1/eWarn=2/eError=3），
+    # :Log：ELogLevel 固定 int 底层类型，六级值序对齐 C++（Trace=0..Fatal=5），
     # 非法值注入合法化（log 路径 default 降级 Info 分支可触达）
-    eDebug = 0
-    eInfo = 1
-    eWarn = 2
-    eError = 3
+    eTrace = 0
+    eDebug = 1
+    eInfo = 2
+    eWarn = 3
+    eError = 4
+    eFatal = 5
 
     def __init__(self, level=eInfo, log_msg="", logger="", tag=""):
         self.m_level = level
@@ -532,26 +539,62 @@ class LoggerInfo:
 
 
 class LoggerState:
-    # 日志器状态（debug/info/warn/error/proxy 五开关）：console 条目承载控制台
-    # 逐器门控层真值，console 全局主闸态经 /console_global_state 查询；
+    # 日志器状态（trace/debug/info/warn/error/fatal/proxy 七开关，对齐 C++
+    # YomkPayload.h LoggerState m_traceOn..m_fatalOn + m_proxyOn）：console 条目
+    # 承载控制台逐器门控层真值，console 全局主闸态经 /console_global_state 查询；
     # file 条目承载文件逐器门控层真值，file 全局主闸态经 /file_global_state
     # 查询；两套主闸相互独立
-    def __init__(self, debug_on=False, info_on=False, warn_on=False,
-                 error_on=False, proxy_on=False):
+    def __init__(self, trace_on=False, debug_on=False, info_on=False,
+                 warn_on=False, error_on=False, fatal_on=False,
+                 proxy_on=False):
+        self.trace_on = trace_on        # trace 级别开关
         self.debug_on = debug_on        # debug 级别开关
         self.info_on = info_on          # info 级别开关
         self.warn_on = warn_on          # warn 级别开关
         self.error_on = error_on        # error 级别开关
+        self.fatal_on = fatal_on        # fatal 级别开关
         # proxy_on：代理已安装——/console_global_state 报控制台代理、
         # /file_global_state 报文件代理（两套代理各自独立）
         self.proxy_on = proxy_on
 
 
+# 位置前缀三开关（进程级，对齐 C++ YomkSourceLoc.h 的 atomic 三开关；
+# 缺省 file=off / line=on / func=off，经 log_mgr().location() 分面落定；
+# GIL 下 bool 读写原子，与 C++ atomic relaxed 语义等价）
+_yomk_loc_show_file = False
+_yomk_loc_show_line = True
+_yomk_loc_show_func = False
+
+
+def _yomk_loc_base_name(path):
+    # 取路径 basename（兼容 '/' 与 '\\'），与主流日志风格一致（对齐 baseName）
+    pos = max(path.rfind("/"), path.rfind("\\"))
+    return path[pos + 1:] if pos != -1 else path
+
+
+def _yomk_source_loc_prefix(filename, lineno, funcname):
+    # 按进程级三开关拼位置前缀 "[file:line:func]"（file 取 basename）；
+    # 三项全关返回空串——无位置前缀（对齐 YomkSourceLoc::appendTo）
+    if not (_yomk_loc_show_file or _yomk_loc_show_line or _yomk_loc_show_func):
+        return ""
+    parts = []
+    if _yomk_loc_show_file:
+        parts.append(_yomk_loc_base_name(filename))
+    if _yomk_loc_show_line:
+        parts.append(str(lineno))
+    if _yomk_loc_show_func:
+        parts.append(funcname)
+    return "[" + ":".join(parts) + "]"
+
+
 def _yomk_err_pos_log(msg):
-    # 框架错误提示直写 stdout（可被测试捕获），带调用点位置前缀
+    # 框架自诊断通道（对齐 C++ YomkDiag.h YOMK_DIAG_LOG_IMPL 的 ERROR 用途）：
+    # 直写 stdout（可被测试捕获），输出 "[时间] [ERROR] [Yomk] [file:line] [func] msg"，
+    # 时间戳/级别标签两段与日志模块输出完全同构
     frame = sys._getframe(1)
-    sys.stdout.write("[Yomk] [" + frame.f_code.co_filename + ":" + str(frame.f_lineno) + "] [" +
-                     frame.f_code.co_name + "] " + msg + "\n")
+    sys.stdout.write(_yomk_log_local_time_formatted() + " [ERROR] [Yomk] [" +
+                     frame.f_code.co_filename + ":" + str(frame.f_lineno) +
+                     "] [" + frame.f_code.co_name + "] " + msg + "\n")
     sys.stdout.flush()
 
 
@@ -581,18 +624,20 @@ def _yomk_log_local_time_formatted():
 
 
 class ConsoleLogger:
-    # 控制台日志器，四级别 stdout 输出、空 tag 回退日志器名、
+    # 控制台日志器，六级 stdout 输出、空 tag 回退日志器名、
     # 非法级别降级 Info、按器级别门控（关断级别 log 入口直接丢弃）
     def __init__(self):
-        self.m_name = "MainLogger"
+        self.m_name = "main"
         self.m_mutex = threading.Lock()
         # 级别门控随 sink 自持（每实例独立、默认全开）：两级主闸并联架构的第二层
         # （逐器门控），第一层为 YomkLogger 全局主闸（经 /console_global_state
         # 内省），输出取两层 AND
+        self.m_showTraceLog = True
         self.m_showDebugLog = True
         self.m_showInfoLog = True
         self.m_showWarnLog = True
         self.m_showErrorLog = True
+        self.m_showFatalLog = True
 
     def get_name(self):
         return self.m_name
@@ -602,7 +647,9 @@ class ConsoleLogger:
 
     def set_level_on(self, log_level, on):
         # 按器级别门控：关断的级别在 log() 入口直接丢弃；unknown 级别按 Info 门控
-        if log_level == Log.eDebug:
+        if log_level == Log.eTrace:
+            self.m_showTraceLog = on
+        elif log_level == Log.eDebug:
             self.m_showDebugLog = on
         elif log_level == Log.eInfo:
             self.m_showInfoLog = on
@@ -610,13 +657,17 @@ class ConsoleLogger:
             self.m_showWarnLog = on
         elif log_level == Log.eError:
             self.m_showErrorLog = on
+        elif log_level == Log.eFatal:
+            self.m_showFatalLog = on
         else:
             # unknown 级别按 Info 门控（与 log() 降级语义一致）
             self.m_showInfoLog = on
 
     def is_level_on(self, log_level):
         # 反查级别门控状态；unknown 级别返回 Info 门控值
-        if log_level == Log.eDebug:
+        if log_level == Log.eTrace:
+            return self.m_showTraceLog
+        elif log_level == Log.eDebug:
             return self.m_showDebugLog
         elif log_level == Log.eInfo:
             return self.m_showInfoLog
@@ -624,13 +675,18 @@ class ConsoleLogger:
             return self.m_showWarnLog
         elif log_level == Log.eError:
             return self.m_showErrorLog
+        elif log_level == Log.eFatal:
+            return self.m_showFatalLog
         else:
             return self.m_showInfoLog
 
     def log(self, log_level, tag, log_msg):
         # 级别门控在类级锁外判定（GIL 下 bool 读原子，无新锁）：关断级别直接丢弃
         # 不输出（unknown 级别按 Info 门控，与下方 default 降级语义一致）
-        if log_level == Log.eDebug:
+        if log_level == Log.eTrace:
+            if not self.m_showTraceLog:
+                return
+        elif log_level == Log.eDebug:
             if not self.m_showDebugLog:
                 return
         elif log_level == Log.eInfo:
@@ -642,6 +698,9 @@ class ConsoleLogger:
         elif log_level == Log.eError:
             if not self.m_showErrorLog:
                 return
+        elif log_level == Log.eFatal:
+            if not self.m_showFatalLog:
+                return
         else:
             if not self.m_showInfoLog:
                 return
@@ -651,18 +710,22 @@ class ConsoleLogger:
         with self.m_mutex:
             # tag 优先显示；空 tag 回退日志器名，保持旧行为
             tag_shown = tag if tag else self.m_name
-            if log_level == Log.eDebug:
-                self._emit(time_str, "[Debug]", tag_shown, log_msg)
+            if log_level == Log.eTrace:
+                self._emit(time_str, "[TRACE]", tag_shown, log_msg)
+            elif log_level == Log.eDebug:
+                self._emit(time_str, "[DEBUG]", tag_shown, log_msg)
             elif log_level == Log.eInfo:
-                self._emit(time_str, "[Info ]", tag_shown, log_msg)
+                self._emit(time_str, "[INFO ]", tag_shown, log_msg)
             elif log_level == Log.eWarn:
-                self._emit(time_str, "[Warn ]", tag_shown, log_msg)
+                self._emit(time_str, "[WARN ]", tag_shown, log_msg)
             elif log_level == Log.eError:
-                self._emit(time_str, "[Error]", tag_shown, log_msg)
+                self._emit(time_str, "[ERROR]", tag_shown, log_msg)
+            elif log_level == Log.eFatal:
+                self._emit(time_str, "[FATAL]", tag_shown, log_msg)
             else:
                 _yomk_err_pos_log("Unknown log level: " + str(log_level) +
-                                  ", using Info level instead.")
-                self._emit(time_str, "[Info ]", tag_shown, log_msg)
+                              ", using Info level instead.")
+                self._emit(time_str, "[INFO ]", tag_shown, log_msg)
 
     @staticmethod
     def _emit(time_str, level_tag, tag_shown, log_msg):
@@ -675,17 +738,19 @@ class ConsoleLogger:
 class FileLogger:
     # 文件日志器，log 入内存缓冲、write 追加落盘清缓冲、
     # 析构自动 write 兜底；init 建目录与空文件（P2-b：异常捕获转 bool 不穿透）、
-    # 按器级别门控（关断级别 log 入口直接丢弃不入缓冲）
+    # 六级门控（关断级别 log 入口直接丢弃不入缓冲）
     def __init__(self):
-        self.m_name = "MainLogger"
+        self.m_name = "main"
         self.m_dir = ""
         # 级别门控随 sink 自持（每实例独立、默认全开）：两级主闸并联架构的第二层
         # （逐器门控），第一层为 YomkLogger 文件全局主闸（经 /file_global_state
         # 内省），输出取两层 AND
+        self.m_showTraceLog = True
         self.m_showDebugLog = True
         self.m_showInfoLog = True
         self.m_showWarnLog = True
         self.m_showErrorLog = True
+        self.m_showFatalLog = True
         self.m_logBuffer = ""
         self.m_logBufferMutex = threading.Lock()
 
@@ -711,7 +776,9 @@ class FileLogger:
 
     def set_level_on(self, log_level, on):
         # 按器级别门控：关断的级别在 log() 入口直接丢弃；unknown 级别按 Info 门控
-        if log_level == Log.eDebug:
+        if log_level == Log.eTrace:
+            self.m_showTraceLog = on
+        elif log_level == Log.eDebug:
             self.m_showDebugLog = on
         elif log_level == Log.eInfo:
             self.m_showInfoLog = on
@@ -719,13 +786,17 @@ class FileLogger:
             self.m_showWarnLog = on
         elif log_level == Log.eError:
             self.m_showErrorLog = on
+        elif log_level == Log.eFatal:
+            self.m_showFatalLog = on
         else:
             # unknown 级别按 Info 门控（与 log() 降级语义一致）
             self.m_showInfoLog = on
 
     def is_level_on(self, log_level):
         # 反查级别门控状态；unknown 级别返回 Info 门控值
-        if log_level == Log.eDebug:
+        if log_level == Log.eTrace:
+            return self.m_showTraceLog
+        elif log_level == Log.eDebug:
             return self.m_showDebugLog
         elif log_level == Log.eInfo:
             return self.m_showInfoLog
@@ -733,6 +804,8 @@ class FileLogger:
             return self.m_showWarnLog
         elif log_level == Log.eError:
             return self.m_showErrorLog
+        elif log_level == Log.eFatal:
+            return self.m_showFatalLog
         else:
             return self.m_showInfoLog
 
@@ -758,7 +831,10 @@ class FileLogger:
         # 级别门控在缓冲锁外判定（GIL 下 bool 读原子，无新锁）：关断级别直接丢弃
         # 不入缓冲（unknown 级别按 Info 门控，与下方 default 降级语义一致）；
         # 位置在取时间戳之前避免白算
-        if log_level == Log.eDebug:
+        if log_level == Log.eTrace:
+            if not self.m_showTraceLog:
+                return
+        elif log_level == Log.eDebug:
             if not self.m_showDebugLog:
                 return
         elif log_level == Log.eInfo:
@@ -770,6 +846,9 @@ class FileLogger:
         elif log_level == Log.eError:
             if not self.m_showErrorLog:
                 return
+        elif log_level == Log.eFatal:
+            if not self.m_showFatalLog:
+                return
         else:
             if not self.m_showInfoLog:
                 return
@@ -780,18 +859,22 @@ class FileLogger:
         tag_prefix = ("[" + tag + "] ") if tag else ""
 
         with self.m_logBufferMutex:
-            if log_level == Log.eDebug:
-                self._append_line(time_str, tag_prefix, log_msg, " [Debug] ")
+            if log_level == Log.eTrace:
+                self._append_line(time_str, tag_prefix, log_msg, " [TRACE] ")
+            elif log_level == Log.eDebug:
+                self._append_line(time_str, tag_prefix, log_msg, " [DEBUG] ")
             elif log_level == Log.eInfo:
-                self._append_line(time_str, tag_prefix, log_msg, " [Info ] ")
+                self._append_line(time_str, tag_prefix, log_msg, " [INFO ] ")
             elif log_level == Log.eWarn:
-                self._append_line(time_str, tag_prefix, log_msg, " [Warn ] ")
+                self._append_line(time_str, tag_prefix, log_msg, " [WARN ] ")
             elif log_level == Log.eError:
-                self._append_line(time_str, tag_prefix, log_msg, " [Error] ")
+                self._append_line(time_str, tag_prefix, log_msg, " [ERROR] ")
+            elif log_level == Log.eFatal:
+                self._append_line(time_str, tag_prefix, log_msg, " [FATAL] ")
             else:
                 _yomk_err_pos_log("Unknown log level: " + str(log_level) +
                                   ", using Info level instead.")
-                self._append_line(time_str, tag_prefix, log_msg, " [Info ] ")
+                self._append_line(time_str, tag_prefix, log_msg, " [INFO ] ")
 
     def _append_line(self, time_str, tag_prefix, log_msg, level_tag):
         # 缓冲行格式时间戳 + " [级别] " + tag 前缀 + 内容 + 换行
@@ -1769,20 +1852,24 @@ class YomkLogger(YomkService):
     def __init__(self, server: "YomkServer"):
         super().__init__(server)
         self.set_name("/YomkLogger")
-        self.m_consoleLoggers = {"MainLogger": ConsoleLogger()}
+        self.m_consoleLoggers = {"main": ConsoleLogger()}
         self.m_consoleLoggersMutex = rwlock.RWLockFair()
         self.m_fileLoggers = {}
         self.m_fileLoggersMutex = rwlock.RWLockFair()
+        self.m_showConsoleTraceLog = True
         self.m_showConsoleDebugLog = True
         self.m_showConsoleInfoLog = True
         self.m_showConsoleWarningLog = True
         self.m_showConsoleErrorLog = True
+        self.m_showConsoleFatalLog = True
         # 文件日志全局主闸（第一层）：与控制台主闸相互独立，输出取主闸×逐器两层 AND；
         # 逐器门控随 FileLogger sink 自持（第二层）
+        self.m_showFileTraceLog = True
         self.m_showFileDebugLog = True
         self.m_showFileInfoLog = True
         self.m_showFileWarningLog = True
         self.m_showFileErrorLog = True
+        self.m_showFileFatalLog = True
         # proxy 字段专属锁：锁内拷贝快照、锁外调用回调，避免持锁重入；控制台与文件
         # 两套代理互不共锁，各自独立
         self.m_consoleLogProxyMutex = threading.Lock()
@@ -1835,8 +1922,8 @@ class YomkLogger(YomkService):
         if bad:
             return bad
         if not pkg.m_logger:
-            _yomk_err_pos_log("console logger name is empty, use MainLogger")
-            pkg.m_logger = "MainLogger"
+            _yomk_err_pos_log("console logger name is empty, use main")
+            pkg.m_logger = "main"
 
         # 锁内拷贝 proxy 快照，锁外调用回调（避免用户回调持锁重入）
         with self.m_consoleLogProxyMutex:
@@ -1860,7 +1947,13 @@ class YomkLogger(YomkService):
                     self.m_consoleLoggers[pkg.m_logger] = new_logger
                     console_logger = new_logger
 
-        if pkg.m_level == Log.eInfo:
+        if pkg.m_level == Log.eTrace:
+            if self.m_showConsoleTraceLog:
+                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+        elif pkg.m_level == Log.eDebug:
+            if self.m_showConsoleDebugLog:
+                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+        elif pkg.m_level == Log.eInfo:
             if self.m_showConsoleInfoLog:
                 console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
         elif pkg.m_level == Log.eWarn:
@@ -1869,8 +1962,8 @@ class YomkLogger(YomkService):
         elif pkg.m_level == Log.eError:
             if self.m_showConsoleErrorLog:
                 console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-        elif pkg.m_level == Log.eDebug:
-            if self.m_showConsoleDebugLog:
+        elif pkg.m_level == Log.eFatal:
+            if self.m_showConsoleFatalLog:
                 console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
         else:
             _yomk_err_pos_log("unknown log level, use Info")
@@ -1951,7 +2044,13 @@ class YomkLogger(YomkService):
                                   pkg.m_logger + " not found.")
                 return YomkResponse(ResStatus.eNo, "file logger not found.")
 
-            if pkg.m_level == Log.eInfo:
+            if pkg.m_level == Log.eTrace:
+                if self.m_showFileTraceLog:
+                    file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+            elif pkg.m_level == Log.eDebug:
+                if self.m_showFileDebugLog:
+                    file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+            elif pkg.m_level == Log.eInfo:
                 if self.m_showFileInfoLog:
                     file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
             elif pkg.m_level == Log.eWarn:
@@ -1960,8 +2059,8 @@ class YomkLogger(YomkService):
             elif pkg.m_level == Log.eError:
                 if self.m_showFileErrorLog:
                     file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-            elif pkg.m_level == Log.eDebug:
-                if self.m_showFileDebugLog:
+            elif pkg.m_level == Log.eFatal:
+                if self.m_showFileFatalLog:
                     file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
             else:
                 _yomk_err_pos_log("unknown log level, use Info")
@@ -2028,12 +2127,16 @@ class YomkLogger(YomkService):
             return self.set_named_console_level(pkg.m_logger, pkg.m_level, False)
 
         # 空名 = 全局主闸路径（与既有语义一致）
-        if pkg.m_level == Log.eInfo:
+        if pkg.m_level == Log.eTrace:
+            self.m_showConsoleTraceLog = False
+        elif pkg.m_level == Log.eInfo:
             self.m_showConsoleInfoLog = False
         elif pkg.m_level == Log.eWarn:
             self.m_showConsoleWarningLog = False
         elif pkg.m_level == Log.eError:
             self.m_showConsoleErrorLog = False
+        elif pkg.m_level == Log.eFatal:
+            self.m_showConsoleFatalLog = False
         elif pkg.m_level == Log.eDebug:
             self.m_showConsoleDebugLog = False
         else:
@@ -2051,12 +2154,16 @@ class YomkLogger(YomkService):
             return self.set_named_console_level(pkg.m_logger, pkg.m_level, True)
 
         # 空名 = 全局主闸路径（与既有语义一致）
-        if pkg.m_level == Log.eInfo:
+        if pkg.m_level == Log.eTrace:
+            self.m_showConsoleTraceLog = True
+        elif pkg.m_level == Log.eInfo:
             self.m_showConsoleInfoLog = True
         elif pkg.m_level == Log.eWarn:
             self.m_showConsoleWarningLog = True
         elif pkg.m_level == Log.eError:
             self.m_showConsoleErrorLog = True
+        elif pkg.m_level == Log.eFatal:
+            self.m_showConsoleFatalLog = True
         elif pkg.m_level == Log.eDebug:
             self.m_showConsoleDebugLog = True
         else:
@@ -2073,12 +2180,16 @@ class YomkLogger(YomkService):
                                   logger_name + " not found.")
                 return YomkResponse(ResStatus.eNo, "console logger not found.")
 
-        if level == Log.eInfo:
+        if level == Log.eTrace:
+            console_logger.set_level_on(Log.eTrace, on)
+        elif level == Log.eInfo:
             console_logger.set_level_on(Log.eInfo, on)
         elif level == Log.eWarn:
             console_logger.set_level_on(Log.eWarn, on)
         elif level == Log.eError:
             console_logger.set_level_on(Log.eError, on)
+        elif level == Log.eFatal:
+            console_logger.set_level_on(Log.eFatal, on)
         elif level == Log.eDebug:
             console_logger.set_level_on(Log.eDebug, on)
         else:
@@ -2096,12 +2207,16 @@ class YomkLogger(YomkService):
             return self.set_named_file_level(pkg.m_logger, pkg.m_level, False)
 
         # 空名 = 全局主闸路径（与控制台侧双模式语义对称）
-        if pkg.m_level == Log.eInfo:
+        if pkg.m_level == Log.eTrace:
+            self.m_showFileTraceLog = False
+        elif pkg.m_level == Log.eInfo:
             self.m_showFileInfoLog = False
         elif pkg.m_level == Log.eWarn:
             self.m_showFileWarningLog = False
         elif pkg.m_level == Log.eError:
             self.m_showFileErrorLog = False
+        elif pkg.m_level == Log.eFatal:
+            self.m_showFileFatalLog = False
         elif pkg.m_level == Log.eDebug:
             self.m_showFileDebugLog = False
         else:
@@ -2119,12 +2234,16 @@ class YomkLogger(YomkService):
             return self.set_named_file_level(pkg.m_logger, pkg.m_level, True)
 
         # 空名 = 全局主闸路径（与控制台侧双模式语义对称）
-        if pkg.m_level == Log.eInfo:
+        if pkg.m_level == Log.eTrace:
+            self.m_showFileTraceLog = True
+        elif pkg.m_level == Log.eInfo:
             self.m_showFileInfoLog = True
         elif pkg.m_level == Log.eWarn:
             self.m_showFileWarningLog = True
         elif pkg.m_level == Log.eError:
             self.m_showFileErrorLog = True
+        elif pkg.m_level == Log.eFatal:
+            self.m_showFileFatalLog = True
         elif pkg.m_level == Log.eDebug:
             self.m_showFileDebugLog = True
         else:
@@ -2141,12 +2260,16 @@ class YomkLogger(YomkService):
                                   logger_name + " not found.")
                 return YomkResponse(ResStatus.eNo, "file logger not found.")
 
-        if level == Log.eInfo:
+        if level == Log.eTrace:
+            file_logger.set_level_on(Log.eTrace, on)
+        elif level == Log.eInfo:
             file_logger.set_level_on(Log.eInfo, on)
         elif level == Log.eWarn:
             file_logger.set_level_on(Log.eWarn, on)
         elif level == Log.eError:
             file_logger.set_level_on(Log.eError, on)
+        elif level == Log.eFatal:
+            file_logger.set_level_on(Log.eFatal, on)
         elif level == Log.eDebug:
             file_logger.set_level_on(Log.eDebug, on)
         else:
@@ -2173,45 +2296,51 @@ class YomkLogger(YomkService):
         return YomkResponse(ResStatus.eOk, "ok", names)
 
     def current_console_state(self):
-        # 取控制台全局主闸态（/console_global_state 返回体）：四个级别开关为独立
+        # 取控制台全局主闸态（/console_global_state 返回体）：六个级别开关为独立
         # 原子读（组合本无原子快照保证），proxy 状态读侧与写侧互斥（叶子锁，
         # 独立作用域），不持任何表锁
         state = LoggerState(
-            bool(self.m_showConsoleDebugLog), bool(self.m_showConsoleInfoLog),
-            bool(self.m_showConsoleWarningLog), bool(self.m_showConsoleErrorLog))
+            bool(self.m_showConsoleTraceLog), bool(self.m_showConsoleDebugLog),
+            bool(self.m_showConsoleInfoLog), bool(self.m_showConsoleWarningLog),
+            bool(self.m_showConsoleErrorLog), bool(self.m_showConsoleFatalLog))
         with self.m_consoleLogProxyMutex:
             state.proxy_on = self.m_consoleLogProxy
         return state
 
     def named_console_state(self, console_logger, proxy_on):
-        # 取单条 console 条目状态：四级别为逐器门控层真值（is_level_on），
+        # 取单条 console 条目状态：六级别为逐器门控层真值（is_level_on），
         # proxyOn 由调用点在表锁外取好传入（条目不做两层 AND 代算）
         return LoggerState(
+            console_logger.is_level_on(Log.eTrace),
             console_logger.is_level_on(Log.eDebug),
             console_logger.is_level_on(Log.eInfo),
             console_logger.is_level_on(Log.eWarn),
             console_logger.is_level_on(Log.eError),
+            console_logger.is_level_on(Log.eFatal),
             proxy_on)
 
     def current_file_state(self):
-        # 取文件全局主闸态（/file_global_state 返回体）：四个级别开关为独立
+        # 取文件全局主闸态（/file_global_state 返回体）：六个级别开关为独立
         # 原子读（组合本无原子快照保证），与控制台主闸相互独立，不持任何表锁；
         # proxy 状态读侧与写侧互斥（叶子锁独立作用域，与控制台 proxyOn 各自独立）
         state = LoggerState(
-            bool(self.m_showFileDebugLog), bool(self.m_showFileInfoLog),
-            bool(self.m_showFileWarningLog), bool(self.m_showFileErrorLog))
+            bool(self.m_showFileTraceLog), bool(self.m_showFileDebugLog),
+            bool(self.m_showFileInfoLog), bool(self.m_showFileWarningLog),
+            bool(self.m_showFileErrorLog), bool(self.m_showFileFatalLog))
         with self.m_fileLogProxyMutex:
             state.proxy_on = self.m_fileLogProxy
         return state
 
     def named_file_state(self, file_logger, proxy_on):
-        # 取单条 file 条目状态：四级别为逐器门控层真值（is_level_on），
+        # 取单条 file 条目状态：六级别为逐器门控层真值（is_level_on），
         # proxyOn 由调用点传入（文件代理态，条目不做两层 AND 代算）
         return LoggerState(
+            file_logger.is_level_on(Log.eTrace),
             file_logger.is_level_on(Log.eDebug),
             file_logger.is_level_on(Log.eInfo),
             file_logger.is_level_on(Log.eWarn),
             file_logger.is_level_on(Log.eError),
+            file_logger.is_level_on(Log.eFatal),
             proxy_on)
 
     def logger_info(self, pkg):

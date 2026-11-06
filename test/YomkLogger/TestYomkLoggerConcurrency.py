@@ -215,12 +215,12 @@ def main():
     for line in out.splitlines():
         if "lg3s1_t" not in line:
             continue  # 框架自身噪声行不参与判定
-        if check_time_format(line) and "[Info ] [" + k_tag + "]" in line:
+        if check_time_format(line) and "[INFO ] [" + k_tag + "]" in line:
             intact_lines += 1
         else:
             broken_lines += 1
     check(broken_lines == 0,
-          f"S1: 含 marker 的行全部完整（时间戳+[Info ]+[tag] 格式，撕裂行 {broken_lines} 条）")
+          f"S1: 含 marker 的行全部完整（时间戳+[INFO ]+[tag] 格式，撕裂行 {broken_lines} 条）")
     check(intact_lines == k_total,
           f"S1: 完整行数 == {k_total}（实际 {intact_lines}）")
 
