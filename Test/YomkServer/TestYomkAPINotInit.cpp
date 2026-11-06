@@ -207,34 +207,34 @@ int main()
             yomk::ctx().all().m_status == yomk::payload::ResStatus::Invalid,
             "getAllContextInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::startEventLoop("/guard_loop") == yomk::payload::ResStatus::Invalid,
-            "startEventLoop 未初始化返回 ResStatus::Invalid");
+            yomk::event_loop().loop("/guard_loop").start() == yomk::payload::ResStatus::Invalid,
+            "loop(name).start() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::stopEventLoop("/guard_loop") == yomk::payload::ResStatus::Invalid,
-            "stopEventLoop 未初始化返回 ResStatus::Invalid");
+            yomk::event_loop().loop("/guard_loop").stop() == yomk::payload::ResStatus::Invalid,
+            "loop(name).stop() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::postEvent("/guard_loop", yomk::msgs::String::shared(std::string("x"))) ==
+            yomk::event_loop().msg(yomk::msgs::String::shared(std::string("x"))).loop("/guard_loop").post() ==
                 yomk::payload::ResStatus::Invalid,
-            "YomkAPI::postEvent 未初始化返回 ResStatus::Invalid");
+            "msg().loop(name).post() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::postEventAndWait("/guard_loop", yomk::msgs::String::shared(std::string("x"))) ==
+            yomk::event_loop().msg(yomk::msgs::String::shared(std::string("x"))).loop("/guard_loop").post_wait() ==
                 yomk::payload::ResStatus::Invalid,
-            "YomkAPI::postEventAndWait 未初始化返回 ResStatus::Invalid");
+            "msg().loop(name).post_wait() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::destroyEventLoop("/guard_loop") == yomk::payload::ResStatus::Invalid,
-            "destroyEventLoop 未初始化返回 ResStatus::Invalid");
+            yomk::event_loop().loop("/guard_loop").destroy() == yomk::payload::ResStatus::Invalid,
+            "loop(name).destroy() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::listEventLoops().m_status == yomk::payload::ResStatus::Invalid,
-            "listEventLoops 未初始化返回 ResStatus::Invalid");
+            yomk::event_loop().list().m_status == yomk::payload::ResStatus::Invalid,
+            "list() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getEventLoopInfo("/guard_loop").m_status == yomk::payload::ResStatus::Invalid,
-            "getEventLoopInfo(name) 未初始化返回 ResStatus::Invalid");
+            yomk::event_loop().loop("/guard_loop").get_info().m_status == yomk::payload::ResStatus::Invalid,
+            "loop(name).get_info() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getEventLoopInfo("/guard_loop", 5).m_status == yomk::payload::ResStatus::Invalid,
-            "getEventLoopInfo(name, n) 未初始化返回 ResStatus::Invalid");
+            yomk::event_loop().loop("/guard_loop").tag_count(5).get_info().m_status == yomk::payload::ResStatus::Invalid,
+            "loop(name).tag_count(n).get_info() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            YomkAPI::getAllEventLoopInfo().m_status == yomk::payload::ResStatus::Invalid,
-            "getAllEventLoopInfo 未初始化返回 ResStatus::Invalid");
+            yomk::event_loop().all().m_status == yomk::payload::ResStatus::Invalid,
+            "all() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             YomkAPI::registerFunction("/guard_func", nullptr) == yomk::payload::ResStatus::Invalid,
             "registerFunction 未初始化返回 ResStatus::Invalid");

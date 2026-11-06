@@ -9,6 +9,7 @@
 #include "YomkExport.h"
 #include "YomkMsgs.h"
 #include "YomkContextApi.h"
+#include "YomkEventLoopApi.h"
 #include "YomkLogApi.h"
 #include "YomkRequest.h"
 #include "YomkServer.h"
@@ -147,79 +148,9 @@ public:
     // 调用点全量切链式
     // CONTEXT_API：已整体迁移至 YomkContextApi.h 的 yomk::ctx() 域（key/group 累积 +
     // 写/读终结 + msg<T>() 类型化分面），14 个成员已删、调用点全量切链式
-    // EVENTLOOP_API
-public:
-    // 启动指定事件循环
-    static yomk::payload::ResStatus startEventLoop(
-        const std::string& eventLoopName,
-        YomkServiceFunc m_defaultServiceFunc = nullptr,
-        const std::string& msgName = "")
-    {
-        return yomk::server().url(yomk::url::loopStart).msg(yomk::msgs::EventLoop::shared(yomk::payload::EventLoop{eventLoopName, m_defaultServiceFunc, msgName})).status();
-    }
-    // 停止事件循环线程（保留未执行事件）
-    static yomk::payload::ResStatus stopEventLoop(const std::string& eventLoopName)
-    {
-        return yomk::server().url(yomk::url::loopStop).msg(yomk::msgs::String::shared(eventLoopName)).status();
-    }
-    // 异步投递事件
-    static yomk::payload::ResStatus postEvent(
-        const std::string& eventLoopName,
-        YomkMsgPtr eventData,
-        YomkServiceFunc eventHandle = nullptr,
-        const std::string& tag = "")
-    {
-        return yomk::server().url(yomk::url::loopPost).msg(yomk::msgs::Event::shared(yomk::payload::Event(eventLoopName, eventData, eventHandle, tag))).status();
-    }
-    // 同步投递事件（阻塞等待执行完成）
-    static yomk::payload::ResStatus postEventAndWait(
-        const std::string& eventLoopName,
-        YomkMsgPtr eventData,
-        YomkServiceFunc eventHandle = nullptr,
-        const std::string& tag = "")
-    {
-        return yomk::server().url(yomk::url::loopPostWait).msg(yomk::msgs::Event::shared(yomk::payload::Event(eventLoopName, eventData, eventHandle, tag))).status();
-    }
-    // 销毁事件循环并清空队列
-    static yomk::payload::ResStatus destroyEventLoop(const std::string& eventLoopName)
-    {
-        return yomk::server().url(yomk::url::loopDestroy).msg(yomk::msgs::String::shared(eventLoopName)).status();
-    }
-    // 获取全部事件循环名称列表
-    static yomk::payload::Response listEventLoops()
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::loopLoops).request();
-    }
-    // 查询指定事件循环状态与事件积压数
-    static yomk::payload::Response getEventLoopInfo(const std::string& eventLoopName)
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::loopLoop).msg(yomk::msgs::EventLoopQuery::shared(yomk::payload::EventLoopQuery{eventLoopName})).request();
-    }
-    static yomk::payload::Response getEventLoopInfo(const std::string& eventLoopName, size_t tagCount)
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::loopLoop).msg(yomk::msgs::EventLoopQuery::shared(yomk::payload::EventLoopQuery{eventLoopName, tagCount})).request();
-    }
-    // 查询全部事件循环状态
-    static yomk::payload::Response getAllEventLoopInfo()
-    {
-        if (!yomk::detail::requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return yomk::server().url(yomk::url::loopAll).request();
-    }
+    // EVENTLOOP_API：已整体迁移至 YomkEventLoopApi.h 的 yomk::event_loop() 域（loop(name) 分面 +
+    // 参数前置累积、终结 op 无参；postAndWait 更名 post_wait、info 更名 get_info，
+    // getEventLoopInfo 双重载合并为 tag_count 累积（省略 = 缺省 3）），9 个成员已删、调用点全量切链式
     // FUNCTIONPOOL_API
 public:
     // 注册函数到全局函数池（msgName 声明期望消息类型；description 函数说明，内容使用者自定义，均可为空）

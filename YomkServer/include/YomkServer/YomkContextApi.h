@@ -256,7 +256,7 @@ public:
         }
         return yomk::server().url(yomk::url::ctxKey).msg(yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{std::string(m_group), std::string(m_key)})).request();
     }
-    // 查询全部组名清单（返回 StringArray，对齐 listEventLoops 形态）
+    // 查询全部组名清单（返回 StringArray，对齐 event_loop().list() 形态）
     yomk::payload::Response groups()
     {
         if (!detail::requireServer())

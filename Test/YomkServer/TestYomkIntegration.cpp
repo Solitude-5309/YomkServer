@@ -9,7 +9,7 @@
  * S2. 删除内置服务契约与恢复：YomkAPI::delService("/YomkLogger") → 服务级 ResStatus::Failed + 精确消息；
  *     YomkAPI::newService<YomkLogger>() 无参重注册（new T(this) 注入 server 指针，构造函数
  *     固定名 "/YomkLogger" 生效）→ LOGGER API 恢复且全链路可用
- * S1. YomkAPI::shutdown() 全链路统一收尾（压轴）：YomkAPI::postEvent 积压、log().to_sink(...).info 缓冲、
+ * S1. YomkAPI::shutdown() 全链路统一收尾（压轴）：event_loop().post() 积压、log().to_sink(...).info 缓冲、
  *     异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘（FileLogger
  *     析构 write）、API 回归 ResStatus::Invalid + "YomkServer is not init"（API 守卫级：shutdown 内
  *     setServer(nullptr)，serverSnapshot 空守卫；服务级 ResStatus::Failed 仅出现在服务表内服务缺失时）、
@@ -211,12 +211,11 @@ int main()
         YOMK_TEST_CHECK(!ec, "S1 临时目录创建成功: " + tmpDir.string());
 
         // 事件积压（不等待执行完成；积压处理语义不保证全执行，仅验证 shutdown 有限时间返回）
-        YOMK_TEST_CHECK(YomkAPI::startEventLoop("integration_loop") == yomk::payload::ResStatus::Succeeded, "启动 integration_loop");
+        YOMK_TEST_CHECK(yomk::event_loop().loop("integration_loop").start() == yomk::payload::ResStatus::Succeeded, "启动 integration_loop");
         bool postOk = true;
         for (int i = 0; i < 100; ++i)
         {
-            if (YomkAPI::postEvent("integration_loop", nullptr,
-                                    [](YomkMsgPtr) { return yomk::payload::Response(yomk::payload::ResStatus::Succeeded); }) !=
+            if (yomk::event_loop().msg(nullptr).loop("integration_loop").handle_fn([](YomkMsgPtr) { return yomk::payload::Response(yomk::payload::ResStatus::Succeeded); }).post() !=
                 yomk::payload::ResStatus::Succeeded)
             {
                 postOk = false;
@@ -259,8 +258,8 @@ int main()
               "shutdown 返回后文件日志已落盘且含标记串（析构 write）");
 
         // API 守卫级回归：serverSnapshot 已置空 → ResStatus::Invalid + "YomkServer is not init"
-        YOMK_TEST_CHECK(YomkAPI::postEvent("integration_loop", nullptr, YomkServiceFunc()) == yomk::payload::ResStatus::Invalid,
-              "shutdown 后 YomkAPI::postEvent 回归 ResStatus::Invalid（失败原因经错误日志承载）");
+        YOMK_TEST_CHECK(yomk::event_loop().msg(nullptr).loop("integration_loop").handle_fn(YomkServiceFunc()).post() == yomk::payload::ResStatus::Invalid,
+              "shutdown 后 event_loop().post() 回归 ResStatus::Invalid（失败原因经错误日志承载）");
         auto postCtx = yomk::ctx().key("drain_key").value(yomk::msgs::String::shared(std::string("x"))).set();
         YOMK_TEST_CHECK(postCtx == yomk::payload::ResStatus::Invalid,
               "shutdown 后 setContext 回归 ResStatus::Invalid");
