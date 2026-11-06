@@ -66,7 +66,7 @@ yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr pkg)
 
 yomk::payload::Response ConfigService::getConfig(YomkMsgPtr pkg)
 {
-    auto data = yomk::msgs::unPack<yomk::msgs::ConfigKey>(pkg);
+    auto data = yomk::msgs::unpack<yomk::msgs::ConfigKey>(pkg);
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ConfigKey"};
@@ -83,7 +83,7 @@ yomk::payload::Response ConfigService::getConfig(YomkMsgPtr pkg)
 
 yomk::payload::Response ConfigService::setConfig(YomkMsgPtr pkg)
 {
-    auto data = yomk::msgs::unPack<yomk::msgs::ConfigKeyValue>(pkg);
+    auto data = yomk::msgs::unpack<yomk::msgs::ConfigKeyValue>(pkg);
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ConfigKeyValue"};

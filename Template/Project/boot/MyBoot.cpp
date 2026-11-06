@@ -21,7 +21,7 @@ int MyBoot::start()
 {
     // 服务创建器映射表
     static const std::map<std::string, std::function<YomkService*()>> serviceCreators = {
-        {"/ConfigService", []() { return new ConfigService(YomkAPI::serverInstance().get()); }},
+        {"/ConfigService", []() { return new ConfigService(yomk::server().instance().get()); }},
     };
 
     // 根据 m_startSrvNames 按需启动服务
@@ -30,7 +30,7 @@ int MyBoot::start()
         auto it = serviceCreators.find(srvName);
         if (it != serviceCreators.end())
         {
-            if (YomkAPI::addService(it->second(), srvName) != 0)
+            if (yomk::server().srv_name(srvName).srv_ptr(it->second()).add() != 0)
                 return -1;
         }
     }
@@ -55,7 +55,7 @@ int MyBoot::after()
         return -1;
     }
 
-    auto name = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
+    auto name = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
     yomk::log().tag("MyBoot::after").info("config name: ", name->d);
 
     // 测试版本号接口：获取并输出工程版本号（来自 CMake project() 定义的 VERSION，编译期注入）
@@ -66,7 +66,7 @@ int MyBoot::after()
         return -1;
     }
 
-    auto version = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
+    auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
     yomk::log().tag("MyBoot::after").info("project version: ", version->d);
 
     resp = yomk::server().url("/ConfigService/get").msg(yomk::msgs::ConfigKey::shared(ConfigKey{"description"})).request();
@@ -76,7 +76,7 @@ int MyBoot::after()
         return -1;
     }
 
-    auto description = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
+    auto description = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
     yomk::log().tag("MyBoot::after").info("config description: ", description->d);
 
     return 0;

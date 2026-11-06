@@ -10,15 +10,15 @@ static int g_fail = 0;
 
 int main(int argc, char* argv[])
 {
-    YomkAPI::init();
+    yomk::server().init();
 
-    YomkAPI::newService<ExtensionService>();
+    yomk::server().srv<ExtensionService>().create();
 
     // 测试版本查询
     yomk::payload::Response resp = yomk::server().url("/ExtensionService/version").request();
     if (resp.m_status == yomk::payload::ResStatus::Succeeded)
     {
-        auto version = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
+        auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
         std::cout << "[PASS] version: " << version->d << std::endl;
         g_pass++;
     }

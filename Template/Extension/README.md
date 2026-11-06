@@ -55,16 +55,16 @@ using namespace yomk;
 
 int main(int argc, char *argv[])
 {
-    YomkAPI::init();
+    yomk::server().init();
 
     // 注册 ExtensionService（扩展服务需先注册才能使用）
-    YomkAPI::newService<ExtensionService>();
+    yomk::server().srv<ExtensionService>().create();
 
     // 版本查询请求
-    yomk::payload::Response resp = YomkAPI::request("/ExtensionService/version", nullptr);
+    yomk::payload::Response resp = yomk::server().url("/ExtensionService/version").request();
     if (resp.m_status == yomk::payload::ResStatus::Succeeded)
     {
-        auto version = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
+        auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
         std::cout << "version: " << version->d << std::endl; // 输出: TemplateExtension v0.0.1
     }
 
