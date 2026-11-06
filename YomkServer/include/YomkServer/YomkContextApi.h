@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "YomkMsgs.h"
-#include "YomkRequest.h"
+#include "YomkServerApi.h"
 #include "YomkUrl.h"
 
 // ctx 域：上下文键值的链式访问面——key/group 累积定位目标，写路径终结经请求域 .status()

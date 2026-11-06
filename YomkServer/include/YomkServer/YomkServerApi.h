@@ -17,8 +17,8 @@
 #include "YomkServerRef.h"
 #include "YomkUrl.h"
 
-// 请求域：request 是刻意保留的基础接口——API 壳屏蔽 URL，但不垄断请求通道，
-// 基于 YomkServer 写自定义服务直接依赖本头，链式 API 各 builder 终结 op 亦经此域。
+// 服务器域（yomk::server()）：request 是刻意保留的基础接口——API 壳屏蔽 URL，但不垄断
+// 请求通道，基于 YomkServer 写自定义服务直接依赖本头，链式 API 各 builder 终结 op 亦经此域。
 // 链式形态：yomk::server() 域入口 → url() 累积 → request()/status() 同步终结，
 // async() 分面（可带回调）→ request() 异步终结。
 // 闭环 6（2026-11-06 决议：生命周期亦链式）：原伞头 VERSION/BOOT/SERVER_INFO 12 个

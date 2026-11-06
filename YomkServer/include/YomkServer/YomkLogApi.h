@@ -6,7 +6,7 @@
 #include "YomkLogFmt.h"
 #include "YomkMsgs.h"
 #include "YomkPayload.h"
-#include "YomkRequest.h"
+#include "YomkServerApi.h"
 #include "YomkSourceLoc.h"
 #include "YomkUrl.h"
 

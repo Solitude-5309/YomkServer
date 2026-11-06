@@ -6,7 +6,7 @@
 
 #include "YomkMsgs.h"
 #include "YomkPayload.h"
-#include "YomkRequest.h"
+#include "YomkServerApi.h"
 #include "YomkUrl.h"
 
 // 事件循环域：单入口 yomk::event_loop()。循环名由 .loop(name) 分面承载，回调 / 消息名 /
