@@ -35,7 +35,7 @@ int ConfigService::init()
 yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr pkg)
 {
     // 从 Context 获取配置文件路径
-    auto ctxVal = yomk::ctx().key(CTX_CONFIG_PATH).type<yomk::msgs::String>().withDefault(nullptr).get();
+    auto ctxVal = yomk::ctx().key(CTX_CONFIG_PATH).msg<yomk::msgs::String>().with_default(nullptr).get();
     if (!ctxVal)
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "config_path not found in context");
     m_configPath = ctxVal->d;

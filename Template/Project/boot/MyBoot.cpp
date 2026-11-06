@@ -12,7 +12,7 @@ int MyBoot::before()
     // 通过 /proc/self/exe 获取可执行文件绝对路径
     std::filesystem::path exePath = std::filesystem::read_symlink("/proc/self/exe");
     std::filesystem::path configPath = exePath.parent_path().parent_path() / "config" / "config.txt";
-    yomk::ctx().key(CTX_CONFIG_PATH).create(yomk::msgs::String::shared(configPath.string()));
+    yomk::ctx().key(CTX_CONFIG_PATH).value(yomk::msgs::String::shared(configPath.string())).create();
     YOMK_INFO_TAG("MyBoot::before", "config path: ", configPath.string());
     return 0;
 }
@@ -40,7 +40,7 @@ int MyBoot::start()
 int MyBoot::after()
 {
     // 服务启动后加载配置文件
-    yomk::payload::Response resp = yomk::server().url("/ConfigService/load").request(nullptr);
+    yomk::payload::Response resp = yomk::server().url("/ConfigService/load").request();
     if (resp.m_status != yomk::payload::ResStatus::Succeeded)
     {
         YOMK_ERROR_TAG("MyBoot::after", "load config failed: ", resp.m_msg);
@@ -48,7 +48,7 @@ int MyBoot::after()
     }
     YOMK_INFO_TAG("MyBoot::after", "started successfully.");
 
-    resp = yomk::server().url("/ConfigService/get").request(yomk::msgs::ConfigKey::shared(ConfigKey{"name"}));
+    resp = yomk::server().url("/ConfigService/get").msg(yomk::msgs::ConfigKey::shared(ConfigKey{"name"})).request();
     if (resp.m_status != yomk::payload::ResStatus::Succeeded)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config name failed: ", resp.m_msg);
@@ -59,7 +59,7 @@ int MyBoot::after()
     YOMK_INFO_TAG("MyBoot::after", "config name: ", name->d);
 
     // 测试版本号接口：获取并输出工程版本号（来自 CMake project() 定义的 VERSION，编译期注入）
-    resp = yomk::server().url("/ConfigService/version").request(nullptr);
+    resp = yomk::server().url("/ConfigService/version").request();
     if (resp.m_status != yomk::payload::ResStatus::Succeeded)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get version failed: ", resp.m_msg);
@@ -69,7 +69,7 @@ int MyBoot::after()
     auto version = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);
     YOMK_INFO_TAG("MyBoot::after", "project version: ", version->d);
 
-    resp = yomk::server().url("/ConfigService/get").request(yomk::msgs::ConfigKey::shared(ConfigKey{"description"}));
+    resp = yomk::server().url("/ConfigService/get").msg(yomk::msgs::ConfigKey::shared(ConfigKey{"description"})).request();
     if (resp.m_status != yomk::payload::ResStatus::Succeeded)
     {
         YOMK_ERROR_TAG("MyBoot::after", "get config description failed: ", resp.m_msg);

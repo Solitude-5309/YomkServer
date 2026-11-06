@@ -77,11 +77,11 @@ int main()
 
     std::cout << "===== 3. request/asyncRequest 未初始化守卫 =====" << std::endl;
     {
-        yomk::payload::Response resp = yomk::server().url("/Any/func").request(nullptr);
+        yomk::payload::Response resp = yomk::server().url("/Any/func").request();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Invalid, "request 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not init", "request 未初始化契约消息: " + resp.m_msg);
 
-        yomk::server().url("/Any/func").async([](yomk::payload::Response) { ++g_asyncCbCount; }).request(nullptr);
+        yomk::server().url("/Any/func").async([](yomk::payload::Response) { ++g_asyncCbCount; }).request();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         YOMK_TEST_CHECK(g_asyncCbCount.load() == 0, "asyncRequest 未初始化静默返回，回调不触发");
     }
@@ -171,10 +171,10 @@ int main()
             YomkAPI::deleteFileLogger("guard_logger") == yomk::payload::ResStatus::Invalid,
             "deleteFileLogger 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::ctx().key("guard_key").create(nullptr) == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").create() == yomk::payload::ResStatus::Invalid,
             "createContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::ctx().key("guard_key").set(nullptr) == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").set() == yomk::payload::ResStatus::Invalid,
             "setContext 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             yomk::ctx().key("guard_key").destroy() == yomk::payload::ResStatus::Invalid,
@@ -186,7 +186,7 @@ int main()
             yomk::ctx().checker().disable() == yomk::payload::ResStatus::Invalid,
             "disableContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::ctx().key("guard_key").checker(nullptr) == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").checker_fn(nullptr).apply() == yomk::payload::ResStatus::Invalid,
             "setContextChecker 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             yomk::ctx().monitor().enable() == yomk::payload::ResStatus::Invalid,
@@ -195,7 +195,7 @@ int main()
             yomk::ctx().monitor().disable() == yomk::payload::ResStatus::Invalid,
             "disableContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::ctx().key("guard_key").monitor(nullptr) == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").monitor_fn(nullptr).apply() == yomk::payload::ResStatus::Invalid,
             "setContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             yomk::ctx().keys().m_status == yomk::payload::ResStatus::Invalid,
@@ -267,7 +267,7 @@ int main()
 
         // getContext 特殊形态：守卫返回值即调用方默认值（指针一致）
         std::shared_ptr<yomk::msgs::String> ctxDefault = std::make_shared<yomk::msgs::String>("guard_default");
-        std::shared_ptr<yomk::msgs::String> ctxGot = yomk::ctx().key("guard_key").type<yomk::msgs::String>().withDefault(ctxDefault).get();
+        std::shared_ptr<yomk::msgs::String> ctxGot = yomk::ctx().key("guard_key").msg<yomk::msgs::String>().with_default(ctxDefault).get();
         YOMK_TEST_CHECK(ctxGot == ctxDefault, "getContext 未初始化原样返回调用方默认值");
     }
 

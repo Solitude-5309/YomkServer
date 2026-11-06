@@ -97,7 +97,7 @@ int main()
         YOMK_TEST_CHECK(YomkAPI::delService("/ApiSrv") == -1, "重复删除已删服务返回 -1");
 
         // 已初始化时守卫放行至服务器层：不存在的服务名按服务器层契约返回 ResStatus::Failed
-        yomk::payload::Response resp = yomk::server().url("/Nope/x").request(nullptr);
+        yomk::payload::Response resp = yomk::server().url("/Nope/x").request();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Failed, "request 未知服务经守卫放行至服务器层返回 ResStatus::Failed");
     }
 
@@ -109,7 +109,7 @@ int main()
         YomkAPI::shutdown();
         YOMK_TEST_CHECK(true, "二次 shutdown 幂等不崩溃");
 
-        yomk::payload::Response resp = yomk::server().url("/Any/func").request(nullptr);
+        yomk::payload::Response resp = yomk::server().url("/Any/func").request();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Invalid, "关闭后 request 守卫回归 ResStatus::Invalid");
         YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not init", "关闭后契约消息回归: " + resp.m_msg);
         YOMK_TEST_CHECK(YomkAPI::newService<DummySrv>() == -1, "关闭后 newService 守卫回归 -1");

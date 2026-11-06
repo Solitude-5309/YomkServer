@@ -11,7 +11,7 @@
  *           跨服务调用 /TelemetryService/record 留痕，演示调用链与失败传播
  *
  * 服务内部调用其他服务用成员函数 request("/服务名/函数名", pkg)，
- * 与全局请求链 yomk::server().url(u).request(pkg) 等价，写法更短。
+ * 与全局请求链 yomk::server().url(u).msg(pkg).request() 等价，写法更短。
  */
 class MotionService : public YomkService
 {

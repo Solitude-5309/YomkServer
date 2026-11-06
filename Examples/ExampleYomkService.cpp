@@ -262,16 +262,16 @@ static void showArmLinkCheck()
 
     logAction(
         "通讯自检：请求运动服务回环", "REQUEST /MotionService/echo",
-        [&] { return yomk::server().url("/MotionService/echo").request(yomk::msgs::String::shared("ping")); });
+        [&] { return yomk::server().url("/MotionService/echo").msg(yomk::msgs::String::shared("ping")).request(); });
     logVerify("arm.motion 日志夹在开始行与结果行之间——REQUEST 在调用方线程同步执行；回包 data 携带回显文本");
 
     logAction(
         "请求不存在的服务 /GhostService", "REQUEST /GhostService/echo",
-        [&] { return yomk::server().url("/GhostService/echo").request(yomk::msgs::String::shared("ping")); });
+        [&] { return yomk::server().url("/GhostService/echo").msg(yomk::msgs::String::shared("ping")).request(); });
 
     logAction(
         "请求运动服务不存在的函数", "REQUEST /MotionService/not_exist",
-        [&] { return yomk::server().url("/MotionService/not_exist").request(yomk::msgs::String::shared("ping")); });
+        [&] { return yomk::server().url("/MotionService/not_exist").msg(yomk::msgs::String::shared("ping")).request(); });
     logVerify("两种 not-found 均为 ResStatus::Failed 且 msg 说明原因：寻址失败是普通返回值，不报错不崩溃");
 }
 
@@ -299,7 +299,7 @@ static void showArmAsyncTeach()
     };
 
     logAction("异步下发示教点自检请求");
-    yomk::server().url("/MotionService/echo").async(onTeachDone).request(yomk::msgs::String::shared("teach point #1"));
+    yomk::server().url("/MotionService/echo").async(onTeachDone).msg(yomk::msgs::String::shared("teach point #1")).request();
     logVerify("ASYNC_REQUEST 无同步结果行：发送即返回，控制回路不等回调");
 
     // 等待异步回调送达，保证回调日志先于下一条验证行出现、可读
@@ -322,7 +322,7 @@ static void showArmMoveChain()
     MoveCmd moveCmd{100.0, 50.0, 200.0, 0.8};
     yomk::payload::Response moveResp = logAction(
         "下发运动指令：运动到 (100.0, 50.0, 200.0)mm", "REQUEST /MotionService/move",
-        [&] { return yomk::server().url("/MotionService/move").request(yomk::msgs::MoveCmd::shared(moveCmd)); });
+        [&] { return yomk::server().url("/MotionService/move").msg(yomk::msgs::MoveCmd::shared(moveCmd)).request(); });
 
     logAction("展开到位回执 MoveResp");
     std::ostringstream oss;
@@ -431,7 +431,7 @@ static void showArmStationOffline()
     MoveCmd moveCmd{100.0, 50.0, 200.0, 0.8};
     logAction(
         "重发运动指令（留痕缺失）", "REQUEST /MotionService/move",
-        [&] { return yomk::server().url("/MotionService/move").request(yomk::msgs::MoveCmd::shared(moveCmd)); });
+        [&] { return yomk::server().url("/MotionService/move").msg(yomk::msgs::MoveCmd::shared(moveCmd)).request(); });
     logVerify("move 返回 ResStatus::Failed(move failed: ...)：留痕是运动的依赖前置，失败沿调用链传播");
 }
 
@@ -466,7 +466,7 @@ static void showArmPowerOff()
         "收班断电：优雅关闭框架", "SHUTDOWN + REQUEST (关闭后守卫)",
         [&] {
             YomkAPI::shutdown();
-            return yomk::server().url("/MotionService/echo").request(yomk::msgs::String::shared("after shutdown"));
+            return yomk::server().url("/MotionService/echo").msg(yomk::msgs::String::shared("after shutdown")).request();
         });
 }
 

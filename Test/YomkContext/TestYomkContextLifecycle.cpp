@@ -96,14 +96,14 @@ int main()
     // ============ Section 2: 基线运行（异步 monitor 池工作）============
     {
         yomk::ctx().group().monitor().enable();
-        auto cr = yomk::ctx().key("life_base").create(yomk::msgs::String::shared(std::string("b0")));
+        auto cr = yomk::ctx().key("life_base").value(yomk::msgs::String::shared(std::string("b0"))).create();
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "创建 life_base 成功");
 
         g_asyncCalls.store(0);
-        yomk::ctx().key("life_base").monitor([](const yomk::payload::Context&) { ++g_asyncCalls; }, /*async=*/true);
+        yomk::ctx().key("life_base").monitor_fn([](const yomk::payload::Context&) { ++g_asyncCalls; }).async(/*async=*/true).apply();
 
-        yomk::ctx().key("life_base").set(yomk::msgs::String::shared(std::string("b1")));
-        yomk::ctx().key("life_base").set(yomk::msgs::String::shared(std::string("b2")));
+        yomk::ctx().key("life_base").value(yomk::msgs::String::shared(std::string("b1"))).set();
+        yomk::ctx().key("life_base").value(yomk::msgs::String::shared(std::string("b2"))).set();
 
         bool reached = waitForCount(g_asyncCalls, 2, 2000);
         YOMK_TEST_CHECK(reached && g_asyncCalls.load() == 2, "基线：异步 monitor 池正常工作（计数 == 2）");
@@ -113,16 +113,16 @@ int main()
     // ============ Section 3: delService 触发 deinit + 排空 ============
     {
         yomk::ctx().group().monitor().enable();
-        auto cr = yomk::ctx().key("life_drain").create(yomk::msgs::String::shared(std::string("d0")));
+        auto cr = yomk::ctx().key("life_drain").value(yomk::msgs::String::shared(std::string("d0"))).create();
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "创建 life_drain 成功");
 
         g_asyncCalls.store(0);
-        yomk::ctx().key("life_drain").monitor([](const yomk::payload::Context&) { ++g_asyncCalls; }, /*async=*/true);
+        yomk::ctx().key("life_drain").monitor_fn([](const yomk::payload::Context&) { ++g_asyncCalls; }).async(/*async=*/true).apply();
 
         const int N = 50;
         for (int i = 0; i < N; ++i)
         {
-            yomk::ctx().key("life_drain").set(yomk::msgs::String::shared(std::string("d") + std::to_string(i)));
+            yomk::ctx().key("life_drain").value(yomk::msgs::String::shared(std::string("d") + std::to_string(i))).set();
         }
 
         // 立即删除服务：触发 markDeleted + deinit 排空 monitor 池
@@ -135,7 +135,7 @@ int main()
 
     // ============ Section 4: 删除后不可路由 + 重复删除契约 ============
     {
-        auto resp = yomk::server().url("/YomkContext/keys").request(nullptr);
+        auto resp = yomk::server().url("/YomkContext/keys").request();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Failed, "删除后请求 /YomkContext 返回 ResStatus::Failed");
         YOMK_TEST_CHECK(resp.m_msg == "service not found: /YomkContext", "删除后消息为 service not found: /YomkContext");
 
@@ -155,15 +155,15 @@ int main()
         YOMK_TEST_CHECK(infos.size() == 14, "重新注册后 init 重新装配 14 个功能函数");
 
         yomk::ctx().group().monitor().enable();
-        auto cr = yomk::ctx().key("life_rebuild").create(yomk::msgs::String::shared(std::string("r0")));
+        auto cr = yomk::ctx().key("life_rebuild").value(yomk::msgs::String::shared(std::string("r0"))).create();
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "重新注册后创建 life_rebuild 成功");
 
         g_asyncCalls.store(0);
-        yomk::ctx().key("life_rebuild").monitor([](const yomk::payload::Context&) { ++g_asyncCalls; }, /*async=*/true);
+        yomk::ctx().key("life_rebuild").monitor_fn([](const yomk::payload::Context&) { ++g_asyncCalls; }).async(/*async=*/true).apply();
 
-        yomk::ctx().key("life_rebuild").set(yomk::msgs::String::shared(std::string("r1")));
-        yomk::ctx().key("life_rebuild").set(yomk::msgs::String::shared(std::string("r2")));
-        yomk::ctx().key("life_rebuild").set(yomk::msgs::String::shared(std::string("r3")));
+        yomk::ctx().key("life_rebuild").value(yomk::msgs::String::shared(std::string("r1"))).set();
+        yomk::ctx().key("life_rebuild").value(yomk::msgs::String::shared(std::string("r2"))).set();
+        yomk::ctx().key("life_rebuild").value(yomk::msgs::String::shared(std::string("r3"))).set();
 
         bool reached = waitForCount(g_asyncCalls, 3, 2000);
         YOMK_TEST_CHECK(reached && g_asyncCalls.load() == 3, "重新注册后 monitor 池重建可用（计数 == 3）");

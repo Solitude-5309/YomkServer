@@ -322,13 +322,13 @@ static void showArmPlantRoster()
 
     logAction(
         "试运行工位功能：状态上报", "REQUEST /ArmStation/report",
-        [&] { return yomk::server().url("/ArmStation/report").request(yomk::msgs::String::shared("joint ready")); });
+        [&] { return yomk::server().url("/ArmStation/report").msg(yomk::msgs::String::shared("joint ready")).request(); });
 
     // 入参先赋具名变量：聚合初始化含逗号，直接内联进宏会被预处理器误当实参分隔符
     QualityCheckReq checkReq{"S3", 5};
     logAction(
         "试运行工位功能：质量抽检", "REQUEST /ArmStation/quality_check",
-        [&] { return yomk::server().url("/ArmStation/quality_check").request(yomk::msgs::QualityCheckReq::shared(checkReq)); });
+        [&] { return yomk::server().url("/ArmStation/quality_check").msg(yomk::msgs::QualityCheckReq::shared(checkReq)).request(); });
     logVerify("arm.station 日志夹在开始行与结果行之间——REQUEST 在调用方线程同步执行；返回值即函数返回值，msg 携带回执");
 }
 

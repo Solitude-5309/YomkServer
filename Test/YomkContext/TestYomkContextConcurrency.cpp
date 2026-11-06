@@ -87,7 +87,7 @@ int main()
     std::cout << "===== 1. 并发 get/set 共享键 =====" << std::endl;
     {
         resetGlobals();
-        auto cr = yomk::ctx().key("conc_rw").create(yomk::msgs::String::shared(std::string("v_init")));
+        auto cr = yomk::ctx().key("conc_rw").value(yomk::msgs::String::shared(std::string("v_init"))).create();
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "1.1 创建 conc_rw 成功");
 
         const int T = 8, K = 500;
@@ -102,7 +102,7 @@ int main()
                     {
                         if (i % 2 == 0)
                         {
-                            auto v = yomk::ctx().key("conc_rw").type<yomk::msgs::String>().withDefault(yomk::msgs::String::shared(std::string(""))).get();
+                            auto v = yomk::ctx().key("conc_rw").msg<yomk::msgs::String>().with_default(yomk::msgs::String::shared(std::string(""))).get();
                             // conc_rw 始终存在且值为非空 String，命中 ResStatus::Succeeded 路径返回非空值
                             if (v && !v->d.empty())
                                 ++okGet;
@@ -111,7 +111,7 @@ int main()
                         }
                         else
                         {
-                            auto r = yomk::ctx().key("conc_rw").set(yomk::msgs::String::shared(std::string("v") + std::to_string(t) + "_" + std::to_string(i)));
+                            auto r = yomk::ctx().key("conc_rw").value(yomk::msgs::String::shared(std::string("v") + std::to_string(t) + "_" + std::to_string(i))).set();
                             if (r == yomk::payload::ResStatus::Succeeded)
                                 ++okSet;
                             else
@@ -144,7 +144,7 @@ int main()
                     std::string key = "conc_cd_" + std::to_string(t);
                     for (int i = 0; i < K; ++i)
                     {
-                        auto c = yomk::ctx().key(key).create(yomk::msgs::String::shared(std::string("x")));
+                        auto c = yomk::ctx().key(key).value(yomk::msgs::String::shared(std::string("x"))).create();
                         if (c == yomk::payload::ResStatus::Succeeded)
                             ++okCreate;
                         else
@@ -179,7 +179,7 @@ int main()
     std::cout << "===== 3. 并发 setMonitor 同键 =====" << std::endl;
     {
         resetGlobals();
-        auto cr = yomk::ctx().key("conc_mon").create(yomk::msgs::String::shared(std::string("m0")));
+        auto cr = yomk::ctx().key("conc_mon").value(yomk::msgs::String::shared(std::string("m0"))).create();
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "3.1 创建 conc_mon 成功");
         yomk::ctx().monitor().enable();
 
@@ -193,7 +193,7 @@ int main()
                 {
                     for (int i = 0; i < K; ++i)
                     {
-                        auto r = yomk::ctx().key("conc_mon").monitor([](const yomk::payload::Context&) { ++g_syncMon; }, /*async=*/false);
+                        auto r = yomk::ctx().key("conc_mon").monitor_fn([](const yomk::payload::Context&) { ++g_syncMon; }).async(/*async=*/false).apply();
                         if (r == yomk::payload::ResStatus::Succeeded)
                             ++okMon;
                         else
@@ -209,7 +209,7 @@ int main()
 
         // 单次 set 触发全部已注册 monitor：计数 == 注册次数，证明并发 push_back 无丢失/损坏
         g_syncMon.store(0);
-        auto sr = yomk::ctx().key("conc_mon").set(yomk::msgs::String::shared(std::string("m1")));
+        auto sr = yomk::ctx().key("conc_mon").value(yomk::msgs::String::shared(std::string("m1"))).set();
         YOMK_TEST_CHECK(sr == yomk::payload::ResStatus::Succeeded, "3.4 触发 set 返回 ResStatus::Succeeded");
         YOMK_TEST_CHECK(g_syncMon.load() == T * K, "3.5 并发注册的 monitor 全部落地（计数 == 注册次数）");
         yomk::ctx().monitor().disable();
@@ -219,7 +219,7 @@ int main()
     std::cout << "===== 4. 并发 setChecker × keyInfo 同键 =====" << std::endl;
     {
         resetGlobals();
-        auto cr = yomk::ctx().key("conc_ck").create(yomk::msgs::String::shared(std::string("c0")));
+        auto cr = yomk::ctx().key("conc_ck").value(yomk::msgs::String::shared(std::string("c0"))).create();
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "4.1 创建 conc_ck 成功");
 
         const int T = 16, K = 100;  // 半数写 checker、半数读 keyInfo
@@ -235,7 +235,7 @@ int main()
                     {
                         if (writer)
                         {
-                            auto r = yomk::ctx().key("conc_ck").checker([](const yomk::payload::Context&) { return CheckStatus::Accept; });
+                            auto r = yomk::ctx().key("conc_ck").checker_fn([](const yomk::payload::Context&) { return CheckStatus::Accept; }).apply();
                             if (r == yomk::payload::ResStatus::Succeeded)
                                 ++okWriter;
                             else
@@ -262,12 +262,12 @@ int main()
         // 并发注册后 checker 仍有效：开启 checker 后单次 set 调用 checker 一次
         yomk::ctx().checker().enable();
         g_checkerCalls.store(0);
-        yomk::ctx().key("conc_ck").checker([](const yomk::payload::Context&)
+        yomk::ctx().key("conc_ck").checker_fn([](const yomk::payload::Context&)
             {
                 ++g_checkerCalls;
                 return CheckStatus::Accept;
-            });
-        auto sr = yomk::ctx().key("conc_ck").set(yomk::msgs::String::shared(std::string("c1")));
+            }).apply();
+        auto sr = yomk::ctx().key("conc_ck").value(yomk::msgs::String::shared(std::string("c1"))).set();
         YOMK_TEST_CHECK(sr == yomk::payload::ResStatus::Succeeded, "4.5 并发注册后 set 仍 ResStatus::Succeeded");
         YOMK_TEST_CHECK(g_checkerCalls.load() == 1, "4.6 checker 有效并被调用 1 次");
         yomk::ctx().checker().disable();
@@ -277,13 +277,13 @@ int main()
     std::cout << "===== 5. 并发 set 触发 checker =====" << std::endl;
     {
         resetGlobals();
-        auto cr = yomk::ctx().key("conc_setck").create(yomk::msgs::String::shared(std::string("s0")));
+        auto cr = yomk::ctx().key("conc_setck").value(yomk::msgs::String::shared(std::string("s0"))).create();
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "5.1 创建 conc_setck 成功");
-        yomk::ctx().key("conc_setck").checker([](const yomk::payload::Context&)
+        yomk::ctx().key("conc_setck").checker_fn([](const yomk::payload::Context&)
             {
                 ++g_checkerCalls;
                 return CheckStatus::Accept;
-            });
+            }).apply();
         yomk::ctx().checker().enable();
 
         const int T = 8, K = 200;
@@ -298,7 +298,7 @@ int main()
                     for (int i = 0; i < K; ++i)
                     {
                         auto r =
-                            yomk::ctx().key("conc_setck").set(yomk::msgs::String::shared(std::string("s") + std::to_string(i)));
+                            yomk::ctx().key("conc_setck").value(yomk::msgs::String::shared(std::string("s") + std::to_string(i))).set();
                         if (r == yomk::payload::ResStatus::Succeeded)
                             ++okSet;
                         else
@@ -319,10 +319,10 @@ int main()
     std::cout << "===== 6. 并发 set 触发 sync+async monitor =====" << std::endl;
     {
         resetGlobals();
-        auto cr = yomk::ctx().key("conc_setmon").create(yomk::msgs::String::shared(std::string("n0")));
+        auto cr = yomk::ctx().key("conc_setmon").value(yomk::msgs::String::shared(std::string("n0"))).create();
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "6.1 创建 conc_setmon 成功");
-        yomk::ctx().key("conc_setmon").monitor([](const yomk::payload::Context&) { ++g_syncMon; }, /*async=*/false);
-        yomk::ctx().key("conc_setmon").monitor([](const yomk::payload::Context&) { ++g_asyncMon; }, /*async=*/true);
+        yomk::ctx().key("conc_setmon").monitor_fn([](const yomk::payload::Context&) { ++g_syncMon; }).async(/*async=*/false).apply();
+        yomk::ctx().key("conc_setmon").monitor_fn([](const yomk::payload::Context&) { ++g_asyncMon; }).async(/*async=*/true).apply();
         yomk::ctx().monitor().enable();
 
         const int T = 8, K = 200;
@@ -338,7 +338,7 @@ int main()
                     for (int i = 0; i < K; ++i)
                     {
                         auto r =
-                            yomk::ctx().key("conc_setmon").set(yomk::msgs::String::shared(std::string("n") + std::to_string(i)));
+                            yomk::ctx().key("conc_setmon").value(yomk::msgs::String::shared(std::string("n") + std::to_string(i))).set();
                         if (r == yomk::payload::ResStatus::Succeeded)
                             ++okSet;
                         else
@@ -361,21 +361,21 @@ int main()
     std::cout << "===== 7. 同步 monitor 重入安全 =====" << std::endl;
     {
         resetGlobals();
-        auto cra = yomk::ctx().key("conc_a").create(yomk::msgs::String::shared(std::string("a0")));
-        auto crb = yomk::ctx().key("conc_b").create(yomk::msgs::String::shared(std::string("b0")));
+        auto cra = yomk::ctx().key("conc_a").value(yomk::msgs::String::shared(std::string("a0"))).create();
+        auto crb = yomk::ctx().key("conc_b").value(yomk::msgs::String::shared(std::string("b0"))).create();
         YOMK_TEST_CHECK(cra == yomk::payload::ResStatus::Succeeded && crb == yomk::payload::ResStatus::Succeeded, "7.1 创建 conc_a/conc_b 成功");
 
         // conc_a 的同步 monitor 内重入 Context API（读 conc_b）：set 已在锁外执行 monitor，不应死锁
-        yomk::ctx().key("conc_a").monitor([](const yomk::payload::Context&)
+        yomk::ctx().key("conc_a").monitor_fn([](const yomk::payload::Context&)
             {
                 auto r = yomk::ctx().key("conc_b").info();
                 if (r.m_status == yomk::payload::ResStatus::Succeeded)
                     ++g_reentrantOk;
-            });
+            }).apply();
         yomk::ctx().monitor().enable();
 
         g_reentrantOk.store(0);
-        auto sr = yomk::ctx().key("conc_a").set(yomk::msgs::String::shared(std::string("a1")));
+        auto sr = yomk::ctx().key("conc_a").value(yomk::msgs::String::shared(std::string("a1"))).set();
         YOMK_TEST_CHECK(sr == yomk::payload::ResStatus::Succeeded, "7.2 set(conc_a) 返回 ResStatus::Succeeded（monitor 重入未死锁）");
         YOMK_TEST_CHECK(g_reentrantOk.load() == 1, "7.3 monitor 内重入 INFO_KEY(conc_b) 成功 1 次");
         yomk::ctx().monitor().disable();
@@ -388,7 +388,7 @@ int main()
         const int M = 64;  // 预建 keyspace 大小
         for (int n = 0; n < M; ++n)
         {
-            auto cr = yomk::ctx().key("stress_" + std::to_string(n)).create(yomk::msgs::String::shared(std::string("init") + std::to_string(n)));
+            auto cr = yomk::ctx().key("stress_" + std::to_string(n)).value(yomk::msgs::String::shared(std::string("init") + std::to_string(n))).create();
             if (cr != yomk::payload::ResStatus::Succeeded)
                 ++g_illegal;
         }
@@ -414,7 +414,7 @@ int main()
                         {
                             case 0:
                             {
-                                auto v = yomk::ctx().key(key).type<yomk::msgs::String>().withDefault(yomk::msgs::String::shared(std::string(""))).get();
+                                auto v = yomk::ctx().key(key).msg<yomk::msgs::String>().with_default(yomk::msgs::String::shared(std::string(""))).get();
                                 if (v && !v->d.empty())
                                     ++okOps;
                                 else
@@ -423,7 +423,7 @@ int main()
                             }
                             case 1:
                             {
-                                auto r = yomk::ctx().key(key).set(yomk::msgs::String::shared(std::string("sv")));
+                                auto r = yomk::ctx().key(key).value(yomk::msgs::String::shared(std::string("sv"))).set();
                                 if (r == yomk::payload::ResStatus::Succeeded)
                                     ++okOps;
                                 else
@@ -459,7 +459,7 @@ int main()
                             }
                             case 5:
                             {
-                                auto r = yomk::ctx().key(key).checker([](const yomk::payload::Context&) { return CheckStatus::Accept; });
+                                auto r = yomk::ctx().key(key).checker_fn([](const yomk::payload::Context&) { return CheckStatus::Accept; }).apply();
                                 if (r == yomk::payload::ResStatus::Succeeded)
                                     ++okOps;
                                 else
@@ -468,7 +468,7 @@ int main()
                             }
                             case 6:
                             {
-                                auto r = yomk::ctx().key(key).monitor([](const yomk::payload::Context&) {});
+                                auto r = yomk::ctx().key(key).monitor_fn([](const yomk::payload::Context&) {}).apply();
                                 if (r == yomk::payload::ResStatus::Succeeded)
                                     ++okOps;
                                 else
@@ -478,7 +478,7 @@ int main()
                             default:
                             {
                                 std::string tk = "stress_tmp_" + std::to_string(t);
-                                auto c = yomk::ctx().key(tk).create(yomk::msgs::String::shared(std::string("tmp")));
+                                auto c = yomk::ctx().key(tk).value(yomk::msgs::String::shared(std::string("tmp"))).create();
                                 auto d = yomk::ctx().key(tk).destroy();
                                 if (c == yomk::payload::ResStatus::Succeeded && d == yomk::payload::ResStatus::Succeeded)
                                     ++okOps;

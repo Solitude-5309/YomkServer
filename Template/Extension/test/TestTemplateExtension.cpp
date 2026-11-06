@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     YomkAPI::newService<ExtensionService>();
 
     // 测试版本查询
-    yomk::payload::Response resp = yomk::server().url("/ExtensionService/version").request(nullptr);
+    yomk::payload::Response resp = yomk::server().url("/ExtensionService/version").request();
     if (resp.m_status == yomk::payload::ResStatus::Succeeded)
     {
         auto version = yomk::msgs::unPack<yomk::msgs::String>(resp.m_data);

@@ -23,7 +23,7 @@
  * 场景 1 showArmBootCreate      [yomk::ctx().key().create()]
  *        控制柜上电，主控模块写入初始状态（模式/速度倍率/伺服状态）；
  *        重复创建同名键被拒——创建是排他的，更新请用 SET。
- * 场景 2 showArmReadStatus      [yomk::ctx().key().type<T>().withDefault().get()]
+ * 场景 2 showArmReadStatus      [yomk::ctx().key().msg<T>().with_default().get()]
  *        示教器读速度倍率命中只读快照；查询未上线负载模块的键返回兜底
  *        默认值（指针相等自证兜底路径，调用方永不拿到空指针）。
  * 场景 3 showArmUpdateStatus    [yomk::ctx().key().set()]
@@ -32,10 +32,10 @@
  * 场景 4 showArmGuardSpeedRatio [yomk::ctx().key().checker() / ON_CHECKER / OFF_CHECKER]
  *        倍率超 1.0 有撞机风险：挂校验回调后，全局门控未开时不生效；
  *        ON 后超限被拒且值不变、合法值放行；OFF（现场调试）门控旁路。
- * 场景 5 showArmWatchServoPower [yomk::ctx().key().monitor(fn) / ON_MONITOR / OFF_MONITOR]
+ * 场景 5 showArmWatchServoPower [yomk::ctx().key().monitor_fn(fn).apply() / ON_MONITOR / OFF_MONITOR]
  *        安全 PLC 订阅伺服电源指令：追加式多播（上电告警 + 操作黑匣子）；
  *        全局开/关控制通知启停——OFF 后 monitor 保留但不执行。
- * 场景 6 showArmReportPose      [yomk::ctx().key().monitor(fn, true)]
+ * 场景 6 showArmReportPose      [yomk::ctx().key().monitor_fn(fn).async(true).apply()]
  *        数字孪生异步上报末端位姿：单线程池按 set 提交序保序送达，
  *        执行线程是池线程——上报不阻塞运动控制回路。
  * 场景 7 showArmDashboard       [yomk::ctx().group().keys() / INFO_KEY / INFO_ALL]
@@ -211,7 +211,7 @@ static void logKeyInfo(const std::string& api, const yomk::payload::ContextKeyIn
 // 处理而非错误——后启动的模块靠它安全补建自己关心的键。
 static void ensureKey(const std::string& op, const std::string& key, YomkMsgPtr value)
 {
-    auto status = logAction(op, "CREATE " + key, [&] { return yomk::ctx().key(key).create(value); });
+    auto status = logAction(op, "CREATE " + key, [&] { return yomk::ctx().key(key).value(value).create(); });
     if (status != yomk::payload::ResStatus::Succeeded)
     {
         std::ostringstream oss;
@@ -316,19 +316,19 @@ static void showArmBootCreate()
         "主控模块把运行模式/速度倍率/伺服状态写入共享上下文，供示教器、安全 PLC 等模块共享；"
         "重复创建同名键会被拒绝——创建是排他的。");
 
-    logAction("写入初始运行模式", "CREATE arm.mode", [&] { return yomk::ctx().key("arm.mode").create(yomk::msgs::String::shared("idle")); });
+    logAction("写入初始运行模式", "CREATE arm.mode", [&] { return yomk::ctx().key("arm.mode").value(yomk::msgs::String::shared("idle")).create(); });
     logAction(
-        "写入初始速度倍率", "CREATE arm.speed_ratio", [&] { return yomk::ctx().key("arm.speed_ratio").create(yomk::msgs::Float64::shared(0.5)); });
+        "写入初始速度倍率", "CREATE arm.speed_ratio", [&] { return yomk::ctx().key("arm.speed_ratio").value(yomk::msgs::Float64::shared(0.5)).create(); });
     logAction(
         "写入初始伺服电源状态",
         "CREATE arm.servo_power",
-        [&] { return yomk::ctx().key("arm.servo_power").create(yomk::msgs::Bool::shared(false)); });
+        [&] { return yomk::ctx().key("arm.servo_power").value(yomk::msgs::Bool::shared(false)).create(); });
 
     // 重复创建同名键：ResStatus::Failed "key already exists"，排他语义——更新请走 SET（见场景 3）
     logAction(
         "重复创建同名键",
         "CREATE arm.mode (重复)",
-        [&] { return yomk::ctx().key("arm.mode").create(yomk::msgs::String::shared("auto")); });
+        [&] { return yomk::ctx().key("arm.mode").value(yomk::msgs::String::shared("auto")).create(); });
     logVerify("重复创建同名键 -> ResStatus::Failed(key already exists)：创建排他，更新请用 SET");
 }
 
@@ -338,7 +338,7 @@ static void showArmReadStatus()
     logScene(
         2,
         "示教器读取状态",
-        "yomk::ctx().key().type<T>().get()",
+        "yomk::ctx().key().msg<T>().get()",
         "示教器启动时读取机械臂状态：命中返回只读快照；负载称重模块尚未上线，查询其键返回"
         "兜底默认值——调用方永不拿到空指针。");
 
@@ -346,11 +346,11 @@ static void showArmReadStatus()
     yomk::msgs::Float64Ptr ratioFallback = yomk::msgs::Float64::shared(0.0);
 
     logAction("示教器读取速度倍率");
-    yomk::msgs::Float64Ptr ratio = yomk::ctx().key("arm.speed_ratio").type<yomk::msgs::Float64>().withDefault(ratioFallback).get();
+    yomk::msgs::Float64Ptr ratio = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
     logGet("arm.speed_ratio", fmtF64(ratio->d), ratio == ratioFallback);
 
     logAction("示教器查询未上线的负载模块");
-    yomk::msgs::Float64Ptr payload = yomk::ctx().key("arm.payload_kg").type<yomk::msgs::Float64>().withDefault(ratioFallback).get();
+    yomk::msgs::Float64Ptr payload = yomk::ctx().key("arm.payload_kg").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
     logGet("arm.payload_kg", fmtF64(payload->d), payload == ratioFallback);
     logVerify("查询未注册的键 -> 返回兜底默认值 0.0（指针相等），调用方永不拿到空指针");
 }
@@ -368,15 +368,15 @@ static void showArmUpdateStatus()
     // 示教器先前读到的旧快照（0.5）——SET 之后它不应被改动
     yomk::msgs::Float64Ptr ratioFallback = yomk::msgs::Float64::shared(0.0);
     logAction("示教器留存当前倍率快照");
-    yomk::msgs::Float64Ptr oldSnapshot = yomk::ctx().key("arm.speed_ratio").type<yomk::msgs::Float64>().withDefault(ratioFallback).get();
+    yomk::msgs::Float64Ptr oldSnapshot = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
     logGet("arm.speed_ratio", fmtF64(oldSnapshot->d), oldSnapshot == ratioFallback);
 
-    logAction("切入自动模式", "SET arm.mode", [&] { return yomk::ctx().key("arm.mode").set(yomk::msgs::String::shared("auto")); });
-    logAction("提高速度倍率至 0.8", "SET arm.speed_ratio", [&] { return yomk::ctx().key("arm.speed_ratio").set(yomk::msgs::Float64::shared(0.8)); });
+    logAction("切入自动模式", "SET arm.mode", [&] { return yomk::ctx().key("arm.mode").value(yomk::msgs::String::shared("auto")).set(); });
+    logAction("提高速度倍率至 0.8", "SET arm.speed_ratio", [&] { return yomk::ctx().key("arm.speed_ratio").value(yomk::msgs::Float64::shared(0.8)).set(); });
 
     // 新旧快照对比：验证 SET 的整体替换语义（业务结论，不限于单次接口调用）
     logAction("新旧快照对比");
-    yomk::msgs::Float64Ptr fresh = yomk::ctx().key("arm.speed_ratio").type<yomk::msgs::Float64>().withDefault(ratioFallback).get();
+    yomk::msgs::Float64Ptr fresh = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
     logGet("arm.speed_ratio 旧快照", fmtF64(oldSnapshot->d), oldSnapshot == ratioFallback);
     logGet("arm.speed_ratio 新快照", fmtF64(fresh->d), fresh == ratioFallback);
     logVerify("SET 整体替换值对象：留存快照保持 0.5 不变，新读取得到 0.8——旧快照即冻结");
@@ -385,7 +385,7 @@ static void showArmUpdateStatus()
     logAction(
         "误用类型改写运行模式",
         "SET arm.mode (Float64)",
-        [&] { return yomk::ctx().key("arm.mode").set(yomk::msgs::Float64::shared(1.0)); });
+        [&] { return yomk::ctx().key("arm.mode").value(yomk::msgs::Float64::shared(1.0)).set(); });
     logVerify("误用类型改写运行模式 -> ResStatus::Failed(context type not match)：强类型防误写");
 }
 
@@ -403,11 +403,11 @@ static void showArmGuardSpeedRatio()
     logAction(
         "挂载倍率安全校验",
         "SET_CHECKER arm.speed_ratio",
-        [&] { return yomk::ctx().key("arm.speed_ratio").checker(checkerSpeedRatio); });
+        [&] { return yomk::ctx().key("arm.speed_ratio").checker_fn(checkerSpeedRatio).apply(); });
     logAction(
         "门控未开时尝试超限写入",
         "SET arm.speed_ratio=1.2",
-        [&] { return yomk::ctx().key("arm.speed_ratio").set(yomk::msgs::Float64::shared(1.2)); });
+        [&] { return yomk::ctx().key("arm.speed_ratio").value(yomk::msgs::Float64::shared(1.2)).set(); });
     logVerify("校验已挂但全局门控未开 -> 1.2 照样写入（注意 arm.guard 日志未出现）");
 
     // 打开全局门控：合法值放行，超限被拒且值不变
@@ -415,15 +415,15 @@ static void showArmGuardSpeedRatio()
     logAction(
         "写入合法倍率 0.9",
         "SET arm.speed_ratio=0.9",
-        [&] { return yomk::ctx().key("arm.speed_ratio").set(yomk::msgs::Float64::shared(0.9)); });
+        [&] { return yomk::ctx().key("arm.speed_ratio").value(yomk::msgs::Float64::shared(0.9)).set(); });
     logVerify("门控打开后合法值 0.9 -> arm.guard 日志 CheckStatus::Accept，写入成功");
     logAction(
         "尝试写入超限倍率 1.2",
         "SET arm.speed_ratio=1.2",
-        [&] { return yomk::ctx().key("arm.speed_ratio").set(yomk::msgs::Float64::shared(1.2)); });
+        [&] { return yomk::ctx().key("arm.speed_ratio").value(yomk::msgs::Float64::shared(1.2)).set(); });
     logAction("确认被拒后倍率保持不变");
     yomk::msgs::Float64Ptr ratioFallback = yomk::msgs::Float64::shared(0.0);
-    yomk::msgs::Float64Ptr ratio = yomk::ctx().key("arm.speed_ratio").type<yomk::msgs::Float64>().withDefault(ratioFallback).get();
+    yomk::msgs::Float64Ptr ratio = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
     logGet("arm.speed_ratio", fmtF64(ratio->d), ratio == ratioFallback);
     logVerify("超限写入 -> ResStatus::Failed(checker reject set context) 且值保持 0.9 未变；arm.guard 日志给出拒绝理由");
 
@@ -432,14 +432,14 @@ static void showArmGuardSpeedRatio()
     logAction(
         "门控关闭后再次写入 1.2",
         "SET arm.speed_ratio=1.2",
-        [&] { return yomk::ctx().key("arm.speed_ratio").set(yomk::msgs::Float64::shared(1.2)); });
+        [&] { return yomk::ctx().key("arm.speed_ratio").value(yomk::msgs::Float64::shared(1.2)).set(); });
     logVerify("门控关闭后 1.2 -> 写入成功：门控旁路，校验保留但不生效");
 
     // 收尾恢复安全值，并保持全局开关为默认 OFF
     logAction(
         "恢复安全倍率 0.5",
         "SET arm.speed_ratio=0.5",
-        [&] { return yomk::ctx().key("arm.speed_ratio").set(yomk::msgs::Float64::shared(0.5)); });
+        [&] { return yomk::ctx().key("arm.speed_ratio").value(yomk::msgs::Float64::shared(0.5)).set(); });
 }
 
 // 场景 5：安全 PLC 订阅伺服电源指令
@@ -456,17 +456,17 @@ static void showArmWatchServoPower()
     logAction(
         "安全 PLC 订阅上电告警",
         "SET_MONITOR arm.servo_power",
-        [&] { return yomk::ctx().key("arm.servo_power").monitor(monitorServoPowerAlarm); });
+        [&] { return yomk::ctx().key("arm.servo_power").monitor_fn(monitorServoPowerAlarm).apply(); });
     logAction(
         "安全 PLC 订阅操作黑匣子",
         "SET_MONITOR arm.servo_power",
-        [&] { return yomk::ctx().key("arm.servo_power").monitor(monitorServoPowerLog); });
+        [&] { return yomk::ctx().key("arm.servo_power").monitor_fn(monitorServoPowerLog).apply(); });
 
     // 对照：全局监控默认 OFF，写入静默（注意观察无 arm.watch 日志）
     logAction(
         "全局监控关闭时下发上电指令",
         "SET arm.servo_power=true",
-        [&] { return yomk::ctx().key("arm.servo_power").set(yomk::msgs::Bool::shared(true)); });
+        [&] { return yomk::ctx().key("arm.servo_power").value(yomk::msgs::Bool::shared(true)).set(); });
     logVerify("全局监控默认 OFF -> 上电指令写入成功但无 arm.watch 日志（monitor 保留但不执行）");
 
     logAction("开启全局监控", "ON_MONITOR", [&] { return yomk::ctx().monitor().enable(); });
@@ -476,14 +476,14 @@ static void showArmWatchServoPower()
     logAction(
         "下发下电指令",
         "SET arm.servo_power=false",
-        [&] { return yomk::ctx().key("arm.servo_power").set(yomk::msgs::Bool::shared(false)); });
+        [&] { return yomk::ctx().key("arm.servo_power").value(yomk::msgs::Bool::shared(false)).set(); });
     logVerify("监控开启后写入 -> 两条 arm.watch 日志夹在开始行与结果行之间（同步通知写锁外、set 返回前执行）");
 
     logAction("暂停全局监控", "OFF_MONITOR", [&] { return yomk::ctx().monitor().disable(); });
     logAction(
         "再上电验证通知已暂停",
         "SET arm.servo_power=true",
-        [&] { return yomk::ctx().key("arm.servo_power").set(yomk::msgs::Bool::shared(true)); });
+        [&] { return yomk::ctx().key("arm.servo_power").value(yomk::msgs::Bool::shared(true)).set(); });
     logVerify("监控暂停后写入 -> 无 arm.watch 日志：通知暂停，monitor 保留在键上");
 
     // 收尾保持全局监控 OFF 默认；场景 6 自行按需开启
@@ -495,7 +495,7 @@ static void showArmReportPose()
     logScene(
         6,
         "末端位姿遥测上报",
-        "yomk::ctx().key().monitor(fn, true)",
+        "yomk::ctx().key().monitor_fn(fn).async(true).apply()",
         "数字孪生订阅末端位姿：async=true 的 monitor 经单线程池送达（按 set 提交序保序），"
         "执行线程是池线程——上报不阻塞运动控制回路。");
 
@@ -507,7 +507,7 @@ static void showArmReportPose()
     logAction(
         "数字孪生订阅异步位姿上报",
         "SET_MONITOR arm.tcp_pose (async)",
-        [&] { return yomk::ctx().key("arm.tcp_pose").monitor(monitorPoseTelemetry, true); });
+        [&] { return yomk::ctx().key("arm.tcp_pose").monitor_fn(monitorPoseTelemetry).async(true).apply(); });
 
     std::ostringstream ossThreadId;
     ossThreadId << "主线程 id: " << std::this_thread::get_id();
@@ -517,17 +517,17 @@ static void showArmReportPose()
     logAction(
         "插补运动 #1",
         "SET arm.tcp_pose",
-        [&] { return yomk::ctx().key("arm.tcp_pose").set(yomk::msgs::Float64Array::shared(std::vector<double>{100, 0, 200, 0, 0, 0, 1})); });
+        [&] { return yomk::ctx().key("arm.tcp_pose").value(yomk::msgs::Float64Array::shared(std::vector<double>{100, 0, 200, 0, 0, 0, 1})).set(); });
     logAction(
         "插补运动 #2",
         "SET arm.tcp_pose",
         [&] {
-            return yomk::ctx().key("arm.tcp_pose").set(yomk::msgs::Float64Array::shared(std::vector<double>{120, 40, 220, 0, 0, 0.707, 0.707}));
+            return yomk::ctx().key("arm.tcp_pose").value(yomk::msgs::Float64Array::shared(std::vector<double>{120, 40, 220, 0, 0, 0.707, 0.707})).set();
         });
     logAction(
         "插补运动 #3",
         "SET arm.tcp_pose",
-        [&] { return yomk::ctx().key("arm.tcp_pose").set(yomk::msgs::Float64Array::shared(std::vector<double>{150, 80, 250, 0, 0, 1, 0})); });
+        [&] { return yomk::ctx().key("arm.tcp_pose").value(yomk::msgs::Float64Array::shared(std::vector<double>{150, 80, 250, 0, 0, 1, 0})).set(); });
 
     YOMK_INFO_TAG("arm.demo", "等待异步上报送达（单线程池按提交序执行）...");
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -615,7 +615,7 @@ static void showArmTaskCleanup()
     // 销毁后行为：GET 回落兜底默认值
     yomk::msgs::StringPtr modeFallback = yomk::msgs::String::shared("unknown");
     logAction("确认销毁后读取回落");
-    yomk::msgs::StringPtr mode = yomk::ctx().key("arm.mode").type<yomk::msgs::String>().withDefault(modeFallback).get();
+    yomk::msgs::StringPtr mode = yomk::ctx().key("arm.mode").msg<yomk::msgs::String>().with_default(modeFallback).get();
     logGet("arm.mode", mode ? mode->d : "(null)", mode == modeFallback);
     logVerify("销毁后 GET -> 返回兜底默认值（指针相等），键已消失");
 
