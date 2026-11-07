@@ -20,12 +20,12 @@ set(LIB_INSTALL_DIR lib)
 
 include_directories(${YomkServer_INCLUDE})
 
-set(YomkServer_SOURCES 
-    ${YomkServer_SRC}/YomkServer.cpp
-    ${YomkServer_SRC}/YomkServerPrivate.cpp
-    ${YomkServer_SRC}/YomkService.cpp
-    ${YomkServer_SRC}/YomkServicePrivate.cpp
-    ${YomkServer_SRC}/YomkSimpleThreadPool.cpp
+set(YomkServer_SOURCES
+    ${YomkServer_SRC}/Core/YomkServer.cpp
+    ${YomkServer_SRC}/Core/YomkServerPrivate.cpp
+    ${YomkServer_SRC}/Core/YomkService.cpp
+    ${YomkServer_SRC}/Core/YomkServicePrivate.cpp
+    ${YomkServer_SRC}/Core/YomkSimpleThreadPool.cpp
     ${YomkServer_SRC}/Modules/FunctionPool/YomkFunctionPool.cpp
     ${YomkServer_SRC}/Modules/Context/ContextGroup.cpp
     ${YomkServer_SRC}/Modules/Context/YomkContext.cpp

@@ -1,6 +1,7 @@
-# Test/YomkServer：YomkServer 非 Modules 源文件（YomkServer/YomkService/YomkSimpleThreadPool/YomkAPI）
+# Test/YomkServer：YomkServer 核心源文件（src/Core：YomkServer/YomkService/YomkSimpleThreadPool）
 # 的正式全面覆盖测试；目录内扁平布局，每个被测主题一个独立可执行程序，目标按闭环增量追加
-# 引用非导出内部头（如 YomkSimpleThreadPool.h）需要源码目录
+# 引用非导出内部头（如 YomkSimpleThreadPool.h）需要 Core 源码目录
+include_directories(${YomkServer_DIR}/src/Core)
 include_directories(${YomkServer_DIR}/src)
 
 # MC8：sanitizer 开关（off/asan/tsan），选项通过 PUBLIC 附加到 YomkServer 库，
@@ -27,10 +28,10 @@ set(YOMK_TEST_STATIC_ANALYZE OFF CACHE BOOL "Enable clang-tidy/cppcheck static a
 if(YOMK_TEST_STATIC_ANALYZE)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/static-analysis)
 
-    # 被测范围：非 Modules 的 YomkServer 源文件与公共头
+    # 被测范围：Core 层 YomkServer 源文件与公共头
     file(GLOB _YOMK_SA_SRCS
-        ${YomkServer_DIR}/src/*.cpp
-        ${YomkServer_DIR}/src/*.h
+        ${YomkServer_DIR}/src/Core/*.cpp
+        ${YomkServer_DIR}/src/Core/*.h
         ${YomkServer_DIR}/include/YomkServer/*.h
     )
 
