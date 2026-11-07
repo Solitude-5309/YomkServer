@@ -52,6 +52,7 @@ ExampleYomkEventLoop —— YomkEventLoop 线程隔离事件循环示例：机�
 运行方式：PYTHONPATH=src python3 examples/ExampleYomkEventLoop.py
 """
 
+import sys
 import threading
 import time
 
@@ -72,13 +73,19 @@ def log_scene(n, title, apis, explain):
 # API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
-    if resp.status == YomkApi.ResStatus.eOk:
+    # 双形态分展：写路径链式终结收敛为 ResStatus（无 msg），只打 status 行；
+    # 读路径终结给 YomkResponse，status+msg 照旧
+    status = resp if isinstance(resp, YomkApi.ResStatus) else resp.status
+    if status == YomkApi.ResStatus.eOk:
         note = "(eOk 成功)"
-    elif resp.status == YomkApi.ResStatus.eNo:
+    elif status == YomkApi.ResStatus.eNo:
         note = "(eNo 拒绝或不存在)"
     else:
         note = "(eInvalid 未初始化或参数无效)"
-    log().tag("arm.demo").info(f'[{api}] status={resp.status.value}{note}, msg="{resp.msg}"')
+    if isinstance(resp, YomkApi.ResStatus):
+        log().tag("arm.demo").info(f"[{api}] status={status.value}{note}")
+    else:
+        log().tag("arm.demo").info(f'[{api}] status={status.value}{note}, msg="{resp.msg}"')
 
 # 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 # 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
@@ -108,15 +115,8 @@ def log_loop_info(api, info):
     tags = ", ".join(t if t else "-" for t in info.next_tags)
     log().tag("arm.demo").info(f"[{api}]     nextTags: [{tags}]")
 
-# /YomkEventLoop/post_wait 回传的 Event 包逐字段展开：eventId / loopName / response（处理函数返回值）
-def log_event(resp):
-    event = resp.data
-    if event is None:
-        return
-    log().tag("arm.demo").info(f"[Event] - eventId: {event.m_eventId}")
-    log().tag("arm.demo").info(f"[Event]     loopName: {event.m_eventLoopName}")
-    if event.m_response is not None:
-        log().tag("arm.demo").info(f'[Event]     response: status={event.m_response.status.value}, msg="{event.m_response.msg}"')
+# post_wait 写路径终结收敛为 ResStatus（不带 Event 回包，对齐 C++ 链式口径）：
+# 阻塞语义"返回即已执行完毕"，执行结果由处理函数在循环线程内以日志自报。
 
 # 自证结论：期望与实际写在同一行，读者无需查源码即可确认框架行为
 def log_verify(text):
@@ -250,12 +250,11 @@ def show_arm_motion_sync_wait():
         "关键指令同步等待",
         "/YomkEventLoop/post_wait",
         "回原点是关键动作，必须确认执行完毕才能继续：/YomkEventLoop/post_wait 阻塞至事件在循环线程"
-        "执行完毕，回传 Event 包三要素（eventId / loopName / 处理函数返回值）。")
+        "执行完毕——返回即已执行；写路径终结收敛为 ResStatus，执行结果由处理函数线程内日志自报。")
 
-    resp = log_action("下发回原点指令并等待完成", "/YomkEventLoop/post_wait motionLoop",
-                      lambda: event_loop().msg("goHome").loop("motionLoop").post_wait())
-    log_event(resp)
-    log_verify("/YomkEventLoop/post_wait 返回时回原点已在循环线程执行完毕（耗时 200ms），Event 包携带执行结果")
+    log_action("下发回原点指令并等待完成", "/YomkEventLoop/post_wait motionLoop",
+               lambda: event_loop().msg("goHome").loop("motionLoop").post_wait())
+    log_verify("/YomkEventLoop/post_wait 返回时回原点已在循环线程执行完毕（耗时 200ms）——返回即已执行")
 
 # 场景 5：紧急任务临时处理函数（优先于默认函数）
 def show_arm_temp_handler():
@@ -267,12 +266,12 @@ def show_arm_temp_handler():
         "返回临时函数的结果——同一循环可混用两种来源。")
 
     def temp_handle(_pkg) -> YomkApi.YomkResponse:
+        log().tag("arm.motion").info("临时处理函数在循环线程执行：返回 tempHandle result（非默认函数结果）")
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "tempHandle result")
 
-    resp = log_action("投递紧急巡检任务（临时函数）", "/YomkEventLoop/post_wait motionLoop (temp_handle)",
-                      lambda: event_loop().msg("safetyCheck").loop("motionLoop").handle_fn(temp_handle).post_wait())
-    log_event(resp)
-    log_verify("response 为临时函数的结果（tempHandle result）而非默认函数结果：临时函数优先于默认函数")
+    log_action("投递紧急巡检任务（临时函数）", "/YomkEventLoop/post_wait motionLoop (temp_handle)",
+               lambda: event_loop().msg("safetyCheck").loop("motionLoop").handle_fn(temp_handle).post_wait())
+    log_verify("上方 arm.motion 行为临时函数自报：投递级 handle_fn 优先于循环默认函数（同一循环混用两种来源）")
 
 # 场景 6：班中暂停与恢复（STOP / START 续跑）
 def show_arm_line_pause():
@@ -392,7 +391,8 @@ def main():
     show_arm_line_off()
 
     log().tag("arm.demo").info("========== 示例结束：按回车退出 ==========")
-    input()
+    if sys.stdin.isatty():
+        input()
 
 if __name__ == "__main__":
     main()

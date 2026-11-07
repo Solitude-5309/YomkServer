@@ -55,6 +55,7 @@ arm.watch 通知 / arm.telemetry 上报），日志流即执行序、顺着读�
 运行方式：PYTHONPATH=src python3 examples/ExampleYomkContext.py
 """
 
+import sys
 import threading
 import time
 
@@ -83,13 +84,19 @@ def log_scene(n, title, apis, explain):
 # API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
-    if resp.status == YomkApi.ResStatus.eOk:
+    # 双形态分展：写路径链式终结收敛为 ResStatus（无 msg），只打 status 行；
+    # 读路径终结给 YomkResponse，status+msg 照旧
+    status = resp if isinstance(resp, YomkApi.ResStatus) else resp.status
+    if status == YomkApi.ResStatus.eOk:
         note = "(eOk 成功)"
-    elif resp.status == YomkApi.ResStatus.eNo:
+    elif status == YomkApi.ResStatus.eNo:
         note = "(eNo 拒绝或不存在)"
     else:
         note = "(eInvalid 未初始化或参数无效)"
-    log().tag("arm.demo").info(f'[{api}] status={resp.status.value}{note}, msg="{resp.msg}"')
+    if isinstance(resp, YomkApi.ResStatus):
+        log().tag("arm.demo").info(f"[{api}] status={status.value}{note}")
+    else:
+        log().tag("arm.demo").info(f'[{api}] status={status.value}{note}, msg="{resp.msg}"')
 
 # 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 # 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
@@ -131,9 +138,11 @@ def log_key_info(api, info):
 # 本身即 /YomkContext/create 的工程化用法：排他 eNo 在正式代码中按"已初始化"
 # 处理而非错误——后启动的模块靠它安全补建自己关心的键。
 def ensure_key(op, key, value):
-    resp = log_action(op, "/YomkContext/create " + key, lambda: ctx().key(key).value(value).create())
-    if resp.status != YomkApi.ResStatus.eOk:
-        log().tag("arm.demo").info(f"[ensureKey] {key} 已存在，跳过创建（{resp.msg}）")
+    # 写路径终结收敛为 ResStatus（不带 msg）；排他文案经裸链可查
+    ret = log_action(op, "/YomkContext/create " + key, lambda: ctx().key(key).value(value).create())
+    if ret != YomkApi.ResStatus.eOk:
+        log().tag("arm.demo").info(f"[ensureKey] {key} 未新建（status={ret.value}，"
+                                   "eNo 即 key already exists），跳过创建")
 
 # ---------------------------------------------------------------------------
 # Checker / Monitor 回调：用户代码，框架在 set 调用链的固定时机调用。
@@ -454,7 +463,8 @@ def main():
     show_arm_task_cleanup()
 
     log().tag("arm.demo").info("========== 示例结束：按回车退出 ==========")
-    input()
+    if sys.stdin.isatty():
+        input()
 
 if __name__ == "__main__":
     main()

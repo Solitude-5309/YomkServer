@@ -32,8 +32,9 @@
 #       diag 文案 5 处（非契约、无断言覆盖）: installFunc 空名/空函数、
 #       invoke 缺串 "YomkInstallFunc"、funcInfo 尾部句号、FileLogger
 #       "fs error" 措辞——均为诊断文本，不影响返回值/响应契约
-#       install_env example-smoke: C++ 安装回归含 example 冒烟门禁；Python
-#       以 run_tests.sh 强消费 build/prefix 产物目录为等价把关，不设 example-smoke
+#       install_env example-smoke（S29 已落地，闭环 11）: C++ 安装回归只校验示例
+#       二进制存在性（install_env.sh §1，不运行）；Python 示例不随库安装、存在性
+#       无对应物，改设 test/run_examples.sh 运行级冒烟闸（6/6，验收口径 27/27 且 6/6）
 
 set -u
 
@@ -48,7 +49,7 @@ FULL_MODE=0
 USER_TIMEOUT=0
 
 usage() {
-    sed -n '2,36p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,37p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 }
 

@@ -45,6 +45,8 @@ ExampleYomkFunctionPool —— YomkFunctionPool 动态函数池示例：机械�
 运行方式：PYTHONPATH=src python3 examples/ExampleYomkFunctionPool.py
 """
 
+import sys
+
 import YomkApi
 from YomkApi import log, fn_pool, server
 
@@ -64,16 +66,22 @@ def log_scene(n, title, apis, explain):
 # 其余内省数据（list/FuncInfo/FuncInfoList）形态各异，类型不匹配时静默不展示。
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
-    if resp.status == YomkApi.ResStatus.eOk:
+    # 双形态分展：写路径链式终结收敛为 ResStatus（无 msg/data），只打 status 行；
+    # 读路径终结给 YomkResponse，status+msg（字符串负载并打 data）照旧
+    status = resp if isinstance(resp, YomkApi.ResStatus) else resp.status
+    if status == YomkApi.ResStatus.eOk:
         note = "(eOk 成功)"
-    elif resp.status == YomkApi.ResStatus.eNo:
+    elif status == YomkApi.ResStatus.eNo:
         note = "(eNo 拒绝或不存在)"
     else:
         note = "(eInvalid 未初始化或参数无效)"
-    line = f'[{api}] status={resp.status.value}{note}, msg="{resp.msg}"'
-    if resp.status == YomkApi.ResStatus.eOk and isinstance(resp.data, str):
-        line += f', data="{resp.data}"'
-    log().tag("arm.demo").info(line)
+    if isinstance(resp, YomkApi.ResStatus):
+        log().tag("arm.demo").info(f"[{api}] status={status.value}{note}")
+    else:
+        line = f'[{api}] status={status.value}{note}, msg="{resp.msg}"'
+        if status == YomkApi.ResStatus.eOk and isinstance(resp.data, str):
+            line += f', data="{resp.data}"'
+        log().tag("arm.demo").info(line)
 
 # 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 # 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
@@ -303,7 +311,8 @@ def main():
     show_arm_tool_cleanup()
 
     log().tag("arm.demo").info("========== 示例结束：按回车退出 ==========")
-    input()
+    if sys.stdin.isatty():
+        input()
 
 if __name__ == "__main__":
     main()

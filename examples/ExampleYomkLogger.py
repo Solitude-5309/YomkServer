@@ -56,6 +56,8 @@ tag 规划（arm.demo 叙事之外，演示对象按业务分层）：
 
 from pathlib import Path
 
+import sys
+
 import YomkApi
 from YomkServerPy import Log
 from YomkApi import log, log_mgr, server
@@ -75,13 +77,19 @@ def log_scene(n, title, apis, explain):
 # 日志门面的结果行自带流向证据：代理消费 msg="console log proxy is success."、放行 msg="success."。
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
-    if resp.status == YomkApi.ResStatus.eOk:
+    # 双形态分展：写路径链式终结收敛为 ResStatus（无 msg），只打 status 行；
+    # 读路径终结给 YomkResponse，status+msg 照旧
+    status = resp if isinstance(resp, YomkApi.ResStatus) else resp.status
+    if status == YomkApi.ResStatus.eOk:
         note = "(eOk 成功)"
-    elif resp.status == YomkApi.ResStatus.eNo:
+    elif status == YomkApi.ResStatus.eNo:
         note = "(eNo 拒绝或不存在)"
     else:
         note = "(eInvalid 未初始化或参数无效)"
-    log().tag("arm.demo").info(f'[{api}] status={resp.status.value}{note}, msg="{resp.msg}"')
+    if isinstance(resp, YomkApi.ResStatus):
+        log().tag("arm.demo").info(f"[{api}] status={status.value}{note}")
+    else:
+        log().tag("arm.demo").info(f'[{api}] status={status.value}{note}, msg="{resp.msg}"')
 
 # 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 # 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
@@ -122,7 +130,7 @@ def log_global_state(api, state):
         f" error={'on' if state.error_on else 'off'}"
         f" proxy={'on' if state.proxy_on else 'off'}")
 
-# /YomkLogger/loggerS 清单行：日志器名列表逐行展示（" - " 无序列表风格）
+# /YomkLogger/loggers 清单行：日志器名列表逐行展示（" - " 无序列表风格）
 def log_logger_line(api, logger_name):
     log().tag("arm.demo").info(f"[{api}] - {logger_name}")
 
@@ -415,18 +423,18 @@ def show_arm_logger_dashboard():
 
     log_action_start("巡检控制台日志器清单")
     console_resp = log_mgr().console().list()
-    log_resp("/YomkLogger/loggerS console", console_resp)
+    log_resp("/YomkLogger/loggers console", console_resp)
     if console_resp.data:
         for logger_name in console_resp.data:
-            log_logger_line("/YomkLogger/loggerS", logger_name)
+            log_logger_line("/YomkLogger/loggers", logger_name)
     log_verify("main（预创建）与 arm.demo/arm.joint（tag 惰性创建）均在列：清单按名字字典序排列")
 
     log_action_start("巡检文件日志器清单")
     file_resp = log_mgr().file().list()
-    log_resp("/YomkLogger/loggerS file", file_resp)
+    log_resp("/YomkLogger/loggers file", file_resp)
     if file_resp.data:
         for logger_name in file_resp.data:
-            log_logger_line("/YomkLogger/loggerS", logger_name)
+            log_logger_line("/YomkLogger/loggers", logger_name)
     log_verify("blackbox 与 shiftlog 在列：控制台与文件是两张独立的日志器表")
 
     log_action_start("单查班次存档器 shiftlog")
@@ -496,10 +504,10 @@ def show_arm_log_cleanup(log_dir):
                lambda: log().info("main recreated on demand"))
     log_action_start("复查控制台清单确认重建")
     resp = log_mgr().console().list()
-    log_resp("/YomkLogger/loggerS console", resp)
+    log_resp("/YomkLogger/loggers console", resp)
     if resp.data:
         for logger_name in resp.data:
-            log_logger_line("/YomkLogger/loggerS", logger_name)
+            log_logger_line("/YomkLogger/loggers", logger_name)
     log_verify("main 回归清单：日志器按名惰性创建，无需手动注册；班次结束，arm.demo 叙事仍在")
 
 def main():
@@ -522,7 +530,8 @@ def main():
     show_arm_log_cleanup(log_dir)
 
     log().tag("arm.demo").info("========== 示例结束：按回车退出 ==========")
-    input()
+    if sys.stdin.isatty():
+        input()
 
 if __name__ == "__main__":
     main()

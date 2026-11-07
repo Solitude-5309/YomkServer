@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.14)
 # → YomkApi 顶部 import → server().version()（等价 C++ YOMK_VERSION 编译期注入），
 # 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
 # 本行即版本唯一来源，发布时手动 bump。
-project(YomkServerPy VERSION 2.1.0 LANGUAGES C)
+project(YomkServerPy VERSION 2.1.1 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 # Interpreter 组件提供 Python_EXECUTABLE：cython 仅 user-site 安装时（可执行入口
