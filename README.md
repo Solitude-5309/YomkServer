@@ -29,7 +29,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 
 | 位置 | 简述 |
 |---|---|
-| `src/` | 核心源码片段：`YomkServer.py` / `YomkService.py` + `modules/<模块>/`；`api/` 为安装面（`YomkApi.py` 门面、`.pyi` 类型桩、装载 shim、版本模板），构建期合并为 `build/YomkServer.py` 后经 Cython 编译为 `YomkServerPy.so` |
+| `src/` | 核心源码片段：`core/`（`YomkServer.py` / `YomkService.py`）+ `modules/<模块>/`；`api/` 为安装面（`YomkApi.py` 门面、`.pyi` 类型桩、装载 shim、版本模板），构建期合并为 `build/YomkServer.py` 后经 Cython 编译为 `YomkServerPy.so` |
 | `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池、日志、服务内省六大主题 |
 | `template/` | 脚手架：`project/` 新工程模板、`extension/` 扩展库模板 |
 | `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |

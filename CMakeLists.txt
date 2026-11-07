@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.14)
 # → YomkApi 顶部 import → server().version()（构建期注入，无运行时读取），
 # 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
 # 本行即版本唯一来源，发布时手动 bump。
-project(YomkServerPy VERSION 2.1.4 LANGUAGES C)
+project(YomkServerPy VERSION 2.1.5 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 # Interpreter 组件提供 Python_EXECUTABLE：cython 仅 user-site 安装时（可执行入口
@@ -40,8 +40,8 @@ set(YOMK_PY_ARTIFACT_NAME "YomkServerPy")
 
 # 片段清单：顺序即符号可见顺序（被继承的基类必须靠前）
 set(YOMK_PY_FRAGMENTS
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/YomkServer.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/YomkService.py
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/YomkServer.py
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/YomkService.py
     ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/logger/YomkLog.py
     ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/logger/ConsoleLogger.py
     ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/logger/FileLogger.py

@@ -1,4 +1,4 @@
-# 源片段：src/YomkService.py（构建期由 scripts/assemble_py.py 合并，请勿单独导入）
+# 源片段：src/core/YomkService.py（构建期由 scripts/assemble_py.py 合并，请勿单独导入）
 
 
 

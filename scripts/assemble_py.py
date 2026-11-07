@@ -16,7 +16,7 @@ assemble_py.py —— 构建期源片段合并器
 
 用法:
   python3 scripts/assemble_py.py --output build/YomkServer.py \
-      --root <仓库根> src/YomkServer.py src/YomkService.py ...
+      --root <仓库根> src/core/YomkServer.py src/core/YomkService.py ...
 """
 
 import argparse
