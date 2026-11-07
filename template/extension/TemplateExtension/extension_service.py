@@ -1,5 +1,6 @@
 import YomkApi
 from .version import EXTENSION_VERSION
+from YomkApi import log
 
 
 class ExtensionService(YomkApi.YomkService):
@@ -9,8 +10,7 @@ class ExtensionService(YomkApi.YomkService):
 
     def init(self):
         self.install_func("/version", self.version)
-        YomkApi.console_log_info_tag("ExtensionService::init",
-                                     "install func [ /version ] to ", self.get_name())
+        log().tag("ExtensionService::init").info("install func [ /version ] to ", self.get_name())
         return 0
 
     def version(self, pkg):

@@ -27,7 +27,7 @@ S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/service
 - server 判活用 weakref.ref：YomkServerInfo 构造时清除
   基类对 server 的强引用仅持弱引用；测试侧 del server 后补 gc.collect() 显式触发回收
   （CPython 引用计数遇环不归零）
-- 服务表快照经 YomkApi.server().service_names()
+- 服务表快照经 server().instance().service_names()
 - 内省数据解包后 YomkResponse.data 直接是 python 对象
   （/services 为 list[str]，/functions 为 FuncInfo 结构化列表，/all 为 ServerServiceInfo 层级列表）
 - install_func 第三参承载函数消息类型元数据，第四参承载函数说明（三内置装配已补齐）
@@ -44,25 +44,14 @@ import threading
 
 import YomkServerPy as ysp
 from YomkApi import (
+    server,
     YomkResponse,
     ResStatus,
-    init,
-    server,
-    shutdown,
-    add_service,
-    del_service,
-    new_service,
-    request,
-    server_info_services,
-    server_info_functions,
-    server_info_function,
-    server_info_all,
     ServerServiceInfo,
 )
 
 PASS = 0
 FAIL = 0
-
 
 def check(cond, name):
     global PASS, FAIL
@@ -73,10 +62,8 @@ def check(cond, name):
         FAIL += 1
         print(f"[FAIL] {name}")
 
-
 def name_in(names, srv_name):
     return srv_name in names
-
 
 def unpack_string_array(resp):
     # 仅 /services 的 data 为 list[str]
@@ -84,13 +71,11 @@ def unpack_string_array(resp):
         return []
     return list(resp.data)
 
-
 def unpack_func_info_list(resp):
     # /functions 的 data 为 FuncInfo 结构化列表（三字段与 /function 单查同族）
     if resp.status != ResStatus.eOk or resp.data is None:
         return []
     return list(resp.data)
-
 
 def find_func(funcs, func_name):
     # 在 FuncInfoList 清单内按函数名查找（func_name 带 / 前缀 url 段）
@@ -101,7 +86,6 @@ def find_func(funcs, func_name):
             return func
     return None
 
-
 def find_service_info(all_list, srv_name):
     # 在 /all 结构化层级列表中按服务名查找条目（ServerServiceInfo 消费 helper）
     if not all_list:
@@ -111,7 +95,6 @@ def find_service_info(all_list, srv_name):
             return srv
     return None
 
-
 def find_func_info(srv, func_name):
     # 在服务条目内按函数名查找元信息（func_name 带 / 前缀 url 段）
     if srv is None:
@@ -120,7 +103,6 @@ def find_func_info(srv, func_name):
         if func.func_name == func_name:
             return func
     return None
-
 
 # ---- 测试装置服务（FmtSrv/ChurnSrv）----
 
@@ -139,7 +121,6 @@ class FmtSrv(ysp.YomkService):
     def echo(self, pkg):
         return YomkResponse(ResStatus.eOk, pkg)
 
-
 class ChurnSrv(ysp.YomkService):
     # churn 压力服务：最小 /hit 函数，供 S5 并发增删使用
     def init(self):
@@ -149,14 +130,12 @@ class ChurnSrv(ysp.YomkService):
     def hit(self, pkg):
         return YomkResponse(ResStatus.eOk, "hit")
 
-
 # ---- S5 并发观测容器（list.append GIL 原子收集，节末单线程 check）----
 g_add_fail = []     # churn add_service 失败数（应恒为 0）
 g_del_fail = []     # churn del_service 失败数（应恒为 0）
 g_bad_status = []   # 内省端点非法状态计数（应恒为 0）
 g_miss_fmt = []     # /services 快照丢失存活服务计数（应恒为 0）
 g_bad_funcs = []    # /functions("/FmtSrv") 快照非 2 条计数（应恒为 0）
-
 
 def main():
     # ============ S0. server destroyed 分支（类级白盒，先于单例初始化） ============
@@ -191,13 +170,14 @@ def main():
     check(True, "destroyed 实例释放无崩溃（弱引用悬垂路径安全收尾）")
 
     # ============ 单例初始化（S1-S7 共用） ============
-    check(init(1) is not None, "init 拉起单例与 5 个内置服务")
+    server().async_thread(1).init()
+    check(server().instance() is not None, "init 拉起单例与 5 个内置服务")
 
-    srv_ref = server()
+    srv_ref = server().instance()
 
     # ============ S1. /services ============
     print("===== S1. /services 端点 =====")
-    resp = server_info_services()
+    resp = server().services()
     check(resp.status == ResStatus.eOk and resp.msg ==
           "ok", "/services 返回 eOk + ok")
 
@@ -209,22 +189,22 @@ def main():
     check(name_in(names, "/YomkLogger"), "/services 含内置 /YomkLogger")
     check(name_in(names, "/YomkServerInfo"), "/services 含内置 /YomkServerInfo")
 
-    check(add_service(FmtSrv(srv_ref), "/FmtSrv") == 0, "注册 FmtSrv 返回 0")
-    check(name_in(unpack_string_array(server_info_services()), "/FmtSrv"),
+    check(server().srv_ptr(FmtSrv(srv_ref)).srv_name("/FmtSrv").add() == 0, "注册 FmtSrv 返回 0")
+    check(name_in(unpack_string_array(server().services()), "/FmtSrv"),
           "/services 实时反映新增服务")
 
-    check(del_service("/FmtSrv") == 0, "删除 FmtSrv 返回 0")
-    check(not name_in(unpack_string_array(server_info_services()), "/FmtSrv"),
+    check(server().srv_name("/FmtSrv").remove() == 0, "删除 FmtSrv 返回 0")
+    check(not name_in(unpack_string_array(server().services()), "/FmtSrv"),
           "/services 实时反映服务删除")
 
-    check(add_service(FmtSrv(srv_ref), "/FmtSrv")
+    check(server().srv_ptr(FmtSrv(srv_ref)).srv_name("/FmtSrv").add()
           == 0, "重注册 FmtSrv（供 S2-S5 使用）")
-    check(name_in(unpack_string_array(server_info_services()), "/FmtSrv"),
+    check(name_in(unpack_string_array(server().services()), "/FmtSrv"),
           "/services 重注册后恢复")
 
     # ============ S2. /functions ============
     print("===== S2. /functions 端点 =====")
-    resp = server_info_functions("/FmtSrv")
+    resp = server().srv_name("/FmtSrv").functions()
     check(resp.status == ResStatus.eOk, "/functions(FmtSrv) 返回 eOk")
     funcs = unpack_func_info_list(resp)
     check(len(funcs) == 2, f"FmtSrv 恰 2 个功能函数: {len(funcs)}")
@@ -235,15 +215,15 @@ def main():
           find_func(funcs, "/ping").msg_name == "",
           "两参安装元数据 \"/ping\" msg_name 为空")
 
-    empty = server_info_functions("")
+    empty = server().srv_name("").functions()
     check(empty.status == ResStatus.eInvalid and empty.msg == "srvName is empty",
           "空 srvName 返回 eInvalid + 契约消息: " + empty.msg)
 
-    no_srv = server_info_functions("/NoSuchSrv")
+    no_srv = server().srv_name("/NoSuchSrv").functions()
     check(no_srv.status == ResStatus.eOk and unpack_func_info_list(no_srv) == [],
           "不存在服务返回 eOk + 空列表（现状契约）")
 
-    ctx = server_info_functions("/YomkContext")
+    ctx = server().srv_name("/YomkContext").functions()
     ctx_funcs = unpack_func_info_list(ctx)
     check(ctx.status == ResStatus.eOk and
           find_func(ctx_funcs, "/create") is not None and
@@ -253,7 +233,7 @@ def main():
           find_func(ctx_funcs, "/keys").msg_name == "",
           "内置 /YomkContext 无类型端点 \"/keys\"")
 
-    self_resp = server_info_functions("/YomkServerInfo")
+    self_resp = server().srv_name("/YomkServerInfo").functions()
     self_funcs = unpack_func_info_list(self_resp)
     check(self_resp.status == ResStatus.eOk and len(self_funcs) == 4,
           "/YomkServerInfo 自身恰 4 个端点")
@@ -264,7 +244,7 @@ def main():
 
     # ============ S3. /function ============
     print("===== S3. /function 端点 =====")
-    hit_typed = server_info_function("/FmtSrv/echo")
+    hit_typed = server().fn_url("/FmtSrv/echo").get_info()
     check(hit_typed.status == ResStatus.eOk and hit_typed.msg == "ok",
           "命中四参函数：eOk 且 msg 恒为 ok")
     check(isinstance(hit_typed.data, ysp.FuncInfo),
@@ -275,7 +255,7 @@ def main():
     check(hit_typed.data is not None and hit_typed.data.description == "echo demo description",
           "四参函数 description 承载函数说明")
 
-    hit_plain = server_info_function("/FmtSrv/ping")
+    hit_plain = server().fn_url("/FmtSrv/ping").get_info()
     check(hit_plain.status == ResStatus.eOk and hit_plain.msg == "ok",
           "命中两参函数：eOk 且 msg 恒为 ok")
     check(hit_plain.data is not None and hit_plain.data.func_name == "/ping"
@@ -284,33 +264,33 @@ def main():
     check(hit_plain.data is not None and hit_plain.data.description == "",
           "无说明函数 description 为空（结构化包恒挂）")
 
-    empty_url = server_info_function("")
+    empty_url = server().fn_url("").get_info()
     check(empty_url.status == ResStatus.eNo and "please start with /" in empty_url.msg,
           "空 url 返回 eNo + please start with /: " + empty_url.msg)
 
-    no_slash = server_info_function("abc")
+    no_slash = server().fn_url("abc").get_info()
     check(no_slash.status == ResStatus.eNo and "please start with /" in no_slash.msg,
           "无 / 开头返回 eNo + please start with /")
 
-    no_func_part = server_info_function("/FmtSrv")
+    no_func_part = server().fn_url("/FmtSrv").get_info()
     check(no_func_part.status == ResStatus.eNo and "not found function name" in no_func_part.msg,
           "无第二个 / 返回 eNo + not found function name: " + no_func_part.msg)
 
-    no_srv = server_info_function("/NoSuchSrv/f")
+    no_srv = server().fn_url("/NoSuchSrv/f").get_info()
     check(no_srv.status == ResStatus.eNo and no_srv.msg == "service not found: /NoSuchSrv",
           "服务不存在契约消息精确匹配: " + no_srv.msg)
 
-    no_func = server_info_function("/FmtSrv/nope")
+    no_func = server().fn_url("/FmtSrv/nope").get_info()
     check(no_func.status == ResStatus.eNo and no_func.msg == "function not found: /FmtSrv/nope",
           "函数不存在契约消息精确匹配: " + no_func.msg)
 
-    null_pkg = request("/YomkServerInfo/function", None)
+    null_pkg = server().url("/YomkServerInfo/function").request()
     check(null_pkg.status == ResStatus.eNo and "pkg is null" in null_pkg.msg,
           "null pkg 返回 eNo + pkg is null（解包守卫）")
 
     # ============ S4. /all ============
     print("===== S4. /all 端点 =====")
-    resp = server_info_all()
+    resp = server().all()
     check(resp.status == ResStatus.eOk and resp.msg == "ok", "/all 返回 eOk + ok")
 
     all_list = resp.data
@@ -343,27 +323,27 @@ def main():
     def churn_fn(tid):
         for rnd in range(50):
             name = f"/Churn{tid}_{rnd}"
-            if add_service(ChurnSrv(srv_ref), name) != 0:
+            if server().srv_ptr(ChurnSrv(srv_ref)).srv_name(name).add() != 0:
                 g_add_fail.append(1)
-            if del_service(name) != 0:
+            if server().srv_name(name).remove() != 0:
                 g_del_fail.append(1)
 
     def introspect_fn():
         for _ in range(200):
-            services = server_info_services()
+            services = server().services()
             if services.status != ResStatus.eOk:
                 g_bad_status.append(1)
             elif not name_in(unpack_string_array(services), "/FmtSrv"):
                 g_miss_fmt.append(1)   # FmtSrv 恒存活，快照不得丢失
 
-            functions = server_info_functions("/FmtSrv")
+            functions = server().srv_name("/FmtSrv").functions()
             if functions.status != ResStatus.eOk or len(unpack_func_info_list(functions)) != 2:
                 g_bad_funcs.append(1)
 
-            if server_info_function("/FmtSrv/ping").status != ResStatus.eOk:
+            if server().fn_url("/FmtSrv/ping").get_info().status != ResStatus.eOk:
                 g_bad_status.append(1)
 
-            if server_info_all().status != ResStatus.eOk:
+            if server().all().status != ResStatus.eOk:
                 g_bad_status.append(1)
 
     threads = [threading.Thread(target=churn_fn, args=(tid,))
@@ -381,17 +361,17 @@ def main():
     check(len(g_bad_funcs) == 0, "/functions(\"/FmtSrv\") 快照恒为 2 条")
 
     # churn 收尾：无残留、存活服务仍可调用
-    names = unpack_string_array(server_info_services())
+    names = unpack_string_array(server().services())
     churn_left = [n for n in names if n.startswith("/Churn")]
     check(not churn_left, "churn 后服务表无 /Churn 残留")
-    check(request("/FmtSrv/ping", None).status == ResStatus.eOk,
+    check(server().url("/FmtSrv/ping").request().status == ResStatus.eOk,
           "并发结束后 FmtSrv 仍可正常调用")
 
     # ============ S6. 内置服务删除/重注册自举契约 ============
     print("===== S6. 内置服务删除/重注册自举契约 =====")
-    check(del_service("/YomkServerInfo") == 0, "删除内置 /YomkServerInfo 返回 0")
+    check(server().srv_name("/YomkServerInfo").remove() == 0, "删除内置 /YomkServerInfo 返回 0")
 
-    deleted = server_info_services()
+    deleted = server().services()
     check(deleted.status == ResStatus.eNo and deleted.msg == "service not found: /YomkServerInfo",
           "删除后内省端点不可路由: " + deleted.msg)
 
@@ -399,13 +379,13 @@ def main():
           "服务表快照不再含 /YomkServerInfo")
 
     # 无参重注册：new_service 不改名，构造函数固定名 "/YomkServerInfo" 生效
-    check(new_service(ysp.YomkServerInfo) == 0,
+    check(server().srv(ysp.YomkServerInfo).create() == 0,
           "new_service 无参重注册返回 0（构造函数固定名生效）")
 
-    restored = server_info_services()
+    restored = server().services()
     check(restored.status == ResStatus.eOk and name_in(unpack_string_array(restored), "/YomkServerInfo"),
           "重注册后自举恢复：/services eOk 且含自身")
-    check(find_service_info(server_info_all().data, "/YomkServerInfo") is not None,
+    check(find_service_info(server().all().data, "/YomkServerInfo") is not None,
           "重注册后 /all 含自身段（自举查询成功）")
 
     # ============ S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8） ============
@@ -413,11 +393,11 @@ def main():
     long_name = "/Long" + "x" * 65531
     check(len(long_name) == 65536, "超长服务名长度 65536")
 
-    check(add_service(FmtSrv(srv_ref), long_name) == 0, "超长名服务注册返回 0")
-    check(name_in(unpack_string_array(server_info_services()), long_name),
+    check(server().srv_ptr(FmtSrv(srv_ref)).srv_name(long_name).add() == 0, "超长名服务注册返回 0")
+    check(name_in(unpack_string_array(server().services()), long_name),
           "/services 行完整包含超长服务名（无截断）")
 
-    long_funcs = server_info_functions(long_name)
+    long_funcs = server().srv_name(long_name).functions()
     long_func_list = unpack_func_info_list(long_funcs)
     check(long_funcs.status == ResStatus.eOk and len(long_func_list) == 2,
           "超长名服务 /functions 返回 2 条")
@@ -426,13 +406,13 @@ def main():
           find_func(long_func_list, "/ping") is not None,
           "超长名下函数元数据字段完整")
 
-    long_function = server_info_function(long_name + "/ping")
+    long_function = server().fn_url(long_name + "/ping").get_info()
     check(long_function.status == ResStatus.eOk and long_function.msg == "ok",
           "超长名下 /function URL 二段解析正确（msg 恒为 ok）")
     check(long_function.data is not None and long_function.data.func_name == "/ping",
           "超长名下 URL 二段解析正确（func_name == \"/ping\"）")
 
-    long_srv = find_service_info(server_info_all().data, long_name)
+    long_srv = find_service_info(server().all().data, long_name)
     check(long_srv is not None, "/all 含超长服务名条目（无截断）")
     check(long_srv is not None and len(long_srv.funcs) == 2 and
           long_srv.funcs[0].func_name == "/echo" and
@@ -440,17 +420,16 @@ def main():
           long_srv.funcs[1].func_name == "/ping",
           "/all 超长条目函数字段完整（echo [String] 与 ping，无截断）")
 
-    check(del_service(long_name) == 0, "超长名服务删除返回 0")
-    check(not name_in(unpack_string_array(server_info_services()), long_name),
+    check(server().srv_name(long_name).remove() == 0, "超长名服务删除返回 0")
+    check(not name_in(unpack_string_array(server().services()), long_name),
           "删除后 /services 不再含超长名")
 
     # ============ 单例收尾 ============
-    shutdown()
-    check(server() is None, "shutdown 后单例清空")
+    server().shutdown()
+    check(server().instance() is None, "shutdown 后单例清空")
 
     print(("ALL PASSED" if FAIL == 0 else "SOME FAILED") + f" ({FAIL} failed)")
     sys.exit(0 if FAIL == 0 else 1)
-
 
 if __name__ == "__main__":
     main()

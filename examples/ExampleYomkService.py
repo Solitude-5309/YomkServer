@@ -58,7 +58,7 @@ arm.motion 运动服务函数体 / arm.telemetry 留痕服务函数体），日�
        静默段正是演示效果，示例日志到此为止。
 
 涉及的门面 API（YomkApi）：
-  YomkApi.init / shutdown / __version__        框架生命周期
+  server().init / .shutdown / __version__      框架生命周期
   new_service(cls)                             创建并注册服务（最常用）
   add_service(srv, name)                       注册已有实例（同名即替换）
   del_service(name)                            注销服务（删除即停）
@@ -78,7 +78,7 @@ import YomkApi
 
 from boot.ArmBoot import ArmBoot
 from msgs.ArmMsgs import MoveCmd, MoveResp
-
+from YomkApi import log, fn_pool, server
 
 # ---------------------------------------------------------------------------
 # 辅助输出：全部走 YomkLogger 控制台日志（console_log_info_tag 等），无 print。
@@ -87,11 +87,9 @@ from msgs.ArmMsgs import MoveCmd, MoveResp
 
 # 场景横幅：编号 + 标题 + 涉及接口，随后一行场景背景；横幅前留一个空行分隔场景
 def log_scene(n, title, apis, explain):
-    YomkApi.console_log_info_tag("arm.demo", "")
-    YomkApi.console_log_info_tag(
-        "arm.demo", f"========== 场景 {n}：{title}（{apis}）==========")
-    YomkApi.console_log_info_tag("arm.demo", "场景背景：" + explain)
-
+    log().tag("arm.demo").info("")
+    log().tag("arm.demo").info(f"========== 场景 {n}：{title}（{apis}）==========")
+    log().tag("arm.demo").info("场景背景：" + explain)
 
 # API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 # 回包挂字符串 data 时随行展示；结构化包形态各异，由调用处专项展开
@@ -106,61 +104,49 @@ def log_resp(api, resp):
     line = f'[{api}] status={resp.status.value}{note}, msg="{resp.msg}"'
     if resp.status == YomkApi.ResStatus.eOk and isinstance(resp.data, str):
         line += f', data="{resp.data}"'
-    YomkApi.console_log_info_tag("arm.demo", line)
-
+    log().tag("arm.demo").info(line)
 
 # 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 # 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 # 结果行标注本次接口调用；同步 request/function_pool_call 在调用方线程执行服务函数体，
 # arm.motion/arm.telemetry 等服务日志被夹在开始行与结果行之间，归属一目了然
 def log_action(op, api, call):
-    YomkApi.console_log_info_tag("arm.demo", "开始执行 " + op)
+    log().tag("arm.demo").info("开始执行 " + op)
     resp = call()
     log_resp(api, resp)
     return resp
 
-
 # 操作开始行（返回值需要定制展开的动作，如清单/拓扑类查询与异步请求）：
 # 由调用处随后打结果行
 def log_action_start(op):
-    YomkApi.console_log_info_tag("arm.demo", "开始执行 " + op)
-
+    log().tag("arm.demo").info("开始执行 " + op)
 
 # 操作日志（int 返回版）：NEW_SERVICE/ADD_SERVICE/DEL_SERVICE/BOOT 等框架管理
 # 接口返回 int（0=成功，-1=失败），先打开始行再调用，结果行标注返回值
 def log_action_int(op, api, call):
-    YomkApi.console_log_info_tag("arm.demo", "开始执行 " + op)
+    log().tag("arm.demo").info("开始执行 " + op)
     ret = call()
-    YomkApi.console_log_info_tag(
-        "arm.demo", f"[{api}] ret={ret}" + ("(成功)" if ret == 0 else "(失败)"))
-
+    log().tag("arm.demo").info(f"[{api}] ret={ret}" + ("(成功)" if ret == 0 else "(失败)"))
 
 # 服务清单行：清单逐行展示（" - " 无序列表风格）
 def log_string_line(api, line):
-    YomkApi.console_log_info_tag("arm.demo", f"[{api}] - {line}")
-
+    log().tag("arm.demo").info(f"[{api}] - {line}")
 
 # 自省结果展开：单个函数 FuncInfo 的全部字段逐行展示（函数名行 + 字段行），
 # FUNCTIONS 清单与 FUNCTION 单查共用；紧随其结果行输出，函数名行以 "-" 起头、
 # 字段行缩进对齐，元数据为空时兜底"(未指定)"
 def log_func_info(api, info):
-    YomkApi.console_log_info_tag("arm.demo", f"[{api}] - {info.func_name}")
-    YomkApi.console_log_info_tag(
-        "arm.demo", f"[{api}]     msgName: {info.msg_name if info.msg_name else '(未指定)'}")
-    YomkApi.console_log_info_tag(
-        "arm.demo", f"[{api}]     description: {info.description if info.description else '(未指定)'}")
-
+    log().tag("arm.demo").info(f"[{api}] - {info.func_name}")
+    log().tag("arm.demo").info(f"[{api}]     msgName: {info.msg_name if info.msg_name else '(未指定)'}")
+    log().tag("arm.demo").info(f"[{api}]     description: {info.description if info.description else '(未指定)'}")
 
 # 拓扑摘要行：服务名 + 函数计数（收班终态用，拓扑全量展开详见 ExampleYomkServerInfo）
 def log_srv_brief(api, srv_name, func_count):
-    YomkApi.console_log_info_tag(
-        "arm.demo", f"[{api}] - {srv_name}（{func_count} 个功能函数）")
-
+    log().tag("arm.demo").info(f"[{api}] - {srv_name}（{func_count} 个功能函数）")
 
 # 自证结论：期望与实际写在同一行，读者无需查源码即可确认框架行为
 def log_verify(text):
-    YomkApi.console_log_info_tag("arm.demo", "[验证] " + text)
-
+    log().tag("arm.demo").info("[验证] " + text)
 
 # ---------------------------------------------------------------------------
 # 8 个场景小示例：每个函数独立小闭环，可单独阅读；main 按上电会话顺序编排。
@@ -180,31 +166,27 @@ def show_arm_power_on_register():
         "编排注册留痕服务；INFO_SERVICES 复查在册清单。")
 
     log_action_start("控制柜上电自检：读取框架版本与全局单例")
-    YomkApi.console_log_info_tag(
-        "arm.demo", f"[VERSION] version={YomkApi.__version__}")
-    YomkApi.console_log_info_tag(
-        "arm.demo",
-        f"[SERVER_PTR] instance={'ready' if YomkApi.server_instance() is not None else 'null'}")
+    log().tag("arm.demo").info(f"[VERSION] version={YomkApi.__version__}")
+    log().tag("arm.demo").info(f"[SERVER_PTR] instance={'ready' if server().instance() is not None else 'null'}")
     log_verify("init 后单例就绪：server_instance() 可判空，server() 供服务构造时取 server 引用")
 
     log_action_int(
         "运动工位上线：一步创建并注册 /MotionService", "NEW_SERVICE /MotionService",
-        lambda: YomkApi.new_service(MotionService))
+        lambda: server().srv(MotionService).create())
     log_verify("返回 0 即注册成功：URL 前缀 /MotionService 生效，init() 已被框架调用（arm.motion 的 init 日志为证）")
 
     log_action_int(
         "启动编排注册留痕工位 /TelemetryService", "BOOT ArmBoot",
-        lambda: YomkApi.boot(ArmBoot(["/TelemetryService"])))
+        lambda: server().boot_ptr(ArmBoot(["/TelemetryService"])).run())
     log_verify("arm.boot 三段日志夹在开始行与结果行之间：boot 按 before→start→after 顺序执行")
 
     log_action_start("复查控制柜在册服务清单")
-    names_resp = YomkApi.server_info_services()
+    names_resp = server().services()
     log_resp("INFO_SERVICES", names_resp)
     if names_resp.data:
         for srv_name in names_resp.data:
             log_string_line("INFO_SERVICES", srv_name)
     log_verify("清单 7 项 = 2 个业务工位（排最前）+ 5 个内置服务，按字典序排列")
-
 
 # 场景 2：通讯自检与寻址异常（REQUEST 回环 + not-found 分支）
 def show_arm_link_check():
@@ -218,18 +200,17 @@ def show_arm_link_check():
 
     log_action(
         "通讯自检：请求运动服务回环", "REQUEST /MotionService/echo",
-        lambda: YomkApi.request("/MotionService/echo", "ping"))
+        lambda: server().url("/MotionService/echo").msg("ping").request())
     log_verify("arm.motion 日志夹在开始行与结果行之间——request 在调用方线程同步执行；回包 data 携带回显文本")
 
     log_action(
         "请求不存在的服务 /GhostService", "REQUEST /GhostService/echo",
-        lambda: YomkApi.request("/GhostService/echo", "ping"))
+        lambda: server().url("/GhostService/echo").msg("ping").request())
 
     log_action(
         "请求运动服务不存在的函数", "REQUEST /MotionService/not_exist",
-        lambda: YomkApi.request("/MotionService/not_exist", "ping"))
+        lambda: server().url("/MotionService/not_exist").msg("ping").request())
     log_verify("两种 not-found 均为 eNo 且 msg 说明原因：寻址失败是普通返回值，不报错不崩溃")
-
 
 # 场景 3：异步下发示教任务（ASYNC_REQUEST 线程自证）
 def show_arm_async_teach():
@@ -240,23 +221,19 @@ def show_arm_async_teach():
         "示教任务走异步通道：ASYNC_REQUEST 发送即返回、不阻塞控制回路，回调"
         "稍后在框架异步线程池执行——主线程与池线程名对比自证。")
 
-    YomkApi.console_log_info_tag(
-        "arm.demo", f"主线程: {threading.current_thread().name}")
+    log().tag("arm.demo").info(f"主线程: {threading.current_thread().name}")
 
     def on_teach_done(resp):
-        YomkApi.console_log_info_tag(
-            "arm.demo",
-            f'[ASYNC_REQUEST 回调] status={resp.status.value}, msg="{resp.msg}"'
+        log().tag("arm.demo").info(f'[ASYNC_REQUEST 回调] status={resp.status.value}, msg="{resp.msg}"'
             f"（池线程: {threading.current_thread().name}）")
 
     log_action_start("异步下发示教点自检请求")
-    YomkApi.async_request("/MotionService/echo", "teach point #1", on_teach_done)
+    server().url("/MotionService/echo").async_(on_teach_done).msg("teach point #1").request()
     log_verify("ASYNC_REQUEST 无同步结果行：发送即返回，控制回路不等回调")
 
     # 等待异步回调送达，保证回调日志先于下一条验证行出现、可读
     time.sleep(0.3)
     log_verify("池线程不同于主线程：请求在框架内置线程池并发执行，不阻塞控制回路")
-
 
 # 场景 4：运动指令调用链（跨服务调用 + 强类型回包）
 def show_arm_move_chain():
@@ -270,18 +247,15 @@ def show_arm_move_chain():
 
     move_resp = log_action(
         "下发运动指令：运动到 (100.0, 50.0, 200.0)mm", "REQUEST /MotionService/move",
-        lambda: YomkApi.request("/MotionService/move", MoveCmd(100.0, 50.0, 200.0, 0.8)))
+        lambda: server().url("/MotionService/move").msg(MoveCmd(100.0, 50.0, 200.0, 0.8)).request())
 
     log_action_start("展开到位回执 MoveResp")
     data = move_resp.data
     if isinstance(data, MoveResp):
-        YomkApi.console_log_info_tag(
-            "arm.demo",
-            f"[REQUEST /MotionService/move] | MoveResp 到位 ({data.reach_x}, {data.reach_y}, {data.reach_z})mm")
+        log().tag("arm.demo").info(f"[REQUEST /MotionService/move] | MoveResp 到位 ({data.reach_x}, {data.reach_y}, {data.reach_z})mm")
     else:
-        YomkApi.console_log_info_tag("arm.demo", "[REQUEST /MotionService/move] | (no MoveResp data)")
+        log().tag("arm.demo").info("[REQUEST /MotionService/move] | (no MoveResp data)")
     log_verify("arm.motion 与 arm.telemetry 日志夹在开始行与结果行之间：调用链 main→/move→/record 同步执行；data 携带强类型 MoveResp")
-
 
 # 场景 5：自省读取工位职能（简要展示，细节见 ExampleYomkServerInfo）
 def show_arm_introspect():
@@ -295,7 +269,7 @@ def show_arm_introspect():
         "ExampleYomkServerInfo）。")
 
     log_action_start("查阅运动工位职能清单")
-    funcs_resp = YomkApi.server_info_functions("/MotionService")
+    funcs_resp = server().srv_name("/MotionService").functions()
     log_resp("INFO_FUNCTIONS /MotionService", funcs_resp)
     if funcs_resp.data:
         for func in funcs_resp.data:
@@ -303,12 +277,11 @@ def show_arm_introspect():
     log_verify("msgName 即 install_func 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /echo 两字段为(未指定)")
 
     log_action_start("调阅运动指令函数名片")
-    resp = YomkApi.server_info_function("/MotionService/move")
+    resp = server().fn_url("/MotionService/move").get_info()
     log_resp("INFO_FUNCTION /MotionService/move", resp)
     if resp.data is not None:
         log_func_info("INFO_FUNCTION", resp.data)
     log_verify("命中契约：msg 恒 ok、元数据走 data")
-
 
 # 场景 6：留痕工位升级（同名替换，服务与钩子一并热切换）
 def show_arm_station_upgrade():
@@ -322,20 +295,19 @@ def show_arm_station_upgrade():
 
     log_action(
         "直调留痕钩子（替换前）", "FUNCTIONPOOL_CALL telemetry_hook (V1)",
-        lambda: YomkApi.function_pool_call("telemetry_hook", "diag check V1"))
+        lambda: fn_pool().fn_name("telemetry_hook").msg("diag check V1").call())
     log_verify("留痕记录 [实例#1]：diag check V1——钩子由当前实例 init 注册、按名直调")
 
     log_action_int(
         "留痕工位升级：同名注册替换 /TelemetryService", "ADD_SERVICE /TelemetryService",
-        lambda: YomkApi.add_service(TelemetryService(YomkApi.server()), "/TelemetryService"))
+        lambda: server().srv_ptr(TelemetryService(server().instance())).srv_name("/TelemetryService").add())
     log_verify("框架直出 service already exists -> update to current service：旧实例 deinit 注销钩子，实例 #1 随即回收")
     log_verify("新实例 init 重挂 telemetry_hook，函数池直出 already exist -> update to current function：服务与钩子一并换新")
 
     log_action(
         "直调留痕钩子（替换后）", "FUNCTIONPOOL_CALL telemetry_hook (V2)",
-        lambda: YomkApi.function_pool_call("telemetry_hook", "diag check V2"))
+        lambda: fn_pool().fn_name("telemetry_hook").msg("diag check V2").call())
     log_verify("留痕记录 [实例#2]：diag check V2——旧实例已回收而钩子仍可用，钩子确已换新")
-
 
 # 场景 7：留痕工位下线（删除即停与断链传播）
 def show_arm_station_offline():
@@ -348,23 +320,22 @@ def show_arm_station_offline():
 
     log_action_int(
         "留痕工位下线：注销 /TelemetryService", "DEL_SERVICE /TelemetryService",
-        lambda: YomkApi.del_service("/TelemetryService"))
+        lambda: server().srv_name("/TelemetryService").remove())
 
     log_action_int(
         "重复注销已下线工位", "DEL_SERVICE /TelemetryService (重复)",
-        lambda: YomkApi.del_service("/TelemetryService"))
+        lambda: server().srv_name("/TelemetryService").remove())
     log_verify("服务已不存在 -> ret=-1：注销失败是普通返回值，不报错不崩溃")
 
     log_action(
         "直调留痕钩子（已下线）", "FUNCTIONPOOL_CALL telemetry_hook (已下线)",
-        lambda: YomkApi.function_pool_call("telemetry_hook", "diag check V2"))
+        lambda: fn_pool().fn_name("telemetry_hook").msg("diag check V2").call())
     log_verify("钩子返回 eNo(funcName is not register)：deinit 显式注销承担失效语义，删除即停不悬垂")
 
     log_action(
         "重发运动指令（留痕缺失）", "REQUEST /MotionService/move",
-        lambda: YomkApi.request("/MotionService/move", MoveCmd(100.0, 50.0, 200.0, 0.8)))
+        lambda: server().url("/MotionService/move").msg(MoveCmd(100.0, 50.0, 200.0, 0.8)).request())
     log_verify("move 返回 eNo(move failed: ...)：留痕是运动的依赖前置，失败沿调用链传播")
-
 
 # 场景 8：收班断电（INFO_ALL 终态 + SHUTDOWN 后守卫）
 def show_arm_power_off():
@@ -377,34 +348,28 @@ def show_arm_power_off():
         "，日志门面随之静默——静默段正是演示效果。")
 
     log_action_start("导出收班终态拓扑（摘要）")
-    all_resp = YomkApi.server_info_all()
+    all_resp = server().all()
     log_resp("INFO_ALL", all_resp)
     if all_resp.data:
         for srv in all_resp.data:
             log_srv_brief("INFO_ALL", srv.service_name, len(srv.funcs))
     log_verify("6 个服务 = 5 个内置 + 1 个运动工位：留痕工位已在场景 7 下线，拓扑实时反映运行期服务表")
 
-    YomkApi.console_log_info_tag(
-        "arm.demo", '收班预告：shutdown 后框架已关闭，此后任何请求统一返回 eInvalid "YomkServer is not init"；')
-    YomkApi.console_log_info_tag(
-        "arm.demo", "本示例所有日志门面随之静默——下面的静默段正是演示效果，示例日志至此结束，程序停在 input 等待回车退出")
+    log().tag("arm.demo").info('收班预告：shutdown 后框架已关闭，此后任何请求统一返回 eInvalid "YomkServer is not init"；')
+    log().tag("arm.demo").info("本示例所有日志门面随之静默——下面的静默段正是演示效果，示例日志至此结束，程序停在 input 等待回车退出")
 
     def shutdown_and_guard():
-        YomkApi.shutdown()
-        return YomkApi.request("/MotionService/echo", "after shutdown")  # eInvalid：结果行随日志门面静默，行为已由收班预告说明
+        server().shutdown()
+        return server().url("/MotionService/echo").msg("after shutdown").request()  # eInvalid：结果行随日志门面静默，行为已由收班预告说明
 
     log_action("收班断电：优雅关闭框架", "SHUTDOWN + REQUEST (关闭后守卫)", shutdown_and_guard)
 
-
 def main():
     # 初始化框架（/YomkServerInfo 等 5 个内置服务随之自动启动）
-    YomkApi.init()
+    server().init()
 
-    YomkApi.console_log_info_tag(
-        "arm.demo", "机械臂控制 x YomkService 示例：控制柜一次上电会话贯穿 8 个场景，覆盖服务定义与调用全部用户接口")
-    YomkApi.console_log_info_tag(
-        "arm.demo",
-        "日志按 tag 分层：arm.demo=叙事与结果 / arm.boot=启动编排 / arm.motion=运动服务函数体 / "
+    log().tag("arm.demo").info("机械臂控制 x YomkService 示例：控制柜一次上电会话贯穿 8 个场景，覆盖服务定义与调用全部用户接口")
+    log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / arm.boot=启动编排 / arm.motion=运动服务函数体 / "
         "arm.telemetry=留痕服务函数体（同步调用在调用方线程执行）")
 
     show_arm_power_on_register()
@@ -419,7 +384,6 @@ def main():
     # 场景 8 已 shutdown：日志门面全部静默，结束横幅不再可见——
     # 结束预告已并入场景 8 的收班预告锚点，程序在此等待回车退出
     input()
-
 
 if __name__ == "__main__":
     main()

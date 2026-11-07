@@ -23,24 +23,22 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
 
 import sys
 
+import YomkApi
 from YomkApi import (
+    server,
+    ctx,
     ContextGroupInfo,
     ContextKeyInfo,
-    context_create,
-    context_destroy,
-    context_get,
-    context_info_all,
-    context_info_key,
-    context_info_keys,
-    context_set,
-    init,
-    server,
-    shutdown,
 )
-from YomkServerPy import ResStatus
+
+from YomkServerPy import Context, ContextGroupKey, ResStatus
+
+def raw_ctx(endpoint, pkg):
+    # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息断言经 server 域
+    # url/msg/request 裸链直取 Response（端点行为与链式终结一致）
+    return YomkApi.server().url("/YomkContext/" + endpoint).msg(pkg).request()
 
 g_failed = 0
-
 
 def check(cond, msg):
     global g_failed
@@ -51,10 +49,10 @@ def check(cond, msg):
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
 
-
 def main():
     # 拉起内置服务 /YomkContext
-    srv = init(1)
+    server().async_thread(1).init()
+    srv = server().instance()
     check(srv is not None, "init 返回非空服务器")
 
     # 验证 /YomkContext 已注册
@@ -62,62 +60,62 @@ def main():
           "serviceNames 包含 /YomkContext")
 
     # create：正常创建 String 类型 value
-    resp = context_create("str_key", "hello")
+    resp = raw_ctx("create", Context("str_key", "hello", "main"))
     check(resp.status == ResStatus.eOk, "create 正常 String value 返回 eOk")
     check(resp.msg == "create context success", "create 成功消息一致")
 
     # create：正常创建 Int32 类型 value
-    resp = context_create("int_key", 42)
-    check(resp.status == ResStatus.eOk, "create 正常 Int32 value 返回 eOk")
+    resp = ctx().key("int_key").value(42).create()
+    check(resp == ResStatus.eOk, "create 正常 Int32 value 返回 eOk")
 
     # create：空 key
-    resp = context_create("", "value")
+    resp = raw_ctx("create", Context("", "value", "main"))
     check(resp.status == ResStatus.eNo, "create 空 key 返回 eNo")
     check(resp.msg == "key is empty", "create 空 key 错误消息一致")
 
     # create：空 value（None）
-    resp = context_create("null_value_key", None)
+    resp = raw_ctx("create", Context("null_value_key", None, "main"))
     check(resp.status == ResStatus.eNo, "create None value 返回 eNo")
     check(resp.msg == "value is empty", "create None value 错误消息一致")
 
     # create：重复 key
-    resp = context_create("str_key", "dup")
+    resp = raw_ctx("create", Context("str_key", "dup", "main"))
     check(resp.status == ResStatus.eNo, "create 重复 key 返回 eNo")
     check(resp.msg == "key already exists", "create 重复 key 错误消息一致")
 
     # get：正常 get
-    check(context_get("str_key", "default") == "hello", "get 正常返回原始 value")
+    check(ctx().key("str_key").msg().with_default("default").get() == "hello", "get 正常返回原始 value")
 
     # get：不存在 key，返回默认 value
-    check(context_get("no_such_key", "default") == "default",
+    check(ctx().key("no_such_key").msg().with_default("default").get() == "default",
           "get 不存在 key 返回默认值")
 
     # get：空 key，返回默认 value
-    check(context_get("", "default") == "default", "get 空 key 返回默认值")
+    check(ctx().key("").msg().with_default("default").get() == "default", "get 空 key 返回默认值")
 
     # set：正常 set 同类型 value
-    resp = context_set("str_key", "world")
+    resp = raw_ctx("set", Context("str_key", "world", "main"))
     check(resp.status == ResStatus.eOk, "set 正常同类型返回 eOk")
     check(resp.msg == "set context success", "set 成功消息一致")
-    check(context_get("str_key", "default") == "world", "set 后 get 返回新 value")
+    check(ctx().key("str_key").msg().with_default("default").get() == "world", "set 后 get 返回新 value")
 
     # set：不存在 key
-    resp = context_set("no_such_key", "x")
+    resp = raw_ctx("set", Context("no_such_key", "x", "main"))
     check(resp.status == ResStatus.eNo, "set 不存在 key 返回 eNo")
     check(resp.msg == "key is not exist", "set 不存在 key 错误消息一致")
 
     # set：空 key
-    resp = context_set("", "x")
+    resp = raw_ctx("set", Context("", "x", "main"))
     check(resp.status == ResStatus.eNo, "set 空 key 返回 eNo")
     check(resp.msg == "key is empty", "set 空 key 错误消息一致")
 
     # set：类型不匹配
-    resp = context_set("str_key", 100)
+    resp = raw_ctx("set", Context("str_key", 100, "main"))
     check(resp.status == ResStatus.eNo, "set 类型不匹配返回 eNo")
     check(resp.msg == "context type not match", "set 类型不匹配错误消息一致")
 
     # keys：包含已创建 key
-    resp = context_info_keys()
+    resp = ctx().keys()
     check(resp.status == ResStatus.eOk, "keys 返回 eOk")
     arr = resp.data
     check(isinstance(arr, list) and len(arr) == 2, "keys 返回 2 个 key")
@@ -125,7 +123,7 @@ def main():
     check("int_key" in arr, "keys 包含 int_key")
 
     # keyInfo：正常 key（结构化返回，msg 恒 "ok"，数据走 data）
-    resp = context_info_key("str_key")
+    resp = ctx().key("str_key").info()
     check(resp.status == ResStatus.eOk, "keyInfo 正常 key 返回 eOk")
     check(resp.msg == "ok", "keyInfo 命中 msg 恒为 ok")
     check(isinstance(resp.data, ContextKeyInfo),
@@ -138,17 +136,17 @@ def main():
     check(resp.data.group == "main", "keyInfo 字段 group 一致")
 
     # keyInfo：空 key
-    resp = context_info_key("")
+    resp = ctx().key("").info()
     check(resp.status == ResStatus.eNo, "keyInfo 空 key 返回 eNo")
     check(resp.msg == "key is empty", "keyInfo 空 key 错误消息一致")
 
     # keyInfo：不存在 key
-    resp = context_info_key("no_such_key")
+    resp = ctx().key("no_such_key").info()
     check(resp.status == ResStatus.eNo, "keyInfo 不存在 key 返回 eNo")
     check(resp.msg == "key is not exist", "keyInfo 不存在 key 错误消息一致")
 
     # listAll：跨组聚合（组 → 键元信息两层结构化列表，msg 恒 "ok"）
-    resp = context_info_all()
+    resp = ctx().all()
     check(resp.status == ResStatus.eOk, "listAll 返回 eOk")
     check(resp.msg == "ok", "listAll 成功消息恒为 ok")
     check(isinstance(resp.data, list) and len(resp.data) == 1,
@@ -171,27 +169,27 @@ def main():
           "listAll checker/monitor 计数为 0")
 
     # destroy：正常销毁
-    resp = context_destroy("int_key")
+    resp = raw_ctx("destroy", ContextGroupKey("main", "int_key"))
     check(resp.status == ResStatus.eOk, "destroy 正常销毁返回 eOk")
     check(resp.msg == "destroy context success", "destroy 成功消息一致")
 
     # destroy：重复销毁
-    resp = context_destroy("int_key")
+    resp = raw_ctx("destroy", ContextGroupKey("main", "int_key"))
     check(resp.status == ResStatus.eNo, "destroy 重复销毁返回 eNo")
     check(resp.msg == "key is not exist", "destroy 重复销毁错误消息一致")
 
     # destroy：不存在 key
-    resp = context_destroy("no_such_key")
+    resp = raw_ctx("destroy", ContextGroupKey("main", "no_such_key"))
     check(resp.status == ResStatus.eNo, "destroy 不存在 key 返回 eNo")
     check(resp.msg == "key is not exist", "destroy 不存在 key 错误消息一致")
 
     # destroy：空 key（源码不单独判空，等价于不存在的 key）
-    resp = context_destroy("")
+    resp = raw_ctx("destroy", ContextGroupKey("main", ""))
     check(resp.status == ResStatus.eNo, "destroy 空 key 返回 eNo")
     check(resp.msg == "key is not exist", "destroy 空 key 错误消息一致")
 
     # keys：销毁后只剩一个 key
-    resp = context_info_keys()
+    resp = ctx().keys()
     check(resp.status == ResStatus.eOk, "keys 销毁后返回 eOk")
     arr = resp.data
     check(isinstance(arr, list) and len(arr) == 1, "keys 销毁后返回 1 个 key")
@@ -199,20 +197,19 @@ def main():
     check("int_key" not in arr, "keys 销毁后不含 int_key")
 
     # 清理：销毁剩余 key
-    resp = context_destroy("str_key")
-    check(resp.status == ResStatus.eOk, "清理销毁 str_key 返回 eOk")
+    resp = ctx().key("str_key").destroy()
+    check(resp == ResStatus.eOk, "清理销毁 str_key 返回 eOk")
 
     # keys：全部销毁后为空
-    resp = context_info_keys()
+    resp = ctx().keys()
     check(resp.status == ResStatus.eOk, "keys 全部销毁后返回 eOk")
     check(resp.data == [], "keys 全部销毁后返回空数组")
 
-    shutdown()
+    server().shutdown()
 
     print(("ALL PASSED" if g_failed == 0 else "SOME FAILED")
           + f" ({g_failed} failed)")
     return 0 if g_failed == 0 else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

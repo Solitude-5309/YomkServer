@@ -25,9 +25,9 @@ import sys
 
 import YomkApi
 from YomkServerPy import ResStatus, YomkService
+from YomkApi import server
 
 g_failed = 0
-
 
 def check(cond, msg):
     global g_failed
@@ -38,7 +38,6 @@ def check(cond, msg):
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
 
-
 class DummySrv(YomkService):
     """最小演示服务：API 层增删往返与二次初始化守卫用例载体"""
 
@@ -48,25 +47,25 @@ class DummySrv(YomkService):
     def init(self):
         return 0
 
-
 def name_in(names, name):
     return name in names
 
-
 def main():
     print("===== 1. init 单例承诺 =====")
-    first = YomkApi.init(1)
+    YomkApi.server().async_thread(1).init()
+    first = YomkApi.server().instance()
     check(first is not None, "首次 init(1) 返回非空单例")
 
-    second = YomkApi.init(4)
+    YomkApi.server().async_thread(4).init()
+    second = YomkApi.server().instance()
     check(second is not None and second is first,
           "二次 init(4) 返回同一实例（async_thread_count 仅首次生效）")
 
-    inst = YomkApi.server_instance()
+    inst = server().instance()
     check(inst is first, "server_instance() 与 init 返回一致")
 
     print("===== 2. 内置服务拉起 =====")
-    names = YomkApi.server_instance().service_names()
+    names = server().instance().service_names()
     check(name_in(names, "/YomkContext"), "内置服务 /YomkContext 已拉起")
     check(name_in(names, "/YomkFunctionPool"), "内置服务 /YomkFunctionPool 已拉起")
     check(name_in(names, "/YomkEventLoop"), "内置服务 /YomkEventLoop 已拉起")
@@ -74,39 +73,40 @@ def main():
     check(name_in(names, "/YomkServerInfo"), "内置服务 /YomkServerInfo 已拉起")
 
     print("===== 3. API 层独有守卫（已初始化态） =====")
-    check(YomkApi.add_service(None) == -1,
+    check(server().srv_ptr(None).add() == -1,
           "add_service(None) 返回 -1（YomkService is null）")
-    check(YomkApi.del_service("") == -1,
+    check(server().srv_name("").remove() == -1,
           "del_service(\"\") 返回 -1（service name is empty）")
 
     print("===== 4. API 层增删往返 =====")
-    check(YomkApi.add_service(DummySrv(YomkApi.server_instance()), "/ApiSrv") == 0,
+    check(server().srv_ptr(DummySrv(server().instance())).srv_name("/ApiSrv").add() == 0,
           "add_service 两参形式改名注册成功")
-    check(YomkApi.del_service("/ApiSrv") == 0, "del_service 已注册服务返回 0")
-    check(YomkApi.del_service("/ApiSrv") == -1, "重复删除已删服务返回 -1")
+    check(server().srv_name("/ApiSrv").remove() == 0, "del_service 已注册服务返回 0")
+    check(server().srv_name("/ApiSrv").remove() == -1, "重复删除已删服务返回 -1")
 
     # 已初始化时守卫放行至服务器层：不存在的服务名按服务器层契约返回 eNo
-    resp = YomkApi.request("/Nope/x", None)
+    resp = server().url("/Nope/x").request()
     check(resp.status == ResStatus.eNo, "request 未知服务经守卫放行至服务器层返回 eNo")
 
     print("===== 5. shutdown 与关闭后守卫回归 =====")
-    YomkApi.shutdown()
-    check(YomkApi.server_instance() is None, "shutdown 后单例置空")
+    server().shutdown()
+    check(server().instance() is None, "shutdown 后单例置空")
 
-    YomkApi.shutdown()
+    server().shutdown()
     check(True, "二次 shutdown 幂等不崩溃")
 
-    resp = YomkApi.request("/Any/func", None)
+    resp = server().url("/Any/func").request()
     check(resp.status == ResStatus.eInvalid, "关闭后 request 守卫回归 eInvalid")
     check(resp.msg == "YomkServer is not init", f"关闭后契约消息回归: {resp.msg}")
-    check(YomkApi.new_service(DummySrv) == -1, "关闭后 new_service 守卫回归 -1")
+    check(server().srv(DummySrv).create() == -1, "关闭后 new_service 守卫回归 -1")
 
-    check(YomkApi.init() is None, "关闭后 init 再调返回 None（once 已消耗，不支持二次初始化）")
+    YomkApi.server().init()
+    check(YomkApi.server().instance() is None,
+          "关闭后 init 再调不重建单例（once 已消耗，不支持二次初始化）")
 
     print(("ALL PASSED" if g_failed == 0 else "SOME FAILED") +
           f" ({g_failed} failed)")
     return 0 if g_failed == 0 else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

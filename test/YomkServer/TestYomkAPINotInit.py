@@ -31,11 +31,11 @@ import sys
 import time
 
 import YomkApi
-from YomkServerPy import ResStatus, YomkService
+from YomkServerPy import Log, ResStatus, YomkService
+from YomkApi import log, log_mgr, ctx, event_loop, fn_pool, server
 
 g_failed = 0
 g_async_cb_count = 0  # 未初始化 async_request 回调到达计数（应恒为 0）
-
 
 def check(cond, msg):
     global g_failed
@@ -46,11 +46,9 @@ def check(cond, msg):
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
 
-
 def on_async_cb(resp):
     global g_async_cb_count
     g_async_cb_count += 1
-
 
 class DummySrv(YomkService):
     """最小演示服务：未初始化守卫用例载体（守卫先于构造使用，init 不会被调用）"""
@@ -61,104 +59,106 @@ class DummySrv(YomkService):
     def init(self):
         return 0
 
-
 def main():
     print("===== 1. version 免初始化可调用 =====")
-    ver = YomkApi.version()
+    ver = server().version()
     check(isinstance(ver, str) and ver != "", f"version() 未初始化时返回非空版本号: {ver}")
 
     print("===== 2. server_instance 与未初始化 shutdown 空转 =====")
-    check(YomkApi.server_instance() is None, "server_instance() 未初始化返回 None")
+    check(server().instance() is None, "server_instance() 未初始化返回 None")
 
-    YomkApi.shutdown()
-    check(YomkApi.server_instance() is None, "shutdown() 未初始化空转，单例保持为空")
+    server().shutdown()
+    check(server().instance() is None, "shutdown() 未初始化空转，单例保持为空")
 
     print("===== 3. request/async_request 未初始化守卫 =====")
-    resp = YomkApi.request("/Any/func", None)
+    resp = server().url("/Any/func").request()
     check(resp.status == ResStatus.eInvalid, "request 未初始化返回 eInvalid")
     check(resp.msg == "YomkServer is not init",
           f"request 未初始化契约消息: {resp.msg}")
 
-    YomkApi.async_request("/Any/func", None, on_async_cb)
+    server().url("/Any/func").async_(on_async_cb).request()
     time.sleep(0.1)
     check(g_async_cb_count == 0, "async_request 未初始化静默返回，回调不触发")
 
     print("===== 4. 服务管理 API 未初始化守卫 =====")
-    check(YomkApi.new_service(DummySrv) == -1, "new_service 未初始化返回 -1")
-    check(YomkApi.add_service(None) == -1, "add_service(None) 未初始化返回 -1")
-    check(YomkApi.add_service(DummySrv()) == -1, "add_service(服务实例) 未初始化返回 -1")
-    check(YomkApi.del_service("/Any") == -1, "del_service 未初始化返回 -1")
+    check(server().srv(DummySrv).create() == -1, "new_service 未初始化返回 -1")
+    check(server().srv_ptr(None).add() == -1, "add_service(None) 未初始化返回 -1")
+    check(server().srv_ptr(DummySrv()).add() == -1, "add_service(服务实例) 未初始化返回 -1")
+    check(server().srv_name("/Any").remove() == -1, "del_service 未初始化返回 -1")
 
     print("===== 5. 模块便捷 API 守卫抽样（统一守卫入口验证） =====")
-    resp = YomkApi.context_create("guard_key", None)
-    check(resp.status == ResStatus.eInvalid, "context_create 未初始化返回 eInvalid")
-    resp = YomkApi.function_pool_register("guard_func", None)
-    check(resp.status == ResStatus.eInvalid,
+    resp = ctx().key("guard_key").value(None).create()
+    check(resp == ResStatus.eInvalid, "context_create 未初始化返回 eInvalid")
+    resp = fn_pool().fn_name("guard_func").fn(None).install()
+    check(resp == ResStatus.eInvalid,
           "function_pool_register 未初始化返回 eInvalid")
-    resp = YomkApi.event_loop_start("/guard_loop")
-    check(resp.status == ResStatus.eInvalid,
+    resp = event_loop().loop("/guard_loop").start()
+    check(resp == ResStatus.eInvalid,
           "event_loop_start 未初始化返回 eInvalid")
-    check(resp.msg == "YomkServer is not init", f"模块 API 守卫契约消息同根: {resp.msg}")
+    # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息同根改由读路径 Response 承载
+    check(event_loop().list().msg == "YomkServer is not init",
+          "模块 API 守卫契约消息同根（读路径 event_loop_info_loops）")
 
     sentinel = object()
-    check(YomkApi.context_get("guard_key", sentinel) is sentinel,
+    check(ctx().key("guard_key").msg().with_default(sentinel).get() is sentinel,
           "context_get 未初始化原样返回调用方默认值")
 
     print("===== 6. LOG 模块便捷 API 守卫全量（Logger 模块轮 P1 收口 23 条） =====")
     # Logger 23 条顺序（同第 5 节排布口径）
-    check(YomkApi.set_console_log_proxy(None).status == ResStatus.eInvalid,
+    check(log_mgr().console().proxy(None).apply() == ResStatus.eInvalid,
           "set_console_log_proxy 未初始化返回 eInvalid")
-    resp = YomkApi.console_log_info_tag("tag", "hello")
-    check(resp.status == ResStatus.eInvalid,
+    resp = log().tag("tag").info("hello")
+    check(resp == ResStatus.eInvalid,
           "console_log_info_tag 未初始化返回 eInvalid")
-    check(resp.msg == "YomkServer is not init", f"模块 API 守卫契约消息同根: {resp.msg}")
-    check(YomkApi.console_log_warn_tag("tag", "hello").status == ResStatus.eInvalid,
+    # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息同根改由读路径 Response 承载
+    check(log_mgr().all().msg == "YomkServer is not init",
+          "模块 API 守卫契约消息同根（读路径 logger_info_all）")
+    check(log().tag("tag").warn("hello") == ResStatus.eInvalid,
           "console_log_warn_tag 未初始化返回 eInvalid")
-    check(YomkApi.console_log_error_tag("tag", "hello").status == ResStatus.eInvalid,
+    check(log().tag("tag").error("hello") == ResStatus.eInvalid,
           "console_log_error_tag 未初始化返回 eInvalid")
-    check(YomkApi.console_log_debug_tag("tag", "hello").status == ResStatus.eInvalid,
+    check(log().tag("tag").debug("hello") == ResStatus.eInvalid,
           "console_log_debug_tag 未初始化返回 eInvalid")
-    check(YomkApi.file_log_create("/tmp", "guard.log").status == ResStatus.eInvalid,
+    check(log_mgr().dir("/tmp").file("guard.log").create() == ResStatus.eInvalid,
           "file_log_create 未初始化返回 eInvalid")
-    check(YomkApi.file_log_write("guard.log").status == ResStatus.eInvalid,
+    check(log_mgr().file("guard.log").flush() == ResStatus.eInvalid,
           "file_log_write 未初始化返回 eInvalid")
-    check(YomkApi.file_log_info_tag("guard.log", "tag", "hello").status == ResStatus.eInvalid,
+    check(log().to_sink("guard.log").tag("tag").info("hello") == ResStatus.eInvalid,
           "file_log_info_tag 未初始化返回 eInvalid")
-    check(YomkApi.file_log_warn_tag("guard.log", "tag", "hello").status == ResStatus.eInvalid,
+    check(log().to_sink("guard.log").tag("tag").warn("hello") == ResStatus.eInvalid,
           "file_log_warn_tag 未初始化返回 eInvalid")
-    check(YomkApi.file_log_error_tag("guard.log", "tag", "hello").status == ResStatus.eInvalid,
+    check(log().to_sink("guard.log").tag("tag").error("hello") == ResStatus.eInvalid,
           "file_log_error_tag 未初始化返回 eInvalid")
-    check(YomkApi.file_log_debug_tag("guard.log", "tag", "hello").status == ResStatus.eInvalid,
+    check(log().to_sink("guard.log").tag("tag").debug("hello") == ResStatus.eInvalid,
           "file_log_debug_tag 未初始化返回 eInvalid")
-    check(YomkApi.off_console_log_info().status == ResStatus.eInvalid,
+    check(log_mgr().console().level(Log.eInfo).disable() == ResStatus.eInvalid,
           "off_console_log_info 未初始化返回 eInvalid")
-    check(YomkApi.off_console_log_warn().status == ResStatus.eInvalid,
+    check(log_mgr().console().level(Log.eWarn).disable() == ResStatus.eInvalid,
           "off_console_log_warn 未初始化返回 eInvalid")
-    check(YomkApi.off_console_log_error().status == ResStatus.eInvalid,
+    check(log_mgr().console().level(Log.eError).disable() == ResStatus.eInvalid,
           "off_console_log_error 未初始化返回 eInvalid")
-    check(YomkApi.off_console_log_debug().status == ResStatus.eInvalid,
+    check(log_mgr().console().level(Log.eDebug).disable() == ResStatus.eInvalid,
           "off_console_log_debug 未初始化返回 eInvalid")
-    check(YomkApi.on_console_log_info().status == ResStatus.eInvalid,
+    check(log_mgr().console().level(Log.eInfo).enable() == ResStatus.eInvalid,
           "on_console_log_info 未初始化返回 eInvalid")
-    check(YomkApi.on_console_log_warn().status == ResStatus.eInvalid,
+    check(log_mgr().console().level(Log.eWarn).enable() == ResStatus.eInvalid,
           "on_console_log_warn 未初始化返回 eInvalid")
-    check(YomkApi.on_console_log_error().status == ResStatus.eInvalid,
+    check(log_mgr().console().level(Log.eError).enable() == ResStatus.eInvalid,
           "on_console_log_error 未初始化返回 eInvalid")
-    check(YomkApi.on_console_log_debug().status == ResStatus.eInvalid,
+    check(log_mgr().console().level(Log.eDebug).enable() == ResStatus.eInvalid,
           "on_console_log_debug 未初始化返回 eInvalid")
-    check(YomkApi.logger_info_loggers("console").status == ResStatus.eInvalid,
+    check(log_mgr().console().list().status == ResStatus.eInvalid,
           "logger_info_loggers 未初始化返回 eInvalid")
-    check(YomkApi.logger_info_logger("guard_logger", "console").status == ResStatus.eInvalid,
+    check(log_mgr().console("guard_logger").get_info().status == ResStatus.eInvalid,
           "logger_info_logger 未初始化返回 eInvalid")
-    check(YomkApi.logger_info_all().status == ResStatus.eInvalid,
+    check(log_mgr().all().status == ResStatus.eInvalid,
           "logger_info_all 未初始化返回 eInvalid")
-    check(YomkApi.file_log_delete("guard_logger").status == ResStatus.eInvalid,
+    check(log_mgr().file("guard_logger").remove() == ResStatus.eInvalid,
           "file_log_delete 未初始化返回 eInvalid")
 
     print(("ALL PASSED" if g_failed == 0 else "SOME FAILED") +
           f" ({g_failed} failed)")
     return 0 if g_failed == 0 else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

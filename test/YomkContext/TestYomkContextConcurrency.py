@@ -30,26 +30,13 @@ import threading
 import time
 
 from YomkApi import (
-    context_create,
-    context_destroy,
-    context_get,
-    context_info_all,
-    context_info_key,
-    context_info_keys,
-    context_set,
-    context_set_checker,
-    context_set_monitor,
-    context_turn_off_checker,
-    context_turn_off_monitor,
-    context_turn_on_checker,
-    context_turn_on_monitor,
-    init,
-    shutdown,
+    server,
+    ctx,
 )
+
 from YomkServerPy import CheckStatus, ResStatus
 
 g_failed = 0
-
 
 def check(cond, msg):
     global g_failed
@@ -60,7 +47,6 @@ def check(cond, msg):
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
 
-
 def wait_for(pred, timeout_s, desc):
     # 10ms 步进轮询，超时打印 [TIMEOUT] 返回最终判定
     for _ in range(int(timeout_s / 0.01)):
@@ -70,14 +56,12 @@ def wait_for(pred, timeout_s, desc):
     print(f"[TIMEOUT] {desc} (timeout {int(timeout_s * 1000)} ms)")
     return pred()
 
-
 # ---- 文件级观测变量（每节首重置；计数用 list.append 原子承载，读取用 len） ----
 g_sync_mon = []        # 同步 monitor 调用计数
 g_async_mon = []       # 异步 monitor 调用计数
 g_checker_calls = []   # checker 调用计数
 g_reentrant_ok = []    # monitor 内重入 Context API 成功计数
 g_illegal = []         # 非法响应计数
-
 
 def reset_globals():
     g_sync_mon.clear()
@@ -86,16 +70,16 @@ def reset_globals():
     g_reentrant_ok.clear()
     g_illegal.clear()
 
-
 def main():
-    srv = init(1)
+    server().async_thread(1).init()
+    srv = server().instance()
     check(srv is not None, "init 返回非空服务器")
 
     # ============ Section 1: 并发 get/set 共享键（读写锁竞争）============
     print("===== 1. 并发 get/set 共享键 =====")
     reset_globals()
-    resp = context_create("conc_rw", "v_init")
-    check(resp.status == ResStatus.eOk, "1.1 创建 conc_rw 成功")
+    resp = ctx().key("conc_rw").value("v_init").create()
+    check(resp == ResStatus.eOk, "1.1 创建 conc_rw 成功")
 
     t_cnt, k_cnt = 8, 500
     ok_get, ok_set = [], []
@@ -104,14 +88,14 @@ def main():
         for i in range(k_cnt):
             if i % 2 == 0:
                 # conc_rw 始终存在且值为非空 str，命中 eOk 路径返回非空值
-                v = context_get("conc_rw", "")
+                v = ctx().key("conc_rw").msg().with_default("").get()
                 if v:
                     ok_get.append(1)
                 else:
                     g_illegal.append(1)
             else:
-                r = context_set("conc_rw", f"v{t}_{i}")
-                if r.status == ResStatus.eOk:
+                r = ctx().key("conc_rw").value(f"v{t}_{i}").set()
+                if r == ResStatus.eOk:
                     ok_set.append(1)
                 else:
                     g_illegal.append(1)
@@ -138,13 +122,13 @@ def main():
     def cd_worker(t):
         key = f"conc_cd_{t}"
         for _ in range(k_cnt):
-            c = context_create(key, "x")
-            if c.status == ResStatus.eOk:
+            c = ctx().key(key).value("x").create()
+            if c == ResStatus.eOk:
                 ok_create.append(1)
             else:
                 g_illegal.append(1)
-            d = context_destroy(key)
-            if d.status == ResStatus.eOk:
+            d = ctx().key(key).destroy()
+            if d == ResStatus.eOk:
                 ok_destroy.append(1)
             else:
                 g_illegal.append(1)
@@ -162,24 +146,24 @@ def main():
     check(len(g_illegal) == 0, "2.3 无非法响应")
 
     # 各专属键最终均已销毁（无泄漏）
-    all_gone = all(context_info_key(f"conc_cd_{t}").status == ResStatus.eNo
+    all_gone = all(ctx().key(f"conc_cd_{t}").info().status == ResStatus.eNo
                    for t in range(t_cnt))
     check(all_gone, "2.4 独立键全部销毁，keys 无残留")
 
     # ============ Section 3: 并发 set_monitor 同键（修复验证）============
     print("===== 3. 并发 set_monitor 同键 =====")
     reset_globals()
-    resp = context_create("conc_mon", "m0")
-    check(resp.status == ResStatus.eOk, "3.1 创建 conc_mon 成功")
-    context_turn_on_monitor()
+    resp = ctx().key("conc_mon").value("m0").create()
+    check(resp == ResStatus.eOk, "3.1 创建 conc_mon 成功")
+    ctx().monitor().enable()
 
     t_cnt, k_cnt = 8, 100  # 共 t_cnt*k_cnt 个同步 monitor 并发 append
     ok_mon = []
 
     def mon_worker():
         for _ in range(k_cnt):
-            r = context_set_monitor("conc_mon", lambda c: g_sync_mon.append(1))
-            if r.status == ResStatus.eOk:
+            r = ctx().key("conc_mon").monitor_fn(lambda c: g_sync_mon.append(1)).apply()
+            if r == ResStatus.eOk:
                 ok_mon.append(1)
             else:
                 g_illegal.append(1)
@@ -197,17 +181,17 @@ def main():
 
     # 单次 set 触发全部已注册 monitor：计数 == 注册次数，证明并发 append 无丢失/损坏
     g_sync_mon.clear()
-    sr = context_set("conc_mon", "m1")
-    check(sr.status == ResStatus.eOk, "3.4 触发 set 返回 eOk")
+    sr = ctx().key("conc_mon").value("m1").set()
+    check(sr == ResStatus.eOk, "3.4 触发 set 返回 eOk")
     check(len(g_sync_mon) == t_cnt * k_cnt,
           "3.5 并发注册的 monitor 全部落地（计数 == 注册次数）")
-    context_turn_off_monitor()
+    ctx().monitor().disable()
 
     # ============ Section 4: 并发 set_checker × keyInfo 同键（修复验证读写竞争）============
     print("===== 4. 并发 set_checker x keyInfo 同键 =====")
     reset_globals()
-    resp = context_create("conc_ck", "c0")
-    check(resp.status == ResStatus.eOk, "4.1 创建 conc_ck 成功")
+    resp = ctx().key("conc_ck").value("c0").create()
+    check(resp == ResStatus.eOk, "4.1 创建 conc_ck 成功")
 
     t_cnt, k_cnt = 16, 100  # 半数写 checker、半数读 keyInfo
     ok_writer, ok_reader = [], []
@@ -215,14 +199,13 @@ def main():
     def ck_worker(writer):
         for _ in range(k_cnt):
             if writer:
-                r = context_set_checker("conc_ck",
-                                        lambda c: CheckStatus.eAccept)
-                if r.status == ResStatus.eOk:
+                r = ctx().key("conc_ck").checker_fn(lambda c: CheckStatus.eAccept).apply()
+                if r == ResStatus.eOk:
                     ok_writer.append(1)
                 else:
                     g_illegal.append(1)
             else:
-                r = context_info_key("conc_ck")
+                r = ctx().key("conc_ck").info()
                 if r.status == ResStatus.eOk:
                     ok_reader.append(1)
                 else:
@@ -241,25 +224,21 @@ def main():
     check(len(g_illegal) == 0, "4.4 读写并发无非法响应、无崩溃")
 
     # 并发注册后 checker 仍有效：开启 checker 后单次 set 调用 checker 一次
-    context_turn_on_checker()
+    ctx().checker().enable()
     g_checker_calls.clear()
-    context_set_checker(
-        "conc_ck",
-        lambda c: (g_checker_calls.append(1), CheckStatus.eAccept)[1])
-    sr = context_set("conc_ck", "c1")
-    check(sr.status == ResStatus.eOk, "4.5 并发注册后 set 仍 eOk")
+    ctx().key("conc_ck").checker_fn(lambda c: (g_checker_calls.append(1), CheckStatus.eAccept)[1]).apply()
+    sr = ctx().key("conc_ck").value("c1").set()
+    check(sr == ResStatus.eOk, "4.5 并发注册后 set 仍 eOk")
     check(len(g_checker_calls) == 1, "4.6 checker 有效并被调用 1 次")
-    context_turn_off_checker()
+    ctx().checker().disable()
 
     # ============ Section 5: 并发 set 触发 checker ============
     print("===== 5. 并发 set 触发 checker =====")
     reset_globals()
-    resp = context_create("conc_setck", "s0")
-    check(resp.status == ResStatus.eOk, "5.1 创建 conc_setck 成功")
-    context_set_checker(
-        "conc_setck",
-        lambda c: (g_checker_calls.append(1), CheckStatus.eAccept)[1])
-    context_turn_on_checker()
+    resp = ctx().key("conc_setck").value("s0").create()
+    check(resp == ResStatus.eOk, "5.1 创建 conc_setck 成功")
+    ctx().key("conc_setck").checker_fn(lambda c: (g_checker_calls.append(1), CheckStatus.eAccept)[1]).apply()
+    ctx().checker().enable()
 
     t_cnt, k_cnt = 8, 200
     ok_set = []
@@ -267,8 +246,8 @@ def main():
 
     def setck_worker():
         for i in range(k_cnt):
-            r = context_set("conc_setck", f"s{i}")
-            if r.status == ResStatus.eOk:
+            r = ctx().key("conc_setck").value(f"s{i}").set()
+            if r == ResStatus.eOk:
                 ok_set.append(1)
             else:
                 g_illegal.append(1)
@@ -285,16 +264,16 @@ def main():
     check(len(g_checker_calls) == t_cnt * k_cnt,
           "5.3 checker 调用次数 == set 次数（写锁内串行）")
     check(len(g_illegal) == 0, "5.4 无非法响应")
-    context_turn_off_checker()
+    ctx().checker().disable()
 
     # ============ Section 6: 并发 set 触发 sync + async monitor ============
     print("===== 6. 并发 set 触发 sync+async monitor =====")
     reset_globals()
-    resp = context_create("conc_setmon", "n0")
-    check(resp.status == ResStatus.eOk, "6.1 创建 conc_setmon 成功")
-    context_set_monitor("conc_setmon", lambda c: g_sync_mon.append(1))
-    context_set_monitor("conc_setmon", lambda c: g_async_mon.append(1), True)
-    context_turn_on_monitor()
+    resp = ctx().key("conc_setmon").value("n0").create()
+    check(resp == ResStatus.eOk, "6.1 创建 conc_setmon 成功")
+    ctx().key("conc_setmon").monitor_fn(lambda c: g_sync_mon.append(1)).apply()
+    ctx().key("conc_setmon").monitor_fn(lambda c: g_async_mon.append(1)).async_(True).apply()
+    ctx().monitor().enable()
 
     t_cnt, k_cnt = 8, 200
     ok_set = []
@@ -303,8 +282,8 @@ def main():
 
     def setmon_worker():
         for i in range(k_cnt):
-            r = context_set("conc_setmon", f"n{i}")
-            if r.status == ResStatus.eOk:
+            r = ctx().key("conc_setmon").value(f"n{i}").set()
+            if r == ResStatus.eOk:
                 ok_set.append(1)
             else:
                 g_illegal.append(1)
@@ -323,45 +302,45 @@ def main():
                         "async monitor count")
     check(async_ok, "6.4 异步 monitor 计数 == set 次数（单线程池排空）")
     check(len(g_illegal) == 0, "6.5 无非法响应")
-    context_turn_off_monitor()
+    ctx().monitor().disable()
 
     # ============ Section 7: 同步 monitor 重入安全（锁外执行正面验证）============
     print("===== 7. 同步 monitor 重入安全 =====")
     reset_globals()
-    cra = context_create("conc_a", "a0")
-    crb = context_create("conc_b", "b0")
-    check(cra.status == ResStatus.eOk and crb.status == ResStatus.eOk,
+    cra = ctx().key("conc_a").value("a0").create()
+    crb = ctx().key("conc_b").value("b0").create()
+    check(cra == ResStatus.eOk and crb == ResStatus.eOk,
           "7.1 创建 conc_a/conc_b 成功")
 
     # conc_a 的同步 monitor 内重入 Context API（读 conc_b）：set 已在锁外执行
     # monitor，不应死锁
-    def reentrant_monitor(ctx):
-        r = context_info_key("conc_b")
+    def reentrant_monitor(ctx_obj):
+        r = ctx().key("conc_b").info()
         if r.status == ResStatus.eOk:
             g_reentrant_ok.append(1)
 
-    context_set_monitor("conc_a", reentrant_monitor)
-    context_turn_on_monitor()
+    ctx().key("conc_a").monitor_fn(reentrant_monitor).apply()
+    ctx().monitor().enable()
 
     g_reentrant_ok.clear()
-    sr = context_set("conc_a", "a1")
-    check(sr.status == ResStatus.eOk, "7.2 set(conc_a) 返回 eOk（monitor 重入未死锁）")
+    sr = ctx().key("conc_a").value("a1").set()
+    check(sr == ResStatus.eOk, "7.2 set(conc_a) 返回 eOk（monitor 重入未死锁）")
     check(len(g_reentrant_ok) == 1, "7.3 monitor 内重入 INFO_KEY(conc_b) 成功 1 次")
-    context_turn_off_monitor()
+    ctx().monitor().disable()
 
     # ============ Section 8: N7 压力（8 线程混合操作）============
     print("===== 8. N7 压力（≈10 万级混合操作） =====")
     reset_globals()
     m_keys = 64  # 预建 keyspace 大小
     for n in range(m_keys):
-        cr = context_create(f"stress_{n}", f"init{n}")
-        if cr.status != ResStatus.eOk:
+        cr = ctx().key(f"stress_{n}").value(f"init{n}").create()
+        if cr != ResStatus.eOk:
             g_illegal.append(1)
     check(len(g_illegal) == 0, "8.1 预建 keyspace 成功")
 
     # 压力段关闭 checker/monitor：避免单线程监控池积压，聚焦锁并发与 map 一致性
-    context_turn_off_checker()
-    context_turn_off_monitor()
+    ctx().checker().disable()
+    ctx().monitor().disable()
 
     # 总操作数：YOMK_TEST_STRESS_SCALE 缺省 100000（10 万级，8 线程均分）/
     # 快速模式 10000，clamp 下限 1000；8 线程均分（T6 口径）
@@ -376,52 +355,52 @@ def main():
             key = f"stress_{i % m_keys}"
             op = i % 8
             if op == 0:
-                v = context_get(key, "")
+                v = ctx().key(key).msg().with_default("").get()
                 if v:
                     ok_ops.append(1)
                 else:
                     g_illegal.append(1)
             elif op == 1:
-                r = context_set(key, "sv")
-                if r.status == ResStatus.eOk:
+                r = ctx().key(key).value("sv").set()
+                if r == ResStatus.eOk:
                     ok_ops.append(1)
                 else:
                     g_illegal.append(1)
             elif op == 2:
-                r = context_info_keys()
+                r = ctx().keys()
                 if r.status == ResStatus.eOk:
                     ok_ops.append(1)
                 else:
                     g_illegal.append(1)
             elif op == 3:
-                r = context_info_key(key)
+                r = ctx().key(key).info()
                 if r.status == ResStatus.eOk:
                     ok_ops.append(1)
                 else:
                     g_illegal.append(1)
             elif op == 4:
-                r = context_info_all()
+                r = ctx().all()
                 if r.status == ResStatus.eOk:
                     ok_ops.append(1)
                 else:
                     g_illegal.append(1)
             elif op == 5:
-                r = context_set_checker(key, lambda c: CheckStatus.eAccept)
-                if r.status == ResStatus.eOk:
+                r = ctx().key(key).checker_fn(lambda c: CheckStatus.eAccept).apply()
+                if r == ResStatus.eOk:
                     ok_ops.append(1)
                 else:
                     g_illegal.append(1)
             elif op == 6:
-                r = context_set_monitor(key, lambda c: None)
-                if r.status == ResStatus.eOk:
+                r = ctx().key(key).monitor_fn(lambda c: None).apply()
+                if r == ResStatus.eOk:
                     ok_ops.append(1)
                 else:
                     g_illegal.append(1)
             else:
                 tk = f"stress_tmp_{t}"
-                c = context_create(tk, "tmp")
-                d = context_destroy(tk)
-                if c.status == ResStatus.eOk and d.status == ResStatus.eOk:
+                c = ctx().key(tk).value("tmp").create()
+                d = ctx().key(tk).destroy()
+                if c == ResStatus.eOk and d == ResStatus.eOk:
                     ok_ops.append(1)
                 else:
                     g_illegal.append(1)
@@ -438,19 +417,18 @@ def main():
     check(len(ok_ops) == t_cnt * k_cnt, "8.3 全部操作成功计数守恒")
 
     # 最终一致性：keyspace 仍存在、临时键已销毁
-    keyspace_ok = (context_info_key("stress_0").status == ResStatus.eOk
-                   and context_info_key(f"stress_{m_keys - 1}").status == ResStatus.eOk)
+    keyspace_ok = (ctx().key("stress_0").info().status == ResStatus.eOk
+                   and ctx().key(f"stress_{m_keys - 1}").info().status == ResStatus.eOk)
     check(keyspace_ok, "8.4 压力后 keyspace 仍存在")
-    tmp_gone = all(context_info_key(f"stress_tmp_{t}").status == ResStatus.eNo
+    tmp_gone = all(ctx().key(f"stress_tmp_{t}").info().status == ResStatus.eNo
                    for t in range(t_cnt))
     check(tmp_gone, "8.5 压力后临时键全部销毁")
 
-    shutdown()
+    server().shutdown()
 
     print(("ALL PASSED" if g_failed == 0 else "SOME FAILED")
           + f" ({g_failed} failed)")
     return 0 if g_failed == 0 else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

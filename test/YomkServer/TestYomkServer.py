@@ -26,7 +26,7 @@ TestYomkServer.py —— YomkServer URL 解析路由与服务增删改查白盒�
   /YomkLogger、/YomkServerInfo
 - 消息包解包为普通类属性访问（DemoPkg 载体）；promise/future 同步点以 Event + 容器承载
 
-说明：全程不触碰 shutdown/YomkApi.init（服务器实例独立，每节 YomkServer.create(1)，
+说明：全程不触碰 shutdown/server().init（服务器实例独立，每节 YomkServer.create(1)，
 节首重置全局观测变量）；排空/幂等/拒新语义归后续 shutdown 序列测试
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）

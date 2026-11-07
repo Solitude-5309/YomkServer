@@ -23,24 +23,13 @@ import sys
 import time
 
 from YomkApi import (
-    add_service,
-    context_create,
-    context_info_keys,
-    context_set,
-    context_set_monitor,
-    context_turn_off_monitor,
-    context_turn_on_monitor,
-    del_service,
-    init,
-    new_service,
-    request,
     server,
-    shutdown,
+    ctx,
 )
+
 from YomkServerPy import ResStatus, YomkContext
 
 g_failed = 0
-
 
 def check(cond, msg):
     global g_failed
@@ -51,7 +40,6 @@ def check(cond, msg):
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
 
-
 def wait_for_count(bucket, target, timeout_s):
     # 10ms 步进轮询等待计数达到 target
     for _ in range(int(timeout_s / 0.01)):
@@ -60,13 +48,11 @@ def wait_for_count(bucket, target, timeout_s):
         time.sleep(0.01)
     return len(bucket) >= target
 
-
 class ThrowContext(YomkContext):
     # init() 抛异常验证 add_service 的 try/catch 回滚路径
     #
     def init(self):
         raise MemoryError("mock bad_alloc")
-
 
 # init 装配的 14 个功能函数
 EXPECTED_FUNCS = {
@@ -79,9 +65,9 @@ EXPECTED_FUNCS = {
 # ---- 文件级观测变量 ----
 g_async_calls = []  # 异步 monitor 被调用计数
 
-
 def main():
-    srv = init(1)
+    server().async_thread(1).init()
+    srv = server().instance()
     check(srv is not None, "init 返回非空服务器")
 
     # ============ Section 1: init 效果（内省）============
@@ -93,96 +79,94 @@ def main():
     check(set(infos.keys()) == EXPECTED_FUNCS, "装配的功能函数键集合逐一对齐")
 
     # ============ Section 2: 基线运行（异步 monitor 池工作）============
-    context_turn_on_monitor()
-    resp = context_create("life_base", "b0")
-    check(resp.status == ResStatus.eOk, "创建 life_base 成功")
+    ctx().monitor().enable()
+    resp = ctx().key("life_base").value("b0").create()
+    check(resp == ResStatus.eOk, "创建 life_base 成功")
 
     g_async_calls.clear()
-    context_set_monitor("life_base", lambda c: g_async_calls.append(1), True)
+    ctx().key("life_base").monitor_fn(lambda c: g_async_calls.append(1)).async_(True).apply()
 
-    context_set("life_base", "b1")
-    context_set("life_base", "b2")
+    ctx().key("life_base").value("b1").set()
+    ctx().key("life_base").value("b2").set()
 
     reached = wait_for_count(g_async_calls, 2, 2.0)
     check(reached and len(g_async_calls) == 2,
           "基线：异步 monitor 池正常工作（计数 == 2）")
-    context_turn_off_monitor()
+    ctx().monitor().disable()
 
     # ============ Section 3: del_service 触发 deinit + 排空 ============
-    context_turn_on_monitor()
-    resp = context_create("life_drain", "d0")
-    check(resp.status == ResStatus.eOk, "创建 life_drain 成功")
+    ctx().monitor().enable()
+    resp = ctx().key("life_drain").value("d0").create()
+    check(resp == ResStatus.eOk, "创建 life_drain 成功")
 
     g_async_calls.clear()
-    context_set_monitor("life_drain", lambda c: g_async_calls.append(1), True)
+    ctx().key("life_drain").monitor_fn(lambda c: g_async_calls.append(1)).async_(True).apply()
 
     n = 50
     for i in range(n):
-        context_set("life_drain", f"d{i}")
+        ctx().key("life_drain").value(f"d{i}").set()
 
     # 立即删除服务：触发 deinit 排空 monitor 池
-    del_ret = del_service("/YomkContext")
+    del_ret = server().srv_name("/YomkContext").remove()
     check(del_ret == 0, "del_service(/YomkContext) 返回 0")
 
     # del_service 返回后排空已完成，计数应等于投递次数（无丢失、无迟到）
     check(len(g_async_calls) == n,
           "del_service 排空后异步 monitor 计数 == 投递次数")
-    context_turn_off_monitor()
+    ctx().monitor().disable()
 
     # ============ Section 4: 删除后不可路由 + 重复删除契约 ============
-    resp = request("/YomkContext/keys", None)
+    resp = server().url("/YomkContext/keys").request()
     check(resp.status == ResStatus.eNo, "删除后请求 /YomkContext 返回 eNo")
     check(resp.msg == "service not found: /YomkContext",
           "删除后消息为 service not found: /YomkContext")
 
-    names = server().service_names()
+    names = server().instance().service_names()
     check("/YomkContext" not in names, "serviceNames 不再包含 /YomkContext")
 
-    del_again = del_service("/YomkContext")
+    del_again = server().srv_name("/YomkContext").remove()
     check(del_again == -1, "重复删除不存在服务返回 -1")
 
     # ============ Section 5: 重新注册 + monitor 池重建 ============
-    re_add = new_service(YomkContext, "/YomkContext")
+    re_add = server().srv(YomkContext, "/YomkContext").create()
     check(re_add == 0, "重新注册 YomkContext 返回 0")
 
-    infos = server().service_func_infos("/YomkContext")
+    infos = server().instance().service_func_infos("/YomkContext")
     check(len(infos) == 14, "重新注册后 init 重新装配 14 个功能函数")
 
-    context_turn_on_monitor()
-    resp = context_create("life_rebuild", "r0")
-    check(resp.status == ResStatus.eOk, "重新注册后创建 life_rebuild 成功")
+    ctx().monitor().enable()
+    resp = ctx().key("life_rebuild").value("r0").create()
+    check(resp == ResStatus.eOk, "重新注册后创建 life_rebuild 成功")
 
     g_async_calls.clear()
-    context_set_monitor(
-        "life_rebuild", lambda c: g_async_calls.append(1), True)
+    ctx().key("life_rebuild").monitor_fn(lambda c: g_async_calls.append(1)).async_(True).apply()
 
-    context_set("life_rebuild", "r1")
-    context_set("life_rebuild", "r2")
-    context_set("life_rebuild", "r3")
+    ctx().key("life_rebuild").value("r1").set()
+    ctx().key("life_rebuild").value("r2").set()
+    ctx().key("life_rebuild").value("r3").set()
 
     reached = wait_for_count(g_async_calls, 3, 2.0)
     check(reached and len(g_async_calls) == 3,
           "重新注册后 monitor 池重建可用（计数 == 3）")
-    context_turn_off_monitor()
+    ctx().monitor().disable()
 
     # ============ Section 6: 异常安全（init 抛异常回滚）============
-    add_ret = add_service(ThrowContext(server()), "/ThrowContext")
+    add_ret = server().srv_ptr(ThrowContext(server().instance())).srv_name("/ThrowContext").add()
     check(add_ret == -1, "init 抛异常时 add_service 返回 -1")
 
-    names = server().service_names()
+    names = server().instance().service_names()
     check("/ThrowContext" not in names,
           "回滚后 serviceNames 不含 /ThrowContext（无残留）")
 
     # 进程存活、/YomkContext 仍可用
-    resp = context_info_keys()
+    resp = ctx().keys()
     check(resp.status == ResStatus.eOk, "异常回滚后 /YomkContext 仍可用")
 
-    shutdown()
+    server().shutdown()
 
     print(("ALL PASSED" if g_failed == 0 else "SOME FAILED")
           + f" ({g_failed} failed)")
     return 0 if g_failed == 0 else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -15,7 +15,7 @@
 import YomkApi
 
 from typing import Any
-
+from YomkApi import log, fn_pool, server
 
 class TelemetryService(YomkApi.YomkService):
     instance_count = 0  # 实例计数：构造 +1、析构 -1
@@ -26,16 +26,14 @@ class TelemetryService(YomkApi.YomkService):
         self.instance_id = TelemetryService.instance_count
         # 服务名：URL 前缀，全局唯一
         self.set_name("/TelemetryService")
-        YomkApi.console_log_info_tag(
-            "arm.telemetry", f"留痕服务实例 #{self.instance_id} 创建")
+        log().tag("arm.telemetry").info(f"留痕服务实例 #{self.instance_id} 创建")
 
     def __del__(self):
         TelemetryService.instance_count -= 1
         try:
             # 框架已关闭时日志门面静默，此处直打会破坏"收班断电静默"叙事——仅框架存活时打
-            if YomkApi.server_instance() is not None:
-                YomkApi.console_log_info_tag(
-                    "arm.telemetry", f"留痕服务实例 #{self.instance_id} 析构")
+            if server().instance() is not None:
+                log().tag("arm.telemetry").info(f"留痕服务实例 #{self.instance_id} 析构")
         except Exception:
             pass
 
@@ -44,22 +42,20 @@ class TelemetryService(YomkApi.YomkService):
         self.install_func("/record", self.record)
 
         # 注册到 FunctionPool 供按名直调：服务删除/替换时由 deinit 显式注销承担失效语义
-        YomkApi.function_pool_register("telemetry_hook", self.record)
+        fn_pool().fn_name("telemetry_hook").fn(self.record).install()
 
-        YomkApi.console_log_info_tag(
-            "arm.telemetry", "init: install /record, register telemetry_hook")
+        log().tag("arm.telemetry").info("init: install /record, register telemetry_hook")
         return 0
 
     def deinit(self):
         # 显式注销函数池钩子：删除/替换后 telemetry_hook 立即失效，不悬垂
-        YomkApi.function_pool_unregister("telemetry_hook")
-        YomkApi.console_log_info_tag("arm.telemetry", "deinit: telemetry service offline")
+        fn_pool().fn_name("telemetry_hook").uninstall()
+        log().tag("arm.telemetry").info("deinit: telemetry service offline")
 
     # 留痕功能函数：URL 为 /TelemetryService/record，记录一条运动留痕并回执
     def record(self, pkg: Any) -> YomkApi.YomkResponse:
         if not isinstance(pkg, str):
             return YomkApi.YomkResponse(
                 YomkApi.ResStatus.eNo, " pkg is null or pkg is not String. ")
-        YomkApi.console_log_info_tag(
-            "arm.telemetry", f"留痕记录 [实例#{self.instance_id}]：{pkg}")
+        log().tag("arm.telemetry").info(f"留痕记录 [实例#{self.instance_id}]：{pkg}")
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "trace recorded")

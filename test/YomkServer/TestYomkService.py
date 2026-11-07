@@ -28,9 +28,9 @@ import sys
 
 from YomkServerPy import ResStatus, YomkResponse, YomkService
 import YomkApi
+from YomkApi import server
 
 g_failed = 0
-
 
 def check(cond, msg):
     global g_failed
@@ -41,7 +41,6 @@ def check(cond, msg):
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
 
-
 def find_func_info(infos, func_name):
     """内省辅助：在 func_infos 中查找 func_name，返回 (found, msg_name, description)"""
     info = infos.get(func_name)
@@ -49,13 +48,11 @@ def find_func_info(infos, func_name):
         return False, "", ""
     return True, info.msg_name, info.description
 
-
 class DemoPkg:
     """演示消息包：python 消息包为普通类"""
 
     def __init__(self, d=""):
         self.d = d
-
 
 class DemoService(YomkService):
     """主演示服务：注册/调用/内省用例载体"""
@@ -99,7 +96,6 @@ class DemoService(YomkService):
     def desc0(self, pkg):
         return YomkResponse(ResStatus.eOk, "desc0")
 
-
 class NullSrv(YomkService):
     """空服务器服务：以 None 构造，验证空守卫分支（不注册）"""
 
@@ -109,28 +105,24 @@ class NullSrv(YomkService):
     def init(self):
         return 0
 
-
 # 1. 命名：注册前设置/读取一致、空名拒绝
 def test_name_before_register(demo):
     check(demo.get_name() == "/DemoService", "注册前 get_name 读取与构造设置一致")
     demo.set_name("")  # 空名设置应被拒绝
     check(demo.get_name() == "/DemoService", "空名设置被拒，名字保持不变")
 
-
 # 2. 注册与注册锁定：add_service 成功返回 0，注册后改名被拒
 def test_register_and_lock_name(demo):
-    check(YomkApi.add_service(demo) == 0, "add_service 注册成功返回 0")
+    check(server().srv_ptr(demo).add() == 0, "add_service 注册成功返回 0")
     demo.set_name("/NewName")  # 注册后改名应被拒绝
     check(demo.get_name() == "/DemoService", "注册后改名被拒，名字与注册键一致（锁名承诺）")
 
-
 # 3. add_service 两参形式：注册前改名生效
 def test_add_service_with_name():
-    renamed = DemoService(YomkApi.server_instance())
-    check(YomkApi.add_service(renamed, "/RenamedDemo")
+    renamed = DemoService(server().instance())
+    check(server().srv_ptr(renamed).srv_name("/RenamedDemo").add()
           == 0, "两参 add_service 注册成功返回 0")
     check(renamed.get_name() == "/RenamedDemo", "注册前经两参形式改名生效")
-
 
 # 4. install_func：正常/非法名/空函数 + 三参元数据 + 覆盖安装元数据清除/恢复
 def test_install_func(demo):
@@ -184,7 +176,6 @@ def test_install_func(demo):
     check(found and msg_name == "String" and desc == "demo description",
           "运行期四参覆盖安装恢复类型名与函数说明")
 
-
 # 5. invoke：命中（含 pkg 透传）与异常路径契约
 def test_invoke(demo):
     # 命中：返回函数自身响应
@@ -220,7 +211,6 @@ def test_invoke(demo):
     check(resp.status == ResStatus.eNo and "not found" in resp.msg,
           "invoke 被拒安装的空函数按未安装返回 eNo")
 
-
 # 6. 空服务器守卫（python 现状文档化，见文件头差异说明）
 def test_null_server_guards():
     srv = NullSrv()
@@ -243,11 +233,10 @@ def test_null_server_guards():
     check(resp.status == ResStatus.eInvalid,
           "空 server 下 invoke 执行本地函数返回其响应（现状文档化）")
 
-
 def main():
-    YomkApi.init()
+    server().init()
 
-    demo = DemoService(YomkApi.server_instance())
+    demo = DemoService(server().instance())
     test_name_before_register(demo)
     test_register_and_lock_name(demo)
     test_add_service_with_name()
@@ -260,7 +249,6 @@ def main():
         return 1
     print("TestYomkService all check passed.")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -42,7 +42,7 @@ B 分组全量回收 / C 残量扫除 -> LOGGERS 行数为 0 硬断言）；S6 �
   磁盘文件保留（删除接口不删磁盘文件）
 - proxy 安装后全程不卸载（P4-e 卸载语义由 Lifecycle S3 覆盖），S1D 末恢复穿透态，
   不影响后续 Section 的响应码与落盘断言
-- 唯一 tag 直调 YomkApi.console_log_info_tag 运行时拼名，循环内拼名构造 N 个唯一 tag
+- 唯一 tag 直调 log().tag(...) 运行时拼名，循环内拼名构造 N 个唯一 tag
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """
@@ -58,11 +58,11 @@ import threading
 import time
 
 import YomkApi
-from YomkServerPy import ResStatus
+from YomkServerPy import Log, ResStatus
+from YomkApi import log, log_mgr, server
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
-
 
 def check(cond, msg):
     global g_failed
@@ -72,7 +72,6 @@ def check(cond, msg):
     else:
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
-
 
 def stress_scale():
     # 环境变量 YOMK_TEST_STRESS_SCALE（run_tests.sh 快速模式降规模用），
@@ -86,11 +85,9 @@ def stress_scale():
         return 100000
     return max(v, 1000)
 
-
 def make_name(prefix, index):
     # 带零填充的唯一名（setw(8) setfill('0') 对齐）
     return prefix + str(index).zfill(8)
-
 
 def unpack_lines(resp):
     # 解包 LOGGERS 的 list[str]；失败返回空列表
@@ -98,15 +95,14 @@ def unpack_lines(resp):
         return []
     return list(resp.data)
 
-
 def is_legal_status(resp):
-    return resp.status in (ResStatus.eInvalid, ResStatus.eOk, ResStatus.eNo)
-
+    # 兼容两形态：读路径 Response 取 .status；写路径链式收敛为 ResStatus 本体
+    status = resp.status if hasattr(resp, "status") else resp
+    return status in (ResStatus.eInvalid, ResStatus.eOk, ResStatus.eNo)
 
 def check_time_format(line):
     # 时间戳格式精确校验：行首 25 字符须为 "[dddd-dd-dd dd:dd:dd.ddd]"
     return TIME_RE.match(line) is not None
-
 
 def collect_tail_markers(text, prefix):
     # 统计"行尾最后一段"以 prefix 开头的 marker 出现次数（内容守恒判定）
@@ -119,10 +115,8 @@ def collect_tail_markers(text, prefix):
             markers[tail] = markers.get(tail, 0) + 1
     return markers
 
-
 def count_bad_occurrence(markers):
     return sum(1 for c in markers.values() if c != 1)
-
 
 def count_file_lines(path):
     # 统计文件非空行数；打开失败返回 (False, 0)
@@ -132,7 +126,6 @@ def count_file_lines(path):
     except OSError:
         return False, 0
 
-
 def count_disk_files(root):
     # 递归统计目录下普通文件数（S6 清理前的磁盘足迹守恒用）
     if not os.path.isdir(root):
@@ -141,7 +134,6 @@ def count_disk_files(root):
     for _dirpath, _dirnames, filenames in os.walk(root):
         total += len(filenames)
     return total
-
 
 def introspection_rounds(entries):
     # 内省轮次策略：条目越多轮次越少（控制单次运行时长，数据点仍具统计意义）
@@ -153,14 +145,12 @@ def introspection_rounds(entries):
         return 20
     return 5
 
-
 def first_console_state(data):
     # 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 None）
     for lg in (data if data else []):
         if lg.type == "console":
             return lg.logger_state
     return None
-
 
 def measure_introspection(rounds, use_all):
     # 对内省端点做 rounds 次调用，返回延迟分布；非 eOk 计入 bad
@@ -173,8 +163,8 @@ def measure_introspection(rounds, use_all):
     for _ in range(rounds):
         t0 = time.perf_counter()
         # 非 ALL 分支取 console 类型端点（按类型纯名清单，口径与 ALL console 型条数一致）
-        resp = (YomkApi.logger_info_all() if use_all
-                else YomkApi.logger_info_loggers("console"))
+        resp = (log_mgr().all() if use_all
+                else log_mgr().console().list())
         ms = (time.perf_counter() - t0) * 1000.0
         if resp.status != ResStatus.eOk:
             bad += 1
@@ -193,19 +183,16 @@ def measure_introspection(rounds, use_all):
     avg_ms = total_ms / count if count else 0.0
     return (count, min_ms, avg_ms, max_ms), bad, last_lines
 
-
 def record_baseline(section, ops, elapsed_ms):
     # 基线记录（仅打印，不断言）：耗时(ms) 与吞吐(ops/s)
     ops_per_sec = ops * 1000.0 / elapsed_ms if elapsed_ms > 0 else 0.0
     print(
         f"[BASELINE] {section}: {ops_per_sec:.0f} ops/s ({ops} ops in {elapsed_ms:.1f} ms)")
 
-
 def record_latency(section, stat):
     count, min_ms, avg_ms, max_ms = stat
     print(f"[BASELINE] {section}: avg {avg_ms:.3f} ms "
           f"(min {min_ms:.3f} / max {max_ms:.3f} over {count} calls)")
-
 
 def read_vm_hwm():
     # 进程 RSS 峰值（Linux: /proc/self/status VmHWM；其他平台 n/a）——信息行非断言
@@ -217,7 +204,6 @@ def read_vm_hwm():
     except OSError:
         pass
     return " n/a"
-
 
 def read_env_snapshot():
     # 采样环境快照：CPU 核数 + 负载 + 可用内存，
@@ -246,7 +232,6 @@ def read_env_snapshot():
     env += " memAvail=" + mem_avail
     return env
 
-
 class StartGate:
     # 起始屏障
     def __init__(self):
@@ -268,11 +253,9 @@ class StartGate:
             self._go = True
             self._cv.notify_all()
 
-
 def test_tmp_root():
     # 测试临时根：run_tests.sh 注入（test/test_logs/tmp），独立运行回退系统临时目录
     return os.environ.get("YOMK_TEST_TMP_ROOT") or tempfile.gettempdir()
-
 
 def main():
     print("=== TestYomkLoggerStress (LG4) ===")
@@ -282,8 +265,9 @@ def main():
     # 环境标注先于一切 [BASELINE] 输出，使本次所有性能数据可按环境归因
     print("[ENV] " + read_env_snapshot())
 
-    server = YomkApi.init(1)
-    check(server is not None, "YomkApi.init 返回非空服务器")
+    YomkApi.server().async_thread(1).init()
+    server = YomkApi.server().instance()
+    check(server is not None, "server().init 返回非空服务器")
 
     tmp_dir = os.path.join(test_tmp_root(),
                            "yomk_logger_lg4_" + str(os.getpid()))
@@ -313,8 +297,8 @@ def main():
                   for s in range(shard_count)]
 
     # 起点基线：库内部不使用 LOG 家族宏 → console 表恰为构造函数预置的 main
-    base_c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
-    base_f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
+    base_c = len(unpack_lines(log_mgr().console().list()))
+    base_f = len(unpack_lines(log_mgr().file().list()))
     check(base_c == 1 and base_f == 0,
           f"起点内省基线 console=1(main)/file=0（实测 {base_c}/{base_f}）")
 
@@ -342,7 +326,7 @@ def main():
         with contextlib.redirect_stdout(io.StringIO()):
             t0 = time.perf_counter()
             for i in range(created_a, cp):
-                if YomkApi.console_log_info_tag(tags[i], "lg4s1a_marker").status == ResStatus.eOk:
+                if log().tag(tags[i]).info("lg4s1a_marker") == ResStatus.eOk:
                     ok_a += 1
             elapsed_a += (time.perf_counter() - t0) * 1000.0
         created_a = cp
@@ -361,7 +345,7 @@ def main():
     record_baseline("S1A_console_create_unique_tag", n, elapsed_a)
     check(ok_a == n, f"S1A: 唯一 tag 写入 eOk 守恒 {ok_a}/{n}")
 
-    console_entries = len(unpack_lines(YomkApi.logger_info_loggers("console")))
+    console_entries = len(unpack_lines(log_mgr().console().list()))
     check(console_entries == n + 1,
           f"S1A: console 表条目 = N + main（实测 {console_entries}）")
 
@@ -370,7 +354,7 @@ def main():
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         for i in range(sample):
-            YomkApi.console_log_info_tag(tags[i], "lg4s1a2_" + str(i))
+            log().tag(tags[i]).info("lg4s1a2_" + str(i))
         out_a2 = buf.getvalue()
     markers_a2 = collect_tail_markers(out_a2, "lg4s1a2_")
     check(len(markers_a2) == sample,
@@ -393,20 +377,20 @@ def main():
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
         for i in range(n):
-            if YomkApi.console_log_info_tag(tags[i], "lg4s1b_marker").status == ResStatus.eOk:
+            if log().tag(tags[i]).info("lg4s1b_marker") == ResStatus.eOk:
                 ok_b += 1
         elapsed_b = (time.perf_counter() - t0) * 1000.0
     record_baseline("S1B_console_write_hit", n, elapsed_b)
     check(ok_b == n, f"S1B: 命中写 eOk 守恒 {ok_b}/{n}")
 
     # ---- Phase C：级别 OFF 短路（开关关断后仍 eOk，但不产生输出）----
-    check(YomkApi.off_console_log_info().status ==
+    check(log_mgr().console().level(Log.eInfo).disable() ==
           ResStatus.eOk, "S1C: OFF info 返回 eOk")
     probe = min(100, n)
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         for i in range(probe):
-            YomkApi.console_log_info_tag(tags[i], "lg4s1c_off_marker")
+            log().tag(tags[i]).info("lg4s1c_off_marker")
         out_off = buf.getvalue()
     check("lg4s1c_off_marker" not in out_off,
           f"S1C: 级别 OFF 期间无输出（抽样 {probe} 行）")
@@ -415,12 +399,12 @@ def main():
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
         for i in range(n):
-            if YomkApi.console_log_info_tag(tags[i], "lg4s1c_marker").status == ResStatus.eOk:
+            if log().tag(tags[i]).info("lg4s1c_marker") == ResStatus.eOk:
                 ok_c += 1
         elapsed_c = (time.perf_counter() - t0) * 1000.0
     record_baseline("S1C_console_level_off_shortcut", n, elapsed_c)
     check(ok_c == n, f"S1C: 级别 OFF 短路仍 eOk 守恒 {ok_c}/{n}")
-    check(YomkApi.on_console_log_info().status ==
+    check(log_mgr().console().level(Log.eInfo).enable() ==
           ResStatus.eOk, "S1C: 恢复 ON info 返回 eOk")
 
     # ---- Phase D：proxy 短路（置于 console 末相：本测试安装后不卸载，靠恒穿透
@@ -432,14 +416,14 @@ def main():
         proxy_hits.append(1)
         return proxy_state["through"]
 
-    check(YomkApi.set_console_log_proxy(lg4_proxy).status == ResStatus.eOk,
+    check(log_mgr().console().proxy(lg4_proxy).apply() == ResStatus.eOk,
           "S1D: 安装计数 proxy 返回 eOk")
     del proxy_hits[:]
     ok_d = 0
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
         for i in range(n):
-            if YomkApi.console_log_info_tag(tags[i], "lg4s1d_marker").status == ResStatus.eOk:
+            if log().tag(tags[i]).info("lg4s1d_marker") == ResStatus.eOk:
                 ok_d += 1
         elapsed_d = (time.perf_counter() - t0) * 1000.0
     record_baseline("S1D_console_proxy_shortcut", n, elapsed_d)
@@ -449,7 +433,7 @@ def main():
     proxy_state["through"] = True
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        YomkApi.console_log_info_tag(hot_tag, "lg4s1d_through_marker")
+        log().tag(hot_tag).info("lg4s1d_through_marker")
         out_through = buf.getvalue()
     check("lg4s1d_through_marker" in out_through,
           "S1D: proxy 穿透态恢复默认输出（P4-e 登记依据）")
@@ -459,7 +443,7 @@ def main():
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
         for i in range(n):
-            if YomkApi.console_log_info_tag(hot_tag, "lg4s1e_marker").status == ResStatus.eOk:
+            if log().tag(hot_tag).info("lg4s1e_marker") == ResStatus.eOk:
                 ok_e += 1
         elapsed_e = (time.perf_counter() - t0) * 1000.0
     record_baseline("S1E_console_hot_tag", n, elapsed_e)
@@ -478,8 +462,7 @@ def main():
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
         for i in range(n):
-            if YomkApi.file_log_create(shard_dirs[i // k_shard_size],
-                                       make_name("lg4s2_fl_", i)).status == ResStatus.eOk:
+            if log_mgr().dir(shard_dirs[i // k_shard_size]).file(make_name("lg4s2_fl_", i)).create() == ResStatus.eOk:
                 ok_a += 1
         elapsed_a = (time.perf_counter() - t0) * 1000.0
     record_baseline("S2A_file_create_sharded", n, elapsed_a)
@@ -491,8 +474,7 @@ def main():
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
         for i in range(m):
-            if YomkApi.file_log_create(s2_single,
-                                       make_name("lg4s2_single_", i)).status == ResStatus.eOk:
+            if log_mgr().dir(s2_single).file(make_name("lg4s2_single_", i)).create() == ResStatus.eOk:
                 ok_b += 1
         elapsed_b = (time.perf_counter() - t0) * 1000.0
     record_baseline("S2B_file_create_singledir", m, elapsed_b)
@@ -505,8 +487,8 @@ def main():
     check(disk_files == n + m,
           f"S2C: 磁盘 .log 文件数守恒 = N + N/10（实测 {disk_files}/{n + m}）")
 
-    c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
-    f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
+    c = len(unpack_lines(log_mgr().console().list()))
+    f = len(unpack_lines(log_mgr().file().list()))
     check(c == n + 1 and f == n + m,
           f"S2C: 内省条目守恒 console=N+1 file=N+N/10（实测 {c}/{f}）")
     file_total = f
@@ -528,8 +510,7 @@ def main():
         t0 = time.perf_counter()
         for r_ in range(lines_per_sink):
             for sink in sinks:
-                if YomkApi.file_log_info_tag(sink, "lg4s3a",
-                                             "line_" + str(r_)).status == ResStatus.eOk:
+                if log().to_sink(sink).tag("lg4s3a").info("line_" + str(r_)) == ResStatus.eOk:
                     ok_a += 1
         elapsed_a = (time.perf_counter() - t0) * 1000.0
     record_baseline("S3A_file_buffer_write", total_lines, elapsed_a)
@@ -542,7 +523,7 @@ def main():
     s3_dir = os.path.join(tmp_dir, "s3")
     os.makedirs(s3_dir, exist_ok=True)
     big_name = "lg4s3_big"
-    check(YomkApi.file_log_create(s3_dir, big_name).status == ResStatus.eOk,
+    check(log_mgr().dir(s3_dir).file(big_name).create() == ResStatus.eOk,
           "S3B: 大缓冲 logger 创建 eOk")
     big_path = os.path.join(s3_dir, big_name + ".log")
     big_lines = 2 * n
@@ -550,8 +531,7 @@ def main():
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
         for i in range(big_lines):
-            if YomkApi.file_log_info_tag(big_name, "lg4s3b",
-                                         "line_" + str(i)).status == ResStatus.eOk:
+            if log().to_sink(big_name).tag("lg4s3b").info("line_" + str(i)) == ResStatus.eOk:
                 ok_b += 1
         elapsed_b = (time.perf_counter() - t0) * 1000.0
     record_baseline("S3B_file_buffer_fill_big", big_lines, elapsed_b)
@@ -559,9 +539,9 @@ def main():
 
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
-        flush_big = YomkApi.file_log_write(big_name)
+        flush_big = log_mgr().file(big_name).flush()
         elapsed_flush = (time.perf_counter() - t0) * 1000.0
-    check(flush_big.status == ResStatus.eOk, "S3B: 大缓冲一次落盘 eOk")
+    check(flush_big == ResStatus.eOk, "S3B: 大缓冲一次落盘 eOk")
     big_bytes = os.path.getsize(big_path)
     big_mb = big_bytes / (1024.0 * 1024.0)
     big_mb_per_sec = big_mb / \
@@ -577,7 +557,7 @@ def main():
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
         for sink in sinks:
-            if YomkApi.file_log_write(sink).status == ResStatus.eOk:
+            if log_mgr().file(sink).flush() == ResStatus.eOk:
                 ok_c += 1
         elapsed_c = (time.perf_counter() - t0) * 1000.0
     record_baseline("S3C_file_flush_k_loggers", k, elapsed_c)
@@ -600,7 +580,7 @@ def main():
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
         for _ in range(n):
-            if YomkApi.file_log_write(big_name).status == ResStatus.eOk:
+            if log_mgr().file(big_name).flush() == ResStatus.eOk:
                 ok_d += 1
         elapsed_d = (time.perf_counter() - t0) * 1000.0
     record_baseline("S3D_file_flush_empty_buffer", n, elapsed_d)
@@ -614,8 +594,8 @@ def main():
     # ========================================================================
     # S4：内省端点在 2N+ 条目下的响应（P4-c 验证点：双锁快照窗口）
     # ========================================================================
-    loggers_lines = unpack_lines(YomkApi.logger_info_loggers("console"))
-    file_lines = unpack_lines(YomkApi.logger_info_loggers("file"))
+    loggers_lines = unpack_lines(log_mgr().console().list())
+    file_lines = unpack_lines(log_mgr().file().list())
     c, f = len(loggers_lines), len(file_lines)
     entries = c + f
     print(f"[CONFIG] S4 entries = {entries} (console {c} / file {f}) "
@@ -635,12 +615,12 @@ def main():
           f"S4A: ALL eOk + 清单条数守恒（{lines_a}/{entries}）")
 
     # ---- Phase B：GLOBAL 主闸态精确 + ALL 条目逐器真值 + 清单段与 LOGGERS 分型逐行一致（两端点单锁快照）----
-    gb = YomkApi.logger_info_global().data
+    gb = log_mgr().console().status().data
     check(gb and gb.debug_on and gb.info_on and
           gb.warn_on and gb.error_on and
           gb.proxy_on,
           "S4B: 全局主闸状态全 on + proxy_on（proxy 已在 S1D 安装）")
-    all_info = YomkApi.logger_info_all().data
+    all_info = log_mgr().all().data
     st = first_console_state(all_info)
     check(isinstance(all_info, list) and st and
           st.debug_on and st.info_on and
@@ -671,7 +651,9 @@ def main():
             name = make_name("lg4s1_tag_", i) if i % 2 == 0 else make_name(
                 "lg4s2_fl_", i)
             typ = "console" if i % 2 == 0 else "file"
-            if YomkApi.logger_info_logger(name, typ).status == ResStatus.eOk:
+            info = (log_mgr().console(name).get_info() if typ == "console"
+                    else log_mgr().file(name).get_info())
+            if info.status == ResStatus.eOk:
                 ok_probe += 1
         elapsed_probe = (time.perf_counter() - t0) * 1000.0
     record_baseline("S4C_logger_single_query", probes, elapsed_probe)
@@ -688,8 +670,7 @@ def main():
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
         for i in range(d):
-            if YomkApi.file_log_create(s4_solo,
-                                       make_name("lg4s4d_solo_", i)).status == ResStatus.eOk:
+            if log_mgr().dir(s4_solo).file(make_name("lg4s4d_solo_", i)).create() == ResStatus.eOk:
                 solo_ok += 1
         solo_ms = (time.perf_counter() - t0) * 1000.0
     check(solo_ok == d, f"S4D: 对照相 create eOk 守恒 {solo_ok}/{d}")
@@ -704,7 +685,7 @@ def main():
     def snap_worker():
         prev_lines = 0
         while not s4d_stop.is_set():
-            resp = YomkApi.logger_info_all()
+            resp = log_mgr().all()
             if resp.status != ResStatus.eOk:
                 s4d_snap_bad_status.append(1)
                 continue
@@ -727,8 +708,7 @@ def main():
         t0 = time.perf_counter()
         for i in range(d):
             c0 = time.perf_counter()
-            if YomkApi.file_log_create(s4_conc,
-                                       make_name("lg4s4d_fl_", i)).status == ResStatus.eOk:
+            if log_mgr().dir(s4_conc).file(make_name("lg4s4d_fl_", i)).create() == ResStatus.eOk:
                 s4d_create_ok.append(1)
             s4d_create_ns.append((time.perf_counter() - c0) * 1e9)
         conc_ms = (time.perf_counter() - t0) * 1000.0
@@ -775,39 +755,39 @@ def main():
             for r_ in range(churn_rounds):
                 name = "lg4s5_t" + str(t) + "_r" + str(r_)
 
-                rc = YomkApi.console_log_info_tag(name, "lg4s5_console")
-                if rc.status == ResStatus.eOk:
+                rc = log().tag(name).info("lg4s5_console")
+                if rc == ResStatus.eOk:
                     s5_console_ok.append(1)
                 elif not is_legal_status(rc):
                     s5_bad_status.append(1)
 
-                rf = YomkApi.file_log_create(s5_dir, name)
-                if rf.status == ResStatus.eOk:
+                rf = log_mgr().dir(s5_dir).file(name).create()
+                if rf == ResStatus.eOk:
                     s5_file_ok.append(1)
                 elif not is_legal_status(rf):
                     s5_bad_status.append(1)
 
-                rl = YomkApi.file_log_info_tag(name, "lg4s5", "file_line")
-                if rl.status == ResStatus.eOk:
+                rl = log().to_sink(name).tag("lg4s5").info("file_line")
+                if rl == ResStatus.eOk:
                     s5_log_ok.append(1)
                 elif not is_legal_status(rl):
                     s5_bad_status.append(1)
 
                 if (r_ % introspect_every) == 0:
-                    ri = YomkApi.logger_info_all()
+                    ri = log_mgr().all()
                     if ri.status == ResStatus.eOk:
                         s5_introspect_ok.append(1)
                     elif not is_legal_status(ri):
                         s5_bad_status.append(1)
 
                 # 同名同时命中两表：单端点一次删除 console + file
-                rd = YomkApi.file_log_delete(name)
-                if rd.status == ResStatus.eOk:
+                rd = log_mgr().file(name).remove()
+                if rd == ResStatus.eOk:
                     s5_delete_ok.append(1)
                 elif not is_legal_status(rd):
                     s5_bad_status.append(1)
 
-                rn = YomkApi.logger_info_logger(name, "console")
+                rn = log_mgr().console(name).get_info()
                 if rn.status == ResStatus.eNo:
                     s5_post_delete_no.append(1)
                 elif not is_legal_status(rn):
@@ -840,8 +820,8 @@ def main():
           f"S5A: 删除后单查 eNo 守恒 {len(s5_post_delete_no)}/{churn_total}")
     check(len(s5_bad_status) == 0,
           f"S5A: 无非法状态码（异常 {len(s5_bad_status)} 次）")
-    c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
-    f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
+    c = len(unpack_lines(log_mgr().console().list()))
+    f = len(unpack_lines(log_mgr().file().list()))
     check(c == n + 1 and f == file_total + 1 + 2 * d,
           f"S5A: churn 后条目净变化 0（实测 console {c} / file {f}）")
 
@@ -852,8 +832,8 @@ def main():
 
     def recycle(name, expect_file):
         nonlocal del_console_ok, del_file_ok, del_bad
-        r = YomkApi.file_log_delete(name)
-        if r.status == ResStatus.eOk:
+        r = log_mgr().file(name).remove()
+        if r == ResStatus.eOk:
             if expect_file:
                 del_file_ok += 1
             else:
@@ -885,17 +865,17 @@ def main():
     residual_deleted = 0
     with contextlib.redirect_stdout(io.StringIO()):
         for _round in range(3):
-            lines = unpack_lines(YomkApi.logger_info_loggers("console"))
-            lines += unpack_lines(YomkApi.logger_info_loggers("file"))
+            lines = unpack_lines(log_mgr().console().list())
+            lines += unpack_lines(log_mgr().file().list())
             if not lines:
                 break
             for name in lines:
                 if not name:
                     continue
-                if YomkApi.file_log_delete(name).status == ResStatus.eOk:
+                if log_mgr().file(name).remove() == ResStatus.eOk:
                     residual_deleted += 1
-    final_left = (len(unpack_lines(YomkApi.logger_info_loggers("console"))) +
-                  len(unpack_lines(YomkApi.logger_info_loggers("file"))))
+    final_left = (len(unpack_lines(log_mgr().console().list())) +
+                  len(unpack_lines(log_mgr().file().list())))
     check(not final_left,
           f"S5C: 全量回收后 LOGGERS 行数为 0（残量扫除 {residual_deleted} 个，"
           f"实剩 {final_left}）")
@@ -905,11 +885,9 @@ def main():
     gone_file = 0
     with contextlib.redirect_stdout(io.StringIO()):
         for i in range(probes_c):
-            if YomkApi.logger_info_logger(
-                    make_name("lg4s1_tag_", i), "console").status == ResStatus.eNo:
+            if log_mgr().console(make_name("lg4s1_tag_", i)).get_info().status == ResStatus.eNo:
                 gone_console += 1
-            if YomkApi.logger_info_logger(
-                    make_name("lg4s2_fl_", i), "file").status == ResStatus.eNo:
+            if log_mgr().file(make_name("lg4s2_fl_", i)).get_info().status == ResStatus.eNo:
                 gone_file += 1
     check(gone_console == probes_c and gone_file == probes_c,
           f"S5C: 抽样单查全部 eNo（console {gone_console} / file {gone_file}，"
@@ -928,7 +906,7 @@ def main():
 
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
-        YomkApi.shutdown()
+        YomkApi.server().shutdown()
         elapsed_shutdown = (time.perf_counter() - t0) * 1000.0
     print(f"[BASELINE] S6_shutdown: {elapsed_shutdown:.1f} ms"
           "（规模已在 S5 回收，析构无落盘 I/O 拖累）")
@@ -948,7 +926,6 @@ def main():
         return 0
     print(f"TestYomkLoggerStress FAILED ({g_failed} checks failed).")
     return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

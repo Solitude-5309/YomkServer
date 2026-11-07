@@ -1,6 +1,7 @@
 import YomkApi
 from boot.MyBoot import MyBoot
+from YomkApi import log, server
 
-YomkApi.boot(MyBoot(["/ConfigService"]))
-YomkApi.console_log_info_tag("main", "running, press Enter to exit.")
+server().boot_ptr(MyBoot(["/ConfigService"])).run()
+log().tag("main").info("running, press Enter to exit.")
 input()

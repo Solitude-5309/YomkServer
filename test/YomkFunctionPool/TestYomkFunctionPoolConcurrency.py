@@ -18,20 +18,16 @@ import sys
 import threading
 import time
 
+import YomkApi
 from YomkApi import (
+    server,
+    fn_pool,
     ResStatus,
     YomkResponse,
-    function_pool_call,
-    function_pool_info_all,
-    function_pool_info_names,
-    function_pool_register,
-    function_pool_unregister,
-    init,
 )
 
 PASS = 0
 FAIL = 0
-
 
 def check(cond, name):
     """断言计数：[ OK ] / [FAIL] 行形态与全库测试一致。"""
@@ -43,7 +39,6 @@ def check(cond, name):
         FAIL += 1
         print(f"[FAIL] {name}")
 
-
 # ============================================================================
 # 装置函数（std::atomic 计数 → list.append，GIL 原子）
 # ============================================================================
@@ -54,47 +49,39 @@ s1_ok = []
 s1_inner = []
 s1_outer_ok = []
 
-
 def s1_probe_func(pkg):
     s1_exec.append(1)
     return YomkResponse(ResStatus.eOk, "s1_ok")
-
 
 def s1_inner_func(pkg):
     s1_inner.append(1)
     return YomkResponse(ResStatus.eOk, "s1_inner_ok")
 
-
 def s1_outer_func(pkg):
     # 嵌套重入：在已注册函数内部再 CALL 另一个已注册函数
     # callFunction 的读锁已释放（锁外调用），此处重新获取读锁安全
-    resp = function_pool_call("c1_inner", None)
+    resp = fn_pool().fn_name("c1_inner").call()
     if resp.status == ResStatus.eOk:
         s1_outer_ok.append(1)
     return resp
-
 
 # S2 守恒
 s2_v1 = []
 s2_v2 = []
 s2_total = []
 
-
 def s2_v1_func(pkg):
     s2_v1.append(1)
     return YomkResponse(ResStatus.eOk, "v1")
-
 
 def s2_v2_func(pkg):
     s2_v2.append(1)
     return YomkResponse(ResStatus.eOk, "v2")
 
-
 # S3 锁外调用安全性（gate 模式：函数体内等释放，制造"锁外执行中"确定窗口）
 s3_exec = []
 s3_gate_started = threading.Event()
 s3_gate_release = threading.Event()
-
 
 def s3_gated_func(pkg):
     s3_exec.append(1)
@@ -103,17 +90,16 @@ def s3_gated_func(pkg):
     s3_gate_release.wait()
     return YomkResponse(ResStatus.eOk, "s3_gated_done")
 
-
 # S5 用函数
 def s5_probe_func(pkg):
     return YomkResponse(ResStatus.eOk, "s5_ok")
-
 
 def main():
     global PASS, FAIL
     print("=== TestYomkFunctionPoolConcurrency ===")
 
-    server = init(1)
+    YomkApi.server().async_thread(1).init()
+    server = YomkApi.server().instance()
     check(server is not None, "init(1) 返回 server 实例")
 
     # ========================================================================
@@ -125,15 +111,15 @@ def main():
     k_calls_per_thread = 500
     k_total = k_threads * k_calls_per_thread
 
-    r = function_pool_register("c1_probe", s1_probe_func)
-    check(r.status == ResStatus.eOk, "S1: 注册 c1_probe 成功")
+    r = fn_pool().fn_name("c1_probe").fn(s1_probe_func).install()
+    check(r == ResStatus.eOk, "S1: 注册 c1_probe 成功")
 
     # 多线程并发 CALL（读锁并发读 + 函数体取出）
     callers = []
     for _ in range(k_threads):
         def caller():
             for _ in range(k_calls_per_thread):
-                resp = function_pool_call("c1_probe", None)
+                resp = fn_pool().fn_name("c1_probe").call()
                 if resp.status == ResStatus.eOk:
                     s1_ok.append(1)
         t = threading.Thread(target=caller)
@@ -151,16 +137,16 @@ def main():
     k_nested_calls = 100
     k_nested_total = k_nested_threads * k_nested_calls
 
-    r = function_pool_register("c1_inner", s1_inner_func)
-    check(r.status == ResStatus.eOk, "S1: 注册 c1_inner 成功")
-    r = function_pool_register("c1_outer", s1_outer_func)
-    check(r.status == ResStatus.eOk, "S1: 注册 c1_outer（内部嵌套 CALL c1_inner）成功")
+    r = fn_pool().fn_name("c1_inner").fn(s1_inner_func).install()
+    check(r == ResStatus.eOk, "S1: 注册 c1_inner 成功")
+    r = fn_pool().fn_name("c1_outer").fn(s1_outer_func).install()
+    check(r == ResStatus.eOk, "S1: 注册 c1_outer（内部嵌套 CALL c1_inner）成功")
 
     nested = []
     for _ in range(k_nested_threads):
         def nested_caller():
             for _ in range(k_nested_calls):
-                function_pool_call("c1_outer", None)
+                fn_pool().fn_name("c1_outer").call()
         t = threading.Thread(target=nested_caller)
         nested.append(t)
         t.start()
@@ -173,10 +159,10 @@ def main():
           "S1: 嵌套重入 outer 全部成功回传 inner 结果")
 
     # 清理
-    function_pool_unregister("c1_probe")
-    function_pool_unregister("c1_inner")
-    function_pool_unregister("c1_outer")
-    r = function_pool_call("c1_probe", None)
+    fn_pool().fn_name("c1_probe").uninstall()
+    fn_pool().fn_name("c1_inner").uninstall()
+    fn_pool().fn_name("c1_outer").uninstall()
+    r = fn_pool().fn_name("c1_probe").call()
     check(r.status == ResStatus.eNo, "S1: 清理后 c1_probe 已不存在")
 
     # ========================================================================
@@ -187,15 +173,15 @@ def main():
     s2_stop = threading.Event()
     k_caller_threads = 6
 
-    r = function_pool_register("c2_func", s2_v1_func)
-    check(r.status == ResStatus.eOk, "S2: 注册 c2_func 为 v1 实现")
+    r = fn_pool().fn_name("c2_func").fn(s2_v1_func).install()
+    check(r == ResStatus.eOk, "S2: 注册 c2_func 为 v1 实现")
 
     # 启动 caller 线程（持续 CALL 直到 stop）
     callers = []
     for _ in range(k_caller_threads):
         def caller():
             while not s2_stop.is_set():
-                resp = function_pool_call("c2_func", None)
+                resp = fn_pool().fn_name("c2_func").call()
                 if resp.status == ResStatus.eOk:
                     s2_total.append(1)
         t = threading.Thread(target=caller)
@@ -206,9 +192,9 @@ def main():
     k_update_rounds = 50
     for round_ in range(k_update_rounds):
         if round_ % 2 == 0:
-            function_pool_register("c2_func", s2_v2_func)
+            fn_pool().fn_name("c2_func").fn(s2_v2_func).install()
         else:
-            function_pool_register("c2_func", s2_v1_func)
+            fn_pool().fn_name("c2_func").fn(s2_v1_func).install()
         # 短暂让步让 caller 线程有机会执行
         time.sleep(0.0001)
 
@@ -227,8 +213,8 @@ def main():
     check(total > 0, "S2: 总调用数 > 0（caller 线程确实执行了）")
 
     # 清理
-    function_pool_unregister("c2_func")
-    r = function_pool_call("c2_func", None)
+    fn_pool().fn_name("c2_func").uninstall()
+    r = fn_pool().fn_name("c2_func").call()
     check(r.status == ResStatus.eNo, "S2: 清理后 c2_func 已不存在")
 
     # ========================================================================
@@ -236,12 +222,12 @@ def main():
     # ========================================================================
     print("\n--- S3: 并发 UNREGISTER x CALL（锁外调用安全性）---")
 
-    r = function_pool_register("c3_gated", s3_gated_func)
-    check(r.status == ResStatus.eOk, "S3: 注册 c3_gated（gate 函数：体内等待释放）")
+    r = fn_pool().fn_name("c3_gated").fn(s3_gated_func).install()
+    check(r == ResStatus.eOk, "S3: 注册 c3_gated（gate 函数：体内等待释放）")
 
     # 启动 caller 线程：CALL c3_gated → 进入 gate 函数 → 等待释放
     caller = threading.Thread(
-        target=lambda: function_pool_call("c3_gated", None))
+        target=lambda: fn_pool().fn_name("c3_gated").call())
     caller.start()
 
     # 等 gate 函数开始执行（证明读锁已释放，函数在锁外执行中）
@@ -250,8 +236,8 @@ def main():
           "S3: gate 函数已进入执行（callFunction 的读锁已释放，锁外调用中）")
 
     # 在 gate 函数执行期间 UNREGISTER——写锁获取成功（无读锁持有者）
-    r = function_pool_unregister("c3_gated")
-    check(r.status == ResStatus.eOk,
+    r = fn_pool().fn_name("c3_gated").uninstall()
+    check(r == ResStatus.eOk,
           "S3: 在途调用期间 UNREGISTER 成功（写锁无阻塞——读锁已释放）")
 
     # 释放 gate → 在途调用完成
@@ -262,7 +248,7 @@ def main():
           "S3: 在途调用完成（erase 不影响已取出的函数——锁外调用安全性核心证明）")
 
     # 注销后新 CALL → eNo
-    r = function_pool_call("c3_gated", None)
+    r = fn_pool().fn_name("c3_gated").call()
     check(r.status == ResStatus.eNo, "S3: 注销后新 CALL 返回 eNo（注销生效）")
 
     # ========================================================================
@@ -281,16 +267,16 @@ def main():
         # churn 线程：并发 REGISTER/UNREGISTER 唯一名
         for round_ in range(k_churn_rounds):
             name = f"c4_t{t}_{round_}"
-            function_pool_register(name, s5_probe_func)
+            fn_pool().fn_name(name).fn(s5_probe_func).install()
             # 短暂让步让内省线程有机会观测
             if round_ % 10 == 9:
                 time.sleep(0.00005)
-            function_pool_unregister(name)
+            fn_pool().fn_name(name).uninstall()
 
     def introspect_worker():
         # 内省线程：轮询 INFO_ALL 并记录快照（解包 FuncInfoList 取列表长度）
         for _ in range(k_introspect_rounds):
-            resp = function_pool_info_all()
+            resp = fn_pool().all()
             if resp.status == ResStatus.eOk and isinstance(resp.data, list):
                 snapshots.append(len(resp.data))
             time.sleep(0.0002)
@@ -313,7 +299,7 @@ def main():
     # 清理（churn 线程已自行注销，但确认池干净）
     for t in range(k_churn_threads):
         for round_ in range(k_churn_rounds):
-            function_pool_unregister(f"c4_t{t}_{round_}")
+            fn_pool().fn_name(f"c4_t{t}_{round_}").uninstall()
 
     # ========================================================================
     # S5: 全量 churn 混合守恒
@@ -332,14 +318,14 @@ def main():
     def registerer():
         # 2 线程：反复注册/更新同名（最大互斥争用）
         for _ in range(k_rounds):
-            resp = function_pool_register("c5_probe", s5_probe_func)
-            if resp.status == ResStatus.eOk:
+            resp = fn_pool().fn_name("c5_probe").fn(s5_probe_func).install()
+            if resp == ResStatus.eOk:
                 s5_reg_ok.append(1)
 
     def s5_caller():
         # 2 线程：CALL 同名（可能 eOk 或 eNo 取决于 unregister 时序）
         for _ in range(k_rounds):
-            resp = function_pool_call("c5_probe", None)
+            resp = fn_pool().fn_name("c5_probe").call()
             s5_caller_total.append(1)
             if resp.status == ResStatus.eOk:
                 s5_caller_ok.append(1)
@@ -349,10 +335,10 @@ def main():
     def unregisterer():
         # 1 线程：反复注销同名
         for _ in range(k_rounds):
-            resp = function_pool_unregister("c5_probe")
-            if resp.status == ResStatus.eOk:
+            resp = fn_pool().fn_name("c5_probe").uninstall()
+            if resp == ResStatus.eOk:
                 s5_unreg_ok.append(1)
-            elif resp.status == ResStatus.eNo:
+            elif resp == ResStatus.eNo:
                 s5_unreg_no.append(1)
             # 短暂让步让 registerer 有机会重新注册
             time.sleep(0.00005)
@@ -360,7 +346,7 @@ def main():
     def introspector():
         # 1 线程：INFO_NAMES 轮询
         for _ in range(k_rounds):
-            resp = function_pool_info_names()
+            resp = fn_pool().list()
             if resp.status == ResStatus.eOk:
                 s5_introspect.append(1)
             time.sleep(0.0001)
@@ -393,11 +379,10 @@ def main():
           "S5: 至少部分 CALL 成功（registerer 在 unregisterer 间隙注册了函数）")
 
     # 清理
-    function_pool_unregister("c5_probe")
+    fn_pool().fn_name("c5_probe").uninstall()
 
     print(f"\n=== Result: {PASS}/{PASS + FAIL} passed, {FAIL} failed ===")
     sys.exit(0 if FAIL == 0 else 1)
-
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,7 @@
 import YomkApi
 import json
 from typedefine.TypeDefine import CTX_CONFIG_PATH, APP_VERSION
+from YomkApi import log, ctx
 
 
 class ConfigService(YomkApi.YomkService):
@@ -16,11 +17,10 @@ class ConfigService(YomkApi.YomkService):
         self.install_func("/set", self.set_config)
         self.install_func("/reload", self.reload_config)
         self.install_func("/version", self.version)
-        YomkApi.console_log_info_tag("ConfigService::init",
-                                     "install func [ /load /get /set /reload /version ] to ", self.get_name())
+        log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to ", self.get_name())
 
     def load_config(self, pkg):
-        self.config_path = YomkApi.context_get(CTX_CONFIG_PATH, "")
+        self.config_path = ctx().key(CTX_CONFIG_PATH).msg().with_default("").get()
         if not self.config_path:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "config_path not found in context")
         try:
@@ -28,8 +28,7 @@ class ConfigService(YomkApi.YomkService):
                 self.config_json = json.load(f)
         except Exception as e:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, f"failed to open: {self.config_path}, {e}")
-        YomkApi.console_log_info_tag(
-            "ConfigService::load_config", "loaded: ", self.config_path)
+        log().tag("ConfigService::load_config").info("loaded: ", self.config_path)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def get_config(self, pkg):
@@ -54,18 +53,20 @@ class ConfigService(YomkApi.YomkService):
                 return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "invalid key path: " + pkg.key)
             current = current.setdefault(token, {})
         current[tokens[-1]] = pkg.value
-        YomkApi.console_log_info_tag(
-            "ConfigService::set_config", "set ", pkg.key, " = ", pkg.value)
+        log().tag("ConfigService::set_config").info("set ", pkg.key, " = ", pkg.value)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def reload_config(self, pkg):
+        # 对齐 C++ ConfigService reload：先回取 context 中的 config_path，缺失即 eNo
+        self.config_path = ctx().key(CTX_CONFIG_PATH).msg().with_default("").get()
+        if not self.config_path:
+            return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "config_path not found in context")
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 self.config_json = json.load(f)
         except Exception as e:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, f"failed to reload: {self.config_path}, {e}")
-        YomkApi.console_log_info_tag(
-            "ConfigService::reload_config", "reloaded: ", self.config_path)
+        log().tag("ConfigService::reload_config").info("reloaded: ", self.config_path)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def version(self, pkg):

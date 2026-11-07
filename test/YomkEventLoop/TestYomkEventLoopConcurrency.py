@@ -28,6 +28,8 @@ import time
 
 import YomkServerPy as ysp
 from YomkServerPy import Event, EventLoop
+from YomkApi import event_loop, server
+import YomkApi
 
 FAILED = 0
 
@@ -35,13 +37,11 @@ FAILED = 0
 EXEC_COUNT = []   # 计数 handler 执行总数（S2/S3/S4/S5）
 EXEC_IDS = []     # S1 专用：事件执行时的 eventId（handler 闭包持事件引用）
 
-
 def count_handler():
     def _handler(pkg):
         EXEC_COUNT.append(1)
         return ysp.YomkResponse(ysp.ResStatus.eOk, "counted")
     return _handler
-
 
 # ---- 文件级阻塞门：占住指定 loop 的工作线程制造确定性窗口 ----
 class Gate:
@@ -53,9 +53,7 @@ class Gate:
         self.started.clear()
         self.release.clear()
 
-
 GATE = Gate()
-
 
 def gate_handler():
     def _handler(pkg):
@@ -64,14 +62,11 @@ def gate_handler():
         return ysp.YomkResponse(ysp.ResStatus.eOk, "gate done")
     return _handler
 
-
 def wait_gate_started(timeout_s):
     return GATE.started.wait(timeout_s)
 
-
 def open_gate():
     GATE.release.set()
-
 
 def wait_until(pred, timeout_s):
     deadline = time.time() + timeout_s
@@ -81,7 +76,6 @@ def wait_until(pred, timeout_s):
         time.sleep(0.001)
     return pred()
 
-
 def check(cond, msg):
     global FAILED
     if not cond:
@@ -89,7 +83,6 @@ def check(cond, msg):
         FAILED += 1
     else:
         print("[ OK ]", msg)
-
 
 # ============ Section 1: 并发 post 保序 + 计数守恒（白盒，单 loop）============
 def section_1():
@@ -126,7 +119,6 @@ def section_1():
 
     loop.destroy()
 
-
 # ============ Section 2: 多 loop 并行（白盒，确定性）============
 def section_2():
     del EXEC_COUNT[:]
@@ -158,7 +150,6 @@ def section_2():
 
     loop_a.destroy()
     loop_b.destroy()
-
 
 # ============ Section 3: 并发 postWait（白盒）============
 def section_3():
@@ -198,7 +189,6 @@ def section_3():
     check("pending:0" in loop.info_line("conc3", 0), "S3 完成后 pending:0")
 
     loop.destroy()
-
 
 # ============ Section 4: start/stop/post/postWait 混合 churn 无死锁（白盒）============
 def section_4():
@@ -250,15 +240,15 @@ def section_4():
 
     loop.destroy()
 
-
 # ============ Section 5: API 层并发投递 + 内省轮询 ============
 def section_5():
     import YomkApi
     del EXEC_COUNT[:]
-    server = YomkApi.init(1)
-    check(server is not None, "S5 YomkApi.init 返回非空服务器")
+    YomkApi.server().async_thread(1).init()
+    server = YomkApi.server().instance()
+    check(server is not None, "S5 server().init 返回非空服务器")
 
-    check(YomkApi.event_loop_start("conc_loop").status ==
+    check(event_loop().loop("conc_loop").start() ==
           ysp.ResStatus.eOk, "S5 START conc_loop 返回 eOk")
 
     api_post_ok = [0]
@@ -270,7 +260,7 @@ def section_5():
 
     def api_poster():
         for _k in range(25):
-            if YomkApi.event_loop_post("conc_loop", "x", count_handler(), "").status == ysp.ResStatus.eOk:
+            if event_loop().msg("x").loop("conc_loop").handle_fn(count_handler()).post() == ysp.ResStatus.eOk:
                 with stat_lock:
                     api_post_ok[0] += 1
 
@@ -278,7 +268,7 @@ def section_5():
         # 下限 50 次：高负载下轮询线程可能在投递完成前未被调度（启动饥饿），
         # 投递完成后补足最少轮询数；轮询窗口仍覆盖并发投递期
         while not stop_poll.is_set() or poll_count[0] < 50:
-            r = YomkApi.event_loop_info_loop("conc_loop")
+            r = event_loop().loop("conc_loop").get_info()
             with stat_lock:
                 poll_count[0] += 1
                 if r.status == ysp.ResStatus.eOk and r.data is not None and r.data.running:
@@ -305,10 +295,9 @@ def section_5():
     check(wait_until(lambda: len(EXEC_COUNT) ==
           100, 5.0), "S5 API 层事件全部执行（100/100）")
 
-    check(YomkApi.event_loop_destroy("conc_loop").status ==
+    check(event_loop().loop("conc_loop").destroy() ==
           ysp.ResStatus.eOk, "S5 DESTROY conc_loop 返回 eOk")
-    YomkApi.shutdown()
-
+    YomkApi.server().shutdown()
 
 def main():
     section_1()
@@ -320,7 +309,6 @@ def main():
     print("TestYomkEventLoopConcurrency all check passed." if FAILED == 0
           else f"TestYomkEventLoopConcurrency FAILED ({FAILED} checks failed).")
     sys.exit(0 if FAILED == 0 else 1)
-
 
 if __name__ == "__main__":
     main()

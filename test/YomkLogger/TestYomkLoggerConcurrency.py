@@ -49,11 +49,11 @@ import threading
 import time
 
 import YomkApi
-from YomkServerPy import ResStatus
+from YomkServerPy import Log, ResStatus
+from YomkApi import log, log_mgr, server
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
-
 
 def check(cond, msg):
     global g_failed
@@ -64,26 +64,21 @@ def check(cond, msg):
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
 
-
 def capture(func):
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         return func(), buf.getvalue()
 
-
 def check_time_format(line):
     return TIME_RE.match(line) is not None
-
 
 def count_lines(content):
     # 统计非空行数
     return sum(1 for ln in content.splitlines() if ln)
 
-
 def read_file(path):
     with open(path) as f:
         return f.read()
-
 
 def collect_tail_markers(text, prefix):
     # 行尾最后一段（末个空格之后）以 prefix 开头的 marker 出现次数
@@ -97,22 +92,18 @@ def collect_tail_markers(text, prefix):
             markers[tail] = markers.get(tail, 0) + 1
     return markers
 
-
 def count_bad_occurrence(markers):
     # 统计 markers 中出现次数 != 1 的条目数（0 即"不丢不重"）
     return sum(1 for c in markers.values() if c != 1)
 
-
 def count_lines_containing(lines, needle):
     return sum(1 for ln in lines if needle in ln)
-
 
 def unpack_lines(resp):
     # 解包 LOGGERS 的 list[str]；失败返回空列表
     if resp.status != ResStatus.eOk or not resp.data:
         return []
     return list(resp.data)
-
 
 def first_console_state(data):
     # 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 None）
@@ -121,11 +112,11 @@ def first_console_state(data):
             return lg.logger_state
     return None
 
-
 def is_legal_status(resp):
     # 状态码是否属于框架合法集合 {eInvalid, eOk, eNo}
-    return resp.status in (ResStatus.eInvalid, ResStatus.eOk, ResStatus.eNo)
-
+    # 兼容两形态：读路径 Response 取 .status；写路径链式收敛为 ResStatus 本体
+    status = resp.status if hasattr(resp, "status") else resp
+    return status in (ResStatus.eInvalid, ResStatus.eOk, ResStatus.eNo)
 
 class StartGate:
     # 起始屏障
@@ -148,15 +139,14 @@ class StartGate:
             self._go = True
             self._cv.notify_all()
 
-
 def test_tmp_root():
     # 测试临时根：run_tests.sh 注入（test/test_logs/tmp），独立运行回退系统临时目录
     return os.environ.get("YOMK_TEST_TMP_ROOT") or tempfile.gettempdir()
 
-
 def main():
-    server = YomkApi.init(1)
-    check(server is not None, "YomkApi.init 返回非空服务器")
+    YomkApi.server().async_thread(1).init()
+    server = YomkApi.server().instance()
+    check(server is not None, "server().init 返回非空服务器")
 
     tmp_dir = os.path.join(test_tmp_root(),
                            "yomk_logger_lg3_" + str(os.getpid()))
@@ -177,8 +167,8 @@ def main():
     s1_ok_count = []
 
     # 预热：主线程先创建该 tag 的 console logger，使并发段全部走命中路径
-    r, _ = capture(lambda: YomkApi.console_log_info_tag(k_tag, "lg3s1_warmup"))
-    check(r.status == ResStatus.eOk, "S1: 预热创建 console logger " + k_tag)
+    r, _ = capture(lambda: log().tag(k_tag).info("lg3s1_warmup"))
+    check(r == ResStatus.eOk, "S1: 预热创建 console logger " + k_tag)
 
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
@@ -188,9 +178,8 @@ def main():
             def s1_worker(t=t):
                 gate.wait()
                 for i in range(k_logs_per_thread):
-                    resp = YomkApi.console_log_info_tag(
-                        k_tag, "lg3s1_t" + str(t) + "_i" + str(i))
-                    if resp.status == ResStatus.eOk:
+                    resp = log().tag(k_tag).info("lg3s1_t" + str(t) + "_i" + str(i))
+                    if resp == ResStatus.eOk:
                         s1_ok_count.append(1)
             workers.append(threading.Thread(target=s1_worker))
         for th in workers:
@@ -225,7 +214,7 @@ def main():
           f"S1: 完整行数 == {k_total}（实际 {intact_lines}）")
 
     # 同一 tag 仅一个 logger 实例（并发命中路径不重复创建）
-    loggers_lines = unpack_lines(YomkApi.logger_info_loggers("console"))
+    loggers_lines = unpack_lines(log_mgr().console().list())
     check(count_lines_containing(loggers_lines, k_tag) == 1,
           f"S1: LOGGERS(console) 中 {k_tag} 恰 1 行（无重复实例）")
 
@@ -245,9 +234,8 @@ def main():
             def s2a_worker(t=t):
                 gate.wait()  # 屏障对齐：8 线程同时 miss -> 同时升级独占锁
                 for i in range(k_logs_per_thread):
-                    resp = YomkApi.console_log_info_tag(
-                        k_race_tag, "lg3s2a_t" + str(t) + "_i" + str(i))
-                    if resp.status == ResStatus.eOk:
+                    resp = log().tag(k_race_tag).info("lg3s2a_t" + str(t) + "_i" + str(i))
+                    if resp == ResStatus.eOk:
                         s2a_ok_count.append(1)
             workers.append(threading.Thread(target=s2a_worker))
         for th in workers:
@@ -260,7 +248,7 @@ def main():
     check(len(s2a_ok_count) == k_total,
           f"S2a: 争用创建全部 eOk == {k_total}（实际 {len(s2a_ok_count)}）")
 
-    loggers_lines = unpack_lines(YomkApi.logger_info_loggers("console"))
+    loggers_lines = unpack_lines(log_mgr().console().list())
     check(count_lines_containing(loggers_lines, k_race_tag) == 1,
           f"S2a: LOGGERS(console) 中 {k_race_tag} 恰 1 行——双检锁下并发 miss 仅创建一个实例")
 
@@ -270,7 +258,7 @@ def main():
     check(count_bad_occurrence(race_markers) == 0,
           "S2a: 全部 marker 恰出现 1 次（不丢不重）")
 
-    race_info = YomkApi.logger_info_logger(k_race_tag, "console")
+    race_info = log_mgr().console(k_race_tag).get_info()
     check(race_info.status == ResStatus.eOk and race_info.data is not None
           and race_info.data.type == "console",
           f"S2a: LOGGER({k_race_tag}) 命中 console 类型")
@@ -280,8 +268,8 @@ def main():
     k_spread_per_thread = 50
     k_spread_total = k_spread_threads * k_spread_per_thread
     s2b_ok_count = []
-    console_before = len(unpack_lines(YomkApi.logger_info_loggers("console")))
-    file_before = len(unpack_lines(YomkApi.logger_info_loggers("file")))
+    console_before = len(unpack_lines(log_mgr().console().list()))
+    file_before = len(unpack_lines(log_mgr().file().list()))
 
     with contextlib.redirect_stdout(io.StringIO()):
         gate = StartGate()
@@ -291,9 +279,8 @@ def main():
                 tag = "lg3_s2_t" + str(t)
                 gate.wait()
                 for i in range(k_spread_per_thread):
-                    resp = YomkApi.console_log_info_tag(
-                        tag, "lg3s2b_t" + str(t) + "_i" + str(i))
-                    if resp.status == ResStatus.eOk:
+                    resp = log().tag(tag).info("lg3s2b_t" + str(t) + "_i" + str(i))
+                    if resp == ResStatus.eOk:
                         s2b_ok_count.append(1)
             workers.append(threading.Thread(target=s2b_worker))
         for th in workers:
@@ -305,8 +292,8 @@ def main():
     check(len(s2b_ok_count) == k_spread_total,
           f"S2b: 分散创建全部 eOk == {k_spread_total}（实际 {len(s2b_ok_count)}）")
 
-    console_after = len(unpack_lines(YomkApi.logger_info_loggers("console")))
-    file_after = len(unpack_lines(YomkApi.logger_info_loggers("file")))
+    console_after = len(unpack_lines(log_mgr().console().list()))
+    file_after = len(unpack_lines(log_mgr().file().list()))
     check(console_after - console_before == k_spread_threads,
           f"S2b: console logger 新增恰 {k_spread_threads} 个（实际新增 {console_after - console_before}）")
     check(file_after == file_before, "S2b: file logger 数量未受影响")
@@ -314,7 +301,7 @@ def main():
     all_spread_hit = True
     for t in range(k_spread_threads):
         tag = "lg3_s2_t" + str(t)
-        info = YomkApi.logger_info_logger(tag, "console")
+        info = log_mgr().console(tag).get_info()
         if info.status != ResStatus.eOk or info.data is None or info.data.type != "console":
             all_spread_hit = False
     check(all_spread_hit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 类型")
@@ -350,7 +337,7 @@ def main():
         return True
 
     # 首次设置为 v1（此后进程内 proxy 恒为 on，v1/v2 交替更新 func）
-    check(YomkApi.set_console_log_proxy(s3_proxy_v1).status == ResStatus.eOk,
+    check(log_mgr().console().proxy(s3_proxy_v1).apply() == ResStatus.eOk,
           "S3: SET_CONSOLE_LOG_PROXY(v1) 返回 eOk")
 
     with contextlib.redirect_stdout(io.StringIO()):
@@ -360,10 +347,9 @@ def main():
             def caller_worker(t=t):
                 i = 0
                 while not s3_stop.is_set():
-                    resp = YomkApi.console_log_info_tag(
-                        k_tag, "lg3s3_t" + str(t) + "_i" + str(i))
+                    resp = log().tag(k_tag).info("lg3s3_t" + str(t) + "_i" + str(i))
                     s3_log_total.append(1)
-                    if resp.status == ResStatus.eOk:
+                    if resp == ResStatus.eOk:
                         s3_log_ok.append(1)
                     i += 1
             callers.append(threading.Thread(target=caller_worker))
@@ -373,7 +359,7 @@ def main():
         for _t in range(k_introspect_threads):
             def s3_introspect_worker():
                 while not s3_stop.is_set():
-                    resp = YomkApi.logger_info_all()
+                    resp = log_mgr().all()
                     if resp.status == ResStatus.eOk and isinstance(
                             resp.data, list):
                         st = first_console_state(resp.data)
@@ -389,10 +375,10 @@ def main():
 
         # 主线程：50 轮交替 SET v1/v2（写侧与 caller 的读侧并发交错）
         for round_ in range(k_set_rounds):
-            resp = (YomkApi.set_console_log_proxy(s3_proxy_v2)
+            resp = (log_mgr().console().proxy(s3_proxy_v2).apply()
                     if round_ % 2 == 0
-                    else YomkApi.set_console_log_proxy(s3_proxy_v1))
-            if resp.status == ResStatus.eOk:
+                    else log_mgr().console().proxy(s3_proxy_v1).apply())
+            if resp == ResStatus.eOk:
                 s3_set_ok.append(1)
             time.sleep(0.0001)
 
@@ -427,21 +413,22 @@ def main():
     s4a_create_ok = []
     s4a_create_no = []
     console_before_a = len(unpack_lines(
-        YomkApi.logger_info_loggers("console")))
-    file_before_a = len(unpack_lines(YomkApi.logger_info_loggers("file")))
+        log_mgr().console().list()))
+    file_before_a = len(unpack_lines(log_mgr().file().list()))
 
     gate = StartGate()
     workers = []
     for _t in range(k_threads):
         def s4a_worker():
             gate.wait()  # 屏障对齐：8 线程同时争抢独占锁
-            resp = YomkApi.file_log_create(same_dir, k_same_name)
+            resp = log_mgr().dir(same_dir).file(k_same_name).create()
             if not is_legal_status(resp):
                 bad_status.append(1)
-            if resp.status == ResStatus.eOk:
+            if resp == ResStatus.eOk:
                 s4a_create_ok.append(1)
-            elif (resp.status == ResStatus.eNo and
-                  resp.msg == "logger name already exists."):
+            elif resp == ResStatus.eNo:
+                # 写路径链式收敛为 ResStatus（无 msg）；重名 eNo 契约消息断言
+                # 已由 TestYomkLoggerLifecycle S8 经 server 域裸链覆盖
                 s4a_create_no.append(1)
         workers.append(threading.Thread(target=s4a_worker))
     for th in workers:
@@ -458,8 +445,8 @@ def main():
     check(os.path.isfile(os.path.join(same_dir, k_same_name + ".log")),
           "S4a: 胜出者日志文件已落盘")
 
-    console_after_a = len(unpack_lines(YomkApi.logger_info_loggers("console")))
-    file_after_a = len(unpack_lines(YomkApi.logger_info_loggers("file")))
+    console_after_a = len(unpack_lines(log_mgr().console().list()))
+    file_after_a = len(unpack_lines(log_mgr().file().list()))
     check(file_after_a - file_before_a == 1,
           f"S4a: file logger 仅新增 1 个（无重复注册，实际新增 {file_after_a - file_before_a}）")
     check(console_after_a == console_before_a, "S4a: console logger 数量未受影响")
@@ -473,10 +460,10 @@ def main():
     for t in range(k_threads):
         def s4b_worker(t=t):
             gate.wait()
-            resp = YomkApi.file_log_create(spread_dir, "lg3_s4_t" + str(t))
+            resp = log_mgr().dir(spread_dir).file("lg3_s4_t" + str(t)).create()
             if not is_legal_status(resp):
                 bad_status.append(1)
-            if resp.status == ResStatus.eOk:
+            if resp == ResStatus.eOk:
                 s4b_create_ok.append(1)
         workers.append(threading.Thread(target=s4b_worker))
     for th in workers:
@@ -488,8 +475,8 @@ def main():
     check(len(s4b_create_ok) == k_threads,
           f"S4b: 8 线程异名并发创建全部 eOk（实际 {len(s4b_create_ok)}）")
 
-    console_after_b = len(unpack_lines(YomkApi.logger_info_loggers("console")))
-    file_after_b = len(unpack_lines(YomkApi.logger_info_loggers("file")))
+    console_after_b = len(unpack_lines(log_mgr().console().list()))
+    file_after_b = len(unpack_lines(log_mgr().file().list()))
     check(file_after_b - file_after_a == k_threads,
           f"S4b: file logger 新增恰 {k_threads} 个（实际新增 {file_after_b - file_after_a}）")
 
@@ -504,7 +491,7 @@ def main():
     s4c_write_ok = []
     s4c_stop = threading.Event()
 
-    check(YomkApi.file_log_create(sink_dir, k_sink_name).status == ResStatus.eOk,
+    check(log_mgr().dir(sink_dir).file(k_sink_name).create() == ResStatus.eOk,
           "S4c: 创建 sink file logger 成功")
 
     gate = StartGate()
@@ -513,11 +500,10 @@ def main():
         def log_worker(t=t):
             gate.wait()
             for i in range(k_logs_per_thread):
-                resp = YomkApi.file_log_info_tag(
-                    k_sink_name, "lg3s4c", "lg3s4c_t" + str(t) + "_i" + str(i))
+                resp = log().to_sink(k_sink_name).tag("lg3s4c").info("lg3s4c_t" + str(t) + "_i" + str(i))
                 if not is_legal_status(resp):
                     bad_status.append(1)
-                if resp.status == ResStatus.eOk:
+                if resp == ResStatus.eOk:
                     s4c_log_ok.append(1)
         log_workers.append(threading.Thread(target=log_worker))
 
@@ -526,10 +512,10 @@ def main():
     for _t in range(k_writer_threads):
         def writer_worker():
             while not s4c_stop.is_set():
-                resp = YomkApi.file_log_write(k_sink_name)
+                resp = log_mgr().file(k_sink_name).flush()
                 if not is_legal_status(resp):
                     bad_status.append(1)
-                if resp.status == ResStatus.eOk:
+                if resp == ResStatus.eOk:
                     s4c_write_ok.append(1)
                 time.sleep(0.0002)
         writers.append(threading.Thread(target=writer_worker))
@@ -546,7 +532,7 @@ def main():
         th.join()
 
     # 收尾：把残余缓冲全部落盘
-    check(YomkApi.file_log_write(k_sink_name).status == ResStatus.eOk,
+    check(log_mgr().file(k_sink_name).flush() == ResStatus.eOk,
           "S4c: 收尾 WRITE 返回 eOk")
 
     check(len(s4c_log_ok) == k_sink_total,
@@ -574,10 +560,10 @@ def main():
     k_multi_name = "lg3_s4_multi"
     s4d_write_ok = []
 
-    check(YomkApi.file_log_create(multi_dir, k_multi_name).status == ResStatus.eOk,
+    check(log_mgr().dir(multi_dir).file(k_multi_name).create() == ResStatus.eOk,
           "S4d: 创建 multi file logger 成功")
     for i in range(k_multi_lines):
-        YomkApi.file_log_info_tag(k_multi_name, "lg3s4d", "lg3s4d_i" + str(i))
+        log().to_sink(k_multi_name).tag("lg3s4d").info("lg3s4d_i" + str(i))
 
     gate = StartGate()
     workers = []
@@ -585,10 +571,10 @@ def main():
         def s4d_worker():
             gate.wait()
             for _r in range(k_write_rounds_d):
-                resp = YomkApi.file_log_write(k_multi_name)
+                resp = log_mgr().file(k_multi_name).flush()
                 if not is_legal_status(resp):
                     bad_status.append(1)
-                if resp.status == ResStatus.eOk:
+                if resp == ResStatus.eOk:
                     s4d_write_ok.append(1)
         workers.append(threading.Thread(target=s4d_worker))
     for th in workers:
@@ -635,39 +621,38 @@ def main():
     # 四级别调用分发（级别号 0=debug 1=info 2=warn 3=error）
     def console_level(level, tag, msg):
         if level == 0:
-            return YomkApi.console_log_debug_tag(tag, msg)
+            return log().tag(tag).debug(msg)
         if level == 1:
-            return YomkApi.console_log_info_tag(tag, msg)
+            return log().tag(tag).info(msg)
         if level == 2:
-            return YomkApi.console_log_warn_tag(tag, msg)
-        return YomkApi.console_log_error_tag(tag, msg)
+            return log().tag(tag).warn(msg)
+        return log().tag(tag).error(msg)
 
     def file_level(level, name, msg):
         if level == 0:
-            return YomkApi.file_log_debug_tag(name, "lg3s5", msg)
+            return log().to_sink(name).tag("lg3s5").debug(msg)
         if level == 1:
-            return YomkApi.file_log_info_tag(name, "lg3s5", msg)
+            return log().to_sink(name).tag("lg3s5").info(msg)
         if level == 2:
-            return YomkApi.file_log_warn_tag(name, "lg3s5", msg)
-        return YomkApi.file_log_error_tag(name, "lg3s5", msg)
+            return log().to_sink(name).tag("lg3s5").warn(msg)
+        return log().to_sink(name).tag("lg3s5").error(msg)
 
     def switch_level(level, turn_on):
-        table_on = (YomkApi.on_console_log_debug, YomkApi.on_console_log_info,
-                    YomkApi.on_console_log_warn, YomkApi.on_console_log_error)
-        table_off = (YomkApi.off_console_log_debug, YomkApi.off_console_log_info,
-                     YomkApi.off_console_log_warn, YomkApi.off_console_log_error)
-        return (table_on if turn_on else table_off)[level]()
+        levels = (Log.eDebug, Log.eInfo, Log.eWarn, Log.eError)
+        if turn_on:
+            return log_mgr().console().level(levels[level]).enable()
+        return log_mgr().console().level(levels[level]).disable()
 
     # 预热 sink：churn 之外的所有日志调用一律使用已存在 logger，
     # 确保新 logger 只由 churn 线程"先 console 后 file"成对产生（判别式前提）
     r, _ = capture(lambda: console_level(1, k_console_sink, "lg3s5_warmup"))
-    check(r.status == ResStatus.eOk, "S5: 预热 console sink logger 成功")
-    check(YomkApi.file_log_create(pair_dir, k_file_sink).status == ResStatus.eOk,
+    check(r == ResStatus.eOk, "S5: 预热 console sink logger 成功")
+    check(log_mgr().dir(pair_dir).file(k_file_sink).create() == ResStatus.eOk,
           "S5: 预热 file sink logger 成功")
 
     # 基线快照
-    base_c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
-    base_f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
+    base_c = len(unpack_lines(log_mgr().console().list()))
+    base_f = len(unpack_lines(log_mgr().file().list()))
     check(base_c > 0 and base_f > 0,
           f"S5: 基线非空（console {base_c} / file {base_f}）")
 
@@ -692,19 +677,18 @@ def main():
             def churn_worker(t=t):
                 for round_ in range(k_churn_rounds):
                     name = "lg3_s5_pair_t" + str(t) + "_r" + str(round_)
-                    console_resp = YomkApi.console_log_info_tag(
-                        name, "lg3s5_pair")
+                    console_resp = log().tag(name).info("lg3s5_pair")
                     if not is_legal_status(console_resp):
                         bad_status.append(1)
-                    if console_resp.status == ResStatus.eOk:
+                    if console_resp == ResStatus.eOk:
                         s5_pair_console_ok.append(1)
                     # 成对语义：console 先于 file（任意真实时刻 C(T) >= F(T)）
-                    file_resp = YomkApi.file_log_create(pair_dir, name)
+                    file_resp = log_mgr().dir(pair_dir).file(name).create()
                     if not is_legal_status(file_resp):
                         bad_status.append(1)
-                    if file_resp.status == ResStatus.eOk:
+                    if file_resp == ResStatus.eOk:
                         s5_pair_file_ok.append(1)
-                    elif file_resp.status == ResStatus.eNo:
+                    elif file_resp == ResStatus.eNo:
                         s5_pair_file_no.append(1)
             churn_threads.append(threading.Thread(target=churn_worker))
 
@@ -716,11 +700,11 @@ def main():
                 while not s5_stop.is_set():
                     # 按类型端点分表采样：两次独立调用非原子，撕裂判别移交 ALL 端点
                     snap_console = len(unpack_lines(
-                        YomkApi.logger_info_loggers("console")))
+                        log_mgr().console().list()))
                     snap_file = len(unpack_lines(
-                        YomkApi.logger_info_loggers("file")))
+                        log_mgr().file().list()))
 
-                    all_resp = YomkApi.logger_info_all()
+                    all_resp = log_mgr().all()
                     if not is_legal_status(all_resp):
                         bad_status.append(1)
                     if (all_resp.status == ResStatus.eOk
@@ -753,7 +737,7 @@ def main():
                     resp = switch_level(level, turn_on)
                     if not is_legal_status(resp):
                         bad_status.append(1)
-                    if resp.status == ResStatus.eOk:
+                    if resp == ResStatus.eOk:
                         s5_switch_ok.append(1)
                     time.sleep(0.00005)
             switch_threads.append(threading.Thread(target=switch_worker))
@@ -768,7 +752,7 @@ def main():
                         "lg3s5_c" + str(t) + "_r" + str(round_))
                     if not is_legal_status(resp):
                         bad_status.append(1)
-                    if resp.status == ResStatus.eOk:
+                    if resp == ResStatus.eOk:
                         s5_console_ok.append(1)
             console_threads.append(threading.Thread(target=console_worker))
 
@@ -782,13 +766,13 @@ def main():
                         "lg3s5_f" + str(t) + "_r" + str(round_))
                     if not is_legal_status(resp):
                         bad_status.append(1)
-                    if resp.status == ResStatus.eOk:
+                    if resp == ResStatus.eOk:
                         s5_file_ok.append(1)
                     if round_ % 20 == 19:
-                        write_resp = YomkApi.file_log_write(k_file_sink)
+                        write_resp = log_mgr().file(k_file_sink).flush()
                         if not is_legal_status(write_resp):
                             bad_status.append(1)
-                        if write_resp.status == ResStatus.eOk:
+                        if write_resp == ResStatus.eOk:
                             s5_write_ok.append(1)
             file_threads.append(threading.Thread(target=file_worker))
 
@@ -817,21 +801,21 @@ def main():
             th.join()
 
     # ---- 收尾：四级别全 ON + file sink 落盘 ----
-    check(YomkApi.on_console_log_debug().status ==
+    check(log_mgr().console().level(Log.eDebug).enable() ==
           ResStatus.eOk, "S5: 收尾 ON debug eOk")
-    check(YomkApi.on_console_log_info().status ==
+    check(log_mgr().console().level(Log.eInfo).enable() ==
           ResStatus.eOk, "S5: 收尾 ON info eOk")
-    check(YomkApi.on_console_log_warn().status ==
+    check(log_mgr().console().level(Log.eWarn).enable() ==
           ResStatus.eOk, "S5: 收尾 ON warn eOk")
-    check(YomkApi.on_console_log_error().status ==
+    check(log_mgr().console().level(Log.eError).enable() ==
           ResStatus.eOk, "S5: 收尾 ON error eOk")
-    check(YomkApi.file_log_write(k_file_sink).status == ResStatus.eOk,
+    check(log_mgr().file(k_file_sink).flush() == ResStatus.eOk,
           "S5: 收尾 file sink WRITE eOk")
 
     # ---- P3-a 判别式：ALL 快照验证 C >= F（嵌套双锁原子快照）；
     # LOGGERS 按类型端点分表快照验证计数合法性（非负且不超最终值）----
-    final_c = len(unpack_lines(YomkApi.logger_info_loggers("console")))
-    final_f = len(unpack_lines(YomkApi.logger_info_loggers("file")))
+    final_c = len(unpack_lines(log_mgr().console().list()))
+    final_f = len(unpack_lines(log_mgr().file().list()))
     final_total = final_c + final_f
 
     loggers_violations = 0  # LOGGERS 分表快照违例（delta 负值或超出最终对应值）
@@ -901,10 +885,10 @@ def main():
           f"S5: 内省线程确实观测到 ALL（{len(s5_introspect_ok)} 次）")
 
     # ---- 最终一致性：GLOBAL 主闸态精确 + ALL 条目逐器真值 + 清单条数跨端点一致 + file sink 落盘守恒 ----
-    fg = YomkApi.logger_info_global().data
+    fg = log_mgr().console().status().data
     check(fg and fg.debug_on and fg.info_on and fg.warn_on and fg.error_on and fg.proxy_on,
           "S5: 收尾四级别全 ON 后全局主闸状态全 on（含 S3 已设的 proxy_on）")
-    final_info = YomkApi.logger_info_all().data
+    final_info = log_mgr().all().data
     fc = first_console_state(final_info)
     check(fc and fc.debug_on and fc.info_on and fc.warn_on and fc.error_on and fc.proxy_on,
           "S5: ALL console 条目逐器门控真值全 on（未做具名开关，含 proxy_on）")
@@ -919,7 +903,7 @@ def main():
           "——级别翻转与并发 WRITE 下不丢不重")
 
     # ============ 收尾清理 ============
-    YomkApi.shutdown()
+    YomkApi.server().shutdown()
     shutil.rmtree(tmp_dir, ignore_errors=True)
 
     if g_failed == 0:
@@ -927,7 +911,6 @@ def main():
         return 0
     print(f"TestYomkLoggerConcurrency FAILED ({g_failed} checks failed).")
     return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

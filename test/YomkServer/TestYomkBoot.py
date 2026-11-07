@@ -22,6 +22,7 @@ TestYomkBoot.py —— YomkAPI.boot 三段失败短路/错误码透传测试（�
 import sys
 
 import YomkApi
+from YomkApi import server
 
 g_failed = 0
 
@@ -34,14 +35,12 @@ g_start_count = 0
 g_after_count = 0
 g_order = []       # 三段执行序记录
 
-
 def reset_globals():
     global g_before_ret, g_start_ret, g_after_ret
     global g_before_count, g_start_count, g_after_count
     g_before_ret = g_start_ret = g_after_ret = 0
     g_before_count = g_start_count = g_after_count = 0
     g_order.clear()
-
 
 def check(cond, msg):
     global g_failed
@@ -51,7 +50,6 @@ def check(cond, msg):
     else:
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
-
 
 class BootRecorder(YomkApi.YomkBoot):
     """三段记录器：各段计数与执行序入表，返回值由全局开关注入"""
@@ -74,18 +72,17 @@ class BootRecorder(YomkApi.YomkBoot):
         g_order.append("after")
         return g_after_ret
 
-
 def main():
     global g_before_ret, g_start_ret, g_after_ret
     print("===== 1. boot(None) 隐式 init =====")
-    check(YomkApi.boot() == 0, "boot(None) 返回 0（不经过三段）")
-    check(YomkApi.server_instance() is not None,
+    check(server().boot_ptr(None).run() == 0, "boot(None) 返回 0（不经过三段）")
+    check(server().instance() is not None,
           "boot(None) 内部隐式 init 路径，单例被初始化")
 
     print("===== 2. before 失败短路 =====")
     reset_globals()
     g_before_ret = -1
-    ret = YomkApi.boot(BootRecorder())
+    ret = server().boot_ptr(BootRecorder()).run()
     check(ret == -1, "before 失败返回原值 -1")
     check(g_before_count == 1, "before 执行 1 次")
     check(g_start_count == 0, "start 被短路未执行")
@@ -94,7 +91,7 @@ def main():
     print("===== 3. start 失败短路 =====")
     reset_globals()
     g_start_ret = -2
-    ret = YomkApi.boot(BootRecorder())
+    ret = server().boot_ptr(BootRecorder()).run()
     check(ret == -2, "start 失败返回原值 -2（非 -1 错误码同样透传）")
     check(g_before_count == 1, "before 执行 1 次")
     check(g_start_count == 1, "start 执行 1 次")
@@ -103,14 +100,14 @@ def main():
     print("===== 4. after 失败透传 =====")
     reset_globals()
     g_after_ret = -3
-    ret = YomkApi.boot(BootRecorder())
+    ret = server().boot_ptr(BootRecorder()).run()
     check(ret == -3, "after 失败返回原值 -3")
     check(g_before_count == 1 and g_start_count == 1 and g_after_count == 1,
           "三段各执行 1 次（after 为末段无短路语义）")
 
     print("===== 5. 全部成功执行序 =====")
     reset_globals()
-    ret = YomkApi.boot(BootRecorder())
+    ret = server().boot_ptr(BootRecorder()).run()
     check(ret == 0, "三段全部成功返回 0")
     check(g_order == ["before", "start", "after"],
           "执行序严格 before -> start -> after")
@@ -118,7 +115,6 @@ def main():
     print(("ALL PASSED" if g_failed == 0 else "SOME FAILED") +
           f" ({g_failed} failed)")
     return 0 if g_failed == 0 else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

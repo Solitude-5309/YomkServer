@@ -19,20 +19,16 @@ import sys
 import threading
 import time
 
+import YomkApi
 from YomkApi import (
+    server,
+    fn_pool,
     ResStatus,
     YomkResponse,
-    function_pool_call,
-    function_pool_info_all,
-    function_pool_info_names,
-    function_pool_register,
-    function_pool_unregister,
-    init,
 )
 
 PASS = 0
 FAIL = 0
-
 
 def check(cond, name):
     """断言计数：[ OK ] / [FAIL] 行形态与全库测试一致。"""
@@ -44,20 +40,17 @@ def check(cond, name):
         FAIL += 1
         print(f"[FAIL] {name}")
 
-
 def stress_scale():
     """YOMK_TEST_STRESS_SCALE 参数化（缺省 100000，clamp 下限 1000）。"""
     env = os.environ.get("YOMK_TEST_STRESS_SCALE")
     n = int(env) if env else 100000
     return n if n >= 1000 else 1000
 
-
 def record_baseline(section, ops, elapsed_ms):
     """[BASELINE] 吞吐记录（不断言 timing，环境相关）。"""
     ops_per_sec = (ops / (elapsed_ms / 1000.0)) if elapsed_ms > 0.0 else 0.0
     print(
         f"[BASELINE] {section}: {ops_per_sec:.0f} ops/s ({ops} ops in {elapsed_ms:.1f} ms)")
-
 
 # ============================================================================
 # 测试用函数
@@ -66,19 +59,15 @@ def record_baseline(section, ops, elapsed_ms):
 def stress_noop_func(pkg):
     return YomkResponse(ResStatus.eOk, "ok")
 
-
 s2_exec = []  # std::atomic 计数映射：list.append GIL 原子
-
 
 def stress_count_func(pkg):
     s2_exec.append(1)
     return YomkResponse(ResStatus.eOk, "ok")
 
-
 def make_name(prefix, index):
     """生成唯一函数名（std::to_string 同构）。"""
     return f"{prefix}{index}"
-
 
 def main():
     global PASS, FAIL
@@ -87,7 +76,8 @@ def main():
     n = stress_scale()
     print(f"[CONFIG] YOMK_TEST_STRESS_SCALE = {n}")
 
-    server = init(1)
+    YomkApi.server().async_thread(1).init()
+    server = YomkApi.server().instance()
     check(server is not None, "init(1) 返回 server 实例")
 
     # ========================================================================
@@ -99,9 +89,8 @@ def main():
     reg_ok = 0
     t0 = time.perf_counter()
     for i in range(n):
-        resp = function_pool_register(
-            make_name("s1_func_", i), stress_noop_func)
-        if resp.status == ResStatus.eOk:
+        resp = fn_pool().fn_name(make_name("s1_func_", i)).fn(stress_noop_func).install()
+        if resp == ResStatus.eOk:
             reg_ok += 1
     t1 = time.perf_counter()
     reg_ms = (t1 - t0) * 1000.0
@@ -113,7 +102,7 @@ def main():
     call_ok = 0
     t2 = time.perf_counter()
     for _ in range(n):
-        resp = function_pool_call("s1_func_0", None)
+        resp = fn_pool().fn_name("s1_func_0").call()
         if resp.status == ResStatus.eOk:
             call_ok += 1
     t3 = time.perf_counter()
@@ -126,8 +115,8 @@ def main():
     unreg_ok = 0
     t4 = time.perf_counter()
     for i in range(n):
-        resp = function_pool_unregister(make_name("s1_func_", i))
-        if resp.status == ResStatus.eOk:
+        resp = fn_pool().fn_name(make_name("s1_func_", i)).uninstall()
+        if resp == ResStatus.eOk:
             unreg_ok += 1
     t5 = time.perf_counter()
     unreg_ms = (t5 - t4) * 1000.0
@@ -145,14 +134,14 @@ def main():
     total_calls = per_thread * k_threads
 
     del s2_exec[:]
-    function_pool_register("s2_hot", stress_count_func)
+    fn_pool().fn_name("s2_hot").fn(stress_count_func).install()
 
     workers = []
     t0 = time.perf_counter()
     for _ in range(k_threads):
         def worker():
             for _ in range(per_thread):
-                function_pool_call("s2_hot", None)
+                fn_pool().fn_name("s2_hot").call()
         t = threading.Thread(target=worker)
         workers.append(t)
         t.start()
@@ -165,7 +154,7 @@ def main():
     check(len(s2_exec) == total_calls,
           f"S2: 并发 call 守恒 {len(s2_exec)}/{total_calls}")
 
-    function_pool_unregister("s2_hot")
+    fn_pool().fn_name("s2_hot").uninstall()
 
     # ========================================================================
     # S3: 全生命周期 churn（register→call→unregister→call(eNo) x N）
@@ -180,13 +169,13 @@ def main():
     t0 = time.perf_counter()
     for i in range(n):
         name = make_name("s3_churn_", i)
-        if function_pool_register(name, stress_noop_func).status == ResStatus.eOk:
+        if fn_pool().fn_name(name).fn(stress_noop_func).install() == ResStatus.eOk:
             reg_ok += 1
-        if function_pool_call(name, None).status == ResStatus.eOk:
+        if fn_pool().fn_name(name).call().status == ResStatus.eOk:
             call_ok += 1
-        if function_pool_unregister(name).status == ResStatus.eOk:
+        if fn_pool().fn_name(name).uninstall() == ResStatus.eOk:
             unreg_ok += 1
-        if function_pool_call(name, None).status == ResStatus.eNo:
+        if fn_pool().fn_name(name).call().status == ResStatus.eNo:
             post_no += 1
     t1 = time.perf_counter()
     elapsed = (t1 - t0) * 1000.0
@@ -211,11 +200,11 @@ def main():
 
     t0 = time.perf_counter()
     for _ in range(rounds):
-        if function_pool_register(big_name, stress_noop_func).status == ResStatus.eOk:
+        if fn_pool().fn_name(big_name).fn(stress_noop_func).install() == ResStatus.eOk:
             reg_ok += 1
-        if function_pool_call(big_name, None).status == ResStatus.eOk:
+        if fn_pool().fn_name(big_name).call().status == ResStatus.eOk:
             call_ok += 1
-        if function_pool_unregister(big_name).status == ResStatus.eOk:
+        if fn_pool().fn_name(big_name).uninstall() == ResStatus.eOk:
             unreg_ok += 1
     t1 = time.perf_counter()
     elapsed = (t1 - t0) * 1000.0
@@ -226,7 +215,7 @@ def main():
     check(unreg_ok == rounds, f"S4: 大名 unregister 守恒 {unreg_ok}/{rounds}")
 
     # 最终确认已清理
-    r = function_pool_call(big_name, None)
+    r = fn_pool().fn_name(big_name).call()
     check(r.status == ResStatus.eNo, "S4: 大名最终已注销（eNo）")
 
     # ========================================================================
@@ -247,26 +236,23 @@ def main():
     for g in range(groups):
         # register 10
         for k in range(k_group_size):
-            resp = function_pool_register(make_name("s5_mix_", g * k_group_size + k),
-                                          stress_noop_func)
-            if resp.status == ResStatus.eOk:
+            resp = fn_pool().fn_name(make_name("s5_mix_", g * k_group_size + k)).fn(stress_noop_func).install()
+            if resp == ResStatus.eOk:
                 reg_ok += 1
         # call 10
         for k in range(k_group_size):
-            resp = function_pool_call(
-                make_name("s5_mix_", g * k_group_size + k), None)
+            resp = fn_pool().fn_name(make_name("s5_mix_", g * k_group_size + k)).call()
             if resp.status == ResStatus.eOk:
                 call_ok += 1
         # introspect
-        if function_pool_info_names().status == ResStatus.eOk:
+        if fn_pool().list().status == ResStatus.eOk:
             info_names_ok += 1
-        if function_pool_info_all().status == ResStatus.eOk:
+        if fn_pool().all().status == ResStatus.eOk:
             info_all_ok += 1
         # unregister 10
         for k in range(k_group_size):
-            resp = function_pool_unregister(
-                make_name("s5_mix_", g * k_group_size + k))
-            if resp.status == ResStatus.eOk:
+            resp = fn_pool().fn_name(make_name("s5_mix_", g * k_group_size + k)).uninstall()
+            if resp == ResStatus.eOk:
                 unreg_ok += 1
     t1 = time.perf_counter()
     elapsed = (t1 - t0) * 1000.0
@@ -287,7 +273,6 @@ def main():
 
     print(f"\n=== Result: {PASS}/{PASS + FAIL} passed, {FAIL} failed ===")
     sys.exit(0 if FAIL == 0 else 1)
-
 
 if __name__ == "__main__":
     main()
