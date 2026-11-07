@@ -1,5 +1,7 @@
 # YomkServerPy 工程示例
 
+创建新工程**优先复制仓库根 `template/project/`**（扩展库复制 `template/extension/`）并替换占位符——与模板零漂移且省时；以下示例0/示例7 即模板的等价逐文件生成形态，模板目录不存在时按此逐文件生成。所有 API 均为六域链式形态（`YomkApi.server()/ctx()/fn_pool()/event_loop()/log()/log_mgr()`，累积前置、无参终结）。
+
 ## 示例0：标准工程模板（创建新工程时必须生成）
 
 将 `ProjectName` 替换为用户指定的工程名，所有文件必须完整生成。
@@ -20,6 +22,7 @@ ProjectName/
 │   └── TypeDefine.py
 ├── test/
 ├── scripts/
+├── check_env.sh
 └── README.md
 ```
 
@@ -27,9 +30,10 @@ ProjectName/
 ```python
 import YomkApi
 from boot.MyBoot import MyBoot
+from YomkApi import log, server
 
-YomkApi.boot(MyBoot(["/ConfigService"]))
-YomkApi.console_log_info_tag("main", "running, press Enter to exit.")
+server().boot_ptr(MyBoot(["/ConfigService"])).run()
+log().tag("main").info("running, press Enter to exit.")
 input()
 ```
 
@@ -40,7 +44,7 @@ from pathlib import Path
 from typedefine.TypeDefine import CTX_CONFIG_PATH
 from services.ConfigService import ConfigService
 from msgs.YomkMsgs import *
-
+from YomkApi import log, ctx, server
 
 class MyBoot(YomkApi.YomkBoot):
     def __init__(self, srv_names):
@@ -48,64 +52,54 @@ class MyBoot(YomkApi.YomkBoot):
         self.srv_names = srv_names
 
     def before(self):
-        YomkApi.console_log_info_tag("MyBoot::before", "starting...")
+        log().tag("MyBoot::before").info("starting...")
 
         # 通过 __file__ 推导配置文件路径
         project_dir = Path(__file__).resolve().parent.parent
         config_path = str(project_dir / "config" / "config.json")
-        YomkApi.context_create(CTX_CONFIG_PATH, config_path)
-        YomkApi.console_log_info_tag(
-            "MyBoot::before", "config path: ", config_path)
+        ctx().key(CTX_CONFIG_PATH).value(config_path).create()
+        log().tag("MyBoot::before").info("config path: ", config_path)
         return 0
 
     def start(self):
         # 服务创建器映射表
         cur_srvs = {
-            "/ConfigService": lambda: ConfigService(YomkApi.server()),
+            "/ConfigService": lambda: ConfigService(server().instance()),
         }
 
         # 根据 srv_names 按需启动服务
         for srv_name in self.srv_names:
             if srv_name in cur_srvs:
-                if YomkApi.add_service(cur_srvs[srv_name](), srv_name) != 0:
+                if server().srv_ptr(cur_srvs[srv_name]()).srv_name(srv_name).add() != 0:
                     return -1
-                YomkApi.console_log_info_tag(
-                    "MyBoot::start", "service ", srv_name, " done")
 
         return 0
 
     def after(self):
-        resp = YomkApi.request("/ConfigService/load", None)
+        resp = server().url("/ConfigService/load").request()
         if resp.status != YomkApi.ResStatus.eOk:
-            YomkApi.console_log_error_tag(
-                "MyBoot::after", "load config failed: ", resp.msg)
+            log().tag("MyBoot::after").error("load config failed: ", resp.msg)
             return -1
-        YomkApi.console_log_info_tag("MyBoot::after", "started successfully.")
+        log().tag("MyBoot::after").info("started successfully.")
 
-        resp = YomkApi.request("/ConfigService/get", ConfigKey("name"))
+        resp = server().url("/ConfigService/get").msg(ConfigKey("name")).request()
         if resp.status != YomkApi.ResStatus.eOk:
-            YomkApi.console_log_error_tag(
-                "MyBoot::after", "get config name failed: ", resp.msg)
+            log().tag("MyBoot::after").error("get config name failed: ", resp.msg)
             return -1
-        YomkApi.console_log_info_tag(
-            "MyBoot::after", "config name: ", resp.data)
+        log().tag("MyBoot::after").info("config name: ", resp.data)
 
         # 测试版本号接口：获取并输出工程版本号（typedefine/TypeDefine.py 定义的 APP_VERSION 常量）
-        resp = YomkApi.request("/ConfigService/version", None)
+        resp = server().url("/ConfigService/version").request()
         if resp.status != YomkApi.ResStatus.eOk:
-            YomkApi.console_log_error_tag(
-                "MyBoot::after", "get version failed: ", resp.msg)
+            log().tag("MyBoot::after").error("get version failed: ", resp.msg)
             return -1
-        YomkApi.console_log_info_tag(
-            "MyBoot::after", "project version: ", resp.data)
+        log().tag("MyBoot::after").info("project version: ", resp.data)
 
-        resp = YomkApi.request("/ConfigService/get", ConfigKey("description"))
+        resp = server().url("/ConfigService/get").msg(ConfigKey("description")).request()
         if resp.status != YomkApi.ResStatus.eOk:
-            YomkApi.console_log_error_tag(
-                "MyBoot::after", "get config description failed: ", resp.msg)
+            log().tag("MyBoot::after").error("get config description failed: ", resp.msg)
             return -1
-        YomkApi.console_log_info_tag(
-            "MyBoot::after", "config description: ", resp.data)
+        log().tag("MyBoot::after").info("config description: ", resp.data)
 
         return 0
 ```
@@ -142,6 +136,7 @@ class ConfigKeyValue:
 import YomkApi
 import json
 from typedefine.TypeDefine import CTX_CONFIG_PATH, APP_VERSION
+from YomkApi import log, ctx
 
 
 class ConfigService(YomkApi.YomkService):
@@ -157,11 +152,10 @@ class ConfigService(YomkApi.YomkService):
         self.install_func("/set", self.set_config)
         self.install_func("/reload", self.reload_config)
         self.install_func("/version", self.version)
-        YomkApi.console_log_info_tag("ConfigService::init",
-                                     "install func [ /load /get /set /reload /version ] to ", self.get_name())
+        log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to ", self.get_name())
 
     def load_config(self, pkg):
-        self.config_path = YomkApi.context_get(CTX_CONFIG_PATH, "")
+        self.config_path = ctx().key(CTX_CONFIG_PATH).msg().with_default("").get()
         if not self.config_path:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "config_path not found in context")
         try:
@@ -169,8 +163,7 @@ class ConfigService(YomkApi.YomkService):
                 self.config_json = json.load(f)
         except Exception as e:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, f"failed to open: {self.config_path}, {e}")
-        YomkApi.console_log_info_tag(
-            "ConfigService::load_config", "loaded: ", self.config_path)
+        log().tag("ConfigService::load_config").info("loaded: ", self.config_path)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def get_config(self, pkg):
@@ -195,18 +188,20 @@ class ConfigService(YomkApi.YomkService):
                 return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "invalid key path: " + pkg.key)
             current = current.setdefault(token, {})
         current[tokens[-1]] = pkg.value
-        YomkApi.console_log_info_tag(
-            "ConfigService::set_config", "set ", pkg.key, " = ", pkg.value)
+        log().tag("ConfigService::set_config").info("set ", pkg.key, " = ", pkg.value)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def reload_config(self, pkg):
+        # 对齐 C++ ConfigService reload：先回取 context 中的 config_path，缺失即 eNo
+        self.config_path = ctx().key(CTX_CONFIG_PATH).msg().with_default("").get()
+        if not self.config_path:
+            return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "config_path not found in context")
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 self.config_json = json.load(f)
         except Exception as e:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, f"failed to reload: {self.config_path}, {e}")
-        YomkApi.console_log_info_tag(
-            "ConfigService::reload_config", "reloaded: ", self.config_path)
+        log().tag("ConfigService::reload_config").info("reloaded: ", self.config_path)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def version(self, pkg):
@@ -220,6 +215,33 @@ class ConfigService(YomkApi.YomkService):
     "name": "ProjectName",
     "description": "Create a new project based on YomkServerPy"
 }
+```
+
+### check_env.sh
+```bash
+#!/bin/bash
+# 环境检查脚本
+# 用法: bash check_env.sh
+# 检查 YomkServerPy 运行环境（PYTHONPATH 由框架安装环节配置，本脚本只做检查）
+
+echo "== YomkServerPy 环境检查 =="
+
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "错误: 未找到 python3"
+    exit 1
+fi
+echo "-- python3: $(python3 --version 2>&1)"
+
+if python3 -c "import YomkApi" 2>/dev/null; then
+    echo "-- YomkApi 导入成功: $(python3 -c 'import YomkApi; print(YomkApi.__file__)')"
+    echo "-- 框架版本: $(python3 -c 'import YomkApi; print(YomkApi.__version__)')"
+    echo "环境检查通过"
+else
+    echo "错误: 无法导入 YomkApi（PYTHONPATH 未指向 YomkServerPy 安装路径下的 site-packages）"
+    echo "提示: 确认框架已安装；若 YOMK_PREFIX_PATH 已配置，检查 PYTHONPATH 是否包含:"
+    echo "  ${YOMK_PREFIX_PATH:-/opt/yomk}/lib/pythonX.Y/site-packages"
+    exit 1
+fi
 ```
 
 ### README.md
@@ -284,7 +306,7 @@ python main.py
 
 ## 生命周期说明
 
-`MyBoot` 管理程序三阶段生命周期：
+`MyBoot` 管理程序三阶段生命周期（经 `server().boot_ptr(MyBoot(...)).run()` 消费，内部先完成框架 init）：
 
 | 阶段 | 方法 | 用途 |
 |------|------|------|
@@ -294,12 +316,13 @@ python main.py
 
 ## 核心组件速查
 
-| 组件 | 用途 | YomkApi 接口 |
+| 组件 | 用途 | 链式域入口 |
 |------|------|--------------|
-| YomkContext | 全局 K-V 状态管理 | `context_create` / `context_get` / `context_set` / `context_destroy` |
-| YomkEventLoop | 线程隔离事件循环 | `event_loop_start` / `event_loop_post` / `event_loop_post_wait` |
-| YomkFunctionPool | 动态公共函数池 | `function_pool_register` / `function_pool_call` |
-| YomkLogger | 多级别日志系统 | `console_log_info` / `console_log_error` / `file_log_create` |
+| YomkServer / YomkService | 服务注册与请求通信 | `server().srv(cls).create()` / `server().url(u).msg(pkg).request()` |
+| YomkContext | 全局 K-V 状态管理 | `ctx().key(k).value(v).create()` / `.set()` / `.msg(cls).with_default(d).get()` |
+| YomkEventLoop | 线程隔离事件循环 | `event_loop().loop(n).handle_fn(f).start()` / `.post()` / `.post_wait()` |
+| YomkFunctionPool | 动态公共函数池 | `fn_pool().fn_name(n).fn(f).install()` / `.call()` |
+| YomkLogger | 六级别日志系统 | `log().tag(t).info(*args)` / 管理走 `log_mgr()` |
 ````
 
 ---
@@ -325,6 +348,7 @@ class UserInfo:
 ### 2. 创建服务（services/UserService.py）
 ```python
 import YomkApi
+from YomkApi import log
 from msgs.YomkMsgs import *
 
 class UserService(YomkApi.YomkService):
@@ -335,36 +359,39 @@ class UserService(YomkApi.YomkService):
     def init(self):
         self.install_func("/get_user", self.get_user)
         self.install_func("/create_user", self.create_user)
-        print(f"UserService::init install func [ /get_user /create_user ] to {self.get_name()}")
+        log().tag("UserService::init").info("install func [ /get_user /create_user ] to ", self.get_name())
+        return 0
 
     def get_user(self, pkg):
-        print(f"UserService::get_user query user: {pkg.user_id}")
+        log().tag("UserService").info("query user: ", pkg.user_id)   # 服务体内走日志通道，不用 print
         # 业务逻辑...
         info = UserInfo(pkg.user_id, "Alice", 25)
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok", info)
 
     def create_user(self, pkg):
-        print(f"UserService::create_user create user: {pkg.name}")
+        log().tag("UserService").info("create user: ", pkg.name)
         # 跨服务调用示例：读取配置
-        cfg_resp = YomkApi.request("/ConfigService/get", ConfigKey("name"))
+        cfg_resp = YomkApi.server().url("/ConfigService/get").msg(ConfigKey("name")).request()
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "user created")
 ```
+
+> 服务体内的运行信息一律走日志链（`log().tag(...).info(...)`），`print` 只用于测试驱动程序与叙事横幅。
 
 ### 3. 注册到 Boot（boot/MyBoot.py 修改）
 ```python
 # 头部添加
 from services.UserService import UserService
 
-# start() 映射表中添加（lambda 惰性创建，与示例0一致）
+# start() 映射表中添加（lambda 惰性创建 server().instance()，与示例0一致）
 cur_srvs = {
-    "/ConfigService": lambda: ConfigService(YomkApi.server()),
-    "/UserService": lambda: UserService(YomkApi.server()),
+    "/ConfigService": lambda: ConfigService(server().instance()),
+    "/UserService": lambda: UserService(server().instance()),
 }
 ```
 
 ### 4. 启动列表（main.py 修改）
 ```python
-YomkApi.boot(MyBoot(["/ConfigService", "/UserService"]))
+server().boot_ptr(MyBoot(["/ConfigService", "/UserService"])).run()
 ```
 
 ---
@@ -380,20 +407,61 @@ def non_empty_checker(ctx) -> YomkApi.CheckStatus:
         return YomkApi.CheckStatus.eReject
     return YomkApi.CheckStatus.eAccept
 
-# 监控函数：记录变更
+# 监控函数：记录变更（收到的是本次 set 的键值快照，不保证实时——读最新值请再 get()）
 def change_logger(ctx):
-    print(f"key={ctx.key} new_value={ctx.value}")
+    YomkApi.log().tag("monitor").info("key=", ctx.key, " new_value=", ctx.value)
 
-# 使用
-YomkApi.context_create("config", "default")
-YomkApi.context_turn_on_checker()
-YomkApi.context_set_checker("config", non_empty_checker)
-YomkApi.context_turn_on_monitor()
-YomkApi.context_set_monitor("config", change_logger)
+YomkApi.server().init()
 
-YomkApi.context_set("config", "new_value")  # 通过检查并触发监控
-YomkApi.context_set("config", "")           # 被拒绝
+# 键级回调只能注册到已存在的键：先 create 再注册（键不存在 Failed "key is not exist"）
+YomkApi.ctx().key("config").value("default").create()
+YomkApi.ctx().key("config").checker_fn(non_empty_checker).apply()          # 同步 checker
+YomkApi.ctx().key("config").monitor_fn(change_logger).apply()              # 同步 monitor（写锁外即时执行）
+YomkApi.ctx().key("config").monitor_fn(change_logger).async_(True).apply() # 异步 monitor：该组单线程池按提交序保序送达
+
+# 组开关：建组默认关，注册回调后必须显式 enable 才生效（disable 只关断、回调保留不删除）
+YomkApi.ctx().group("main").checker().enable()
+YomkApi.ctx().group("main").monitor().enable()
+
+YomkApi.ctx().key("config").value("new_value").set()   # checker 放行 + monitor 触发
+YomkApi.ctx().key("config").value("").set()            # 被拒：Failed（契约 "checker reject set context"）
+
+# 自定义组：非 main 组首次寻址即惰性自动创建（组不支持销毁、组表只增不减；异步监控池每组自持单线程）
+YomkApi.ctx().group("motion").key("state").value("idle").create()
+YomkApi.ctx().group("motion").key("state").monitor_fn(change_logger).async_(True).apply()
+YomkApi.ctx().group("motion").monitor().enable()                          # 自定义组同样默认关，须显式开
+YomkApi.ctx().group("motion").key("state").value("running").set()
+
+# 类型化读（msg(cls) 仅类型指定位，不做运行期校验；未命中回退默认值）
+val = YomkApi.ctx().key("config").msg(str).with_default("fallback").get()
+
+# 写路径失败契约（裸链可查 msg，status 均 Failed）：
+# "key is empty" / "value is empty" / "key already exists"（create）
+# "key is not exist" / "context type not match" / "checker reject set context"（set）
+# "group name is empty"（空组名）
 ```
+
+服务成员函数作 checker/monitor 时必须弱绑定（服务删除后 checker 自动放行、monitor 自动丢弃，不影响他人）：
+
+```python
+class GuardService(YomkApi.YomkService):
+    def init(self):
+        YomkApi.ctx().key("guard").value("on").create()
+        YomkApi.ctx().key("guard").checker_fn(
+            self.weak_func(self.check, discard="check")).apply()          # 失效形态：放行 CheckStatus.eAccept
+        YomkApi.ctx().key("guard").monitor_fn(
+            self.weak_func(self.on_change, discard="none")).apply()       # 失效形态：返回 None（void）
+        YomkApi.ctx().group("main").checker().enable()
+        return 0
+
+    def check(self, ctx):
+        return YomkApi.CheckStatus.eAccept
+
+    def on_change(self, ctx):
+        YomkApi.log().info("guard changed:", ctx.value)
+```
+
+---
 
 ## 示例3：EventLoop 异步事件处理
 
@@ -401,55 +469,115 @@ YomkApi.context_set("config", "")           # 被拒绝
 import YomkApi
 import threading
 
-# 事件处理函数
 def task_handler(pkg) -> YomkApi.YomkResponse:
-    print(f"[thread {threading.get_ident()}] processing: {pkg}")
+    YomkApi.log().tag("worker").info("processing: ", pkg, " in thread ", threading.get_ident())
     return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "task done")
 
-# 启动事件循环
-YomkApi.event_loop_start("worker_loop", task_handler)
+YomkApi.server().init()
 
-# 异步投递
-YomkApi.event_loop_post("worker_loop", "task_1", None)
+# 启动事件循环（msg_name 为默认处理函数期望消息类型，仅内省元数据；同名再次 start = 续跑不重建，
+# 本次累积的 handle_fn/msg_name 不生效）
+YomkApi.event_loop().loop("worker_loop").handle_fn(task_handler).msg_name("str").start()
 
-# 同步投递（等待结果）
-resp = YomkApi.event_loop_post_wait("worker_loop", "task_2", None)
+# 非阻塞投递（走默认处理函数；tag 仅内省可见，用于观察队列积压）
+YomkApi.event_loop().msg("task_1").loop("worker_loop").tag("billing").post()
+
+# 单次事件临时 handler（优先于默认处理函数）+ 同步投递（阻塞至执行完成）
+(YomkApi.event_loop().msg("task_2").loop("worker_loop")
+    .handle_fn(lambda pkg: YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ad-hoc done")).post_wait())
+
+# 取回执行结果：链式 post_wait 终结仅收敛三态，需要 Event 回包时用裸链
+resp = (YomkApi.server().url("/YomkEventLoop/post_wait")
+        .msg(YomkApi.Event("worker_loop", "task_3", task_handler, "tag3")).request())
 if resp.status == YomkApi.ResStatus.eOk:
-    event = resp.data
-    print(f"event result: {event.m_response.msg}")
+    ev = resp.data                       # Event 对象：m_eventId / m_response 携带处理响应
+    YomkApi.log().info("event result: ", ev.m_response.msg)
 
-# 清理
-YomkApi.event_loop_stop("worker_loop")
-YomkApi.event_loop_destroy("worker_loop")
+# 内省：单循环状态 + 队列头 n 条 tag 采样（EventLoopInfo：loop_name/running/pending/has_default_func/msg_name/next_tags）
+YomkApi.event_loop().loop("worker_loop").tag_count(5).get_info()
+YomkApi.event_loop().list()              # 全部循环名
+
+# 停止：停线程但保留队列事件 → 再次 start() 续跑；期间投递被拒（契约 Failed）：
+# "event loop not exist"（循环不存在）；"event loop not running, post rejected" / "post wait rejected"（已停止）
+YomkApi.event_loop().loop("worker_loop").stop()
+YomkApi.event_loop().msg("task_4").loop("worker_loop").post()   # Failed "event loop not running, post rejected"
+YomkApi.event_loop().loop("worker_loop").start()                # 续跑，task_4 补跑
+
+# 销毁：停线程 + 清空队列 + 移出循环表，不可续跑
+YomkApi.event_loop().loop("worker_loop").destroy()
 ```
+
+注：投递终结返回的三态**仅表示入队/完成标记，非执行结果**；事件未带 handler 时回落默认处理函数，两者皆空静默出队；工作线程内调用 `post_wait` 触发死锁自检（本线程直接执行该事件，诊断 `"EventLoop deadlock: post wait in worker thread..."`）；服务成员函数作处理函数须 `self.weak_func(...)`。
+
+---
 
 ## 示例4：FunctionPool 公共函数池
 
 ```python
 import YomkApi
 
-# 定义公共函数
 def validate_amount(pkg) -> YomkApi.YomkResponse:
     try:
         amount = float(pkg)
         if amount <= 0:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "invalid amount")
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "valid")
-    except:
+    except Exception:
         return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "invalid amount")
 
-# 注册 + 调用（三参声明期望消息类型、四参附函数说明，均仅内省元数据）
-YomkApi.function_pool_register("validate_amount", validate_amount)
-YomkApi.function_pool_register("calc_sum", calc_sum, "String", "计算输入之和")  # 四参：类型 + 说明
-resp = YomkApi.function_pool_call("validate_amount", "100.5")
+def calc_sum(pkg) -> YomkApi.YomkResponse:
+    if not isinstance(pkg, list):
+        return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "pkg is not list")
+    return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok", sum(pkg))
+
+def calc_sum_v2(pkg) -> YomkApi.YomkResponse:      # 热替换后的新版本实现
+    return calc_sum(pkg)
+
+YomkApi.server().init()
+
+# 注册（msg_name/description 仅内省元数据）+ 调用（call 阻塞至函数执行完成，返回值整体进 data）
+YomkApi.fn_pool().fn_name("validate_amount").fn(validate_amount).install()
+YomkApi.fn_pool().fn_name("calc_sum").fn(calc_sum).msg_name("list").description("对列表求和").install()
+resp = YomkApi.fn_pool().fn_name("validate_amount").msg("100.5").call()
+
+# 同名重复 install = 运行时热替换（返回 Succeeded，无需先注销；诊断 "find function name is already exist, update to current function"）
+YomkApi.fn_pool().fn_name("calc_sum").fn(calc_sum_v2).install()
 
 # 单函数内省：命中 msg 恒 "ok"，data 为 FuncInfo 包（func_name/msg_name/description）
-resp = YomkApi.function_pool_info_name("calc_sum")  # eOk, msg_name = "String"，description = "计算输入之和"
+resp = YomkApi.fn_pool().fn_name("calc_sum").get_info()   # msg_name="list", description="对列表求和"
+
+# 注销与未命中口径（not-found 归 Failed 不归 Invalid）
+YomkApi.fn_pool().fn_name("calc_sum").uninstall()          # Succeeded
+YomkApi.fn_pool().fn_name("calc_sum").uninstall()          # Failed（已注销）
+YomkApi.fn_pool().fn_name("calc_sum").msg([1, 2]).call()   # Failed（名字不存在）
+
+# 入参非法归 Invalid：空名/空函数（契约 "funcName or func is empty"）
+YomkApi.fn_pool().fn_name("").fn(validate_amount).install()     # Invalid
+YomkApi.fn_pool().fn_name("bad").fn(None).install()             # Invalid
 ```
+
+服务成员函数注册进函数池必须弱绑定，并在 `deinit` 主动注销外部登记：
+
+```python
+class PoolUserService(YomkApi.YomkService):
+    def init(self):
+        YomkApi.fn_pool().fn_name("pool_task").fn(self.weak_func(self.pool_task)).install()
+        return 0
+
+    def pool_task(self, pkg):
+        return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "done")
+
+    def deinit(self):
+        # 服务删除后弱绑定自动失效（call 得 Failed + "service has been deleted or unregistered, callback ignored."）；
+        # 如需即刻清理表项，可主动注销
+        YomkApi.fn_pool().fn_name("pool_task").uninstall()
+```
+
+---
 
 ## 示例5：服务内省（调试）
 
-期望消息类型由 `install_func` 三参形式声明、函数说明由四参声明（均仅作内省元数据，不参与运行时校验；说明经 `/function` 结构化包透出；两参写法兼容，内省无类型）：
+期望消息类型由 `install_func` 三参形式声明、函数说明由四参声明（均仅作内省元数据，不参与运行时校验；说明经 `fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）：
 
 ```python
 class DemoService(YomkApi.YomkService):
@@ -459,98 +587,108 @@ class DemoService(YomkApi.YomkService):
         self.install_func("/no_type", self.no_type)                # 兼容写法，内省无类型
         return 0
 
-# 服务列表（data 为字符串列表）
-resp = YomkApi.server_info_services()
+YomkApi.server().init()
+
+# 服务列表（data 为字符串列表，字典序）
+resp = YomkApi.server().services()
 # resp.data: ["/DemoService", "/YomkContext", "/YomkEventLoop", ...]
 
-# 指定服务的函数结构化清单（data 为 FuncInfo 列表，与单查同族）
-resp = YomkApi.server_info_functions("/DemoService")
+# 指定服务的函数结构化清单（data 为 FuncInfo 列表，与单查同族；服务不存在返回空清单）
+resp = YomkApi.server().srv_name("/DemoService").functions()
 # resp.data: [FuncInfo("/no_type"), FuncInfo("/with_type", "MyData"),
 #             FuncInfo("/with_desc", "MyData", "函数说明")]
 
 # 单函数元信息（命中 msg 恒 "ok"，data 为 FuncInfo 包：func_name/msg_name/description）
-resp = YomkApi.server_info_function("/DemoService/with_desc")  # eOk, msg_name = "MyData", description = "函数说明"
-resp = YomkApi.server_info_function("/DemoService/with_type")  # eOk, msg_name = "MyData"
-resp = YomkApi.server_info_function("/DemoService/no_type")    # eOk, msg_name 为空串（未声明），description 为空
-resp = YomkApi.server_info_function("/DemoService/not_exist")  # eNo
+YomkApi.server().fn_url("/DemoService/with_desc").get_info()  # ok, msg_name="MyData", description="函数说明"
+YomkApi.server().fn_url("/DemoService/with_type").get_info()  # ok, msg_name="MyData"
+YomkApi.server().fn_url("/DemoService/no_type").get_info()    # ok, msg_name 空串（未声明）
+YomkApi.server().fn_url("/DemoService/not_exist").get_info()  # Failed
 
 # 全量拓扑：ServerServiceInfo 层级列表（service_name 服务名 + funcs 函数元信息列表，与单查同族）
-resp = YomkApi.server_info_all()
+resp = YomkApi.server().all()
 ```
 
-说明：自省读的是运行期服务表，注册/删除即时反映到下一次查询；FunctionPool 动态注册函数的类型元数据由 `function_pool_register` 第三参声明，未声明内省显示为空。四个内置模块另提供模块内层内省函数族（Context 的 `context_info_keys/key/groups/all`、EventLoop 的 `event_loop_info_loops/loop/all`、FunctionPool 的 `function_pool_info_names/name/all`、Logger 的 `logger_info_loggers/logger/all`），API 见 [reference.md](reference.md)。完整可运行示例见仓库 `examples/ExampleYomkServerInfo.py`。
+说明：自省读的是运行期服务表，注册/删除即时反映到下一次查询；函数池动态注册函数的类型元数据由 `fn_pool().msg_name(m)` 声明，未声明内省显示为空。四个内置模块另提供模块内层内省链（Context 的 `ctx().keys()/key(k).info()/groups()/all()`、EventLoop 的 `event_loop().list()/loop(n).tag_count(n).get_info()/all()`、FunctionPool 的 `fn_pool().list()/fn_name(n).get_info()/all()`、Logger 的 `log_mgr().console()/file().list()/get_info()/status()/all()`），API 见 [reference.md](reference.md)。完整可运行示例见仓库 `examples/ExampleYomkServerInfo.py`。
 
 ## 示例6：日志
 
+六级别 `debug/info/warn/error/trace/fatal`（枚举 `Log.eTrace=0 … eFatal=5`）；**tag 即控制台日志器名，首次使用惰性创建，缺省名 `main`**。
+
 ```python
-# 控制台四级别（无 tag 便捷版缺省 tag "MainLogger"；tag 版 tag 随记录显示并兼作日志器名，首次使用自动创建）
-YomkApi.console_log_info("application started")
-YomkApi.console_log_warn_tag("Security", "suspicious activity")
+import YomkApi
+from YomkServerPy import Log
 
-# 级别开关两级主闸并联：无参 = 全局主闸（YomkLogger 全局开关），具名 = 逐器门控单个日志器，
-# 输出取两层 AND；控制台与文件两套主闸相互独立（on/off_file_log_* 同族操作文件侧）
-YomkApi.off_console_log_debug()      # 控制台主闸关 DEBUG；同族 on/off_console_log_info/warn/error
-YomkApi.off_console_log_info("biz")  # 具名逐器关断：仅 biz 的 INFO 无输出（未命中 eNo 不惰性创建）
-resp = YomkApi.logger_info_global()         # 查控制台主闸状态（缺省 type="console"，data 为 LoggerState 五开关，proxy_on 报控制台代理态）
-resp = YomkApi.logger_info_global("file")   # 查文件主闸状态（proxy_on 报文件代理态，未知 type 返回 eNo）
-resp = YomkApi.logger_info_all()     # 条目报逐器门控层真值（两层正交，归因唯一）
-YomkApi.on_console_log_info("biz")   # 具名恢复，条目 info_on 回归 true
+YomkApi.server().init()
 
-# 文件日志：创建日志器 → 写内存缓冲 → 显式落盘为 dir/name.log
-YomkApi.file_log_create("/var/log/myapp", "app")
-YomkApi.file_log_info("app", "application started")   # 同族 warn/error/debug；_tag 版可自定义 tag
-YomkApi.file_log_write("app")
+# 控制台发射（六级别 × 变参；无 tag 归属缺省日志器 "main"；tag 版兼作日志器名，惰性创建）
+YomkApi.log().info("application started")
+YomkApi.log().tag("Security").warn("suspicious activity")
+YomkApi.log().tag("Security").trace("enter scan")     # trace/fatal 六级齐全
+YomkApi.log().error("failed to connect:", False)      # bool 输出 false
 
-# 删除日志器：单端点同时清理 console/file 两表；未落盘的缓冲自动落盘，
-# 但不删除磁盘上的 .log 文件（数据保全，清理归调用方）
-resp = YomkApi.file_log_delete("app")   # eOk, msg: "deleted console:0 file:1"
-YomkApi.file_log_delete("app")          # eNo（已删除）
-# 注："MainLogger" 无特殊保护，删除后下次写控制台日志会惰性重建
+# 输出行格式：[YYYY-MM-DD HH:MM:SS.mmm] [级别(定宽5)] [tag] [位置] 内容（位置默认仅行号）
+# [2026-11-07 10:00:00.000] [INFO ] [main] [42] application started
 
-# 控制台日志代理：每条控制台日志先过代理，返回 False 消费该条（不再输出）
-def my_log_proxy(log: YomkApi.Log) -> bool:
+# 级别门控两级主闸并联（AND）：无具名 = 全局主闸，具名 = 逐器门控（未命中 Failed 不惰性创建、不触碰主闸）；
+# 控制台与文件两套主闸/两套开关完全独立
+YomkApi.log_mgr().console().level(Log.eDebug).disable()             # 控制台主闸关 DEBUG
+YomkApi.log_mgr().console("biz").level(Log.eInfo).disable()         # 逐器：仅 biz 的 INFO 无输出
+YomkApi.log_mgr().console("biz").level(Log.eInfo).enable()          # 恢复（info_on 回归 true）
+
+# 内省：单查/清单/全局主闸（get_info/all 条目报逐器门控层真值；条目 on 但无输出 → 查 status() 主闸层归因）
+resp = YomkApi.log_mgr().console("main").get_info()    # LoggerInfo：logger_name/type/dir/logger_state
+resp = YomkApi.log_mgr().console().list()              # 控制台日志器名清单（字典序）
+resp = YomkApi.log_mgr().console().status()            # 全局主闸 LoggerState：trace_on…fatal_on 六开关 + proxy_on
+resp = YomkApi.log_mgr().file().status()               # 文件侧主闸（proxy_on 报文件代理态；与控制台独立）
+resp = YomkApi.log_mgr().all()                         # 全部日志器及逐器门控状态
+
+# 文件日志器生命周期：dir 须先于 file 累积；同名重复创建 Failed；remove 两表并清、不删磁盘 .log
+YomkApi.log_mgr().dir("/var/log/myapp").file("app").create()
+YomkApi.log().to_sink("app").info("application started")     # 写具名文件日志器；未知名 Failed 不惰性创建
+YomkApi.log_mgr().file("app").flush()                         # 显式落盘 d/name.log
+YomkApi.log_mgr().file("app").remove()                        # 删除（console+file 两表一并清除，缓冲自动落盘）
+YomkApi.log_mgr().file("app").remove()                        # Failed（两表皆未命中）
+# 注：缺省 "main" 无特殊保护，删除后下次写控制台日志会惰性重建
+
+# 控制台代理：每条先过代理，收 Log 包（m_level/m_log/m_logger/m_tag），False 消费不再输出、True 穿透；None 卸载
+def my_log_proxy(log: Log) -> bool:
     print(f"[{log.m_tag}] {log.m_log}")
     return False
 
-YomkApi.set_console_log_proxy(my_log_proxy)
-# 卸载代理：传 None 恢复框架默认控制台输出，
-# logger_info_all() 状态段 proxy_on 随之由 True 回到 False
-YomkApi.set_console_log_proxy(None)
+YomkApi.log_mgr().console().proxy(my_log_proxy).apply()
+YomkApi.log_mgr().console().proxy(None).apply()      # 卸载；status()/all() 的 proxy_on 随之回到 False
 
-# 文件开关与控制台开关两套相互独立：无参 = 文件全局主闸，具名 = 逐器门控，
-# 写入取两层 AND；具名关断期间条目静默吞条（msg 仍 success.，不落盘）
-YomkApi.off_file_log_info("app_log")   # 仅 app_log 的 INFO 静默（未命中 eNo 不惰性创建）
-YomkApi.on_file_log_info("app_log")    # 具名恢复，写入回归落盘
+# 文件代理与控制台代理相互独立：False 该条不落盘、True 穿透默认落盘
+YomkApi.log_mgr().file().proxy(lambda log: log.m_level != Log.eDebug).apply()   # 拦 DEBUG
+YomkApi.log_mgr().file().proxy(None).apply()
 
-# 文件日志代理：每条文件写入先过代理，返回 False 拦截该条不落盘、True 穿透走默认落盘
-YomkApi.set_file_log_proxy(lambda log: log.m_level != YomkApi.Log.eDebug)  # 拦 DEBUG
-YomkApi.set_file_log_proxy(None)   # 传 None 卸载恢复默认落盘；GLOBAL("file") 单查
-# proxy_on 随之联动为 False；与控制台代理相互独立
+# 位置前缀三开关（进程级，控制台与文件同时生效；默认关/开/关 = 仅行号；apply() 恒 Succeeded）
+YomkApi.log_mgr().location().show_file(True).show_func(True).apply()   # [main.py:42:<module>] 形态
 ```
 
-完整可运行示例见仓库 `examples/ExampleYomkLogger.py`（四级别、级别开关、代理消费/放行、文件日志回读与删除后惰性重建）。
+完整可运行示例见仓库 `examples/ExampleYomkLogger.py`（六级别、两级开关、代理消费/放行、文件日志回读与删除后惰性重建）。
 
 ---
 
 ## 示例7：创建扩展库（独立扩展包）
 
-扩展为普通 Python 包（包名与扩展名同名，如 `TemplateExtension`），仅含 `/version` 接口；`install.sh` 将扩展包装入 YomkServerPy 的 site-packages，安装后任意终端可 `import TemplateExtension`。占位符替换：`ExtensionName` → 用户指定名（包目录、import、版本字符串前缀同步替换）。
+扩展为普通 Python 包（包名与扩展名同名，如 `TemplateExtension`），仅含 `/version` 接口；`install.sh` 将扩展包装入 YomkServerPy 的 site-packages，安装后任意终端可 `import TemplateExtension`。占位符替换：`TemplateExtension`/`ExtensionName` → 用户指定名（包目录、import、版本字符串前缀、测试文件名同步替换），服务类 `ExtensionService`。
 
-### 目录结构
+### 目录结构（模板实名）
 
 ```
-ExtensionName/
-├── ExtensionName/
+TemplateExtension/
+├── TemplateExtension/
 │   ├── __init__.py          // 包入口（re-export 扩展版本号与服务类）
 │   ├── version.py           // 扩展版本号 EXTENSION_VERSION（单一来源）
-│   └── xxx_service.py       // 服务实现
+│   └── extension_service.py // 服务实现
 ├── test/
-│   └── test_xxx.py          // 测试程序（就地运行，不随扩展安装）
+│   └── test_template_extension.py  // 测试程序（就地运行，不随扩展安装）
 ├── install.sh               // 扩展安装脚本（交互式）
 └── README.md
 ```
 
-### ExtensionName/__init__.py
+### TemplateExtension/__init__.py
 ```python
 """TemplateExtension 扩展包"""
 
@@ -558,7 +696,7 @@ from .version import EXTENSION_VERSION
 from .extension_service import ExtensionService
 ```
 
-### ExtensionName/version.py
+### TemplateExtension/version.py
 ```python
 """TemplateExtension 版本定义"""
 
@@ -566,10 +704,11 @@ from .extension_service import ExtensionService
 EXTENSION_VERSION = "0.0.1"
 ```
 
-### ExtensionName/xxx_service.py
+### TemplateExtension/extension_service.py
 ```python
 import YomkApi
 from .version import EXTENSION_VERSION
+from YomkApi import log
 
 
 class ExtensionService(YomkApi.YomkService):
@@ -579,8 +718,7 @@ class ExtensionService(YomkApi.YomkService):
 
     def init(self):
         self.install_func("/version", self.version)
-        YomkApi.console_log_info_tag("ExtensionService::init",
-                                     "install func [ /version ] to ", self.get_name())
+        log().tag("ExtensionService::init").info("install func [ /version ] to ", self.get_name())
         return 0
 
     def version(self, pkg):
@@ -588,7 +726,7 @@ class ExtensionService(YomkApi.YomkService):
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok", f"TemplateExtension v{EXTENSION_VERSION}")
 ```
 
-### test/test_xxx.py
+### test/test_template_extension.py
 ```python
 #!/usr/bin/env python3
 """TestTemplateExtension —— 扩展功能测试程序（就地运行，不随扩展安装）"""
@@ -597,21 +735,21 @@ import sys
 
 from TemplateExtension import ExtensionService
 import YomkApi
+from YomkApi import server
 
 g_pass = 0
 g_fail = 0
 
-
 def main():
     global g_pass, g_fail
 
-    YomkApi.init()
+    server().init()
 
     # 注册 ExtensionService（扩展服务需先注册才能使用）
-    YomkApi.new_service(ExtensionService, "/ExtensionService")
+    server().srv(ExtensionService, "/ExtensionService").create()
 
     # 测试版本查询
-    resp = YomkApi.request("/ExtensionService/version", None)
+    resp = server().url("/ExtensionService/version").request()
     if resp.status == YomkApi.ResStatus.eOk:
         print(f"[PASS] version: {resp.data}")
         g_pass += 1
@@ -624,7 +762,6 @@ def main():
     print(f"FAIL: {g_fail}")
 
     sys.exit(1 if g_fail > 0 else 0)
-
 
 if __name__ == "__main__":
     main()
@@ -759,13 +896,13 @@ TemplateExtension/
 import YomkApi
 from TemplateExtension import ExtensionService
 
-YomkApi.init()
+YomkApi.server().init()
 
 # 注册 ExtensionService（扩展服务需先注册才能使用）
-YomkApi.new_service(ExtensionService, "/ExtensionService")
+YomkApi.server().srv(ExtensionService, "/ExtensionService").create()
 
 # 版本查询请求
-resp = YomkApi.request("/ExtensionService/version", None)
+resp = YomkApi.server().url("/ExtensionService/version").request()
 if resp.status == YomkApi.ResStatus.eOk:
     print(f"version: {resp.data}")  # 输出: TemplateExtension v0.0.1
 ```
