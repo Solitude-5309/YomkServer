@@ -117,6 +117,7 @@ export PYTHONPATH="${PY_SITE_DIR}:${PYTHONPATH}"
 # 新增测试在此登记；模块轮测试追加对应模块分组与条目）
 TESTS=(
     # YomkServer 模块（基础服务框架）
+    YomkServer/TestYomkUmbrella
     YomkServer/TestYomkPkg
     YomkServer/TestYomkService
     YomkServer/TestYomkServer
@@ -144,6 +145,7 @@ TESTS=(
     YomkEventLoop/TestYomkEventLoopStress
     # YomkLogger 模块
     YomkLogger/TestYomkLoggerDirect
+    YomkLogger/TestYomkLoggerLoc
     YomkLogger/TestYomkLoggerLifecycle
     YomkLogger/TestYomkLoggerConcurrency
     YomkLogger/TestYomkLoggerStress

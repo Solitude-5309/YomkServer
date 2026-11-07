@@ -1,5 +1,5 @@
-﻿cmake_minimum_required(VERSION 3.14)
-project(YomkServerPy VERSION 2.0.6 LANGUAGES C)
+cmake_minimum_required(VERSION 3.14)
+project(YomkServerPy VERSION 2.0.7 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 # Interpreter 组件提供 Python_EXECUTABLE：cython 仅 user-site 安装时（可执行入口
@@ -134,6 +134,7 @@ configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
     INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}
+    PATH_VARS PYTHON_SITE_PACKAGES
 )
 
 install(FILES

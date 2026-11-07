@@ -425,7 +425,22 @@ examples/
 - 日志落盘 `test/test_logs/<时间戳>/`（含 `summary.log`）
 - **现场清理**：每个测试在独立临时工作目录运行（隔离 CWD，防意外写文件污染仓库）；测试临时产物统一落 `test/test_logs/tmp`（经 `YOMK_TEST_TMP_ROOT` 注入测试进程，独立单独运行时回退系统临时目录），启动时整目录重建（兜底上次崩溃遗留）、退出时整目录删除（含失败/中断/超时路径，经 EXIT trap 兜底）
 - 测试程序风格约定：退出码 0 = 全部通过，非 0 = 存在失败用例（`[FAIL]` 行输出）
-- 静态检查：独立于测试套件的仓库级静态检查脚本（`run_static_checks.sh`）待后续闭环落地，届时在本节补充使用说明
+- 静态检查：独立于测试套件的仓库级静态检查见下节
+
+### 仓库级静态检查（test/run_static_checks.sh）
+
+与 `run_tests.sh` 成对（动态测试 + 静态检测），对 `src/` 库源码做**零告警门禁**：
+
+```bash
+./test/run_static_checks.sh            # 默认双跑 ruff + mypy
+./test/run_static_checks.sh --ruff     # 仅 ruff（规则集 E4/E7/E9/F，--isolated 消除用户级配置干扰）
+./test/run_static_checks.sh --mypy     # 仅 mypy（YomkApi.py / YomkServerPy.py 类型检查）
+```
+
+- 依赖：`python3 -m pip install --user ruff mypy`（缺失时报错并给出安装提示）
+- 日志落盘 `test/test_logs/<时间戳>/`（`ruff.log` / `mypy.log` / `summary.log`），与测试日志同层
+- 白名单（书面债务，与 C++ 侧 cppcheck `--suppress` 清单同构）：ruff 豁免 F401（伞门面 re-export）；mypy 豁免 assignment / misc / attr-defined / var-annotated 四个错误码（源码未回填类型注解），明细见脚本头部行为注记
+- 任一档检出告警 → `[FAIL]` 摘要 + 非零退出码；全部零告警 → `[PASS]`
 
 ---
 

@@ -161,6 +161,7 @@ echo "-- 开始配置..."
 cmake -S "${SCRIPT_DIR}" -B "${BUILD_DIR}" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+    -DCMAKE_C_COMPILER="${CC:-gcc}" \
     || fail "cmake 配置失败"
 
 echo "-- 开始编译..."
@@ -201,8 +202,10 @@ done
 echo " 示例（不随库安装，位于源码树 examples/ 目录，进入源码目录直接运行）:"
 echo "   - examples/ExampleYomkService.py"
 echo "   - examples/ExampleYomkContext.py"
-echo "   - examples/ExampleYomkFunctionPool.py"
 echo "   - examples/ExampleYomkEventLoop.py"
+echo "   - examples/ExampleYomkFunctionPool.py"
+echo "   - examples/ExampleYomkLogger.py"
+echo "   - examples/ExampleYomkServerInfo.py"
 echo "==========================================="
 echo ""
 echo "新开任意终端即可直接使用（无需手动 source）:"
