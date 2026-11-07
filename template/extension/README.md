@@ -45,13 +45,13 @@ TemplateExtension/
 import YomkApi
 from TemplateExtension import ExtensionService
 
-YomkApi.init()
+YomkApi.server().init()
 
 # 注册 ExtensionService（扩展服务需先注册才能使用）
-YomkApi.new_service(ExtensionService, "/ExtensionService")
+YomkApi.server().srv(ExtensionService, "/ExtensionService").create()
 
 # 版本查询请求
-resp = YomkApi.request("/ExtensionService/version", None)
-if resp.status == YomkApi.ResStatus.eOk:
+resp = YomkApi.server().url("/ExtensionService/version").msg(None).request()
+if resp.status == YomkApi.ResStatus.Succeeded:
     print(f"version: {resp.data}")  # 输出: TemplateExtension v0.0.1
 ```

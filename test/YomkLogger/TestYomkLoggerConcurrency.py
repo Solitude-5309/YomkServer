@@ -29,7 +29,7 @@ SET v1/v2，v1+v2 == log 总数守恒）；S4 并发 file logger 创建 x 写入
   8x200 / 8x50 / 6+2+50 / 8x250+2 / 4x10 / 2x100 / 2x200 / 2x200
 - proxy v1/v2 -> 闭包函数对（恒返回 True 穿透态，不影响后续 Section），
   list.append 命中计数；SET 交替 50 轮写侧与 caller 读侧并发交错
-- console_log_*/file_log_*_tag 门面统一形态：[行号] 注入在内容头部、marker 仍位于
+- 发射链统一形态（log() 与 log().to_sink() 的 tag 变体）：[行号] 注入在内容头部、marker 仍位于
   行尾，行尾 marker 守恒判定不受影响
 
 设计边界（契约内使用，非缺陷）：

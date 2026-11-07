@@ -6,7 +6,7 @@ TestYomkFunctionPoolConcurrency.py —— YomkFunctionPool 并发正确性验证
 混合守恒），零剔除。
 
 语言映射：
-- YOMK_FUNCTIONPOOL_* 宏 → 门面 function_pool_* 六 API（覆盖 invoke 路由链）
+- YOMK_FUNCTIONPOOL_* 宏 → fn_pool() 域六终结动作（覆盖 invoke 路由链）
 - std::atomic 计数 → list.append（GIL 原子，len() 读数）
 - 自旋门/停止标志 → threading.Event（S3 started/release gate、S2 stop）
 - SnapshotRecord + std::mutex → list.append(条目数)

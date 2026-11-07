@@ -177,7 +177,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 - **`add()`/`create()` 同名热替换**：同名服务被再次注册时，旧服务先置位注销标志并 `deinit`，新服务随后 `init`（任意时刻同名服务至多一次活跃生命周期；诊断日志 `"service already exists -> {name}, update to current service"`）。注册成功后实例归框架服务表持有，调用方不得再复用。
 - **deinit 四触发时机**：`srv_name(n).remove()`、`shutdown()`、同名被替换、进程退出 atexit 兜底。
-- **shutdown 排空序列**：拒新 → 排空请求池 → join 异步请求池 → 清空服务表逐个 `deinit`；幂等，假定主线程调用。**关闭后不支持二次 init**（once 标志把关，全部入口回到守卫态）；**Python 适配**：`instance()` 在 shutdown 后置空返回 `None`（C++ 返回已关闭实例快照）。
+- **shutdown 排空序列**：拒新 → 排空请求池 → join 异步请求池 → 清空服务表逐个 `deinit`；幂等，假定主线程调用。**关闭后不支持二次 init**（once 标志把关，全部入口回到守卫态）；`instance()` 在 shutdown 后置空返回 `None`——C++ 当前基线 shutdown 内同置 nullptr，两侧语义现已对齐。
 
 拓扑内省注记：`functions()/get_info()/all()` 命中 `msg` 恒 `"ok"`；`functions()` 服务不存在返回**空清单**（非 Failed），`fn_url(...).get_info()` 未命中 `Failed`。
 

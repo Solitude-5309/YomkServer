@@ -9,7 +9,7 @@ ExampleYomkServerInfo —— YomkServerInfo 服务自省示例：机械臂产线
 
 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 show_arm_xxx
 小函数，形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
-全部 4 个自省门面 API（server_info_services/functions/function/all）无一遗漏
+全部 4 个 server 域自省终结动作（.services()/.functions()/.fn_url().get_info()/.all()）无一遗漏
 （服务注册/请求/注销/关闭作为自省对象的素材接口随之演示）。
 
 日志统一走 YomkLogger 并按 tag 分层（arm.demo 叙事与结果 / arm.station
@@ -20,31 +20,31 @@ xxx"——操作是用户视角的业务动作，随后结果行标注本次接�
 
 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
 
-场景 1 show_arm_plant_roster     [INFO_SERVICES / NEW_SERVICE / REQUEST]
-       开班点名与工位上线：内置服务清单打底，NEW_SERVICE 注册装配工位后
-       清单立即多一项；REQUEST 试运行 /report 与 /quality_check 证明注册
+场景 1 show_arm_plant_roster     [server().services() / server().create() / server().url().request()]
+       开班点名与工位上线：内置服务清单打底，server().create() 注册装配工位后
+       清单立即多一项；server().url().request() 试运行 /report 与 /quality_check 证明注册
        即可调用（工位函数体 arm.station 日志夹在开始行与结果行之间）。
-场景 2 show_arm_station_functions [INFO_FUNCTIONS]
+场景 2 show_arm_station_functions [server().functions()]
        工位职能清单：FuncInfo 结构化清单（4 参注册的 /quality_check
        带 QualityCheckReq 元数据与函数说明，2 参注册的 /report 双空）；
        不存在的工位返回空清单 eOk，空服务名返回 eInvalid。
-场景 3 show_arm_func_lookup      [INFO_FUNCTION]
+场景 3 show_arm_func_lookup      [server().fn_url().get_info()]
        函数名片单查：命中返回结构化 FuncInfo 包（msg 恒 "ok"，
        msg_name=期望消息类型名、description=函数说明）；4 种坏 URL 均
        返回 eNo（url 解析失败 / 目标不存在），是普通返回值不崩溃。
-场景 4 show_arm_plant_topology   [INFO_ALL]
+场景 4 show_arm_plant_topology   [server().all()]
        全厂拓扑总览：层级列表逐服务逐函数导出——排障时一次看清
        "哪些工位在册、各自能干什么"。
-场景 5 show_arm_live_view        [INFO_SERVICES / INFO_ALL / DEL_SERVICE]
-       工位下线实时视图：DEL_SERVICE 后清单与拓扑立即少一项（无需重启），
+场景 5 show_arm_live_view        [server().services() / server().all() / server().remove()]
+       工位下线实时视图：server().remove() 后清单与拓扑立即少一项（无需重启），
        注销不存在的服务返回 -1——自省读的是运行期服务表。
-场景 6 show_arm_power_off        [SHUTDOWN / INFO_SERVICES]
-       收班断电：SHUTDOWN 排空在途请求并释放全部服务，关闭后任何自省调用
+场景 6 show_arm_power_off        [server().shutdown() / server().services()]
+       收班断电：server().shutdown() 排空在途请求并释放全部服务，关闭后任何自省调用
        统一返回 eInvalid "YomkServer is not init"；日志门面随之静默——
        静默即演示效果，收班预告已提前说明，示例日志到此为止。
 
 演示服务规划（机械臂产线装配工位，跨场景流转）：
-  /ArmStation            NEW_SERVICE 注册（场景 1）、DEL_SERVICE 下线（场景 5）
+  /ArmStation            server().create() 注册（场景 1）、server().remove() 下线（场景 5）
   /report        2 参注册  工位状态上报（入参 String 状态文本，回执确认；无元数据）
   /quality_check 4 参注册  质量抽检（入参 QualityCheckReq；声明期望消息类型
                           与函数说明，供场景 2/3 的自省识别）
@@ -56,7 +56,7 @@ import YomkApi
 from YomkApi import log, server
 
 # ---------------------------------------------------------------------------
-# 辅助输出：全部走 YomkLogger 控制台日志（console_log_info_tag 等），无 print。
+# 辅助输出：全部走 YomkLogger 控制台日志（log().tag().info() 等），无 print。
 # 日志是最终面向用户的输出：每条自包含（谁+做什么+结果，关键数据随行）。
 # ---------------------------------------------------------------------------
 
@@ -67,7 +67,7 @@ def log_scene(n, title, apis, explain):
     log().tag("arm.demo").info("场景背景：" + explain)
 
 # API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
-# 字符串 data（如 REQUEST 回执）随行展示；结构化清单/拓扑形态各异，由调用处专项展开
+# 字符串 data（如 server().url().request() 回执）随行展示；结构化清单/拓扑形态各异，由调用处专项展开
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
     if resp.status == YomkApi.ResStatus.eOk:
@@ -96,7 +96,7 @@ def log_action(op, api, call):
 def log_action_start(op):
     log().tag("arm.demo").info("开始执行 " + op)
 
-# 操作日志（int 返回版）：NEW_SERVICE/DEL_SERVICE 等框架管理接口返回 int
+# 操作日志（int 返回版）：server().create()/server().remove() 等框架管理接口返回 int
 # （0=成功，-1=失败），先打开始行再调用，结果行标注返回值
 def log_action_int(op, api, call):
     log().tag("arm.demo").info("开始执行 " + op)
@@ -116,7 +116,7 @@ def log_func_info(api, info):
     log().tag("arm.demo").info(f"[{api}]     description: {info.description if info.description else '(未指定)'}")
 
 # 拓扑展开：服务名行 + 该服务的函数清单行（函数名 + 可选 MsgName 标注），
-# INFO_ALL 层级包逐服务逐函数导出（框架只回结构化数据，展示格式由用户定义）
+# server().all() 层级包逐服务逐函数导出（框架只回结构化数据，展示格式由用户定义）
 def log_srv_line(api, srv_name):
     log().tag("arm.demo").info(f"[{api}] - {srv_name}")
 
@@ -202,154 +202,154 @@ def show_arm_plant_roster():
     log_scene(
         1,
         "开班点名与工位上线",
-        "INFO_SERVICES / NEW_SERVICE / REQUEST",
-        "开班点名看产线在册工位：INFO_SERVICES 查到的就是框架运行期服务表；"
-        "NEW_SERVICE 把装配工位注册进产线，REQUEST 试运行两个功能函数证明"
+        "server().services() / server().create() / server().url().request()",
+        "开班点名看产线在册工位：server().services() 查到的就是框架运行期服务表；"
+        "server().create() 把装配工位注册进产线，server().url().request() 试运行两个功能函数证明"
         "注册即可调用。")
 
     log_action_start("开班点名：查询产线在册服务")
     names_resp = server().services()
-    log_resp("INFO_SERVICES", names_resp)
+    log_resp("server().services()", names_resp)
     if names_resp.data:
         for srv_name in names_resp.data:
-            log_string_line("INFO_SERVICES", srv_name)
+            log_string_line("server().services()", srv_name)
     log_verify("5 项即内置服务（/YomkContext /YomkEventLoop /YomkFunctionPool /YomkLogger /YomkServerInfo），自省服务开箱即用无需注册")
 
-    log_action_int("装配工位上线：注册 /ArmStation", "NEW_SERVICE /ArmStation",
+    log_action_int("装配工位上线：注册 /ArmStation", "server().create() /ArmStation",
                    lambda: server().srv(ArmStationService).create())
 
     log_action_start("复查在册服务清单")
     names_resp = server().services()
-    log_resp("INFO_SERVICES", names_resp)
+    log_resp("server().services()", names_resp)
     if names_resp.data:
         for srv_name in names_resp.data:
-            log_string_line("INFO_SERVICES", srv_name)
+            log_string_line("server().services()", srv_name)
     log_verify("清单多一项 /ArmStation 且排最前：服务名按字典序排列，注册即时反映到下一次查询")
 
-    log_action("试运行工位功能：状态上报", "REQUEST /ArmStation/report",
+    log_action("试运行工位功能：状态上报", "server().url().request() /ArmStation/report",
                lambda: server().url("/ArmStation/report").msg("joint ready").request())
-    log_action("试运行工位功能：质量抽检", "REQUEST /ArmStation/quality_check",
+    log_action("试运行工位功能：质量抽检", "server().url().request() /ArmStation/quality_check",
                lambda: server().url("/ArmStation/quality_check").msg(QualityCheckReq("S3", 5)).request())
     log_verify("arm.station 日志夹在开始行与结果行之间——request 在调用方线程同步执行；返回值即函数返回值，msg 携带回执")
 
-# 场景 2：工位职能清单（INFO_FUNCTIONS 三分支）
+# 场景 2：工位职能清单（server().functions() 三分支）
 def show_arm_station_functions():
     log_scene(
         2,
         "工位职能清单",
-        "INFO_FUNCTIONS",
-        "查阅装配工位能干什么：INFO_FUNCTIONS 返回 FuncInfo 结构化清单"
+        "server().functions()",
+        "查阅装配工位能干什么：server().functions() 返回 FuncInfo 结构化清单"
         "（func_name/msg_name/description）——4 参注册的 /quality_check 带"
         "元数据，2 参注册的 /report 双空，差异一目了然。")
 
     log_action_start("查阅装配工位职能清单")
     funcs_resp = server().srv_name("/ArmStation").functions()
-    log_resp("INFO_FUNCTIONS /ArmStation", funcs_resp)
+    log_resp("server().functions() /ArmStation", funcs_resp)
     if funcs_resp.data:
         for func in funcs_resp.data:
-            log_func_info("INFO_FUNCTIONS", func)
+            log_func_info("server().functions()", func)
     log_verify("msgName 即 install_func 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /report 两字段为(未指定)")
 
     log_action_start("查阅不存在工位 /GhostStation 的职能清单")
     funcs_resp = server().srv_name("/GhostStation").functions()
-    log_resp("INFO_FUNCTIONS /GhostStation", funcs_resp)
+    log_resp("server().functions() /GhostStation", funcs_resp)
     log_verify("服务不存在 -> 空清单 eOk：查询失败不崩溃，仍是普通返回值")
 
     log_action_start("以空服务名查阅职能清单")
     funcs_resp = server().srv_name("").functions()
-    log_resp("INFO_FUNCTIONS (空服务名)", funcs_resp)
+    log_resp("server().functions() (空服务名)", funcs_resp)
     log_verify("空服务名 -> eInvalid(srvName is empty)：参数无效与目标不存在是两种不同状态")
 
-# 场景 3：功能函数名片单查（INFO_FUNCTION 命中契约 + 4 种坏 URL）
+# 场景 3：功能函数名片单查（server().fn_url().get_info() 命中契约 + 4 种坏 URL）
 def show_arm_func_lookup():
     log_scene(
         3,
         "功能函数名片单查",
-        "INFO_FUNCTION",
+        "server().fn_url().get_info()",
         "按 URL 调阅单个函数的名片：命中返回结构化 FuncInfo 包（msg 恒 ok），"
         "msgName 与 description 承载注册时声明的元数据；url 解析失败与目标"
         "不存在均为 eNo。")
 
     log_action_start("调阅质量抽检函数名片")
     resp = server().fn_url("/ArmStation/quality_check").get_info()
-    log_resp("INFO_FUNCTION /ArmStation/quality_check", resp)
+    log_resp("server().fn_url().get_info() /ArmStation/quality_check", resp)
     if resp.data is not None:
-        log_func_info("INFO_FUNCTION", resp.data)
+        log_func_info("server().fn_url().get_info()", resp.data)
     log_verify("命中契约：msg 恒 ok、数据走 data；msgName=QualityCheckReq、description=第四参说明——与场景 2 清单同族")
 
     log_action_start("调阅状态上报函数名片")
     resp = server().fn_url("/ArmStation/report").get_info()
-    log_resp("INFO_FUNCTION /ArmStation/report", resp)
+    log_resp("server().fn_url().get_info() /ArmStation/report", resp)
     if resp.data is not None:
-        log_func_info("INFO_FUNCTION", resp.data)
+        log_func_info("server().fn_url().get_info()", resp.data)
     log_verify("2 参注册的 /report msgName 为(未指定)：元数据是可选声明，不影响调用")
 
-    log_action("以不以 / 开头的 url 单查", "INFO_FUNCTION ArmStation/quality_check (无/)",
+    log_action("以不以 / 开头的 url 单查", "server().fn_url().get_info() ArmStation/quality_check (无/)",
                lambda: server().fn_url("ArmStation/quality_check").get_info())
-    log_action("以缺函数名的 url 单查", "INFO_FUNCTION /ArmStation (缺函数名)",
+    log_action("以缺函数名的 url 单查", "server().fn_url().get_info() /ArmStation (缺函数名)",
                lambda: server().fn_url("/ArmStation").get_info())
-    log_action("以服务不存在的 url 单查", "INFO_FUNCTION /GhostStation/hi (服务不存在)",
+    log_action("以服务不存在的 url 单查", "server().fn_url().get_info() /GhostStation/hi (服务不存在)",
                lambda: server().fn_url("/GhostStation/hi").get_info())
-    log_action("以函数不存在的 url 单查", "INFO_FUNCTION /ArmStation/ghost (函数不存在)",
+    log_action("以函数不存在的 url 单查", "server().fn_url().get_info() /ArmStation/ghost (函数不存在)",
                lambda: server().fn_url("/ArmStation/ghost").get_info())
     log_verify("4 种坏 URL 均为 eNo 且 msg 说明原因：url 解析失败 / 目标不存在是普通返回值，不报错不崩溃")
 
-# 场景 4：全厂拓扑总览（INFO_ALL）
+# 场景 4：全厂拓扑总览（server().all()）
 def show_arm_plant_topology():
     log_scene(
         4,
         "全厂拓扑总览",
-        "INFO_ALL",
-        "一次拉取全厂服务拓扑：INFO_ALL 返回层级列表"
+        "server().all()",
+        "一次拉取全厂服务拓扑：server().all() 返回层级列表"
         "（service_name 服务名 + funcs 函数元信息列表），排障时一眼看清"
         "调用拓扑。")
 
     log_action_start("导出全厂服务拓扑")
     all_resp = server().all()
-    log_resp("INFO_ALL", all_resp)
-    log_topology("INFO_ALL", all_resp)
+    log_resp("server().all()", all_resp)
+    log_topology("server().all()", all_resp)
     log_verify("6 个服务 = 5 个内置 + 1 个装配工位，函数名带 / 前缀、带元数据的附 [MsgName] 标注——层级自上而下逐服务展开")
 
-# 场景 5：工位下线实时视图（DEL_SERVICE + 自省复查）
+# 场景 5：工位下线实时视图（server().remove() + 自省复查）
 def show_arm_live_view():
     log_scene(
         5,
         "工位下线实时视图",
-        "INFO_SERVICES / INFO_ALL / DEL_SERVICE",
-        "班中工位检修下线：DEL_SERVICE 把工位移出服务表，清单与拓扑立即少"
+        "server().services() / server().all() / server().remove()",
+        "班中工位检修下线：server().remove() 把工位移出服务表，清单与拓扑立即少"
         "一项，无需重启或刷新——自省读的是运行期服务表，注册/删除即时反映"
         "到下一次查询。")
 
-    log_action_int("装配工位下线：注销 /ArmStation", "DEL_SERVICE /ArmStation",
+    log_action_int("装配工位下线：注销 /ArmStation", "server().remove() /ArmStation",
                    lambda: server().srv_name("/ArmStation").remove())
 
     log_action_start("复查在册服务清单")
     names_resp = server().services()
-    log_resp("INFO_SERVICES", names_resp)
+    log_resp("server().services()", names_resp)
     if names_resp.data:
         for srv_name in names_resp.data:
-            log_string_line("INFO_SERVICES", srv_name)
+            log_string_line("server().services()", srv_name)
     log_verify("清单回到 5 项内置服务：删除即时生效，无需重启")
 
     log_action_start("复查全厂拓扑终态")
     all_resp = server().all()
-    log_resp("INFO_ALL", all_resp)
+    log_resp("server().all()", all_resp)
     if all_resp.data:
         for srv in all_resp.data:
-            log_srv_brief("INFO_ALL", srv.service_name, len(srv.funcs))
+            log_srv_brief("server().all()", srv.service_name, len(srv.funcs))
     log_verify("拓扑只剩 5 个内置服务，各服务函数计数如实呈现：工位已从调用拓扑消失")
 
-    log_action_int("注销不存在的工位 /GhostStation", "DEL_SERVICE /GhostStation",
+    log_action_int("注销不存在的工位 /GhostStation", "server().remove() /GhostStation",
                    lambda: server().srv_name("/GhostStation").remove())
     log_verify("不存在的服务 -> ret=-1（失败）：注销失败是普通返回值不崩溃（框架侧另有直出提示行）")
 
-# 场景 6：收班断电（SHUTDOWN 后自省守卫）
+# 场景 6：收班断电（server().shutdown() 后自省守卫）
 def show_arm_power_off():
     log_scene(
         6,
         "收班断电",
-        "SHUTDOWN / INFO_SERVICES",
-        "收班断电前先预告：SHUTDOWN 排空在途请求并释放全部服务（幂等），"
+        "server().shutdown() / server().services()",
+        "收班断电前先预告：server().shutdown() 排空在途请求并释放全部服务（幂等），"
         "关闭后框架单例清空，任何自省调用统一返回 eInvalid——本条守卫演示"
         "将在静默中完成，静默即演示效果。")
 
@@ -360,7 +360,7 @@ def show_arm_power_off():
         server().shutdown()
         return server().services()  # eInvalid：结果行随日志门面静默，行为已由收班预告说明
 
-    log_action("收班断电：优雅关闭框架", "SHUTDOWN + INFO_SERVICES (关闭后守卫)", shutdown_and_guard)
+    log_action("收班断电：优雅关闭框架", "server().shutdown() + server().services() (关闭后守卫)", shutdown_and_guard)
 
 def main():
     # 初始化框架（/YomkServerInfo 等 5 个内置服务随之自动启动，自省开箱即用）

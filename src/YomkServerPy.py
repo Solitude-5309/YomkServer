@@ -1789,9 +1789,10 @@ class YomkEventLoop(YomkService):
                 return YomkResponse(ResStatus.eNo, "event loop not exist")
 
     def loops(self, pkg):
-        # 内省：列出全部事件循环名
+        # 内省：列出全部事件循环名（sorted 对齐 C++ std::map 字典序，
+        # 同 FunctionPool names / Context keys 内省先例）
         with self.m_eventLoopMutex.gen_rlock():
-            loop_names = list(self.m_eventLoop.keys())
+            loop_names = sorted(self.m_eventLoop.keys())
         return YomkResponse(ResStatus.eOk, "ok", loop_names)
 
     def loop_info(self, pkg):
@@ -1799,7 +1800,7 @@ class YomkEventLoop(YomkService):
         # loopInfo）：unpack 失败返回 eNo（契约消息对齐 C++ 字面量）；名称按字面量
         # 精确匹配、不做任何切分；采样数越界回退默认 3（不抛不崩）
         if not isinstance(pkg, EventLoopQuery):
-            return YomkResponse(ResStatus.eNo, "pkg is null or pkg is not EventLoopQuery.")
+            return YomkResponse(ResStatus.eNo, "pkg is null or pkg is not EventLoopQuery")
         loop_name = pkg.m_loopName
         # 归一化采样数：非 int（含 bool）或超 size_t 上限回退默认 3，与全量内省缺省一致
         tag_count = 3
@@ -1825,7 +1826,8 @@ class YomkEventLoop(YomkService):
         # 内省：全部事件循环元信息，锁内拷贝快照、锁外逐循环取结构化快照
         # （msg 恒 "ok"，数据走 data；next_tags 取 3 条与单查缺省一致）
         with self.m_eventLoopMutex.gen_rlock():
-            pairs = list(self.m_eventLoop.items())
+            # key 取名序：sorted 对齐 C++ std::map 字典序（同 loops() 先例）
+            pairs = sorted(self.m_eventLoop.items(), key=lambda kv: kv[0])
         infos = []
         for name, loop in pairs:
             info = EventLoopInfo(name)
@@ -1915,13 +1917,14 @@ class YomkLogger(YomkService):
 
     @staticmethod
     def _unpack(pkg, cls):
-        # eNo + " pkg is null or
-        # pkg is not <Type>. "（首尾空格为消息字面量约定；String 端点包为裸 str）
+        # eNo + "pkg is null or pkg is not <Type>"（裸串无首尾空格/句号，逐字对齐
+        # C++ 各模块 unpack 字面量，如 YomkLogger.cpp:61 / YomkFunctionPool.cpp:28；
+        # String 端点包为裸 str）
         if isinstance(pkg, cls):
             return None
         type_name = "String" if cls is str else cls.__name__
-        log.error("pkg is null or pkg is not " + type_name + ".")
-        return YomkResponse(ResStatus.eNo, " pkg is null or pkg is not " + type_name + ". ")
+        log.error("pkg is null or pkg is not " + type_name)
+        return YomkResponse(ResStatus.eNo, "pkg is null or pkg is not " + type_name)
 
     def console_log(self, pkg: Log):
         bad = self._unpack(pkg, Log)

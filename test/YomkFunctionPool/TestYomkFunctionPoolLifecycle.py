@@ -16,7 +16,7 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
 
 语言形态说明：
 - Function 三形态：Function(name, func) 无类型 / Function(name, func, "String") 声明类型 /
-  Function(name, func, "String", "说明") 附函数说明（经门面 function_pool_register 的
+  Function(name, func, "String", "说明") 附函数说明（经 fn_pool().install() 的
   msg_name 与 description 形参承载）
 - 内省清单端点 info_names data 为 list[str]；info_name 与 info_all 命中均为 FuncInfo
   结构化（info_all 为 FuncInfo 列表，总数由列表长度承载）

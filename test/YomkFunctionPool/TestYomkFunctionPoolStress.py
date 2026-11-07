@@ -6,7 +6,7 @@ S2 多线程并发 call 吞吐 / S3 全生命周期 churn 四相守恒 / S4 超�
 S5 API 端到端混合负载五相守恒），零剔除。
 
 语言映射：
-- YOMK_FUNCTIONPOOL_* 宏 → 门面 function_pool_* 六 API（覆盖 invoke 路由链）
+- YOMK_FUNCTIONPOOL_* 宏 → fn_pool() 域六终结动作（覆盖 invoke 路由链）
 - std::atomic 计数 → list.append（GIL 原子，len() 读数）
 - std::chrono::steady_clock → time.perf_counter()
 - recordBaseline 格式逐字对齐（ops/s 记录，不断言 timing，仅断言守恒与正确性）

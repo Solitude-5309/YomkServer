@@ -68,9 +68,9 @@ python main.py
 
 ## 核心组件速查
 
-| 组件 | 用途 | YomkApi 接口 |
-|------|------|--------------|
-| YomkContext | 全局 K-V 状态管理 | `context_create` / `context_get` / `context_set` / `context_destroy` |
-| YomkEventLoop | 线程隔离事件循环 | `event_loop_start` / `event_loop_post` / `event_loop_post_wait` |
-| YomkFunctionPool | 动态公共函数池 | `function_pool_register` / `function_pool_call` |
-| YomkLogger | 多级别日志系统 | `console_log_info` / `console_log_error` / `file_log_create` |
+| 组件 | 用途 | 链式域入口 |
+|------|------|------------|
+| YomkContext | 全局 K-V 状态管理 | `ctx().key(k).group(g).value(v).create()` / `.set()` / `.destroy()`；读取 `ctx().key(k).msg().with_default(d).get()` |
+| YomkEventLoop | 线程隔离事件循环 | `event_loop().loop(n).handle_fn(f).start()` / `.post()` / `.post_wait()` |
+| YomkFunctionPool | 动态公共函数池 | `fn_pool().fn_name(n).fn(f).install()` / `.msg(pkg).call()` |
+| YomkLogger | 多级别日志系统 | `log().info(...)` / `log().error(...)`；文件日志器 `log_mgr().dir(d).file(n).create()` |

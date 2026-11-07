@@ -5,8 +5,8 @@ TestYomkAPILifecycle.py —— YomkAPI init/shutdown 单例生命周期测试（
 1. 单例三承诺：二次 init(n) 返回同一实例（async_thread_count 仅首次生效）；
    shutdown 后守卫回归未初始化态；关闭后 init 再调返回 None（不支持二次初始化）
 2. 内置服务：init 拉起 /YomkContext /YomkFunctionPool /YomkEventLoop
-3. API 层独有守卫（已初始化态，区别于服务器层守卫）：add_service(None) 返回 -1、
-   del_service("") 返回 -1
+3. API 层独有守卫（已初始化态，区别于服务器层守卫）：srv_ptr(None).add() 返回 -1、
+   srv_name("").remove() 返回 -1
 4. API 层增删往返：两参改名注册、删除、重复删除；已初始化时守卫放行至服务器层
    （不存在的服务名按服务器层契约返回 eNo）
 5. 幂等：二次 shutdown 不崩溃；进程正常退出码 0 即证退出清理幂等

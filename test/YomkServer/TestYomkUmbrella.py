@@ -12,7 +12,7 @@ YomkApi.py 定型清单逐一对表，再走 S1-S8 六域冒烟。
 Python 适配注记：
 - diag 宏豁免：C++ S5 的 YOMK_DIAG_LOG 发射在 Python 以链式发射 Succeeded 代替；
 - msgs::String → 裸 str、shared_ptr → 实例直传（消息包/持有语义框架级差异）；
-- S8 关闭守卫：instance() 返回 None（S10 Python 适配语义，区别于 C++ 快照）；
+- S8 关闭守卫：instance() 返回 None（C++ 当前基线 shutdown 内同置 nullptr，语义已对齐）；
 - 收尾沿用蓝本口径 `ALL PASSED` / `SOME FAILED` + `sys.exit(g_failed)`
   （非全仓统一的 "all check passed." 行——蓝本此文件即如此）。
 
@@ -146,6 +146,8 @@ def main():
     check(res.status == YomkApi.ResStatus.eOk and res.data, "S1: 裸请求 services 非空")
 
     # ============ S2 服务管理 ============
+    ret = YomkApi.server().create()
+    check(ret == -1, "S2: 未先 srv() 的 create() == -1（对齐 C++ m_newSvc 守卫，diag 消息）")
     ret = YomkApi.server().srv(UmbrellaService, "umb_srv").create()
     check(ret == 0, "S2: srv().create() == 0")
     # srv_ptr/add 分面：直构造服务实例（YomkService 构造需 server 引用，对齐 C++ shared_ptr 直传）
@@ -221,7 +223,7 @@ def main():
     # ============ S8 关闭守卫 ============
     YomkApi.server().shutdown()
     check(YomkApi.server().instance() is None,
-          "S8: 关闭后 instance() is None（S10 Python 适配语义）")
+          "S8: 关闭后 instance() is None（C++ 基线同置 nullptr，语义已对齐）")
     res = YomkApi.server().all()
     check(res.status == YomkApi.ResStatus.Invalid and
           res.msg == "YomkServer is not init",

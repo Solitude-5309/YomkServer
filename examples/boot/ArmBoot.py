@@ -38,7 +38,7 @@ class ArmBoot(YomkApi.YomkBoot):
             if srv_cls is None:
                 log().tag("arm.boot").error("unknown service in start list: " + srv_name)
                 return -1  # 启动清单中出现未知服务，终止启动
-            # add_service 移交实例并调用服务 init()
+            # srv_ptr().add() 移交实例并调用服务 init()
             if server().srv_ptr(srv_cls(server().instance())).srv_name(srv_name).add() != 0:
                 return -1
         return 0

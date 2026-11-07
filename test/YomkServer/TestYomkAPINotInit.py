@@ -3,17 +3,17 @@ TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试（正式全�
 
 覆盖内容：
 1. version() 免初始化可调用（不依赖单例，返回非空版本号）
-2. 未初始化守卫默认值：server_instance() 为 None、shutdown() 安全空转（幂等）
-3. request 返回 eInvalid + 契约消息 "YomkServer is not init"；async_request 静默
-   返回、回调不触发
-4. 服务管理守卫：new_service/add_service/del_service 返回 -1
-5. 模块便捷 API 守卫抽样：统一守卫入口 _api_request 验证（context_create/
-   function_pool_register/event_loop_start 返回 eInvalid + 契约消息同根 +
-   context_get 特殊形态原样返回调用方默认值）
-6. LOG 模块便捷 API 守卫全量 23 条（Logger 模块轮 P1 收口）：
-   set_console_log_proxy / console_log_*_tag×4 /
-   file_log_create+write+*_tag×4 / off_console_log_*×4 / on_console_log_*×4 /
-   logger_info_loggers+logger+all / file_log_delete，首条另断契约消息同根
+2. 未初始化守卫默认值：server().instance() 为 None、shutdown() 安全空转（幂等）
+3. request() 返回 eInvalid + 契约消息 "YomkServer is not init"；async_ 链静默
+   投递、回调不触发
+4. 服务管理守卫：srv().create()/srv_ptr().add()/srv_name().remove() 返回 -1
+5. 链式终结动作守卫抽样：统一守卫入口 _api_request 验证（ctx create/
+   fn_pool install/event_loop start 返回 eInvalid + 契约消息同根 +
+   ctx 类型化 get 特殊形态原样返回调用方默认值）
+6. Logger 域链式终结守卫全量 23 条（Logger 模块轮 P1 收口）：
+   console/file 代理、六级发射（tag 形态）、create/flush/remove、
+   on·off_console/file_log_by_level 两族、loggers/logger/all 内省，
+   首条另断契约消息同根
 
 推迟说明（范围口径，非功能缺口）：
 - "守卫拒绝后调用方资源释放"断言不适用：python 引用计数
@@ -35,7 +35,7 @@ from YomkServerPy import Log, ResStatus, YomkService
 from YomkApi import log, log_mgr, ctx, event_loop, fn_pool, server
 
 g_failed = 0
-g_async_cb_count = 0  # 未初始化 async_request 回调到达计数（应恒为 0）
+g_async_cb_count = 0  # 未初始化 async_ 链回调到达计数（应恒为 0）
 
 def check(cond, msg):
     global g_failed
@@ -64,13 +64,13 @@ def main():
     ver = server().version()
     check(isinstance(ver, str) and ver != "", f"version() 未初始化时返回非空版本号: {ver}")
 
-    print("===== 2. server_instance 与未初始化 shutdown 空转 =====")
+    print("===== 2. instance() 与未初始化 shutdown 空转 =====")
     check(server().instance() is None, "server_instance() 未初始化返回 None")
 
     server().shutdown()
     check(server().instance() is None, "shutdown() 未初始化空转，单例保持为空")
 
-    print("===== 3. request/async_request 未初始化守卫 =====")
+    print("===== 3. request()/async_() 未初始化守卫 =====")
     resp = server().url("/Any/func").request()
     check(resp.status == ResStatus.eInvalid, "request 未初始化返回 eInvalid")
     check(resp.msg == "YomkServer is not init",

@@ -26,6 +26,14 @@
 #       间接覆盖，不设直测等价物
 #   S19 lsan.supp: Python 托管内存无 LSan 概念；可选内存回归口径:
 #       PYTHONMALLOC=debug ./test/run_tests.sh（调试分配器，记录不设为门禁）
+#   微差台账（闭环 10 审计回灌，语言形态差异或纯诊断文本，不设修）:
+#       float 折叠渲染: C++ 日志内容 %g 6 位有效数字，Python str() 全精度
+#       （3.14159265358979 vs 3.14159），系格式化语言差异，测试各自口径断言
+#       diag 文案 5 处（非契约、无断言覆盖）: installFunc 空名/空函数、
+#       invoke 缺串 "YomkInstallFunc"、funcInfo 尾部句号、FileLogger
+#       "fs error" 措辞——均为诊断文本，不影响返回值/响应契约
+#       install_env example-smoke: C++ 安装回归含 example 冒烟门禁；Python
+#       以 run_tests.sh 强消费 build/prefix 产物目录为等价把关，不设 example-smoke
 
 set -u
 
@@ -40,7 +48,7 @@ FULL_MODE=0
 USER_TIMEOUT=0
 
 usage() {
-    sed -n '2,28p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,36p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 }
 

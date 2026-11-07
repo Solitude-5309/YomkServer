@@ -15,7 +15,7 @@ S9 服务级具名开关与全局态端点（两级主闸并联：具名 OFF/ON 
 eNo 不惰性创建、主闸×逐器两层归因、条目逐器真值与两层正交、全局主闸态基线与
 无参翻转联动）；S10 文件日志两级开关与全局态端点（与控制台同构、落盘实证：
 具名 OFF/ON 文件逐器隔离与恢复、未知名 eNo、文件主闸×逐器两层归因、
-两层正交、logger_info_global("file"/"console") 两套主闸独立直证与无参翻转联动、
+两层正交、console·file global_state 两套主闸独立直证与无参翻转联动、
 未知 type eNo）；S11 文件日志全局代理契约（与控制台 S3 同构仅单一全局代理：
 基线两套独立直证/拦截/穿透/卸载 LG6 镜像/重装可逆，末尾重装回穿透态）
 
@@ -27,9 +27,8 @@ eNo 不惰性创建、主闸×逐器两层归因、条目逐器真值与两层�
   （前缀包含），书面记录微差
 - S8.4 析构落盘确定性：服务层 delete_logger
   锁外显式释放最后引用，返回前 __del__ 已落盘（C2 语义保证）
-- file 日志便捷口径：file_log_info_tag(file,
-  "main", *args) 为固定缺省 tag 形态；file_log_info_tag(file, tag, *args)
-  为自定义 tag 形态
+- file 日志便捷口径：log().to_sink(file).tag("main").info(*args) 为固定缺省 tag
+  形态；tag 换任意值即自定义形态（SinkLogBuilder.tag + 六级发射）
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """
@@ -382,7 +381,7 @@ def main():
           "LOGGER 未注册名返回 eNo + logger not found.")
 
     # ALL：状态段基线 + 开关翻转联动（逐字段断言）；主闸翻转与条目解耦后，
-    # 翻转联动取数迁移至 logger_info_global（全局主闸态）；条目改报逐器层
+    # 翻转联动取数迁移至 console·file global_state 端点（全局主闸态）；条目改报逐器层
     # 真值，不受无参翻转影响（正交性在 S9 直证）
     c = first_console_state(log_mgr().all().data)
     check(c.debug_on and c.info_on and c.warn_on and c.error_on and c.proxy_on,
@@ -460,10 +459,10 @@ def main():
     # ============ Section 7: 异常路径（空包 / 错类型包 / 未知端点） ============
     r, out = capture(lambda: YomkApi.server().url("/YomkLogger/console_log").request())
     check(r.status == ResStatus.eNo, "console_log nullptr 包返回 eNo")
-    check(r.msg == " pkg is null or pkg is not Log. ", "console_log 空包契约消息")
+    check(r.msg == "pkg is null or pkg is not Log", "console_log 空包契约消息")
     r = YomkApi.server().url("/YomkLogger/console_log").msg("wrong").request()
     check(r.status == ResStatus.eNo, "console_log 错类型包返回 eNo")
-    check(r.msg == " pkg is null or pkg is not Log. ", "console_log 错类型包契约消息")
+    check(r.msg == "pkg is null or pkg is not Log", "console_log 错类型包契约消息")
     check(YomkApi.server().url("/YomkLogger/file_log").request().status == ResStatus.eNo,
           "file_log nullptr 包返回 eNo")
     check(YomkApi.server().url("/YomkLogger/write_file_log").request().status == ResStatus.eNo,
@@ -615,11 +614,11 @@ def main():
 
     # 8.7 异常路径：空包 / 错类型包（YomkUnPackPkgResponse 契约分支）
     r_null = YomkApi.server().url("/YomkLogger/delete_logger").request()
-    check(r_null.status == ResStatus.eNo and r_null.msg == " pkg is null or pkg is not String. ",
+    check(r_null.status == ResStatus.eNo and r_null.msg == "pkg is null or pkg is not String",
           "S8: delete_logger nullptr 包返回 eNo + 契约消息")
     r_wrong = raw_logger(
         "/YomkLogger/delete_logger", Log(Log.eInfo, "x", "y"))
-    check(r_wrong.status == ResStatus.eNo and r_wrong.msg == " pkg is null or pkg is not String. ",
+    check(r_wrong.status == ResStatus.eNo and r_wrong.msg == "pkg is null or pkg is not String",
           "S8: delete_logger 错类型包（Log）返回 eNo + 契约消息")
 
     # ============ Section 9: 服务级具名开关与全局态端点（两级主闸并联） ============
@@ -702,7 +701,7 @@ def main():
     check(log_mgr().console(tag_a).level(Log.eInfo).enable() == ResStatus.eOk,
           "S9e: 具名恢复 tagA 返回 eOk（状态复原）")
 
-    # 9.6 全局态端点基线：logger_info_global 解 LoggerState + 无参翻转联动
+    # 9.6 全局态端点基线：global_state 端点解 LoggerState + 无参翻转联动
     g = log_mgr().console().status()
     check(g.status == ResStatus.eOk and g.msg == "ok",
           "S9f: logger_info_global 返回 eOk + ok")
@@ -806,7 +805,7 @@ def main():
     check(log_mgr().file(fl_name).level(Log.eInfo).enable() == ResStatus.eOk,
           "S10e: 具名恢复 eOk（状态复原）")
 
-    # 10.6 全局态端点基线：logger_info_global("file"/"console") 两套主闸独立 + 无参翻转联动
+    # 10.6 全局态端点基线：console·file global_state 两套主闸独立 + 无参翻转联动
     g = log_mgr().file().status()
     check(g.status == ResStatus.eOk and g.msg == "ok",
           "S10f: logger_info_global(\"file\") 返回 eOk + ok")

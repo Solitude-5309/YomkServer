@@ -3,13 +3,13 @@ TestYomkIntegration.py —— 跨模块端到端集成测试（正式全面测�
 覆盖的跨模块路径与 shutdown 统一收尾）
 
 覆盖内容（3 个 Section，单进程一次 server().async_thread(1).init()，断言以运行为准）：
-S3. async 回调内重入：异步 monitor 回调（监控池线程）内同步 context_set 重入
+S3. async 回调内重入：异步 monitor 回调（监控池线程）内同步 ctx().set() 重入
     /YomkContext/set 并触发另一键的同步 monitor——不死锁、异步/同步计数守恒、
     异步按提交序保序（末值可读）
-S2. 删除内置服务契约与恢复：del_service("/YomkLogger") → 服务级 eNo + 精确消息；
+S2. 删除内置服务契约与恢复：srv_name("/YomkLogger").remove() → 服务级 eNo + 精确消息；
     server().srv(YomkLogger).create() 无参重注册（构造函数固定名 "/YomkLogger" 生效）
     → LOGGER API 恢复且全链路可用
-S1. shutdown 全链路统一收尾（压轴）：event_loop_post 积压、file_log_info 缓冲、
+S1. shutdown 全链路统一收尾（压轴）：event_loop().post() 积压、to_sink 发射缓冲、
     异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘
     （FileLogger __del__ write，CPython 引用计数确定性承载 main ~FileLogger 语义）、
     API 回归 eInvalid + "YomkServer is not init"（门面守卫级）、二次 shutdown 幂等
@@ -168,7 +168,7 @@ def test_s1_shutdown(N):
             post_ok = False
     check(post_ok, "100 个积压事件全部 POST eOk")
 
-    # 文件日志：file_log_info 仅入缓冲，shutdown 链 FileLogger 释放 __del__ write 落盘
+    # 文件日志：to_sink 发射仅入缓冲，shutdown 链 FileLogger 释放 __del__ write 落盘
     check(log_mgr().dir(tmp_dir).file("integration_file").create() == ResStatus.eOk,
           "file_log_create 返回 eOk")
     check(log().to_sink("integration_file").info("s1_shutdown_flush_marker") == ResStatus.eOk,

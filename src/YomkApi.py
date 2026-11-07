@@ -111,19 +111,21 @@ def _boot_locked(boot=None):
     if boot is None:
         return 0
 
+    # 钩子失败诊断走 diag 通道（对齐 C++ YOMK_DIAG_ERROR，YomkServerApi.h:396/403/410；
+    # 串无尾随空格，逐字一致）
     ret = boot.before()
     if ret is not None and ret != 0:
-        _logger.error("YomkBoot before failed! ")
+        _yomk_err_pos_log("YomkBoot before failed!")
         return ret
 
     ret = boot.start()
     if ret is not None and ret != 0:
-        _logger.error("YomkBoot start failed! ")
+        _yomk_err_pos_log("YomkBoot start failed!")
         return ret
 
     ret = boot.after()
     if ret is not None and ret != 0:
-        _logger.error("YomkBoot after failed! ")
+        _yomk_err_pos_log("YomkBoot after failed!")
         return ret
 
     return 0
@@ -237,6 +239,11 @@ class ServerBuilder:
         # 创建并注册服务，返回 0/-1
         if g_server is None:
             _logger.error("YomkServer is not init")
+            return -1
+        if self._srv_cls is None:
+            # 对齐 C++ YomkServerApi.h create() 的 !m_newSvc 守卫（诊断走 diag 通道）；
+            # 消息去 <T> 尖括号为 Python 语言适配（无模板实参）
+            _yomk_err_pos_log("service type is not set (call srv() first)")
             return -1
         return g_server.new_service(self._srv_cls, self._srv_name)
 
