@@ -271,7 +271,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 ## 常用失败契约字符串
 
-契约消息原文（与 `src/YomkServer.py` 实串一致，测试与排障以此为准）：
+契约消息原文（与 `src/` 源片段实串一致，构建期合并为 `build/YomkServer.py`；测试与排障以此为准）：
 
 | 场景 | status | 契约 msg |
 |---|---|---|

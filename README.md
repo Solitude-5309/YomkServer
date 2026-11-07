@@ -29,7 +29,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 
 | 位置 | 简述 |
 |---|---|
-| `src/` | 核心库源码：`YomkApi.py` 门面、Cython 扩展 `YomkServer`、`.pyi` 类型提示与版本模块 |
+| `src/` | 核心源码片段：`YomkServer.py` / `YomkService.py` + `modules/<模块>/`；`api/` 为安装面（`YomkApi.py` 门面、`.pyi` 类型桩、装载 shim、版本模板），构建期合并为 `build/YomkServer.py` 后经 Cython 编译为 `YomkServerPy.so` |
 | `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池、日志、服务内省六大主题 |
 | `template/` | 脚手架：`project/` 新工程模板、`extension/` 扩展库模板 |
 | `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |
@@ -429,15 +429,16 @@ examples/
 
 ### 仓库级静态检查（test/run_static_checks.sh）
 
-与 `run_tests.sh` 成对（动态测试 + 静态检测），对 `src/` 库源码做**零告警门禁**：
+与 `run_tests.sh` 成对（动态测试 + 静态检测），对 `src/api/` 安装面与构建期合并产物 `build/YomkServer.py` 做**零告警门禁**：
 
 ```bash
 ./test/run_static_checks.sh            # 默认双跑 ruff + mypy
 ./test/run_static_checks.sh --ruff     # 仅 ruff（规则集 E4/E7/E9/F，--isolated 消除用户级配置干扰）
-./test/run_static_checks.sh --mypy     # 仅 mypy（YomkApi.py / YomkServer.py 类型检查）
+./test/run_static_checks.sh --mypy     # 仅 mypy（src/api/YomkApi.py / 合并产物 build/YomkServer.py）
 ```
 
 - 依赖：`python3 -m pip install --user ruff mypy`（缺失时报错并给出安装提示）
+- 前置：先完成构建（`build/YomkServer.py` 为片段合并产物，脚本以其为静态检查对象）
 - 日志落盘 `test/test_logs/<时间戳>/`（`ruff.log` / `mypy.log` / `summary.log`），与测试日志同层
 - 白名单（书面债务）：ruff 豁免 F401（伞门面 re-export）；mypy 豁免 assignment / misc / attr-defined / var-annotated 四个错误码（源码未回填类型注解），明细见脚本头部行为注记
 - 任一档检出告警 → `[FAIL]` 摘要 + 非零退出码；全部零告警 → `[PASS]`
@@ -454,7 +455,7 @@ examples/
 
 - 逐例在独立临时目录全量运行（stdin=/dev/null，示例末尾 `input()` 有 `isatty` 守卫）；任一例非零退出/超时 → **立即停止**并尾打日志
 - 日志落盘 `test/test_logs/<时间戳>_examples/`（含 `summary.log`）；清单带总数守卫（6 项声明）
-- 验收口径 = `run_tests.sh` **27/27** 且 `run_examples.sh` **6/6**
+- 验收口径 = `run_tests.sh` **28/28** 且 `run_examples.sh` **6/6**
 
 ---
 
@@ -467,5 +468,6 @@ import YomkApi   # 门面 API：自动加载 Cython 扩展 YomkServer，核心�
 ```
 
 - 新开任意终端免配置；未持久化的环境（如 CI、Windows）手动设置：`export PYTHONPATH=${YOMK_PREFIX_PATH}/lib/pythonX.Y/site-packages:$PYTHONPATH`
+- 扩展本体为 `YomkServerPy.so`（Windows `YomkServerPy.pyd`）；同目录 `YomkServer.py` 为装载 shim，以模块名 `YomkServer` 装载本体，`import YomkServer` / `from YomkServer import ...` 契约不变
 - `YomkServer.pyi` 随库安装于同一目录，IDE 可据此提供类型提示与补全
 - 版本号经 `YomkApi.__version__` 查询（源于 CMakeLists 的 `project(VERSION)` 单一来源，与 `share/YomkServerPy/abi_report.txt` 同源）

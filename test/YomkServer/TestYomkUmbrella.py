@@ -25,7 +25,7 @@ import YomkApi
 
 g_failed = 0
 
-# 六域入口 → (builder 类型名, 公开方法清单)——与 src/YomkApi.py ast 实测对表
+# 六域入口 → (builder 类型名, 公开方法清单)——与 src/api/YomkApi.py ast 实测对表
 EXPECTED_HEADS = {
     "server": ("ServerBuilder", [
         "url", "msg", "request", "status", "async_", "version", "async_thread",

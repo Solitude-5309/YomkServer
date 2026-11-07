@@ -12,8 +12,8 @@
 #   2. 示例是各文档"完整示例"节指向的用户第一入口，运行时面（辅助函数展开、import
 #      接线、非交互退出）断代即视为回归，失败即停
 #   3. 日志落盘: test/test_logs/<时间戳>_examples/<示例名>.log + summary.log
-#   4. 与单元回归（run_tests.sh，27 项）分闸：本脚本不并入 TESTS 数组，
-#      验收口径 = 27/27 且 6/6
+#   4. 与单元回归（run_tests.sh，28 项）分闸：本脚本不并入 TESTS 数组，
+#      验收口径 = 28/28 且 6/6
 #   5. 范围口径：本闸只保运行时正确 + 标签链式化终态不回退
 
 set -u
@@ -62,7 +62,7 @@ PY_SITE_DIR=$(ls -d "${PREFIX}"/lib/python*[0-9].[0-9]*/site-packages 2>/dev/nul
 [ -n "${PY_SITE_DIR}" ] \
     || fail "未找到 ${PREFIX}/lib/pythonX.Y/site-packages，请先构建: $(build_hint)（或用 --prefix 指定产物目录）"
 
-for f in YomkServer.so YomkApi.py; do
+for f in YomkServerPy.so YomkServer.py YomkApi.py; do
     [ -f "${PY_SITE_DIR}/${f}" ] || fail "未找到 ${PY_SITE_DIR}/${f}，请先构建: $(build_hint)"
 done
 

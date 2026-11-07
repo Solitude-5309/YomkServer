@@ -3,7 +3,7 @@
 # 用法: ./scripts/install_env.sh [安装路径]（缺省 /opt/yomk）
 # 说明: build_ubuntu.sh 自动安装与 README 手动 CMake 安装共用本脚本，
 #       保证两种安装方式的最终结果完全一致:
-#   1. 校验安装结果: YomkServer.so / YomkApi.py / YomkServer.pyi 存在
+#   1. 校验安装结果: YomkServerPy.so / YomkServer.py（装载 shim） / YomkApi.py / YomkServer.pyi 存在
 #   2. 持久化环境变量 YOMK_PREFIX_PATH 与 PYTHONPATH（指向 lib/pythonX.Y/site-packages）:
 #      - /etc/profile.d/yomkpy.sh: 登录 shell（ssh/console）生效
 #      - /etc/bash.bashrc 追加引用: 桌面终端等非登录交互式 shell 生效
@@ -43,7 +43,7 @@ PY_SITE_DIR=$(ls -d "${INSTALL_PREFIX}"/lib/python*[0-9].[0-9]*/site-packages 2>
 [ -n "${PY_SITE_DIR}" ] \
     || fail "未找到 ${INSTALL_PREFIX}/lib/pythonX.Y/site-packages，请先完成 cmake install"
 
-for f in YomkServer.so YomkServer.pyi YomkApi.py; do
+for f in YomkServerPy.so YomkServer.py YomkServer.pyi YomkApi.py; do
     [ -f "${PY_SITE_DIR}/${f}" ] \
         || fail "未找到 ${PY_SITE_DIR}/${f}，请先完成 cmake install"
 done
@@ -86,7 +86,7 @@ export PYTHONPATH="${PY_SITE_DIR}:${PYTHONPATH}"
 echo "-- 安装后配置完成:"
 echo "   - 环境变量:   YOMK_PREFIX_PATH=${YOMK_PREFIX_PATH}"
 echo "   - PYTHONPATH: ${PY_SITE_DIR}"
-echo "   - 模块文件:   ${PY_SITE_DIR}/{YomkServer.so, YomkApi.py, YomkServer.pyi}"
+echo "   - 模块文件:   ${PY_SITE_DIR}/{YomkServerPy.so, YomkServer.py, YomkApi.py, YomkServer.pyi}"
 if [ "${YOMK_ENV_SKIP_SYSTEM}" != "1" ]; then
     echo "   - 生效范围:   新开任意终端免 source 直接 import YomkServer"
     echo "   - 当前终端立即生效请执行: source ${PROFILE_SCRIPT}"

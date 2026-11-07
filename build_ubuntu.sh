@@ -185,7 +185,7 @@ fi
 # -------------el 4. 安装后系统级配置（与手动 CMake 安装共用 scripts/install_env.sh） ----------------
 
 # -------------sl 5. 安装成功提示 ----------------
-# 安装结果校验（YomkServer.so / YomkApi.py / YomkServer.pyi）已由 scripts/install_env.sh 完成
+# 安装结果校验（YomkServerPy.so / YomkServer.py / YomkApi.py / YomkServer.pyi）已由 scripts/install_env.sh 完成
 echo ""
 echo "==========================================="
 echo " YomkServerPy 安装成功!"
@@ -196,7 +196,7 @@ echo " PYTHONPATH:       ${PY_SITE_DIR}"
 echo " 编译器:           $(gcc --version | head -1)"
 echo " 环境指纹报告:     ${INSTALL_PREFIX}/share/YomkServerPy/abi_report.txt"
 echo " Python 模块（安装于 ${PY_SITE_DIR}）:"
-for f in YomkServer.so YomkApi.py YomkServer.pyi; do
+for f in YomkServerPy.so YomkServer.py YomkApi.py YomkServer.pyi; do
     echo "   - ${f}"
 done
 echo " 示例（不随库安装，位于源码树 examples/ 目录，进入源码目录直接运行）:"
