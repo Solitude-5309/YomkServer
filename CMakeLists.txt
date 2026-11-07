@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.14)
-# 版本号策略（S14 决策，2026-11-07）：YomkServerPy 保持独立号段，不跟随
-# C++ 基线 Yomk 3.5.x 号段——两线发布节奏独立；对齐点是版本机制而非号段：
+# 版本号策略：YomkServerPy 使用独立号段，发布节奏自成一贯；
+# 版本机制为编译期注入的单一来源链：
 # project(VERSION) → configure_file 生成 YomkServerPyVersion.py 的 __version__
-# → YomkApi 顶部 import → server().version()（等价 C++ YOMK_VERSION 编译期注入），
+# → YomkApi 顶部 import → server().version()（构建期注入，无运行时读取），
 # 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
 # 本行即版本唯一来源，发布时手动 bump。
-project(YomkServerPy VERSION 2.1.1 LANGUAGES C)
+project(YomkServerPy VERSION 2.1.2 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 # Interpreter 组件提供 Python_EXECUTABLE：cython 仅 user-site 安装时（可执行入口
@@ -46,7 +46,7 @@ add_custom_command(
 )
 
 # ---------- 4. 编译为共享库 ----------
-# 构建期即产出测试可用产物（对齐 main CMAKE_RUNTIME_OUTPUT_DIRECTORY=bin 的设计）：
+# 构建期即产出测试可用产物（构建期产物目录设计，测试无需 install 即可运行）：
 # .so 直接输出到构建树内 build/prefix/<PYTHON_SITE_PACKAGES>，与 YomkApi.py/.pyi/
 # 版本模块同目录；run_tests.sh 默认消费该目录——构建即可测，不依赖 install 步骤，
 # 测试产物与安装产物同源同版本（install 仅负责部署到安装前缀）

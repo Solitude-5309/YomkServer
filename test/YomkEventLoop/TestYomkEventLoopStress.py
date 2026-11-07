@@ -1,17 +1,17 @@
 """
-TestYomkEventLoopStress.py - EventLoop 压力测试（10 万级投递 + 大数据量 + QPS 基线记录）
+TestYomkEventLoopStress.py - EventLoop 压力测试（10 万级投递 + 大数据量 + QPS 吞吐记录）
 
 覆盖内容（5 个 Section，规模 N 经 YOMK_TEST_STRESS_SCALE 环境变量参数化，缺省 100000）：
-1. 单线程 10 万级投递基线：post N 个 trivial 计数事件 -> drain，计数守恒 + 入队/消费 QPS 基线记录
-2. 8 线程并发 10 万级：并发 post -> drain，计数守恒 + 聚合 QPS 基线（高并发持续调用无崩溃）
+1. 单线程 10 万级投递：post N 个 trivial 计数事件 -> drain，计数守恒 + 入队/消费 QPS 记录
+2. 8 线程并发 10 万级：并发 post -> drain，计数守恒 + 聚合 QPS 记录（高并发持续调用无崩溃）
 3. 10 万级纯积压路径：gate 占住 worker 使投递/消费速率解耦——纯测 post + 无界队列大规模增长
    （断言 pending:N 积压确认，释放后守恒）
 4. 大数据量字符串：4096 字节 tag × max(N/10,1000) 个事件，无崩溃且守恒
-5. API 层 10 万级投递：event_loop_post 走完整路由路径，计数守恒 + API 级 QPS 基线
+5. API 层 10 万级投递：event_loop_post 走完整路由路径，计数守恒 + API 级 QPS 记录
 
 说明：
-- QPS/耗时基线仅以 [BASELINE] 行记录、不作断言（环境噪声使性能断言不可靠）；
-- 计数 handler 为 GIL 原子承载（list.append/len，见 Concurrency docstring 语言机制说明）；
+- QPS/耗时仅以 [BASELINE] 行记录、不作断言（环境噪声使性能断言不可靠）；
+- 计数 handler 为 GIL 原子承载（list.append/len，见 Concurrency docstring 实现机制说明）；
   计时用 time.perf_counter；
 - 白盒段直连内部类 EventLoop；API 段 server().async_thread(1).init() 拉起单例，末尾
   server().shutdown() 收尾。
@@ -31,7 +31,7 @@ import YomkApi
 
 FAILED = 0
 
-# ---- 文件级观测装置（GIL 原子映射）----
+# ---- 文件级观测装置（list.append/len GIL 单步原子，免锁）----
 EXEC_COUNT = []  # 计数 handler 执行总数
 
 def count_handler():
@@ -93,12 +93,12 @@ def stress_scale():
     return max(v, 1000)
 
 def record_baseline(tag, ops, elapsed_ms):
-    # 基线记录（仅打印，不断言）：耗时(ms) 与吞吐(ops/s)
+    # 吞吐记录（仅打印，不断言）：耗时(ms) 与吞吐(ops/s)
     qps = ops * 1000.0 / elapsed_ms if elapsed_ms > 0 else 0.0
     print(
         f"[BASELINE] {tag} ops={ops} elapsed_ms={elapsed_ms} throughput={int(qps)}/s")
 
-# ============ Section 1: 单线程 10 万级投递基线（白盒）============
+# ============ Section 1: 单线程 10 万级投递吞吐（白盒）============
 def section_1(n):
     del EXEC_COUNT[:]
     loop = EventLoop()

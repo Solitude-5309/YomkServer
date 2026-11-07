@@ -1,9 +1,9 @@
 """
-TestYomkConcurrency.py —— 多线程并发功能测试与持续压测（正式全面测试）
+TestYomkConcurrency.py —— 多线程并发功能测试与持续压测
 
 覆盖内容：
 1. 并发同步 request 守恒：8 线程 x 500 次混合请求（ping/echo 交替）全部 eOk、
-   函数体命中计数守恒（服务表/函数表读写锁并发读安全基线）
+   函数体命中计数守恒（验证服务表/函数表读写锁并发读安全）
 2. 并发 asyncRequest 不丢不重：8 线程 x 125 次投递，回调全部到达且无重复
 3. request x add/del 并发：20 轮删/注交替下响应全部落在合法集合
    （service not found / function not found 为并发注册窗口的框架设计窗口）
@@ -15,11 +15,11 @@ TestYomkConcurrency.py —— 多线程并发功能测试与持续压测（正�
    验证幂等）；总操作数读 YOMK_TEST_STRESS_SCALE（缺省 100000
    10 万级，快速模式由 run_tests.sh 注入 10000，clamp 下限 1000）
 
-语言机制说明（非功能缺口）：
-- "删除即停并发形态"（弱绑定回调判活 g_weakCb / g_rejected / "deleted or
-  unregistered" 契约消息）不适用 python 形态，is_expected_no_response 合法集合同步剔除该消息
+语言机制说明：
+- "删除即停并发形态"（弱绑定回调判活 + "deleted or unregistered"
+  契约消息）不适用 python 形态，is_expected_no_response 合法集合亦不含该消息
 - 覆盖安装用直接方法引用安装（无弱绑定包装层）
-- server1 兜底销毁以节末显式 shutdown 承载（python 无确定性析构，A-4 口径）
+- server1 兜底销毁以节末显式 shutdown 承载（python 无确定性析构）
 - 并发计数用 CPython list.append 原子操作承载（GIL 下
   安全），读取用 len()
 """
@@ -69,7 +69,7 @@ def wait_for(pred, timeout_s, desc):
 
 
 class DemoPkg:
-    # String 消息包的测试载体（pkg.d 字段，同 T3 口径）
+    # String 消息包的测试载体（pkg.d 字段）
     def __init__(self, d=""):
         self.d = d
 
@@ -88,7 +88,7 @@ class ConcSrv(YomkService):
     def echo(self, pkg):
         g_hit.append(1)
         if pkg is None:
-            # 直接属性访问需空值守卫（同 T2/T3 口径）
+            # 直接属性访问需空值守卫
             return YomkResponse(ResStatus.eNo, "pkg is null")
         return YomkResponse(ResStatus.eOk, pkg.d)
 
@@ -102,7 +102,7 @@ def is_expected_no_response(r):
         return False
     # 并发注册窗口：add_service 先入表后 init，request 可能在函数安装前命中服务，
     # 返回 function not found；这是框架设计窗口（非崩溃/悬垂缺陷），纳入可接受集合
-    # （合法集合已剔除 "deleted or unregistered"，python 无此消息）
+    # （该集合不含 "deleted or unregistered"，python 无此消息）
     return "service not found" in r.msg or "function not found" in r.msg
 
 
@@ -309,7 +309,7 @@ def test_shutdown_inflight_async():
     check(len(g_fired) == before, "5.4 shutdown 后异步投递全部被拒（fired 不变）")
 
 
-# 7. N7 持续压测（第 6 节"删除即停并发形态"整节剔除，见文件头剔除说明）
+# 7. N7 持续压测（第 6 节"删除即停并发形态"整节不适用，见文件头语言机制说明）
 def test_n7_stress():
     print("===== 7. N7 持续压测（8 线程混合操作跨双 server 实例） =====")
     reset_globals()
@@ -387,8 +387,8 @@ def test_n7_stress():
     check(len(fired2) <= len(posted2),
           "7.7 server2 shutdown 后异步无重复执行")
 
-    # server1 的兜底销毁以显式 shutdown 承载（python 无确定性析构，
-    # A-4 口径）
+    # server1 的兜底销毁以显式 shutdown 承载
+    # （python 无确定性析构）
     server1.shutdown()
 
 

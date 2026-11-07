@@ -33,7 +33,7 @@ Python 链对象按值持有、无悬垂风险，但 `log()` 域入口在调用�
 | — | `.shutdown()`：关闭服务器（见"注意事项"）；未初始化空转 |
 | `YomkApi.server().srv(cls, name)` | `.create()` → `int`：创建并注册 `YomkService` 派生服务；`name` 省略则沿用构造时的默认名；0 成功，-1 失败（未初始化 / 未先调 `srv()` / `init()` 非 0） |
 | `YomkApi.server().srv_name(n).srv_ptr(s)` | `.add()` → `int`：注册已有实例；累积了非空 `srv_name` 时注册前先改名；守卫拒绝时实例仍归调用方 |
-| `YomkApi.server().srv_name(n)` | `.remove()` → `int`：按名注销并触发 `deinit`（终结定名沿用 C++ 的 `remove`）；-1 = 不存在 / 名称为空 / 未初始化 |
+| `YomkApi.server().srv_name(n)` | `.remove()` → `int`：按名注销并触发 `deinit`；-1 = 不存在 / 名称为空 / 未初始化 |
 | `YomkApi.server().boot_ptr(boot)` | `.run()` → `int`：先 init 再按 before → start → after 执行编排（见文末）；`boot` 省略 = 仅 init 返回 0 |
 
 ### 拓扑内省（读终结，返回 `YomkResponse`）
@@ -99,7 +99,7 @@ class MyService(YomkApi.YomkService):
 - **服务名以 `/` 开头**：服务名即 URL 前缀，如 `set_name("/MyService")`；请求 URL 为 `"/服务名/函数名"`。内置服务的 URL 常量以字符串形式散建于 `src/YomkApi.py` 装配处，自定义服务的 URL 可按同风格集中管理。
 - **deinit() 的四个触发时机**：`srv_name(n).remove()` 删除单个服务、`shutdown()` 关闭全部服务、同名服务被 `add()` 替换（旧服务先置位注销标志并 deinit，新服务随后 init，任意时刻同名服务至多一次活跃生命周期）、忘记关闭时进程退出经 atexit 兜底。覆写 `deinit()` 用于停止线程、注销外部资源。
 - **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃；`shutdown()` 走排空语义（拒新 → 排空 → join 异步请求池，再清空服务表逐个 deinit），在途请求安全执行完毕后服务才释放；幂等，假定在主线程调用。
-- **关闭后不支持二次 init**：init 进程内幂等由 once 标志把关，`shutdown()` 之后再次 `init()` 不会重建服务器，全部入口回到未初始化守卫态。**语义现已对齐 C++**（S10 处置更新）：Python 门面在 `shutdown()` 时置空单例、`instance()` 返回 `None`；C++ 当前基线 `shutdown()` 内同样 `YomkServerRef::setServer(nullptr)`，`instance()` 返回空——早期报告记载的"关闭后仍返回已 shutdown 实例快照"为旧 C++ 行为，已随 C++ 版本演进消失，不再构成两侧差异。
+- **关闭后不支持二次 init**：init 进程内幂等由 once 标志把关，`shutdown()` 之后再次 `init()` 不会重建服务器，全部入口回到未初始化守卫态。**`shutdown()` 置空单例**：门面在 `shutdown()` 时置空单例，`instance()` 返回 `None`，不保留已关闭实例快照。
 - **未初始化守卫（全框架统一约定）**：终结动作返回 `ResStatus.Invalid`（request / status / 各域写与内省终结）或 `-1`（create / add / remove），异步 `.request()` 静默丢弃、回调不触发，类型化读 `get()` 原样返回调用方默认值；守卫消息 `"YomkServer is not init"` 经裸链 `YomkApi.server().url(u).msg(pkg).request()` 可查（写路径链式终结收敛为 `ResStatus`，不带 msg）；均记录错误诊断日志，不抛异常。`version()` / `instance()` / `shutdown()` 免初始化安全。
 - **所有权**：`create()` / `add()` 注册成功后实例交由框架服务表持有，调用方不应再将其作为活跃对象复用；`init()` 失败时框架回滚注销。
 

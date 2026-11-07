@@ -1,7 +1,7 @@
 """
-TestYomkServerInfoLifecycle.py —— ServerInfo 模块生命周期与四端点功能基线测试
+TestYomkServerInfoLifecycle.py —— ServerInfo 模块生命周期与四端点功能测试
 
-（8 节，从零新建——模块此前零专属覆盖）：
+（8 节）：
 S0. server destroyed 分支（白盒直连）：测试自持 YomkServerInfo 实例（不经 add_service），
     server 释放后 4 端点 invoke 逐一返回 eNo + "server has been destroyed"
     （m_weakServer 判活失败分支，invoke 为 YomkService public 方法可直连）
@@ -31,7 +31,7 @@ S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/service
 - 内省数据解包后 YomkResponse.data 直接是 python 对象
   （/services 为 list[str]，/functions 为 FuncInfo 结构化列表，/all 为 ServerServiceInfo 层级列表）
 - install_func 第三参承载函数消息类型元数据，第四参承载函数说明（三内置装配已补齐）
-- 探针计数用 list.append（GIL 原子，T 轮既有模式）
+- 探针计数用 list.append（GIL 原子）
 - S0 类级直连（import YomkServerPy 白盒），放在 init 单例之前以独立实例隔离单例交互；
   S1-S7 经门面 API 走完整路由链
 

@@ -1,15 +1,15 @@
 """
 TestYomkFunctionPoolStress.py —— YomkFunctionPool 压力测试（5 节 17 断言 + 7 [BASELINE]）
 
-节结构逐节对齐同名 C++ 测试（S1 单线程 register/call 热路径/unregister 吞吐 /
+节结构（S1 单线程 register/call 热路径/unregister 吞吐 /
 S2 多线程并发 call 吞吐 / S3 全生命周期 churn 四相守恒 / S4 超大函数名压力 /
-S5 API 端到端混合负载五相守恒），零剔除。
+S5 API 端到端混合负载五相守恒）。
 
-语言映射：
-- YOMK_FUNCTIONPOOL_* 宏 → fn_pool() 域六终结动作（覆盖 invoke 路由链）
-- std::atomic 计数 → list.append（GIL 原子，len() 读数）
-- std::chrono::steady_clock → time.perf_counter()
-- recordBaseline 格式逐字对齐（ops/s 记录，不断言 timing，仅断言守恒与正确性）
+实现口径：
+- 全部经 fn_pool() 域六终结动作访问（覆盖 invoke 路由链）
+- 跨线程计数用 list.append（GIL 原子，len() 读数）
+- 计时用 time.perf_counter()
+- 吞吐仅以 [BASELINE] 行记录 ops/s，不断言 timing，仅断言守恒与正确性
 - 规模经 YOMK_TEST_STRESS_SCALE 环境变量参数化（缺省 100000，clamp 下限 1000），
   与 run_tests.sh 快速模式（10000）/--full（缺省 10 万级）三档惯例一致
 """
@@ -59,14 +59,14 @@ def record_baseline(section, ops, elapsed_ms):
 def stress_noop_func(pkg):
     return YomkResponse(ResStatus.eOk, "ok")
 
-s2_exec = []  # std::atomic 计数映射：list.append GIL 原子
+s2_exec = []  # 跨线程计数用 list.append（GIL 原子）
 
 def stress_count_func(pkg):
     s2_exec.append(1)
     return YomkResponse(ResStatus.eOk, "ok")
 
 def make_name(prefix, index):
-    """生成唯一函数名（std::to_string 同构）。"""
+    """生成唯一函数名（前缀 + 序号）。"""
     return f"{prefix}{index}"
 
 def main():

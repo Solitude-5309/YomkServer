@@ -45,8 +45,8 @@ xxx"——操作是用户视角的业务动作，随后结果行标注本次接�
 
 演示服务规划（机械臂产线装配工位，跨场景流转）：
   /ArmStation            server().create() 注册（场景 1）、server().remove() 下线（场景 5）
-  /report        2 参注册  工位状态上报（入参 String 状态文本，回执确认；无元数据）
-  /quality_check 4 参注册  质量抽检（入参 QualityCheckReq；声明期望消息类型
+  /report        无元数据注册        工位状态上报（入参 String 状态文本，回执确认；无元数据）
+  /quality_check 声明类型+说明注册  质量抽检（入参 QualityCheckReq；声明期望消息类型
                           与函数说明，供场景 2/3 的自省识别）
 
 运行方式：PYTHONPATH=src python3 examples/ExampleYomkServerInfo.py

@@ -10,8 +10,8 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
 
 语言机制说明（非功能缺口）：
 - 门面 context_get(key, default) 不携带目标类型参数、eOk 返回存储值本身，
-  调用方以 python 动态类型自然规避"类型不匹配"失败路径（A-2 语言机制剔除项）
-- 内置服务注册校验以 server.service_names() 承载（A-4 口径）
+  调用方以 python 动态类型自然规避"类型不匹配"失败路径
+- 内置服务注册校验以 server.service_names() 承载
 - keyInfo 命中为结构化返回：msg 恒 "ok"，data 为 ContextKeyInfo 包（字段 type_name
   为 python 原生类型名 str/int/bool，value 为 None 时空串）；listAll 命中同为结构化
   返回：msg 恒 "ok"，data 为 ContextKeyInfo 列表（键序为字典序）

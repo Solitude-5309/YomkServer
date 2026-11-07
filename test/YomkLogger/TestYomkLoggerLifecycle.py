@@ -2,31 +2,30 @@
 # -*- coding: utf-8 -*-
 """
 TestYomkLoggerLifecycle.py —— YomkLogger 服务全链路生命周期测试
-（LG1-LG6 轮交付）
 
 覆盖内容（12 节）：
-S1 控制台日志基线（四级别 + 开关翻转）；S2 自定义 tag 自动创建（含 65536 超长 tag、
+S1 控制台日志基础态（四级别 + 开关翻转）；S2 自定义 tag 自动创建（含 65536 超长 tag、
 空内容）；S2.5 非法级别 default 降级（须在 S3 设 proxy 前）；S3 proxy 契约（拦截/
-穿透/卸载恢复/重装复位，LG6 P4-e）；S4 文件日志闭环（create/缓冲/落盘/重复/未创建/
-P2-a 空名空 dir/P2-b 失败不注册幽灵）；S5 内省三端点（行格式/字典序/开关联动逐字段）；
+穿透/卸载恢复/重装复位）；S4 文件日志闭环（create/缓冲/落盘/重复/未创建/
+空名空 dir 校验/失败不注册幽灵）；S5 内省三端点（行格式/字典序/开关联动逐字段）；
 S6 边界值（整数边界/浮点特殊值/1MB 内容/非法级别 file_log+off/on 无副作用）；S7 异常
 路径（空包/错类型包/空 logger 名回退/未知端点）；S8 /delete_logger 全语义（8.1-8.7）；
 S9 服务级具名开关与全局态端点（两级主闸并联：具名 OFF/ON 逐器隔离与恢复、未知名
-eNo 不惰性创建、主闸×逐器两层归因、条目逐器真值与两层正交、全局主闸态基线与
+eNo 不惰性创建、主闸×逐器两层归因、条目逐器真值与两层正交、全局主闸初态与
 无参翻转联动）；S10 文件日志两级开关与全局态端点（与控制台同构、落盘实证：
 具名 OFF/ON 文件逐器隔离与恢复、未知名 eNo、文件主闸×逐器两层归因、
 两层正交、console·file global_state 两套主闸独立直证与无参翻转联动、
 未知 type eNo）；S11 文件日志全局代理契约（与控制台 S3 同构仅单一全局代理：
-基线两套独立直证/拦截/穿透/卸载 LG6 镜像/重装可逆，末尾重装回穿透态）
+两套代理独立直证/拦截/穿透/卸载（镜像控制台卸载流程）/重装可逆，末尾重装回穿透态）
 
-语言机制说明：
-- stdout 捕获用 contextlib.redirect_stdout；CHECK 在捕获作用域外（LG1 教训，
-  控制台写入经 capture 包装后取响应断言）
+实现机制说明：
+- stdout 捕获用 contextlib.redirect_stdout；CHECK 在捕获作用域外
+  （控制台写入经 capture 包装后取响应断言）
 - 内省数据解包后 LOGGERS 端点 data 为 list[str]，ALL 端点 data 为 list[LoggerInfo] 清单（每条内嵌 logger_state 状态段）
 - 浮点格式化 str(-0.0) 为 "-0.0"：子串断言 "d= -0" 仍命中
-  （前缀包含），书面记录微差
+  （前缀包含），如实注记微差
 - S8.4 析构落盘确定性：服务层 delete_logger
-  锁外显式释放最后引用，返回前 __del__ 已落盘（C2 语义保证）
+  锁外显式释放最后引用，返回前 __del__ 已落盘（服务层显式释放最后引用保证）
 - file 日志便捷口径：log().to_sink(file).tag("main").info(*args) 为固定缺省 tag
   形态；tag 换任意值即自定义形态（SinkLogBuilder.tag + 六级发射）
 
@@ -98,7 +97,7 @@ def main():
     os.makedirs(tmp_dir, exist_ok=True)
     check(os.path.isdir(tmp_dir), f"临时目录创建成功: {tmp_dir}")
 
-    # ============ Section 1: 控制台日志基线（四级别 + 开关） ============
+    # ============ Section 1: 控制台日志基础态（四级别 + 开关） ============
     r, out = capture(lambda: raw_logger("/YomkLogger/console_log", Log(Log.eInfo, "[1] lg1_s1_info_marker  42", "main", "main")))
     check(r.status == ResStatus.eOk, "YOMK_INFO 返回 eOk")
     check(r.msg == "success.", "YOMK_INFO 契约消息 success.")
@@ -170,13 +169,13 @@ def main():
     r, out = capture(lambda: raw_logger(
         "/YomkLogger/console_log", Log(99, "lg1_s2p5_badlevel_marker", "main")))
     check(r.status == ResStatus.eOk,
-          "非法级别 99 console_log 返回 eOk（P2-c 修复后 default 活分支）")
+          "非法级别 99 console_log 返回 eOk")
     check("unknown log level, use Info" in out,
           "console_log default 分支错误提示（降级 Info）")
     check("[INFO ] [main] lg1_s2p5_badlevel_marker" in out,
           "非法级别降级 Info 输出 marker")
 
-    # ============ Section 3: proxy 契约（LG6/P4-e 卸载；末尾重装复位） ============
+    # ============ Section 3: proxy 契约（卸载恢复；末尾重装复位） ============
     proxy_hits = []
     proxy_state = {"intercept": True}
 
@@ -215,7 +214,7 @@ def main():
     check(first_console_state(log_mgr().all().data).proxy_on,
           "proxy 设置后 ALL console 条目状态段 proxy_on")
 
-    # LG6（P4-e）：卸载前先把代理切回拦截态，确认代理确实在链路上
+    # 卸载前先把代理切回拦截态，确认代理确实在链路上
     proxy_state["intercept"] = True
     r, out = capture(lambda: raw_logger("/YomkLogger/console_log", Log(Log.eInfo, "[1] lg6_s3_pre_unload_marker", "main", "main")))
     check(r.status == ResStatus.eOk and r.msg == "console log proxy is success.",
@@ -226,7 +225,7 @@ def main():
     check(log_mgr().console().proxy(None).apply() == ResStatus.eOk,
           "set_console_log_proxy(None) 卸载返回 eOk")
     check(not first_console_state(log_mgr().all().data).proxy_on,
-          "卸载后 ALL console 条目状态段回到 proxy_off（P4-e 前恒报 proxy_on）")
+          "卸载后 ALL console 条目状态段回到 proxy_off")
 
     # 卸载后：恢复框架默认输出，且代理不再被调用
     hits_before = len(proxy_hits)
@@ -311,28 +310,28 @@ def main():
     check(raw_logger("/YomkLogger/write_file_log", "lg1_never_created").msg
           == "logger not found.", "FILE_LOG_WRITE not-found 契约消息")
 
-    # P2-a 处置验证：空名/空 dir 一律 eInvalid
+    # 空名/空 dir 边界处置验证：一律 eInvalid
     empty_both = log_mgr().dir("").file("").create()
     check(empty_both == ResStatus.eInvalid
           and raw_logger("/YomkLogger/create_file_logger", LogFile("", "")).msg
           == "logger name is empty.",
-          "空名+空 dir 创建返回 eInvalid + logger name is empty.（P2-a 已处置）")
+          "空名+空 dir 创建返回 eInvalid + logger name is empty.")
     empty_name = log_mgr().dir(tmp_dir).file("").create()
     check(empty_name == ResStatus.eInvalid,
-          "空名+有效 dir 创建返回 eInvalid（P2-a 已处置）")
+          "空名+有效 dir 创建返回 eInvalid")
     empty_dir = log_mgr().dir("").file("lg1_empty_dir_name").create()
     check(empty_dir == ResStatus.eInvalid
           and raw_logger("/YomkLogger/create_file_logger",
                          LogFile("lg1_empty_dir_name", "")).msg == "logger dir is empty.",
-          "有效名+空 dir 创建返回 eInvalid + logger dir is empty.（P2-a 已处置）")
+          "有效名+空 dir 创建返回 eInvalid + logger dir is empty.")
 
-    # P2-b 处置验证：不可创建 dir -> init False -> eNo 且不注册幽灵 logger
+    # 不可创建 dir 处置验证：init False -> eNo 且不注册幽灵 logger
     bad_dir = log_mgr().dir("/proc/lg1_impossible/sub").file("lg1_bad_dir_logger").create()
     check(bad_dir == ResStatus.eNo
           and raw_logger("/YomkLogger/create_file_logger",
                          LogFile("lg1_bad_dir_logger", "/proc/lg1_impossible/sub")).msg
           == "init file logger failed.",
-          "不可创建 dir 返回 eNo + init file logger failed.（P2-b 已处置，异常不穿透）")
+          "不可创建 dir 返回 eNo + init file logger failed.（异常不穿透）")
     ghost_info = log_mgr().file("lg1_bad_dir_logger").get_info()
     check(ghost_info.status == ResStatus.eNo and ghost_info.msg == "logger not found.",
           "init 失败的 logger 未注册（无幽灵 key，内省 not found）")
@@ -380,7 +379,7 @@ def main():
     check(no_info.status == ResStatus.eNo and no_info.msg == "logger not found.",
           "LOGGER 未注册名返回 eNo + logger not found.")
 
-    # ALL：状态段基线 + 开关翻转联动（逐字段断言）；主闸翻转与条目解耦后，
+    # ALL：状态段初始值 + 开关翻转联动（逐字段断言）；主闸翻转与条目解耦后，
     # 翻转联动取数迁移至 console·file global_state 端点（全局主闸态）；条目改报逐器层
     # 真值，不受无参翻转影响（正交性在 S9 直证）
     c = first_console_state(log_mgr().all().data)
@@ -404,7 +403,7 @@ def main():
     inf_v = float("inf")
     r, out = capture(lambda: log().tag("lg1_s6_flt").info("a=", nan_v, " b=", inf_v, " c=", -inf_v, " d=", -0.0))
     check(r == ResStatus.eOk, "NaN/Inf/-Inf/-0.0 变参日志返回 eOk")
-    # 微差书面记录：python str(-0.0) 为 "-0.0"，子串断言 "d= -0" 以
+    # 微差注记：python str(-0.0) 为 "-0.0"，子串断言 "d= -0" 以
     # 前缀包含命中
     check("a= nan" in out and "b= inf" in out and "c= -inf" in out and "d= -0" in out,
           "浮点特殊值字符串化正确（nan/inf/-inf/-0，变参以空格分隔）")
@@ -426,7 +425,7 @@ def main():
     content = read_file(os.path.join(big_dir, "lg1_big_logger.log"))
     check(big in content, "1MB 内容完整落盘")
 
-    # 非法级别注入回填（P2-c 修复后）：file_log/off/on 三处 default 降级与无副作用实证
+    # 非法级别注入实证：file_log/off/on 三处 default 降级与无副作用
     bad_level_dir = os.path.join(tmp_dir, "s6_badlevel")
     os.makedirs(bad_level_dir, exist_ok=True)
     check(log_mgr().dir(bad_level_dir).file("lg1_s6_badlevel").create() == ResStatus.eOk,
@@ -434,7 +433,7 @@ def main():
     r, out = capture(lambda: raw_logger(
         "/YomkLogger/file_log", Log(99, "lg1_s6_badlevel_marker", "lg1_s6_badlevel")))
     check(r.status == ResStatus.eOk and r.msg == "success.",
-          "file_log 非法级别 99 返回 eOk（P2-c 修复后 default 活分支）")
+          "file_log 非法级别 99 返回 eOk")
     check("unknown log level, use Info" in out,
           "file_log default 分支错误提示（降级 Info）")
     check(log_mgr().file("lg1_s6_badlevel").flush() == ResStatus.eOk,
@@ -447,30 +446,30 @@ def main():
     r_off, out_off = capture(lambda: raw_logger(
         "/YomkLogger/off_console_log_by_level", Log(99, "", "")))
     check(r_off.status == ResStatus.eOk and "unknown log level, turn off failed." in out_off,
-          "off 非法级别 eOk + 错误提示（default 活分支）")
+          "off 非法级别 eOk + 错误提示")
     r_on, out_on = capture(lambda: raw_logger(
         "/YomkLogger/on_console_log_by_level", Log(99, "", "")))
     check(r_on.status == ResStatus.eOk and "unknown log level, turn on failed." in out_on,
-          "on 非法级别 eOk + 错误提示（default 活分支）")
+          "on 非法级别 eOk + 错误提示")
     c = first_console_state(log_mgr().all().data)
     check(c.debug_on and c.info_on and c.warn_on and c.error_on and c.proxy_on,
           "非法级别 off/on 无副作用（ALL console 条目状态段仍全 on + proxy_on）")
 
     # ============ Section 7: 异常路径（空包 / 错类型包 / 未知端点） ============
     r, out = capture(lambda: YomkApi.server().url("/YomkLogger/console_log").request())
-    check(r.status == ResStatus.eNo, "console_log nullptr 包返回 eNo")
+    check(r.status == ResStatus.eNo, "console_log 空包返回 eNo")
     check(r.msg == "pkg is null or pkg is not Log", "console_log 空包契约消息")
     r = YomkApi.server().url("/YomkLogger/console_log").msg("wrong").request()
     check(r.status == ResStatus.eNo, "console_log 错类型包返回 eNo")
     check(r.msg == "pkg is null or pkg is not Log", "console_log 错类型包契约消息")
     check(YomkApi.server().url("/YomkLogger/file_log").request().status == ResStatus.eNo,
-          "file_log nullptr 包返回 eNo")
+          "file_log 空包返回 eNo")
     check(YomkApi.server().url("/YomkLogger/write_file_log").request().status == ResStatus.eNo,
-          "write_file_log nullptr 包返回 eNo")
+          "write_file_log 空包返回 eNo")
     check(YomkApi.server().url("/YomkLogger/create_file_logger").request().status == ResStatus.eNo,
-          "create_file_logger nullptr 包返回 eNo")
+          "create_file_logger 空包返回 eNo")
     check(YomkApi.server().url("/YomkLogger/logger").request().status == ResStatus.eNo,
-          "logger nullptr 包返回 eNo")
+          "logger 空包返回 eNo")
     # console_log 空 logger 名 -> 回退 main 分支（raw 注入才可触达）
     r, out = capture(lambda: raw_logger(
         "/YomkLogger/console_log", Log(Log.eInfo, "lg1_s7_empty_logger_marker", "")))
@@ -485,18 +484,18 @@ def main():
     check(r.status == ResStatus.eNo and r.msg == "file logger name is empty.",
           "file_log 空 logger 名返回 eNo + 契约消息")
     check("file logger name is empty." in out, "file_log 空名错误提示")
-    # LOGGER_INFO_LOGGER 空名 -> eNo（P2-a 堵死空名注册后无幽灵 key）
+    # LOGGER_INFO_LOGGER 空名 -> eNo（空名注册被拒后无幽灵 key）
     empty_name_info = log_mgr().console("").get_info()
     check(empty_name_info.status == ResStatus.eNo and empty_name_info.msg == "logger not found.",
-          "LOGGER 空名返回 eNo + logger not found.（P2-a 处置后无幽灵 key）")
+          "LOGGER 空名返回 eNo + logger not found.")
     # 未知端点 -> invoke 路由层 eNo
     unknown = YomkApi.server().url("/YomkLogger/no_such_func").request()
     check(unknown.status == ResStatus.eNo, "未知端点返回 eNo（invoke not found）")
     check(unknown.msg == "function not found: /no_such_func",
           "未知端点契约消息（路由剥离服务前缀）")
 
-    # ============ Section 8: logger 删除接口（LG4 /delete_logger 全语义） ============
-    # 8.1 空名 -> eInvalid（与 createFileLogger 的 P2-a 空名惯例同口径）
+    # ============ Section 8: logger 删除接口（/delete_logger 全语义） ============
+    # 8.1 空名 -> eInvalid（与 createFileLogger 的空名惯例同口径）
     r, out = capture(lambda: raw_logger("/YomkLogger/delete_logger", ""))
     check(r.status == ResStatus.eInvalid and r.msg == "logger name is empty.",
           "S8: 删除空名返回 eInvalid + 契约消息")
@@ -615,7 +614,7 @@ def main():
     # 8.7 异常路径：空包 / 错类型包（YomkUnPackPkgResponse 契约分支）
     r_null = YomkApi.server().url("/YomkLogger/delete_logger").request()
     check(r_null.status == ResStatus.eNo and r_null.msg == "pkg is null or pkg is not String",
-          "S8: delete_logger nullptr 包返回 eNo + 契约消息")
+          "S8: delete_logger 空包返回 eNo + 契约消息")
     r_wrong = raw_logger(
         "/YomkLogger/delete_logger", Log(Log.eInfo, "x", "y"))
     check(r_wrong.status == ResStatus.eNo and r_wrong.msg == "pkg is null or pkg is not String",
@@ -701,7 +700,7 @@ def main():
     check(log_mgr().console(tag_a).level(Log.eInfo).enable() == ResStatus.eOk,
           "S9e: 具名恢复 tagA 返回 eOk（状态复原）")
 
-    # 9.6 全局态端点基线：global_state 端点解 LoggerState + 无参翻转联动
+    # 9.6 全局态端点初始值：global_state 端点解 LoggerState + 无参翻转联动
     g = log_mgr().console().status()
     check(g.status == ResStatus.eOk and g.msg == "ok",
           "S9f: logger_info_global 返回 eOk + ok")
@@ -805,7 +804,7 @@ def main():
     check(log_mgr().file(fl_name).level(Log.eInfo).enable() == ResStatus.eOk,
           "S10e: 具名恢复 eOk（状态复原）")
 
-    # 10.6 全局态端点基线：console·file global_state 两套主闸独立 + 无参翻转联动
+    # 10.6 全局态端点初始值：console·file global_state 两套主闸独立 + 无参翻转联动
     g = log_mgr().file().status()
     check(g.status == ResStatus.eOk and g.msg == "ok",
           "S10f: logger_info_global(\"file\") 返回 eOk + ok")
@@ -844,7 +843,7 @@ def main():
         file_proxy_hits.append(1)
         return not file_proxy_state["intercept"]
 
-    # 11.1 基线：两套代理独立直证（文件代理未设置 + 控制台代理 S3 重装态）
+    # 11.1 起点：两套代理独立直证（文件代理未设置 + 控制台代理 S3 重装态）
     gf = log_mgr().file().status()
     gc = log_mgr().console().status()
     check(gf.status == ResStatus.eOk and gc.status == ResStatus.eOk
@@ -878,7 +877,7 @@ def main():
     check(log_mgr().file().status().data.proxy_on,
           "S11c: GLOBAL(file) 状态段 proxy_on")
 
-    # 11.4 卸载（LG6 镜像）：卸载前先切回拦截态，确认代理确实在链路上
+    # 11.4 卸载（镜像控制台卸载流程）：卸载前先切回拦截态，确认代理确实在链路上
     file_proxy_state["intercept"] = True
     r = raw_logger("/YomkLogger/file_log", Log(Log.eInfo, "lg1_s11d_pre_unload_marker", fl_name, "lg1s11"))
     check(r.status == ResStatus.eOk and r.msg == "file log proxy is success.",

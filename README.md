@@ -439,12 +439,12 @@ examples/
 
 - 依赖：`python3 -m pip install --user ruff mypy`（缺失时报错并给出安装提示）
 - 日志落盘 `test/test_logs/<时间戳>/`（`ruff.log` / `mypy.log` / `summary.log`），与测试日志同层
-- 白名单（书面债务，与 C++ 侧 cppcheck `--suppress` 清单同构）：ruff 豁免 F401（伞门面 re-export）；mypy 豁免 assignment / misc / attr-defined / var-annotated 四个错误码（源码未回填类型注解），明细见脚本头部行为注记
+- 白名单（书面债务）：ruff 豁免 F401（伞门面 re-export）；mypy 豁免 assignment / misc / attr-defined / var-annotated 四个错误码（源码未回填类型注解），明细见脚本头部行为注记
 - 任一档检出告警 → `[FAIL]` 摘要 + 非零退出码；全部零告警 → `[PASS]`
 
 ### 示例冒烟门禁（test/run_examples.sh）
 
-`examples/` 六枚示例是各文档"完整示例"节指向的用户第一入口，独立于单元回归设运行级冒烟闸（S29；C++ 安装回归只校验示例二进制存在性、不运行，Python 示例不随库安装故以"真跑通"为等价更强口径）：
+`examples/` 六枚示例是各文档"完整示例"节指向的用户第一入口，独立于单元回归设运行级冒烟闸（示例不随库安装，以"真跑通"为验收口径）：
 
 ```bash
 ./test/run_examples.sh                   # 默认单例超时 300s
@@ -454,7 +454,7 @@ examples/
 
 - 逐例在独立临时目录全量运行（stdin=/dev/null，示例末尾 `input()` 有 `isatty` 守卫）；任一例非零退出/超时 → **立即停止**并尾打日志
 - 日志落盘 `test/test_logs/<时间戳>_examples/`（含 `summary.log`）；清单带总数守卫（6 项声明）
-- 闭环验收口径 = `run_tests.sh` **27/27** 且 `run_examples.sh` **6/6**
+- 验收口径 = `run_tests.sh` **27/27** 且 `run_examples.sh` **6/6**
 
 ---
 

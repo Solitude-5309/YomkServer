@@ -1,23 +1,22 @@
 """
-TestYomkWeakFunc.py —— YomkService.weak_func 弱绑定生命周期语义测试（正式全面测试）
+TestYomkWeakFunc.py —— YomkService.weak_func 弱绑定生命周期语义测试
 
-覆盖内容（对齐 main TestYomkWeakFunc.cpp 4 节）：
+覆盖内容（4 节）：
 1. 存活路径：四类丢弃形态回调均真实执行（"none"/"response"/"check"/默认返回值），
    install_func 自动弱绑定经 invoke 命中执行
 2. 销毁丢弃（引用计数路径）：服务实例失去引用（del + gc.collect()）后回调丢弃——
-   "none" 不执行且返回 None（main Ret{} 默认值的 None 形态映射）、"response" 返回
+   "none" 不执行且返回 None（默认返回值形态映射为 None）、"response" 返回
    eNo+契约消息、"check" 默认放行 eAccept
 3. 删除即停（注销标志路径）：持引用不释放经框架 del_service 置位注销标志，回调与
    自动弱绑定 invoke 立即丢弃（双层判活标志层独立于引用计数生效）
 4. 丢弃不执行实证：所有丢弃用例均以副作用计数未变化断言，而非仅看返回值
 
-语言机制说明（非功能缺口）：
-- main 第 4 节"构造期告警分支"剔除：python 无 enable_shared_from_this 机制，
+语言机制说明：
+- 不存在构造期告警分支：python 无 shared_from_this 类机制，
   weakref 在 __init__ 内即生效，不存在"构造期绑定永久失效"场景；"绑定后对象销毁"
-  契约由第 2 节引用计数路径等价承载
-- main 按静态返回类型的四分支丢弃契约（void/YomkResponse/ECheckStatus/Ret{}）映射为
-  weak_func 的 discard 声明参数（"none"/"response"/"check"），python 动态类型下由
-  调用方声明丢弃形态
+  契约由第 2 节引用计数路径承载
+- 丢弃形态不设按静态返回类型的分支（python 动态类型）：由调用方经
+  weak_func 的 discard 声明参数（"none"/"response"/"check"/默认返回值）指定
 
 说明：不依赖单例与服务器生命周期，YomkServer.create 直接持有，服务由测试本地变量
 控制销毁时机（避开 init 单例约束，单进程即可覆盖全部场景）
@@ -39,7 +38,7 @@ from YomkServerPy import (
 
 g_failed = 0
 
-# 弱绑定丢弃契约消息片段（四种丢弃形态共用，对齐 main DISCARD_MSG）
+# 弱绑定丢弃契约消息片段（四种丢弃形态共用）
 DISCARD_MSG = "deleted or unregistered"
 
 
@@ -54,7 +53,7 @@ def check(cond, msg):
 
 
 class BindSrv(YomkService):
-    """弱绑定演示服务：供存活/销毁/注销场景绑定回调（对齐 main BindSrv）"""
+    """弱绑定演示服务：供存活/销毁/注销场景绑定回调"""
 
     def __init__(self, server):
         super().__init__(server)
@@ -74,7 +73,7 @@ class BindSrv(YomkService):
         return YomkResponse(ResStatus.eOk, "macro")
 
     def make_macro_cb(self):
-        # weak_func 显式成员绑定（外流注册主路径，对齐 main YomkBindWeakSelf 宏）
+        # weak_func 显式成员绑定（外流注册主路径）
         return self.weak_func(self.macro_work)
 
 
@@ -150,7 +149,7 @@ def test_destroy_discard(server):
     check(counts["check"] == 0 and status == CheckStatus.eAccept,
           "销毁：check 形态回调丢弃，默认放行 eAccept")
     check(counts["int"] == 0 and int_ret is None,
-          "销毁：默认丢弃形态回调丢弃，返回 None（main Ret{} 默认值形态映射）")
+          "销毁：默认丢弃形态回调丢弃，int 形态调用返回 None（丢弃调用无返回值，默认 None）")
     check(macro_resp.status == ResStatus.eNo and DISCARD_MSG in macro_resp.msg,
           "销毁：weak_func 绑定回调丢弃")
 

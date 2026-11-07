@@ -6,7 +6,7 @@
 #   ./test/run_tests.sh --prefix DIR 测试库产物目录（缺省 <仓库根>/build/prefix）
 #   ./test/run_tests.sh --timeout N  单测试超时秒数（默认 300，--full 默认 900）
 #   ./test/run_tests.sh -h|--help    打印本说明
-# 测试库产物目录（对齐 main run_tests.sh 只消费仓库内本地产物的设计，无系统安装回退）:
+# 测试库产物目录：只消费仓库内本地产物，无系统安装回退:
 #   默认 <仓库根>/build/prefix；--prefix DIR 可显式指定其他产物目录
 #   产物缺失时报错并给出构建安装命令，不会静默回退系统安装（避免多份产物不同步时跑旧库）
 # 行为:
@@ -19,22 +19,6 @@
 #      测试内取根、独立运行回退系统临时目录）；启动时整目录重建（兜底上次崩溃遗留），
 #      退出（含失败/中断/超时）时整目录删除，不留任何临时产物
 # 测试程序风格约定: 退出码 0=全部通过，非 0=存在失败用例（[FAIL] 行输出）
-# 书面豁免台账（对齐报告 P2 待决项落地记录，语言差异/间接覆盖，非缺陷）:
-#   S17 TestYomkSimpleThreadPool 等价物: Python 无公开线程池类型（内部
-#       ThreadPoolExecutor，随 init 异步池装配）；排空/异常不中断/churn 行为由
-#       TestYomkShutdownSeq（关闭排空 join）与 TestYomkConcurrency（异步压测）
-#       间接覆盖，不设直测等价物
-#   S19 lsan.supp: Python 托管内存无 LSan 概念；可选内存回归口径:
-#       PYTHONMALLOC=debug ./test/run_tests.sh（调试分配器，记录不设为门禁）
-#   微差台账（闭环 10 审计回灌，语言形态差异或纯诊断文本，不设修）:
-#       float 折叠渲染: C++ 日志内容 %g 6 位有效数字，Python str() 全精度
-#       （3.14159265358979 vs 3.14159），系格式化语言差异，测试各自口径断言
-#       diag 文案 5 处（非契约、无断言覆盖）: installFunc 空名/空函数、
-#       invoke 缺串 "YomkInstallFunc"、funcInfo 尾部句号、FileLogger
-#       "fs error" 措辞——均为诊断文本，不影响返回值/响应契约
-#       install_env example-smoke（S29 已落地，闭环 11）: C++ 安装回归只校验示例
-#       二进制存在性（install_env.sh §1，不运行）；Python 示例不随库安装、存在性
-#       无对应物，改设 test/run_examples.sh 运行级冒烟闸（6/6，验收口径 27/27 且 6/6）
 
 set -u
 
@@ -49,7 +33,7 @@ FULL_MODE=0
 USER_TIMEOUT=0
 
 usage() {
-    sed -n '2,37p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 }
 
@@ -104,10 +88,10 @@ trap 'echo ""; echo "被用户中断"; exit 130' INT TERM
 ensure_test_tmp_root
 
 # -------------sl 2. 测试库产物目录并设置 PYTHONPATH ----------------
-# 对齐 main run_tests.sh 设计：只消费仓库内本地产物（<仓库根>/build/prefix，--prefix 可覆盖），
+# 只消费仓库内本地产物（<仓库根>/build/prefix，--prefix 可覆盖），
 # 不回退系统安装（YOMK_PREFIX_PATH / /opt/yomk）——避免多份产物不同步时测试静默跑旧库；
-# 产物缺失时报错并给出构建命令（对齐 main 的 build_hint 门禁；
-# 构建期直接产出测试产物到 build/prefix，与 main 一致不含 install 步骤）
+# 产物缺失时报错并给出构建命令（build_hint 门禁，先构建后测试；
+# 构建期直接产出测试产物到 build/prefix，不含 install 步骤）
 build_hint() {
     echo "cmake -S ${REPO_DIR} -B ${REPO_DIR}/build -DCMAKE_BUILD_TYPE=Release && cmake --build ${REPO_DIR}/build -j"
 }
@@ -131,8 +115,8 @@ export PYTHONPATH="${PY_SITE_DIR}:${PYTHONPATH}"
 
 # 测试清单：按模块分组、快->慢，stress 类压尾（项带模块子目录前缀，test/<模块>/<名>.py；
 # 新增测试在此登记；模块轮测试追加对应模块分组与条目）
-# 当前登记总数: 27 项（S20 声明；数组闭合后有自检守卫，声明与清单漂移即报错退出，
-# 复刻 C++ 侧"注释 26 / 实际 28"漂移教训的结构性防御）
+# 当前登记总数: 27 项（数组闭合后有自检守卫，声明与清单漂移即报错退出，
+# 作为登记数漂移的结构性防御）
 TESTS=(
     # YomkServer 模块（基础服务框架）
     YomkServer/TestYomkUmbrella
@@ -169,7 +153,7 @@ TESTS=(
     YomkLogger/TestYomkLoggerStress
 )
 
-# -------------sl 2b. 总数自检守卫（S20） ----------------
+# -------------sl 2b. 总数自检守卫 ----------------
 DECLARED_TEST_COUNT=27
 if [ "${#TESTS[@]}" -ne "${DECLARED_TEST_COUNT}" ]; then
     echo "错误: TESTS 登记数 ${#TESTS[@]} 与声明总数 ${DECLARED_TEST_COUNT} 不一致，登记新测试时须同步更新本文件声明"

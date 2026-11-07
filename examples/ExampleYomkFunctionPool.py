@@ -38,9 +38,9 @@ ExampleYomkFunctionPool —— YomkFunctionPool 动态函数池示例：机械�
        /YomkFunctionPool/all 确认清单已空，班次闭环。
 
 工具函数规划（跨场景流转，模拟多模块共享同一批无状态工具）：
-  tool.payloadSum  2 参注册        三轴负载合计（入参各轴 kg 列表，出参合计）
-  tool.handshake   4 参注册        班次握手（入参操作工名，出参问候语）
-  tool.handshake   3 参再注册(V2)  热替换为升级版问候（场景 4）
+  tool.payloadSum  无元数据登记            三轴负载合计（入参各轴 kg 列表，出参合计）
+  tool.handshake   声明类型+说明登记       班次握手（入参操作工名，出参问候语）
+  tool.handshake   声明类型再登记(V2)      热替换为升级版问候（场景 4）
 
 运行方式：PYTHONPATH=src python3 examples/ExampleYomkFunctionPool.py
 """
@@ -121,11 +121,11 @@ def log_verify(text):
 # CALL 在调用方线程同步执行，函数体的 arm.tool 日志会先于调用方结果行出现。
 # ---------------------------------------------------------------------------
 
-# 负载合计工具：跨模块共享的无状态计算函数（场景 1 以 2 参形式登记）。
+# 负载合计工具：跨模块共享的无状态计算函数（场景 1 以无元数据形态登记）。
 # 入参为各轴负载列表（kg），合计结果同时放进 msg 与 data——调用方两者都能拿到
 def payload_sum(pkg) -> YomkApi.YomkResponse:
     # 入参守卫：pkg 为 None 或不是字符串列表时自动返回 eNo
-    # （C++ 侧为解包宏判空的统一契约，python 侧为等价的入口守卫，见场景 3）
+    # （守卫置于函数入口，判空与拒绝文案同处一地，调用方空参只会收到拒绝不会异常中断，见场景 3）
     if not isinstance(pkg, list) or not all(isinstance(load, str) for load in pkg):
         return YomkApi.YomkResponse(
             YomkApi.ResStatus.eNo, " pkg is null or pkg is not StringArray. ")
@@ -140,7 +140,7 @@ def payload_sum(pkg) -> YomkApi.YomkResponse:
     return YomkApi.YomkResponse(
         YomkApi.ResStatus.eOk, f"payload={total_kg}kg", str(total_kg))
 
-# 班次握手工具：演示带元数据的登记与调用（场景 2 以 4 参形式登记，场景 4 被热替换）
+# 班次握手工具：演示带元数据的登记与调用（场景 2 以类型+说明形态登记，场景 4 被热替换）
 def handshake(pkg) -> YomkApi.YomkResponse:
     if not isinstance(pkg, str):
         return YomkApi.YomkResponse(
@@ -171,7 +171,7 @@ def show_arm_tool_register():
     log_verify("arm.tool 日志夹在开始行与结果行之间——CALL 在调用方线程同步执行；"
                "返回值即函数返回值，msg 与 data 双份携带 payload=25kg")
 
-# 场景 2：带元数据登记（4 参：msg_name + 说明）与单查确认
+# 场景 2：带元数据登记（msg_name + 说明）与单查确认
 def show_arm_tool_meta():
     log_scene(
         2,
@@ -180,7 +180,7 @@ def show_arm_tool_meta():
         "班次握手工具登记时声明期望消息类型与用途说明：msg_name 与说明仅作内省"
         "元数据，调用时框架不做类型校验；/YomkFunctionPool/name 单查可逐字段读取元信息。")
 
-    log_action("登记班次握手工具 tool.handshake（带元数据）", "/YomkFunctionPool/register tool.handshake (4参)",
+    log_action("登记班次握手工具 tool.handshake（带元数据）", "/YomkFunctionPool/register tool.handshake (类型+说明)",
                lambda: fn_pool().fn_name("tool.handshake").fn(handshake).msg_name("String").description("班次握手：向指定操作工回执问候").install())
 
     log_action_start("查看握手工具元信息")
@@ -222,7 +222,7 @@ def show_arm_tool_hot_swap():
         log().tag("arm.tool").info(f"班次握手工具 V2 执行：向 {pkg} 升级问候")
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "shift hello V2, " + pkg)
 
-    log_action("热替换班次握手工具 tool.handshake（V2）", "/YomkFunctionPool/register tool.handshake (V2, 3参)",
+    log_action("热替换班次握手工具 tool.handshake（V2）", "/YomkFunctionPool/register tool.handshake (V2, 带声明类型)",
                lambda: fn_pool().fn_name("tool.handshake").fn(handshake_v2).msg_name("String").install())
     log_verify("already exist 提示 + eOk：同名重复注册即运行时热替换，无需先注销")
 

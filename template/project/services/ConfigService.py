@@ -57,7 +57,7 @@ class ConfigService(YomkApi.YomkService):
         return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "ok")
 
     def reload_config(self, pkg):
-        # 对齐 C++ ConfigService reload：先回取 context 中的 config_path，缺失即 eNo
+        # reload 先回取 context 中的 config_path，缺失即 eNo
         self.config_path = ctx().key(CTX_CONFIG_PATH).msg().with_default("").get()
         if not self.config_path:
             return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "config_path not found in context")

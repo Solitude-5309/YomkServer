@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 TestYomkLoggerLoc.py —— 日志位置前缀（source location）链式测试
-（闭环 8 S15，蓝本 C++ Test/YomkLogger/TestYomkLoggerLoc.cpp 393 行 4 节）
+（4 节）
 
 覆盖内容：
 1. S1 默认配置行号精确性：`log()` 入口捕获调用行 (file,line,func)，六级别 +
-   tag 变体全 Succeeded，行号与发射行严格一致（inspect/currentframe + 3 等价
-   C++ __LINE__+1）；双链一致性（缺省链 vs tag("main") 链归一化后逐字节相等）；
+   tag 变体全 Succeeded，行号与发射行严格一致（inspect.currentframe 取
+   调用行）；双链一致性（缺省链 vs tag("main") 链归一化后逐字节相等）；
    零 body（仅前缀成行）与多参折叠（"i= 42 j= 3.5 end"）精确断言
 2. S2 文件落盘读回：log_mgr().dir().file().create() → to_sink 六级 + tag 变体
    发射 Succeeded → flush() → 读 <dir>/lgL_s2.log 断言各级别行（[N] 前缀在内容
@@ -18,10 +18,9 @@ TestYomkLoggerLoc.py —— 日志位置前缀（source location）链式测试
 4. S4 tag 链直调隔离 + 类型折叠护栏：tag("lgL_s4") 四级 Succeeded + marker；
    变参 True/False/int/大整数/float/自定义 str 折叠为单空格串
 
-Python 移植注记（与 C++ 蓝本的如实差异）：
-- 全关组合 C++ 控制台为双空格（"tag 段 + 空前缀 + 空格 + 消息" quirk），
-  Python `_chain_log_content` 空前缀不加导空格 → 单空格口径断言；
-- char/unsigned long long 字面量以 Python 等价物替换（bool/int/float/自定义类）；
+实现注记：
+- 全关组合为单空格口径（`_chain_log_content` 空前缀不加导空格）；
+- 变参折叠以 bool/int/float/自定义类（str 折叠）承载；
 - 矩阵组合与文件落盘的期望串用正则 \\d+ 承载行号（S1 已单独证明行号精确性）。
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
@@ -77,7 +76,7 @@ def main():
     Succeeded = YomkApi.ResStatus.Succeeded
     tmp_dir = os.path.join(test_tmp_root(), "yomk_logger_loc_" + str(os.getpid()))
 
-    # 初始化框架（发射链依赖已 init 的服务路由；蓝本 server().async_thread(1).init()）
+    # 初始化框架（发射链依赖已 init 的服务路由：server().async_thread(1).init()）
     YomkApi.server().async_thread(1).init()
 
     # ============ S1 默认配置：行号精确性 / 双链一致性 / 折叠 ============
@@ -182,8 +181,8 @@ def main():
     check(ret == Succeeded, "S2: remove Succeeded（注：不删磁盘 .log，随临时目录清理）")
 
     # ============ S3 位置开关 8 组合矩阵 ============
-    # (show_file, show_line, show_func, marker 码, 期望内容正则)——蓝本组合表；
-    # 全关组合 C++ 双空格 quirk 在 Python 为单空格（注记）
+    # (show_file, show_line, show_func, marker 码, 期望内容正则) 组合表；
+    # 全关组合为单空格口径（空前缀不加导空格）
     combos = [
         (False, True, False, "-l-", r"\[\d+\] lgL_s3_-l-"),
         (True, True, False, "fl-",

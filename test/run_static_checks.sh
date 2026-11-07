@@ -9,11 +9,11 @@
 #   1. ruff 档: 全量扫描 src/ 库源码，--isolated 消除用户级配置干扰，
 #      规则集 E4/E7/E9/F（语法错误/可疑代码/F 未用导入等）零告警验收；
 #      白名单: --ignore F401 —— YomkApi 伞门面 re-export 与 typing 冗余导入
-#      属有意形态（11 处），与 C++ 蓝本 cppcheck --suppress 清单同为书面债务
+#      属有意形态（11 处），登记为书面债务
 #   2. mypy 档: 检查 src/YomkApi.py 与 src/YomkServerPy.py 两源文件，
 #      --ignore-missing-imports + --follow-imports=silent（依赖面注解不作门禁）；
 #      白名单: 豁免 4 个错误码 assignment(13)/misc(8)/attr-defined(2)/var-annotated(2)
-#      合计 25 处 = src 未回填类型注解的书面债务，后续闭环收窄
+#      合计 25 处 = src 未回填类型注解的书面债务，随注解回填逐步收窄
 #   3. 任一工具检出告警 → 输出 [FAIL] 摘要并以非零码退出；全部零告警 → 输出 [PASS]
 #   4. 日志落盘: test/test_logs/<时间戳>/ruff.log + mypy.log + summary.log
 # 依赖: ruff、mypy（缺失时报错并给安装提示: python3 -m pip install --user ruff mypy）
@@ -55,7 +55,7 @@ fi
 
 FAILED=0
 
-# 日志落盘（与 C++ 蓝本 Test/run_static_checks.sh 同形态）：test_logs/<时间戳>/ 下
+# 日志落盘：test_logs/<时间戳>/ 下
 # ruff.log / mypy.log / summary.log（与 run_tests.sh 的 test_logs/tmp 同居一层）
 LOG_ROOT="${SCRIPT_DIR}/test_logs/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "${LOG_ROOT}"
@@ -64,7 +64,7 @@ echo "-- 日志目录: ${LOG_ROOT}"
 
 # ---------- ruff：src 库源码全量零告警验收（清单 + 逐文件进度由 ruff 自身输出承载） ----------
 if [ ${RUN_RUFF} -eq 1 ]; then
-    echo "-- ruff 检测文件清单（src/ 库源码，镜像 C++ src+include 范围口径）:"
+    echo "-- ruff 检测文件清单（src/ 库源码全量）:"
     mapfile -t RUFF_FILES < <(find "${REPO_DIR}/src" -type f -name '*.py' | sort)
     for f in "${RUFF_FILES[@]}"; do
         echo "--   ${f#"${REPO_DIR}/"}"

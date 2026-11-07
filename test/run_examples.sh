@@ -1,22 +1,20 @@
 #!/bin/bash
-# YomkServerPy 示例冒烟门禁（S29，闭环 11）
+# YomkServerPy 示例冒烟门禁
 # 用法:
 #   ./test/run_examples.sh              默认超时 300s/例
 #   ./test/run_examples.sh --prefix DIR 测试库产物目录（缺省 <仓库根>/build/prefix）
 #   ./test/run_examples.sh --timeout N  单示例超时秒数（默认 300）
 #   ./test/run_examples.sh -h|--help    打印本说明
 # 口径:
-#   1. C++ 基线安装回归对示例只做"产物存在性"校验（Scripts/install_env.sh §1，不运行）；
-#      Python 示例不随库安装（源码树直接运行，CMakeLists §10 成文），存在性无对应物，
-#      本脚本以**运行级冒烟**为等价且更强的把关：六例逐一经 PYTHONPATH=build/prefix
+#   1. 示例不随库安装（源码树直接运行，CMakeLists §10 成文），存在性校验无物可查，
+#      故本闸为**运行级冒烟**：六例逐一经 PYTHONPATH=build/prefix
 #      在独立临时目录全量跑通（stdin=/dev/null，示例末尾 input() 有 isatty 守卫）
 #   2. 示例是各文档"完整示例"节指向的用户第一入口，运行时面（辅助函数展开、import
 #      接线、非交互退出）断代即视为回归，失败即停
 #   3. 日志落盘: test/test_logs/<时间戳>_examples/<示例名>.log + summary.log
 #   4. 与单元回归（run_tests.sh，27 项）分闸：本脚本不并入 TESTS 数组，
-#      闭环验收口径 = 27/27 且 6/6
-#   5. 范围口径：本闸只保运行时正确 + 标签链式化终态（闭环 10 A6）不回退；
-#      "2 参 START"等 C++ 时代叙事话术的文案现代化不在本闸范围，归后续文档环
+#      验收口径 = 27/27 且 6/6
+#   5. 范围口径：本闸只保运行时正确 + 标签链式化终态不回退
 
 set -u
 
@@ -27,7 +25,7 @@ PREFIX=""
 TIMEOUT_SECS=300
 
 usage() {
-    sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 }
 

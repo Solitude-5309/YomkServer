@@ -255,7 +255,7 @@ def show_arm_silent_mode():
     log_resp("/YomkLogger/logger main(console)", resp)
     if resp.data is not None:
         log_logger_info("/YomkLogger/logger", resp.data)
-    log_verify("四级别全 on（代理未安装 proxy=off）：无参 OFF/ON 作用于全局主闸，"
+    log_verify("四级别全 on（代理未安装 proxy=off）：无参 on/off_console_log_by_level 作用于全局主闸，"
                "状态段报逐器门控层真值（本段未用具名开关，两者一致）")
 
     # 逐器静默：具名开关仅门控单个日志器，全局主闸不受影响（两层归因现场演示）
@@ -275,7 +275,7 @@ def show_arm_silent_mode():
     log_resp("/YomkLogger/logger arm.joint(console)", resp)
     if resp.data is not None:
         log_logger_info("/YomkLogger/logger arm.joint", resp.data)
-    log_verify("主闸 info=on 而条目 info=off——两层状态各自真实呈现：输出被关是逐器层所致，具名 ON 即恢复")
+    log_verify("主闸 info=on 而条目 info=off——两层状态各自真实呈现：输出被关是逐器层所致，具名 on_console_log_by_level 即恢复")
     log_action("逐器恢复：仅重开 arm.joint 的 INFO（具名恢复）", "console(arm.joint).level(Info).enable()",
                lambda: log_mgr().console("arm.joint").level(Log.eInfo).enable())
     log_action("关节模块恢复上报（INFO，输出回归）", "log().tag(arm.joint).info()",

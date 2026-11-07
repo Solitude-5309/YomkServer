@@ -220,7 +220,7 @@ class MyService(YomkApi.YomkService):
 
 - **deinit 的四个触发时机**：`srv_name(n).remove()` 删除单个服务；`shutdown()` 关闭全部服务；同名服务被 `add()` 热替换（旧服务先置位注销标志并 deinit，新服务随后 init）；进程退出 atexit 兜底（忘记 shutdown 时）。
 - **关闭后不支持二次 init**：init 进程内幂等由 once 标志把关，`shutdown()` 之后再次 `init()` 不会重建服务器，全部入口回到未初始化守卫态（终结动作 `Invalid`/`-1`、异步静默丢弃、类型化读回退默认值；守卫消息 `"YomkServer is not init"`）。
-- **与 C++ 语义现已对齐**：Python 门面在 `shutdown()` 时置空单例，`instance()` 返回 `None`；C++ 当前基线 shutdown 内同样 `setServer(nullptr)` 返回空引用（早期"C++ 保留已关闭实例快照"的差异记载已随 C++ 版本演进而失效）。
+- **`shutdown()` 置空单例**：门面在 `shutdown()` 时置空单例，`instance()` 返回 `None`，不保留已关闭实例快照。
 - `version()` / `instance()` / `shutdown()` 免初始化安全。
 
 ## 编程规范

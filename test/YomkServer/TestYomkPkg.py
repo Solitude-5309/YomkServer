@@ -9,23 +9,23 @@ S3. Event / EventLoopPkg 结构契约：默认构造字段、带参构造透传�
     serviceFunc、m_eventId 初值（入队时由框架分配）、m_waitCallback 赋值执行、tag 透传
 S4. YomkResponse 契约：默认构造（eInvalid/空 msg/None data）、枚举值序
     （eInvalid=-1/eOk=0/eNo=1）、双参构造、三参构造 data 透传
-S5. 框架结构体默认值（python 对应子集）：Function/CallFunction/Context/
+S5. 框架结构体默认值：Function/CallFunction/Context/
     ContextChecker/ContextMonitor/FuncInfo/LogFile/Log/ConsoleLogProxy
     默认构造与字段
 
-语言机制说明（剔除口径，非缺陷；对齐报告 S12/S13 豁免记录）：
-- python 方针明确消息包为普通类（宏与 dynamic_pointer_cast 体系不复刻），
+语言机制说明：
+- 消息包为普通类（无类型注册与运行期转换体系），
   框架侧无标准类型消息包被测对象，不设对应用例
-- 30 种标准类型包（YomkMsgs.h Bool..StringArray 逐族）豁免理由：python 以原生
+- bool/int/float/str/list 等 30 种标准类型消息不设对应用例：原生
   bool/int/float/str/list 实例直传，属性面与 str() 呈现即类型本身，消息经服务
   路由全程对象直递（无序列化 wire 层），类型包枚举无承载必要
-- 7 个 List 包豁免理由：原生 list 即等价物（元素类型自由，与 C++ List 包
-  逐族定型的差异同属上条 wire 层缺失的语言差异）
-- unpack 体系豁免理由：C++ unpack<T>(pkg) 按运行期类型名解包（空/不匹配返回
-  nullptr）；python 属性直读即取值路径，类型守卫由调用方 isinstance 自备，
-  ctx().msg(cls) 类型指定位仅作内省元数据（S13 豁免，详见 docs/YomkMsg.md）
-- VoidPointer 为 C 语言特有结构（void* 裸指针），python 无对应类型，
-  保留书面差异；LogFile/Log/ConsoleLogProxy 已随 Logger 模块轮落地并回填断言
+- 7 个列表类消息包不设对应用例：原生 list 即等价物（元素类型自由，无逐族
+  定型要求；差异同属上条 wire 层缺失的语言差异）
+- 类型解包体系不设对应用例：python 属性直读即取值路径，类型守卫由调用方
+  isinstance 自备，ctx().msg(cls) 类型指定位仅作内省元数据
+  （详见 docs/YomkMsg.md）
+- void* 裸指针形态为 C 系语言特有，python 无对应类型，不设对应用例；
+  LogFile/Log/ConsoleLogProxy 已随 Logger 模块落地并覆盖断言
 - Event 默认构造 m_response 初始为 None，语义为"未执行时 response 为空"
 
 风格：纯脚本 + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
@@ -151,7 +151,7 @@ def s5_struct_defaults():
     check(fi.func_name == "" and fi.msg_name == "",
           "FuncInfo 默认：func_name/msg_name 空")
 
-    # Log 族三结构（Logger 模块轮回填）
+    # Log 族三结构
     lf = LogFile()
     check(lf.m_logger == "" and lf.m_dir == "",
           "LogFile 默认：logger/dir 空")

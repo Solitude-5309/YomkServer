@@ -11,7 +11,7 @@ TestYomkEventLoopLifecycle.py - EventLoop 三段语义（start 重启续跑 / st
 8.   未运行幂等 / 停止态拒收（rc=2）/ 默认处理函数 / infoLine 分支（[MsgX]、空 tag "-"、tagCount=0 与超队列）
 9.   API 层路径（门面 event_loop_*）：停止保留 / 重启续跑 / 销毁移除 / POST_WAIT 同步回传 / 不存在名 eNo /
      停止态投递 eNo / INFO_LOOP 数字路径与越界回退 / INFO_LOOPS / INFO_ALL / 空名与超长名边界
-11.  delService("/YomkEventLoop") 残留 loop 收尾与重注册（deinit override 承载析构兜底链；
+11.  delService("/YomkEventLoop") 残留 loop 收尾与重注册（服务 deinit 承载析构兜底链；
      new_service 无参重注册后全链路恢复）
 10.  postWait×destroy 等待者释放：销毁清空队列时触发被丢弃事件的等待回调（3s 看门狗）
 12.  析构兜底释放等待者：不调 destroy 直接失去引用——del + gc.collect() 触发 __del__ 兜底，共享释放契约
@@ -513,7 +513,7 @@ def section_11():
     check(event_loop().loop("/L1").start() ==
           ysp.ResStatus.eOk, "启动 /L1（运行中）")
 
-    # 运行中删除内置服务：残留 /L1 loop 经 deinit override 收尾（E4 落地的析构兜底链语言映射），
+    # 运行中删除内置服务：残留 /L1 loop 经服务 deinit 收尾（析构兜底链），
     # del_service 锁外同步调用 deinit——无挂起即证
     check(YomkApi.server().srv_name("/YomkEventLoop").remove()
           == 0, "删除内置 /YomkEventLoop 返回 0")
@@ -600,7 +600,7 @@ def section_12():
           == 0, "post 阻塞事件 g1 返回 0")
     check(wait_gate_started(2.0), "g1 已进入执行（阻塞占住工作线程）")
 
-    # T1 等待者：排队事件 e2 携带标记等待回调（映射差异见文件头；
+    # T1 等待者：排队事件 e2 携带标记等待回调（析构行为差异见文件头；
     # 若 e2 被执行则 waitCallback 亦触发，由"未执行"断言区分）
     e2 = Event("wb", None, counting_handler("e2"), "e2")
     e2.m_waitCallback = marker.set
@@ -609,7 +609,7 @@ def section_12():
         "wb", 3), 2.0), "e2 已入队（pending:1）")
     time.sleep(0.1)  # 确保 e2 稳定排队
 
-    # 前置：显式 stop 退出 worker（E1 语义：stop 仅退线程不清队列——e2 保留）。
+    # 前置：显式 stop 退出 worker（stop 仅退线程不清队列——e2 保留）。
     # python 运行中栈帧持 self 强引用，"worker 执行中析构"不可达；stop 后帧消亡，失去引用方可触发 __del__
     stopper = threading.Thread(target=holder[0].stop)
     stopper.start()
@@ -619,7 +619,8 @@ def section_12():
     stopper.join()
 
     # T2：不调 destroy 直接析构——主线程放弃引用、清空唯一外部引用 + gc.collect() 触发 __del__ 兜底
-    # （Thread(target=self.run) 引用环经 gc 回收；python 无 C++ 析构确定性，映射差异见文件头）
+    # （Thread(target=self.run) 引用环经 gc 回收；python 析构由引用计数+gc 触发，
+    #  确定性口径见文件头）
     loop = None
 
     def resetter():

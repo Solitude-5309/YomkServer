@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-TestYomkUmbrella.py —— 伞门面运行期锚点 + 六域冒烟（闭环 8 S16，
-蓝本 C++ Test/YomkServer/TestYomkUmbrella.cpp 137 行）
+TestYomkUmbrella.py —— 伞门面运行期公开面锚点 + 六域冒烟
 
-C++ 蓝本是"只允许 include umbrella 头"的编译期锚点测试；Python 无编译期，
-等价物为**运行期公开面锚点**：本文件只 `import YomkApi`（伞门面，不 import
-YomkServerPy 本体），断言六域入口返回类型正确、各 builder 公开方法面与
-YomkApi.py 定型清单逐一对表，再走 S1-S8 六域冒烟。
+本文件是**运行期公开面锚点**测试：
+只 `import YomkApi`（伞门面，不 import YomkServerPy 本体），断言六域入口
+返回类型正确、各 builder 公开方法面与 YomkApi.py 定型清单逐一对表，
+再走 S1-S8 六域冒烟。
 
-Python 适配注记：
-- diag 宏豁免：C++ S5 的 YOMK_DIAG_LOG 发射在 Python 以链式发射 Succeeded 代替；
-- msgs::String → 裸 str、shared_ptr → 实例直传（消息包/持有语义框架级差异）；
-- S8 关闭守卫：instance() 返回 None（C++ 当前基线 shutdown 内同置 nullptr，语义已对齐）；
-- 收尾沿用蓝本口径 `ALL PASSED` / `SOME FAILED` + `sys.exit(g_failed)`
-  （非全仓统一的 "all check passed." 行——蓝本此文件即如此）。
+语言机制说明：
+- 日志发射走链式 API：S5 经链式调用发射并返回 Succeeded；
+- String 消息以裸 str 承载、服务实例直接传递（消息包/持有语义的框架形态）；
+- S8 关闭守卫：shutdown 后 instance() 返回 None；
+- 收尾打印 `ALL PASSED` / `SOME FAILED` + `sys.exit(g_failed)`
+  （非全仓统一的 "all check passed." 行——本文件即如此）。
 
 纪律：只 import YomkApi + stdlib（本文件出现 YomkServerPy 直接 import 即违例）。
 """
@@ -147,10 +146,10 @@ def main():
 
     # ============ S2 服务管理 ============
     ret = YomkApi.server().create()
-    check(ret == -1, "S2: 未先 srv() 的 create() == -1（对齐 C++ m_newSvc 守卫，diag 消息）")
+    check(ret == -1, "S2: 未先 srv() 的 create() == -1（未累积服务类，守卫走 diag 提示）")
     ret = YomkApi.server().srv(UmbrellaService, "umb_srv").create()
     check(ret == 0, "S2: srv().create() == 0")
-    # srv_ptr/add 分面：直构造服务实例（YomkService 构造需 server 引用，对齐 C++ shared_ptr 直传）
+    # srv_ptr/add 分面：直构造服务实例（YomkService 构造需 server 引用，实例直传）
     svc = UmbrellaService(YomkApi.server().instance())
     ret = YomkApi.server().srv_name("umb_add").srv_ptr(svc).add()
     check(ret == 0, "S2: srv_ptr().add() == 0")
@@ -181,7 +180,7 @@ def main():
     ret = YomkApi.ctx().key("umb_k").group("main").destroy()
     check(ret == Succeeded, "S4: ctx destroy Succeeded")
 
-    # ============ S5 日志发射（diag 宏豁免注记：以链式发射 Succeeded 代替） ============
+    # ============ S5 日志发射（链式发射返回 Succeeded） ============
     ret = YomkApi.log().tag("umbrella").info("umb s5 emit")
     check(ret == Succeeded, "S5: log().tag().info() Succeeded")
     ret = YomkApi.log_mgr().location().apply()
@@ -223,7 +222,7 @@ def main():
     # ============ S8 关闭守卫 ============
     YomkApi.server().shutdown()
     check(YomkApi.server().instance() is None,
-          "S8: 关闭后 instance() is None（C++ 基线同置 nullptr，语义已对齐）")
+          "S8: 关闭后 instance() is None（单例置空）")
     res = YomkApi.server().all()
     check(res.status == YomkApi.ResStatus.Invalid and
           res.msg == "YomkServer is not init",

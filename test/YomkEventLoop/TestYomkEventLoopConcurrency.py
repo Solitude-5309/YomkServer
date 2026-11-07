@@ -15,8 +15,8 @@ TestYomkEventLoopConcurrency.py - EventLoop 多线程并发正确性测试（白
   start×2 的 worker 置换有终止线程风险，以调用方串行化为契约）；
 - churn 不含 destroy——丢弃已接受事件会破坏计数守恒语义，其等待者释放已由 Lifecycle Section 10 覆盖。
 
-语言机制说明：并发计数用 list.append/len（GIL 单步原子，免锁）；原子自旋门以 threading.Event 承载；
-事件执行序列记录 -> list append 一次性构造快照；计数 handler 闭包持事件对象引用记 m_eventId
+实现机制说明：并发计数用 list.append/len（GIL 单步原子，免锁）；自旋门以 threading.Event 承载；
+事件执行序列用 list append 一次性构造快照；计数 handler 闭包持事件对象引用记事件编号
 （闭包直接持引用，无悬垂风险）。
 
 风格：脚本式 main + 失败计数，退出码 0/1（零第三方依赖）
@@ -33,7 +33,7 @@ import YomkApi
 
 FAILED = 0
 
-# ---- 文件级观测装置（GIL 原子映射：list.append/len 单步原子，免锁）----
+# ---- 文件级观测装置（list.append/len GIL 单步原子，免锁）----
 EXEC_COUNT = []   # 计数 handler 执行总数（S2/S3/S4/S5）
 EXEC_IDS = []     # S1 专用：事件执行时的 eventId（handler 闭包持事件引用）
 

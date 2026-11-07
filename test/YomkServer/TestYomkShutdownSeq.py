@@ -1,5 +1,5 @@
 """
-TestYomkShutdownSeq.py —— async_request + shutdown 排空/幂等/拒新语义测试（正式全面测试）
+TestYomkShutdownSeq.py —— async_request + shutdown 排空/幂等/拒新语义测试
 
 覆盖内容：
 1. 排空语义：shutdown 阻塞至在途异步任务全部执行完毕才返回；池停止后服务
@@ -12,14 +12,14 @@ TestYomkShutdownSeq.py —— async_request + shutdown 排空/幂等/拒新语�
    不无限排空
 
 语言机制说明（非功能缺口）：
-- 弱绑定判活已对齐落地（YomkService.weak_func + deleted/mark_deleted）：
+- 弱绑定判活（YomkService.weak_func + deleted/mark_deleted）：
   install_func 自动弱绑定，排空期弱绑定回调照常执行（shutdown 不置位注销标志），
   与 del_service 删除即停对比实证
 - 析构兜底不适用：python 无确定性析构，兜底语义由显式 shutdown 与进程退出 atexit 承载
 
 说明：call_once 仅约束 YomkAPI.init 单例路径；本测试在类级直测 YomkServer，
 各 YomkServer.create 实例自持独立 shutdown 标志互不影响，单进程多实例即可完成
-全部场景（API 级 shutdown 归门面生命周期测试）；零源码变更
+全部场景（API 级 shutdown 归门面生命周期测试）
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """

@@ -43,7 +43,7 @@ YomkApi.fn_pool().list()
 
 - 同名重复注册即运行时热替换（覆盖旧函数并返回 `Succeeded`），无需先注销；服务端错误日志实串 `"find function name is already exist, update to current function"`。
 - 未注册的名字：`call()` / `uninstall()` 均返回 `Failed`（not-found 归 `Failed` 不归 `Invalid`，与全框架三态约定一致）。
-- `install()` / `uninstall()` 终结命名沿用 C++ 形态（C++ 因 `register` 为保留字定名 `install`，Python 同形保持跨语言一致）。
+- 注册/注销的终结动词定名为 `install()` / `uninstall()`。
 - 入参非法（`install` 空名/空函数等）返回 `Invalid`（服务端契约消息 `"funcName or func is empty"`）。
 - 函数体收到的 `pkg` 即调用侧 `.msg()` 累积的对象；函数返回的 `YomkResponse` 整体作为 `call()` 的返回值回传（`data` 携带结果对象）。
 - 服务成员函数注册到函数池时须用 `self.weak_func(...)` 弱绑定——服务删除后回调自动失效（返回 `Failed`），见 [YomkServer.md](YomkServer.md) 弱绑定一节。

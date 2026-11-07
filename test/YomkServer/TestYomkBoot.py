@@ -1,5 +1,5 @@
 """
-TestYomkBoot.py —— YomkAPI.boot 三段失败短路/错误码透传测试（正式全面测试）
+TestYomkBoot.py —— YomkAPI.boot 三段失败短路/错误码透传测试
 
 覆盖内容：
 1. boot(None)：内部隐式 init 路径，返回 0 且单例被初始化

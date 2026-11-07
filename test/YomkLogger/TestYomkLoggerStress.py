@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-TestYomkLoggerStress.py —— YomkLogger 压力测试（LG4，6 节；
+TestYomkLoggerStress.py —— YomkLogger 压力测试（6 节；
 断言数随 N 变化，N=1000 时 61 条）
 
 覆盖内容（6 节）：
@@ -16,7 +16,7 @@ B ALL 状态段精确 + 清单段与 LOGGERS 分型逐行一致 / C 单查 N 次
 B 分组全量回收 / C 残量扫除 -> LOGGERS 行数为 0 硬断言）；S6 收尾与磁盘清理（清理前
 磁盘足迹守恒 / shutdown 计时 / rmtree / 临时目录不存在硬断言 / RSS 峰值）
 
-语言机制说明：
+实现机制说明：
 - 规模经 YOMK_TEST_STRESS_SCALE 参数化（缺省 100000，clamp 下限 1000；run_tests.sh
   快速模式 export 10000、--full unset 回落缺省），激进规模口径：console tag=N；
   file logger=N（分片）+N/10（单目录对照）+2xN/100（S4-D）+1（S3 大缓冲）
@@ -24,23 +24,23 @@ B 分组全量回收 / C 残量扫除 -> LOGGERS 行数为 0 硬断言）；S6 �
   （FileLogger init 语义：创建即建空文件并建目录；删除接口不删磁盘文件）
 - 断言总数随 N 变化（S1A 扫描点个数 = 去重后的 {1000,10000,100000,N} clamp 交集），
   N=1000 时 61 条、N=10000 时 62 条、N=100000 时 63 条
-- ThreadSafeCoutCapture(discard) -> contextlib.redirect_stdout(io.StringIO()) 丢弃
-  不取值（热路径相万级输出不占内存也不干扰计时）；取值相（A2/C probe/D 穿透）同款
+- stdout 捕获统一用 contextlib.redirect_stdout(io.StringIO())：丢弃相
+  不取值（热路径相万级输出不占内存也不干扰计时）；取值相（A2/C probe/D 穿透）
   捕获后 getvalue
-- std::atomic 计数 -> list.append + len()（GIL 单步原子）；停止门 -> threading.Event；
-  起始屏障 -> StartGate（Condition 版 ready+go，30s 超时上限）
-- 计时 steady_clock -> time.perf_counter；[BASELINE]/[ENV]/VmHWM 仅信息行不作断言
+- 跨线程计数用 list.append + len()（GIL 单步原子）；停止门用 threading.Event；
+  起始屏障用 StartGate（Condition 版 ready+go，30s 超时上限）
+- 计时用 time.perf_counter；[BASELINE]/[ENV]/VmHWM 仅信息行不作断言
   （环境相关）；[ENV] 读 /proc/loadavg、/proc/meminfo MemAvailable，VmHWM 读
   /proc/self/status，读不到降级 n/a
-- measureIntrospection 出参（badStatus/lastLines）-> 返回元组 (stat, bad, last_lines)；
-  last_lines 取 len(resp.data) 免一次大规模列表拷贝（与解包后 size() 等价）
+- 内省扫描直接返回元组 (stat, bad, last_lines)；
+  last_lines 取 len(resp.data) 免一次大规模列表拷贝（只计条目数）
 - S4B 逐行一致按分型对照：console/file 端点响应行与 ALL 清单对应 type 条目的
   logger_name 逐行相等（两端点各自单锁快照）
 - S5B 全量回收的析构路径：python 服务层 delete_logger 锁外释放最后引用 -> __del__ ->
   write()（缓冲均已在 S3 flush 或为空 -> 空写 no-op；规模已在 S5 回收、
   析构无落盘 I/O 拖累）；S5A churn logger 每轮 1 行由当轮删除时 __del__ 落盘，
   磁盘文件保留（删除接口不删磁盘文件）
-- proxy 安装后全程不卸载（P4-e 卸载语义由 Lifecycle S3 覆盖），S1D 末恢复穿透态，
+- proxy 安装后全程不卸载（卸载语义由 Lifecycle S3 覆盖），S1D 末恢复穿透态，
   不影响后续 Section 的响应码与落盘断言
 - 唯一 tag 直调 log().tag(...) 运行时拼名，循环内拼名构造 N 个唯一 tag
 
@@ -86,7 +86,7 @@ def stress_scale():
     return max(v, 1000)
 
 def make_name(prefix, index):
-    # 带零填充的唯一名（setw(8) setfill('0') 对齐）
+    # 带零填充到 8 位的唯一名
     return prefix + str(index).zfill(8)
 
 def unpack_lines(resp):
@@ -184,7 +184,7 @@ def measure_introspection(rounds, use_all):
     return (count, min_ms, avg_ms, max_ms), bad, last_lines
 
 def record_baseline(section, ops, elapsed_ms):
-    # 基线记录（仅打印，不断言）：耗时(ms) 与吞吐(ops/s)
+    # 吞吐记录（仅打印，不断言）：耗时(ms) 与吞吐(ops/s)
     ops_per_sec = ops * 1000.0 / elapsed_ms if elapsed_ms > 0 else 0.0
     print(
         f"[BASELINE] {section}: {ops_per_sec:.0f} ops/s ({ops} ops in {elapsed_ms:.1f} ms)")
@@ -258,7 +258,7 @@ def test_tmp_root():
     return os.environ.get("YOMK_TEST_TMP_ROOT") or tempfile.gettempdir()
 
 def main():
-    print("=== TestYomkLoggerStress (LG4) ===")
+    print("=== TestYomkLoggerStress ===")
 
     n = stress_scale()
     print(f"[CONFIG] YOMK_TEST_STRESS_SCALE = {n}")
@@ -296,7 +296,7 @@ def main():
     shard_dirs = [os.path.join(s2_dir, "shard_" + str(s))
                   for s in range(shard_count)]
 
-    # 起点基线：库内部不使用 LOG 家族宏 → console 表恰为构造函数预置的 main
+    # 起点状态：库自身不经日志接口打日志 → console 表恰为构造函数预置的 main
     base_c = len(unpack_lines(log_mgr().console().list()))
     base_f = len(unpack_lines(log_mgr().file().list()))
     check(base_c == 1 and base_f == 0,
@@ -305,11 +305,11 @@ def main():
     # ========================================================================
     # S1：console 侧规模与热路径
     # ========================================================================
-    # 名字表预构造：排除拼名开销，使各相基线可比
+    # 名字表预构造：排除拼名开销，使各相吞吐可比
     tags = [make_name("lg4s1_tag_", i) for i in range(n)]
     hot_tag = tags[0] if tags else "lg4s1_hot"
 
-    # 规模-延迟扫描点（P4-c）：console 表从 1 条线性增长到 N+1 条，是全程唯一能覆盖
+    # 规模-延迟扫描点：console 表从 1 条线性增长到 N+1 条，是全程唯一能覆盖
     # 1k/10k/100k 中小规模的窗口——S2 起 file 表叠加，条目数只增不减，无法再降规模
     scan_points = []
     for raw in (1000, 10000, 100000, n):
@@ -318,7 +318,7 @@ def main():
             scan_points.append(cp)
 
     # ---- Phase A：N 个唯一 tag 首次写入（惰性创建 N 个 ConsoleLogger）----
-    # 分段计时：内省扫描落在创建计时区间之外，不污染 S1A 吞吐基线
+    # 分段计时：内省扫描落在创建计时区间之外，不污染 S1A 吞吐读数
     ok_a = 0
     elapsed_a = 0.0
     created_a = 0
@@ -370,7 +370,7 @@ def main():
         if not check_time_format(line):
             bad_format += 1
     check(sampled_lines == sample and bad_format == 0,
-          f"S1A2: 抽样行时间戳格式全部合法（P4-b 改写等价性，非法 {bad_format} 条）")
+          f"S1A2: 抽样行时间戳格式全部合法（非法 {bad_format} 条）")
 
     # ---- Phase B：命中路径写入（N 个既有 tag 各 1 次，含时间戳构造 + stdout）----
     ok_b = 0
@@ -408,7 +408,7 @@ def main():
           ResStatus.eOk, "S1C: 恢复 ON info 返回 eOk")
 
     # ---- Phase D：proxy 短路（置于 console 末相：本测试安装后不卸载，靠恒穿透
-    # 避免影响后续 Section；P4-e 的卸载语义由 Lifecycle S3 覆盖）----
+    # 避免影响后续 Section；卸载语义由 Lifecycle S3 覆盖）----
     proxy_hits = []
     proxy_state = {"through": False}
 
@@ -436,9 +436,9 @@ def main():
         log().tag(hot_tag).info("lg4s1d_through_marker")
         out_through = buf.getvalue()
     check("lg4s1d_through_marker" in out_through,
-          "S1D: proxy 穿透态恢复默认输出（P4-e 登记依据）")
+          "S1D: proxy 穿透态恢复默认输出")
 
-    # ---- Phase E：热 tag 重复写（单 logger，ConsoleLogger m_mutex 恒定同一把）----
+    # ---- Phase E：热 tag 重复写（单 logger，整行锁恒定同一把）----
     ok_e = 0
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
@@ -496,7 +496,7 @@ def main():
     print("[BASELINE] S2_VmHWM:" + read_vm_hwm())
 
     # ========================================================================
-    # S3：文件路径写入与大缓冲落盘（P4-a 验证点：write() 单次快照改写）
+    # S3：文件路径写入与大缓冲落盘（验证点：write() 单次快照改写）
     # ========================================================================
     # sink 复用 S2 Phase A 的前 K 个 file logger（均落在 shard_0）
     sink_dir = shard_dirs[0] if shard_dirs else s2_dir
@@ -519,7 +519,7 @@ def main():
         os.path.join(sink_dir, sinks[0] + ".log"))
     check(open_ok and before_lines == 0, "S3A: 未 flush 前 sink0 磁盘文件仍 0 行（缓冲语义）")
 
-    # ---- Phase B：单 logger 大缓冲一次落盘（P4-a 主验证点）----
+    # ---- Phase B：单 logger 大缓冲一次落盘（主验证点）----
     s3_dir = os.path.join(tmp_dir, "s3")
     os.makedirs(s3_dir, exist_ok=True)
     big_name = "lg4s3_big"
@@ -592,7 +592,7 @@ def main():
     print("[BASELINE] S3_VmHWM:" + read_vm_hwm())
 
     # ========================================================================
-    # S4：内省端点在 2N+ 条目下的响应（P4-c 验证点：双锁快照窗口）
+    # S4：内省端点在 2N+ 条目下的响应（验证点：双锁快照窗口）
     # ========================================================================
     loggers_lines = unpack_lines(log_mgr().console().list())
     file_lines = unpack_lines(log_mgr().file().list())
@@ -641,8 +641,8 @@ def main():
     # ---- Phase C：按类型单查 N 次（偶数查 console 表、奇数查 file 表；两表查找热路径量化点）----
     # 逐器内省端点按类型单表精确查找（console/file 各自读锁），偶奇交替恰覆盖两表热路径。
     # 名字域校验：偶数 i 的 lg4s1_tag_i 由 S1A 创建、奇数 i 的 lg4s2_fl_i 由 S2A 创建，
-    # 全部命中，CHECK(okProbe == probes) 的守恒语义成立；口径变更（单查改带 type）
-    # 须与修复前基线同批采样才可比
+    # 全部命中，全量守恒校验（命中计数 == probes）语义成立；口径变更（单查改带 type）
+    # 须与历史读数同批采样才可比
     probes = n
     ok_probe = 0
     with contextlib.redirect_stdout(io.StringIO()):
@@ -728,7 +728,7 @@ def main():
     check(len(s4d_snap_count) > 0,
           f"S4D: 内省线程确实产生快照（{len(s4d_snap_count)} 次）")
     check(len(s4d_snap_non_mono) == 0,
-          f"S4D: 快照条目数单调不减（P3-a 语义在规模下仍成立，违例 {len(s4d_snap_non_mono)} 次）")
+          f"S4D: 快照条目数单调不减（违例 {len(s4d_snap_non_mono)} 次）")
 
     print("[BASELINE] S4_VmHWM:" + read_vm_hwm())
 

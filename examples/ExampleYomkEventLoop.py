@@ -26,7 +26,7 @@ ExampleYomkEventLoop —— YomkEventLoop 线程隔离事件循环示例：机�
        积压与队首 tag 预览；第 1 条指令执行时递归投递 3 条微调指令排到
        队尾——消费顺序自证同循环 FIFO。
 场景 3 show_arm_dual_loop       [/YomkEventLoop/start(loop+handle_fn) / /YomkEventLoop/post]
-       双循环并行：示教器循环用 2 参 START（默认处理函数、无 msg_name 元数据），
+       双循环并行：示教器循环不带 msg_name 元数据启动（默认处理函数），
        与运动循环同时投递——两循环日志交错、线程名不同，同循环 FIFO、
        跨循环彼此并行。
 场景 4 show_arm_motion_sync_wait [/YomkEventLoop/post_wait]
@@ -46,8 +46,8 @@ ExampleYomkEventLoop —— YomkEventLoop 线程隔离事件循环示例：机�
        对已销毁循环的一切操作均返回 eNo（not-found 惯例），清单确认已空。
 
 循环规划（跨场景流转，模拟主控/示教器两模块各自专用线程）：
-  motionLoop  START 3 参（motion_handle + "String" 元数据）  主控运动指令循环
-  teachLoop   START 2 参（teach_handle，无 msg_name 元数据） 示教器循环
+  motionLoop  带元数据启动（motion_handle + "String"）    主控运动指令循环
+  teachLoop   无元数据启动（仅默认处理函数 teach_handle） 示教器循环
 
 运行方式：PYTHONPATH=src python3 examples/ExampleYomkEventLoop.py
 """
@@ -109,13 +109,13 @@ def log_loop_info(api, info):
     log().tag("arm.demo").info(f"[{api}]     running: {'on' if info.running else 'off'}")
     log().tag("arm.demo").info(f"[{api}]     pending: {info.pending}")
     log().tag("arm.demo").info(f"[{api}]     defaultFunc: {'on' if info.has_default_func else 'off'}")
-    # msg_name 为空表示 2 参 START（未指定元数据），防御展示
+    # msg_name 为空表示启动时未指定元数据，防御展示
     msg_text = info.msg_name if info.msg_name else "(未指定)"
     log().tag("arm.demo").info(f"[{api}]     msgName: {msg_text}")
     tags = ", ".join(t if t else "-" for t in info.next_tags)
     log().tag("arm.demo").info(f"[{api}]     nextTags: [{tags}]")
 
-# post_wait 写路径终结收敛为 ResStatus（不带 Event 回包，对齐 C++ 链式口径）：
+# post_wait 写路径终结收敛为 ResStatus（不带 Event 回包）：
 # 阻塞语义"返回即已执行完毕"，执行结果由处理函数在循环线程内以日志自报。
 
 # 自证结论：期望与实际写在同一行，读者无需查源码即可确认框架行为
@@ -148,7 +148,7 @@ def motion_handle(pkg) -> YomkApi.YomkResponse:
 
     return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "eventHandle success. ")
 
-# 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 START 2 参时指定）
+# 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 无元数据启动时指定）
 def teach_handle(pkg) -> YomkApi.YomkResponse:
     log().tag("arm.teach").info(f"示教器事件: {pkg}（循环线程 {threading.current_thread().name}）")
     return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "teachHandle success")
@@ -220,7 +220,7 @@ def show_arm_dual_loop():
         3,
         "双循环并行",
         "/YomkEventLoop/start(loop+handle_fn) / /YomkEventLoop/post",
-        "示教器模块独立于主控：teachLoop 用 2 参 START（默认处理函数、无 msg_name 元数据）；"
+        "示教器模块独立于主控：teachLoop 不带 msg_name 元数据启动（默认处理函数）；"
         "两个循环各自专用线程，同循环内 FIFO、跨循环彼此并行。")
 
     log_action("启动示教器循环", "/YomkEventLoop/start teachLoop",

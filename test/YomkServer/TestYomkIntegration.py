@@ -1,5 +1,5 @@
 """
-TestYomkIntegration.py —— 跨模块端到端集成测试（正式全面测试，P3——单模块测试无法
+TestYomkIntegration.py —— 跨模块端到端集成测试（覆盖单模块测试无法
 覆盖的跨模块路径与 shutdown 统一收尾）
 
 覆盖内容（3 个 Section，单进程一次 server().async_thread(1).init()，断言以运行为准）：
@@ -11,16 +11,16 @@ S2. 删除内置服务契约与恢复：srv_name("/YomkLogger").remove() → 服
     → LOGGER API 恢复且全链路可用
 S1. shutdown 全链路统一收尾（压轴）：event_loop().post() 积压、to_sink 发射缓冲、
     异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘
-    （FileLogger __del__ write，CPython 引用计数确定性承载 main ~FileLogger 语义）、
+    （FileLogger __del__ write，CPython 引用计数确定性保证析构即落盘）、
     API 回归 eInvalid + "YomkServer is not init"（门面守卫级）、二次 shutdown 幂等
 
 执行顺序约束：server().init 为进程级一次性（shutdown 后不可再 init），故 shutdown 段
 必须压轴，重入/删除恢复段在其前完成
 
-语言机制说明（非功能缺口）：
+语言机制说明：
 - 并发计数用 list.append/len（GIL 单步原子，免锁）；观测回调为模块级函数形态
 - 文件落盘验证依赖 CPython 引用计数确定性（shutdown 返回时 FileLogger 引用链已断，
-  __del__ 同步触发 write），对齐 main ~FileLogger 析构 write 的可观察行为
+  __del__ 同步触发 write，析构即落盘）
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """
@@ -60,7 +60,7 @@ def raw_ctx(endpoint, pkg):
 
 def wait_until(
 cond, timeout_ms):
-    # 限时轮询（对齐 main waitUntil）：条件满足返回 True，超时返回 False
+    # 限时轮询：条件满足返回 True，超时返回 False
     deadline = time.time() + timeout_ms / 1000.0
     while time.time() < deadline:
         if cond():

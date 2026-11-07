@@ -1,33 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-TestYomkLoggerConcurrency.py —— YomkLogger 模块多线程并发正确性验证（LG3，
-5 节 / 72 断言）
+TestYomkLoggerConcurrency.py —— YomkLogger 模块多线程并发正确性验证
+（5 节 / 72 断言）
 
 覆盖内容（5 节）：
 S1 并发 console_log 守恒 + 行完整性（只读命中路径，8x200 同 tag 预热后并发，验证
-ConsoleLogger m_mutex 整行互斥）；S2 并发新 tag 自动创建（P1-a 双检锁核心：S2a 8
-线程屏障对齐争用同一新 tag / S2b 8 线程分散唯一 tag / S2c P3-b 死分支登记）；S3
-并发 proxy set x console_log x 内省（P1-b 专属锁，6 caller + 2 内省 + 50 轮交替
+ConsoleLogger 整行互斥）；S2 并发新 tag 自动创建（双检锁核心：S2a 8
+线程屏障对齐争用同一新 tag / S2b 8 线程分散唯一 tag / S2c 死分支登记）；S3
+并发 proxy set x console_log x 内省（专属锁，6 caller + 2 内省 + 50 轮交替
 SET v1/v2，v1+v2 == log 总数守恒）；S4 并发 file logger 创建 x 写入 x 落盘（S4a
 同名争用恰一胜 / S4b 异名全 eOk / S4c 8x250 + 2 writer 2000 行不丢不重 / S4d
-4x10 轮多写者 WRITE 幂等）；S5 全量 churn + P3-a 内省原子快照判别（3x600=1800 对
+4x10 轮多写者 WRITE 幂等）；S5 全量 churn + 内省原子快照判别（3x600=1800 对
 成对创建，ALL 快照 C>=F 违例 == 0 + LOGGERS 分表计数合法）
 
-语言机制说明：
-- ThreadSafeCoutCapture -> contextlib.redirect_stdout(io.StringIO)：主线程先换
+实现机制说明：
+- stdout 捕获用 contextlib.redirect_stdout(io.StringIO)：主线程先换
   sys.stdout 再 spawn/join（子线程调用期解析 sys.stdout 即得捕获缓冲）；
-  StringIO.write 单次调用 GIL 原子 + ConsoleLogger m_mutex 整行单次 write，
+  StringIO.write 单次调用 GIL 原子 + ConsoleLogger 整行单次 write，
   行完整性断言仅在"同一 logger"段做（设计边界：跨 logger 段只断言 marker
   计数守恒，python 统一捕获降噪；S3/S5 断言不涉及输出内容，不受影响）
-- std::atomic 计数 -> list.append + len()（GIL 单步原子，免锁）；停止门
-  g_s3Stop/g_s4cStop/g_s5Stop -> threading.Event；起始屏障 waitGate/releaseGate
-  -> StartGate（Condition 版 ready 计数 + go 标志 + 10s 超时防挂死，语义逐字对应）
-- std::mutex + vector 快照收集 -> 线程本地 list 写自身槽位，join 后主线程汇总
+- 跨线程计数用 list.append + len()（GIL 单步原子，免锁）；停止门用
+  threading.Event；起始屏障用 StartGate（Condition 版 ready 计数 + go 标志 +
+  10s 超时防挂死）
+- 快照收集用线程本地 list 写自身槽位，join 后主线程汇总
   （无跨线程共享写，免锁）
-- 规模保真：S5 churn 3x600（1800 对）为 P3-a 判别式灵敏度前提，不下调；其余段规模
+- 规模保真：S5 churn 3x600（1800 对）为快照判别式灵敏度前提，不下调；其余段规模
   8x200 / 8x50 / 6+2+50 / 8x250+2 / 4x10 / 2x100 / 2x200 / 2x200
-- proxy v1/v2 -> 闭包函数对（恒返回 True 穿透态，不影响后续 Section），
+- proxy v1/v2 为闭包函数对（恒返回 True 穿透态，不影响后续 Section），
   list.append 命中计数；SET 交替 50 轮写侧与 caller 读侧并发交错
 - 发射链统一形态（log() 与 log().to_sink() 的 tag 变体）：[行号] 注入在内容头部、marker 仍位于
   行尾，行尾 marker 守恒判定不受影响
@@ -219,7 +219,7 @@ def main():
           f"S1: LOGGERS(console) 中 {k_tag} 恰 1 行（无重复实例）")
 
     # ========================================================================
-    # Section 2：并发新 tag 自动创建（P1-a 双检锁核心验证）
+    # Section 2：并发新 tag 自动创建（双检锁核心验证）
     # ========================================================================
     # ---- S2a：最大争用——8 线程同时对同一全新 tag 打日志 ----
     k_total = k_threads * k_logs_per_thread
@@ -306,14 +306,14 @@ def main():
             all_spread_hit = False
     check(all_spread_hit, "S2b: 8 个唯一 tag 的 LOGGER 内省全部命中 console 类型")
 
-    # ---- S2c：P3-b 判定登记（LG6 已收口）----
+    # ---- S2c：死分支判定登记 ----
     # S2a（同一新 tag 8 线程争用）与 S2b（8 个新 tag 并发创建）是 consoleLog 中
     # 重名防御分支的唯一可能触达场景；双检锁在独占锁内已二次查找确认 key 不存在，
-    # 本组 S2a/S2b 即该删除的行为学佐证（删前删后均全绿、无 eNo 返回）。
-    print("[INFO] S2c: P3-b(!result.second) 最大争用场景已覆盖，该死分支已于 LG6 删除")
+    # 本组 S2a/S2b 即该防御分支冗余的行为学佐证（全绿、无 eNo 返回）。
+    print("[INFO] S2c: 最大争用场景已覆盖")
 
     # ========================================================================
-    # Section 3：并发 proxy set × console_log × 内省（P1-b 专属锁核心验证）
+    # Section 3：并发 proxy set × console_log × 内省（专属锁核心验证）
     # ========================================================================
     k_caller_threads = 6
     k_set_rounds = 50
@@ -544,7 +544,7 @@ def main():
     sink_lines = count_lines(sink_content)
     check(sink_lines == k_sink_total,
           f"S4c: 落盘总行数 == {k_sink_total}（实际 {sink_lines}）"
-          "——log/write 共用 m_logBufferMutex（P4-a 后缓冲为单次快照改写），缓冲交接不丢行不切行")
+          "——log/write 共用同一缓冲锁，缓冲交接不丢行不切行")
 
     sink_markers = collect_tail_markers(sink_content, "lg3s4c_t")
     check(len(sink_markers) == k_sink_total,
@@ -596,7 +596,7 @@ def main():
           "S4d: 全部 marker 恰落盘 1 次（多写者无撕裂）")
 
     # ========================================================================
-    # Section 5：全量 churn 混合 + P3-a 内省原子快照判别
+    # Section 5：全量 churn 混合 + 内省原子快照判别
     # ========================================================================
     k_churn_threads = 3
     # 1800 对（而非小规模）：判别式的灵敏度取决于"快照 console 段遍历耗时 W"与
@@ -650,7 +650,7 @@ def main():
     check(log_mgr().dir(pair_dir).file(k_file_sink).create() == ResStatus.eOk,
           "S5: 预热 file sink logger 成功")
 
-    # 基线快照
+    # 起点计数快照
     base_c = len(unpack_lines(log_mgr().console().list()))
     base_f = len(unpack_lines(log_mgr().file().list()))
     check(base_c > 0 and base_f > 0,
@@ -812,7 +812,7 @@ def main():
     check(log_mgr().file(k_file_sink).flush() == ResStatus.eOk,
           "S5: 收尾 file sink WRITE eOk")
 
-    # ---- P3-a 判别式：ALL 快照验证 C >= F（嵌套双锁原子快照）；
+    # ---- 快照判别式：ALL 快照验证 C >= F（嵌套双锁原子快照）；
     # LOGGERS 按类型端点分表快照验证计数合法性（非负且不超最终值）----
     final_c = len(unpack_lines(log_mgr().console().list()))
     final_f = len(unpack_lines(log_mgr().file().list()))

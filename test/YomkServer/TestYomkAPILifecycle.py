@@ -1,5 +1,5 @@
 """
-TestYomkAPILifecycle.py —— YomkAPI init/shutdown 单例生命周期测试（正式全面测试）
+TestYomkAPILifecycle.py —— YomkAPI init/shutdown 单例生命周期测试
 
 覆盖内容：
 1. 单例三承诺：二次 init(n) 返回同一实例（async_thread_count 仅首次生效）；
@@ -11,9 +11,9 @@ TestYomkAPILifecycle.py —— YomkAPI init/shutdown 单例生命周期测试（
    （不存在的服务名按服务器层契约返回 eNo）
 5. 幂等：二次 shutdown 不崩溃；进程正常退出码 0 即证退出清理幂等
 
-推迟说明（模块轮）：
-- 模块便捷 API 已初始化态行为留模块轮（Logger 便捷 API 已随 Logger 模块轮在
-  NotInit 文件补全量守卫）
+覆盖边界：
+- 模块便捷 API 已初始化态行为不在本文件覆盖（Logger 便捷 API 的
+  全量守卫在 TestYomkAPINotInit 中覆盖）
 
 说明：本程序验证已初始化态与关闭后态，与 TestYomkAPINotInit（未初始化态）进程
 隔离；门面单例状态进程级持久，shutdown 压轴执行

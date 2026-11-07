@@ -1,11 +1,11 @@
 """
-TestYomkServer.py —— YomkServer URL 解析路由与服务增删改查白盒测试（正式全面测试）
+TestYomkServer.py —— YomkServer URL 解析路由与服务增删改查白盒测试
 
 覆盖内容：
 1. URL 解析全边界（经公开 request 路径）：空串/无 / 开头/无第二 /、多段路径语义、
    合法命中与 pkg 透传端到端、超长 URL；"srv is empty"与"function name is empty"
    两分支不可达（url[0]=='/' 且 posEnd>=1 保证 srvName 至少含 /、funcName 以 /
-   开头必非空），书面豁免
+   开头必非空）
 2. async_request 解析边界：非法 url 回调永不触发；合法 url 回调到达；callback
    为空分支（请求仍被执行，fire-and-forget）
 3. add_service 守卫与回滚：None、init 返回 -1、init 抛 MemoryError/RuntimeError
@@ -15,8 +15,7 @@ TestYomkServer.py —— YomkServer URL 解析路由与服务增删改查白盒�
 5. del_service：不存在 -1、删除 0、重复删除 -1
 6. 内省：service_names 随增删变化、service_func_infos 命中与元数据、不存在服务
    返回空表
-7. new_service：有名注册可路由；无名以空名注册（现状文档化：URL 不可达，不修复
-   仅记录）
+7. new_service：有名注册可路由；无名以空名注册（现状：URL 不可达，按现状断言）
 8. start_service：空表、不支持名 continue、内置 creator 真实路径
 
 语言机制说明（非功能缺口）：
@@ -318,7 +317,7 @@ def test_new_service_template():
     check(server.request("/Tpl/ping").status ==
           ResStatus.eOk, "new_service 有名注册可路由")
 
-    # 无名：以空名注册。URL 解析保证 srv_name 至少含 /，空名服务永不可达——现状文档化，不修复仅记录
+    # 无名：以空名注册。URL 解析保证 srv_name 至少含 /，空名服务永不可达——按现状断言
     check(server.new_service(RouteSrv) == 0, "new_service 无名返回 0（以空名注册，现状文档化）")
     check(name_in(server.service_names(), ""),
           "service_names 含空串（空名服务 URL 不可达，现状文档化）")

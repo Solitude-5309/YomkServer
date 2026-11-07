@@ -3,7 +3,7 @@ TestYomkContextLifecycle.py —— YomkContext 服务生命周期与异常安全
 
 覆盖内容：
 1. init 效果（内省）：内置 /YomkContext 注册、init 装配 14 个功能函数（键集合逐一对齐）
-2. 基线运行：异步 monitor 池正常工作
+2. 常规运行：异步 monitor 池正常工作
 3. del_service 触发 deinit + 排空：删除前投递的异步 monitor 全部排空执行
 4. 删除后不可路由 + 重复删除契约：请求返回 service not found、重复删除返回 -1
 5. 重新注册 + monitor 池重建：new_service(YomkContext) 后 init 重新装配、池重建可用
@@ -78,7 +78,7 @@ def main():
     check(len(infos) == 14, "init 装配 14 个功能函数")
     check(set(infos.keys()) == EXPECTED_FUNCS, "装配的功能函数键集合逐一对齐")
 
-    # ============ Section 2: 基线运行（异步 monitor 池工作）============
+    # ============ Section 2: 常规运行（异步 monitor 池工作）============
     ctx().monitor().enable()
     resp = ctx().key("life_base").value("b0").create()
     check(resp == ResStatus.eOk, "创建 life_base 成功")

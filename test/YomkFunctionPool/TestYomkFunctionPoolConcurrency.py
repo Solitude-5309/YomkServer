@@ -1,17 +1,17 @@
 """
 TestYomkFunctionPoolConcurrency.py —— YomkFunctionPool 并发正确性验证（5 节 26 断言）
 
-节结构逐节对齐同名 C++ 测试（S1 并发 CALL 守恒 + 嵌套重入 / S2 REGISTER 更新 x CALL
+节结构（S1 并发 CALL 守恒 + 嵌套重入 / S2 REGISTER 更新 x CALL
 写读交错 / S3 UNREGISTER x CALL 锁外安全性 / S4 内省 x 变更（INFO_ALL 结构化快照持续可解包）/ S5 全量 churn
-混合守恒），零剔除。
+混合守恒）。
 
-语言映射：
-- YOMK_FUNCTIONPOOL_* 宏 → fn_pool() 域六终结动作（覆盖 invoke 路由链）
-- std::atomic 计数 → list.append（GIL 原子，len() 读数）
-- 自旋门/停止标志 → threading.Event（S3 started/release gate、S2 stop）
-- SnapshotRecord + std::mutex → list.append(条目数)
+实现口径：
+- 全部经 fn_pool() 域六终结动作访问（覆盖 invoke 路由链）
+- 跨线程计数用 list.append（GIL 原子，len() 读数）
+- 自旋门/停止标志用 threading.Event（S3 started/release gate、S2 stop）
+- 快照收集用 list.append(条目数)
   （GIL 下 append 原子，免锁）
-- 装置全部走门面 API（对齐宏形态，覆盖 invoke 路由链）
+- 装置全部走门面 API（覆盖 invoke 路由链）
 """
 
 import sys
@@ -40,7 +40,7 @@ def check(cond, name):
         print(f"[FAIL] {name}")
 
 # ============================================================================
-# 装置函数（std::atomic 计数 → list.append，GIL 原子）
+# 装置函数（跨线程计数用 list.append，GIL 原子）
 # ============================================================================
 
 # S1 守恒

@@ -1,5 +1,5 @@
 """
-TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试（正式全面测试）
+TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试
 
 覆盖内容：
 1. version() 免初始化可调用（不依赖单例，返回非空版本号）
@@ -10,12 +10,12 @@ TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试（正式全�
 5. 链式终结动作守卫抽样：统一守卫入口 _api_request 验证（ctx create/
    fn_pool install/event_loop start 返回 eInvalid + 契约消息同根 +
    ctx 类型化 get 特殊形态原样返回调用方默认值）
-6. Logger 域链式终结守卫全量 23 条（Logger 模块轮 P1 收口）：
+6. Logger 域链式终结守卫全量 23 条：
    console/file 代理、六级发射（tag 形态）、create/flush/remove、
    on·off_console/file_log_by_level 两族、loggers/logger/all 内省，
    首条另断契约消息同根
 
-推迟说明（范围口径，非功能缺口）：
+覆盖范围说明：
 - "守卫拒绝后调用方资源释放"断言不适用：python 引用计数
   语义无所有权接管概念
 - 版本号断言形态：python 版本传递链中 YomkServerPyVersion 模块缺失时回落

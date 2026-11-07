@@ -4,7 +4,7 @@ TestYomkContextConcurrency.py —— YomkContext 多线程并发功能测试与 
 覆盖内容：
 1. 并发 get/set 共享键（m_contextsMutex 读写锁竞争）
 2. 并发 create/destroy 独立键（map 结构变更）
-3. 并发 set_monitor 同键（修复验证：写 monitors 在写锁内，push_back 无丢失/损坏）
+3. 并发 set_monitor 同键（修复验证：写 monitors 在写锁内，append 无丢失/损坏）
 4. 并发 set_checker × keyInfo 同键（修复验证：写 checker 与读 checker/monitors 的读写竞争）
 5. 并发 set 触发 checker（checker 在写锁内串行调用）
 6. 并发 set 触发 sync + async monitor（同步计数确定、异步单线程池计数确定）
@@ -15,9 +15,9 @@ TestYomkContextConcurrency.py —— YomkContext 多线程并发功能测试与 
 - "重入 checker（checker 内调用 Context API）自死锁"为设计约束
   （checker 回调在写锁内执行），同样不构造该用例
 - 并发计数用 CPython list.append 原子操作承载（GIL 下安全），
-  读取用 len()（T6 口径）
+  读取用 len()
 - 总操作数读 YOMK_TEST_STRESS_SCALE（缺省 100000，
-  快速模式由 run_tests.sh 注入 10000，clamp 下限 1000），8 线程均分（T6 口径）
+  快速模式由 run_tests.sh 注入 10000，clamp 下限 1000），8 线程均分
 
 风格：纯 main() + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
 门面单例拉起 /YomkContext，全程经门面 API 多线程并发路由（真实 API 路径）；
@@ -343,7 +343,7 @@ def main():
     ctx().monitor().disable()
 
     # 总操作数：YOMK_TEST_STRESS_SCALE 缺省 100000（10 万级，8 线程均分）/
-    # 快速模式 10000，clamp 下限 1000；8 线程均分（T6 口径）
+    # 快速模式 10000，clamp 下限 1000；8 线程均分
     total_ops = int(os.environ.get("YOMK_TEST_STRESS_SCALE", "100000"))
     total_ops = max(total_ops, 1000)
     t_cnt = 8

@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 TestYomkLoggerDirect.py —— ConsoleLogger / FileLogger 类直连测试
-（LG1 轮交付）
 
 覆盖内容：
 1. ConsoleLogger 直连：默认名 main、setName/getName 往返、四级别输出行格式 +
@@ -16,7 +15,7 @@ TestYomkLoggerDirect.py —— ConsoleLogger / FileLogger 类直连测试
    级别门控（默认全开 / 关断隔离落盘实证 / 恢复 / unknown 按 Info 门控直接
    丢弃无降级提示、恢复后降级行为回归）
 
-语言机制说明：
+实现机制说明：
 - stdout 捕获用 contextlib.redirect_stdout(io.StringIO)；
   _yomk_err_pos_log 直写 stdout 可被捕获，CHECK 断言在捕获作用域外
 - 析构触发依赖 CPython 引用计数：holder 容器持唯一引用 + del +
@@ -104,7 +103,7 @@ def main():
     # 非法级别 default 降级：YOMK_ERR_POS_LOG 直写 cout 可被捕获（CHECK 在捕获外）
     out = capture(lambda: logger.log(99, "", "lg1_dc_badlevel_marker"))
     check("Unknown log level: 99" in out,
-          "非法级别 99 走 default 错误提示（P2-c 修复后活分支）")
+          "非法级别 99 走 default 错误提示")
     check("[INFO ] [lg1_direct_console] lg1_dc_badlevel_marker" in out,
           "非法级别降级 Info 输出 marker")
 
@@ -178,8 +177,8 @@ def main():
           fl.get_dir() == os.path.join(tmp_dir, "fl_basic"),
           "setName/setDir/getDir 往返一致")
 
-    # init：多级目录 + 空日志文件，返回 True（P2-b 修复后 bool 语义）
-    check(fl.init() is True, "init 成功返回 True（P2-b 修复后 bool 语义）")
+    # init：多级目录 + 空日志文件，返回 True（bool 返回值语义）
+    check(fl.init() is True, "init 成功返回 True")
     log_file = os.path.join(tmp_dir, "fl_basic", "lg1_direct_file.log")
     check(os.path.isdir(os.path.join(tmp_dir, "fl_basic")) and
           os.path.isfile(log_file) and os.path.getsize(log_file) == 0,
@@ -193,7 +192,7 @@ def main():
     # 非法级别 default 降级 Info 入缓冲（CHECK 在捕获作用域外）
     out_bad = capture(lambda: fl.log(99, "", "lg1_df_badlevel_marker"))
     check("Unknown log level: 99" in out_bad,
-          "FileLogger 非法级别 99 走 default 错误提示（P2-c 修复后活分支）")
+          "FileLogger 非法级别 99 走 default 错误提示")
     check(os.path.getsize(log_file) == 0, "write 前缓冲内容不落盘（文件仍空）")
 
     # write：5 行落盘（四级别各一 + 非法级别降级 Info 一行）
@@ -205,7 +204,7 @@ def main():
           "[ERROR] lg1_df_error_marker" in content,
           "四级别行格式（时间戳+[级别]+内容）落盘")
     check("[INFO ] lg1_df_badlevel_marker" in content,
-          "非法级别降级 Info 行落盘（P2-c 回填）")
+          "非法级别降级 Info 行落盘")
     check(check_time_format(content), "文件日志行首时间戳格式")
 
     # 缓冲已清空：二次 write 文件不增长
@@ -273,7 +272,7 @@ def main():
     content5 = read_file(os.path.join(dtor_dir, "lg1_dtor.log"))
     check("lg1_df_dtor_marker" in content5, "析构自动 write，缓冲内容落盘")
 
-    # P2-b 处置验证：init 对不可创建目录返回 False 不抛异常
+    # 不可创建目录处置验证：init 返回 False 不抛异常
     # /proc 下嵌套新目录：非 root 必失败（EACCES/EPERM），init 内部捕获转 False + 错误提示
     bad_fl = FileLogger()
     bad_fl.set_name("lg1_badinit")
@@ -281,11 +280,11 @@ def main():
     init_ret_holder = []
     out = capture(lambda: init_ret_holder.append(bad_fl.init()))
     check(init_ret_holder[0] is False,
-          "init 不可创建目录返回 False（P2-b 已处置，异常不穿透）")
+          "init 不可创建目录返回 False（异常不穿透）")
     check("init file logger fs error" in out,
           "init 失败错误提示含 fs error 信息")
 
-    # P2-b 第二条失败路径：dir 为普通文件（exists 为 True 不走 makedirs，
+    # 第二条失败路径：dir 为普通文件（exists 为 True 不走 makedirs，
     # open <普通文件>/<名>.log 必失败 ENOTDIR）-> False + create log file failed
     regular_dir = os.path.join(tmp_dir, "fl_init_regular")
     with open(regular_dir, "w") as f:
@@ -301,7 +300,7 @@ def main():
           "init 打开失败错误提示含完整日志文件路径")
 
     # 级别门控（门控下沉新增）：默认全开 → 关断隔离 → 恢复 → unknown 按 Info 门控
-    # （对齐 ConsoleLogger 用例 14；FileLogger 无 stdout 输出，经 write 落盘文件内容验证）
+    # （与 ConsoleLogger 门控用例同口径；FileLogger 无 stdout 输出，经 write 落盘文件内容验证）
     gate_dir = os.path.join(tmp_dir, "fl_gate")
     gate_fl = FileLogger()
     gate_fl.set_name("lg1_df_gate")

@@ -4,8 +4,8 @@ include("${CMAKE_CURRENT_LIST_DIR}/YomkServerPyTargets.cmake")
 
 set(YomkServerPy_VERSION @PROJECT_VERSION@)
 
-# 对齐 C++ YomkServerConfig.cmake.in 的目录检查：Python 布局无 include/ 分层
-# （.so/.py/.pyi 全落 site-packages），INCLUDE_DIRS/LIB_DIR 双检单点化为 SITE_PKG_DIR
+# Python 布局无 include/ 分层（.so/.py/.pyi 全落 site-packages），
+# 目录检查单点化为 SITE_PKG_DIR
 set_and_check(YomkServerPy_SITE_PKG_DIR "@PACKAGE_PYTHON_SITE_PACKAGES@")
 
 set(YomkServerPy_LIBRARIES YomkServerPy::YomkServerPy)

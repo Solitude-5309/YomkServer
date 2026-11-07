@@ -45,7 +45,7 @@ TemplateProject/
 | `config/` | 配置文件目录 |
 | `msgs/` | 所有服务间通信的消息包定义集中管理 |
 | `services/` | 所有服务实现，按业务类别分子目录存放 |
-| `typedefine/` | 常量定义、宏定义、类型别名等公共定义 |
+| `typedefine/` | 常量定义、类型别名等公共定义 |
 
 ## Linux 运行
 

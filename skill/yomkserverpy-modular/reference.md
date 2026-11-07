@@ -1,6 +1,6 @@
 # YomkServerPy API 参考
 
-API 形态为**六个链式域入口**：`YomkApi.server()` / `ctx()` / `fn_pool()` / `event_loop()` / `log()` / `log_mgr()`。累积环节（`url/msg/srv/key/group/value/fn_name/fn/loop/handle_fn/msg/tag/...`）前置定位并返回 builder 自身，终结环节（`request/init/create/add/remove/set/install/call/post/get/apply/run` 与内省读族）无参执行并返回结果。链须单表达式内联（`log()` 域在调用行捕获位置前缀，禁止缓存 builder）。与 C++ 形态的语言差异（宏/模板 vs 链式 builder）对齐点是**语义内容**而非结构。
+API 形态为**六个链式域入口**：`YomkApi.server()` / `ctx()` / `fn_pool()` / `event_loop()` / `log()` / `log_mgr()`。累积环节（`url/msg/srv/key/group/value/fn_name/fn/loop/handle_fn/msg/tag/...`）前置定位并返回 builder 自身，终结环节（`request/init/create/add/remove/set/install/call/post/get/apply/run` 与内省读族）无参执行并返回结果。链须单表达式内联（`log()` 域在调用行捕获位置前缀，禁止缓存 builder）。
 
 ## 状态码约定
 
@@ -177,7 +177,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 - **`add()`/`create()` 同名热替换**：同名服务被再次注册时，旧服务先置位注销标志并 `deinit`，新服务随后 `init`（任意时刻同名服务至多一次活跃生命周期；诊断日志 `"service already exists -> {name}, update to current service"`）。注册成功后实例归框架服务表持有，调用方不得再复用。
 - **deinit 四触发时机**：`srv_name(n).remove()`、`shutdown()`、同名被替换、进程退出 atexit 兜底。
-- **shutdown 排空序列**：拒新 → 排空请求池 → join 异步请求池 → 清空服务表逐个 `deinit`；幂等，假定主线程调用。**关闭后不支持二次 init**（once 标志把关，全部入口回到守卫态）；`instance()` 在 shutdown 后置空返回 `None`——C++ 当前基线 shutdown 内同置 nullptr，两侧语义现已对齐。
+- **shutdown 排空序列**：拒新 → 排空请求池 → join 异步请求池 → 清空服务表逐个 `deinit`；幂等，假定主线程调用。**关闭后不支持二次 init**（once 标志把关，全部入口回到守卫态）；`instance()` 在 shutdown 后置空返回 `None`。
 
 拓扑内省注记：`functions()/get_info()/all()` 命中 `msg` 恒 `"ok"`；`functions()` 服务不存在返回**空清单**（非 Failed），`fn_url(...).get_info()` 未命中 `Failed`。
 
@@ -261,7 +261,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 - 入参非法（空名/空函数）`Invalid`，契约 `"funcName or func is empty"`；not-found 归 `Failed` 不归 `Invalid`（三态口径一致）。
 - 函数体收到的 `pkg` 即调用侧 `.msg()` 对象；函数返回的 `YomkResponse` 整体作为 `call()` 返回值（结果在 `data`）。
 - 成员函数注册须 `self.weak_func(...)`——服务删除后 `call()` 得 `Failed` + 契约消息。
-- 终结命名 `install/uninstall` 沿用 C++ 形态（C++ 因 `register` 为保留字定名 `install`，Python 同形跨语言一致）。
+- 注册/注销的终结动词定名为 `install/uninstall`。
 
 ## URL 格式
 

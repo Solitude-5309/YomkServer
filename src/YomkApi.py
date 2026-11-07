@@ -111,8 +111,7 @@ def _boot_locked(boot=None):
     if boot is None:
         return 0
 
-    # 钩子失败诊断走 diag 通道（对齐 C++ YOMK_DIAG_ERROR，YomkServerApi.h:396/403/410；
-    # 串无尾随空格，逐字一致）
+    # 钩子失败诊断走 diag 通道，串无尾随空格
     ret = boot.before()
     if ret is not None and ret != 0:
         _yomk_err_pos_log("YomkBoot before failed!")
@@ -131,15 +130,15 @@ def _boot_locked(boot=None):
     return 0
 
 
-# ==================== 链式主面（对齐 C++ 六域 builder，113 方法位）====================
+# ==================== 链式主面（六域 builder）====================
 # 域入口：server()/ctx()/fn_pool()/event_loop()/log()/log_mgr()。
-# server() 为 server 域链式入口（对齐 C++ yomk::server()）。
-# async_ 为 C++ async() 的 Python 关键字规避名（PEP 8 尾下划线惯例）。
-# builder 全程仅限单表达式内联链式使用，禁止缓存复用（对齐 C++ 警告）。
+# server() 为 server 域链式入口。
+# async_ 为 Python 关键字 async 的规避名（PEP 8 尾下划线惯例）。
+# builder 全程仅限单表达式内联链式使用，禁止缓存复用。
 
 
 def _chain_converge_status(res):
-    # 请求域 .status() 三态收敛：非成功记框架自诊断（对齐 C++ YOMK_DIAG_ERROR）
+    # 请求域 .status() 三态收敛：非成功记框架自诊断
     if res.status != ResStatus.Succeeded:
         _yomk_err_pos_log(res.msg if res.msg else "request failed")
     return res.status
@@ -147,7 +146,7 @@ def _chain_converge_status(res):
 
 def _chain_log_content(loc, args):
     # 发射正文 = 位置前缀（进程级三开关）+ 逐参追加（str() 流式化、bool → true/false、
-    # 单空格分隔；前缀为空时首参不加前导空格，对齐 C++ buildLogContent/appendLogArg）
+    # 单空格分隔；前缀为空时首参不加前导空格）
     msg = _yomk_source_loc_prefix(*loc)
     for arg in args:
         s = "true" if arg is True else ("false" if arg is False else str(arg))
@@ -167,7 +166,7 @@ class AsyncRequestBuilder:
         return self
 
     def request(self):
-        # 异步终结无返回（对齐 C++ void）；未初始化记日志
+        # 异步终结无返回；未初始化记日志
         if g_server is None:
             _logger.error("YomkServer is not init")
             return None
@@ -241,8 +240,8 @@ class ServerBuilder:
             _logger.error("YomkServer is not init")
             return -1
         if self._srv_cls is None:
-            # 对齐 C++ YomkServerApi.h create() 的 !m_newSvc 守卫（诊断走 diag 通道）；
-            # 消息去 <T> 尖括号为 Python 语言适配（无模板实参）
+            # 未累积服务类守卫（诊断走 diag 通道）；
+            # 消息不含模板实参尖括号
             _yomk_err_pos_log("service type is not set (call srv() first)")
             return -1
         return g_server.new_service(self._srv_cls, self._srv_name)
@@ -333,7 +332,7 @@ class ContextValueBuilder:
         return self
 
     def get(self):
-        # 未命中/失败回退 default（未初始化同），对齐 C++ ContextValue::get
+        # 未命中/失败回退 default（未初始化同）
         if g_server is None:
             return self._default
         res = g_server.request("/YomkContext/get", Context(self._key, self._default, self._group))
@@ -429,7 +428,7 @@ class ContextBuilder:
         return _api_request("/YomkContext/all", None)
 
     def msg(self, cls=None):
-        # 切入读路径分面（cls 对齐 C++ msg<T>() 类型指定位，S13 豁免：get 不做类型校验）
+        # 切入读路径分面（cls 为类型指定位，忽略；get 不做类型校验）
         return ContextValueBuilder(self._key, self._group)
 
 
@@ -777,34 +776,34 @@ class LogMgrBuilder:
 
 
 def server():
-    # server 域链式入口（对齐 C++ yomk::server()）
+    # server 域链式入口
     return ServerBuilder()
 
 
 def ctx():
-    # context 域链式入口（对齐 C++ yomk::ctx()）
+    # context 域链式入口
     return ContextBuilder()
 
 
 def fn_pool():
-    # function_pool 域链式入口（对齐 C++ yomk::fn_pool()）
+    # function_pool 域链式入口
     return FnPoolBuilder()
 
 
 def event_loop():
-    # event_loop 域链式入口（对齐 C++ yomk::event_loop()）
+    # event_loop 域链式入口
     return EventLoopBuilder()
 
 
 def log():
-    # log 发射域链式入口（对齐 C++ yomk::log()）；调用行位置在此捕获，
+    # log 发射域链式入口；调用行位置在此捕获，
     # 仅限单表达式内联使用，禁止缓存复用 Builder
     frame = sys._getframe(1)
     return LogBuilder((frame.f_code.co_filename, frame.f_lineno, frame.f_code.co_name))
 
 
 def log_mgr():
-    # log 管理域链式入口（对齐 C++ yomk::log_mgr()）
+    # log 管理域链式入口
     return LogMgrBuilder()
 
 

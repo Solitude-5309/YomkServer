@@ -6,8 +6,8 @@ class ResStatus(Enum):
     eInvalid: int = -1
     eOk: int = 0
     eNo: int = 1
-    # C++ 口径别名（YomkPayload.h ResStatus：Invalid=-1/Succeeded=0/Failed=1），
-    # 与 eInvalid/eOk/eNo 逐一同值；新代码一律用 C++ 口径，eOk/eNo 保留向后兼容
+    # 命名口径别名（Invalid=-1/Succeeded=0/Failed=1），
+    # 与 eInvalid/eOk/eNo 逐一同值；新代码一律用命名口径，eOk/eNo 保留向后兼容
     Succeeded: int = 0
     Failed: int = 1
     Invalid: int = -1
@@ -37,7 +37,7 @@ class YomkService:
     functions: Dict[str, Callable[[Any], YomkResponse]]
     function_infos: Dict[str, FuncInfo]
     registered: bool
-    # 注销标志（对齐 main std::atomic<bool> m_deleted）：del_service/同名替换置位，
+    # 注销标志：del_service/同名替换置位，
     # shutdown 不置位——删除即停（weak_func 判活叠加此标志），排空期回调照常执行
     m_deleted: bool
     rwlock_functions: Any
@@ -186,7 +186,7 @@ class EventLoopPkg:
 
 
 class EventLoopQuery:
-    # 事件循环单查载荷（/YomkEventLoop/loop 专用，对齐 C++ YomkPayload.h EventLoopQuery）：
+    # 事件循环单查载荷（/YomkEventLoop/loop 专用）：
     # 名称 + 队列头 tag 采样数，类型化字段无解析歧义
     m_loopName: str  # 循环名（按字面量精确匹配，不做任何切分）
     m_tagCount: int  # 队列头采样条数（缺省 3，与全量内省缺省一致）
@@ -217,8 +217,8 @@ class LogFile:
 
 
 class Log:
-    # 日志载荷（console_log/file_log/按级别开关端点共用）：ELogLevel 固定 int 底层类型，
-    # 六级值序对齐 C++（Trace=0..Fatal=5）
+    # 日志载荷（console_log/file_log/按级别开关端点共用）：日志级别为固定 int 常量，
+    # 六级值序 Trace=0..Fatal=5
     eTrace: int = 0
     eDebug: int = 1
     eInfo: int = 2
@@ -274,8 +274,7 @@ class LoggerInfo:
 
 
 class LoggerState:
-    # 日志器状态（trace/debug/info/warn/error/fatal/proxy 七开关，对齐 C++
-    # YomkPayload.h LoggerState m_traceOn..m_fatalOn + m_proxyOn）：console 条目
+    # 日志器状态（trace/debug/info/warn/error/fatal/proxy 七开关）：console 条目
     # 承载控制台逐器门控层真值，file 条目承载文件逐器门控层真值；两套主闸相互独立
     trace_on: bool    # trace 级别开关
     debug_on: bool    # debug 级别开关
@@ -387,7 +386,7 @@ class ContextEntry:
 class ContextGroup:
     # Context 底层实例组：完整承载单组功能（键存储、checker/monitor 门控开关、
     # 自持单线程异步监控池），不继承 YomkService；YomkContext 按组名路由到
-    # ContextGroup 实例（对齐 EventLoop 模块双层写法）
+    # ContextGroup 实例（与 EventLoop 模块同款双层写法）
     m_name: str
     m_checkerEnabled: bool
     m_monitorEnabled: bool
@@ -450,7 +449,7 @@ class YomkFunctionPool(YomkService):
 
 class EventLoop:
     # 事件循环底层实例（非服务）：单 worker 线程消费事件队列，
-    # YomkEventLoop 按循环名持有（对齐 Context 模块双层写法）
+    # YomkEventLoop 按循环名持有（与 Context 模块同款双层写法）
     m_event_queue: Any
     m_queueMutex: Any
     m_condition: Any

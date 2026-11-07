@@ -1,15 +1,15 @@
 """
-TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 基线测试
+TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 测试
 
-（8 节 53 断言，零剔除）：
+（8 节 53 断言）：
 1. CRUD 闭环：REGISTER echo 函数 → CALL 回传消息 → UNREGISTER → CALL eNo
 2. 注册边界：空函数名 / None func 均 eInvalid；重复注册为"更新"语义（CALL 走新实现，msg 含 update）
 3. 注销边界：空名 eInvalid / 未注册名 eNo
 4. 调用边界：空名 eInvalid / 未注册 eNo / pkg=None 原样透传给函数（探针计数）
-5. 内省：info_names 存活列表包含注册名（空表陷阱教训）/ info_name 命中返回结构化 FuncInfo 包
+5. 内省：info_names 存活列表包含注册名（注意空表陷阱：须在有存活条目时调用）/ info_name 命中返回结构化 FuncInfo 包
    （msg 恒 ok）与未注册 eNo、空名 eInvalid / info_all 结构化 FuncInfoList 相对计数与字段断言
-6. 注册 2 参/3 参/4 参分发映射：无类型（字段空）vs 声明类型（msg_name 字段）vs
-   附函数说明（description 字段）；2 参同名热替换清除类型与说明
+6. 无类型/声明类型/类型+说明三种安装形态分发映射：无类型（字段空）vs 声明类型（msg_name 字段）vs
+   附函数说明（description 字段）；无声明形态同名覆盖清除类型与说明
 7. 异常契约：CALL 链（request→invoke→callFunction→用户函数）无 try/catch，
    用户函数异常穿透直达调用方——测试侧捕获验证 what；随后正常 CALL 验证池存活
 8. 超长名：65536 字符函数名全生命周期（REGISTER/CALL/INFO_NAME/UNREGISTER）eOk 且完整回显
@@ -20,9 +20,9 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
   msg_name 与 description 形参承载）
 - 内省清单端点 info_names data 为 list[str]；info_name 与 info_all 命中均为 FuncInfo
   结构化（info_all 为 FuncInfo 列表，总数由列表长度承载）
-- poolCount 的 SIZE_MAX 哨兵值以 None 承载
-- 探针计数用 list.append（GIL 原子，T 轮既有模式）
-- 全部经门面 API 测试，同时覆盖 invoke 路由链，无覆盖损失
+- 池总数不可得时以 None 作哨兵值承载
+- 探针计数用 list.append（GIL 原子）
+- 全部经门面 API 测试，同时覆盖 invoke 路由链
 """
 
 import sys
@@ -60,7 +60,7 @@ def echo_func(pkg):
     # echo：回传入参 pkg（验证 CALL 消息透传）
     return YomkResponse(ResStatus.eOk, "echo", pkg)
 
-null_pkg_seen = []  # 探针观测容器（list.append GIL 原子，替代 std::atomic）
+null_pkg_seen = []  # 探针观测容器（list.append GIL 原子）
 
 def null_probe_func(pkg):
     # probe：记录是否收到 None 入参（验证 pkg=None 原样透传）
@@ -85,7 +85,7 @@ def alive_func(pkg):
     return YomkResponse(ResStatus.eOk, "alive")
 
 def pool_count():
-    # 从 info_all 结构化列表取当前函数总数（列表长度承载）；失败返回 None（SIZE_MAX 哨兵映射）
+    # 从 info_all 结构化列表取当前函数总数（列表长度承载）；失败返回 None（哨兵值）
     r = fn_pool().all()
     if r.status != ResStatus.eOk or not isinstance(r.data, list):
         return None
@@ -150,7 +150,7 @@ check(r == ResStatus.eOk, "清理 fp_probe")
 r = fn_pool().fn_name("fp_plain").fn(alive_func).install()
 check(r == ResStatus.eOk, "REGISTER 无类型函数 fp_plain")
 
-# info_names：存活列表包含已注册名（空表陷阱教训：必须有存活条目时调用）
+# info_names：存活列表包含已注册名（空表陷阱：必须有存活条目时调用）
 r = fn_pool().list()
 check(r.status == ResStatus.eOk, "INFO_NAMES 返回 eOk")
 check(isinstance(r.data, list) and "fp_plain" in r.data,
@@ -164,7 +164,7 @@ check(isinstance(r.data, FuncInfo), "INFO_NAME 数据为 FuncInfo 包")
 check(r.data is not None and r.data.func_name == "fp_plain",
       "INFO_NAME 字段 func_name 一致")
 check(r.data is not None and r.data.msg_name == "" and r.data.description == "",
-      "2 参注册 msg_name/description 均为空")
+      "无声明安装 msg_name/description 均为空")
 r = fn_pool().fn_name("fp_never_registered").get_info()
 check(r.status == ResStatus.eNo, "INFO_NAME 未注册名返回 eNo（与 unregister/call 全接口统一）")
 r = fn_pool().fn_name("").get_info()
@@ -185,44 +185,44 @@ check(all_found, "INFO_ALL 列表包含 fp_plain（msg_name/description 均空�
 r = fn_pool().fn_name("fp_count_probe").uninstall()
 check(r == ResStatus.eOk, "清理 fp_count_probe")
 
-# ============ Section 6: REGISTER 2 参 / 3 参 / 4 参分发映射 ============
+# ============ Section 6: 三种安装形态分发映射 ============
 r = fn_pool().fn_name("fp_two").fn(alive_func).install()
-check(r == ResStatus.eOk, "REGISTER 2 参宏（无类型）返回 eOk")
+check(r == ResStatus.eOk, "安装无类型声明的函数返回 eOk")
 r = fn_pool().fn_name("fp_two").get_info()
 check(r.msg == "ok" and isinstance(r.data, FuncInfo)
       and r.data.func_name == "fp_two" and r.data.msg_name == ""
       and r.data.description == "",
-      "2 参注册 INFO_NAME 结构化字段（纯名无类型无说明）")
+      "无声明安装 INFO_NAME 结构化字段（纯名无类型无说明）")
 
 r = fn_pool().fn_name("fp_three").fn(echo_func).msg_name("String").install()
-check(r == ResStatus.eOk, "REGISTER 3 参宏（String 类型）返回 eOk")
+check(r == ResStatus.eOk, "声明 String 类型安装返回 eOk")
 r = fn_pool().fn_name("fp_three").get_info()
 check(r.msg == "ok" and r.data is not None and r.data.msg_name == "String",
-      "3 参注册 INFO_NAME 字段 msg_name == \"String\"")
+      "声明类型安装 INFO_NAME 字段 msg_name == \"String\"")
 
-# 4 参：追加函数说明，结构化包恒挂、说明走 description 字段
+# 类型+说明：追加函数说明，结构化包恒挂、说明走 description 字段
 r = fn_pool().fn_name("fp_desc").fn(echo_func).msg_name("String").description("fp description").install()
-check(r == ResStatus.eOk, "REGISTER 4 参宏（String 类型 + 说明）返回 eOk")
+check(r == ResStatus.eOk, "声明类型+说明安装返回 eOk")
 r = fn_pool().fn_name("fp_desc").get_info()
 check(r.status == ResStatus.eOk and r.msg == "ok",
-      "4 参注册 INFO_NAME 命中 msg 恒为 ok")
+      "类型+说明安装 INFO_NAME 命中 msg 恒为 ok")
 check(r.data is not None and r.data.func_name == "fp_desc"
       and r.data.msg_name == "String",
-      "4 参注册字段 func_name/msg_name 一致")
+      "类型+说明安装字段 func_name/msg_name 一致")
 check(r.data is not None and r.data.description == "fp description",
       "字段 description 承载函数说明")
 r = fn_pool().fn_name("fp_three").get_info()
 check(r.data is not None and r.data.description == "",
-      "3 参注册（无说明）description 为空（结构化包恒挂）")
+      "仅声明类型（无说明）description 为空（结构化包恒挂）")
 
-# 覆盖语义：2 参同名热替换 → 类型与说明均清除
+# 覆盖语义：无声明形态同名覆盖 → 类型与说明均清除
 r = fn_pool().fn_name("fp_desc").fn(alive_func).install()
-check(r == ResStatus.eOk, "2 参覆盖 4 参注册返回 eOk")
+check(r == ResStatus.eOk, "以无声明形态覆盖带声明安装返回 eOk")
 r = fn_pool().fn_name("fp_desc").get_info()
 check(r.status == ResStatus.eOk and r.msg == "ok" and r.data is not None
       and r.data.func_name == "fp_desc" and r.data.msg_name == ""
       and r.data.description == "",
-      "2 参热替换清除类型与说明（结构化字段为空）")
+      "无声明形态覆盖清除类型与说明（结构化字段为空）")
 
 r = fn_pool().fn_name("fp_two").uninstall()
 check(r == ResStatus.eOk, "清理 fp_two")

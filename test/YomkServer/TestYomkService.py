@@ -1,5 +1,5 @@
 """
-TestYomkService.py —— YomkService 命名/函数注册/调用白盒单元测试（正式全面测试）
+TestYomkService.py —— YomkService 命名/函数注册/调用白盒单元测试
 
 覆盖内容：
 1. 命名：注册前设置/读取、空名拒绝

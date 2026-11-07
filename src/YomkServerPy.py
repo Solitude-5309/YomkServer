@@ -21,8 +21,8 @@ class ResStatus(Enum):
     eInvalid = -1
     eOk = 0
     eNo = 1
-    # C++ 口径别名（YomkPayload.h ResStatus：Invalid=-1/Succeeded=0/Failed=1），
-    # 与 eInvalid/eOk/eNo 逐一同值；新代码一律用 C++ 口径，eOk/eNo 保留向后兼容
+    # 命名口径别名（Invalid=-1/Succeeded=0/Failed=1），
+    # 与 eInvalid/eOk/eNo 逐一同值；新代码一律用命名口径，eOk/eNo 保留向后兼容
     Succeeded = 0
     Failed = 1
     Invalid = -1
@@ -47,7 +47,7 @@ class YomkService:
         self.functions: dict[str, Callable[[Any], YomkResponse]] = {}
         self.function_infos: dict[str, FuncInfo] = {}
         self.registered: bool = False
-        # 注销标志（对齐 main std::atomic<bool> m_deleted）：del_service/同名替换置位，
+        # 注销标志：del_service/同名替换置位，
         # shutdown 不置位——删除即停（weak_func 判活叠加此标志），排空期回调照常执行
         self.m_deleted: bool = False
         self.rwlock_functions = rwlock.RWLockFair()
@@ -76,17 +76,16 @@ class YomkService:
         self.m_deleted = True
 
     def deleted(self):
-        # 注销标志查询（对齐 main deleted() 公开接口）
+        # 注销标志查询
         return self.m_deleted
 
     def weak_func(self, func, discard="response"):
-        # 包装回调为弱绑定判活回调（对齐 main weakFunc）：weakref(self) 引用计数层
+        # 包装回调为弱绑定判活回调：weakref(self) 引用计数层
         # + deleted() 注销标志层，双层独立生效；丢弃时按 discard 声明给出契约返回值
         # （"response" 返 eNo+契约消息 / "check" 放行 eAccept / "none" 返 None——
-        # 对齐 main 按静态返回类型 void/YomkResponse/ECheckStatus/Ret{} 四分支的
-        # 语言形态映射，python 动态类型下由调用方声明丢弃形态）
-        # 绑定方法持实例强引用，直接持有会抵消判活（main std::bind 持裸 this 无此
-        # 问题）：经 WeakMethod 弱化宿主；拆分两 helper 是刻意的——绑定方法不得被
+        # 动态类型下由调用方声明丢弃形态）
+        # 绑定方法持实例强引用，直接持有会抵消判活：经 WeakMethod 弱化宿主；
+        # 拆分两 helper 是刻意的——绑定方法不得被
         # 本函数闭包捕获（cython 函数级 scope 会持 func 参数），仅裸函数参与捕获
         if getattr(func, "__self__", None) is not None:
             return self._weak_meth(func, discard)
@@ -467,7 +466,7 @@ class EventLoopPkg:
 
 
 class EventLoopQuery:
-    # 事件循环单查载荷（/YomkEventLoop/loop 专用，对齐 C++ YomkPayload.h EventLoopQuery）：
+    # 事件循环单查载荷（/YomkEventLoop/loop 专用）：
     # 名称 + 队列头 tag 采样数，类型化字段无解析歧义
     def __init__(self, loop_name="", tag_count=3):
         self.m_loopName = loop_name   # 循环名（按字面量精确匹配，不做任何切分）
@@ -494,7 +493,7 @@ class LogFile:
 
 
 class Log:
-    # :Log：ELogLevel 固定 int 底层类型，六级值序对齐 C++（Trace=0..Fatal=5），
+    # Log：六级日志级别为固定 int 常量，值序 Trace=0..Fatal=5，
     # 非法值注入合法化（log 路径 default 降级 Info 分支可触达）
     eTrace = 0
     eDebug = 1
@@ -538,7 +537,7 @@ class LoggerInfo:
         # 类型："console" 或 "file"（loggers 端点按此类型参数查询）
         self.type = type
         self.dir = dir                  # file 类型的日志目录（console 时为空串）
-        # 状态段（成员 logger_state，类型 LoggerState，对应 C++ LoggerState m_loggerState）：
+        # 状态段（成员 logger_state，类型 LoggerState）：
         # console 条目承载控制台逐器门控层真值（console 全局主闸态经
         # /console_global_state 查询）；file 条目承载文件逐器门控层真值
         # （file 全局主闸态经 /file_global_state 查询）
@@ -547,8 +546,7 @@ class LoggerInfo:
 
 
 class LoggerState:
-    # 日志器状态（trace/debug/info/warn/error/fatal/proxy 七开关，对齐 C++
-    # YomkPayload.h LoggerState m_traceOn..m_fatalOn + m_proxyOn）：console 条目
+    # 日志器状态（trace/debug/info/warn/error/fatal/proxy 七开关）：console 条目
     # 承载控制台逐器门控层真值，console 全局主闸态经 /console_global_state 查询；
     # file 条目承载文件逐器门控层真值，file 全局主闸态经 /file_global_state
     # 查询；两套主闸相互独立
@@ -566,23 +564,23 @@ class LoggerState:
         self.proxy_on = proxy_on
 
 
-# 位置前缀三开关（进程级，对齐 C++ YomkSourceLoc.h 的 atomic 三开关；
+# 位置前缀三开关（进程级；
 # 缺省 file=off / line=on / func=off，经 log_mgr().location() 分面落定；
-# GIL 下 bool 读写原子，与 C++ atomic relaxed 语义等价）
+# GIL 下 bool 读写原子）
 _yomk_loc_show_file = False
 _yomk_loc_show_line = True
 _yomk_loc_show_func = False
 
 
 def _yomk_loc_base_name(path):
-    # 取路径 basename（兼容 '/' 与 '\\'），与主流日志风格一致（对齐 baseName）
+    # 取路径 basename（兼容 '/' 与 '\\'），与主流日志风格一致
     pos = max(path.rfind("/"), path.rfind("\\"))
     return path[pos + 1:] if pos != -1 else path
 
 
 def _yomk_source_loc_prefix(filename, lineno, funcname):
     # 按进程级三开关拼位置前缀 "[file:line:func]"（file 取 basename）；
-    # 三项全关返回空串——无位置前缀（对齐 YomkSourceLoc::appendTo）
+    # 三项全关返回空串——无位置前缀
     if not (_yomk_loc_show_file or _yomk_loc_show_line or _yomk_loc_show_func):
         return ""
     parts = []
@@ -596,7 +594,7 @@ def _yomk_source_loc_prefix(filename, lineno, funcname):
 
 
 def _yomk_err_pos_log(msg):
-    # 框架自诊断通道（对齐 C++ YomkDiag.h YOMK_DIAG_LOG_IMPL 的 ERROR 用途）：
+    # 框架自诊断通道（ERROR 用途）：
     # 直写 stdout（可被测试捕获），输出 "[时间] [ERROR] [Yomk] [file:line] [func] msg"，
     # 时间戳/级别标签两段与日志模块输出完全同构
     frame = sys._getframe(1)
@@ -607,8 +605,8 @@ def _yomk_err_pos_log(msg):
 
 
 def _yomk_weak_discard_result(discard):
-    # weak_func 丢弃契约（对齐 main 按静态返回类型四分支的语言形态映射）：
-    # "response" 返 eNo+契约消息 / "check" 放行 eAccept / "none" 返 None（Ret{} 默认值）
+    # weak_func 丢弃契约：
+    # "response" 返 eNo+契约消息 / "check" 放行 eAccept / "none" 返 None
     log.error("service has been deleted or unregistered, callback ignored.")
     if discard == "response":
         return YomkResponse(
@@ -745,7 +743,7 @@ class ConsoleLogger:
 
 class FileLogger:
     # 文件日志器，log 入内存缓冲、write 追加落盘清缓冲、
-    # 析构自动 write 兜底；init 建目录与空文件（P2-b：异常捕获转 bool 不穿透）、
+    # 析构自动 write 兜底；init 建目录与空文件（异常捕获转 bool 不穿透）、
     # 六级门控（关断级别 log 入口直接丢弃不入缓冲）
     def __init__(self):
         self.m_name = "main"
@@ -822,7 +820,7 @@ class FileLogger:
         dir_path = os.path.dirname(log_file_path)
         try:
             if dir_path and not os.path.exists(dir_path):
-                os.makedirs(dir_path)   # 对齐 create_directories（多级递归）
+                os.makedirs(dir_path)   # 多级递归创建
         except OSError as e:
             _yomk_err_pos_log("init file logger fs error: " +
                               log_file_path + ", " + str(e))
@@ -940,7 +938,7 @@ class ContextEntry:
 class ContextGroup:
     # Context 底层实例组：完整承载单组功能（键存储、checker/monitor 门控开关、
     # 自持单线程异步监控池），不继承 YomkService；YomkContext 按组名路由到
-    # ContextGroup 实例（对齐 EventLoop 模块双层写法）
+    # ContextGroup 实例（与 EventLoop 模块同款双层写法）
     def __init__(self, name):
         self.m_name = name
         self.m_checkerEnabled = False
@@ -1408,7 +1406,7 @@ class YomkContext(YomkService):
         return YomkResponse(ResStatus.eOk, "ok", info)
 
     def list_all(self, pkg):
-        # 跨组聚合：组 → 键元信息两层结构（对齐 SERVER_INFO_ALL 的服务拓扑范式）；
+        # 跨组聚合：组 → 键元信息两层结构（与服务全量内省同构的拓扑范式）；
         # main 组条目恒在首位，自定义组按字典序追加（锁内拷出、锁外取快照）
         groups = [ContextGroupInfo(self.m_main.name(), self.m_main.list_all())]
         with self.m_customGroupMutex.gen_rlock():
@@ -1608,7 +1606,7 @@ class EventLoop:
 
     def __del__(self):
         # 析构兜底：与显式 destroy 共享释放契约（丢弃事件触发等待回调）；
-        # try 防护解释器关闭期属性缺失；引用环场景需 gc.collect() 显式触发（python 无 C++ 析构确定性）
+        # try 防护解释器关闭期属性缺失；引用环场景需 gc.collect() 显式触发析构
         try:
             self.destroy()
         except Exception:
@@ -1789,20 +1787,19 @@ class YomkEventLoop(YomkService):
                 return YomkResponse(ResStatus.eNo, "event loop not exist")
 
     def loops(self, pkg):
-        # 内省：列出全部事件循环名（sorted 对齐 C++ std::map 字典序，
+        # 内省：列出全部事件循环名（sorted 字典序，
         # 同 FunctionPool names / Context keys 内省先例）
         with self.m_eventLoopMutex.gen_rlock():
             loop_names = sorted(self.m_eventLoop.keys())
         return YomkResponse(ResStatus.eOk, "ok", loop_names)
 
     def loop_info(self, pkg):
-        # 内省：单个事件循环元信息，收结构化 EventLoopQuery（对齐 C++ YomkEventLoop.cpp
-        # loopInfo）：unpack 失败返回 eNo（契约消息对齐 C++ 字面量）；名称按字面量
-        # 精确匹配、不做任何切分；采样数越界回退默认 3（不抛不崩）
+        # 内省：单个事件循环元信息，收结构化 EventLoopQuery：unpack 失败返回 eNo；
+        # 名称按字面量精确匹配、不做任何切分；采样数越界回退默认 3（不抛不崩）
         if not isinstance(pkg, EventLoopQuery):
             return YomkResponse(ResStatus.eNo, "pkg is null or pkg is not EventLoopQuery")
         loop_name = pkg.m_loopName
-        # 归一化采样数：非 int（含 bool）或超 size_t 上限回退默认 3，与全量内省缺省一致
+        # 归一化采样数：非 int（含 bool）或超 2^64-1 上限回退默认 3，与全量内省缺省一致
         tag_count = 3
         if isinstance(pkg.m_tagCount, int) and not isinstance(pkg.m_tagCount, bool) \
                 and 0 <= pkg.m_tagCount <= 2 ** 64 - 1:
@@ -1826,7 +1823,7 @@ class YomkEventLoop(YomkService):
         # 内省：全部事件循环元信息，锁内拷贝快照、锁外逐循环取结构化快照
         # （msg 恒 "ok"，数据走 data；next_tags 取 3 条与单查缺省一致）
         with self.m_eventLoopMutex.gen_rlock():
-            # key 取名序：sorted 对齐 C++ std::map 字典序（同 loops() 先例）
+            # key 取名序：sorted 字典序（同 loops() 先例）
             pairs = sorted(self.m_eventLoop.items(), key=lambda kv: kv[0])
         infos = []
         for name, loop in pairs:
@@ -1846,7 +1843,7 @@ class YomkEventLoop(YomkService):
 
 
 class YomkLogger(YomkService):
-    # 日志模块服务：16 端点装配序与契约消息逐字对齐。
+    # 日志模块服务：16 端点装配序与契约消息均为固定对外契约。
     # 锁序约定：嵌套双读仅 list_all 内省快照，一律按 m_consoleLoggersMutex ->
     # m_fileLoggersMutex 的顺序持有，全仓无反向嵌套点（console_log/file_log 的
     # proxy 锁在独立作用域释放后才取 logger 表锁；logger_info/write_file_log/
@@ -1917,8 +1914,7 @@ class YomkLogger(YomkService):
 
     @staticmethod
     def _unpack(pkg, cls):
-        # eNo + "pkg is null or pkg is not <Type>"（裸串无首尾空格/句号，逐字对齐
-        # C++ 各模块 unpack 字面量，如 YomkLogger.cpp:61 / YomkFunctionPool.cpp:28；
+        # eNo + "pkg is null or pkg is not <Type>"（裸串无首尾空格/句号；
         # String 端点包为裸 str）
         if isinstance(pkg, cls):
             return None
@@ -1985,7 +1981,7 @@ class YomkLogger(YomkService):
         bad = self._unpack(pkg, ConsoleLogProxy)
         if bad:
             return bad
-        # 与 consoleLog 读侧互斥；传 None 即卸载 proxy、恢复默认输出；两字段同锁一致更新
+        # 与 console_log 读侧互斥；传 None 即卸载 proxy、恢复默认输出；两字段同锁一致更新
         with self.m_consoleLogProxyMutex:
             self.m_consoleLogProxyFunc = pkg.m_consoleLogProxyFunc
             self.m_consoleLogProxy = self.m_consoleLogProxyFunc is not None
@@ -1995,7 +1991,7 @@ class YomkLogger(YomkService):
         bad = self._unpack(pkg, FileLogProxy)
         if bad:
             return bad
-        # 与 fileLog 读侧互斥；传 None 即卸载 proxy、恢复默认落盘；两字段同锁一致更新
+        # 与 file_log 读侧互斥；传 None 即卸载 proxy、恢复默认落盘；两字段同锁一致更新
         with self.m_fileLogProxyMutex:
             self.m_fileLogProxyFunc = pkg.m_fileLogProxyFunc
             self.m_fileLogProxy = self.m_fileLogProxyFunc is not None
@@ -2006,7 +2002,7 @@ class YomkLogger(YomkService):
         if bad:
             return bad
 
-        # 空名/空目录拒绝：eInvalid（参数无效惯例，P2-a 处置）
+        # 空名/空目录拒绝：eInvalid（参数无效惯例）
         if not pkg.m_logger:
             _yomk_err_pos_log("logger name is empty.")
             return YomkResponse(ResStatus.eInvalid, "logger name is empty.")
