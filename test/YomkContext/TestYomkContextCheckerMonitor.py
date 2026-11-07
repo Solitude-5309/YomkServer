@@ -42,7 +42,7 @@ from YomkApi import (
     ctx,
 )
 
-from YomkServerPy import (
+from YomkServer import (
     CheckStatus,
     Context,
     ContextChecker,

@@ -10,7 +10,7 @@
 #      规则集 E4/E7/E9/F（语法错误/可疑代码/F 未用导入等）零告警验收；
 #      白名单: --ignore F401 —— YomkApi 伞门面 re-export 与 typing 冗余导入
 #      属有意形态（11 处），登记为书面债务
-#   2. mypy 档: 检查 src/YomkApi.py 与 src/YomkServerPy.py 两源文件，
+#   2. mypy 档: 检查 src/YomkApi.py 与 src/YomkServer.py 两源文件，
 #      --ignore-missing-imports + --follow-imports=silent（依赖面注解不作门禁）；
 #      白名单: 豁免 4 个错误码 assignment(13)/misc(8)/attr-defined(2)/var-annotated(2)
 #      合计 25 处 = src 未回填类型注解的书面债务，随注解回填逐步收窄
@@ -88,7 +88,7 @@ fi
 
 # ---------- mypy：两源文件类型检查零告警验收（白名单见文件头行为注记） ----------
 if [ ${RUN_MYPY} -eq 1 ]; then
-    echo "-- mypy 开始扫描（src/YomkApi.py + src/YomkServerPy.py）..."
+    echo "-- mypy 开始扫描（src/YomkApi.py + src/YomkServer.py）..."
     MYPY_OUT="${LOG_ROOT}/mypy.log"
     python3 -m mypy --ignore-missing-imports --follow-imports=silent \
         --cache-dir "${LOG_ROOT}/mypy_cache" \
@@ -96,7 +96,7 @@ if [ ${RUN_MYPY} -eq 1 ]; then
         --disable-error-code=misc \
         --disable-error-code=attr-defined \
         --disable-error-code=var-annotated \
-        "${REPO_DIR}/src/YomkApi.py" "${REPO_DIR}/src/YomkServerPy.py" 2>&1 \
+        "${REPO_DIR}/src/YomkApi.py" "${REPO_DIR}/src/YomkServer.py" 2>&1 \
         | tee "${MYPY_OUT}"
     rc=${PIPESTATUS[0]}
     if [ ${rc} -ne 0 ]; then

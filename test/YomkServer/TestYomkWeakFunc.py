@@ -27,7 +27,7 @@ TestYomkWeakFunc.py —— YomkService.weak_func 弱绑定生命周期语义测�
 import gc
 import sys
 
-from YomkServerPy import (
+from YomkServer import (
     CheckStatus,
     Context,
     ResStatus,

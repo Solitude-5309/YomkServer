@@ -106,7 +106,7 @@ PY_SITE_DIR=$(ls -d "${PREFIX}"/lib/python*[0-9].[0-9]*/site-packages 2>/dev/nul
 [ -n "${PY_SITE_DIR}" ] \
     || fail "未找到 ${PREFIX}/lib/pythonX.Y/site-packages，请先构建: $(build_hint)（或用 --prefix 指定产物目录）"
 
-for f in YomkServerPy.so YomkApi.py; do
+for f in YomkServer.so YomkApi.py; do
     [ -f "${PY_SITE_DIR}/${f}" ] || fail "未找到 ${PY_SITE_DIR}/${f}，请先构建: $(build_hint)"
 done
 

@@ -29,7 +29,7 @@ import sys
 import threading
 import time
 
-from YomkServerPy import ResStatus, YomkResponse, YomkServer, YomkService
+from YomkServer import ResStatus, YomkResponse, YomkServer, YomkService
 
 g_failed = 0
 

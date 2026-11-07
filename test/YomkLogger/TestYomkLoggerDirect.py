@@ -34,7 +34,7 @@ import shutil
 import sys
 import tempfile
 
-from YomkServerPy import ConsoleLogger, FileLogger, Log
+from YomkServer import ConsoleLogger, FileLogger, Log
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")

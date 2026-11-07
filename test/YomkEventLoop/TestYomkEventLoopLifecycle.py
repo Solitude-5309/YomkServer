@@ -18,7 +18,7 @@ TestYomkEventLoopLifecycle.py - EventLoop 三段语义（start 重启续跑 / st
      （被丢弃事件的等待回调被触发，stop 哨兵消除竞态，weakref 归零断言析构完成；python 方法栈帧持 self 使"阻塞等待者存在期间析构"不可达，
      以排队事件 waitCallback 标记回调等价承载同一契约）
 
-说明：白盒段直连 YomkServerPy.EventLoop 类；API 段 YomkApi.server().async_thread(1).init() 拉起内置 /YomkEventLoop，
+说明：白盒段直连 YomkServer.EventLoop 类；API 段 YomkApi.server().async_thread(1).init() 拉起内置 /YomkEventLoop，
       末尾 YomkApi.server().shutdown() 收尾（进程级幂等，shutdown 后不可再初始化）。
       停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询 info_line 至 running:off
       确认 m_running 已置位后才释放阻塞事件，杜绝工作线程抢跑后续排队事件的竞态（确定性断言）。
@@ -33,8 +33,8 @@ import threading
 import time
 import weakref
 
-import YomkServerPy as ysp
-from YomkServerPy import Event, EventLoop
+import YomkServer as ysp
+from YomkServer import Event, EventLoop
 from YomkApi import event_loop, server
 import YomkApi
 

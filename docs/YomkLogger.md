@@ -56,7 +56,7 @@
 
 ```python
 import YomkApi
-from YomkServerPy import Log
+from YomkServer import Log
 
 YomkApi.server().init()
 

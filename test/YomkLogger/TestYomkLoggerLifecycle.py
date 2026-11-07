@@ -41,7 +41,7 @@ import sys
 import tempfile
 
 import YomkApi
-from YomkServerPy import Log, LogFile, ResStatus, LoggerInfo
+from YomkServer import Log, LogFile, ResStatus, LoggerInfo
 from YomkApi import log, log_mgr, server
 
 g_failed = 0

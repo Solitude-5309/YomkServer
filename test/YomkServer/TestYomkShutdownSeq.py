@@ -27,7 +27,7 @@ TestYomkShutdownSeq.py —— async_request + shutdown 排空/幂等/拒新语�
 import sys
 import time
 
-from YomkServerPy import ResStatus, YomkResponse, YomkServer, YomkService
+from YomkServer import ResStatus, YomkResponse, YomkServer, YomkService
 
 g_failed = 0
 

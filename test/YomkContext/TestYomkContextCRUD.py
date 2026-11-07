@@ -31,7 +31,7 @@ from YomkApi import (
     ContextKeyInfo,
 )
 
-from YomkServerPy import Context, ContextGroupKey, ResStatus
+from YomkServer import Context, ContextGroupKey, ResStatus
 
 def raw_ctx(endpoint, pkg):
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息断言经 server 域

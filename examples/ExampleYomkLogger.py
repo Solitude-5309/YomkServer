@@ -59,7 +59,7 @@ from pathlib import Path
 import sys
 
 import YomkApi
-from YomkServerPy import Log
+from YomkServer import Log
 from YomkApi import log, log_mgr, server
 
 # ---------------------------------------------------------------------------

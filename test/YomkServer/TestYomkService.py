@@ -26,7 +26,7 @@ TestYomkService.py —— YomkService 命名/函数注册/调用白盒单元测�
 
 import sys
 
-from YomkServerPy import ResStatus, YomkResponse, YomkService
+from YomkServer import ResStatus, YomkResponse, YomkService
 import YomkApi
 from YomkApi import server
 

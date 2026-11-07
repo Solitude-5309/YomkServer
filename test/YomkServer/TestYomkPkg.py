@@ -33,7 +33,7 @@ S5. 框架结构体默认值：Function/CallFunction/Context/
 
 import sys
 
-from YomkServerPy import (
+from YomkServer import (
     CallFunction,
     ConsoleLogProxy,
     Context,

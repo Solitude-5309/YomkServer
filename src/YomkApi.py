@@ -3,7 +3,7 @@ try:
 except ImportError:  # 版本模块缺失时保持门面 import 链可用
     __version__ = "unknown"
 
-from YomkServerPy import (
+from YomkServer import (
     YomkServer,
     YomkService,
     YomkResponse,
@@ -33,7 +33,7 @@ from YomkServerPy import (
     _yomk_err_pos_log,
     _yomk_source_loc_prefix
 )
-import YomkServerPy as _yomk_core  # 位置前缀三开关经模块属性读写
+import YomkServer as _yomk_core  # 位置前缀三开关经模块属性读写
 from typing import Any, Callable, Optional
 import atexit
 import logging

@@ -4,7 +4,7 @@
 TestYomkUmbrella.py —— 伞门面运行期公开面锚点 + 六域冒烟
 
 本文件是**运行期公开面锚点**测试：
-只 `import YomkApi`（伞门面，不 import YomkServerPy 本体），断言六域入口
+只 `import YomkApi`（伞门面，不 import YomkServer 本体），断言六域入口
 返回类型正确、各 builder 公开方法面与 YomkApi.py 定型清单逐一对表，
 再走 S1-S8 六域冒烟。
 
@@ -15,7 +15,7 @@ TestYomkUmbrella.py —— 伞门面运行期公开面锚点 + 六域冒烟
 - 收尾打印 `ALL PASSED` / `SOME FAILED` + `sys.exit(g_failed)`
   （非全仓统一的 "all check passed." 行——本文件即如此）。
 
-纪律：只 import YomkApi + stdlib（本文件出现 YomkServerPy 直接 import 即违例）。
+纪律：只 import YomkApi + stdlib（本文件出现 YomkServer 直接 import 即违例）。
 """
 
 import inspect

@@ -5,6 +5,7 @@ bin/
 .vscode/
 .qoder/
 .trae/
+install/
 *~
 *.autosave
 *.a

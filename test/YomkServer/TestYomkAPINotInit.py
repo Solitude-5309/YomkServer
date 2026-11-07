@@ -31,7 +31,7 @@ import sys
 import time
 
 import YomkApi
-from YomkServerPy import Log, ResStatus, YomkService
+from YomkServer import Log, ResStatus, YomkService
 from YomkApi import log, log_mgr, ctx, event_loop, fn_pool, server
 
 g_failed = 0

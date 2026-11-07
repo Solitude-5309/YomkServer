@@ -58,7 +58,7 @@ import threading
 import time
 
 import YomkApi
-from YomkServerPy import Log, ResStatus
+from YomkServer import Log, ResStatus
 from YomkApi import log, log_mgr, server
 
 g_failed = 0

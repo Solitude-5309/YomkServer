@@ -24,8 +24,8 @@ import sys
 import threading
 import time
 
-import YomkServerPy as ysp
-from YomkServerPy import Event, EventLoop
+import YomkServer as ysp
+from YomkServer import Event, EventLoop
 from YomkApi import event_loop, server
 import YomkApi
 

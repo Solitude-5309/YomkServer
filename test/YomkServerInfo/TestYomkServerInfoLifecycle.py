@@ -32,7 +32,7 @@ S7. 超长名内省边界（65536 字符服务名，对齐 FPC1-S8）：/service
   （/services 为 list[str]，/functions 为 FuncInfo 结构化列表，/all 为 ServerServiceInfo 层级列表）
 - install_func 第三参承载函数消息类型元数据，第四参承载函数说明（三内置装配已补齐）
 - 探针计数用 list.append（GIL 原子）
-- S0 类级直连（import YomkServerPy 白盒），放在 init 单例之前以独立实例隔离单例交互；
+- S0 类级直连（import YomkServer 白盒），放在 init 单例之前以独立实例隔离单例交互；
   S1-S7 经门面 API 走完整路由链
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
@@ -42,7 +42,7 @@ import gc
 import sys
 import threading
 
-import YomkServerPy as ysp
+import YomkServer as ysp
 from YomkApi import (
     server,
     YomkResponse,

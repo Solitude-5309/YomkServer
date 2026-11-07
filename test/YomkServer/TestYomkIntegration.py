@@ -40,7 +40,7 @@ from YomkApi import (
     log_mgr,
 )
 
-from YomkServerPy import Context, ResStatus, YomkResponse, YomkLogger
+from YomkServer import Context, ResStatus, YomkResponse, YomkLogger
 
 g_failed = 0
 

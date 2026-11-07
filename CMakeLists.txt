@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.14)
 # → YomkApi 顶部 import → server().version()（构建期注入，无运行时读取），
 # 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
 # 本行即版本唯一来源，发布时手动 bump。
-project(YomkServerPy VERSION 2.1.2 LANGUAGES C)
+project(YomkServerPy VERSION 2.1.3 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 # Interpreter 组件提供 Python_EXECUTABLE：cython 仅 user-site 安装时（可执行入口
@@ -31,8 +31,11 @@ include(cmake/EnvInfo.cmake)
 yomk_env_report()
 
 # ---------- 3. 生成 C 文件 ----------
-set(PY_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.py)
-set(C_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.c)
+# Python 模块名（import 名 / 扩展产物名 / .pyi 名）为 YomkServer；
+# CMake 工程身份仍为 YomkServerPy，两者解耦，避免与 C++ 的 YomkServer 包冲突
+set(YOMK_PY_MODULE_NAME "YomkServer")
+set(PY_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/${YOMK_PY_MODULE_NAME}.py)
+set(C_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/${YOMK_PY_MODULE_NAME}.c)
 
 add_custom_command(
     OUTPUT ${C_SOURCE}
@@ -63,7 +66,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 # 纯 python 模块构建期同步拷入（YomkServerPyVersion.py 已由 configure_file 生成于构建树）
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.pyi"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/${YOMK_PY_MODULE_NAME}.pyi"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/YomkApi.py"
         "${CMAKE_BINARY_DIR}/${PROJECT_NAME}Version.py"
         "${BUILD_SITE_DIR}"
@@ -80,16 +83,17 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # ---------- 6. 输出文件名（跨平台适配） ----------
+# 产物名必须与 Cython 由源文件名生成的 PyInit_YomkServer 一致
 if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         PREFIX ""
-        OUTPUT_NAME "${PROJECT_NAME}"
+        OUTPUT_NAME "${YOMK_PY_MODULE_NAME}"
         SUFFIX ".pyd"
     )
 else()
     set_target_properties(${PROJECT_NAME} PROPERTIES
         PREFIX ""
-        OUTPUT_NAME "${PROJECT_NAME}"
+        OUTPUT_NAME "${YOMK_PY_MODULE_NAME}"
         SUFFIX ".so"
     )
 endif()
@@ -150,7 +154,7 @@ install(FILES
 )
 
 install(FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.pyi"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/${YOMK_PY_MODULE_NAME}.pyi"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/YomkApi.py"
     DESTINATION ${PYTHON_SITE_PACKAGES}
 )

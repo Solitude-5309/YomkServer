@@ -24,7 +24,7 @@ TestYomkAPILifecycle.py —— YomkAPI init/shutdown 单例生命周期测试
 import sys
 
 import YomkApi
-from YomkServerPy import ResStatus, YomkService
+from YomkServer import ResStatus, YomkService
 from YomkApi import server
 
 g_failed = 0

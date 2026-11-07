@@ -34,7 +34,7 @@ from YomkApi import (
     ctx,
 )
 
-from YomkServerPy import CheckStatus, ResStatus
+from YomkServer import CheckStatus, ResStatus
 
 g_failed = 0
 

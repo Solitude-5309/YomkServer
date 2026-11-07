@@ -29,7 +29,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 
 | 位置 | 简述 |
 |---|---|
-| `src/` | 核心库源码：`YomkApi.py` 门面、Cython 扩展 `YomkServerPy`、`.pyi` 类型提示与版本模块 |
+| `src/` | 核心库源码：`YomkApi.py` 门面、Cython 扩展 `YomkServer`、`.pyi` 类型提示与版本模块 |
 | `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池、日志、服务内省六大主题 |
 | `template/` | 脚手架：`project/` 新工程模板、`extension/` 扩展库模板 |
 | `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |
@@ -188,7 +188,7 @@ YomkApi.event_loop().msg("task1").loop("TaskLoop").post()
 
 # 阻塞投递：等待执行完成，链式终结返回 ResStatus；
 # 需要事件执行结果（Event 对象含 m_eventId / m_response）时用 server 域裸链
-from YomkServerPy import Event
+from YomkServer import Event
 res = YomkApi.server().url("/YomkEventLoop/post_wait").msg(Event("TaskLoop", "task2")).request()
 print(res.data.m_eventId, res.data.m_eventLoopName, res.data.m_response.msg)
 
@@ -240,7 +240,7 @@ YomkApi.fn_pool().fn_name("calc").fn(func_v2).install()
 控制台/文件双输出、六级别（trace/debug/info/warn/error/fatal）分级日志，支持级别开关、日志代理、位置前缀与文件落盘：
 
 ```python
-from YomkServerPy import Log   # 六级常量 eTrace..eFatal 与代理回调 Log 包
+from YomkServer import Log   # 六级常量 eTrace..eFatal 与代理回调 Log 包
 
 # 1. 控制台发射：无 tag 便捷版（缺省日志器名 "main"）与 tag 版
 #    （tag 随记录显示、兼作日志器名，首次使用自动创建同名日志器）
@@ -319,7 +319,7 @@ resp = YomkApi.server().all()
 ./build_ubuntu.sh
 ```
 
-脚本将自动检查依赖（cmake/gcc/python3/python3-dev/cython/readerwriterlock，缺失时可选自动安装）并交互式完成配置、编译、安装（默认安装路径 `/opt/yomk`），随后调用 `scripts/install_env.sh` 设置环境变量 `YOMK_PREFIX_PATH` 与 `PYTHONPATH`——新开任意终端即可直接 `import YomkServerPy`（无需手动 source 或 export）。
+脚本将自动检查依赖（cmake/gcc/python3/python3-dev/cython/readerwriterlock，缺失时可选自动安装）并交互式完成配置、编译、安装（默认安装路径 `/opt/yomk`），随后调用 `scripts/install_env.sh` 设置环境变量 `YOMK_PREFIX_PATH` 与 `PYTHONPATH`——新开任意终端即可直接 `import YomkServer`（无需手动 source 或 export）。
 
 #### 方式 2：手动 CMake 构建
 
@@ -434,7 +434,7 @@ examples/
 ```bash
 ./test/run_static_checks.sh            # 默认双跑 ruff + mypy
 ./test/run_static_checks.sh --ruff     # 仅 ruff（规则集 E4/E7/E9/F，--isolated 消除用户级配置干扰）
-./test/run_static_checks.sh --mypy     # 仅 mypy（YomkApi.py / YomkServerPy.py 类型检查）
+./test/run_static_checks.sh --mypy     # 仅 mypy（YomkApi.py / YomkServer.py 类型检查）
 ```
 
 - 依赖：`python3 -m pip install --user ruff mypy`（缺失时报错并给出安装提示）
@@ -463,9 +463,9 @@ examples/
 安装完成后 PYTHONPATH 已持久化（Linux 由 `scripts/install_env.sh` 写入 profile），业务代码直接导入即可使用：
 
 ```python
-import YomkApi   # 门面 API：自动加载 Cython 扩展 YomkServerPy，核心类型（YomkService / YomkResponse / ResStatus 等）均可经 YomkApi 直接使用
+import YomkApi   # 门面 API：自动加载 Cython 扩展 YomkServer，核心类型（YomkService / YomkResponse / ResStatus 等）均可经 YomkApi 直接使用
 ```
 
 - 新开任意终端免配置；未持久化的环境（如 CI、Windows）手动设置：`export PYTHONPATH=${YOMK_PREFIX_PATH}/lib/pythonX.Y/site-packages:$PYTHONPATH`
-- `YomkServerPy.pyi` 随库安装于同一目录，IDE 可据此提供类型提示与补全
+- `YomkServer.pyi` 随库安装于同一目录，IDE 可据此提供类型提示与补全
 - 版本号经 `YomkApi.__version__` 查询（源于 CMakeLists 的 `project(VERSION)` 单一来源，与 `share/YomkServerPy/abi_report.txt` 同源）

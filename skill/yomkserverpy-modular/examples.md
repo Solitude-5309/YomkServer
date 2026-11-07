@@ -616,7 +616,7 @@ resp = YomkApi.server().all()
 
 ```python
 import YomkApi
-from YomkServerPy import Log
+from YomkServer import Log
 
 YomkApi.server().init()
 
@@ -809,12 +809,12 @@ if [ -z "${SITE_PACKAGES}" ]; then
     exit 1
 fi
 
-# 校验框架模块（扩展 YomkServerPy*.so/.pyd + 门面 YomkApi.py）
+# 校验框架模块（扩展 YomkServer*.so/.pyd + 门面 YomkApi.py）
 shopt -s nullglob
-_EXT_FILES=("${SITE_PACKAGES}"/YomkServerPy*.so "${SITE_PACKAGES}"/YomkServerPy*.pyd)
+_EXT_FILES=("${SITE_PACKAGES}"/YomkServer*.so "${SITE_PACKAGES}"/YomkServer*.pyd)
 shopt -u nullglob
 if [ ${#_EXT_FILES[@]} -eq 0 ] || [ ! -f "${SITE_PACKAGES}/YomkApi.py" ]; then
-    echo "错误: site-packages 中未找到 YomkServerPy 扩展模块或 YomkApi.py: ${SITE_PACKAGES}"
+    echo "错误: site-packages 中未找到 YomkServer 扩展模块或 YomkApi.py: ${SITE_PACKAGES}"
     unset _EXT_FILES
     exit 1
 fi
