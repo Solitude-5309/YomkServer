@@ -13,9 +13,17 @@ S5. 框架结构体默认值（python 对应子集）：Function/CallFunction/Co
     ContextChecker/ContextMonitor/FuncInfo/LogFile/Log/ConsoleLogProxy
     默认构造与字段
 
-语言机制说明（剔除口径，非缺陷）：
+语言机制说明（剔除口径，非缺陷；对齐报告 S12/S13 豁免记录）：
 - python 方针明确消息包为普通类（宏与 dynamic_pointer_cast 体系不复刻），
   框架侧无标准类型消息包被测对象，不设对应用例
+- 30 种标准类型包（YomkMsgs.h Bool..StringArray 逐族）豁免理由：python 以原生
+  bool/int/float/str/list 实例直传，属性面与 str() 呈现即类型本身，消息经服务
+  路由全程对象直递（无序列化 wire 层），类型包枚举无承载必要
+- 7 个 List 包豁免理由：原生 list 即等价物（元素类型自由，与 C++ List 包
+  逐族定型的差异同属上条 wire 层缺失的语言差异）
+- unpack 体系豁免理由：C++ unpack<T>(pkg) 按运行期类型名解包（空/不匹配返回
+  nullptr）；python 属性直读即取值路径，类型守卫由调用方 isinstance 自备，
+  ctx().msg(cls) 类型指定位仅作内省元数据（S13 豁免，详见 docs/YomkMsg.md）
 - VoidPointer 为 C 语言特有结构（void* 裸指针），python 无对应类型，
   保留书面差异；LogFile/Log/ConsoleLogProxy 已随 Logger 模块轮落地并回填断言
 - Event 默认构造 m_response 初始为 None，语义为"未执行时 response 为空"

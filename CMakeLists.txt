@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.14)
-project(YomkServerPy VERSION 2.0.7 LANGUAGES C)
+# 版本号策略（S14 决策，2026-11-07）：YomkServerPy 保持独立号段，不跟随
+# C++ 基线 Yomk 3.5.x 号段——两线发布节奏独立；对齐点是版本机制而非号段：
+# project(VERSION) → configure_file 生成 YomkServerPyVersion.py 的 __version__
+# → YomkApi 顶部 import → server().version()（等价 C++ YOMK_VERSION 编译期注入），
+# 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
+# 本行即版本唯一来源，发布时手动 bump。
+project(YomkServerPy VERSION 2.0.8 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 # Interpreter 组件提供 Python_EXECUTABLE：cython 仅 user-site 安装时（可执行入口

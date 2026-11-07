@@ -19,6 +19,13 @@
 #      测试内取根、独立运行回退系统临时目录）；启动时整目录重建（兜底上次崩溃遗留），
 #      退出（含失败/中断/超时）时整目录删除，不留任何临时产物
 # 测试程序风格约定: 退出码 0=全部通过，非 0=存在失败用例（[FAIL] 行输出）
+# 书面豁免台账（对齐报告 P2 待决项落地记录，语言差异/间接覆盖，非缺陷）:
+#   S17 TestYomkSimpleThreadPool 等价物: Python 无公开线程池类型（内部
+#       ThreadPoolExecutor，随 init 异步池装配）；排空/异常不中断/churn 行为由
+#       TestYomkShutdownSeq（关闭排空 join）与 TestYomkConcurrency（异步压测）
+#       间接覆盖，不设直测等价物
+#   S19 lsan.supp: Python 托管内存无 LSan 概念；可选内存回归口径:
+#       PYTHONMALLOC=debug ./test/run_tests.sh（调试分配器，记录不设为门禁）
 
 set -u
 
@@ -33,7 +40,7 @@ FULL_MODE=0
 USER_TIMEOUT=0
 
 usage() {
-    sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,28p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 }
 
@@ -115,6 +122,8 @@ export PYTHONPATH="${PY_SITE_DIR}:${PYTHONPATH}"
 
 # 测试清单：按模块分组、快->慢，stress 类压尾（项带模块子目录前缀，test/<模块>/<名>.py；
 # 新增测试在此登记；模块轮测试追加对应模块分组与条目）
+# 当前登记总数: 27 项（S20 声明；数组闭合后有自检守卫，声明与清单漂移即报错退出，
+# 复刻 C++ 侧"注释 26 / 实际 28"漂移教训的结构性防御）
 TESTS=(
     # YomkServer 模块（基础服务框架）
     YomkServer/TestYomkUmbrella
@@ -150,6 +159,14 @@ TESTS=(
     YomkLogger/TestYomkLoggerConcurrency
     YomkLogger/TestYomkLoggerStress
 )
+
+# -------------sl 2b. 总数自检守卫（S20） ----------------
+DECLARED_TEST_COUNT=27
+if [ "${#TESTS[@]}" -ne "${DECLARED_TEST_COUNT}" ]; then
+    echo "错误: TESTS 登记数 ${#TESTS[@]} 与声明总数 ${DECLARED_TEST_COUNT} 不一致，登记新测试时须同步更新本文件声明"
+    exit 1
+fi
+# -------------el 2b. 总数自检守卫 ----------------
 
 # -------------sl 3. 门禁检查 ----------------
 MISSING=()
