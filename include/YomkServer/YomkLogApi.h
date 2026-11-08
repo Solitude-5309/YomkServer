@@ -4,11 +4,11 @@
 #include <utility>
 
 #include "YomkLogFmt.h"
+#include "YomkLoggerUrl.h"
 #include "YomkMsgs.h"
 #include "YomkPayload.h"
 #include "YomkServerApi.h"
 #include "YomkSourceLoc.h"
-#include "YomkUrl.h"
 
 // 日志域：发射（yomk::log()）与管理（yomk::log_mgr()）分域。发射链经请求域 .status()
 // 三态收敛; 管理操作无发射语义, 入口不携带 YomkSourceLoc。

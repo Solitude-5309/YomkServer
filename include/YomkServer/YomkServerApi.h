@@ -14,15 +14,15 @@
 #include "YomkMsg.h"
 #include "YomkMsgs.h"
 #include "YomkPayload.h"
+#include "YomkServerInfoUrl.h"
 #include "YomkServerRef.h"
-#include "YomkUrl.h"
 
 // 服务器域（yomk::server()）：服务请求、生命周期管理、服务注册/注销、拓扑内省的统一链式入口。
 // request 是刻意保留的基础接口——API 壳屏蔽 URL, 但不垄断请求通道: 基于 YomkServer 写自定义
 // 服务可直接依赖本头。
 // 链式形态: url/msg 等累积方法任意组合, 以 request()/status()/init()/create() 等无参终结动作收尾。
 // 无状态设计: 全部终结动作经 YomkServerRef 快照取当前 server; 未初始化时记诊断并返回失败值,
-// 不抛异常。本头依赖单向 (Boot/Diag/Msgs/Payload/ServerRef/Url/Export), 可独立包含。
+// 不抛异常。本头依赖单向 (Boot/Diag/Msgs/Payload/ServerInfoUrl/ServerRef/Export), 可独立包含。
 
 /**
  * @brief 服务器域链式 Builder：服务请求 / 生命周期 / 服务管理 / 拓扑内省

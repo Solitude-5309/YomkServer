@@ -3,10 +3,10 @@
 #include <string_view>
 #include <utility>
 
+#include "YomkFunctionPoolUrl.h"
 #include "YomkMsgs.h"
 #include "YomkPayload.h"
 #include "YomkServerApi.h"
-#include "YomkUrl.h"
 
 // 函数池域：单入口 yomk::fn_pool()。函数名由 .fn_name(name) 承载，服务函数 / 消息名 /
 // 说明 / 调用数据一律前置累积，终结 op 全部无参——install / uninstall 经请求域 .status()
