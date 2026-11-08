@@ -5,7 +5,17 @@ cmake_minimum_required(VERSION 3.14)
 # → YomkApi 顶部 import → server().version()（构建期注入，无运行时读取），
 # 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
 # 本行即版本唯一来源，发布时手动 bump。
-project(YomkServerPy VERSION 2.2.9 LANGUAGES C)
+project(YomkServerPy VERSION 2.2.10 LANGUAGES C)
+
+# ---------- 各运行时域版本号 ----------
+# 集中定义，当前全部取项目版本号；若某域需要独立版本，只改对应行。
+# 第 11 节据此 configure_file 生成各域 _version.py。
+set(YOMK_SERVER_VERSION "${PROJECT_VERSION}")
+set(YOMK_CTX_VERSION "${PROJECT_VERSION}")
+set(YOMK_EVENT_LOOP_VERSION "${PROJECT_VERSION}")
+set(YOMK_FN_POOL_VERSION "${PROJECT_VERSION}")
+set(YOMK_LOG_VERSION "${PROJECT_VERSION}")
+set(YOMK_SRV_INFO_VERSION "${PROJECT_VERSION}")
 
 # ---------- 1. 查找 Python ----------
 # Interpreter 组件提供 Python_EXECUTABLE：cython 仅 user-site 安装时（可执行入口
@@ -222,63 +232,165 @@ install(TARGETS ${PROJECT_NAME}
 
 # ---------- 10. 示例不安装（Python 脚本源码即可运行，示例位于源码树 examples/，直接在源码树下运行） ----------
 
-# ---------- 11. L10 Cython 单模块试点（yomk.msg.server.ServerMsg） ----------
-# 仅编译新包的一个消息模块，验证 PEP 420 命名空间包下 ".so 优先 / .py 回退"；
-# 旧合并目标与安装规则保持不变，试点产物只落构建树（安装/staging 留到 L11）
-set(YOMK_PILOT_MODULE_NAME "yomk.msg.server.ServerMsg")
-set(YOMK_PILOT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/yomk/msg/server")
-set(YOMK_PILOT_PY_SOURCE "${YOMK_PILOT_SRC_DIR}/ServerMsg.py")
-set(YOMK_PILOT_C_DIR "${CMAKE_BINARY_DIR}/cython/yomk/msg/server")
-set(YOMK_PILOT_C_SOURCE "${YOMK_PILOT_C_DIR}/ServerMsg.c")
-set(YOMK_PILOT_SITE_DIR "${BUILD_SITE_DIR}/yomk/msg/server")
-file(MAKE_DIRECTORY "${YOMK_PILOT_C_DIR}")
-file(MAKE_DIRECTORY "${YOMK_PILOT_SITE_DIR}")
+# ---------- 11. L11 新包全量 Cython + 每域版本 + staging + 安装 ----------
+# 新包与旧合并目标并行存在（L11 不删除旧面，删除在 L13）：
+# - 全量模块各自独立编译，输出 build/prefix/.../site-packages/yomk/<域>/；
+# - 所有 __init__.py 与 builder.py 保持纯 Python，不列入编译清单；
+# - 每域由 configure_file 生成 _version.py（各域版本号集中定义于 project() 之后）；
+# - staging 把源码树与生成的 _version.py 合并到构建树，安装规则同步落盘。
+set(YOMK_PY_PACKAGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/yomk")
+set(YOMK_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/yomk")
+set(YOMK_VERSIONED_PACKAGES server ctx event_loop fn_pool log srv_info)
 
-add_custom_command(
-    OUTPUT ${YOMK_PILOT_C_SOURCE}
-    COMMAND ${CYTHON_EXECUTABLE}
-        -3
-        --module-name "${YOMK_PILOT_MODULE_NAME}"
-        "${YOMK_PILOT_PY_SOURCE}"
-        -o "${YOMK_PILOT_C_SOURCE}"
-    DEPENDS "${YOMK_PILOT_PY_SOURCE}"
-    COMMENT "Running Cython for ${YOMK_PILOT_MODULE_NAME} (pilot)"
+# 需 Cython 编译的模块（相对 src/yomk，不带 .py）
+set(YOMK_CYTHON_MODULES
+    msg/server/ServerMsg
+    msg/ctx/ContextMsg
+    msg/event_loop/EventLoopMsg
+    msg/fn_pool/FnPoolMsg
+    msg/log/LogMsg
+    msg/srv_info/SrvInfoMsg
+    server/YomkService
+    server/YomkServer
+    server/_diag
+    server/_facade
+    ctx/_diag
+    ctx/ContextGroup
+    ctx/YomkContext
+    event_loop/_diag
+    event_loop/EventLoop
+    event_loop/YomkEventLoop
+    fn_pool/_diag
+    fn_pool/YomkFunctionPool
+    log/ConsoleLogger
+    log/FileLogger
+    log/YomkLogger
+    log/_diag
+    srv_info/_diag
+    srv_info/YomkServerInfo
 )
 
-add_library(yomk_msg_server_ServerMsg MODULE ${YOMK_PILOT_C_SOURCE})
-target_include_directories(yomk_msg_server_ServerMsg PRIVATE
-    ${Python_INCLUDE_DIRS}
-)
-target_link_libraries(yomk_msg_server_ServerMsg
-    ${Python_LIBRARIES}
-)
+set(YOMK_CYTHON_TARGETS "")
+foreach(mod IN LISTS YOMK_CYTHON_MODULES)
+    string(REPLACE "/" "." mod_dotted "${mod}")
+    string(REPLACE "/" "_" target "yomk_${mod}")
+    get_filename_component(mod_name "${mod}" NAME)
+    get_filename_component(mod_dir "${mod}" DIRECTORY)
 
-if(WIN32)
-    set_target_properties(yomk_msg_server_ServerMsg PROPERTIES
-        PREFIX ""
-        OUTPUT_NAME "ServerMsg"
-        SUFFIX ".pyd"
-        LIBRARY_OUTPUT_DIRECTORY "${YOMK_PILOT_SITE_DIR}"
-        RUNTIME_OUTPUT_DIRECTORY "${YOMK_PILOT_SITE_DIR}"
+    set(py_src "${YOMK_PY_PACKAGE_DIR}/${mod}.py")
+    set(c_src "${CMAKE_CURRENT_BINARY_DIR}/cython/yomk/${mod}.c")
+    set(out_dir "${BUILD_SITE_DIR}/yomk/${mod_dir}")
+
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cython/yomk/${mod_dir}")
+    file(MAKE_DIRECTORY "${out_dir}")
+
+    add_custom_command(
+        OUTPUT "${c_src}"
+        COMMAND ${CYTHON_EXECUTABLE} -3
+                --module-name "yomk.${mod_dotted}"
+                -o "${c_src}" "${py_src}"
+        DEPENDS "${py_src}"
+        COMMENT "Cython yomk.${mod_dotted}"
     )
-else()
-    set_target_properties(yomk_msg_server_ServerMsg PROPERTIES
+
+    add_library(${target} SHARED "${c_src}")
+    set_target_properties(${target} PROPERTIES
+        OUTPUT_NAME "${mod_name}"
         PREFIX ""
-        OUTPUT_NAME "ServerMsg"
-        SUFFIX ".so"
-        LIBRARY_OUTPUT_DIRECTORY "${YOMK_PILOT_SITE_DIR}"
+        LIBRARY_OUTPUT_DIRECTORY "${out_dir}"
+        ARCHIVE_OUTPUT_DIRECTORY "${out_dir}"
+        RUNTIME_OUTPUT_DIRECTORY "${out_dir}"
     )
+    target_include_directories(${target} PRIVATE ${Python_INCLUDE_DIRS})
+    target_link_libraries(${target} ${Python_LIBRARIES})
+
+    if(WIN32)
+        set_target_properties(${target} PROPERTIES SUFFIX ".pyd")
+        target_compile_definitions(${target} PRIVATE _hypot=hypot)
+        target_compile_options(${target} PRIVATE /O2 /W3)
+    else()
+        set_target_properties(${target} PROPERTIES SUFFIX ".so")
+        target_compile_options(${target} PRIVATE -O3 -Wall)
+    endif()
+
+    list(APPEND YOMK_CYTHON_TARGETS ${target})
+endforeach()
+
+# INTERFACE 聚合 target：L13 删除旧 YomkServerPy 本体后接管该名称；
+# 当前为临时名且暂不进入安装导出集，避免改变现有 find_package 契约
+add_library(YomkServerPyYomkModules INTERFACE)
+target_link_libraries(YomkServerPyYomkModules INTERFACE ${YOMK_CYTHON_TARGETS})
+
+foreach(pkg IN LISTS YOMK_VERSIONED_PACKAGES)
+    string(TOUPPER "${pkg}" pkg_upper)
+    set(YOMK_MODULE_VERSION "${YOMK_${pkg_upper}_VERSION}")
+    file(MAKE_DIRECTORY "${YOMK_GEN_DIR}/${pkg}")
+    configure_file(
+        "${YOMK_PY_PACKAGE_DIR}/${pkg}/_version.py.in"
+        "${YOMK_GEN_DIR}/${pkg}/_version.py"
+        @ONLY
+    )
+endforeach()
+
+# 纯 Python staging：源码树（.py/.pyi/py.typed）→ 构建树；
+# 随后覆盖生成的 _version.py，并清理源码树带出的 .py.in 与 __pycache__
+set(YOMK_STAGE_CLEANUP)
+foreach(pkg IN LISTS YOMK_VERSIONED_PACKAGES)
+    list(APPEND YOMK_STAGE_CLEANUP
+        COMMAND ${CMAKE_COMMAND} -E remove_directory
+            "${BUILD_SITE_DIR}/yomk/${pkg}/__pycache__"
+        COMMAND ${CMAKE_COMMAND} -E remove_directory
+            "${BUILD_SITE_DIR}/yomk/msg/${pkg}/__pycache__"
+        COMMAND ${CMAKE_COMMAND} -E remove -f
+            "${BUILD_SITE_DIR}/yomk/${pkg}/_version.py.in")
+endforeach()
+
+add_custom_target(yomk_stage_python ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${YOMK_PY_PACKAGE_DIR}"
+            "${BUILD_SITE_DIR}/yomk"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${YOMK_GEN_DIR}"
+            "${BUILD_SITE_DIR}/yomk"
+    ${YOMK_STAGE_CLEANUP}
+    COMMENT "Staging pure-python yomk package"
+)
+
+# 安装：源码树按扩展名过滤（不含 .py.in），生成版本单独安装，编译产物按域落盘。
+# YOMK_INSTALL_PY_SOURCE=OFF 时只排除已编译模块的回退 .py；__init__.py、
+# builder.py 与 _version.py 本就必须以纯 Python 形式发布，不能一并排除。
+option(YOMK_INSTALL_PY_SOURCE "Install pure-python fallback sources alongside compiled modules" ON)
+set(YOMK_PY_SOURCE_EXCLUDES)
+if(NOT YOMK_INSTALL_PY_SOURCE)
+    foreach(mod IN LISTS YOMK_CYTHON_MODULES)
+        get_filename_component(mod_name "${mod}" NAME)
+        get_filename_component(mod_dir "${mod}" DIRECTORY)
+        list(APPEND YOMK_PY_SOURCE_EXCLUDES
+            PATTERN "${mod_dir}/${mod_name}.py" EXCLUDE)
+    endforeach()
 endif()
 
-# 纯 Python 文件同步到试点目录：__init__.py 保持 .py（不参与编译）；
-# ServerMsg.py/.pyi 作为 .so 缺失时的回退源与类型桩，py.typed 保持叶子标记
-add_custom_command(TARGET yomk_msg_server_ServerMsg POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${YOMK_PILOT_SRC_DIR}/__init__.py"
-        "${YOMK_PILOT_SRC_DIR}/__init__.pyi"
-        "${YOMK_PILOT_SRC_DIR}/ServerMsg.py"
-        "${YOMK_PILOT_SRC_DIR}/ServerMsg.pyi"
-        "${YOMK_PILOT_SRC_DIR}/py.typed"
-        "${YOMK_PILOT_SITE_DIR}"
-    COMMENT "Copying yomk.msg.server pure-python files into build site-packages"
+install(DIRECTORY "${YOMK_PY_PACKAGE_DIR}/"
+    DESTINATION "${PYTHON_SITE_PACKAGES}/yomk"
+    FILES_MATCHING
+        PATTERN "*.py"
+        PATTERN "*.pyi"
+        PATTERN "py.typed"
+    PATTERN "__pycache__" EXCLUDE
+    ${YOMK_PY_SOURCE_EXCLUDES}
 )
+
+install(DIRECTORY "${YOMK_GEN_DIR}/"
+    DESTINATION "${PYTHON_SITE_PACKAGES}/yomk"
+    FILES_MATCHING PATTERN "_version.py"
+)
+
+foreach(mod IN LISTS YOMK_CYTHON_MODULES)
+    string(REPLACE "/" "_" target "yomk_${mod}")
+    get_filename_component(mod_dir "${mod}" DIRECTORY)
+    install(TARGETS ${target}
+        LIBRARY DESTINATION "${PYTHON_SITE_PACKAGES}/yomk/${mod_dir}"
+        ARCHIVE DESTINATION "${PYTHON_SITE_PACKAGES}/yomk/${mod_dir}"
+        RUNTIME DESTINATION "${PYTHON_SITE_PACKAGES}/yomk/${mod_dir}"
+    )
+endforeach()
