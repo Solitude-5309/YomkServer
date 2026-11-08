@@ -4,6 +4,7 @@
 #include <vector>
 #include "YomkDiag.h"
 #include "YomkFunctionPoolMsgs.h"
+#include "YomkServerMsgs.h"
 YomkFunctionPool::YomkFunctionPool(YomkServer* server) : YomkService(server)
 {
     name("/YomkFunctionPool");

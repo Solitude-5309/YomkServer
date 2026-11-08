@@ -12,11 +12,11 @@
 #include "YomkDiag.h"
 #include "YomkExport.h"
 #include "YomkMsg.h"
-#include "YomkMsgs.h"
 #include "YomkPayload.h"
 #include "YomkServerInfoMsgs.h"
 #include "YomkServerInfoPayload.h"
 #include "YomkServerInfoUrl.h"
+#include "YomkServerMsgs.h"
 #include "YomkServerRef.h"
 
 // 服务器域（yomk::server()）：服务请求、生命周期管理、服务注册/注销、拓扑内省的统一链式入口。

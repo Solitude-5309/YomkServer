@@ -4,19 +4,10 @@
 #include <vector>
 
 #include "YomkMsg.h"
-#include "YomkPayload.h"
 
-// SDK 核心消息包目录：核心载荷包 + 内置标准类型包（成员名均为 d）。
-// 模块专属消息包见 YomkContextMsgs.h / YomkLoggerMsgs.h / YomkEventLoopMsgs.h /
-// YomkFunctionPoolMsgs.h / YomkServerInfoMsgs.h；自定义消息经 YomkMsg.h 的
-// YOMK_DEFINE_MSG 宏自行声明。
-
-// ============ 核心载荷消息包 ============
-YOMK_DEFINE_MSG(yomk::payload::Response, Response, d);
-YOMK_DEFINE_MSG(yomk::payload::FuncInfo, FuncInfo, d);
-// FunctionPool 全量函数内省（yomk::fn_pool().all() 返回数据；函数总数由 d.size() 承载）
-YOMK_DEFINE_MSG(std::vector<yomk::payload::FuncInfo>, FuncInfoList, d);
-YOMK_DEFINE_MSG(yomk::payload::VoidPointer, VoidPointer, d);
+// SDK 标准类型消息包目录：内置标量/数组类型（成员名均为 d）。
+// 核心载荷消息包见 YomkServerMsgs.h；模块专属消息包见各 Yomk{Module}Msgs.h；
+// 自定义消息经 YomkMsg.h 的 YOMK_DEFINE_MSG 宏自行声明。
 
 // 内置标准类型消息包（成员名均为 d）
 YOMK_DEFINE_MSG(bool, Bool, d);
