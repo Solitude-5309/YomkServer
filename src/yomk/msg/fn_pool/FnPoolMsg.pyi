@@ -1,3 +1,6 @@
+from typing import Any, Callable, Optional
+
+
 class FuncInfo:
     # 功能函数元信息（/YomkFunctionPool/name 与 /all、/YomkServerInfo/function
     # 单查与 /all 清单段返回数据），预留扩展（如安全性校验）
@@ -11,3 +14,20 @@ class FuncInfo:
         msg_name: str = "",
         description: str = "",
     ) -> None: ...
+
+
+class Function:
+    name: str
+    func: Optional[Callable[[Any], Any]]
+    msg_name: str
+    description: str
+
+    def __init__(self, name: str, func: Optional[Callable[[Any], Any]],
+                 msg_name: str = "", description: str = "") -> None: ...
+
+
+class CallFunction:
+    name: str
+    pkg: Any
+
+    def __init__(self, name: str, pkg: Any) -> None: ...

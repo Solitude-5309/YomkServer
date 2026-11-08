@@ -1,3 +1,3 @@
-from .FnPoolMsg import FuncInfo
+from .FnPoolMsg import CallFunction, FuncInfo, Function
 
-__all__ = ["FuncInfo"]
+__all__ = ["CallFunction", "FuncInfo", "Function"]

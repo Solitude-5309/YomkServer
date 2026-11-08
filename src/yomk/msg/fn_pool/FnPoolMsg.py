@@ -5,3 +5,18 @@ class FuncInfo:
         self.func_name = func_name
         self.msg_name = msg_name
         self.description = description
+
+
+class Function:
+    def __init__(self, name, func, msg_name="", description=""):
+        self.name = name
+        self.func = func
+        self.msg_name = msg_name
+        # 函数说明，内容使用者自定义，与 msg_name 同为仅内省元数据
+        self.description = description
+
+
+class CallFunction:
+    def __init__(self, name, pkg):
+        self.name = name
+        self.pkg = pkg
