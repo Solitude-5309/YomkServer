@@ -1,6 +1,6 @@
 # YomkServerPy API 参考
 
-API 形态为**六个链式域入口**：`YomkApi.server()` / `ctx()` / `fn_pool()` / `event_loop()` / `log()` / `log_mgr()`。累积环节（`url/msg/srv/key/group/value/fn_name/fn/loop/handle_fn/msg/tag/...`）前置定位并返回 builder 自身，终结环节（`request/init/create/add/remove/set/install/call/post/get/apply/run` 与内省读族）无参执行并返回结果。链须单表达式内联（`log()` 域在调用行捕获位置前缀，禁止缓存 builder）。
+API 形态为**六个链式域入口**：`server()` / `ctx()` / `fn_pool()` / `event_loop()` / `log()` / `log_mgr()`。累积环节（`url/msg/srv/key/group/value/fn_name/fn/loop/handle_fn/msg/tag/...`）前置定位并返回 builder 自身，终结环节（`request/init/create/add/remove/set/install/call/post/get/apply/run` 与内省读族）无参执行并返回结果。链须单表达式内联（`log()` 域在调用行捕获位置前缀，禁止缓存 builder）。
 
 ## 状态码约定
 
@@ -14,7 +14,7 @@ class CheckStatus(Enum):
     eAccept = 0     # 接受
     eReject = 1     # 拒绝
 
-class YomkResponse:
+class Response:
     status: ResStatus   # 本次请求的状态
     msg: str            # 对状态的说明（不携带返回数据）
     data: Any           # 携带的返回数据
@@ -29,7 +29,7 @@ class YomkResponse:
 | 失败 | `Failed` | `eNo (1)` | 执行失败与**存在性未命中**（not-found 恒归此态，不得归 Invalid）：服务/键/函数/循环/日志器不存在、weak_func 失效丢弃、停止后投递被拒 |
 | 无效 | `Invalid` | `eInvalid (-1)` | **入参非法**（空名/空值/空函数）与**服务器未初始化守卫** |
 
-字段语义（固化口径）：`status` 表示本次请求的状态；`msg` 仅作对状态的说明（成功 `"ok"`、错误为契约消息），**返回数据一律放 `data`**。各域写路径链式终结收敛为 `ResStatus`（不带 msg），契约细节经裸链 `YomkApi.server().url(u).msg(pkg).request()` 查 `YomkResponse.msg`。
+字段语义（固化口径）：`status` 表示本次请求的状态；`msg` 仅作对状态的说明（成功 `"ok"`、错误为契约消息），**返回数据一律放 `data`**。各域写路径链式终结收敛为 `ResStatus`（不带 msg），契约细节经裸链 `server().url(u).msg(pkg).request()` 查 `Response.msg`。
 
 **未初始化守卫（全框架统一约定）**：
 
@@ -49,7 +49,7 @@ class YomkResponse:
 ```python
 class YomkServer:                            # 底层单例类（业务代码经 server() 链消费，不直接持有）
     def add_service(self, service: YomkService) -> int   # 0 成功 / -1 失败（内部自动 init，失败回滚注销）
-    def request(self, url: str, pkg) -> YomkResponse
+    def request(self, url: str, pkg) -> Response
     def async_request(self, url: str, pkg, callback) -> None
 
 class YomkBoot(ABC):
@@ -71,10 +71,10 @@ class YomkService:
     @property
     def func_infos(self) -> dict[str, FuncInfo]
         # 本服务函数表内省快照（读锁保护，键为函数名）
-    def invoke(self, name: str, pkg) -> YomkResponse
+    def invoke(self, name: str, pkg) -> Response
         # 本服务功能函数直调（name 须以 / 开头）；空名/不带 / 前缀 Failed
         # "function name parse error: {name}, please start with /"；函数不存在 Failed
-    def request(self, url: str, pkg=None) -> YomkResponse    # 跨服务调用（转发所属 Server）
+    def request(self, url: str, pkg=None) -> Response    # 跨服务调用（转发所属 Server）
     def async_request(self, url: str, pkg=None, callback=None) -> None
 ```
 
@@ -84,7 +84,7 @@ class YomkService:
 
 | discard | 失效返回值 | 适用回调 |
 |---|---|---|
-| `"response"`（缺省） | `YomkResponse(Failed, "service has been deleted or unregistered, callback ignored.")` | 函数池函数、事件循环处理函数、异步响应回调 |
+| `"response"`（缺省） | `Response(Failed, "service has been deleted or unregistered, callback ignored.")` | 函数池函数、事件循环处理函数、异步响应回调 |
 | `"check"` | `CheckStatus.eAccept`（放行，不拦截写入） | Context checker |
 | `"none"` | `None` | Context monitor、void 语义回调 |
 
@@ -118,7 +118,7 @@ class ContextGroupInfo:                      # /YomkContext/all 元素：组 →
     group_name: str; keys: list[ContextKeyInfo]   # 键按字典序
 
 class Function:                              # 函数池条目
-    def __init__(self, name, func, msg_name="", description="")  # func: (Any) -> YomkResponse
+    def __init__(self, name, func, msg_name="", description="")  # func: (Any) -> Response
 
 class CallFunction:
     def __init__(self, name, pkg)
@@ -163,15 +163,15 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 | 链 | 终结与返回 |
 |-----|------|
-| `YomkApi.server().async_thread(n)` | `.init()`：初始化单例并自动启动内置服务（Logger/Context/EventLoop/FunctionPool/ServerInfo），返回服务器实例；`n` 异步线程池大小（省略 = 0 自动检测），仅首次生效；进程内幂等 + atexit 兜底 |
+| `server().async_thread(n)` | `.init()`：初始化单例并自动启动内置服务（Logger/Context/EventLoop/FunctionPool/ServerInfo），返回服务器实例；`n` 异步线程池大小（省略 = 0 自动检测），仅首次生效；进程内幂等 + atexit 兜底 |
 | — | `.version()` → `str` 框架版本（免初始化）；`.instance()` → `YomkServer` 单例（未初始化/shutdown 后 `None`）；`.shutdown()` → 优雅关闭（免初始化空转） |
-| `YomkApi.server().url(u).msg(pkg)` | `.request()` → `YomkResponse`（阻塞至应答）；`.status()` → 三态 `ResStatus` |
-| `YomkApi.server().url(u).async_(cb)` | 切入异步分面继续 `.msg(pkg).request()` → `None`：投递内置线程池立即返回，结果经 `cb` 送达；**`cb` 传 `None` 仅投递不取回**；`.msg()` 可放 `.async_()` 前后任意侧 |
-| `YomkApi.server().srv(cls, name="")` | `.create()` → `int`：创建并注册派生服务（`name` 省略沿用构造默认名）；0 成功，-1 失败（未初始化 / `init()` 非 0 回滚注销） |
-| `YomkApi.server().srv_name(n).srv_ptr(s)` | `.add()` → `int`：注册已有实例；累积非空 `srv_name` 时注册前先改名；守卫拒绝时实例仍归调用方 |
-| `YomkApi.server().srv_name(n)` | `.remove()` → `int`：按名注销并触发 `deinit`；-1 三因：不存在 / 名称为空 / 未初始化 |
-| `YomkApi.server().boot_ptr(boot)` | `.run()` → `int`：先 init 再 before → start → after；任一阶段非 0 立即中止并**原样传播**；`boot` 省略 = 仅 init 返回 0 |
-| `YomkApi.server()` | `.services()` 服务名清单 / `.srv_name(n).functions()` 函数清单 / `.fn_url(u).get_info()` 单函数元信息 / `.all()` 全量拓扑（`ServerServiceInfo`），均 → `YomkResponse` |
+| `server().url(u).msg(pkg)` | `.request()` → `Response`（阻塞至应答）；`.status()` → 三态 `ResStatus` |
+| `server().url(u).async_(cb)` | 切入异步分面继续 `.msg(pkg).request()` → `None`：投递内置线程池立即返回，结果经 `cb` 送达；**`cb` 传 `None` 仅投递不取回**；`.msg()` 可放 `.async_()` 前后任意侧 |
+| `server().srv(cls, name="")` | `.create()` → `int`：创建并注册派生服务（`name` 省略沿用构造默认名）；0 成功，-1 失败（未初始化 / `init()` 非 0 回滚注销） |
+| `server().srv_name(n).srv_ptr(s)` | `.add()` → `int`：注册已有实例；累积非空 `srv_name` 时注册前先改名；守卫拒绝时实例仍归调用方 |
+| `server().srv_name(n)` | `.remove()` → `int`：按名注销并触发 `deinit`；-1 三因：不存在 / 名称为空 / 未初始化 |
+| `server().boot_ptr(boot)` | `.run()` → `int`：先 init 再 before → start → after；任一阶段非 0 立即中止并**原样传播**；`boot` 省略 = 仅 init 返回 0 |
+| `server()` | `.services()` 服务名清单 / `.srv_name(n).functions()` 函数清单 / `.fn_url(u).get_info()` 单函数元信息 / `.all()` 全量拓扑（`ServerServiceInfo`），均 → `Response` |
 
 服务管理语义：
 
@@ -187,9 +187,9 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 | 链 | 行为 |
 |---|---|
-| `YomkApi.log().info(*args)` | 主控制台输出，tag 缺省 `"main"`；**tag 即控制台日志器名，首次使用惰性创建** |
-| `YomkApi.log().tag(t).info(*args)` | 指定 tag |
-| `YomkApi.log().to_sink(name).info(*args)` | 写具名文件日志器（`.tag(t)` 可叠加）；未知名 `Failed`、**不惰性创建**——须先 `log_mgr().dir(d).file(name).create()` |
+| `log().info(*args)` | 主控制台输出，tag 缺省 `"main"`；**tag 即控制台日志器名，首次使用惰性创建** |
+| `log().tag(t).info(*args)` | 指定 tag |
+| `log().to_sink(name).info(*args)` | 写具名文件日志器（`.tag(t)` 可叠加）；未知名 `Failed`、**不惰性创建**——须先 `log_mgr().dir(d).file(name).create()` |
 
 发射链同步阻塞：内部经 `/YomkLogger` 以请求域投递至 Logger 内置服务，返回态表示该条已被受理（门控/代理在受理内生效）。输出行格式 `[YYYY-MM-DD HH:MM:SS.mmm] [级别] [tag] [位置] 内容`（级别标签定宽 5，如 `[INFO ]`；位置前缀默认仅行号）。
 
@@ -197,13 +197,13 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 | 链 | 终结与说明 |
 |---|---|
-| `YomkApi.log_mgr().console(name="").level(lv)` | `.enable()` / `.disable()` → `ResStatus`；控制台级别门控，`.level(lv)` 缺省 `Log.eInfo`（六级之一）；`name` 省略/空 = **全局主闸**，具名 = 逐器门控（未命中 `Failed` `"console logger not found."`，不惰性创建、不触碰主闸） |
-| `YomkApi.log_mgr().file(name="").level(lv)` | `.enable()` / `.disable()`；文件侧同构（未命中 `"file logger not found."`）；控制台与文件两套主闸**相互独立**，输出/落盘取**主闸 × 逐器两层 AND** |
-| `YomkApi.log_mgr().console()/file().proxy(fn)` | `.apply()`；代理回调收 `Log` 包：返回 `False` 消费该条（控制台不输出/文件不落盘）、`True` 穿透默认行为；传 `None` 卸载恢复默认；两侧代理各自独立 |
-| `YomkApi.log_mgr().location().show_file(b).show_line(b).show_func(b)` | `.apply()` 恒 `Succeeded`；位置前缀三开关（进程级、默认关/开/关 = 仅行号），前缀按 `[file:line:func]` 以 `:` 拼接、关断段整体省略 |
-| `YomkApi.log_mgr().dir(d).file(name)` | `.create()` → `ResStatus`（落盘 `d/name.log`）；`.dir()` 须先于 `.file()` 累积；空名/空目录 `Invalid`，同名重复创建 `Failed` |
-| `YomkApi.log_mgr().file(name)` | `.flush()` 缓冲落盘（未知名 `Failed`）；`.remove()` 删除日志器：同名 console+file **两表一并清除**（两表皆未命中 `Failed`），释放时未落盘缓冲自动落盘，**不删除磁盘 `.log` 文件** |
-| `YomkApi.log_mgr().console()/file()` | `.list()` 该类型日志器名（字典序）/ `.console(name).get_info()` / `.file(name).get_info()` 单器 `LoggerInfo` / `.console().status()` / `.file().status()` 全局主闸 `LoggerState`；`.all()` 全部日志器（每条内嵌 `LoggerState` 门控层真值），均 → `YomkResponse` |
+| `log_mgr().console(name="").level(lv)` | `.enable()` / `.disable()` → `ResStatus`；控制台级别门控，`.level(lv)` 缺省 `Log.eInfo`（六级之一）；`name` 省略/空 = **全局主闸**，具名 = 逐器门控（未命中 `Failed` `"console logger not found."`，不惰性创建、不触碰主闸） |
+| `log_mgr().file(name="").level(lv)` | `.enable()` / `.disable()`；文件侧同构（未命中 `"file logger not found."`）；控制台与文件两套主闸**相互独立**，输出/落盘取**主闸 × 逐器两层 AND** |
+| `log_mgr().console()/file().proxy(fn)` | `.apply()`；代理回调收 `Log` 包：返回 `False` 消费该条（控制台不输出/文件不落盘）、`True` 穿透默认行为；传 `None` 卸载恢复默认；两侧代理各自独立 |
+| `log_mgr().location().show_file(b).show_line(b).show_func(b)` | `.apply()` 恒 `Succeeded`；位置前缀三开关（进程级、默认关/开/关 = 仅行号），前缀按 `[file:line:func]` 以 `:` 拼接、关断段整体省略 |
+| `log_mgr().dir(d).file(name)` | `.create()` → `ResStatus`（落盘 `d/name.log`）；`.dir()` 须先于 `.file()` 累积；空名/空目录 `Invalid`，同名重复创建 `Failed` |
+| `log_mgr().file(name)` | `.flush()` 缓冲落盘（未知名 `Failed`）；`.remove()` 删除日志器：同名 console+file **两表一并清除**（两表皆未命中 `Failed`），释放时未落盘缓冲自动落盘，**不删除磁盘 `.log` 文件** |
+| `log_mgr().console()/file()` | `.list()` 该类型日志器名（字典序）/ `.console(name).get_info()` / `.file(name).get_info()` 单器 `LoggerInfo` / `.console().status()` / `.file().status()` 全局主闸 `LoggerState`；`.all()` 全部日志器（每条内嵌 `LoggerState` 门控层真值），均 → `Response` |
 
 内省归因：`get_info`/`all()` 报**逐器门控层**真值（未具名门控恒全 on）；条目 on 但无输出时查 `status()` 确认对应侧**全局主闸**——两层独立、可唯一归因。空名 console 具名门控回退缺省名（诊断 `"console logger name is empty, use main"`）。未知级别数值降级 Info 输出。
 
@@ -211,14 +211,14 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 | 链 | 终结与返回 |
 |---|---|
-| `YomkApi.ctx().key(k).group(g="main").value(v)` | `.create()` → `ResStatus` |
-| `YomkApi.ctx().key(k).group(g).value(v)` | `.set()` → `ResStatus`（整体替换） |
-| `YomkApi.ctx().key(k).group(g)` | `.destroy()` → `ResStatus` |
-| `YomkApi.ctx().key(k).group(g).msg(cls)` | 切入类型化读分面，`.with_default(d).get()` → 值本体（`with_default` 省略回退 `None`）；**`cls` 仅类型指定位，不做运行期校验**（Python 适配） |
-| `YomkApi.ctx().key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus`；fn: `(Context) -> CheckStatus`；未累积任何回调直接 `apply()` 返回 `Invalid` |
-| `YomkApi.ctx().key(k).group(g).monitor_fn(fn).async_(on=True)` | `.apply()` → `ResStatus`；`.async_()` 可省略 = 同步 |
-| `YomkApi.ctx().group(g).checker()` / `.monitor()` | 组级开关分面 `GroupSwitch`：`.enable()` / `.disable()` → `ResStatus`（**建组默认关**，须显式开启；开关只关断不删回调） |
-| `YomkApi.ctx().group(g)` / `.key(k).group(g)` / — | `.keys()` 组内键名 / `.info()` 单键 `ContextKeyInfo` / `.groups()` 全部组名 / `.all()` 跨组聚合 `ContextGroupInfo`，均 → `YomkResponse` |
+| `ctx().key(k).group(g="main").value(v)` | `.create()` → `ResStatus` |
+| `ctx().key(k).group(g).value(v)` | `.set()` → `ResStatus`（整体替换） |
+| `ctx().key(k).group(g)` | `.destroy()` → `ResStatus` |
+| `ctx().key(k).group(g).msg(cls)` | 切入类型化读分面，`.with_default(d).get()` → 值本体（`with_default` 省略回退 `None`）；**`cls` 仅类型指定位，不做运行期校验**（Python 适配） |
+| `ctx().key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus`；fn: `(Context) -> CheckStatus`；未累积任何回调直接 `apply()` 返回 `Invalid` |
+| `ctx().key(k).group(g).monitor_fn(fn).async_(on=True)` | `.apply()` → `ResStatus`；`.async_()` 可省略 = 同步 |
+| `ctx().group(g).checker()` / `.monitor()` | 组级开关分面 `GroupSwitch`：`.enable()` / `.disable()` → `ResStatus`（**建组默认关**，须显式开启；开关只关断不删回调） |
+| `ctx().group(g)` / `.key(k).group(g)` / — | `.keys()` 组内键名 / `.info()` 单键 `ContextKeyInfo` / `.groups()` 全部组名 / `.all()` 跨组聚合 `ContextGroupInfo`，均 → `Response` |
 
 语义注记：
 
@@ -233,17 +233,17 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 | 链 | 终结与返回 |
 |---|---|
-| `YomkApi.event_loop().loop(name).handle_fn(fn).msg_name(m)` | `.start()` → `ResStatus`；`handle_fn` 循环默认处理函数、`msg_name` 期望类型名（内省元数据），均可省略；**同名 start 不重建**：复用既有实例触发启动（停止后续跑），本次累积的 `handle_fn`/`msg_name` **不生效** |
-| `YomkApi.event_loop().loop(name)` | `.stop()` → `ResStatus`（停线程、**保留队列事件**）；`.destroy()` → `ResStatus`（停线程 + 清空队列 + 移出循环表，不可续跑） |
-| `YomkApi.event_loop().msg(data).loop(name).handle_fn(fn).tag(t)` | `.post()` → `ResStatus`（**仅入队结果，非执行结果**）；`.post_wait()` → `ResStatus`（阻塞至事件执行完成）；`handle_fn`/`tag` 可省略 |
-| `YomkApi.event_loop().loop(name).tag_count(n)` / — | `.get_info()` 单循环 `EventLoopInfo`（含队列头 n 条 tag 采样，n 省略 = 3）/ `.list()` 循环名清单 / `.all()` 全量，均 → `YomkResponse` |
+| `event_loop().loop(name).handle_fn(fn).msg_name(m)` | `.start()` → `ResStatus`；`handle_fn` 循环默认处理函数、`msg_name` 期望类型名（内省元数据），均可省略；**同名 start 不重建**：复用既有实例触发启动（停止后续跑），本次累积的 `handle_fn`/`msg_name` **不生效** |
+| `event_loop().loop(name)` | `.stop()` → `ResStatus`（停线程、**保留队列事件**）；`.destroy()` → `ResStatus`（停线程 + 清空队列 + 移出循环表，不可续跑） |
+| `event_loop().msg(data).loop(name).handle_fn(fn).tag(t)` | `.post()` → `ResStatus`（**仅入队结果，非执行结果**）；`.post_wait()` → `ResStatus`（阻塞至事件执行完成）；`handle_fn`/`tag` 可省略 |
+| `event_loop().loop(name).tag_count(n)` / — | `.get_info()` 单循环 `EventLoopInfo`（含队列头 n 条 tag 采样，n 省略 = 3）/ `.list()` 循环名清单 / `.all()` 全量，均 → `Response` |
 
 语义注记：
 
 - 同循环 FIFO 单线程、跨循环并行；随 `server().init()` 内置启动。
 - 事件未带 `handle_fn` 回落循环默认处理函数；两者皆空该事件**静默出队**不执行。
 - 失败契约（`Failed`）：循环不存在 `"event loop not exist"`；已停止（未销毁）投递 `"event loop not running, post rejected"`、`post_wait` 同族 `"event loop not running, post wait rejected"`。
-- 需要取回执行结果：裸链 `YomkApi.server().url("/YomkEventLoop/post_wait").msg(Event(...)).request()`，`data` 为 `Event` 对象（`m_eventId`/`m_response`）；或经 Context 中转。
+- 需要取回执行结果：裸链 `server().url("/YomkEventLoop/post_wait").msg(Event(...)).request()`，`data` 为 `Event` 对象（`m_eventId`/`m_response`）；或经 Context 中转。
 - 工作线程内 `post_wait` 触发死锁自检：直接本线程执行当前事件并返回（诊断 `"EventLoop deadlock: post wait in worker thread..."`）。
 - 服务成员函数作处理函数须 `self.weak_func(...)`。
 
@@ -251,15 +251,15 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 | 链 | 终结与返回 |
 |---|---|
-| `YomkApi.fn_pool().fn_name(name).fn(f).msg_name(m).description(d)` | `.install()` → `ResStatus`；`msg_name`/`description` 内省元数据可省略；**同名重复 install 即运行时热替换**（`Succeeded`，诊断 `"find function name is already exist, update to current function"`） |
-| `YomkApi.fn_pool().fn_name(name)` | `.uninstall()` → `ResStatus`（名字不存在 `Failed`） |
-| `YomkApi.fn_pool().fn_name(name).msg(data)` | `.call()` → `YomkResponse`（**阻塞至函数执行完成**；`msg` 可省略 = 空消息；名字不存在 `Failed`） |
-| `YomkApi.fn_pool().fn_name(name)` / — | `.get_info()` 单函数 `FuncInfo` / `.list()` 函数名清单 / `.all()` 全量 `FuncInfo`，均 → `YomkResponse` |
+| `fn_pool().fn_name(name).fn(f).msg_name(m).description(d)` | `.install()` → `ResStatus`；`msg_name`/`description` 内省元数据可省略；**同名重复 install 即运行时热替换**（`Succeeded`，诊断 `"find function name is already exist, update to current function"`） |
+| `fn_pool().fn_name(name)` | `.uninstall()` → `ResStatus`（名字不存在 `Failed`） |
+| `fn_pool().fn_name(name).msg(data)` | `.call()` → `Response`（**阻塞至函数执行完成**；`msg` 可省略 = 空消息；名字不存在 `Failed`） |
+| `fn_pool().fn_name(name)` / — | `.get_info()` 单函数 `FuncInfo` / `.list()` 函数名清单 / `.all()` 全量 `FuncInfo`，均 → `Response` |
 
 语义注记：
 
 - 入参非法（空名/空函数）`Invalid`，契约 `"funcName or func is empty"`；not-found 归 `Failed` 不归 `Invalid`（三态口径一致）。
-- 函数体收到的 `pkg` 即调用侧 `.msg()` 对象；函数返回的 `YomkResponse` 整体作为 `call()` 返回值（结果在 `data`）。
+- 函数体收到的 `pkg` 即调用侧 `.msg()` 对象；函数返回的 `Response` 整体作为 `call()` 返回值（结果在 `data`）。
 - 成员函数注册须 `self.weak_func(...)`——服务删除后 `call()` 得 `Failed` + 契约消息。
 - 注册/注销的终结动词定名为 `install/uninstall`。
 
@@ -271,7 +271,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 ## 常用失败契约字符串
 
-契约消息原文（与 `src/` 源片段实串一致，构建期合并为 `build/YomkServer.py`；测试与排障以此为准）：
+契约消息原文（与 `src/yomk/` 源实串一致；测试与排障以此为准）：
 
 | 场景 | status | 契约 msg |
 |---|---|---|

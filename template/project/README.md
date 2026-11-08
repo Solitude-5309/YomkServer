@@ -16,7 +16,7 @@ YomkServerPy 是基于 Python 的模块化服务开发框架，核心设计理�
 ./build_ubuntu.sh
 ```
 
-安装后会自动配置环境变量 `YOMK_PREFIX_PATH` 指向安装路径，并将 `PYTHONPATH` 指向安装路径下的 site-packages（任意终端可 `import YomkApi`）。
+安装后会自动配置环境变量 `YOMK_PREFIX_PATH` 指向安装路径，并将 `PYTHONPATH` 指向安装路径下的 site-packages（任意终端可 `import yomk.server`）。
 
 ## 工程结构
 
@@ -54,7 +54,7 @@ bash check_env.sh          # 检查 YomkServerPy 运行环境（PYTHONPATH 由�
 python main.py
 ```
 
-`check_env.sh` 检查 python3 可用性并验证 `import YomkApi`，输出框架版本；失败时提示 PYTHONPATH 应指向的 site-packages 路径。
+`check_env.sh` 检查 python3 可用性并验证 `import yomk.server`（含命名空间锚点），输出框架版本；失败时提示 PYTHONPATH 应指向的 site-packages 路径。
 
 ## 生命周期说明
 

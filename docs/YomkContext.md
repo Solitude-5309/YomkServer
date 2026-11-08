@@ -1,59 +1,62 @@
 # YomkContext（共享上下文）
 
-跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步），支持分组隔离与运行期内省。随 `YomkApi.server().init()` 自动启动。全部操作经链式域入口 `YomkApi.ctx()`：`key/group/value` 累积定位目标，写路径终结（`create/set/destroy` 等）返回三态 `ResStatus`，类型化读终结 `get()` 直接返回值本体。
+跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步），支持分组隔离与运行期内省。随 `server().init()` 自动启动。全部操作经链式域入口 `ctx()`：`key/group/value` 累积定位目标，写路径终结（`create/set/destroy` 等）返回三态 `ResStatus`，类型化读终结 `get()` 直接返回值本体。
 
 ## 链式语法速查
 
 | 场景 | 链 | 终结与返回 |
 |---|---|---|
-| 创建 | `YomkApi.ctx().key(k).group(g).value(v)` | `.create()` → `ResStatus`（g 省略 = 缺省 `"main"`） |
-| 设置（整体替换） | `YomkApi.ctx().key(k).group(g).value(v)` | `.set()` → `ResStatus` |
-| 类型化读 | `YomkApi.ctx().key(k).group(g).msg(cls)` | `.with_default(d).get()` → 值本体；`.with_default` 可省略（未命中回退 `None`）；`cls` 仅为类型指定位，**不做运行期校验**（Python 适配，见 [消息包](YomkMsg.md)） |
-| 销毁键 | `YomkApi.ctx().key(k).group(g)` | `.destroy()` → `ResStatus` |
-| 键级校验门控 | `YomkApi.ctx().key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus` |
-| 键级变更监听 | `YomkApi.ctx().key(k).group(g).monitor_fn(fn).async_(on)` | `.apply()` → `ResStatus`；`.async_(on)` 可省略 = 同步 |
-| 组级开关 | `YomkApi.ctx().group(g).checker()` / `.monitor()` | `.enable()` / `.disable()` → `ResStatus`（**建组默认关**，须显式开启才生效；回调保留不删除） |
-| 内省 | `YomkApi.ctx().group(g)` / `.key(k).group(g)` / — | `.keys()` 组内键名 / `.info()` 单键元信息 / `.groups()` 全部组名 / `.all()` 跨组聚合，均 → `YomkResponse` |
+| 创建 | `ctx().key(k).group(g).value(v)` | `.create()` → `ResStatus`（g 省略 = 缺省 `"main"`） |
+| 设置（整体替换） | `ctx().key(k).group(g).value(v)` | `.set()` → `ResStatus` |
+| 类型化读 | `ctx().key(k).group(g).msg(cls)` | `.with_default(d).get()` → 值本体；`.with_default` 可省略（未命中回退 `None`）；`cls` 仅为类型指定位，**不做运行期校验**（Python 适配，见 [消息包](YomkMsg.md)） |
+| 销毁键 | `ctx().key(k).group(g)` | `.destroy()` → `ResStatus` |
+| 键级校验门控 | `ctx().key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus` |
+| 键级变更监听 | `ctx().key(k).group(g).monitor_fn(fn).async_(on)` | `.apply()` → `ResStatus`；`.async_(on)` 可省略 = 同步 |
+| 组级开关 | `ctx().group(g).checker()` / `.monitor()` | `.enable()` / `.disable()` → `ResStatus`（**建组默认关**，须显式开启才生效；回调保留不删除） |
+| 内省 | `ctx().group(g)` / `.key(k).group(g)` / — | `.keys()` 组内键名 / `.info()` 单键元信息 / `.groups()` 全部组名 / `.all()` 跨组聚合，均 → `Response` |
 
 键级回调（`checker_fn` / `monitor_fn`）与组级开关分面（`checker()` / `monitor()`）按命名分层，`apply()` 未累积任何回调时返回 `Invalid`。
 
 ## 使用示例
 
 ```python
-import YomkApi
+from yomk.msg.ctx import CheckStatus
+from yomk.server import server
+from yomk.ctx import ctx
+from yomk.log import log
 
-YomkApi.server().init()
+server().init()
 
 # 1. 创建与设置
-YomkApi.ctx().key("config").value("init_value").create()
-YomkApi.ctx().key("config").value("new_value").set()
+ctx().key("config").value("init_value").create()
+ctx().key("config").value("new_value").set()
 
 # 2. 类型化读（只读快照；未命中/未初始化回退默认值）
-val = YomkApi.ctx().key("config").msg(str).with_default("fallback").get()
+val = ctx().key("config").msg(str).with_default("fallback").get()
 
 # 3. 变更前校验门控：只能注册到已存在的键；组开关默认关，注册后须显式 enable
-YomkApi.ctx().key("config").checker_fn(
-    lambda ctx: YomkApi.CheckStatus.eAccept   # Accept 放行；Reject 拦截 set
+ctx().key("config").checker_fn(
+    lambda ctx: CheckStatus.eAccept   # Accept 放行；Reject 拦截 set
 ).apply()
-YomkApi.ctx().group("main").checker().enable()
+ctx().group("main").checker().enable()
 
 # 4. 变更后监听（可注册多个，追加式）
-YomkApi.ctx().key("config").monitor_fn(
-    lambda ctx: YomkApi.log().info("changed:", ctx.value)   # 收到本次 set 的键值快照
+ctx().key("config").monitor_fn(
+    lambda ctx: log().info("changed:", ctx.value)   # 收到本次 set 的键值快照
 ).apply()                                            # 缺省同步执行
-YomkApi.ctx().group("main").monitor().enable()
+ctx().group("main").monitor().enable()
 
 # 5. 内省与销毁
-YomkApi.ctx().keys()                           # 组内键名清单（缺省 main 组）
-YomkApi.ctx().key("config").info()             # 单键元信息 ContextKeyInfo（含所属组 group）
-YomkApi.ctx().groups()                         # 全部组名
-YomkApi.ctx().all()                            # 跨组聚合：组 → 键元信息
-YomkApi.ctx().key("config").destroy()          # 删除键
+ctx().keys()                           # 组内键名清单（缺省 main 组）
+ctx().key("config").info()             # 单键元信息 ContextKeyInfo（含所属组 group）
+ctx().groups()                         # 全部组名
+ctx().all()                            # 跨组聚合：组 → 键元信息
+ctx().key("config").destroy()          # 删除键
 ```
 
 ## 注意事项
 
-- **写路径失败契约**（终结收敛为 `ResStatus`，msg 经裸链 `YomkApi.server().url("/YomkContext/...").msg(pkg).request()` 可查，`status` 均为 `Failed`）：键名为空 `"key is empty"`；`create` 时 value 为空 `"value is empty"`、键已存在 `"key already exists"`；`set` 时键不存在 `"key is not exist"`、值类型与现值不一致 `"context type not match"`（服务端 set 侧仍校验）、被 checker 拦截 `"checker reject set context"`。
+- **写路径失败契约**（终结收敛为 `ResStatus`，msg 经裸链 `server().url("/YomkContext/...").msg(pkg).request()` 可查，`status` 均为 `Failed`）：键名为空 `"key is empty"`；`create` 时 value 为空 `"value is empty"`、键已存在 `"key already exists"`；`set` 时键不存在 `"key is not exist"`、值类型与现值不一致 `"context type not match"`（服务端 set 侧仍校验）、被 checker 拦截 `"checker reject set context"`。
 - **组名约定**：`.group()` 省略即缺省 `"main"`；空组名 `Failed` `"group name is empty"`。非 main 组首次寻址即惰性自动创建（组名唯一、同名寻址复用同组、**不支持销毁组**，组表只增不减），异步监控池每组自持（单线程）。
 - **读取快照勿原地修改**：`get()` 返回存储对象的引用快照，改动请构造新值再 `.set()`；原地修改与并发读竞争、可能崩溃。
 - **键级回调注册前提**：`checker_fn`/`monitor_fn` 只能注册到**已存在**的键（键不存在返回 `Failed`，`"key is not exist"`），即先 `create()` 再注册。

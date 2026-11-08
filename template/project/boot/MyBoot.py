@@ -1,11 +1,13 @@
-import YomkApi
 from pathlib import Path
 from typedefine.TypeDefine import CTX_CONFIG_PATH
 from services.ConfigService import ConfigService
 from msgs.YomkMsgs import *
-from YomkApi import log, ctx, server
+from yomk.server import server, YomkBoot
+from yomk.ctx import ctx
+from yomk.log import log
+from yomk.msg.server import ResStatus
 
-class MyBoot(YomkApi.YomkBoot):
+class MyBoot(YomkBoot):
     def __init__(self, srv_names):
         super().__init__()
         self.srv_names = srv_names
@@ -36,26 +38,26 @@ class MyBoot(YomkApi.YomkBoot):
 
     def after(self):
         resp = server().url("/ConfigService/load").request()
-        if resp.status != YomkApi.ResStatus.eOk:
+        if resp.status != ResStatus.eOk:
             log().tag("MyBoot::after").error("load config failed: ", resp.msg)
             return -1
         log().tag("MyBoot::after").info("started successfully.")
 
         resp = server().url("/ConfigService/get").msg(ConfigKey("name")).request()
-        if resp.status != YomkApi.ResStatus.eOk:
+        if resp.status != ResStatus.eOk:
             log().tag("MyBoot::after").error("get config name failed: ", resp.msg)
             return -1
         log().tag("MyBoot::after").info("config name: ", resp.data)
 
         # 测试版本号接口：获取并输出工程版本号（typedefine/TypeDefine.py 定义的 APP_VERSION 常量）
         resp = server().url("/ConfigService/version").request()
-        if resp.status != YomkApi.ResStatus.eOk:
+        if resp.status != ResStatus.eOk:
             log().tag("MyBoot::after").error("get version failed: ", resp.msg)
             return -1
         log().tag("MyBoot::after").info("project version: ", resp.data)
 
         resp = server().url("/ConfigService/get").msg(ConfigKey("description")).request()
-        if resp.status != YomkApi.ResStatus.eOk:
+        if resp.status != ResStatus.eOk:
             log().tag("MyBoot::after").error("get config description failed: ", resp.msg)
             return -1
         log().tag("MyBoot::after").info("config description: ", resp.data)

@@ -1,44 +1,48 @@
 # YomkServerInfo（服务自省）
 
-服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型，方便调试与运维。内置服务，随 `YomkApi.server().init()` 自动启动、开箱即用；查询全部经服务器域入口 `YomkApi.server()` 的内省读终结链发出。
+服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型，方便调试与运维。内置服务，随 `server().init()` 自动启动、开箱即用；查询全部经服务器域入口 `server()` 的内省读终结链发出。
 
 ## 链式语法速查
 
 | 场景 | 链 | 返回 |
 |---|---|---|
-| 全部服务名 | `YomkApi.server().services()` | `YomkResponse`，`data` 为服务名列表 |
-| 指定服务的函数清单 | `YomkApi.server().srv_name("/服务名").functions()` | `Response` 携带 `FuncInfo` 结构化清单（`msg` 恒 `"ok"`；服务不存在时为空清单） |
-| 单函数元信息 | `YomkApi.server().fn_url("/服务名/函数名").get_info()` | `Response` 携带结构化 `FuncInfo` 包（`msg` 恒 `"ok"`，数据在 `data`） |
-| 全量服务拓扑 | `YomkApi.server().all()` | `Response` 携带 `ServerServiceInfo` 层级列表（`msg` 恒 `"ok"`）：每项 `service_name` 服务名 + `funcs` 函数元信息列表 |
+| 全部服务名 | `server().services()` | `Response`，`data` 为服务名列表 |
+| 指定服务的函数清单 | `server().srv_name("/服务名").functions()` | `Response` 携带 `FuncInfo` 结构化清单（`msg` 恒 `"ok"`；服务不存在时为空清单） |
+| 单函数元信息 | `server().fn_url("/服务名/函数名").get_info()` | `Response` 携带结构化 `FuncInfo` 包（`msg` 恒 `"ok"`，数据在 `data`） |
+| 全量服务拓扑 | `server().all()` | `Response` 携带 `ServerServiceInfo` 层级列表（`msg` 恒 `"ok"`）：每项 `service_name` 服务名 + `funcs` 函数元信息列表 |
 
 结构化函数元信息 `FuncInfo` 字段：`func_name`（路由名，带 `/` 前缀）、`msg_name`（期望消息类型名，未声明为空）、`description`（函数说明，未声明为空，自由字符串框架透传不解析）。
 
 ## 使用示例
 
 ```python
-import YomkApi
+from yomk.server import server
+from yomk.ctx import ctx
+from yomk.event_loop import event_loop
+from yomk.fn_pool import fn_pool
+from yomk.log import log_mgr
 
-YomkApi.server().init()
-YomkApi.server().srv(MyService).create()
+server().init()
+server().srv(MyService).create()
 
-YomkApi.server().services()                            # 全部服务名清单
-YomkApi.server().srv_name("/MyService").functions()    # 指定服务的函数清单
-YomkApi.server().fn_url("/MyService/hello").get_info() # 单个函数元信息（FuncInfo）
-YomkApi.server().all()                                 # 全量服务拓扑（服务 → 函数）
+server().services()                            # 全部服务名清单
+server().srv_name("/MyService").functions()    # 指定服务的函数清单
+server().fn_url("/MyService/hello").get_info() # 单个函数元信息（FuncInfo）
+server().all()                                 # 全量服务拓扑（服务 → 函数）
 ```
 
 ## 说明
 
-- 期望消息类型名通过声明处元数据进入内省：`install_func("/x", fn, "MsgName")` 第三参、`YomkApi.fn_pool().msg_name(m)`、`YomkApi.event_loop().msg_name(m)`，仅作内省元数据，不影响调用。
-- 函数说明通过 `install_func` 第四参或 `YomkApi.fn_pool().description(d)` 声明；`fn_url(...).get_info()` 与函数池单查 `fn_pool().fn_name(name).get_info()` 命中均返回结构化 `FuncInfo` 包；未命中返回 `Failed`。
+- 期望消息类型名通过声明处元数据进入内省：`install_func("/x", fn, "MsgName")` 第三参、`fn_pool().msg_name(m)`、`event_loop().msg_name(m)`，仅作内省元数据，不影响调用。
+- 函数说明通过 `install_func` 第四参或 `fn_pool().description(d)` 声明；`fn_url(...).get_info()` 与函数池单查 `fn_pool().fn_name(name).get_info()` 命中均返回结构化 `FuncInfo` 包；未命中返回 `Failed`。
 - 各内置模块另有模块级自省链：
 
 | 模块 | 自省链 |
 |---|---|
-| 日志 | `YomkApi.log_mgr().console()/file().list()`、`.console(name)/.file(name).get_info()`、`.status()`、`.all()`（见 [YomkLogger.md](YomkLogger.md)） |
-| 上下文 | `YomkApi.ctx().keys()`、`.key(k).info()`、`.groups()`、`.all()`（见 [YomkContext.md](YomkContext.md)） |
-| 事件循环 | `YomkApi.event_loop().list()`、`.loop(name).get_info()`、`.all()`（见 [YomkEventLoop.md](YomkEventLoop.md)） |
-| 函数池 | `YomkApi.fn_pool().list()`、`.fn_name(name).get_info()`、`.all()`（见 [YomkFunctionPool.md](YomkFunctionPool.md)） |
+| 日志 | `log_mgr().console()/file().list()`、`.console(name)/.file(name).get_info()`、`.status()`、`.all()`（见 [YomkLogger.md](YomkLogger.md)） |
+| 上下文 | `ctx().keys()`、`.key(k).info()`、`.groups()`、`.all()`（见 [YomkContext.md](YomkContext.md)） |
+| 事件循环 | `event_loop().list()`、`.loop(name).get_info()`、`.all()`（见 [YomkEventLoop.md](YomkEventLoop.md)） |
+| 函数池 | `fn_pool().list()`、`.fn_name(name).get_info()`、`.all()`（见 [YomkFunctionPool.md](YomkFunctionPool.md)） |
 
 ## 完整示例
 

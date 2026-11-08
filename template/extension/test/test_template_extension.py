@@ -1,37 +1,41 @@
 #!/usr/bin/env python3
-"""TestTemplateExtension —— 扩展功能测试程序（就地运行，不随扩展安装）"""
+# -*- coding: utf-8 -*-
+"""
+test_template_extension.py —— 第三方扩展示例的运行级验证
+
+流程：框架 init（内置 5 服务）→ 显式注册扩展运行时服务
+（server().srv(ExtensionService).create()，无隐式发现）→ 裸请求 /ExtensionService/echo
+（扩展消息 ExtensionRequest 作请求包，强类型 ExtensionResponse 承载回包）→ shutdown。
+退出码 0 = 通过。
+"""
 
 import sys
 
-from TemplateExtension import ExtensionService
-import YomkApi
-from YomkApi import server
+from yomk.server import server
+from yomk.msg.server import ResStatus
+from yomk.msg.extension_service import ExtensionRequest, ExtensionResponse
+from yomk.extension_service import ExtensionService
 
-g_pass = 0
-g_fail = 0
 
 def main():
-    global g_pass, g_fail
+    server().async_thread(1).init()
+    try:
+        # 第三方运行时服务：显式注册（框架不做隐式发现）
+        ret = server().srv(ExtensionService).create()
+        assert ret == 0, f"srv(ExtensionService).create() == {ret}"
 
-    server().init()
+        # 扩展消息作请求包直发（裸 URL 请求）
+        resp = server().url("/ExtensionService/echo").msg(ExtensionRequest("hello ext")).request()
+        assert resp.status == ResStatus.eOk, (resp.status, resp.msg)
+        data = resp.data
+        assert isinstance(data, ExtensionResponse) and data.msg == "echo" \
+            and data.data == "hello ext", data
 
-    # 注册 ExtensionService（扩展服务需先注册才能使用）
-    server().srv(ExtensionService, "/ExtensionService").create()
+        print("extension smoke OK:", data)
+        return 0
+    finally:
+        server().shutdown()
 
-    # 测试版本查询
-    resp = server().url("/ExtensionService/version").request()
-    if resp.status == YomkApi.ResStatus.eOk:
-        print(f"[PASS] version: {resp.data}")
-        g_pass += 1
-    else:
-        print(f"[FAIL] version request failed: {resp.msg}")
-        g_fail += 1
-
-    print("\n========== Test Summary ==========")
-    print(f"PASS: {g_pass}")
-    print(f"FAIL: {g_fail}")
-
-    sys.exit(1 if g_fail > 0 else 0)
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

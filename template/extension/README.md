@@ -1,57 +1,61 @@
-# TemplateExtension 扩展
+# TemplateExtension —— 第三方扩展示例模板（yomk 命名空间并入形态）
 
-基于 [YomkServerPy](https://github.com/Solitude-5309/YomkServerPy) 框架的扩展模板，提供版本查询接口，可作为新扩展的开发起点。
+本模板演示第三方仓库如何为 YomkServerPy 提供扩展：**独立仓库只写
+`yomk/msg/extension_service/`（消息类型）与 `yomk/extension_service/`（运行时服务）两个目录**，
+安装到框架 site-packages 后按 PEP 420 命名空间与框架子包平级合并。
 
-## 功能
-
-| URL | 功能 | 说明 |
-|-----|------|------|
-| `/ExtensionService/version` | 版本查询 | 返回扩展版本信息 |
-
-## 前置条件
-
-- Python >= 3.10
-- YomkServerPy 已安装到系统
-
-## 安装
-
-```bash
-bash install.sh            # 交互式，前置路径默认取 $YOMK_PREFIX_PATH，可交互修改
-```
-
-> 扩展与 YomkServerPy 安装到一起：扩展包装入框架安装路径下的 site-packages（已在 PYTHONPATH 内），安装后任意终端可 `import TemplateExtension`。
-> 测试程序不随扩展安装，就地在模板目录下 `test/` 运行验证。
-> 若未配置 `YOMK_PREFIX_PATH` 环境变量，脚本会提示警告，此时手动输入 YomkServerPy 安装路径即可。
-
-## 工程结构
+## 目录结构
 
 ```
-TemplateExtension/
-├── TemplateExtension/
-│   ├── __init__.py          # 包入口（re-export 扩展版本号与服务类）
-│   ├── version.py           # 扩展版本号 EXTENSION_VERSION（单一来源）
-│   └── extension_service.py # 服务实现
-├── test/
-│   └── test_template_extension.py  # 测试程序（就地运行，不随扩展安装）
-├── install.sh               # 扩展安装脚本（交互式）
+template/extension/
+├── src/yomk/               # 扩展源树（与框架同构：只写自己的叶子目录）
+│   ├── msg/extension_service/      # 消息子包（并入框架 yomk.msg 命名空间段）
+│   │   ├── __init__.py             #   导出 ExtensionRequest / ExtensionResponse
+│   │   ├── ExtensionMsg.py         #   消息类型定义
+│   │   └── py.typed
+│   └── extension_service/          # 运行时域子包（并入框架 yomk 命名空间段）
+│       ├── __init__.py             #   __version__ + 导出 ExtensionService
+│       ├── ExtensionService.py     #   运行时服务（YomkService 子类）
+│       └── py.typed
+├── test/test_template_extension.py
+├── install.sh
 └── README.md
 ```
 
-## 使用示例
+## 命名空间纪律（必须遵守）
 
-将以下完整程序拷贝为 main.py，安装扩展后可直接运行：
+框架的 `yomk/` 与 `yomk/msg/` 两层是 **PEP 420 命名空间包**（无 `__init__.py`，
+`import yomk` 不加载任何子模块、`yomk.__file__ is None`）。第三方扩展依赖
+该机制与框架合并，因此：
+
+- 扩展仓库**不得创建** `yomk/__init__.py` 或 `yomk/msg/__init__.py`
+  （install.sh 安装前会做守卫检查）；
+- 只新增自己的叶子目录（本模板为 `yomk/msg/extension_service/` 与 `yomk/extension_service/`）；
+- 扩展域的 `__init__.py` 内自带版本常量（框架各域由构建期注入
+  `_version.py`，扩展可简化为普通常量）。
+
+## 第三方运行时服务纪律
+
+框架只拉起 5 个内置服务，**不做隐式发现**。扩展服务由使用方显式注册：
 
 ```python
-import YomkApi
-from TemplateExtension import ExtensionService
+from yomk.server import server
+from yomk.extension_service import ExtensionService
 
-YomkApi.server().init()
+server().async_thread(1).init()
+server().srv(ExtensionService).create()   # 显式注册后 /ExtensionService/* 才可达
+```
 
-# 注册 ExtensionService（扩展服务需先注册才能使用）
-YomkApi.server().srv(ExtensionService, "/ExtensionService").create()
+## 安装与验证
 
-# 版本查询请求
-resp = YomkApi.server().url("/ExtensionService/version").msg(None).request()
-if resp.status == YomkApi.ResStatus.Succeeded:
-    print(f"version: {resp.data}")  # 输出: TemplateExtension v0.0.1
+```bash
+bash install.sh        # 交互输入框架安装路径（默认取 YOMK_PREFIX_PATH）
+python3 test/test_template_extension.py
+```
+
+安装后可用：
+
+```python
+from yomk.msg.extension_service import ExtensionRequest, ExtensionResponse   # 扩展消息
+from yomk.extension_service import ExtensionService                    # 扩展运行时
 ```
