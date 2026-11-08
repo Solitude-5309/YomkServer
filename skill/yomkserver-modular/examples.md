@@ -16,7 +16,7 @@ ProjectName/
 ├── config/
 │   └── config.txt
 ├── msgs/
-│   └── YomkMsgs.h
+│   └── YomkStdMsgs.h
 ├── services/
 │   ├── ConfigService.h
 │   └── ConfigService.cpp

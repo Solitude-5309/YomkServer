@@ -11,7 +11,7 @@
 #include "yomk/log/YomkLoggerMsgs.h"
 #include "yomk/log/YomkLoggerPayload.h"
 #include "yomk/log/YomkLoggerUrl.h"
-#include "yomk/YomkMsgs.h"
+#include "yomk/YomkStdMsgs.h"
 #include "yomk/server/YomkServerApi.h"
 #include "yomk/server/YomkServerPayload.h"
 #include "yomk/YomkSourceLoc.h"

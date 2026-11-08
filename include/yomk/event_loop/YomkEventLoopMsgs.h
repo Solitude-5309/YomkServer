@@ -1,7 +1,7 @@
 #pragma once
 
 #include "yomk/event_loop/YomkEventLoopPayload.h"
-#include "yomk/YomkMsgs.h"
+#include "yomk/YomkStdMsgs.h"
 
 // EventLoop 模块消息包（成员名均为 d）。
 YOMK_DEFINE_MSG(yomk::payload::Event, Event, d);

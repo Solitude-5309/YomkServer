@@ -30,7 +30,7 @@ TemplateProject/
 ├── config/
 │   └── config.txt          // 配置文件
 ├── msgs/
-│   └── YomkMsgs.h          // 消息包定义
+│   └── YomkStdMsgs.h          // 消息包定义
 ├── services/               // 服务实现（按业务分子目录）
 │   └── ConfigService.h/.cpp
 ├── typedefine/
