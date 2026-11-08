@@ -18,7 +18,7 @@ class YomkServicePrivate;
  * @brief 自定义服务基类：派生类在 init() 内 installFunc() 注册功能函数, 即接入请求路由
  * @note 实例所有权注册后移交 YomkServer; 功能函数经 weakFunc 绑定, 服务注销后回调自动短路
  */
-class YOMKSERVER_EXPORT YomkService : public std::enable_shared_from_this<YomkService>
+class YOMK_EXPORT YomkService : public std::enable_shared_from_this<YomkService>
 {
     friend class YomkServerPrivate;
 

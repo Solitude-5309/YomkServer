@@ -7,7 +7,7 @@ include(cmake/AbiInfo.cmake)
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 3.5.25 LANGUAGES CXX)
+project(Yomk VERSION 3.5.26 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：
@@ -84,7 +84,7 @@ add_library(YomkServer SHARED
     ${YomkServer_SOURCES}
 )
 
-target_compile_definitions(YomkServer PRIVATE YOMKSERVER_LIBRARY)
+target_compile_definitions(YomkServer PRIVATE YOMK_LIBRARY)
 
 # 编译期注入框架版本号（对应顶层 project(Yomk VERSION x.x.x) 定义的 VERSION），供 YOMK_VERSION 获取
 target_compile_definitions(YomkServer PUBLIC YOMKSERVER_VERSION="${PROJECT_VERSION}")  # 闭环 6：version() 终结进头文件内联，宏须对消费方可见

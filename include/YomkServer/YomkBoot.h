@@ -5,7 +5,7 @@
  * @brief 启动编排契约：按 before -> start -> after 顺序执行
  * @note 经 yomk::server().boot_ptr(cfg).run() 消费, 所有权移交 run; 任一阶段非 0 即中止
  */
-class YOMKSERVER_EXPORT YomkBoot
+class YOMK_EXPORT YomkBoot
 {
 public:
     virtual ~YomkBoot() {}

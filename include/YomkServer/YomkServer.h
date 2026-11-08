@@ -14,7 +14,7 @@ class YomkServerPrivate;
  * @brief 服务器实例：服务注册表 + 请求路由（经 instance() 获取, 或由 yomk::server() 域间接使用）
  * @note 实例由 shared_ptr 管理, 禁止直接 delete; 各接口线程安全
  */
-class YOMKSERVER_EXPORT YomkServer : public std::enable_shared_from_this<YomkServer>
+class YOMK_EXPORT YomkServer : public std::enable_shared_from_this<YomkServer>
 {
 public:
     /**
