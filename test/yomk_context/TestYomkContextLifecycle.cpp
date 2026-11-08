@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "ctx/YomkContext.h"
-#include "YomkApi.h"
+#include "YomkContextApi.h"
 
 static int g_failed = 0;
 

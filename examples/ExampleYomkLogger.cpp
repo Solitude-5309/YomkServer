@@ -57,7 +57,7 @@
 
 namespace fs = std::filesystem;
 
-#include "YomkApi.h"
+#include "YomkLogApi.h"
 
 // ---------------------------------------------------------------------------
 // 辅助输出：全部走 YomkLogger 控制台日志（log().tag(...).info 等），无 std::cout。

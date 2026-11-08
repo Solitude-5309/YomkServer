@@ -50,7 +50,7 @@
 #include <utility>
 #include <vector>
 
-#include "YomkApi.h"
+#include "YomkLogApi.h"
 #include "YomkDiag.h"
 
 namespace fs = std::filesystem;

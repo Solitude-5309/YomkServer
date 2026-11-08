@@ -58,7 +58,8 @@
 #include <thread>
 #include <vector>
 
-#include "YomkApi.h"
+#include "YomkContextApi.h"
+#include "YomkLogApi.h"
 
 // 定点引入所需类型，避免全局 using
 using yomk::payload::CheckStatus;

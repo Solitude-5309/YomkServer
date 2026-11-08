@@ -17,7 +17,7 @@
 # 行为:
 #   1. 测试临时产物统一落 test/test_logs/tmp（经 YOMK_TEST_TMP_ROOT 注入测试进程，
 #      测试内 getenv 取根、独立运行回退 /tmp）；启动时整目录重建（兜底上次崩溃遗留）
-#   2. 逐个运行 26 个测试（快→慢，stress 类压尾），每个测试在独立临时工作目录运行
+#   2. 逐个运行 27 个测试（快→慢，stress 类压尾），每个测试在独立临时工作目录运行
 #   3. 任一测试失败（退出码非 0 / 超时）→ 立即停止，终端输出 [FAIL] 行摘要与日志路径
 #   4. 日志落盘: test/test_logs/<时间戳>/<测试名>.log + summary.log
 #   5. 退出（含失败/中断/超时）时整目录删除 test/test_logs/tmp，不留任何临时产物
@@ -120,7 +120,6 @@ TESTS=(
     TestYomkConcurrency
     TestYomkMsg
     TestYomkIntegration
-    TestYomkUmbrella
     # ServerInfo 模块
     TestYomkServerInfoLifecycle
     # FunctionPool 模块

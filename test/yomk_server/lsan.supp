@@ -1,4 +1,4 @@
-# YomkAPI 永生单例：mtx()/holder() 堆分配故意泄漏，避免静态析构窗口问题
-# 详见 YomkServer/src/YomkApi.cpp 实现说明第 2 节
-leak:YomkAPI::mtx()
-leak:YomkAPI::holder()
+# YomkServerRef 永生单例：mtx()/holder() 堆分配故意泄漏，避免静态析构窗口问题
+# 详见 YomkServer/include/YomkServer/YomkServerRef.h 生命周期设计注记第 1 节
+leak:YomkServerRef::mtx()
+leak:YomkServerRef::holder()

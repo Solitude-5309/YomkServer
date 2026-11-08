@@ -33,7 +33,8 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 ### 1. 最小完整示例
 
 ```cpp
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>
+#include <YomkServer/YomkLogApi.h>
 
 // 自定义服务
 class MyService : public YomkService
@@ -227,11 +228,11 @@ cmake .. -DYOMK_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
 cmake --build . -j
 ```
 
-构建产物为 28 个测试可执行（输出到 `<仓库根>/bin/`），按模块划分：
+构建产物为 27 个测试可执行（输出到 `<仓库根>/bin/`），按模块划分：
 
 | 模块 | 测试目标 |
 |---|---|
-| YomkServer (12) | TestYomkSimpleThreadPool、TestYomkWeakFunc、TestYomkAPINotInit、TestYomkAPILifecycle、TestYomkBoot、TestYomkServer、TestYomkService、TestYomkShutdownSeq、TestYomkConcurrency、TestYomkMsg、TestYomkIntegration、TestYomkUmbrella |
+| YomkServer (11) | TestYomkSimpleThreadPool、TestYomkWeakFunc、TestYomkAPINotInit、TestYomkAPILifecycle、TestYomkBoot、TestYomkServer、TestYomkService、TestYomkShutdownSeq、TestYomkConcurrency、TestYomkMsg、TestYomkIntegration |
 | YomkServerInfo (1) | TestYomkServerInfoLifecycle |
 | FunctionPool (3) | TestYomkFunctionPoolLifecycle、TestYomkFunctionPoolConcurrency、TestYomkFunctionPoolStress |
 | Context (4) | TestYomkContextCRUD、TestYomkContextCheckerMonitor、TestYomkContextLifecycle、TestYomkContextConcurrency |
@@ -299,8 +300,12 @@ add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE YomkServer::YomkServer)
 ```
 
-在源码中引用公共头文件：
+在源码中按模块引用公共头文件（不提供伞形聚合头，按需导入）：
 
 ```cpp
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>     // 服务总线：yomk::server()
+#include <YomkServer/YomkLogApi.h>        // 日志：yomk::log() / yomk::log_mgr()
+#include <YomkServer/YomkContextApi.h>    // 共享上下文：yomk::ctx()
+#include <YomkServer/YomkEventLoopApi.h>  // 事件循环：yomk::event_loop()
+#include <YomkServer/YomkFunctionPoolApi.h> // 函数池：yomk::fn_pool()
 ```

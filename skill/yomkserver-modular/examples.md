@@ -32,7 +32,8 @@ ProjectName/
 
 ### main.cpp
 ```cpp
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>
+#include <YomkServer/YomkLogApi.h>
 
 #include "boot/MyBoot.h"
 
@@ -50,7 +51,7 @@ int main(int argc, char* argv[])
 ### boot/MyBoot.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>
 
 using namespace yomk::payload;
 
@@ -74,6 +75,9 @@ private:
 
 ### boot/MyBoot.cpp
 ```cpp
+#include <YomkServer/YomkContextApi.h>
+#include <YomkServer/YomkLogApi.h>
+
 #include "MyBoot.h"
 
 #include <filesystem>
@@ -176,7 +180,7 @@ constexpr const char* const CTX_CONFIG_PATH = "config_path";
 ### msgs/YomkMsgs.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkMsgs.h>
 
 // ConfigService 消息包
 // 配置键：用于 /get 和 /reload
@@ -200,7 +204,7 @@ YOMK_DEFINE_MSG(::ConfigKeyValue, ConfigKeyValue, req);
 ### services/ConfigService.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>
 
 #include <unordered_map>
 
@@ -229,6 +233,9 @@ private:
 
 ### services/ConfigService.cpp
 ```cpp
+#include <YomkServer/YomkContextApi.h>
+#include <YomkServer/YomkLogApi.h>
+
 #include "ConfigService.h"
 
 #include <algorithm>
@@ -543,7 +550,7 @@ YOMK_DEFINE_MSG(UserInfo, UserInfo, d);
 ### 2. 创建服务（services/UserService.h）
 ```cpp
 #pragma once
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>
 
 #include "msgs/YomkMsgs.h"
 
@@ -988,7 +995,7 @@ ExtensionName/
 ### include/ExtensionService.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>
 
 using namespace yomk::payload;
 
@@ -1006,6 +1013,8 @@ private:
 
 ### src/ExtensionService.cpp
 ```cpp
+#include <YomkServer/YomkLogApi.h>
+
 #include "ExtensionService.h"
 
 ExtensionService::ExtensionService(YomkServer* server) : YomkService(server)
@@ -1052,7 +1061,7 @@ target_link_libraries(TestExtensionName PRIVATE ExtensionName::ExtensionName Yom
 ### test/TestExtensionName.cpp
 ```cpp
 #include <ExtensionName/ExtensionService.h>
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>
 
 #include <iostream>
 
@@ -1371,7 +1380,7 @@ ExtensionName/
 将以下完整程序拷贝为 main.cpp，安装扩展后可直接编译运行：
 
 ```cpp
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>
 #include <ExtensionName/ExtensionService.h>
 #include <iostream>
 

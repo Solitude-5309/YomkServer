@@ -1,3 +1,5 @@
+#include <YomkServer/YomkLogApi.h>
+
 #include "ExtensionService.h"
 
 ExtensionService::ExtensionService(YomkServer* server) : YomkService(server)

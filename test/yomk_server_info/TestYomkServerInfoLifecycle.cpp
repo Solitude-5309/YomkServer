@@ -37,7 +37,7 @@
 #include <vector>
 
 #include "srv_info/YomkServerInfo.h"
-#include "YomkApi.h"
+#include "YomkServerApi.h"
 
 static int g_failed = 0;
 

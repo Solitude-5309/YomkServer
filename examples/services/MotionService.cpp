@@ -1,3 +1,5 @@
+#include "YomkLogApi.h"
+
 #include "services/MotionService.h"
 
 MotionService::MotionService(YomkServer* server) : YomkService(server)

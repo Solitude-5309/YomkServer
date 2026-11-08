@@ -1,4 +1,5 @@
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>
+#include <YomkServer/YomkLogApi.h>
 
 #include "boot/MyBoot.h"
 

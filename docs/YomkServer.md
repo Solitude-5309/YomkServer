@@ -43,7 +43,8 @@ builder 按值传递、全程 `auto` 接收，仅限单表达式内联使用（�
 ## 使用示例
 
 ```cpp
-#include <YomkServer/YomkApi.h>
+#include <YomkServer/YomkServerApi.h>
+#include <YomkServer/YomkLogApi.h>
 
 class MyService : public YomkService
 {

@@ -1,3 +1,5 @@
+#include "YomkLogApi.h"
+
 #include "boot/ArmBoot.h"
 
 #include "services/MotionService.h"

@@ -1,5 +1,5 @@
 #pragma once
-#include "YomkApi.h"
+#include "YomkServerApi.h"
 
 /**
  * @file ArmBoot.h

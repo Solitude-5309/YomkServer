@@ -17,7 +17,7 @@
 #include <map>
 #include <string>
 
-#include "YomkApi.h"
+#include "YomkServerApi.h"
 
 static int g_failed = 0;
 

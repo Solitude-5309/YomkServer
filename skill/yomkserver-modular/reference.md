@@ -17,7 +17,7 @@
 
 - builder 按值传递，链式表达式须**单表达式内联**使用，接收变量一律 `auto` 或不接收；内部持 `string_view`，缓存 builder 复用即悬垂。
 - `yomk::log()` 域入口在**调用行**捕获位置前缀，缓存 builder 还会导致位置错误。
-- 唯一伞形头：`#include <YomkServer/YomkApi.h>`；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs` 命名空间。
+- 按模块头导入（无伞形聚合头）：`<YomkServer/YomkServerApi.h>`、`YomkLogApi.h`、`YomkContextApi.h`、`YomkEventLoopApi.h`、`YomkFunctionPoolApi.h`，按需包含 `<YomkServer/YomkMsgs.h>`；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs` 命名空间。
 
 ## 状态码约定
 

@@ -1,3 +1,6 @@
+#include "YomkFunctionPoolApi.h"
+#include "YomkLogApi.h"
+
 #include "services/TelemetryService.h"
 
 int TelemetryService::s_instance = 0;

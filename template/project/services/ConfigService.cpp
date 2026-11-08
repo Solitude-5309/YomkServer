@@ -1,3 +1,6 @@
+#include <YomkServer/YomkContextApi.h>
+#include <YomkServer/YomkLogApi.h>
+
 #include "ConfigService.h"
 
 #include <algorithm>

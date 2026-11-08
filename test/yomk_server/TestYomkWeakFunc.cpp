@@ -19,7 +19,7 @@
 #include <iostream>
 #include <memory>
 
-#include "YomkApi.h"
+#include "YomkServerApi.h"
 
 static int g_failed = 0;
 

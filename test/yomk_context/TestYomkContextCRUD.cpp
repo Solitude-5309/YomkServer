@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "YomkApi.h"
+#include "YomkContextApi.h"
 
 static int g_failed = 0;
 

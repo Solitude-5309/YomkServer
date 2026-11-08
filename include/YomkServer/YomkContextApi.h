@@ -13,7 +13,7 @@
 // 三态收敛，读路径终结经请求域 .request() 返回 Response；msg<T>() 进入类型化读分面，
 // get() 承载全表面唯一的类型化读逻辑（kName 比对 + cast + 默认值回退）。
 // 无状态设计：全部经 YomkServerRef 快照取当前 server，未初始化处理内聚在守卫与请求域一层；
-// 依赖单向（Request/Url/Msgs/Payload），不依赖 YomkApi.h 与其他域头，可独立包含。
+// 依赖单向（Request/Url/Msgs/Payload），不依赖其他域头，可独立包含。
 /**
  * @brief 上下文键值链式 Builder，读写指定组内的上下文
  *
