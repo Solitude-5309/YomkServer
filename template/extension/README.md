@@ -31,7 +31,7 @@ TemplateExtension/
 ├── include/
 │   ├── ExtensionService.h   # 对外接口头文件（服务类声明；内部头文件放 src/）
 │   ├── ExtensionApi.h       # 模块 API：链式域入口 yomk::ext()（四件套，参考 include/yomk 各域设计）
-│   ├── ExtensionMsg.h      # 模块消息包目录（YOMK_DEFINE_MSG，当前为注释示例占位）
+│   ├── ExtensionMsg.h       # 模块消息包目录（YOMK_DEFINE_MSG，当前为注释示例占位）
 │   ├── ExtensionPayload.h   # 模块专属载荷目录（namespace yomk::payload，当前为注释示例占位）
 │   └── ExtensionUrl.h       # 模块 URL 常量（yomk::url 命名空间，inline constexpr string_view）
 ├── src/
