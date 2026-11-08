@@ -7,7 +7,7 @@ include(CMake/AbiInfo.cmake)
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 3.5.3 LANGUAGES CXX)
+project(Yomk VERSION 3.5.4 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：
@@ -39,8 +39,13 @@ install(FILES ${CMAKE_BINARY_DIR}/abi_report.txt
         DESTINATION share/YomkServer)
 
 # YomkServer
-set(YomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/YomkServer)
-include(${YomkServer_DIR}/CMakeLists.txt)
+# 构建期内部路径变量：与 find_package 写入缓存的包定位变量解耦，统一唯一事实来源。
+# 闭环 3（目录扁平化）时只需把 YOMK_SERVER_SOURCE_ROOT 改为 ${CMAKE_CURRENT_SOURCE_DIR}。
+set(YOMK_SERVER_SOURCE_ROOT  "${CMAKE_CURRENT_SOURCE_DIR}/YomkServer")
+set(YOMK_SERVER_INCLUDE_ROOT "${YOMK_SERVER_SOURCE_ROOT}/include")
+set(YOMK_SERVER_INCLUDE_DIR  "${YOMK_SERVER_INCLUDE_ROOT}/YomkServer")
+set(YOMK_SERVER_SRC_DIR      "${YOMK_SERVER_SOURCE_ROOT}/src")
+include(${CMAKE_CURRENT_SOURCE_DIR}/YomkServer/CMakeLists.txt)
 message("-- YomkServer success.")
 
 # ExamplesYomkServer（用户教程示例，默认编译并安装）

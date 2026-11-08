@@ -12,29 +12,26 @@ else()
     endif()
 endif()
 
-set(YomkServer_INCLUDE ${YomkServer_DIR}/include/YomkServer)
-set(YomkServer_SRC ${YomkServer_DIR}/src)
-
 set(INCLUDE_INSTALL_DIR include)
 set(LIB_INSTALL_DIR lib)
 
-include_directories(${YomkServer_INCLUDE})
+include_directories(${YOMK_SERVER_INCLUDE_DIR})
 
 set(YomkServer_SOURCES
-    ${YomkServer_SRC}/Core/YomkServer.cpp
-    ${YomkServer_SRC}/Core/YomkServerPrivate.cpp
-    ${YomkServer_SRC}/Core/YomkService.cpp
-    ${YomkServer_SRC}/Core/YomkServicePrivate.cpp
-    ${YomkServer_SRC}/Core/YomkSimpleThreadPool.cpp
-    ${YomkServer_SRC}/Modules/FunctionPool/YomkFunctionPool.cpp
-    ${YomkServer_SRC}/Modules/Context/ContextGroup.cpp
-    ${YomkServer_SRC}/Modules/Context/YomkContext.cpp
-    ${YomkServer_SRC}/Modules/EventLoop/EventLoop.cpp
-    ${YomkServer_SRC}/Modules/EventLoop/YomkEventLoop.cpp
-    ${YomkServer_SRC}/Modules/Logger/YomkLogger.cpp
-    ${YomkServer_SRC}/Modules/Logger/ConsoleLogger.cpp
-    ${YomkServer_SRC}/Modules/Logger/FileLogger.cpp
-    ${YomkServer_SRC}/Modules/ServerInfo/YomkServerInfo.cpp
+    ${YOMK_SERVER_SRC_DIR}/Core/YomkServer.cpp
+    ${YOMK_SERVER_SRC_DIR}/Core/YomkServerPrivate.cpp
+    ${YOMK_SERVER_SRC_DIR}/Core/YomkService.cpp
+    ${YOMK_SERVER_SRC_DIR}/Core/YomkServicePrivate.cpp
+    ${YOMK_SERVER_SRC_DIR}/Core/YomkSimpleThreadPool.cpp
+    ${YOMK_SERVER_SRC_DIR}/Modules/FunctionPool/YomkFunctionPool.cpp
+    ${YOMK_SERVER_SRC_DIR}/Modules/Context/ContextGroup.cpp
+    ${YOMK_SERVER_SRC_DIR}/Modules/Context/YomkContext.cpp
+    ${YOMK_SERVER_SRC_DIR}/Modules/EventLoop/EventLoop.cpp
+    ${YOMK_SERVER_SRC_DIR}/Modules/EventLoop/YomkEventLoop.cpp
+    ${YOMK_SERVER_SRC_DIR}/Modules/Logger/YomkLogger.cpp
+    ${YOMK_SERVER_SRC_DIR}/Modules/Logger/ConsoleLogger.cpp
+    ${YOMK_SERVER_SRC_DIR}/Modules/Logger/FileLogger.cpp
+    ${YOMK_SERVER_SRC_DIR}/Modules/ServerInfo/YomkServerInfo.cpp
 )
 
 add_library(YomkServer SHARED
@@ -49,7 +46,7 @@ target_compile_definitions(YomkServer PUBLIC YOMKSERVER_VERSION="${PROJECT_VERSI
 # 导出头文件
 target_include_directories(YomkServer
     PUBLIC
-        $<BUILD_INTERFACE:${YomkServer_INCLUDE}>  
+        $<BUILD_INTERFACE:${YOMK_SERVER_INCLUDE_DIR}>  
         $<INSTALL_INTERFACE:include>
 )
 
@@ -91,7 +88,7 @@ install(TARGETS YomkServer
     INCLUDES DESTINATION include      
 )
 
-install(DIRECTORY ${YomkServer_INCLUDE}
+install(DIRECTORY ${YOMK_SERVER_INCLUDE_DIR}
     DESTINATION include              
     FILES_MATCHING PATTERN "*.h" 
 )

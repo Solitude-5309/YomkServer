@@ -24,6 +24,12 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# 构建期源码路径统一入口（与顶层 CMakeLists.txt 的 YOMK_SERVER_* 变量对齐）
+SRC_DIR="${REPO_DIR}/YomkServer/src"
+INCLUDE_ROOT="${REPO_DIR}/YomkServer/include"
+INCLUDE_API_DIR="${INCLUDE_ROOT}/YomkServer"
+HEADER_FILTER='.*/YomkServer/(include|src)/.*'
+
 usage() {
     sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
@@ -75,7 +81,7 @@ echo "-- 日志目录: ${LOG_ROOT}"
 # 宏未定义导致分析降级），抑制项与 Test/YomkServer/CMakeLists.txt 的 cppcheck 目标保持一致
 if [ ${RUN_CPPCHECK} -eq 1 ]; then
     echo "-- cppcheck 检测文件清单（YomkServer/src + YomkServer/include，排除 build/ 生成物）:"
-    mapfile -t CPPCHECK_FILES < <(find "${REPO_DIR}/YomkServer/src" "${REPO_DIR}/YomkServer/include" \
+    mapfile -t CPPCHECK_FILES < <(find "${SRC_DIR}" "${INCLUDE_ROOT}" \
         -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) ! -path '*/build/*' | sort)
     for f in "${CPPCHECK_FILES[@]}"; do
         echo "--   ${f#"${REPO_DIR}/"}"
@@ -88,9 +94,9 @@ if [ ${RUN_CPPCHECK} -eq 1 ]; then
         --inline-suppr --suppress=missingInclude --suppress=noExplicitConstructor --suppress=useStlAlgorithm \
         --suppress=unmatchedSuppression \
         --template=gcc \
-        -I "${REPO_DIR}/YomkServer/include" -I "${REPO_DIR}/YomkServer/src" -I "${REPO_DIR}/YomkServer/include/YomkServer" \
+        -I "${INCLUDE_ROOT}" -I "${SRC_DIR}" -I "${INCLUDE_API_DIR}" \
         --error-exitcode=1 \
-        "${REPO_DIR}/YomkServer/src" "${REPO_DIR}/YomkServer/include" 2>&1 \
+        "${SRC_DIR}" "${INCLUDE_ROOT}" 2>&1 \
         | tee "${CPPCHECK_OUT}" \
         | grep --line-buffered -E '^Checking [^:]*\.\.\.|warning:|performance:|portability:|style:|information:|error:'
     rc=${PIPESTATUS[0]}
@@ -109,7 +115,7 @@ fi
 # 检查集为 _YOMK_TIDY_CHECKS 原串（排除项是校准成果，如框架宏约定触发的
 # bugprone-macro-parentheses），修改时须与 Test/YomkServer/CMakeLists.txt 保持对齐
 if [ ${RUN_TIDY} -eq 1 ]; then
-    mapfile -t TIDY_FILES < <(find "${REPO_DIR}/YomkServer/src" -name '*.cpp' | sort)
+    mapfile -t TIDY_FILES < <(find "${SRC_DIR}" -name '*.cpp' | sort)
     TIDY_TOTAL=${#TIDY_FILES[@]}
     echo "-- clang-tidy 扫描 YomkServer/src 全部编译单元（共 ${TIDY_TOTAL} 个，检查集: _YOMK_TIDY_CHECKS）..."
     # clang 标准库头解析自愈（同 clangd --query-driver 族教训：新机器 clang 按"最新已装 GCC"
@@ -144,7 +150,7 @@ if [ ${RUN_TIDY} -eq 1 ]; then
         echo "-- [${TIDY_IDX}/${TIDY_TOTAL}] ${f#"${REPO_DIR}/"}"
         if ! clang-tidy -p "${REPO_DIR}" "${TIDY_EXTRA_ARGS[@]}" \
             --checks="bugprone-*,-bugprone-macro-parentheses,-bugprone-easily-swappable-parameters,cppcoreguidelines-*,-cppcoreguidelines-owning-memory,-cppcoreguidelines-macro-usage,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-special-member-functions,-cppcoreguidelines-explicit-virtual-functions,-cppcoreguidelines-non-private-member-variables-in-classes,-cppcoreguidelines-avoid-non-const-global-variables,clang-analyzer-*,performance-*,-performance-unnecessary-value-param,portability-*" \
-            --header-filter='.*/YomkServer/(include|src)/.*' \
+            --header-filter="${HEADER_FILTER}" \
             --warnings-as-errors='*' \
             "${f}" >> "${TIDY_OUT}" 2>&1; then
             echo "    [FAIL] ${f#"${REPO_DIR}/"} 检出告警或编译错误"

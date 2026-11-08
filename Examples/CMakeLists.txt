@@ -1,4 +1,4 @@
-include_directories(${YomkServer_INCLUDE})
+include_directories(${YOMK_SERVER_INCLUDE_DIR})
 include_directories(${ExamplesYomkServer_DIR})
 
 set(YomkServerLib 

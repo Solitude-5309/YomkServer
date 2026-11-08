@@ -1,7 +1,7 @@
-include_directories(${YomkServer_INCLUDE})
+include_directories(${YOMK_SERVER_INCLUDE_DIR})
 include_directories(${TestYomkEventLoop_DIR}/YomkEventLoop)
 # 生命周期白盒测试需直连内部类 EventLoop，引用非导出内部头需要源码目录
-include_directories(${YomkServer_DIR}/src)
+include_directories(${YOMK_SERVER_SRC_DIR})
 
 set(YomkServerLib 
     YomkServer

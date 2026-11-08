@@ -1,6 +1,6 @@
 # Test/YomkFunctionPool：FunctionPool 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
 
-include_directories(${YomkServer_INCLUDE})
+include_directories(${YOMK_SERVER_INCLUDE_DIR})
 
 # -------------sl TestYomkFunctionPoolLifecycle ----------------
 set(TestYomkFunctionPoolLifecycle_SOURCES 

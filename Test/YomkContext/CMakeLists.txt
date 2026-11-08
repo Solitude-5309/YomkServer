@@ -1,7 +1,7 @@
-include_directories(${YomkServer_INCLUDE})
+include_directories(${YOMK_SERVER_INCLUDE_DIR})
 include_directories(${TestYomkContext_DIR}/YomkContext)
 # MC3：生命周期测试需构造/派生内部类 YomkContext，引用非导出内部头需要源码目录
-include_directories(${YomkServer_DIR}/src)
+include_directories(${YOMK_SERVER_SRC_DIR})
 
 set(YomkServerLib 
     YomkServer
