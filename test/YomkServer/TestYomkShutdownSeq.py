@@ -27,7 +27,8 @@ TestYomkShutdownSeq.py —— async_request + shutdown 排空/幂等/拒新语�
 import sys
 import time
 
-from YomkServer import ResStatus, YomkResponse, YomkServer, YomkService
+from yomk.msg.server import ResStatus, Response
+from yomk.server import YomkServer, YomkService
 
 g_failed = 0
 
@@ -71,10 +72,10 @@ class DrainSrv(YomkService):
         g_deinit_deleted = self.deleted()
 
     def ping(self, pkg):
-        return YomkResponse(ResStatus.eOk, "pong")
+        return Response(ResStatus.eOk, "pong")
 
     def work(self, pkg):
-        return YomkResponse(ResStatus.eOk, "work")
+        return Response(ResStatus.eOk, "work")
 
 
 class SpawnSrv(YomkService):
@@ -94,7 +95,7 @@ class SpawnSrv(YomkService):
         time.sleep(0.2)
         if g_spawn_exec < 50 and self.server:
             self.server.async_request("/SpawnSrv/spawn")
-        return YomkResponse(ResStatus.eOk, "spawn")
+        return Response(ResStatus.eOk, "spawn")
 
 
 def on_task(resp):

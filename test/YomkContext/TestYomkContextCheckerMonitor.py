@@ -35,20 +35,11 @@ TestYomkContextCheckerMonitor.py —— YomkContext checker 与 monitor（同步
 import sys
 import time
 
-import YomkApi
+from yomk.msg.server import ResStatus
+from yomk.msg.ctx import CheckStatus, Context, ContextChecker, ContextMonitor
+from yomk.server import server
+from yomk.ctx import ctx
 
-from YomkApi import (
-    server,
-    ctx,
-)
-
-from YomkServer import (
-    CheckStatus,
-    Context,
-    ContextChecker,
-    ContextMonitor,
-    ResStatus,
-)
 
 g_failed = 0
 
@@ -94,7 +85,7 @@ def reset_globals():
 def raw_ctx(endpoint, pkg):
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息断言经 server 域
     # url/msg/request 裸链直取 Response（端点行为与链式终结一致）
-    return YomkApi.server().url("/YomkContext/" + endpoint).msg(pkg).request()
+    return server().url("/YomkContext/" + endpoint).msg(pkg).request()
 
 _accept = lambda c: CheckStatus.eAccept
 _noop = lambda c: None

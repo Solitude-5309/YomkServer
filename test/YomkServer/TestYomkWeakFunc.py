@@ -27,14 +27,9 @@ TestYomkWeakFunc.py —— YomkService.weak_func 弱绑定生命周期语义测�
 import gc
 import sys
 
-from YomkServer import (
-    CheckStatus,
-    Context,
-    ResStatus,
-    YomkResponse,
-    YomkServer,
-    YomkService,
-)
+from yomk.msg.server import ResStatus, Response
+from yomk.msg.ctx import CheckStatus, Context
+from yomk.server import YomkServer, YomkService
 
 g_failed = 0
 
@@ -66,11 +61,11 @@ class BindSrv(YomkService):
         return 0
 
     def work_resp(self, pkg):
-        return YomkResponse(ResStatus.eOk, "alive")
+        return Response(ResStatus.eOk, "alive")
 
     def macro_work(self, pkg):
         self.macro_count += 1
-        return YomkResponse(ResStatus.eOk, "macro")
+        return Response(ResStatus.eOk, "macro")
 
     def make_macro_cb(self):
         # weak_func 显式成员绑定（外流注册主路径）
@@ -86,7 +81,7 @@ def test_alive_callbacks(server):
                             discard="none")
     cb_resp = srv.weak_func(
         lambda pkg: (counts.__setitem__("resp", counts["resp"] + 1),
-                     YomkResponse(ResStatus.eOk, "alive"))[1])
+                     Response(ResStatus.eOk, "alive"))[1])
     cb_check = srv.weak_func(
         lambda ctx: (counts.__setitem__("check", counts["check"] + 1),
                      CheckStatus.eReject)[1],
@@ -123,7 +118,7 @@ def test_destroy_discard(server):
                             discard="none")
     cb_resp = srv.weak_func(
         lambda pkg: (counts.__setitem__("resp", counts["resp"] + 1),
-                     YomkResponse(ResStatus.eOk, "alive"))[1])
+                     Response(ResStatus.eOk, "alive"))[1])
     cb_check = srv.weak_func(
         lambda ctx: (counts.__setitem__("check", counts["check"] + 1),
                      CheckStatus.eReject)[1],
@@ -171,7 +166,7 @@ def test_mark_deleted_discard(server):
                             discard="none")
     cb_resp = srv.weak_func(
         lambda pkg: (counts.__setitem__("resp", counts["resp"] + 1),
-                     YomkResponse(ResStatus.eOk, "alive"))[1])
+                     Response(ResStatus.eOk, "alive"))[1])
 
     # 测试持 srv 引用不释放，经框架删除置位注销标志（标志层独立于引用计数）
     check(server.del_service("/BindSrv") == 0, "框架删除成功")

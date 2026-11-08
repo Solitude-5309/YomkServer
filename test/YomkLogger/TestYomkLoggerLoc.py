@@ -34,7 +34,9 @@ import shutil
 import sys
 import tempfile
 
-import YomkApi
+from yomk.msg.server import ResStatus
+from yomk.server import server
+from yomk.log import log, log_mgr
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
@@ -73,11 +75,11 @@ def normalize_line(ln, lineno):
 
 
 def main():
-    Succeeded = YomkApi.ResStatus.Succeeded
+    Succeeded = ResStatus.Succeeded
     tmp_dir = os.path.join(test_tmp_root(), "yomk_logger_loc_" + str(os.getpid()))
 
     # 初始化框架（发射链依赖已 init 的服务路由：server().async_thread(1).init()）
-    YomkApi.server().async_thread(1).init()
+    server().async_thread(1).init()
 
     # ============ S1 默认配置：行号精确性 / 双链一致性 / 折叠 ============
     # 六级别（trace..fatal）默认 tag=main；want 指向 3 行之后的发射行
@@ -94,7 +96,7 @@ def main():
         want = sys._getframe().f_lineno + 3
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            ret = getattr(YomkApi.log(), meth)(marker)
+            ret = getattr(log(), meth)(marker)
         ln = last_line(buf)
         if ret != Succeeded or not ln.endswith(
                 f"[{label}] [main] [{want}] {marker}"):
@@ -105,7 +107,7 @@ def main():
     want = sys._getframe().f_lineno + 3
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        ret = YomkApi.log().tag("lgLTag").info("lgL_s1_tagged")
+        ret = log().tag("lgLTag").info("lgL_s1_tagged")
     ln_tag = last_line(buf)
     check(ret == Succeeded and ln_tag.endswith(f"[INFO ] [lgLTag] [{want}] lgL_s1_tagged"),
           f"S1: tag 变体 [lgLTag] 精确（实际: {ln_tag!r}）")
@@ -114,12 +116,12 @@ def main():
     want_a = sys._getframe().f_lineno + 3
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        YomkApi.log().info("lgL_s1_dualchain")
+        log().info("lgL_s1_dualchain")
     line_a = last_line(buf)
     want_b = sys._getframe().f_lineno + 3
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        YomkApi.log().tag("main").info("lgL_s1_dualchain")
+        log().tag("main").info("lgL_s1_dualchain")
     line_b = last_line(buf)
     check(normalize_line(line_a, want_a) == normalize_line(line_b, want_b),
           f"S1: 双链一致性（归一化后逐字节相等）\n       a: {line_a!r}\n       b: {line_b!r}")
@@ -128,7 +130,7 @@ def main():
     want = sys._getframe().f_lineno + 3
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        ret = YomkApi.log().info()
+        ret = log().info()
     zero_re = re.compile(console_line_re("INFO ", "main",
                                          re.escape(f"[{want}]") + r"$"))
     check(ret == Succeeded and bool(zero_re.fullmatch(last_line(buf))),
@@ -138,27 +140,27 @@ def main():
     want = sys._getframe().f_lineno + 3
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        ret = YomkApi.log().info("i=", 42, "j=", 3.5, "end")
+        ret = log().info("i=", 42, "j=", 3.5, "end")
     check(ret == Succeeded and
           last_line(buf).endswith(f"[{want}] i= 42 j= 3.5 end"),
           f"S1: 多参折叠单空格精确（实际: {last_line(buf)!r}）")
 
     # ============ S2 文件日志器落盘读回 ============
     os.makedirs(tmp_dir, exist_ok=True)
-    ret = YomkApi.log_mgr().dir(tmp_dir).file("lgL_s2").create()
+    ret = log_mgr().dir(tmp_dir).file("lgL_s2").create()
     check(ret == Succeeded, f"S2: file create Succeeded（实际 {ret}）")
     sink_ok = True
     for meth in ("trace", "debug", "info", "warn", "error", "fatal"):
         buf = io.StringIO()  # to_sink 不经控制台，仅消费状态
         with contextlib.redirect_stdout(buf):
-            r = getattr(YomkApi.log().to_sink("lgL_s2"), meth)(f"lgL_s2_{meth}")
+            r = getattr(log().to_sink("lgL_s2"), meth)(f"lgL_s2_{meth}")
         if r != Succeeded:
             sink_ok = False
-    ret_sink_tag = YomkApi.log().to_sink("lgL_s2").tag("lgL_s2_tag").info("lgL_s2_tagged")
+    ret_sink_tag = log().to_sink("lgL_s2").tag("lgL_s2_tag").info("lgL_s2_tagged")
     check(sink_ok, "S2: to_sink 六级发射全 Succeeded")
     check(ret_sink_tag == Succeeded, "S2: to_sink tag 变体 Succeeded")
 
-    ret = YomkApi.log_mgr().file("lgL_s2").flush()
+    ret = log_mgr().file("lgL_s2").flush()
     log_path = os.path.join(tmp_dir, "lgL_s2.log")
     check(ret == Succeeded and os.path.isfile(log_path),
           f"S2: flush Succeeded 且日志文件生成 {log_path}")
@@ -177,7 +179,7 @@ def main():
     check(re.search(r"\[INFO \] \[lgL_s2_tag\] \[\d+\] lgL_s2_tagged", content),
           "S2: tag 变段落盘（[lgL_s2_tag]）")
 
-    ret = YomkApi.log_mgr().file("lgL_s2").remove()
+    ret = log_mgr().file("lgL_s2").remove()
     check(ret == Succeeded, "S2: remove Succeeded（注：不删磁盘 .log，随临时目录清理）")
 
     # ============ S3 位置开关 8 组合矩阵 ============
@@ -199,10 +201,10 @@ def main():
     ]
     matrix_ok = True
     for sf, sl, sn, code, expect_re in combos:
-        YomkApi.log_mgr().location().show_file(sf).show_line(sl).show_func(sn).apply()
+        log_mgr().location().show_file(sf).show_line(sl).show_func(sn).apply()
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            ret = YomkApi.log().info("lgL_s3_" + code)
+            ret = log().info("lgL_s3_" + code)
         ln = last_line(buf)
         pattern = console_line_re("INFO ", "main", expect_re)
         if ret != Succeeded or not re.fullmatch(pattern, ln):
@@ -211,11 +213,11 @@ def main():
     check(matrix_ok, "S3: 8 组合开关矩阵前缀精确（含 --n 与 tag main 撞名仍命中）")
 
     # 收尾恢复默认（file=关/line=开/func=关）并实测一行
-    ret = YomkApi.log_mgr().location().show_file(False).show_line(True).show_func(False).apply()
+    ret = log_mgr().location().show_file(False).show_line(True).show_func(False).apply()
     want = sys._getframe().f_lineno + 3
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        YomkApi.log().info("lgL_s3_restore")
+        log().info("lgL_s3_restore")
     check(ret == Succeeded and last_line(buf).endswith(f"[{want}] lgL_s3_restore"),
           "开关矩阵收尾恢复默认 (file=关/line=开/func=关)")
 
@@ -224,7 +226,7 @@ def main():
     for meth in ("debug", "info", "warn", "error"):
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            ret = getattr(YomkApi.log().tag("lgL_s4"), meth)("lgL_s4_" + meth)
+            ret = getattr(log().tag("lgL_s4"), meth)("lgL_s4_" + meth)
         if ret != Succeeded or f"lgL_s4_{meth}" not in last_line(buf):
             tag_ok = False
     check(tag_ok, "S4: tag 链四级 Succeeded + marker 命中")
@@ -236,7 +238,7 @@ def main():
     want = sys._getframe().f_lineno + 3
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        ret = YomkApi.log().tag("lgL_s4").info(
+        ret = log().tag("lgL_s4").info(
             True, False, "a", -42, -2147483648, 18446744073709551615, 3.5, _Cust())
     check(ret == Succeeded and last_line(buf).endswith(
         f"[{want}] true false a -42 -2147483648 18446744073709551615 3.5 cust<7>"),
@@ -244,7 +246,7 @@ def main():
 
     # ============ 收尾 ============
     shutil.rmtree(tmp_dir, ignore_errors=True)
-    YomkApi.server().shutdown()
+    server().shutdown()
 
     if g_failed == 0:
         print("TestYomkLoggerLoc all check passed.")

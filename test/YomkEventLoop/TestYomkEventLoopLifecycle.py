@@ -18,8 +18,8 @@ TestYomkEventLoopLifecycle.py - EventLoop 三段语义（start 重启续跑 / st
      （被丢弃事件的等待回调被触发，stop 哨兵消除竞态，weakref 归零断言析构完成；python 方法栈帧持 self 使"阻塞等待者存在期间析构"不可达，
      以排队事件 waitCallback 标记回调等价承载同一契约）
 
-说明：白盒段直连 YomkServer.EventLoop 类；API 段 YomkApi.server().async_thread(1).init() 拉起内置 /YomkEventLoop，
-      末尾 YomkApi.server().shutdown() 收尾（进程级幂等，shutdown 后不可再初始化）。
+说明：白盒段直连 EventLoop 类；API 段 server_api().async_thread(1).init() 拉起内置 /YomkEventLoop，
+      末尾 server_api().shutdown() 收尾（进程级幂等，shutdown 后不可再初始化）。
       停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询 info_line 至 running:off
       确认 m_running 已置位后才释放阻塞事件，杜绝工作线程抢跑后续排队事件的竞态（确定性断言）。
       阻塞门用 threading.Event 实现（1ms 轮询粒度由 wait/Event.wait 内化）。
@@ -33,10 +33,10 @@ import threading
 import time
 import weakref
 
-import YomkServer as ysp
-from YomkServer import Event, EventLoop
-from YomkApi import event_loop, server
-import YomkApi
+from yomk.msg.server import ResStatus, Response
+from yomk.msg.event_loop import EventLoopInfo, EventLoopPkg
+from yomk.server import server as server_api
+from yomk.event_loop import Event, EventLoop, YomkEventLoop, event_loop
 
 FAILED = 0
 
@@ -87,7 +87,7 @@ def gate_handler():
     def _handler(pkg):
         GATE.started.set()
         GATE.release.wait()
-        return ysp.YomkResponse(ysp.ResStatus.eOk, "gate done")
+        return Response(ResStatus.eOk, "gate done")
     return _handler
 
 def wait_gate_started(timeout_s):
@@ -107,7 +107,7 @@ def wait_until(pred, timeout_s):
 def counting_handler(tag):
     def _handler(pkg):
         record_order(tag)
-        return ysp.YomkResponse(ysp.ResStatus.eOk, "counted: " + tag)
+        return Response(ResStatus.eOk, "counted: " + tag)
     return _handler
 
 def check(cond, msg):
@@ -123,12 +123,11 @@ def line_of(loop, name, tag_count=3):
     return line if line else ""
 
 def info_of_api(name, tag_count=None):
-    import YomkApi
     if tag_count is not None:
         r = event_loop().loop(name).tag_count(tag_count).get_info()
     else:
         r = event_loop().loop(name).get_info()
-    return r.data if r.status == ysp.ResStatus.eOk else None
+    return r.data if r.status == ResStatus.eOk else None
 
 # ============ Section 1+2: stop 保留 + start 续跑（白盒）============
 def section_1_2():
@@ -218,7 +217,7 @@ def section_4():
 
     def record_id(pkg):
         record_thread_id()
-        return ysp.YomkResponse(ysp.ResStatus.eOk, "id recorded")
+        return Response(ResStatus.eOk, "id recorded")
 
     check(loop.post(Event("wb", None, record_id, "i1")) == 0, "post 事件 i1 返回 0")
     check(wait_until(lambda: len(ids_snapshot()) >= 1, 2.0), "事件 i1 已执行")
@@ -245,7 +244,7 @@ def section_5():
     order = order_snapshot()
     check(len(order) == 1 and order[-1] == "pw1", "postWait 返回即事件已执行（同步性）")
     check(ev.m_response is not None and ev.m_response.status ==
-          ysp.ResStatus.eOk, "postWait 返回时响应已填充")
+          ResStatus.eOk, "postWait 返回时响应已填充")
     check(ev.m_eventId > 0, "postWait 事件已赋递增 eventId")
     check("pending:0" in line_of(loop, "wb"), "postWait 完成后 pending:0")
 
@@ -268,7 +267,7 @@ def section_6():
     def outer_handler(pkg):
         loop.post_wait(inner)
         record_order("outer")
-        return ysp.YomkResponse(ysp.ResStatus.eOk, "outer done")
+        return Response(ResStatus.eOk, "outer done")
 
     outer = Event("wb", None, outer_handler, "outer")
     check(loop.post(outer) == 0, "post 外层事件返回 0")
@@ -360,24 +359,23 @@ def section_8():
 
 # ============ Section 9: API 层停止保留 / 重启续跑 / 销毁移除 / 契约与边界 ============
 def section_9():
-    import YomkApi
-    YomkApi.server().async_thread(1).init()
-    server = YomkApi.server().instance()
-    check(server is not None, "server().init 返回非空服务器")
+    server_api().async_thread(1).init()
+    server = server_api().instance()
+    check(server is not None, "server_api().init 返回非空服务器")
 
     reset_order()
     GATE.reset()
 
     start_resp = event_loop().loop("api_loop").start()
-    check(start_resp == ysp.ResStatus.eOk, "START api_loop 返回 eOk")
+    check(start_resp == ResStatus.eOk, "START api_loop 返回 eOk")
 
     post_resp = event_loop().msg("block").loop("api_loop").handle_fn(gate_handler()).tag("b1").post()
-    check(post_resp == ysp.ResStatus.eOk, "POST 阻塞事件 b1 返回 eOk")
+    check(post_resp == ResStatus.eOk, "POST 阻塞事件 b1 返回 eOk")
     check(wait_gate_started(2.0), "阻塞事件 b1 已进入执行")
 
-    check(event_loop().msg("c1").loop("api_loop").handle_fn(counting_handler("c1")).tag("c1").post() == ysp.ResStatus.eOk,
+    check(event_loop().msg("c1").loop("api_loop").handle_fn(counting_handler("c1")).tag("c1").post() == ResStatus.eOk,
           "POST 计数事件 c1 返回 eOk")
-    check(event_loop().msg("c2").loop("api_loop").handle_fn(counting_handler("c2")).tag("c2").post() == ysp.ResStatus.eOk,
+    check(event_loop().msg("c2").loop("api_loop").handle_fn(counting_handler("c2")).tag("c2").post() == ResStatus.eOk,
           "POST 计数事件 c2 返回 eOk")
 
     # 辅助线程 STOP：服务层 stop 内部 join 等待在途事件收尾
@@ -396,9 +394,9 @@ def section_9():
     check(info is not None and info.pending == 2, "API 停止后 pending=2（未执行事件保留）")
 
     # 停止态投递被拒（契约回归）：服务层映射 eNo，调用方可区分"已入队"与"被拒"
-    check(event_loop().msg("rx").loop("api_loop").handle_fn(counting_handler("rx")).tag("rx").post() == ysp.ResStatus.eNo,
+    check(event_loop().msg("rx").loop("api_loop").handle_fn(counting_handler("rx")).tag("rx").post() == ResStatus.eNo,
           "停止态 POST 返回 eNo（投递被拒）")
-    check(event_loop().msg("rx2").loop("api_loop").handle_fn(counting_handler("rx2")).tag("rx2").post_wait() == ysp.ResStatus.eNo,
+    check(event_loop().msg("rx2").loop("api_loop").handle_fn(counting_handler("rx2")).tag("rx2").post_wait() == ResStatus.eNo,
           "停止态 POST_WAIT 返回 eNo（被拒且不等待）")
     check((lambda o: o is not None and o.pending == 2)(info_of_api("api_loop")),
           "被拒投递未入队（pending 仍为 2）")
@@ -406,16 +404,16 @@ def section_9():
     # 越界数字 tagCount（D3 回归）：int 越界回退不再崩溃，回退默认 3；
     # 冻结窗口（队列 2 条）一并验证截断与原值保留（结构化 EventLoopQuery 字段投递）
     oob = event_loop().loop("api_loop").tag_count(99999999999999999999).get_info()
-    check(oob.status == ysp.ResStatus.eOk, "越界数字 tagCount 返回 eOk（不崩溃）")
+    check(oob.status == ResStatus.eOk, "越界数字 tagCount 返回 eOk（不崩溃）")
     check(oob.msg == "ok", "越界数字 tagCount 命中 msg 恒为 ok")
-    check(isinstance(oob.data, ysp.EventLoopInfo),
+    check(isinstance(oob.data, EventLoopInfo),
           "越界数字 tagCount 数据为 EventLoopInfo 包")
     check(oob.data is not None and oob.data.next_tags == ["c1", "c2"],
           "越界数字 tagCount 回退默认 3，队列 2 条全部回显且 tag 存原值")
 
     # 重启续跑：服务层 START 命中已存在条目即重启，积压按 FIFO 续跑
     check(event_loop().loop("api_loop").start() ==
-          ysp.ResStatus.eOk, "再次 START 返回 eOk（重启）")
+          ResStatus.eOk, "再次 START 返回 eOk（重启）")
     check(wait_until(
         lambda: (lambda o: len(o) == 2 and o[0] == "c1" and o[1] == "c2")(order_snapshot()), 2.0),
         "API 重启后积压按 FIFO 顺序续跑完成（c1 -> c2）")
@@ -423,117 +421,116 @@ def section_9():
     # POST_WAIT 同步路径：返回即事件已执行完，回传 Event 携带执行结果
     # POST_WAIT 回传 Event 走 data：写路径链式终结收敛为 ResStatus（无 data），
     # 经 server 域 url/msg/request 裸链直取 Response（端点行为与链式终结一致）
-    pw = YomkApi.server().url("/YomkEventLoop/post_wait").msg(
+    pw = server_api().url("/YomkEventLoop/post_wait").msg(
         Event("api_loop", "pw1", counting_handler("pw1"), "pw1")).request()
-    check(pw.status == ysp.ResStatus.eOk, "POST_WAIT 返回 eOk")
+    check(pw.status == ResStatus.eOk, "POST_WAIT 返回 eOk")
     pw_ev = pw.data
     check(pw_ev is not None, "POST_WAIT 回传 Event 可用")
     check(pw_ev.m_tag == "pw1", "POST_WAIT 回传事件 tag 一致")
-    check(pw_ev.m_response is not None and pw_ev.m_response.status == ysp.ResStatus.eOk,
+    check(pw_ev.m_response is not None and pw_ev.m_response.status == ResStatus.eOk,
           "POST_WAIT 回传事件响应已填充")
     check(bool(order_snapshot()) and order_snapshot()
           [-1] == "pw1", "POST_WAIT 返回即事件已执行（同步性）")
 
     # 不存在循环名：五个操作接口均 eNo（不影响既有循环与执行顺序观测）
     check(event_loop().loop("no_such").stop() ==
-          ysp.ResStatus.eNo, "STOP 不存在循环返回 eNo")
-    check(event_loop().msg("x").loop("no_such").post() == ysp.ResStatus.eNo,
+          ResStatus.eNo, "STOP 不存在循环返回 eNo")
+    check(event_loop().msg("x").loop("no_such").post() == ResStatus.eNo,
           "POST 不存在循环返回 eNo")
-    check(event_loop().msg("x").loop("no_such").post_wait() == ysp.ResStatus.eNo,
+    check(event_loop().msg("x").loop("no_such").post_wait() == ResStatus.eNo,
           "POST_WAIT 不存在循环返回 eNo")
     check(event_loop().loop("no_such").destroy() ==
-          ysp.ResStatus.eNo, "DESTROY 不存在循环返回 eNo")
+          ResStatus.eNo, "DESTROY 不存在循环返回 eNo")
     check(event_loop().loop("no_such").get_info().status ==
-          ysp.ResStatus.eNo, "INFO_LOOP 不存在循环返回 eNo")
+          ResStatus.eNo, "INFO_LOOP 不存在循环返回 eNo")
 
     # INFO_LOOP 数字 tagCount 路径（结构化 EventLoopQuery）：大数值（合法范围）与
     # 常规采样数均以 eOk + msg 恒 "ok" 承载，截断语义由冻结窗口断言覆盖
     r5 = event_loop().loop("api_loop").tag_count(5).get_info()
-    check(r5.status == ysp.ResStatus.eOk and r5.msg == "ok",
+    check(r5.status == ResStatus.eOk and r5.msg == "ok",
           "结构化载荷解析 tagCount=5")
     r7 = event_loop().loop("api_loop").tag_count(7).get_info()
-    check(r7.status == ysp.ResStatus.eOk and r7.msg == "ok",
+    check(r7.status == ResStatus.eOk and r7.msg == "ok",
           "结构化载荷解析 tagCount=7")
     r1m = event_loop().loop("api_loop").tag_count(1000000).get_info()
-    check(r1m.status == ysp.ResStatus.eOk and r1m.msg == "ok",
+    check(r1m.status == ResStatus.eOk and r1m.msg == "ok",
           "大数值 tagCount 正常解析（合法范围内）")
 
     # INFO_LOOPS：api_loop 存活时列表包含其名（loops() 遍历路径；销毁后移除验证见段尾）
     loops_alive_resp = event_loop().list()
-    check(loops_alive_resp.status == ysp.ResStatus.eOk, "INFO_LOOPS 返回 eOk")
+    check(loops_alive_resp.status == ResStatus.eOk, "INFO_LOOPS 返回 eOk")
     loops_alive = loops_alive_resp.data
     check(loops_alive is not None and "api_loop" in loops_alive,
           "INFO_LOOPS 列表包含 api_loop")
 
     # INFO_ALL：结构化 EventLoopInfoList，包含 api_loop 条目
     all_resp = event_loop().all()
-    check(all_resp.status == ysp.ResStatus.eOk, "INFO_ALL 返回 eOk")
+    check(all_resp.status == ResStatus.eOk, "INFO_ALL 返回 eOk")
     check(all_resp.msg == "ok", "INFO_ALL 成功消息恒为 ok")
     all_infos = all_resp.data
     check(all_infos is not None
-          and any(isinstance(i, ysp.EventLoopInfo) and i.loop_name == "api_loop"
+          and any(isinstance(i, EventLoopInfo) and i.loop_name == "api_loop"
                   for i in all_infos),
           "INFO_ALL 列表包含 api_loop 条目")
 
     # 空循环名边界：空串为合法 map 键，全生命周期 eOk
     check(event_loop().loop("").start() ==
-          ysp.ResStatus.eOk, "START 空循环名返回 eOk")
-    check(event_loop().msg("x").loop("").handle_fn(counting_handler("empty")).post() == ysp.ResStatus.eOk,
+          ResStatus.eOk, "START 空循环名返回 eOk")
+    check(event_loop().msg("x").loop("").handle_fn(counting_handler("empty")).post() == ResStatus.eOk,
           "POST 空循环名返回 eOk")
     check(wait_until(lambda: bool(order_snapshot()) and order_snapshot()[-1] == "empty", 2.0),
           "空循环名事件正常执行")
     check(event_loop().loop("").get_info().status ==
-          ysp.ResStatus.eOk, "INFO_LOOP 空循环名返回 eOk")
+          ResStatus.eOk, "INFO_LOOP 空循环名返回 eOk")
     check(event_loop().loop("").destroy() ==
-          ysp.ResStatus.eOk, "DESTROY 空循环名返回 eOk")
+          ResStatus.eOk, "DESTROY 空循环名返回 eOk")
 
     # 超长循环名边界（65536 字符）：生命周期各接口 eOk 且 infoLine 完整回显
     long_name = "L" * 65536
     check(event_loop().loop(long_name).start() ==
-          ysp.ResStatus.eOk, "START 超长循环名返回 eOk")
+          ResStatus.eOk, "START 超长循环名返回 eOk")
     long_info = event_loop().loop(long_name).get_info()
-    check(long_info.status == ysp.ResStatus.eOk, "INFO_LOOP 超长循环名返回 eOk")
+    check(long_info.status == ResStatus.eOk, "INFO_LOOP 超长循环名返回 eOk")
     check(long_info.data is not None and long_info.data.loop_name == long_name,
           "INFO_LOOP 完整回显超长循环名")
     check(event_loop().loop(long_name).destroy() ==
-          ysp.ResStatus.eOk, "DESTROY 超长循环名返回 eOk")
+          ResStatus.eOk, "DESTROY 超长循环名返回 eOk")
 
     # 销毁移除条目
     check(event_loop().loop("api_loop").destroy() ==
-          ysp.ResStatus.eOk, "DESTROY api_loop 返回 eOk")
+          ResStatus.eOk, "DESTROY api_loop 返回 eOk")
     loops_resp = event_loop().list()
-    check(loops_resp.status == ysp.ResStatus.eOk, "INFO_LOOPS 返回 eOk")
+    check(loops_resp.status == ResStatus.eOk, "INFO_LOOPS 返回 eOk")
     loops_arr = loops_resp.data
     check(loops_arr is not None and "api_loop" not in loops_arr,
           "销毁后 INFO_LOOPS 不再包含 api_loop")
 
 # ============ Section 11: delService("/YomkEventLoop") 残留 loop 收尾与重注册（API 段）============
 def section_11():
-    import YomkApi
     check(event_loop().loop("/L1").start() ==
-          ysp.ResStatus.eOk, "启动 /L1（运行中）")
+          ResStatus.eOk, "启动 /L1（运行中）")
 
     # 运行中删除内置服务：残留 /L1 loop 经服务 deinit 收尾（析构兜底链），
     # del_service 锁外同步调用 deinit——无挂起即证
-    check(YomkApi.server().srv_name("/YomkEventLoop").remove()
+    check(server_api().srv_name("/YomkEventLoop").remove()
           == 0, "删除内置 /YomkEventLoop 返回 0")
     # 契约消息断言经 server 域裸链直取 Response（链式终结收敛无 msg）
-    after_del = YomkApi.server().url("/YomkEventLoop/start").msg(
-        ysp.EventLoopPkg("/L2", None, "")).request()
-    check(after_del.status == ysp.ResStatus.eNo and after_del.msg == "service not found: /YomkEventLoop",
+    after_del = server_api().url("/YomkEventLoop/start").msg(
+        EventLoopPkg("/L2", None, "")).request()
+    check(after_del.status == ResStatus.eNo and after_del.msg == "service not found: /YomkEventLoop",
           "删除后 EVENTLOOP API 服务级 eNo + 精确消息")
-    srv_names = YomkApi.server().instance().service_names()
+    srv_names = server_api().instance().service_names()
     check("/YomkEventLoop" not in srv_names, "服务表快照不再含 /YomkEventLoop")
 
-    check(YomkApi.server().srv(ysp.YomkEventLoop).create()
+    check(server_api().srv(YomkEventLoop).create()
           == 0, "new_service 无参重注册返回 0（构造函数固定名生效）")
     check(event_loop().loop("/L2").start() ==
-          ysp.ResStatus.eOk, "重注册后 EVENTLOOP_START 恢复可用")
+          ResStatus.eOk, "重注册后 EVENTLOOP_START 恢复可用")
     pw_relink = event_loop().msg("relink").loop("/L2").handle_fn(counting_handler("relink")).tag("relink").post_wait()
-    check(pw_relink == ysp.ResStatus.eOk,
+    check(pw_relink == ResStatus.eOk,
           "重注册后 EVENTLOOP_POST_WAIT 全链路 eOk")
 
-    YomkApi.server().shutdown()
+    server_api().shutdown()
 
 # ============ Section 10: postWait×destroy 释放等待者（白盒，看门狗防挂起）============
 def section_10():

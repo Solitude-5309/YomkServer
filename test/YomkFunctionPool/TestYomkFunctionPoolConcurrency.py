@@ -18,13 +18,9 @@ import sys
 import threading
 import time
 
-import YomkApi
-from YomkApi import (
-    server,
-    fn_pool,
-    ResStatus,
-    YomkResponse,
-)
+from yomk.msg.server import ResStatus, Response
+from yomk.server import server as server_api
+from yomk.fn_pool import fn_pool
 
 PASS = 0
 FAIL = 0
@@ -51,11 +47,11 @@ s1_outer_ok = []
 
 def s1_probe_func(pkg):
     s1_exec.append(1)
-    return YomkResponse(ResStatus.eOk, "s1_ok")
+    return Response(ResStatus.eOk, "s1_ok")
 
 def s1_inner_func(pkg):
     s1_inner.append(1)
-    return YomkResponse(ResStatus.eOk, "s1_inner_ok")
+    return Response(ResStatus.eOk, "s1_inner_ok")
 
 def s1_outer_func(pkg):
     # 嵌套重入：在已注册函数内部再 CALL 另一个已注册函数
@@ -72,11 +68,11 @@ s2_total = []
 
 def s2_v1_func(pkg):
     s2_v1.append(1)
-    return YomkResponse(ResStatus.eOk, "v1")
+    return Response(ResStatus.eOk, "v1")
 
 def s2_v2_func(pkg):
     s2_v2.append(1)
-    return YomkResponse(ResStatus.eOk, "v2")
+    return Response(ResStatus.eOk, "v2")
 
 # S3 锁外调用安全性（gate 模式：函数体内等释放，制造"锁外执行中"确定窗口）
 s3_exec = []
@@ -88,18 +84,18 @@ def s3_gated_func(pkg):
     # 此时 callFunction 的读锁已释放，本函数在锁外执行——主线程可安全获取写锁做 unregister
     s3_gate_started.set()
     s3_gate_release.wait()
-    return YomkResponse(ResStatus.eOk, "s3_gated_done")
+    return Response(ResStatus.eOk, "s3_gated_done")
 
 # S5 用函数
 def s5_probe_func(pkg):
-    return YomkResponse(ResStatus.eOk, "s5_ok")
+    return Response(ResStatus.eOk, "s5_ok")
 
 def main():
     global PASS, FAIL
     print("=== TestYomkFunctionPoolConcurrency ===")
 
-    YomkApi.server().async_thread(1).init()
-    server = YomkApi.server().instance()
+    server_api().async_thread(1).init()
+    server = server_api().instance()
     check(server is not None, "init(1) 返回 server 实例")
 
     # ========================================================================

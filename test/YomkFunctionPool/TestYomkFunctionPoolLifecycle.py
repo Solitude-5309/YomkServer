@@ -27,15 +27,10 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
 
 import sys
 
-import YomkApi
-from YomkApi import (
-    server,
-    Function,
-    fn_pool,
-    YomkResponse,
-    ResStatus,
-    FuncInfo,
-)
+from yomk.msg.server import ResStatus, Response
+from yomk.msg.fn_pool import FuncInfo, Function
+from yomk.server import server as server_api
+from yomk.fn_pool import fn_pool
 
 PASS = 0
 FAIL = 0
@@ -43,7 +38,7 @@ FAIL = 0
 def raw_fn(endpoint, pkg):
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息断言经 server 域
     # url/msg/request 裸链直取 Response（端点行为与链式终结一致）
-    return YomkApi.server().url("/YomkFunctionPool/" + endpoint).msg(pkg).request()
+    return server_api().url("/YomkFunctionPool/" + endpoint).msg(pkg).request()
 
 def check(cond, name):
     global PASS, FAIL
@@ -58,7 +53,7 @@ def check(cond, name):
 
 def echo_func(pkg):
     # echo：回传入参 pkg（验证 CALL 消息透传）
-    return YomkResponse(ResStatus.eOk, "echo", pkg)
+    return Response(ResStatus.eOk, "echo", pkg)
 
 null_pkg_seen = []  # 探针观测容器（list.append GIL 原子）
 
@@ -66,15 +61,15 @@ def null_probe_func(pkg):
     # probe：记录是否收到 None 入参（验证 pkg=None 原样透传）
     if pkg is None:
         null_pkg_seen.append(1)
-    return YomkResponse(ResStatus.eOk, "probe")
+    return Response(ResStatus.eOk, "probe")
 
 def v1_func(pkg):
     # 版本函数：区分重复注册更新前的实现
-    return YomkResponse(ResStatus.eOk, "v1")
+    return Response(ResStatus.eOk, "v1")
 
 def v2_func(pkg):
     # 版本函数：区分重复注册更新后的实现
-    return YomkResponse(ResStatus.eOk, "v2")
+    return Response(ResStatus.eOk, "v2")
 
 def throw_func(pkg):
     # 抛异常函数：验证 CALL 链异常穿透契约
@@ -82,7 +77,7 @@ def throw_func(pkg):
 
 def alive_func(pkg):
     # 正常存活函数
-    return YomkResponse(ResStatus.eOk, "alive")
+    return Response(ResStatus.eOk, "alive")
 
 def pool_count():
     # 从 info_all 结构化列表取当前函数总数（列表长度承载）；失败返回 None（哨兵值）
@@ -91,8 +86,8 @@ def pool_count():
         return None
     return len(r.data)
 
-YomkApi.server().async_thread(1).init()
-server = YomkApi.server().instance()
+server_api().async_thread(1).init()
+server = server_api().instance()
 check(server is not None, "init 返回非空服务器")
 
 # ============ Section 1: CRUD 闭环 ============

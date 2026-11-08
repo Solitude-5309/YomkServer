@@ -12,7 +12,7 @@ TestYomkContextLifecycle.py —— YomkContext 服务生命周期与异常安全
 语言机制说明（非功能缺口）：
 - 派生服务 init() 抛 MemoryError 等价承载异常安全
   （add_service 以 try/except Exception 统一回滚，见 YomkServer.add_service）
-- 重新注册直接以 YomkServer.YomkContext 类名传门面 new_service
+- 重新注册直接以 YomkContext 类名传门面 new_service
 
 风格：纯 main() + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
 全程使用门面单例拉起内置 /YomkContext；末尾调用 shutdown 干净 deinit 重注册实例
@@ -22,12 +22,10 @@ TestYomkContextLifecycle.py —— YomkContext 服务生命周期与异常安全
 import sys
 import time
 
-from YomkApi import (
-    server,
-    ctx,
-)
+from yomk.msg.server import ResStatus
+from yomk.server import YomkServer, server
+from yomk.ctx import YomkContext, ctx
 
-from YomkServer import ResStatus, YomkContext
 
 g_failed = 0
 

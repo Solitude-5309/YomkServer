@@ -29,12 +29,11 @@ import sys
 import threading
 import time
 
-from YomkApi import (
-    server,
-    ctx,
-)
+from yomk.msg.server import ResStatus
+from yomk.msg.ctx import CheckStatus
+from yomk.server import server
+from yomk.ctx import ctx
 
-from YomkServer import CheckStatus, ResStatus
 
 g_failed = 0
 

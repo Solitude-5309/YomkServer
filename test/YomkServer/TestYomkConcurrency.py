@@ -29,7 +29,8 @@ import sys
 import threading
 import time
 
-from YomkServer import ResStatus, YomkResponse, YomkServer, YomkService
+from yomk.msg.server import ResStatus, Response
+from yomk.server import YomkServer, YomkService
 
 g_failed = 0
 
@@ -83,14 +84,14 @@ class ConcSrv(YomkService):
 
     def ping(self, pkg):
         g_hit.append(1)
-        return YomkResponse(ResStatus.eOk, "pong")
+        return Response(ResStatus.eOk, "pong")
 
     def echo(self, pkg):
         g_hit.append(1)
         if pkg is None:
             # 直接属性访问需空值守卫
-            return YomkResponse(ResStatus.eNo, "pkg is null")
-        return YomkResponse(ResStatus.eOk, pkg.d)
+            return Response(ResStatus.eNo, "pkg is null")
+        return Response(ResStatus.eOk, pkg.d)
 
 
 def register_conc_srv(server, name):

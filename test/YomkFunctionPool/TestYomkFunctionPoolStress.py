@@ -19,13 +19,9 @@ import sys
 import threading
 import time
 
-import YomkApi
-from YomkApi import (
-    server,
-    fn_pool,
-    ResStatus,
-    YomkResponse,
-)
+from yomk.msg.server import ResStatus, Response
+from yomk.server import server as server_api
+from yomk.fn_pool import fn_pool
 
 PASS = 0
 FAIL = 0
@@ -57,13 +53,13 @@ def record_baseline(section, ops, elapsed_ms):
 # ============================================================================
 
 def stress_noop_func(pkg):
-    return YomkResponse(ResStatus.eOk, "ok")
+    return Response(ResStatus.eOk, "ok")
 
 s2_exec = []  # 跨线程计数用 list.append（GIL 原子）
 
 def stress_count_func(pkg):
     s2_exec.append(1)
-    return YomkResponse(ResStatus.eOk, "ok")
+    return Response(ResStatus.eOk, "ok")
 
 def make_name(prefix, index):
     """生成唯一函数名（前缀 + 序号）。"""
@@ -76,8 +72,8 @@ def main():
     n = stress_scale()
     print(f"[CONFIG] YOMK_TEST_STRESS_SCALE = {n}")
 
-    YomkApi.server().async_thread(1).init()
-    server = YomkApi.server().instance()
+    server_api().async_thread(1).init()
+    server = server_api().instance()
     check(server is not None, "init(1) 返回 server 实例")
 
     # ========================================================================

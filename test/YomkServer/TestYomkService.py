@@ -26,9 +26,8 @@ TestYomkService.py —— YomkService 命名/函数注册/调用白盒单元测�
 
 import sys
 
-from YomkServer import ResStatus, YomkResponse, YomkService
-import YomkApi
-from YomkApi import server
+from yomk.msg.server import ResStatus, Response
+from yomk.server import YomkService, server
 
 g_failed = 0
 
@@ -78,23 +77,23 @@ class DemoService(YomkService):
     def echo(self, pkg):
         # String 解包回显：pkg 为空时函数内守卫返回 eNo
         if not pkg:
-            return YomkResponse(ResStatus.eNo, "pkg is null")
-        return YomkResponse(ResStatus.eOk, "echo:" + pkg.d)
+            return Response(ResStatus.eNo, "pkg is null")
+        return Response(ResStatus.eOk, "echo:" + pkg.d)
 
     def plain(self, pkg):
-        return YomkResponse(ResStatus.eOk, "plain")
+        return Response(ResStatus.eOk, "plain")
 
     def reinstall(self, pkg):
-        return YomkResponse(ResStatus.eOk, "reinstall")
+        return Response(ResStatus.eOk, "reinstall")
 
     def restore(self, pkg):
-        return YomkResponse(ResStatus.eOk, "restore")
+        return Response(ResStatus.eOk, "restore")
 
     def desc(self, pkg):
-        return YomkResponse(ResStatus.eOk, "desc")
+        return Response(ResStatus.eOk, "desc")
 
     def desc0(self, pkg):
-        return YomkResponse(ResStatus.eOk, "desc0")
+        return Response(ResStatus.eOk, "desc0")
 
 class NullSrv(YomkService):
     """空服务器服务：以 None 构造，验证空守卫分支（不注册）"""
@@ -128,11 +127,11 @@ def test_add_service_with_name():
 def test_install_func(demo):
     # 正常路径：运行时追加安装合法名
     demo.install_func(
-        "/manual", lambda pkg: YomkResponse(ResStatus.eOk, "manual"))
+        "/manual", lambda pkg: Response(ResStatus.eOk, "manual"))
 
     # 非法名：空串与无 / 开头均被拒
-    demo.install_func("", lambda pkg: YomkResponse(ResStatus.eOk, ""))
-    demo.install_func("no_slash", lambda pkg: YomkResponse(ResStatus.eOk, ""))
+    demo.install_func("", lambda pkg: Response(ResStatus.eOk, ""))
+    demo.install_func("no_slash", lambda pkg: Response(ResStatus.eOk, ""))
 
     # 空函数对象：安装被拒
     demo.install_func("/null_func", None)
@@ -215,7 +214,7 @@ def test_invoke(demo):
 def test_null_server_guards():
     srv = NullSrv()
     srv.set_name("x")                                    # 不应崩溃（本地字段直接生效）
-    srv.install_func("/x", lambda pkg: YomkResponse())   # 不应崩溃（本地表直接生效）
+    srv.install_func("/x", lambda pkg: Response())   # 不应崩溃（本地表直接生效）
     ret = srv.async_request("/SomeService/func")         # 不应崩溃（静默）
 
     check(srv.get_name() == "x",

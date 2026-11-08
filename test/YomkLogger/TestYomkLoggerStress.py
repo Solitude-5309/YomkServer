@@ -57,9 +57,10 @@ import tempfile
 import threading
 import time
 
-import YomkApi
-from YomkServer import Log, ResStatus
-from YomkApi import log, log_mgr, server
+from yomk.msg.server import ResStatus
+from yomk.msg.log import Log
+from yomk.server import server as server_api
+from yomk.log import log, log_mgr
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
@@ -265,9 +266,9 @@ def main():
     # 环境标注先于一切 [BASELINE] 输出，使本次所有性能数据可按环境归因
     print("[ENV] " + read_env_snapshot())
 
-    YomkApi.server().async_thread(1).init()
-    server = YomkApi.server().instance()
-    check(server is not None, "server().init 返回非空服务器")
+    server_api().async_thread(1).init()
+    server = server_api().instance()
+    check(server is not None, "server_api().init 返回非空服务器")
 
     tmp_dir = os.path.join(test_tmp_root(),
                            "yomk_logger_lg4_" + str(os.getpid()))
@@ -906,7 +907,7 @@ def main():
 
     with contextlib.redirect_stdout(io.StringIO()):
         t0 = time.perf_counter()
-        YomkApi.server().shutdown()
+        server_api().shutdown()
         elapsed_shutdown = (time.perf_counter() - t0) * 1000.0
     print(f"[BASELINE] S6_shutdown: {elapsed_shutdown:.1f} ms"
           "（规模已在 S5 回收，析构无落盘 I/O 拖累）")

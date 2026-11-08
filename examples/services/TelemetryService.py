@@ -5,19 +5,21 @@
 1. 继承 YomkService，构造函数中 set_name("/TelemetryService") 起名
    （必须 / 开头、全局唯一，作为该服务所有功能函数的 URL 前缀）
 2. 实现 init()，用 install_func 注册功能函数
-3. 功能函数签名统一为 YomkResponse(pkg)
+3. 功能函数签名统一为 Response(pkg)
 
 本服务额外演示"删除即停"安全：init 把成员函数注册到 FunctionPool
 供跨服务按名直调，服务删除/替换时由 deinit 显式注销——python 无弱绑定
 机制，显式注销承担同等失效语义，钩子不会悬垂。
 """
 
-import YomkApi
+from yomk.msg.server import ResStatus, Response
+from yomk.server import YomkService, server
+from yomk.fn_pool import fn_pool
+from yomk.log import log
 
 from typing import Any
-from YomkApi import log, fn_pool, server
 
-class TelemetryService(YomkApi.YomkService):
+class TelemetryService(YomkService):
     instance_count = 0  # 实例计数：构造 +1、析构 -1
 
     def __init__(self, server):
@@ -53,9 +55,9 @@ class TelemetryService(YomkApi.YomkService):
         log().tag("arm.telemetry").info("deinit: telemetry service offline")
 
     # 留痕功能函数：URL 为 /TelemetryService/record，记录一条运动留痕并回执
-    def record(self, pkg: Any) -> YomkApi.YomkResponse:
+    def record(self, pkg: Any) -> Response:
         if not isinstance(pkg, str):
-            return YomkApi.YomkResponse(
-                YomkApi.ResStatus.eNo, " pkg is null or pkg is not String. ")
+            return Response(
+                ResStatus.eNo, " pkg is null or pkg is not String. ")
         log().tag("arm.telemetry").info(f"留痕记录 [实例#{self.instance_id}]：{pkg}")
-        return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "trace recorded")
+        return Response(ResStatus.eOk, "trace recorded")

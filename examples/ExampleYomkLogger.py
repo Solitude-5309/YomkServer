@@ -58,9 +58,10 @@ from pathlib import Path
 
 import sys
 
-import YomkApi
-from YomkServer import Log
-from YomkApi import log, log_mgr, server
+from yomk.msg.server import ResStatus
+from yomk.msg.log import Log
+from yomk.server import server
+from yomk.log import log, log_mgr
 
 # ---------------------------------------------------------------------------
 # 辅助输出：全部走 YomkLogger 控制台日志（log()/log_mgr() 链式接口），无 print。
@@ -73,25 +74,25 @@ def log_scene(n, title, apis, explain):
     log().tag("arm.demo").info(f"========== 场景 {n}：{title}（{apis}）==========")
     log().tag("arm.demo").info("场景背景：" + explain)
 
-# API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
+# API 结果行：打印 Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 # 日志门面的结果行自带流向证据：代理消费 msg="console log proxy is success."、放行 msg="success."。
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
     # 双形态分展：写路径链式终结收敛为 ResStatus（无 msg），只打 status 行；
-    # 读路径终结给 YomkResponse，status+msg 照旧
-    status = resp if isinstance(resp, YomkApi.ResStatus) else resp.status
-    if status == YomkApi.ResStatus.eOk:
+    # 读路径终结给 Response，status+msg 照旧
+    status = resp if isinstance(resp, ResStatus) else resp.status
+    if status == ResStatus.eOk:
         note = "(eOk 成功)"
-    elif status == YomkApi.ResStatus.eNo:
+    elif status == ResStatus.eNo:
         note = "(eNo 拒绝或不存在)"
     else:
         note = "(eInvalid 未初始化或参数无效)"
-    if isinstance(resp, YomkApi.ResStatus):
+    if isinstance(resp, ResStatus):
         log().tag("arm.demo").info(f"[{api}] status={status.value}{note}")
     else:
         log().tag("arm.demo").info(f'[{api}] status={status.value}{note}, msg="{resp.msg}"')
 
-# 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+# 操作日志（Response 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 # 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 # 结果行标注本次接口调用；被演示的日志行（控制台）夹在开始行与结果行之间，
 # 归属一目了然，读者顺着日志读即可理解，无需回看代码

@@ -35,7 +35,8 @@ import sys
 import threading
 import time
 
-from YomkServer import ResStatus, YomkResponse, YomkServer, YomkService
+from yomk.msg.server import ResStatus, Response
+from yomk.server import YomkServer, YomkService
 
 g_failed = 0
 
@@ -105,13 +106,13 @@ class RouteSrv(YomkService):
     def ping(self, pkg):
         global g_ping_count
         g_ping_count += 1
-        return YomkResponse(ResStatus.eOk, "pong")
+        return Response(ResStatus.eOk, "pong")
 
     def echo(self, pkg):
         # String 解包回显：pkg 为空时函数内守卫返回 eNo
         if not pkg:
-            return YomkResponse(ResStatus.eNo, "pkg is null")
-        return YomkResponse(ResStatus.eOk, "echo:" + pkg.d)
+            return Response(ResStatus.eNo, "pkg is null")
+        return Response(ResStatus.eOk, "echo:" + pkg.d)
 
 
 # 1. URL 解析全边界与路由（经公开 request 路径）

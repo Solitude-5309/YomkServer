@@ -59,8 +59,11 @@ import sys
 import threading
 import time
 
-import YomkApi
-from YomkApi import log, ctx, server
+from yomk.msg.server import ResStatus
+from yomk.msg.ctx import CheckStatus, Context
+from yomk.server import server
+from yomk.ctx import ctx
+from yomk.log import log
 
 # ---------------------------------------------------------------------------
 # 辅助输出：全部走 YomkLogger 控制台日志（log().tag().info() 等），无 print。
@@ -81,24 +84,24 @@ def log_scene(n, title, apis, explain):
     log().tag("arm.demo").info(f"========== 场景 {n}：{title}（{apis}）==========")
     log().tag("arm.demo").info("场景背景：" + explain)
 
-# API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
+# API 结果行：打印 Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
     # 双形态分展：写路径链式终结收敛为 ResStatus（无 msg），只打 status 行；
-    # 读路径终结给 YomkResponse，status+msg 照旧
-    status = resp if isinstance(resp, YomkApi.ResStatus) else resp.status
-    if status == YomkApi.ResStatus.eOk:
+    # 读路径终结给 Response，status+msg 照旧
+    status = resp if isinstance(resp, ResStatus) else resp.status
+    if status == ResStatus.eOk:
         note = "(eOk 成功)"
-    elif status == YomkApi.ResStatus.eNo:
+    elif status == ResStatus.eNo:
         note = "(eNo 拒绝或不存在)"
     else:
         note = "(eInvalid 未初始化或参数无效)"
-    if isinstance(resp, YomkApi.ResStatus):
+    if isinstance(resp, ResStatus):
         log().tag("arm.demo").info(f"[{api}] status={status.value}{note}")
     else:
         log().tag("arm.demo").info(f'[{api}] status={status.value}{note}, msg="{resp.msg}"')
 
-# 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+# 操作日志（Response 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 # 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 # 结果行标注本次接口调用；同步 checker/monitor 回调插入的日志被夹在开始行与
 # 结果行之间，归属一目了然，读者顺着日志读即可理解，无需回看代码
@@ -108,11 +111,11 @@ def log_action(op, api, call):
     log_resp(api, resp)
     return resp
 
-# 操作开始行（GET 等返回值非 YomkResponse 的操作）：由调用处随后打结果行
+# 操作开始行（GET 等返回值非 Response 的操作）：由调用处随后打结果行
 def log_action_start(op):
     log().tag("arm.demo").info("开始执行 " + op)
 
-# GET 结果行：/YomkContext/get 返回值而非 YomkResponse；
+# GET 结果行：/YomkContext/get 返回值而非 Response；
 # is_default 由调用方比较返回值与兜底默认值是否 is 同一对象得出
 def log_get(key, value_text, is_default):
     suffix = "（兜底默认值）" if is_default else "（命中）"
@@ -140,7 +143,7 @@ def log_key_info(api, info):
 def ensure_key(op, key, value):
     # 写路径终结收敛为 ResStatus（不带 msg）；排他文案经裸链可查
     ret = log_action(op, "/YomkContext/create " + key, lambda: ctx().key(key).value(value).create())
-    if ret != YomkApi.ResStatus.eOk:
+    if ret != ResStatus.eOk:
         log().tag("arm.demo").info(f"[ensureKey] {key} 未新建（status={ret.value}，"
                                    "eNo 即 key already exists），跳过创建")
 
@@ -150,31 +153,31 @@ def ensure_key(op, key, value):
 # ---------------------------------------------------------------------------
 
 # 速度倍率安全门控：倍率是安全关键参数，超过 1.0（100%）有撞机风险，一律拒绝
-def checker_speed_ratio(ctx: YomkApi.Context) -> YomkApi.CheckStatus:
+def checker_speed_ratio(ctx: Context) -> CheckStatus:
     ratio = ctx.value
     if not isinstance(ratio, float):
         log().tag("arm.guard").warn(f"checker: {ctx.key} 值不是 float，无法校验 -> eReject")
-        return YomkApi.CheckStatus.eReject
+        return CheckStatus.eReject
     if ratio > 1.0:
         log().tag("arm.guard").warn(f"checker: {ctx.key}={fmt_f64(ratio)} 超过安全倍率 1.0（撞机风险）-> eReject")
-        return YomkApi.CheckStatus.eReject
+        return CheckStatus.eReject
     log().tag("arm.guard").info(f"checker: {ctx.key}={fmt_f64(ratio)} 在安全范围内 -> eAccept")
-    return YomkApi.CheckStatus.eAccept
+    return CheckStatus.eAccept
 
 # 安全 PLC 的上电告警：伺服电源指令属安全相关事件，收到快照即告警记录
-def monitor_servo_power_alarm(ctx: YomkApi.Context) -> None:
+def monitor_servo_power_alarm(ctx: Context) -> None:
     state = "ON" if ctx.value else "OFF"
     log().tag("arm.watch").warn(f"[告警] 伺服电源指令: {ctx.key}={state}（安全 PLC 收到本次写入快照）")
 
 # 操作黑匣子：记录每一次伺服电源指令的快照，供事后追溯；
 # 与告警回调同批执行，展示 set_monitor 的追加式多播
-def monitor_servo_power_log(ctx: YomkApi.Context) -> None:
+def monitor_servo_power_log(ctx: Context) -> None:
     state = "ON" if ctx.value else "OFF"
     log().tag("arm.watch").info(f"[黑匣子] 记录操作: {ctx.key}->{state}（追加式多播：与告警回调按注册序同批执行）")
 
 # 数字孪生位姿上报：async_monitor=True 经单线程池送达（按 set 提交序保序），
 # 执行线程是池线程——上报动作不阻塞运动控制回路
-def monitor_pose_telemetry(ctx: YomkApi.Context) -> None:
+def monitor_pose_telemetry(ctx: Context) -> None:
     pose = ctx.value
     if not isinstance(pose, list):
         log().tag("arm.telemetry").warn(f"上报失败: {ctx.key} 值不是 list")

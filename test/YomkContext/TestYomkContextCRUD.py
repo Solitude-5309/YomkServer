@@ -23,20 +23,16 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
 
 import sys
 
-import YomkApi
-from YomkApi import (
-    server,
-    ctx,
-    ContextGroupInfo,
-    ContextKeyInfo,
-)
+from yomk.msg.server import ResStatus
+from yomk.msg.ctx import Context, ContextGroupInfo, ContextGroupKey, ContextKeyInfo
+from yomk.server import server
+from yomk.ctx import ctx
 
-from YomkServer import Context, ContextGroupKey, ResStatus
 
 def raw_ctx(endpoint, pkg):
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息断言经 server 域
     # url/msg/request 裸链直取 Response（端点行为与链式终结一致）
-    return YomkApi.server().url("/YomkContext/" + endpoint).msg(pkg).request()
+    return server().url("/YomkContext/" + endpoint).msg(pkg).request()
 
 g_failed = 0
 

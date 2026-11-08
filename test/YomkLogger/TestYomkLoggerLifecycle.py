@@ -40,9 +40,10 @@ import shutil
 import sys
 import tempfile
 
-import YomkApi
-from YomkServer import Log, LogFile, ResStatus, LoggerInfo
-from YomkApi import log, log_mgr, server
+from yomk.msg.server import ResStatus
+from yomk.msg.log import Log, LogFile, LoggerInfo
+from yomk.server import server as server_api
+from yomk.log import log, log_mgr
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
@@ -64,7 +65,7 @@ def capture(func):
 def raw_logger(url, pkg):
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息断言经 server 域
     # url/msg/request 裸链直取 Response（端点行为与链式终结一致）
-    return YomkApi.server().url(url).msg(pkg).request()
+    return server_api().url(url).msg(pkg).request()
 
 def check_time_format(line):
     return TIME_RE.match(line) is not None
@@ -88,9 +89,9 @@ def test_tmp_root():
     return os.environ.get("YOMK_TEST_TMP_ROOT") or tempfile.gettempdir()
 
 def main():
-    YomkApi.server().async_thread(1).init()
-    server = YomkApi.server().instance()
-    check(server is not None, "server().init 返回非空服务器")
+    server_api().async_thread(1).init()
+    server = server_api().instance()
+    check(server is not None, "server_api().init 返回非空服务器")
 
     tmp_dir = os.path.join(test_tmp_root(),
                            "yomk_logger_lg1_" + str(os.getpid()))
@@ -456,19 +457,19 @@ def main():
           "非法级别 off/on 无副作用（ALL console 条目状态段仍全 on + proxy_on）")
 
     # ============ Section 7: 异常路径（空包 / 错类型包 / 未知端点） ============
-    r, out = capture(lambda: YomkApi.server().url("/YomkLogger/console_log").request())
+    r, out = capture(lambda: server_api().url("/YomkLogger/console_log").request())
     check(r.status == ResStatus.eNo, "console_log 空包返回 eNo")
     check(r.msg == "pkg is null or pkg is not Log", "console_log 空包契约消息")
-    r = YomkApi.server().url("/YomkLogger/console_log").msg("wrong").request()
+    r = server_api().url("/YomkLogger/console_log").msg("wrong").request()
     check(r.status == ResStatus.eNo, "console_log 错类型包返回 eNo")
     check(r.msg == "pkg is null or pkg is not Log", "console_log 错类型包契约消息")
-    check(YomkApi.server().url("/YomkLogger/file_log").request().status == ResStatus.eNo,
+    check(server_api().url("/YomkLogger/file_log").request().status == ResStatus.eNo,
           "file_log 空包返回 eNo")
-    check(YomkApi.server().url("/YomkLogger/write_file_log").request().status == ResStatus.eNo,
+    check(server_api().url("/YomkLogger/write_file_log").request().status == ResStatus.eNo,
           "write_file_log 空包返回 eNo")
-    check(YomkApi.server().url("/YomkLogger/create_file_logger").request().status == ResStatus.eNo,
+    check(server_api().url("/YomkLogger/create_file_logger").request().status == ResStatus.eNo,
           "create_file_logger 空包返回 eNo")
-    check(YomkApi.server().url("/YomkLogger/logger").request().status == ResStatus.eNo,
+    check(server_api().url("/YomkLogger/logger").request().status == ResStatus.eNo,
           "logger 空包返回 eNo")
     # console_log 空 logger 名 -> 回退 main 分支（raw 注入才可触达）
     r, out = capture(lambda: raw_logger(
@@ -489,7 +490,7 @@ def main():
     check(empty_name_info.status == ResStatus.eNo and empty_name_info.msg == "logger not found.",
           "LOGGER 空名返回 eNo + logger not found.")
     # 未知端点 -> invoke 路由层 eNo
-    unknown = YomkApi.server().url("/YomkLogger/no_such_func").request()
+    unknown = server_api().url("/YomkLogger/no_such_func").request()
     check(unknown.status == ResStatus.eNo, "未知端点返回 eNo（invoke not found）")
     check(unknown.msg == "function not found: /no_such_func",
           "未知端点契约消息（路由剥离服务前缀）")
@@ -612,7 +613,7 @@ def main():
           "S8: main 删除+重建后行数回到基线（无泄漏无重复）")
 
     # 8.7 异常路径：空包 / 错类型包（YomkUnPackPkgResponse 契约分支）
-    r_null = YomkApi.server().url("/YomkLogger/delete_logger").request()
+    r_null = server_api().url("/YomkLogger/delete_logger").request()
     check(r_null.status == ResStatus.eNo and r_null.msg == "pkg is null or pkg is not String",
           "S8: delete_logger 空包返回 eNo + 契约消息")
     r_wrong = raw_logger(
@@ -905,7 +906,7 @@ def main():
           "S11e: 重装后 GLOBAL(file) 恢复 proxy_on（不变量已复位）")
 
     # ============ 收尾清理 ============
-    YomkApi.server().shutdown()
+    server_api().shutdown()
     shutil.rmtree(tmp_dir, ignore_errors=True)
 
     if g_failed == 0:

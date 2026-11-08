@@ -10,13 +10,13 @@ start() 用 service_creators 映射表管理"服务名 -> 服务类"：
 全部服务入清单、按需启动；同一个类也可注册为多个实例。
 """
 
-import YomkApi
+from yomk.server import YomkBoot, server
+from yomk.log import log
 
 from services.MotionService import MotionService
 from services.TelemetryService import TelemetryService
-from YomkApi import log, server
 
-class ArmBoot(YomkApi.YomkBoot):
+class ArmBoot(YomkBoot):
     def __init__(self, start_srv_names=None):
         super().__init__()
         self.start_srv_names = start_srv_names or []  # 本次要启动的服务清单

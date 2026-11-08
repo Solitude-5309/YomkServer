@@ -10,11 +10,14 @@
 #      --isolated 消除用户级配置干扰，规则集 E4/E7/E9/F 零告警验收；
 #      片段间存在交叉引用，单独扫描 src/modules 无意义，故以合并产物为准；
 #      白名单: --ignore F401 —— YomkApi 伞门面 re-export 与 typing 冗余导入
-#      属有意形态（11 处），登记为书面债务
+#      属有意形态（11 处），登记为书面债务；
+#      另扫新包 src/yomk（L12 起）: 同规则集 --isolated，零白名单零告警
 #   2. mypy 档: 检查 src/api/YomkApi.py 与合并产物 build/YomkServer.py，
 #      --ignore-missing-imports + --follow-imports=silent（依赖面注解不作门禁）；
 #      白名单: 豁免 4 个错误码 assignment(13)/misc(8)/attr-defined(2)/var-annotated(2)
-#      合计 25 处 = src 未回填类型注解的书面债务，随注解回填逐步收窄
+#      合计 25 处 = src 未回填类型注解的书面债务，随注解回填逐步收窄；
+#      另查新包（L12 起）: MYPYPATH=src + --namespace-packages --explicit-package-bases
+#      -p yomk（PEP 420 命名空间包形态，无错误码豁免）
 #   3. 任一工具检出告警 → 输出 [FAIL] 摘要并以非零码退出；全部零告警 → 输出 [PASS]
 #   4. 日志落盘: test/test_logs/<时间戳>/ruff.log + mypy.log + summary.log
 # 依赖: ruff、mypy（缺失时报错并给安装提示: python3 -m pip install --user ruff mypy）；
@@ -97,6 +100,23 @@ if [ ${RUN_RUFF} -eq 1 ]; then
         echo "[PASS] ruff 零告警"
         printf "[PASS] ruff 零告警\n" >> "${SUMMARY}"
     fi
+
+    # 新包 src/yomk（PEP 420 命名空间包，无 F401 白名单）
+    echo "-- ruff 开始扫描新包 src/yomk ..."
+    YOMK_RUFF_OUT="${LOG_ROOT}/ruff_yomk.log"
+    python3 -m ruff check --isolated --select E4,E7,E9,F \
+        "${REPO_DIR}/src/yomk" 2>&1 \
+        | tee "${YOMK_RUFF_OUT}"
+    rc=${PIPESTATUS[0]}
+    if [ ${rc} -ne 0 ]; then
+        echo "[FAIL] ruff(yomk) 检出告警（退出码 ${rc}）:"
+        grep -E ":[0-9]+:[0-9]+: " "${YOMK_RUFF_OUT}" | head -20
+        printf "[FAIL] ruff(yomk) 退出码 %s\n" "${rc}" >> "${SUMMARY}"
+        FAILED=1
+    else
+        echo "[PASS] ruff(yomk) 零告警"
+        printf "[PASS] ruff(yomk) 零告警\n" >> "${SUMMARY}"
+    fi
 fi
 
 # ---------- mypy：两源文件类型检查零告警验收（白名单见文件头行为注记） ----------
@@ -120,6 +140,26 @@ if [ ${RUN_MYPY} -eq 1 ]; then
     else
         echo "[PASS] mypy 零告警"
         printf "[PASS] mypy 零告警\n" >> "${SUMMARY}"
+    fi
+
+    # 新包 mypy（PEP 420 命名空间包：MYPYPATH + namespace-packages，
+    # 无错误码豁免；--no-incremental 免旧缓存干扰）
+    echo "-- mypy 开始扫描新包 -p yomk ..."
+    YOMK_MYPY_OUT="${LOG_ROOT}/mypy_yomk.log"
+    MYPYPATH="${REPO_DIR}/src" python3 -m mypy \
+        --namespace-packages --explicit-package-bases --no-incremental \
+        --cache-dir "${LOG_ROOT}/mypy_cache_yomk" \
+        -p yomk 2>&1 \
+        | tee "${YOMK_MYPY_OUT}"
+    rc=${PIPESTATUS[0]}
+    if [ ${rc} -ne 0 ]; then
+        echo "[FAIL] mypy(yomk) 检出告警（退出码 ${rc}）:"
+        grep -E "error:" "${YOMK_MYPY_OUT}" | head -20
+        printf "[FAIL] mypy(yomk) 退出码 %s\n" "${rc}" >> "${SUMMARY}"
+        FAILED=1
+    else
+        echo "[PASS] mypy(yomk) 零告警"
+        printf "[PASS] mypy(yomk) 零告警\n" >> "${SUMMARY}"
     fi
 fi
 

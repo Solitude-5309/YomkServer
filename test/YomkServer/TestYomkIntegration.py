@@ -31,16 +31,14 @@ import sys
 import tempfile
 import time
 
-import YomkApi
-from YomkApi import (
-    server,
-    event_loop,
-    ctx,
-    log,
-    log_mgr,
-)
+from yomk.msg.server import ResStatus, Response
+from yomk.msg.ctx import Context
+from yomk.server import server
+from yomk.ctx import ctx
+from yomk.event_loop import event_loop
+from yomk.srv_info import srv_info
+from yomk.log import YomkLogger, log, log_mgr
 
-from YomkServer import Context, ResStatus, YomkResponse, YomkLogger
 
 g_failed = 0
 
@@ -56,7 +54,7 @@ def check(cond, msg):
 def raw_ctx(endpoint, pkg):
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息断言经 server 域
     # url/msg/request 裸链直取 Response（端点行为与链式终结一致）
-    return YomkApi.server().url("/YomkContext/" + endpoint).msg(pkg).request()
+    return server().url("/YomkContext/" + endpoint).msg(pkg).request()
 
 def wait_until(
 cond, timeout_ms):
@@ -131,7 +129,7 @@ def test_s2_restore():
     check(after_del.status == ResStatus.eNo
           and after_del.msg == "service not found: /YomkLogger",
           "删除后 LOGGER API 服务级 eNo + 精确消息")
-    check("/YomkLogger" not in (server().services().data or []),
+    check("/YomkLogger" not in (srv_info().services().data or []),
           "服务表快照不再含 /YomkLogger")
 
     check(server().srv(YomkLogger).create() == 0,
@@ -164,7 +162,7 @@ def test_s1_shutdown(N):
           "启动 integration_loop")
     post_ok = True
     for _ in range(100):
-        if event_loop().loop("integration_loop").handle_fn(lambda r: YomkResponse(ResStatus.eOk)).post() != ResStatus.eOk:
+        if event_loop().loop("integration_loop").handle_fn(lambda r: Response(ResStatus.eOk)).post() != ResStatus.eOk:
             post_ok = False
     check(post_ok, "100 个积压事件全部 POST eOk")
 
@@ -217,7 +215,7 @@ def test_s1_shutdown(N):
     check(post_log.status == ResStatus.eInvalid
           and post_log.msg == "YomkServer is not init",
           "shutdown 后 logger_info_all 回归 eInvalid + 守卫消息")
-    post_info = server().all()
+    post_info = srv_info().all()
     check(post_info.status == ResStatus.eInvalid
           and post_info.msg == "YomkServer is not init",
           "shutdown 后 server_info_all 回归 eInvalid + 守卫消息")

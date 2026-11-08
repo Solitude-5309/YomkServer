@@ -13,8 +13,8 @@ TestYomkEventLoopStress.py - EventLoop 压力测试（10 万级投递 + 大数�
 - QPS/耗时仅以 [BASELINE] 行记录、不作断言（环境噪声使性能断言不可靠）；
 - 计数 handler 为 GIL 原子承载（list.append/len，见 Concurrency docstring 实现机制说明）；
   计时用 time.perf_counter；
-- 白盒段直连内部类 EventLoop；API 段 server().async_thread(1).init() 拉起单例，末尾
-  server().shutdown() 收尾。
+- 白盒段直连内部类 EventLoop；API 段 server_api().async_thread(1).init() 拉起单例，末尾
+  server_api().shutdown() 收尾。
 
 风格：脚本式 main + 失败计数，退出码 0/1（零第三方依赖）
 """
@@ -24,10 +24,9 @@ import sys
 import threading
 import time
 
-import YomkServer as ysp
-from YomkServer import Event, EventLoop
-from YomkApi import event_loop, server
-import YomkApi
+from yomk.msg.server import ResStatus, Response
+from yomk.server import server as server_api
+from yomk.event_loop import Event, EventLoop, event_loop
 
 FAILED = 0
 
@@ -37,7 +36,7 @@ EXEC_COUNT = []  # 计数 handler 执行总数
 def count_handler():
     def _handler(pkg):
         EXEC_COUNT.append(1)
-        return ysp.YomkResponse(ysp.ResStatus.eOk, "counted")
+        return Response(ResStatus.eOk, "counted")
     return _handler
 
 # ---- 文件级阻塞门：占住工作线程使投递/消费速率解耦 ----
@@ -56,7 +55,7 @@ def gate_handler():
     def _handler(pkg):
         GATE.started.set()
         GATE.release.wait()
-        return ysp.YomkResponse(ysp.ResStatus.eOk, "gate done")
+        return Response(ResStatus.eOk, "gate done")
     return _handler
 
 def wait_gate_started(timeout_s):
@@ -211,13 +210,12 @@ def section_4(n):
 
 # ============ Section 5: API 层 10 万级投递 ============
 def section_5(n):
-    import YomkApi
     del EXEC_COUNT[:]
-    YomkApi.server().async_thread(1).init()
-    server = YomkApi.server().instance()
-    check(server is not None, "S5 server().init 返回非空服务器")
+    server_api().async_thread(1).init()
+    server = server_api().instance()
+    check(server is not None, "S5 server_api().init 返回非空服务器")
     check(event_loop().loop("stress_loop").start() ==
-          ysp.ResStatus.eOk, "S5 START 返回 eOk")
+          ResStatus.eOk, "S5 START 返回 eOk")
 
     t0 = time.perf_counter()
     for _k in range(n):
@@ -233,8 +231,8 @@ def section_5(n):
     record_baseline("S5 API-level end-to-end", n, int((t2 - t0) * 1000))
 
     check(event_loop().loop("stress_loop").destroy() ==
-          ysp.ResStatus.eOk, "S5 DESTROY 返回 eOk")
-    YomkApi.server().shutdown()
+          ResStatus.eOk, "S5 DESTROY 返回 eOk")
+    server_api().shutdown()
 
 def main():
     n = stress_scale()

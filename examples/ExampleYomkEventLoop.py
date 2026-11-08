@@ -56,8 +56,10 @@ import sys
 import threading
 import time
 
-import YomkApi
-from YomkApi import log, event_loop, server
+from yomk.msg.server import ResStatus, Response
+from yomk.server import server
+from yomk.event_loop import event_loop
+from yomk.log import log
 
 # ---------------------------------------------------------------------------
 # 辅助输出：全部走 YomkLogger 控制台日志（log().tag().info() 等），无 print。
@@ -70,24 +72,24 @@ def log_scene(n, title, apis, explain):
     log().tag("arm.demo").info(f"========== 场景 {n}：{title}（{apis}）==========")
     log().tag("arm.demo").info("场景背景：" + explain)
 
-# API 结果行：打印 YomkResponse 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
+# API 结果行：打印 Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
     # 双形态分展：写路径链式终结收敛为 ResStatus（无 msg），只打 status 行；
-    # 读路径终结给 YomkResponse，status+msg 照旧
-    status = resp if isinstance(resp, YomkApi.ResStatus) else resp.status
-    if status == YomkApi.ResStatus.eOk:
+    # 读路径终结给 Response，status+msg 照旧
+    status = resp if isinstance(resp, ResStatus) else resp.status
+    if status == ResStatus.eOk:
         note = "(eOk 成功)"
-    elif status == YomkApi.ResStatus.eNo:
+    elif status == ResStatus.eNo:
         note = "(eNo 拒绝或不存在)"
     else:
         note = "(eInvalid 未初始化或参数无效)"
-    if isinstance(resp, YomkApi.ResStatus):
+    if isinstance(resp, ResStatus):
         log().tag("arm.demo").info(f"[{api}] status={status.value}{note}")
     else:
         log().tag("arm.demo").info(f'[{api}] status={status.value}{note}, msg="{resp.msg}"')
 
-# 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+# 操作日志（Response 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 # 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 # 结果行标注本次接口调用；循环线程执行的日志穿插其间，读者顺着日志读即可
 # 理解，无需回看代码
@@ -127,14 +129,14 @@ def log_loop_line(api, loop_name):
     log().tag("arm.demo").info(f"[{api}] - {loop_name}")
 
 # ---------------------------------------------------------------------------
-# 事件处理函数：签名统一为 YomkResponse(pkg)。
+# 事件处理函数：签名统一为 Response(pkg)。
 # 可作为默认处理函数（启动时指定）或临时处理函数（投递时指定）。
 # ---------------------------------------------------------------------------
 
 # 运动指令处理函数：默认处理函数（场景 1 START 时指定）。
 # 模拟 200ms 运动耗时，让队列积压与 FIFO 消费顺序在日志中稳定可见；
 # 第 1 条指令执行时递归投递 3 条微调指令排到队尾——同循环 FIFO 的直观证据
-def motion_handle(pkg) -> YomkApi.YomkResponse:
+def motion_handle(pkg) -> Response:
     log().tag("arm.motion").info(f"执行运动指令: {pkg}（循环线程 {threading.current_thread().name}）")
 
     time.sleep(0.2)
@@ -146,12 +148,12 @@ def motion_handle(pkg) -> YomkApi.YomkResponse:
             event_loop().msg("fine" + str(i)).loop("motionLoop").tag("fine" + str(i)).post()
         log().tag("arm.motion").info("指令 mv1 触发 3 条微调指令，已追加到队列尾部")
 
-    return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "eventHandle success. ")
+    return Response(ResStatus.eOk, "eventHandle success. ")
 
 # 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 无元数据启动时指定）
-def teach_handle(pkg) -> YomkApi.YomkResponse:
+def teach_handle(pkg) -> Response:
     log().tag("arm.teach").info(f"示教器事件: {pkg}（循环线程 {threading.current_thread().name}）")
-    return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "teachHandle success")
+    return Response(ResStatus.eOk, "teachHandle success")
 
 # ---------------------------------------------------------------------------
 # 8 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。
@@ -265,9 +267,9 @@ def show_arm_temp_handler():
         "安全巡检例程无需占用运动处理函数：投递时指定临时处理函数则优先于默认函数，"
         "返回临时函数的结果——同一循环可混用两种来源。")
 
-    def temp_handle(_pkg) -> YomkApi.YomkResponse:
+    def temp_handle(_pkg) -> Response:
         log().tag("arm.motion").info("临时处理函数在循环线程执行：返回 tempHandle result（非默认函数结果）")
-        return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "tempHandle result")
+        return Response(ResStatus.eOk, "tempHandle result")
 
     log_action("投递紧急巡检任务（临时函数）", "/YomkEventLoop/post_wait motionLoop (temp_handle)",
                lambda: event_loop().msg("safetyCheck").loop("motionLoop").handle_fn(temp_handle).post_wait())

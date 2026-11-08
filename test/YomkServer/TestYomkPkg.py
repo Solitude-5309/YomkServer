@@ -7,7 +7,7 @@ TestYomkPkg.py
 覆盖内容（3 个 Section）：
 S3. Event / EventLoopPkg 结构契约：默认构造字段、带参构造透传、handle() 有无
     serviceFunc、m_eventId 初值（入队时由框架分配）、m_waitCallback 赋值执行、tag 透传
-S4. YomkResponse 契约：默认构造（eInvalid/空 msg/None data）、枚举值序
+S4. Response 契约：默认构造（eInvalid/空 msg/None data）、枚举值序
     （eInvalid=-1/eOk=0/eNo=1）、双参构造、三参构造 data 透传
 S5. 框架结构体默认值：Function/CallFunction/Context/
     ContextChecker/ContextMonitor/FuncInfo/LogFile/Log/ConsoleLogProxy
@@ -33,21 +33,12 @@ S5. 框架结构体默认值：Function/CallFunction/Context/
 
 import sys
 
-from YomkServer import (
-    CallFunction,
-    ConsoleLogProxy,
-    Context,
-    ContextChecker,
-    ContextMonitor,
-    Event,
-    EventLoopPkg,
-    FuncInfo,
-    Function,
-    Log,
-    LogFile,
-    ResStatus,
-    YomkResponse,
-)
+from yomk.msg.server import ResStatus, Response
+from yomk.msg.ctx import Context, ContextChecker, ContextMonitor
+from yomk.msg.fn_pool import CallFunction, FuncInfo, Function
+from yomk.msg.event_loop import EventLoopPkg
+from yomk.msg.log import ConsoleLogProxy, Log, LogFile
+from yomk.event_loop import Event
 
 g_failed = 0
 
@@ -76,7 +67,7 @@ def s3_event_and_pkg():
 
     def func(pkg):
         handled["count"] += 1
-        return YomkResponse(ResStatus.eOk, "handled")
+        return Response(ResStatus.eOk, "handled")
 
     ev3 = Event("/L1", "p", func)  # 三参形态（tag 走默认参）
     check(ev3.m_eventLoopName == "/L1" and ev3.m_pkg == "p" and ev3.m_eventId == 0 and ev3.m_tag == "",
@@ -111,19 +102,19 @@ def s3_event_and_pkg():
           "EventLoopPkg 默认构造：loop 名空/func None/msg 名空")
 
 
-# ============ S4. YomkResponse 契约 ============
+# ============ S4. Response 契约 ============
 def s4_yomk_response():
-    print("===== S4. YomkResponse 契约 =====")
-    r = YomkResponse()
+    print("===== S4. Response 契约 =====")
+    r = Response()
     check(r.status == ResStatus.eInvalid and r.msg == "" and r.data is None,
-          "YomkResponse 默认构造：eInvalid/msg 空/data None")
+          "Response 默认构造：eInvalid/msg 空/data None")
     check(ResStatus.eInvalid.value == -1 and ResStatus.eOk.value == 0 and ResStatus.eNo.value == 1,
           "枚举值序契约：eInvalid=-1/eOk=0/eNo=1")
-    two = YomkResponse(ResStatus.eNo, "no msg")
+    two = Response(ResStatus.eNo, "no msg")
     check(two.status == ResStatus.eNo and two.msg == "no msg" and two.data is None,
           "双参构造：status/msg 透传，data 默认 None")
     payload = {"k": "v"}
-    three = YomkResponse(ResStatus.eOk, "ok", payload)
+    three = Response(ResStatus.eOk, "ok", payload)
     check(three.status == ResStatus.eOk and three.msg == "ok" and three.data is payload,
           "三参构造：status/msg/data 透传")
 

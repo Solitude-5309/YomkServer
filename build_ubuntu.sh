@@ -185,7 +185,7 @@ fi
 # -------------el 4. 安装后系统级配置（与手动 CMake 安装共用 scripts/install_env.sh） ----------------
 
 # -------------sl 5. 安装成功提示 ----------------
-# 安装结果校验（YomkServerPy.so / YomkServer.py / YomkApi.py / YomkServer.pyi）已由 scripts/install_env.sh 完成
+# 安装结果校验（旧合并面 + 新 yomk/ 命名空间包 + 六域 import 冒烟）已由 scripts/install_env.sh 完成
 echo ""
 echo "==========================================="
 echo " YomkServerPy 安装成功!"
@@ -199,6 +199,11 @@ echo " Python 模块（安装于 ${PY_SITE_DIR}）:"
 for f in YomkServerPy.so YomkServer.py YomkApi.py YomkServer.pyi; do
     echo "   - ${f}"
 done
+echo " 新包命名空间包（安装于 ${PY_SITE_DIR}/yomk）:"
+for d in server ctx event_loop fn_pool log srv_info; do
+    echo "   - yomk/${d}/"
+done
+echo "   - yomk/msg/{server,ctx,event_loop,fn_pool,log,srv_info}/"
 echo " 示例（不随库安装，位于源码树 examples/ 目录，进入源码目录直接运行）:"
 echo "   - examples/ExampleYomkService.py"
 echo "   - examples/ExampleYomkContext.py"
@@ -210,7 +215,7 @@ echo "==========================================="
 echo ""
 echo "新开任意终端即可直接使用（无需手动 source）:"
 echo "  - echo \$YOMK_PREFIX_PATH 查看安装路径"
-echo "  - python3 -c 'import YomkServer' 验证安装"
+echo "  - python3 -c 'import YomkServer; import yomk.server; import yomk.msg.server' 验证安装"
 echo "  - ./test/run_tests.sh 运行全量测试"
 echo "当前终端立即生效请执行: source ${PROFILE_SCRIPT}"
 # -------------el 5. 安装成功提示 ----------------

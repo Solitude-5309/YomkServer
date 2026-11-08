@@ -30,9 +30,13 @@ TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试
 import sys
 import time
 
-import YomkApi
-from YomkServer import Log, ResStatus, YomkService
-from YomkApi import log, log_mgr, ctx, event_loop, fn_pool, server
+from yomk.msg.server import ResStatus
+from yomk.msg.log import Log
+from yomk.server import YomkService, server
+from yomk.ctx import ctx
+from yomk.event_loop import event_loop
+from yomk.fn_pool import fn_pool
+from yomk.log import log, log_mgr
 
 g_failed = 0
 g_async_cb_count = 0  # 未初始化 async_ 链回调到达计数（应恒为 0）

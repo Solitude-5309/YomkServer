@@ -21,8 +21,7 @@ TestYomkBoot.py —— YomkAPI.boot 三段失败短路/错误码透传测试
 
 import sys
 
-import YomkApi
-from YomkApi import server
+from yomk.server import YomkBoot, server
 
 g_failed = 0
 
@@ -51,7 +50,7 @@ def check(cond, msg):
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
 
-class BootRecorder(YomkApi.YomkBoot):
+class BootRecorder(YomkBoot):
     """三段记录器：各段计数与执行序入表，返回值由全局开关注入"""
 
     def before(self):

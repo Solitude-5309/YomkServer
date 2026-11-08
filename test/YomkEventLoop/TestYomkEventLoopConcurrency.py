@@ -26,10 +26,9 @@ import sys
 import threading
 import time
 
-import YomkServer as ysp
-from YomkServer import Event, EventLoop
-from YomkApi import event_loop, server
-import YomkApi
+from yomk.msg.server import ResStatus, Response
+from yomk.server import server as server_api
+from yomk.event_loop import Event, EventLoop, event_loop
 
 FAILED = 0
 
@@ -40,7 +39,7 @@ EXEC_IDS = []     # S1 专用：事件执行时的 eventId（handler 闭包持�
 def count_handler():
     def _handler(pkg):
         EXEC_COUNT.append(1)
-        return ysp.YomkResponse(ysp.ResStatus.eOk, "counted")
+        return Response(ResStatus.eOk, "counted")
     return _handler
 
 # ---- 文件级阻塞门：占住指定 loop 的工作线程制造确定性窗口 ----
@@ -59,7 +58,7 @@ def gate_handler():
     def _handler(pkg):
         GATE.started.set()
         GATE.release.wait()
-        return ysp.YomkResponse(ysp.ResStatus.eOk, "gate done")
+        return Response(ResStatus.eOk, "gate done")
     return _handler
 
 def wait_gate_started(timeout_s):
@@ -169,7 +168,7 @@ def section_3():
             with stat_lock:
                 if rc == 0:
                     wait_rc_ok[0] += 1
-                if ev.m_response is not None and ev.m_response.status == ysp.ResStatus.eOk:
+                if ev.m_response is not None and ev.m_response.status == ResStatus.eOk:
                     wait_resp_ok[0] += 1
         with stat_lock:
             waiter_done[0] += 1
@@ -242,14 +241,13 @@ def section_4():
 
 # ============ Section 5: API 层并发投递 + 内省轮询 ============
 def section_5():
-    import YomkApi
     del EXEC_COUNT[:]
-    YomkApi.server().async_thread(1).init()
-    server = YomkApi.server().instance()
-    check(server is not None, "S5 server().init 返回非空服务器")
+    server_api().async_thread(1).init()
+    server = server_api().instance()
+    check(server is not None, "S5 server_api().init 返回非空服务器")
 
     check(event_loop().loop("conc_loop").start() ==
-          ysp.ResStatus.eOk, "S5 START conc_loop 返回 eOk")
+          ResStatus.eOk, "S5 START conc_loop 返回 eOk")
 
     api_post_ok = [0]
     poll_count = [0]
@@ -260,7 +258,7 @@ def section_5():
 
     def api_poster():
         for _k in range(25):
-            if event_loop().msg("x").loop("conc_loop").handle_fn(count_handler()).post() == ysp.ResStatus.eOk:
+            if event_loop().msg("x").loop("conc_loop").handle_fn(count_handler()).post() == ResStatus.eOk:
                 with stat_lock:
                     api_post_ok[0] += 1
 
@@ -271,7 +269,7 @@ def section_5():
             r = event_loop().loop("conc_loop").get_info()
             with stat_lock:
                 poll_count[0] += 1
-                if r.status == ysp.ResStatus.eOk and r.data is not None and r.data.running:
+                if r.status == ResStatus.eOk and r.data is not None and r.data.running:
                     poll_ok[0] += 1
                 elif len(poll_fail_samples) < 5:  # 诊断：留存首批失败样本
                     poll_fail_samples.append(
@@ -296,8 +294,8 @@ def section_5():
           100, 5.0), "S5 API 层事件全部执行（100/100）")
 
     check(event_loop().loop("conc_loop").destroy() ==
-          ysp.ResStatus.eOk, "S5 DESTROY conc_loop 返回 eOk")
-    YomkApi.server().shutdown()
+          ResStatus.eOk, "S5 DESTROY conc_loop 返回 eOk")
+    server_api().shutdown()
 
 def main():
     section_1()

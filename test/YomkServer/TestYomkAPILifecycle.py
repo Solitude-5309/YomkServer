@@ -23,9 +23,8 @@ TestYomkAPILifecycle.py —— YomkAPI init/shutdown 单例生命周期测试
 
 import sys
 
-import YomkApi
-from YomkServer import ResStatus, YomkService
-from YomkApi import server
+from yomk.msg.server import ResStatus
+from yomk.server import YomkService, server
 
 g_failed = 0
 
@@ -52,12 +51,12 @@ def name_in(names, name):
 
 def main():
     print("===== 1. init 单例承诺 =====")
-    YomkApi.server().async_thread(1).init()
-    first = YomkApi.server().instance()
+    server().async_thread(1).init()
+    first = server().instance()
     check(first is not None, "首次 init(1) 返回非空单例")
 
-    YomkApi.server().async_thread(4).init()
-    second = YomkApi.server().instance()
+    server().async_thread(4).init()
+    second = server().instance()
     check(second is not None and second is first,
           "二次 init(4) 返回同一实例（async_thread_count 仅首次生效）")
 
@@ -100,8 +99,8 @@ def main():
     check(resp.msg == "YomkServer is not init", f"关闭后契约消息回归: {resp.msg}")
     check(server().srv(DummySrv).create() == -1, "关闭后 new_service 守卫回归 -1")
 
-    YomkApi.server().init()
-    check(YomkApi.server().instance() is None,
+    server().init()
+    check(server().instance() is None,
           "关闭后 init 再调不重建单例（once 已消耗，不支持二次初始化）")
 
     print(("ALL PASSED" if g_failed == 0 else "SOME FAILED") +

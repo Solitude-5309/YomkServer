@@ -48,9 +48,10 @@ import tempfile
 import threading
 import time
 
-import YomkApi
-from YomkServer import Log, ResStatus
-from YomkApi import log, log_mgr, server
+from yomk.msg.server import ResStatus
+from yomk.msg.log import Log
+from yomk.server import server as server_api
+from yomk.log import log, log_mgr
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")
@@ -144,9 +145,9 @@ def test_tmp_root():
     return os.environ.get("YOMK_TEST_TMP_ROOT") or tempfile.gettempdir()
 
 def main():
-    YomkApi.server().async_thread(1).init()
-    server = YomkApi.server().instance()
-    check(server is not None, "server().init 返回非空服务器")
+    server_api().async_thread(1).init()
+    server = server_api().instance()
+    check(server is not None, "server_api().init 返回非空服务器")
 
     tmp_dir = os.path.join(test_tmp_root(),
                            "yomk_logger_lg3_" + str(os.getpid()))
@@ -903,7 +904,7 @@ def main():
           "——级别翻转与并发 WRITE 下不丢不重")
 
     # ============ 收尾清理 ============
-    YomkApi.server().shutdown()
+    server_api().shutdown()
     shutil.rmtree(tmp_dir, ignore_errors=True)
 
     if g_failed == 0:

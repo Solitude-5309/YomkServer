@@ -9,13 +9,14 @@
 与全局 server().url(u).msg(m).request() 等价，但无需获取全局单例。
 """
 
-import YomkApi
+from yomk.msg.server import ResStatus, Response
+from yomk.server import YomkService
+from yomk.log import log
 
 from msgs.ArmMsgs import MoveCmd, MoveResp
-from YomkApi import log
 
 
-class MotionService(YomkApi.YomkService):
+class MotionService(YomkService):
     def __init__(self, server):
         super().__init__(server)
         # 服务名：URL 前缀，全局唯一
@@ -29,18 +30,18 @@ class MotionService(YomkApi.YomkService):
         return 0
 
     # 通讯自检：收到字符串原样回显
-    def echo(self, pkg) -> YomkApi.YomkResponse:
+    def echo(self, pkg) -> Response:
         if not isinstance(pkg, str):
-            return YomkApi.YomkResponse(
-                YomkApi.ResStatus.eNo, " pkg is null or pkg is not String. ")
+            return Response(
+                ResStatus.eNo, " pkg is null or pkg is not String. ")
         log().tag("arm.motion").info(f'通讯自检回环：收到 "{pkg}"')
-        return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "echo success", "echo: " + pkg)
+        return Response(ResStatus.eOk, "echo success", "echo: " + pkg)
 
     # 运动指令：先跨服务留痕，再返回 MoveResp 强类型到位回执
-    def move(self, pkg) -> YomkApi.YomkResponse:
+    def move(self, pkg) -> Response:
         if not isinstance(pkg, MoveCmd):
-            return YomkApi.YomkResponse(
-                YomkApi.ResStatus.eNo, " pkg is null or pkg is not MoveCmd. ")
+            return Response(
+                ResStatus.eNo, " pkg is null or pkg is not MoveCmd. ")
         log().tag("arm.motion").info(f"运动指令执行：目标 ({pkg.x}, {pkg.y}, {pkg.z})mm，倍率 {pkg.speed_ratio}")
 
         # 跨服务调用：成员 request() 与 server().url(u).msg(pkg).request() 裸链等价，URL 直达留痕工位；
@@ -48,11 +49,11 @@ class MotionService(YomkApi.YomkService):
         trace_resp = self.request(
             "/TelemetryService/record",
             f"运动留痕：move -> ({pkg.x},{pkg.y},{pkg.z})mm")
-        if trace_resp.status != YomkApi.ResStatus.eOk:
+        if trace_resp.status != ResStatus.eOk:
             log().tag("arm.motion").info("留痕失败：" + trace_resp.msg)
-            return YomkApi.YomkResponse(YomkApi.ResStatus.eNo, "move failed: " + trace_resp.msg)
+            return Response(ResStatus.eNo, "move failed: " + trace_resp.msg)
         log().tag("arm.motion").info("留痕回执：" + trace_resp.msg)
 
         # 到位回执：data 携带强类型 MoveResp，不止能传 String
-        return YomkApi.YomkResponse(
-            YomkApi.ResStatus.eOk, "move success", MoveResp(pkg.x, pkg.y, pkg.z))
+        return Response(
+            ResStatus.eOk, "move success", MoveResp(pkg.x, pkg.y, pkg.z))

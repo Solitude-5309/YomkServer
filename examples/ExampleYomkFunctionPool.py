@@ -2,7 +2,7 @@
 """
 ExampleYomkFunctionPool —— YomkFunctionPool 动态函数池示例：机械臂产线背景的 6 个场景小示例（面向初学者）
 
-函数池是一个跨模块共享的扁平函数中心：把符合 YomkResponse(pkg) 签名的
+函数池是一个跨模块共享的扁平函数中心：把符合 Response(pkg) 签名的
 函数按名字注册进池子，之后在任意位置按名字调用——机械臂系统中主控、示教器、
 视觉工位正是这样共享无状态工具函数（负载合计、班次握手、位姿换算），彼此
 无需感知对方实现。同名重复注册即运行时热替换，无需先注销。
@@ -47,8 +47,10 @@ ExampleYomkFunctionPool —— YomkFunctionPool 动态函数池示例：机械�
 
 import sys
 
-import YomkApi
-from YomkApi import log, fn_pool, server
+from yomk.msg.server import ResStatus, Response
+from yomk.server import server
+from yomk.fn_pool import fn_pool
+from yomk.log import log
 
 # ---------------------------------------------------------------------------
 # 辅助输出：全部走 YomkLogger 控制台日志（log().tag().info() 等），无 print。
@@ -61,29 +63,29 @@ def log_scene(n, title, apis, explain):
     log().tag("arm.demo").info(f"========== 场景 {n}：{title}（{apis}）==========")
     log().tag("arm.demo").info("场景背景：" + explain)
 
-# API 结果行：打印 YomkResponse 三要素中的 status/msg。
+# API 结果行：打印 Response 三要素中的 status/msg。
 # CALL 的返回值即被调函数的返回值——结果数据若为 str 则随行展示（如负载合计值）；
 # 其余内省数据（list/FuncInfo/FuncInfoList）形态各异，类型不匹配时静默不展示。
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
     # 双形态分展：写路径链式终结收敛为 ResStatus（无 msg/data），只打 status 行；
-    # 读路径终结给 YomkResponse，status+msg（字符串负载并打 data）照旧
-    status = resp if isinstance(resp, YomkApi.ResStatus) else resp.status
-    if status == YomkApi.ResStatus.eOk:
+    # 读路径终结给 Response，status+msg（字符串负载并打 data）照旧
+    status = resp if isinstance(resp, ResStatus) else resp.status
+    if status == ResStatus.eOk:
         note = "(eOk 成功)"
-    elif status == YomkApi.ResStatus.eNo:
+    elif status == ResStatus.eNo:
         note = "(eNo 拒绝或不存在)"
     else:
         note = "(eInvalid 未初始化或参数无效)"
-    if isinstance(resp, YomkApi.ResStatus):
+    if isinstance(resp, ResStatus):
         log().tag("arm.demo").info(f"[{api}] status={status.value}{note}")
     else:
         line = f'[{api}] status={status.value}{note}, msg="{resp.msg}"'
-        if status == YomkApi.ResStatus.eOk and isinstance(resp.data, str):
+        if status == ResStatus.eOk and isinstance(resp.data, str):
             line += f', data="{resp.data}"'
         log().tag("arm.demo").info(line)
 
-# 操作日志（YomkResponse 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
+# 操作日志（Response 版）：先打"开始执行 {操作}"，再真正调用，最后打结果行——
 # 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 # 结果行标注本次接口调用；CALL 在调用方线程同步执行被调函数，工具函数体的
 # arm.tool 日志被夹在开始行与结果行之间，归属一目了然，读者顺着日志读即可理解
@@ -117,18 +119,18 @@ def log_verify(text):
     log().tag("arm.demo").info("[验证] " + text)
 
 # ---------------------------------------------------------------------------
-# 可注册进函数池的工具函数：签名统一为 YomkResponse(pkg)，全部无状态。
+# 可注册进函数池的工具函数：签名统一为 Response(pkg)，全部无状态。
 # CALL 在调用方线程同步执行，函数体的 arm.tool 日志会先于调用方结果行出现。
 # ---------------------------------------------------------------------------
 
 # 负载合计工具：跨模块共享的无状态计算函数（场景 1 以无元数据形态登记）。
 # 入参为各轴负载列表（kg），合计结果同时放进 msg 与 data——调用方两者都能拿到
-def payload_sum(pkg) -> YomkApi.YomkResponse:
+def payload_sum(pkg) -> Response:
     # 入参守卫：pkg 为 None 或不是字符串列表时自动返回 eNo
     # （守卫置于函数入口，判空与拒绝文案同处一地，调用方空参只会收到拒绝不会异常中断，见场景 3）
     if not isinstance(pkg, list) or not all(isinstance(load, str) for load in pkg):
-        return YomkApi.YomkResponse(
-            YomkApi.ResStatus.eNo, " pkg is null or pkg is not StringArray. ")
+        return Response(
+            ResStatus.eNo, " pkg is null or pkg is not StringArray. ")
 
     log().tag("arm.tool").info(f"负载合计工具执行：收到 {len(pkg)} 轴负载（调用方线程同步执行）")
 
@@ -137,16 +139,16 @@ def payload_sum(pkg) -> YomkApi.YomkResponse:
     log().tag("arm.tool").info(f"负载合计工具完成：payload={total_kg}kg")
 
     # msg 描述结果，data 携带结果数据——调用方两者都能拿到
-    return YomkApi.YomkResponse(
-        YomkApi.ResStatus.eOk, f"payload={total_kg}kg", str(total_kg))
+    return Response(
+        ResStatus.eOk, f"payload={total_kg}kg", str(total_kg))
 
 # 班次握手工具：演示带元数据的登记与调用（场景 2 以类型+说明形态登记，场景 4 被热替换）
-def handshake(pkg) -> YomkApi.YomkResponse:
+def handshake(pkg) -> Response:
     if not isinstance(pkg, str):
-        return YomkApi.YomkResponse(
-            YomkApi.ResStatus.eNo, " pkg is null or pkg is not String. ")
+        return Response(
+            ResStatus.eNo, " pkg is null or pkg is not String. ")
     log().tag("arm.tool").info(f"班次握手工具执行：向 {pkg} 回执问候")
-    return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "shift hello, " + pkg)
+    return Response(ResStatus.eOk, "shift hello, " + pkg)
 
 # ---------------------------------------------------------------------------
 # 6 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。
@@ -215,12 +217,12 @@ def show_arm_tool_hot_swap():
         "班中问候口径升级：对已注册名字再次 REGISTER 即热替换函数本体，无需先"
         "注销；msg_name 与说明元数据随新注册整体刷新，随后调用走新实现。")
 
-    def handshake_v2(pkg) -> YomkApi.YomkResponse:
+    def handshake_v2(pkg) -> Response:
         if not isinstance(pkg, str):
-            return YomkApi.YomkResponse(
-                YomkApi.ResStatus.eNo, " pkg is null or pkg is not String. ")
+            return Response(
+                ResStatus.eNo, " pkg is null or pkg is not String. ")
         log().tag("arm.tool").info(f"班次握手工具 V2 执行：向 {pkg} 升级问候")
-        return YomkApi.YomkResponse(YomkApi.ResStatus.eOk, "shift hello V2, " + pkg)
+        return Response(ResStatus.eOk, "shift hello V2, " + pkg)
 
     log_action("热替换班次握手工具 tool.handshake（V2）", "/YomkFunctionPool/register tool.handshake (V2, 带声明类型)",
                lambda: fn_pool().fn_name("tool.handshake").fn(handshake_v2).msg_name("String").install())
