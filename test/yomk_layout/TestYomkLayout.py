@@ -11,10 +11,11 @@ S2. pyi 完整性：每个 .py 有同名 .pyi；每个 .pyi 有对应源（_vers
     _version.py.in）；每个运行时域有 _version.py.in/_version.pyi；每个叶子子包
     有 py.typed
 S3. __init__.pyi 显式 re-export：只用 from ... import X as X 形式
-S4. 运行时域诊断：六个域均有 _diag.py/_diag.pyi；_diag.py 不含
-    import logging / import yomk.log / from yomk.log
-S5. 诊断可独立输出：每个 _diag 在独立进程输出六个等级；非 log 域的
-    _diag 进程内不得出现 yomk.log
+S4. 共享诊断：src/yomk/_diag.py(.pyi) 存在且仅 import 标准库；log 域专属
+    扩展 _logSourceLoc.py(.pyi) 存在且不含 import logging / yomk.log；
+    各域不再自带 _diag 副本
+S5. 诊断可独立输出：共享 _diag 独立进程输出六个等级（进程内不得出现
+    yomk.log）；log 域 _yomk_err_pos_log 独立输出错误位置日志
 
 运行方式（仓库根目录）：
     PYTHONPATH=src python3 test/yomk_layout/TestYomkLayout.py
@@ -121,46 +122,59 @@ def s3_explicit_reexports():
               % path.relative_to(REPO_DIR))
 
 
-def s4_domain_diagnostics():
-    print("-- S4 运行时域诊断模块")
+def s4_shared_diagnostics():
+    print("-- S4 共享诊断模块与 log 域专属扩展")
+    shared = PKG_DIR / "_diag.py"
+    shared_pyi = PKG_DIR / "_diag.pyi"
+    check(shared.exists(), "src/yomk/_diag.py 存在（共享六级诊断）")
+    check(shared_pyi.exists(), "src/yomk/_diag.pyi 存在")
+    text = shared.read_text(encoding="utf-8")
+    for pattern in BANNED_DIAG_PATTERNS:
+        check(pattern not in text, "yomk/_diag.py 不含 %r" % pattern)
+    loc = PKG_DIR / "log" / "_logSourceLoc.py"
+    loc_pyi = PKG_DIR / "log" / "_logSourceLoc.pyi"
+    check(loc.exists(), "log/_logSourceLoc.py 存在（log 域专属扩展）")
+    check(loc_pyi.exists(), "log/_logSourceLoc.pyi 存在")
+    ltext = loc.read_text(encoding="utf-8")
+    for pattern in BANNED_DIAG_PATTERNS:
+        check(pattern not in ltext, "log/_logSourceLoc.py 不含 %r" % pattern)
     for domain in DOMAINS:
-        domain_dir = PKG_DIR / domain
-        check((domain_dir / "_diag.py").exists(), "%s/_diag.py 存在" % domain)
-        check((domain_dir / "_diag.pyi").exists(), "%s/_diag.pyi 存在" % domain)
-        text = (domain_dir / "_diag.py").read_text(encoding="utf-8")
-        for pattern in BANNED_DIAG_PATTERNS:
-            check(pattern not in text,
-                  "%s/_diag.py 不含 %r" % (domain, pattern))
+        check(not (PKG_DIR / domain / "_diag.py").exists(),
+              "%s/_diag.py 不再自带副本（共享 yomk._diag）" % domain)
 
 
 def s5_diagnostics_standalone():
     print("-- S5 诊断独立输出（独立进程）")
-    for domain in DOMAINS:
-        guard = ""
-        if domain != "log":
-            guard = ("assert 'yomk.log' not in sys.modules, "
-                     "'yomk.log must not be imported by %s/_diag'\n" % domain)
-        code = (
-            "import sys\n"
-            "import yomk.%s._diag as d\n"
-            "%s"
-            "for level in (%s):\n"
-            "    getattr(d, level)('layout probe')\n"
-            "print('DIAG OK')\n"
-            % (domain, guard,
-               ", ".join(repr(name) for name, _ in DIAG_LEVELS)))
-        result = run_python(code)
-        tags_ok = all(tag in result.stdout for _, tag in DIAG_LEVELS)
-        check(result.returncode == 0 and "DIAG OK" in result.stdout and tags_ok,
-              "%s/_diag 六等级直接输出（%s）"
-              % (domain, result.stderr.strip() or "ok"))
+    code = (
+        "import sys\n"
+        "import yomk._diag as d\n"
+        "assert 'yomk.log' not in sys.modules, "
+        "'yomk.log must not be imported by yomk._diag'\n"
+        "for level in (%s):\n"
+        "    getattr(d, level)('layout probe')\n"
+        "print('DIAG OK')\n"
+        % ", ".join(repr(name) for name, _ in DIAG_LEVELS))
+    result = run_python(code)
+    tags_ok = all(tag in result.stdout for _, tag in DIAG_LEVELS)
+    check(result.returncode == 0 and "DIAG OK" in result.stdout and tags_ok,
+          "共享 yomk._diag 六等级直接输出（%s）"
+          % (result.stderr.strip() or "ok"))
+    code2 = (
+        "import yomk.log._logSourceLoc as d\n"
+        "d._yomk_err_pos_log('layout probe')\n"
+        "print('LOC OK')\n")
+    result2 = run_python(code2)
+    check(result2.returncode == 0 and "LOC OK" in result2.stdout
+          and "[ERROR] [Yomk]" in result2.stdout,
+          "log._logSourceLoc._yomk_err_pos_log 独立输出（%s）"
+          % (result2.stderr.strip() or "ok"))
 
 
 def main():
     s1_namespace_skeleton()
     s2_pyi_and_markers()
     s3_explicit_reexports()
-    s4_domain_diagnostics()
+    s4_shared_diagnostics()
     s5_diagnostics_standalone()
 
     print(("ALL PASSED" if g_failed == 0 else "SOME FAILED") +

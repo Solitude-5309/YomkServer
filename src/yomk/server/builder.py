@@ -1,5 +1,5 @@
 from yomk.server import _facade
-from yomk.server._diag import error as diag_error
+from yomk._diag import error as diag_error
 
 
 class AsyncRequestBuilder:

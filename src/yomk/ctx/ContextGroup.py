@@ -2,8 +2,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 from readerwriterlock import rwlock
 
-from yomk.ctx._diag import error as diag_error
-from yomk.ctx._diag import info as diag_info
+from yomk._diag import error as diag_error
+from yomk._diag import info as diag_info
 from yomk.msg.ctx import CheckStatus, Context, ContextKeyInfo
 
 

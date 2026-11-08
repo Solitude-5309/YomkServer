@@ -507,7 +507,7 @@ L13 起旧伞门面已删除，按域显式导入替代：
 | `Log` 等 log 消息 | `from yomk.msg.log import ...` |
 | `ServerServiceInfo` | `from yomk.msg.srv_info import ServerServiceInfo` |
 | `server().services()/functions()/fn_url()/get_info()/all()` | 改道 `from yomk.srv_info import srv_info`：`srv_info().services()` 等（服务内省自 server 域移至 srv_info 域） |
-| `YomkApi._yomk_*` 诊断开关 | `from yomk.log._diag import ...`（server 域诊断在 `yomk.server._diag`） |
+| `YomkApi._yomk_*` 诊断开关 | `from yomk.log._logSourceLoc import ...`（共享六级诊断在 `yomk._diag`） |
 | `__version__` | `from yomk.server import __version__` 或 `yomk.<域>.__version__` |
 
 ### 第三方扩展指南（yomk 命名空间并入）

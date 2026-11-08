@@ -1,6 +1,6 @@
 from readerwriterlock import rwlock
 
-from yomk.ctx._diag import error as diag_error
+from yomk._diag import error as diag_error
 from yomk.ctx.ContextGroup import ContextGroup
 from yomk.msg.ctx import (
     Context,

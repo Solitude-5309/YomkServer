@@ -1,3 +1,6 @@
+# log 域专属诊断扩展（与共享 yomk._diag 的差异部分）：
+# 位置前缀三开关、受控位置前缀、错误位置日志、本地时间格式化。
+# 仅 import 标准库（sys/time）；六级共享诊断见 yomk._diag。
 import sys
 import time
 
@@ -48,37 +51,3 @@ def _yomk_err_pos_log(msg):
                      frame.f_code.co_filename + ":" + str(frame.f_lineno) +
                      "] [" + frame.f_code.co_name + "] " + msg + "\n")
     sys.stdout.flush()
-
-
-def _emit(level, msg, frame):
-    # 六级别诊断：位置前缀受三开关控制，直写 stdout 并 flush
-    loc = _yomk_source_loc_prefix(
-        frame.f_code.co_filename, frame.f_lineno, frame.f_code.co_name)
-    sys.stdout.write(
-        _yomk_log_local_time_formatted() + " [" + level + "] [Yomk]" +
-        ((" " + loc) if loc else "") + " " + msg + "\n")
-    sys.stdout.flush()
-
-
-def trace(msg):
-    _emit("TRACE", msg, sys._getframe(1))
-
-
-def debug(msg):
-    _emit("DEBUG", msg, sys._getframe(1))
-
-
-def info(msg):
-    _emit("INFO ", msg, sys._getframe(1))
-
-
-def warn(msg):
-    _emit("WARN ", msg, sys._getframe(1))
-
-
-def error(msg):
-    _emit("ERROR", msg, sys._getframe(1))
-
-
-def fatal(msg):
-    _emit("FATAL", msg, sys._getframe(1))

@@ -1,6 +1,6 @@
 import sys
 
-from yomk.log import _diag
+from yomk.log import _logSourceLoc
 from yomk.msg.log import (
     ConsoleLogProxy,
     FileLogProxy,
@@ -15,7 +15,7 @@ from yomk.server import _facade
 def _chain_log_content(loc, args):
     # 发射正文 = 位置前缀（进程级三开关）+ 逐参追加（str() 流式化、bool → true/false、
     # 单空格分隔；前缀为空时首参不加前导空格）
-    msg = _diag._yomk_source_loc_prefix(*loc)
+    msg = _logSourceLoc._yomk_source_loc_prefix(*loc)
     for arg in args:
         s = "true" if arg is True else ("false" if arg is False else str(arg))
         msg = msg + " " + s if msg else s
@@ -206,9 +206,9 @@ class FileMgrBuilder:
 class LocBuilder:
     # 位置前缀三开关分面：构造承接当前进程状态，apply 一次性落三开关（恒 Succeeded）
     def __init__(self):
-        self._show_file = _diag._yomk_loc_show_file
-        self._show_line = _diag._yomk_loc_show_line
-        self._show_func = _diag._yomk_loc_show_func
+        self._show_file = _logSourceLoc._yomk_loc_show_file
+        self._show_line = _logSourceLoc._yomk_loc_show_line
+        self._show_func = _logSourceLoc._yomk_loc_show_func
 
     def show_file(self, on):
         self._show_file = on
@@ -223,9 +223,9 @@ class LocBuilder:
         return self
 
     def apply(self):
-        _diag._yomk_loc_show_file = self._show_file
-        _diag._yomk_loc_show_line = self._show_line
-        _diag._yomk_loc_show_func = self._show_func
+        _logSourceLoc._yomk_loc_show_file = self._show_file
+        _logSourceLoc._yomk_loc_show_line = self._show_line
+        _logSourceLoc._yomk_loc_show_func = self._show_func
         return ResStatus.Succeeded
 
 

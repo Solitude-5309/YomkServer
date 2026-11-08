@@ -1,6 +1,6 @@
 from readerwriterlock import rwlock
 
-from yomk.event_loop._diag import error as diag_error
+from yomk._diag import error as diag_error
 from yomk.event_loop.EventLoop import Event, EventLoop
 from yomk.msg.event_loop import EventLoopInfo, EventLoopPkg, EventLoopQuery
 from yomk.msg.server import ResStatus, Response

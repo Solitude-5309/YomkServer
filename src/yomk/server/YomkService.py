@@ -6,7 +6,7 @@ from readerwriterlock import rwlock
 from yomk.msg.ctx import CheckStatus
 from yomk.msg.fn_pool import FuncInfo
 from yomk.msg.server import ResStatus, Response
-from yomk.server._diag import error as diag_error
+from yomk._diag import error as diag_error
 
 if TYPE_CHECKING:
     from yomk.server.YomkServer import YomkServer

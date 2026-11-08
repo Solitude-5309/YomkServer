@@ -3,7 +3,7 @@ import threading
 from typing import Any, Optional
 
 from yomk.msg.server import ResStatus, Response
-from yomk.server._diag import error as diag_error
+from yomk._diag import error as diag_error
 from yomk.server.YomkServer import YomkServer
 
 # 门面共享状态：只允许经模块属性访问（from yomk.server import _facade），

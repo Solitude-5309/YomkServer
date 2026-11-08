@@ -1,7 +1,7 @@
 import os
 import threading
 
-from yomk.log._diag import _yomk_err_pos_log, _yomk_log_local_time_formatted
+from yomk.log._logSourceLoc import _yomk_err_pos_log, _yomk_log_local_time_formatted
 from yomk.msg.log import Log
 
 

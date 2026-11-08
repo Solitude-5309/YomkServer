@@ -1,7 +1,7 @@
 from readerwriterlock import rwlock
 
-from yomk.fn_pool._diag import error as diag_error
-from yomk.fn_pool._diag import info as diag_info
+from yomk._diag import error as diag_error
+from yomk._diag import info as diag_info
 from yomk.msg.fn_pool import CallFunction, FuncInfo, Function
 from yomk.msg.server import ResStatus, Response
 from yomk.server import YomkService

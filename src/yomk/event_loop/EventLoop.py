@@ -1,7 +1,7 @@
 import queue
 import threading
 
-from yomk.event_loop._diag import error as diag_error
+from yomk._diag import error as diag_error
 from yomk.msg.event_loop import EventLoopInfo
 
 

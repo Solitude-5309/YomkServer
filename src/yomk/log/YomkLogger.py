@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from readerwriterlock import rwlock
 
-from yomk.log._diag import _yomk_err_pos_log
+from yomk.log._logSourceLoc import _yomk_err_pos_log
 from yomk.log.ConsoleLogger import ConsoleLogger
 from yomk.log.FileLogger import FileLogger
 from yomk.msg.log import (

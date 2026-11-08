@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from yomk.msg.server import ResStatus, Response
 from yomk.msg.srv_info import ServerServiceInfo
 from yomk.server import YomkService
-from yomk.srv_info._diag import error as diag_error
+from yomk._diag import error as diag_error
 
 if TYPE_CHECKING:
     from yomk.server import YomkServer

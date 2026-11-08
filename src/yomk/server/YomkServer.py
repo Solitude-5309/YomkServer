@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from readerwriterlock import rwlock
 
 from yomk.msg.server import ResStatus, Response
-from yomk.server._diag import error as diag_error
+from yomk._diag import error as diag_error
 from yomk.server.YomkService import YomkService
 
 
