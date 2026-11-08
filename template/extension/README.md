@@ -1,4 +1,4 @@
-# TemplateExtension 扩展
+# extension 扩展
 
 基于 [YomkServer](https://github.com/Solitude-5309/YomkServer) 框架的扩展模板，提供版本查询接口，可作为新扩展的开发起点。
 
@@ -20,14 +20,14 @@
 source build_ubuntu.sh     # 交互式，前置路径与安装路径默认均取 $YOMK_PREFIX_PATH，可交互修改
 ```
 
-> 扩展库需与 YomkServer 安装到一起：导出 target 不含 include 路径，头文件由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供。
-> 测试程序不随扩展安装，编译产物在模板目录下 `test/build`，可在该目录直接运行 `TestTemplateExtension` 验证。
+> 扩展库需与 YomkServer 安装到一起：头文件统一安装到 `include/yomk/extension/`，由导出 target 的 INTERFACE include（`INCLUDES DESTINATION`）与 `YomkServer::YomkServer` 共同提供。
+> 测试程序不随扩展安装，编译产物在模板目录下 `test/build`，可在该目录直接运行 `TestExtension` 验证。
 > 若未配置 `YOMK_PREFIX_PATH` 环境变量，脚本会提示警告，此时手动输入路径即可。
 
 ## 工程结构
 
 ```
-TemplateExtension/
+extension/
 ├── include/
 │   ├── ExtensionService.h   # 对外接口头文件（服务类声明；内部头文件放 src/）
 │   ├── ExtensionApi.h       # 模块 API：链式域入口 yomk::ext()（四件套，参考 include/yomk 各域设计）
@@ -38,7 +38,7 @@ TemplateExtension/
 │   └── ExtensionService.cpp # 服务实现
 ├── test/
 │   ├── CMakeLists.txt       # 测试构建配置（测试程序编译到 test/build，不随扩展安装）
-│   └── TestTemplateExtension.cpp
+│   └── TestExtension.cpp
 ├── cmake/
 │   └── ProjectConfig.cmake.in
 ├── CMakeLists.txt           # CMake 构建配置
@@ -65,7 +65,7 @@ TemplateExtension/
 
 ```cpp
 #include <yomk/server/YomkServerApi.h>
-#include <TemplateExtension/ExtensionApi.h>
+#include <extension/ExtensionApi.h>
 #include <iostream>
 
 using namespace yomk;
@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     if (resp.m_status == yomk::payload::ResStatus::Succeeded)
     {
         auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
-        std::cout << "version: " << version->d << std::endl; // 输出: TemplateExtension v0.0.1
+        std::cout << "version: " << version->d << std::endl; // 输出: extension v0.0.1
     }
 
     return 0;

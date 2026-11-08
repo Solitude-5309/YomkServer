@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(TemplateExtension VERSION 0.0.1 LANGUAGES CXX)
+project(extension VERSION 0.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,14 +16,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE YomkServer::YomkServer)
 target_compile_definitions(${PROJECT_NAME} PRIVATE EXTENSION_VERSION="${PROJECT_VERSION}")
 
 # 安装规则
-set(INCLUDE_INSTALL_DIR "include")
+set(INCLUDE_INSTALL_DIR "include/yomk")
 set(LIB_INSTALL_DIR "lib")
 
 install(TARGETS ${PROJECT_NAME}
     EXPORT ${PROJECT_NAME}Targets
     LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+    INCLUDES DESTINATION ${INCLUDE_INSTALL_DIR}
 )
-install(DIRECTORY include/ DESTINATION include/${PROJECT_NAME})
+install(DIRECTORY include/ DESTINATION include/yomk)
 
 # CMake export 导出配置
 include(CMakePackageConfigHelpers)

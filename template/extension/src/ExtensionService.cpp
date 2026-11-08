@@ -1,6 +1,6 @@
 #include <yomk/log/YomkLoggerApi.h>
 
-#include "ExtensionService.h"
+#include "extension/ExtensionService.h"
 
 ExtensionService::ExtensionService(YomkServer* server) : YomkService(server)
 {
@@ -16,6 +16,6 @@ int ExtensionService::init()
 
 yomk::payload::Response ExtensionService::version(YomkMsgPtr pkg)
 {
-    std::string version = "TemplateExtension v" EXTENSION_VERSION;
+    std::string version = "extension v" EXTENSION_VERSION;
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(version));
 }

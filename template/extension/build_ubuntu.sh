@@ -13,7 +13,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_NAME="TemplateExtension"
+PROJECT_NAME="extension"
 BUILD_DIR="${SCRIPT_DIR}/build"
 TEST_DIR="${SCRIPT_DIR}/test"
 TEST_BUILD_DIR="${TEST_DIR}/build"
@@ -70,7 +70,7 @@ fi
 # 编译安装主库
 mkdir -p "${BUILD_DIR}"
 # 清除历史运行可能遗留的暂存安装目录（如 build/install/）——其中陈旧的包配置/头文件
-# 会经 find_package 缓存（TemplateExtension_DIR）或目录搜索遮蔽真实安装路径，导致用旧 API 编译
+# 会经 find_package 缓存（extension_DIR）或目录搜索遮蔽真实安装路径，导致用旧 API 编译
 rm -rf "${BUILD_DIR}/install"
 cd "${BUILD_DIR}" || return 1
 
@@ -112,10 +112,10 @@ if [ "${BUILD_TEST}" = "ON" ]; then
     mkdir -p "${TEST_BUILD_DIR}"
     cd "${TEST_BUILD_DIR}" || return 1
 
-    # -U 清除上次运行缓存下来的包定位（TemplateExtension_DIR/YomkServer_DIR），
+    # -U 清除上次运行缓存下来的包定位（extension_DIR/YomkServer_DIR），
     # 强制按本次 CMAKE_PREFIX_PATH 重新查找，避免 find_package 钉死在陈旧安装目录
     cmake "${TEST_DIR}" -DCMAKE_PREFIX_PATH="${INSTALL_DIR};${YOMK_SERVER_PATH}" \
-        -UTemplateExtension_DIR -UYomkServer_DIR
+        -Uextension_DIR -UYomkServer_DIR
     if [ $? -ne 0 ]; then
         echo "测试程序 cmake 配置失败"
         cd "${_ORIG_DIR}"
@@ -136,5 +136,5 @@ unset _ORIG_DIR
 echo "编译完成，扩展库已注册到系统动态库缓存，新开任意终端即可使用"
 ldconfig -p | grep -i "${PROJECT_NAME}" || true
 if [ "${BUILD_TEST}" = "ON" ]; then
-    echo "测试程序已编译到 ${TEST_BUILD_DIR}，可在该目录运行 TestTemplateExtension 验证"
+    echo "测试程序已编译到 ${TEST_BUILD_DIR}，可在该目录运行 TestExtension 验证"
 fi
