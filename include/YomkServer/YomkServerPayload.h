@@ -42,15 +42,3 @@ struct Response
 
 using YomkServiceFunc = std::function<yomk::payload::Response(YomkMsgPtr pkg)>;
 using YomkResponseFunc = std::function<void(yomk::payload::Response response)>;
-
-namespace yomk::payload
-{
-
-// 通用弱绑定兜底返回与 Context 门控共用，故保留在核心载荷
-enum class CheckStatus
-{
-    Accept,
-    Reject
-};
-
-}  // namespace yomk::payload

@@ -8,7 +8,7 @@
 #include "YomkFunctionPoolUrl.h"
 #include "YomkMsgs.h"
 #include "YomkServerApi.h"
-#include "YomkServerMsgs.h"
+#include "YomkServerInfoMsgs.h"  // FuncInfo/FuncInfoList：fn_pool().get_info()/all() 返回数据
 #include "YomkServerPayload.h"
 
 // 函数池域：单入口 yomk::fn_pool()。函数名由 .fn_name(name) 承载，服务函数 / 消息名 /

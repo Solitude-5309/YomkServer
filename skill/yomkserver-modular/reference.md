@@ -72,7 +72,7 @@ namespace yomk {
     struct Log { enum LogLevel{LogLevel::Trace,LogLevel::Debug,LogLevel::Info,LogLevel::Warn,LogLevel::Error,LogLevel::Fatal};
                  LogLevel m_level; std::string m_log; std::string m_logger; std::string m_tag; };
     struct Context { std::string m_key; YomkMsgPtr m_value; };
-    enum class CheckStatus{Accept, Reject};   // checker 门控结论
+    enum class CheckStatus{Accept, Reject};   // checker 门控结论（定义见 YomkContextPayload.h）
 }
 namespace yomk { struct FuncInfo {           // 功能函数元信息（内省用，定义见 YomkServerInfoPayload.h）
     std::string m_funcName;      // 路由名（/ 开头）

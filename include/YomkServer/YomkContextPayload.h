@@ -9,6 +9,16 @@
 namespace yomk::payload
 {
 
+/**
+ * @brief Context 校验门控结论：checker 回调返回值，决定 set 是否放行
+ * @note weakFunc 绑定的 checker 回调在服务注销后兜底返回 Accept（默认放行）
+ */
+enum class CheckStatus
+{
+    Accept,
+    Reject
+};
+
 struct Context
 {
     std::string m_key;

@@ -12,7 +12,7 @@
 #include "YomkDiag.h"
 #include "YomkExport.h"
 #include "YomkMsg.h"
-#include "YomkServerMsgs.h"
+#include "YomkMsgs.h"  // 标准类型消息目录：请求链常用载荷（String 等）
 #include "YomkServerPayload.h"
 #include "YomkServerRef.h"
 
