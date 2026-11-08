@@ -102,7 +102,7 @@ yomk::server().url("/MyService/hello").async([](yomk::payload::Response resp) {
 
 ## 核心概念
 
-以下概念贯穿框架各模块，便于快速建立整体认知；每个模块的完整链式语法、使用示例与注意事项见 [Docs](Docs/) 目录对应文档，逐个参数与返回码的精确规格以头文件 Doxygen 注释为准（`YomkServer/include/YomkServer/`）。
+以下概念贯穿框架各模块，便于快速建立整体认知；每个模块的完整链式语法、使用示例与注意事项见 [Docs](Docs/) 目录对应文档，逐个参数与返回码的精确规格以头文件 Doxygen 注释为准（`include/YomkServer/`）。
 
 ### 1. 链式调用形态（累积 → 终结）
 
@@ -270,7 +270,7 @@ YOMK_TEST_STRESS_SCALE=50000 ./bin/TestYomkEventLoopStress
 
 ### 4. 一键静态代码检查
 
-cppcheck + clang-tidy 双工具零告警门禁（任一告警即非零退出），全量扫描 `YomkServer/src`（含全部 Modules）与 `YomkServer/include`：
+cppcheck + clang-tidy 双工具零告警门禁（任一告警即非零退出），全量扫描 `src`（含全部 Modules）与 `include`：
 
 ```bash
 ./Test/run_static_checks.sh              # 默认双跑

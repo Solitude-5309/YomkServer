@@ -6,11 +6,11 @@
 #   ./run_static_checks.sh --tidy       仅跑 clang-tidy
 #   ./run_static_checks.sh -h|--help    显示本帮助
 # 行为:
-#   1. cppcheck 档: 全量扫描 YomkServer/src（含全部 Modules）+ YomkServer/include，
+#   1. cppcheck 档: 全量扫描 src（含全部 Modules）+ include，
 #      warning/style/performance/portability/information 零告警验收（--error-exitcode=1）；
 #      先打印检测文件清单，扫描时过滤显示逐文件 Checking 进度行与告警行（完整 verbose 落盘日志）
 #   2. clang-tidy 档: 检查集与 Test/YomkServer/CMakeLists.txt 的 _YOMK_TIDY_CHECKS 对齐，
-#      逐文件扫描 YomkServer/src 全部编译单元（[i/N] 进度与逐文件 [FAIL] 标记），
+#      逐文件扫描 src 全部编译单元（[i/N] 进度与逐文件 [FAIL] 标记），
 #      --warnings-as-errors 严格门禁，header-filter 限本仓库头
 #   3. 任一工具告警 → 输出 [FAIL] 摘要并以非零码退出；全部零告警 → 输出 [PASS]
 #   4. 日志落盘: Test/test_logs/<时间戳>/cppcheck.log + clang-tidy.log + summary.log
@@ -25,10 +25,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # 构建期源码路径统一入口（与顶层 CMakeLists.txt 的 YOMK_SERVER_* 变量对齐）
-SRC_DIR="${REPO_DIR}/YomkServer/src"
-INCLUDE_ROOT="${REPO_DIR}/YomkServer/include"
+SRC_DIR="${REPO_DIR}/src"
+INCLUDE_ROOT="${REPO_DIR}/include"
 INCLUDE_API_DIR="${INCLUDE_ROOT}/YomkServer"
-HEADER_FILTER='.*/YomkServer/(include|src)/.*'
+HEADER_FILTER='.*/(include|src)/.*'
 
 usage() {
     sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -80,7 +80,7 @@ echo "-- 日志目录: ${LOG_ROOT}"
 # -I include/YomkServer 为真实构建路径（ELC5/FPC5 教训：缺此路径时裸 #include 解析失败，
 # 宏未定义导致分析降级），抑制项与 Test/YomkServer/CMakeLists.txt 的 cppcheck 目标保持一致
 if [ ${RUN_CPPCHECK} -eq 1 ]; then
-    echo "-- cppcheck 检测文件清单（YomkServer/src + YomkServer/include，排除 build/ 生成物）:"
+    echo "-- cppcheck 检测文件清单（src + include，排除 build/ 生成物）:"
     mapfile -t CPPCHECK_FILES < <(find "${SRC_DIR}" "${INCLUDE_ROOT}" \
         -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) ! -path '*/build/*' | sort)
     for f in "${CPPCHECK_FILES[@]}"; do
@@ -117,7 +117,7 @@ fi
 if [ ${RUN_TIDY} -eq 1 ]; then
     mapfile -t TIDY_FILES < <(find "${SRC_DIR}" -name '*.cpp' | sort)
     TIDY_TOTAL=${#TIDY_FILES[@]}
-    echo "-- clang-tidy 扫描 YomkServer/src 全部编译单元（共 ${TIDY_TOTAL} 个，检查集: _YOMK_TIDY_CHECKS）..."
+    echo "-- clang-tidy 扫描 src 全部编译单元（共 ${TIDY_TOTAL} 个，检查集: _YOMK_TIDY_CHECKS）..."
     # clang 标准库头解析自愈（同 clangd --query-driver 族教训：新机器 clang 按"最新已装 GCC"
     # 探测 libstdc++ 头 /usr/include/c++/<V>，若该版本 GCC 裸装而无 libstdc++-<V>-dev
     # （如 gcc-12 + 仅 libstdc++-11-dev），标准库头全部 file not found，并在残缺 AST 上
