@@ -217,7 +217,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
         ${YOMK_SERVER_SRC_DIR}/log/*.h
     )
 
-    # YomkLogger-clang-tidy：-header-filter 限定仅报 Logger 头（含 LG5 新增的内部头 YomkLogTime.h）
+    # YomkLogger-clang-tidy：-header-filter 限定仅报 Logger 头
     if(CLANG_TIDY_EXE)
         add_custom_target(YomkLogger-clang-tidy
             COMMAND ${CLANG_TIDY_EXE}
