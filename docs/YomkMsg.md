@@ -54,4 +54,4 @@ fn_pool().fn_name("save").msg(pkg).call()                    # 函数池调用
 
 ## 完整示例
 
-最小完整示例见根目录 [README](../README.md) 的"快速上手"一节；消息直传与属性读取的行为验证见 `test/YomkServer/TestYomkPkg.py`，多文件工程的集中管理范式见 `examples/msgs/ArmMsgs.py`。
+最小完整示例见根目录 [README](../README.md) 的"快速上手"一节；消息直传与属性读取的行为验证见 `test/yomk_server/TestYomkPkg.py`，多文件工程的集中管理范式见 `examples/msgs/ArmMsgs.py`。

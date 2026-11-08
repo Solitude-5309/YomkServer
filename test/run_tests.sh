@@ -23,7 +23,7 @@
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# 测试文件定位：TESTS 项带模块子目录前缀（YomkServer/TestYomkPkg 形态），
+# 测试文件定位：TESTS 项带模块子目录前缀（yomk_server/TestYomkPkg 形态），
 # 完整路径 = test/<TESTS 项>.py
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
@@ -122,39 +122,39 @@ export PYTHONPATH="${PY_SITE_DIR}:${PYTHONPATH}"
 # 作为登记数漂移的结构性防御）
 TESTS=(
     # YomkServer 模块（基础服务框架）
-    YomkServer/TestYomkUmbrella
-    YomkServer/TestYomkExportSurface
-    YomkServer/TestYomkPkg
-    YomkServer/TestYomkService
-    YomkServer/TestYomkServer
-    YomkServer/TestYomkAPINotInit
-    YomkServer/TestYomkAPILifecycle
-    YomkServer/TestYomkBoot
-    YomkServer/TestYomkShutdownSeq
-    YomkServer/TestYomkWeakFunc
-    YomkServer/TestYomkConcurrency
-    YomkServer/TestYomkIntegration
+    yomk_server/TestYomkUmbrella
+    yomk_server/TestYomkExportSurface
+    yomk_server/TestYomkPkg
+    yomk_server/TestYomkService
+    yomk_server/TestYomkServer
+    yomk_server/TestYomkAPINotInit
+    yomk_server/TestYomkAPILifecycle
+    yomk_server/TestYomkBoot
+    yomk_server/TestYomkShutdownSeq
+    yomk_server/TestYomkWeakFunc
+    yomk_server/TestYomkConcurrency
+    yomk_server/TestYomkIntegration
     # YomkContext 模块
-    YomkContext/TestYomkContextCRUD
-    YomkContext/TestYomkContextCheckerMonitor
-    YomkContext/TestYomkContextLifecycle
-    YomkContext/TestYomkContextConcurrency
+    yomk_context/TestYomkContextCRUD
+    yomk_context/TestYomkContextCheckerMonitor
+    yomk_context/TestYomkContextLifecycle
+    yomk_context/TestYomkContextConcurrency
     # YomkFunctionPool 模块
-    YomkFunctionPool/TestYomkFunctionPoolLifecycle
-    YomkFunctionPool/TestYomkFunctionPoolConcurrency
-    YomkFunctionPool/TestYomkFunctionPoolStress
+    yomk_function_pool/TestYomkFunctionPoolLifecycle
+    yomk_function_pool/TestYomkFunctionPoolConcurrency
+    yomk_function_pool/TestYomkFunctionPoolStress
     # YomkServerInfo 模块
-    YomkServerInfo/TestYomkServerInfoLifecycle
+    yomk_server_info/TestYomkServerInfoLifecycle
     # YomkEventLoop 模块
-    YomkEventLoop/TestYomkEventLoopLifecycle
-    YomkEventLoop/TestYomkEventLoopConcurrency
-    YomkEventLoop/TestYomkEventLoopStress
+    yomk_event_loop/TestYomkEventLoopLifecycle
+    yomk_event_loop/TestYomkEventLoopConcurrency
+    yomk_event_loop/TestYomkEventLoopStress
     # YomkLogger 模块
-    YomkLogger/TestYomkLoggerDirect
-    YomkLogger/TestYomkLoggerLoc
-    YomkLogger/TestYomkLoggerLifecycle
-    YomkLogger/TestYomkLoggerConcurrency
-    YomkLogger/TestYomkLoggerStress
+    yomk_logger/TestYomkLoggerDirect
+    yomk_logger/TestYomkLoggerLoc
+    yomk_logger/TestYomkLoggerLifecycle
+    yomk_logger/TestYomkLoggerConcurrency
+    yomk_logger/TestYomkLoggerStress
 )
 
 # -------------sl 2b. 总数自检守卫 ----------------

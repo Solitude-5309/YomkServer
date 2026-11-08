@@ -17,7 +17,7 @@ S5. 诊断可独立输出：每个 _diag 在独立进程输出六个等级；非
     _diag 进程内不得出现 yomk.log
 
 运行方式（仓库根目录）：
-    PYTHONPATH=src python3 test/YomkLayout/TestYomkLayout.py
+    PYTHONPATH=src python3 test/yomk_layout/TestYomkLayout.py
 退出码 0=全部通过，非 0=存在失败用例。
 """
 
