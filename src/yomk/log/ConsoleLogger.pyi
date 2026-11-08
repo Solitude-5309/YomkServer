@@ -1,0 +1,24 @@
+from typing import Any
+
+
+class ConsoleLogger:
+    # 控制台日志器（sink），六级 stdout 输出、空 tag 回退日志器名、
+    # 非法级别降级 Info、按器级别门控（关断级别 log 入口直接丢弃）
+    m_name: str
+    m_mutex: Any
+    m_showTraceLog: bool
+    m_showDebugLog: bool
+    m_showInfoLog: bool
+    m_showWarnLog: bool
+    m_showErrorLog: bool
+    m_showFatalLog: bool
+
+    def __init__(self) -> None: ...
+    def get_name(self) -> str: ...
+    def set_name(self, name: str) -> None: ...
+    def set_level_on(self, log_level: int, on: bool) -> None: ...
+    def is_level_on(self, log_level: int) -> bool: ...
+    def log(self, log_level: int, tag: str, log_msg: str) -> None: ...
+    @staticmethod
+    def _emit(time_str: str, level_tag: str, tag_shown: str,
+              log_msg: str) -> None: ...
