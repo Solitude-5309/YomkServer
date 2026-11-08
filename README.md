@@ -311,3 +311,7 @@ target_link_libraries(my_app PRIVATE YomkServer::YomkServer)
 #include <yomk/fn_pool/YomkFunctionPoolApi.h> // 函数池：yomk::fn_pool()
 #include <yomk/msg/YomkMsg.h>           // 消息基类 + YOMK_DEFINE_MSG + unpack
 ```
+
+## 扩展开发
+
+独立业务扩展编译为共享库（`.so`），支持 `find_package()` 被其他工程引用；对外头文件按 SDK 各域同一设计组织为**模块四件套**（`XxxApi.h` 链式域入口 / `XxxUrl.h` URL 常量 / `XxxPayload.h` 专属载荷 / `XxxMsgs.h` 专属消息包）。完整可编译扩展模板见 [`template/extension/`](template/extension/)（`yomk::ext().version()` 形态），设计与模块化编程规范详见 [skill/yomkserver-modular](skill/yomkserver-modular/SKILL.md)。

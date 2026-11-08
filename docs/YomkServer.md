@@ -118,6 +118,10 @@ int MyService::init()
 
 `YomkBoot`（`<yomk/boot/YomkBoot.h>`）提供 before / start / after 三段式纯虚契约（`before()` 前置准备如读配置、`start()` 主体如创建注册服务、`after()` 后置动作如挂载监听），封装从框架初始化到业务就绪的完整流程。经 `yomk::server().boot_ptr(cfg).run()` 消费：内部先完成框架 init，再按序执行三段；任一阶段返回非 0 立即中止并原样传播该返回值，`cfg` 所有权移交 `run`。参考实现见 `examples/boot/ArmBoot.h`。
 
+## 扩展模块四件套
+
+自定义扩展的对外头文件按 SDK `include/yomk/` 各域的同一设计组织为四件套：`XxxUrl.h`（`yomk::url` 命名空间 URL 常量，`inline constexpr std::string_view`）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload`）、`XxxMsgs.h`（扩展专属消息包，`YOMK_DEFINE_MSG`）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态——前置累积 `url/msg` + 无参终结 `request`，builder 持 `string_view` 视图仅单表达式内联使用）。完整可编译模板见 `template/extension/`（`ExtensionApi.h` 提供 `yomk::ext().version()` 终结）。
+
 ## 完整示例
 
 完整可运行演示见 `examples/ExampleYomkService.cpp`（8 个机械臂控制场景小示例 showArmXXX 覆盖服务定义、注册、同步/异步请求、跨服务调用、自省、删除与优雅关闭，读运行输出即可理解每个调用）。

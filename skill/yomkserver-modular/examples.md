@@ -977,7 +977,11 @@ yomk::log_mgr().location().show_line(false).apply();                  // 关断�
 ```
 ExtensionName/
 ├── include/
-│   └── ExtensionService.h
+│   ├── ExtensionService.h
+│   ├── ExtensionApi.h       // 模块 API：链式域入口 yomk::ext()（四件套，参考 include/yomk 各域设计）
+│   ├── ExtensionMsgs.h      // 模块消息包目录（YOMK_DEFINE_MSG，模板为注释占位）
+│   ├── ExtensionPayload.h   // 模块专属载荷目录（namespace yomk::payload，模板为注释占位）
+│   └── ExtensionUrl.h       // 模块 URL 常量（yomk::url 命名空间）
 ├── src/
 │   └── ExtensionService.cpp
 ├── test/
@@ -991,6 +995,109 @@ ExtensionName/
 ```
 
 头文件分层（推荐规则，默认遵循，不强制）：`include/` 只放导出给下游的对外接口头文件（服务类声明）；内部头文件（辅助类、内部数据结构等实现细节）直接放 `src/`，`install(DIRECTORY include/ ...)` 只安装 `include/` 内容，内部头文件天然不安装、对下游不可见。
+
+### include/ExtensionUrl.h
+```cpp
+#pragma once
+#include <string_view>
+
+// /ExtensionService/* 扩展服务 URL 常量：与 SDK 内置模块同风格（参考 yomk/fn_pool/YomkFunctionPoolUrl.h），
+// inline constexpr std::string_view 编译期常量，请求链全程 string_view 透传。
+// yomk::url 为开放命名空间：扩展的 url 常量按同风格直接追加。
+namespace yomk::url
+{
+inline constexpr std::string_view extVersion = "/ExtensionService/version";
+}  // namespace yomk::url
+```
+
+### include/ExtensionPayload.h
+```cpp
+#pragma once
+#include <string>
+
+#include "yomk/server/YomkServerPayload.h"
+
+// Extension 扩展专属载荷（namespace yomk::payload）。当前模板仅 /version 接口，暂无专属载荷；
+// 新增业务数据结构在此定义，参考 yomk/fn_pool/YomkFunctionPoolPayload.h：
+//
+// struct ExtTask
+// {
+//     std::string m_taskName;
+//     YomkMsgPtr m_pkg;
+// };
+```
+
+### include/ExtensionMsgs.h
+```cpp
+#pragma once
+
+#include "ExtensionPayload.h"
+#include "yomk/msg/YomkMsg.h"
+
+// Extension 扩展专属消息包（成员名均为 d）。当前模板返回值复用标准类型 msgs::String，暂无专属消息；
+// 新增业务消息在此用 YOMK_DEFINE_MSG 声明，参考 yomk/fn_pool/YomkFunctionPoolMsgs.h：
+//
+// YOMK_DEFINE_MSG(yomk::payload::ExtTask, ExtTask, d);
+```
+
+### include/ExtensionApi.h
+```cpp
+#pragma once
+#include <string>
+#include <string_view>
+#include <utility>
+
+#include "ExtensionMsgs.h"
+#include "ExtensionPayload.h"
+#include "ExtensionUrl.h"
+#include "yomk/server/YomkServerApi.h"
+
+// Extension 模块 API 头（四件套之 Api，与 SDK 各 Yomk{Module}Api.h 同一链式域入口设计）：
+// 前置累积（url/msg）+ 无参终结（request/version），屏蔽裸 URL 路由。
+// builder 持 string_view 视图、按值传递，仅限单表达式内联使用，禁止缓存复用（悬垂引用）。
+namespace yomk::detail
+{
+class ExtBuilder
+{
+    std::string_view m_url;
+    YomkMsgPtr m_msg;
+
+public:
+    ExtBuilder& url(std::string_view u)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable
+    {
+        m_url = u;
+        return *this;
+    }
+    ExtBuilder& msg(YomkMsgPtr msg)
+    {
+        m_msg = std::move(msg);
+        return *this;
+    }
+    yomk::payload::Response request()
+    {
+        auto srv = YomkServerRef::serverSnapshot();
+        if (!srv)
+        {
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+        }
+        return srv->request(m_url, m_msg);
+    }
+    // 版本查询终结：等价 yomk::ext().url(yomk::url::extVersion).request()
+    yomk::payload::Response version()
+    {
+        return url(yomk::url::extVersion).request();
+    }
+};
+}  // namespace yomk::detail
+
+namespace yomk
+{
+inline detail::ExtBuilder ext()
+{
+    return detail::ExtBuilder{};
+}
+}  // namespace yomk
+```
 
 ### include/ExtensionService.h
 ```cpp
@@ -1060,6 +1167,7 @@ target_link_libraries(TestExtensionName PRIVATE ExtensionName::ExtensionName Yom
 
 ### test/TestExtensionName.cpp
 ```cpp
+#include <ExtensionName/ExtensionApi.h>
 #include <ExtensionName/ExtensionService.h>
 #include <yomk/server/YomkServerApi.h>
 
@@ -1087,6 +1195,20 @@ int main(int argc, char* argv[])
     else
     {
         std::cout << "[FAIL] version request failed: " << resp.m_msg << std::endl;
+        g_fail++;
+    }
+
+    // 测试扩展链式域入口（四件套 ExtensionApi.h 的 yomk::ext()）
+    yomk::payload::Response extResp = yomk::ext().version();
+    if (extResp.m_status == yomk::payload::ResStatus::Succeeded)
+    {
+        auto extVersion = yomk::msgs::unpack<yomk::msgs::String>(extResp.m_data);
+        std::cout << "[PASS] ext().version(): " << extVersion->d << std::endl;
+        g_pass++;
+    }
+    else
+    {
+        std::cout << "[FAIL] ext().version() request failed: " << extResp.m_msg << std::endl;
         g_fail++;
     }
 

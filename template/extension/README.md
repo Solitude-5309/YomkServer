@@ -29,7 +29,11 @@ source build_ubuntu.sh     # 交互式，前置路径与安装路径默认均取
 ```
 TemplateExtension/
 ├── include/
-│   └── ExtensionService.h   # 对外接口头文件（服务类声明；内部头文件放 src/）
+│   ├── ExtensionService.h   # 对外接口头文件（服务类声明；内部头文件放 src/）
+│   ├── ExtensionApi.h       # 模块 API：链式域入口 yomk::ext()（四件套，参考 include/yomk 各域设计）
+│   ├── ExtensionMsgs.h      # 模块消息包目录（YOMK_DEFINE_MSG，当前为注释示例占位）
+│   ├── ExtensionPayload.h   # 模块专属载荷目录（namespace yomk::payload，当前为注释示例占位）
+│   └── ExtensionUrl.h       # 模块 URL 常量（yomk::url 命名空间，inline constexpr string_view）
 ├── src/
 │   └── ExtensionService.cpp # 服务实现
 ├── test/
@@ -42,13 +46,26 @@ TemplateExtension/
 └── README.md
 ```
 
+## 模块四件套
+
+扩展的对外头文件按 SDK `include/yomk/` 各域的同一设计组织为四件套（`ExtensionApi.h` / `ExtensionMsgs.h` / `ExtensionPayload.h` / `ExtensionUrl.h`）：
+
+| 头文件 | 职责 | 参考 |
+|--------|------|------|
+| `ExtensionUrl.h` | URL 常量（`yomk::url::extVersion` 等，`inline constexpr std::string_view`） | `yomk/fn_pool/YomkFunctionPoolUrl.h` |
+| `ExtensionPayload.h` | 扩展专属载荷类型（`namespace yomk::payload`） | `yomk/fn_pool/YomkFunctionPoolPayload.h` |
+| `ExtensionMsgs.h` | 扩展专属消息包（`YOMK_DEFINE_MSG`） | `yomk/fn_pool/YomkFunctionPoolMsgs.h` |
+| `ExtensionApi.h` | 链式域入口 `yomk::ext()`：前置累积（`url/msg`）+ 无参终结（`request/version`） | `yomk/fn_pool/YomkFunctionPoolApi.h` |
+
+新增业务时先补 Url 常量与 Payload/Msgs 类型，再在 `ExtensionApi.h` 上追加终结方法（如 `yomk::ext().task(req).submit()` 形态）。
+
 ## 使用示例
 
 将以下完整程序拷贝为 main.cpp，安装扩展后可直接编译运行：
 
 ```cpp
 #include <yomk/server/YomkServerApi.h>
-#include <TemplateExtension/ExtensionService.h>
+#include <TemplateExtension/ExtensionApi.h>
 #include <iostream>
 
 using namespace yomk;
@@ -60,8 +77,8 @@ int main(int argc, char *argv[])
     // 注册 ExtensionService（扩展服务需先注册才能使用）
     yomk::server().srv<ExtensionService>().create();
 
-    // 版本查询请求
-    yomk::payload::Response resp = yomk::server().url("/ExtensionService/version").request();
+    // 版本查询：扩展链式域入口（推荐）与裸 URL 请求等价
+    yomk::payload::Response resp = yomk::ext().version();
     if (resp.m_status == yomk::payload::ResStatus::Succeeded)
     {
         auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);

@@ -1,3 +1,4 @@
+#include <TemplateExtension/ExtensionApi.h>
 #include <TemplateExtension/ExtensionService.h>
 #include <yomk/server/YomkServerApi.h>
 
@@ -25,6 +26,20 @@ int main(int argc, char* argv[])
     else
     {
         std::cout << "[FAIL] version request failed: " << resp.m_msg << std::endl;
+        g_fail++;
+    }
+
+    // 测试扩展链式域入口（四件套 ExtensionApi.h 的 yomk::ext()）
+    yomk::payload::Response extResp = yomk::ext().version();
+    if (extResp.m_status == yomk::payload::ResStatus::Succeeded)
+    {
+        auto extVersion = yomk::msgs::unpack<yomk::msgs::String>(extResp.m_data);
+        std::cout << "[PASS] ext().version(): " << extVersion->d << std::endl;
+        g_pass++;
+    }
+    else
+    {
+        std::cout << "[FAIL] ext().version() request failed: " << extResp.m_msg << std::endl;
         g_fail++;
     }
 
