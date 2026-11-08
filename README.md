@@ -15,14 +15,14 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 
 | 模块 | 简述 |
 |---|---|
-| [YomkServer / YomkService](Docs/YomkServer.md) | 服务总线核心：服务注册与 `"/服务名/函数名"` URL 路由、同步/异步请求分发、服务生命周期管理（deinit / 优雅关闭） |
-| [YomkMsg](Docs/YomkMsg.md) | 强类型消息包：`YOMK_DEFINE_MSG` 宏声明自定义消息，内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
-| [YomkBoot](Docs/YomkServer.md#启动编排yomkboot) | 启动编排：before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程（`yomk::server().boot_ptr(cfg).run()`） |
-| [YomkLogger](Docs/YomkLogger.md) | 日志系统：控制台与文件双输出、六级级别开关、自定义 tag、日志代理拦截、位置前缀开关与日志器自省 |
-| [YomkContext](Docs/YomkContext.md) | 共享上下文：跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步） |
-| [YomkEventLoop](Docs/YomkEventLoop.md) | 线程隔离事件循环：具名单线程 FIFO 执行队列，循环间彼此并行，支持停启续跑与队列积压观测 |
-| [YomkFunctionPool](Docs/YomkFunctionPool.md) | 动态函数池：跨服务扁平函数注册中心，同名重注册即运行时热替换，按名直接调用 |
-| [YomkServerInfo](Docs/YomkServerInfo.md) | 服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型 |
+| [YomkServer / YomkService](docs/YomkServer.md) | 服务总线核心：服务注册与 `"/服务名/函数名"` URL 路由、同步/异步请求分发、服务生命周期管理（deinit / 优雅关闭） |
+| [YomkMsg](docs/YomkMsg.md) | 强类型消息包：`YOMK_DEFINE_MSG` 宏声明自定义消息，内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
+| [YomkBoot](docs/YomkServer.md#启动编排yomkboot) | 启动编排：before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程（`yomk::server().boot_ptr(cfg).run()`） |
+| [YomkLogger](docs/YomkLogger.md) | 日志系统：控制台与文件双输出、六级级别开关、自定义 tag、日志代理拦截、位置前缀开关与日志器自省 |
+| [YomkContext](docs/YomkContext.md) | 共享上下文：跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步） |
+| [YomkEventLoop](docs/YomkEventLoop.md) | 线程隔离事件循环：具名单线程 FIFO 执行队列，循环间彼此并行，支持停启续跑与队列积压观测 |
+| [YomkFunctionPool](docs/YomkFunctionPool.md) | 动态函数池：跨服务扁平函数注册中心，同名重注册即运行时热替换，按名直接调用 |
+| [YomkServerInfo](docs/YomkServerInfo.md) | 服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型 |
 
 核心层（YomkServer / YomkService / YomkMsg / YomkBoot）构成框架骨架；YomkLogger、YomkContext、YomkEventLoop、YomkFunctionPool、YomkServerInfo 均以内置服务形式随 `yomk::server().init()` 自动启动、开箱即用，能力分别经对应域入口链式调用。
 
@@ -102,7 +102,7 @@ yomk::server().url("/MyService/hello").async([](yomk::payload::Response resp) {
 
 ## 核心概念
 
-以下概念贯穿框架各模块，便于快速建立整体认知；每个模块的完整链式语法、使用示例与注意事项见 [Docs](Docs/) 目录对应文档，逐个参数与返回码的精确规格以头文件 Doxygen 注释为准（`include/YomkServer/`）。
+以下概念贯穿框架各模块，便于快速建立整体认知；每个模块的完整链式语法、使用示例与注意事项见 [docs](docs/) 目录对应文档，逐个参数与返回码的精确规格以头文件 Doxygen 注释为准（`include/YomkServer/`）。
 
 ### 1. 链式调用形态（累积 → 终结）
 
@@ -121,50 +121,50 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 - **返回值 `yomk::payload::Response`**：`m_status`（`ResStatus::Succeeded (0)` 调用成功；`ResStatus::Failed (1)` 服务端执行失败，含服务/函数不存在等 not-found；`ResStatus::Invalid (-1)` 入参非法或服务器未初始化）、`m_msg` 状态描述文本、`m_data` 可选负载消息包。
 - **同步调用** `.request()` 阻塞返回完整应答；`.status()` 只保留三态收敛（细节进诊断日志）；**异步调用** `.async(func).request()` 投递到框架内置线程池并发执行，不阻塞当前线程，`func` 传 `nullptr` 即只投递不取回。
 
-详见 [服务总线](Docs/YomkServer.md)。
+详见 [服务总线](docs/YomkServer.md)。
 
 ### 3. 消息包 (YomkMsg)
 
 服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型。
 
-详见 [消息包](Docs/YomkMsg.md)。
+详见 [消息包](docs/YomkMsg.md)。
 
 ### 4. 日志系统 (YomkLogger)
 
 发射与管理分域：`yomk::log().info(...)` 等六级发射（控制台），`yomk::log().to_sink(name).info(...)` 写具名文件日志器；`yomk::log_mgr()` 承担级别两级门控（全局主闸 × 逐器）、控制台/文件代理拦截、位置前缀开关与日志器自省。
 
-详见 [日志系统](Docs/YomkLogger.md)。
+详见 [日志系统](docs/YomkLogger.md)。
 
 ### 5. 共享上下文 (YomkContext)
 
 跨服务强类型键值存储：`yomk::ctx().key(k).value(pkg).create()/set()` 写、`.key(k).msg<T>().with_default(d).get()` 类型化读；内置变更前校验门控（Checker，`CheckStatus::Accept` 放行 / `Reject` 拦截）与变更后监听（Monitor，同步/异步），支持分组与运行期内省。
 
-详见 [共享上下文](Docs/YomkContext.md)。
+详见 [共享上下文](docs/YomkContext.md)。
 
 ### 6. 线程隔离事件循环 (YomkEventLoop)
 
 具名单线程 FIFO 执行队列：`yomk::event_loop().loop(name).start()` 启动，`.msg(data).loop(name).post()` 非阻塞投递 / `.post_wait()` 阻塞投递；同一循环内事件按入队顺序在专用线程中执行，不同循环之间彼此并行；支持停止后续跑与队列积压观测。
 
-详见 [事件循环](Docs/YomkEventLoop.md)。
+详见 [事件循环](docs/YomkEventLoop.md)。
 
 ### 7. 动态函数池 (YomkFunctionPool)
 
 跨服务扁平函数注册中心：`yomk::fn_pool().fn_name(name).fn(func).install()` 注册、`.fn_name(name).msg(pkg).call()` 调用，同名重注册即运行时热替换，无需注销。
 
-详见 [函数池](Docs/YomkFunctionPool.md)。
+详见 [函数池](docs/YomkFunctionPool.md)。
 
 ### 8. 运行期内省 (YomkServerInfo)
 
 `yomk::server().services()` / `.srv_name(name).functions()` / `.fn_url(url).get_info()` / `.all()` 查询服务拓扑、功能函数清单与期望消息类型；Logger / Context / EventLoop / FunctionPool 亦各有模块级内省链（各域的 `list()` / `get_info()` / `all()` 家族）。
 
-详见 [服务自省](Docs/YomkServerInfo.md)。
+详见 [服务自省](docs/YomkServerInfo.md)。
 
 ### 9. 服务生命周期与弱绑定
 
 - **deinit() 的四个触发时机**：`yomk::server().srv_name("/MyService").remove()` 删除单个服务、`yomk::server().shutdown()` 关闭全部服务、同名服务被再次 `add()` 替换（旧服务先 deinit 再装新服务）、忘记关闭时进程退出经 atexit 兜底；覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
 - **弱绑定（防悬垂回调）**：服务成员函数注册到**外部子系统**（函数池 / 事件循环 / Context checker·monitor / 异步响应回调）时必须用 `weakFunc(&Class::Method)` 弱绑定——服务删除后回调自动判活失效；`installFunc("/x", &Class::Method)` 注册到本服务 funcMap 已自动弱绑定，无需手动处理。
 
-详见 [服务总线](Docs/YomkServer.md)。
+详见 [服务总线](docs/YomkServer.md)。
 
 ---
 
