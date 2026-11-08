@@ -37,7 +37,7 @@
 #include "YomkServerApi.h"
 #include "YomkContextApi.h"
 #include "YomkEventLoopApi.h"
-#include "YomkLogApi.h"
+#include "YomkLoggerApi.h"
 
 namespace fs = std::filesystem;
 

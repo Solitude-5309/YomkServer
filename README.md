@@ -34,7 +34,7 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 
 ```cpp
 #include <YomkServer/YomkServerApi.h>
-#include <YomkServer/YomkLogApi.h>
+#include <YomkServer/YomkLoggerApi.h>
 
 // 自定义服务
 class MyService : public YomkService
@@ -304,7 +304,7 @@ target_link_libraries(my_app PRIVATE YomkServer::YomkServer)
 
 ```cpp
 #include <YomkServer/YomkServerApi.h>     // 服务总线：yomk::server()
-#include <YomkServer/YomkLogApi.h>        // 日志：yomk::log() / yomk::log_mgr()
+#include <YomkServer/YomkLoggerApi.h>        // 日志：yomk::log() / yomk::log_mgr()
 #include <YomkServer/YomkContextApi.h>    // 共享上下文：yomk::ctx()
 #include <YomkServer/YomkEventLoopApi.h>  // 事件循环：yomk::event_loop()
 #include <YomkServer/YomkFunctionPoolApi.h> // 函数池：yomk::fn_pool()

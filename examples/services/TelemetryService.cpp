@@ -1,5 +1,5 @@
 #include "YomkFunctionPoolApi.h"
-#include "YomkLogApi.h"
+#include "YomkLoggerApi.h"
 
 #include "services/TelemetryService.h"
 

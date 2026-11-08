@@ -1,5 +1,5 @@
 #include <YomkServer/YomkContextApi.h>
-#include <YomkServer/YomkLogApi.h>
+#include <YomkServer/YomkLoggerApi.h>
 
 #include "MyBoot.h"
 

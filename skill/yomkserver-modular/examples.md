@@ -33,7 +33,7 @@ ProjectName/
 ### main.cpp
 ```cpp
 #include <YomkServer/YomkServerApi.h>
-#include <YomkServer/YomkLogApi.h>
+#include <YomkServer/YomkLoggerApi.h>
 
 #include "boot/MyBoot.h"
 
@@ -76,7 +76,7 @@ private:
 ### boot/MyBoot.cpp
 ```cpp
 #include <YomkServer/YomkContextApi.h>
-#include <YomkServer/YomkLogApi.h>
+#include <YomkServer/YomkLoggerApi.h>
 
 #include "MyBoot.h"
 
@@ -234,7 +234,7 @@ private:
 ### services/ConfigService.cpp
 ```cpp
 #include <YomkServer/YomkContextApi.h>
-#include <YomkServer/YomkLogApi.h>
+#include <YomkServer/YomkLoggerApi.h>
 
 #include "ConfigService.h"
 
@@ -1013,7 +1013,7 @@ private:
 
 ### src/ExtensionService.cpp
 ```cpp
-#include <YomkServer/YomkLogApi.h>
+#include <YomkServer/YomkLoggerApi.h>
 
 #include "ExtensionService.h"
 

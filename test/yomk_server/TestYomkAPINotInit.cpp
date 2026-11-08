@@ -26,7 +26,7 @@
 #include "YomkContextApi.h"
 #include "YomkEventLoopApi.h"
 #include "YomkFunctionPoolApi.h"
-#include "YomkLogApi.h"
+#include "YomkLoggerApi.h"
 
 static int g_failed = 0;
 

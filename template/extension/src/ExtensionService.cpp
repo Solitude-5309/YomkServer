@@ -1,4 +1,4 @@
-#include <YomkServer/YomkLogApi.h>
+#include <YomkServer/YomkLoggerApi.h>
 
 #include "ExtensionService.h"
 

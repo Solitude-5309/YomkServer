@@ -55,7 +55,7 @@
 // 释放全部服务，关闭后任何请求统一返回 ResStatus::Invalid——日志发射随之静默，
 // 静默段正是演示效果，示例日志到此为止。
 //
-// 涉及的 API 接口（YomkServerApi.h / YomkLogApi.h / YomkFunctionPoolApi.h）：
+// 涉及的 API 接口（YomkServerApi.h / YomkLoggerApi.h / YomkFunctionPoolApi.h）：
 // yomk::server().init() / yomk::server().shutdown() / yomk::server().version()   框架生命周期
 // yomk::server().srv<T>(name).create()                  创建并注册服务（最常用）
 // yomk::server().srv_name(name).srv_ptr(ptr).add()                注册已有实例（同名即替换）
@@ -73,7 +73,7 @@
 #include <thread>
 
 #include "YomkServerApi.h"
-#include "YomkLogApi.h"
+#include "YomkLoggerApi.h"
 #include "YomkFunctionPoolApi.h"
 #include "boot/ArmBoot.h"
 #include "msgs/ArmMsgs.h"
