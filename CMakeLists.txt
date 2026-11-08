@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.14)
 
 # 编译器预选模块：g++ 优先，回退 clang++（必须在 project() 之前 include）
-include(CMake/AbiInfo.cmake)
+include(cmake/AbiInfo.cmake)
 
 # 导出 compile_commands.json，供 IDE（clangd）/clang-tidy 按真实编译参数解析
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 3.5.6 LANGUAGES CXX)
+project(Yomk VERSION 3.5.7 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：
@@ -30,7 +30,7 @@ if(NOT CMAKE_RUNTIME_OUTPUT_DIRECTORY)
 endif()
 
 # CMake
-include(CMake/Cpp.cmake)
+include(cmake/Cpp.cmake)
 message("-- env Cpp success.")
 
 # ABI 环境指纹：采集/打印编译环境信息并生成 abi_report.txt（project() 之后才可调用）
@@ -111,7 +111,7 @@ write_basic_package_version_file(
 )
 
 configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/CMake/YomkServerConfig.cmake.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/YomkServerConfig.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/YomkServer/YomkServerConfig.cmake"
     INSTALL_DESTINATION lib/cmake/YomkServer
     PATH_VARS

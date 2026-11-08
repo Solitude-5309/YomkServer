@@ -99,7 +99,7 @@ detect_environment() {
     echo "   - 内核:     $(uname -r)"
     echo "   - 架构:     $(uname -m)"
 
-    # 编译器选择：g++ 优先，clang++ 回退（与 CMake/AbiInfo.cmake 逻辑一致）
+    # 编译器选择：g++ 优先，clang++ 回退（与 cmake/AbiInfo.cmake 逻辑一致）
     if command -v g++ >/dev/null 2>&1; then
         CXX_COMPILER_BIN="$(command -v g++)"
     elif command -v clang++ >/dev/null 2>&1; then
