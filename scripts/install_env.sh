@@ -1,6 +1,6 @@
 #!/bin/bash
 # YomkServer 安装后系统级配置（共享脚本，单一事实来源）
-# 用法: ./Scripts/install_env.sh [安装路径]（缺省 /opt/yomk）
+# 用法: ./scripts/install_env.sh [安装路径]（缺省 /opt/yomk）
 # 说明: build_ubuntu.sh 自动安装与 README 手动 CMake 安装共用本脚本，
 #       保证两种安装方式的最终结果完全一致:
 #   1. 校验安装结果: libYomkServer.so 与全部示例程序存在

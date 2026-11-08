@@ -23,7 +23,7 @@ ProjectName/
 ├── typedefine/
 │   └── TypeDefine.h
 ├── test/
-├── Scripts/
+├── scripts/
 ├── build_ubuntu.sh
 ├── setup.bash.in
 ├── CMakeLists.txt
@@ -511,7 +511,7 @@ ProjectName
 | `services/` | 服务实现 |
 | `typedefine/` | 公共常量/宏/类型定义 |
 | `test/` | 单元测试文件 |
-| `Scripts/` | 项目辅助脚本 |
+| `scripts/` | 项目辅助脚本 |
 ````
 
 ---

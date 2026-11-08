@@ -4,7 +4,7 @@
 # 功能:
 #   1. 检查编译依赖(cmake/g++/make)，缺失时可选自动安装
 #   2. 交互输入安装路径(默认 /opt/yomk)，交互询问是否编译内部测试（默认不编译，输入 Y 才编译；测试仅编译，不安装），编译并安装（库 + Examples 示例）
-#   3. 安装后调用 Scripts/install_env.sh 完成系统级配置（与 README 手动 CMake 安装共用同一脚本，
+#   3. 安装后调用 scripts/install_env.sh 完成系统级配置（与 README 手动 CMake 安装共用同一脚本，
 #      保证两种安装方式最终结果完全一致）:
 #      - 创建环境变量 YOMK_PREFIX_PATH 记录安装路径
 #   4. 将安装路径暴露到系统:
@@ -165,17 +165,17 @@ sudo cmake --install "${BUILD_DIR}" || fail "安装失败"
 # -------------el 3. 配置、编译、安装 ----------------
 
 # -------------sl 4. 安装后系统级配置（共享脚本，与手动 CMake 安装完全一致） ----------------
-# 环境变量持久化、动态库搜索路径注册与安装校验逻辑抽至 Scripts/install_env.sh，
+# 环境变量持久化、动态库搜索路径注册与安装校验逻辑抽至 scripts/install_env.sh，
 # 由本脚本与 README 手动 CMake 安装共用，保证两种安装方式最终结果完全一致
 echo "-- 执行安装后系统级配置（环境变量 / 动态库路径 / 安装校验）..."
-"${SCRIPT_DIR}/Scripts/install_env.sh" "${INSTALL_PREFIX}" || fail "安装后环境配置失败"
+"${SCRIPT_DIR}/scripts/install_env.sh" "${INSTALL_PREFIX}" || fail "安装后环境配置失败"
 # 子进程内的 export 不会带回本脚本，此处同步当前会话变量
 export YOMK_PREFIX_PATH="${INSTALL_PREFIX}"
 export PATH="${YOMK_PREFIX_PATH}/bin:${PATH}"
-# -------------el 4. 安装后系统级配置（与手动 CMake 安装共用 Scripts/install_env.sh） ----------------
+# -------------el 4. 安装后系统级配置（与手动 CMake 安装共用 scripts/install_env.sh） ----------------
 
 # -------------sl 5. 安装成功提示 ----------------
-# 安装结果校验（libYomkServer.so + 示例程序）已由 Scripts/install_env.sh 完成
+# 安装结果校验（libYomkServer.so + 示例程序）已由 scripts/install_env.sh 完成
 EXAMPLE_TARGETS=(ExampleYomkService ExampleYomkFunctionPool ExampleYomkContext ExampleYomkEventLoop ExampleYomkLogger)
 echo ""
 echo "==========================================="
