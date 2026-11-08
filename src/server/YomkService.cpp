@@ -1,10 +1,10 @@
-#include "YomkService.h"
+#include "yomk/server/YomkService.h"
 
 #include <iostream>
 
-#include "YomkServer.h"
+#include "yomk/server/YomkServer.h"
 #include "YomkServicePrivate.h"
-#include "YomkDiag.h"
+#include "yomk/YomkDiag.h"
 
 YomkService::YomkService(YomkServer* server) : m_p(nullptr)
 {

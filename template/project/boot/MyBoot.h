@@ -1,5 +1,5 @@
 #pragma once
-#include <YomkServer/YomkServerApi.h>
+#include <yomk/server/YomkServerApi.h>
 
 using namespace yomk::payload;
 

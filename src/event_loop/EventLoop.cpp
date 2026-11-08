@@ -1,10 +1,10 @@
 #include "EventLoop.h"
-#include "YomkEventLoopMsgs.h"
+#include "yomk/event_loop/YomkEventLoopMsgs.h"
 
 #include <iostream>
 #include <vector>
 
-#include "YomkDiag.h"
+#include "yomk/YomkDiag.h"
 
 EventLoop::EventLoop() : m_running(false), m_eventId(1) {}
 

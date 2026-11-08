@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "YomkContextApi.h"
-#include "YomkServerInfoApi.h"
+#include "yomk/ctx/YomkContextApi.h"
+#include "yomk/srv_info/YomkServerInfoApi.h"
 
 static int g_failed = 0;
 

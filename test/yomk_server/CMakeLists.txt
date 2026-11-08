@@ -32,7 +32,8 @@ if(YOMK_TEST_STATIC_ANALYZE)
     file(GLOB _YOMK_SA_SRCS
         ${YOMK_SERVER_SRC_DIR}/server/*.cpp
         ${YOMK_SERVER_SRC_DIR}/server/*.h
-        ${YOMK_SERVER_INCLUDE_DIR}/*.h
+        ${YOMK_SERVER_INCLUDE_DIR}/yomk/*.h
+        ${YOMK_SERVER_INCLUDE_DIR}/yomk/*/*.h
     )
 
     # clang-tidy 目标：依赖 compile_commands.json
@@ -141,9 +142,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
         )
     endif()
 
-    # YomkEventLoop-cppcheck：参数与 MC9/MC6 扫描一致；额外补 include/YomkServer（真实构建的
-    # YOMK_SERVER_INCLUDE_DIR 路径，见顶层 CMakeLists.txt）——EventLoop 头用裸 "YomkEventLoopMsgs.h" 包含，
-    # 缺此路径时包含解析失败被 missingInclude 抑制掩盖，头内类型未定义触发错误且分析降级
+    # YomkEventLoop-cppcheck：参数与 MC9/MC6 扫描一致
     if(CPPCHECK_EXE)
         add_custom_target(YomkEventLoop-cppcheck
             COMMAND ${CPPCHECK_EXE}
@@ -158,7 +157,6 @@ if(YOMK_TEST_STATIC_ANALYZE)
                 --error-exitcode=0
                 -I ${YOMK_SERVER_INCLUDE_ROOT}
                 -I ${YOMK_SERVER_SRC_DIR}
-                -I ${YOMK_SERVER_INCLUDE_DIR}
                 ${_YOMK_EVENTLOOP_SA_SRCS}
                 > ${CMAKE_BINARY_DIR}/static-analysis/cppcheck-eventloop.log 2>&1
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -186,8 +184,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
         )
     endif()
 
-    # YomkFunctionPool-cppcheck：含 -I include/YomkServer 真实路径（ELC5 教训：
-    # FunctionPool.h 用裸 #include "YomkServer.h"，缺此路径时包含解析失败 → 宏未定义 → 分析降级）
+    # YomkFunctionPool-cppcheck：参数与 MC9/MC6 扫描一致
     if(CPPCHECK_EXE)
         add_custom_target(YomkFunctionPool-cppcheck
             COMMAND ${CPPCHECK_EXE}
@@ -202,7 +199,6 @@ if(YOMK_TEST_STATIC_ANALYZE)
                 --error-exitcode=0
                 -I ${YOMK_SERVER_INCLUDE_ROOT}
                 -I ${YOMK_SERVER_SRC_DIR}
-                -I ${YOMK_SERVER_INCLUDE_DIR}
                 ${_YOMK_FUNCTIONPOOL_SA_SRCS}
                 > ${CMAKE_BINARY_DIR}/static-analysis/cppcheck-functionpool.log 2>&1
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -231,8 +227,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
         )
     endif()
 
-    # YomkLogger-cppcheck：含 -I include/YomkServer 真实路径（同 ELC5 教训：
-    # YomkLogger.h 用裸 #include "YomkServer.h"，缺此路径时包含解析失败 → 宏未定义 → 分析降级）
+    # YomkLogger-cppcheck：参数与 MC9/MC6 扫描一致
     if(CPPCHECK_EXE)
         add_custom_target(YomkLogger-cppcheck
             COMMAND ${CPPCHECK_EXE}
@@ -247,7 +242,6 @@ if(YOMK_TEST_STATIC_ANALYZE)
                 --error-exitcode=0
                 -I ${YOMK_SERVER_INCLUDE_ROOT}
                 -I ${YOMK_SERVER_SRC_DIR}
-                -I ${YOMK_SERVER_INCLUDE_DIR}
                 ${_YOMK_LOGGER_SA_SRCS}
                 > ${CMAKE_BINARY_DIR}/static-analysis/cppcheck-logger.log 2>&1
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

@@ -72,10 +72,10 @@
 #include <string>
 #include <thread>
 
-#include "YomkServerApi.h"
-#include "YomkServerInfoApi.h"
-#include "YomkLoggerApi.h"
-#include "YomkFunctionPoolApi.h"
+#include "yomk/server/YomkServerApi.h"
+#include "yomk/srv_info/YomkServerInfoApi.h"
+#include "yomk/log/YomkLoggerApi.h"
+#include "yomk/fn_pool/YomkFunctionPoolApi.h"
 #include "boot/ArmBoot.h"
 #include "msgs/ArmMsgs.h"
 #include "services/MotionService.h"

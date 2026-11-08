@@ -3,8 +3,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
-#include "YomkDiag.h"
-#include "YomkEventLoopMsgs.h"
+#include "yomk/YomkDiag.h"
+#include "yomk/event_loop/YomkEventLoopMsgs.h"
 
 YomkEventLoop::YomkEventLoop(YomkServer* server) : YomkService(server)
 {

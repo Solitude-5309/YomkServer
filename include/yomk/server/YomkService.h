@@ -6,11 +6,11 @@
 #include <type_traits>
 #include <utility>
 
-#include "YomkContextPayload.h"  // CheckStatus：weakFunc checker 回调兜底返回
-#include "YomkDiag.h"
-#include "YomkExport.h"
-#include "YomkServerInfoPayload.h"
-#include "YomkServerPayload.h"
+#include "yomk/ctx/YomkContextPayload.h"  // CheckStatus：weakFunc checker 回调兜底返回
+#include "yomk/YomkDiag.h"
+#include "yomk/YomkExport.h"
+#include "yomk/srv_info/YomkServerInfoPayload.h"
+#include "yomk/server/YomkServerPayload.h"
 
 class YomkServer;
 class YomkServerPrivate;

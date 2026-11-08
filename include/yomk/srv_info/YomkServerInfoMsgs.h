@@ -1,7 +1,7 @@
 #pragma once
 
-#include "YomkMsgs.h"
-#include "YomkServerInfoPayload.h"
+#include "yomk/YomkMsgs.h"
+#include "yomk/srv_info/YomkServerInfoPayload.h"
 
 // ServerInfo 模块消息包（成员名均为 d）。
 // 函数元信息内省（fn_pool().get_info()/all() 与 srv_info().get_info()/functions() 返回数据）

@@ -1,5 +1,5 @@
 #pragma once
-#include <YomkServer/YomkMsg.h>
+#include <yomk/YomkMsg.h>
 
 // ConfigService 消息包
 // 配置键：用于 /get 和 /reload

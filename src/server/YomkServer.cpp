@@ -1,4 +1,4 @@
-#include "YomkServer.h"
+#include "yomk/server/YomkServer.h"
 
 #include <functional>
 #include <iostream>
@@ -10,7 +10,7 @@
 #include "../log/YomkLogger.h"
 #include "../srv_info/YomkServerInfo.h"
 #include "YomkServerPrivate.h"
-#include "YomkDiag.h"
+#include "yomk/YomkDiag.h"
 
 YomkServer::YomkServer(std::size_t asyncThreadCount) : m_p(new YomkServerPrivate(asyncThreadCount)) {}
 

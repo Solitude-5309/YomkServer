@@ -27,7 +27,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "YomkFunctionPoolApi.h"
+#include "yomk/fn_pool/YomkFunctionPoolApi.h"
 
 static int g_failed = 0;
 

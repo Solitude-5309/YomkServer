@@ -1,7 +1,7 @@
 #pragma once
 
-#include "YomkContextPayload.h"
-#include "YomkMsgs.h"
+#include "yomk/ctx/YomkContextPayload.h"
+#include "yomk/YomkMsgs.h"
 
 // Context 模块消息包（成员名均为 d）。
 YOMK_DEFINE_MSG(yomk::payload::Context, Context, d);

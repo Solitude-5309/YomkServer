@@ -4,7 +4,7 @@
 #include <memory>
 #include <mutex>
 
-#include "YomkServer.h"
+#include "yomk/server/YomkServer.h"
 
 // 进程级 YomkServer 持有器：epoch 失效 + thread_local 快照的单一实现。
 // 独立成头：生命周期机制与表面层无耦合，可独立测试；

@@ -2,7 +2,7 @@
 
 #include <exception>
 #include <iostream>
-#include "YomkDiag.h"
+#include "yomk/YomkDiag.h"
 
 using yomk::payload::CheckStatus;
 

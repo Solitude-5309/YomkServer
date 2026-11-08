@@ -5,11 +5,11 @@
 #include <type_traits>
 #include <utility>
 
-#include "YomkContextMsgs.h"
-#include "YomkContextPayload.h"
-#include "YomkContextUrl.h"
-#include "YomkMsgs.h"
-#include "YomkServerApi.h"
+#include "yomk/ctx/YomkContextMsgs.h"
+#include "yomk/ctx/YomkContextPayload.h"
+#include "yomk/ctx/YomkContextUrl.h"
+#include "yomk/YomkMsgs.h"
+#include "yomk/server/YomkServerApi.h"
 
 // ctx 域：上下文键值的链式访问面——key/group 累积定位目标，写路径终结经请求域 .status()
 // 三态收敛，读路径终结经请求域 .request() 返回 Response；msg<T>() 进入类型化读分面，

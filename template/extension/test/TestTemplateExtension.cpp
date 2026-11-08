@@ -1,5 +1,5 @@
 #include <TemplateExtension/ExtensionService.h>
-#include <YomkServer/YomkServerApi.h>
+#include <yomk/server/YomkServerApi.h>
 
 #include <iostream>
 

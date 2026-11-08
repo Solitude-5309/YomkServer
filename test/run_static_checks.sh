@@ -27,7 +27,6 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # 构建期源码路径统一入口（与顶层 CMakeLists.txt 的 YOMK_SERVER_* 变量对齐）
 SRC_DIR="${REPO_DIR}/src"
 INCLUDE_ROOT="${REPO_DIR}/include"
-INCLUDE_API_DIR="${INCLUDE_ROOT}/YomkServer"
 HEADER_FILTER='.*/(include|src)/.*'
 
 usage() {
@@ -77,8 +76,8 @@ SUMMARY="${LOG_ROOT}/summary.log"
 echo "-- 日志目录: ${LOG_ROOT}"
 
 # ---------- cppcheck：库源码全量零告警验收（清单 + Checking 进度行，完整 verbose 落盘） ----------
-# -I include/YomkServer 为真实构建路径（ELC5/FPC5 教训：缺此路径时裸 #include 解析失败，
-# 宏未定义导致分析降级），抑制项与 test/yomk_server/CMakeLists.txt 的 cppcheck 目标保持一致
+# -I include 为头包含基目录（#include "yomk/..." 相对此解析），抑制项与
+# test/yomk_server/CMakeLists.txt 的 cppcheck 目标保持一致
 if [ ${RUN_CPPCHECK} -eq 1 ]; then
     echo "-- cppcheck 检测文件清单（src + include，排除 build/ 生成物）:"
     mapfile -t CPPCHECK_FILES < <(find "${SRC_DIR}" "${INCLUDE_ROOT}" \
@@ -94,7 +93,7 @@ if [ ${RUN_CPPCHECK} -eq 1 ]; then
         --inline-suppr --suppress=missingInclude --suppress=noExplicitConstructor --suppress=useStlAlgorithm \
         --suppress=unmatchedSuppression \
         --template=gcc \
-        -I "${INCLUDE_ROOT}" -I "${SRC_DIR}" -I "${INCLUDE_API_DIR}" \
+        -I "${INCLUDE_ROOT}" -I "${SRC_DIR}" \
         --error-exitcode=1 \
         "${SRC_DIR}" "${INCLUDE_ROOT}" 2>&1 \
         | tee "${CPPCHECK_OUT}" \

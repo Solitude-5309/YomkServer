@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ContextGroup.h"
-#include "YomkServer.h"
+#include "yomk/server/YomkServer.h"
 #include <map>
 #include <shared_mutex>
 class YomkContext : public YomkService

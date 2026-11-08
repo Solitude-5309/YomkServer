@@ -2,9 +2,9 @@
 
 #include <iostream>
 #include <vector>
-#include "YomkDiag.h"
-#include "YomkFunctionPoolMsgs.h"
-#include "YomkServerInfoMsgs.h"
+#include "yomk/YomkDiag.h"
+#include "yomk/fn_pool/YomkFunctionPoolMsgs.h"
+#include "yomk/srv_info/YomkServerInfoMsgs.h"
 YomkFunctionPool::YomkFunctionPool(YomkServer* server) : YomkService(server)
 {
     name("/YomkFunctionPool");

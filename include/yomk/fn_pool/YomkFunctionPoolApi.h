@@ -3,13 +3,13 @@
 #include <string_view>
 #include <utility>
 
-#include "YomkFunctionPoolMsgs.h"
-#include "YomkFunctionPoolPayload.h"
-#include "YomkFunctionPoolUrl.h"
-#include "YomkMsgs.h"
-#include "YomkServerApi.h"
-#include "YomkServerInfoMsgs.h"  // FuncInfo/FuncInfoList：fn_pool().get_info()/all() 返回数据
-#include "YomkServerPayload.h"
+#include "yomk/fn_pool/YomkFunctionPoolMsgs.h"
+#include "yomk/fn_pool/YomkFunctionPoolPayload.h"
+#include "yomk/fn_pool/YomkFunctionPoolUrl.h"
+#include "yomk/YomkMsgs.h"
+#include "yomk/server/YomkServerApi.h"
+#include "yomk/srv_info/YomkServerInfoMsgs.h"  // FuncInfo/FuncInfoList：fn_pool().get_info()/all() 返回数据
+#include "yomk/server/YomkServerPayload.h"
 
 // 函数池域：单入口 yomk::fn_pool()。函数名由 .fn_name(name) 承载，服务函数 / 消息名 /
 // 说明 / 调用数据一律前置累积，终结 op 全部无参——install / uninstall 经请求域 .status()

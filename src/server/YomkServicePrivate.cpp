@@ -3,7 +3,7 @@
 #include <iostream>
 #include <mutex>
 
-#include "YomkServer.h"
+#include "yomk/server/YomkServer.h"
 
 void YomkServicePrivate::name(const std::string& name)
 {

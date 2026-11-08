@@ -32,8 +32,8 @@ ProjectName/
 
 ### main.cpp
 ```cpp
-#include <YomkServer/YomkServerApi.h>
-#include <YomkServer/YomkLoggerApi.h>
+#include <yomk/server/YomkServerApi.h>
+#include <yomk/log/YomkLoggerApi.h>
 
 #include "boot/MyBoot.h"
 
@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 ### boot/MyBoot.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkServerApi.h>
+#include <yomk/server/YomkServerApi.h>
 
 using namespace yomk::payload;
 
@@ -75,8 +75,8 @@ private:
 
 ### boot/MyBoot.cpp
 ```cpp
-#include <YomkServer/YomkContextApi.h>
-#include <YomkServer/YomkLoggerApi.h>
+#include <yomk/ctx/YomkContextApi.h>
+#include <yomk/log/YomkLoggerApi.h>
 
 #include "MyBoot.h"
 
@@ -180,7 +180,7 @@ constexpr const char* const CTX_CONFIG_PATH = "config_path";
 ### msgs/YomkMsgs.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkMsg.h>
+#include <yomk/YomkMsg.h>
 
 // ConfigService 消息包
 // 配置键：用于 /get 和 /reload
@@ -204,7 +204,7 @@ YOMK_DEFINE_MSG(::ConfigKeyValue, ConfigKeyValue, req);
 ### services/ConfigService.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkServerApi.h>
+#include <yomk/server/YomkServerApi.h>
 
 #include <unordered_map>
 
@@ -233,8 +233,8 @@ private:
 
 ### services/ConfigService.cpp
 ```cpp
-#include <YomkServer/YomkContextApi.h>
-#include <YomkServer/YomkLoggerApi.h>
+#include <yomk/ctx/YomkContextApi.h>
+#include <yomk/log/YomkLoggerApi.h>
 
 #include "ConfigService.h"
 
@@ -550,7 +550,7 @@ YOMK_DEFINE_MSG(UserInfo, UserInfo, d);
 ### 2. 创建服务（services/UserService.h）
 ```cpp
 #pragma once
-#include <YomkServer/YomkServerApi.h>
+#include <yomk/server/YomkServerApi.h>
 
 #include "msgs/YomkMsgs.h"
 
@@ -995,7 +995,7 @@ ExtensionName/
 ### include/ExtensionService.h
 ```cpp
 #pragma once
-#include <YomkServer/YomkServerApi.h>
+#include <yomk/server/YomkServerApi.h>
 
 using namespace yomk::payload;
 
@@ -1013,7 +1013,7 @@ private:
 
 ### src/ExtensionService.cpp
 ```cpp
-#include <YomkServer/YomkLoggerApi.h>
+#include <yomk/log/YomkLoggerApi.h>
 
 #include "ExtensionService.h"
 
@@ -1061,7 +1061,7 @@ target_link_libraries(TestExtensionName PRIVATE ExtensionName::ExtensionName Yom
 ### test/TestExtensionName.cpp
 ```cpp
 #include <ExtensionName/ExtensionService.h>
-#include <YomkServer/YomkServerApi.h>
+#include <yomk/server/YomkServerApi.h>
 
 #include <iostream>
 
@@ -1380,7 +1380,7 @@ ExtensionName/
 将以下完整程序拷贝为 main.cpp，安装扩展后可直接编译运行：
 
 ```cpp
-#include <YomkServer/YomkServerApi.h>
+#include <yomk/server/YomkServerApi.h>
 #include <ExtensionName/ExtensionService.h>
 #include <iostream>
 

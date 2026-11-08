@@ -24,7 +24,7 @@
 #include <string>
 #include <thread>
 
-#include "YomkServerApi.h"
+#include "yomk/server/YomkServerApi.h"
 
 static int g_failed = 0;
 

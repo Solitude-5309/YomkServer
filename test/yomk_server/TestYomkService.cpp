@@ -17,8 +17,8 @@
 #include <map>
 #include <string>
 
-#include "YomkServerApi.h"
-#include "YomkServerInfoPayload.h"
+#include "yomk/server/YomkServerApi.h"
+#include "yomk/srv_info/YomkServerInfoPayload.h"
 
 static int g_failed = 0;
 

@@ -33,8 +33,8 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 ### 1. 最小完整示例
 
 ```cpp
-#include <YomkServer/YomkServerApi.h>
-#include <YomkServer/YomkLoggerApi.h>
+#include <yomk/server/YomkServerApi.h>
+#include <yomk/log/YomkLoggerApi.h>
 
 // 自定义服务
 class MyService : public YomkService
@@ -103,7 +103,7 @@ yomk::server().url("/MyService/hello").async([](yomk::payload::Response resp) {
 
 ## 核心概念
 
-以下概念贯穿框架各模块，便于快速建立整体认知；每个模块的完整链式语法、使用示例与注意事项见 [docs](docs/) 目录对应文档，逐个参数与返回码的精确规格以头文件 Doxygen 注释为准（`include/YomkServer/`）。
+以下概念贯穿框架各模块，便于快速建立整体认知；每个模块的完整链式语法、使用示例与注意事项见 [docs](docs/) 目录对应文档，逐个参数与返回码的精确规格以头文件 Doxygen 注释为准（`include/yomk/`）。
 
 ### 1. 链式调用形态（累积 → 终结）
 
@@ -126,7 +126,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 3. 消息包 (YomkMsg)
 
-服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<YomkServer/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型位于 `<YomkServer/YomkMsgs.h>`，核心载荷消息包位于 `<YomkServer/YomkServerMsgs.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msgs.h`（对应模块 `*Api.h` 已按需包含）。
+服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<yomk/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型位于 `<yomk/YomkMsgs.h>`，核心载荷消息包位于 `<yomk/server/YomkServerMsgs.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msgs.h`（对应模块 `*Api.h` 已按需包含）。
 
 详见 [消息包](docs/YomkMsg.md)。
 
@@ -303,11 +303,11 @@ target_link_libraries(my_app PRIVATE YomkServer::YomkServer)
 在源码中按模块引用公共头文件（不提供伞形聚合头，按需导入）：
 
 ```cpp
-#include <YomkServer/YomkServerApi.h>     // 服务总线：yomk::server()
-#include <YomkServer/YomkServerInfoApi.h> // 拓扑内省：yomk::srv_info()
-#include <YomkServer/YomkLoggerApi.h>        // 日志：yomk::log() / yomk::log_mgr()
-#include <YomkServer/YomkContextApi.h>    // 共享上下文：yomk::ctx()
-#include <YomkServer/YomkEventLoopApi.h>  // 事件循环：yomk::event_loop()
-#include <YomkServer/YomkFunctionPoolApi.h> // 函数池：yomk::fn_pool()
-#include <YomkServer/YomkMsg.h>           // 消息基类 + YOMK_DEFINE_MSG + unpack
+#include <yomk/server/YomkServerApi.h>     // 服务总线：yomk::server()
+#include <yomk/srv_info/YomkServerInfoApi.h> // 拓扑内省：yomk::srv_info()
+#include <yomk/log/YomkLoggerApi.h>        // 日志：yomk::log() / yomk::log_mgr()
+#include <yomk/ctx/YomkContextApi.h>    // 共享上下文：yomk::ctx()
+#include <yomk/event_loop/YomkEventLoopApi.h>  // 事件循环：yomk::event_loop()
+#include <yomk/fn_pool/YomkFunctionPoolApi.h> // 函数池：yomk::fn_pool()
+#include <yomk/YomkMsg.h>           // 消息基类 + YOMK_DEFINE_MSG + unpack
 ```

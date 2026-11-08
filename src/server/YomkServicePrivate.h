@@ -6,9 +6,9 @@
 #include <string>
 #include <string_view>
 
-#include "YomkDiag.h"
-#include "YomkServerInfoPayload.h"
-#include "YomkServerPayload.h"
+#include "yomk/YomkDiag.h"
+#include "yomk/srv_info/YomkServerInfoPayload.h"
+#include "yomk/server/YomkServerPayload.h"
 
 class YomkServer;
 class YomkServicePrivate

@@ -46,8 +46,8 @@
 
 // YomkEventLoop.h 传递包含 EventLoop.h（两模块头均无 include guard，不可双包含）
 #include "event_loop/YomkEventLoop.h"
-#include "YomkEventLoopApi.h"
-#include "YomkServerInfoApi.h"
+#include "yomk/event_loop/YomkEventLoopApi.h"
+#include "yomk/srv_info/YomkServerInfoApi.h"
 
 static int g_failed = 0;
 

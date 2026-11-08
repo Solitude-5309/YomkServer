@@ -19,7 +19,7 @@
 #include <thread>
 #include <vector>
 
-#include "YomkFunctionPoolApi.h"
+#include "yomk/fn_pool/YomkFunctionPoolApi.h"
 
 // ============================================================================
 // 测试基础设施

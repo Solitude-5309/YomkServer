@@ -7,7 +7,7 @@ include(cmake/AbiInfo.cmake)
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 3.5.31 LANGUAGES CXX)
+project(Yomk VERSION 3.5.32 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：
@@ -42,7 +42,7 @@ install(FILES ${CMAKE_BINARY_DIR}/abi_report.txt
 # 构建期内部路径变量：与 find_package 写入缓存的包定位变量解耦，统一唯一事实来源。
 set(YOMK_SERVER_SOURCE_ROOT  "${CMAKE_CURRENT_SOURCE_DIR}")
 set(YOMK_SERVER_INCLUDE_ROOT "${YOMK_SERVER_SOURCE_ROOT}/include")
-set(YOMK_SERVER_INCLUDE_DIR  "${YOMK_SERVER_INCLUDE_ROOT}/YomkServer")
+set(YOMK_SERVER_INCLUDE_DIR  "${YOMK_SERVER_INCLUDE_ROOT}")  # 头包含基目录（#include "yomk/..." 相对此解析）
 set(YOMK_SERVER_SRC_DIR      "${YOMK_SERVER_SOURCE_ROOT}/src")
 # 默认安装前缀：仅当用户未通过 -DCMAKE_INSTALL_PREFIX 显式指定时生效。
 # CMake 启动时已将该缓存预置为内置默认（Windows: c:/Program Files/<project>，Unix: /usr/local），
@@ -134,7 +134,7 @@ install(TARGETS YomkServer
     INCLUDES DESTINATION include
 )
 
-install(DIRECTORY ${YOMK_SERVER_INCLUDE_DIR}
+install(DIRECTORY ${YOMK_SERVER_INCLUDE_DIR}/yomk
     DESTINATION include
     FILES_MATCHING PATTERN "*.h"
 )

@@ -22,12 +22,12 @@
 #include <string>
 #include <thread>
 
-#include "YomkServerApi.h"
-#include "YomkServerInfoApi.h"
-#include "YomkContextApi.h"
-#include "YomkEventLoopApi.h"
-#include "YomkFunctionPoolApi.h"
-#include "YomkLoggerApi.h"
+#include "yomk/server/YomkServerApi.h"
+#include "yomk/srv_info/YomkServerInfoApi.h"
+#include "yomk/ctx/YomkContextApi.h"
+#include "yomk/event_loop/YomkEventLoopApi.h"
+#include "yomk/fn_pool/YomkFunctionPoolApi.h"
+#include "yomk/log/YomkLoggerApi.h"
 
 static int g_failed = 0;
 

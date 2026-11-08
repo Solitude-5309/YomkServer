@@ -2,11 +2,11 @@
 #include <string>
 #include <string_view>
 
-#include "YomkMsgs.h"
-#include "YomkServerApi.h"
-#include "YomkServerInfoMsgs.h"
-#include "YomkServerInfoPayload.h"
-#include "YomkServerInfoUrl.h"
+#include "yomk/YomkMsgs.h"
+#include "yomk/server/YomkServerApi.h"
+#include "yomk/srv_info/YomkServerInfoMsgs.h"
+#include "yomk/srv_info/YomkServerInfoPayload.h"
+#include "yomk/srv_info/YomkServerInfoUrl.h"
 
 // ServerInfo 域（yomk::srv_info()）：服务拓扑内省的独立链式入口——services() 全部服务名、
 // srv_name(name).functions() 指定服务函数清单、fn_url(url).get_info() 单函数元信息、

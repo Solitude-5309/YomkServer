@@ -8,13 +8,13 @@
 #include <string_view>
 #include <utility>
 
-#include "YomkBoot.h"
-#include "YomkDiag.h"
-#include "YomkExport.h"
-#include "YomkMsg.h"
-#include "YomkMsgs.h"  // 标准类型消息目录：请求链常用载荷（String 等）
-#include "YomkServerPayload.h"
-#include "YomkServerRef.h"
+#include "yomk/YomkBoot.h"
+#include "yomk/YomkDiag.h"
+#include "yomk/YomkExport.h"
+#include "yomk/YomkMsg.h"
+#include "yomk/YomkMsgs.h"  // 标准类型消息目录：请求链常用载荷（String 等）
+#include "yomk/server/YomkServerPayload.h"
+#include "yomk/server/YomkServerRef.h"
 
 // 服务器域（yomk::server()）：服务请求、生命周期管理、服务注册/注销的统一链式入口。
 // request 是刻意保留的基础接口——API 壳屏蔽 URL, 但不垄断请求通道: 基于 YomkServer 写自定义

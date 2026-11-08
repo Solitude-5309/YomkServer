@@ -8,8 +8,8 @@
 #include <string_view>
 #include <vector>
 
-#include "YomkServerInfoPayload.h"
-#include "YomkServerPayload.h"
+#include "yomk/srv_info/YomkServerInfoPayload.h"
+#include "yomk/server/YomkServerPayload.h"
 #include "YomkSimpleThreadPool.h"
 
 class YomkService;

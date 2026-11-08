@@ -58,8 +58,8 @@
 #include <thread>
 #include <vector>
 
-#include "YomkContextApi.h"
-#include "YomkLoggerApi.h"
+#include "yomk/ctx/YomkContextApi.h"
+#include "yomk/log/YomkLoggerApi.h"
 
 // 定点引入所需类型，避免全局 using
 using yomk::payload::CheckStatus;

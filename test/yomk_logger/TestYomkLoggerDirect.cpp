@@ -49,7 +49,7 @@
 
 #include "ConsoleLogger.h"
 #include "FileLogger.h"
-#include "YomkDiag.h"
+#include "yomk/YomkDiag.h"
 
 namespace fs = std::filesystem;
 

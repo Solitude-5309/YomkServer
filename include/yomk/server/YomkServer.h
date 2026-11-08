@@ -6,9 +6,9 @@
 #include <string_view>
 #include <vector>
 
-#include "YomkService.h"
-#include "YomkExport.h"
-#include "YomkServerInfoPayload.h"
+#include "yomk/server/YomkService.h"
+#include "yomk/YomkExport.h"
+#include "yomk/srv_info/YomkServerInfoPayload.h"
 
 class YomkServerPrivate;
 /**

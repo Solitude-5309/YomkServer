@@ -1,6 +1,6 @@
 #pragma once
 
-#include "YomkServer.h"
+#include "yomk/server/YomkServer.h"
 
 class YomkServerInfo : public YomkService
 {

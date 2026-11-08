@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-#include "YomkServerPayload.h"
+#include "yomk/server/YomkServerPayload.h"
 
 namespace yomk::payload
 {

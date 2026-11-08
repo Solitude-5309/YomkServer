@@ -3,9 +3,9 @@
 #include <iostream>
 #include <mutex>
 
-#include "YomkServer.h"
+#include "yomk/server/YomkServer.h"
 #include "YomkServicePrivate.h"
-#include "YomkDiag.h"
+#include "yomk/YomkDiag.h"
 
 void YomkServerPrivate::addService(YomkService* srv)
 {

@@ -29,7 +29,7 @@
 #include <sstream>
 #include <string>
 
-#include "YomkLoggerApi.h"
+#include "yomk/log/YomkLoggerApi.h"
 
 namespace fs = std::filesystem;
 

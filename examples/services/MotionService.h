@@ -1,5 +1,5 @@
 #pragma once
-#include "YomkServerApi.h"
+#include "yomk/server/YomkServerApi.h"
 #include "msgs/ArmMsgs.h"
 
 /**

@@ -9,8 +9,8 @@
 #include <vector>
 
 #include "../server/YomkSimpleThreadPool.h"
-#include "YomkContextMsgs.h"
-#include "YomkContextPayload.h"
+#include "yomk/ctx/YomkContextMsgs.h"
+#include "yomk/ctx/YomkContextPayload.h"
 
 class ContextGroup;
 typedef std::shared_ptr<ContextGroup> ContextGroupPtr;

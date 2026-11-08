@@ -34,11 +34,11 @@
 #include <unistd.h>
 
 #include "log/YomkLogger.h"
-#include "YomkServerApi.h"
-#include "YomkServerInfoApi.h"
-#include "YomkContextApi.h"
-#include "YomkEventLoopApi.h"
-#include "YomkLoggerApi.h"
+#include "yomk/server/YomkServerApi.h"
+#include "yomk/srv_info/YomkServerInfoApi.h"
+#include "yomk/ctx/YomkContextApi.h"
+#include "yomk/event_loop/YomkEventLoopApi.h"
+#include "yomk/log/YomkLoggerApi.h"
 
 namespace fs = std::filesystem;
 

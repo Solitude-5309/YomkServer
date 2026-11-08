@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "YomkMsg.h"
+#include "yomk/YomkMsg.h"
 
 // SDK 标准类型消息包目录：内置标量/数组类型（成员名均为 d）。
 // 核心载荷消息包见 YomkServerMsgs.h；模块专属消息包见各 Yomk{Module}Msgs.h；
