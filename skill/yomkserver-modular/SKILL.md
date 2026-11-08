@@ -56,7 +56,7 @@ ProjectName/
 ├── config/
 │   └── config.txt        // 配置文件（纯文本 key: value 格式）
 ├── msgs/
-│   └── YomkStdMsgs.h        // 所有消息包定义
+│   └── YomkMsgs.h          // 所有消息包定义（项目本地，非 SDK 头）
 ├── services/
 │   └── ConfigService.h/.cpp  // 内置配置服务
 ├── typedefine/
