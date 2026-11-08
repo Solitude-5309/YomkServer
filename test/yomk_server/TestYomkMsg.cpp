@@ -301,8 +301,6 @@ int main()
         yomk::payload::ContextMonitor cmo;
         YOMK_TEST_CHECK(cmo.m_key.empty() && !cmo.m_contextMonitorFunc && cmo.m_asyncMonitor == false,
               "ContextMonitor 默认：key 空、func 空、async false");
-        yomk::payload::VoidPointer vp;
-        YOMK_TEST_CHECK(vp.m_ptr == nullptr, "VoidPointer 默认：ptr 空");
 
         // 结构体消息包版：YOMK_DEFINE_MSG 宏生成的 name 就位且 d 默认构造
         auto ctxPkg = yomk::msgs::Context::shared();

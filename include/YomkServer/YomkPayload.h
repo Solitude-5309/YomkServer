@@ -53,11 +53,6 @@ enum class CheckStatus
     Reject
 };
 
-struct VoidPointer
-{
-    void* m_ptr = nullptr;
-};
-
 struct FuncInfo
 {
     std::string m_funcName;     // 功能函数名（/开头）

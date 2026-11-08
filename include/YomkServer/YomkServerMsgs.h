@@ -10,4 +10,3 @@ YOMK_DEFINE_MSG(yomk::payload::FuncInfo, FuncInfo, d);
 // FunctionPool / ServerInfo 全量函数内省（fn_pool().all() 与 server().functions() 返回数据；
 // 函数总数由 d.size() 承载）
 YOMK_DEFINE_MSG(std::vector<yomk::payload::FuncInfo>, FuncInfoList, d);
-YOMK_DEFINE_MSG(yomk::payload::VoidPointer, VoidPointer, d);
