@@ -22,7 +22,7 @@
 // /function 长名下 URL 二段解析、/all 超长条目完整无截断
 //
 // 说明：S1-S5 经 yomk::server().init() 单例 + yomk::server() 内省终结走完整路由链；S0 类级直连
-// （include Modules/ServerInfo/YomkServerInfo.h，CMake 已追加 src 目录），
+// （include modules/server_info/YomkServerInfo.h，CMake 已追加 src 目录），
 // 放在 yomk::server().shutdown() 之后以独立 create 实例隔离单例交互。
 // 并发段断言经原子计数器收集、节末单线程 YOMK_TEST_CHECK（TSan-clean 既有模式）。
 //
@@ -36,7 +36,7 @@
 #include <thread>
 #include <vector>
 
-#include "Modules/ServerInfo/YomkServerInfo.h"
+#include "modules/server_info/YomkServerInfo.h"
 #include "YomkApi.h"
 
 static int g_failed = 0;

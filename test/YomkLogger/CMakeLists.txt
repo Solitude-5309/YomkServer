@@ -2,7 +2,7 @@
 
 include_directories(${YOMK_SERVER_INCLUDE_DIR})
 # ConsoleLogger/FileLogger 为库内部实现头（符号已从 so 导出），直连白盒测试需源码模块 include 路径
-include_directories(${YOMK_SERVER_SRC_DIR}/Modules/Logger)
+include_directories(${YOMK_SERVER_SRC_DIR}/modules/logger)
 
 # -------------sl TestYomkLoggerLifecycle ----------------
 set(TestYomkLoggerLifecycle_SOURCES 

@@ -1,7 +1,7 @@
-# test/YomkServer：YomkServer 核心源文件（src/Core：YomkServer/YomkService/YomkSimpleThreadPool）
+# test/YomkServer：YomkServer 核心源文件（src/core：YomkServer/YomkService/YomkSimpleThreadPool）
 # 的正式全面覆盖测试；目录内扁平布局，每个被测主题一个独立可执行程序，目标按闭环增量追加
-# 引用非导出内部头（如 YomkSimpleThreadPool.h）需要 Core 源码目录
-include_directories(${YOMK_SERVER_SRC_DIR}/Core)
+# 引用非导出内部头（如 YomkSimpleThreadPool.h）需要 core 源码目录
+include_directories(${YOMK_SERVER_SRC_DIR}/core)
 include_directories(${YOMK_SERVER_SRC_DIR})
 
 # MC8：sanitizer 开关（off/asan/tsan），选项通过 PUBLIC 附加到 YomkServer 库，
@@ -30,8 +30,8 @@ if(YOMK_TEST_STATIC_ANALYZE)
 
     # 被测范围：Core 层 YomkServer 源文件与公共头
     file(GLOB _YOMK_SA_SRCS
-        ${YOMK_SERVER_SRC_DIR}/Core/*.cpp
-        ${YOMK_SERVER_SRC_DIR}/Core/*.h
+        ${YOMK_SERVER_SRC_DIR}/core/*.cpp
+        ${YOMK_SERVER_SRC_DIR}/core/*.h
         ${YOMK_SERVER_INCLUDE_DIR}/*.h
     )
 
@@ -80,10 +80,10 @@ if(YOMK_TEST_STATIC_ANALYZE)
         message(STATUS "cppcheck not found, YomkServer-cppcheck target disabled")
     endif()
 
-    # MC6：Context 模块静态分析范围（src/Modules/Context），复用上方已探测的工具与调优检查集
+    # MC6：Context 模块静态分析范围（src/modules/context），复用上方已探测的工具与调优检查集
     file(GLOB _YOMK_CONTEXT_SA_SRCS
-        ${YOMK_SERVER_SRC_DIR}/Modules/Context/*.cpp
-        ${YOMK_SERVER_SRC_DIR}/Modules/Context/*.h
+        ${YOMK_SERVER_SRC_DIR}/modules/context/*.cpp
+        ${YOMK_SERVER_SRC_DIR}/modules/context/*.h
     )
 
     # YomkContext-clang-tidy：-header-filter 限定仅报 Context 头，屏蔽 YomkMsg/YomkAPI 等已处理头噪音
@@ -91,7 +91,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
         add_custom_target(YomkContext-clang-tidy
             COMMAND ${CLANG_TIDY_EXE}
                 ${_YOMK_TIDY_CHECKS}
-                -header-filter=${YOMK_SERVER_SRC_DIR}/Modules/Context
+                -header-filter=${YOMK_SERVER_SRC_DIR}/modules/context
                 -p=${CMAKE_BINARY_DIR}
                 ${_YOMK_CONTEXT_SA_SRCS}
                 > ${CMAKE_BINARY_DIR}/static-analysis/clang-tidy-context.log 2>&1
@@ -121,10 +121,10 @@ if(YOMK_TEST_STATIC_ANALYZE)
             COMMENT "Running cppcheck on YomkServer Context module sources"
         )
     endif()
-    # ELC5：EventLoop 模块静态分析范围（src/Modules/EventLoop），复用上方已探测的工具与调优检查集
+    # ELC5：EventLoop 模块静态分析范围（src/modules/event_loop），复用上方已探测的工具与调优检查集
     file(GLOB _YOMK_EVENTLOOP_SA_SRCS
-        ${YOMK_SERVER_SRC_DIR}/Modules/EventLoop/*.cpp
-        ${YOMK_SERVER_SRC_DIR}/Modules/EventLoop/*.h
+        ${YOMK_SERVER_SRC_DIR}/modules/event_loop/*.cpp
+        ${YOMK_SERVER_SRC_DIR}/modules/event_loop/*.h
     )
 
     # YomkEventLoop-clang-tidy：-header-filter 限定仅报 EventLoop 头，屏蔽 YomkMsg/YomkAPI 等已处理头噪音
@@ -132,7 +132,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
         add_custom_target(YomkEventLoop-clang-tidy
             COMMAND ${CLANG_TIDY_EXE}
                 ${_YOMK_TIDY_CHECKS}
-                -header-filter=${YOMK_SERVER_SRC_DIR}/Modules/EventLoop
+                -header-filter=${YOMK_SERVER_SRC_DIR}/modules/event_loop
                 -p=${CMAKE_BINARY_DIR}
                 ${_YOMK_EVENTLOOP_SA_SRCS}
                 > ${CMAKE_BINARY_DIR}/static-analysis/clang-tidy-eventloop.log 2>&1
@@ -166,10 +166,10 @@ if(YOMK_TEST_STATIC_ANALYZE)
         )
     endif()
 
-    # FPC5：FunctionPool 模块静态分析范围（src/Modules/FunctionPool），复用上方已探测的工具与调优检查集
+    # FPC5：FunctionPool 模块静态分析范围（src/modules/function_pool），复用上方已探测的工具与调优检查集
     file(GLOB _YOMK_FUNCTIONPOOL_SA_SRCS
-        ${YOMK_SERVER_SRC_DIR}/Modules/FunctionPool/*.cpp
-        ${YOMK_SERVER_SRC_DIR}/Modules/FunctionPool/*.h
+        ${YOMK_SERVER_SRC_DIR}/modules/function_pool/*.cpp
+        ${YOMK_SERVER_SRC_DIR}/modules/function_pool/*.h
     )
 
     # YomkFunctionPool-clang-tidy：-header-filter 限定仅报 FunctionPool 头
@@ -177,7 +177,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
         add_custom_target(YomkFunctionPool-clang-tidy
             COMMAND ${CLANG_TIDY_EXE}
                 ${_YOMK_TIDY_CHECKS}
-                -header-filter=${YOMK_SERVER_SRC_DIR}/Modules/FunctionPool
+                -header-filter=${YOMK_SERVER_SRC_DIR}/modules/function_pool
                 -p=${CMAKE_BINARY_DIR}
                 ${_YOMK_FUNCTIONPOOL_SA_SRCS}
                 > ${CMAKE_BINARY_DIR}/static-analysis/clang-tidy-functionpool.log 2>&1
@@ -210,11 +210,11 @@ if(YOMK_TEST_STATIC_ANALYZE)
         )
     endif()
 
-    # LG5：Logger 模块静态分析范围（src/Modules/Logger），复用上方已探测的工具与调优检查集
+    # LG5：Logger 模块静态分析范围（src/modules/logger），复用上方已探测的工具与调优检查集
     # （此前 4 组接线独缺 Logger 与 ServerInfo；按 LG5 决策只补 Logger，ServerInfo 另排完整闭环）
     file(GLOB _YOMK_LOGGER_SA_SRCS
-        ${YOMK_SERVER_SRC_DIR}/Modules/Logger/*.cpp
-        ${YOMK_SERVER_SRC_DIR}/Modules/Logger/*.h
+        ${YOMK_SERVER_SRC_DIR}/modules/logger/*.cpp
+        ${YOMK_SERVER_SRC_DIR}/modules/logger/*.h
     )
 
     # YomkLogger-clang-tidy：-header-filter 限定仅报 Logger 头（含 LG5 新增的内部头 YomkLogTime.h）
@@ -222,7 +222,7 @@ if(YOMK_TEST_STATIC_ANALYZE)
         add_custom_target(YomkLogger-clang-tidy
             COMMAND ${CLANG_TIDY_EXE}
                 ${_YOMK_TIDY_CHECKS}
-                -header-filter=${YOMK_SERVER_SRC_DIR}/Modules/Logger
+                -header-filter=${YOMK_SERVER_SRC_DIR}/modules/logger
                 -p=${CMAKE_BINARY_DIR}
                 ${_YOMK_LOGGER_SA_SRCS}
                 > ${CMAKE_BINARY_DIR}/static-analysis/clang-tidy-logger.log 2>&1

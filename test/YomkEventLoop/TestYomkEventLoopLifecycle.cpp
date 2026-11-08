@@ -20,7 +20,7 @@
 // 12. ~EventLoop 析构兜底释放等待者（P4，白盒，看门狗）：不调 destroy 直接析构——~EventLoop 内部
 // destroy 兜底同样触发被丢弃事件的等待回调，析构入口与显式入口共享释放契约（S10 的入口级补全）
 //
-// 说明：白盒段直连内部类 EventLoop（include Modules/EventLoop/EventLoop.h，CMake 已追加 src 目录），
+// 说明：白盒段直连内部类 EventLoop（include modules/event_loop/EventLoop.h，CMake 已追加 src 目录），
 // 不触 yomk::server().init()（类级测试与请求路由无关）；API 段使用 yomk::server().init() 单例拉起内置 /YomkEventLoop，
 // 末尾 yomk::server().shutdown() 收尾（call_once 约束，shutdown 后不可再初始化）。
 // 停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询 infoSnapshot 至 m_running==false
@@ -45,7 +45,7 @@
 #include <vector>
 
 // YomkEventLoop.h 传递包含 EventLoop.h（两模块头均无 include guard，不可双包含）
-#include "Modules/EventLoop/YomkEventLoop.h"
+#include "modules/event_loop/YomkEventLoop.h"
 #include "YomkApi.h"
 
 static int g_failed = 0;
