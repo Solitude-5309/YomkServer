@@ -18,7 +18,7 @@ description: 基于 YomkServer 框架的模块化 C++17 编程，核心理念"�
 | **YomkFunctionPool** | 动态函数池（运行时注册/热替换） | `yomk::fn_pool()` |
 | **YomkLogger** | 多级别、多输出日志 | 发射 `yomk::log()` / 管理 `yomk::log_mgr()` |
 
-按模块头导入（无伞形聚合头）：`<YomkServer/YomkServerApi.h>`（`yomk::server()`）、`<YomkServer/YomkLogApi.h>`（`yomk::log()` / `yomk::log_mgr()`）、`<YomkServer/YomkContextApi.h>`（`yomk::ctx()`）、`<YomkServer/YomkEventLoopApi.h>`（`yomk::event_loop()`）、`<YomkServer/YomkFunctionPoolApi.h>`（`yomk::fn_pool()`）；另按需包含 `<YomkServer/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG`（内置消息类型见 `<YomkServer/YomkMsgs.h>`）。API 形态为**链式调用：累积环节返回 builder 自身、终结环节执行并返回结果**；单条链在一个表达式内内联使用（builder 持 `string_view`，缓存跨语句即悬垂）。载荷类型（`Response`/`ResStatus`/`LogLevel` 等）位于 `yomk::payload`，服务实现内惯用 `using namespace yomk::payload;`；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs`。
+按模块头导入（无伞形聚合头）：`<YomkServer/YomkServerApi.h>`（`yomk::server()`）、`<YomkServer/YomkLogApi.h>`（`yomk::log()` / `yomk::log_mgr()`）、`<YomkServer/YomkContextApi.h>`（`yomk::ctx()`）、`<YomkServer/YomkEventLoopApi.h>`（`yomk::event_loop()`）、`<YomkServer/YomkFunctionPoolApi.h>`（`yomk::fn_pool()`）；另按需包含 `<YomkServer/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`（内置消息类型见 `<YomkServer/YomkMsgs.h>`）。API 形态为**链式调用：累积环节返回 builder 自身、终结环节执行并返回结果**；单条链在一个表达式内内联使用（builder 持 `string_view`，缓存跨语句即悬垂）。载荷类型（`Response`/`ResStatus`/`LogLevel` 等）位于 `yomk::payload`，服务实现内惯用 `using namespace yomk::payload;`；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs`。
 
 各环节完整签名、返回值与失败契约见 [reference.md](reference.md)。
 

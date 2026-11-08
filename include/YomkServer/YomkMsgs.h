@@ -4,28 +4,6 @@
 #include "YomkMsg.h"
 #include "YomkPayload.h"
 
-namespace yomk::msgs
-{
-
-/**
- * @brief 按运行时类型名解包消息
- * @tparam Msg 目标消息类（YOMK_DEFINE_MSG 生成）
- * @param pkg 待解包消息指针
- * @return 命中返回 shared_ptr<Msg>; pkg 为空或类型不符返回 nullptr
- * @note 判空即用, 不抛异常
- */
-template <class Msg>
-std::shared_ptr<Msg> unpack(const YomkMsgPtr& pkg)
-{
-    if (pkg && pkg->name() == Msg::kName)
-    {
-        return std::dynamic_pointer_cast<Msg>(pkg);
-    }
-    return nullptr;
-}
-
-}  // namespace yomk::msgs
-
 // SDK 消息包目录：框架载荷包 + 内置标准类型包（成员名均为 d）。
 // 自定义消息不在此定义，经 YomkMsg.h 的 YOMK_DEFINE_MSG 宏自行声明。
 
