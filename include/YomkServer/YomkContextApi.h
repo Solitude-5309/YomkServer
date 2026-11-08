@@ -5,6 +5,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "YomkContextMsgs.h"
+#include "YomkContextPayload.h"
 #include "YomkContextUrl.h"
 #include "YomkMsgs.h"
 #include "YomkServerApi.h"

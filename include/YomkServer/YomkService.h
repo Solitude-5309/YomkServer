@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "YomkExport.h"
-#include "YomkMsgs.h"
+#include "YomkPayload.h"
 #include "YomkDiag.h"
 
 class YomkServer;

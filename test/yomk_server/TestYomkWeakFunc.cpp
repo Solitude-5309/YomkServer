@@ -19,6 +19,7 @@
 #include <iostream>
 #include <memory>
 
+#include "YomkContextPayload.h"
 #include "YomkServerApi.h"
 
 static int g_failed = 0;

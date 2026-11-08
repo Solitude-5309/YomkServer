@@ -23,6 +23,10 @@
 #include <string>
 #include <vector>
 
+#include "YomkContextMsgs.h"
+#include "YomkEventLoopMsgs.h"
+#include "YomkFunctionPoolMsgs.h"
+#include "YomkLoggerMsgs.h"
 #include "YomkMsgs.h"
 
 static int g_failed = 0;

@@ -6,6 +6,7 @@
 
 #include "ConsoleLogger.h"
 #include "FileLogger.h"
+#include "YomkLoggerPayload.h"
 #include "YomkServer.h"
 class YomkLogger : public YomkService
 {

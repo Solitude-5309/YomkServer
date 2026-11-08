@@ -14,6 +14,8 @@
 #include "YomkMsg.h"
 #include "YomkMsgs.h"
 #include "YomkPayload.h"
+#include "YomkServerInfoMsgs.h"
+#include "YomkServerInfoPayload.h"
 #include "YomkServerInfoUrl.h"
 #include "YomkServerRef.h"
 

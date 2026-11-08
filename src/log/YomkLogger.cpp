@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include "YomkDiag.h"
+#include "YomkLoggerMsgs.h"
 
 // yomk 命名空间引入收口在 .cpp（头文件不得 using，防止与全局 ::EventLoop 撞名二义性外泄）
 using namespace yomk::payload;

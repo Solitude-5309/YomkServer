@@ -1,4 +1,5 @@
 #include "YomkContext.h"
+#include "YomkContextMsgs.h"
 #include "YomkDiag.h"
 
 YomkContext::YomkContext(YomkServer* server) : YomkService(server), m_main("main")

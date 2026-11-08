@@ -7,7 +7,7 @@
 #include <string_view>
 
 #include "YomkDiag.h"
-#include "YomkMsgs.h"
+#include "YomkPayload.h"
 
 class YomkServer;
 class YomkServicePrivate

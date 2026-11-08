@@ -4,6 +4,8 @@
 #include <utility>
 
 #include "YomkLogFmt.h"
+#include "YomkLoggerMsgs.h"
+#include "YomkLoggerPayload.h"
 #include "YomkLoggerUrl.h"
 #include "YomkMsgs.h"
 #include "YomkPayload.h"

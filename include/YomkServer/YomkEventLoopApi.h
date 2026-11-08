@@ -4,6 +4,8 @@
 #include <string_view>
 #include <utility>
 
+#include "YomkEventLoopMsgs.h"
+#include "YomkEventLoopPayload.h"
 #include "YomkEventLoopUrl.h"
 #include "YomkMsgs.h"
 #include "YomkPayload.h"

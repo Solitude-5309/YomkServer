@@ -3,6 +3,8 @@
 #include <string_view>
 #include <utility>
 
+#include "YomkFunctionPoolMsgs.h"
+#include "YomkFunctionPoolPayload.h"
 #include "YomkFunctionPoolUrl.h"
 #include "YomkMsgs.h"
 #include "YomkPayload.h"

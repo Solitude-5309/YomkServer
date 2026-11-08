@@ -16,7 +16,7 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 | 模块 | 简述 |
 |---|---|
 | [YomkServer / YomkService](docs/YomkServer.md) | 服务总线核心：服务注册与 `"/服务名/函数名"` URL 路由、同步/异步请求分发、服务生命周期管理（deinit / 优雅关闭） |
-| [YomkMsg](docs/YomkMsg.md) | 强类型消息包：`YOMK_DEFINE_MSG` 宏声明自定义消息（宏、基类与 `unpack` 见 `YomkMsg.h`，内置类型见 `YomkMsgs.h`），内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
+| [YomkMsg](docs/YomkMsg.md) | 强类型消息包：`YOMK_DEFINE_MSG` 宏声明自定义消息（宏、基类与 `unpack` 见 `YomkMsg.h`，核心类型见 `YomkMsgs.h`，模块专属消息/载荷见各 `Yomk{Module}Msgs.h` / `Yomk{Module}Payload.h`），内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
 | [YomkBoot](docs/YomkServer.md#启动编排yomkboot) | 启动编排：before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程（`yomk::server().boot_ptr(cfg).run()`） |
 | [YomkLogger](docs/YomkLogger.md) | 日志系统：控制台与文件双输出、六级级别开关、自定义 tag、日志代理拦截、位置前缀开关与日志器自省 |
 | [YomkContext](docs/YomkContext.md) | 共享上下文：跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步） |
@@ -126,7 +126,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 3. 消息包 (YomkMsg)
 
-服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<YomkServer/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型位于 `<YomkServer/YomkMsgs.h>`。
+服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<YomkServer/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；核心载荷与内置 30 种标量/数组类型位于 `<YomkServer/YomkMsgs.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msgs.h`（对应模块 `*Api.h` 已按需包含）。
 
 详见 [消息包](docs/YomkMsg.md)。
 

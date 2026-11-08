@@ -4,7 +4,8 @@
 #include <string>
 #include <thread>
 
-#include "YomkMsgs.h"
+#include "YomkEventLoopMsgs.h"
+#include "YomkEventLoopPayload.h"
 
 class EventLoop
 {
