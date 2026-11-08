@@ -42,7 +42,7 @@ Thumbs.db
 .qoder/
 .trae/
 .claude/
-!/Skill/.qoder/
+!/skill/.qoder/
 install/
 
 # qtcreator generated files
