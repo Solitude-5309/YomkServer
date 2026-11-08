@@ -8,11 +8,11 @@
 #include <string_view>
 #include <utility>
 
-#include "yomk/YomkBoot.h"
+#include "yomk/boot/YomkBoot.h"
 #include "yomk/YomkDiag.h"
 #include "yomk/YomkExport.h"
-#include "yomk/YomkMsg.h"
-#include "yomk/YomkStdMsgs.h"  // 标准类型消息目录：请求链常用载荷（String 等）
+#include "yomk/msg/YomkMsg.h"
+#include "yomk/msg/YomkStdMsgs.h"  // 标准类型消息目录：请求链常用载荷（String 等）
 #include "yomk/server/YomkServerPayload.h"
 #include "yomk/server/YomkServerRef.h"
 

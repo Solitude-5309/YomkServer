@@ -180,7 +180,7 @@ constexpr const char* const CTX_CONFIG_PATH = "config_path";
 ### msgs/YomkMsgs.h
 ```cpp
 #pragma once
-#include <yomk/YomkMsg.h>
+#include <yomk/msg/YomkMsg.h>
 
 // ConfigService 消息包
 // 配置键：用于 /get 和 /reload

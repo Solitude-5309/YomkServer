@@ -6,7 +6,7 @@
 #include "yomk/fn_pool/YomkFunctionPoolMsgs.h"
 #include "yomk/fn_pool/YomkFunctionPoolPayload.h"
 #include "yomk/fn_pool/YomkFunctionPoolUrl.h"
-#include "yomk/YomkStdMsgs.h"
+#include "yomk/msg/YomkStdMsgs.h"
 #include "yomk/server/YomkServerApi.h"
 #include "yomk/srv_info/YomkServerInfoMsgs.h"  // FuncInfo/FuncInfoList：fn_pool().get_info()/all() 返回数据
 #include "yomk/server/YomkServerPayload.h"

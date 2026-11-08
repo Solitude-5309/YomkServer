@@ -27,7 +27,7 @@
 #include "yomk/event_loop/YomkEventLoopMsgs.h"
 #include "yomk/fn_pool/YomkFunctionPoolMsgs.h"
 #include "yomk/log/YomkLoggerMsgs.h"
-#include "yomk/YomkStdMsgs.h"
+#include "yomk/msg/YomkStdMsgs.h"
 
 static int g_failed = 0;
 

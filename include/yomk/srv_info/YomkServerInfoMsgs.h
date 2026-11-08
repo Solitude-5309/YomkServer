@@ -1,6 +1,6 @@
 #pragma once
 
-#include "yomk/YomkStdMsgs.h"
+#include "yomk/msg/YomkStdMsgs.h"
 #include "yomk/srv_info/YomkServerInfoPayload.h"
 
 // ServerInfo 模块消息包（成员名均为 d）。

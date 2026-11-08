@@ -2,7 +2,7 @@
 #include <functional>
 #include <string>
 
-#include "yomk/YomkMsg.h"
+#include "yomk/msg/YomkMsg.h"
 
 // 核心载荷：请求/响应状态与跨模块通用类型。
 // 函数元信息 FuncInfo 见 YomkServerInfoPayload.h；模块专属载荷见 YomkContextPayload.h /

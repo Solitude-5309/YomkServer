@@ -1,6 +1,6 @@
 #pragma once
 
-#include "yomk/YomkStdMsgs.h"
+#include "yomk/msg/YomkStdMsgs.h"
 #include "yomk/server/YomkServerPayload.h"
 
 // Server 核心域消息包（成员名均为 d）：核心载荷消息包 Response，被服务请求通道共用。

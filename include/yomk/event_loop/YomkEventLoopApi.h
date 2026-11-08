@@ -7,7 +7,7 @@
 #include "yomk/event_loop/YomkEventLoopMsgs.h"
 #include "yomk/event_loop/YomkEventLoopPayload.h"
 #include "yomk/event_loop/YomkEventLoopUrl.h"
-#include "yomk/YomkStdMsgs.h"
+#include "yomk/msg/YomkStdMsgs.h"
 #include "yomk/server/YomkServerApi.h"
 #include "yomk/server/YomkServerPayload.h"
 

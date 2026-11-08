@@ -1,5 +1,5 @@
 #pragma once
-#include "yomk/YomkMsg.h"
+#include "yomk/msg/YomkMsg.h"
 
 /**
  * @file ArmMsgs.h
