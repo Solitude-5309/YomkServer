@@ -52,7 +52,7 @@ class YomkServer:                            # 底层单例类（业务代码经
     def request(self, url: str, pkg) -> Response
     def async_request(self, url: str, pkg, callback) -> None
 
-class YomkBoot(ABC):
+class YomkBoot(ABC):                         # 独立 boot 域：from yomk.boot import YomkBoot
     def before(self) -> int   # 服务启动前：创建资源
     def start(self) -> int    # 注册并启动服务
     def after(self) -> int    # 服务启动后：初始化调用

@@ -3,12 +3,12 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-from .builder import AsyncRequestBuilder, ServerBuilder, YomkBoot, server
+from .builder import AsyncRequestBuilder, ServerBuilder, server
 from .YomkServer import YomkServer
 from .YomkService import YomkService
 
 __all__ = [
     "__version__",
-    "server", "ServerBuilder", "AsyncRequestBuilder", "YomkBoot",
+    "server", "ServerBuilder", "AsyncRequestBuilder",
     "YomkServer", "YomkService",
 ]

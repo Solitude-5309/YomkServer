@@ -1,0 +1,2 @@
+# 由 CMake configure_file 生成（源：CMakeLists 的 YOMK_BOOT_VERSION，当前取项目版本号），勿手改
+__version__ = "@YOMK_MODULE_VERSION@"

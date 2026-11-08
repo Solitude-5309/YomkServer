@@ -1,25 +1,5 @@
-from abc import ABC, abstractmethod
-
 from yomk.server import _facade
 from yomk.server._diag import error as diag_error
-
-
-class YomkBoot(ABC):
-    # 启动编排钩子：before -> start -> after，未显式返回等价成功
-    def __init__(self) -> None:
-        pass
-
-    @abstractmethod
-    def before(self) -> int:
-        pass
-
-    @abstractmethod
-    def start(self) -> int:
-        pass
-
-    @abstractmethod
-    def after(self) -> int:
-        pass
 
 
 class AsyncRequestBuilder:

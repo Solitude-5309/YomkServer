@@ -3,8 +3,8 @@
 # 用法: ./scripts/install_env.sh [安装路径]（缺省 /opt/yomk）
 # 说明: build_ubuntu.sh 自动安装与 README 手动 CMake 安装共用本脚本，
 #       保证两种安装方式的最终结果完全一致:
-#   1. 校验安装结果: yomk/ 命名空间包（六域入口 + per-domain .so）存在，
-#      并做新包六域 import 冒烟
+#   1. 校验安装结果: yomk/ 命名空间包（七域入口 + per-domain .so）存在，
+#      并做新包七域 import 冒烟
 #   2. 持久化环境变量 YOMK_PREFIX_PATH 与 PYTHONPATH（指向 lib/pythonX.Y/site-packages）:
 #      - /etc/profile.d/yomkpy.sh: 登录 shell（ssh/console）生效
 #      - /etc/bash.bashrc 追加引用: 桌面终端等非登录交互式 shell 生效
@@ -52,15 +52,15 @@ for f in yomk/server/__init__.py yomk/server/py.typed yomk/server/YomkServer.so 
         || fail "未找到 ${PY_SITE_DIR}/${f}，请先完成 cmake install"
 done
 
-# 新包 import 冒烟：六域入口可导入且各域 __version__ 非源码树 "unknown"
+# 新包 import 冒烟：七域入口可导入且各域 __version__ 非源码树 "unknown"
 YOMK_IMPORT_SMOKE=$(PYTHONPATH="${PY_SITE_DIR}" python3 -c '
-import yomk.server, yomk.ctx, yomk.event_loop, yomk.fn_pool, yomk.log, yomk.srv_info
-mods = (yomk.server, yomk.ctx, yomk.event_loop, yomk.fn_pool, yomk.log, yomk.srv_info)
+import yomk.boot, yomk.server, yomk.ctx, yomk.event_loop, yomk.fn_pool, yomk.log, yomk.srv_info
+mods = (yomk.boot, yomk.server, yomk.ctx, yomk.event_loop, yomk.fn_pool, yomk.log, yomk.srv_info)
 bad = [m.__name__ for m in mods if getattr(m, "__version__", "unknown") == "unknown"]
 assert not bad, bad
 print("ok")') \
-    || fail "新包 yomk 六域 import 冒烟失败（__version__ 缺失或为 unknown）"
-echo "-- 新包 yomk 六域 import 冒烟: ${YOMK_IMPORT_SMOKE}"
+    || fail "新包 yomk 七域 import 冒烟失败（__version__ 缺失或为 unknown）"
+echo "-- 新包 yomk 七域 import 冒烟: ${YOMK_IMPORT_SMOKE}"
 
 # 相对安装前缀的 site-packages 路径（写入 profile 脚本用）
 PY_REL_SITE="${PY_SITE_DIR#"${INSTALL_PREFIX}/"}"

@@ -185,7 +185,7 @@ fi
 # -------------el 4. 安装后系统级配置（与手动 CMake 安装共用 scripts/install_env.sh） ----------------
 
 # -------------sl 5. 安装成功提示 ----------------
-# 安装结果校验（旧合并面 + 新 yomk/ 命名空间包 + 六域 import 冒烟）已由 scripts/install_env.sh 完成
+# 安装结果校验（旧合并面 + 新 yomk/ 命名空间包 + 七域 import 冒烟）已由 scripts/install_env.sh 完成
 echo ""
 echo "==========================================="
 echo " YomkServerPy 安装成功!"
@@ -196,7 +196,7 @@ echo " PYTHONPATH:       ${PY_SITE_DIR}"
 echo " 编译器:           $(gcc --version | head -1)"
 echo " 环境指纹报告:     ${INSTALL_PREFIX}/share/YomkServerPy/abi_report.txt"
 echo " 新包命名空间包（安装于 ${PY_SITE_DIR}/yomk）:"
-for d in server ctx event_loop fn_pool log srv_info; do
+for d in boot server ctx event_loop fn_pool log srv_info; do
     echo "   - yomk/${d}/"
 done
 echo "   - yomk/msg/{server,ctx,event_loop,fn_pool,log,srv_info}/"

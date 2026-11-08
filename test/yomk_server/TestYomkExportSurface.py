@@ -4,9 +4,9 @@
 TestYomkExportSurface.py —— 新包按域导出面快照守卫（L12 起）
 
 背景：
-    yomk/ 下六个子包各自定型导出面（各 __init__.py 的 __all__）。
+    yomk/ 下各域子包各自定型导出面（各 __init__.py 的 __all__）。
     后续搬移/重导出若漏导出或多导出，运行期测试未必覆盖，
-    故在此冻结六域 __all__ 快照。
+    故在此冻结各域 __all__ 快照。
 
 口径：
     - 快照 = 各域包的 sorted(__all__)（含 __version__ 与域入口函数）；
@@ -26,14 +26,18 @@ import yomk.msg
 
 g_failed = 0
 
-DOMAINS = ["server", "ctx", "fn_pool", "event_loop", "log", "srv_info"]
+DOMAINS = ["server", "boot", "ctx", "fn_pool", "event_loop", "log", "srv_info"]
 
 # 域名 → __all__ 快照（与各域 src/yomk/<域>/__init__.py 定型清单一致）
 EXPECTED = {
     "server": [
         "__version__",
-        "server", "ServerBuilder", "AsyncRequestBuilder", "YomkBoot",
+        "server", "ServerBuilder", "AsyncRequestBuilder",
         "YomkServer", "YomkService",
+    ],
+    "boot": [
+        "__version__",
+        "YomkBoot",
     ],
     "ctx": [
         "__version__",

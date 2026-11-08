@@ -1,15 +1,9 @@
 from typing import Any, Callable, Optional
 
+from yomk.boot import YomkBoot
 from yomk.msg.server import ResStatus, Response
 from yomk.server.YomkServer import YomkServer
 from yomk.server.YomkService import YomkService
-
-
-class YomkBoot:
-    def __init__(self) -> None: ...
-    def before(self) -> int: ...
-    def start(self) -> int: ...
-    def after(self) -> int: ...
 
 
 class AsyncRequestBuilder:

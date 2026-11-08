@@ -21,7 +21,8 @@ TestYomkBoot.py —— YomkAPI.boot 三段失败短路/错误码透传测试
 
 import sys
 
-from yomk.server import YomkBoot, server
+from yomk.boot import YomkBoot
+from yomk.server import server
 
 g_failed = 0
 

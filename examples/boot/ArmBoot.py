@@ -10,7 +10,8 @@ start() 用 service_creators 映射表管理"服务名 -> 服务类"：
 全部服务入清单、按需启动；同一个类也可注册为多个实例。
 """
 
-from yomk.server import YomkBoot, server
+from yomk.boot import YomkBoot
+from yomk.server import server
 from yomk.log import log
 
 from services.MotionService import MotionService

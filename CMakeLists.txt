@@ -6,11 +6,12 @@ cmake_minimum_required(VERSION 3.14)
 # （server().version() 经 yomk.server.__version__ 暴露；构建期注入，无运行时读取），
 # 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
 # 本行即版本唯一来源，发布时手动 bump。
-project(YomkServerPy VERSION 2.2.15 LANGUAGES C)
+project(YomkServerPy VERSION 2.2.16 LANGUAGES C)
 
 # ---------- 各运行时域版本号 ----------
 # 集中定义，当前全部取项目版本号；若某域需要独立版本，只改对应行。
 # 第 11 节据此 configure_file 生成各域 _version.py。
+set(YOMK_BOOT_VERSION "${PROJECT_VERSION}")
 set(YOMK_SERVER_VERSION "${PROJECT_VERSION}")
 set(YOMK_CTX_VERSION "${PROJECT_VERSION}")
 set(YOMK_EVENT_LOOP_VERSION "${PROJECT_VERSION}")
@@ -92,10 +93,11 @@ install(FILES
 # - staging 把源码树与生成的 _version.py 合并到构建树，安装规则同步落盘。
 set(YOMK_PY_PACKAGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/yomk")
 set(YOMK_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/yomk")
-set(YOMK_VERSIONED_PACKAGES server ctx event_loop fn_pool log srv_info)
+set(YOMK_VERSIONED_PACKAGES boot server ctx event_loop fn_pool log srv_info)
 
 # 需 Cython 编译的模块（相对 src/yomk，不带 .py）
 set(YOMK_CYTHON_MODULES
+    boot/YomkBoot
     msg/server/ServerMsg
     msg/ctx/ContextMsg
     msg/event_loop/EventLoopMsg

@@ -827,7 +827,7 @@ def main():
           "S10f: 无参 ON_FILE_LOG_DEBUG 恢复 eOk")
     check(log_mgr().file().status().data.debug_on,
           "S10f: 文件主闸 ON_DEBUG 后文件态 debug_on")
-    # 未知 type 客户端拦截属已删除的扁平 logger_info_global 面；六域链式入口
+    # 未知 type 客户端拦截属已删除的扁平 logger_info_global 面；七域链式入口
     # console()/file() 天然只收敛两型，无未知 type 形态可测（契约随扁平面退场）
 
     # ============ Section 11: 文件日志全局代理契约（与控制台 S3 同构） ============

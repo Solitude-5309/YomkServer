@@ -2,7 +2,8 @@ from pathlib import Path
 from typedefine.TypeDefine import CTX_CONFIG_PATH
 from services.ConfigService import ConfigService
 from msgs.YomkMsgs import *
-from yomk.server import server, YomkBoot
+from yomk.boot import YomkBoot
+from yomk.server import server
 from yomk.ctx import ctx
 from yomk.log import log
 from yomk.msg.server import ResStatus

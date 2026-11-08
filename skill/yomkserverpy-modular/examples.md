@@ -31,7 +31,8 @@ ProjectName/
 from yomk.msg.server import ResStatus, Response
 from yomk.msg.ctx import CheckStatus
 from yomk.msg.log import Log
-from yomk.server import YomkBoot, YomkService, server
+from yomk.boot import YomkBoot
+from yomk.server import YomkService, server
 from yomk.ctx import ctx
 from yomk.event_loop import Event, event_loop
 from yomk.fn_pool import fn_pool

@@ -1,6 +1,6 @@
 # YomkServer / YomkService（进程内服务总线）
 
-服务总线核心：服务（`YomkService`）注册到服务器（`YomkServer`），通过 URL 格式 `"/服务名/功能函数名"` 进行同步或异步调用，并统一管理服务生命周期（注册、删除、优雅关闭）。全部操作经链式域入口 `server()` 暴露——`url/msg/srv` 等方法前置累积，`request/create/add` 等无参动作终结。同属核心层的 `YomkBoot` 启动编排见文末。
+服务总线核心：服务（`YomkService`）注册到服务器（`YomkServer`），通过 URL 格式 `"/服务名/功能函数名"` 进行同步或异步调用，并统一管理服务生命周期（注册、删除、优雅关闭）。全部操作经链式域入口 `server()` 暴露——`url/msg/srv` 等方法前置累积，`request/create/add` 等无参动作终结。启动编排基类 `YomkBoot` 独立 boot 域（`from yomk.boot import YomkBoot`），见文末。
 
 ## 链式语法速查
 
@@ -44,7 +44,8 @@ Python 链对象按值持有、无悬垂风险，但 `log()` 域入口在调用�
 
 ```python
 from yomk.msg.server import ResStatus, Response
-from yomk.server import YomkBoot, YomkService, server
+from yomk.boot import YomkBoot
+from yomk.server import YomkService, server
 from yomk.ctx import ctx
 from yomk.fn_pool import fn_pool
 from yomk.log import log
@@ -109,7 +110,7 @@ class MyService(YomkService):
 
 ## 启动编排（YomkBoot）
 
-`YomkBoot`（`YomkBoot`，ABC 纯虚）提供 before / start / after 三段式契约（`before()` 前置准备如读配置、`start()` 主体如创建注册服务、`after()` 后置动作如挂载监听），封装从框架初始化到业务就绪的完整流程。经 `server().boot_ptr(boot).run()` 消费：内部先完成框架 init，再按序执行三段；任一阶段返回非 0 立即中止并原样传播该返回值。参考实现见 `examples/boot/ArmBoot.py`。
+`YomkBoot`（`yomk.boot` 域，ABC 纯虚）提供 before / start / after 三段式契约（`before()` 前置准备如读配置、`start()` 主体如创建注册服务、`after()` 后置动作如挂载监听），封装从框架初始化到业务就绪的完整流程。经 `server().boot_ptr(boot).run()` 消费：内部先完成框架 init，再按序执行三段；任一阶段返回非 0 立即中止并原样传播该返回值。参考实现见 `examples/boot/ArmBoot.py`。
 
 ## 完整示例
 

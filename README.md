@@ -29,7 +29,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 
 | 位置 | 简述 |
 |---|---|
-| `src/yomk/` | 新包唯一 Python 面：`server/ ctx/ event_loop/ fn_pool/ log/ srv_info/` 六域 + `msg/<域>/` 消息子包；每域 `builder.py`（链式 API）+ `py.typed`/`.pyi` 类型桩；PEP 420 命名空间包（`yomk/`、`yomk/msg/` 两层无 `__init__.py`）；模块经 Cython 独立编译为 `yomk/<域>/*.so` |
+| `src/yomk/` | 新包唯一 Python 面：`boot/ server/ ctx/ event_loop/ fn_pool/ log/ srv_info/` 七域 + `msg/<域>/` 消息子包；每域 `builder.py`（链式 API）+ `py.typed`/`.pyi` 类型桩；PEP 420 命名空间包（`yomk/`、`yomk/msg/` 两层无 `__init__.py`）；模块经 Cython 独立编译为 `yomk/<域>/*.so` |
 | `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池、日志、服务内省六大主题 |
 | `template/` | 脚手架：`project/` 新工程模板、`extension/` 扩展库模板 |
 | `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |
@@ -466,7 +466,8 @@ examples/
 
 ```python
 # 域入口（链式 API 起点与运行时类型）
-from yomk.server import server, YomkService, YomkBoot, YomkServer
+from yomk.boot import YomkBoot
+from yomk.server import server, YomkService, YomkServer
 from yomk.ctx import ctx
 from yomk.fn_pool import fn_pool
 from yomk.event_loop import event_loop
@@ -494,7 +495,7 @@ L13 起旧伞门面已删除，按域显式导入替代：
 | 旧（≤ L12） | 新（L13 起） |
 |---|---|
 | `import YomkApi` | 按域显式导入（见上） |
-| `server()` / `YomkService` / `YomkBoot` / `YomkServer` / `ServerBuilder` / `AsyncRequestBuilder` | `from yomk.server import server, YomkService, YomkBoot, YomkServer, ServerBuilder, AsyncRequestBuilder` |
+| `server()` / `YomkService` / `YomkServer` / `ServerBuilder` / `AsyncRequestBuilder` | `from yomk.server import server, YomkService, YomkServer, ServerBuilder, AsyncRequestBuilder`；`YomkBoot` 独立 boot 域：`from yomk.boot import YomkBoot` |
 | `ctx()` / `YomkContext` / `ContextGroup` | `from yomk.ctx import ctx, YomkContext, ContextGroup` |
 | `fn_pool()` / `YomkFunctionPool` | `from yomk.fn_pool import fn_pool, YomkFunctionPool` |
 | `event_loop()` / `YomkEventLoop` / `EventLoop` / `Event` | `from yomk.event_loop import event_loop, YomkEventLoop, EventLoop, Event` |

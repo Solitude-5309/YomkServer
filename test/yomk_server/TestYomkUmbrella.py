@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-TestYomkUmbrella.py —— 新包六域公开面锚点 + 冒烟（L12 起）
+TestYomkUmbrella.py —— 新包七域公开面锚点 + 冒烟（L12 起）
 
 本文件是**运行期公开面锚点**测试：
-显式 import 六域入口（不再经伞门面 YomkApi），断言命名空间锚点
+显式 import 七域入口与 boot 域类型（不再经伞门面 YomkApi），断言命名空间锚点
 （yomk / yomk.msg 顶层无 __init__）、各域 builder 公开方法面与
-各域 builder.py 定型清单逐一对表，再走 S1-S8 六域冒烟。
+各域 builder.py 定型清单逐一对表，再走 S1-S8 七域冒烟。
 
 语言机制说明：
 - 日志发射走链式 API：S5 经链式调用发射并返回 Succeeded；
@@ -27,7 +27,8 @@ import sys
 
 import yomk
 import yomk.msg
-from yomk.server import server, YomkBoot, YomkServer, YomkService
+from yomk.boot import YomkBoot
+from yomk.server import server, YomkServer, YomkService
 from yomk.ctx import ctx
 from yomk.fn_pool import fn_pool
 from yomk.event_loop import event_loop
