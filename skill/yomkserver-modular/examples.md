@@ -1,6 +1,6 @@
 # YomkServer 工程示例
 
-> 示例0 / 示例7 与仓库内 `template/Project/`、`template/Extension/` 保持一致（模板中 `TemplateProject`/`TemplateExtension` 即占位符实例）。**生成工程/扩展时优先复制模板目录**并替换工程名/扩展名；模板目录不存在时按下文逐文件生成。
+> 示例0 / 示例7 与仓库内 `template/Project/`、`template/extension/` 保持一致（模板中 `TemplateProject`/`TemplateExtension` 即占位符实例）。**生成工程/扩展时优先复制模板目录**并替换工程名/扩展名；模板目录不存在时按下文逐文件生成。
 
 ## 示例0：标准工程模板（创建新工程时必须生成）
 
