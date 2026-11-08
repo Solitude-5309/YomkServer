@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.14)
 # → YomkApi 顶部 import → server().version()（构建期注入，无运行时读取），
 # 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
 # 本行即版本唯一来源，发布时手动 bump。
-project(YomkServerPy VERSION 2.2.8 LANGUAGES C)
+project(YomkServerPy VERSION 2.2.9 LANGUAGES C)
 
 # ---------- 1. 查找 Python ----------
 # Interpreter 组件提供 Python_EXECUTABLE：cython 仅 user-site 安装时（可执行入口
@@ -221,3 +221,64 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 # ---------- 10. 示例不安装（Python 脚本源码即可运行，示例位于源码树 examples/，直接在源码树下运行） ----------
+
+# ---------- 11. L10 Cython 单模块试点（yomk.msg.server.ServerMsg） ----------
+# 仅编译新包的一个消息模块，验证 PEP 420 命名空间包下 ".so 优先 / .py 回退"；
+# 旧合并目标与安装规则保持不变，试点产物只落构建树（安装/staging 留到 L11）
+set(YOMK_PILOT_MODULE_NAME "yomk.msg.server.ServerMsg")
+set(YOMK_PILOT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/yomk/msg/server")
+set(YOMK_PILOT_PY_SOURCE "${YOMK_PILOT_SRC_DIR}/ServerMsg.py")
+set(YOMK_PILOT_C_DIR "${CMAKE_BINARY_DIR}/cython/yomk/msg/server")
+set(YOMK_PILOT_C_SOURCE "${YOMK_PILOT_C_DIR}/ServerMsg.c")
+set(YOMK_PILOT_SITE_DIR "${BUILD_SITE_DIR}/yomk/msg/server")
+file(MAKE_DIRECTORY "${YOMK_PILOT_C_DIR}")
+file(MAKE_DIRECTORY "${YOMK_PILOT_SITE_DIR}")
+
+add_custom_command(
+    OUTPUT ${YOMK_PILOT_C_SOURCE}
+    COMMAND ${CYTHON_EXECUTABLE}
+        -3
+        --module-name "${YOMK_PILOT_MODULE_NAME}"
+        "${YOMK_PILOT_PY_SOURCE}"
+        -o "${YOMK_PILOT_C_SOURCE}"
+    DEPENDS "${YOMK_PILOT_PY_SOURCE}"
+    COMMENT "Running Cython for ${YOMK_PILOT_MODULE_NAME} (pilot)"
+)
+
+add_library(yomk_msg_server_ServerMsg MODULE ${YOMK_PILOT_C_SOURCE})
+target_include_directories(yomk_msg_server_ServerMsg PRIVATE
+    ${Python_INCLUDE_DIRS}
+)
+target_link_libraries(yomk_msg_server_ServerMsg
+    ${Python_LIBRARIES}
+)
+
+if(WIN32)
+    set_target_properties(yomk_msg_server_ServerMsg PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "ServerMsg"
+        SUFFIX ".pyd"
+        LIBRARY_OUTPUT_DIRECTORY "${YOMK_PILOT_SITE_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY "${YOMK_PILOT_SITE_DIR}"
+    )
+else()
+    set_target_properties(yomk_msg_server_ServerMsg PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "ServerMsg"
+        SUFFIX ".so"
+        LIBRARY_OUTPUT_DIRECTORY "${YOMK_PILOT_SITE_DIR}"
+    )
+endif()
+
+# 纯 Python 文件同步到试点目录：__init__.py 保持 .py（不参与编译）；
+# ServerMsg.py/.pyi 作为 .so 缺失时的回退源与类型桩，py.typed 保持叶子标记
+add_custom_command(TARGET yomk_msg_server_ServerMsg POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${YOMK_PILOT_SRC_DIR}/__init__.py"
+        "${YOMK_PILOT_SRC_DIR}/__init__.pyi"
+        "${YOMK_PILOT_SRC_DIR}/ServerMsg.py"
+        "${YOMK_PILOT_SRC_DIR}/ServerMsg.pyi"
+        "${YOMK_PILOT_SRC_DIR}/py.typed"
+        "${YOMK_PILOT_SITE_DIR}"
+    COMMENT "Copying yomk.msg.server pure-python files into build site-packages"
+)
