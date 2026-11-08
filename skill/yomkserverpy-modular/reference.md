@@ -1,6 +1,6 @@
 # YomkServerPy API 参考
 
-API 形态为**六个链式域入口**：`server()` / `ctx()` / `fn_pool()` / `event_loop()` / `log()` / `log_mgr()`。累积环节（`url/msg/srv/key/group/value/fn_name/fn/loop/handle_fn/msg/tag/...`）前置定位并返回 builder 自身，终结环节（`request/init/create/add/remove/set/install/call/post/get/apply/run` 与内省读族）无参执行并返回结果。链须单表达式内联（`log()` 域在调用行捕获位置前缀，禁止缓存 builder）。
+API 形态为**七个链式域入口**：`server()` / `ctx()` / `fn_pool()` / `event_loop()` / `log()` / `log_mgr()` / `srv_info()`。累积环节（`url/msg/srv/key/group/value/fn_name/fn/loop/handle_fn/msg/tag/...`）前置定位并返回 builder 自身，终结环节（`request/init/create/add/remove/set/install/call/post/get/apply/run` 与内省读族）无参执行并返回结果。链须单表达式内联（`log()` 域在调用行捕获位置前缀，禁止缓存 builder）。
 
 ## 状态码约定
 
@@ -171,7 +171,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 | `server().srv_name(n).srv_ptr(s)` | `.add()` → `int`：注册已有实例；累积非空 `srv_name` 时注册前先改名；守卫拒绝时实例仍归调用方 |
 | `server().srv_name(n)` | `.remove()` → `int`：按名注销并触发 `deinit`；-1 三因：不存在 / 名称为空 / 未初始化 |
 | `server().boot_ptr(boot)` | `.run()` → `int`：先 init 再 before → start → after；任一阶段非 0 立即中止并**原样传播**；`boot` 省略 = 仅 init 返回 0 |
-| `server()` | `.services()` 服务名清单 / `.srv_name(n).functions()` 函数清单 / `.fn_url(u).get_info()` 单函数元信息 / `.all()` 全量拓扑（`ServerServiceInfo`），均 → `Response` |
+| `srv_info()` | `.services()` 服务名清单 / `.srv_name(n).functions()` 函数清单 / `.fn_url(u).get_info()` 单函数元信息 / `.all()` 全量拓扑（`ServerServiceInfo`），均 → `Response` |
 
 服务管理语义：
 

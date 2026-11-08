@@ -1,6 +1,6 @@
 # YomkServerPy 工程示例
 
-创建新工程**优先复制仓库根 `template/project/`**（扩展库复制 `template/extension/`）并替换占位符——与模板零漂移且省时；以下示例0/示例7 即模板的等价逐文件生成形态，模板目录不存在时按此逐文件生成。所有 API 均为六域链式形态（`server()/ctx()/fn_pool()/event_loop()/log()/log_mgr()`，累积前置、无参终结）。
+创建新工程**优先复制仓库根 `template/project/`**（扩展库复制 `template/extension/`）并替换占位符——与模板零漂移且省时；以下示例0/示例7 即模板的等价逐文件生成形态，模板目录不存在时按此逐文件生成。所有 API 均为七域入口链式形态（`server()/ctx()/fn_pool()/event_loop()/log()/log_mgr()/srv_info()`，累积前置、无参终结）。
 
 ## 示例0：标准工程模板（创建新工程时必须生成）
 
@@ -575,7 +575,7 @@ class PoolUserService(YomkService):
 
 ## 示例5：服务内省（调试）
 
-期望消息类型由 `install_func` 三参形式声明、函数说明由四参声明（均仅作内省元数据，不参与运行时校验；说明经 `fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）：
+期望消息类型由 `install_func` 三参形式声明、函数说明由四参声明（均仅作内省元数据，不参与运行时校验；说明经 `srv_info().fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）。内省查询走独立域入口 `srv_info()`（`from yomk.srv_info import srv_info`）：
 
 ```python
 class DemoService(YomkService):
@@ -588,22 +588,22 @@ class DemoService(YomkService):
 server().init()
 
 # 服务列表（data 为字符串列表，字典序）
-resp = server().services()
+resp = srv_info().services()
 # resp.data: ["/DemoService", "/YomkContext", "/YomkEventLoop", ...]
 
 # 指定服务的函数结构化清单（data 为 FuncInfo 列表，与单查同族；服务不存在返回空清单）
-resp = server().srv_name("/DemoService").functions()
+resp = srv_info().srv_name("/DemoService").functions()
 # resp.data: [FuncInfo("/no_type"), FuncInfo("/with_type", "MyData"),
 #             FuncInfo("/with_desc", "MyData", "函数说明")]
 
 # 单函数元信息（命中 msg 恒 "ok"，data 为 FuncInfo 包：func_name/msg_name/description）
-server().fn_url("/DemoService/with_desc").get_info()  # ok, msg_name="MyData", description="函数说明"
-server().fn_url("/DemoService/with_type").get_info()  # ok, msg_name="MyData"
-server().fn_url("/DemoService/no_type").get_info()    # ok, msg_name 空串（未声明）
-server().fn_url("/DemoService/not_exist").get_info()  # Failed
+srv_info().fn_url("/DemoService/with_desc").get_info()  # ok, msg_name="MyData", description="函数说明"
+srv_info().fn_url("/DemoService/with_type").get_info()  # ok, msg_name="MyData"
+srv_info().fn_url("/DemoService/no_type").get_info()    # ok, msg_name 空串（未声明）
+srv_info().fn_url("/DemoService/not_exist").get_info()  # Failed
 
 # 全量拓扑：ServerServiceInfo 层级列表（service_name 服务名 + funcs 函数元信息列表，与单查同族）
-resp = server().all()
+resp = srv_info().all()
 ```
 
 说明：自省读的是运行期服务表，注册/删除即时反映到下一次查询；函数池动态注册函数的类型元数据由 `fn_pool().msg_name(m)` 声明，未声明内省显示为空。四个内置模块另提供模块内层内省链（Context 的 `ctx().keys()/key(k).info()/groups()/all()`、EventLoop 的 `event_loop().list()/loop(n).tag_count(n).get_info()/all()`、FunctionPool 的 `fn_pool().list()/fn_name(n).get_info()/all()`、Logger 的 `log_mgr().console()/file().list()/get_info()/status()/all()`），API 见 [reference.md](reference.md)。完整可运行示例见仓库 `examples/ExampleYomkServerInfo.py`。

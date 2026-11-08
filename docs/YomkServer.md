@@ -38,7 +38,7 @@ Python 链对象按值持有、无悬垂风险，但 `log()` 域入口在调用�
 
 ### 拓扑内省（读终结，返回 `Response`）
 
-`server().services()`（服务名清单）/ `.srv_name(n).functions()`（指定服务函数清单）/ `.fn_url(url).get_info()`（单函数元信息）/ `.all()`（全量拓扑），详见 [服务自省](YomkServerInfo.md)。
+`srv_info().services()`（服务名清单）/ `.srv_name(n).functions()`（指定服务函数清单）/ `.fn_url(url).get_info()`（单函数元信息）/ `.all()`（全量拓扑），详见 [服务自省](YomkServerInfo.md)。
 
 ## 使用示例
 

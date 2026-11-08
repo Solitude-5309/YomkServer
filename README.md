@@ -9,7 +9,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 - **进程内服务总线**：服务（`YomkService`）注册到服务器（`YomkServer`），通过 URL 格式 `"/服务名/功能函数名"` 进行同步或异步调用。两级模块化——`YomkService` 封装独立业务域或技术组件，`Function` 为服务内以唯一 URL 路径标识的功能单元
 - **轻量消息包**：普通 Python 类即可定义消息，实例直接作为请求负载传入、经回包 `data` 返回，属性直接访问
 - **开箱即用内置能力**：`server().init()` 即自动装配共享上下文、线程隔离事件循环、动态函数池、分级日志与服务内省五个内置模块，无需额外配置
-- **链式域入口**：六个域入口——`server()` / `log()` / `log_mgr()` / `ctx()` / `event_loop()` / `fn_pool()`——以"前置累积 + 无参终结"的链式形态暴露全部能力，屏蔽底层 URL 路由；API 是壳而非墙，需要时可直接取 `server().instance()` 裸调 `request()`
+- **链式域入口**：七个域入口——`server()` / `log()` / `log_mgr()` / `ctx()` / `event_loop()` / `fn_pool()` / `srv_info()`——以"前置累积 + 无参终结"的链式形态暴露全部能力，屏蔽底层 URL 路由；API 是壳而非墙，需要时可直接取 `server().instance()` 裸调 `request()`
 
 ### 模块清单
 
@@ -281,19 +281,21 @@ log_mgr().file("app").remove()
 内置内省服务，随 `server().init()` 自动启动，运行期查询"框架里现在有什么、每个功能函数期望什么消息类型"：
 
 ```python
+from yomk.srv_info import srv_info
+
 # 服务清单（data 为服务名列表）
-resp = server().services()
+resp = srv_info().services()
 
 # 指定服务的功能函数结构化清单（data 为 FuncInfo 列表：func_name/msg_name/description，
 # 与单查、全量拓扑同族；不存在服务返回空表）
-resp = server().srv_name("/MotionService").functions()
+resp = srv_info().srv_name("/MotionService").functions()
 
 # 单函数元信息：命中返回结构化 FuncInfo 包（msg 恒 "ok"，
 # msg_name=期望消息类型名、description=函数说明）；不存在返回 eNo
-resp = server().fn_url("/MotionService/move").get_info()
+resp = srv_info().fn_url("/MotionService/move").get_info()
 
 # 全量拓扑：结构化层级列表（每服务条目 service_name + funcs）
-resp = server().all()
+resp = srv_info().all()
 ```
 
 说明：期望消息类型由 `install_func()` 三参形式声明（函数池/事件循环侧为 `.msg_name()` 分面），自定义函数说明经第四参或 `.description()` 声明（均仅作内省元数据，不参与运行时校验）；自省读的是运行期服务表，注册/删除即时反映到下一次查询。完整可运行演示见 `examples/ExampleYomkServerInfo.py`（四类查询、注册/删除实时视图、关闭后返回值契约）。

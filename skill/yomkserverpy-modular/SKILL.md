@@ -1,6 +1,6 @@
 ---
 name: yomkserverpy-modular
-description: 基于YomkServerPy框架的模块化Python工程编程。核心理念"一切皆服务，一切皆请求"。API 为六个链式域入口（server()/ctx()/fn_pool()/event_loop()/log()/log_mgr()），前置累积、无参终结，屏蔽 URL 路由。用于创建YomkService功能模块、使用YomkContext全局状态管理、YomkEventLoop事件循环、YomkFunctionPool公共函数池、YomkLogger日志系统与YomkBoot启动编排。当用户需要编写YomkServerPy模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数、使用日志或搭建工程结构时使用；当用户提到"创建工程"或搭建YomkServerPy骨架时，必须立即使用任务一生成完整工程骨架，不要先询问需求。
+description: 基于YomkServerPy框架的模块化Python工程编程。核心理念"一切皆服务，一切皆请求"。API 为七个链式域入口（server()/ctx()/fn_pool()/event_loop()/log()/log_mgr()/srv_info()），前置累积、无参终结，屏蔽 URL 路由。用于创建YomkService功能模块、使用YomkContext全局状态管理、YomkEventLoop事件循环、YomkFunctionPool公共函数池、YomkLogger日志系统与YomkBoot启动编排。当用户需要编写YomkServerPy模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数、使用日志或搭建工程结构时使用；当用户提到"创建工程"或搭建YomkServerPy骨架时，必须立即使用任务一生成完整工程骨架，不要先询问需求。
 ---
 
 # YomkServerPy 模块化编程框架
@@ -18,9 +18,9 @@ description: 基于YomkServerPy框架的模块化Python工程编程。核心理�
 | **YomkEventLoop** | 线程隔离事件循环（同循环顺序执行、不同循环并行） | `event_loop()` |
 | **YomkFunctionPool** | 动态函数池（运行时注册/热替换） | `fn_pool()` |
 | **YomkLogger** | 六级日志（控制台/文件、两级门控、代理、内省） | 发射 `log()` / 管理 `log_mgr()` |
-| **YomkServerInfo** | 服务内省（服务清单/函数清单/单函数元信息/全量拓扑） | 并入 `server()` 内省终结（`services/functions/fn_url/all`） |
+| **YomkServerInfo** | 服务内省（服务清单/函数清单/单函数元信息/全量拓扑） | 独立内省域入口 `srv_info()`（`services/functions/fn_url/all`） |
 
-唯一形态：按域显式导入（`from yomk.server import server` 等，无伞门面）。全部能力经六个链式域入口暴露：**累积环节**（`url/msg/srv/key/group/value/fn_name/fn/loop/handle_fn/msg/tag` 等）定位目标并返回 builder 自身，**终结环节**（`request/init/create/add/remove/set/install/uninstall/call/post/post_wait/start/stop/destroy/get/apply/run` 与内省读族）无参执行并返回结果。链须单表达式内联使用；`log()` 域入口在调用行捕获位置前缀，**禁止缓存 builder 对象**。三态返回统一口径 `Succeeded/Failed/Invalid`（`ResStatus.eOk/eNo/eInvalid` 为同值别名）。
+唯一形态：按域显式导入（`from yomk.server import server` 等，无伞门面）。全部能力经七个链式域入口暴露（内省读族在 `srv_info()` 域）：**累积环节**（`url/msg/srv/key/group/value/fn_name/fn/loop/handle_fn/msg/tag` 等）定位目标并返回 builder 自身，**终结环节**（`request/init/create/add/remove/set/install/uninstall/call/post/post_wait/start/stop/destroy/get/apply/run` 与内省读族）无参执行并返回结果。链须单表达式内联使用；`log()` 域入口在调用行捕获位置前缀，**禁止缓存 builder 对象**。三态返回统一口径 `Succeeded/Failed/Invalid`（`ResStatus.eOk/eNo/eInvalid` 为同值别名）。
 
 ### 触发条件与强制行为
 
@@ -140,10 +140,10 @@ def init(self):
     self.install_func("/my_desc", self.my_desc, "MyData", "说明")  # 四参：类型 + 函数说明
     return 0
 
-server().services()                                # 服务列表（data 为服务名列表）
-server().srv_name("/XxxService").functions()       # 函数结构化清单（data 为 FuncInfo 列表：func_name/msg_name/description）
-server().fn_url("/XxxService/my_desc").get_info()  # 单函数元信息（结构化 FuncInfo 包，msg 恒 "ok"；未命中 Failed）
-server().all()                                     # 全量拓扑（ServerServiceInfo 层级列表：service_name + funcs）
+srv_info().services()                              # 服务列表（data 为服务名列表）
+srv_info().srv_name("/XxxService").functions()     # 函数结构化清单（data 为 FuncInfo 列表：func_name/msg_name/description）
+srv_info().fn_url("/XxxService/my_desc").get_info()  # 单函数元信息（结构化 FuncInfo 包，msg 恒 "ok"；未命中 Failed）
+srv_info().all()                                   # 全量拓扑（ServerServiceInfo 层级列表：service_name + funcs）
 ```
 
 服务器层内省之外，四个内置模块均提供模块内层内省链（Context 的 `ctx().keys()/key(k).info()/groups()/all()`、EventLoop 的 `event_loop().list()/loop(n).get_info()/all()`、FunctionPool 的 `fn_pool().list()/fn_name(n).get_info()/all()`、Logger 的 `log_mgr().console()/file().list()/get_info()/status()/all()`），见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。
