@@ -131,7 +131,7 @@ static bool checkTimeFormat(const std::string& line)
     return true;
 }
 
-// 测试临时根：run_tests.sh 注入（Test/test_logs/tmp），独立运行回退 /tmp
+// 测试临时根：run_tests.sh 注入（test/test_logs/tmp），独立运行回退 /tmp
 static fs::path testTmpRoot()
 {
     const char* env = std::getenv("YOMK_TEST_TMP_ROOT");

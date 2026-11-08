@@ -1,4 +1,4 @@
-# Test/YomkServer：YomkServer 核心源文件（src/Core：YomkServer/YomkService/YomkSimpleThreadPool）
+# test/YomkServer：YomkServer 核心源文件（src/Core：YomkServer/YomkService/YomkSimpleThreadPool）
 # 的正式全面覆盖测试；目录内扁平布局，每个被测主题一个独立可执行程序，目标按闭环增量追加
 # 引用非导出内部头（如 YomkSimpleThreadPool.h）需要 Core 源码目录
 include_directories(${YOMK_SERVER_SRC_DIR}/Core)

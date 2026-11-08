@@ -241,17 +241,17 @@ cmake --build . -j
 ### 2. 一键运行全量测试
 
 ```bash
-./Test/run_tests.sh              # 快速模式：压测规模缩为 10000，约 10s
-./Test/run_tests.sh --full       # 完整规模（10 万级投递）
-./Test/run_tests.sh --bin DIR    # 指定测试可执行目录（默认 <仓库根>/bin）
-./Test/run_tests.sh --timeout N  # 单测试超时秒数（默认 300，--full 默认 900）
+./test/run_tests.sh              # 快速模式：压测规模缩为 10000，约 10s
+./test/run_tests.sh --full       # 完整规模（10 万级投递）
+./test/run_tests.sh --bin DIR    # 指定测试可执行目录（默认 <仓库根>/bin）
+./test/run_tests.sh --timeout N  # 单测试超时秒数（默认 300，--full 默认 900）
 ```
 
 运行器行为：
 
 - **失败即停**：任一测试退出码非 0（含超时被杀）立即终止，终端输出该测试的 `[FAIL]` 用例摘要与完整日志路径
-- **日志落盘**：`Test/test_logs/<时间戳>/` 下每个测试一份日志 + `summary.log` 汇总
-- **现场清理**：每个测试在独立临时目录运行（隔离 CWD，防意外写文件污染仓库）；测试临时产物统一落 `Test/test_logs/tmp`（经 `YOMK_TEST_TMP_ROOT` 注入测试进程，独立单独运行时回退 `/tmp`），启动时整目录重建（兜底上次崩溃遗留）、退出时整目录删除（含失败/中断/超时路径，经 EXIT trap 兜底）
+- **日志落盘**：`test/test_logs/<时间戳>/` 下每个测试一份日志 + `summary.log` 汇总
+- **现场清理**：每个测试在独立临时目录运行（隔离 CWD，防意外写文件污染仓库）；测试临时产物统一落 `test/test_logs/tmp`（经 `YOMK_TEST_TMP_ROOT` 注入测试进程，独立单独运行时回退 `/tmp`），启动时整目录重建（兜底上次崩溃遗留）、退出时整目录删除（含失败/中断/超时路径，经 EXIT trap 兜底）
 - **超时保护**：每个测试由 `timeout` 包裹，防卡死
 
 ### 3. 单独运行与压测规模
@@ -273,14 +273,14 @@ YOMK_TEST_STRESS_SCALE=50000 ./bin/TestYomkEventLoopStress
 cppcheck + clang-tidy 双工具零告警门禁（任一告警即非零退出），全量扫描 `src`（含全部 Modules）与 `include`：
 
 ```bash
-./Test/run_static_checks.sh              # 默认双跑
-./Test/run_static_checks.sh --cppcheck   # 仅跑 cppcheck
-./Test/run_static_checks.sh --tidy       # 仅跑 clang-tidy
+./test/run_static_checks.sh              # 默认双跑
+./test/run_static_checks.sh --cppcheck   # 仅跑 cppcheck
+./test/run_static_checks.sh --tidy       # 仅跑 clang-tidy
 ```
 
-- **日志落盘**：`Test/test_logs/<时间戳>/` 下每次运行一份 `cppcheck.log` + `clang-tidy.log` + `summary.log` 汇总
+- **日志落盘**：`test/test_logs/<时间戳>/` 下每次运行一份 `cppcheck.log` + `clang-tidy.log` + `summary.log` 汇总
 
-依赖：cppcheck、clang-tidy，以及仓库根 `compile_commands.json`（CMake 配置阶段自动导出，缺失时脚本会给出构建提示）。检查集与 `Test/YomkServer/CMakeLists.txt` 的 `YOMK_TEST_STATIC_ANALYZE` CMake 目标口径一致，可配合 `cmake .. -DYOMK_TEST_STATIC_ANALYZE=ON` 在构建侧运行同名 target。
+依赖：cppcheck、clang-tidy，以及仓库根 `compile_commands.json`（CMake 配置阶段自动导出，缺失时脚本会给出构建提示）。检查集与 `test/YomkServer/CMakeLists.txt` 的 `YOMK_TEST_STATIC_ANALYZE` CMake 目标口径一致，可配合 `cmake .. -DYOMK_TEST_STATIC_ANALYZE=ON` 在构建侧运行同名 target。
 
 ---
 

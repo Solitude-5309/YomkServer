@@ -5,27 +5,27 @@ set(YomkServerLib
     YomkServer
 )
 
-# Test/YomkContext：Context 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
+# test/YomkContext：Context 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
 set(TestYomkContext_DIR ${TestYomkServer_DIR})
 include(${TestYomkContext_DIR}/YomkContext/CMakeLists.txt)
 
-# Test/YomkEventLoop：EventLoop 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
+# test/YomkEventLoop：EventLoop 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
 set(TestYomkEventLoop_DIR ${TestYomkServer_DIR})
 include(${TestYomkEventLoop_DIR}/YomkEventLoop/CMakeLists.txt)
 
-# Test/YomkFunctionPool：FunctionPool 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
+# test/YomkFunctionPool：FunctionPool 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
 set(TestYomkFunctionPool_DIR ${TestYomkServer_DIR})
 include(${TestYomkFunctionPool_DIR}/YomkFunctionPool/CMakeLists.txt)
 
-# Test/YomkLogger：Logger 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
+# test/YomkLogger：Logger 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
 set(TestYomkLogger_DIR ${TestYomkServer_DIR})
 include(${TestYomkLogger_DIR}/YomkLogger/CMakeLists.txt)
 
-# Test/YomkServerInfo：ServerInfo 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
+# test/YomkServerInfo：ServerInfo 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
 set(TestYomkServerInfo_DIR ${TestYomkServer_DIR})
 include(${TestYomkServerInfo_DIR}/YomkServerInfo/CMakeLists.txt)
 
-# Test/YomkServer：YomkServer 非 Modules 源文件的正式全面覆盖测试（顶层按被测模块分目录组织）
+# test/YomkServer：YomkServer 非 Modules 源文件的正式全面覆盖测试（顶层按被测模块分目录组织）
 include(${TestYomkServer_DIR}/YomkServer/CMakeLists.txt)
 
 # 测试程序仅供框架内部开发验证使用，不执行 install

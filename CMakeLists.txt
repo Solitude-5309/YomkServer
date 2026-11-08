@@ -7,7 +7,7 @@ include(cmake/AbiInfo.cmake)
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 3.5.12 LANGUAGES CXX)
+project(Yomk VERSION 3.5.13 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：
@@ -147,7 +147,7 @@ message("-- ExamplesYomkServer success.")
 
 # TestYomkServer（框架内部全面测试，可选编译，不安装）
 if(YOMK_BUILD_TESTS)
-    set(TestYomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Test)
+    set(TestYomkServer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test)
     include(${TestYomkServer_DIR}/CMakeLists.txt)
     message("-- TestYomkServer success.")
 endif()

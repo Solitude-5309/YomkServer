@@ -15,12 +15,12 @@
 #                    （契约：本机内核 high-entropy ASLR 下 TSan runtime 启动即
 #                    "unexpected memory mapping"，退出码 66）；默认 off 行为不变
 # 行为:
-#   1. 测试临时产物统一落 Test/test_logs/tmp（经 YOMK_TEST_TMP_ROOT 注入测试进程，
+#   1. 测试临时产物统一落 test/test_logs/tmp（经 YOMK_TEST_TMP_ROOT 注入测试进程，
 #      测试内 getenv 取根、独立运行回退 /tmp）；启动时整目录重建（兜底上次崩溃遗留）
 #   2. 逐个运行 26 个测试（快→慢，stress 类压尾），每个测试在独立临时工作目录运行
 #   3. 任一测试失败（退出码非 0 / 超时）→ 立即停止，终端输出 [FAIL] 行摘要与日志路径
-#   4. 日志落盘: Test/test_logs/<时间戳>/<测试名>.log + summary.log
-#   5. 退出（含失败/中断/超时）时整目录删除 Test/test_logs/tmp，不留任何临时产物
+#   4. 日志落盘: test/test_logs/<时间戳>/<测试名>.log + summary.log
+#   5. 退出（含失败/中断/超时）时整目录删除 test/test_logs/tmp，不留任何临时产物
 # 测试程序风格约定: main() 返回 0=全部通过，非 0=存在失败用例（[FAIL] 行输出）
 
 set -u
@@ -106,7 +106,7 @@ cleanup_all() {
 trap cleanup_all EXIT
 trap 'echo ""; echo "被用户中断"; exit 130' INT TERM
 
-# 测试清单：按模块分组、快→慢，stress 类压尾（与 Test/ 下 CMakeLists 目标一一对应）
+# 测试清单：按模块分组、快→慢，stress 类压尾（与 test/ 下 CMakeLists 目标一一对应）
 TESTS=(
     # YomkServer 模块
     TestYomkSimpleThreadPool
@@ -263,7 +263,7 @@ run_one_suite() {
             unset TSAN_OPTIONS
             export ASAN_OPTIONS="detect_leaks=1:halt_on_error=1"
             export UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=1"
-            export LSAN_OPTIONS="suppressions=${REPO_DIR}/Test/YomkServer/lsan.supp"
+            export LSAN_OPTIONS="suppressions=${REPO_DIR}/test/YomkServer/lsan.supp"
             echo "-- sanitizer: asan（ASan+UBSan 插桩；suppressions 走 LSAN_OPTIONS）"
             ;;
         tsan)

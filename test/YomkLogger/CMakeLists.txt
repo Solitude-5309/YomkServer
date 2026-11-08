@@ -1,4 +1,4 @@
-# Test/YomkLogger：Logger 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
+# test/YomkLogger：Logger 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
 
 include_directories(${YOMK_SERVER_INCLUDE_DIR})
 # ConsoleLogger/FileLogger 为库内部实现头（符号已从 so 导出），直连白盒测试需源码模块 include 路径
