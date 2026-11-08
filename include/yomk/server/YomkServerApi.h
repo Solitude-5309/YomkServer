@@ -14,6 +14,7 @@
 #include "yomk/msg/YomkMsg.h"
 #include "yomk/msg/YomkStdMsg.h"  // 标准类型消息目录：请求链常用载荷（String 等）
 #include "yomk/server/YomkServerPayload.h"
+#include "yomk/server/YomkServerMsg.h"  // 核心载荷消息包：完整消息目录
 #include "yomk/server/YomkServerRef.h"
 
 // 服务器域（yomk::server()）：服务请求、生命周期管理、服务注册/注销的统一链式入口。
