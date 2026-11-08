@@ -2,9 +2,9 @@
 # 第三方扩展安装脚本（交互式）
 # 用法: bash install.sh
 # 交互询问 YomkServerPy 安装路径（前置路径），默认取环境变量 YOMK_PREFIX_PATH，可修改
-# 扩展源树布局为 src/yomk/msg/extension_service/（消息）+ src/yomk/extension_service/（运行时），按 PEP 420 命名空间
+# 扩展源树布局为 src/yomk/msg/extension/（消息）+ src/yomk/extension/（运行时），按 PEP 420 命名空间
 # 并入框架 site-packages/yomk/（与框架子包平级共存，合并安装，不动框架文件）
-# 安装后任意终端可 import yomk.extension_service 与 yomk.msg.extension_service
+# 安装后任意终端可 import yomk.extension 与 yomk.msg.extension
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -60,25 +60,25 @@ if [ ! -w "${SITE_PACKAGES}" ]; then
 fi
 
 # 合并安装（幂等覆盖：仅落扩展自身文件，不删框架文件）
-if [ -d "${SITE_PACKAGES}/yomk/extension_service" ]; then
-    echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/extension_service"
-    ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/extension_service"
+if [ -d "${SITE_PACKAGES}/yomk/extension" ]; then
+    echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/extension"
+    ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/extension"
 fi
-if [ -d "${SITE_PACKAGES}/yomk/msg/extension_service" ]; then
-    echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/msg/extension_service"
-    ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/msg/extension_service"
+if [ -d "${SITE_PACKAGES}/yomk/msg/extension" ]; then
+    echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/msg/extension"
+    ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/msg/extension"
 fi
-${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/extension_service" "${SITE_PACKAGES}/yomk/"
-${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/msg/extension_service" "${SITE_PACKAGES}/yomk/msg/"
+${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/extension" "${SITE_PACKAGES}/yomk/"
+${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/msg/extension" "${SITE_PACKAGES}/yomk/msg/"
 
 # 安装后验证：新终端等价环境（仅 PYTHONPATH 指向 site-packages）下导入扩展域
-if PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension_service, yomk.msg.extension_service; print('扩展版本:', yomk.extension_service.__version__)" 2>/dev/null; then
+if PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension, yomk.msg.extension; print('扩展版本:', yomk.extension.__version__)" 2>/dev/null; then
     echo "-- 扩展导入验证通过"
 else
     echo "错误: 扩展安装后无法导入，错误详情:"
-    PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension_service, yomk.msg.extension_service"
+    PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension, yomk.msg.extension"
     exit 1
 fi
 
-echo "安装完成，扩展已并入框架 yomk 命名空间，新开任意终端即可 import yomk.extension_service / yomk.msg.extension_service"
-echo "可运行验证: python3 ${SCRIPT_DIR}/test/test_template_extension.py"
+echo "安装完成，扩展已并入框架 yomk 命名空间，新开任意终端即可 import yomk.extension / yomk.msg.extension"
+echo "可运行验证: python3 ${SCRIPT_DIR}/test/test_extension.py"

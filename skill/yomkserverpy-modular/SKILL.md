@@ -155,7 +155,7 @@ srv_info().all()                                   # 全量拓扑（ServerServic
 ### 目录结构（模板实名）
 
 ```
-ExtensionName/                        // 扩展仓库根（域名 extension_service → 用户指定名）
+ExtensionName/                        // 扩展仓库根（域名 extension → 用户指定名）
 ├── src/yomk/
 │   ├── msg/<域>/             // 消息子包（并入框架 yomk.msg 命名空间段）
 │   │   ├── __init__.py       //   re-export 扩展消息类
@@ -166,14 +166,14 @@ ExtensionName/                        // 扩展仓库根（域名 extension_serv
 │       ├── ExtensionService.py  // 服务实现（YomkService 子类）
 │       └── py.typed
 ├── test/
-│   └── test_template_extension.py  // 测试程序（就地运行，不随扩展安装）
+│   └── test_extension.py  // 测试程序（就地运行，不随扩展安装）
 ├── install.sh               // 扩展安装脚本（交互式，含命名空间守卫）
 └── README.md
 ```
 
 ### 关键约定
 
-1. **域名占位符替换**：域目录 `extension_service` → 用户指定域名（snake_case，如 `payment`），import 语句、服务类 `ExtensionService`/`XxxService`、消息类 `ExtensionRequest`/`ExtensionResponse` 同步替换，不做大小写转换
+1. **域名占位符替换**：域目录 `extension` → 用户指定域名（snake_case，如 `payment`），import 语句、服务类 `ExtensionService`/`XxxService`、消息类 `ExtensionRequest`/`ExtensionResponse` 同步替换，不做大小写转换
 2. **命名空间纪律（必须遵守）**：框架 `yomk/` 与 `yomk/msg/` 两层是 PEP 420 命名空间段（无 `__init__.py`），扩展仓库**不得创建** `yomk/__init__.py` 或 `yomk/msg/__init__.py`（会遮蔽框架其它子包，install.sh 安装前做守卫检查），只新增自己的叶子目录
 3. **版本常量定义在运行时域 `__init__.py`**：`__version__` 常量为版本单一来源，与 re-export 语句同文件；子模块**不得**反向 `from . import __version__` 取用：该写法依赖 `__init__` 的语句顺序，IDE/linter 的 import 自动重排会把子模块导入挪到常量定义之前，安装后即触发 circular import（实测踩坑）；`__init__.py` 仅含 re-export 语句 + 常量定义，任何 import 顺序都正确
 4. **模板接口最小化**：模板服务默认只包含一个 `/echo` 接口，演示扩展消息的强类型往返（`ExtensionRequest` 作请求包、`ExtensionResponse` 承载在 `Response.data` 位），不生成任何示例业务接口（如加减乘除）；业务功能通过「继续扩展」添加
@@ -185,7 +185,7 @@ ExtensionName/                        // 扩展仓库根（域名 extension_serv
 
 ### 生成规则
 
-- **优先复制模板**：本 skill 所在 `skill/` 目录的上层即 YomkServerPy 仓库根；若其下存在 `template/extension/` 目录，优先复制并替换域名/类名占位符（模板实名：`src/yomk/extension_service/` + `src/yomk/msg/extension_service/`、服务文件 `ExtensionService.py`、消息文件 `ExtensionMsg.py`、测试 `test/test_template_extension.py`）；目录不存在时按 [examples.md](examples.md) 示例7 逐文件生成
+- **优先复制模板**：本 skill 所在 `skill/` 目录的上层即 YomkServerPy 仓库根；若其下存在 `template/extension/` 目录，优先复制并替换域名/类名占位符（模板实名：`src/yomk/extension/` + `src/yomk/msg/extension/`、服务文件 `ExtensionService.py`、消息文件 `ExtensionMsg.py`、测试 `test/test_extension.py`）；目录不存在时按 [examples.md](examples.md) 示例7 逐文件生成
 - 将扩展名（域名）替换为用户指定名称
 - 所有文件必须完整生成，确保 `bash install.sh` 可直接安装运行
 

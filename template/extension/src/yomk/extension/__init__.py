@@ -1,4 +1,4 @@
-# 第三方扩展 yomk.extension_service：运行时域子包（PEP 420 命名空间并入框架 yomk）
+# 第三方扩展 yomk.extension：运行时域子包（PEP 420 命名空间并入框架 yomk）
 # 与框架 yomk/server、yomk/ctx 等域平级；扩展仓库不得创建 yomk/__init__.py
 from .ExtensionService import ExtensionService
 

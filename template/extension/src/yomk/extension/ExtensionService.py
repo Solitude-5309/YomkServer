@@ -1,9 +1,9 @@
 # 扩展运行时服务（第三方运行时扩展示例）
 # 纪律：第三方服务不做隐式发现——使用方须显式 server().srv(ExtensionService).create()
-# 注册（见 test/test_template_extension.py）；框架只拉起 5 个内置服务
+# 注册（见 test/test_extension.py）；框架只拉起 5 个内置服务
 from yomk.server import YomkService
 from yomk.msg.server import ResStatus, Response
-from yomk.msg.extension_service import ExtensionRequest, ExtensionResponse
+from yomk.msg.extension import ExtensionRequest, ExtensionResponse
 from yomk.log import log
 
 

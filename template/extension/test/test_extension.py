@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-test_template_extension.py —— 第三方扩展示例的运行级验证
+test_extension.py —— 第三方扩展示例的运行级验证
 
 流程：框架 init（内置 5 服务）→ 显式注册扩展运行时服务
 （server().srv(ExtensionService).create()，无隐式发现）→ 裸请求 /ExtensionService/echo
@@ -13,8 +13,8 @@ import sys
 
 from yomk.server import server
 from yomk.msg.server import ResStatus
-from yomk.msg.extension_service import ExtensionRequest, ExtensionResponse
-from yomk.extension_service import ExtensionService
+from yomk.msg.extension import ExtensionRequest, ExtensionResponse
+from yomk.extension import ExtensionService
 
 
 def main():
