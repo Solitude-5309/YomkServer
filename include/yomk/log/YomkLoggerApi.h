@@ -8,13 +8,14 @@
 #include <type_traits>
 #include <utility>
 
+#include "yomk/log/YomkLogSourceLoc.h"
 #include "yomk/log/YomkLoggerMsgs.h"
 #include "yomk/log/YomkLoggerPayload.h"
 #include "yomk/log/YomkLoggerUrl.h"
 #include "yomk/YomkStdMsgs.h"
 #include "yomk/server/YomkServerApi.h"
 #include "yomk/server/YomkServerPayload.h"
-#include "yomk/YomkSourceLoc.h"
+#include "yomk/log/YomkLogSourceLoc.h"
 
 // 日志域：发射（yomk::log()）与管理（yomk::log_mgr()）分域。发射链经请求域 .status()
 // 三态收敛; 管理操作无发射语义, 入口不携带 YomkSourceLoc。
