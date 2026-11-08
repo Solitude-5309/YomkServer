@@ -51,4 +51,4 @@ yomk::fn_pool().list();
 
 ## 完整示例
 
-完整可运行演示见 `Examples/ExampleYomkFunctionPool.cpp`（6 个机械臂产线场景小示例 showArmXXX 覆盖全部函数池 API，读运行输出即可理解每个调用）。
+完整可运行演示见 `examples/ExampleYomkFunctionPool.cpp`（6 个机械臂产线场景小示例 showArmXXX 覆盖全部函数池 API，读运行输出即可理解每个调用）。

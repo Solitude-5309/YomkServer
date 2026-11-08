@@ -314,4 +314,4 @@ YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定�
 
 - 完整工程代码与场景示例：[examples.md](examples.md)
 - 六域链式 API 速查（签名/返回值/失败契约）：[reference.md](reference.md)
-- 可运行示例程序：`Examples/ExampleYomk{Service,Context,EventLoop,FunctionPool,Logger,ServerInfo}.cpp`（分步覆盖各模块全部 API，读运行输出即可理解每个调用）
+- 可运行示例程序：`examples/ExampleYomk{Service,Context,EventLoop,FunctionPool,Logger,ServerInfo}.cpp`（分步覆盖各模块全部 API，读运行输出即可理解每个调用）

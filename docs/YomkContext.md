@@ -67,4 +67,4 @@ Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService
 
 ## 完整示例
 
-完整可运行演示见 `Examples/ExampleYomkContext.cpp`（8 个机械臂场景小示例 `showArmXXX` 组合覆盖全部上下文 API，日志统一走 YomkLogger 并按 tag 分层，读运行输出即可理解每个调用）。
+完整可运行演示见 `examples/ExampleYomkContext.cpp`（8 个机械臂场景小示例 `showArmXXX` 组合覆盖全部上下文 API，日志统一走 YomkLogger 并按 tag 分层，读运行输出即可理解每个调用）。

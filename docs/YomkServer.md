@@ -114,8 +114,8 @@ int MyService::init()
 
 ## 启动编排（YomkBoot）
 
-`YomkBoot` 提供 before / start / after 三段式纯虚契约（`before()` 前置准备如读配置、`start()` 主体如创建注册服务、`after()` 后置动作如挂载监听），封装从框架初始化到业务就绪的完整流程。经 `yomk::server().boot_ptr(cfg).run()` 消费：内部先完成框架 init，再按序执行三段；任一阶段返回非 0 立即中止并原样传播该返回值，`cfg` 所有权移交 `run`。参考实现见 `Examples/boot/ArmBoot.h`。
+`YomkBoot` 提供 before / start / after 三段式纯虚契约（`before()` 前置准备如读配置、`start()` 主体如创建注册服务、`after()` 后置动作如挂载监听），封装从框架初始化到业务就绪的完整流程。经 `yomk::server().boot_ptr(cfg).run()` 消费：内部先完成框架 init，再按序执行三段；任一阶段返回非 0 立即中止并原样传播该返回值，`cfg` 所有权移交 `run`。参考实现见 `examples/boot/ArmBoot.h`。
 
 ## 完整示例
 
-完整可运行演示见 `Examples/ExampleYomkService.cpp`（8 个机械臂控制场景小示例 showArmXXX 覆盖服务定义、注册、同步/异步请求、跨服务调用、自省、删除与优雅关闭，读运行输出即可理解每个调用）。
+完整可运行演示见 `examples/ExampleYomkService.cpp`（8 个机械臂控制场景小示例 showArmXXX 覆盖服务定义、注册、同步/异步请求、跨服务调用、自省、删除与优雅关闭，读运行输出即可理解每个调用）。

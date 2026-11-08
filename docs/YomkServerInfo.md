@@ -40,4 +40,4 @@ yomk::server().all();                                        // 全量服务拓�
 
 ## 完整示例
 
-完整可运行演示见 `Examples/ExampleYomkServerInfo.cpp`（6 个机械臂产线场景小示例 showArmXXX 覆盖全部服务自省 API，读运行输出即可理解每个调用）。
+完整可运行演示见 `examples/ExampleYomkServerInfo.cpp`（6 个机械臂产线场景小示例 showArmXXX 覆盖全部服务自省 API，读运行输出即可理解每个调用）。
