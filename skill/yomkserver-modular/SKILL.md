@@ -80,7 +80,7 @@ ProjectName/
 
 ### 生成规则
 
-- 优先复制模板：本 skill 所在 `skill/` 目录的上层即 YomkServer 仓库根；若其下存在 `template/Project/`（创建工程）或 `template/extension/`（创建扩展）目录，优先复制并替换工程名/类名/项目名占位符——与模板零漂移且省时；目录不存在时按 [examples.md](examples.md) 逐文件生成
+- 优先复制模板：本 skill 所在 `skill/` 目录的上层即 YomkServer 仓库根；若其下存在 `template/project/`（创建工程）或 `template/extension/`（创建扩展）目录，优先复制并替换工程名/类名/项目名占位符——与模板零漂移且省时；目录不存在时按 [examples.md](examples.md) 逐文件生成
 - 完整文件内容参见 [examples.md](examples.md) 示例0
 - 将 `ProjectName` 替换为用户指定名称
 - 所有文件必须完整生成，确保 `source build_ubuntu.sh` 可直接编译运行
