@@ -18,6 +18,7 @@
 #include <string>
 
 #include "YomkServerApi.h"
+#include "YomkServerInfoPayload.h"
 
 static int g_failed = 0;
 

@@ -9,7 +9,7 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 - **进程内服务总线**：服务（`YomkService`）注册到服务器（`YomkServer`），通过 URL 格式 `"/服务名/功能函数名"` 进行同步或异步调用。
 - **强类型化消息包**：业务数据通过 `YomkMsg` 及其派生类安全封装与传递，支持移动语义与动态类型转换。
 - **开箱即用的内置能力**：框架初始化即自动装配日志系统、共享上下文、隔离事件循环、动态函数池与服务自省机制。
-- **链式域入口**：六个域入口——`yomk::server()` / `yomk::log()` / `yomk::log_mgr()` / `yomk::ctx()` / `yomk::event_loop()` / `yomk::fn_pool()`——以"前置累积 + 无参终结"的链式形态暴露全部能力，屏蔽底层 URL 路由；API 是壳而非墙，需要时可直接取 `yomk::server().instance()` 裸调 `request()`。
+- **链式域入口**：七个域入口——`yomk::server()` / `yomk::srv_info()` / `yomk::log()` / `yomk::log_mgr()` / `yomk::ctx()` / `yomk::event_loop()` / `yomk::fn_pool()`——以"前置累积 + 无参终结"的链式形态暴露全部能力，屏蔽底层 URL 路由；API 是壳而非墙，需要时可直接取 `yomk::server().instance()` 裸调 `request()`。
 
 ### 模块清单
 
@@ -156,7 +156,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 8. 运行期内省 (YomkServerInfo)
 
-`yomk::server().services()` / `.srv_name(name).functions()` / `.fn_url(url).get_info()` / `.all()` 查询服务拓扑、功能函数清单与期望消息类型；Logger / Context / EventLoop / FunctionPool 亦各有模块级内省链（各域的 `list()` / `get_info()` / `all()` 家族）。
+`yomk::srv_info().services()` / `.srv_name(name).functions()` / `.fn_url(url).get_info()` / `.all()` 查询服务拓扑、功能函数清单与期望消息类型；Logger / Context / EventLoop / FunctionPool 亦各有模块级内省链（各域的 `list()` / `get_info()` / `all()` 家族）。
 
 详见 [服务自省](docs/YomkServerInfo.md)。
 
@@ -304,6 +304,7 @@ target_link_libraries(my_app PRIVATE YomkServer::YomkServer)
 
 ```cpp
 #include <YomkServer/YomkServerApi.h>     // 服务总线：yomk::server()
+#include <YomkServer/YomkServerInfoApi.h> // 拓扑内省：yomk::srv_info()
 #include <YomkServer/YomkLoggerApi.h>        // 日志：yomk::log() / yomk::log_mgr()
 #include <YomkServer/YomkContextApi.h>    // 共享上下文：yomk::ctx()
 #include <YomkServer/YomkEventLoopApi.h>  // 事件循环：yomk::event_loop()

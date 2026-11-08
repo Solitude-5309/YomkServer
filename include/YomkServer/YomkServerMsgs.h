@@ -8,6 +8,6 @@
 // 标准标量/数组类型见 YomkMsgs.h；模块专属消息包见各 Yomk{Module}Msgs.h。
 YOMK_DEFINE_MSG(yomk::payload::Response, Response, d);
 YOMK_DEFINE_MSG(yomk::payload::FuncInfo, FuncInfo, d);
-// FunctionPool / ServerInfo 全量函数内省（fn_pool().all() 与 server().functions() 返回数据；
+// FunctionPool / ServerInfo 全量函数内省（fn_pool().all() 与 srv_info().functions() 返回数据；
 // 函数总数由 d.size() 承载）
 YOMK_DEFINE_MSG(std::vector<yomk::payload::FuncInfo>, FuncInfoList, d);

@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "YomkContextApi.h"
+#include "YomkServerInfoApi.h"
 
 static int g_failed = 0;
 
@@ -56,7 +57,7 @@ int main()
     YOMK_TEST_CHECK(server != nullptr, "yomk::server().init() 返回非空服务器");
 
     // 验证 /YomkContext 已注册
-    auto infoAll = yomk::server().all();
+    auto infoAll = yomk::srv_info().all();
     YOMK_TEST_CHECK(infoAll.m_status == yomk::payload::ResStatus::Succeeded, "all() 返回 ResStatus::Succeeded");
 
     // create：正常创建 String 类型 value

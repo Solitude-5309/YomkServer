@@ -1,12 +1,13 @@
 # YomkServer API 参考
 
-## 链式域入口（六个）
+## 链式域入口（七个）
 
-框架全部操作经六个链式域入口暴露，累积方法（`url/msg/srv/key/loop/fn_name/tag/dir` 等）前置、任意顺序组合，终结动作（`request/create/set/start/call/remove/list/get_info` 等）一律无参：
+框架全部操作经七个链式域入口暴露，累积方法（`url/msg/srv/key/loop/fn_name/tag/dir` 等）前置、任意顺序组合，终结动作（`request/create/set/start/call/remove/list/get_info` 等）一律无参：
 
 | 入口 | 模块 | 职责 |
 |------|------|------|
-| `yomk::server()` | YomkServer / YomkServerInfo | 请求通信、服务器生命周期、服务管理、拓扑内省 |
+| `yomk::server()` | YomkServer | 请求通信、服务器生命周期、服务管理 |
+| `yomk::srv_info()` | YomkServerInfo | 拓扑内省：服务清单 / 函数清单 / 单函数元信息 / 全量拓扑 |
 | `yomk::log()` | YomkLogger | 日志发射（六级 × 模板参数包） |
 | `yomk::log_mgr()` | YomkLogger | 日志管理：门控 / 代理 / 位置前缀 / 文件日志器生命周期 / 内省 |
 | `yomk::ctx()` | YomkContext | 跨服务强类型键值存储 + Checker/Monitor |
@@ -17,7 +18,7 @@
 
 - builder 按值传递，链式表达式须**单表达式内联**使用，接收变量一律 `auto` 或不接收；内部持 `string_view`，缓存 builder 复用即悬垂。
 - `yomk::log()` 域入口在**调用行**捕获位置前缀，缓存 builder 还会导致位置错误。
-- 按模块头导入（无伞形聚合头）：`<YomkServer/YomkServerApi.h>`、`YomkLoggerApi.h`、`YomkContextApi.h`、`YomkEventLoopApi.h`、`YomkFunctionPoolApi.h`；自定义消息包含 `<YomkServer/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`，标准类型见 `<YomkServer/YomkMsgs.h>`，核心载荷消息见 `<YomkServer/YomkServerMsgs.h>`，模块专属消息/载荷见 `<YomkServer/Yomk{Module}Msgs.h>` / `Yomk{Module}Payload.h`（对应 `*Api.h` 已按需包含）；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs` 命名空间。
+- 按模块头导入（无伞形聚合头）：`<YomkServer/YomkServerApi.h>`、`YomkServerInfoApi.h`、`YomkLoggerApi.h`、`YomkContextApi.h`、`YomkEventLoopApi.h`、`YomkFunctionPoolApi.h`；自定义消息包含 `<YomkServer/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`，标准类型见 `<YomkServer/YomkMsgs.h>`，核心载荷消息见 `<YomkServer/YomkServerMsgs.h>`，模块专属消息/载荷见 `<YomkServer/Yomk{Module}Msgs.h>` / `Yomk{Module}Payload.h`（对应 `*Api.h` 已按需包含）；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs` 命名空间。
 
 ## 状态码约定
 

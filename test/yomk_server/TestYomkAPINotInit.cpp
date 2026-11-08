@@ -23,6 +23,7 @@
 #include <thread>
 
 #include "YomkServerApi.h"
+#include "YomkServerInfoApi.h"
 #include "YomkContextApi.h"
 #include "YomkEventLoopApi.h"
 #include "YomkFunctionPoolApi.h"
@@ -252,15 +253,15 @@ int main()
         YOMK_TEST_CHECK(
             yomk::fn_pool().all().m_status == yomk::payload::ResStatus::Invalid,
             "fn_pool().all() 未初始化返回 ResStatus::Invalid");
-        YOMK_TEST_CHECK(yomk::server().all().m_status == yomk::payload::ResStatus::Invalid, "server().all() 未初始化返回 ResStatus::Invalid");
+        YOMK_TEST_CHECK(yomk::srv_info().all().m_status == yomk::payload::ResStatus::Invalid, "srv_info().all() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::server().services().m_status == yomk::payload::ResStatus::Invalid,
-            "server().services() 未初始化返回 ResStatus::Invalid");
+            yomk::srv_info().services().m_status == yomk::payload::ResStatus::Invalid,
+            "srv_info().services() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::server().srv_name("/guard_srv").functions().m_status == yomk::payload::ResStatus::Invalid,
-            "server().functions() 未初始化返回 ResStatus::Invalid");
+            yomk::srv_info().srv_name("/guard_srv").functions().m_status == yomk::payload::ResStatus::Invalid,
+            "srv_info().functions() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::server().fn_url("/guard_srv/f").get_info().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::srv_info().fn_url("/guard_srv/f").get_info().m_status == yomk::payload::ResStatus::Invalid,
             "server().get_info() 未初始化返回 ResStatus::Invalid");
 
         // 类型化读 get() 特殊形态：守卫返回值即调用方默认值（指针一致）

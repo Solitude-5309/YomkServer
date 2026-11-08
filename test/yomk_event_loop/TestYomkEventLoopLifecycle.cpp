@@ -47,6 +47,7 @@
 // YomkEventLoop.h 传递包含 EventLoop.h（两模块头均无 include guard，不可双包含）
 #include "event_loop/YomkEventLoop.h"
 #include "YomkEventLoopApi.h"
+#include "YomkServerInfoApi.h"
 
 static int g_failed = 0;
 
@@ -639,7 +640,7 @@ int main()
         YOMK_TEST_CHECK(yomk::server().srv_name("/YomkEventLoop").remove() == 0, "删除内置 /YomkEventLoop 返回 0");
         YOMK_TEST_CHECK(yomk::event_loop().loop("/L2").start() == yomk::payload::ResStatus::Failed,
               "删除后 EVENTLOOP API 服务级 ResStatus::Failed（失败原因经错误日志承载）");
-        auto srvArr = yomk::msgs::unpack<yomk::msgs::StringArray>(yomk::server().services().m_data);
+        auto srvArr = yomk::msgs::unpack<yomk::msgs::StringArray>(yomk::srv_info().services().m_data);
         bool evtLoopGone = true;
         if (srvArr)
         {

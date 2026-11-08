@@ -1,6 +1,6 @@
 ---
 name: yomkserver-modular
-description: 基于 YomkServer 框架的模块化 C++17 编程，核心理念"一切皆服务，一切皆请求"，API 为六个链式域入口（yomk::server/log/log_mgr/ctx/event_loop/fn_pool）。用于创建 YomkServer 工程与服务、全局状态管理（Context）、事件循环（EventLoop）、公共函数池（FunctionPool）、日志系统（Logger）与内省调试。当用户需要编写 YomkServer 模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数或搭建工程结构时使用。**当用户提到"创建工程"、"新建项目"、"create a project"等任何与创建工程相关的请求时，必须立即使用任务一生成完整可编译的工程骨架，不要先询问需求。** 仅用于基于 YomkServer 框架的开发，不适用于与 YomkServer 无关的普通 C++ 工程或问题。
+description: 基于 YomkServer 框架的模块化 C++17 编程，核心理念"一切皆服务，一切皆请求"，API 为七个链式域入口（yomk::server/srv_info/log/log_mgr/ctx/event_loop/fn_pool）。用于创建 YomkServer 工程与服务、全局状态管理（Context）、事件循环（EventLoop）、公共函数池（FunctionPool）、日志系统（Logger）与内省调试。当用户需要编写 YomkServer 模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数或搭建工程结构时使用。**当用户提到"创建工程"、"新建项目"、"create a project"等任何与创建工程相关的请求时，必须立即使用任务一生成完整可编译的工程骨架，不要先询问需求。** 仅用于基于 YomkServer 框架的开发，不适用于与 YomkServer 无关的普通 C++ 工程或问题。
 ---
 
 # YomkServer 模块化编程框架
@@ -12,13 +12,14 @@ description: 基于 YomkServer 框架的模块化 C++17 编程，核心理念"�
 | 组件 | 职责 | 域入口 |
 |------|------|--------|
 | **YomkServer** | 服务容器，管理生命周期 | `yomk::server()` |
+| **YomkServerInfo** | 服务拓扑内省（服务/函数元信息查询） | `yomk::srv_info()` |
 | **YomkService** | 功能模块单元，通过 URL `/服务名/功能名` 访问 | （经 server 域注册/请求） |
 | **YomkContext** | 全局 K-V 状态管理（Checker 防非法迁移、Monitor 监听变更） | `yomk::ctx()` |
 | **YomkEventLoop** | 线程隔离事件循环（同循环顺序执行、不同循环并行） | `yomk::event_loop()` |
 | **YomkFunctionPool** | 动态函数池（运行时注册/热替换） | `yomk::fn_pool()` |
 | **YomkLogger** | 多级别、多输出日志 | 发射 `yomk::log()` / 管理 `yomk::log_mgr()` |
 
-按模块头导入（无伞形聚合头）：`<YomkServer/YomkServerApi.h>`（`yomk::server()`）、`<YomkServer/YomkLoggerApi.h>`（`yomk::log()` / `yomk::log_mgr()`）、`<YomkServer/YomkContextApi.h>`（`yomk::ctx()`）、`<YomkServer/YomkEventLoopApi.h>`（`yomk::event_loop()`）、`<YomkServer/YomkFunctionPoolApi.h>`（`yomk::fn_pool()`）；另按需包含 `<YomkServer/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`（标准类型见 `<YomkServer/YomkMsgs.h>`，核心载荷消息见 `<YomkServer/YomkServerMsgs.h>`，模块专属消息/载荷见 `<YomkServer/Yomk{Module}Msgs.h>` / `Yomk{Module}Payload.h`）。API 形态为**链式调用：累积环节返回 builder 自身、终结环节执行并返回结果**；单条链在一个表达式内内联使用（builder 持 `string_view`，缓存跨语句即悬垂）。载荷类型（`Response`/`ResStatus`/`LogLevel` 等）位于 `yomk::payload`，服务实现内惯用 `using namespace yomk::payload;`；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs`。
+按模块头导入（无伞形聚合头）：`<YomkServer/YomkServerApi.h>`（`yomk::server()`）、`<YomkServer/YomkServerInfoApi.h>`（`yomk::srv_info()`）、`<YomkServer/YomkLoggerApi.h>`（`yomk::log()` / `yomk::log_mgr()`）、`<YomkServer/YomkContextApi.h>`（`yomk::ctx()`）、`<YomkServer/YomkEventLoopApi.h>`（`yomk::event_loop()`）、`<YomkServer/YomkFunctionPoolApi.h>`（`yomk::fn_pool()`）；另按需包含 `<YomkServer/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`（标准类型见 `<YomkServer/YomkMsgs.h>`，核心载荷消息见 `<YomkServer/YomkServerMsgs.h>`，模块专属消息/载荷见 `<YomkServer/Yomk{Module}Msgs.h>` / `Yomk{Module}Payload.h`）。API 形态为**链式调用：累积环节返回 builder 自身、终结环节执行并返回结果**；单条链在一个表达式内内联使用（builder 持 `string_view`，缓存跨语句即悬垂）。载荷类型（`Response`/`ResStatus`/`LogLevel` 等）位于 `yomk::payload`，服务实现内惯用 `using namespace yomk::payload;`；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs`。
 
 各环节完整签名、返回值与失败契约见 [reference.md](reference.md)。
 
@@ -205,13 +206,13 @@ int XxxService::init() {
 }
 
 // 服务列表（返回 StringArray）
-yomk::payload::Response resp = yomk::server().services();
+yomk::payload::Response resp = yomk::srv_info().services();
 // 指定服务的函数列表（FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
-resp = yomk::server().srv_name("/XxxService").functions();
+resp = yomk::srv_info().srv_name("/XxxService").functions();
 // 单函数元信息查询（命中返回结构化 FuncInfo 包：m_msgName=类型名、m_description=四参说明，m_msg 恒 "ok"）
-resp = yomk::server().fn_url("/XxxService/my_func").get_info();
+resp = yomk::srv_info().fn_url("/XxxService/my_func").get_info();
 // 全量拓扑（ServerServiceInfoList 层级包：m_serviceName 服务名 + m_funcs 函数元信息列表）
-resp = yomk::server().all();
+resp = yomk::srv_info().all();
 ```
 
 服务器层内省之外，四个内置模块（Context/EventLoop/FunctionPool/Logger）均在各域入口上提供模块内层内省（列表/单条元信息/全量——均返回结构化包），返回数据形态与示例见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。

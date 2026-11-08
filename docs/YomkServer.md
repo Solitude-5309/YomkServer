@@ -38,12 +38,13 @@ builder 按值传递、全程 `auto` 接收，仅限单表达式内联使用（�
 
 ### 拓扑内省（读终结，返回 `Response`）
 
-`yomk::server().services()`（服务名清单）/ `.srv_name(n).functions()`（指定服务函数清单）/ `.fn_url(url).get_info()`（单函数元信息）/ `.all()`（全量拓扑），详见 [服务自省](YomkServerInfo.md)。
+`yomk::srv_info().services()`（服务名清单）/ `.srv_name(n).functions()`（指定服务函数清单）/ `.fn_url(url).get_info()`（单函数元信息）/ `.all()`（全量拓扑），详见 [服务自省](YomkServerInfo.md)。
 
 ## 使用示例
 
 ```cpp
 #include <YomkServer/YomkServerApi.h>
+#include <YomkServer/YomkServerInfoApi.h>
 #include <YomkServer/YomkLoggerApi.h>
 
 class MyService : public YomkService

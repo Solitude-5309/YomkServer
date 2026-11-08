@@ -63,7 +63,7 @@
 // yomk::server().boot_ptr(cfg).run()                             启动编排（before -> start -> after）
 // yomk::server().url(u).request(pkg) / .async(cb).request(pkg)  同步 / 异步请求
 // yomk::server().instance().get() / yomk::server().instance()            全局单例
-// yomk::server().services() / functions() / get_info() / all()  调用拓扑自省
+// yomk::srv_info().services() / .srv_name(n).functions() / .fn_url(u).get_info() / .all()  调用拓扑自省
 // installFunc("/x", &C::m[, "Msg"][, "desc"]) / weakFunc(&Class::Method) / 成员 request  服务侧 API
 
 #include <chrono>
@@ -73,6 +73,7 @@
 #include <thread>
 
 #include "YomkServerApi.h"
+#include "YomkServerInfoApi.h"
 #include "YomkLoggerApi.h"
 #include "YomkFunctionPoolApi.h"
 #include "boot/ArmBoot.h"
@@ -235,7 +236,7 @@ static void showArmPowerOnRegister()
     logVerify("arm.boot 三段日志夹在开始行与结果行之间：run() 按 before→start→after 顺序执行");
 
     logAction("复查控制柜在册服务清单");
-    yomk::payload::Response namesResp = yomk::server().services();
+    yomk::payload::Response namesResp = yomk::srv_info().services();
     logResp("services()", namesResp);
     auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.m_data);
     if (nameArr)
@@ -352,7 +353,7 @@ static void showArmIntrospect()
         "ExampleYomkServerInfo）。");
 
     logAction("查阅运动工位职能清单");
-    yomk::payload::Response funcsResp = yomk::server().srv_name("/MotionService").functions();
+    yomk::payload::Response funcsResp = yomk::srv_info().srv_name("/MotionService").functions();
     logResp("INFO_FUNCTIONS /MotionService", funcsResp);
     auto listPkg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
     if (listPkg)
@@ -365,7 +366,7 @@ static void showArmIntrospect()
     logVerify("msgName 即 installFunc 第三参声明的期望消息类型、description 即第四参函数说明；2 参注册的 /echo 两字段为(未指定)");
 
     logAction("调阅运动指令函数名片");
-    yomk::payload::Response resp = yomk::server().fn_url("/MotionService/move").get_info();
+    yomk::payload::Response resp = yomk::srv_info().fn_url("/MotionService/move").get_info();
     logResp("INFO_FUNCTION /MotionService/move", resp);
     auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.m_data);
     if (info)
@@ -446,7 +447,7 @@ static void showArmPowerOff()
         "，日志宏随之静默——静默段正是演示效果。");
 
     logAction("导出收班终态拓扑（摘要）");
-    yomk::payload::Response allResp = yomk::server().all();
+    yomk::payload::Response allResp = yomk::srv_info().all();
     logResp("all()", allResp);
     auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
     if (list)

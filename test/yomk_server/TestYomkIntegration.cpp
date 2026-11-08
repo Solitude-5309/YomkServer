@@ -35,6 +35,7 @@
 
 #include "log/YomkLogger.h"
 #include "YomkServerApi.h"
+#include "YomkServerInfoApi.h"
 #include "YomkContextApi.h"
 #include "YomkEventLoopApi.h"
 #include "YomkLoggerApi.h"
@@ -189,7 +190,7 @@ int main()
         auto afterDel = yomk::log_mgr().console().list();
         YOMK_TEST_CHECK(afterDel.m_status == yomk::payload::ResStatus::Failed && afterDel.m_msg == "service not found: /YomkLogger",
               "删除后 LOGGER API 服务级 ResStatus::Failed + 精确消息");
-        YOMK_TEST_CHECK(!contains(unpackStringArray(yomk::server().services()), "/YomkLogger"),
+        YOMK_TEST_CHECK(!contains(unpackStringArray(yomk::srv_info().services()), "/YomkLogger"),
               "服务表快照不再含 /YomkLogger");
 
         YOMK_TEST_CHECK(yomk::server().srv<YomkLogger>().create() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
@@ -266,7 +267,7 @@ int main()
         auto postLog = yomk::log_mgr().all();
         YOMK_TEST_CHECK(postLog.m_status == yomk::payload::ResStatus::Invalid && postLog.m_msg == "YomkServer is not init",
               "shutdown 后 LOGGER API 回归 ResStatus::Invalid + 守卫消息");
-        auto postInfo = yomk::server().all();
+        auto postInfo = yomk::srv_info().all();
         YOMK_TEST_CHECK(postInfo.m_status == yomk::payload::ResStatus::Invalid && postInfo.m_msg == "YomkServer is not init",
               "shutdown 后 SERVER_INFO API 回归 ResStatus::Invalid + 守卫消息");
 

@@ -1,15 +1,15 @@
 # YomkServerInfo(服务自省)
 
-服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型，方便调试与运维。内置服务，随 `yomk::server().init()` 自动启动、开箱即用；查询全部经服务器域入口 `yomk::server()` 的内省读终结链发出。
+服务自省：运行期查询服务拓扑、功能函数清单与期望消息类型，方便调试与运维。内置服务，随 `yomk::server().init()` 自动启动、开箱即用；查询全部经内省域入口 `yomk::srv_info()`（`YomkServerInfoApi.h`）的读终结链发出。
 
 ## 链式语法速查
 
 | 场景 | 链 | 返回 |
 |---|---|---|
-| 全部服务名 | `yomk::server().services()` | `Response`，`m_data` 为 StringArray 名清单 |
-| 指定服务的函数清单 | `yomk::server().srv_name("/服务名").functions()` | `Response` 携带 FuncInfoList 结构化清单（`m_msg` 恒 "ok"；服务不存在时为空清单） |
-| 单函数元信息 | `yomk::server().fn_url("/服务名/函数名").get_info()` | `Response` 携带结构化 FuncInfo 包（`m_msg` 恒 "ok"，数据在 `m_data`） |
-| 全量服务拓扑 | `yomk::server().all()` | `Response` 携带 ServerServiceInfoList 层级包（`m_msg` 恒 "ok"）：每项 `m_serviceName` 服务名 + `m_funcs` 函数元信息列表 |
+| 全部服务名 | `yomk::srv_info().services()` | `Response`，`m_data` 为 StringArray 名清单 |
+| 指定服务的函数清单 | `yomk::srv_info().srv_name("/服务名").functions()` | `Response` 携带 FuncInfoList 结构化清单（`m_msg` 恒 "ok"；服务不存在时为空清单） |
+| 单函数元信息 | `yomk::srv_info().fn_url("/服务名/函数名").get_info()` | `Response` 携带结构化 FuncInfo 包（`m_msg` 恒 "ok"，数据在 `m_data`） |
+| 全量服务拓扑 | `yomk::srv_info().all()` | `Response` 携带 ServerServiceInfoList 层级包（`m_msg` 恒 "ok"）：每项 `m_serviceName` 服务名 + `m_funcs` 函数元信息列表 |
 
 结构化函数元信息 `FuncInfo` 字段：`m_funcName`（路由名，带 `/` 前缀）、`m_msgName`（期望消息类型名，未声明为空）、`m_description`（函数说明，未声明为空）。
 
@@ -19,10 +19,10 @@
 yomk::server().init();
 yomk::server().srv<MyService>().create();
 
-yomk::server().services();                                   // 全部服务名清单
-yomk::server().srv_name("/MyService").functions();           // 指定服务的函数清单（FuncInfoList）
-yomk::server().fn_url("/MyService/hello").get_info();        // 单个函数元信息（FuncInfo）
-yomk::server().all();                                        // 全量服务拓扑（服务 → 函数）
+yomk::srv_info().services();                                   // 全部服务名清单
+yomk::srv_info().srv_name("/MyService").functions();           // 指定服务的函数清单（FuncInfoList）
+yomk::srv_info().fn_url("/MyService/hello").get_info();        // 单个函数元信息（FuncInfo）
+yomk::srv_info().all();                                        // 全量服务拓扑（服务 → 函数）
 ```
 
 ## 说明

@@ -12,22 +12,20 @@
 #include "YomkDiag.h"
 #include "YomkExport.h"
 #include "YomkMsg.h"
-#include "YomkServerInfoMsgs.h"
-#include "YomkServerInfoPayload.h"
-#include "YomkServerInfoUrl.h"
 #include "YomkServerMsgs.h"
 #include "YomkServerPayload.h"
 #include "YomkServerRef.h"
 
-// 服务器域（yomk::server()）：服务请求、生命周期管理、服务注册/注销、拓扑内省的统一链式入口。
+// 服务器域（yomk::server()）：服务请求、生命周期管理、服务注册/注销的统一链式入口。
 // request 是刻意保留的基础接口——API 壳屏蔽 URL, 但不垄断请求通道: 基于 YomkServer 写自定义
 // 服务可直接依赖本头。
 // 链式形态: url/msg 等累积方法任意组合, 以 request()/status()/init()/create() 等无参终结动作收尾。
 // 无状态设计: 全部终结动作经 YomkServerRef 快照取当前 server; 未初始化时记诊断并返回失败值,
-// 不抛异常。本头依赖单向 (Boot/Diag/Msgs/Payload/ServerInfoUrl/ServerRef/Export), 可独立包含。
+// 不抛异常。本头依赖单向 (Boot/Diag/Msgs/Payload/ServerRef/Export), 可独立包含;
+// 服务拓扑内省读路径见 YomkServerInfoApi.h（yomk::srv_info() 域）。
 
 /**
- * @brief 服务器域链式 Builder：服务请求 / 生命周期 / 服务管理 / 拓扑内省
+ * @brief 服务器域链式 Builder：服务请求 / 生命周期 / 服务管理
  *
  * @par 同步请求
  * yomk::server().url(url).msg(msg).request()
@@ -51,8 +49,6 @@
  * @li .srv<T>(srvName).create(): 创建并注册服务; .srv_name(name).srv_ptr(srv).add():
  *     注册已有实例 (所有权移交框架); .srv_name(name).remove(): 按名注销
  * @li .boot_ptr(cfg).run(): 初始化 + 启动编排 (before/start/after; cfg 省略 = 仅 init)
- * @li .services() / .srv_name(name).functions() / .fn_url(url).get_info() / .all():
- *     服务拓扑内省读终结
  *
  * @warning Builder 持 url 视图, 仅限单表达式内联使用, 禁止缓存复用, 否则悬垂引用!
  */
@@ -64,7 +60,7 @@ class RequestBuilder;  // 前置声明, 定义见下方机制段
 namespace yomk
 {
 /**
- * @brief 服务器域入口：发起请求 / 生命周期 / 服务管理 / 内省链式调用的起点
+ * @brief 服务器域入口：发起请求 / 生命周期 / 服务管理链式调用的起点
  * @return RequestBuilder（按值, 仅用于单表达式链式调用）
  * @note 线程安全, 非阻塞
  */
@@ -129,7 +125,7 @@ inline bool requireServer()
 
 /**
  * @brief 服务器域 builder：url/msg 累积 + request/status 同步终结 + async 异步分面
- * + 生命周期 / 服务管理 / 内省终结
+ * + 生命周期 / 服务管理终结
  */
 class RequestBuilder
 {
@@ -137,10 +133,9 @@ class RequestBuilder
     YomkMsgPtr m_msg;
     // 分面参数: 由累积方法写入, 对应终结动作读取
     std::size_t m_asyncThreadCount = 0;  // async_thread() 累积, init 用（0 = 自动检测）
-    std::string m_srvName;               // srv_name() 累积, add/remove/functions 共用
+    std::string m_srvName;               // srv_name() 累积, add/remove 共用
     YomkService* m_srvPtr = nullptr;     // srv_ptr() 累积, add 用
     YomkBoot* m_boot = nullptr;          // boot_ptr() 累积, run 用（所有权移交 run）
-    std::string m_fnUrl;                 // fn_url() 累积, get_info 用
     // srv<T>() 捕获的实例化工厂: 闭包持有服务名, create() 执行
     std::function<int(const std::shared_ptr<YomkServer>&)> m_newSvc;
 
@@ -206,7 +201,7 @@ public:
         return AsyncRequestBuilder(m_url, std::move(m_msg), std::move(func));
     }
 
-    // —— 生命周期 / 服务管理 / 内省 ——
+    // —— 生命周期 / 服务管理 ——
     /**
      * @brief 获取框架版本号
      * @return 版本字符串（编译期常量, 不经请求通道）
@@ -279,7 +274,7 @@ public:
         return *this;
     }
     /**
-     * @brief 累积服务名（add / remove / functions 共用）
+     * @brief 累积服务名（add / remove 共用）
      * @param srvName 目标服务注册名
      * @return 自身链式引用
      */
@@ -306,16 +301,6 @@ public:
     RequestBuilder& boot_ptr(YomkBoot* cfg)
     {
         m_boot = cfg;
-        return *this;
-    }
-    /**
-     * @brief 累积功能函数 url（get_info 用）
-     * @param url 完整功能函数 url
-     * @return 自身链式引用
-     */
-    RequestBuilder& fn_url(std::string_view url)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
-    {
-        m_fnUrl = url;
         return *this;
     }
     /**
@@ -414,55 +399,6 @@ public:
         }
 
         return 0;
-    }
-    /**
-     * @brief 查询所有已注册服务名称（内省读终结）
-     * @return Response; 未初始化返回 Invalid
-     */
-    yomk::payload::Response services()
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return url(yomk::url::srvServices).request();
-    }
-    /**
-     * @brief 查询 srv_name() 指定服务的全部功能函数（内省读终结）
-     * @return Response 携带 FuncInfoList 结构化清单（m_funcName/m_msgName/m_description）;
-     *     未初始化返回 Invalid; 服务不存在时 m_msg 恒 "ok" 且清单为空
-     */
-    yomk::payload::Response functions()
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return url(yomk::url::srvFunctions).msg(yomk::msgs::String::shared(m_srvName)).request();
-    }
-    /**
-     * @brief 查询 fn_url() 指定功能函数的元信息（内省读终结）
-     * @return Response; 未初始化返回 Invalid
-     */
-    yomk::payload::Response get_info()
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return url(yomk::url::srvFunction).msg(yomk::msgs::String::shared(m_fnUrl)).request();
-    }
-    /**
-     * @brief 查询框架全量服务及功能函数拓扑（内省读终结）
-     * @return Response; 未初始化返回 Invalid
-     */
-    yomk::payload::Response all()
-    {
-        if (!requireServer())
-        {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
-        }
-        return url(yomk::url::srvAll).request();
     }
 };
 }  // namespace yomk::detail

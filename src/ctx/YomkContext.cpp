@@ -396,7 +396,7 @@ yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkContext::listAll(YomkMsgPtr pkg)
 {
-    // 跨组聚合：组 → 键元信息两层结构（对齐 server().all() 的 ServerServiceInfo 范式）；
+    // 跨组聚合：组 → 键元信息两层结构（对齐 srv_info().all() 的 ServerServiceInfo 范式）；
     // main 组条目恒在首位，自定义组按 map 字典序追加（锁内拷指针、锁外取快照）
     std::vector<yomk::payload::ContextGroupInfo> groups;
     yomk::payload::ContextGroupInfo mainInfo;

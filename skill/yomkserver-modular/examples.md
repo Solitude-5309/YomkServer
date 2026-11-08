@@ -810,19 +810,19 @@ int DemoService::init()
 }
 
 // 全部服务名清单（StringArray）
-yomk::payload::Response resp = yomk::server().services();
+yomk::payload::Response resp = yomk::srv_info().services();
 auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);  // arr->d: ["/DemoService", "/YomkServerInfo", ...]
 
 // 指定服务的函数清单（FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
-resp = yomk::server().srv_name("/DemoService").functions();
+resp = yomk::srv_info().srv_name("/DemoService").functions();
 
 // 单函数元信息（结构化 FuncInfo 包，m_msg 恒 "ok"）
-resp = yomk::server().fn_url("/DemoService/with_type").get_info();  // Succeeded，m_msgName = "String"
-resp = yomk::server().fn_url("/DemoService/with_desc").get_info();  // Succeeded，m_msgName = "String"，m_description = "对函数的说明"
-resp = yomk::server().fn_url("/DemoService/not_exist").get_info();  // Failed
+resp = yomk::srv_info().fn_url("/DemoService/with_type").get_info();  // Succeeded，m_msgName = "String"
+resp = yomk::srv_info().fn_url("/DemoService/with_desc").get_info();  // Succeeded，m_msgName = "String"，m_description = "对函数的说明"
+resp = yomk::srv_info().fn_url("/DemoService/not_exist").get_info();  // Failed
 
 // 全量拓扑（ServerServiceInfoList 层级包：m_serviceName 服务名 + m_funcs 函数元信息列表）
-resp = yomk::server().all();
+resp = yomk::srv_info().all();
 ```
 
 说明：FunctionPool 动态注册的函数无类型元数据时内省显示为空；模块内层内省由各模块自行实现（四个内置模块均已完成，见下）。
