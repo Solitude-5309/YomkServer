@@ -2,6 +2,8 @@
 
 强类型消息包：业务数据通过 `YomkMsg` 及其派生类安全封装与传递，支持拷贝与移动语义，用于在服务请求、上下文、事件循环与函数池之间传递数据。跨边界统一以基类指针 `YomkMsgPtr`（`std::shared_ptr<YomkMsg>`）流转，接收端用 `unpack` 按运行期类型名还原具体类型。
 
+消息基类与 `YOMK_DEFINE_MSG` 宏位于 `<YomkServer/YomkMsg.h>`；内置 30 种标准类型位于 `<YomkServer/YomkMsgs.h>`。
+
 ## API 速查
 
 | API | 说明 |

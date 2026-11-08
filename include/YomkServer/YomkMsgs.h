@@ -1,40 +1,8 @@
 #pragma once
 #include <memory>
-#include <utility>
 
 #include "YomkMsg.h"
 #include "YomkPayload.h"
-
-/**
- * @brief 定义消息类型：在 yomk::msgs 内生成 YomkMsg 派生类 MsgName
- * @param DataType 载荷数据类型
- * @param MsgName 消息类名（同时作为类型标识 kName, 供 unpack/动态查找比对）
- * @param VarName 载荷成员名（框架约定统一为 d, 如 pkg->d）
- * @note 生成类提供 shared(...) 工厂; 自定义消息仅此宏声明, 消息目录见本头下方
- */
-#define YOMK_DEFINE_MSG(DataType, MsgName, VarName)                               \
-    namespace yomk::msgs                                                          \
-    {                                                                             \
-    class MsgName : public ::YomkMsg                                              \
-    {                                                                             \
-    public:                                                                       \
-        static constexpr const char* kName = #MsgName;                            \
-        MsgName() { m_name = kName; }                                             \
-        MsgName(const DataType& value) : VarName(value) { m_name = kName; }       \
-        MsgName(DataType&& value) : VarName(std::move(value)) { m_name = kName; } \
-        virtual ~MsgName() {}                                                     \
-                                                                                  \
-    public:                                                                       \
-        DataType VarName{};                                                       \
-                                                                                  \
-        template <typename... A>                                                  \
-        static std::shared_ptr<MsgName> shared(A&&... a)                          \
-        {                                                                         \
-            return std::make_shared<MsgName>(std::forward<A>(a)...);              \
-        }                                                                         \
-    };                                                                            \
-    using MsgName##Ptr = std::shared_ptr<MsgName>;                                \
-    }
 
 namespace yomk::msgs
 {
@@ -59,7 +27,7 @@ std::shared_ptr<Msg> unpack(const YomkMsgPtr& pkg)
 }  // namespace yomk::msgs
 
 // SDK 消息包目录：框架载荷包 + 内置标准类型包（成员名均为 d）。
-// 自定义消息不在此定义，经本文件的 YOMK_DEFINE_MSG 宏自行声明。
+// 自定义消息不在此定义，经 YomkMsg.h 的 YOMK_DEFINE_MSG 宏自行声明。
 
 // ============ 框架载荷消息包 ============
 // 服务响应载荷包（功能函数返回值的包形态，供响应作为消息存储/传递）
