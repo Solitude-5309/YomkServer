@@ -3,7 +3,7 @@
 
 #include <unordered_map>
 
-#include "msgs/YomkMsgs.h"
+#include "msgs/YomkMsg.h"
 
 using namespace yomk::payload;
 

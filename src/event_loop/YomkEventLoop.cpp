@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <vector>
 #include "yomk/YomkDiag.h"
-#include "yomk/event_loop/YomkEventLoopMsgs.h"
+#include "yomk/event_loop/YomkEventLoopMsg.h"
 
 YomkEventLoop::YomkEventLoop(YomkServer* server) : YomkService(server)
 {

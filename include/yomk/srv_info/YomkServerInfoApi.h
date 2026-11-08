@@ -2,9 +2,9 @@
 #include <string>
 #include <string_view>
 
-#include "yomk/msg/YomkStdMsgs.h"
+#include "yomk/msg/YomkStdMsg.h"
 #include "yomk/server/YomkServerApi.h"
-#include "yomk/srv_info/YomkServerInfoMsgs.h"
+#include "yomk/srv_info/YomkServerInfoMsg.h"
 #include "yomk/srv_info/YomkServerInfoPayload.h"
 #include "yomk/srv_info/YomkServerInfoUrl.h"
 

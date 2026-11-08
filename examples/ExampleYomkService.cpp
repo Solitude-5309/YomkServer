@@ -6,7 +6,7 @@
 // 留痕黑匣子正是这样协作的独立工位。
 //
 // 多服务工程结构（组织方式本身也是教程）：
-// - msgs/ArmMsgs.h             消息包定义（服务间传输的数据结构）
+// - msgs/ArmMsg.h             消息包定义（服务间传输的数据结构）
 // - services/MotionService     运动服务（被 main 直接请求，内部跨服务调留痕）
 // - services/TelemetryService  留痕服务（被 MotionService 调用，含弱绑定回调）
 // - boot/ArmBoot               启动编排（before -> start -> after 三阶段）
@@ -77,7 +77,7 @@
 #include "yomk/log/YomkLoggerApi.h"
 #include "yomk/fn_pool/YomkFunctionPoolApi.h"
 #include "boot/ArmBoot.h"
-#include "msgs/ArmMsgs.h"
+#include "msgs/ArmMsg.h"
 #include "services/MotionService.h"
 #include "services/TelemetryService.h"
 

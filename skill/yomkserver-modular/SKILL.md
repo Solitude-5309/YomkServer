@@ -19,7 +19,7 @@ description: 基于 YomkServer 框架的模块化 C++17 编程，核心理念"�
 | **YomkFunctionPool** | 动态函数池（运行时注册/热替换） | `yomk::fn_pool()` |
 | **YomkLogger** | 多级别、多输出日志 | 发射 `yomk::log()` / 管理 `yomk::log_mgr()` |
 
-按模块头导入（无伞形聚合头）：`<yomk/server/YomkServerApi.h>`（`yomk::server()`）、`<yomk/srv_info/YomkServerInfoApi.h>`（`yomk::srv_info()`）、`<yomk/log/YomkLoggerApi.h>`（`yomk::log()` / `yomk::log_mgr()`）、`<yomk/ctx/YomkContextApi.h>`（`yomk::ctx()`）、`<yomk/event_loop/YomkEventLoopApi.h>`（`yomk::event_loop()`）、`<yomk/fn_pool/YomkFunctionPoolApi.h>`（`yomk::fn_pool()`）；另按需包含 `<yomk/msg/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`（标准类型见 `<yomk/msg/YomkStdMsgs.h>`，核心载荷消息见 `<yomk/server/YomkServerMsgs.h>`，模块专属消息/载荷见 `<yomk/{ctx,event_loop,fn_pool,log,srv_info}/Yomk{Module}Msgs.h>` / `Yomk{Module}Payload.h`）。API 形态为**链式调用：累积环节返回 builder 自身、终结环节执行并返回结果**；单条链在一个表达式内内联使用（builder 持 `string_view`，缓存跨语句即悬垂）。载荷类型（`Response`/`ResStatus`/`LogLevel` 等）位于 `yomk::payload`，服务实现内惯用 `using namespace yomk::payload;`；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs`。
+按模块头导入（无伞形聚合头）：`<yomk/server/YomkServerApi.h>`（`yomk::server()`）、`<yomk/srv_info/YomkServerInfoApi.h>`（`yomk::srv_info()`）、`<yomk/log/YomkLoggerApi.h>`（`yomk::log()` / `yomk::log_mgr()`）、`<yomk/ctx/YomkContextApi.h>`（`yomk::ctx()`）、`<yomk/event_loop/YomkEventLoopApi.h>`（`yomk::event_loop()`）、`<yomk/fn_pool/YomkFunctionPoolApi.h>`（`yomk::fn_pool()`）；另按需包含 `<yomk/msg/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`（标准类型见 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息见 `<yomk/server/YomkServerMsg.h>`，模块专属消息/载荷见 `<yomk/{ctx,event_loop,fn_pool,log,srv_info}/Yomk{Module}Msg.h>` / `Yomk{Module}Payload.h`）。API 形态为**链式调用：累积环节返回 builder 自身、终结环节执行并返回结果**；单条链在一个表达式内内联使用（builder 持 `string_view`，缓存跨语句即悬垂）。载荷类型（`Response`/`ResStatus`/`LogLevel` 等）位于 `yomk::payload`，服务实现内惯用 `using namespace yomk::payload;`；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs`。
 
 各环节完整签名、返回值与失败契约见 [reference.md](reference.md)。
 
@@ -56,7 +56,7 @@ ProjectName/
 ├── config/
 │   └── config.txt        // 配置文件（纯文本 key: value 格式）
 ├── msgs/
-│   └── YomkMsgs.h          // 所有消息包定义（项目本地，非 SDK 头）
+│   └── YomkMsg.h          // 所有消息包定义（项目本地，非 SDK 头）
 ├── services/
 │   └── ConfigService.h/.cpp  // 内置配置服务
 ├── typedefine/
@@ -92,7 +92,7 @@ ProjectName/
 
 ### 步骤
 
-1. **定义消息包**（`msgs/YomkMsgs.h`）：
+1. **定义消息包**（`msgs/YomkMsg.h`）：
 ```cpp
 struct MyData { std::string field1; int field2; };
 YOMK_DEFINE_MSG(MyData, MyData, d);  // 参数：数据类, 消息名称, 成员变量名
@@ -228,7 +228,7 @@ ExtensionName/
 ├── include/
 │   ├── XxxService.h        // 对外接口头文件（服务类声明；内部头文件放 src/）
 │   ├── XxxApi.h            // 模块 API：链式域入口（四件套，参考 include/yomk 各域设计）
-│   ├── XxxMsgs.h           // 模块消息包目录（YOMK_DEFINE_MSG）
+│   ├── XxxMsg.h           // 模块消息包目录（YOMK_DEFINE_MSG）
 │   ├── XxxPayload.h        // 模块专属载荷目录（namespace yomk::payload）
 │   └── XxxUrl.h            // 模块 URL 常量（yomk::url 命名空间）
 ├── src/
@@ -260,7 +260,7 @@ ExtensionName/
 9. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
 10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回，如 `"ExtensionName v" EXTENSION_VERSION`
 11. **README 使用示例完整可复制**：README 使用示例必须提供完整的 main.cpp（含 include、`yomk::server().init()`、`yomk::server().srv<XxxService>().create()` 注册扩展服务、请求与输出），用户复制后即可编译运行；不得只提供请求代码片段
-12. **模块四件套**：对外头文件按 SDK `include/yomk/` 各域同一设计组织——`XxxUrl.h`（`yomk::url` 命名空间 URL 常量，`inline constexpr std::string_view`）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload`）、`XxxMsgs.h`（扩展专属消息包，`YOMK_DEFINE_MSG`）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态：前置累积 `url/msg` + 无参终结 `request`，builder 持 `string_view` 仅单表达式内联使用；模板内置 `version()` 终结）。完整形态见 `template/extension/include/Extension{Url,Payload,Msgs,Api}.h`；模板四件套暂为注释占位（模板接口最小化），新增业务时先补 Url/Payload/Msgs 再在 Api 上追加终结方法
+12. **模块四件套**：对外头文件按 SDK `include/yomk/` 各域同一设计组织——`XxxUrl.h`（`yomk::url` 命名空间 URL 常量，`inline constexpr std::string_view`）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG`）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态：前置累积 `url/msg` + 无参终结 `request`，builder 持 `string_view` 仅单表达式内联使用；模板内置 `version()` 终结）。完整形态见 `template/extension/include/Extension{Url,Payload,Msg,Api}.h`；模板四件套暂为注释占位（模板接口最小化），新增业务时先补 Url/Payload/Msg 再在 Api 上追加终结方法
 
 ### 生成规则
 
@@ -273,7 +273,7 @@ ExtensionName/
 
 在已有扩展中添加新功能：
 
-1. **模块四件套补声明**：`XxxUrl.h` 加 URL 常量、`XxxPayload.h`/`XxxMsgs.h` 加载荷/消息包（当前为注释占位）、`XxxApi.h` 加终结方法（如 `yomk::ext().task(req).submit()` 形态）
+1. **模块四件套补声明**：`XxxUrl.h` 加 URL 常量、`XxxPayload.h`/`XxxMsg.h` 加载荷/消息包（当前为注释占位）、`XxxApi.h` 加终结方法（如 `yomk::ext().task(req).submit()` 形态）
 2. **对外接口头文件添加方法声明**（`include/XxxService.h`；仅内部使用的声明放 `src/` 内部头文件）
 3. **实现添加功能函数**（`src/XxxService.cpp`）：`installFunc` + 实现
 4. **测试程序添加测试用例**（`test/TestXxx.cpp`）
@@ -292,7 +292,7 @@ YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定�
 注意：`YOMK_DEFINE_MSG` 展开生成的真实类型是独立命名空间中的 `yomk::msgs::消息名称` 与 `yomk::msgs::消息名称Ptr`，与 `yomk` 中的载荷/框架类型隔离以避免重名；引用须写全名，裸写消息名会报 not declared；消息名称作为字符串字面量仍用于 `installFunc` 第三参；解包由 `yomk::msgs::unpack<yomk::msgs::消息名称>` 模板实参承担（类型即名字，无需字符串）。
 `shared()` 无法从花括号初始化列表推导模板参数，聚合体入参须显式构造：`shared(MyData{...})`。
 
-内置标准类型（成员名均为 `d`）：`Bool`, `Char`, `UChar`, `Byte`, `Int8`, `Uint8`, `Int16`, `Uint16`, `Int32`, `Uint32`, `Int64`, `Uint64`, `Float32`, `Float64`, `String` 及对应 `XxxArray` 类型（完整清单见 SDK `<yomk/msg/YomkStdMsgs.h>` 末段；模块专属消息包见各 `Yomk{Module}Msgs.h`）。
+内置标准类型（成员名均为 `d`）：`Bool`, `Char`, `UChar`, `Byte`, `Int8`, `Uint8`, `Int16`, `Uint16`, `Int32`, `Uint32`, `Int64`, `Uint64`, `Float32`, `Float64`, `String` 及对应 `XxxArray` 类型（完整清单见 SDK `<yomk/msg/YomkStdMsg.h>` 末段；模块专属消息包见各 `Yomk{Module}Msg.h`）。
 
 ### 设计原则
 

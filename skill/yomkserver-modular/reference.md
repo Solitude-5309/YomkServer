@@ -18,7 +18,7 @@
 
 - builder 按值传递，链式表达式须**单表达式内联**使用，接收变量一律 `auto` 或不接收；内部持 `string_view`，缓存 builder 复用即悬垂。
 - `yomk::log()` 域入口在**调用行**捕获位置前缀，缓存 builder 还会导致位置错误。
-- 按模块头导入（无伞形聚合头）：`<yomk/server/YomkServerApi.h>`、`YomkServerInfoApi.h`、`YomkLoggerApi.h`、`YomkContextApi.h`、`YomkEventLoopApi.h`、`YomkFunctionPoolApi.h`；自定义消息包含 `<yomk/msg/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`，标准类型见 `<yomk/msg/YomkStdMsgs.h>`，核心载荷消息见 `<yomk/server/YomkServerMsgs.h>`，模块专属消息/载荷见 `<yomk/{ctx,event_loop,fn_pool,log,srv_info}/Yomk{Module}Msgs.h>` / `Yomk{Module}Payload.h`（对应 `*Api.h` 已按需包含）；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs` 命名空间。
+- 按模块头导入（无伞形聚合头）：`<yomk/server/YomkServerApi.h>`、`YomkServerInfoApi.h`、`YomkLoggerApi.h`、`YomkContextApi.h`、`YomkEventLoopApi.h`、`YomkFunctionPoolApi.h`；自定义消息包含 `<yomk/msg/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`，标准类型见 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息见 `<yomk/server/YomkServerMsg.h>`，模块专属消息/载荷见 `<yomk/{ctx,event_loop,fn_pool,log,srv_info}/Yomk{Module}Msg.h>` / `Yomk{Module}Payload.h`（对应 `*Api.h` 已按需包含）；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs` 命名空间。
 
 ## 状态码约定
 

@@ -1,5 +1,5 @@
 #include "EventLoop.h"
-#include "yomk/event_loop/YomkEventLoopMsgs.h"
+#include "yomk/event_loop/YomkEventLoopMsg.h"
 
 #include <iostream>
 #include <vector>

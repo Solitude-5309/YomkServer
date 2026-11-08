@@ -16,7 +16,7 @@ ProjectName/
 ├── config/
 │   └── config.txt
 ├── msgs/
-│   └── YomkStdMsgs.h
+│   └── YomkStdMsg.h
 ├── services/
 │   ├── ConfigService.h
 │   └── ConfigService.cpp
@@ -177,7 +177,7 @@ int MyBoot::after()
 constexpr const char* const CTX_CONFIG_PATH = "config_path";
 ```
 
-### msgs/YomkMsgs.h
+### msgs/YomkMsg.h
 ```cpp
 #pragma once
 #include <yomk/msg/YomkMsg.h>
@@ -208,7 +208,7 @@ YOMK_DEFINE_MSG(::ConfigKeyValue, ConfigKeyValue, req);
 
 #include <unordered_map>
 
-#include "msgs/YomkMsgs.h"
+#include "msgs/YomkMsg.h"
 
 using namespace yomk::payload;
 
@@ -527,7 +527,7 @@ ProjectName
 
 演示在示例0基础上添加 `UserService`，展示完整的扩展流程。
 
-### 1. 添加消息包（msgs/YomkMsgs.h 追加）
+### 1. 添加消息包（msgs/YomkMsg.h 追加）
 ```cpp
 // 定义完所有的结构体后，统一注册 YOMK_DEFINE_MSG
 // UserService 消息包
@@ -552,7 +552,7 @@ YOMK_DEFINE_MSG(UserInfo, UserInfo, d);
 #pragma once
 #include <yomk/server/YomkServerApi.h>
 
-#include "msgs/YomkMsgs.h"
+#include "msgs/YomkMsg.h"
 
 using namespace yomk::payload;
 
@@ -979,7 +979,7 @@ ExtensionName/
 ├── include/
 │   ├── ExtensionService.h
 │   ├── ExtensionApi.h       // 模块 API：链式域入口 yomk::ext()（四件套，参考 include/yomk 各域设计）
-│   ├── ExtensionMsgs.h      // 模块消息包目录（YOMK_DEFINE_MSG，模板为注释占位）
+│   ├── ExtensionMsg.h      // 模块消息包目录（YOMK_DEFINE_MSG，模板为注释占位）
 │   ├── ExtensionPayload.h   // 模块专属载荷目录（namespace yomk::payload，模板为注释占位）
 │   └── ExtensionUrl.h       // 模块 URL 常量（yomk::url 命名空间）
 ├── src/
@@ -1027,7 +1027,7 @@ inline constexpr std::string_view extVersion = "/ExtensionService/version";
 // };
 ```
 
-### include/ExtensionMsgs.h
+### include/ExtensionMsg.h
 ```cpp
 #pragma once
 
@@ -1035,7 +1035,7 @@ inline constexpr std::string_view extVersion = "/ExtensionService/version";
 #include "yomk/msg/YomkMsg.h"
 
 // Extension 扩展专属消息包（成员名均为 d）。当前模板返回值复用标准类型 msgs::String，暂无专属消息；
-// 新增业务消息在此用 YOMK_DEFINE_MSG 声明，参考 yomk/fn_pool/YomkFunctionPoolMsgs.h：
+// 新增业务消息在此用 YOMK_DEFINE_MSG 声明，参考 yomk/fn_pool/YomkFunctionPoolMsg.h：
 //
 // YOMK_DEFINE_MSG(yomk::payload::ExtTask, ExtTask, d);
 ```
@@ -1047,7 +1047,7 @@ inline constexpr std::string_view extVersion = "/ExtensionService/version";
 #include <string_view>
 #include <utility>
 
-#include "ExtensionMsgs.h"
+#include "ExtensionMsg.h"
 #include "ExtensionPayload.h"
 #include "ExtensionUrl.h"
 #include "yomk/server/YomkServerApi.h"

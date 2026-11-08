@@ -27,8 +27,8 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
  * @param DataType 载荷数据类型
  * @param MsgName 消息类名（同时作为类型标识 kName, 供 unpack/动态查找比对）
  * @param VarName 载荷成员名（框架约定统一为 d, 如 pkg->d）
- * @note 生成类提供 shared(...) 工厂; 自定义消息仅此宏声明, 标准类型消息目录见 YomkStdMsgs.h,
- *       核心载荷消息目录见 YomkServerMsgs.h, 模块专属消息目录见各 Yomk{Module}Msgs.h
+ * @note 生成类提供 shared(...) 工厂; 自定义消息仅此宏声明, 标准类型消息目录见 YomkStdMsg.h,
+ *       核心载荷消息目录见 YomkServerMsg.h, 模块专属消息目录见各 Yomk{Module}Msg.h
  */
 #define YOMK_DEFINE_MSG(DataType, MsgName, VarName)                               \
     namespace yomk::msgs                                                          \

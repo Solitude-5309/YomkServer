@@ -2,7 +2,7 @@
 
 强类型消息包：业务数据通过 `YomkMsg` 及其派生类安全封装与传递，支持拷贝与移动语义，用于在服务请求、上下文、事件循环与函数池之间传递数据。跨边界统一以基类指针 `YomkMsgPtr`（`std::shared_ptr<YomkMsg>`）流转，接收端用 `unpack` 按运行期类型名还原具体类型。
 
-消息基类、`YOMK_DEFINE_MSG` 宏与 `yomk::msgs::unpack` 位于 `<yomk/msg/YomkMsg.h>`；内置 30 种标准类型位于 `<yomk/msg/YomkStdMsgs.h>`；核心载荷消息包（`Response`）位于 `<yomk/server/YomkServerMsgs.h>`；模块专属载荷/消息分别位于 `YomkContext{Payload,Msgs}.h`、`YomkLogger{Payload,Msgs}.h`、`YomkEventLoop{Payload,Msgs}.h`、`YomkFunctionPool{Payload,Msgs}.h`、`YomkServerInfo{Payload,Msgs}.h`（对应的 `*Api.h` 已按需包含）。
+消息基类、`YOMK_DEFINE_MSG` 宏与 `yomk::msgs::unpack` 位于 `<yomk/msg/YomkMsg.h>`；内置 30 种标准类型位于 `<yomk/msg/YomkStdMsg.h>`；核心载荷消息包（`Response`）位于 `<yomk/server/YomkServerMsg.h>`；模块专属载荷/消息分别位于 `YomkContext{Payload,Msg}.h`、`YomkLogger{Payload,Msg}.h`、`YomkEventLoop{Payload,Msg}.h`、`YomkFunctionPool{Payload,Msg}.h`、`YomkServerInfo{Payload,Msg}.h`（对应的 `*Api.h` 已按需包含）。
 
 ## API 速查
 

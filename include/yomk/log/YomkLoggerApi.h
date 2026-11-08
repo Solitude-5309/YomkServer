@@ -9,10 +9,10 @@
 #include <utility>
 
 #include "yomk/log/YomkLogSourceLoc.h"
-#include "yomk/log/YomkLoggerMsgs.h"
+#include "yomk/log/YomkLoggerMsg.h"
 #include "yomk/log/YomkLoggerPayload.h"
 #include "yomk/log/YomkLoggerUrl.h"
-#include "yomk/msg/YomkStdMsgs.h"
+#include "yomk/msg/YomkStdMsg.h"
 #include "yomk/server/YomkServerApi.h"
 #include "yomk/server/YomkServerPayload.h"
 

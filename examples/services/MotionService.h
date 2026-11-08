@@ -1,6 +1,6 @@
 #pragma once
 #include "yomk/server/YomkServerApi.h"
-#include "msgs/ArmMsgs.h"
+#include "msgs/ArmMsg.h"
 
 /**
  * @file MotionService.h

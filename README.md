@@ -16,7 +16,7 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 | 模块 | 简述 |
 |---|---|
 | [YomkServer / YomkService](docs/YomkServer.md) | 服务总线核心：服务注册与 `"/服务名/函数名"` URL 路由、同步/异步请求分发、服务生命周期管理（deinit / 优雅关闭） |
-| [YomkMsg](docs/YomkMsg.md) | 强类型消息包：`YOMK_DEFINE_MSG` 宏声明自定义消息（宏、基类与 `unpack` 见 `YomkMsg.h`，标准类型见 `YomkStdMsgs.h`，核心载荷消息见 `YomkServerMsgs.h`，模块专属消息/载荷见各 `Yomk{Module}Msgs.h` / `Yomk{Module}Payload.h`），内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
+| [YomkMsg](docs/YomkMsg.md) | 强类型消息包：`YOMK_DEFINE_MSG` 宏声明自定义消息（宏、基类与 `unpack` 见 `YomkMsg.h`，标准类型见 `YomkStdMsg.h`，核心载荷消息见 `YomkServerMsg.h`，模块专属消息/载荷见各 `Yomk{Module}Msg.h` / `Yomk{Module}Payload.h`），内置 30 种标量/数组类型，支持移动语义与动态类型转换 |
 | [YomkBoot](docs/YomkServer.md#启动编排yomkboot) | 启动编排：before / start / after 三段式引导，封装从框架初始化到业务就绪的完整流程（`yomk::server().boot_ptr(cfg).run()`） |
 | [YomkLogger](docs/YomkLogger.md) | 日志系统：控制台与文件双输出、六级级别开关、自定义 tag、日志代理拦截、位置前缀开关与日志器自省 |
 | [YomkContext](docs/YomkContext.md) | 共享上下文：跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步） |
@@ -126,7 +126,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 3. 消息包 (YomkMsg)
 
-服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<yomk/msg/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型位于 `<yomk/msg/YomkStdMsgs.h>`，核心载荷消息包位于 `<yomk/server/YomkServerMsgs.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msgs.h`（对应模块 `*Api.h` 已按需包含）。
+服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<yomk/msg/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型位于 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息包位于 `<yomk/server/YomkServerMsg.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msg.h`（对应模块 `*Api.h` 已按需包含）。
 
 详见 [消息包](docs/YomkMsg.md)。
 
@@ -314,4 +314,4 @@ target_link_libraries(my_app PRIVATE YomkServer::YomkServer)
 
 ## 扩展开发
 
-独立业务扩展编译为共享库（`.so`），支持 `find_package()` 被其他工程引用；对外头文件按 SDK 各域同一设计组织为**模块四件套**（`XxxApi.h` 链式域入口 / `XxxUrl.h` URL 常量 / `XxxPayload.h` 专属载荷 / `XxxMsgs.h` 专属消息包）。完整可编译扩展模板见 [`template/extension/`](template/extension/)（`yomk::ext().version()` 形态），设计与模块化编程规范详见 [skill/yomkserver-modular](skill/yomkserver-modular/SKILL.md)。
+独立业务扩展编译为共享库（`.so`），支持 `find_package()` 被其他工程引用；对外头文件按 SDK 各域同一设计组织为**模块四件套**（`XxxApi.h` 链式域入口 / `XxxUrl.h` URL 常量 / `XxxPayload.h` 专属载荷 / `XxxMsg.h` 专属消息包）。完整可编译扩展模板见 [`template/extension/`](template/extension/)（`yomk::ext().version()` 形态），设计与模块化编程规范详见 [skill/yomkserver-modular](skill/yomkserver-modular/SKILL.md)。

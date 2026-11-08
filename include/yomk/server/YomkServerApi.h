@@ -12,7 +12,7 @@
 #include "yomk/YomkDiag.h"
 #include "yomk/YomkExport.h"
 #include "yomk/msg/YomkMsg.h"
-#include "yomk/msg/YomkStdMsgs.h"  // 标准类型消息目录：请求链常用载荷（String 等）
+#include "yomk/msg/YomkStdMsg.h"  // 标准类型消息目录：请求链常用载荷（String 等）
 #include "yomk/server/YomkServerPayload.h"
 #include "yomk/server/YomkServerRef.h"
 
@@ -21,7 +21,7 @@
 // 服务可直接依赖本头。
 // 链式形态: url/msg 等累积方法任意组合, 以 request()/status()/init()/create() 等无参终结动作收尾。
 // 无状态设计: 全部终结动作经 YomkServerRef 快照取当前 server; 未初始化时记诊断并返回失败值,
-// 不抛异常。本头依赖单向 (Boot/Diag/Msgs/Payload/ServerRef/Export), 可独立包含;
+// 不抛异常。本头依赖单向 (Boot/Diag/Msg/Payload/ServerRef/Export), 可独立包含;
 // 服务拓扑内省读路径见 YomkServerInfoApi.h（yomk::srv_info() 域）。
 
 /**

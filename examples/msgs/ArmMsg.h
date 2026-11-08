@@ -2,7 +2,7 @@
 #include "yomk/msg/YomkMsg.h"
 
 /**
- * @file ArmMsgs.h
+ * @file ArmMsg.h
  * @brief 机械臂控制示例消息包定义
  *
  * 服务间传递的数据结构在此集中定义：普通结构体 + YOMK_DEFINE_MSG 宏

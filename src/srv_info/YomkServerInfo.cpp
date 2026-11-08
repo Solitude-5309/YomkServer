@@ -1,6 +1,6 @@
 #include "YomkServerInfo.h"
 #include "yomk/YomkDiag.h"
-#include "yomk/srv_info/YomkServerInfoMsgs.h"
+#include "yomk/srv_info/YomkServerInfoMsg.h"
 
 YomkServerInfo::YomkServerInfo(YomkServer* server) : YomkService(server)
 {

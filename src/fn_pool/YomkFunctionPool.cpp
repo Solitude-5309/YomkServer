@@ -3,8 +3,8 @@
 #include <iostream>
 #include <vector>
 #include "yomk/YomkDiag.h"
-#include "yomk/fn_pool/YomkFunctionPoolMsgs.h"
-#include "yomk/srv_info/YomkServerInfoMsgs.h"
+#include "yomk/fn_pool/YomkFunctionPoolMsg.h"
+#include "yomk/srv_info/YomkServerInfoMsg.h"
 YomkFunctionPool::YomkFunctionPool(YomkServer* server) : YomkService(server)
 {
     name("/YomkFunctionPool");

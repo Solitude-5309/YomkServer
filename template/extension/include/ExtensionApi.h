@@ -3,7 +3,7 @@
 #include <string_view>
 #include <utility>
 
-#include "ExtensionMsgs.h"
+#include "ExtensionMsg.h"
 #include "ExtensionPayload.h"
 #include "ExtensionUrl.h"
 #include "yomk/server/YomkServerApi.h"

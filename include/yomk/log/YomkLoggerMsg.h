@@ -1,7 +1,7 @@
 #pragma once
 
 #include "yomk/log/YomkLoggerPayload.h"
-#include "yomk/msg/YomkStdMsgs.h"
+#include "yomk/msg/YomkStdMsg.h"
 
 // Logger 模块消息包（成员名均为 d）。
 YOMK_DEFINE_MSG(yomk::payload::LogFile, LogFile, d);
