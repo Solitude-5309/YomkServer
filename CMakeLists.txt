@@ -7,7 +7,7 @@ include(cmake/AbiInfo.cmake)
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 3.5.17 LANGUAGES CXX)
+project(Yomk VERSION 3.5.18 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：
@@ -64,20 +64,20 @@ set(LIB_INSTALL_DIR lib)
 include_directories(${YOMK_SERVER_INCLUDE_DIR})
 
 set(YomkServer_SOURCES
-    ${YOMK_SERVER_SRC_DIR}/core/YomkServer.cpp
-    ${YOMK_SERVER_SRC_DIR}/core/YomkServerPrivate.cpp
-    ${YOMK_SERVER_SRC_DIR}/core/YomkService.cpp
-    ${YOMK_SERVER_SRC_DIR}/core/YomkServicePrivate.cpp
-    ${YOMK_SERVER_SRC_DIR}/core/YomkSimpleThreadPool.cpp
-    ${YOMK_SERVER_SRC_DIR}/modules/function_pool/YomkFunctionPool.cpp
-    ${YOMK_SERVER_SRC_DIR}/modules/context/ContextGroup.cpp
-    ${YOMK_SERVER_SRC_DIR}/modules/context/YomkContext.cpp
-    ${YOMK_SERVER_SRC_DIR}/modules/event_loop/EventLoop.cpp
-    ${YOMK_SERVER_SRC_DIR}/modules/event_loop/YomkEventLoop.cpp
-    ${YOMK_SERVER_SRC_DIR}/modules/logger/YomkLogger.cpp
-    ${YOMK_SERVER_SRC_DIR}/modules/logger/ConsoleLogger.cpp
-    ${YOMK_SERVER_SRC_DIR}/modules/logger/FileLogger.cpp
-    ${YOMK_SERVER_SRC_DIR}/modules/server_info/YomkServerInfo.cpp
+    ${YOMK_SERVER_SRC_DIR}/server/YomkServer.cpp
+    ${YOMK_SERVER_SRC_DIR}/server/YomkServerPrivate.cpp
+    ${YOMK_SERVER_SRC_DIR}/server/YomkService.cpp
+    ${YOMK_SERVER_SRC_DIR}/server/YomkServicePrivate.cpp
+    ${YOMK_SERVER_SRC_DIR}/server/YomkSimpleThreadPool.cpp
+    ${YOMK_SERVER_SRC_DIR}/fn_pool/YomkFunctionPool.cpp
+    ${YOMK_SERVER_SRC_DIR}/ctx/ContextGroup.cpp
+    ${YOMK_SERVER_SRC_DIR}/ctx/YomkContext.cpp
+    ${YOMK_SERVER_SRC_DIR}/event_loop/EventLoop.cpp
+    ${YOMK_SERVER_SRC_DIR}/event_loop/YomkEventLoop.cpp
+    ${YOMK_SERVER_SRC_DIR}/log/YomkLogger.cpp
+    ${YOMK_SERVER_SRC_DIR}/log/ConsoleLogger.cpp
+    ${YOMK_SERVER_SRC_DIR}/log/FileLogger.cpp
+    ${YOMK_SERVER_SRC_DIR}/srv_info/YomkServerInfo.cpp
 )
 
 add_library(YomkServer SHARED

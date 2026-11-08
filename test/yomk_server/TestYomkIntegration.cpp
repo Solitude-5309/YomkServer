@@ -33,7 +33,7 @@
 
 #include <unistd.h>
 
-#include "modules/logger/YomkLogger.h"
+#include "log/YomkLogger.h"
 #include "YomkApi.h"
 
 namespace fs = std::filesystem;

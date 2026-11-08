@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "../../core/YomkSimpleThreadPool.h"
+#include "../server/YomkSimpleThreadPool.h"
 #include "YomkMsgs.h"
 
 class ContextGroup;

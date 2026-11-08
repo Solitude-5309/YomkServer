@@ -4,11 +4,11 @@
 #include <iostream>
 #include <unordered_map>
 
-#include "../modules/context/YomkContext.h"
-#include "../modules/event_loop/YomkEventLoop.h"
-#include "../modules/function_pool/YomkFunctionPool.h"
-#include "../modules/logger/YomkLogger.h"
-#include "../modules/server_info/YomkServerInfo.h"
+#include "../ctx/YomkContext.h"
+#include "../event_loop/YomkEventLoop.h"
+#include "../fn_pool/YomkFunctionPool.h"
+#include "../log/YomkLogger.h"
+#include "../srv_info/YomkServerInfo.h"
 #include "YomkServerPrivate.h"
 #include "YomkDiag.h"
 

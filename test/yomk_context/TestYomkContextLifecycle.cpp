@@ -9,7 +9,7 @@
 // 6. 异常安全：派生服务 init() 抛 std::bad_alloc，add() try/catch 回滚无残留
 //
 // 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext；需构造/派生内部类 YomkContext，
-// 故 include 非导出内部头 modules/context/YomkContext.h（CMake 已追加 src 目录）；
+// 故 include 非导出内部头 ctx/YomkContext.h（CMake 已追加 src 目录）；
 // 末尾调用 yomk::server().shutdown() 干净 deinit 重注册实例（call_once 约束，shutdown 后不可再初始化）
 //
 // 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
@@ -24,7 +24,7 @@
 #include <thread>
 #include <vector>
 
-#include "modules/context/YomkContext.h"
+#include "ctx/YomkContext.h"
 #include "YomkApi.h"
 
 static int g_failed = 0;
