@@ -8,8 +8,8 @@
 #include "YomkEventLoopPayload.h"
 #include "YomkEventLoopUrl.h"
 #include "YomkMsgs.h"
-#include "YomkPayload.h"
 #include "YomkServerApi.h"
+#include "YomkServerPayload.h"
 
 // 事件循环域：单入口 yomk::event_loop()。循环名由 .loop(name) 分面承载，回调 / 消息名 /
 // 事件数据 / tag / 采样条数一律前置累积，终结 op 全部无参——start / stop / destroy /

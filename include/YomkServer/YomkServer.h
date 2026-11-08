@@ -8,6 +8,7 @@
 
 #include "YomkService.h"
 #include "YomkExport.h"
+#include "YomkServerInfoPayload.h"
 
 class YomkServerPrivate;
 /**

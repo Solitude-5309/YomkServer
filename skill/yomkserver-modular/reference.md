@@ -73,7 +73,7 @@ namespace yomk {
     struct Context { std::string m_key; YomkMsgPtr m_value; };
     enum class CheckStatus{Accept, Reject};   // checker 门控结论
 }
-namespace yomk { struct FuncInfo {           // 功能函数元信息（内省用）
+namespace yomk { struct FuncInfo {           // 功能函数元信息（内省用，定义见 YomkServerInfoPayload.h）
     std::string m_funcName;      // 路由名（/ 开头）
     std::string m_msgName;       // 期望消息类型名（声明处第三参 / msg_name()，可为空）
     std::string m_description;   // 函数说明（第四参 / description()，自由字符串，可为空）

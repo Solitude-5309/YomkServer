@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "YomkPayload.h"
+#include "YomkServerPayload.h"
 
 namespace yomk::payload
 {

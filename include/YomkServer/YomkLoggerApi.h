@@ -12,8 +12,8 @@
 #include "YomkLoggerPayload.h"
 #include "YomkLoggerUrl.h"
 #include "YomkMsgs.h"
-#include "YomkPayload.h"
 #include "YomkServerApi.h"
+#include "YomkServerPayload.h"
 #include "YomkSourceLoc.h"
 
 // 日志域：发射（yomk::log()）与管理（yomk::log_mgr()）分域。发射链经请求域 .status()

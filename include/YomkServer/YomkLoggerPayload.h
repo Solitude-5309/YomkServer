@@ -2,7 +2,7 @@
 #include <functional>
 #include <string>
 
-#include "YomkPayload.h"
+#include "YomkServerPayload.h"
 
 namespace yomk::payload
 {
