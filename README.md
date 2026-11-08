@@ -280,7 +280,7 @@ cppcheck + clang-tidy 双工具零告警门禁（任一告警即非零退出）�
 
 - **日志落盘**：`test/test_logs/<时间戳>/` 下每次运行一份 `cppcheck.log` + `clang-tidy.log` + `summary.log` 汇总
 
-依赖：cppcheck、clang-tidy，以及仓库根 `compile_commands.json`（CMake 配置阶段自动导出，缺失时脚本会给出构建提示）。检查集与 `test/YomkServer/CMakeLists.txt` 的 `YOMK_TEST_STATIC_ANALYZE` CMake 目标口径一致，可配合 `cmake .. -DYOMK_TEST_STATIC_ANALYZE=ON` 在构建侧运行同名 target。
+依赖：cppcheck、clang-tidy，以及仓库根 `compile_commands.json`（CMake 配置阶段自动导出，缺失时脚本会给出构建提示）。检查集与 `test/yomk_server/CMakeLists.txt` 的 `YOMK_TEST_STATIC_ANALYZE` CMake 目标口径一致，可配合 `cmake .. -DYOMK_TEST_STATIC_ANALYZE=ON` 在构建侧运行同名 target。
 
 ---
 

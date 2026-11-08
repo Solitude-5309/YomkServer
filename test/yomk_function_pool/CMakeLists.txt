@@ -1,10 +1,10 @@
-# test/YomkFunctionPool：FunctionPool 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
+# test/yomk_function_pool：FunctionPool 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
 
 include_directories(${YOMK_SERVER_INCLUDE_DIR})
 
 # -------------sl TestYomkFunctionPoolLifecycle ----------------
 set(TestYomkFunctionPoolLifecycle_SOURCES 
-    ${TestYomkFunctionPool_DIR}/YomkFunctionPool/TestYomkFunctionPoolLifecycle.cpp
+    ${TestYomkFunctionPool_DIR}/yomk_function_pool/TestYomkFunctionPoolLifecycle.cpp
 )
 add_executable(TestYomkFunctionPoolLifecycle 
     ${TestYomkFunctionPoolLifecycle_SOURCES}
@@ -16,7 +16,7 @@ target_link_libraries(TestYomkFunctionPoolLifecycle PRIVATE
 
 # -------------sl TestYomkFunctionPoolConcurrency ----------------
 set(TestYomkFunctionPoolConcurrency_SOURCES 
-    ${TestYomkFunctionPool_DIR}/YomkFunctionPool/TestYomkFunctionPoolConcurrency.cpp
+    ${TestYomkFunctionPool_DIR}/yomk_function_pool/TestYomkFunctionPoolConcurrency.cpp
 )
 add_executable(TestYomkFunctionPoolConcurrency 
     ${TestYomkFunctionPoolConcurrency_SOURCES}
@@ -28,7 +28,7 @@ target_link_libraries(TestYomkFunctionPoolConcurrency PRIVATE
 
 # -------------sl TestYomkFunctionPoolStress ----------------
 set(TestYomkFunctionPoolStress_SOURCES 
-    ${TestYomkFunctionPool_DIR}/YomkFunctionPool/TestYomkFunctionPoolStress.cpp
+    ${TestYomkFunctionPool_DIR}/yomk_function_pool/TestYomkFunctionPoolStress.cpp
 )
 add_executable(TestYomkFunctionPoolStress 
     ${TestYomkFunctionPoolStress_SOURCES}

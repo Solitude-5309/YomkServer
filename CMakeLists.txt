@@ -7,7 +7,7 @@ include(cmake/AbiInfo.cmake)
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 3.5.16 LANGUAGES CXX)
+project(Yomk VERSION 3.5.17 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：
@@ -105,14 +105,14 @@ install(EXPORT YomkServerTargets
 include(CMakePackageConfigHelpers)
 
 write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/YomkServer/YomkServerConfigVersion.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/yomk_server/YomkServerConfigVersion.cmake"
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY SameMajorVersion
 )
 
 configure_package_config_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/YomkServerConfig.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/YomkServer/YomkServerConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/yomk_server/YomkServerConfig.cmake"
     INSTALL_DESTINATION lib/cmake/YomkServer
     PATH_VARS
         INCLUDE_INSTALL_DIR
@@ -121,8 +121,8 @@ configure_package_config_file(
 
 install(
     FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/YomkServer/YomkServerConfig.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/YomkServer/YomkServerConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/yomk_server/YomkServerConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/yomk_server/YomkServerConfigVersion.cmake"
     DESTINATION lib/cmake/YomkServer
 )
 

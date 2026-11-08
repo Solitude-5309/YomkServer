@@ -9,7 +9,7 @@
 #   1. cppcheck 档: 全量扫描 src（含全部 Modules）+ include，
 #      warning/style/performance/portability/information 零告警验收（--error-exitcode=1）；
 #      先打印检测文件清单，扫描时过滤显示逐文件 Checking 进度行与告警行（完整 verbose 落盘日志）
-#   2. clang-tidy 档: 检查集与 test/YomkServer/CMakeLists.txt 的 _YOMK_TIDY_CHECKS 对齐，
+#   2. clang-tidy 档: 检查集与 test/yomk_server/CMakeLists.txt 的 _YOMK_TIDY_CHECKS 对齐，
 #      逐文件扫描 src 全部编译单元（[i/N] 进度与逐文件 [FAIL] 标记），
 #      --warnings-as-errors 严格门禁，header-filter 限本仓库头
 #   3. 任一工具告警 → 输出 [FAIL] 摘要并以非零码退出；全部零告警 → 输出 [PASS]
@@ -78,7 +78,7 @@ echo "-- 日志目录: ${LOG_ROOT}"
 
 # ---------- cppcheck：库源码全量零告警验收（清单 + Checking 进度行，完整 verbose 落盘） ----------
 # -I include/YomkServer 为真实构建路径（ELC5/FPC5 教训：缺此路径时裸 #include 解析失败，
-# 宏未定义导致分析降级），抑制项与 test/YomkServer/CMakeLists.txt 的 cppcheck 目标保持一致
+# 宏未定义导致分析降级），抑制项与 test/yomk_server/CMakeLists.txt 的 cppcheck 目标保持一致
 if [ ${RUN_CPPCHECK} -eq 1 ]; then
     echo "-- cppcheck 检测文件清单（src + include，排除 build/ 生成物）:"
     mapfile -t CPPCHECK_FILES < <(find "${SRC_DIR}" "${INCLUDE_ROOT}" \
@@ -113,7 +113,7 @@ fi
 
 # ---------- clang-tidy：src 逐文件扫描 + 本仓库头，零告警验收（[i/N] 进度） ----------
 # 检查集为 _YOMK_TIDY_CHECKS 原串（排除项是校准成果，如框架宏约定触发的
-# bugprone-macro-parentheses），修改时须与 test/YomkServer/CMakeLists.txt 保持对齐
+# bugprone-macro-parentheses），修改时须与 test/yomk_server/CMakeLists.txt 保持对齐
 if [ ${RUN_TIDY} -eq 1 ]; then
     mapfile -t TIDY_FILES < <(find "${SRC_DIR}" -name '*.cpp' | sort)
     TIDY_TOTAL=${#TIDY_FILES[@]}

@@ -1,5 +1,5 @@
 include_directories(${YOMK_SERVER_INCLUDE_DIR})
-include_directories(${TestYomkContext_DIR}/YomkContext)
+include_directories(${TestYomkContext_DIR}/yomk_context)
 # MC3：生命周期测试需构造/派生内部类 YomkContext，引用非导出内部头需要源码目录
 include_directories(${YOMK_SERVER_SRC_DIR})
 
@@ -9,7 +9,7 @@ set(YomkServerLib
 
 # -------------sl TestYomkContextCRUD ----------------
 set(TestYomkContextCRUD_SOURCES 
-    ${TestYomkContext_DIR}/YomkContext/TestYomkContextCRUD.cpp
+    ${TestYomkContext_DIR}/yomk_context/TestYomkContextCRUD.cpp
 )
 add_executable(TestYomkContextCRUD 
     ${TestYomkContextCRUD_SOURCES}
@@ -21,7 +21,7 @@ target_link_libraries(TestYomkContextCRUD PRIVATE
 
 # -------------sl TestYomkContextCheckerMonitor ----------------
 set(TestYomkContextCheckerMonitor_SOURCES 
-    ${TestYomkContext_DIR}/YomkContext/TestYomkContextCheckerMonitor.cpp
+    ${TestYomkContext_DIR}/yomk_context/TestYomkContextCheckerMonitor.cpp
 )
 add_executable(TestYomkContextCheckerMonitor 
     ${TestYomkContextCheckerMonitor_SOURCES}
@@ -33,7 +33,7 @@ target_link_libraries(TestYomkContextCheckerMonitor PRIVATE
 
 # -------------sl TestYomkContextLifecycle ----------------
 set(TestYomkContextLifecycle_SOURCES 
-    ${TestYomkContext_DIR}/YomkContext/TestYomkContextLifecycle.cpp
+    ${TestYomkContext_DIR}/yomk_context/TestYomkContextLifecycle.cpp
 )
 add_executable(TestYomkContextLifecycle 
     ${TestYomkContextLifecycle_SOURCES}
@@ -45,7 +45,7 @@ target_link_libraries(TestYomkContextLifecycle PRIVATE
 
 # -------------sl TestYomkContextConcurrency ----------------
 set(TestYomkContextConcurrency_SOURCES 
-    ${TestYomkContext_DIR}/YomkContext/TestYomkContextConcurrency.cpp
+    ${TestYomkContext_DIR}/yomk_context/TestYomkContextConcurrency.cpp
 )
 add_executable(TestYomkContextConcurrency 
     ${TestYomkContextConcurrency_SOURCES}

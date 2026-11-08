@@ -1,5 +1,5 @@
 include_directories(${YOMK_SERVER_INCLUDE_DIR})
-include_directories(${TestYomkEventLoop_DIR}/YomkEventLoop)
+include_directories(${TestYomkEventLoop_DIR}/yomk_event_loop)
 # 生命周期白盒测试需直连内部类 EventLoop，引用非导出内部头需要源码目录
 include_directories(${YOMK_SERVER_SRC_DIR})
 
@@ -9,7 +9,7 @@ set(YomkServerLib
 
 # -------------sl TestYomkEventLoopLifecycle ----------------
 set(TestYomkEventLoopLifecycle_SOURCES 
-    ${TestYomkEventLoop_DIR}/YomkEventLoop/TestYomkEventLoopLifecycle.cpp
+    ${TestYomkEventLoop_DIR}/yomk_event_loop/TestYomkEventLoopLifecycle.cpp
 )
 add_executable(TestYomkEventLoopLifecycle 
     ${TestYomkEventLoopLifecycle_SOURCES}
@@ -21,7 +21,7 @@ target_link_libraries(TestYomkEventLoopLifecycle PRIVATE
 
 # -------------sl TestYomkEventLoopConcurrency ----------------
 set(TestYomkEventLoopConcurrency_SOURCES 
-    ${TestYomkEventLoop_DIR}/YomkEventLoop/TestYomkEventLoopConcurrency.cpp
+    ${TestYomkEventLoop_DIR}/yomk_event_loop/TestYomkEventLoopConcurrency.cpp
 )
 add_executable(TestYomkEventLoopConcurrency 
     ${TestYomkEventLoopConcurrency_SOURCES}
@@ -33,7 +33,7 @@ target_link_libraries(TestYomkEventLoopConcurrency PRIVATE
 
 # -------------sl TestYomkEventLoopStress ----------------
 set(TestYomkEventLoopStress_SOURCES 
-    ${TestYomkEventLoop_DIR}/YomkEventLoop/TestYomkEventLoopStress.cpp
+    ${TestYomkEventLoop_DIR}/yomk_event_loop/TestYomkEventLoopStress.cpp
 )
 add_executable(TestYomkEventLoopStress 
     ${TestYomkEventLoopStress_SOURCES}

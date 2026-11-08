@@ -1,4 +1,4 @@
-# test/YomkServer：YomkServer 核心源文件（src/core：YomkServer/YomkService/YomkSimpleThreadPool）
+# test/yomk_server：YomkServer 核心源文件（src/core：YomkServer/YomkService/YomkSimpleThreadPool）
 # 的正式全面覆盖测试；目录内扁平布局，每个被测主题一个独立可执行程序，目标按闭环增量追加
 # 引用非导出内部头（如 YomkSimpleThreadPool.h）需要 core 源码目录
 include_directories(${YOMK_SERVER_SRC_DIR}/core)
@@ -258,7 +258,7 @@ endif()
 
 # -------------sl TestYomkSimpleThreadPool ----------------
 set(TestYomkSimpleThreadPool_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkSimpleThreadPool.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkSimpleThreadPool.cpp
 )
 add_executable(TestYomkSimpleThreadPool 
     ${TestYomkSimpleThreadPool_SOURCES}
@@ -270,7 +270,7 @@ target_link_libraries(TestYomkSimpleThreadPool PRIVATE
 
 # -------------sl TestYomkService ----------------
 set(TestYomkService_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkService.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkService.cpp
 )
 add_executable(TestYomkService 
     ${TestYomkService_SOURCES}
@@ -282,7 +282,7 @@ target_link_libraries(TestYomkService PRIVATE
 
 # -------------sl TestYomkWeakFunc ----------------
 set(TestYomkWeakFunc_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkWeakFunc.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkWeakFunc.cpp
 )
 add_executable(TestYomkWeakFunc 
     ${TestYomkWeakFunc_SOURCES}
@@ -294,7 +294,7 @@ target_link_libraries(TestYomkWeakFunc PRIVATE
 
 # -------------sl TestYomkServer ----------------
 set(TestYomkServer_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkServer.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkServer.cpp
 )
 add_executable(TestYomkServer 
     ${TestYomkServer_SOURCES}
@@ -306,7 +306,7 @@ target_link_libraries(TestYomkServer PRIVATE
 
 # -------------sl TestYomkShutdownSeq ----------------
 set(TestYomkShutdownSeq_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkShutdownSeq.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkShutdownSeq.cpp
 )
 add_executable(TestYomkShutdownSeq 
     ${TestYomkShutdownSeq_SOURCES}
@@ -318,7 +318,7 @@ target_link_libraries(TestYomkShutdownSeq PRIVATE
 
 # -------------sl TestYomkAPINotInit ----------------
 set(TestYomkAPINotInit_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkAPINotInit.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkAPINotInit.cpp
 )
 add_executable(TestYomkAPINotInit 
     ${TestYomkAPINotInit_SOURCES}
@@ -330,7 +330,7 @@ target_link_libraries(TestYomkAPINotInit PRIVATE
 
 # -------------sl TestYomkAPILifecycle ----------------
 set(TestYomkAPILifecycle_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkAPILifecycle.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkAPILifecycle.cpp
 )
 add_executable(TestYomkAPILifecycle 
     ${TestYomkAPILifecycle_SOURCES}
@@ -342,7 +342,7 @@ target_link_libraries(TestYomkAPILifecycle PRIVATE
 
 # -------------sl TestYomkBoot ----------------
 set(TestYomkBoot_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkBoot.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkBoot.cpp
 )
 add_executable(TestYomkBoot 
     ${TestYomkBoot_SOURCES}
@@ -354,7 +354,7 @@ target_link_libraries(TestYomkBoot PRIVATE
 
 # -------------sl TestYomkConcurrency ----------------
 set(TestYomkConcurrency_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkConcurrency.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkConcurrency.cpp
 )
 add_executable(TestYomkConcurrency 
     ${TestYomkConcurrency_SOURCES}
@@ -366,7 +366,7 @@ target_link_libraries(TestYomkConcurrency PRIVATE
 
 # -------------sl TestYomkMsg ----------------
 set(TestYomkMsg_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkMsg.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkMsg.cpp
 )
 add_executable(TestYomkMsg 
     ${TestYomkMsg_SOURCES}
@@ -378,7 +378,7 @@ target_link_libraries(TestYomkMsg PRIVATE
 
 # -------------sl TestYomkIntegration ----------------
 set(TestYomkIntegration_SOURCES 
-    ${TestYomkServer_DIR}/YomkServer/TestYomkIntegration.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkIntegration.cpp
 )
 add_executable(TestYomkIntegration 
     ${TestYomkIntegration_SOURCES}
@@ -391,7 +391,7 @@ target_link_libraries(TestYomkIntegration PRIVATE
 # -------------sl TestYomkUmbrella ----------------
 # 伞头自足性保障：仅含 YomkApi.h 编译 + 全域烟熏（伞头收窄/公开头漏收即编译失败）
 set(TestYomkUmbrella_SOURCES
-    ${TestYomkServer_DIR}/YomkServer/TestYomkUmbrella.cpp
+    ${TestYomkServer_DIR}/yomk_server/TestYomkUmbrella.cpp
 )
 add_executable(TestYomkUmbrella
     ${TestYomkUmbrella_SOURCES}

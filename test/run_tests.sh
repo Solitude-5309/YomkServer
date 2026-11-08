@@ -263,7 +263,7 @@ run_one_suite() {
             unset TSAN_OPTIONS
             export ASAN_OPTIONS="detect_leaks=1:halt_on_error=1"
             export UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=1"
-            export LSAN_OPTIONS="suppressions=${REPO_DIR}/test/YomkServer/lsan.supp"
+            export LSAN_OPTIONS="suppressions=${REPO_DIR}/test/yomk_server/lsan.supp"
             echo "-- sanitizer: asan（ASan+UBSan 插桩；suppressions 走 LSAN_OPTIONS）"
             ;;
         tsan)

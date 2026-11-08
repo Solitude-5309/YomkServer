@@ -1,4 +1,4 @@
-# test/YomkLogger：Logger 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
+# test/yomk_logger：Logger 模块的正式全面覆盖测试（顶层按被测模块分目录组织）
 
 include_directories(${YOMK_SERVER_INCLUDE_DIR})
 # ConsoleLogger/FileLogger 为库内部实现头（符号已从 so 导出），直连白盒测试需源码模块 include 路径
@@ -6,7 +6,7 @@ include_directories(${YOMK_SERVER_SRC_DIR}/modules/logger)
 
 # -------------sl TestYomkLoggerLifecycle ----------------
 set(TestYomkLoggerLifecycle_SOURCES 
-    ${TestYomkLogger_DIR}/YomkLogger/TestYomkLoggerLifecycle.cpp
+    ${TestYomkLogger_DIR}/yomk_logger/TestYomkLoggerLifecycle.cpp
 )
 add_executable(TestYomkLoggerLifecycle 
     ${TestYomkLoggerLifecycle_SOURCES}
@@ -18,7 +18,7 @@ target_link_libraries(TestYomkLoggerLifecycle PRIVATE
 
 # -------------sl TestYomkLoggerDirect ----------------
 set(TestYomkLoggerDirect_SOURCES 
-    ${TestYomkLogger_DIR}/YomkLogger/TestYomkLoggerDirect.cpp
+    ${TestYomkLogger_DIR}/yomk_logger/TestYomkLoggerDirect.cpp
 )
 add_executable(TestYomkLoggerDirect 
     ${TestYomkLoggerDirect_SOURCES}
@@ -30,7 +30,7 @@ target_link_libraries(TestYomkLoggerDirect PRIVATE
 
 # -------------sl TestYomkLoggerConcurrency ----------------
 set(TestYomkLoggerConcurrency_SOURCES 
-    ${TestYomkLogger_DIR}/YomkLogger/TestYomkLoggerConcurrency.cpp
+    ${TestYomkLogger_DIR}/yomk_logger/TestYomkLoggerConcurrency.cpp
 )
 add_executable(TestYomkLoggerConcurrency 
     ${TestYomkLoggerConcurrency_SOURCES}
@@ -42,7 +42,7 @@ target_link_libraries(TestYomkLoggerConcurrency PRIVATE
 
 # -------------sl TestYomkLoggerStress ----------------
 set(TestYomkLoggerStress_SOURCES 
-    ${TestYomkLogger_DIR}/YomkLogger/TestYomkLoggerStress.cpp
+    ${TestYomkLogger_DIR}/yomk_logger/TestYomkLoggerStress.cpp
 )
 add_executable(TestYomkLoggerStress 
     ${TestYomkLoggerStress_SOURCES}
@@ -54,7 +54,7 @@ target_link_libraries(TestYomkLoggerStress PRIVATE
 
 # -------------sl TestYomkLoggerLoc ----------------
 set(TestYomkLoggerLoc_SOURCES
-    ${TestYomkLogger_DIR}/YomkLogger/TestYomkLoggerLoc.cpp
+    ${TestYomkLogger_DIR}/yomk_logger/TestYomkLoggerLoc.cpp
 )
 add_executable(TestYomkLoggerLoc
     ${TestYomkLoggerLoc_SOURCES}
