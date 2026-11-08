@@ -18,8 +18,8 @@ TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试
 覆盖范围说明：
 - "守卫拒绝后调用方资源释放"断言不适用：python 引用计数
   语义无所有权接管概念
-- 版本号断言形态：python 版本传递链中 YomkServerPyVersion 模块缺失时回落
-  "unknown"（保持门面 import 链可用），故仅断言非空字符串，不断言具体值
+- 版本号断言形态：yomk.server.__version__ 由构建期 configure_file 注入
+  （源码树缺 _version.py 时回落 "unknown"），故仅断言非空字符串，不断言具体值
 
 说明：门面单例状态（g_server/_init_done）进程级持久，未初始化态须独占进程
 （本程序全程不调 init），与 TestYomkAPILifecycle 进程隔离

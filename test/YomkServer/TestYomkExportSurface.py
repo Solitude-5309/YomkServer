@@ -4,9 +4,8 @@
 TestYomkExportSurface.py —— 新包按域导出面快照守卫（L12 起）
 
 背景：
-    旧合并模块（build/YomkServer.py，由 scripts/assemble_py.py 合并片段）
-    已按域拆为 yomk/ 下六个子包，各域导出面由各 __init__.py 的 __all__ 定型。
-    拆分/搬移过程若漏导出或多导出，运行期测试未必覆盖，
+    yomk/ 下六个子包各自定型导出面（各 __init__.py 的 __all__）。
+    后续搬移/重导出若漏导出或多导出，运行期测试未必覆盖，
     故在此冻结六域 __all__ 快照。
 
 口径：

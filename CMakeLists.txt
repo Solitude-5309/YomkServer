@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.14)
 # 版本号策略：YomkServerPy 使用独立号段，发布节奏自成一贯；
 # 版本机制为编译期注入的单一来源链：
-# project(VERSION) → configure_file 生成 YomkServerPyVersion.py 的 __version__
-# → YomkApi 顶部 import → server().version()（构建期注入，无运行时读取），
+# project(VERSION) → 各域 set(YOMK_<域>_VERSION) → configure_file 生成
+# yomk/<域>/_version.py 的 __version__ → yomk.<域>.__version__
+# （server().version() 经 yomk.server.__version__ 暴露；构建期注入，无运行时读取），
 # 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
 # 本行即版本唯一来源，发布时手动 bump。
-project(YomkServerPy VERSION 2.2.11 LANGUAGES C)
+project(YomkServerPy VERSION 2.2.12 LANGUAGES C)
 
 # ---------- 各运行时域版本号 ----------
 # 集中定义，当前全部取项目版本号；若某域需要独立版本，只改对应行。
@@ -40,134 +41,15 @@ endif()
 include(cmake/EnvInfo.cmake)
 yomk_env_report()
 
-# ---------- 3. 合并源片段并生成 C 文件 ----------
-# Python 模块名（import 名 / PyInit 名 / .pyi 名）为 YomkServer；
-# CMake 工程身份与扩展本体文件名均为 YomkServerPy，两者解耦：
-# 本体 YomkServerPy.so 由装载 shim（api/YomkServerLoader.py → site-packages/YomkServer.py）
-# 以模块名 YomkServer 装载，既避免与 C++ 版 YomkServer 产物同名，又不改变 import 契约
-set(YOMK_PY_MODULE_NAME "YomkServer")
-set(YOMK_PY_ARTIFACT_NAME "YomkServerPy")
-
-# 片段清单：顺序即符号可见顺序（被继承的基类必须靠前）
-set(YOMK_PY_FRAGMENTS
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/YomkServer.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/YomkService.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/logger/YomkLog.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/logger/ConsoleLogger.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/logger/FileLogger.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/logger/YomkLogger.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/context/ContextGroup.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/context/YomkContext.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/event_loop/EventLoop.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/event_loop/YomkEventLoop.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/function_pool/YomkFunctionPool.py
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/modules/server_info/YomkServerInfo.py
-)
-
-# 合并产物必须命名为 YomkServer.py：Cython 的模块名（PyInit_*）由源文件名决定
-set(PY_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/${YOMK_PY_MODULE_NAME}.py)
-set(C_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/${YOMK_PY_MODULE_NAME}.c)
-
-add_custom_command(
-    OUTPUT ${PY_SOURCE}
-    COMMAND ${Python_EXECUTABLE}
-            "${CMAKE_CURRENT_SOURCE_DIR}/scripts/assemble_py.py"
-            --output "${PY_SOURCE}"
-            --root "${CMAKE_CURRENT_SOURCE_DIR}"
-            ${YOMK_PY_FRAGMENTS}
-    DEPENDS ${YOMK_PY_FRAGMENTS}
-            "${CMAKE_CURRENT_SOURCE_DIR}/scripts/assemble_py.py"
-    COMMENT "Assembling Cython module from source fragments"
-)
-
-add_custom_command(
-    OUTPUT ${C_SOURCE}
-    COMMAND ${CYTHON_EXECUTABLE}
-        --embed
-        -3
-        ${PY_SOURCE}
-        -o ${C_SOURCE}
-    DEPENDS ${PY_SOURCE}
-    COMMENT "Running Cython to generate C source"
-)
-
-# ---------- 4. 编译为共享库 ----------
+# ---------- 3. 构建树产物目录 ----------
 # 构建期即产出测试可用产物（构建期产物目录设计，测试无需 install 即可运行）：
-# .so 直接输出到构建树内 build/prefix/<PYTHON_SITE_PACKAGES>，与 YomkApi.py/.pyi/
-# 版本模块同目录；run_tests.sh 默认消费该目录——构建即可测，不依赖 install 步骤，
+# 新包纯 Python 面与各域 .so 直接落 build/prefix/<PYTHON_SITE_PACKAGES>；
+# run_tests.sh 默认消费该目录——构建即可测，不依赖 install 步骤，
 # 测试产物与安装产物同源同版本（install 仅负责部署到安装前缀）
 set(BUILD_SITE_DIR "${CMAKE_BINARY_DIR}/prefix/${PYTHON_SITE_PACKAGES}")
 file(MAKE_DIRECTORY "${BUILD_SITE_DIR}")
 
-add_library(${PROJECT_NAME} SHARED ${C_SOURCE})
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${BUILD_SITE_DIR}"
-    ARCHIVE_OUTPUT_DIRECTORY "${BUILD_SITE_DIR}"
-    RUNTIME_OUTPUT_DIRECTORY "${BUILD_SITE_DIR}"
-)
-
-# 纯 python 模块构建期同步拷入（YomkServerPyVersion.py 已由 configure_file 生成于构建树）；
-# 装载 shim 以 YomkServer.py 名拷入，与安装布局保持同构
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/api/${YOMK_PY_MODULE_NAME}.pyi"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/api/YomkApi.py"
-        "${CMAKE_BINARY_DIR}/${PROJECT_NAME}Version.py"
-        "${BUILD_SITE_DIR}"
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/api/YomkServerLoader.py"
-        "${BUILD_SITE_DIR}/${YOMK_PY_MODULE_NAME}.py"
-    COMMENT "Copying pure-python modules and loader shim into build site-packages"
-)
-
-# ---------- 5. 头文件和链接 ----------
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${Python_INCLUDE_DIRS}
-)
-
-target_link_libraries(${PROJECT_NAME}
-    ${Python_LIBRARIES}
-)
-
-# ---------- 6. 输出文件名（跨平台适配） ----------
-# 本体文件名用 YomkServerPy（与 CMake 工程身份一致）；PyInit_ 符号仍由合并源
-# build/YomkServer.py 决定（PyInit_YomkServer），由装载 shim 显式装载
-if(WIN32)
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        PREFIX ""
-        OUTPUT_NAME "${YOMK_PY_ARTIFACT_NAME}"
-        SUFFIX ".pyd"
-    )
-else()
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        PREFIX ""
-        OUTPUT_NAME "${YOMK_PY_ARTIFACT_NAME}"
-        SUFFIX ".so"
-    )
-endif()
-
-# ---------- 7. 编译选项（跨平台适配） ----------
-if(WIN32)
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        /O2
-        /W3
-    )
-else()
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        -O3
-        -Wall
-    )
-endif()
-
-# ---------- 8. Windows 特殊处理 ----------
-if(WIN32)
-    # Windows 需要定义 DLL 导出宏
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
-        _hypot=hypot
-    )
-endif()
-
-# ---------- 9. 安装规则 ----------
+# ---------- 4. 安装规则 ----------
 # 环境指纹报告
 install(FILES ${CMAKE_BINARY_DIR}/abi_report.txt
         DESTINATION share/YomkServerPy)
@@ -201,39 +83,9 @@ install(FILES
     DESTINATION lib/cmake/${PROJECT_NAME}
 )
 
-install(FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/api/${YOMK_PY_MODULE_NAME}.pyi"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/api/YomkApi.py"
-    DESTINATION ${PYTHON_SITE_PACKAGES}
-)
+# ---------- 5. 示例不安装（Python 脚本源码即可运行，示例位于源码树 examples/，直接在源码树下运行） ----------
 
-# 装载 shim：安装为 YomkServer.py，以模块名 YomkServer 装载本体 YomkServerPy.so
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/src/api/YomkServerLoader.py"
-    DESTINATION ${PYTHON_SITE_PACKAGES}
-    RENAME ${YOMK_PY_MODULE_NAME}.py
-)
-
-# 版本模块（源：project(VERSION)；YomkApi 顶部 import 暴露 __version__）
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/api/YomkServerPyVersion.py.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/YomkServerPyVersion.py"
-    @ONLY
-)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/YomkServerPyVersion.py"
-    DESTINATION ${PYTHON_SITE_PACKAGES}
-)
-
-install(TARGETS ${PROJECT_NAME}
-    EXPORT ${PROJECT_NAME}Targets         
-    LIBRARY DESTINATION ${PYTHON_SITE_PACKAGES}    
-    ARCHIVE DESTINATION ${PYTHON_SITE_PACKAGES}
-    RUNTIME DESTINATION ${PYTHON_SITE_PACKAGES}
-)
-
-# ---------- 10. 示例不安装（Python 脚本源码即可运行，示例位于源码树 examples/，直接在源码树下运行） ----------
-
-# ---------- 11. L11 新包全量 Cython + 每域版本 + staging + 安装 ----------
-# 新包与旧合并目标并行存在（L11 不删除旧面，删除在 L13）：
+# ---------- 6. 新包全量 Cython + 每域版本 + staging + 安装（L13 起为唯一 Python 面） ----------
 # - 全量模块各自独立编译，输出 build/prefix/.../site-packages/yomk/<域>/；
 # - 所有 __init__.py 与 builder.py 保持纯 Python，不列入编译清单；
 # - 每域由 configure_file 生成 _version.py（各域版本号集中定义于 project() 之后）；
@@ -316,10 +168,12 @@ foreach(mod IN LISTS YOMK_CYTHON_MODULES)
     list(APPEND YOMK_CYTHON_TARGETS ${target})
 endforeach()
 
-# INTERFACE 聚合 target：L13 删除旧 YomkServerPy 本体后接管该名称；
-# 当前为临时名且暂不进入安装导出集，避免改变现有 find_package 契约
-add_library(YomkServerPyYomkModules INTERFACE)
-target_link_libraries(YomkServerPyYomkModules INTERFACE ${YOMK_CYTHON_TARGETS})
+# INTERFACE 聚合 target：L13 起以工程名 YomkServerPy 接管旧本体目标名，
+# 随 ${PROJECT_NAME}Targets 导出（YomkServerPy::YomkServerPy），下游
+# find_package 消费者据此链接全部 yomk 域模块
+add_library(${PROJECT_NAME} INTERFACE)
+target_link_libraries(${PROJECT_NAME} INTERFACE ${YOMK_CYTHON_TARGETS})
+install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Targets)
 
 foreach(pkg IN LISTS YOMK_VERSIONED_PACKAGES)
     string(TOUPPER "${pkg}" pkg_upper)
@@ -389,6 +243,7 @@ foreach(mod IN LISTS YOMK_CYTHON_MODULES)
     string(REPLACE "/" "_" target "yomk_${mod}")
     get_filename_component(mod_dir "${mod}" DIRECTORY)
     install(TARGETS ${target}
+        EXPORT ${PROJECT_NAME}Targets
         LIBRARY DESTINATION "${PYTHON_SITE_PACKAGES}/yomk/${mod_dir}"
         ARCHIVE DESTINATION "${PYTHON_SITE_PACKAGES}/yomk/${mod_dir}"
         RUNTIME DESTINATION "${PYTHON_SITE_PACKAGES}/yomk/${mod_dir}"

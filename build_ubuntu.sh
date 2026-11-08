@@ -11,7 +11,7 @@
 #   4. 将安装路径暴露到系统:
 #      - /etc/profile.d/yomkpy.sh: 登录 shell（ssh/console）生效
 #      - /etc/bash.bashrc 追加引用: 桌面终端等非登录交互式 shell 生效
-#      新开任意终端即可直接 import YomkServer（无需手动 export PYTHONPATH）
+#      新开任意终端即可直接 import yomk.*（无需手动 export PYTHONPATH）
 
 set -e
 
@@ -195,10 +195,6 @@ echo " YOMK_PREFIX_PATH: ${YOMK_PREFIX_PATH}"
 echo " PYTHONPATH:       ${PY_SITE_DIR}"
 echo " 编译器:           $(gcc --version | head -1)"
 echo " 环境指纹报告:     ${INSTALL_PREFIX}/share/YomkServerPy/abi_report.txt"
-echo " Python 模块（安装于 ${PY_SITE_DIR}）:"
-for f in YomkServerPy.so YomkServer.py YomkApi.py YomkServer.pyi; do
-    echo "   - ${f}"
-done
 echo " 新包命名空间包（安装于 ${PY_SITE_DIR}/yomk）:"
 for d in server ctx event_loop fn_pool log srv_info; do
     echo "   - yomk/${d}/"
@@ -215,7 +211,7 @@ echo "==========================================="
 echo ""
 echo "新开任意终端即可直接使用（无需手动 source）:"
 echo "  - echo \$YOMK_PREFIX_PATH 查看安装路径"
-echo "  - python3 -c 'import YomkServer; import yomk.server; import yomk.msg.server' 验证安装"
+echo "  - python3 -c 'import yomk.server; import yomk.msg.server' 验证安装"
 echo "  - ./test/run_tests.sh 运行全量测试"
 echo "当前终端立即生效请执行: source ${PROFILE_SCRIPT}"
 # -------------el 5. 安装成功提示 ----------------

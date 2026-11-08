@@ -3,9 +3,8 @@
 # 用法: ./scripts/install_env.sh [安装路径]（缺省 /opt/yomk）
 # 说明: build_ubuntu.sh 自动安装与 README 手动 CMake 安装共用本脚本，
 #       保证两种安装方式的最终结果完全一致:
-#   1. 校验安装结果: 旧合并面（YomkServerPy.so / YomkServer.py 装载 shim /
-#      YomkApi.py / YomkServer.pyi）与新 yomk/ 命名空间包（六域入口 +
-#      per-domain .so）均存在，并做新包六域 import 冒烟
+#   1. 校验安装结果: yomk/ 命名空间包（六域入口 + per-domain .so）存在，
+#      并做新包六域 import 冒烟
 #   2. 持久化环境变量 YOMK_PREFIX_PATH 与 PYTHONPATH（指向 lib/pythonX.Y/site-packages）:
 #      - /etc/profile.d/yomkpy.sh: 登录 shell（ssh/console）生效
 #      - /etc/bash.bashrc 追加引用: 桌面终端等非登录交互式 shell 生效
@@ -45,9 +44,8 @@ PY_SITE_DIR=$(ls -d "${INSTALL_PREFIX}"/lib/python*[0-9].[0-9]*/site-packages 2>
 [ -n "${PY_SITE_DIR}" ] \
     || fail "未找到 ${INSTALL_PREFIX}/lib/pythonX.Y/site-packages，请先完成 cmake install"
 
-# 产物双面校验（L12）：旧合并面（L13 前仍安装）与新 yomk/ 命名空间包均须就位
-for f in YomkServerPy.so YomkServer.py YomkServer.pyi YomkApi.py \
-         yomk/server/__init__.py yomk/server/py.typed yomk/server/YomkServer.so \
+# 产物校验（L13 起新包为唯一 Python 面）：yomk/ 命名空间包就位
+for f in yomk/server/__init__.py yomk/server/py.typed yomk/server/YomkServer.so \
          yomk/server/builder.py yomk/ctx/_version.py \
          yomk/msg/server/ServerMsg.so yomk/msg/ctx/ContextMsg.so; do
     [ -f "${PY_SITE_DIR}/${f}" ] \
@@ -102,7 +100,6 @@ export PYTHONPATH="${PY_SITE_DIR}:${PYTHONPATH}"
 echo "-- 安装后配置完成:"
 echo "   - 环境变量:   YOMK_PREFIX_PATH=${YOMK_PREFIX_PATH}"
 echo "   - PYTHONPATH: ${PY_SITE_DIR}"
-echo "   - 模块文件:   ${PY_SITE_DIR}/{YomkServerPy.so, YomkServer.py, YomkApi.py, YomkServer.pyi}"
 echo "   - 新包目录:   ${PY_SITE_DIR}/yomk/{server,ctx,event_loop,fn_pool,log,srv_info,msg/*}"
 if [ "${YOMK_ENV_SKIP_SYSTEM}" != "1" ]; then
     echo "   - 生效范围:   新开任意终端免 source 直接 import YomkServer"
