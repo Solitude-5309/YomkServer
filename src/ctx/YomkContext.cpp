@@ -178,7 +178,7 @@ yomk::payload::Response YomkContext::set(YomkMsgPtr pkg)
         return fail;
     }
 
-    // 返回码映射(约定见 ContextGroup::set):0 成功 / 1 key 为空 / 2 key 不存在 / 3 类型不匹配 / 4 checker 拒绝
+    // 返回码映射(约定见 ContextGroup::set):0 成功 / 1 key 为空 / 2 key 不存在 / 3 类型不匹配 / 4 checker 拒绝 / 5 value 为空
     int rc = group->set(context->d.m_key, context->d.m_value);
     if (rc == 1)
     {
@@ -195,6 +195,10 @@ yomk::payload::Response YomkContext::set(YomkMsgPtr pkg)
     if (rc == 4)
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "checker reject set context");
+    }
+    if (rc == 5)
+    {
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "value is empty");
     }
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "set context success");
 }

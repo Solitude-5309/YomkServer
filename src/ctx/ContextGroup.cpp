@@ -113,6 +113,11 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value)
         YOMK_DIAG_ERROR("key is empty, please check Context.m_key.");
         return 1;
     }
+    if (value == nullptr)
+    {
+        YOMK_DIAG_ERROR("value is empty, please check Context.m_value.");
+        return 5;
+    }
 
     // 本次提交的键值快照:checker 校验与 monitor 通知统一回传该临时对象
     yomk::payload::Context data;

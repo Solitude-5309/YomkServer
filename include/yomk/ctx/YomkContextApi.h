@@ -278,10 +278,10 @@ public:
     }
     /**
      * @brief Replace the whole context value terminator
-     * @return Three-state ResStatus; fails if key does not exist / type mismatch / checker rejects
+     * @return Three-state ResStatus; fails if key does not exist / value is empty / type mismatch / checker rejects
      */
     // @zh: 整体替换上下文值终结
-    // @zh: return 三态 ResStatus；key 不存在 / 类型不匹配 / checker 拒绝均失败
+    // @zh: return 三态 ResStatus；key 不存在 / value 空 / 类型不匹配 / checker 拒绝均失败
     yomk::payload::ResStatus set()
     {
         return yomk::server().url(yomk::url::ctxSet).msg(yomk::msgs::Context::shared(yomk::payload::Context{std::string(m_key), m_value, std::string(m_group)})).status();
