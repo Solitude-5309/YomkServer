@@ -7,13 +7,13 @@
 // 黑匣子与班次存档（文件日志），运维班前班后用内看点检日志系统本身。
 //
 // 控制台输出格式四段：[时间] [级别] [tag] [行号] 内容——tag 即控制台日志器名，
-// 首次使用自动创建；宏自动把 [行号] 拼进内容开头，方便定位调用处。
+// 首次使用自动创建；域入口自动捕获调用行位置，把 [行号] 拼进内容开头，方便定位调用处。
 // 级别开关两级并联：无参作用于全局主闸（框架全局）、具名逐器门控单个日志器，
 // 输出/落盘取两层 AND；控制台开关与文件开关两套相互独立，文件开关只影响写入。
 //
 // 本示例用"机械臂产线一次班次"贯穿 6 个场景：每个场景是一个 showXXX 小函数，
 // 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
-// 全部 40 个 YOMK 日志用户宏（控制台 8 / 开关 16 / 代理 2 / 文件 10 / 内省 4）
+// yomk::log()/log_mgr() 链式门面 API 全量用法（发射/开关/代理/文件管理/内省）
 // 无一遗漏。叙事日志统一走 arm.demo（YomkLogger 自身即演示对象）。
 //
 // 小示例清单（场景 / 函数 / 展示的接口 / 设计思路）：
@@ -44,7 +44,7 @@
 // .log 保留；main 删除后再写自动重建（按名惰性创建）。
 //
 // tag 规划（arm.demo 叙事之外，演示对象按业务分层）：
-// main  默认 tag（无 TAG 宏的日志归属）        框架预创建
+// main  默认 tag（未显式 .tag(...) 的日志归属）   框架预创建
 // arm.joint   关节模块报文（场景 1/4 演示自定义 tag） 首次使用自动创建
 // blackbox    安全黑匣子文件器（场景 3 创建/6 清档）  WARN/ERROR 转写落盘
 // shiftlog    班次存档文件器（场景 4 创建/6 清档）    全级别存档落盘
@@ -77,7 +77,7 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 }
 
 // API 结果行：打印 yomk::payload::Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
-// 日志宏的结果行自带流向证据：代理消费 msg="console log proxy is success."、放行 msg="success."。
+// 日志调用的结果行自带流向证据：代理消费 msg="console log proxy is success."、放行 msg="success."。
 // status 三态：0=ResStatus::Succeeded 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {
@@ -99,7 +99,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
     yomk::log().tag("arm.demo").info(oss.str());
 }
 
-// ResStatus 版结果行：LOG_API ResStatus 化后直接返回三态（失败原因经错误日志承载，无 msg）
+// ResStatus 版结果行：门面 API 发射/变更终结直接返回三态（失败原因经错误日志承载，无 msg）
 static void logResp(const std::string& api, yomk::payload::ResStatus status)
 {
     const char* name = status == yomk::payload::ResStatus::Succeeded ? "ResStatus::Succeeded"
@@ -112,7 +112,7 @@ static void logResp(const std::string& api, yomk::payload::ResStatus status)
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；被演示的日志行（控制台）夹在开始行与结果行之间，
 // 归属一目了然，读者顺着日志读即可理解，无需回看代码。
-// LOG_API 29 方法返回 ResStatus，INFO 查询返回 yomk::payload::Response，
+// 门面 API 变更终结返回 ResStatus，内省查询返回 yomk::payload::Response，
 // 模板使两类返回各自路由到对应 logResp 重载
 template <typename F>
 static auto logAction(const std::string& op, const std::string& api, F&& call)
@@ -236,9 +236,9 @@ static void showArmLogLevels()
         "班前点检报文分级",
         "log().info/warn/error/debug + .tag(...) 版",
         "班前点检报文按紧迫度分级：DEBUG 轨迹详单、INFO 流程通报、WARN 隐患预警、"
-        "ERROR 故障告警——输出格式 [时间] [级别] [tag] [行号] 内容，[行号] 由宏自动拼接定位调用处。");
+        "ERROR 故障告警——输出格式 [时间] [级别] [tag] [行号] 内容，[行号] 由域入口自动捕获定位调用处。");
 
-    // 默认 tag：main（框架预创建，无 TAG 宏的日志均归属它）
+    // 默认 tag：main（框架预创建，未显式 .tag(...) 的日志均归属它）
     logAction("记录轨迹详单（DEBUG）", "log().debug", [&] { return yomk::log().debug("插补周期 4ms，指令缓冲占用 12%"); });
     logAction("记录流程通报（INFO）", "log().info", [&] { return yomk::log().info("班前点检通过：产线就绪，工单 W-1024 下发"); });
     logAction("上报隐患预警（WARN）", "log().warn", [&] { return yomk::log().warn("减速器油温 68℃，接近 70℃ 预警线"); });

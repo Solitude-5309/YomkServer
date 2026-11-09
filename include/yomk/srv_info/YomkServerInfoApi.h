@@ -22,7 +22,7 @@
  * @li yomk::srv_info().all(): full topology of services and their functions (ServerServiceInfoList,
  *     hierarchy is service -> function metadata)
  *
- * @warning The builder holds name views, use inline in a single expression only, never cache or reuse the builder, otherwise dangling reference!
+ * @note Accumulated names/urls are copied into internal std::string storage; arguments carry no lifetime constraint beyond the call
  */
 // @zh: 服务拓扑内省链式 Builder：services / functions / get_info / all 读终结
 // @zh: par 内省读终结（均返回 Response；未初始化返回 Invalid）
@@ -30,7 +30,7 @@
 // @zh: li yomk::srv_info().srv_name(name).functions()：指定服务全部功能函数（FuncInfoList 结构化清单）；服务不存在时 m_msg 恒 "ok" 且清单为空
 // @zh: li yomk::srv_info().fn_url("/服务名/函数名").get_info()：单函数元信息（FuncInfo 包，m_msg 恒 "ok"）
 // @zh: li yomk::srv_info().all()：全量服务及功能函数拓扑（ServerServiceInfoList，层级为服务 → 函数元信息）
-// @zh: warning Builder 持名称视图，仅限单表达式内联使用，禁止缓存复用，否则悬垂引用！
+// @zh: note 累积的名称/url 拷贝进内部 std::string 存储，参数无本次调用之外的生命周期约束
 // 公开面仅暴露域入口 yomk::srv_info(), builder 机制内敛, 调用方全程以 auto 接收,从不具名引用类型
 namespace yomk::detail
 {
@@ -48,12 +48,12 @@ public:
      * @brief Accumulate the target service name (used by functions)
      * @param srvName Service registration name
      * @return Reference to self for chaining
-     * @warning Holds a view without copying; the caller must ensure srvName stays valid until termination within the same expression
+     * @note srvName is copied into internal std::string storage, no lifetime constraint beyond this call
      */
     // @zh: 累积目标服务名（functions 用）
     // @zh: srvName 服务注册名
     // @zh: return 自身链式引用
-    // @zh: warning 仅持有视图不拷贝，调用方须保证 srvName 在同表达式终结前有效
+    // @zh: note srvName 拷贝进内部 std::string 存储，无本次调用之外的生命周期约束
     SrvInfoBuilder& srv_name(std::string_view srvName)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
     {
         m_srvName = srvName;
@@ -63,12 +63,12 @@ public:
      * @brief Accumulate the function url (used by get_info)
      * @param url Full function url (/service name/function name)
      * @return Reference to self for chaining
-     * @warning Holds a view without copying; the caller must ensure url stays valid until termination within the same expression
+     * @note url is copied into internal std::string storage, no lifetime constraint beyond this call
      */
     // @zh: 累积功能函数 url（get_info 用）
     // @zh: url 完整功能函数 url（/服务名/函数名）
     // @zh: return 自身链式引用
-    // @zh: warning 仅持有视图不拷贝，调用方须保证 url 在同表达式终结前有效
+    // @zh: note url 拷贝进内部 std::string 存储，无本次调用之外的生命周期约束
     SrvInfoBuilder& fn_url(std::string_view url)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
     {
         m_fnUrl = url;
