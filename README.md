@@ -11,6 +11,24 @@ YomkServer 是一个基于现代 C++17 标准构建的模块化、高性能服�
 - **开箱即用的内置能力**：框架初始化即自动装配日志系统、共享上下文、隔离事件循环、动态函数池与服务自省机制。
 - **链式域入口**：七个域入口——`yomk::server()` / `yomk::srv_info()` / `yomk::log()` / `yomk::log_mgr()` / `yomk::ctx()` / `yomk::event_loop()` / `yomk::fn_pool()`——以"前置累积 + 无参终结"的链式形态暴露全部能力，屏蔽底层 URL 路由；API 是壳而非墙，需要时可直接取 `yomk::server().instance()` 裸调 `request()`。
 
+### 按场景进入（跳跃阅读入口）
+
+文档各分片自包含，带着目标直接跳转即可，无需按顺序阅读：
+
+| 我想要… | 去哪里 |
+|---|---|
+| 5 分钟跑通最小可运行程序 | 本页 [快速上手](#快速上手) |
+| 服务间同步/异步调用、注册与优雅关闭 | [服务总线](docs/YomkServer.md) |
+| 输出日志 / 文件落盘 / 门控与代理拦截 | [日志系统](docs/YomkLogger.md) |
+| 跨服务共享强类型键值、变更校验与联动 | [共享上下文](docs/YomkContext.md) |
+| 单队列串行执行任务、多队列并行 | [事件循环](docs/YomkEventLoop.md) |
+| 按名调用函数、运行期热替换 | [函数池](docs/YomkFunctionPool.md) |
+| 运行期查询服务拓扑与函数元信息 | [服务自省](docs/YomkServerInfo.md) |
+| 自定义强类型消息包 | [消息包](docs/YomkMsg.md) |
+| 编译安装 / 下游项目集成 | 本页 [编译与安装](#编译与安装) / [CMake 项目集成](#cmake-项目集成) |
+| 二次扩展模块开发 | 本页 [扩展开发](#扩展开发)（含 [template/extension/](template/extension/)） |
+| 编写注释 / 文档 | [注释原则](docs/yomk注释原则.md) / [文档原则](docs/yomk文档原则.md) |
+
 ### 模块清单
 
 | 模块 | 简述 |

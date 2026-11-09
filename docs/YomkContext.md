@@ -2,6 +2,18 @@
 
 跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步），支持分组隔离与运行期内省。随 `yomk::server().init()` 自动启动。全部操作经链式域入口 `yomk::ctx()`：`key/group/value` 累积定位目标，写路径终结（`create/set/destroy` 等）返回三态 `ResStatus`，类型化读终结 `get()` 返回 `shared_ptr<T>`。
 
+## 适用与不适用
+
+✅ 适合：
+- 跨服务共享强类型键值配置（创建/替换/类型化读）
+- 变更前校验（Checker）与变更后联动（Monitor，同步/异步保序）
+
+❌ 不适合：
+- 需要销毁分组（组表只增不减，不支持销毁组）
+- 局部字段更新（写路径是整体替换，无增量写）
+
+> 前置概念：[消息包](YomkMsg.md)——上下文值与类型化读均基于强类型消息包；服务成员函数注册回调须弱绑定，见 [服务总线](YomkServer.md)「弱绑定」。
+
 ## 链式语法速查
 
 | 场景 | 链 | 终结与返回 |
@@ -16,6 +28,8 @@
 | 内省 | `yomk::ctx().group(g)` / `.key(k).group(g)` / — | `.keys()` 组内键名 / `.info()` 单键元信息 / `.groups()` 全部组名 / `.all()` 跨组聚合，均 → `Response` |
 
 键级回调（`checker_fn` / `monitor_fn`）与组级开关分面（`checker()` / `monitor()`）按命名分层，`apply()` 未累积任何回调时返回 `Invalid`。
+
+> 以下为用法片段（假设框架已 `init()`）；完整可编译、带 main 的程序见文末「完整示例」。
 
 ## 使用示例
 
@@ -52,6 +66,8 @@ yomk::ctx().key("config").destroy();                   // 删除键
 
 ## 注意事项
 
+> ⚠️ **Warning**：`get()` 返回只读快照——原地修改与并发读竞争、可能崩溃；改动请构造新消息对象再 `.set()`。
+
 - **写路径失败契约**：键名为空 `Failed` "key is empty"；`create` 时 value 为空 `Failed` "value is empty"、键已存在 `Failed` "key already exists"；`set` 时键不存在 `Failed` "key is not exist"、值类型与现值不一致 `Failed` "context type not match"、被 checker 拦截 `Failed` "checker reject set context"。
 - **组名约定**：`.group()` 省略即缺省 `"main"`；空组名 `Failed` "group name is empty"。非 main 组首次寻址即惰性自动创建（组名唯一、同名寻址复用同组、**不支持销毁组**，组表只增不减），异步监控池每组自持（单线程）。
 - **读取快照勿原地修改**：`get()` 返回只读快照，改动请构造新消息对象再 `.set()`；原地修改与并发读竞争、可能崩溃。
@@ -64,6 +80,19 @@ yomk::ctx().key("config").destroy();                   // 删除键
 ## 内部结构
 
 Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 组级开关与单线程异步监控池均为每组自持，内省快照携带所属组名（`ContextKeyInfo.m_group`）。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表（map + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `findGroup` 定位 → 组实例委托"。`findGroup` 三段式：空组名返回 `Failed` "group name is empty"；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（锁外裸指针长期安全——组不销毁、表只增不减）。
+
+## 常见问题 FAQ
+
+- **checker 注册了却不生效？** 需组级开关 ON **且**该键已注册 checker，两者同时满足才参与门控（组开关建组默认关，须显式 enable）。
+- **monitor 同步回调里能再 set 吗？** 不能：同步回调虽在写锁外执行，但回调内重入 set 会递归不收敛（栈溢出）；级联状态机/回写请改用 `.async(true)`——经该组单线程池按提交序保序送达。
+- **checker 回调内能读上下文吗？** 不能：门控在写锁内执行，回调内重入 get/set 等写路径会死锁。
+- **组什么时候创建？** 非 main 组首次寻址即惰性自动创建；`.group()` 省略即缺省 `"main"` 组。
+
+## 相关跳转
+
+- [服务总线](YomkServer.md)：弱绑定（checker/monitor 回调注册 `weakFunc`）、服务删除后回调判活丢弃
+- [消息包](YomkMsg.md)：上下文值与类型化读的消息类型约定
+- 内部实现机制（组路由、锁序、监控池）：见上文「内部结构」一节
 
 ## 完整示例
 

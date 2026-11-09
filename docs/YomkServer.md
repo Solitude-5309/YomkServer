@@ -2,6 +2,21 @@
 
 服务总线核心：服务（`YomkService`）注册到服务器（`YomkServer`），通过 URL 格式 `"/服务名/功能函数名"` 进行同步或异步调用，并统一管理服务生命周期（注册、删除、优雅关闭）。全部操作经链式域入口 `yomk::server()` 暴露——`url/msg/srv` 等方法前置累积，`request/create/add` 等无参动作终结。同属核心层的 `YomkBoot` 启动编排见文末。
 
+## 适用与不适用
+
+✅ 适合：
+- 进程内服务拆分与调用：注册 `YomkService` 派生类，经 URL 同步/异步调用
+- 服务生命周期统一管理：注册、同名替换、删除、优雅关闭
+- 以 URL 语义组织自研业务功能（含弱绑定防悬垂回调）
+
+❌ 不适合：
+- 跨进程/跨机通信（进程内总线，无网络传输层）
+- 单队列串行任务（用[事件循环](YomkEventLoop.md)）
+- 按名热替换的轻量函数（用[函数池](YomkFunctionPool.md)）
+- 键值配置共享与变更联动（用[共享上下文](YomkContext.md)）
+
+> 前置概念：[消息包](YomkMsg.md)——服务函数的入参与返回负载均为强类型消息包；请求/响应三态语义见下文「请求与响应」。
+
 ## 链式语法速查
 
 builder 按值传递、全程 `auto` 接收，仅限单表达式内联使用（内部持 `string_view`，缓存复用即悬垂）。
@@ -121,6 +136,19 @@ int MyService::init()
 ## 扩展模块四件套
 
 自定义扩展的对外头文件按 SDK `include/yomk/` 各域的同一设计组织为四件套：`XxxUrl.h`（`yomk::url` 命名空间 URL 常量，`inline constexpr std::string_view`）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG`）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态——前置累积 `url/msg` + 无参终结 `request`，builder 持 `string_view` 视图仅单表达式内联使用）。完整可编译模板见 `template/extension/`（`ExtensionApi.h` 提供 `yomk::ext().version()` 终结）。
+
+## 常见问题 FAQ
+
+- **`shutdown()` 之后还能再次 `init()` 吗？** 不能：init 的进程内幂等由 call_once 把关，关闭后全部入口回到未初始化守卫态（见「注意事项」）。
+- **`create()` / `add()` 返回 -1 有哪些原因？** 未初始化 / 未先调 `srv<T>()` 累积 / `T::init()` 非 0；`add()` 另有守卫拒绝（此时指针仍归调用方）。
+- **服务被删除后，还挂在别处的回调会怎样？** `weakFunc` 弱绑定回调自动判活丢弃：`Response` 回调得 `Failed` + 固定文案、checker 放行、void 回调直接丢弃，均打错误日志（见「弱绑定」）。
+- **`shutdown()` 时在途请求怎么办？** 接到新请求先拒绝，再排空队列并 join 异步请求池，在途请求安全执行完毕后服务才析构（见「注意事项」）。
+
+## 相关跳转
+
+- [消息包](YomkMsg.md)：请求负载的封装与解包约定
+- [服务自省](YomkServerInfo.md)：运行期查询注册了哪些服务与函数
+- 扩展模块四件套设计与完整模板：见上文「扩展模块四件套」与 [template/extension/](../template/extension/)
 
 ## 完整示例
 
