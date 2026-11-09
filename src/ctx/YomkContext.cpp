@@ -28,10 +28,10 @@ int YomkContext::init()
 
 void YomkContext::deinit()
 {
-    // 排空式停止（拒新 -> 排空 -> join）：返回前存量异步监控任务已全部执行；
-    // stop 幂等，重复 deinit 安全
+    // 排空式停止(拒新 -> 排空 -> join):返回前存量异步监控任务已全部执行;
+    // stop 幂等,重复 deinit 安全
     m_main.stop();
-    // 自定义组：锁内拷出指针、锁外逐组排空停止（保持"deinit 不持锁调 stop"）
+    // 自定义组:锁内拷出指针,锁外逐组排空停止(保持"deinit 不持锁调 stop")
     std::vector<ContextGroupPtr> groups;
     {
         std::shared_lock<std::shared_mutex> lockGroups(m_customGroupMutex);
@@ -47,8 +47,8 @@ void YomkContext::deinit()
     }
 }
 
-// 组路由辅助：main 组成员直取；自定义组按名惰性自动创建（不支持销毁，map 只增不减）；
-// 失败时 resp 携带错误响应并返回 nullptr（调用方判空即返回）
+// 组路由辅助:main 组成员直取;自定义组按名惰性自动创建(不支持销毁,map 只增不减);
+// 失败时 resp 携带错误响应并返回 nullptr(调用方判空即返回)
 ContextGroup* YomkContext::findGroup(const std::string& groupName, yomk::payload::Response& resp)
 {
     if (groupName.empty())
@@ -62,7 +62,7 @@ ContextGroup* YomkContext::findGroup(const std::string& groupName, yomk::payload
         return &m_main;
     }
 
-    // 非 main：读锁快查自定义组表
+    // 非 main:读锁快查自定义组表
     {
         std::shared_lock<std::shared_mutex> lockGroups(m_customGroupMutex);
         auto it = m_customGroup.find(groupName);
@@ -71,8 +71,8 @@ ContextGroup* YomkContext::findGroup(const std::string& groupName, yomk::payload
             return it->second.get();
         }
     }
-    // 未命中：写锁内 double-check 后惰性创建（构造 + emplace 锁内原子完成，避免并发双建）；
-    // map 持有强引用且只增不减，锁外裸指针长期安全
+    // 未命中:写锁内 double-check 后惰性创建(构造 + emplace 锁内原子完成,避免并发双建);
+    // map 持有强引用且只增不减,锁外裸指针长期安全
     std::unique_lock<std::shared_mutex> lockGroups(m_customGroupMutex);
     auto it = m_customGroup.find(groupName);
     if (it == m_customGroup.end())
@@ -96,7 +96,7 @@ yomk::payload::Response YomkContext::create(YomkMsgPtr pkg)
         return fail;
     }
 
-    // 返回码映射（约定见 ContextGroup::create）：0 成功 / 1 key 为空 / 2 value 为空 / 3 key 已存在
+    // 返回码映射(约定见 ContextGroup::create):0 成功 / 1 key 为空 / 2 value 为空 / 3 key 已存在
     int rc = group->create(context->d.m_key, context->d.m_value);
     if (rc == 1)
     {
@@ -127,7 +127,7 @@ yomk::payload::Response YomkContext::destroy(YomkMsgPtr pkg)
         return fail;
     }
 
-    // 返回码映射（约定见 ContextGroup::destroy）：0 成功 / 1 key 不存在
+    // 返回码映射(约定见 ContextGroup::destroy):0 成功 / 1 key 不存在
     int rc = group->destroy(groupKey->d.m_key);
     if (rc != 0)
     {
@@ -151,7 +151,7 @@ yomk::payload::Response YomkContext::get(YomkMsgPtr pkg)
     }
 
     YomkMsgPtr value;
-    // 返回码映射（约定见 ContextGroup::get）：0 命中 / 1 key 为空 / 2 key 不存在；未命中时 value 已被填为默认值
+    // 返回码映射(约定见 ContextGroup::get):0 命中 / 1 key 为空 / 2 key 不存在;未命中时 value 已被填为默认值
     int rc = group->get(context->d.m_key, context->d.m_value, value);
     if (rc == 1)
     {
@@ -178,7 +178,7 @@ yomk::payload::Response YomkContext::set(YomkMsgPtr pkg)
         return fail;
     }
 
-    // 返回码映射（约定见 ContextGroup::set）：0 成功 / 1 key 为空 / 2 key 不存在 / 3 类型不匹配 / 4 checker 拒绝
+    // 返回码映射(约定见 ContextGroup::set):0 成功 / 1 key 为空 / 2 key 不存在 / 3 类型不匹配 / 4 checker 拒绝
     int rc = group->set(context->d.m_key, context->d.m_value);
     if (rc == 1)
     {
@@ -285,7 +285,7 @@ yomk::payload::Response YomkContext::setChecker(YomkMsgPtr pkg)
         return fail;
     }
 
-    // 返回码映射（约定见 ContextGroup::setChecker）：0 成功 / 1 key 为空 / 2 checkFunc 为空 / 3 key 不存在
+    // 返回码映射(约定见 ContextGroup::setChecker):0 成功 / 1 key 为空 / 2 checkFunc 为空 / 3 key 不存在
     int rc = group->setChecker(checker->d.m_key, checker->d.m_checkFunc);
     if (rc == 1)
     {
@@ -316,7 +316,7 @@ yomk::payload::Response YomkContext::setMonitor(YomkMsgPtr pkg)
         return fail;
     }
 
-    // 返回码映射（约定见 ContextGroup::setMonitor）：0 成功 / 1 key 为空 / 2 monitorFunc 为空 / 3 key 不存在
+    // 返回码映射(约定见 ContextGroup::setMonitor):0 成功 / 1 key 为空 / 2 monitorFunc 为空 / 3 key 不存在
     int rc = group->setMonitor(monitor->d.m_key, monitor->d.m_contextMonitorFunc, monitor->d.m_asyncMonitor);
     if (rc == 1)
     {
@@ -335,7 +335,7 @@ yomk::payload::Response YomkContext::setMonitor(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkContext::groups(YomkMsgPtr pkg)
 {
-    // 全部组名：main 恒在首位，自定义组按 map 字典序追加
+    // 全部组名:main 恒在首位,自定义组按 map 字典序追加
     std::vector<std::string> groupNames;
     groupNames.push_back(m_main.name());
     {
@@ -381,7 +381,7 @@ yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr pkg)
     }
 
     yomk::payload::ContextKeyInfo info;
-    // 返回码映射（约定见 ContextGroup::keyInfo）：0 命中 / 1 key 为空 / 2 key 不存在
+    // 返回码映射(约定见 ContextGroup::keyInfo):0 命中 / 1 key 为空 / 2 key 不存在
     int rc = group->keyInfo(groupKey->d.m_key, info);
     if (rc == 1)
     {
@@ -396,8 +396,8 @@ yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr pkg)
 
 yomk::payload::Response YomkContext::listAll(YomkMsgPtr pkg)
 {
-    // 跨组聚合：组 → 键元信息两层结构（对齐 srv_info().all() 的 ServerServiceInfo 范式）；
-    // main 组条目恒在首位，自定义组按 map 字典序追加（锁内拷指针、锁外取快照）
+    // 跨组聚合:组 → 键元信息两层结构(对齐 srv_info().all() 的 ServerServiceInfo 范式);
+    // main 组条目恒在首位,自定义组按 map 字典序追加(锁内拷指针,锁外取快照)
     std::vector<yomk::payload::ContextGroupInfo> groups;
     yomk::payload::ContextGroupInfo mainInfo;
     mainInfo.m_groupName = m_main.name();

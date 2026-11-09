@@ -16,14 +16,14 @@ YomkServer::YomkServer(std::size_t asyncThreadCount) : m_p(new YomkServerPrivate
 
 YomkServer::~YomkServer()
 {
-    // 析构时显式关闭：确保异步请求池在 m_p 仍被 shared_ptr 持有时完成排空，
-    // 使池中任务通过 weak_ptr.lock() 仍能安全访问 YomkServerPrivate。
+    // 析构时显式关闭:确保异步请求池在 m_p 仍被 shared_ptr 持有时完成排空,
+    // 使池中任务通过 weak_ptr.lock() 仍能安全访问 YomkServerPrivate.
     if (m_p)
         m_p->shutdown();
 }
 
-// 解析请求 url 为服务名与函数名（/ServiceName/func_name）；
-// 失败时记录日志并填充错误消息，返回 false（供 request 构造响应，供 asyncRequest 直接丢弃）
+// 解析请求 url 为服务名与函数名(/ServiceName/func_name);
+// 失败时记录日志并填充错误消息,返回 false(供 request 构造响应,供 asyncRequest 直接丢弃)
 static bool parseRequestUrl(std::string_view url, std::string_view& srvName, std::string_view& funcName, std::string& errMsg)
 {
     if (url.empty() || url[0] != '/')
@@ -95,10 +95,10 @@ int YomkServer::addService(YomkService* srv)
         return -1;
     }
 
-    // 先入表取得 shared_ptr 所有权，保证 init() 内 weak_from_this() 有效
+    // 先入表取得 shared_ptr 所有权,保证 init() 内 weak_from_this() 有效
     m_p->addService(srv);
 
-    // init 抛异常视同失败：捕获后走统一回滚，避免半初始化服务残留在表
+    // init 抛异常视同失败:捕获后走统一回滚,避免半初始化服务残留在表
     int initRet = 0;
     try
     {
@@ -167,9 +167,9 @@ void YomkServer::asyncRequest(std::string_view url, YomkMsgPtr pkg, YomkResponse
         return;
     }
 
-    // 投递到异步请求池（有界工作线程），任务生命周期由池队列管理；
-    // 使用 weak_ptr 捕获，避免任务持有 shared_ptr 形成 pool->task->YomkServerPrivate
-    // 的循环引用；lambda 执行前 lock() 判活，确保 YomkServerPrivate 仍在。
+    // 投递到异步请求池(有界工作线程),任务生命周期由池队列管理;
+    // 使用 weak_ptr 捕获,避免任务持有 shared_ptr 形成 pool->task->YomkServerPrivate
+    // 的循环引用;lambda 执行前 lock() 判活,确保 YomkServerPrivate 仍在.
     std::weak_ptr<YomkServerPrivate> weakP = m_p;
     auto callback = [srvNameS = std::string(srvName), tmpFuncNameS = std::string(tmpFuncName), pkg, weakP, func]()
     {

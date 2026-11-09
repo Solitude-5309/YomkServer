@@ -10,6 +10,10 @@
 namespace yomk::payload
 {
 
+/**
+ * @brief Event loop execution unit: enqueued on post, executed by handle() on the event loop thread
+ */
+// @zh: 事件循环执行单元：投递入队后在事件循环线程 handle() 执行
 struct Event
 {
     virtual ~Event() = default;
@@ -29,6 +33,8 @@ struct Event
         : m_eventLoopName(eventLoopName), m_pkg(pkg), m_serviceFunc(serviceFunc), m_waitCallback(nullptr), m_tag(tag)
     {
     }
+    /** @brief Execution entry on the event loop thread, derived classes may override to customize behavior */
+    // @zh: 事件循环线程执行入口，派生类可重写定制行为
     virtual void handle()
     {
         if (m_serviceFunc)
@@ -38,28 +44,33 @@ struct Event
     }
 };
 
+/** @brief Event loop creation payload (name + default service function) */
+// @zh: 事件循环创建载荷（名称 + 默认处理函数）
 struct EventLoop
 {
     std::string m_eventLoopName;
     YomkServiceFunc m_defaultServiceFunc;
-    std::string m_msgName;  // 默认处理函数期望的消息类型名（仅内省元数据，可为空）
+    std::string m_msgName;  // 默认处理函数期望的消息类型名(仅内省元数据,可为空)
 };
 
-// 事件循环单查载荷（/YomkEventLoop/loop 专用）：名称 + 队列头 tag 采样数, 类型化字段无解析歧义
+/** @brief Event loop single-query payload (dedicated to /YomkEventLoop/loop): name plus queue-head tag sample count, typed fields without parsing ambiguity */
+// @zh: 事件循环单查载荷（/YomkEventLoop/loop 专用）：名称 + 队列头 tag 采样数，类型化字段无解析歧义
 struct EventLoopQuery
 {
-    std::string m_loopName;      // 循环名（按字面量精确匹配，不做任何切分）
-    std::size_t m_tagCount = 3;  // 队列头采样条数（缺省 3，与全量内省缺省一致）
+    std::string m_loopName;      // 循环名(按字面量精确匹配,不做任何切分)
+    std::size_t m_tagCount = 3;  // 队列头采样条数(缺省 3,与全量内省缺省一致)
 };
 
+/** @brief Event loop introspection snapshot */
+// @zh: 事件循环内省快照
 struct EventLoopInfo
 {
     std::string m_loopName;               // 循环名
     bool m_running = false;               // worker 是否运行中
     std::size_t m_pending = 0;            // 积压事件数
     bool m_hasDefaultFunc = false;        // 是否注册默认处理函数
-    std::string m_msgName;                // 默认处理函数期望的消息类型名（可空）
-    std::vector<std::string> m_nextTags;  // 队列头起最多 tagCount 条事件 tag（存原值，空串保留）
+    std::string m_msgName;                // 默认处理函数期望的消息类型名(可空)
+    std::vector<std::string> m_nextTags;  // 队列头起最多 tagCount 条事件 tag(存原值,空串保留)
 };
 
 }  // namespace yomk::payload

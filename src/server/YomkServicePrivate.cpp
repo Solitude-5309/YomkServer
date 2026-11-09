@@ -24,7 +24,7 @@ void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFun
         return;
     }
 
-    // 空函数对象拒绝安装：否则 invoke 命中后执行空 std::function 抛 bad_function_call 终止进程
+    // 空函数对象拒绝安装:否则 invoke 命中后执行空 std::function 抛 bad_function_call 终止进程
     if (!func)
     {
         YOMK_DIAG_ERROR("function is null, install function refused -> " + funcName);
@@ -48,7 +48,7 @@ void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFun
     }
     else
     {
-        // 两参覆盖安装时清除残留的函数信息，保持内省与注册一致
+        // 两参覆盖安装时清除残留的函数信息,保持内省与注册一致
         m_funcInfoMap.erase(funcName);
     }
 }

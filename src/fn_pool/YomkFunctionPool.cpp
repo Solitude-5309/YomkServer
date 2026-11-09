@@ -15,7 +15,7 @@ int YomkFunctionPool::init()
     installFunc("/register", &YomkFunctionPool::registerFunction, "Function");
     installFunc("/unregister", &YomkFunctionPool::unRegisterFunction, "String");
     installFunc("/call", &YomkFunctionPool::callFunction, "CallFunction");
-    // 调试内省接口，端点挂在本服务 funcMap
+    // 调试内省接口,端点挂在本服务 funcMap
     installFunc("/names", &YomkFunctionPool::funcNames);
     installFunc("/name", &YomkFunctionPool::funcInfo, "String");
     installFunc("/all", &YomkFunctionPool::listAll);
@@ -68,7 +68,7 @@ yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr pkg)
     if (itFunc == m_functions.end())
     {
         YOMK_DIAG_ERROR("funcName: " + yFuncName->d + " is not register, can not unregister");
-        // 名字有效但未注册：ResStatus::Failed（与 funcInfo/Context/EventLoop 的 not-found 惯例一致；ResStatus::Invalid 仅用于参数无效）
+        // 名字有效但未注册:ResStatus::Failed(与 funcInfo/Context/EventLoop 的 not-found 惯例一致;ResStatus::Invalid 仅用于参数无效)
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "funcName is not register");
     }
     m_functions.erase(itFunc);
@@ -96,7 +96,7 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
         {
             YOMK_DIAG_ERROR(
                 "funcName: " + yCallFunc->d.m_funcName + " is not register, please check CallFunction.m_funcName");
-            // 未注册同 unregister：ResStatus::Failed（not-found 框架惯例；Invalid 仅用于参数无效）
+            // 未注册同 unregister:ResStatus::Failed(not-found 框架惯例;Invalid 仅用于参数无效)
             return yomk::payload::Response(yomk::payload::ResStatus::Failed, "funcName is not register");
         }
         copyFunc = itFunc->second.m_func;
@@ -105,7 +105,7 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
     return copyFunc(yCallFunc->d.m_pkg);
 }
 
-// 内省：列出全部注册函数名
+// 内省:列出全部注册函数名
 yomk::payload::Response YomkFunctionPool::funcNames(YomkMsgPtr pkg)
 {
     std::vector<std::string> funcNames;
@@ -119,7 +119,7 @@ yomk::payload::Response YomkFunctionPool::funcNames(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(funcNames)};
 }
 
-// 内省：单个函数元信息查询，命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，数据走 m_data）
+// 内省:单个函数元信息查询,命中返回结构化 FuncInfo 包
 yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
 {
     auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
@@ -140,7 +140,7 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
         YOMK_DIAG_ERROR("funcName: " + yFuncName->d + " is not register, please check funcName");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "funcName is not register");
     }
-    // 命中：结构化包恒挂，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
+    // 命中:结构化包恒挂
     yomk::payload::FuncInfo info;
     info.m_funcName = yFuncName->d;
     info.m_msgName = itFunc->second.m_msgName;
@@ -148,7 +148,7 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfo::shared(info)};
 }
 
-// 内省：全量函数元信息，锁内构造结构化快照（m_msg 恒 "ok"，数据走 m_data；总数由 d.size() 承载）
+// 内省:全量函数元信息,锁内构造结构化快照(总数由 d.size() 承载)
 yomk::payload::Response YomkFunctionPool::listAll(YomkMsgPtr pkg)
 {
     std::vector<yomk::payload::FuncInfo> infos;

@@ -8,7 +8,7 @@ YomkSimpleThreadPool::YomkSimpleThreadPool(std::size_t threadCount)
 {
     if (threadCount == 0)
     {
-        // 取硬件并发数的一半（向上取整），异步请求多为轻量转发，避免占用过多核心；为 0 时兜底 2
+        // 取硬件并发数的一半(向上取整),异步请求多为轻量转发,避免占用过多核心;为 0 时兜底 2
         unsigned int hw = std::thread::hardware_concurrency();
         threadCount = (hw == 0) ? 2 : static_cast<std::size_t>((hw + 1) / 2);
     }
@@ -29,7 +29,7 @@ bool YomkSimpleThreadPool::post(std::function<void()> task)
 {
     {
         std::lock_guard<std::mutex> lock(m_mtx);
-        // 与 stop() 在同一把锁下互斥：停止置位后不会再有新任务入队
+        // 与 stop() 在同一把锁下互斥:停止置位后不会再有新任务入队
         if (m_stop.load())
         {
             return false;
@@ -42,15 +42,15 @@ bool YomkSimpleThreadPool::post(std::function<void()> task)
 
 void YomkSimpleThreadPool::stop()
 {
-    // 丢失唤醒防护（对齐 EventLoop::stop 同款先例）：置位必须与 workerLoop 的持锁谓词检查互斥。
-    // 若在锁外 exchange + notify_all，置位+通知可从 worker 的"持锁谓词检查(否) → 挂起"旁穿过
-    // ——通知落在等待开始前不被 pending，worker 睡死、join 永等。持锁置位后：未挂起的 worker
-    // 下次谓词检查必见 true，
-    // 已挂起的被持锁 notify 必达唤醒，两个时序方向均安全。
+    // 丢失唤醒防护(对齐 EventLoop::stop 同款先例):置位必须与 workerLoop 的持锁谓词检查互斥.
+    // 若在锁外 exchange + notify_all,置位+通知可从 worker 的"持锁谓词检查(否) → 挂起"旁穿过
+    // ——通知落在等待开始前不被 pending,worker 睡死,join 永等.持锁置位后:未挂起的 worker
+    // 下次谓词检查必见 true,
+    // 已挂起的被持锁 notify 必达唤醒,两个时序方向均安全.
     {
         std::lock_guard<std::mutex> lock(m_mtx);
-        // 幂等：重复调用（如 shutdown 与析构兜底）直接返回，不会二次 join；
-        // 同时与 post() 的持锁检查真正同锁互斥，"停止后不再入队"承诺加锁层面兜底
+        // 幂等:重复调用(如 shutdown 与析构兜底)直接返回,不会二次 join;
+        // 同时与 post() 的持锁检查真正同锁互斥,"停止后不再入队"承诺加锁层面兜底
         if (m_stop.exchange(true))
         {
             return;
@@ -61,9 +61,9 @@ void YomkSimpleThreadPool::stop()
     {
         if (worker.joinable())
         {
-            // 自 join 防护：最后引用若在池任务内释放（任务持有快照副本），
-            // dispose 会落在工作线程上，此时 join 自身触发 resource_deadlock 终止，
-            // 改为分离自己：进程已在退出路径，残余工作线程随进程终止回收。
+            // 自 join 防护:最后引用若在池任务内释放(任务持有快照副本),
+            // dispose 会落在工作线程上,此时 join 自身触发 resource_deadlock 终止,
+            // 改为分离自己:进程已在退出路径,残余工作线程随进程终止回收.
             if (worker.get_id() == std::this_thread::get_id())
             {
                 worker.detach();
@@ -83,7 +83,7 @@ void YomkSimpleThreadPool::workerLoop()
             std::unique_lock<std::mutex> lock(m_mtx);
             m_cv.wait(lock, [this]() { return m_stop.load() || !m_queue.empty(); });
 
-            // 停止后仍排空存量队列：队列空且已停止才退出
+            // 停止后仍排空存量队列:队列空且已停止才退出
             if (m_queue.empty())
             {
                 return;
@@ -93,7 +93,7 @@ void YomkSimpleThreadPool::workerLoop()
             m_queue.pop_front();
         }
 
-        // 锁外执行，异常捕获记日志，避免任务抛异常导致进程终止
+        // 锁外执行,异常捕获记日志,避免任务抛异常导致进程终止
         try
         {
             task();

@@ -7,7 +7,7 @@
 #include "yomk/YomkDiag.h"
 namespace fs = std::filesystem;
 
-// 初始化列表须按 FileLogger.h 声明序书写（-Wreorder）
+// 初始化列表须按 FileLogger.h 声明序书写(-Wreorder)
 FileLogger::FileLogger()
     : m_name("main"),
       m_showTraceLog(true),
@@ -85,7 +85,7 @@ void FileLogger::setLevelOn(LogLevel logLevel, bool on)
             m_showFatalLog.store(on);
             break;
         default:
-            // unknown 级别按 Info 门控（与 log() 降级语义一致）
+            // unknown 级别按 Info 门控(与 log() 降级语义一致)
             m_showInfoLog.store(on);
             break;
     }
@@ -114,8 +114,8 @@ bool FileLogger::isLevelOn(LogLevel logLevel) const
 
 void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::string& log)
 {
-    // 级别门控随 sink 自持：关断级别直接丢弃不落缓冲（unknown 级别按 Info 门控，
-    // 与下方 default 降级语义一致）；判定在缓冲锁外完成，atomic 读无新锁，
+    // 级别门控随 sink 自持:关断级别直接丢弃不落缓冲(unknown 级别按 Info 门控,
+    // 与下方 default 降级语义一致);判定在缓冲锁外完成,atomic 读无新锁,
     // 位置在取时间戳之前避免白算
     switch (logLevel)
     {
@@ -151,7 +151,7 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
 
     std::string timeStr = yomkLogLocalTimeFormatted();
 
-    // tag 由日志器统一拼接：空 tag 不加前缀
+    // tag 由日志器统一拼接:空 tag 不加前缀
     const std::string tagPrefix = tag.empty() ? "" : "[" + tag + "] ";
 
     std::lock_guard<std::mutex> lock(m_logBufferMutex);
@@ -193,7 +193,7 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
 void FileLogger::write()
 {
     std::lock_guard<std::mutex> lock(m_logBufferMutex);
-    // 直接落盘成员缓冲：避免 str() 全量拷贝——MB 级临时串走 mmap 逐页缺页，开销远大于拷贝本身
+    // 直接落盘成员缓冲:避免 str() 全量拷贝——MB 级临时串走 mmap 逐页缺页,开销远大于拷贝本身
     if (m_logBuffer.empty())
     {
         return;
@@ -202,7 +202,7 @@ void FileLogger::write()
     std::ofstream logFile(m_dir + "/" + m_name + ".log", std::ios_base::app);
     if (!logFile.is_open())
     {
-        // 开文件失败直接返回、不清缓冲（内容不丢，TestYomkLoggerDirect 断言此语义）
+        // 开文件失败直接返回,不清缓冲(内容不丢,TestYomkLoggerDirect 断言此语义)
         YOMK_DIAG_ERROR("open log file failed: " + m_dir + "/" + m_name + ".log");
         return;
     }

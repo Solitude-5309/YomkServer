@@ -24,7 +24,7 @@ private:
     yomk::payload::Response listAll(YomkMsgPtr pkg);
 
 private:
-    // 池中函数条目：函数本体 + 期望消息类型名 + 函数说明（内省元数据，均可为空）
+    // 池中函数条目:函数本体 + 期望消息类型名 + 函数说明(内省元数据,均可为空)
     struct PoolFuncInfo
     {
         YomkServiceFunc m_func;

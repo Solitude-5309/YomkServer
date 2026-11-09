@@ -4,10 +4,10 @@
 #include "yomk/YomkDiag.h"
 #include "yomk/log/YomkLoggerMsg.h"
 
-// yomk 命名空间引入收口在 .cpp（头文件不得 using，防止与全局 ::EventLoop 撞名二义性外泄）
+// yomk 命名空间引入收口在 .cpp(头文件不得 using,防止与全局 ::EventLoop 撞名二义性外泄)
 using namespace yomk::payload;
 
-// 初始化列表须按 YomkLogger.h 声明序书写（-Wreorder）
+// 初始化列表须按 YomkLogger.h 声明序书写(-Wreorder)
 YomkLogger::YomkLogger(YomkServer* server)
     : YomkService(server),
       m_showConsoleTraceLog(true),
@@ -67,7 +67,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
         logPkg->d.m_logger = "main";
     }
 
-    // 锁内拷贝 proxy 快照，锁外调用回调（避免用户回调持锁重入）
+    // 锁内拷贝 proxy 快照,锁外调用回调(避免用户回调持锁重入)
     bool proxyEnabled = false;
     YomkConsoleLogProxyFunc proxyFunc;
     {
@@ -80,7 +80,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "console log proxy is success.");
     }
 
-    // 双检锁：读锁 miss 后升级写锁二次查找，logger 指针拷出锁外使用
+    // 双检锁:读锁 miss 后升级写锁二次查找,logger 指针拷出锁外使用
     ConsoleLoggerPtr consoleLogger;
     {
         std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
@@ -149,7 +149,7 @@ yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr pkg)
     // 与 consoleLog 读侧互斥
     std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
     m_consoleLogProxyFunc = consoleLogProxy->d.m_consoleLogProxyFunc;
-    // 传空回调即卸载 proxy、恢复默认输出；两字段同锁一致更新
+    // 传空回调即卸载 proxy,恢复默认输出;两字段同锁一致更新
     m_consoleLogProxy = (m_consoleLogProxyFunc != nullptr);
     return {yomk::payload::ResStatus::Succeeded, "success."};
 }
@@ -161,10 +161,10 @@ yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr pkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not FileLogProxy"};
     }
-    // 与 fileLog 读侧互斥；语义与 setConsoleLogProxy 对称
+    // 与 fileLog 读侧互斥;语义与 setConsoleLogProxy 对称
     std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
     m_fileLogProxyFunc = fileLogProxy->d.m_fileLogProxyFunc;
-    // 传空回调即卸载 proxy、恢复默认落盘；两字段同锁一致更新
+    // 传空回调即卸载 proxy,恢复默认落盘;两字段同锁一致更新
     m_fileLogProxy = (m_fileLogProxyFunc != nullptr);
     return {yomk::payload::ResStatus::Succeeded, "success."};
 }
@@ -177,7 +177,7 @@ yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not LogFile"};
     }
 
-    // 空名/空目录拒绝：ResStatus::Invalid（参数无效惯例）
+    // 空名/空目录拒绝:ResStatus::Invalid(参数无效惯例)
     if (logFile->d.m_logger.empty())
     {
         YOMK_DIAG_ERROR("logger name is empty.");
@@ -222,8 +222,8 @@ yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr pkg)
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "file logger name is empty.");
     }
 
-    // 锁内拷贝文件代理快照，锁外调用回调（与 consoleLog 同款模式，避免用户回调持锁重入）；
-    // 代理先于表查找、主闸与逐器门控（未知名在拦截态下同样被短路，语义与 console 一致）
+    // 锁内拷贝文件代理快照,锁外调用回调(与 consoleLog 同款模式,避免用户回调持锁重入);
+    // 代理先于表查找,主闸与逐器门控(未知名在拦截态下同样被短路,语义与 console 一致)
     bool proxyEnabled = false;
     YomkFileLogProxyFunc proxyFunc;
     {
@@ -308,21 +308,21 @@ yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
     }
 
-    // 空名拒绝（同 createFileLogger 惯例）
+    // 空名拒绝(同 createFileLogger 惯例)
     if (yName->d.empty())
     {
         YOMK_DIAG_ERROR("logger name is empty.");
         return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "logger name is empty.");
     }
 
-    // 分段持锁不嵌套：删除无需跨表原子快照，同时持两把写锁会阻塞全部日志写入
+    // 分段持锁不嵌套:删除无需跨表原子快照,同时持两把写锁会阻塞全部日志写入
     size_t deletedConsole = 0;
     {
         std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
         deletedConsole = m_consoleLoggers.erase(yName->d);
     }
 
-    // 锁内拷出、锁外析构：~FileLogger 落盘 I/O 不阻塞日志写入
+    // 锁内拷出,锁外析构:~FileLogger 落盘 I/O 不阻塞日志写入
     size_t deletedFile = 0;
     FileLoggerPtr removedFile;
     {
@@ -342,7 +342,7 @@ yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr pkg)
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "logger not found.");
     }
 
-    // 不删除磁盘上的 .log 文件（清理归调用方）
+    // 不删除磁盘上的 .log 文件(清理归调用方)
     return yomk::payload::Response(
         yomk::payload::ResStatus::Succeeded,
         "deleted console:" + std::to_string(deletedConsole) + " file:" + std::to_string(deletedFile));
@@ -356,13 +356,13 @@ yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
     }
 
-    // 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 ResStatus::Failed 不惰性创建）
+    // 具名请求:逐器门控路径(写第二层,不触碰全局主闸;未命中 ResStatus::Failed 不惰性创建)
     if (!logPkg->d.m_logger.empty())
     {
         return setNamedConsoleLevel(logPkg->d.m_logger, logPkg->d.m_level, false);
     }
 
-    // 空名 = 全局主闸路径（与既有语义一致）
+    // 空名 = 全局主闸路径(与既有语义一致)
     switch (logPkg->d.m_level)
     {
         case LogLevel::Trace:
@@ -399,13 +399,13 @@ yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
     }
 
-    // 具名请求：逐器门控路径（同 offConsoleLogByLevel）
+    // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
     if (!logPkg->d.m_logger.empty())
     {
         return setNamedConsoleLevel(logPkg->d.m_logger, logPkg->d.m_level, true);
     }
 
-    // 空名 = 全局主闸路径（同上）
+    // 空名 = 全局主闸路径(同上)
     switch (logPkg->d.m_level)
     {
         case LogLevel::Trace:
@@ -433,7 +433,7 @@ yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success.");
 }
 
-// 具名开关唯一写入口：表读锁内查找拷指针出锁、锁外 setLevelOn（单锁；未命中 ResStatus::Failed 不惰性创建）
+// 具名开关唯一写入口:表读锁内查找拷指针出锁,锁外 setLevelOn(单锁;未命中 ResStatus::Failed 不惰性创建)
 yomk::payload::Response YomkLogger::setNamedConsoleLevel(const std::string& loggerName, LogLevel level, bool on)
 {
     ConsoleLoggerPtr consoleLogger;
@@ -483,13 +483,13 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
     }
 
-    // 具名请求：逐器门控路径（同 offConsoleLogByLevel）
+    // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
     if (!logPkg->d.m_logger.empty())
     {
         return setNamedFileLevel(logPkg->d.m_logger, logPkg->d.m_level, false);
     }
 
-    // 空名 = 全局主闸路径（与控制台侧对称）
+    // 空名 = 全局主闸路径(与控制台侧对称)
     switch (logPkg->d.m_level)
     {
         case LogLevel::Trace:
@@ -526,13 +526,13 @@ yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Log"};
     }
 
-    // 具名请求：逐器门控路径（同 offConsoleLogByLevel）
+    // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
     if (!logPkg->d.m_logger.empty())
     {
         return setNamedFileLevel(logPkg->d.m_logger, logPkg->d.m_level, true);
     }
 
-    // 空名 = 全局主闸路径（与控制台侧对称）
+    // 空名 = 全局主闸路径(与控制台侧对称)
     switch (logPkg->d.m_level)
     {
         case LogLevel::Trace:
@@ -560,7 +560,7 @@ yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success.");
 }
 
-// 文件侧具名开关唯一写入口：表读锁内查找拷指针出锁、锁外 setLevelOn（单锁；未命中 ResStatus::Failed 不惰性创建）
+// 文件侧具名开关唯一写入口:表读锁内查找拷指针出锁,锁外 setLevelOn(单锁;未命中 ResStatus::Failed 不惰性创建)
 yomk::payload::Response YomkLogger::setNamedFileLevel(const std::string& loggerName, LogLevel level, bool on)
 {
     FileLoggerPtr fileLogger;
@@ -629,7 +629,7 @@ yomk::payload::Response YomkLogger::loggers(YomkMsgPtr pkg)
         YOMK_DIAG_ERROR("unknown logger type: " + type->d + ".");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "unknown logger type.");
     }
-    // 单表为 std::map，中序遍历天然字典序，无需排序（选型见 YomkLogger.h）
+    // 单表为 std::map,中序遍历天然字典序,无需排序(选型见 YomkLogger.h)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(std::move(names))};
 }
 
@@ -640,13 +640,12 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not LoggerQuery"};
     }
-    // 按类型单表精确查找：两表允许同名，同名歧义由 type 消除；
-    // 命中：锁内构造结构化快照，明确字段承载全部返回数据（m_msg 恒 "ok"，数据走 m_data）
+    // 按类型单表精确查找:两表允许同名,同名歧义由 type 消除;命中锁内构造结构化快照
     yomk::payload::LoggerInfo info;
     info.m_loggerName = query->d.m_loggerName;
     if (query->d.m_type == "console")
     {
-        // 锁内查找拷指针出锁外使用（与 consoleLog 双检锁同款模式）
+        // 锁内查找拷指针出锁外使用(与 consoleLog 双检锁同款模式)
         ConsoleLoggerPtr consoleLogger;
         {
             std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
@@ -658,7 +657,7 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
             }
             consoleLogger = itLogger->second;
         }
-        // 状态段：条目报逐器门控层真值；proxyOn 在表锁外独立取（proxy 叶子锁独立作用域）
+        // 状态段:条目报逐器门控层真值;proxyOn 在表锁外独立取(proxy 叶子锁独立作用域)
         bool proxyOn = false;
         {
             std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
@@ -670,7 +669,7 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
     }
     if (query->d.m_type == "file")
     {
-        // 锁内查找拷指针出锁外使用（与 console 分支同款模式）
+        // 锁内查找拷指针出锁外使用(与 console 分支同款模式)
         FileLoggerPtr fileLogger;
         {
             std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
@@ -682,7 +681,7 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
             }
             fileLogger = itLogger->second;
         }
-        // 状态段：条目报文件逐器门控层真值；proxyOn 在表锁外独立取（文件代理叶子锁独立作用域）
+        // 状态段:条目报文件逐器门控层真值;proxyOn 在表锁外独立取(文件代理叶子锁独立作用域)
         bool proxyOn = false;
         {
             std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
@@ -697,7 +696,7 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Failed, "unknown logger type.");
 }
 
-// 取控制台全局主闸态（/console_global_state 返回体）：四个级别开关为独立 atomic（组合本无原子快照保证），
+// 取控制台全局主闸态(/console_global_state 返回体):六级别开关为独立 atomic(组合本无原子快照保证),
 // proxy 叶子锁独立作用域
 LoggerState YomkLogger::currentConsoleState()
 {
@@ -709,14 +708,14 @@ LoggerState YomkLogger::currentConsoleState()
     state.m_errorOn = m_showConsoleErrorLog.load();
     state.m_fatalOn = m_showConsoleFatalLog.load();
     {
-        // proxy 状态读侧与写侧互斥（叶子锁）
+        // proxy 状态读侧与写侧互斥(叶子锁)
         std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
         state.m_proxyOn = m_consoleLogProxy;
     }
     return state;
 }
 
-// 取单条 console 条目状态：六级别为逐器门控层真值（logger.isLevelOn），proxyOn 由调用点传入
+// 取单条 console 条目状态:六级别为逐器门控层真值(logger.isLevelOn),proxyOn 由调用点传入
 LoggerState YomkLogger::namedConsoleState(const ConsoleLoggerPtr& consoleLogger, bool proxyOn)
 {
     yomk::payload::LoggerState state;
@@ -730,8 +729,8 @@ LoggerState YomkLogger::namedConsoleState(const ConsoleLoggerPtr& consoleLogger,
     return state;
 }
 
-// 取文件全局主闸态（/file_global_state 返回体）：四个级别开关独立 atomic（与控制台主闸相互独立）；
-// 文件代理态读侧与写侧互斥（叶子锁独立作用域，与控制台 proxyOn 各自独立）
+// 取文件全局主闸态(/file_global_state 返回体):六级别开关独立 atomic(与控制台主闸相互独立);
+// 文件代理态读侧与写侧互斥(叶子锁独立作用域,与控制台 proxyOn 各自独立)
 LoggerState YomkLogger::currentFileState()
 {
     yomk::payload::LoggerState state;
@@ -742,14 +741,14 @@ LoggerState YomkLogger::currentFileState()
     state.m_errorOn = m_showFileErrorLog.load();
     state.m_fatalOn = m_showFileFatalLog.load();
     {
-        // proxy 状态读侧与写侧互斥（叶子锁）
+        // proxy 状态读侧与写侧互斥(叶子锁)
         std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
         state.m_proxyOn = m_fileLogProxy;
     }
     return state;
 }
 
-// 取单条 file 条目状态：六级别为逐器门控层真值（logger.isLevelOn），proxyOn 由调用点传入
+// 取单条 file 条目状态:六级别为逐器门控层真值(logger.isLevelOn),proxyOn 由调用点传入
 LoggerState YomkLogger::namedFileState(const FileLoggerPtr& fileLogger, bool proxyOn)
 {
     yomk::payload::LoggerState state;
@@ -766,9 +765,7 @@ LoggerState YomkLogger::namedFileState(const FileLoggerPtr& fileLogger, bool pro
 yomk::payload::Response YomkLogger::listAll(YomkMsgPtr pkg)
 {
     (void)pkg;
-    // LoggerState 内嵌每条 LoggerInfo：console 条目报控制台逐器门控层真值（namedConsoleState 逐条求值），
-    // file 条目报文件逐器门控层真值（namedFileState 逐条求值）
-    // console/file 两个 proxyOn 各自在双表锁外独立取（两把 proxy 叶子锁独立作用域），随后传入逐条求值
+    // 两个 proxyOn 各自在双表锁外独立取(两把 proxy 叶子锁独立作用域),再传入逐器门控层求值
     bool proxyOn = false;
     {
         std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
@@ -781,7 +778,7 @@ yomk::payload::Response YomkLogger::listAll(YomkMsgPtr pkg)
     }
     std::vector<yomk::payload::LoggerInfo> loggers;
     {
-        // 按锁序嵌套双读锁取跨段快照，逐条构造 LoggerInfo（与 loggerInfo 命中分支同构）
+        // 按锁序嵌套双读锁取跨段快照(与 loggerInfo 命中分支同构)
         std::shared_lock<std::shared_mutex> consoleLock(m_consoleLoggersMutex);
         std::shared_lock<std::shared_mutex> fileLock(m_fileLoggersMutex);
         loggers.reserve(m_consoleLoggers.size() + m_fileLoggers.size());
@@ -803,18 +800,18 @@ yomk::payload::Response YomkLogger::listAll(YomkMsgPtr pkg)
             loggers.push_back(std::move(info));
         }
     }
-    // std::map 天然字典序（console 段在前、file 段在后）；m_msg 恒 "ok"，数据走 m_data
+    // std::map 天然字典序(console 段在前,file 段在后)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::LoggerInfoList::shared(std::move(loggers))};
 }
 
-// 控制台全局主闸态内省（无参形态同 /all；m_msg 恒 "ok"，LoggerState 包走 m_data）
+// 控制台全局主闸态内省(无参形态同 /all,LoggerState 包走 m_data)
 yomk::payload::Response YomkLogger::consoleGlobalState(YomkMsgPtr pkg)
 {
     (void)pkg;
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::LoggerState::shared(currentConsoleState())};
 }
 
-// 文件全局主闸态内省（无参形态同 /all；m_msg 恒 "ok"，LoggerState 包走 m_data）
+// 文件全局主闸态内省(无参形态同 /all,LoggerState 包走 m_data)
 yomk::payload::Response YomkLogger::fileGlobalState(YomkMsgPtr pkg)
 {
     (void)pkg;

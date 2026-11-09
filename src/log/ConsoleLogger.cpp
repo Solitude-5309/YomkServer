@@ -4,10 +4,10 @@
 
 #include "yomk/YomkDiag.h"
 
-// 类级共享锁定义：跨实例行级原子的唯一互斥点（见 ConsoleLogger.h 成员注释）
+// 类级共享锁定义:跨实例行级原子的唯一互斥点(见 ConsoleLogger.h 成员注释)
 std::mutex ConsoleLogger::s_mutex;
 
-// 初始化列表须按 ConsoleLogger.h 声明序书写（-Wreorder）
+// 初始化列表须按 ConsoleLogger.h 声明序书写(-Wreorder)
 ConsoleLogger::ConsoleLogger()
     : m_name("main"),
       m_showTraceLog(true),
@@ -43,7 +43,7 @@ void ConsoleLogger::setLevelOn(LogLevel logLevel, bool on)
             m_showFatalLog.store(on);
             break;
         default:
-            // unknown 级别按 Info 门控（与 log() 降级语义一致）
+            // unknown 级别按 Info 门控(与 log() 降级语义一致)
             m_showInfoLog.store(on);
             break;
     }
@@ -72,8 +72,8 @@ bool ConsoleLogger::isLevelOn(LogLevel logLevel) const
 
 void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::string& log)
 {
-    // 级别门控随 sink 自持：关断级别直接丢弃不输出（unknown 级别按 Info 门控，
-    // 与下方 default 降级语义一致）；判定在类级锁外完成，atomic 读无新锁
+    // 级别门控随 sink 自持:关断级别直接丢弃不输出(unknown 级别按 Info 门控,
+    // 与下方 default 降级语义一致);判定在类级锁外完成,atomic 读无新锁
     switch (logLevel)
     {
         case LogLevel::Trace:
@@ -108,13 +108,13 @@ void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::st
 
     std::string timeStr = yomkLogLocalTimeFormatted();
 
-    // tag 优先显示；空 tag 回退日志器名
+    // tag 优先显示;空 tag 回退日志器名
     const std::string& tagShown = tag.empty() ? m_name : tag;
 
-    // 类级共享锁下整条 << 链直写：跨实例行级原子。stdout 底层 stdio 锁本已逐片段
-    // 串行（未调 sync_with_stdio(false)），显式行级锁仅收编互斥粒度，不新增串行化
-    // 资源；不留中间缓冲——锁外 ostringstream 拼行形态实测为负优化
-    // （S1E -28%：三次堆分配 + str() 整行拷贝 ~0.5μs/条），故直写
+    // 类级共享锁下整条 << 链直写:跨实例行级原子.stdout 底层 stdio 锁本已逐片段
+    // 串行(未调 sync_with_stdio(false)),显式行级锁仅收编互斥粒度,不新增串行化
+    // 资源;不留中间缓冲——锁外 ostringstream 拼行形态实测为负优化
+    // (S1E -28%:三次堆分配 + str() 整行拷贝 ~0.5μs/条),故直写
     std::lock_guard<std::mutex> lock(s_mutex);
     switch (logLevel)
     {

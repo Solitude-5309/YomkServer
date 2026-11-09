@@ -24,6 +24,10 @@
 //
 // 各构建降档：默认 N=100000；cov/ASan N=10000；TSan N=1000（clamp 下限）。
 //
+// 容器选型消融实测（YomkLogger 两张 logger 表 std::map → unordered_map 的退化数据）：
+// S4A_loggers +116%,S5B_delete_all -40%,S5A_mixed_churn -58%——维持 std::map
+// （中序遍历天然字典序,内省输出无需排序;锁序约定与容器类型无关,选型变化不影响死锁分析）。
+//
 // 断言可靠性约束：
 // - cout 重定向一律用 RAII 作用域，所有 YOMK_TEST_CHECK 与 [BASELINE] 打印都在作用域之外（否则被吞没）；
 // 计时值先存局部变量，出作用域后再打印。
