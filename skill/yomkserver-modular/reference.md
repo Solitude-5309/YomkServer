@@ -69,9 +69,9 @@ namespace yomk {
         std::string m_tag;   // 用户事件标记，post 时可选，仅内省展示
     };
     // m_logger=日志器名（服务端按其选择/惰性创建）；m_tag=记录标签（随记录显示 [tag]）
-    struct Log { enum LogLevel{LogLevel::Trace,LogLevel::Debug,LogLevel::Info,LogLevel::Warn,LogLevel::Error,LogLevel::Fatal};
-                 LogLevel m_level; std::string m_log; std::string m_logger; std::string m_tag; };
-    struct Context { std::string m_key; YomkMsgPtr m_value; };
+    // LogLevel 为命名空间级 enum class（见 YomkLoggerPayload.h），非 Log 内嵌枚举
+    struct Log { payload::LogLevel m_level; std::string m_log; std::string m_logger; std::string m_tag; };
+    struct Context { std::string m_key; YomkMsgPtr m_value; std::string m_group = "main"; };  // m_group=key 所属组名（缺省 main）
     enum class CheckStatus{Accept, Reject};   // checker 门控结论（定义见 YomkContextPayload.h）
 }
 namespace yomk { struct FuncInfo {           // 功能函数元信息（内省用，定义见 YomkServerInfoPayload.h）

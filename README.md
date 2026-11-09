@@ -114,7 +114,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 ```
 
 - builder 全程用 `auto` 接收，**仅限单表达式内联使用、禁止缓存复用**（内部持有 `string_view`，缓存即悬垂）。
-- **未初始化守卫**：`init()` 之前调用任何终结动作不抛异常——返回 `ResStatus::Invalid`（或整型 `-1`、类型化读的调用方默认值）、异步请求静默丢弃，并打错误诊断日志；`version()` 除外，免初始化可用。
+- **未初始化守卫**：`init()` 之前调用任何终结动作不抛异常——返回 `ResStatus::Invalid`（或整型 `-1`、类型化读的调用方默认值）、异步请求静默丢弃，并打错误诊断日志；`version()` 除外，免初始化可用。另一例外是 `yomk::log_mgr().location().apply()`：它不经请求通道，未初始化时也直接生效并恒返回 `ResStatus::Succeeded`。
 
 ### 2. 请求与响应模型 (Request / Response)
 
@@ -156,7 +156,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 8. 运行期内省 (YomkServerInfo)
 
-`yomk::srv_info().services()` / `.srv_name(name).functions()` / `.fn_url(url).get_info()` / `.all()` 查询服务拓扑、功能函数清单与期望消息类型；Logger / Context / EventLoop / FunctionPool 亦各有模块级内省链（各域的 `list()` / `get_info()` / `all()` 家族）。
+`yomk::srv_info().services()` / `.srv_name(name).functions()` / `.fn_url(url).get_info()` / `.all()` 查询服务拓扑、功能函数清单与期望消息类型；Logger / EventLoop / FunctionPool 各有 `list()` / `get_info()` / `all()` 内省链，Context 域的对应能力名为 `keys()` / `info()` / `groups()` / `all()`。
 
 详见 [服务自省](docs/YomkServerInfo.md)。
 

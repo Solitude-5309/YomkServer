@@ -1,6 +1,6 @@
 # YomkServer 工程示例
 
-> 示例0 / 示例7 与仓库内 `template/project/`、`template/extension/` 保持一致（模板中 `TemplateProject`/`extension` 即占位符实例）。**生成工程/扩展时优先复制模板目录**并替换工程名；模板目录不存在时按下文逐文件生成。
+> 示例0 / 示例7 以仓库内 `template/project/`、`template/extension/` 为蓝本（模板中 `TemplateProject`/`extension` 即占位符实例），核心代码与模板一致，README 为删节版，示例7 的 include 布局为独立变体（见示例7 说明）。**生成工程/扩展时优先复制模板目录**并替换工程名；模板目录不存在时按下文逐文件生成。
 
 ## 示例0：标准工程模板（创建新工程时必须生成）
 
@@ -16,7 +16,7 @@ ProjectName/
 ├── config/
 │   └── config.txt
 ├── msgs/
-│   └── YomkStdMsg.h
+│   └── YomkMsg.h
 ├── services/
 │   ├── ConfigService.h
 │   └── ConfigService.cpp
@@ -1167,8 +1167,8 @@ target_link_libraries(TestExtensionName PRIVATE ExtensionName::ExtensionName Yom
 
 ### test/TestExtensionName.cpp
 ```cpp
-#include <ExtensionName/ExtensionApi.h>
-#include <ExtensionName/ExtensionService.h>
+#include <ExtensionApi.h>
+#include <ExtensionService.h>
 #include <yomk/server/YomkServerApi.h>
 
 #include <iostream>
@@ -1504,7 +1504,7 @@ ExtensionName/
 
 ```cpp
 #include <yomk/server/YomkServerApi.h>
-#include <ExtensionName/ExtensionService.h>
+#include <ExtensionService.h>
 #include <iostream>
 
 using namespace yomk::payload;

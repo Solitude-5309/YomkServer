@@ -260,7 +260,7 @@ ExtensionName/
 9. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
 10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回，如 `"ExtensionName v" EXTENSION_VERSION`
 11. **README 使用示例完整可复制**：README 使用示例必须提供完整的 main.cpp（含 include、`yomk::server().init()`、`yomk::server().srv<XxxService>().create()` 注册扩展服务、请求与输出），用户复制后即可编译运行；不得只提供请求代码片段
-12. **模块四件套**：对外头文件按 SDK `include/yomk/` 各域同一设计组织——`XxxUrl.h`（`yomk::url` 命名空间 URL 常量，`inline constexpr std::string_view`）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG`）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态：前置累积 `url/msg` + 无参终结 `request`，builder 持 `string_view` 仅单表达式内联使用；模板内置 `version()` 终结）。完整形态见 `template/extension/include/Extension{Url,Payload,Msg,Api}.h`；模板四件套暂为注释占位（模板接口最小化），新增业务时先补 Url/Payload/Msg 再在 Api 上追加终结方法
+12. **模块四件套**：对外头文件按 SDK `include/yomk/` 各域同一设计组织——`XxxUrl.h`（`yomk::url` 命名空间 URL 常量，`inline constexpr std::string_view`）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG`）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态：前置累积 `url/msg` + 无参终结 `request`，builder 持 `string_view` 仅单表达式内联使用；模板内置 `version()` 终结）。完整形态见 `template/extension/include/extension/Extension{Url,Payload,Msg,Api}.h`；模板四件套暂为注释占位（模板接口最小化），新增业务时先补 Url/Payload/Msg 再在 Api 上追加终结方法
 
 ### 生成规则
 

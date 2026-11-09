@@ -6,7 +6,7 @@
 
 | 场景 | 链 | 终结与返回 |
 |---|---|---|
-| 启动 | `yomk::event_loop().loop(name).handle_fn(fn).msg_name(m)` | `.start()` → `ResStatus`；`handle_fn` 为循环默认处理函数、`msg_name` 为期望消息类型名（均仅内省元数据），可省略 |
+| 启动 | `yomk::event_loop().loop(name).handle_fn(fn).msg_name(m)` | `.start()` → `ResStatus`；`handle_fn` 为循环默认处理函数（实际参与事件执行，省略后 post 需自带 handle），`msg_name` 为期望消息类型名（仅内省元数据），可省略 |
 | 停止 | `yomk::event_loop().loop(name)` | `.stop()` → `ResStatus`（停线程但**保留队列事件**） |
 | 销毁 | `yomk::event_loop().loop(name)` | `.destroy()` → `ResStatus`（停线程 + 清空队列 + 移出循环表，不可续跑） |
 | 非阻塞投递 | `yomk::event_loop().msg(data).loop(name).handle_fn(fn).tag(t)` | `.post()` → `ResStatus`（**仅表示入队结果，非执行结果**）；`handle_fn`/`tag` 可省略 |

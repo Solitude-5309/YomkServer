@@ -57,7 +57,7 @@
  * @li yomk::log_mgr().console(name).get_info() / yomk::log_mgr().file(name).get_info():
  *     指定日志器状态（两表允许同名, 须按类型精确单查）
  * @li yomk::log_mgr().console().status() / yomk::log_mgr().file().status():
- *     全局主闸状态（4 级别 + proxy, 两套主闸相互独立）
+ *     全局主闸状态（6 级别 + proxy, 两套主闸相互独立）
  * @li yomk::log_mgr().all(): 全部日志器及逐器门控状态（LoggerInfoList）
  *
  * @warning log() 域入口在调用行捕获位置, 仅限单表达式内联使用, 禁止缓存复用 Builder!
@@ -419,7 +419,7 @@ public:
         return yomk::server().url(yomk::url::loggerLogger).msg(yomk::msgs::LoggerQuery::shared(yomk::payload::LoggerQuery{m_file, "file"})).request();
     }
     /**
-     * @brief 查询文件全局主闸状态（4 级别 + proxy）
+     * @brief 查询文件全局主闸状态（6 级别 + proxy）
      * @return Response; 未初始化返回 Invalid
      */
     yomk::payload::Response status()
@@ -545,7 +545,7 @@ public:
         return yomk::server().url(yomk::url::loggerLogger).msg(yomk::msgs::LoggerQuery::shared(yomk::payload::LoggerQuery{m_name, "console"})).request();
     }
     /**
-     * @brief 查询控制台全局主闸状态（4 级别 + proxy）
+     * @brief 查询控制台全局主闸状态（6 级别 + proxy）
      * @return Response; 未初始化返回 Invalid
      */
     yomk::payload::Response status()
