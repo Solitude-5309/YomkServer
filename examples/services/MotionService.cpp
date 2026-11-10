@@ -21,7 +21,7 @@ yomk::payload::Response MotionService::echo(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     std::ostringstream oss;
     oss << "通讯自检回环：收到 \"" << str->d << "\"";
@@ -34,7 +34,7 @@ yomk::payload::Response MotionService::move(YomkMsgPtr pkg)
     auto cmdPkg = yomk::msgs::unpack<yomk::msgs::MoveCmd>(pkg);
     if (!cmdPkg)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not MoveCmd"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not MoveCmd, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
 
     std::ostringstream oss;

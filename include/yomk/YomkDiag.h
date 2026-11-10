@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdio>
@@ -66,26 +67,59 @@ constexpr std::size_t yomkDiagTagWidth(const char (&tag)[N])  // NOLINT(cppcoreg
 #define YOMK_DIAG_TAG_ERROR "[ERROR]"
 #define YOMK_DIAG_TAG_FATAL "[FATAL]"
 
+// 诊断级别数值:yomkDiagSetMinLevel 的入参口径,宏族内部也按此判定是否输出
+constexpr int YOMK_DIAG_LEVEL_TRACE = 0;
+constexpr int YOMK_DIAG_LEVEL_DEBUG = 1;
+constexpr int YOMK_DIAG_LEVEL_INFO = 2;
+constexpr int YOMK_DIAG_LEVEL_WARN = 3;
+constexpr int YOMK_DIAG_LEVEL_ERROR = 4;
+constexpr int YOMK_DIAG_LEVEL_FATAL = 5;
+
+// 诊断通道最小级别阈值(运行期可调):低于阈值的诊断整条丢弃,消息表达式在阈值判断之后求值,
+// 抑制时零字符串构造开销.默认 WARN——INFO/DEBUG 静默,WARN 及以上输出;
+// 降噪/开发期排查可调低阈值放行 INFO(如热替换提示),调高可只留 ERROR.
+inline std::atomic<int>& yomkDiagMinLevelRef()
+{
+    static std::atomic<int> minLevel{YOMK_DIAG_LEVEL_WARN};
+    return minLevel;
+}
+
+inline bool yomkDiagLevelEnabled(int level)
+{
+    return level >= yomkDiagMinLevelRef().load(std::memory_order_relaxed);
+}
+
+// 设置诊断最小级别(入参取 YOMK_DIAG_LEVEL_* 常量);进程内任意线程随时可调
+inline void yomkDiagSetMinLevel(int level)
+{
+    yomkDiagMinLevelRef().store(level, std::memory_order_relaxed);
+}
+
 /**
  * @brief Framework self-diagnostic channel: raw stdout fallback when the logger is unavailable
  * Emits four segments (timestamp/level/tag/location) with the tag fixed to Yomk; the macro family
  * extends by YOMK_DIAG_<LEVEL>, each macro takes one message and prints it immediately
- * (no thread-safe ordering, diagnostic use only)
+ * (no thread-safe ordering, diagnostic use only). Output is gated by the runtime minimum level
+ * (default WARN; adjust via yomkDiagSetMinLevel, suppressed messages cost no string construction)
  */
 // @zh: 框架自诊断通道：logger 不可用时的裸 stdout 兜底
 // @zh: 输出时间戳/等级/标签/位置四段，tag 固定 Yomk；
 // @zh: 宏族按 YOMK_DIAG_<级别> 扩展，每宏接收一条消息并立即输出（非线程安全序，仅诊断用途）
-#define YOMK_DIAG_LOG_IMPL(levelTag, msg)                                                                                     \
+// @zh: 输出受运行期最小级别门控（默认 WARN；经 yomkDiagSetMinLevel 调整，被抑制的消息零字符串构造开销）
+#define YOMK_DIAG_LOG_IMPL(levelTag, level, msg)                                                                              \
     do                                                                                                                        \
     {                                                                                                                         \
         static_assert(yomkDiagTagWidth(levelTag) == 7, "diag level tag must be 7 chars wide to keep level columns aligned");  \
-        std::cout << yomkLogLocalTimeFormatted() << " " << levelTag << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "]"      \
-                  << " [" << __func__ << "] " << msg << std::endl;                                                            \
+        if (yomkDiagLevelEnabled(level))                                                                                      \
+        {                                                                                                                     \
+            std::cout << yomkLogLocalTimeFormatted() << " " << levelTag << " [Yomk] [" << __FILE__ << ":" << __LINE__ << "]"  \
+                      << " [" << __func__ << "] " << msg << std::endl;                                                        \
+        }                                                                                                                     \
     } while (0)
 
-#define YOMK_DIAG_TRACE(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_TRACE, msg)
-#define YOMK_DIAG_DEBUG(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_DEBUG, msg)
-#define YOMK_DIAG_INFO(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_INFO, msg)
-#define YOMK_DIAG_WARN(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_WARN, msg)
-#define YOMK_DIAG_ERROR(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_ERROR, msg)
-#define YOMK_DIAG_FATAL(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_FATAL, msg)
+#define YOMK_DIAG_TRACE(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_TRACE, YOMK_DIAG_LEVEL_TRACE, msg)
+#define YOMK_DIAG_DEBUG(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_DEBUG, YOMK_DIAG_LEVEL_DEBUG, msg)
+#define YOMK_DIAG_INFO(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_INFO, YOMK_DIAG_LEVEL_INFO, msg)
+#define YOMK_DIAG_WARN(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_WARN, YOMK_DIAG_LEVEL_WARN, msg)
+#define YOMK_DIAG_ERROR(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_ERROR, YOMK_DIAG_LEVEL_ERROR, msg)
+#define YOMK_DIAG_FATAL(msg) YOMK_DIAG_LOG_IMPL(YOMK_DIAG_TAG_FATAL, YOMK_DIAG_LEVEL_FATAL, msg)

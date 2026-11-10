@@ -68,10 +68,10 @@ yomk::ctx().key("config").destroy();                   // 删除键
 
 > ⚠️ **Warning**：`get()` 返回只读快照——原地修改与并发读竞争、可能崩溃；改动请构造新消息对象再 `.set()`。
 
-- **写路径失败契约**：键名为空 `Failed` "key is empty"；`create` 时 value 为空 `Failed` "value is empty"、键已存在 `Failed` "key already exists"；`set` 时键不存在 `Failed` "key is not exist"、值类型与现值不一致 `Failed` "context type not match"、被 checker 拦截 `Failed` "checker reject set context"。
+- **写路径失败契约**（文案携带具体键名与期望/实际类型名）：`create` 键名为空 `Failed` "context key is empty"、value 为空 `Failed` "create context key '<键>' failed: value is empty"、键已存在 `Failed` "context key '<键>' already exists"；`set` 键不存在 `Failed` "context key '<键>' does not exist"、类型不匹配 `Failed` "context type not match: key '<键>' expect '<期望类型>', got '<实际类型>'"、被 checker 拦截 `Failed` "set context key '<键>' rejected by checker"、value 为空 `Failed` "set context key '<键>' failed: value is empty"。
 - **组名约定**：`.group()` 省略即缺省 `"main"`；空组名 `Failed` "group name is empty"。非 main 组首次寻址即惰性自动创建（组名唯一、同名寻址复用同组、**不支持销毁组**，组表只增不减），异步监控池每组自持（单线程）。
 - **读取快照勿原地修改**：`get()` 返回只读快照，改动请构造新消息对象再 `.set()`；原地修改与并发读竞争、可能崩溃。
-- **键级回调注册前提**：`checker_fn`/`monitor_fn` 只能注册到**已存在**的键（键不存在返回 `Failed` "key is not exist"），即先 `create()` 再注册。
+- **键级回调注册前提**：`checker_fn`/`monitor_fn` 只能注册到**已存在**的键（键不存在返回 `Failed` "context key '<键>' does not exist"），即先 `create()` 再注册。
 - **Checker 生效条件**：组级开关 ON **且**该键已注册 checker 才参与门控；门控在写锁内执行，**回调内重入 set 会死锁**。
 - **Monitor 执行语义**：`.async(true)` 经该组单线程池按 set 提交序保序送达；同步形态在写锁外即时执行，并发 set 下不保证跨线程序。仅通知"发生了一次 set"并回传该次键值快照，**不保证快照实时性**（读最新值请再走 `get()`）。
 - **类型化读自带校验**：`get()` 按运行期类型名比对 + 指针转换，`T` 须为 `YomkMsg` 派生（`static_assert` 编译期把关）。

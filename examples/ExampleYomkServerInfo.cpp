@@ -251,7 +251,7 @@ public:
         auto status = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!status)
         {
-            return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+            return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
         }
         std::ostringstream oss;
         oss << "工位状态上报：收到 \"" << status->d << "\"";
@@ -265,7 +265,7 @@ public:
         auto data = yomk::msgs::unpack<yomk::msgs::QualityCheckReq>(pkg);
         if (!data)
         {
-            return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not QualityCheckReq"};
+            return {yomk::payload::ResStatus::Failed, "pkg is not QualityCheckReq, got '" + yomk::msgs::typeOf(pkg) + "\'"};
         }
         std::ostringstream oss;
         oss << "质量抽检执行：工位 " << data->req.m_station << " 抽检 " << data->req.m_count << " 件";

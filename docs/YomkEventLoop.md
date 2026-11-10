@@ -64,7 +64,7 @@ yomk::event_loop().loop("TaskLoop").destroy();
 - 同一循环内事件按 FIFO 顺序执行，不同循环之间彼此并行。
 - **同名 `start()` 不重建**：复用既有实例并触发其启动（用于停止后续跑），本次累积的 `handle_fn`/`msg_name` **不生效**；仅新循环名会创建循环并绑定默认处理函数。
 - 投递事件未携带 `handle_fn` 时回落到循环默认处理函数；两者皆空则该事件不执行任何回调、直接出队。
-- 失败契约：循环不存在 `Failed` "event loop not exist"；已停止（未销毁）时投递 `Failed` "event loop not running, post rejected"（`post_wait` 同族消息）。
+- 失败契约：循环不存在 `Failed` "event loop '<循环名>' does not exist"；已停止（未销毁）时投递 `Failed` "event loop '<循环名>' not running, post rejected"（`post_wait` 同族消息）。
 - `post()` 的三态仅表示入队/拒绝；执行结果只体现在处理函数内部，取回结果请配合共享上下文或回调投递到其他通道。
 - 单查 `get_info()` 返回 `EventLoopInfo`：`m_running`（worker 运行中）、`m_pending`（积压事件数）、`m_hasDefaultFunc`、`m_msgName`、`m_nextTags`（队列头起最多 n 条 tag，空串保留）。
 - 服务成员函数注册为事件处理函数时须用 `weakFunc(&Class::Method)` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。

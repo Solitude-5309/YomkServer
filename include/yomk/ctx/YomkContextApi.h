@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "yomk/YomkDiag.h"
 #include "yomk/ctx/YomkContextMsg.h"
 #include "yomk/ctx/YomkContextPayload.h"
 #include "yomk/ctx/YomkContextUrl.h"
@@ -153,13 +154,20 @@ public:
                 ctxData = std::dynamic_pointer_cast<T>(response.m_data);
             }
             if (ctxData)
+            {
                 return ctxData;
-            else
-                return m_default;
+            }
+            // 具体值原则:类型不匹配静默回退默认值会掩盖写入侧错配,输出期望/实际类型名定位
+            if (response.m_data)
+            {
+                YOMK_DIAG_WARN("typed read context key '" + std::string(m_key) + "' type mismatch, expect '" + T::kName
+                    + "', got '" + response.m_data->name() + "', return default value");
+            }
+            return m_default;
         }
         else
         {
-            YOMK_DIAG_ERROR("get context failed");
+            YOMK_DIAG_ERROR("get context failed: " + response.m_msg);
             return m_default;
         }
     }

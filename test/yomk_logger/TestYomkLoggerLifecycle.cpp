@@ -841,13 +841,13 @@ YOMK_TEST_CHECK(
         CoutCapture cap;
         auto r = yomk::server().url("/YomkLogger/console_log").request();
         YOMK_TEST_CHECK(r.m_status == yomk::payload::ResStatus::Failed, "console_log nullptr 包返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(r.m_msg == "pkg is null or pkg is not Log", "console_log 空包契约消息");
+        YOMK_TEST_CHECK(r.m_msg == "pkg is not Log, got 'null'", "console_log 空包契约消息(实际类型 null)");
     }
     // console_log 收错类型包（String）→ 同分支 ResStatus::Failed
     {
         auto r = yomk::server().url("/YomkLogger/console_log").msg(yomk::msgs::String::shared(std::string("wrong"))).request();
         YOMK_TEST_CHECK(r.m_status == yomk::payload::ResStatus::Failed, "console_log 错类型包返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(r.m_msg == "pkg is null or pkg is not Log", "console_log 错类型包契约消息");
+        YOMK_TEST_CHECK(r.m_msg == "pkg is not Log, got 'String'", "console_log 错类型包契约消息(实际类型名)");
     }
     // file_log / write_file_log / create_file_logger / logger 空包
     YOMK_TEST_CHECK(yomk::server().url("/YomkLogger/file_log").request().m_status == yomk::payload::ResStatus::Failed, "file_log nullptr 包返回 ResStatus::Failed");
@@ -1075,12 +1075,12 @@ YOMK_TEST_CHECK(
     {
         auto rNull = yomk::server().url("/YomkLogger/delete_logger").request();
         YOMK_TEST_CHECK(
-            (rNull.m_status == yomk::payload::ResStatus::Failed && rNull.m_msg == "pkg is null or pkg is not String"),
-            "S8: delete_logger nullptr 包返回 ResStatus::Failed + 契约消息");
+            (rNull.m_status == yomk::payload::ResStatus::Failed && rNull.m_msg == "pkg is not String, got 'null'"),
+            "S8: delete_logger nullptr 包返回 ResStatus::Failed + 具体契约消息(实际类型 null)");
         auto rWrong = yomk::server().url("/YomkLogger/delete_logger").msg(yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "x", "y"})).request();
         YOMK_TEST_CHECK(
-            (rWrong.m_status == yomk::payload::ResStatus::Failed && rWrong.m_msg == "pkg is null or pkg is not String"),
-            "S8: delete_logger 错类型包（Log）返回 ResStatus::Failed + 契约消息");
+            (rWrong.m_status == yomk::payload::ResStatus::Failed && rWrong.m_msg == "pkg is not String, got 'Log'"),
+            "S8: delete_logger 错类型包（Log）返回 ResStatus::Failed + 具体契约消息(实际类型名)");
     }
 }
 

@@ -149,16 +149,16 @@ int main()
             auto s = yomk::msgs::unpack<yomk::msgs::String>(pkg);
             if (!s)
             {
-                return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+                return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
             }
             return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, s->d);
         };
         yomk::payload::Response nullResp = unpackResp(nullptr);
-        YOMK_TEST_CHECK(nullResp.m_status == yomk::payload::ResStatus::Failed && nullResp.m_msg == "pkg is null or pkg is not String",
-              "unpack null pkg：服务函数级判空返回 ResStatus::Failed + 契约消息");
+        YOMK_TEST_CHECK(nullResp.m_status == yomk::payload::ResStatus::Failed && nullResp.m_msg == "pkg is not String, got 'null'",
+              "unpack null pkg：服务函数级判空返回 ResStatus::Failed + 具体契约消息(实际类型 null)");
         yomk::payload::Response nameMissResp = unpackResp(fakeNamePkg);
-        YOMK_TEST_CHECK(nameMissResp.m_status == yomk::payload::ResStatus::Failed && nameMissResp.m_msg == "pkg is null or pkg is not String",
-              "unpack 名字不匹配：同款契约消息");
+        YOMK_TEST_CHECK(nameMissResp.m_status == yomk::payload::ResStatus::Failed && nameMissResp.m_msg == "pkg is not String, got 'Int32'",
+              "unpack 名字不匹配：具体契约消息(实际类型名)");
         yomk::payload::Response hitResp = unpackResp(okPkg);
         YOMK_TEST_CHECK(hitResp.m_status == yomk::payload::ResStatus::Succeeded && hitResp.m_msg == "hello",
               "unpack 命中：解包指针可用且 d 正确");

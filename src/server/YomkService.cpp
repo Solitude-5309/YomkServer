@@ -27,7 +27,7 @@ void YomkService::name(const std::string& name)
 {
     if (name.empty())
     {
-        YOMK_DIAG_ERROR("name is empty, set name failed, use default name");
+        YOMK_DIAG_WARN("name is empty, set name failed, use default name");
         return;
     }
 

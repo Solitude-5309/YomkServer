@@ -137,7 +137,7 @@ void ConsoleLogger::log(LogLevel logLevel, const std::string& tag, const std::st
             std::cout << timeStr << " " << YOMK_DIAG_TAG_FATAL << " [" << tagShown << "] " << log << std::endl;
             break;
         default:
-            YOMK_DIAG_ERROR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
+            YOMK_DIAG_WARN("unknown log level " + std::to_string(logLevel) + ", fallback to Info");
             std::cout << timeStr << " " << YOMK_DIAG_TAG_INFO << " [" << tagShown << "] " << log << std::endl;
             break;
     }

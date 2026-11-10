@@ -29,23 +29,23 @@ static bool parseRequestUrl(std::string_view url, std::string_view& srvName, std
     if (url.empty() || url[0] != '/')
     {
         errMsg = "url parse error: " + std::string(url) + ", please start with /";
-        YOMK_DIAG_ERROR(errMsg);
+        YOMK_DIAG_WARN(errMsg);
         return false;
     }
 
     size_t posEnd = url.find('/', 1);
     if (posEnd == std::string::npos)
     {
-        errMsg = "url parse error: " + std::string(url) + ", not found service name.";
-        YOMK_DIAG_ERROR(errMsg);
+        errMsg = "url parse error: " + std::string(url) + ", no service name";
+        YOMK_DIAG_WARN(errMsg);
         return false;
     }
 
     srvName = url.substr(0, posEnd);
     if (srvName.empty())
     {
-        errMsg = "url parse error: srv is empty. ";
-        YOMK_DIAG_ERROR(errMsg);
+        errMsg = "url parse error: srv name is empty";
+        YOMK_DIAG_WARN(errMsg);
         return false;
     }
 
@@ -53,7 +53,7 @@ static bool parseRequestUrl(std::string_view url, std::string_view& srvName, std
     if (funcName.empty())
     {
         errMsg = "url parse error: function name is empty";
-        YOMK_DIAG_ERROR(errMsg);
+        YOMK_DIAG_WARN(errMsg);
         return false;
     }
 
@@ -74,7 +74,7 @@ int YomkServer::startService(std::vector<std::string> srvNames)
         auto it = serviceCreators.find(srvName);
         if (it == serviceCreators.end())
         {
-            YOMK_DIAG_ERROR("yomk does not support service: " + srvName);
+            YOMK_DIAG_WARN("yomk does not support service: " + srvName);
             continue;
         }
 
@@ -91,7 +91,7 @@ int YomkServer::addService(YomkService* srv)
 {
     if (!srv)
     {
-        YOMK_DIAG_ERROR("service is null, please check the service.");
+        YOMK_DIAG_WARN("service is null, please check the service");
         return -1;
     }
 
@@ -187,6 +187,6 @@ void YomkServer::asyncRequest(std::string_view url, YomkMsgPtr pkg, YomkResponse
     };
     if (!m_p->postRequestTask(callback))
     {
-        YOMK_DIAG_ERROR("server is shutting down, async request ignored.");
+        YOMK_DIAG_ERROR("server is shutting down, async request ignored");
     }
 }

@@ -9,7 +9,7 @@ void YomkServicePrivate::name(const std::string& name)
 {
     if (m_registered)
     {
-        YOMK_DIAG_ERROR("service is registered, rename is not allowed -> " + name);
+        YOMK_DIAG_WARN("service rename refused, already registered, refused name '" + name + "'");
         return;
     }
     m_name = name;
@@ -20,21 +20,21 @@ void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFun
 {
     if (funcName.empty() || funcName[0] != '/')
     {
-        YOMK_DIAG_ERROR("function name parse error: " + funcName + ", please start with /");
+        YOMK_DIAG_WARN("function name parse error: " + funcName + ", please start with /");
         return;
     }
 
     // 空函数对象拒绝安装:否则 invoke 命中后执行空 std::function 抛 bad_function_call 终止进程
     if (!func)
     {
-        YOMK_DIAG_ERROR("function is null, install function refused -> " + funcName);
+        YOMK_DIAG_WARN("function is null, install function refused: " + funcName);
         return;
     }
 
     std::unique_lock<std::shared_mutex> lock(m_funcMapMtx);
     if (m_funcMap.find(funcName) != m_funcMap.end())
     {
-        YOMK_DIAG_ERROR("install function already exists -> " + funcName + ", update to current function");
+        YOMK_DIAG_INFO("function '" + funcName + "' already exists, replace with current function");
     }
 
     m_funcMap[funcName] = func;
@@ -76,7 +76,6 @@ yomk::payload::Response YomkServicePrivate::invoke(std::string_view funcName, Yo
 {
     if (funcName.empty() || funcName[0] != '/')
     {
-        YOMK_DIAG_ERROR("function name parse error: " + std::string(funcName) + ", please start with /");
         return {yomk::payload::ResStatus::Failed, "function name parse error: " + std::string(funcName) + ", please start with /"};
     }
 
@@ -86,8 +85,6 @@ yomk::payload::Response YomkServicePrivate::invoke(std::string_view funcName, Yo
         auto iter = m_funcMap.find(funcName);
         if (iter == m_funcMap.end())
         {
-            YOMK_DIAG_ERROR(
-                "function not found -> " + std::string(funcName) + ", please use installFunc to install this function.");
             return {yomk::payload::ResStatus::Failed, "function not found: " + std::string(funcName)};
         }
         tmpFunc = iter->second;
@@ -101,7 +98,7 @@ yomk::payload::Response YomkServicePrivate::request(std::string_view url, YomkMs
     auto server = m_weakServer.lock();
     if (!server)
     {
-        YOMK_DIAG_ERROR("server has been destroyed, request ignored.");
+        YOMK_DIAG_ERROR("server has been destroyed, request ignored");
         return {yomk::payload::ResStatus::Failed, "server has been destroyed"};
     }
 
@@ -113,7 +110,7 @@ void YomkServicePrivate::asyncRequest(std::string_view url, YomkMsgPtr pkg, Yomk
     auto server = m_weakServer.lock();
     if (!server)
     {
-        YOMK_DIAG_ERROR("server has been destroyed, async request ignored.");
+        YOMK_DIAG_ERROR("server has been destroyed, async request ignored");
         return;
     }
     server->asyncRequest(url, pkg, func);

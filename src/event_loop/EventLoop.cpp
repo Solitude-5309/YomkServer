@@ -17,7 +17,7 @@ int EventLoop::start()
 {
     if (m_running.load())
     {
-        YOMK_DIAG_ERROR("EventLoop already running, please do not start it again");
+        YOMK_DIAG_INFO("event loop already running, start is idempotent");
         return 0;
     }
     m_running.store(true);
@@ -85,14 +85,12 @@ int EventLoop::post(yomk::msgs::EventPtr event)
 {
     if (!m_running.load())
     {
-        YOMK_DIAG_ERROR("EventLoop not running, please start event loop.");
         return 2;  // 循环未运行投递被拒,与入队成功(0)/事件为空(1)区分,供上层映射错误码
     }
 
     if (!event)
     {
-        YOMK_DIAG_ERROR("EventLoop: event is null, please check event");
-        return 1;
+        return 1;  // 事件为空不可达(API 宏总构造有效事件),防御守卫仅返回码
     }
 
     {
@@ -117,14 +115,12 @@ int EventLoop::postWait(yomk::msgs::EventPtr event)
 {
     if (!m_running.load())
     {
-        YOMK_DIAG_ERROR("EventLoop not running, please start event loop.");
         return 2;  // 循环未运行投递被拒,与入队成功(0)/事件为空(1)区分
     }
 
     if (!event)
     {
-        YOMK_DIAG_ERROR("EventLoop: event is null, please check event");
-        return 1;
+        return 1;  // 事件为空不可达(API 宏总构造有效事件),防御守卫仅返回码
     }
 
     // 自 join 防护读取持队列锁:与 start() 持锁 move-assign m_worker 互斥串行,避免无锁并发读写
@@ -213,8 +209,7 @@ void EventLoop::run()
         }
         if (!event)
         {
-            YOMK_DIAG_ERROR("EventLoop: event is null, please check event");
-            continue;
+            continue;  // 事件为空不可达(API 宏总构造有效事件),防御守卫仅跳过
         }
 
         try

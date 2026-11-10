@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <cstddef>
 #include <cstdlib>
 #include <functional>
@@ -280,6 +281,7 @@ public:
     void init()
     {
         static std::once_flag initFlag;
+        static std::atomic<bool> initDone{false};
         std::call_once(
             initFlag,
             [asyncThreadCount = m_asyncThreadCount]()
@@ -289,7 +291,14 @@ public:
                     {"/YomkFunctionPool", "/YomkContext", "/YomkEventLoop", "/YomkLogger", "/YomkServerInfo"});
                 YomkServerRef::setServer(server);
                 std::atexit([]() { YomkServerRef::holder().destroy(); });
+                initDone.store(true, std::memory_order_release);
             });
+        // 二调守卫:shutdown 后再 init 是静默 no-op,用户会误以为初始化成功 ——
+        // 补 WARN 指出实际状态(幂等语义不变,不支持二次初始化)
+        if (initDone.load(std::memory_order_acquire) && !YomkServerRef::serverSnapshot())
+        {
+            YOMK_DIAG_WARN("server already shut down, init ignored (re-init is not supported)");
+        }
     }
     /**
      * @brief Get the global singleton snapshot

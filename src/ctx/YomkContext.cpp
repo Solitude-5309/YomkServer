@@ -53,7 +53,7 @@ ContextGroup* YomkContext::findGroup(const std::string& groupName, yomk::payload
 {
     if (groupName.empty())
     {
-        YOMK_DIAG_ERROR("group name is empty, please check Context.m_group.");
+        YOMK_DIAG_WARN("group name is empty, please check Context.m_group");
         resp = yomk::payload::Response(yomk::payload::ResStatus::Failed, "group name is empty");
         return nullptr;
     }
@@ -87,7 +87,7 @@ yomk::payload::Response YomkContext::create(YomkMsgPtr pkg)
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(pkg);
     if (!context)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Context"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not Context, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(context->d.m_group, fail);
@@ -100,15 +100,15 @@ yomk::payload::Response YomkContext::create(YomkMsgPtr pkg)
     int rc = group->create(context->d.m_key, context->d.m_value);
     if (rc == 1)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key is empty");
     }
     if (rc == 2)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "value is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "create context key '" + context->d.m_key + "' failed: value is empty");
     }
     if (rc == 3)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key already exists");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key '" + context->d.m_key + "' already exists");
     }
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "create context success");
 }
@@ -118,7 +118,7 @@ yomk::payload::Response YomkContext::destroy(YomkMsgPtr pkg)
     auto groupKey = yomk::msgs::unpack<yomk::msgs::ContextGroupKey>(pkg);
     if (!groupKey)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ContextGroupKey"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not ContextGroupKey, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(groupKey->d.m_group, fail);
@@ -131,7 +131,7 @@ yomk::payload::Response YomkContext::destroy(YomkMsgPtr pkg)
     int rc = group->destroy(groupKey->d.m_key);
     if (rc != 0)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is not exist");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key '" + groupKey->d.m_key + "' does not exist");
     }
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "destroy context success");
 }
@@ -141,7 +141,7 @@ yomk::payload::Response YomkContext::get(YomkMsgPtr pkg)
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(pkg);
     if (!context)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Context"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not Context, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(context->d.m_group, fail);
@@ -155,11 +155,11 @@ yomk::payload::Response YomkContext::get(YomkMsgPtr pkg)
     int rc = group->get(context->d.m_key, context->d.m_value, value);
     if (rc == 1)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is empty, return default value.", value);
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key is empty, return default value", value);
     }
     if (rc == 2)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is not exist, return default value.", value);
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key '" + context->d.m_key + "' does not exist, return default value", value);
     }
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "get context success", value);
 }
@@ -169,7 +169,7 @@ yomk::payload::Response YomkContext::set(YomkMsgPtr pkg)
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(pkg);
     if (!context)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not Context"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not Context, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(context->d.m_group, fail);
@@ -178,27 +178,12 @@ yomk::payload::Response YomkContext::set(YomkMsgPtr pkg)
         return fail;
     }
 
-    // 返回码映射(约定见 ContextGroup::set):0 成功 / 1 key 为空 / 2 key 不存在 / 3 类型不匹配 / 4 checker 拒绝 / 5 value 为空
-    int rc = group->set(context->d.m_key, context->d.m_value);
-    if (rc == 1)
+    // 失败文案经 detail 透传(ContextGroup::set 失败时已携带 key 值与期望/实际类型名,此处无需再分支拼装)
+    std::string detail;
+    int rc = group->set(context->d.m_key, context->d.m_value, detail);
+    if (rc != 0)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is empty");
-    }
-    if (rc == 2)
-    {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is not exist");
-    }
-    if (rc == 3)
-    {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context type not match");
-    }
-    if (rc == 4)
-    {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "checker reject set context");
-    }
-    if (rc == 5)
-    {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "value is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, detail);
     }
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "set context success");
 }
@@ -208,7 +193,7 @@ yomk::payload::Response YomkContext::turnOnChecker(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -226,7 +211,7 @@ yomk::payload::Response YomkContext::turnOffChecker(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -244,7 +229,7 @@ yomk::payload::Response YomkContext::turnOnMonitor(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -262,7 +247,7 @@ yomk::payload::Response YomkContext::turnOffMonitor(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -280,7 +265,7 @@ yomk::payload::Response YomkContext::setChecker(YomkMsgPtr pkg)
     auto checker = yomk::msgs::unpack<yomk::msgs::ContextChecker>(pkg);
     if (!checker)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ContextChecker"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not ContextChecker, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(checker->d.m_group, fail);
@@ -293,15 +278,15 @@ yomk::payload::Response YomkContext::setChecker(YomkMsgPtr pkg)
     int rc = group->setChecker(checker->d.m_key, checker->d.m_checkFunc);
     if (rc == 1)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "set checker key is empty");
     }
     if (rc == 2)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "checkFunc is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "set checker key '" + checker->d.m_key + "' failed: checkFunc is empty");
     }
     if (rc == 3)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is not exist");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key '" + checker->d.m_key + "' does not exist");
     }
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "set checker success");
 }
@@ -311,7 +296,7 @@ yomk::payload::Response YomkContext::setMonitor(YomkMsgPtr pkg)
     auto monitor = yomk::msgs::unpack<yomk::msgs::ContextMonitor>(pkg);
     if (!monitor)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ContextMonitor"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not ContextMonitor, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(monitor->d.m_group, fail);
@@ -324,15 +309,15 @@ yomk::payload::Response YomkContext::setMonitor(YomkMsgPtr pkg)
     int rc = group->setMonitor(monitor->d.m_key, monitor->d.m_contextMonitorFunc, monitor->d.m_asyncMonitor);
     if (rc == 1)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "set monitor key is empty");
     }
     if (rc == 2)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context monitor function is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "set monitor key '" + monitor->d.m_key + "' failed: monitor function is empty");
     }
     if (rc == 3)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is not exist");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key '" + monitor->d.m_key + "' does not exist");
     }
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "set context monitor success");
 }
@@ -357,7 +342,7 @@ yomk::payload::Response YomkContext::keys(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -375,7 +360,7 @@ yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr pkg)
     auto groupKey = yomk::msgs::unpack<yomk::msgs::ContextGroupKey>(pkg);
     if (!groupKey)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ContextGroupKey"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not ContextGroupKey, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(groupKey->d.m_group, fail);
@@ -389,11 +374,11 @@ yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr pkg)
     int rc = group->keyInfo(groupKey->d.m_key, info);
     if (rc == 1)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key is empty");
     }
     if (rc == 2)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "key is not exist");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key '" + groupKey->d.m_key + "' does not exist");
     }
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::ContextKeyInfo::shared(info)};
 }

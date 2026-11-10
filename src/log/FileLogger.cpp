@@ -184,7 +184,7 @@ void FileLogger::log(LogLevel logLevel, const std::string& tag, const std::strin
             appendLine(" " YOMK_DIAG_TAG_FATAL " ");
             break;
         default:
-            YOMK_DIAG_ERROR("Unknown log level: " + std::to_string(logLevel) + ", using Info level instead.");
+            YOMK_DIAG_WARN("unknown log level " + std::to_string(logLevel) + ", fallback to Info");
             appendLine(" " YOMK_DIAG_TAG_INFO " ");
             break;
     }

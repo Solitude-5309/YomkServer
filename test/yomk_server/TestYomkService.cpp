@@ -93,7 +93,7 @@ private:
         auto data = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!data)
         {
-            return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+            return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
         }
         return {yomk::payload::ResStatus::Succeeded, "echo:" + data->d};
     }

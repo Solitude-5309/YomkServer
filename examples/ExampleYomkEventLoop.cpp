@@ -191,7 +191,7 @@ yomk::payload::Response motionHandle(YomkMsgPtr pkg)
     auto cmd = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!cmd)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     std::ostringstream oss;
     oss << "执行运动指令: " << cmd->d << "（循环线程 " << std::this_thread::get_id() << "）";
@@ -219,7 +219,7 @@ yomk::payload::Response teachHandle(YomkMsgPtr pkg)
     auto msg = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!msg)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     std::ostringstream oss;
     oss << "示教器事件: " << msg->d << "（循环线程 " << std::this_thread::get_id() << "）";

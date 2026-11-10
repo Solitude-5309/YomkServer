@@ -115,7 +115,7 @@ protected:
             auto self = weakSelf.lock();
             if (!self || self->isDeleted())
             {
-                YOMK_DIAG_ERROR("service has been deleted or unregistered, callback ignored.");
+                YOMK_DIAG_ERROR("service has been deleted or unregistered, callback ignored");
                 if constexpr (std::is_void_v<Ret>)
                     return;
                 else if constexpr (std::is_same_v<Ret, yomk::payload::Response>)

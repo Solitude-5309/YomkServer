@@ -171,7 +171,7 @@ yomk::payload::Response payloadSum(YomkMsgPtr pkg)
     auto loads = yomk::msgs::unpack<yomk::msgs::StringArray>(pkg);
     if (!loads)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not StringArray"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not StringArray, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
 
     std::ostringstream oss;
@@ -198,7 +198,7 @@ yomk::payload::Response handshake(YomkMsgPtr pkg)
     auto worker = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!worker)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     std::ostringstream oss;
     oss << "班次握手工具执行：向 " << worker->d << " 回执问候";
@@ -294,7 +294,7 @@ static void showArmToolHotSwap()
         auto worker = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!worker)
         {
-            return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+            return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
         }
         std::ostringstream oss;
         oss << "班次握手工具 V2 执行：向 " << worker->d << " 升级问候";

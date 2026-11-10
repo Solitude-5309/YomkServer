@@ -103,7 +103,7 @@ public:
         auto sp = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!sp)
         {
-            return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+            return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
         }
         return {yomk::payload::ResStatus::Succeeded, sp->d};
     }

@@ -51,7 +51,8 @@ public:
     // 命中时 value 填现值,key 为空或未命中时填 defaultValue;返回:0 命中 / 1 key 为空 / 2 key 不存在
     int get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPtr& value);
     // 返回:0 成功 / 1 key 为空 / 2 key 不存在 / 3 类型不匹配 / 4 checker 拒绝 / 5 value 为空
-    int set(const std::string& key, YomkMsgPtr value);
+    // 失败时 detail 填具体原因(含 key 值与期望/实际类型名),供 Response 文案直接透传;detail 恒被覆盖(成功填 "ok")
+    int set(const std::string& key, YomkMsgPtr value, std::string& detail);
     // 开关无失败分支
     void turnOnChecker();
     void turnOffChecker();

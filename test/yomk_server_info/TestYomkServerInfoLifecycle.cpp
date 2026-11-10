@@ -176,7 +176,7 @@ public:
         auto yText = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!yText)
         {
-            return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not String"};
+            return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
         }
         return {yomk::payload::ResStatus::Succeeded, yText->d};
     }
