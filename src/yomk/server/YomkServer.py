@@ -27,12 +27,13 @@ class YomkServer:
         return cls(async_thread_count)
 
     def start_service(self, srv_names):
-        # 延迟导入内置服务，避免 server 在模块级反向依赖各扩展域
-        from yomk.ctx import YomkContext
-        from yomk.event_loop import YomkEventLoop
-        from yomk.fn_pool import YomkFunctionPool
-        from yomk.log import YomkLogger
-        from yomk.srv_info import YomkServerInfo
+        # 延迟导入内置服务，避免 server 在模块级反向依赖各扩展域；
+        # 内部类走子模块路径（U-12 公开面收敛后包根不再导出内部类）
+        from yomk.ctx.YomkContext import YomkContext
+        from yomk.event_loop.YomkEventLoop import YomkEventLoop
+        from yomk.fn_pool.YomkFunctionPool import YomkFunctionPool
+        from yomk.log.YomkLogger import YomkLogger
+        from yomk.srv_info.YomkServerInfo import YomkServerInfo
 
         # 内置服务映射表（键名带 / 前缀）
         service_creators = {

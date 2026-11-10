@@ -27,8 +27,10 @@ import threading
 import time
 
 from yomk.msg.server import ResStatus, Response
+from yomk.msg.event_loop import EventLoopInfo
 from yomk.server import server as server_api
-from yomk.event_loop import Event, EventLoop, event_loop
+from yomk.event_loop import event_loop
+from yomk.event_loop.EventLoop import Event, EventLoop  # 白盒测试直用内部类，非公开面
 
 FAILED = 0
 
@@ -75,6 +77,20 @@ def wait_until(pred, timeout_s):
         time.sleep(0.001)
     return pred()
 
+
+def _info_line(loop, loop_name, tag_count=3):
+    # 展示层拼行（原 EventLoop.info_line 展示逻辑；公开面收敛后框架只回
+    # info_snapshot 结构化数据，拼行格式由用户侧定义）
+    info = EventLoopInfo()
+    loop.info_snapshot(info, tag_count)
+    tag_list = ", ".join(tag if tag else "-" for tag in info.next_tags)
+    return (loop_name + (" running:on" if info.running else " running:off") +
+            " pending:" + str(info.pending) +
+            (" defaultFunc:on" if info.has_default_func else " defaultFunc:off") +
+            ((" [" + info.msg_name + "]") if info.has_default_func and info.msg_name else "") +
+            " nextNEventTag(" + str(tag_count) + "): " + tag_list)
+
+
 def check(cond, msg):
     global FAILED
     if not cond:
@@ -108,7 +124,7 @@ def section_1():
         th.join()
     check(post_ok[0] == 320, "S1 并发 post 全部返回 0（320/320）")
 
-    check(wait_until(lambda: "pending:0" in loop.info_line(
+    check(wait_until(lambda: "pending:0" in _info_line(loop, 
         "conc1", 0), 5.0), "S1 队列排空（drain 完成）")
 
     ids = list(EXEC_IDS)
@@ -185,7 +201,7 @@ def section_3():
     check(wait_rc_ok[0] == 80, "S3 全部 postWait 返回 0（80/80）")
     check(wait_resp_ok[0] == 80, "S3 全部返回时响应已填充 eOk（80/80）")
     check(len(EXEC_COUNT) == 80, "S3 总执行数守恒（80/80）")
-    check("pending:0" in loop.info_line("conc3", 0), "S3 完成后 pending:0")
+    check("pending:0" in _info_line(loop, "conc3", 0), "S3 完成后 pending:0")
 
     loop.destroy()
 
@@ -231,7 +247,7 @@ def section_4():
     check(loop.start() == 0, "S4 churn 结束后确保运行态（幂等）")
     expected = accepted_post[0] + accepted_wait[0]
     check(wait_until(
-        lambda: len(EXEC_COUNT) == expected and "pending:0" in loop.info_line("conc4", 0), 5.0),
+        lambda: len(EXEC_COUNT) == expected and "pending:0" in _info_line(loop, "conc4", 0), 5.0),
         "S4 churn 后队列排空（drain 完成）")
     check(len(EXEC_COUNT) == expected,
           "S4 精确计数守恒：executed==accepted（rc==0 必入队、stop 保留、最终执行）")

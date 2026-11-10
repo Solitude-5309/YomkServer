@@ -6,10 +6,10 @@ from yomk.msg.ctx import CheckStatus, Context, ContextKeyInfo
 
 class Monitor:
     monitor_func: Optional[Callable[[Context], None]]
-    async_monitor_func: Any
+    async_monitor: bool
 
     def __init__(self, monitor_func: Optional[Callable[[Context], None]] = None,
-                 async_monitor_func: Any = False) -> None: ...
+                 async_monitor: bool = False) -> None: ...
 
 
 class ContextEntry:

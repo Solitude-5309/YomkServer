@@ -29,7 +29,9 @@ g_failed = 0
 DOMAINS = ["server", "boot", "ctx", "fn_pool", "event_loop", "log", "srv_info",
            "url.fn_pool", "url.log", "url.srv_info", "url.ctx", "url.event_loop"]
 
-# 域名 → __all__ 快照（与各域 src/yomk/<域>/__init__.py 定型清单一致）
+# 域名 → __all__ 快照（与各域 src/yomk/<域>/__init__.py 定型清单一致；
+# 公开面对齐 C++ 口径：仅域入口 + builder + payload + YomkService 基类，
+# 服务类/内部类不导出（U-12 决策 a)，__version__ 保留））
 EXPECTED = {
     "server": [
         "__version__",
@@ -43,29 +45,25 @@ EXPECTED = {
     "ctx": [
         "__version__",
         "ctx", "ContextBuilder", "ContextValueBuilder", "GroupSwitch",
-        "ContextGroup", "ContextEntry", "Monitor", "YomkContext",
     ],
     "fn_pool": [
         "__version__",
         "fn_pool", "FnPoolBuilder",
-        "YomkFunctionPool",
     ],
     "event_loop": [
         "__version__",
         "event_loop", "EventLoopBuilder",
-        "Event", "EventLoop", "YomkEventLoop",
+        "Event",
     ],
     "log": [
         "__version__",
         "log", "log_mgr",
         "LogBuilder", "SinkLogBuilder", "ConsoleMgrBuilder", "FileMgrBuilder",
         "LocBuilder", "LogMgrBuilder",
-        "ConsoleLogger", "FileLogger", "YomkLogger",
     ],
     "srv_info": [
         "__version__",
         "srv_info", "SrvInfoBuilder",
-        "YomkServerInfo",
     ],
     # url 常量池（yomk.url 命名空间 + 各域子包，与 msg 同构）：无 __version__（非版本化域），
     # 逐域轮次扩充（第 2 轮 fn_pool、第 3 轮 log、第 4 轮 srv_info、第 5 轮 ctx、第 6 轮 event_loop）

@@ -28,7 +28,7 @@ Python 链对象按值持有、无悬垂风险，但 `log()` 域入口在调用�
 | 链 | 终结与返回 |
 |---|---|
 | `server().async_thread(n)` | `.init()`：初始化单例并自动启动内置服务（Logger / Context / EventLoop / FunctionPool / ServerInfo），无返回值；`n` 为异步请求线程池大小（省略 = 0 自动检测），仅首次生效；进程内幂等，并挂 atexit 兜底销毁。派生服务的 `init()` 建议显式 `return 0` 表示初始化成功 |
-| — | `.version()`：版本字符串，免初始化可用 |
+| — | `.version()`：版本字符串，免初始化可用。C++ 与 Python 双侧实现为独立分包，各自维护版本号、独立演进（字符串仅作展示识别，不承载跨侧兼容语义） |
 | — | `.instance()`：全局单例 `YomkServer`；未初始化返回 `None`（`shutdown()` 后亦为 `None`，见"注意事项"） |
 | — | `.shutdown()`：关闭服务器（见"注意事项"）；未初始化空转 |
 | `server().srv(cls, name)` | `.create()` → `int`：创建并注册 `YomkService` 派生服务；`name` 省略则沿用构造时的默认名；0 成功，-1 失败（未初始化 / 未先调 `srv()` / `init()` 非 0） |

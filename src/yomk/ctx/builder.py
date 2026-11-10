@@ -136,11 +136,10 @@ class ContextBuilder:
                 CTX_SET_CHECKER,
                 ContextChecker(self._key, self._checker, self._group)))
         if self._cb_kind == "monitor":
-            if self._async_monitor:
-                # 异步形态：同步位 no-op 占位，异步位承载用户回调
-                pkg = ContextMonitor(self._key, lambda c: None, self._monitor, self._group)
-            else:
-                pkg = ContextMonitor(self._key, self._monitor, False, self._group)
+            # 单回调+布尔标志（对齐 C++ ContextMonitor 形状）：同一回调，
+            # async_monitor 决定同步派发/异步池投递
+            pkg = ContextMonitor(self._key, self._monitor,
+                                 self._async_monitor, self._group)
             return _facade.chain_status(
                 _facade.api_request(CTX_SET_MONITOR, pkg))
         diag_error("apply: no checker/monitor accumulated")

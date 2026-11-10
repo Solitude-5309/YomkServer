@@ -20,7 +20,7 @@ TestYomkEventLoopLifecycle.py - EventLoop 三段语义（start 重启续跑 / st
 
 说明：白盒段直连 EventLoop 类；API 段 server_api().async_thread(1).init() 拉起内置 /YomkEventLoop，
       末尾 server_api().shutdown() 收尾（进程级幂等，shutdown 后不可再初始化）。
-      停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询 info_line 至 running:off
+      停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询展示行（_info_line，info_snapshot 拼行）至 running:off
       确认 m_running 已置位后才释放阻塞事件，杜绝工作线程抢跑后续排队事件的竞态（确定性断言）。
       阻塞门用 threading.Event 实现（1ms 轮询粒度由 wait/Event.wait 内化）。
 
@@ -36,7 +36,9 @@ import weakref
 from yomk.msg.server import ResStatus, Response
 from yomk.msg.event_loop import EventLoopInfo, EventLoopPkg
 from yomk.server import server as server_api
-from yomk.event_loop import Event, EventLoop, YomkEventLoop, event_loop
+from yomk.event_loop import event_loop
+from yomk.event_loop.EventLoop import Event, EventLoop  # 白盒测试直用内部类，非公开面
+from yomk.event_loop.YomkEventLoop import YomkEventLoop
 
 FAILED = 0
 
@@ -110,6 +112,20 @@ def counting_handler(tag):
         return Response(ResStatus.eOk, "counted: " + tag)
     return _handler
 
+
+def _info_line(loop, loop_name, tag_count=3):
+    # 展示层拼行（原 EventLoop.info_line 展示逻辑；公开面收敛后框架只回
+    # info_snapshot 结构化数据，拼行格式由用户侧定义）
+    info = EventLoopInfo()
+    loop.info_snapshot(info, tag_count)
+    tag_list = ", ".join(tag if tag else "-" for tag in info.next_tags)
+    return (loop_name + (" running:on" if info.running else " running:off") +
+            " pending:" + str(info.pending) +
+            (" defaultFunc:on" if info.has_default_func else " defaultFunc:off") +
+            ((" [" + info.msg_name + "]") if info.has_default_func and info.msg_name else "") +
+            " nextNEventTag(" + str(tag_count) + "): " + tag_list)
+
+
 def check(cond, msg):
     global FAILED
     if not cond:
@@ -119,7 +135,7 @@ def check(cond, msg):
         print("[ OK ]", msg)
 
 def line_of(loop, name, tag_count=3):
-    line = loop.info_line(name, tag_count)
+    line = _info_line(loop, name, tag_count)
     return line if line else ""
 
 def info_of_api(name, tag_count=None):
@@ -602,7 +618,7 @@ def section_12():
     e2 = Event("wb", None, counting_handler("e2"), "e2")
     e2.m_waitCallback = marker.set
     check(holder[0].post(e2) == 0, "post 事件 e2 返回 0（携带等待回调）")
-    check(wait_until(lambda: "pending:1" in holder[0].info_line(
+    check(wait_until(lambda: "pending:1" in _info_line(holder[0], 
         "wb", 3), 2.0), "e2 已入队（pending:1）")
     time.sleep(0.1)  # 确保 e2 稳定排队
 
@@ -610,7 +626,7 @@ def section_12():
     # python 运行中栈帧持 self 强引用，"worker 执行中析构"不可达；stop 后帧消亡，失去引用方可触发 __del__
     stopper = threading.Thread(target=holder[0].stop)
     stopper.start()
-    check(wait_until(lambda: "running:off" in holder[0].info_line("wb", 3), 2.0),
+    check(wait_until(lambda: "running:off" in _info_line(holder[0], "wb", 3), 2.0),
           "停止置位（worker 将退出，e2 保留在队列）")
     open_gate()
     stopper.join()

@@ -43,12 +43,12 @@ class ContextChecker:
 class ContextMonitor:
     key: str
     monitor_func: Optional[Callable[[Context], None]]
-    async_monitor_func: Any
+    async_monitor: bool
     group: str
 
     def __init__(self, key: str = "",
                  monitor_func: Optional[Callable[[Context], None]] = None,
-                 async_monitor_func: Any = False,
+                 async_monitor: bool = False,
                  group: str = "main") -> None: ...
 
 

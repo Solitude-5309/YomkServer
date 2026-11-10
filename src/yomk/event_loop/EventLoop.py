@@ -3,7 +3,6 @@ import threading
 
 from yomk._diag import error as diag_error
 from yomk._diag import info as diag_info
-from yomk.msg.event_loop import EventLoopInfo
 
 
 class Event:
@@ -170,7 +169,8 @@ class EventLoop:
 
     def info_snapshot(self, info, tag_count):
         # 结构化内省快照：填充事件循环元信息（/YomkEventLoop/loop 返回数据）；
-        # 队列锁内取数；队列头起最多 tag_count 条事件 tag，存原值（空串保留，展示层 "-" 占位由 info_line 处理）
+        # 队列锁内取数；队列头起最多 tag_count 条事件 tag，存原值（空串保留，
+        # 展示层 "-" 占位等拼行格式由用户侧定义，框架只回结构化数据）
         with self.m_queueMutex:
             info.running = self.m_running
             info.pending = self.m_event_queue.qsize()
@@ -178,17 +178,3 @@ class EventLoop:
             info.msg_name = self.m_defaultMsgName
             for event in list(self.m_event_queue.queue)[:tag_count]:
                 info.next_tags.append(event.m_tag if event else "")
-
-    def info_line(self, loop_name, tag_count):
-        # 内省元信息行：结构化快照取数，展示层拼行；
-        # 格式 "名 running:on|off pending:N defaultFunc:on|off [类型名] nextNEventTag(N): tag1, tag2..."
-        info = EventLoopInfo()
-        self.info_snapshot(info, tag_count)
-
-        # 队首最多列出 tag_count 个事件 tag，队列不足则全部列出；空 tag 显示 "-" 占位
-        tag_list = ", ".join(tag if tag else "-" for tag in info.next_tags)
-        return (loop_name + (" running:on" if info.running else " running:off") +
-                " pending:" + str(info.pending) +
-                (" defaultFunc:on" if info.has_default_func else " defaultFunc:off") +
-                ((" [" + info.msg_name + "]") if info.has_default_func and info.msg_name else "") +
-                " nextNEventTag(" + str(tag_count) + "): " + tag_list)

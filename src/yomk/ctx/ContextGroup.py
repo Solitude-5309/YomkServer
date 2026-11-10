@@ -8,9 +8,11 @@ from yomk.msg.ctx import CheckStatus, Context, ContextKeyInfo
 
 
 class Monitor:
-    def __init__(self, monitor_func=None, async_monitor_func=False):
+    # 组内 monitor 存储条目：(回调, 通知形态布尔)，回调与形态正交（对齐
+    # C++ ContextMonitor 单回调+标志形状）
+    def __init__(self, monitor_func=None, async_monitor=False):
         self.monitor_func = monitor_func
-        self.async_monitor_func = async_monitor_func
+        self.async_monitor = async_monitor
 
 
 class ContextEntry:
@@ -147,12 +149,12 @@ class ContextGroup:
             monitor_enabled = self.m_monitorEnabled
             if monitor_enabled:
                 for monitor in monitors_snapshot:
-                    if (monitor.async_monitor_func):
-                        self._post_monitor(monitor.async_monitor_func, data)
+                    if (monitor.async_monitor):
+                        self._post_monitor(monitor.monitor_func, data)
 
         if monitor_enabled:
             for monitor in monitors_snapshot:
-                if not monitor.async_monitor_func:
+                if not monitor.async_monitor:
                     # 同步 monitor 异常防护：用户回调异常记日志吞掉，不击穿 set 调用链，
                     # 单个回调异常不影响后续 monitor 执行
                     try:
@@ -254,7 +256,7 @@ class ContextGroup:
             entry = self.m_contexts[key]
             async_count = 0
             for monitor in entry.monitors:
-                if monitor.async_monitor_func:
+                if monitor.async_monitor:
                     async_count += 1
             info = ContextKeyInfo(
                 key,
@@ -275,7 +277,7 @@ class ContextGroup:
                 entry = self.m_contexts[key]
                 async_count = 0
                 for monitor in entry.monitors:
-                    if monitor.async_monitor_func:
+                    if monitor.async_monitor:
                         async_count += 1
                 infos.append(ContextKeyInfo(
                     key,

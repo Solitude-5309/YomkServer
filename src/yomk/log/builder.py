@@ -1,6 +1,6 @@
 import sys
 
-from yomk.log import _logSourceLoc
+from yomk.log import _logSourceLoc  # 私有子模块（U-12 后包根 __init__ 不再显式携带，靠包内子模块回退解析）
 from yomk.msg.log import (
     ConsoleLogProxy,
     FileLogProxy,
@@ -51,7 +51,7 @@ class SinkLogBuilder:
         self._sink = sink
         self._tag = "main"
 
-    def tag(self, t="main"):
+    def tag(self, t):
         self._tag = t
         return self
 
@@ -92,7 +92,7 @@ class LogBuilder:
         self._loc = loc
         self._tag = "main"
 
-    def tag(self, t="main"):
+    def tag(self, t):
         self._tag = t
         return self
 

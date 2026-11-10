@@ -136,7 +136,7 @@ def s5_struct_defaults():
     check(cck.key == "" and cck.check_func is None,
           "ContextChecker 默认：key 空、check func None")
     cmo = ContextMonitor()
-    check(cmo.key == "" and cmo.monitor_func is None and cmo.async_monitor_func is False,
+    check(cmo.key == "" and cmo.monitor_func is None and cmo.async_monitor is False,
           "ContextMonitor 默认：key 空、func None、async False")
     fi = FuncInfo()
     check(fi.func_name == "" and fi.msg_name == "",

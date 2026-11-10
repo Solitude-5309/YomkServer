@@ -35,7 +35,8 @@ import sys
 import tempfile
 
 from yomk.msg.log import Log
-from yomk.log import ConsoleLogger, FileLogger
+from yomk.log.ConsoleLogger import ConsoleLogger  # 白盒测试直用内部类，非公开面
+from yomk.log.FileLogger import FileLogger
 
 g_failed = 0
 TIME_RE = re.compile(r"\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]")

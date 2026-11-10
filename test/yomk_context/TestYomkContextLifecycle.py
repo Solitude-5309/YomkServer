@@ -24,7 +24,8 @@ import time
 
 from yomk.msg.server import ResStatus
 from yomk.server import YomkServer, server
-from yomk.ctx import YomkContext, ctx
+from yomk.ctx import ctx
+from yomk.ctx.YomkContext import YomkContext  # 白盒测试直用内部类，非公开面
 
 
 g_failed = 0

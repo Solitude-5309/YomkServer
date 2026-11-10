@@ -34,10 +34,12 @@ class ContextChecker:
 
 
 class ContextMonitor:
-    def __init__(self, key="", monitor_func=None, async_monitor_func=False, group="main"):
+    # 单回调 + 布尔标志（对齐 C++ ContextMonitor：回调与通知形态正交两字段，
+    # 形状自洽、裸链跨语言可移植；async_monitor 只传 True/False）
+    def __init__(self, key="", monitor_func=None, async_monitor=False, group="main"):
         self.key = key
         self.monitor_func = monitor_func
-        self.async_monitor_func = async_monitor_func
+        self.async_monitor = async_monitor
         self.group = group                # 目标 key 所属组名（缺省 main）
 
 

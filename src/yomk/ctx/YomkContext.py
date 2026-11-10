@@ -124,7 +124,7 @@ class YomkContext(YomkService):
         rc = group.set_monitor(
             pkg.key,
             pkg.monitor_func,
-            pkg.async_monitor_func)
+            pkg.async_monitor)
         if rc == 1:
             return Response(ResStatus.eInvalid, "set monitor key is empty")
         if rc == 2:

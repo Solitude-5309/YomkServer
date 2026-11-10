@@ -1,6 +1,3 @@
-from yomk.log.ConsoleLogger import ConsoleLogger as ConsoleLogger
-from yomk.log.FileLogger import FileLogger as FileLogger
-from yomk.log.YomkLogger import YomkLogger as YomkLogger
 from yomk.log.builder import ConsoleMgrBuilder as ConsoleMgrBuilder
 from yomk.log.builder import FileMgrBuilder as FileMgrBuilder
 from yomk.log.builder import LocBuilder as LocBuilder

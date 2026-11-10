@@ -206,7 +206,7 @@ def main():
 
     # ============ S5 日志发射（链式发射返回 Succeeded） ============
     ret = log().tag("umbrella").info("umb s5 emit")
-    check(ret == Succeeded, "S5: log().tag().info() Succeeded")
+    check(ret == Succeeded, "S5: log().tag(\"umbrella\").info() Succeeded")
     ret = log_mgr().location().apply()
     check(ret == Succeeded, "S5: location().apply() 恒 Succeeded")
 

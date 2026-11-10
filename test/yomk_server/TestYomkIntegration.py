@@ -37,7 +37,8 @@ from yomk.server import server
 from yomk.ctx import ctx
 from yomk.event_loop import event_loop
 from yomk.srv_info import srv_info
-from yomk.log import YomkLogger, log, log_mgr
+from yomk.log import log, log_mgr
+from yomk.log.YomkLogger import YomkLogger  # 白盒测试直用内部类，非公开面
 
 
 g_failed = 0
