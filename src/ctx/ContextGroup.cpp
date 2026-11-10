@@ -118,13 +118,13 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
     {
         YOMK_DIAG_WARN("key is empty, please check Context.key");
         detail = "set context key is empty";
-        return 1;
+        return kSetEmptyKey;
     }
     if (value == nullptr)
     {
         YOMK_DIAG_WARN("set context key '" + key + "' failed: value is empty");
         detail = "set context key '" + key + "' failed: value is empty";
-        return 5;
+        return kSetValueEmpty;
     }
 
     // 本次提交的键值快照:checker 校验与 monitor 通知统一回传该临时对象
@@ -138,7 +138,7 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
     {
         YOMK_DIAG_WARN("context key '" + key + "' does not exist");
         detail = "context key '" + key + "' does not exist";
-        return 2;
+        return kSetKeyNotExist;
     }
 
     if (itContext->second.value->name() != value->name())
@@ -146,7 +146,7 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
         // 具体值原则:期望/实际类型名一并输出,用户一眼定位类型错配
         YOMK_DIAG_WARN("context type not match: key '" + key + "' expect '" + itContext->second.value->name() + "', got '" + value->name() + "'");
         detail = "context type not match: key '" + key + "' expect '" + itContext->second.value->name() + "', got '" + value->name() + "'";
-        return 3;
+        return kSetTypeMismatch;
     }
 
     // checker 组开关开启且该 key 设置了 checker 才校验;未设 checker 视为放行(accept),
@@ -158,7 +158,7 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
         {
             YOMK_DIAG_WARN("set context key '" + key + "' rejected by checker");
             detail = "set context key '" + key + "' rejected by checker";
-            return 4;
+            return kSetCheckerReject;
         }
     }
 
@@ -213,7 +213,7 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
         }
     }
 
-    return 0;
+    return kSetOk;
 }
 
 void ContextGroup::turnOnChecker()

@@ -183,10 +183,10 @@ yomk::payload::Response YomkContext::set(YomkMsgPtr pkg)
     }
 
     // 失败文案经 detail 透传(ContextGroup::set 失败时已携带 key 值与期望/实际类型名,此处无需再分支拼装)
-    // 三态约定:入参非法(键空/value 空,rc 1/5)= Invalid,业务未命中/冲突(2/3/4)= Failed
+    // 三态约定:入参非法(kSetEmptyKey/kSetValueEmpty)= Invalid,业务未命中/冲突(kSetKeyNotExist/kSetTypeMismatch/kSetCheckerReject)= Failed
     std::string detail;
     int rc = group->set(context->d.key, context->d.value, detail);
-    if (rc == 1 || rc == 5)
+    if (rc == ContextGroup::kSetEmptyKey || rc == ContextGroup::kSetValueEmpty)
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Invalid, detail);
     }
