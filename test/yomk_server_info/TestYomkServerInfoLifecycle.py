@@ -271,8 +271,9 @@ def main():
           "无 / 开头返回 eNo + please start with /")
 
     no_func_part = srv_info().fn_url("/FmtSrv").get_info()
-    check(no_func_part.status == ResStatus.eNo and "not found function name" in no_func_part.msg,
-          "无第二个 / 返回 eNo + not found function name: " + no_func_part.msg)
+    check(no_func_part.status == ResStatus.eNo
+          and no_func_part.msg == "url parse error: /FmtSrv, no function name",
+          "无第二个 / 返回 eNo + url parse error（no function name）: " + no_func_part.msg)
 
     no_srv = srv_info().fn_url("/NoSuchSrv/f").get_info()
     check(no_srv.status == ResStatus.eNo and no_srv.msg == "service not found: /NoSuchSrv",
@@ -283,8 +284,9 @@ def main():
           "函数不存在契约消息精确匹配: " + no_func.msg)
 
     null_pkg = server().url("/YomkServerInfo/function").request()
-    check(null_pkg.status == ResStatus.eNo and "pkg is null" in null_pkg.msg,
-          "null pkg 返回 eNo + pkg is null（解包守卫）")
+    check(null_pkg.status == ResStatus.eNo
+          and null_pkg.msg == "pkg is not String, got 'NoneType'",
+          "null pkg 返回 eNo + unpack 契约消息（NoneType）")
 
     # ============ S4. /all ============
     print("===== S4. /all 端点 =====")

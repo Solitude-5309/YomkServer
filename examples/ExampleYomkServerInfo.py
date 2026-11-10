@@ -187,7 +187,8 @@ class ArmStationService(YomkService):
     def report(self, pkg) -> Response:
         if not isinstance(pkg, str):
             return Response(
-                ResStatus.eNo, " pkg is null or pkg is not String. ")
+                ResStatus.eNo,
+                "pkg is not String, got '" + type(pkg).__name__ + "'")
         log().tag("arm.station").info(f'工位状态上报：收到 "{pkg}"')
         return Response(
             ResStatus.eOk, "station report received: " + pkg)
@@ -196,7 +197,8 @@ class ArmStationService(YomkService):
     def quality_check(self, pkg) -> Response:
         if not isinstance(pkg, QualityCheckReq):
             return Response(
-                ResStatus.eNo, " pkg is null or pkg is not QualityCheckReq. ")
+                ResStatus.eNo,
+                "pkg is not QualityCheckReq, got '" + type(pkg).__name__ + "'")
         log().tag("arm.station").info(f"质量抽检执行：工位 {pkg.station} 抽检 {pkg.count} 件")
         return Response(
             ResStatus.eOk,

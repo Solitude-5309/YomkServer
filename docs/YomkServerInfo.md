@@ -34,6 +34,8 @@ srv_info().all()                                 # 全量服务拓扑（服务 �
 
 ## 说明
 
+- 内省域 URL 常量与 C++ `YomkServerInfoUrl.h` 一一对应，从 `yomk.url.srv_info` 导入：`SRV_SERVICES`（`/YomkServerInfo/services`）、`SRV_FUNCTIONS`（`/YomkServerInfo/functions`）、`SRV_FUNCTION`（`/YomkServerInfo/function`）、`SRV_ALL`（`/YomkServerInfo/all`）；`builder` 内部即用这些常量组链，用户自定义注册亦可直接复用。
+- 诊断契约（经 `yomk._diag` 输出，与 C++ 对齐）：空 `srv_name`、URL 解析失败（无 `/` 前缀、无函数名）、服务未命中走 `WARN`；server 已销毁走 `ERROR`（各 ignored 文案不带句号）；失败路径与载荷类型错配不打诊断。
 - 期望消息类型名通过声明处元数据进入内省：`install_func("/x", fn, "MsgName")` 第三参、`fn_pool().msg_name(m)`、`event_loop().msg_name(m)`，仅作内省元数据，不影响调用。
 - 函数说明通过 `install_func` 第四参或 `fn_pool().description(d)` 声明；`srv_info().fn_url(...).get_info()` 与函数池单查 `fn_pool().fn_name(name).get_info()` 命中均返回结构化 `FuncInfo` 包；未命中返回 `Failed`。
 - 各内置模块另有模块级自省链：
