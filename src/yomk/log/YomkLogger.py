@@ -164,9 +164,8 @@ class YomkLogger(YomkService):
             if self.m_showConsoleInfoLog:
                 console_logger.log(Log.eInfo, pkg.m_tag, pkg.m_log)
 
-        # "success." 带句号为 C++ 逐字契约（YomkLogger.cpp:139，报告第八章 C-1
-        # 未定夺项，逐字复刻不偏离）
-        return Response(ResStatus.eOk, "success.")
+        # 成功文案无尾句号（C-1 已采纳清理，对齐主流开源库机器消费文案惯例）
+        return Response(ResStatus.eOk, "success")
 
     def set_console_log_proxy(self, pkg):
         bad = self._unpack(pkg, ConsoleLogProxy)
@@ -176,8 +175,7 @@ class YomkLogger(YomkService):
         with self.m_consoleLogProxyMutex:
             self.m_consoleLogProxyFunc = pkg.m_consoleLogProxyFunc
             self.m_consoleLogProxy = self.m_consoleLogProxyFunc is not None
-        # "success." 带句号为 C++ 逐字契约（YomkLogger.cpp:154，C-1 未定夺项）
-        return Response(ResStatus.eOk, "success.")
+        return Response(ResStatus.eOk, "success")
 
     def set_file_log_proxy(self, pkg):
         bad = self._unpack(pkg, FileLogProxy)
@@ -187,8 +185,7 @@ class YomkLogger(YomkService):
         with self.m_fileLogProxyMutex:
             self.m_fileLogProxyFunc = pkg.m_fileLogProxyFunc
             self.m_fileLogProxy = self.m_fileLogProxyFunc is not None
-        # "success." 带句号为 C++ 逐字契约（YomkLogger.cpp:169，C-1 未定夺项）
-        return Response(ResStatus.eOk, "success.")
+        return Response(ResStatus.eOk, "success")
 
     def create_file_logger(self, pkg):
         bad = self._unpack(pkg, LogFile)

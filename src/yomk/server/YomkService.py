@@ -7,7 +7,6 @@ from yomk.msg.ctx import CheckStatus
 from yomk.msg.fn_pool import FuncInfo
 from yomk.msg.server import ResStatus, Response
 from yomk._diag import error as diag_error
-from yomk._diag import info as diag_info
 from yomk._diag import warn as diag_warn
 
 if TYPE_CHECKING:
@@ -60,7 +59,13 @@ class YomkService:
     def mark_deleted(self):
         # 框架内部使用：del_service/同名替换置位注销标志，weak_func 判活叠加此标志
         # （删除即停：即使回调仍被在途任务持有，调用也立即丢弃）
+        # C-3 已采纳：删除时点补 WARN，框架层不再静默；shutdown 排空路径不置位、
+        # 不经过本方法，排空期回调照常执行不受影响。此后弱绑定调用走
+        # weak_func 判活丢弃（diag_error + 契约返回值），与本 WARN 构成
+        # "删除时点 WARN + 调用时点 ERROR" 两级可见性
         self.m_deleted = True
+        diag_warn("service '" + self.name
+                  + "' deleted, weak-bound callbacks discarded from now on")
 
     def deleted(self):
         # 注销标志查询
@@ -138,8 +143,9 @@ class YomkService:
 
         with self.rwlock_functions.gen_wlock():
             if (name in self.functions):
-                # 文档化热替换：级别 INFO（对齐 C++）
-                diag_info(
+                # C-5 已采纳：重复安装即覆盖既有注册，级别 WARN（误覆盖默认可见；
+                # 文案不变，Response 通道无此信息，调用方从返回值 None 不可见）
+                diag_warn(
                     f"function '{name}' already exists, replace with current function")
             self.functions[name] = self.weak_func(function)
             if msg_name or description:

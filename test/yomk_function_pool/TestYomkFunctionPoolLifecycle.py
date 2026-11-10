@@ -27,6 +27,8 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
 - 全部经门面 API 测试，同时覆盖 invoke 路由链
 """
 
+import io
+import contextlib
 import sys
 
 from yomk.msg.server import ResStatus, Response
@@ -114,9 +116,14 @@ r = fn_pool().fn_name("fp_upd").fn(v1_func).install()
 check(r == ResStatus.eOk, "REGISTER v1 返回 eOk")
 r = fn_pool().fn_name("fp_upd").call()
 check(r.msg == "v1", "CALL 走 v1 实现")
-r = raw_fn("register", Function("fp_upd", v2_func, "", ""))
+# C-5 已采纳：热替换即覆盖既有注册，诊断级别 WARN（默认门控下可见）
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    r = raw_fn("register", Function("fp_upd", v2_func, "", ""))
 check(r.status == ResStatus.eOk, "重复 REGISTER 返回 eOk（热替换语义）")
 check("hot-swap" in r.msg, "重复 REGISTER 消息说明热替换语义（对齐 C++ 0032fc7 文案）")
+check("function 'fp_upd' already exists, hot-swap to current function" in buf.getvalue(),
+      "重复 REGISTER 记 WARN（C-5）")
 r = fn_pool().fn_name("fp_upd").call()
 check(r.msg == "v2", "更新后 CALL 走 v2 实现")
 r = fn_pool().fn_name("fp_upd").uninstall()

@@ -140,9 +140,11 @@ class EventLoop:
         with self.m_queueMutex:
             in_worker = self.m_thread is not None and threading.get_ident() == self.m_thread.ident
         if in_worker:
+            # C-2 已采纳：文案补循环名（事件自带字段）+ 去 "is not allowed"
+            # 冗余从句，前缀对齐域内 "EventLoop: <名>" 格式（C++ 侧同步同文案）
             diag_error(
-                "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve "
-                "deadlock")
+                "EventLoop: " + event.m_eventLoopName +
+                " post wait in worker thread detected deadlock, directly execute current event to resolve deadlock")
             event.handle()
             return 0
 

@@ -55,7 +55,7 @@ event_loop().loop("TaskLoop").destroy()
 - 失败契约（`eNo`）：循环不存在 `"event loop '<name>' does not exist"`（stop/destroy/post/post_wait/get_info 五处，伴随同文案 WARN 诊断日志）；已停止（未销毁）时投递 `"event loop '<name>' not running, post rejected"`，`post_wait` 同族消息 `"event loop '<name>' not running, post wait rejected"`；裸链载荷类型不符时 `"pkg is not <类型名>, got '<实际类型>'"`（无诊断日志）。
 - `post()` / `post_wait()` 链式终结收敛为三态 `ResStatus`（仅入队/完成标记，非执行结果）；执行结果体现在处理函数返回值中，需要取回时用裸链 `server().url("/YomkEventLoop/post_wait").msg(Event(...)).request()`——`data` 为该 `Event` 对象（`m_eventId` / `m_response` 携带处理响应），或配合共享上下文中转。
 - 单查 `get_info()` 的 `data` 为 `EventLoopInfo`：`loop_name`、`running`（worker 运行中）、`pending`（积压事件数）、`has_default_func`、`msg_name`、`next_tags`（队列头起最多 n 条 tag，空串保留）。
-- 工作线程内调用 `post_wait` 会触发死锁自检：直接在本线程执行当前事件并返回（诊断日志 `"EventLoop deadlock: post wait in worker thread..."`）。
+- 工作线程内调用 `post_wait` 会触发死锁自检：直接在本线程执行当前事件并返回（诊断日志 `"EventLoop: <loop名> post wait in worker thread detected deadlock..."`，携带循环名）。
 - 服务成员函数注册为事件处理函数时须用 `self.weak_func(...)` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 - URL 常量池：裸链端点建议用 `yomk.url.event_loop` 的 `LOOP_START/LOOP_STOP/LOOP_POST/LOOP_POST_WAIT/LOOP_DESTROY/LOOP_LOOPS/LOOP_LOOP/LOOP_ALL`（与 C++ `YomkEventLoopUrl.h` 逐字一致），如 `server().url(LOOP_POST_WAIT).msg(Event(...)).request()`。
 - 诊断契约（对齐 C++）：not-found 为 WARN；同名 `start()` 重启为 INFO（`"event loop already running, start is idempotent"`）；工作线程异常为 ERROR（`"EventLoop: <name> exec event id: <id> caught, ..."`）；循环未运行仅由返回码承载，无诊断日志。

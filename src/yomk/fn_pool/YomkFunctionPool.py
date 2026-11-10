@@ -1,6 +1,6 @@
 from readerwriterlock import rwlock
 
-from yomk._diag import info as diag_info
+from yomk._diag import warn as diag_warn
 from yomk.msg.fn_pool import CallFunction, FuncInfo, Function
 from yomk.msg.server import ResStatus, Response
 from yomk.server import YomkService
@@ -40,10 +40,11 @@ class YomkFunctionPool(YomkService):
         with self.m_functionsMutex.gen_wlock():
             if function.name in self.m_functions:
                 # 重复名=热替换语义：整对象替换覆盖 func、msg_name、description 三字段
-                # （未在替换对象上声明的元数据即被清除），diag 与 Response.msg 同串
+                # （未在替换对象上声明的元数据即被清除），diag 与 Response.msg 同串；
+                # C-5 已采纳：覆盖既有注册，级别 WARN（误覆盖默认可见，Response.msg 通道不变）
                 msg = ("function '" + function.name +
                        "' already exists, hot-swap to current function")
-                diag_info(msg)
+                diag_warn(msg)
                 self.m_functions[function.name] = function
                 return Response(ResStatus.eOk, msg)
             self.m_functions[function.name] = function

@@ -101,7 +101,7 @@ def main():
     # ============ Section 1: 控制台日志基础态（四级别 + 开关） ============
     r, out = capture(lambda: raw_logger("/YomkLogger/console_log", Log(Log.eInfo, "[1] lg1_s1_info_marker  42", "main", "main")))
     check(r.status == ResStatus.eOk, "YOMK_INFO 返回 eOk")
-    check(r.msg == "success.", "YOMK_INFO 契约消息 success.")
+    check(r.msg == "success", "YOMK_INFO 契约消息 success")
     check("lg1_s1_info_marker  42" in out, "INFO 输出含 marker 与整数变参")
     check("[INFO ] [main] [" in out,
           "INFO 输出格式 [INFO ] [main] [行号]")
@@ -207,8 +207,8 @@ def main():
     # 穿透态：proxy 返回 True -> 走默认输出
     proxy_state["intercept"] = False
     r, out = capture(lambda: raw_logger("/YomkLogger/console_log", Log(Log.eInfo, "[1] lg1_s3_pass_marker", "main", "main")))
-    check(r.status == ResStatus.eOk and r.msg == "success.",
-          "穿透态 console_log 返回 eOk + success.")
+    check(r.status == ResStatus.eOk and r.msg == "success",
+          "穿透态 console_log 返回 eOk + success")
     check("lg1_s3_pass_marker" in out, "穿透态恢复默认控制台输出")
     check(len(proxy_hits) == 2, "proxy 累计被调用 2 次")
 
@@ -231,8 +231,8 @@ def main():
     # 卸载后：恢复框架默认输出，且代理不再被调用
     hits_before = len(proxy_hits)
     r, out = capture(lambda: raw_logger("/YomkLogger/console_log", Log(Log.eInfo, "[1] lg6_s3_post_unload_marker", "main", "main")))
-    check(r.status == ResStatus.eOk and r.msg == "success.",
-          "卸载后 console_log 返回 eOk + success.（走默认路径而非代理短路）")
+    check(r.status == ResStatus.eOk and r.msg == "success",
+          "卸载后 console_log 返回 eOk + success（走默认路径而非代理短路）")
     check("lg6_s3_post_unload_marker" in out, "卸载后恢复框架默认控制台输出")
     check("[INFO ] [main] [" in out,
           "卸载后输出为框架默认格式 <时间戳> [INFO ] [logger] msg")

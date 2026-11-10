@@ -104,7 +104,7 @@ class MyService(YomkService):
 
 - **服务名以 `/` 开头**：服务名即 URL 前缀，如 `set_name("/MyService")`；请求 URL 为 `"/服务名/函数名"`。内置服务的端点 URL 常量集中于 `yomk.url` 常量池（`src/yomk/url/<域>/__init__.py`，逐域扩充）；`yomk.url` 为纯命名空间层（与 `yomk.msg` 同构），用户自定义模块自带 `__init__.py` 即可并入。
 - **deinit() 的四个触发时机**：`srv_name(n).remove()` 删除单个服务、`shutdown()` 关闭全部服务、同名服务被 `add()` 替换（旧服务先置位注销标志并 deinit，新服务随后 init，任意时刻同名服务至多一次活跃生命周期）、忘记关闭时进程退出经 atexit 兜底。覆写 `deinit()` 用于停止线程、注销外部资源。
-- **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃；`shutdown()` 走排空语义（拒新 → 排空 → join 异步请求池，再清空服务表逐个 deinit），在途请求安全执行完毕后服务才释放；幂等，假定在主线程调用。
+- **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃，删除时点框架记 WARN `"service '<名>' deleted, weak-bound callbacks discarded from now on"`（此后弱绑定调用丢弃时另记 ERROR + 契约返回值）；`shutdown()` 走排空语义（拒新 → 排空 → join 异步请求池，再清空服务表逐个 deinit），在途请求安全执行完毕后服务才释放、不置位注销标志；幂等，假定在主线程调用。
 - **关闭后不支持二次 init**：init 进程内幂等由 once 标志把关，`shutdown()` 之后再次 `init()` 不会重建服务器，全部入口回到未初始化守卫态；此时再调 `init()` 补 WARN 诊断 `"server already shut down, init ignored (re-init is not supported)"` 指出实际状态（幂等语义不变，对齐 C++）。**`shutdown()` 置空单例**：门面在 `shutdown()` 时置空单例，`instance()` 返回 `None`，不保留已关闭实例快照。
 - **未初始化守卫（全框架统一约定）**：终结动作返回 `ResStatus.Invalid`（request / status / 各域写与内省终结）或 `-1`（create / add / remove），异步 `.request()` 静默丢弃、回调不触发，类型化读 `get()` 原样返回调用方默认值；守卫消息 `"YomkServer is not initialized"` 经裸链 `server().url(u).msg(pkg).request()` 可查（写路径链式终结收敛为 `ResStatus`，不带 msg）；均记录错误诊断日志，不抛异常。`version()` / `instance()` / `shutdown()` 免初始化安全。
 - **所有权**：`create()` / `add()` 注册成功后实例交由框架服务表持有，调用方不应再将其作为活跃对象复用；`init()` 失败时框架回滚注销。

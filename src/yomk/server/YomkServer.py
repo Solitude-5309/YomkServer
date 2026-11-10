@@ -5,7 +5,6 @@ from readerwriterlock import rwlock
 
 from yomk.msg.server import ResStatus, Response
 from yomk._diag import error as diag_error
-from yomk._diag import info as diag_info
 from yomk._diag import warn as diag_warn
 from yomk.server.YomkService import YomkService
 
@@ -67,8 +66,10 @@ class YomkServer:
         old_srv = None
         with self.rwlock_services.gen_wlock():
             if (service.get_name() in self.services):
-                # 文档化热替换：级别 INFO（对齐 C++），Response 不携带该信息
-                diag_info(
+                # C-5 已采纳：同名替换即覆盖既有注册，级别 WARN（误覆盖默认可见）；
+                # add() 返回 int 不携带该信息，替换的可见性另由旧服务 mark_deleted
+                # 的删除 WARN（C-3）与本 WARN 双重承担
+                diag_warn(
                     f"service '{service.get_name()}' already exists, replace with current service")
             old_srv = self.services.get(service.get_name())
             self.services[service.get_name()] = service
@@ -152,10 +153,11 @@ class YomkServer:
             return "", "", "url parse error: " + url + ", no service name"
         srv_name = url[:pos_end]
         if not srv_name:
-            return "", "", "url parse error: srv name is empty"
+            # C-4 已采纳：文案补具体值，对齐同函数其余分支 "url parse error: <url>, <原因>" 格式
+            return "", "", "url parse error: " + url + ", srv name is empty"
         func_name = url[pos_end:]
         if not func_name:
-            return "", "", "url parse error: function name is empty"
+            return "", "", "url parse error: " + url + ", function name is empty"
         return srv_name, func_name, None
 
     def request(self, url, pkg=None):

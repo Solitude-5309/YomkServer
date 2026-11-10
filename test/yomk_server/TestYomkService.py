@@ -24,6 +24,8 @@ TestYomkService.py —— YomkService 命名/函数注册/调用白盒单元测�
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """
 
+import io
+import contextlib
 import sys
 
 from yomk.msg.server import ResStatus, Response
@@ -135,6 +137,13 @@ def test_install_func(demo):
 
     # 空函数对象：安装被拒
     demo.install_func("/null_func", None)
+
+    # C-5 已采纳：重复安装即覆盖既有注册，级别 WARN（默认门控下可见）
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        demo.install_func("/manual", lambda pkg: Response(ResStatus.eOk, "manual"))
+    check("function '/manual' already exists, replace with current function"
+          in buf.getvalue(), "重复安装记 WARN（C-5）")
 
     infos = demo.func_infos()
 

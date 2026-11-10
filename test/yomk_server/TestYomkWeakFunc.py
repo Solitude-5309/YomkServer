@@ -177,8 +177,13 @@ def test_mark_deleted_discard(server):
         lambda pkg: (counts.__setitem__("resp", counts["resp"] + 1),
                      Response(ResStatus.eOk, "alive"))[1])
 
-    # 测试持 srv 引用不释放，经框架删除置位注销标志（标志层独立于引用计数）
-    check(server.del_service("/BindSrv") == 0, "框架删除成功")
+    # 测试持 srv 引用不释放，经框架删除置位注销标志（标志层独立于引用计数）；
+    # C-3 已采纳：删除时点框架补 WARN，不再静默
+    buf_del = io.StringIO()
+    with contextlib.redirect_stdout(buf_del):
+        check(server.del_service("/BindSrv") == 0, "框架删除成功")
+    check("service '/BindSrv' deleted, weak-bound callbacks discarded from now on"
+          in buf_del.getvalue(), "删除即停：删除时点框架记 WARN 携带服务名（C-3）")
 
     cb_void()
     resp = cb_resp(None)

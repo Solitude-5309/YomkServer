@@ -43,7 +43,7 @@ fn_pool().list()
 
 ## 注意事项
 
-- 同名重复注册即运行时热替换（覆盖旧函数与 msg_name/description 元数据并返回 `Succeeded`），无需先注销；诊断 INFO 与 `Response.msg` 同串 `"function '<name>' already exists, hot-swap to current function"`（对齐 C++ 0032fc7 契约）。
+- 同名重复注册即运行时热替换（覆盖旧函数与 msg_name/description 元数据并返回 `Succeeded`），无需先注销；诊断 WARN 与 `Response.msg` 同串 `"function '<name>' already exists, hot-swap to current function"`（C-5：覆盖既有注册默认门控下可见；对齐 C++ 0032fc7 契约）。
 - 未注册的名字：`call()` / `uninstall()` / `get_info()` 均返回 `Failed` + `"function '<name>' is not registered"`（not-found 归 `Failed` 不归 `Invalid`，与全框架三态约定一致；失败路径不打诊断日志，`Response.msg` 已携带同信息）。
 - 注册/注销的终结动词定名为 `install()` / `uninstall()`。
 - 入参非法（`install` 空名/空函数等）返回 `Invalid`（服务端契约消息 `"funcName or func is empty"`）。

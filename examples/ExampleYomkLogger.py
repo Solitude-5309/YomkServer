@@ -75,7 +75,7 @@ def log_scene(n, title, apis, explain):
     log().tag("arm.demo").info("场景背景：" + explain)
 
 # API 结果行：打印 Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
-# 日志门面的结果行自带流向证据：代理消费 msg="ok"（短路）、放行 msg="success."。
+# 日志门面的结果行自带流向证据：代理消费 msg="ok"（短路）、放行 msg="success"。
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
     # 双形态分展：写路径链式终结收敛为 ResStatus（无 msg），只打 status 行；

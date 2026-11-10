@@ -34,6 +34,8 @@ TestYomkServer.py —— YomkServer URL 解析路由与服务增删改查白盒�
 import sys
 import threading
 import time
+import io
+import contextlib
 
 from yomk.msg.server import ResStatus, Response
 from yomk.server import YomkServer, YomkService
@@ -249,7 +251,12 @@ def test_replace_same_name():
     check(server.new_service(RouteSrv, "/Dup") == 0, "同名替换：首次注册成功")
 
     init_before = g_init_count
-    check(server.new_service(RouteSrv, "/Dup") == 0, "同名第二实例注册（替换）返回 0")
+    # C-5 已采纳：同名替换即覆盖既有注册，级别 WARN（默认门控下可见）
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        check(server.new_service(RouteSrv, "/Dup") == 0, "同名第二实例注册（替换）返回 0")
+    check("service '/Dup' already exists, replace with current service" in buf.getvalue(),
+          "替换：重复注册记 WARN（C-5）")
     check(g_init_count == init_before + 1, "替换：新服务 init 在旧服务清理后被调用")
     check(g_deinit_count == 1, "替换：旧服务 deinit 被调用")
 
