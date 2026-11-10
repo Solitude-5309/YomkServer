@@ -1,5 +1,5 @@
-#include <extension/ExtensionApi.h>
-#include <extension/ExtensionService.h>
+#include <yomk/extension/ExtensionApi.h>
+#include <yomk/extension/ExtensionService.h>
 #include <yomk/server/YomkServerApi.h>
 
 #include <iostream>

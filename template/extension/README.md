@@ -20,7 +20,7 @@
 source build_ubuntu.sh     # 交互式，前置路径与安装路径默认均取 $YOMK_PREFIX_PATH，可交互修改
 ```
 
-> 扩展库需与 YomkServer 安装到一起：头文件统一安装到 `include/yomk/extension/`，由导出 target 的 INTERFACE include（`INCLUDES DESTINATION`）与 `YomkServer::YomkServer` 共同提供。
+> 扩展库需与 YomkServer 安装到一起：头文件统一安装到 `include/yomk/extension/`，对外引用统一走 `<yomk/extension/...>`，与 YomkServer 各域共用同一 include 根（`<prefix>/include`）。
 > 测试程序不随扩展安装，编译产物在模板目录下 `test/build`，可在该目录直接运行 `TestExtension` 验证。
 > 若未配置 `YOMK_PREFIX_PATH` 环境变量，脚本会提示警告，此时手动输入路径即可。
 
@@ -29,11 +29,12 @@ source build_ubuntu.sh     # 交互式，前置路径与安装路径默认均取
 ```
 extension/
 ├── include/
-│   ├── ExtensionService.h   # 对外接口头文件（服务类声明；内部头文件放 src/）
-│   ├── ExtensionApi.h       # 模块 API：链式域入口 yomk::ext()（四件套，参考 include/yomk 各域设计）
-│   ├── ExtensionMsg.h       # 模块消息包目录（YOMK_DEFINE_MSG，当前为注释示例占位）
-│   ├── ExtensionPayload.h   # 模块专属载荷目录（namespace yomk::payload，当前为注释示例占位）
-│   └── ExtensionUrl.h       # 模块 URL 常量（yomk::url 命名空间，inline constexpr string_view）
+│   └── extension/
+│       ├── ExtensionService.h   # 对外接口头文件（服务类声明；内部头文件放 src/）
+│       ├── ExtensionApi.h       # 模块 API：链式域入口 yomk::ext()（四件套，参考 include/yomk 各域设计）
+│       ├── ExtensionMsg.h       # 模块消息包目录（YOMK_DEFINE_MSG，当前为注释示例占位）
+│       ├── ExtensionPayload.h   # 模块专属载荷目录（namespace yomk::payload，当前为注释示例占位）
+│       └── ExtensionUrl.h       # 模块 URL 常量（yomk::url 命名空间，inline constexpr string_view）
 ├── src/
 │   └── ExtensionService.cpp # 服务实现
 ├── test/
@@ -65,7 +66,7 @@ extension/
 
 ```cpp
 #include <yomk/server/YomkServerApi.h>
-#include <extension/ExtensionApi.h>
+#include <yomk/extension/ExtensionApi.h>
 #include <iostream>
 
 using namespace yomk;

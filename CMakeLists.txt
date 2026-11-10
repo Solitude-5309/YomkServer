@@ -7,7 +7,7 @@ include(cmake/AbiInfo.cmake)
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 3.6.9 LANGUAGES CXX)
+project(Yomk VERSION 3.6.10 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：
@@ -131,7 +131,8 @@ install(TARGETS YomkServer
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
-    INCLUDES DESTINATION include
+    # INTERFACE include 根由上方 target_include_directories 的 $<INSTALL_INTERFACE:include> 单源提供，
+    # 不再写 INCLUDES DESTINATION，避免生成物 INTERFACE_INCLUDE_DIRECTORIES 重复出现两份 include
 )
 
 install(DIRECTORY ${YOMK_SERVER_INCLUDE_DIR}/yomk

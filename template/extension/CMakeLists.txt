@@ -16,7 +16,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE YomkServer::YomkServer)
 target_compile_definitions(${PROJECT_NAME} PRIVATE EXTENSION_VERSION="${PROJECT_VERSION}")
 
 # 安装规则
-set(INCLUDE_INSTALL_DIR "include/yomk")
+# INCLUDE_INSTALL_DIR 是导出 target 的 INTERFACE include 根（<prefix>/include），与 YomkServer::YomkServer 同根，
+# 对外引用统一 <yomk/<扩展名>/...>；头文件物理安装位置由下方 install(DIRECTORY) 单独定为 include/yomk/<扩展名>/
+set(INCLUDE_INSTALL_DIR "include")
 set(LIB_INSTALL_DIR "lib")
 
 install(TARGETS ${PROJECT_NAME}
