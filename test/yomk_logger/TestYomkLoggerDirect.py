@@ -17,7 +17,7 @@ TestYomkLoggerDirect.py —— ConsoleLogger / FileLogger 类直连测试
 
 实现机制说明：
 - stdout 捕获用 contextlib.redirect_stdout(io.StringIO)；
-  _yomk_err_pos_log 直写 stdout 可被捕获，CHECK 断言在捕获作用域外
+  diag 通道直写 stdout 可被捕获，CHECK 断言在捕获作用域外
 - 析构触发依赖 CPython 引用计数：holder 容器持唯一引用 + del +
   gc.collect() 显式触发 __del__（无引用环即刻归零，确定性析构）
 - 级别参数直接传 int 99（python 无枚举底层类型约束）
@@ -101,9 +101,9 @@ def main():
     check("[ERROR] [lg1_direct_console] lg1_dc_error_marker" in out, "eError 输出行格式")
     check(check_time_format(out), "控制台行首时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]")
 
-    # 非法级别 default 降级：YOMK_ERR_POS_LOG 直写 cout 可被捕获（CHECK 在捕获外）
+    # 非法级别 default 降级：diag WARN 直写 stdout 可被捕获（CHECK 在捕获外）
     out = capture(lambda: logger.log(99, "", "lg1_dc_badlevel_marker"))
-    check("Unknown log level: 99" in out,
+    check("unknown log level 99, fallback to Info" in out,
           "非法级别 99 走 default 错误提示")
     check("[INFO ] [lg1_direct_console] lg1_dc_badlevel_marker" in out,
           "非法级别降级 Info 输出 marker")
@@ -155,17 +155,17 @@ def main():
           "14c: 恢复后输出正常")
 
     # 14d unknown 级别按 Info 门控：关 Info 后 log(99) 在门控层直接丢弃
-    # （不进入 default 降级分支，无 Unknown log level 提示）；恢复后降级行为回归
+    # （不进入 default 降级分支，无 unknown level 提示）；恢复后降级行为回归
     gate_logger.set_level_on(Log.eInfo, False)
     out_gate_bad = capture(
         lambda: gate_logger.log(99, "", "lg1_dc_gate_bad_marker"))
     check("lg1_dc_gate_bad_marker" not in out_gate_bad and
-          "Unknown log level" not in out_gate_bad,
+          "unknown log level" not in out_gate_bad,
           "14d: unknown 级别随 Info 门控直接丢弃（无降级提示）")
     gate_logger.set_level_on(Log.eInfo, True)
     out_gate_bad2 = capture(
         lambda: gate_logger.log(99, "", "lg1_dc_gate_bad2_marker"))
-    check("Unknown log level: 99" in out_gate_bad2 and
+    check("unknown log level 99, fallback to Info" in out_gate_bad2 and
           "[INFO ] [lg1_dc_gate] lg1_dc_gate_bad2_marker" in out_gate_bad2,
           "14d: 恢复后 unknown 级别回归 default 降级 Info 输出")
 
@@ -192,7 +192,7 @@ def main():
     fl.log(Log.eError, "", "lg1_df_error_marker")
     # 非法级别 default 降级 Info 入缓冲（CHECK 在捕获作用域外）
     out_bad = capture(lambda: fl.log(99, "", "lg1_df_badlevel_marker"))
-    check("Unknown log level: 99" in out_bad,
+    check("unknown log level 99, fallback to Info" in out_bad,
           "FileLogger 非法级别 99 走 default 错误提示")
     check(os.path.getsize(log_file) == 0, "write 前缓冲内容不落盘（文件仍空）")
 
@@ -335,13 +335,13 @@ def main():
     check("[INFO ] lg1_df_gate_on_marker" in gate_content2, "15c: 恢复后落盘正常")
 
     # 15d unknown 级别按 Info 门控：关 Info 后 log(99) 门控层直接丢弃
-    # （不进入 default 降级分支，无 Unknown log level 提示）；恢复后降级行为回归
+    # （不进入 default 降级分支，无 unknown level 提示）；恢复后降级行为回归
     gate_fl.set_level_on(Log.eInfo, False)
     size_before_bad = os.path.getsize(gate_log_file)
     out_bad_gate = capture(lambda: gate_fl.log(
         99, "", "lg1_df_gate_bad_marker"))
     gate_fl.write()
-    check("Unknown log level" not in out_bad_gate,
+    check("unknown log level" not in out_bad_gate,
           "15d: unknown 级别随 Info 门控直接丢弃（无降级提示）")
     check(os.path.getsize(gate_log_file) == size_before_bad,
           "15d: 关断期间 log(99) 不落盘（文件不增长）")
@@ -350,7 +350,7 @@ def main():
         99, "", "lg1_df_gate_bad2_marker"))
     gate_fl.write()
     gate_content3 = read_file(gate_log_file)
-    check("Unknown log level: 99" in out_bad_gate2,
+    check("unknown log level 99, fallback to Info" in out_bad_gate2,
           "15d: 恢复后 unknown 级别回归 default 降级提示")
     check("[INFO ] lg1_df_gate_bad2_marker" in gate_content3,
           "15d: 恢复后降级 Info 行落盘")

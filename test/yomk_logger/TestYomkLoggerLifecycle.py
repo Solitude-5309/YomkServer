@@ -22,8 +22,8 @@ eNo 不惰性创建、主闸×逐器两层归因、条目逐器真值与两层�
 - stdout 捕获用 contextlib.redirect_stdout；CHECK 在捕获作用域外
   （控制台写入经 capture 包装后取响应断言）
 - 内省数据解包后 LOGGERS 端点 data 为 list[str]，ALL 端点 data 为 list[LoggerInfo] 清单（每条内嵌 logger_state 状态段）
-- 浮点格式化 str(-0.0) 为 "-0.0"：子串断言 "d= -0" 仍命中
-  （前缀包含），如实注记微差
+- 浮点格式化对齐 C++ %g（6 位有效数字）：-0.0 → "-0"、nan/inf →
+  "nan"/"inf"，断言 "d= -0" 以子串命中
 - S8.4 析构落盘确定性：服务层 delete_logger
   锁外显式释放最后引用，返回前 __del__ 已落盘（服务层显式释放最后引用保证）
 - file 日志便捷口径：log().to_sink(file).tag("main").info(*args) 为固定缺省 tag
@@ -171,7 +171,7 @@ def main():
         "/YomkLogger/console_log", Log(99, "lg1_s2p5_badlevel_marker", "main")))
     check(r.status == ResStatus.eOk,
           "非法级别 99 console_log 返回 eOk")
-    check("unknown log level, use Info" in out,
+    check("unknown log level 99, fallback to Info" in out,
           "console_log default 分支错误提示（降级 Info）")
     check("[INFO ] [main] lg1_s2p5_badlevel_marker" in out,
           "非法级别降级 Info 输出 marker")
@@ -199,8 +199,8 @@ def main():
     # 拦截态：proxy 返回 False -> eOk + 专属消息 + 无控制台输出
     r, out = capture(lambda: raw_logger("/YomkLogger/console_log", Log(Log.eInfo, "[1] lg1_s3_intercept_marker", "main", "main")))
     check(r.status == ResStatus.eOk, "拦截态 console_log 返回 eOk")
-    check(r.msg == "console log proxy is success.",
-          "拦截态契约消息 console log proxy is success.")
+    check(r.msg == "ok",
+          "拦截态契约消息 ok（代理短路）")
     check("lg1_s3_intercept_marker" not in out, "拦截态无默认控制台输出")
     check(len(proxy_hits) == 1, "proxy 被调用 1 次（原子计数）")
 
@@ -218,7 +218,7 @@ def main():
     # 卸载前先把代理切回拦截态，确认代理确实在链路上
     proxy_state["intercept"] = True
     r, out = capture(lambda: raw_logger("/YomkLogger/console_log", Log(Log.eInfo, "[1] lg6_s3_pre_unload_marker", "main", "main")))
-    check(r.status == ResStatus.eOk and r.msg == "console log proxy is success.",
+    check(r.status == ResStatus.eOk and r.msg == "ok",
           "卸载前拦截态契约消息（代理确实在链路上）")
     check("lg6_s3_pre_unload_marker" not in out, "卸载前拦截态无默认控制台输出")
 
@@ -297,44 +297,48 @@ def main():
     dup = log_mgr().dir(log_dir).file("lg1_file_logger").create()
     check(dup == ResStatus.eNo, "重复创建同名 file logger 返回 eNo")
     check(raw_logger("/YomkLogger/create_file_logger",
-                     LogFile("lg1_file_logger", log_dir)).msg == "logger name already exists.",
-          "重复创建契约消息")
+                     LogFile("lg1_file_logger", log_dir)).msg
+          == "logger 'lg1_file_logger' already exists",
+          "重复创建契约消息（携带具体名）")
 
     # 未创建 logger：FILE_LOG / FILE_LOG_WRITE 均 eNo
     no_logger = log().to_sink("lg1_never_created").tag("main").info("x")
     check(no_logger == ResStatus.eNo, "FILE_LOG 未创建 logger 返回 eNo")
     check(raw_logger("/YomkLogger/file_log",
                      Log(Log.eInfo, "x", "lg1_never_created", "main")).msg
-          == "file logger not found.", "FILE_LOG not-found 契约消息")
+          == "file logger 'lg1_never_created' not found",
+          "FILE_LOG not-found 契约消息（携带具体名）")
     no_write = log_mgr().file("lg1_never_created").flush()
     check(no_write == ResStatus.eNo, "FILE_LOG_WRITE 未创建 logger 返回 eNo")
     check(raw_logger("/YomkLogger/write_file_log", "lg1_never_created").msg
-          == "logger not found.", "FILE_LOG_WRITE not-found 契约消息")
+          == "file logger 'lg1_never_created' not found",
+          "FILE_LOG_WRITE not-found 契约消息（携带具体名）")
 
     # 空名/空 dir 边界处置验证：一律 eInvalid
     empty_both = log_mgr().dir("").file("").create()
     check(empty_both == ResStatus.eInvalid
           and raw_logger("/YomkLogger/create_file_logger", LogFile("", "")).msg
-          == "logger name is empty.",
-          "空名+空 dir 创建返回 eInvalid + logger name is empty.")
+          == "logger name is empty",
+          "空名+空 dir 创建返回 eInvalid + logger name is empty")
     empty_name = log_mgr().dir(tmp_dir).file("").create()
     check(empty_name == ResStatus.eInvalid,
           "空名+有效 dir 创建返回 eInvalid")
     empty_dir = log_mgr().dir("").file("lg1_empty_dir_name").create()
     check(empty_dir == ResStatus.eInvalid
           and raw_logger("/YomkLogger/create_file_logger",
-                         LogFile("lg1_empty_dir_name", "")).msg == "logger dir is empty.",
-          "有效名+空 dir 创建返回 eInvalid + logger dir is empty.")
+                         LogFile("lg1_empty_dir_name", "")).msg == "logger dir is empty",
+          "有效名+空 dir 创建返回 eInvalid + logger dir is empty")
 
     # 不可创建 dir 处置验证：init False -> eNo 且不注册幽灵 logger
     bad_dir = log_mgr().dir("/proc/lg1_impossible/sub").file("lg1_bad_dir_logger").create()
     check(bad_dir == ResStatus.eNo
           and raw_logger("/YomkLogger/create_file_logger",
                          LogFile("lg1_bad_dir_logger", "/proc/lg1_impossible/sub")).msg
-          == "init file logger failed.",
-          "不可创建 dir 返回 eNo + init file logger failed.（异常不穿透）")
+          == "init file logger 'lg1_bad_dir_logger' failed",
+          "不可创建 dir 返回 eNo + init file logger failed（异常不穿透，消息携带具体名）")
     ghost_info = log_mgr().file("lg1_bad_dir_logger").get_info()
-    check(ghost_info.status == ResStatus.eNo and ghost_info.msg == "logger not found.",
+    check(ghost_info.status == ResStatus.eNo
+          and ghost_info.msg == "file logger 'lg1_bad_dir_logger' not found",
           "init 失败的 logger 未注册（无幽灵 key，内省 not found）")
     # init 失败不占用名字：同名换有效 dir 重试应成功
     retry_dir = os.path.join(tmp_dir, "s4_retry")
@@ -377,8 +381,9 @@ def main():
     check(file_info.data is not None and file_info.data.dir == log_dir,
           "file 命中 dir 为创建目录")
     no_info = log_mgr().console("lg1_never_registered").get_info()
-    check(no_info.status == ResStatus.eNo and no_info.msg == "logger not found.",
-          "LOGGER 未注册名返回 eNo + logger not found.")
+    check(no_info.status == ResStatus.eNo
+          and no_info.msg == "console logger 'lg1_never_registered' not found",
+          "LOGGER 未注册名返回 eNo + not-found 契约消息（携带具体名）")
 
     # ALL：状态段初始值 + 开关翻转联动（逐字段断言）；主闸翻转与条目解耦后，
     # 翻转联动取数迁移至 console·file global_state 端点（全局主闸态）；条目改报逐器层
@@ -404,8 +409,7 @@ def main():
     inf_v = float("inf")
     r, out = capture(lambda: log().tag("lg1_s6_flt").info("a=", nan_v, " b=", inf_v, " c=", -inf_v, " d=", -0.0))
     check(r == ResStatus.eOk, "NaN/Inf/-Inf/-0.0 变参日志返回 eOk")
-    # 微差注记：python str(-0.0) 为 "-0.0"，子串断言 "d= -0" 以
-    # 前缀包含命中
+    # %g 格式化（对齐 C++）：-0.0 → "-0"，断言以子串命中
     check("a= nan" in out and "b= inf" in out and "c= -inf" in out and "d= -0" in out,
           "浮点特殊值字符串化正确（nan/inf/-inf/-0，变参以空格分隔）")
 
@@ -433,9 +437,9 @@ def main():
           "非法级别注入用 file logger 创建 eOk")
     r, out = capture(lambda: raw_logger(
         "/YomkLogger/file_log", Log(99, "lg1_s6_badlevel_marker", "lg1_s6_badlevel")))
-    check(r.status == ResStatus.eOk and r.msg == "success.",
+    check(r.status == ResStatus.eOk and r.msg == "success",
           "file_log 非法级别 99 返回 eOk")
-    check("unknown log level, use Info" in out,
+    check("unknown log level 99, fallback to Info" in out,
           "file_log default 分支错误提示（降级 Info）")
     check(log_mgr().file("lg1_s6_badlevel").flush() == ResStatus.eOk,
           "非法级别落盘 WRITE eOk")
@@ -446,11 +450,13 @@ def main():
     # off/on 非法级别：default 仅记录错误，无副作用仍 eOk，开关状态不变
     r_off, out_off = capture(lambda: raw_logger(
         "/YomkLogger/off_console_log_by_level", Log(99, "", "")))
-    check(r_off.status == ResStatus.eOk and "unknown log level, turn off failed." in out_off,
+    check(r_off.status == ResStatus.eOk
+          and "unknown log level 99, turn off ignored" in out_off,
           "off 非法级别 eOk + 错误提示")
     r_on, out_on = capture(lambda: raw_logger(
         "/YomkLogger/on_console_log_by_level", Log(99, "", "")))
-    check(r_on.status == ResStatus.eOk and "unknown log level, turn on failed." in out_on,
+    check(r_on.status == ResStatus.eOk
+          and "unknown log level 99, turn on ignored" in out_on,
           "on 非法级别 eOk + 错误提示")
     c = first_console_state(log_mgr().all().data)
     check(c.debug_on and c.info_on and c.warn_on and c.error_on and c.proxy_on,
@@ -459,10 +465,10 @@ def main():
     # ============ Section 7: 异常路径（空包 / 错类型包 / 未知端点） ============
     r, out = capture(lambda: server_api().url("/YomkLogger/console_log").request())
     check(r.status == ResStatus.eNo, "console_log 空包返回 eNo")
-    check(r.msg == "pkg is null or pkg is not Log", "console_log 空包契约消息")
+    check(r.msg == "pkg is not Log, got 'NoneType'", "console_log 空包契约消息")
     r = server_api().url("/YomkLogger/console_log").msg("wrong").request()
     check(r.status == ResStatus.eNo, "console_log 错类型包返回 eNo")
-    check(r.msg == "pkg is null or pkg is not Log", "console_log 错类型包契约消息")
+    check(r.msg == "pkg is not Log, got 'str'", "console_log 错类型包契约消息")
     check(server_api().url("/YomkLogger/file_log").request().status == ResStatus.eNo,
           "file_log 空包返回 eNo")
     check(server_api().url("/YomkLogger/write_file_log").request().status == ResStatus.eNo,
@@ -482,13 +488,13 @@ def main():
     # file_log 空 logger 名 -> eNo 分支
     r, out = capture(lambda: raw_logger(
         "/YomkLogger/file_log", Log(Log.eInfo, "x", "")))
-    check(r.status == ResStatus.eNo and r.msg == "file logger name is empty.",
+    check(r.status == ResStatus.eNo and r.msg == "file logger name is empty",
           "file_log 空 logger 名返回 eNo + 契约消息")
-    check("file logger name is empty." in out, "file_log 空名错误提示")
     # LOGGER_INFO_LOGGER 空名 -> eNo（空名注册被拒后无幽灵 key）
     empty_name_info = log_mgr().console("").get_info()
-    check(empty_name_info.status == ResStatus.eNo and empty_name_info.msg == "logger not found.",
-          "LOGGER 空名返回 eNo + logger not found.")
+    check(empty_name_info.status == ResStatus.eNo
+          and empty_name_info.msg == "console logger '' not found",
+          "LOGGER 空名返回 eNo + not-found 契约消息")
     # 未知端点 -> invoke 路由层 eNo
     unknown = server_api().url("/YomkLogger/no_such_func").request()
     check(unknown.status == ResStatus.eNo, "未知端点返回 eNo（invoke not found）")
@@ -498,15 +504,14 @@ def main():
     # ============ Section 8: logger 删除接口（/delete_logger 全语义） ============
     # 8.1 空名 -> eInvalid（与 createFileLogger 的空名惯例同口径）
     r, out = capture(lambda: raw_logger("/YomkLogger/delete_logger", ""))
-    check(r.status == ResStatus.eInvalid and r.msg == "logger name is empty.",
+    check(r.status == ResStatus.eInvalid and r.msg == "logger name is empty",
           "S8: 删除空名返回 eInvalid + 契约消息")
-    check("logger name is empty." in out, "S8: 空名删除错误提示")
 
     # 8.2 两表均未命中 -> eNo + not-found 契约消息
     r, out = capture(lambda: raw_logger("/YomkLogger/delete_logger", "lg1_s8_never_created"))
-    check(r.status == ResStatus.eNo and r.msg == "logger not found.",
-          "S8: 删除未注册 logger 返回 eNo + logger not found.")
-    check("logger: lg1_s8_never_created not found." in out, "S8: 未命中错误提示含 logger 名")
+    check(r.status == ResStatus.eNo
+          and r.msg == "logger 'lg1_s8_never_created' not found",
+          "S8: 删除未注册 logger 返回 eNo + not-found 契约消息（携带具体名）")
 
     # 8.3 console-only：msg 计数 1/0；删除后单查 eNo；同名再写惰性重建
     name = "lg1_s8_console_only"
@@ -565,10 +570,9 @@ def main():
           log_mgr().file(name).get_info().status == ResStatus.eNo,
           "S8: 双表删除后按类型单查均 eNo（两表均已清理）")
     r, out2 = capture(lambda: raw_logger("/YomkLogger/delete_logger", name))
-    check(r.status == ResStatus.eNo and r.msg == "logger not found.",
-          "S8: 重复删除返回 eNo（幂等）")
-    check("logger: lg1_s8_both_tables not found." in out2,
-          "S8: 重复删除错误提示含 logger 名")
+    check(r.status == ResStatus.eNo
+          and r.msg == "logger 'lg1_s8_both_tables' not found",
+          "S8: 重复删除返回 eNo（幂等）+ not-found 契约消息（携带具体名）")
 
     # 8.6 内省行数递减守恒 + ALL 与 LOGGERS 行数关系 + main 删除后惰性重建
     dir86 = os.path.join(tmp_dir, "s8_count")
@@ -614,11 +618,11 @@ def main():
 
     # 8.7 异常路径：空包 / 错类型包（YomkUnPackPkgResponse 契约分支）
     r_null = server_api().url("/YomkLogger/delete_logger").request()
-    check(r_null.status == ResStatus.eNo and r_null.msg == "pkg is null or pkg is not String",
+    check(r_null.status == ResStatus.eNo and r_null.msg == "pkg is not String, got 'NoneType'",
           "S8: delete_logger 空包返回 eNo + 契约消息")
     r_wrong = raw_logger(
         "/YomkLogger/delete_logger", Log(Log.eInfo, "x", "y"))
-    check(r_wrong.status == ResStatus.eNo and r_wrong.msg == "pkg is null or pkg is not String",
+    check(r_wrong.status == ResStatus.eNo and r_wrong.msg == "pkg is not String, got 'Log'",
           "S8: delete_logger 错类型包（Log）返回 eNo + 契约消息")
 
     # ============ Section 9: 服务级具名开关与全局态端点（两级主闸并联） ============
@@ -656,8 +660,8 @@ def main():
     check(off_no == ResStatus.eNo and
           raw_logger("/YomkLogger/off_console_log_by_level",
                      Log(Log.eInfo, "", "lg1_s9_never_created")).msg
-          == "console logger not found.",
-          "S9c: 具名 OFF 未知名返回 eNo + console logger not found.")
+          == "console logger 'lg1_s9_never_created' not found",
+          "S9c: 具名 OFF 未知名返回 eNo + not-found 契约消息（携带具体名）")
     on_no = log_mgr().console("lg1_s9_never_created").level(Log.eInfo).enable()
     check(on_no == ResStatus.eNo,
           "S9c: 具名 ON 未知名返回 eNo")
@@ -762,8 +766,8 @@ def main():
     check(off_no == ResStatus.eNo
           and raw_logger("/YomkLogger/off_file_log_by_level",
                          Log(Log.eInfo, "", "lg1_s10_never_created")).msg
-          == "file logger not found.",
-          "S10c: 具名 OFF 未知名返回 eNo + file logger not found.")
+          == "file logger 'lg1_s10_never_created' not found",
+          "S10c: 具名 OFF 未知名返回 eNo + not-found 契约消息（携带具体名）")
     on_no = log_mgr().file("lg1_s10_never_created").level(Log.eInfo).enable()
     check(on_no == ResStatus.eNo,
           "S10c: 具名 ON 未知名返回 eNo")
@@ -857,8 +861,8 @@ def main():
     check(log_mgr().file().proxy(file_proxy).apply() == ResStatus.eOk,
           "S11b: SET_FILE_LOG_PROXY 返回 eOk")
     r = raw_logger("/YomkLogger/file_log", Log(Log.eInfo, "lg1_s11b_intercept_marker", fl_name, "lg1s11"))
-    check(r.status == ResStatus.eOk and r.msg == "file log proxy is success.",
-          "S11b: 拦截态 file_log 返回 eOk + 专属契约消息")
+    check(r.status == ResStatus.eOk and r.msg == "ok",
+          "S11b: 拦截态 file_log 返回 eOk + 代理短路契约消息 ok")
     check(log_mgr().file(fl_name).flush() == ResStatus.eOk,
           "S11b: WRITE eOk")
     check("lg1_s11b_intercept_marker" not in read_file(s11_log_file),
@@ -868,8 +872,8 @@ def main():
     # 11.3 穿透态：proxy 返回 True -> 走默认落盘
     file_proxy_state["intercept"] = False
     r = raw_logger("/YomkLogger/file_log", Log(Log.eInfo, "lg1_s11c_pass_marker", fl_name, "lg1s11"))
-    check(r.status == ResStatus.eOk and r.msg == "success.",
-          "S11c: 穿透态 file_log 返回 eOk + success.")
+    check(r.status == ResStatus.eOk and r.msg == "success",
+          "S11c: 穿透态 file_log 返回 eOk + success")
     check(log_mgr().file(fl_name).flush() == ResStatus.eOk,
           "S11c: WRITE eOk")
     check("lg1_s11c_pass_marker" in read_file(s11_log_file),
@@ -881,7 +885,7 @@ def main():
     # 11.4 卸载（镜像控制台卸载流程）：卸载前先切回拦截态，确认代理确实在链路上
     file_proxy_state["intercept"] = True
     r = raw_logger("/YomkLogger/file_log", Log(Log.eInfo, "lg1_s11d_pre_unload_marker", fl_name, "lg1s11"))
-    check(r.status == ResStatus.eOk and r.msg == "file log proxy is success.",
+    check(r.status == ResStatus.eOk and r.msg == "ok",
           "S11d: 卸载前拦截态契约消息（代理确实在链路上）")
     check(log_mgr().file().proxy(None).apply() == ResStatus.eOk,
           "S11d: set_file_log_proxy(None) 卸载返回 eOk")
@@ -889,8 +893,8 @@ def main():
           "S11d: 卸载后 GLOBAL(file) 回到 proxy_off")
     hits_before = len(file_proxy_hits)
     r = raw_logger("/YomkLogger/file_log", Log(Log.eInfo, "lg1_s11d_post_unload_marker", fl_name, "lg1s11"))
-    check(r.status == ResStatus.eOk and r.msg == "success.",
-          "S11d: 卸载后 file_log 返回 eOk + success.（走默认路径而非代理短路）")
+    check(r.status == ResStatus.eOk and r.msg == "success",
+          "S11d: 卸载后 file_log 返回 eOk + success（走默认路径而非代理短路）")
     check(log_mgr().file(fl_name).flush() == ResStatus.eOk,
           "S11d: WRITE eOk")
     check("lg1_s11d_post_unload_marker" in read_file(s11_log_file),

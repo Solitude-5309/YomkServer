@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING
 
 from readerwriterlock import rwlock
 
-from yomk.log._logSourceLoc import _yomk_err_pos_log
+from yomk._diag import error as diag_error
+from yomk._diag import warn as diag_warn
 from yomk.log.ConsoleLogger import ConsoleLogger
 from yomk.log.FileLogger import FileLogger
 from yomk.msg.log import (
@@ -24,6 +25,10 @@ if TYPE_CHECKING:
 
 class YomkLogger(YomkService):
     # 日志模块服务：16 端点装配序与契约消息均为固定对外契约。
+    # 端点载荷形参一律无注解（Cython 会把 pyi/源码注解编译为边界 TypeError，
+    # 先于运行时守卫抛异常，误用载荷须走 unpack 契约 Response 而非异常）。
+    # 诊断通道对齐 C++ 0032fc7 契约：WARN = 空参自愈/误用降级，ERROR = 框架/IO
+    # 失败；失败路径不打诊断（Response.msg 已携带同信息，双重报警删除原则）。
     # 锁序约定：嵌套双读仅 list_all 内省快照，一律按 m_consoleLoggersMutex ->
     # m_fileLoggersMutex 的顺序持有，全仓无反向嵌套点（console_log/file_log 的
     # proxy 锁在独立作用域释放后才取 logger 表锁；logger_info/write_file_log/
@@ -94,20 +99,23 @@ class YomkLogger(YomkService):
 
     @staticmethod
     def _unpack(pkg, cls):
-        # eNo + "pkg is null or pkg is not <Type>"（裸串无首尾空格/句号；
-        # String 端点包为裸 str）
+        # 裸链误用载荷：eNo + "pkg is not X, got '<type>'"（对齐 C++ unpack 失败
+        # 契约，typeOf 语言映射 type(pkg).__name__；Response.msg 已携带同信息，
+        # 不打诊断日志）
         if isinstance(pkg, cls):
             return None
         type_name = "String" if cls is str else cls.__name__
-        _yomk_err_pos_log("pkg is null or pkg is not " + type_name)
-        return Response(ResStatus.eNo, "pkg is null or pkg is not " + type_name)
+        return Response(ResStatus.eNo,
+                        "pkg is not " + type_name +
+                        ", got '" + type(pkg).__name__ + "'")
 
-    def console_log(self, pkg: Log):
+    def console_log(self, pkg):
         bad = self._unpack(pkg, Log)
         if bad:
             return bad
         if not pkg.m_logger:
-            _yomk_err_pos_log("console logger name is empty, use main")
+            # 空名自愈：WARN + 兜底 main（对齐 C++ YomkLogger.cpp:66）
+            diag_warn("console logger name is empty, use main")
             pkg.m_logger = "main"
 
         # 锁内拷贝 proxy 快照，锁外调用回调（避免用户回调持锁重入）
@@ -115,7 +123,7 @@ class YomkLogger(YomkService):
             proxy_enabled = self.m_consoleLogProxy
             proxy_func = self.m_consoleLogProxyFunc
         if proxy_enabled and proxy_func and not proxy_func(pkg):
-            return Response(ResStatus.eOk, "console log proxy is success.")
+            return Response(ResStatus.eOk, "ok")
 
         # 双检锁：读锁 miss 后升级写锁二次查找，logger 引用拷出锁外使用
         console_logger = None
@@ -151,13 +159,16 @@ class YomkLogger(YomkService):
             if self.m_showConsoleFatalLog:
                 console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
         else:
-            _yomk_err_pos_log("unknown log level, use Info")
+            diag_warn("unknown log level " + str(pkg.m_level) +
+                      ", fallback to Info")
             if self.m_showConsoleInfoLog:
                 console_logger.log(Log.eInfo, pkg.m_tag, pkg.m_log)
 
+        # "success." 带句号为 C++ 逐字契约（YomkLogger.cpp:139，报告第八章 C-1
+        # 未定夺项，逐字复刻不偏离）
         return Response(ResStatus.eOk, "success.")
 
-    def set_console_log_proxy(self, pkg: ConsoleLogProxy):
+    def set_console_log_proxy(self, pkg):
         bad = self._unpack(pkg, ConsoleLogProxy)
         if bad:
             return bad
@@ -165,9 +176,10 @@ class YomkLogger(YomkService):
         with self.m_consoleLogProxyMutex:
             self.m_consoleLogProxyFunc = pkg.m_consoleLogProxyFunc
             self.m_consoleLogProxy = self.m_consoleLogProxyFunc is not None
+        # "success." 带句号为 C++ 逐字契约（YomkLogger.cpp:154，C-1 未定夺项）
         return Response(ResStatus.eOk, "success.")
 
-    def set_file_log_proxy(self, pkg: FileLogProxy):
+    def set_file_log_proxy(self, pkg):
         bad = self._unpack(pkg, FileLogProxy)
         if bad:
             return bad
@@ -175,44 +187,45 @@ class YomkLogger(YomkService):
         with self.m_fileLogProxyMutex:
             self.m_fileLogProxyFunc = pkg.m_fileLogProxyFunc
             self.m_fileLogProxy = self.m_fileLogProxyFunc is not None
+        # "success." 带句号为 C++ 逐字契约（YomkLogger.cpp:169，C-1 未定夺项）
         return Response(ResStatus.eOk, "success.")
 
-    def create_file_logger(self, pkg: LogFile):
+    def create_file_logger(self, pkg):
         bad = self._unpack(pkg, LogFile)
         if bad:
             return bad
 
-        # 空名/空目录拒绝：eInvalid（参数无效惯例）
+        # 空名/空目录拒绝：eInvalid（参数无效惯例，msg 已携带信息不打诊断）
         if not pkg.m_logger:
-            _yomk_err_pos_log("logger name is empty.")
-            return Response(ResStatus.eInvalid, "logger name is empty.")
+            return Response(ResStatus.eInvalid, "logger name is empty")
         if not pkg.m_dir:
-            _yomk_err_pos_log("logger dir is empty.")
-            return Response(ResStatus.eInvalid, "logger dir is empty.")
+            return Response(ResStatus.eInvalid, "logger dir is empty")
 
         # 全程持独占锁
         with self.m_fileLoggersMutex.gen_wlock():
             if pkg.m_logger in self.m_fileLoggers:
-                return Response(ResStatus.eNo, "logger name already exists.")
+                return Response(ResStatus.eNo,
+                                "logger '" + pkg.m_logger + "' already exists")
 
             file_logger = FileLogger()
             file_logger.set_name(pkg.m_logger)
             file_logger.set_dir(pkg.m_dir)
             if not file_logger.init():
-                _yomk_err_pos_log("init file logger failed: " + pkg.m_logger)
-                return Response(ResStatus.eNo, "init file logger failed.")
+                # 框架/IO 失败：ERROR 诊断 + eNo 同串 Response（对齐 C++ :201-202）
+                diag_error("init file logger '" + pkg.m_logger + "' failed")
+                return Response(ResStatus.eNo,
+                                "init file logger '" + pkg.m_logger + "' failed")
             self.m_fileLoggers[pkg.m_logger] = file_logger
 
-        return Response(ResStatus.eOk, "success.")
+        return Response(ResStatus.eOk, "success")
 
-    def file_log(self, pkg: Log):
+    def file_log(self, pkg):
         bad = self._unpack(pkg, Log)
         if bad:
             return bad
 
         if not pkg.m_logger:
-            _yomk_err_pos_log("file logger name is empty.")
-            return Response(ResStatus.eNo, "file logger name is empty.")
+            return Response(ResStatus.eNo, "file logger name is empty")
 
         # 锁内拷贝文件代理快照，锁外调用回调（与 console_log 同款模式，避免用户回调持锁重入）；
         # 代理先于表查找、主闸与逐器门控（未知名在拦截态下同样被短路，语义与 console 一致）
@@ -220,14 +233,13 @@ class YomkLogger(YomkService):
             proxy_enabled = self.m_fileLogProxy
             proxy_func = self.m_fileLogProxyFunc
         if proxy_enabled and proxy_func and not proxy_func(pkg):
-            return Response(ResStatus.eOk, "file log proxy is success.")
+            return Response(ResStatus.eOk, "ok")
 
         with self.m_fileLoggersMutex.gen_rlock():
             file_logger = self.m_fileLoggers.get(pkg.m_logger)
             if file_logger is None:
-                _yomk_err_pos_log("file logger: " +
-                                  pkg.m_logger + " not found.")
-                return Response(ResStatus.eNo, "file logger not found.")
+                return Response(ResStatus.eNo,
+                                "file logger '" + pkg.m_logger + "' not found")
 
             if pkg.m_level == Log.eTrace:
                 if self.m_showFileTraceLog:
@@ -248,11 +260,12 @@ class YomkLogger(YomkService):
                 if self.m_showFileFatalLog:
                     file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
             else:
-                _yomk_err_pos_log("unknown log level, use Info")
+                diag_warn("unknown log level " + str(pkg.m_level) +
+                          ", fallback to Info")
                 if self.m_showFileInfoLog:
                     file_logger.log(Log.eInfo, pkg.m_tag, pkg.m_log)
 
-        return Response(ResStatus.eOk, "success.")
+        return Response(ResStatus.eOk, "success")
 
     def write_file_log(self, pkg):
         bad = self._unpack(pkg, str)
@@ -261,11 +274,11 @@ class YomkLogger(YomkService):
         with self.m_fileLoggersMutex.gen_rlock():
             file_logger = self.m_fileLoggers.get(pkg)
             if file_logger is None:
-                _yomk_err_pos_log("logger: " + pkg + " not found.")
-                return Response(ResStatus.eNo, "logger not found.")
+                return Response(ResStatus.eNo,
+                                "file logger '" + pkg + "' not found")
             file_logger.write()
 
-        return Response(ResStatus.eOk, "success.")
+        return Response(ResStatus.eOk, "success")
 
     def delete_logger(self, pkg):
         bad = self._unpack(pkg, str)
@@ -274,8 +287,7 @@ class YomkLogger(YomkService):
 
         # 空名拒绝（同 createFileLogger 惯例）
         if not pkg:
-            _yomk_err_pos_log("logger name is empty.")
-            return Response(ResStatus.eInvalid, "logger name is empty.")
+            return Response(ResStatus.eInvalid, "logger name is empty")
 
         # 分段持锁不嵌套：删除无需跨表原子快照，同时持两把写锁会阻塞全部日志写入
         deleted_console = 0
@@ -294,15 +306,14 @@ class YomkLogger(YomkService):
         removed_file = None   # 显式释放触发 __del__ 自动 write（缓冲内容不丢）
 
         if deleted_console == 0 and deleted_file == 0:
-            _yomk_err_pos_log("logger: " + pkg + " not found.")
-            return Response(ResStatus.eNo, "logger not found.")
+            return Response(ResStatus.eNo, "logger '" + pkg + "' not found")
 
         # 不删除磁盘上的 .log 文件（清理归调用方）
         return Response(
             ResStatus.eOk,
             "deleted console:" + str(deleted_console) + " file:" + str(deleted_file))
 
-    def off_console_log_by_level(self, pkg: Log):
+    def off_console_log_by_level(self, pkg):
         bad = self._unpack(pkg, Log)
         if bad:
             return bad
@@ -325,11 +336,12 @@ class YomkLogger(YomkService):
         elif pkg.m_level == Log.eDebug:
             self.m_showConsoleDebugLog = False
         else:
-            _yomk_err_pos_log("unknown log level, turn off failed.")
+            diag_warn("unknown log level " + str(pkg.m_level) +
+                      ", turn off ignored")
 
-        return Response(ResStatus.eOk, "success.")
+        return Response(ResStatus.eOk, "success")
 
-    def on_console_log_by_level(self, pkg: Log):
+    def on_console_log_by_level(self, pkg):
         bad = self._unpack(pkg, Log)
         if bad:
             return bad
@@ -352,8 +364,9 @@ class YomkLogger(YomkService):
         elif pkg.m_level == Log.eDebug:
             self.m_showConsoleDebugLog = True
         else:
-            _yomk_err_pos_log("unknown log level, turn on failed.")
-        return Response(ResStatus.eOk, "success.")
+            diag_warn("unknown log level " + str(pkg.m_level) +
+                      ", turn on ignored")
+        return Response(ResStatus.eOk, "success")
 
     def set_named_console_level(self, logger_name, level, on):
         # 具名开关唯一写入口：表读锁内查找拷引用出锁、锁外 set_level_on
@@ -361,9 +374,9 @@ class YomkLogger(YomkService):
         with self.m_consoleLoggersMutex.gen_rlock():
             console_logger = self.m_consoleLoggers.get(logger_name)
             if console_logger is None:
-                _yomk_err_pos_log("console logger: " +
-                                  logger_name + " not found.")
-                return Response(ResStatus.eNo, "console logger not found.")
+                return Response(ResStatus.eNo,
+                                "console logger '" + logger_name +
+                                "' not found")
 
         if level == Log.eTrace:
             console_logger.set_level_on(Log.eTrace, on)
@@ -378,11 +391,11 @@ class YomkLogger(YomkService):
         elif level == Log.eDebug:
             console_logger.set_level_on(Log.eDebug, on)
         else:
-            _yomk_err_pos_log("unknown log level, turn " +
-                              ("on" if on else "off") + " failed.")
-        return Response(ResStatus.eOk, "success.")
+            diag_warn("unknown log level " + str(level) +
+                      ", turn " + ("on" if on else "off") + " ignored")
+        return Response(ResStatus.eOk, "success")
 
-    def off_file_log_by_level(self, pkg: Log):
+    def off_file_log_by_level(self, pkg):
         bad = self._unpack(pkg, Log)
         if bad:
             return bad
@@ -405,11 +418,12 @@ class YomkLogger(YomkService):
         elif pkg.m_level == Log.eDebug:
             self.m_showFileDebugLog = False
         else:
-            _yomk_err_pos_log("unknown log level, turn off failed.")
+            diag_warn("unknown log level " + str(pkg.m_level) +
+                      ", turn off ignored")
 
-        return Response(ResStatus.eOk, "success.")
+        return Response(ResStatus.eOk, "success")
 
-    def on_file_log_by_level(self, pkg: Log):
+    def on_file_log_by_level(self, pkg):
         bad = self._unpack(pkg, Log)
         if bad:
             return bad
@@ -432,8 +446,9 @@ class YomkLogger(YomkService):
         elif pkg.m_level == Log.eDebug:
             self.m_showFileDebugLog = True
         else:
-            _yomk_err_pos_log("unknown log level, turn on failed.")
-        return Response(ResStatus.eOk, "success.")
+            diag_warn("unknown log level " + str(pkg.m_level) +
+                      ", turn on ignored")
+        return Response(ResStatus.eOk, "success")
 
     def set_named_file_level(self, logger_name, level, on):
         # 文件侧具名开关唯一写入口：表读锁内查找拷引用出锁、锁外 set_level_on
@@ -441,9 +456,8 @@ class YomkLogger(YomkService):
         with self.m_fileLoggersMutex.gen_rlock():
             file_logger = self.m_fileLoggers.get(logger_name)
             if file_logger is None:
-                _yomk_err_pos_log("file logger: " +
-                                  logger_name + " not found.")
-                return Response(ResStatus.eNo, "file logger not found.")
+                return Response(ResStatus.eNo,
+                                "file logger '" + logger_name + "' not found")
 
         if level == Log.eTrace:
             file_logger.set_level_on(Log.eTrace, on)
@@ -458,9 +472,9 @@ class YomkLogger(YomkService):
         elif level == Log.eDebug:
             file_logger.set_level_on(Log.eDebug, on)
         else:
-            _yomk_err_pos_log("unknown log level, turn " +
-                              ("on" if on else "off") + " failed.")
-        return Response(ResStatus.eOk, "success.")
+            diag_warn("unknown log level " + str(level) +
+                      ", turn " + ("on" if on else "off") + " ignored")
+        return Response(ResStatus.eOk, "success")
 
     def loggers(self, pkg):
         bad = self._unpack(pkg, str)
@@ -475,8 +489,8 @@ class YomkLogger(YomkService):
             with self.m_fileLoggersMutex.gen_rlock():
                 names = sorted(self.m_fileLoggers)
         else:
-            _yomk_err_pos_log("unknown logger type: " + pkg + ".")
-            return Response(ResStatus.eNo, "unknown logger type.")
+            return Response(ResStatus.eNo,
+                            "unknown logger type '" + pkg + "'")
         # 单表显式 sorted :map 中序字典序（python dict 为插入序，类头注释先例）
         return Response(ResStatus.eOk, "ok", names)
 
@@ -540,9 +554,9 @@ class YomkLogger(YomkService):
             with self.m_consoleLoggersMutex.gen_rlock():
                 console_logger = self.m_consoleLoggers.get(pkg.m_logger_name)
                 if console_logger is None:
-                    _yomk_err_pos_log("console logger: " +
-                                      pkg.m_logger_name + " not found.")
-                    return Response(ResStatus.eNo, "logger not found.")
+                    return Response(ResStatus.eNo,
+                                    "console logger '" + pkg.m_logger_name +
+                                    "' not found")
             # 状态段：条目报逐器门控层真值；proxyOn 在表锁外独立取（proxy 叶子锁独立作用域）
             with self.m_consoleLogProxyMutex:
                 proxy_on = self.m_consoleLogProxy
@@ -556,9 +570,9 @@ class YomkLogger(YomkService):
             with self.m_fileLoggersMutex.gen_rlock():
                 file_logger = self.m_fileLoggers.get(pkg.m_logger_name)
                 if file_logger is None:
-                    _yomk_err_pos_log("file logger: " +
-                                      pkg.m_logger_name + " not found.")
-                    return Response(ResStatus.eNo, "logger not found.")
+                    return Response(ResStatus.eNo,
+                                    "file logger '" + pkg.m_logger_name +
+                                    "' not found")
             # 状态段：条目报文件逐器门控层真值；proxyOn 在表锁外独立取
             # （proxy 叶子锁独立作用域）
             with self.m_fileLogProxyMutex:
@@ -567,8 +581,8 @@ class YomkLogger(YomkService):
                 ResStatus.eOk, "ok",
                 LoggerInfo(pkg.m_logger_name, "file", file_logger.get_dir(),
                            self.named_file_state(file_logger, proxy_on)))
-        _yomk_err_pos_log("unknown logger type: " + pkg.m_type + ".")
-        return Response(ResStatus.eNo, "unknown logger type.")
+        return Response(ResStatus.eNo,
+                        "unknown logger type '" + pkg.m_type + "'")
 
     def list_all(self, pkg):
         # LoggerState 内嵌每条 LoggerInfo：console 条目报控制台逐器门控层真值

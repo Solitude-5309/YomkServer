@@ -1,16 +1,21 @@
 import sys
 import threading
 
-from yomk.log._logSourceLoc import _yomk_err_pos_log, _yomk_log_local_time_formatted
+from yomk._diag import warn as diag_warn
+from yomk.log._logSourceLoc import _yomk_log_local_time_formatted
 from yomk.msg.log import Log
+
+# 跨实例行级共享锁（对齐 C++ ConsoleLogger.cpp 类级 static std::mutex s_mutex）：
+# 全部 ConsoleLogger 实例共用一把，保证任意实例间逐行原子输出、多器行不交错
+_LINE_LOCK = threading.Lock()
 
 
 class ConsoleLogger:
     # 控制台日志器，六级 stdout 输出、空 tag 回退日志器名、
-    # 非法级别降级 Info、按器级别门控（关断级别 log 入口直接丢弃）
+    # 非法级别降级 Info、按器级别门控（关断级别 log 入口直接丢弃）；
+    # 行锁为模块级共享（U-15），实例自身不持有锁
     def __init__(self):
         self.m_name = "main"
-        self.m_mutex = threading.Lock()
         # 级别门控随 sink 自持（每实例独立、默认全开）：两级主闸并联架构的第二层
         # （逐器门控），第一层为 YomkLogger 全局主闸（经 /console_global_state
         # 内省），输出取两层 AND
@@ -63,7 +68,7 @@ class ConsoleLogger:
             return self.m_showInfoLog
 
     def log(self, log_level, tag, log_msg):
-        # 级别门控在类级锁外判定（GIL 下 bool 读原子，无新锁）：关断级别直接丢弃
+        # 级别门控在共享行锁外判定（GIL 下 bool 读原子，无新锁）：关断级别直接丢弃
         # 不输出（unknown 级别按 Info 门控，与下方 default 降级语义一致）
         if log_level == Log.eTrace:
             if not self.m_showTraceLog:
@@ -89,7 +94,7 @@ class ConsoleLogger:
 
         time_str = _yomk_log_local_time_formatted()
 
-        with self.m_mutex:
+        with _LINE_LOCK:
             # tag 优先显示；空 tag 回退日志器名，保持旧行为
             tag_shown = tag if tag else self.m_name
             if log_level == Log.eTrace:
@@ -105,8 +110,8 @@ class ConsoleLogger:
             elif log_level == Log.eFatal:
                 self._emit(time_str, "[FATAL]", tag_shown, log_msg)
             else:
-                _yomk_err_pos_log("Unknown log level: " + str(log_level) +
-                              ", using Info level instead.")
+                diag_warn("unknown log level " + str(log_level) +
+                          ", fallback to Info")
                 self._emit(time_str, "[INFO ]", tag_shown, log_msg)
 
     @staticmethod

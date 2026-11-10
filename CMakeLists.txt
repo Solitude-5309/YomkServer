@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.14)
 # （server().version() 经 yomk.server.__version__ 暴露；构建期注入，无运行时读取），
 # 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
 # 本行即版本唯一来源，发布时手动 bump。
-project(YomkServerPy VERSION 2.3.1 LANGUAGES C)
+project(YomkServerPy VERSION 2.3.2 LANGUAGES C)
 
 # ---------- 各运行时域版本号 ----------
 # 集中定义，当前全部取项目版本号；若某域需要独立版本，只改对应行。

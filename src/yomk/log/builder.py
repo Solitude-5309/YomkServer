@@ -10,6 +10,24 @@ from yomk.msg.log import (
 )
 from yomk.msg.server import ResStatus
 from yomk.server import _facade
+from yomk.url.log import (
+    LOG_ALL,
+    LOG_CONSOLE_GLOBAL_STATE,
+    LOG_CONSOLE_LOG,
+    LOG_CREATE_FILE_LOGGER,
+    LOG_DELETE_LOGGER,
+    LOG_FILE_GLOBAL_STATE,
+    LOG_FILE_LOG,
+    LOG_LOGGER,
+    LOG_LOGGERS,
+    LOG_OFF_CONSOLE_LOG_BY_LEVEL,
+    LOG_OFF_FILE_LOG_BY_LEVEL,
+    LOG_ON_CONSOLE_LOG_BY_LEVEL,
+    LOG_ON_FILE_LOG_BY_LEVEL,
+    LOG_SET_CONSOLE_PROXY,
+    LOG_SET_FILE_LOG_PROXY,
+    LOG_WRITE_FILE_LOG,
+)
 
 
 def _chain_log_content(loc, args):
@@ -17,7 +35,11 @@ def _chain_log_content(loc, args):
     # 单空格分隔；前缀为空时首参不加前导空格）
     msg = _logSourceLoc._yomk_source_loc_prefix(*loc)
     for arg in args:
-        s = "true" if arg is True else ("false" if arg is False else str(arg))
+        # 浮点对齐 C++ snprintf "%g"（6 位有效数字，YomkLoggerApi.h）：
+        # str(2.0)="2.0" 而 %g 输出 "2"；bool → true/false、整数/其余对象仍 str()
+        s = ("true" if arg is True else
+             ("false" if arg is False else
+              ("%.6g" % arg if isinstance(arg, float) else str(arg))))
         msg = msg + " " + s if msg else s
     return msg
 
@@ -35,32 +57,32 @@ class SinkLogBuilder:
 
     def info(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/file_log",
+            LOG_FILE_LOG,
             Log(Log.eInfo, _chain_log_content(self._loc, args), self._sink, self._tag)))
 
     def warn(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/file_log",
+            LOG_FILE_LOG,
             Log(Log.eWarn, _chain_log_content(self._loc, args), self._sink, self._tag)))
 
     def error(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/file_log",
+            LOG_FILE_LOG,
             Log(Log.eError, _chain_log_content(self._loc, args), self._sink, self._tag)))
 
     def debug(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/file_log",
+            LOG_FILE_LOG,
             Log(Log.eDebug, _chain_log_content(self._loc, args), self._sink, self._tag)))
 
     def trace(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/file_log",
+            LOG_FILE_LOG,
             Log(Log.eTrace, _chain_log_content(self._loc, args), self._sink, self._tag)))
 
     def fatal(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/file_log",
+            LOG_FILE_LOG,
             Log(Log.eFatal, _chain_log_content(self._loc, args), self._sink, self._tag)))
 
 
@@ -80,32 +102,32 @@ class LogBuilder:
 
     def info(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/console_log",
+            LOG_CONSOLE_LOG,
             Log(Log.eInfo, _chain_log_content(self._loc, args), self._tag, self._tag)))
 
     def warn(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/console_log",
+            LOG_CONSOLE_LOG,
             Log(Log.eWarn, _chain_log_content(self._loc, args), self._tag, self._tag)))
 
     def error(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/console_log",
+            LOG_CONSOLE_LOG,
             Log(Log.eError, _chain_log_content(self._loc, args), self._tag, self._tag)))
 
     def debug(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/console_log",
+            LOG_CONSOLE_LOG,
             Log(Log.eDebug, _chain_log_content(self._loc, args), self._tag, self._tag)))
 
     def trace(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/console_log",
+            LOG_CONSOLE_LOG,
             Log(Log.eTrace, _chain_log_content(self._loc, args), self._tag, self._tag)))
 
     def fatal(self, *args):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/console_log",
+            LOG_CONSOLE_LOG,
             Log(Log.eFatal, _chain_log_content(self._loc, args), self._tag, self._tag)))
 
 
@@ -123,11 +145,11 @@ class ConsoleMgrBuilder:
     def enable(self):
         # name 空 = 全局主闸，具名 = 逐器门控
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/on_console_log_by_level", Log(self._level, "", self._name)))
+            LOG_ON_CONSOLE_LOG_BY_LEVEL, Log(self._level, "", self._name)))
 
     def disable(self):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/off_console_log_by_level", Log(self._level, "", self._name)))
+            LOG_OFF_CONSOLE_LOG_BY_LEVEL, Log(self._level, "", self._name)))
 
     def proxy(self, fn):
         self._proxy = fn
@@ -136,18 +158,18 @@ class ConsoleMgrBuilder:
     def apply(self):
         # None = 恢复默认输出
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/set_console_log_proxy", ConsoleLogProxy(self._proxy)))
+            LOG_SET_CONSOLE_PROXY, ConsoleLogProxy(self._proxy)))
 
     def list(self):
-        return _facade.api_request("/YomkLogger/loggers", "console")
+        return _facade.api_request(LOG_LOGGERS, "console")
 
     def get_info(self):
         return _facade.api_request(
-            "/YomkLogger/logger", LoggerQuery(self._name, "console"))
+            LOG_LOGGER, LoggerQuery(self._name, "console"))
 
     def status(self):
         # 全局主闸状态（6 级别 + proxy，与文件侧主闸相互独立）
-        return _facade.api_request("/YomkLogger/console_global_state", None)
+        return _facade.api_request(LOG_CONSOLE_GLOBAL_STATE, None)
 
 
 class FileMgrBuilder:
@@ -165,11 +187,11 @@ class FileMgrBuilder:
     def enable(self):
         # name 空 = 文件全局主闸，具名 = 逐器门控（未知名 Failed）
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/on_file_log_by_level", Log(self._level, "", self._name)))
+            LOG_ON_FILE_LOG_BY_LEVEL, Log(self._level, "", self._name)))
 
     def disable(self):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/off_file_log_by_level", Log(self._level, "", self._name)))
+            LOG_OFF_FILE_LOG_BY_LEVEL, Log(self._level, "", self._name)))
 
     def proxy(self, fn):
         self._proxy = fn
@@ -177,30 +199,30 @@ class FileMgrBuilder:
 
     def apply(self):
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/set_file_log_proxy", FileLogProxy(self._proxy)))
+            LOG_SET_FILE_LOG_PROXY, FileLogProxy(self._proxy)))
 
     def list(self):
-        return _facade.api_request("/YomkLogger/loggers", "file")
+        return _facade.api_request(LOG_LOGGERS, "file")
 
     def get_info(self):
         return _facade.api_request(
-            "/YomkLogger/logger", LoggerQuery(self._name, "file"))
+            LOG_LOGGER, LoggerQuery(self._name, "file"))
 
     def status(self):
-        return _facade.api_request("/YomkLogger/file_global_state", None)
+        return _facade.api_request(LOG_FILE_GLOBAL_STATE, None)
 
     def create(self):
         # 创建文件日志器（dir 累积自 log_mgr().dir()）
         return _facade.chain_status(_facade.api_request(
-            "/YomkLogger/create_file_logger", LogFile(self._name, self._dir)))
+            LOG_CREATE_FILE_LOGGER, LogFile(self._name, self._dir)))
 
     def flush(self):
         return _facade.chain_status(
-            _facade.api_request("/YomkLogger/write_file_log", self._name))
+            _facade.api_request(LOG_WRITE_FILE_LOG, self._name))
 
     def remove(self):
         return _facade.chain_status(
-            _facade.api_request("/YomkLogger/delete_logger", self._name))
+            _facade.api_request(LOG_DELETE_LOGGER, self._name))
 
 
 class LocBuilder:
@@ -249,7 +271,7 @@ class LogMgrBuilder:
         return LocBuilder()
 
     def all(self):
-        return _facade.api_request("/YomkLogger/all", None)
+        return _facade.api_request(LOG_ALL, None)
 
 
 def log():

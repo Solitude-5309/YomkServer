@@ -1,7 +1,9 @@
 import os
 import threading
 
-from yomk.log._logSourceLoc import _yomk_err_pos_log, _yomk_log_local_time_formatted
+from yomk._diag import error as diag_error
+from yomk._diag import warn as diag_warn
+from yomk.log._logSourceLoc import _yomk_log_local_time_formatted
 from yomk.msg.log import Log
 
 
@@ -86,14 +88,15 @@ class FileLogger:
             if dir_path and not os.path.exists(dir_path):
                 os.makedirs(dir_path)   # 多级递归创建
         except OSError as e:
-            _yomk_err_pos_log("init file logger fs error: " +
-                              log_file_path + ", " + str(e))
+            # 建目录 IO 失败：ERROR 诊断（对齐 C++ FileLogger.cpp:54）
+            diag_error("init file logger fs error: " +
+                       log_file_path + ", " + str(e))
             return False
         try:
             with open(log_file_path, "w"):
                 pass   # 建空文件（ofstream 默认 truncate 语义）
         except OSError:
-            _yomk_err_pos_log("create log file failed: " + log_file_path)
+            diag_error("create log file failed: " + log_file_path)
             return False
         return True
 
@@ -142,8 +145,8 @@ class FileLogger:
             elif log_level == Log.eFatal:
                 self._append_line(time_str, tag_prefix, log_msg, " [FATAL] ")
             else:
-                _yomk_err_pos_log("Unknown log level: " + str(log_level) +
-                                  ", using Info level instead.")
+                diag_warn("unknown log level " + str(log_level) +
+                          ", fallback to Info")
                 self._append_line(time_str, tag_prefix, log_msg, " [INFO ] ")
 
     def _append_line(self, time_str, tag_prefix, log_msg, level_tag):
@@ -159,7 +162,7 @@ class FileLogger:
                 with open(self.m_dir + "/" + self.m_name + ".log", "a") as log_file:
                     log_file.write(self.m_logBuffer)
             except OSError:
-                _yomk_err_pos_log("open log file failed: " +
-                                  self.m_dir + "/" + self.m_name + ".log")
+                diag_error("open log file failed: " +
+                           self.m_dir + "/" + self.m_name + ".log")
                 return
             self.m_logBuffer = ""

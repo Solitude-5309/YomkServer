@@ -441,8 +441,8 @@ def main():
     check(len(s4a_create_ok) == 1,
           f"S4a: 8 线程并发同名创建恰 1 个 eOk（实际 {len(s4a_create_ok)}）")
     check(len(s4a_create_no) == k_threads - 1,
-          f"S4a: 其余 {k_threads - 1} 个 eNo \"logger name already exists.\""
-          f"（实际 {len(s4a_create_no)}）——独占锁互斥下重名检查守恒")
+          f"S4a: 其余 {k_threads - 1} 个 eNo（契约消息 \"logger '<名>' already exists\"，"
+          f"实际 {len(s4a_create_no)}）——独占锁互斥下重名检查守恒")
     check(os.path.isfile(os.path.join(same_dir, k_same_name + ".log")),
           "S4a: 胜出者日志文件已落盘")
 

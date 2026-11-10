@@ -1,11 +1,7 @@
-from typing import Any
-
-
 class ConsoleLogger:
     # 控制台日志器（sink），六级 stdout 输出、空 tag 回退日志器名、
     # 非法级别降级 Info、按器级别门控（关断级别 log 入口直接丢弃）
     m_name: str
-    m_mutex: Any
     m_showTraceLog: bool
     m_showDebugLog: bool
     m_showInfoLog: bool

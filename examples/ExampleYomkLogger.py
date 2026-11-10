@@ -75,7 +75,7 @@ def log_scene(n, title, apis, explain):
     log().tag("arm.demo").info("场景背景：" + explain)
 
 # API 结果行：打印 Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
-# 日志门面的结果行自带流向证据：代理消费 msg="console log proxy is success."、放行 msg="success."。
+# 日志门面的结果行自带流向证据：代理消费 msg="ok"（短路）、放行 msg="success."。
 # status 三态：0=eOk 成功；1=eNo 名字不存在或被拒绝；-1=eInvalid 参数无效或未初始化
 def log_resp(api, resp):
     # 双形态分展：写路径链式终结收敛为 ResStatus（无 msg），只打 status 行；
@@ -306,7 +306,7 @@ def show_arm_blackbox(log_dir):
     log_action("上报故障告警（ERROR，代理转写黑匣子）", "log().error()",
                lambda: log().error("传送带电机堵转，工位 C 停机"))
     log_verify(
-        "结果行 msg 自证去向：放行 msg=success.、消费 msg=console log proxy is success.——"
+        "结果行 msg 自证去向：放行 msg=success.、消费 msg=ok（代理短路）——"
         "4 条演示中仅 INFO 出现在控制台，WARN/ERROR 已转写黑匣子")
 
     log_action_start("查看代理安装状态")
@@ -346,7 +346,7 @@ def show_arm_blackbox(log_dir):
                lambda: log_mgr().file().proxy(None).apply())
     log_action("卸载后记录 DEBUG 详单（穿透）", "log().to_sink(blackbox).debug()",
                lambda: log().to_sink("blackbox").debug("卸载代理后此行正常写入缓冲"))
-    log_verify("proxy=on 时 DEBUG 被拦（msg=file log proxy is success.）、None 卸载后 "
+    log_verify("proxy=on 时 DEBUG 被拦（msg=ok 代理短路）、None 卸载后 "
                "DEBUG 恢复写入——文件代理与控制台代理相互独立")
 
 # 场景 4：班次存档（文件日志：缓冲、刷盘、与控制台独立）
@@ -357,7 +357,7 @@ def show_arm_shift_log(log_dir):
         "log().to_sink().info/warn/error/debug（六级 sink 形态）+ /YomkLogger/on·off_file_log_by_level",
         "全级别班次存档：to_sink 发射写入内存缓冲，file().flush() 显式刷盘到 dir/name.log；"
         "文件开关与控制台开关两套相互独立——控制台 DEBUG 全关期间文件 DEBUG 照常"
-        "落盘，文件具名关断期间条目静默吞条（msg 仍 success.），落盘与否回读实证。")
+        "落盘，文件具名关断期间条目静默吞条（msg 仍 success），落盘与否回读实证。")
 
     log_action("创建班次存档文件器 shiftlog", "file(shiftlog).create()",
                lambda: log_mgr().dir(log_dir).file("shiftlog").create())
@@ -390,7 +390,7 @@ def show_arm_shift_log(log_dir):
     log_action("恢复 DEBUG 详单", "console().level(Debug).enable()",
                lambda: log_mgr().console().level(Log.eDebug).enable())
 
-    # 存档静默：文件具名关断期间条目静默吞条（msg 仍 success.），缺席归因逐器门控层
+    # 存档静默：文件具名关断期间条目静默吞条（msg 仍 success），缺席归因逐器门控层
     log_action("具名关断 shiftlog 的 INFO", "file(shiftlog).level(Info).disable()",
                lambda: log_mgr().file("shiftlog").level(Log.eInfo).disable())
     log_action("静默期间存档（INFO）", "log().to_sink(shiftlog).info()",
@@ -448,7 +448,7 @@ def show_arm_logger_dashboard():
     log_action_start("单查未注册日志器 ghost")
     resp = log_mgr().console("ghost").get_info()
     log_resp("/YomkLogger/logger ghost(console)", resp)
-    log_verify("未注册名字 -> eNo(logger not found.)：not-found 是框架统一惯例")
+    log_verify("未注册名字 -> eNo(console logger 'ghost' not found)：not-found 携带具体名，是框架统一惯例")
 
     log_action_start("全量导出日志器状态")
     resp = log_mgr().all()
@@ -490,7 +490,7 @@ def show_arm_log_cleanup(log_dir):
 
     log_action("清档未注册日志器 ghost", "file(ghost).remove()",
                lambda: log_mgr().file("ghost").remove())
-    log_verify("两表均未命中 -> eNo(logger not found.)：not-found 是框架统一惯例")
+    log_verify("两表均未命中 -> eNo(logger 'ghost' not found)：not-found 携带具体名，是框架统一惯例")
 
     log_action("清档默认日志器 main", "file(main).remove()",
                lambda: log_mgr().file("main").remove())

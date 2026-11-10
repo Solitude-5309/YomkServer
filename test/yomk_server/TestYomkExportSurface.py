@@ -27,7 +27,7 @@ import yomk.msg
 g_failed = 0
 
 DOMAINS = ["server", "boot", "ctx", "fn_pool", "event_loop", "log", "srv_info",
-           "url.fn_pool"]
+           "url.fn_pool", "url.log"]
 
 # 域名 → __all__ 快照（与各域 src/yomk/<域>/__init__.py 定型清单一致）
 EXPECTED = {
@@ -68,10 +68,19 @@ EXPECTED = {
         "YomkServerInfo",
     ],
     # url 常量池（yomk.url 命名空间 + 各域子包，与 msg 同构）：无 __version__（非版本化域），
-    # 逐域轮次扩充（第 2 轮起 fn_pool 端点）
+    # 逐域轮次扩充（第 2 轮 fn_pool 端点、第 3 轮 log 端点）
     "url.fn_pool": [
         "FP_ALL", "FP_CALL", "FP_NAME", "FP_NAMES", "FP_REGISTER",
         "FP_UNREGISTER",
+    ],
+    "url.log": [
+        "LOG_ALL", "LOG_CONSOLE_GLOBAL_STATE", "LOG_CONSOLE_LOG",
+        "LOG_CREATE_FILE_LOGGER", "LOG_DELETE_LOGGER", "LOG_FILE_GLOBAL_STATE",
+        "LOG_FILE_LOG", "LOG_LOGGER", "LOG_LOGGERS",
+        "LOG_OFF_CONSOLE_LOG_BY_LEVEL", "LOG_OFF_FILE_LOG_BY_LEVEL",
+        "LOG_ON_CONSOLE_LOG_BY_LEVEL", "LOG_ON_FILE_LOG_BY_LEVEL",
+        "LOG_SET_CONSOLE_PROXY", "LOG_SET_FILE_LOG_PROXY",
+        "LOG_WRITE_FILE_LOG",
     ],
 }
 
@@ -109,7 +118,7 @@ def main():
         check(not dangling, f"{domain}: __all__ 无悬空名字（dangling={dangling}）")
 
         # __version__ 为版本化域专属断言；url 常量池对齐 C++ 纯头文件命名空间，无版本
-        if domain != "url.fn_pool":
+        if not domain.startswith("url."):
             ver = getattr(mod, "__version__", "unknown")
             check(ver != "unknown", f"{domain}: __version__ 构建期注入（={ver}）")
 
