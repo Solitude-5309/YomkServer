@@ -58,7 +58,7 @@ yomk::ctx().group("main").monitor().enable();
 
 // 5. 内省与销毁
 yomk::ctx().keys();                                    // 组内键名清单（StringArray，缺省 main 组）
-yomk::ctx().key("config").info();                      // 单键元信息（ContextKeyInfo，含所属组 m_group）
+yomk::ctx().key("config").info();                      // 单键元信息（ContextKeyInfo，含所属组 group）
 yomk::ctx().groups();                                  // 全部组名（StringArray）
 yomk::ctx().all();                                     // 跨组聚合（ContextGroupInfoList：组 → 键元信息）
 yomk::ctx().key("config").destroy();                   // 删除键
@@ -79,7 +79,7 @@ yomk::ctx().key("config").destroy();                   // 删除键
 
 ## 内部结构
 
-Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 组级开关与单线程异步监控池均为每组自持，内省快照携带所属组名（`ContextKeyInfo.m_group`）。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表（map + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `findGroup` 定位 → 组实例委托"。`findGroup` 三段式：空组名返回 `Invalid` "group name is empty"（入参非法）；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（锁外裸指针长期安全——组不销毁、表只增不减）。
+Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 组级开关与单线程异步监控池均为每组自持，内省快照携带所属组名（`ContextKeyInfo.group`）。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表（map + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `findGroup` 定位 → 组实例委托"。`findGroup` 三段式：空组名返回 `Invalid` "group name is empty"（入参非法）；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（锁外裸指针长期安全——组不销毁、表只增不减）。
 
 ## 常见问题 FAQ
 

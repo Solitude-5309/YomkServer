@@ -44,42 +44,42 @@ int MyBoot::after()
 {
     // 服务启动后加载配置文件
     yomk::payload::Response resp = yomk::server().url("/ConfigService/load").request();
-    if (resp.m_status != yomk::payload::ResStatus::Succeeded)
+    if (resp.status != yomk::payload::ResStatus::Succeeded)
     {
-        yomk::log().tag("MyBoot::after").error("load config failed: ", resp.m_msg);
+        yomk::log().tag("MyBoot::after").error("load config failed: ", resp.msg);
         return -1;
     }
     yomk::log().tag("MyBoot::after").info("started successfully.");
 
     resp = yomk::server().url("/ConfigService/get").msg(yomk::msgs::ConfigKey::shared(ConfigKey{"name"})).request();
-    if (resp.m_status != yomk::payload::ResStatus::Succeeded)
+    if (resp.status != yomk::payload::ResStatus::Succeeded)
     {
-        yomk::log().tag("MyBoot::after").error("get config name failed: ", resp.m_msg);
+        yomk::log().tag("MyBoot::after").error("get config name failed: ", resp.msg);
         return -1;
     }
 
-    auto name = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
+    auto name = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
     yomk::log().tag("MyBoot::after").info("config name: ", name->d);
 
     // 测试版本号接口：获取并输出工程版本号（来自 CMake project() 定义的 VERSION，编译期注入）
     resp = yomk::server().url("/ConfigService/version").request();
-    if (resp.m_status != yomk::payload::ResStatus::Succeeded)
+    if (resp.status != yomk::payload::ResStatus::Succeeded)
     {
-        yomk::log().tag("MyBoot::after").error("get version failed: ", resp.m_msg);
+        yomk::log().tag("MyBoot::after").error("get version failed: ", resp.msg);
         return -1;
     }
 
-    auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
+    auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
     yomk::log().tag("MyBoot::after").info("project version: ", version->d);
 
     resp = yomk::server().url("/ConfigService/get").msg(yomk::msgs::ConfigKey::shared(ConfigKey{"description"})).request();
-    if (resp.m_status != yomk::payload::ResStatus::Succeeded)
+    if (resp.status != yomk::payload::ResStatus::Succeeded)
     {
-        yomk::log().tag("MyBoot::after").error("get config description failed: ", resp.m_msg);
+        yomk::log().tag("MyBoot::after").error("get config description failed: ", resp.msg);
         return -1;
     }
 
-    auto description = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
+    auto description = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
     yomk::log().tag("MyBoot::after").info("config description: ", description->d);
 
     return 0;

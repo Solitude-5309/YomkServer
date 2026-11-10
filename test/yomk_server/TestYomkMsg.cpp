@@ -154,13 +154,13 @@ int main()
             return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, s->d);
         };
         yomk::payload::Response nullResp = unpackResp(nullptr);
-        YOMK_TEST_CHECK(nullResp.m_status == yomk::payload::ResStatus::Failed && nullResp.m_msg == "pkg is not String, got 'null'",
+        YOMK_TEST_CHECK(nullResp.status == yomk::payload::ResStatus::Failed && nullResp.msg == "pkg is not String, got 'null'",
               "unpack null pkg：服务函数级判空返回 ResStatus::Failed + 具体契约消息(实际类型 null)");
         yomk::payload::Response nameMissResp = unpackResp(fakeNamePkg);
-        YOMK_TEST_CHECK(nameMissResp.m_status == yomk::payload::ResStatus::Failed && nameMissResp.m_msg == "pkg is not String, got 'Int32'",
+        YOMK_TEST_CHECK(nameMissResp.status == yomk::payload::ResStatus::Failed && nameMissResp.msg == "pkg is not String, got 'Int32'",
               "unpack 名字不匹配：具体契约消息(实际类型名)");
         yomk::payload::Response hitResp = unpackResp(okPkg);
-        YOMK_TEST_CHECK(hitResp.m_status == yomk::payload::ResStatus::Succeeded && hitResp.m_msg == "hello",
+        YOMK_TEST_CHECK(hitResp.status == yomk::payload::ResStatus::Succeeded && hitResp.msg == "hello",
               "unpack 命中：解包指针可用且 d 正确");
 
         // --- unpack + 手写判空提前 return（标志位观测） ---
@@ -232,31 +232,31 @@ int main()
     std::cout << "===== S3. Event 结构契约 =====" << std::endl;
     {
         yomk::payload::Event ev;
-        YOMK_TEST_CHECK(ev.m_eventLoopName.empty() && ev.m_pkg == nullptr && !ev.m_serviceFunc,
+        YOMK_TEST_CHECK(ev.eventLoopName.empty() && ev.pkg == nullptr && !ev.serviceFunc,
               "Event 默认构造：loop 名空/pkg 空/func 空");
-        YOMK_TEST_CHECK(ev.m_eventId == 0 && ev.m_tag.empty() && ev.m_response.m_status == yomk::payload::ResStatus::Invalid && !ev.m_waitCallback,
+        YOMK_TEST_CHECK(ev.eventId == 0 && ev.tag.empty() && ev.response.status == yomk::payload::ResStatus::Invalid && !ev.waitCallback,
               "Event 默认构造：eventId 0/tag 空/response ResStatus::Invalid/waitCallback 空");
 
         int handled = 0;
         yomk::payload::Event ev3("/L1", yomk::msgs::String::shared(std::string("p")),
                         [&handled](YomkMsgPtr) { ++handled; return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "handled"); });
-        YOMK_TEST_CHECK(ev3.m_eventLoopName == "/L1" && ev3.m_pkg != nullptr && ev3.m_eventId == 0 && ev3.m_tag.empty(),
+        YOMK_TEST_CHECK(ev3.eventLoopName == "/L1" && ev3.pkg != nullptr && ev3.eventId == 0 && ev3.tag.empty(),
               "Event 三参构造：字段透传，eventId 保持 0（入队时由框架分配）");
         ev3.handle();
-        YOMK_TEST_CHECK(handled == 1 && ev3.m_response.m_status == yomk::payload::ResStatus::Succeeded && ev3.m_response.m_msg == "handled",
+        YOMK_TEST_CHECK(handled == 1 && ev3.response.status == yomk::payload::ResStatus::Succeeded && ev3.response.msg == "handled",
               "Event handle：执行 serviceFunc 并填充 response");
 
         yomk::payload::Event ev4("/L2", nullptr, YomkServiceFunc(), "tag1");
-        YOMK_TEST_CHECK(ev4.m_tag == "tag1" && !ev4.m_serviceFunc, "Event 四参构造：tag 透传，func 可空");
+        YOMK_TEST_CHECK(ev4.tag == "tag1" && !ev4.serviceFunc, "Event 四参构造：tag 透传，func 可空");
 
         yomk::payload::Event evSilent;
         evSilent.handle();
-        YOMK_TEST_CHECK(evSilent.m_response.m_status == yomk::payload::ResStatus::Invalid,
+        YOMK_TEST_CHECK(evSilent.response.status == yomk::payload::ResStatus::Invalid,
               "Event 默认 handle：无 serviceFunc 静默，response 不变");
 
         bool waited = false;
-        ev3.m_waitCallback = [&waited]() { waited = true; };
-        ev3.m_waitCallback();
+        ev3.waitCallback = [&waited]() { waited = true; };
+        ev3.waitCallback();
         YOMK_TEST_CHECK(waited, "Event waitCallback：可赋值并执行");
     }
 
@@ -264,47 +264,47 @@ int main()
     std::cout << "===== S4. yomk::payload::Response 契约 =====" << std::endl;
     {
         yomk::payload::Response def;
-        YOMK_TEST_CHECK(def.m_status == yomk::payload::ResStatus::Invalid && def.m_msg.empty() && def.m_data == nullptr,
+        YOMK_TEST_CHECK(def.status == yomk::payload::ResStatus::Invalid && def.msg.empty() && def.data == nullptr,
               "yomk::payload::Response 默认构造：ResStatus::Invalid/msg 空/data 空");
         YOMK_TEST_CHECK(static_cast<int>(yomk::payload::ResStatus::Invalid) == -1 && static_cast<int>(yomk::payload::ResStatus::Succeeded) == 0 && static_cast<int>(yomk::payload::ResStatus::Failed) == 1,
               "枚举值序契约：ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1");
         yomk::payload::Response two(yomk::payload::ResStatus::Failed, "no msg");
-        YOMK_TEST_CHECK(two.m_status == yomk::payload::ResStatus::Failed && two.m_msg == "no msg" && two.m_data == nullptr,
+        YOMK_TEST_CHECK(two.status == yomk::payload::ResStatus::Failed && two.msg == "no msg" && two.data == nullptr,
               "双参构造：status/msg 透传，data 默认空");
         auto dataPkg = yomk::msgs::String::shared(std::string("payload"));
         yomk::payload::Response three(yomk::payload::ResStatus::Succeeded, "ok", dataPkg);
-        YOMK_TEST_CHECK(three.m_status == yomk::payload::ResStatus::Succeeded && three.m_data == dataPkg, "三参构造：data 透传");
+        YOMK_TEST_CHECK(three.status == yomk::payload::ResStatus::Succeeded && three.data == dataPkg, "三参构造：data 透传");
     }
 
     // ============ S5. 框架结构体默认值 ============
     std::cout << "===== S5. 框架结构体默认值 =====" << std::endl;
     {
         yomk::payload::Function f;
-        YOMK_TEST_CHECK(f.m_funcName.empty() && f.m_msgName.empty() && !f.m_func, "Function 默认：名称/消息名空、func 空");
+        YOMK_TEST_CHECK(f.funcName.empty() && f.msgName.empty() && !f.func, "Function 默认：名称/消息名空、func 空");
         yomk::payload::CallFunction cf;
-        YOMK_TEST_CHECK(cf.m_funcName.empty() && cf.m_pkg == nullptr, "CallFunction 默认：名称空、pkg 空");
+        YOMK_TEST_CHECK(cf.funcName.empty() && cf.pkg == nullptr, "CallFunction 默认：名称空、pkg 空");
         yomk::payload::EventLoop el;
-        YOMK_TEST_CHECK(el.m_eventLoopName.empty() && el.m_msgName.empty() && !el.m_defaultServiceFunc,
+        YOMK_TEST_CHECK(el.eventLoopName.empty() && el.msgName.empty() && !el.defaultServiceFunc,
               "EventLoop 默认：名称/消息名空、默认 func 空");
         yomk::payload::LogFile lf;
-        YOMK_TEST_CHECK(lf.m_logger.empty() && lf.m_dir.empty(), "LogFile 默认：logger/dir 空");
+        YOMK_TEST_CHECK(lf.logger.empty() && lf.dir.empty(), "LogFile 默认：logger/dir 空");
         // Log::m_level 为无类内初始化的 POD enum，默认值不稳定，不作值断言
         yomk::payload::Log lg;
-        YOMK_TEST_CHECK(lg.m_log.empty() && lg.m_logger.empty() && lg.m_tag.empty(),
+        YOMK_TEST_CHECK(lg.log.empty() && lg.logger.empty() && lg.tag.empty(),
               "Log 默认：内容/logger/tag 空（m_level 无默认初始化不断言）");
         yomk::payload::ConsoleLogProxy cp;
-        YOMK_TEST_CHECK(!cp.m_consoleLogProxyFunc, "ConsoleLogProxy 默认：代理 func 空");
+        YOMK_TEST_CHECK(!cp.consoleLogProxyFunc, "ConsoleLogProxy 默认：代理 func 空");
         yomk::payload::Context ctx;
-        YOMK_TEST_CHECK(ctx.m_key.empty() && ctx.m_value == nullptr, "Context 默认：key 空、value 空");
+        YOMK_TEST_CHECK(ctx.key.empty() && ctx.value == nullptr, "Context 默认：key 空、value 空");
         yomk::payload::ContextChecker cck;
-        YOMK_TEST_CHECK(cck.m_key.empty() && !cck.m_checkFunc, "ContextChecker 默认：key 空、check func 空");
+        YOMK_TEST_CHECK(cck.key.empty() && !cck.checkFunc, "ContextChecker 默认：key 空、check func 空");
         yomk::payload::ContextMonitor cmo;
-        YOMK_TEST_CHECK(cmo.m_key.empty() && !cmo.m_contextMonitorFunc && cmo.m_asyncMonitor == false,
+        YOMK_TEST_CHECK(cmo.key.empty() && !cmo.contextMonitorFunc && cmo.asyncMonitor == false,
               "ContextMonitor 默认：key 空、func 空、async false");
 
         // 结构体消息包版：YOMK_DEFINE_MSG 宏生成的 name 就位且 d 默认构造
         auto ctxPkg = yomk::msgs::Context::shared();
-        YOMK_TEST_CHECK(ctxPkg->name() == "Context" && ctxPkg->d.m_key.empty(), "Context 消息包版：name 就位且 d 默认构造");
+        YOMK_TEST_CHECK(ctxPkg->name() == "Context" && ctxPkg->d.key.empty(), "Context 消息包版：name 就位且 d 默认构造");
     }
 
     std::cout << (g_failed == 0 ? "ALL PASSED" : "SOME FAILED") << " (" << g_failed << " failed)" << std::endl;

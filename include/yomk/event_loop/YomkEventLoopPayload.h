@@ -17,29 +17,29 @@ namespace yomk::payload
 struct Event
 {
     virtual ~Event() = default;
-    std::string m_eventLoopName;
-    YomkMsgPtr m_pkg;
-    YomkServiceFunc m_serviceFunc;
-    std::uint64_t m_eventId = 0;
-    Response m_response;
-    std::function<void()> m_waitCallback;
-    std::string m_tag;
-    Event() : m_eventLoopName(""), m_pkg(nullptr), m_serviceFunc(nullptr), m_waitCallback(nullptr), m_tag("") {}
+    std::string eventLoopName;
+    YomkMsgPtr pkg;
+    YomkServiceFunc serviceFunc;
+    std::uint64_t eventId = 0;
+    Response response;
+    std::function<void()> waitCallback;
+    std::string tag;
+    Event() : eventLoopName(""), pkg(nullptr), serviceFunc(nullptr), waitCallback(nullptr), tag("") {}
     Event(const std::string& eventLoopName, YomkMsgPtr pkg, YomkServiceFunc serviceFunc)
-        : m_eventLoopName(eventLoopName), m_pkg(pkg), m_serviceFunc(serviceFunc), m_waitCallback(nullptr), m_tag("")
+        : eventLoopName(eventLoopName), pkg(pkg), serviceFunc(serviceFunc), waitCallback(nullptr), tag("")
     {
     }
     Event(const std::string& eventLoopName, YomkMsgPtr pkg, YomkServiceFunc serviceFunc, const std::string& tag)
-        : m_eventLoopName(eventLoopName), m_pkg(pkg), m_serviceFunc(serviceFunc), m_waitCallback(nullptr), m_tag(tag)
+        : eventLoopName(eventLoopName), pkg(pkg), serviceFunc(serviceFunc), waitCallback(nullptr), tag(tag)
     {
     }
     /** @brief Execution entry on the event loop thread, derived classes may override to customize behavior */
     // @zh: 事件循环线程执行入口，派生类可重写定制行为
     virtual void handle()
     {
-        if (m_serviceFunc)
+        if (serviceFunc)
         {
-            m_response = m_serviceFunc(m_pkg);
+            response = serviceFunc(pkg);
         }
     }
 };
@@ -48,29 +48,29 @@ struct Event
 // @zh: 事件循环创建载荷（名称 + 默认处理函数）
 struct EventLoop
 {
-    std::string m_eventLoopName;
-    YomkServiceFunc m_defaultServiceFunc;
-    std::string m_msgName;  // 默认处理函数期望的消息类型名(仅内省元数据,可为空)
+    std::string eventLoopName;
+    YomkServiceFunc defaultServiceFunc;
+    std::string msgName;  // 默认处理函数期望的消息类型名(仅内省元数据,可为空)
 };
 
 /** @brief Event loop single-query payload (dedicated to /YomkEventLoop/loop): name plus queue-head tag sample count, typed fields without parsing ambiguity */
 // @zh: 事件循环单查载荷（/YomkEventLoop/loop 专用）：名称 + 队列头 tag 采样数，类型化字段无解析歧义
 struct EventLoopQuery
 {
-    std::string m_loopName;      // 循环名(按字面量精确匹配,不做任何切分)
-    std::size_t m_tagCount = 3;  // 队列头采样条数(缺省 3,与全量内省缺省一致)
+    std::string loopName;      // 循环名(按字面量精确匹配,不做任何切分)
+    std::size_t tagCount = 3;  // 队列头采样条数(缺省 3,与全量内省缺省一致)
 };
 
 /** @brief Event loop introspection snapshot */
 // @zh: 事件循环内省快照
 struct EventLoopInfo
 {
-    std::string m_loopName;               // 循环名
-    bool m_running = false;               // worker 是否运行中
-    std::size_t m_pending = 0;            // 积压事件数
-    bool m_hasDefaultFunc = false;        // 是否注册默认处理函数
-    std::string m_msgName;                // 默认处理函数期望的消息类型名(可空)
-    std::vector<std::string> m_nextTags;  // 队列头起最多 tagCount 条事件 tag(存原值,空串保留)
+    std::string loopName;               // 循环名
+    bool running = false;               // worker 是否运行中
+    std::size_t pending = 0;            // 积压事件数
+    bool hasDefaultFunc = false;        // 是否注册默认处理函数
+    std::string msgName;                // 默认处理函数期望的消息类型名(可空)
+    std::vector<std::string> nextTags;  // 队列头起最多 tagCount 条事件 tag(存原值,空串保留)
 };
 
 }  // namespace yomk::payload

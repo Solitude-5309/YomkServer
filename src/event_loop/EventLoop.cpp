@@ -73,9 +73,9 @@ int EventLoop::destroy()
     }
     for (auto& event : discarded)
     {
-        if (event && event->d.m_waitCallback)
+        if (event && event->d.waitCallback)
         {
-            event->d.m_waitCallback();
+            event->d.waitCallback();
         }
     }
     return 0;
@@ -95,10 +95,10 @@ int EventLoop::post(yomk::msgs::EventPtr event)
 
     {
         std::lock_guard<std::mutex> lock(m_queueMutex);
-        event->d.m_eventId = ++m_eventId;
-        if (!event->d.m_serviceFunc)
+        event->d.eventId = ++m_eventId;
+        if (!event->d.serviceFunc)
         {
-            event->d.m_serviceFunc = m_defaultServiceFunc;
+            event->d.serviceFunc = m_defaultServiceFunc;
         }
         m_eventQueue.push(event);
         // 丢失唤醒防护(对齐 stop() 与 YomkSimpleThreadPool::stop 同款先例):notify 若在锁外,
@@ -148,7 +148,7 @@ int EventLoop::postWait(yomk::msgs::EventPtr event)
 
     // notify 在持锁内进行:若在锁外 notify,等待方从 wait 醒来(notified=true)后析构 tmpCv,
     // 与本线程锁外的 notify_all 无 happens-before 边,构成 destroy-vs-notify 竞态(POSIX UB,TSan 如实报告)
-    event->d.m_waitCallback = [&tmpCv, &notified, &tmpMtx]()
+    event->d.waitCallback = [&tmpCv, &notified, &tmpMtx]()
     {
         std::lock_guard<std::mutex> lk(tmpMtx);
         notified = true;
@@ -179,16 +179,16 @@ void EventLoop::setDefaultServiceFunc(YomkServiceFunc serviceFunc, const std::st
 void EventLoop::infoSnapshot(yomk::payload::EventLoopInfo& info, size_t tagCount)
 {
     std::lock_guard<std::mutex> lock(m_queueMutex);
-    info.m_running = m_running.load();
-    info.m_pending = m_eventQueue.size();
-    info.m_hasDefaultFunc = static_cast<bool>(m_defaultServiceFunc);
-    info.m_msgName = m_defaultMsgName;
+    info.running = m_running.load();
+    info.pending = m_eventQueue.size();
+    info.hasDefaultFunc = static_cast<bool>(m_defaultServiceFunc);
+    info.msgName = m_defaultMsgName;
     std::queue<yomk::msgs::EventPtr> queueCopy = m_eventQueue;
-    while (!queueCopy.empty() && info.m_nextTags.size() < tagCount)
+    while (!queueCopy.empty() && info.nextTags.size() < tagCount)
     {
         auto event = queueCopy.front();
         queueCopy.pop();
-        info.m_nextTags.push_back(event ? event->d.m_tag : "");
+        info.nextTags.push_back(event ? event->d.tag : "");
     }
 }
 
@@ -219,7 +219,7 @@ void EventLoop::run()
         catch (const std::exception& e)
         {
             YOMK_DIAG_ERROR(
-                "EventLoop: " + event->d.m_eventLoopName + " exec event id: " + std::to_string(event->d.m_eventId) +
+                "EventLoop: " + event->d.eventLoopName + " exec event id: " + std::to_string(event->d.eventId) +
                 " caught, what: " + std::string(e.what()));
         }
         catch (...)
@@ -227,9 +227,9 @@ void EventLoop::run()
             YOMK_DIAG_ERROR("EventLoop: unknown exception caught");
         }
 
-        if (event->d.m_waitCallback)
+        if (event->d.waitCallback)
         {
-            event->d.m_waitCallback();
+            event->d.waitCallback();
         }
     }
 }

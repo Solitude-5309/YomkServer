@@ -51,7 +51,7 @@ yomk::payload::Response YomkServerInfo::listFunctions(YomkMsgPtr pkg)
         return {yomk::payload::ResStatus::Failed, "server has been destroyed"};
     }
 
-    // 结构化清单:FuncInfo 三字段与 /function 单查,/all 聚合同族(m_funcName 带 / 前缀 url 段)
+    // 结构化清单:FuncInfo 三字段与 /function 单查,/all 聚合同族(funcName 带 / 前缀 url 段)
     std::vector<yomk::payload::FuncInfo> funcs;
     for (auto& iter : server->serviceFuncInfos(ySrvName->d))
     {
@@ -103,9 +103,9 @@ yomk::payload::Response YomkServerInfo::functionInfo(YomkMsgPtr pkg)
             }
             // 命中:复用 yomk::payload::FuncInfo 与 FunctionPool /name 单查端点同族
             yomk::payload::FuncInfo info;
-            info.m_funcName = funcName;
-            info.m_msgName = iter->second.m_msgName;
-            info.m_description = iter->second.m_description;
+            info.funcName = funcName;
+            info.msgName = iter->second.msgName;
+            info.description = iter->second.description;
             return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfo::shared(info)};
         }
     }
@@ -125,17 +125,17 @@ yomk::payload::Response YomkServerInfo::listAll(YomkMsgPtr pkg)
     }
 
     // 取数锁序:serviceNames() 一次,再逐服务 serviceFuncInfos();
-    // FuncInfo 三字段与 /function 单查同族整体拷贝(m_funcName 为带 / 前缀 url 段)
+    // FuncInfo 三字段与 /function 单查同族整体拷贝(funcName 为带 / 前缀 url 段)
     std::vector<yomk::payload::ServerServiceInfo> infos;
     for (auto& srvName : server->serviceNames())
     {
         yomk::payload::ServerServiceInfo srv;
-        srv.m_serviceName = srvName;
+        srv.serviceName = srvName;
         auto funcInfos = server->serviceFuncInfos(srvName);
-        srv.m_funcs.reserve(funcInfos.size());
+        srv.funcs.reserve(funcInfos.size());
         for (auto& iter : funcInfos)
         {
-            srv.m_funcs.push_back(iter.second);
+            srv.funcs.push_back(iter.second);
         }
         infos.push_back(std::move(srv));
     }

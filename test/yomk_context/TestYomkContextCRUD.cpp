@@ -58,7 +58,7 @@ int main()
 
     // 验证 /YomkContext 已注册
     auto infoAll = yomk::srv_info().all();
-    YOMK_TEST_CHECK(infoAll.m_status == yomk::payload::ResStatus::Succeeded, "all() 返回 ResStatus::Succeeded");
+    YOMK_TEST_CHECK(infoAll.status == yomk::payload::ResStatus::Succeeded, "all() 返回 ResStatus::Succeeded");
 
     // create：正常创建 String 类型 value
     {
@@ -167,8 +167,8 @@ int main()
     // keys：包含已创建 key
     {
         auto resp = yomk::ctx().keys();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "keys 返回 ResStatus::Succeeded");
-        auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "keys 返回 ResStatus::Succeeded");
+        auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.data);
         YOMK_TEST_CHECK(arr != nullptr, "keys 数据为 StringArray");
         YOMK_TEST_CHECK(arr && arr->d.size() == 2, "keys 返回 2 个 key");
         YOMK_TEST_CHECK(arr && contains(arr->d, "str_key"), "keys 包含 str_key");
@@ -178,54 +178,54 @@ int main()
     // keyInfo：正常 key（结构化返回，m_msg 恒 "ok"，数据走 m_data）
     {
         auto resp = yomk::ctx().key("str_key").info();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "keyInfo 正常 key 返回 ResStatus::Succeeded");
-        YOMK_TEST_CHECK(resp.m_msg == "ok", "keyInfo 命中 m_msg 恒为 ok");
-        auto info = yomk::msgs::unpack<yomk::msgs::ContextKeyInfo>(resp.m_data);
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "keyInfo 正常 key 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(resp.msg == "ok", "keyInfo 命中 m_msg 恒为 ok");
+        auto info = yomk::msgs::unpack<yomk::msgs::ContextKeyInfo>(resp.data);
         YOMK_TEST_CHECK(info != nullptr, "keyInfo 数据为 ContextKeyInfo 包");
-        YOMK_TEST_CHECK(info && info->d.m_key == "str_key", "keyInfo 字段 m_key 一致");
-        YOMK_TEST_CHECK(info && info->d.m_typeName == "String", "keyInfo 字段 m_typeName 一致");
-        YOMK_TEST_CHECK(info && !info->d.m_checkerOn, "keyInfo 字段 m_checkerOn 为 false");
-        YOMK_TEST_CHECK(info && info->d.m_monitorCount == 0 && info->d.m_asyncMonitorCount == 0,
+        YOMK_TEST_CHECK(info && info->d.key == "str_key", "keyInfo 字段 m_key 一致");
+        YOMK_TEST_CHECK(info && info->d.typeName == "String", "keyInfo 字段 m_typeName 一致");
+        YOMK_TEST_CHECK(info && !info->d.checkerOn, "keyInfo 字段 m_checkerOn 为 false");
+        YOMK_TEST_CHECK(info && info->d.monitorCount == 0 && info->d.asyncMonitorCount == 0,
               "keyInfo 字段 monitor 计数为 0");
-        YOMK_TEST_CHECK(info && info->d.m_group == "main", "keyInfo 字段 m_group 一致");
+        YOMK_TEST_CHECK(info && info->d.group == "main", "keyInfo 字段 m_group 一致");
     }
 
     // keyInfo：空 key
     {
         auto resp = yomk::ctx().key("").info();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Invalid, "keyInfo 空 key 返回 ResStatus::Invalid(入参非法三态统一)");
-        YOMK_TEST_CHECK(resp.m_msg == "context key is empty", "keyInfo 空 key 错误消息一致");
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Invalid, "keyInfo 空 key 返回 ResStatus::Invalid(入参非法三态统一)");
+        YOMK_TEST_CHECK(resp.msg == "context key is empty", "keyInfo 空 key 错误消息一致");
     }
 
     // keyInfo：不存在 key
     {
         auto resp = yomk::ctx().key("no_such_key").info();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Failed, "keyInfo 不存在 key 返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(resp.m_msg == "context key 'no_such_key' does not exist", "keyInfo 不存在 key 错误消息一致(具体键名)");
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Failed, "keyInfo 不存在 key 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(resp.msg == "context key 'no_such_key' does not exist", "keyInfo 不存在 key 错误消息一致(具体键名)");
     }
 
     // listAll：跨组聚合（组 → 键元信息两层结构化包，m_msg 恒 "ok"）
     {
         auto resp = yomk::ctx().all();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "listAll 返回 ResStatus::Succeeded");
-        YOMK_TEST_CHECK(resp.m_msg == "ok", "listAll 成功消息恒为 ok");
-        auto arr = yomk::msgs::unpack<yomk::msgs::ContextGroupInfoList>(resp.m_data);
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "listAll 返回 ResStatus::Succeeded");
+        YOMK_TEST_CHECK(resp.msg == "ok", "listAll 成功消息恒为 ok");
+        auto arr = yomk::msgs::unpack<yomk::msgs::ContextGroupInfoList>(resp.data);
         YOMK_TEST_CHECK(arr != nullptr, "listAll 数据为 ContextGroupInfoList");
         YOMK_TEST_CHECK(arr && arr->d.size() == 1, "listAll 返回 1 个组信息");
-        YOMK_TEST_CHECK(arr && arr->d[0].m_groupName == "main", "listAll 组名为 main");
+        YOMK_TEST_CHECK(arr && arr->d[0].groupName == "main", "listAll 组名为 main");
         // 组内 m_keys 为 std::map 快照，中序遍历字典序：int_key < str_key；逐字段断言（均未挂 checker/monitor）
-        YOMK_TEST_CHECK(arr && arr->d[0].m_keys.size() == 2, "listAll 返回 2 个键信息");
-        YOMK_TEST_CHECK(arr && arr->d[0].m_keys[0].m_key == "int_key" && arr->d[0].m_keys[1].m_key == "str_key",
+        YOMK_TEST_CHECK(arr && arr->d[0].keys.size() == 2, "listAll 返回 2 个键信息");
+        YOMK_TEST_CHECK(arr && arr->d[0].keys[0].key == "int_key" && arr->d[0].keys[1].key == "str_key",
               "listAll 键序为 map 字典序（int_key, str_key）");
-        YOMK_TEST_CHECK(arr && arr->d[0].m_keys[0].m_typeName == "Int32" && arr->d[0].m_keys[1].m_typeName == "String",
+        YOMK_TEST_CHECK(arr && arr->d[0].keys[0].typeName == "Int32" && arr->d[0].keys[1].typeName == "String",
               "listAll 类型名一致");
-        YOMK_TEST_CHECK(arr && arr->d[0].m_keys[0].m_group == "main" && arr->d[0].m_keys[1].m_group == "main",
+        YOMK_TEST_CHECK(arr && arr->d[0].keys[0].group == "main" && arr->d[0].keys[1].group == "main",
               "listAll 键所属组一致");
-        YOMK_TEST_CHECK(arr && !arr->d[0].m_keys[0].m_checkerOn && !arr->d[0].m_keys[1].m_checkerOn,
+        YOMK_TEST_CHECK(arr && !arr->d[0].keys[0].checkerOn && !arr->d[0].keys[1].checkerOn,
               "listAll checker 状态为关");
-        YOMK_TEST_CHECK(arr && arr->d[0].m_keys[0].m_monitorCount == 0 && arr->d[0].m_keys[1].m_monitorCount == 0,
+        YOMK_TEST_CHECK(arr && arr->d[0].keys[0].monitorCount == 0 && arr->d[0].keys[1].monitorCount == 0,
               "listAll monitor 计数为 0");
-        YOMK_TEST_CHECK(arr && arr->d[0].m_keys[0].m_asyncMonitorCount == 0 && arr->d[0].m_keys[1].m_asyncMonitorCount == 0,
+        YOMK_TEST_CHECK(arr && arr->d[0].keys[0].asyncMonitorCount == 0 && arr->d[0].keys[1].asyncMonitorCount == 0,
               "listAll async monitor 计数为 0");
     }
 
@@ -256,8 +256,8 @@ int main()
     // keys：销毁后只剩一个 key
     {
         auto resp = yomk::ctx().keys();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "keys 销毁后返回 ResStatus::Succeeded");
-        auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "keys 销毁后返回 ResStatus::Succeeded");
+        auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.data);
         YOMK_TEST_CHECK(arr && arr->d.size() == 1, "keys 销毁后返回 1 个 key");
         YOMK_TEST_CHECK(arr && contains(arr->d, "str_key"), "keys 销毁后仍包含 str_key");
         YOMK_TEST_CHECK(arr && !contains(arr->d, "int_key"), "keys 销毁后不含 int_key");
@@ -272,8 +272,8 @@ int main()
     // keys：全部销毁后为空
     {
         auto resp = yomk::ctx().keys();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "keys 全部销毁后返回 ResStatus::Succeeded");
-        auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "keys 全部销毁后返回 ResStatus::Succeeded");
+        auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.data);
         YOMK_TEST_CHECK(arr && arr->d.empty(), "keys 全部销毁后返回空数组");
     }
 

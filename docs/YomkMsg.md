@@ -66,7 +66,7 @@ yomk::fn_pool().fn_name("save").msg(pkg).call();                                
 ## 注意事项
 
 - 类型匹配以运行期类型名为准（宏的 `MsgName` 参数即 `kName`）；各处声明的"期望消息类型名"——`installFunc("/x", &C::m, "MsgName")` 第三参、`yomk::fn_pool().msg_name(...)`、`yomk::event_loop().msg_name(...)`——与该字符串保持一致，仅作内省元数据，不拦截调用。
-- 期望类型名与说明字符串均供自省读取（函数池与函数单查返回 `FuncInfo`：`m_funcName` / `m_msgName` / `m_description`，见 [服务自省](YomkServerInfo.md)）。
+- 期望类型名与说明字符串均供自省读取（函数池与函数单查返回 `FuncInfo`：`funcName` / `msgName` / `description`，见 [服务自省](YomkServerInfo.md)）。
 - 上下文类型化读自带同类校验：`yomk::ctx().key(k).msg<MsgName>()...get()` 内部按 `kName` 比对 + 指针转换，与 `unpack` 语义一致。
 
 ## 常见问题 FAQ

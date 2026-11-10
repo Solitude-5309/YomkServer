@@ -11,28 +11,28 @@
  * YOMK_DEFINE_MSG(数据类型, 消息名, 成员变量名) 三参数含义：
  * - 数据类型：实际承载数据的结构体
  * - 消息名：框架内类型识别名（供自省/校验用），注册后各辅助宏均以它为名
- * - 成员变量名：包内访问数据的入口，如 ptr->cmd.m_x
+ * - 成员变量名：包内访问数据的入口，如 ptr->cmd.x
  */
 
 // 运动指令：末端目标位姿与速度倍率
 struct MoveCmd
 {
-    double m_x;           // 目标 X（mm）
-    double m_y;           // 目标 Y（mm）
-    double m_z;           // 目标 Z（mm）
-    double m_speedRatio;  // 速度倍率 0.0~1.0
+    double x;           // 目标 X（mm）
+    double y;           // 目标 Y（mm）
+    double z;           // 目标 Z（mm）
+    double speedRatio;  // 速度倍率 0.0~1.0
 };
 
-// 运动回执：到位反馈（演示回包 m_data 可传自定义强类型，不局限于 String）
+// 运动回执：到位反馈（演示回包 data 可传自定义强类型，不局限于 String）
 struct MoveResp
 {
-    double m_reachX;  // 到位 X（mm）
-    double m_reachY;  // 到位 Y（mm）
-    double m_reachZ;  // 到位 Z（mm）
+    double reachX;  // 到位 X（mm）
+    double reachY;  // 到位 Y（mm）
+    double reachZ;  // 到位 Z（mm）
 };
 
 // 注册后即可使用：
 // - 创建：yomk::msgs::MoveCmd::shared(moveCmd)（聚合初始化先赋具名变量，含逗号不能内联进宏）
-// - 解包：auto ptr = yomk::msgs::unpack<yomk::msgs::MoveCmd>(pkg)，通过 ptr->cmd.m_x 访问
+// - 解包：auto ptr = yomk::msgs::unpack<yomk::msgs::MoveCmd>(pkg)，通过 ptr->cmd.x 访问
 YOMK_DEFINE_MSG(::MoveCmd, MoveCmd, cmd);
 YOMK_DEFINE_MSG(::MoveResp, MoveResp, resp);

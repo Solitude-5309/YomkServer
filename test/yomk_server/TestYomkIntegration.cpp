@@ -80,11 +80,11 @@ static bool readFile(const fs::path& path, std::string& out)
 static std::vector<std::string> unpackStringArray(const yomk::payload::Response& resp)
 {
     std::vector<std::string> names;
-    if (resp.m_status != yomk::payload::ResStatus::Succeeded || !resp.m_data)
+    if (resp.status != yomk::payload::ResStatus::Succeeded || !resp.data)
     {
         return names;
     }
-    auto arr = std::dynamic_pointer_cast<yomk::msgs::StringArray>(resp.m_data);
+    auto arr = std::dynamic_pointer_cast<yomk::msgs::StringArray>(resp.data);
     if (arr)
     {
         names = arr->d;
@@ -188,7 +188,7 @@ int main()
     {
         YOMK_TEST_CHECK(yomk::server().srv_name("/YomkLogger").remove() == 0, "删除内置 /YomkLogger 返回 0");
         auto afterDel = yomk::log_mgr().console().list();
-        YOMK_TEST_CHECK(afterDel.m_status == yomk::payload::ResStatus::Failed && afterDel.m_msg == "service not found: /YomkLogger",
+        YOMK_TEST_CHECK(afterDel.status == yomk::payload::ResStatus::Failed && afterDel.msg == "service not found: /YomkLogger",
               "删除后 LOGGER API 服务级 ResStatus::Failed + 精确消息");
         YOMK_TEST_CHECK(!contains(unpackStringArray(yomk::srv_info().services()), "/YomkLogger"),
               "服务表快照不再含 /YomkLogger");
@@ -196,7 +196,7 @@ int main()
         YOMK_TEST_CHECK(yomk::server().srv<YomkLogger>().create() == 0, "newService 无参重注册返回 0（构造函数固定名生效）");
         auto restored = yomk::log_mgr().console().list();
         // loggers 按类型查询，行内容即 logger 纯名（YomkLogger::loggers 不再拼接类型后缀）
-        YOMK_TEST_CHECK(restored.m_status == yomk::payload::ResStatus::Succeeded && contains(unpackStringArray(restored), "main"),
+        YOMK_TEST_CHECK(restored.status == yomk::payload::ResStatus::Succeeded && contains(unpackStringArray(restored), "main"),
               "重注册后 LOGGER API 恢复且含 main");
         YOMK_TEST_CHECK(yomk::log().tag("main").info("[integration] s2 relink marker") ==
                   yomk::payload::ResStatus::Succeeded,
@@ -265,10 +265,10 @@ int main()
         YOMK_TEST_CHECK(postCtx == yomk::payload::ResStatus::Invalid,
               "shutdown 后 setContext 回归 ResStatus::Invalid");
         auto postLog = yomk::log_mgr().all();
-        YOMK_TEST_CHECK(postLog.m_status == yomk::payload::ResStatus::Invalid && postLog.m_msg == "YomkServer is not initialized",
+        YOMK_TEST_CHECK(postLog.status == yomk::payload::ResStatus::Invalid && postLog.msg == "YomkServer is not initialized",
               "shutdown 后 LOGGER API 回归 ResStatus::Invalid + 守卫消息");
         auto postInfo = yomk::srv_info().all();
-        YOMK_TEST_CHECK(postInfo.m_status == yomk::payload::ResStatus::Invalid && postInfo.m_msg == "YomkServer is not initialized",
+        YOMK_TEST_CHECK(postInfo.status == yomk::payload::ResStatus::Invalid && postInfo.msg == "YomkServer is not initialized",
               "shutdown 后 SERVER_INFO API 回归 ResStatus::Invalid + 守卫消息");
 
         // 跨线程守卫语义：shutdown 返回后另起线程调用，epoch 已传播（happens-before
@@ -278,8 +278,8 @@ int main()
             yomk::payload::Response crossResp(yomk::payload::ResStatus::Succeeded);
             std::thread worker([&crossResp]() { crossResp = yomk::log_mgr().all(); });
             worker.join();
-            YOMK_TEST_CHECK(crossResp.m_status == yomk::payload::ResStatus::Invalid &&
-                                crossResp.m_msg == "YomkServer is not initialized",
+            YOMK_TEST_CHECK(crossResp.status == yomk::payload::ResStatus::Invalid &&
+                                crossResp.msg == "YomkServer is not initialized",
                   "shutdown 后跨线程 LOGGER API 回归 ResStatus::Invalid + 守卫消息（epoch 传播）");
         }
 

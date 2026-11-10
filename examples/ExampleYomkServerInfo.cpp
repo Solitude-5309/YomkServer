@@ -81,12 +81,12 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.status);
+    if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         oss << "(ResStatus::Succeeded 成功)";
     }
-    else if (resp.m_status == yomk::payload::ResStatus::Failed)
+    else if (resp.status == yomk::payload::ResStatus::Failed)
     {
         oss << "(ResStatus::Failed 拒绝或不存在)";
     }
@@ -94,10 +94,10 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
     {
         oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
-    oss << ", msg=\"" << resp.m_msg << "\"";
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_data)
+    oss << ", msg=\"" << resp.msg << "\"";
+    if (resp.status == yomk::payload::ResStatus::Succeeded && resp.data)
     {
-        auto data = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
+        auto data = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
         if (data)
         {
             oss << ", data=\"" << data->d << "\"";
@@ -148,15 +148,15 @@ static void logStringLine(const std::string& api, const std::string& line)
 static void logFuncInfo(const std::string& api, const yomk::payload::FuncInfo& info)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] - " << info.m_funcName;
+    oss << "[" << api << "] - " << info.funcName;
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     msgName: " << (info.m_msgName.empty() ? "(未指定)" : info.m_msgName);
+    oss << "[" << api << "]     msgName: " << (info.msgName.empty() ? "(未指定)" : info.msgName);
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     description: " << (info.m_description.empty() ? "(未指定)" : info.m_description);
+    oss << "[" << api << "]     description: " << (info.description.empty() ? "(未指定)" : info.description);
     yomk::log().tag("arm.demo").info(oss.str());
 }
 
@@ -171,25 +171,25 @@ static void logTopologyFunc(const std::string& api, const yomk::payload::FuncInf
 {
     // 二级函数行退两级空格：相对服务名行（"- " 前缀，内容起始差 2 字符）再深一层，
     // 层级差 4 字符在长日志前缀下依然分明
-    std::string line = "      " + info.m_funcName;
-    if (!info.m_msgName.empty())
+    std::string line = "      " + info.funcName;
+    if (!info.msgName.empty())
     {
-        line += " [" + info.m_msgName + "]";
+        line += " [" + info.msgName + "]";
     }
     yomk::log().tag("arm.demo").info("[" + api + "]" + line);
 }
 
 static void logTopology(const std::string& api, const yomk::payload::Response& resp)
 {
-    auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(resp.m_data);
+    auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(resp.data);
     if (!list)
     {
         return;
     }
     for (const auto& srv : list->d)
     {
-        logSrvLine(api, srv.m_serviceName);
-        for (const auto& func : srv.m_funcs)
+        logSrvLine(api, srv.serviceName);
+        for (const auto& func : srv.funcs)
         {
             logTopologyFunc(api, func);
         }
@@ -294,7 +294,7 @@ static void showArmPlantRoster()
     logAction("开班点名：查询产线在册服务");
     yomk::payload::Response namesResp = yomk::srv_info().services();
     logResp("services()", namesResp);
-    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -309,7 +309,7 @@ static void showArmPlantRoster()
     logAction("复查在册服务清单");
     namesResp = yomk::srv_info().services();
     logResp("services()", namesResp);
-    auto nameArr2 = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.m_data);
+    auto nameArr2 = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.data);
     if (nameArr2)
     {
         for (const auto& srvName : nameArr2->d)
@@ -345,7 +345,7 @@ static void showArmStationFunctions()
     logAction("查阅装配工位职能清单");
     yomk::payload::Response funcsResp = yomk::srv_info().srv_name("/ArmStation").functions();
     logResp("INFO_FUNCTIONS /ArmStation", funcsResp);
-    auto listPkg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
+    auto listPkg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.data);
     if (listPkg)
     {
         for (const auto& func : listPkg->d)
@@ -380,7 +380,7 @@ static void showArmFuncLookup()
     logAction("调阅质量抽检函数名片");
     yomk::payload::Response resp = yomk::srv_info().fn_url("/ArmStation/quality_check").get_info();
     logResp("INFO_FUNCTION /ArmStation/quality_check", resp);
-    auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.m_data);
+    auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.data);
     if (info)
     {
         logFuncInfo("INFO_FUNCTION", info->d);
@@ -390,7 +390,7 @@ static void showArmFuncLookup()
     logAction("调阅状态上报函数名片");
     resp = yomk::srv_info().fn_url("/ArmStation/report").get_info();
     logResp("INFO_FUNCTION /ArmStation/report", resp);
-    auto reportInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.m_data);
+    auto reportInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.data);
     if (reportInfo)
     {
         logFuncInfo("INFO_FUNCTION", reportInfo->d);
@@ -445,7 +445,7 @@ static void showArmLiveView()
     logAction("复查在册服务清单");
     yomk::payload::Response namesResp = yomk::srv_info().services();
     logResp("services()", namesResp);
-    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -458,12 +458,12 @@ static void showArmLiveView()
     logAction("复查全厂拓扑终态");
     yomk::payload::Response allResp = yomk::srv_info().all();
     logResp("all()", allResp);
-    auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
+    auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(allResp.data);
     if (list)
     {
         for (const auto& srv : list->d)
         {
-            logSrvBrief("all()", srv.m_serviceName, srv.m_funcs.size());
+            logSrvBrief("all()", srv.serviceName, srv.funcs.size());
         }
     }
     logVerify("拓扑只剩 5 个内置服务，各服务函数计数如实呈现：工位已从调用拓扑消失");

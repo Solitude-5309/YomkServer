@@ -72,12 +72,12 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.status);
+    if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         oss << "(ResStatus::Succeeded 成功)";
     }
-    else if (resp.m_status == yomk::payload::ResStatus::Failed)
+    else if (resp.status == yomk::payload::ResStatus::Failed)
     {
         oss << "(ResStatus::Failed 拒绝或不存在)";
     }
@@ -85,10 +85,10 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
     {
         oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
-    oss << ", msg=\"" << resp.m_msg << "\"";
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_data)
+    oss << ", msg=\"" << resp.msg << "\"";
+    if (resp.status == yomk::payload::ResStatus::Succeeded && resp.data)
     {
-        auto data = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
+        auto data = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
         if (data)
         {
             oss << ", data=\"" << data->d << "\"";
@@ -134,15 +134,15 @@ static void logAction(const std::string& op)
 static void logFuncInfo(const std::string& api, const yomk::payload::FuncInfo& info)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] - " << info.m_funcName;
+    oss << "[" << api << "] - " << info.funcName;
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     msgName: " << (info.m_msgName.empty() ? "(未指定)" : info.m_msgName);
+    oss << "[" << api << "]     msgName: " << (info.msgName.empty() ? "(未指定)" : info.msgName);
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     description: " << (info.m_description.empty() ? "(未指定)" : info.m_description);
+    oss << "[" << api << "]     description: " << (info.description.empty() ? "(未指定)" : info.description);
     yomk::log().tag("arm.demo").info(oss.str());
 }
 
@@ -249,7 +249,7 @@ static void showArmToolMeta()
     logAction("查看握手工具元信息");
     yomk::payload::Response resp = yomk::fn_pool().fn_name("tool.handshake").get_info();
     logResp("get_info() tool.handshake", resp);
-    auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.m_data);
+    auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.data);
     if (info)
     {
         logFuncInfo("get_info()", info->d);
@@ -310,7 +310,7 @@ static void showArmToolHotSwap()
     logAction("复查握手工具元信息");
     yomk::payload::Response resp = yomk::fn_pool().fn_name("tool.handshake").get_info();
     logResp("get_info() tool.handshake", resp);
-    auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.m_data);
+    auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.data);
     if (info)
     {
         logFuncInfo("get_info()", info->d);
@@ -337,7 +337,7 @@ static void showArmToolDashboard()
     logAction("巡检函数名清单");
     yomk::payload::Response namesResp = yomk::fn_pool().list();
     logResp("list()", namesResp);
-    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.data);
     if (nameArr)
     {
         for (const auto& funcName : nameArr->d)
@@ -355,7 +355,7 @@ static void showArmToolDashboard()
     logAction("全量导出工具元信息");
     resp = yomk::fn_pool().all();
     logResp("all()", resp);
-    auto allArr = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(resp.m_data);
+    auto allArr = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(resp.data);
     if (allArr)
     {
         for (const auto& info : allArr->d)
@@ -396,7 +396,7 @@ static void showArmToolCleanup()
     logAction("巡检清单确认已清空");
     yomk::payload::Response allResp = yomk::fn_pool().all();
     logResp("all()", allResp);
-    auto allArr = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(allResp.m_data);
+    auto allArr = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(allResp.data);
     logVerify(allArr && allArr->d.empty() ? "函数清单已空：班次结束，工具柜清空，班次闭环" : "函数清单非空：存在未注销工具");
 }
 

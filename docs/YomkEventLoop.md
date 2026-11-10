@@ -7,7 +7,7 @@
 ✅ 适合：
 - 把一类事件串行化到专用线程（FIFO 保序、无锁竞争）
 - 多队列并行分域：不同业务用不同循环，彼此互不阻塞
-- 停止后续跑、队列积压观测（`get_info()` 的 `m_pending`）
+- 停止后续跑、队列积压观测（`get_info()` 的 `pending`）
 
 ❌ 不适合：
 - 需要取回单次事件执行结果（`post()` 三态仅表示入队结果；取回请走共享上下文或回调投递到其他通道）
@@ -66,7 +66,7 @@ yomk::event_loop().loop("TaskLoop").destroy();
 - 投递事件未携带 `handle_fn` 时回落到循环默认处理函数；两者皆空则该事件不执行任何回调、直接出队。
 - 失败契约：循环不存在 `Failed` "event loop '<循环名>' does not exist"；已停止（未销毁）时投递 `Failed` "event loop '<循环名>' not running, post rejected"（`post_wait` 同族消息）。
 - `post()` 的三态仅表示入队/拒绝；执行结果只体现在处理函数内部，取回结果请配合共享上下文或回调投递到其他通道。
-- 单查 `get_info()` 返回 `EventLoopInfo`：`m_running`（worker 运行中）、`m_pending`（积压事件数）、`m_hasDefaultFunc`、`m_msgName`、`m_nextTags`（队列头起最多 n 条 tag，空串保留）。
+- 单查 `get_info()` 返回 `EventLoopInfo`：`running`（worker 运行中）、`pending`（积压事件数）、`hasDefaultFunc`、`msgName`、`nextTags`（队列头起最多 n 条 tag，空串保留）。
 - 服务成员函数注册为事件处理函数时须用 `weakFunc(&Class::Method)` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 常见问题 FAQ
@@ -74,7 +74,7 @@ yomk::event_loop().loop("TaskLoop").destroy();
 - **`post()` 返回 `Succeeded` 但回调没执行？** 该事件未携带 `handle_fn` 且循环无默认处理函数——两者皆空则该事件不执行任何回调、直接出队（入队三态与执行无关）。
 - **`stop()` 后队列里的事件去哪了？** 保留队列，`start()` 续跑；`destroy()` 才清空队列并移出循环表（不可续跑）。
 - **同名 `start()` 为什么新配置不生效？** 复用既有实例并触发其启动，本次累积的 `handle_fn` / `msg_name` 不生效；仅新循环名才创建循环并绑定默认处理函数。
-- **队列堵了怎么办？** `.loop(name).tag_count(n).get_info()` 观测 `m_pending` 积压数与队列头 tag 采样，按 tag 定位投递方。
+- **队列堵了怎么办？** `.loop(name).tag_count(n).get_info()` 观测 `pending` 积压数与队列头 tag 采样，按 tag 定位投递方。
 
 ## 相关跳转
 

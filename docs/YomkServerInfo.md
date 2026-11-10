@@ -6,7 +6,7 @@
 
 ✅ 适合：
 - 调试与运维期查询：服务清单、函数清单、期望消息类型名、函数说明
-- 运维脚本/工具对接：返回结构化 `Response`，数据在 `m_data`，可程序化消费
+- 运维脚本/工具对接：返回结构化 `Response`，数据在 `data`，可程序化消费
 
 ❌ 不适合：
 - 修改运行状态（纯只读域，无任何写终结）
@@ -18,12 +18,12 @@
 
 | 场景 | 链 | 返回 |
 |---|---|---|
-| 全部服务名 | `yomk::srv_info().services()` | `Response`，`m_data` 为 StringArray 名清单 |
-| 指定服务的函数清单 | `yomk::srv_info().srv_name("/服务名").functions()` | `Response` 携带 FuncInfoList 结构化清单（`m_msg` 恒 "ok"；服务不存在时为空清单） |
-| 单函数元信息 | `yomk::srv_info().fn_url("/服务名/函数名").get_info()` | `Response` 携带结构化 FuncInfo 包（`m_msg` 恒 "ok"，数据在 `m_data`） |
-| 全量服务拓扑 | `yomk::srv_info().all()` | `Response` 携带 ServerServiceInfoList 层级包（`m_msg` 恒 "ok"）：每项 `m_serviceName` 服务名 + `m_funcs` 函数元信息列表 |
+| 全部服务名 | `yomk::srv_info().services()` | `Response`，`data` 为 StringArray 名清单 |
+| 指定服务的函数清单 | `yomk::srv_info().srv_name("/服务名").functions()` | `Response` 携带 FuncInfoList 结构化清单（`msg` 恒 "ok"；服务不存在时为空清单） |
+| 单函数元信息 | `yomk::srv_info().fn_url("/服务名/函数名").get_info()` | `Response` 携带结构化 FuncInfo 包（`msg` 恒 "ok"，数据在 `data`） |
+| 全量服务拓扑 | `yomk::srv_info().all()` | `Response` 携带 ServerServiceInfoList 层级包（`msg` 恒 "ok"）：每项 `serviceName` 服务名 + `funcs` 函数元信息列表 |
 
-结构化函数元信息 `FuncInfo` 字段：`m_funcName`（路由名，带 `/` 前缀）、`m_msgName`（期望消息类型名，未声明为空）、`m_description`（函数说明，未声明为空）。
+结构化函数元信息 `FuncInfo` 字段：`funcName`（路由名，带 `/` 前缀）、`msgName`（期望消息类型名，未声明为空）、`description`（函数说明，未声明为空）。
 
 > 以下为用法片段（假设框架已 `init()`）；完整可编译、带 main 的程序见文末「完整示例」。
 
@@ -54,8 +54,8 @@ yomk::srv_info().all();                                        // 全量服务�
 
 ## 常见问题 FAQ
 
-- **服务不存在时 `functions()` 返回什么？** `m_msg` 恒 "ok"、清单为空——不区分"服务不存在"与"服务存在但未注册函数"，需要精确归因请配合 `services()` 先查服务名。
-- **为什么查不到 `m_msgName` / `m_description`？** 声明处未提供（均为可选元数据）：`installFunc` 第三/四参、函数池 `msg_name()` / `description()`、事件循环 `msg_name()`。
+- **服务不存在时 `functions()` 返回什么？** `msg` 恒 "ok"、清单为空——不区分"服务不存在"与"服务存在但未注册函数"，需要精确归因请配合 `services()` 先查服务名。
+- **为什么查不到 `msgName` / `description`？** 声明处未提供（均为可选元数据）：`installFunc` 第三/四参、函数池 `msg_name()` / `description()`、事件循环 `msg_name()`。
 
 ## 相关跳转
 

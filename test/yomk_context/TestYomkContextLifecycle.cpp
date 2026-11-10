@@ -133,8 +133,8 @@ int main()
     // ============ Section 4: 删除后不可路由 + 重复删除契约 ============
     {
         auto resp = yomk::server().url("/YomkContext/keys").request();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Failed, "删除后请求 /YomkContext 返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(resp.m_msg == "service not found: /YomkContext", "删除后消息为 service not found: /YomkContext");
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Failed, "删除后请求 /YomkContext 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(resp.msg == "service not found: /YomkContext", "删除后消息为 service not found: /YomkContext");
 
         auto names = yomk::server().instance()->serviceNames();
         YOMK_TEST_CHECK(!hasService(names, "/YomkContext"), "serviceNames 不再包含 /YomkContext");
@@ -177,7 +177,7 @@ int main()
 
         // 进程存活、/YomkContext 仍可用
         auto resp = yomk::ctx().group().keys();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded, "异常回滚后 /YomkContext 仍可用");
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "异常回滚后 /YomkContext 仍可用");
     }
 
     yomk::server().shutdown();

@@ -156,45 +156,45 @@ static void testUrlParseBoundaries()
     // 空串 / 无 / 开头：please start with / 契约
     yomk::payload::Response resp = server->request("");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("please start with /") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("please start with /") != std::string::npos,
         "request 空 url 返回 ResStatus::Failed + please start with /");
     resp = server->request("no_slash/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("please start with /") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("please start with /") != std::string::npos,
         "request 无 / 开头 url 返回 ResStatus::Failed + please start with /");
 
     // 无第二 /：no service name 契约
     resp = server->request("/");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("no service name") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("no service name") != std::string::npos,
         "request \"/\" 返回 ResStatus::Failed + no service name");
     resp = server->request("/Only");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("no service name") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("no service name") != std::string::npos,
         "request \"/Only\"（无第二 /）返回 ResStatus::Failed + no service name");
 
     // 多段路径：srvName="/RouteSrv"、funcName="/b/c" 未安装 → not found（语义现状）
     resp = server->request("/RouteSrv/b/c");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("not found") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("not found") != std::string::npos,
         "request 多段路径 funcName=\"/b/c\" 未安装返回 ResStatus::Failed + not found");
 
     // 服务未注册：service not found 契约
     resp = server->request("/NoSuch/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("service not found") != std::string::npos,
         "request 未注册服务返回 ResStatus::Failed + service not found");
 
     // 合法命中 + pkg 透传端到端
     resp = server->request("/RouteSrv/ping");
-    YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_msg == "pong", "request 合法 url 命中返回 ResStatus::Succeeded + pong");
+    YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "pong", "request 合法 url 命中返回 ResStatus::Succeeded + pong");
     resp = server->request("/RouteSrv/echo", yomk::msgs::String::shared(std::string("hi")));
-    YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_msg == "echo:hi", "request 携 pkg 路由透传，解包回显往返正确");
+    YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "echo:hi", "request 携 pkg 路由透传，解包回显往返正确");
 
     // 超长 URL（4096 级服务名）：不崩溃，走 service not found
     resp = server->request("/" + std::string(4096, 'x') + "/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("service not found") != std::string::npos,
         "request 超长 url 不崩溃，返回 ResStatus::Failed + service not found");
 }
 
@@ -220,7 +220,7 @@ static void testAsyncRequestParse()
     if (ready)
     {
         yomk::payload::Response resp = fut.get();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_msg == "pong", "asyncRequest 回调收到 ResStatus::Succeeded + pong");
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "pong", "asyncRequest 回调收到 ResStatus::Succeeded + pong");
     }
 
     // func 为空分支：请求仍被执行（fire-and-forget）
@@ -279,7 +279,7 @@ static void testReplaceSameName()
     YOMK_TEST_CHECK(g_deletedOnDeinit.load() == true, "替换：旧服务 deinit 时 isDeleted() 已为 true（先 markDeleted 承诺实证）");
 
     yomk::payload::Response resp = server->request("/Dup/ping");
-    YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_msg == "pong", "替换：新服务可路由");
+    YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "pong", "替换：新服务可路由");
     YOMK_TEST_CHECK(nameCount(server->serviceNames(), "/Dup") == 1, "替换：serviceNames 中该名仅一条");
 
     // 替换 + 新服务 init 失败：旧已删、新回滚、表为空（语义文档化：不恢复旧服务）
@@ -290,7 +290,7 @@ static void testReplaceSameName()
     YOMK_TEST_CHECK(!nameIn(server->serviceNames(), "/Dup"), "替换失败后该名为空（旧服务不恢复，语义文档化）");
     resp = server->request("/Dup/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("service not found") != std::string::npos,
         "替换失败后请求返回 ResStatus::Failed + service not found");
     g_initRet = 0;
 }
@@ -311,7 +311,7 @@ static void testDelService()
 
     yomk::payload::Response resp = server->request("/Del/ping");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("service not found") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("service not found") != std::string::npos,
         "删除后请求返回 ResStatus::Failed + service not found");
     YOMK_TEST_CHECK(!nameIn(server->serviceNames(), "/Del"), "删除后 serviceNames 不含该名");
     YOMK_TEST_CHECK(server->delService("/Del") == -1, "重复删除返回 -1");
@@ -319,7 +319,7 @@ static void testDelService()
     // 删除即停端到端：服务已被框架析构，全局弱绑定回调丢弃
     resp = g_weakCb(nullptr);
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("deleted or unregistered") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("deleted or unregistered") != std::string::npos,
         "delService 后弱绑定回调丢弃（删除即停端到端，兑现 MC3 预埋）");
     g_weakCb = nullptr;
 }
@@ -336,8 +336,8 @@ static void testIntrospection()
     auto infos = server->serviceFuncInfos("/RouteSrv");
     YOMK_TEST_CHECK(infos.count("/ping") == 1 && infos.count("/echo") == 1, "serviceFuncInfos 命中 /ping 与 /echo");
     YOMK_TEST_CHECK(
-        infos["/ping"].m_funcName == "/ping" && infos["/ping"].m_msgName == "String" &&
-            infos["/echo"].m_msgName == "String",
+        infos["/ping"].funcName == "/ping" && infos["/ping"].msgName == "String" &&
+            infos["/echo"].msgName == "String",
         "serviceFuncInfos 元数据正确（m_funcName/m_msgName）");
     YOMK_TEST_CHECK(server->serviceFuncInfos("/NoSuch").empty(), "serviceFuncInfos 不存在服务返回空表");
 
@@ -352,7 +352,7 @@ static void testNewServiceTemplate()
     resetGlobals();
 
     YOMK_TEST_CHECK(server->newService<RouteSrv>("/Tpl") == 0, "newService 有名注册返回 0");
-    YOMK_TEST_CHECK(server->request("/Tpl/ping").m_status == yomk::payload::ResStatus::Succeeded, "newService 有名注册可路由");
+    YOMK_TEST_CHECK(server->request("/Tpl/ping").status == yomk::payload::ResStatus::Succeeded, "newService 有名注册可路由");
 
     // 无名：以空名注册。URL 解析保证 srvName 至少含 /，空名服务永不可达——现状文档化，不修复仅记录
     YOMK_TEST_CHECK(server->newService<RouteSrv>() == 0, "newService 无名返回 0（以空名注册，现状文档化）");

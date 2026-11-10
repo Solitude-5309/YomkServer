@@ -47,11 +47,11 @@ static bool findFuncInfo(const std::map<std::string, yomk::payload::FuncInfo>& i
     }
     if (msgName)
     {
-        *msgName = iter->second.m_msgName;
+        *msgName = iter->second.msgName;
     }
     if (description)
     {
-        *description = iter->second.m_description;
+        *description = iter->second.description;
     }
     return true;
 }
@@ -208,38 +208,38 @@ static void testInvoke(DemoService* demo)
 {
     // 命中：返回函数自身响应
     yomk::payload::Response resp = demo->invoke("/plain");
-    YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_msg == "plain", "invoke 命中，返回函数自身响应");
+    YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "plain", "invoke 命中，返回函数自身响应");
 
     // 命中：pkg 透传与解包回显（数据往返）
     resp = demo->invoke("/echo", yomk::msgs::String::shared(std::string("hi")));
-    YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_msg == "echo:hi", "invoke 命中，pkg 透传解包回显正确");
+    YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "echo:hi", "invoke 命中，pkg 透传解包回显正确");
 
     // 命中：函数内解包失败（pkg 为 nullptr）返回 ResStatus::Failed
     resp = demo->invoke("/echo", nullptr);
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("pkg is not String, got 'null'") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("pkg is not String, got 'null'") != std::string::npos,
         "invoke 命中但 pkg 为空，函数解包守卫返回 ResStatus::Failed + got 'null'");
 
     // 异常路径：空名/无 / 开头返回 ResStatus::Failed + parse error 契约消息
     resp = demo->invoke("");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("parse error") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("parse error") != std::string::npos,
         "invoke 空函数名返回 ResStatus::Failed 且 msg 含 parse error");
     resp = demo->invoke("no_slash");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("parse error") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("parse error") != std::string::npos,
         "invoke 无 / 开头函数名返回 ResStatus::Failed 且 msg 含 parse error");
 
     // 异常路径：未安装函数返回 ResStatus::Failed + not found 契约消息
     resp = demo->invoke("/not_exist");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("not found") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("not found") != std::string::npos,
         "invoke 未安装函数返回 ResStatus::Failed 且 msg 含 not found");
 
     // 空函数被拒后按未安装处理（对应守卫修复）
     resp = demo->invoke("/null_func");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("not found") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("not found") != std::string::npos,
         "invoke 被拒安装的空函数按未安装返回 ResStatus::Failed");
 }
 
@@ -257,11 +257,11 @@ static void testNullServerGuards()
 
     yomk::payload::Response resp = srv.invoke("/x");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg == "service is null",
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg == "service is null",
         "空实现 invoke 返回 ResStatus::Failed + service is null");
     resp = srv.request("/SomeService/func");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg == "service is null",
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg == "service is null",
         "空实现 request 返回 ResStatus::Failed + service is null");
 }
 

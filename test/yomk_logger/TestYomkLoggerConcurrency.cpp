@@ -306,11 +306,11 @@ static uint64_t countLinesContaining(const std::vector<std::string>& lines, cons
 static std::vector<std::string> unpackLines(const yomk::payload::Response& resp)
 {
     std::vector<std::string> lines;
-    if (resp.m_status != yomk::payload::ResStatus::Succeeded || !resp.m_data)
+    if (resp.status != yomk::payload::ResStatus::Succeeded || !resp.data)
     {
         return lines;
     }
-    auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);
+    auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.data);
     if (arr)
     {
         lines = arr->d;
@@ -327,9 +327,9 @@ static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInf
     }
     for (const auto& li : listPkg->d)
     {
-        if (li.m_type == "console")
+        if (li.type == "console")
         {
-            return &li.m_loggerState;
+            return &li.loggerState;
         }
     }
     return nullptr;
@@ -338,8 +338,8 @@ static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInf
 // 状态码是否属于框架合法集合 {ResStatus::Invalid, ResStatus::Succeeded, ResStatus::Failed}
 static bool isLegalStatus(const yomk::payload::Response& resp)
 {
-    return resp.m_status == yomk::payload::ResStatus::Invalid || resp.m_status == yomk::payload::ResStatus::Succeeded ||
-           resp.m_status == yomk::payload::ResStatus::Failed;
+    return resp.status == yomk::payload::ResStatus::Invalid || resp.status == yomk::payload::ResStatus::Succeeded ||
+           resp.status == yomk::payload::ResStatus::Failed;
 }
 
 // LOG_API ResStatus 化后的三态重载（emit/create/flush/delete 直接返回三态）
@@ -575,9 +575,9 @@ int main()
         YOMK_TEST_CHECK(countBadOccurrence(raceMarkers) == 0, "S2a: 全部 marker 恰出现 1 次（不丢不重）");
 
         auto raceInfo = yomk::log_mgr().console(kRaceTag).get_info();
-        auto racePkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(raceInfo.m_data);
+        auto racePkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(raceInfo.data);
         YOMK_TEST_CHECK(
-            (raceInfo.m_status == yomk::payload::ResStatus::Succeeded && racePkg && racePkg->d.m_type == "console"),
+            (raceInfo.status == yomk::payload::ResStatus::Succeeded && racePkg && racePkg->d.type == "console"),
             "S2a: LOGGER(" + kRaceTag + ") 命中 console 类型");
 
         // ---- S2b：分散创建——8 线程各自唯一 tag ----
@@ -636,8 +636,8 @@ int main()
         {
             std::string tag = "lg3_s2_t" + std::to_string(t);
             auto info = yomk::log_mgr().console(tag).get_info();
-            auto spreadPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(info.m_data);
-            if (info.m_status != yomk::payload::ResStatus::Succeeded || !spreadPkg || spreadPkg->d.m_type != "console")
+            auto spreadPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(info.data);
+            if (info.status != yomk::payload::ResStatus::Succeeded || !spreadPkg || spreadPkg->d.type != "console")
             {
                 allSpreadHit = false;
             }
@@ -706,9 +706,9 @@ int main()
                 {
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
-                        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().m_data);
+                        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
                         const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
-                        if (st && !st->m_proxyOn)
+                        if (st && !st->proxyOn)
                         {
                             g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
                         }
@@ -1215,11 +1215,11 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.m_data);
+                            auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
                             if (listPkg)
                             {
                                 const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
-                                if (st == nullptr || !st->m_proxyOn)
+                                if (st == nullptr || !st->proxyOn)
                                 {
                                     g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
                                 }
@@ -1227,7 +1227,7 @@ int main()
                                 // 结构化清单按 m_type 计数（与按类型端点行数计数语义一致）
                                 for (const auto& li : listPkg->d)
                                 {
-                                    if (li.m_type == "console")
+                                    if (li.type == "console")
                                     {
                                         ++snap.allConsole;
                                     }
@@ -1475,16 +1475,16 @@ int main()
         // ---- 最终一致性：全局主闸状态 + ALL 条目逐器真值 + 日志器数跨端点一致 + file sink 落盘守恒 ----
         // 条目改报逐器门控层真值后，"收尾全 ON" 验证语义迁移至主闸 status()（log_mgr().console().status()）；
         // ALL 条目断言保留，验证未做具名开关时逐器真值恒 on（退化性基线）
-        auto finalGs = yomk::msgs::unpack<yomk::msgs::LoggerState>(yomk::log_mgr().console().status().m_data);
+        auto finalGs = yomk::msgs::unpack<yomk::msgs::LoggerState>(yomk::log_mgr().console().status().data);
         YOMK_TEST_CHECK(
-            (finalGs != nullptr && finalGs->d.m_debugOn && finalGs->d.m_infoOn &&
-             finalGs->d.m_warnOn && finalGs->d.m_errorOn && finalGs->d.m_proxyOn),
+            (finalGs != nullptr && finalGs->d.debugOn && finalGs->d.infoOn &&
+             finalGs->d.warnOn && finalGs->d.errorOn && finalGs->d.proxyOn),
             "S5: 收尾四级别全 ON 后全局主闸状态全 on（含 S3 已设的 proxyOn）");
-        auto finalListPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().m_data);
+        auto finalListPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
         const yomk::payload::LoggerState* finalSt = firstConsoleState(finalListPkg);
         YOMK_TEST_CHECK(
-            (finalSt != nullptr && finalSt->m_debugOn && finalSt->m_infoOn &&
-             finalSt->m_warnOn && finalSt->m_errorOn && finalSt->m_proxyOn),
+            (finalSt != nullptr && finalSt->debugOn && finalSt->infoOn &&
+             finalSt->warnOn && finalSt->errorOn && finalSt->proxyOn),
             "S5: 收尾 ALL 首条 console 条目逐器门控真值全 on（未做具名开关，含 proxyOn）");
         YOMK_TEST_CHECK(
             finalListPkg != nullptr && finalListPkg->d.size() == finalTotal,

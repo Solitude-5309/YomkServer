@@ -29,25 +29,25 @@ yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr pkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is not Function, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
-    if (yFunc->d.m_funcName.empty() || yFunc->d.m_func == nullptr)
+    if (yFunc->d.funcName.empty() || yFunc->d.func == nullptr)
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "funcName or func is empty");
     }
 
     std::unique_lock<std::shared_mutex> lock(m_functionsMutex);
 
-    auto itFunc = m_functions.find(yFunc->d.m_funcName);
+    auto itFunc = m_functions.find(yFunc->d.funcName);
     if (itFunc != m_functions.end())
     {
-        itFunc->second.m_func = yFunc->d.m_func;
-        itFunc->second.m_msgName = yFunc->d.m_msgName;
-        itFunc->second.m_description = yFunc->d.m_description;
+        itFunc->second.m_func = yFunc->d.func;
+        itFunc->second.m_msgName = yFunc->d.msgName;
+        itFunc->second.m_description = yFunc->d.description;
         // C-5 已采纳:热替换即覆盖既有注册,级别 WARN(默认最小级别下 INFO 会被抑制,热替换将无感知);
         // 下一行 return 的 Response.msg 携带同串,通道不动
-        YOMK_DIAG_WARN("function '" + yFunc->d.m_funcName + "' already exists, hot-swap to current function");
-        return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "function '" + yFunc->d.m_funcName + "' already exists, hot-swap to current function");
+        YOMK_DIAG_WARN("function '" + yFunc->d.funcName + "' already exists, hot-swap to current function");
+        return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "function '" + yFunc->d.funcName + "' already exists, hot-swap to current function");
     }
-    m_functions.emplace(yFunc->d.m_funcName, PoolFuncInfo{yFunc->d.m_func, yFunc->d.m_msgName, yFunc->d.m_description});
+    m_functions.emplace(yFunc->d.funcName, PoolFuncInfo{yFunc->d.func, yFunc->d.msgName, yFunc->d.description});
     return {yomk::payload::ResStatus::Succeeded, "register function success"};
 }
 
@@ -81,7 +81,7 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
     {
         return {yomk::payload::ResStatus::Failed, "pkg is not CallFunction, got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
-    if (yCallFunc->d.m_funcName.empty())
+    if (yCallFunc->d.funcName.empty())
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "funcName is empty");
     }
@@ -89,16 +89,16 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
     YomkServiceFunc copyFunc;
     {
         std::shared_lock<std::shared_mutex> lock(m_functionsMutex);
-        auto itFunc = m_functions.find(yCallFunc->d.m_funcName);
+        auto itFunc = m_functions.find(yCallFunc->d.funcName);
         if (itFunc == m_functions.end())
         {
             // 未注册同 unregister:ResStatus::Failed(not-found 框架惯例;Invalid 仅用于参数无效)
-            return yomk::payload::Response(yomk::payload::ResStatus::Failed, "function '" + yCallFunc->d.m_funcName + "' is not registered");
+            return yomk::payload::Response(yomk::payload::ResStatus::Failed, "function '" + yCallFunc->d.funcName + "' is not registered");
         }
         copyFunc = itFunc->second.m_func;
     }
 
-    return copyFunc(yCallFunc->d.m_pkg);
+    return copyFunc(yCallFunc->d.pkg);
 }
 
 // 内省:列出全部注册函数名
@@ -136,9 +136,9 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
     }
     // 命中:结构化包恒挂
     yomk::payload::FuncInfo info;
-    info.m_funcName = yFuncName->d;
-    info.m_msgName = itFunc->second.m_msgName;
-    info.m_description = itFunc->second.m_description;
+    info.funcName = yFuncName->d;
+    info.msgName = itFunc->second.m_msgName;
+    info.description = itFunc->second.m_description;
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfo::shared(info)};
 }
 
@@ -152,9 +152,9 @@ yomk::payload::Response YomkFunctionPool::listAll(YomkMsgPtr pkg)
         for (auto& iter : m_functions)
         {
             yomk::payload::FuncInfo info;
-            info.m_funcName = iter.first;
-            info.m_msgName = iter.second.m_msgName;
-            info.m_description = iter.second.m_description;
+            info.funcName = iter.first;
+            info.msgName = iter.second.m_msgName;
+            info.description = iter.second.m_description;
             infos.push_back(std::move(info));
         }
     }

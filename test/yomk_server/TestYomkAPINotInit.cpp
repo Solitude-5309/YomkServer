@@ -82,8 +82,8 @@ int main()
     std::cout << "===== 3. request/asyncRequest 未初始化守卫 =====" << std::endl;
     {
         yomk::payload::Response resp = yomk::server().url("/Any/func").request();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Invalid, "request 未初始化返回 ResStatus::Invalid");
-        YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not initialized", "request 未初始化契约消息: " + resp.m_msg);
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Invalid, "request 未初始化返回 ResStatus::Invalid");
+        YOMK_TEST_CHECK(resp.msg == "YomkServer is not initialized", "request 未初始化契约消息: " + resp.msg);
 
         yomk::server().url("/Any/func").async([](yomk::payload::Response) { ++g_asyncCbCount; }).request();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -165,12 +165,12 @@ int main()
             yomk::log_mgr().console().level(yomk::payload::LogLevel::Debug).enable() == yomk::payload::ResStatus::Invalid,
             "console().level(Debug).enable() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::log_mgr().console().list().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::log_mgr().console().list().status == yomk::payload::ResStatus::Invalid,
             "console().list() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::log_mgr().console("guard_logger").get_info().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::log_mgr().console("guard_logger").get_info().status == yomk::payload::ResStatus::Invalid,
             "console().get_info() 未初始化返回 ResStatus::Invalid");
-        YOMK_TEST_CHECK(yomk::log_mgr().all().m_status == yomk::payload::ResStatus::Invalid, "all() 未初始化返回 ResStatus::Invalid");
+        YOMK_TEST_CHECK(yomk::log_mgr().all().status == yomk::payload::ResStatus::Invalid, "all() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             yomk::log_mgr().file("guard_logger").remove() == yomk::payload::ResStatus::Invalid,
             "file().remove() 未初始化返回 ResStatus::Invalid");
@@ -202,13 +202,13 @@ int main()
             yomk::ctx().key("guard_key").monitor_fn(nullptr).apply() == yomk::payload::ResStatus::Invalid,
             "setContextMonitor 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::ctx().keys().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().keys().status == yomk::payload::ResStatus::Invalid,
             "ctx().keys() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::ctx().key("guard_key").info().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().key("guard_key").info().status == yomk::payload::ResStatus::Invalid,
             "ctx().key().info() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::ctx().all().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::ctx().all().status == yomk::payload::ResStatus::Invalid,
             "getAllContextInfo 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             yomk::event_loop().loop("/guard_loop").start() == yomk::payload::ResStatus::Invalid,
@@ -228,16 +228,16 @@ int main()
             yomk::event_loop().loop("/guard_loop").destroy() == yomk::payload::ResStatus::Invalid,
             "loop(name).destroy() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::event_loop().list().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::event_loop().list().status == yomk::payload::ResStatus::Invalid,
             "list() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::event_loop().loop("/guard_loop").get_info().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::event_loop().loop("/guard_loop").get_info().status == yomk::payload::ResStatus::Invalid,
             "loop(name).get_info() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::event_loop().loop("/guard_loop").tag_count(5).get_info().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::event_loop().loop("/guard_loop").tag_count(5).get_info().status == yomk::payload::ResStatus::Invalid,
             "loop(name).tag_count(n).get_info() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::event_loop().all().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::event_loop().all().status == yomk::payload::ResStatus::Invalid,
             "all() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
             yomk::fn_pool().fn_name("/guard_func").fn(nullptr).install() == yomk::payload::ResStatus::Invalid,
@@ -246,27 +246,27 @@ int main()
             yomk::fn_pool().fn_name("/guard_func").uninstall() == yomk::payload::ResStatus::Invalid,
             "fn_pool().uninstall() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::fn_pool().fn_name("/guard_func").msg(yomk::msgs::String::shared(std::string("x"))).call().m_status ==
+            yomk::fn_pool().fn_name("/guard_func").msg(yomk::msgs::String::shared(std::string("x"))).call().status ==
                 yomk::payload::ResStatus::Invalid,
             "fn_pool().call() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::fn_pool().list().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::fn_pool().list().status == yomk::payload::ResStatus::Invalid,
             "fn_pool().list() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::fn_pool().fn_name("/guard_func").get_info().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::fn_pool().fn_name("/guard_func").get_info().status == yomk::payload::ResStatus::Invalid,
             "fn_pool().get_info() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::fn_pool().all().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::fn_pool().all().status == yomk::payload::ResStatus::Invalid,
             "fn_pool().all() 未初始化返回 ResStatus::Invalid");
-        YOMK_TEST_CHECK(yomk::srv_info().all().m_status == yomk::payload::ResStatus::Invalid, "srv_info().all() 未初始化返回 ResStatus::Invalid");
+        YOMK_TEST_CHECK(yomk::srv_info().all().status == yomk::payload::ResStatus::Invalid, "srv_info().all() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::srv_info().services().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::srv_info().services().status == yomk::payload::ResStatus::Invalid,
             "srv_info().services() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::srv_info().srv_name("/guard_srv").functions().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::srv_info().srv_name("/guard_srv").functions().status == yomk::payload::ResStatus::Invalid,
             "srv_info().functions() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::srv_info().fn_url("/guard_srv/f").get_info().m_status == yomk::payload::ResStatus::Invalid,
+            yomk::srv_info().fn_url("/guard_srv/f").get_info().status == yomk::payload::ResStatus::Invalid,
             "server().get_info() 未初始化返回 ResStatus::Invalid");
 
         // 类型化读 get() 特殊形态：守卫返回值即调用方默认值（指针一致）

@@ -82,7 +82,7 @@ static void resetGlobals()
 // 从 Context 数据中取出 String value（失败返回空串）
 static std::string contextStringValue(const yomk::payload::Context& ctx)
 {
-    auto sp = std::dynamic_pointer_cast<yomk::msgs::String>(ctx.m_value);
+    auto sp = std::dynamic_pointer_cast<yomk::msgs::String>(ctx.value);
     return sp ? sp->d : std::string();
 }
 

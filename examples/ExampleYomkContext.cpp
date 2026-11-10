@@ -112,12 +112,12 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.status);
+    if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         oss << "(ResStatus::Succeeded 成功)";
     }
-    else if (resp.m_status == yomk::payload::ResStatus::Failed)
+    else if (resp.status == yomk::payload::ResStatus::Failed)
     {
         oss << "(ResStatus::Failed 拒绝或不存在)";
     }
@@ -125,7 +125,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
     {
         oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
-    oss << ", msg=\"" << resp.m_msg << "\"";
+    oss << ", msg=\"" << resp.msg << "\"";
     yomk::log().tag("arm.demo").info(oss.str());
 }
 
@@ -179,28 +179,28 @@ static void logVerify(const std::string& text)
 static void logKeyInfo(const std::string& api, const yomk::payload::ContextKeyInfo& info)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] - " << info.m_key;
+    oss << "[" << api << "] - " << info.key;
     yomk::log().tag("arm.demo").info(oss.str());
 
     // 类型名为空表示键值为空（尚未 set），防御展示
     oss.str("");
-    oss << "[" << api << "]     type: " << (info.m_typeName.empty() ? "(空)" : info.m_typeName);
+    oss << "[" << api << "]     type: " << (info.typeName.empty() ? "(空)" : info.typeName);
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     checker: " << (info.m_checkerOn ? "on" : "off");
+    oss << "[" << api << "]     checker: " << (info.checkerOn ? "on" : "off");
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     monitors: " << info.m_monitorCount;
+    oss << "[" << api << "]     monitors: " << info.monitorCount;
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     async: " << info.m_asyncMonitorCount;
+    oss << "[" << api << "]     async: " << info.asyncMonitorCount;
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     group: " << info.m_group;
+    oss << "[" << api << "]     group: " << info.group;
     yomk::log().tag("arm.demo").info(oss.str());
 }
 
@@ -226,23 +226,23 @@ static void ensureKey(const std::string& op, const std::string& key, YomkMsgPtr 
 // 速度倍率安全门控：倍率是安全关键参数，超过 1.0（100%）有撞机风险，一律拒绝
 CheckStatus checkerSpeedRatio(const yomk::payload::Context& ctx)
 {
-    auto ratio = yomk::msgs::unpack<yomk::msgs::Float64>(ctx.m_value);
+    auto ratio = yomk::msgs::unpack<yomk::msgs::Float64>(ctx.value);
     if (!ratio)
     {
         std::ostringstream oss;
-        oss << "checker: " << ctx.m_key << " 值不是 Float64，无法校验 -> CheckStatus::Reject";
+        oss << "checker: " << ctx.key << " 值不是 Float64，无法校验 -> CheckStatus::Reject";
         yomk::log().tag("arm.guard").warn(oss.str());
         return CheckStatus::Reject;
     }
     if (ratio->d > 1.0)
     {
         std::ostringstream oss;
-        oss << "checker: " << ctx.m_key << "=" << fmtF64(ratio->d) << " 超过安全倍率 1.0（撞机风险）-> CheckStatus::Reject";
+        oss << "checker: " << ctx.key << "=" << fmtF64(ratio->d) << " 超过安全倍率 1.0（撞机风险）-> CheckStatus::Reject";
         yomk::log().tag("arm.guard").warn(oss.str());
         return CheckStatus::Reject;
     }
     std::ostringstream oss;
-    oss << "checker: " << ctx.m_key << "=" << fmtF64(ratio->d) << " 在安全范围内 -> CheckStatus::Accept";
+    oss << "checker: " << ctx.key << "=" << fmtF64(ratio->d) << " 在安全范围内 -> CheckStatus::Accept";
     yomk::log().tag("arm.guard").info(oss.str());
     return CheckStatus::Accept;
 }
@@ -250,14 +250,14 @@ CheckStatus checkerSpeedRatio(const yomk::payload::Context& ctx)
 // 安全 PLC 的上电告警：伺服电源指令属安全相关事件，收到快照即告警记录
 void monitorServoPowerAlarm(const yomk::payload::Context& ctx)
 {
-    auto power = yomk::msgs::unpack<yomk::msgs::Bool>(ctx.m_value);
+    auto power = yomk::msgs::unpack<yomk::msgs::Bool>(ctx.value);
     if (!power)
     {
         return;
     }
     const char* state = (power && power->d) ? "ON" : "OFF";
     std::ostringstream oss;
-    oss << "[告警] 伺服电源指令: " << ctx.m_key << "=" << state << "（安全 PLC 收到本次写入快照）";
+    oss << "[告警] 伺服电源指令: " << ctx.key << "=" << state << "（安全 PLC 收到本次写入快照）";
     yomk::log().tag("arm.watch").warn(oss.str());
 }
 
@@ -265,14 +265,14 @@ void monitorServoPowerAlarm(const yomk::payload::Context& ctx)
 // 与告警回调同批执行，展示 SET_MONITOR 的追加式多播
 void monitorServoPowerLog(const yomk::payload::Context& ctx)
 {
-    auto power = yomk::msgs::unpack<yomk::msgs::Bool>(ctx.m_value);
+    auto power = yomk::msgs::unpack<yomk::msgs::Bool>(ctx.value);
     if (!power)
     {
         return;
     }
     const char* state = (power && power->d) ? "ON" : "OFF";
     std::ostringstream oss;
-    oss << "[黑匣子] 记录操作: " << ctx.m_key << "->" << state << "（追加式多播：与告警回调按注册序同批执行）";
+    oss << "[黑匣子] 记录操作: " << ctx.key << "->" << state << "（追加式多播：与告警回调按注册序同批执行）";
     yomk::log().tag("arm.watch").info(oss.str());
 }
 
@@ -280,7 +280,7 @@ void monitorServoPowerLog(const yomk::payload::Context& ctx)
 // 执行线程是池线程——上报动作不阻塞运动控制回路
 void monitorPoseTelemetry(const yomk::payload::Context& ctx)
 {
-    auto pose = yomk::msgs::unpack<yomk::msgs::Float64Array>(ctx.m_value);
+    auto pose = yomk::msgs::unpack<yomk::msgs::Float64Array>(ctx.value);
     if (!pose)
     {
         return;
@@ -288,12 +288,12 @@ void monitorPoseTelemetry(const yomk::payload::Context& ctx)
     if (!pose)
     {
         std::ostringstream oss;
-        oss << "上报失败: " << ctx.m_key << " 值不是 Float64Array";
+        oss << "上报失败: " << ctx.key << " 值不是 Float64Array";
         yomk::log().tag("arm.telemetry").warn(oss.str());
         return;
     }
     std::ostringstream oss;
-    oss << "位姿上报: " << ctx.m_key << "=" << fmtPose(pose->d) << "（池线程 " << std::this_thread::get_id()
+    oss << "位姿上报: " << ctx.key << "=" << fmtPose(pose->d) << "（池线程 " << std::this_thread::get_id()
         << "，按 set 提交序送达）";
     yomk::log().tag("arm.telemetry").info(oss.str());
 }
@@ -547,7 +547,7 @@ static void showArmDashboard()
 
     // 键名清单（StringArray 结构化包）
     yomk::payload::Response keysResp = logAction("巡检键名清单", "INFO_KEYS", [&] { return yomk::ctx().keys(); });
-    auto keyArr = yomk::msgs::unpack<yomk::msgs::StringArray>(keysResp.m_data);
+    auto keyArr = yomk::msgs::unpack<yomk::msgs::StringArray>(keysResp.data);
     if (keyArr)
     {
         for (const auto& key : keyArr->d)
@@ -559,7 +559,7 @@ static void showArmDashboard()
     // 单键抽查：速度倍率——场景 4 挂的门控回调仍在键上
     yomk::payload::Response ratioResp = logAction(
         "抽查速度倍率注册详情", "INFO_KEY arm.speed_ratio", [&] { return yomk::ctx().key("arm.speed_ratio").info(); });
-    auto ratioInfo = yomk::msgs::unpack<yomk::msgs::ContextKeyInfo>(ratioResp.m_data);
+    auto ratioInfo = yomk::msgs::unpack<yomk::msgs::ContextKeyInfo>(ratioResp.data);
     if (ratioInfo)
     {
         logKeyInfo("INFO_KEY", ratioInfo->d);
@@ -569,7 +569,7 @@ static void showArmDashboard()
     // 单键抽查：末端位姿——异步上报 monitor 已追加
     yomk::payload::Response poseResp = logAction(
         "抽查末端位姿注册详情", "INFO_KEY arm.tcp_pose", [&] { return yomk::ctx().key("arm.tcp_pose").info(); });
-    auto poseInfo = yomk::msgs::unpack<yomk::msgs::ContextKeyInfo>(poseResp.m_data);
+    auto poseInfo = yomk::msgs::unpack<yomk::msgs::ContextKeyInfo>(poseResp.data);
     if (poseInfo)
     {
         logKeyInfo("INFO_KEY", poseInfo->d);
@@ -582,12 +582,12 @@ static void showArmDashboard()
 
     // 全量导出（组 → 键元信息两层结构化包），逐组逐键展开全部字段
     yomk::payload::Response allResp = logAction("全量导出键值表", "INFO_ALL", [&] { return yomk::ctx().all(); });
-    auto allArr = yomk::msgs::unpack<yomk::msgs::ContextGroupInfoList>(allResp.m_data);
+    auto allArr = yomk::msgs::unpack<yomk::msgs::ContextGroupInfoList>(allResp.data);
     if (allArr)
     {
         for (const auto& group : allArr->d)
         {
-            for (const auto& info : group.m_keys)
+            for (const auto& info : group.keys)
             {
                 logKeyInfo("INFO_ALL", info);
             }
@@ -626,7 +626,7 @@ static void showArmTaskCleanup()
 
     // 收尾确认：键值表已空，会话闭环
     yomk::payload::Response keysResp = logAction("收尾确认键值表已空", "INFO_KEYS", [&] { return yomk::ctx().keys(); });
-    auto keyArr = yomk::msgs::unpack<yomk::msgs::StringArray>(keysResp.m_data);
+    auto keyArr = yomk::msgs::unpack<yomk::msgs::StringArray>(keysResp.data);
     logVerify(keyArr && keyArr->d.empty() ? "键值表已空：机械臂会话结束，共享状态全部下线" : "键值表非空：存在未清理键");
 }
 

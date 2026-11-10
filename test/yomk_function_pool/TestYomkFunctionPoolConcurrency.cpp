@@ -95,7 +95,7 @@ static yomk::payload::Response s1OuterFunc(YomkMsgPtr /*pkg*/)
     // 嵌套重入：在已注册函数内部再 call() 另一个已注册函数
     // callFunction 的 shared_lock 已释放（锁外调用），此处重新获取 shared_lock 安全
     auto resp = yomk::fn_pool().fn_name("c1_inner").msg(nullptr).call();
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+    if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         g_s1OuterOkCount.fetch_add(1, std::memory_order_relaxed);
     }
@@ -177,7 +177,7 @@ int main(int /*argc*/, char** /*argv*/)
                     for (int i = 0; i < kCallsPerThread; ++i)
                     {
                         auto resp = yomk::fn_pool().fn_name("c1_probe").msg(nullptr).call();
-                        if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+                        if (resp.status == yomk::payload::ResStatus::Succeeded)
                             g_s1OkCount.fetch_add(1, std::memory_order_relaxed);
                     }
                 });
@@ -233,7 +233,7 @@ int main(int /*argc*/, char** /*argv*/)
         yomk::fn_pool().fn_name("c1_inner").uninstall();
         yomk::fn_pool().fn_name("c1_outer").uninstall();
         YOMK_TEST_CHECK(
-            yomk::fn_pool().fn_name("c1_probe").msg(nullptr).call().m_status == yomk::payload::ResStatus::Failed, "S1: 清理后 c1_probe 已不存在");
+            yomk::fn_pool().fn_name("c1_probe").msg(nullptr).call().status == yomk::payload::ResStatus::Failed, "S1: 清理后 c1_probe 已不存在");
     }
 
     // ========================================================================
@@ -264,7 +264,7 @@ int main(int /*argc*/, char** /*argv*/)
                     while (!g_s2Stop.load(std::memory_order_acquire))
                     {
                         auto resp = yomk::fn_pool().fn_name("c2_func").msg(nullptr).call();
-                        if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+                        if (resp.status == yomk::payload::ResStatus::Succeeded)
                             g_s2TotalCalls.fetch_add(1, std::memory_order_relaxed);
                     }
                 });
@@ -299,7 +299,7 @@ int main(int /*argc*/, char** /*argv*/)
 
         // 清理
         yomk::fn_pool().fn_name("c2_func").uninstall();
-        YOMK_TEST_CHECK(yomk::fn_pool().fn_name("c2_func").msg(nullptr).call().m_status == yomk::payload::ResStatus::Failed, "S2: 清理后 c2_func 已不存在");
+        YOMK_TEST_CHECK(yomk::fn_pool().fn_name("c2_func").msg(nullptr).call().status == yomk::payload::ResStatus::Failed, "S2: 清理后 c2_func 已不存在");
     }
 
     // ========================================================================
@@ -342,7 +342,7 @@ int main(int /*argc*/, char** /*argv*/)
 
         // 注销后新 call() → ResStatus::Failed
         YOMK_TEST_CHECK(
-            yomk::fn_pool().fn_name("c3_gated").msg(nullptr).call().m_status == yomk::payload::ResStatus::Failed,
+            yomk::fn_pool().fn_name("c3_gated").msg(nullptr).call().status == yomk::payload::ResStatus::Failed,
             "S3: 注销后新 call() 返回 ResStatus::Failed（注销生效）");
     }
 
@@ -392,9 +392,9 @@ int main(int /*argc*/, char** /*argv*/)
                     for (int round = 0; round < kIntrospectRounds; ++round)
                     {
                         auto resp = yomk::fn_pool().all();
-                        if (resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_data)
+                        if (resp.status == yomk::payload::ResStatus::Succeeded && resp.data)
                         {
-                            auto arr = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(resp.m_data);
+                            auto arr = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(resp.data);
                             if (arr)
                             {
                                 // 单包快照：锁内构造的 FuncInfoList 天然原子（条目数即快照规模）
@@ -468,9 +468,9 @@ int main(int /*argc*/, char** /*argv*/)
                     {
                         auto resp = yomk::fn_pool().fn_name("c5_probe").msg(nullptr).call();
                         g_s5CallerTotal.fetch_add(1, std::memory_order_relaxed);
-                        if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+                        if (resp.status == yomk::payload::ResStatus::Succeeded)
                             g_s5CallerOk.fetch_add(1, std::memory_order_relaxed);
-                        else if (resp.m_status == yomk::payload::ResStatus::Failed)
+                        else if (resp.status == yomk::payload::ResStatus::Failed)
                             g_s5CallerNo.fetch_add(1, std::memory_order_relaxed);
                     }
                 });
@@ -499,7 +499,7 @@ int main(int /*argc*/, char** /*argv*/)
                 for (int i = 0; i < kRounds; ++i)
                 {
                     auto resp = yomk::fn_pool().list();
-                    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+                    if (resp.status == yomk::payload::ResStatus::Succeeded)
                         g_s5IntrospectCount.fetch_add(1, std::memory_order_relaxed);
                     std::this_thread::sleep_for(std::chrono::microseconds(100));
                 }

@@ -168,9 +168,9 @@ int main()
             {
                 auto ev = yomk::msgs::Event::shared(yomk::payload::Event("conc1", nullptr, nullptr, ""));
                 yomk::msgs::Event* raw = ev.get();  // handler 执行期间 run() 持有 shared_ptr，裸指针安全
-                ev->d.m_serviceFunc = [raw](YomkMsgPtr)
+                ev->d.serviceFunc = [raw](YomkMsgPtr)
                 {
-                    recordExecId(raw->d.m_eventId);
+                    recordExecId(raw->d.eventId);
                     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
                 };
                 if (loop.post(ev) == 0)
@@ -192,7 +192,7 @@ int main()
         YOMK_TEST_CHECK(postOk.load() == 320, "S1 并发 post 全部返回 0（320/320）");
 
         YOMK_TEST_CHECK(
-            waitUntil([&loop] { return loopSnap(loop, 0).m_pending == 0; }, 5000),
+            waitUntil([&loop] { return loopSnap(loop, 0).pending == 0; }, 5000),
             "S1 队列排空（drain 完成）");
 
         auto ids = execIdsSnapshot();
@@ -269,7 +269,7 @@ int main()
                 {
                     waitRcOk.fetch_add(1);
                 }
-                if (ev->d.m_response.m_status == yomk::payload::ResStatus::Succeeded)
+                if (ev->d.response.status == yomk::payload::ResStatus::Succeeded)
                 {
                     waitRespOk.fetch_add(1);
                 }
@@ -294,7 +294,7 @@ int main()
         YOMK_TEST_CHECK(waitRcOk.load() == 80, "S3 全部 postWait 返回 0（80/80）");
         YOMK_TEST_CHECK(waitRespOk.load() == 80, "S3 全部返回时响应已填充 ResStatus::Succeeded（80/80）");
         YOMK_TEST_CHECK(g_execCount.load() == 80, "S3 总执行数守恒（80/80）");
-        YOMK_TEST_CHECK(loopSnap(loop, 0).m_pending == 0, "S3 完成后 pending==0");
+        YOMK_TEST_CHECK(loopSnap(loop, 0).pending == 0, "S3 完成后 pending==0");
 
         loop.destroy();
     }
@@ -360,7 +360,7 @@ int main()
             waitUntil(
                 [&loop, expected] {
                     return g_execCount.load() == expected &&
-                           loopSnap(loop, 0).m_pending == 0;
+                           loopSnap(loop, 0).pending == 0;
                 },
                 5000),
             "S4 churn 后队列排空（drain 完成）");
@@ -405,8 +405,8 @@ int main()
             {
                 auto r = yomk::event_loop().loop("conc_loop").get_info();
                 pollCount.fetch_add(1);
-                auto info = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(r.m_data);
-                if (r.m_status == yomk::payload::ResStatus::Succeeded && info && info->d.m_running)
+                auto info = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(r.data);
+                if (r.status == yomk::payload::ResStatus::Succeeded && info && info->d.running)
                 {
                     pollOk.fetch_add(1);
                 }
@@ -416,8 +416,8 @@ int main()
                     if (g_pollFailSamples.size() < 5)
                     {
                         g_pollFailSamples.push_back(
-                            "status=" + std::to_string(static_cast<int>(r.m_status)) + " running=" +
-                            (info ? std::string(info->d.m_running ? "on" : "off") : std::string("unpack-fail")));
+                            "status=" + std::to_string(static_cast<int>(r.status)) + " running=" +
+                            (info ? std::string(info->d.running ? "on" : "off") : std::string("unpack-fail")));
                     }
                 }
             }

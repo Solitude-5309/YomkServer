@@ -118,13 +118,13 @@ static int registerConcSrv(std::shared_ptr<YomkServer> server, const std::string
 
 static bool isExpectedNoResponse(const yomk::payload::Response& r)
 {
-    if (r.m_status != yomk::payload::ResStatus::Failed)
+    if (r.status != yomk::payload::ResStatus::Failed)
         return false;
     // 并发注册窗口：YomkServer::addService 先入表后 init，request 可能在函数安装前命中服务，
     // 返回 function not found；这是框架设计窗口（非崩溃/悬垂缺陷），纳入可接受集合
-    return r.m_msg.find("service not found") != std::string::npos ||
-           r.m_msg.find("function not found") != std::string::npos ||
-           r.m_msg.find("deleted or unregistered") != std::string::npos;
+    return r.msg.find("service not found") != std::string::npos ||
+           r.msg.find("function not found") != std::string::npos ||
+           r.msg.find("deleted or unregistered") != std::string::npos;
 }
 
 int main()
@@ -149,13 +149,13 @@ int main()
                         if (i % 2 == 0)
                         {
                             auto r = server->request("/PingSrv/ping");
-                            if (r.m_status == yomk::payload::ResStatus::Succeeded && r.m_msg == "pong")
+                            if (r.status == yomk::payload::ResStatus::Succeeded && r.msg == "pong")
                                 ++okCount;
                         }
                         else
                         {
                             auto r = server->request("/PingSrv/echo", yomk::msgs::String::shared("x"));
-                            if (r.m_status == yomk::payload::ResStatus::Succeeded && r.m_msg == "x")
+                            if (r.status == yomk::payload::ResStatus::Succeeded && r.msg == "x")
                                 ++okCount;
                         }
                     }
@@ -190,7 +190,7 @@ int main()
                             yomk::msgs::String::shared("a"),
                             [](yomk::payload::Response r)
                             {
-                                if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                                if (r.status == yomk::payload::ResStatus::Succeeded)
                                     ++g_fired;
                             });
                     }
@@ -222,7 +222,7 @@ int main()
                     while (!stop.load())
                     {
                         auto r = server->request("/PingSrv/ping");
-                        if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                        if (r.status == yomk::payload::ResStatus::Succeeded)
                             ++okCount;
                         else if (!isExpectedNoResponse(r))
                             ++g_illegal;
@@ -267,7 +267,7 @@ int main()
                     while (!stop.load())
                     {
                         auto r = server->request("/EchoSrv/echo", yomk::msgs::String::shared("loop"));
-                        if (r.m_status == yomk::payload::ResStatus::Succeeded && r.m_msg == "loop")
+                        if (r.status == yomk::payload::ResStatus::Succeeded && r.msg == "loop")
                             ++okCount;
                         else
                             ++g_illegal;
@@ -310,7 +310,7 @@ int main()
                         yomk::msgs::String::shared("s"),
                         [](yomk::payload::Response r)
                         {
-                            if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                            if (r.status == yomk::payload::ResStatus::Succeeded)
                                 ++g_fired;
                         });
                     ++g_posted;
@@ -346,7 +346,7 @@ int main()
                 yomk::msgs::String::shared("s"),
                 [](yomk::payload::Response r)
                 {
-                    if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                    if (r.status == yomk::payload::ResStatus::Succeeded)
                         ++g_fired;
                 });
         }
@@ -372,10 +372,10 @@ int main()
                 while (!afterDel.load())
                 {
                     yomk::payload::Response r = g_weakCb(nullptr);
-                    if (r.m_status == yomk::payload::ResStatus::Succeeded && r.m_msg == "pong")
+                    if (r.status == yomk::payload::ResStatus::Succeeded && r.msg == "pong")
                         ++g_fired;
                     else if (
-                        r.m_status == yomk::payload::ResStatus::Failed && r.m_msg.find("deleted or unregistered") != std::string::npos)
+                        r.status == yomk::payload::ResStatus::Failed && r.msg.find("deleted or unregistered") != std::string::npos)
                         ++g_rejected;
                     ++g_posted;
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -431,7 +431,7 @@ int main()
                 if (mod == 0)
                 {
                     auto r = server->request("/StressSrv/ping");
-                    if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                    if (r.status == yomk::payload::ResStatus::Succeeded)
                         ++(*ok);
                 }
                 else if (mod == 1)
@@ -441,7 +441,7 @@ int main()
                         yomk::msgs::String::shared("stress"),
                         [fired](yomk::payload::Response r)
                         {
-                            if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                            if (r.status == yomk::payload::ResStatus::Succeeded)
                                 ++(*fired);
                         });
                     ++(*posted);

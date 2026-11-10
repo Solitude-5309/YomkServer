@@ -146,28 +146,28 @@ public:
         }
         yomk::payload::Response response =
             yomk::server().url(yomk::url::ctxGet).msg(yomk::msgs::Context::shared(yomk::payload::Context{std::string(m_key), m_default, std::string(m_group)})).request();
-        if (response.m_status == yomk::payload::ResStatus::Succeeded)
+        if (response.status == yomk::payload::ResStatus::Succeeded)
         {
             std::shared_ptr<T> ctxData = nullptr;
-            if (response.m_data && response.m_data->name() == T::kName)
+            if (response.data && response.data->name() == T::kName)
             {
-                ctxData = std::dynamic_pointer_cast<T>(response.m_data);
+                ctxData = std::dynamic_pointer_cast<T>(response.data);
             }
             if (ctxData)
             {
                 return ctxData;
             }
             // 具体值原则:类型不匹配静默回退默认值会掩盖写入侧错配,输出期望/实际类型名定位
-            if (response.m_data)
+            if (response.data)
             {
                 YOMK_DIAG_WARN("typed read context key '" + std::string(m_key) + "' type mismatch, expect '" + T::kName
-                    + "', got '" + response.m_data->name() + "', return default value");
+                    + "', got '" + response.data->name() + "', return default value");
             }
             return m_default;
         }
         else
         {
-            YOMK_DIAG_ERROR("get context failed: " + response.m_msg);
+            YOMK_DIAG_ERROR("get context failed: " + response.msg);
             return m_default;
         }
     }

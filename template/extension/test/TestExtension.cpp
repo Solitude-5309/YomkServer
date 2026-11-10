@@ -17,29 +17,29 @@ int main(int argc, char* argv[])
 
     // 测试版本查询
     yomk::payload::Response resp = yomk::server().url("/ExtensionService/version").request();
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+    if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
-        auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
+        auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
         std::cout << "[PASS] version: " << version->d << std::endl;
         g_pass++;
     }
     else
     {
-        std::cout << "[FAIL] version request failed: " << resp.m_msg << std::endl;
+        std::cout << "[FAIL] version request failed: " << resp.msg << std::endl;
         g_fail++;
     }
 
     // 测试扩展链式域入口（四件套 ExtensionApi.h 的 yomk::ext()）
     yomk::payload::Response extResp = yomk::ext().version();
-    if (extResp.m_status == yomk::payload::ResStatus::Succeeded)
+    if (extResp.status == yomk::payload::ResStatus::Succeeded)
     {
-        auto extVersion = yomk::msgs::unpack<yomk::msgs::String>(extResp.m_data);
+        auto extVersion = yomk::msgs::unpack<yomk::msgs::String>(extResp.data);
         std::cout << "[PASS] ext().version(): " << extVersion->d << std::endl;
         g_pass++;
     }
     else
     {
-        std::cout << "[FAIL] ext().version() request failed: " << extResp.m_msg << std::endl;
+        std::cout << "[FAIL] ext().version() request failed: " << extResp.msg << std::endl;
         g_fail++;
     }
 

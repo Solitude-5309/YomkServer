@@ -105,12 +105,12 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.status);
+    if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         oss << "(ResStatus::Succeeded 成功)";
     }
-    else if (resp.m_status == yomk::payload::ResStatus::Failed)
+    else if (resp.status == yomk::payload::ResStatus::Failed)
     {
         oss << "(ResStatus::Failed 拒绝或不存在)";
     }
@@ -118,10 +118,10 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
     {
         oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
-    oss << ", msg=\"" << resp.m_msg << "\"";
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_data)
+    oss << ", msg=\"" << resp.msg << "\"";
+    if (resp.status == yomk::payload::ResStatus::Succeeded && resp.data)
     {
-        auto data = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
+        auto data = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
         if (data)
         {
             oss << ", data=\"" << data->d << "\"";
@@ -172,15 +172,15 @@ static void logStringLine(const std::string& api, const std::string& line)
 static void logFuncInfo(const std::string& api, const yomk::payload::FuncInfo& info)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] - " << info.m_funcName;
+    oss << "[" << api << "] - " << info.funcName;
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     msgName: " << (info.m_msgName.empty() ? "(未指定)" : info.m_msgName);
+    oss << "[" << api << "]     msgName: " << (info.msgName.empty() ? "(未指定)" : info.msgName);
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     description: " << (info.m_description.empty() ? "(未指定)" : info.m_description);
+    oss << "[" << api << "]     description: " << (info.description.empty() ? "(未指定)" : info.description);
     yomk::log().tag("arm.demo").info(oss.str());
 }
 
@@ -238,7 +238,7 @@ static void showArmPowerOnRegister()
     logAction("复查控制柜在册服务清单");
     yomk::payload::Response namesResp = yomk::srv_info().services();
     logResp("services()", namesResp);
-    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.m_data);
+    auto nameArr = yomk::msgs::unpack<yomk::msgs::StringArray>(namesResp.data);
     if (nameArr)
     {
         for (const auto& srvName : nameArr->d)
@@ -293,7 +293,7 @@ static void showArmAsyncTeach()
     YomkResponseFunc onTeachDone = [](yomk::payload::Response resp)
     {
         std::ostringstream oss;
-        oss << "[ASYNC_REQUEST 回调] status=" << static_cast<int>(resp.m_status) << ", msg=\"" << resp.m_msg
+        oss << "[ASYNC_REQUEST 回调] status=" << static_cast<int>(resp.status) << ", msg=\"" << resp.msg
             << "\"（池线程 id: " << std::this_thread::get_id() << "）";
         yomk::log().tag("arm.demo").info(oss.str());
     };
@@ -326,11 +326,11 @@ static void showArmMoveChain()
 
     logAction("展开到位回执 MoveResp");
     std::ostringstream oss;
-    auto respPkg = yomk::msgs::unpack<yomk::msgs::MoveResp>(moveResp.m_data);
+    auto respPkg = yomk::msgs::unpack<yomk::msgs::MoveResp>(moveResp.data);
     if (respPkg)
     {
-        oss << "[REQUEST /MotionService/move] | MoveResp 到位 (" << respPkg->resp.m_reachX << ", "
-            << respPkg->resp.m_reachY << ", " << respPkg->resp.m_reachZ << ")mm";
+        oss << "[REQUEST /MotionService/move] | MoveResp 到位 (" << respPkg->resp.reachX << ", "
+            << respPkg->resp.reachY << ", " << respPkg->resp.reachZ << ")mm";
     }
     else
     {
@@ -355,7 +355,7 @@ static void showArmIntrospect()
     logAction("查阅运动工位职能清单");
     yomk::payload::Response funcsResp = yomk::srv_info().srv_name("/MotionService").functions();
     logResp("INFO_FUNCTIONS /MotionService", funcsResp);
-    auto listPkg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.m_data);
+    auto listPkg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.data);
     if (listPkg)
     {
         for (const auto& func : listPkg->d)
@@ -368,7 +368,7 @@ static void showArmIntrospect()
     logAction("调阅运动指令函数名片");
     yomk::payload::Response resp = yomk::srv_info().fn_url("/MotionService/move").get_info();
     logResp("INFO_FUNCTION /MotionService/move", resp);
-    auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.m_data);
+    auto info = yomk::msgs::unpack<yomk::msgs::FuncInfo>(resp.data);
     if (info)
     {
         logFuncInfo("INFO_FUNCTION", info->d);
@@ -449,12 +449,12 @@ static void showArmPowerOff()
     logAction("导出收班终态拓扑（摘要）");
     yomk::payload::Response allResp = yomk::srv_info().all();
     logResp("all()", allResp);
-    auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(allResp.m_data);
+    auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(allResp.data);
     if (list)
     {
         for (const auto& srv : list->d)
         {
-            logSrvBrief("all()", srv.m_serviceName, srv.m_funcs.size());
+            logSrvBrief("all()", srv.serviceName, srv.funcs.size());
         }
     }
     logVerify("6 个服务 = 5 个内置 + 1 个运动工位：留痕工位已在场景 7 下线，拓扑实时反映运行期服务表");

@@ -99,7 +99,7 @@ int main()
 
         // 已初始化时守卫放行至服务器层：不存在的服务名按服务器层契约返回 ResStatus::Failed
         yomk::payload::Response resp = yomk::server().url("/Nope/x").request();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Failed, "request 未知服务经守卫放行至服务器层返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Failed, "request 未知服务经守卫放行至服务器层返回 ResStatus::Failed");
     }
 
     std::cout << "===== 5. shutdown 与关闭后守卫回归 =====" << std::endl;
@@ -111,8 +111,8 @@ int main()
         YOMK_TEST_CHECK(true, "二次 shutdown 幂等不崩溃");
 
         yomk::payload::Response resp = yomk::server().url("/Any/func").request();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Invalid, "关闭后 request 守卫回归 ResStatus::Invalid");
-        YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not initialized", "关闭后契约消息回归: " + resp.m_msg);
+        YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Invalid, "关闭后 request 守卫回归 ResStatus::Invalid");
+        YOMK_TEST_CHECK(resp.msg == "YomkServer is not initialized", "关闭后契约消息回归: " + resp.msg);
         YOMK_TEST_CHECK(yomk::server().srv<DummySrv>().create() == -1, "关闭后 create() 守卫回归 -1");
 
         yomk::server().init();

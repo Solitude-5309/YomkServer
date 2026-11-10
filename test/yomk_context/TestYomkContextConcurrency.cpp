@@ -166,7 +166,7 @@ int main()
         for (int t = 0; t < T; ++t)
         {
             auto r = yomk::ctx().key("conc_cd_" + std::to_string(t)).info();
-            if (r.m_status != yomk::payload::ResStatus::Failed)
+            if (r.status != yomk::payload::ResStatus::Failed)
                 allGone = false;
         }
         YOMK_TEST_CHECK(allGone, "2.4 独立键全部销毁，keys 无残留");
@@ -241,7 +241,7 @@ int main()
                         else
                         {
                             auto r = yomk::ctx().key("conc_ck").info();
-                            if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                            if (r.status == yomk::payload::ResStatus::Succeeded)
                                 ++okReader;
                             else
                                 ++g_illegal;
@@ -366,7 +366,7 @@ int main()
         yomk::ctx().key("conc_a").monitor_fn([](const yomk::payload::Context&)
             {
                 auto r = yomk::ctx().key("conc_b").info();
-                if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                if (r.status == yomk::payload::ResStatus::Succeeded)
                     ++g_reentrantOk;
             }).apply();
         yomk::ctx().monitor().enable();
@@ -430,7 +430,7 @@ int main()
                             case 2:
                             {
                                 auto r = yomk::ctx().keys();
-                                if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                                if (r.status == yomk::payload::ResStatus::Succeeded)
                                     ++okOps;
                                 else
                                     ++g_illegal;
@@ -439,7 +439,7 @@ int main()
                             case 3:
                             {
                                 auto r = yomk::ctx().key(key).info();
-                                if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                                if (r.status == yomk::payload::ResStatus::Succeeded)
                                     ++okOps;
                                 else
                                     ++g_illegal;
@@ -448,7 +448,7 @@ int main()
                             case 4:
                             {
                                 auto r = yomk::ctx().all();
-                                if (r.m_status == yomk::payload::ResStatus::Succeeded)
+                                if (r.status == yomk::payload::ResStatus::Succeeded)
                                     ++okOps;
                                 else
                                     ++g_illegal;
@@ -494,13 +494,13 @@ int main()
         YOMK_TEST_CHECK(okOps.load() == T * K, "8.3 全部操作成功计数守恒");
 
         // 最终一致性：keyspace 仍存在、临时键已销毁
-        bool keyspaceOk = (yomk::ctx().key("stress_0").info().m_status == yomk::payload::ResStatus::Succeeded) &&
-                          (yomk::ctx().key("stress_" + std::to_string(M - 1)).info().m_status == yomk::payload::ResStatus::Succeeded);
+        bool keyspaceOk = (yomk::ctx().key("stress_0").info().status == yomk::payload::ResStatus::Succeeded) &&
+                          (yomk::ctx().key("stress_" + std::to_string(M - 1)).info().status == yomk::payload::ResStatus::Succeeded);
         YOMK_TEST_CHECK(keyspaceOk, "8.4 压力后 keyspace 仍存在");
         bool tmpGone = true;
         for (int t = 0; t < T; ++t)
         {
-            if (yomk::ctx().key("stress_tmp_" + std::to_string(t)).info().m_status != yomk::payload::ResStatus::Failed)
+            if (yomk::ctx().key("stress_tmp_" + std::to_string(t)).info().status != yomk::payload::ResStatus::Failed)
                 tmpGone = false;
         }
         YOMK_TEST_CHECK(tmpGone, "8.5 压力后临时键全部销毁");

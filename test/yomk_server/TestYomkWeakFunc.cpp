@@ -136,12 +136,12 @@ static void testAliveCallbacks(YomkServer* server)
 
     YOMK_TEST_CHECK(voidCount.load() == 1, "存活：void 回调真实执行");
     YOMK_TEST_CHECK(
-        respCount.load() == 1 && resp.m_status == yomk::payload::ResStatus::Succeeded && resp.m_msg == "alive",
+        respCount.load() == 1 && resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "alive",
         "存活：yomk::payload::Response 回调正常执行");
     YOMK_TEST_CHECK(checkCount.load() == 1 && status == yomk::payload::CheckStatus::Reject, "存活：CheckStatus 回调返回真实值");
     YOMK_TEST_CHECK(intCount.load() == 1 && intRet == 42, "存活：其他返回值类型回调返回真实值");
     YOMK_TEST_CHECK(
-        srv->memberCount.load() == 1 && memberResp.m_status == yomk::payload::ResStatus::Succeeded && memberResp.m_msg == "member",
+        srv->memberCount.load() == 1 && memberResp.status == yomk::payload::ResStatus::Succeeded && memberResp.msg == "member",
         "存活：weakFunc 成员函数指针绑定回调真实执行");
 }
 
@@ -191,15 +191,15 @@ static void testDestroyDiscard(YomkServer* server)
 
     YOMK_TEST_CHECK(voidCount.load() == 0, "销毁：void 回调丢弃，副作用计数未变化");
     YOMK_TEST_CHECK(
-        respCount.load() == 0 && resp.m_status == yomk::payload::ResStatus::Failed &&
-            resp.m_msg.find(DISCARD_MSG) != std::string::npos,
+        respCount.load() == 0 && resp.status == yomk::payload::ResStatus::Failed &&
+            resp.msg.find(DISCARD_MSG) != std::string::npos,
         "销毁：yomk::payload::Response 回调丢弃，返回 ResStatus::Failed + 契约消息");
     YOMK_TEST_CHECK(
         checkCount.load() == 0 && status == yomk::payload::CheckStatus::Accept,
         "销毁：CheckStatus 回调丢弃，默认放行 CheckStatus::Accept");
     YOMK_TEST_CHECK(intCount.load() == 0 && intRet == 0, "销毁：其他返回值类型回调丢弃，返回 Ret{} 默认值");
     YOMK_TEST_CHECK(
-        memberResp.m_status == yomk::payload::ResStatus::Failed && memberResp.m_msg.find(DISCARD_MSG) != std::string::npos,
+        memberResp.status == yomk::payload::ResStatus::Failed && memberResp.msg.find(DISCARD_MSG) != std::string::npos,
         "销毁：weakFunc 成员函数指针绑定回调丢弃");
 }
 
@@ -217,7 +217,7 @@ static void testMarkDeletedDiscard(YomkServer* server)
     // 注销前：自动弱绑定 invoke 命中执行（经 BindSrv 白盒再暴露；srv 基类副本仅承担生命周期）
     yomk::payload::Response aliveResp = rawSrv->invoke("/installed");
     YOMK_TEST_CHECK(
-        aliveResp.m_status == yomk::payload::ResStatus::Succeeded && aliveResp.m_msg == "alive",
+        aliveResp.status == yomk::payload::ResStatus::Succeeded && aliveResp.msg == "alive",
         "注销前：installFunc 自动弱绑定 invoke 命中执行");
 
     std::function<void()> cbVoid = rawSrv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
@@ -237,11 +237,11 @@ static void testMarkDeletedDiscard(YomkServer* server)
 
     YOMK_TEST_CHECK(voidCount.load() == 0, "删除即停：void 回调立即丢弃，副作用计数未变化");
     YOMK_TEST_CHECK(
-        respCount.load() == 0 && resp.m_status == yomk::payload::ResStatus::Failed &&
-            resp.m_msg.find(DISCARD_MSG) != std::string::npos,
+        respCount.load() == 0 && resp.status == yomk::payload::ResStatus::Failed &&
+            resp.msg.find(DISCARD_MSG) != std::string::npos,
         "删除即停：yomk::payload::Response 回调立即丢弃（删除即停）");
     YOMK_TEST_CHECK(
-        invokeResp.m_status == yomk::payload::ResStatus::Failed && invokeResp.m_msg.find(DISCARD_MSG) != std::string::npos,
+        invokeResp.status == yomk::payload::ResStatus::Failed && invokeResp.msg.find(DISCARD_MSG) != std::string::npos,
         "删除即停：自动弱绑定 invoke 返回丢弃契约消息");
 }
 
@@ -253,7 +253,7 @@ static void testConstructorWeakFunc(YomkServer* server)
 
     YOMK_TEST_CHECK(srv->count.load() == 0, "构造期告警：回调从未执行，副作用计数为零");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find(DISCARD_MSG) != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find(DISCARD_MSG) != std::string::npos,
         "构造期告警：绑定永久失效，持有后调用仍返回丢弃契约消息");
 }
 

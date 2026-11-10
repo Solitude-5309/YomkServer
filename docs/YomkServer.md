@@ -34,9 +34,9 @@ builder 按值传递、全程 `auto` 接收，仅限单表达式内联使用（�
 
 | 字段 | 说明 |
 |---|---|
-| `m_status` | `ResStatus::Succeeded (0)`：调用成功；`ResStatus::Failed (1)`：服务端执行失败，含目标服务/函数不存在等 not-found；`ResStatus::Invalid (-1)`：入参非法或服务器未初始化 |
-| `m_msg` | 状态描述文本 |
-| `m_data` | 可选的负载消息包（`YomkMsgPtr`） |
+| `status` | `ResStatus::Succeeded (0)`：调用成功；`ResStatus::Failed (1)`：服务端执行失败，含目标服务/函数不存在等 not-found；`ResStatus::Invalid (-1)`：入参非法或服务器未初始化 |
+| `msg` | 状态描述文本 |
+| `data` | 可选的负载消息包（`YomkMsgPtr`） |
 
 ### 生命周期与服务管理
 
@@ -87,10 +87,10 @@ int main()
 
     auto ret = yomk::server().url("/MyService/hello")                  // 同步请求
                    .msg(yomk::msgs::String::shared("yomk")).request();
-    yomk::log().info("Response:", ret.m_msg);
+    yomk::log().info("Response:", ret.msg);
 
     yomk::server().url("/MyService/hello")                             // 异步请求：立即返回
-        .async([](yomk::payload::Response r) { yomk::log().info("Async:", r.m_msg); })
+        .async([](yomk::payload::Response r) { yomk::log().info("Async:", r.msg); })
         .msg(yomk::msgs::String::shared("yomk")).request();
 
     yomk::server().srv_name("/MyService").remove();                    // 删除服务（触发 deinit）

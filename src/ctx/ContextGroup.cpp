@@ -38,7 +38,7 @@ int ContextGroup::create(const std::string& key, YomkMsgPtr value)
 {
     if (key.empty())
     {
-        YOMK_DIAG_WARN("key is empty, please check Context.m_key");
+        YOMK_DIAG_WARN("key is empty, please check Context.key");
         return 1;
     }
     if (value == nullptr)
@@ -93,7 +93,7 @@ int ContextGroup::get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPt
     if (key.empty())
     {
         value = defaultValue;
-        YOMK_DIAG_WARN("key is empty, please check Context.m_key");
+        YOMK_DIAG_WARN("key is empty, please check Context.key");
         return 1;
     }
 
@@ -103,7 +103,7 @@ int ContextGroup::get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPt
     if (itContext == m_contexts.end())
     {
         value = defaultValue;
-        YOMK_DIAG_WARN("YomkContext key: " + key + " does not exist, please check Context.m_key");
+        YOMK_DIAG_WARN("YomkContext key: " + key + " does not exist, please check Context.key");
         return 2;
     }
 
@@ -116,7 +116,7 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
     detail = "ok";
     if (key.empty())
     {
-        YOMK_DIAG_WARN("key is empty, please check Context.m_key");
+        YOMK_DIAG_WARN("key is empty, please check Context.key");
         detail = "set context key is empty";
         return 1;
     }
@@ -129,8 +129,8 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
 
     // 本次提交的键值快照:checker 校验与 monitor 通知统一回传该临时对象
     yomk::payload::Context data;
-    data.m_key = key;
-    data.m_value = value;
+    data.key = key;
+    data.value = value;
 
     std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
     auto itContext = m_contexts.find(key);
@@ -240,7 +240,7 @@ int ContextGroup::setChecker(const std::string& key, YomkContextCheckerFunc chec
 {
     if (key.empty())
     {
-        YOMK_DIAG_WARN("key is empty, please check ContextChecker.m_key");
+        YOMK_DIAG_WARN("key is empty, please check ContextChecker.key");
         return 1;
     }
     if (checkFunc == nullptr)
@@ -256,7 +256,7 @@ int ContextGroup::setChecker(const std::string& key, YomkContextCheckerFunc chec
         if (itContext == m_contexts.end())
         {
             YOMK_DIAG_WARN(
-                "YomkContext key: " + key + " does not exist, please check ContextChecker.m_key");
+                "YomkContext key: " + key + " does not exist, please check ContextChecker.key");
             return 3;
         }
 
@@ -270,7 +270,7 @@ int ContextGroup::setMonitor(const std::string& key, YomkContextMonitorFunc moni
 {
     if (key.empty())
     {
-        YOMK_DIAG_WARN("key is empty, please check ContextMonitor.m_key");
+        YOMK_DIAG_WARN("key is empty, please check ContextMonitor.key");
         return 1;
     }
     if (monitorFunc == nullptr)
@@ -286,7 +286,7 @@ int ContextGroup::setMonitor(const std::string& key, YomkContextMonitorFunc moni
         if (itContext == m_contexts.end())
         {
             YOMK_DIAG_WARN(
-                "YomkContext key: " + key + " does not exist, please check ContextMonitor.m_key");
+                "YomkContext key: " + key + " does not exist, please check ContextMonitor.key");
             return 3;
         }
         ContextMonitor contextMonitor;
@@ -328,18 +328,18 @@ int ContextGroup::keyInfo(const std::string& key, yomk::payload::ContextKeyInfo&
     // 命中:info 为整体重置语义,锁内逐字段填充
     const auto& ctx = itContext->second;
     info = yomk::payload::ContextKeyInfo();
-    info.m_key = ctx.key;
-    info.m_typeName = ctx.value ? ctx.value->name() : "";
-    info.m_checkerOn = static_cast<bool>(ctx.checker);
-    info.m_monitorCount = ctx.monitors.size();
+    info.key = ctx.key;
+    info.typeName = ctx.value ? ctx.value->name() : "";
+    info.checkerOn = static_cast<bool>(ctx.checker);
+    info.monitorCount = ctx.monitors.size();
     for (auto& monitor : ctx.monitors)
     {
         if (monitor.asyncMonitor)
         {
-            ++info.m_asyncMonitorCount;
+            ++info.asyncMonitorCount;
         }
     }
-    info.m_group = m_name;
+    info.group = m_name;
     return 0;
 }
 
@@ -354,18 +354,18 @@ std::vector<yomk::payload::ContextKeyInfo> ContextGroup::listAll()
         {
             const auto& ctx = iter.second;
             yomk::payload::ContextKeyInfo info;
-            info.m_key = ctx.key;
-            info.m_typeName = ctx.value ? ctx.value->name() : "";
-            info.m_checkerOn = static_cast<bool>(ctx.checker);
-            info.m_monitorCount = ctx.monitors.size();
+            info.key = ctx.key;
+            info.typeName = ctx.value ? ctx.value->name() : "";
+            info.checkerOn = static_cast<bool>(ctx.checker);
+            info.monitorCount = ctx.monitors.size();
             for (auto& monitor : ctx.monitors)
             {
                 if (monitor.asyncMonitor)
                 {
-                    ++info.m_asyncMonitorCount;
+                    ++info.asyncMonitorCount;
                 }
             }
-            info.m_group = m_name;
+            info.group = m_name;
             infos.push_back(std::move(info));
         }
     }

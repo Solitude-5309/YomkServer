@@ -42,9 +42,9 @@ void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFun
     if (!msgName.empty() || !description.empty())
     {
         yomk::payload::FuncInfo info;
-        info.m_funcName = funcName;
-        info.m_msgName = msgName;
-        info.m_description = description;
+        info.funcName = funcName;
+        info.msgName = msgName;
+        info.description = description;
         m_funcInfoMap[funcName] = info;
     }
     else
@@ -61,12 +61,12 @@ std::map<std::string, yomk::payload::FuncInfo> YomkServicePrivate::funcInfos()
     for (auto& iter : m_funcMap)
     {
         yomk::payload::FuncInfo info;
-        info.m_funcName = iter.first;
+        info.funcName = iter.first;
         auto itInfo = m_funcInfoMap.find(iter.first);
         if (itInfo != m_funcInfoMap.end())
         {
-            info.m_msgName = itInfo->second.m_msgName;
-            info.m_description = itInfo->second.m_description;
+            info.msgName = itInfo->second.msgName;
+            info.description = itInfo->second.description;
         }
         infos.emplace(iter.first, info);
     }

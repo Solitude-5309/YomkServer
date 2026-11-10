@@ -25,56 +25,56 @@ enum class CheckStatus
 // @zh: 上下文键值写载荷（create/set 共用）
 struct Context
 {
-    std::string m_key;
-    YomkMsgPtr m_value;
-    std::string m_group = "main";  // key 所属组名(缺省 main)
+    std::string key;
+    YomkMsgPtr value;
+    std::string group = "main";  // key 所属组名(缺省 main)
 };
 
 /** @brief Key-level checker registration payload */
 // @zh: 键级 checker 注册载荷
 struct ContextChecker
 {
-    std::string m_key;
-    std::function<CheckStatus(const yomk::payload::Context& ctx)> m_checkFunc;
-    std::string m_group = "main";  // 目标 key 所属组名(缺省 main)
+    std::string key;
+    std::function<CheckStatus(const yomk::payload::Context& ctx)> checkFunc;
+    std::string group = "main";  // 目标 key 所属组名(缺省 main)
 };
 
 /** @brief Key-level monitor registration payload */
 // @zh: 键级 monitor 注册载荷
 struct ContextMonitor
 {
-    std::string m_key;
-    std::function<void(Context ctx)> m_contextMonitorFunc;
-    bool m_asyncMonitor = false;
-    std::string m_group = "main";  // 目标 key 所属组名(缺省 main)
+    std::string key;
+    std::function<void(Context ctx)> contextMonitorFunc;
+    bool asyncMonitor = false;
+    std::string group = "main";  // 目标 key 所属组名(缺省 main)
 };
 
 /** @brief In-group key locator payload (group + key) */
 // @zh: 组内键定位载荷（group + key）
 struct ContextGroupKey
 {
-    std::string m_group = "main";  // 组名(缺省 main)
-    std::string m_key;             // 键名
+    std::string group = "main";  // 组名(缺省 main)
+    std::string key;             // 键名
 };
 
 /** @brief Single-key introspection snapshot */
 // @zh: 单键内省快照
 struct ContextKeyInfo
 {
-    std::string m_key;                    // 键名
-    std::string m_typeName;               // 值消息包类型名(值为空时为空串)
-    bool m_checkerOn = false;             // 门控是否开启
-    std::size_t m_monitorCount = 0;       // monitor 总数
-    std::size_t m_asyncMonitorCount = 0;  // 其中 async monitor 数
-    std::string m_group = "main";         // key 所属组名
+    std::string key;                    // 键名
+    std::string typeName;               // 值消息包类型名(值为空时为空串)
+    bool checkerOn = false;             // 门控是否开启
+    std::size_t monitorCount = 0;       // monitor 总数
+    std::size_t asyncMonitorCount = 0;  // 其中 async monitor 数
+    std::string group = "main";         // key 所属组名
 };
 
 /** @brief Single-group introspection snapshot (group name + metadata of all keys) */
 // @zh: 单组内省快照（组名 + 全键元信息）
 struct ContextGroupInfo
 {
-    std::string m_groupName;             // 组名
-    std::vector<ContextKeyInfo> m_keys;  // 该组全部键的内省元信息(map 字典序)
+    std::string groupName;             // 组名
+    std::vector<ContextKeyInfo> keys;  // 该组全部键的内省元信息(map 字典序)
 };
 
 }  // namespace yomk::payload

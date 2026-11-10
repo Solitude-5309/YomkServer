@@ -82,12 +82,12 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] status=" << static_cast<int>(resp.m_status);
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+    oss << "[" << api << "] status=" << static_cast<int>(resp.status);
+    if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         oss << "(ResStatus::Succeeded 成功)";
     }
-    else if (resp.m_status == yomk::payload::ResStatus::Failed)
+    else if (resp.status == yomk::payload::ResStatus::Failed)
     {
         oss << "(ResStatus::Failed 拒绝或不存在)";
     }
@@ -95,7 +95,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
     {
         oss << "(ResStatus::Invalid 未初始化或参数无效)";
     }
-    oss << ", msg=\"" << resp.m_msg << "\"";
+    oss << ", msg=\"" << resp.msg << "\"";
     yomk::log().tag("arm.demo").info(oss.str());
 }
 
@@ -135,25 +135,25 @@ static void logAction(const std::string& op)
 static void logLoggerInfo(const std::string& api, const yomk::payload::LoggerInfo& info)
 {
     std::ostringstream oss;
-    oss << "[" << api << "] - " << info.m_loggerName;
+    oss << "[" << api << "] - " << info.loggerName;
     yomk::log().tag("arm.demo").info(oss.str());
 
     oss.str("");
-    oss << "[" << api << "]     type: " << info.m_type;
+    oss << "[" << api << "]     type: " << info.type;
     yomk::log().tag("arm.demo").info(oss.str());
 
-    if (info.m_type == "file")
+    if (info.type == "file")
     {
         oss.str("");
-        oss << "[" << api << "]     dir: " << info.m_dir;
+        oss << "[" << api << "]     dir: " << info.dir;
         yomk::log().tag("arm.demo").info(oss.str());
         return;
     }
-    const yomk::payload::LoggerState& state = info.m_loggerState;
+    const yomk::payload::LoggerState& state = info.loggerState;
     oss.str("");
-    oss << "[" << api << "]     state: debug=" << (state.m_debugOn ? "on" : "off")
-        << " info=" << (state.m_infoOn ? "on" : "off") << " warn=" << (state.m_warnOn ? "on" : "off")
-        << " error=" << (state.m_errorOn ? "on" : "off") << " proxy=" << (state.m_proxyOn ? "on" : "off");
+    oss << "[" << api << "]     state: debug=" << (state.debugOn ? "on" : "off")
+        << " info=" << (state.infoOn ? "on" : "off") << " warn=" << (state.warnOn ? "on" : "off")
+        << " error=" << (state.errorOn ? "on" : "off") << " proxy=" << (state.proxyOn ? "on" : "off");
     yomk::log().tag("arm.demo").info(oss.str());
 }
 
@@ -189,11 +189,11 @@ static void logFileContent(const fs::path& path)
 bool blackboxProxy(const yomk::payload::Log& log)
 {
     // WARN/ERROR 关键事件：预拼一行（原文 + tag）转写黑匣子，控制台不再输出
-    if (log.m_level == yomk::payload::LogLevel::Warn || log.m_level == yomk::payload::LogLevel::Error)
+    if (log.level == yomk::payload::LogLevel::Warn || log.level == yomk::payload::LogLevel::Error)
     {
         std::ostringstream oss;
-        oss << log.m_log << " (tag: " << log.m_tag << ")";
-        if (log.m_level == yomk::payload::LogLevel::Warn)
+        oss << log.log << " (tag: " << log.tag << ")";
+        if (log.level == yomk::payload::LogLevel::Warn)
         {
             yomk::log().to_sink("blackbox").warn(oss.str());
         }
@@ -204,7 +204,7 @@ bool blackboxProxy(const yomk::payload::Log& log)
         return false;
     }
     // DEBUG 噪声：直接消费丢弃
-    if (log.m_level == yomk::payload::LogLevel::Debug)
+    if (log.level == yomk::payload::LogLevel::Debug)
     {
         return false;
     }
@@ -220,7 +220,7 @@ bool blackboxProxy(const yomk::payload::Log& log)
 // ---------------------------------------------------------------------------
 bool fileDebugProxy(const yomk::payload::Log& log)
 {
-    return log.m_level != yomk::payload::LogLevel::Debug;  // 仅拦截 DEBUG，其余放行
+    return log.level != yomk::payload::LogLevel::Debug;  // 仅拦截 DEBUG，其余放行
 }
 
 // ---------------------------------------------------------------------------
@@ -297,7 +297,7 @@ static void showArmSilentMode()
     logAction("复查 main 开关状态");
     yomk::payload::Response resp = yomk::log_mgr().console("main").get_info();
     logResp("console(main).get_info()", resp);
-    auto info = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(resp.m_data);
+    auto info = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(resp.data);
     if (info)
     {
         logLoggerInfo("get_info", info->d);
@@ -314,17 +314,17 @@ static void showArmSilentMode()
     logAction("复查全局主闸状态");
     yomk::payload::Response gResp = yomk::log_mgr().console().status();
     logResp("console().status()", gResp);
-    auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp.m_data);
+    auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(gResp.data);
     if (gs)
     {
         std::ostringstream oss;
-        oss << "[console().status()] 主闸: debug=" << (gs->d.m_debugOn ? "on" : "off")
-            << " info=" << (gs->d.m_infoOn ? "on" : "off") << " warn=" << (gs->d.m_warnOn ? "on" : "off")
-            << " error=" << (gs->d.m_errorOn ? "on" : "off") << " proxy=" << (gs->d.m_proxyOn ? "on" : "off");
+        oss << "[console().status()] 主闸: debug=" << (gs->d.debugOn ? "on" : "off")
+            << " info=" << (gs->d.infoOn ? "on" : "off") << " warn=" << (gs->d.warnOn ? "on" : "off")
+            << " error=" << (gs->d.errorOn ? "on" : "off") << " proxy=" << (gs->d.proxyOn ? "on" : "off");
         yomk::log().tag("arm.demo").info(oss.str());
     }
     yomk::payload::Response jResp = yomk::log_mgr().console("arm.joint").get_info();
-    auto jInfo = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(jResp.m_data);
+    auto jInfo = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(jResp.data);
     if (jInfo)
     {
         logLoggerInfo("get_info arm.joint", jInfo->d);
@@ -362,7 +362,7 @@ static void showArmBlackbox(const std::string& logDir)
     logAction("查看代理安装状态");
     yomk::payload::Response resp = yomk::log_mgr().console("main").get_info();
     logResp("console(main).get_info()", resp);
-    auto proxyInfo = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(resp.m_data);
+    auto proxyInfo = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(resp.data);
     if (proxyInfo)
     {
         logLoggerInfo("get_info", proxyInfo->d);
@@ -379,7 +379,7 @@ static void showArmBlackbox(const std::string& logDir)
     logAction("复查代理状态");
     resp = yomk::log_mgr().console("main").get_info();
     logResp("console(main).get_info()", resp);
-    auto offInfo = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(resp.m_data);
+    auto offInfo = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(resp.data);
     if (offInfo)
     {
         logLoggerInfo("get_info", offInfo->d);
@@ -390,13 +390,13 @@ static void showArmBlackbox(const std::string& logDir)
     logAction("安装文件日志代理", "file().proxy(fileDebugProxy).apply()", [&] { return yomk::log_mgr().file().proxy(fileDebugProxy).apply(); });
     resp = yomk::log_mgr().file().status();
     logResp("file().status()", resp);
-    auto fgs = yomk::msgs::unpack<yomk::msgs::LoggerState>(resp.m_data);
+    auto fgs = yomk::msgs::unpack<yomk::msgs::LoggerState>(resp.data);
     if (fgs)
     {
         std::ostringstream oss;
-        oss << "[file().status()] 文件主闸: debug=" << (fgs->d.m_debugOn ? "on" : "off")
-            << " info=" << (fgs->d.m_infoOn ? "on" : "off") << " warn=" << (fgs->d.m_warnOn ? "on" : "off")
-            << " error=" << (fgs->d.m_errorOn ? "on" : "off") << " proxy=" << (fgs->d.m_proxyOn ? "on" : "off");
+        oss << "[file().status()] 文件主闸: debug=" << (fgs->d.debugOn ? "on" : "off")
+            << " info=" << (fgs->d.infoOn ? "on" : "off") << " warn=" << (fgs->d.warnOn ? "on" : "off")
+            << " error=" << (fgs->d.errorOn ? "on" : "off") << " proxy=" << (fgs->d.proxyOn ? "on" : "off");
         yomk::log().tag("arm.demo").info(oss.str());
     }
     logAction("记录调试详单（DEBUG，文件代理拦截）", "log().to_sink(...).debug blackbox", [&] { return yomk::log().to_sink("blackbox").debug("视觉对位耗时 350ms，阈值 500ms"); });
@@ -446,12 +446,12 @@ static void showArmShiftLog(const std::string& logDir)
     logAction("静默期间存档通报（INFO，被门控吞掉）", "log().to_sink(...).info shiftlog", [&] { return yomk::log().to_sink("shiftlog").info("静默期间此行不应落盘"); });
     yomk::payload::Response resp = yomk::log_mgr().file().status();
     logResp("file().status()", resp);
-    auto fgs = yomk::msgs::unpack<yomk::msgs::LoggerState>(resp.m_data);
+    auto fgs = yomk::msgs::unpack<yomk::msgs::LoggerState>(resp.data);
     if (fgs)
     {
         std::ostringstream oss;
-        oss << "[file().status()] 文件主闸 info=" << (fgs->d.m_infoOn ? "on" : "off")
-            << " proxy=" << (fgs->d.m_proxyOn ? "on" : "off") << "（主闸仍 on：缺席归因逐器门控层）";
+        oss << "[file().status()] 文件主闸 info=" << (fgs->d.infoOn ? "on" : "off")
+            << " proxy=" << (fgs->d.proxyOn ? "on" : "off") << "（主闸仍 on：缺席归因逐器门控层）";
         yomk::log().tag("arm.demo").info(oss.str());
     }
     logVerify("文件主闸仍全 on：INFO 缺席归因逐器门控层，两层状态各自真实呈现");
@@ -479,7 +479,7 @@ static void showArmLoggerDashboard()
     logAction("巡检控制台日志器清单");
     yomk::payload::Response consoleResp = yomk::log_mgr().console().list();
     logResp("console().list()", consoleResp);
-    auto consoleArr = yomk::msgs::unpack<yomk::msgs::StringArray>(consoleResp.m_data);
+    auto consoleArr = yomk::msgs::unpack<yomk::msgs::StringArray>(consoleResp.data);
     if (consoleArr)
     {
         for (const auto& loggerName : consoleArr->d)
@@ -492,7 +492,7 @@ static void showArmLoggerDashboard()
     logAction("巡检文件日志器清单");
     yomk::payload::Response fileResp = yomk::log_mgr().file().list();
     logResp("file().list()", fileResp);
-    auto fileArr = yomk::msgs::unpack<yomk::msgs::StringArray>(fileResp.m_data);
+    auto fileArr = yomk::msgs::unpack<yomk::msgs::StringArray>(fileResp.data);
     if (fileArr)
     {
         for (const auto& loggerName : fileArr->d)
@@ -505,7 +505,7 @@ static void showArmLoggerDashboard()
     logAction("单查班次存档器 shiftlog");
     yomk::payload::Response resp = yomk::log_mgr().file("shiftlog").get_info();
     logResp("file(shiftlog).get_info()", resp);
-    auto shiftInfo = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(resp.m_data);
+    auto shiftInfo = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(resp.data);
     if (shiftInfo)
     {
         logLoggerInfo("get_info", shiftInfo->d);
@@ -520,7 +520,7 @@ static void showArmLoggerDashboard()
     logAction("全量导出日志器状态");
     resp = yomk::log_mgr().all();
     logResp("all()", resp);
-    auto allArr = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(resp.m_data);
+    auto allArr = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(resp.data);
     if (allArr)
     {
         for (const auto& info : allArr->d)
@@ -534,25 +534,25 @@ static void showArmLoggerDashboard()
     logAction("复查控制台侧全局主闸状态");
     resp = yomk::log_mgr().console().status();
     logResp("console().status()", resp);
-    auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(resp.m_data);
+    auto gs = yomk::msgs::unpack<yomk::msgs::LoggerState>(resp.data);
     if (gs)
     {
         std::ostringstream oss;
-        oss << "[console().status()] 主闸: debug=" << (gs->d.m_debugOn ? "on" : "off")
-            << " info=" << (gs->d.m_infoOn ? "on" : "off") << " warn=" << (gs->d.m_warnOn ? "on" : "off")
-            << " error=" << (gs->d.m_errorOn ? "on" : "off") << " proxy=" << (gs->d.m_proxyOn ? "on" : "off");
+        oss << "[console().status()] 主闸: debug=" << (gs->d.debugOn ? "on" : "off")
+            << " info=" << (gs->d.infoOn ? "on" : "off") << " warn=" << (gs->d.warnOn ? "on" : "off")
+            << " error=" << (gs->d.errorOn ? "on" : "off") << " proxy=" << (gs->d.proxyOn ? "on" : "off");
         yomk::log().tag("arm.demo").info(oss.str());
     }
     logAction("复查文件侧全局主闸状态");
     resp = yomk::log_mgr().file().status();
     logResp("file().status()", resp);
-    auto fgs = yomk::msgs::unpack<yomk::msgs::LoggerState>(resp.m_data);
+    auto fgs = yomk::msgs::unpack<yomk::msgs::LoggerState>(resp.data);
     if (fgs)
     {
         std::ostringstream oss;
-        oss << "[file().status()] 文件主闸: debug=" << (fgs->d.m_debugOn ? "on" : "off")
-            << " info=" << (fgs->d.m_infoOn ? "on" : "off") << " warn=" << (fgs->d.m_warnOn ? "on" : "off")
-            << " error=" << (fgs->d.m_errorOn ? "on" : "off") << " proxy=" << (fgs->d.m_proxyOn ? "on" : "off");
+        oss << "[file().status()] 文件主闸: debug=" << (fgs->d.debugOn ? "on" : "off")
+            << " info=" << (fgs->d.infoOn ? "on" : "off") << " warn=" << (fgs->d.warnOn ? "on" : "off")
+            << " error=" << (fgs->d.errorOn ? "on" : "off") << " proxy=" << (fgs->d.proxyOn ? "on" : "off");
         yomk::log().tag("arm.demo").info(oss.str());
     }
     logVerify("条目逐器真值 + 两侧主闸态独立单查：两套主闸/两套代理各自真实呈现，输出与落盘归因唯一（条目 off 是逐器层所致、条目 on 而无输出查对应侧主闸）");
@@ -587,7 +587,7 @@ static void showArmLogCleanup(const std::string& logDir)
     logAction("复查控制台清单确认重建");
     yomk::payload::Response resp = yomk::log_mgr().console().list();
     logResp("console().list()", resp);
-    auto consoleArr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.m_data);
+    auto consoleArr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.data);
     if (consoleArr)
     {
         for (const auto& loggerName : consoleArr->d)

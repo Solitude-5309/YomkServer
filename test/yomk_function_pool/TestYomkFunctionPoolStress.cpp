@@ -126,7 +126,7 @@ int main(int /*argc*/, char** /*argv*/)
         for (uint64_t i = 0; i < N; ++i)
         {
             auto resp = yomk::fn_pool().fn_name("s1_func_0").msg(nullptr).call();
-            if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+            if (resp.status == yomk::payload::ResStatus::Succeeded)
                 ++callOk;
         }
         auto t3 = std::chrono::steady_clock::now();
@@ -202,11 +202,11 @@ int main(int /*argc*/, char** /*argv*/)
             std::string name = makeName("s3_churn_", i);
             if (yomk::fn_pool().fn_name(name).fn(stressNoopFunc).install() == yomk::payload::ResStatus::Succeeded)
                 ++regOk;
-            if (yomk::fn_pool().fn_name(name).msg(nullptr).call().m_status == yomk::payload::ResStatus::Succeeded)
+            if (yomk::fn_pool().fn_name(name).msg(nullptr).call().status == yomk::payload::ResStatus::Succeeded)
                 ++callOk;
             if (yomk::fn_pool().fn_name(name).uninstall() == yomk::payload::ResStatus::Succeeded)
                 ++unregOk;
-            if (yomk::fn_pool().fn_name(name).msg(nullptr).call().m_status == yomk::payload::ResStatus::Failed)
+            if (yomk::fn_pool().fn_name(name).msg(nullptr).call().status == yomk::payload::ResStatus::Failed)
                 ++postNo;
         }
         auto t1 = std::chrono::steady_clock::now();
@@ -234,7 +234,7 @@ int main(int /*argc*/, char** /*argv*/)
         {
             if (yomk::fn_pool().fn_name(bigName).fn(stressNoopFunc).install() == yomk::payload::ResStatus::Succeeded)
                 ++regOk;
-            if (yomk::fn_pool().fn_name(bigName).msg(nullptr).call().m_status == yomk::payload::ResStatus::Succeeded)
+            if (yomk::fn_pool().fn_name(bigName).msg(nullptr).call().status == yomk::payload::ResStatus::Succeeded)
                 ++callOk;
             if (yomk::fn_pool().fn_name(bigName).uninstall() == yomk::payload::ResStatus::Succeeded)
                 ++unregOk;
@@ -248,7 +248,7 @@ int main(int /*argc*/, char** /*argv*/)
         YOMK_TEST_CHECK(unregOk == rounds, "S4: 大名 unregister 守恒 " + std::to_string(unregOk) + "/" + std::to_string(rounds));
 
         // 最终确认已清理
-        YOMK_TEST_CHECK(yomk::fn_pool().fn_name(bigName).msg(nullptr).call().m_status == yomk::payload::ResStatus::Failed, "S4: 大名最终已注销（ResStatus::Failed）");
+        YOMK_TEST_CHECK(yomk::fn_pool().fn_name(bigName).msg(nullptr).call().status == yomk::payload::ResStatus::Failed, "S4: 大名最终已注销（ResStatus::Failed）");
     }
 
     // ========================================================================
@@ -275,13 +275,13 @@ int main(int /*argc*/, char** /*argv*/)
             for (int k = 0; k < kGroupSize; ++k)
             {
                 auto resp = yomk::fn_pool().fn_name(makeName("s5_mix_", g * kGroupSize + k)).msg(nullptr).call();
-                if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+                if (resp.status == yomk::payload::ResStatus::Succeeded)
                     ++callOk;
             }
             // introspect
-            if (yomk::fn_pool().list().m_status == yomk::payload::ResStatus::Succeeded)
+            if (yomk::fn_pool().list().status == yomk::payload::ResStatus::Succeeded)
                 ++infoNamesOk;
-            if (yomk::fn_pool().all().m_status == yomk::payload::ResStatus::Succeeded)
+            if (yomk::fn_pool().all().status == yomk::payload::ResStatus::Succeeded)
                 ++infoAllOk;
             // unregister 10
             for (int k = 0; k < kGroupSize; ++k)

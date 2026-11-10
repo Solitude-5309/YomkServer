@@ -92,9 +92,9 @@ int main()
 
     // 3. 同步请求：url/msg 累积，request() 终结
     yomk::payload::Response ret = yomk::server().url("/MyService/hello").msg(yomk::msgs::String::shared("yomk")).request();
-    if (ret.m_status == yomk::payload::ResStatus::Succeeded)
+    if (ret.status == yomk::payload::ResStatus::Succeeded)
     {
-        yomk::log().info("Response received:", ret.m_msg);
+        yomk::log().info("Response received:", ret.msg);
     }
 
     // 4. 优雅关闭框架
@@ -113,7 +113,7 @@ int main()
 
 ```cpp
 yomk::server().url("/MyService/hello").async([](yomk::payload::Response resp) {
-    yomk::log().info("Async result:", resp.m_msg);
+    yomk::log().info("Async result:", resp.msg);
 }).msg(yomk::msgs::String::shared("yomk")).request();
 ```
 
@@ -137,7 +137,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 ### 2. 请求与响应模型 (Request / Response)
 
 - **URL 寻址**：格式为 `"/服务名/函数名"`，如 `"/MyService/hello"`；内置服务 URL 常量见 `yomk::url` 命名空间。
-- **返回值 `yomk::payload::Response`**：`m_status`（`ResStatus::Succeeded (0)` 调用成功；`ResStatus::Failed (1)` 服务端执行失败，含服务/函数不存在等 not-found；`ResStatus::Invalid (-1)` 入参非法或服务器未初始化）、`m_msg` 状态描述文本、`m_data` 可选负载消息包。
+- **返回值 `yomk::payload::Response`**：`status`（`ResStatus::Succeeded (0)` 调用成功；`ResStatus::Failed (1)` 服务端执行失败，含服务/函数不存在等 not-found；`ResStatus::Invalid (-1)` 入参非法或服务器未初始化）、`msg` 状态描述文本、`data` 可选负载消息包。
 - **同步调用** `.request()` 阻塞返回完整应答；`.status()` 只保留三态收敛（细节进诊断日志）；**异步调用** `.async(func).request()` 投递到框架内置线程池并发执行，不阻塞当前线程，`func` 传 `nullptr` 即只投递不取回。
 
 详见 [服务总线](docs/YomkServer.md)。

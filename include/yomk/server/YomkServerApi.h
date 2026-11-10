@@ -227,11 +227,11 @@ public:
     yomk::payload::ResStatus status()
     {
         yomk::payload::Response resp = request();
-        if (resp.m_status != yomk::payload::ResStatus::Succeeded)
+        if (resp.status != yomk::payload::ResStatus::Succeeded)
         {
-            YOMK_DIAG_ERROR((resp.m_msg.empty() ? "request failed" : resp.m_msg));
+            YOMK_DIAG_ERROR((resp.msg.empty() ? "request failed" : resp.msg));
         }
-        return resp.m_status;
+        return resp.status;
     }
     /**
      * @brief Enter the asynchronous facet

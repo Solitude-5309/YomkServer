@@ -25,63 +25,63 @@ enum class LogLevel : int
 // @zh: 单条日志记录载荷（console/file 发射共用）
 struct Log
 {
-    LogLevel m_level;
-    std::string m_log;
-    std::string m_logger;  // 日志器名:服务端按其查找/惰性创建日志器实例
-    std::string m_tag;  // 日志标签:随记录显示 [tag] 段,区别于 m_logger
+    LogLevel level;
+    std::string log;
+    std::string logger;  // 日志器名:服务端按其查找/惰性创建日志器实例
+    std::string tag;  // 日志标签:随记录显示 [tag] 段,区别于 logger
 };
 
 /** @brief File logger creation payload (directory + name) */
 // @zh: 文件日志器创建载荷（目录 + 名称）
 struct LogFile
 {
-    std::string m_logger;
-    std::string m_dir;
+    std::string logger;
+    std::string dir;
 };
 
 /** @brief Console proxy registration payload */
 // @zh: 控制台代理注册载荷
 struct ConsoleLogProxy
 {
-    std::function<bool(const Log& log)> m_consoleLogProxyFunc;
+    std::function<bool(const Log& log)> consoleLogProxyFunc;
 };
 
 /** @brief File proxy registration payload */
 // @zh: 文件代理注册载荷
 struct FileLogProxy
 {
-    std::function<bool(const Log& log)> m_fileLogProxyFunc;
+    std::function<bool(const Log& log)> fileLogProxyFunc;
 };
 
 /** @brief Single-logger query payload (name + type) */
 // @zh: 日志器单查载荷（名称 + 类型）
 struct LoggerQuery
 {
-    std::string m_loggerName;
-    std::string m_type;
+    std::string loggerName;
+    std::string type;
 };
 
 /** @brief Gating state snapshot (global master switch or per-logger level) */
 // @zh: 门控状态快照（全局主闸或逐器层）
 struct LoggerState
 {
-    bool m_traceOn = false;  // trace 级别开关
-    bool m_debugOn = false;  // debug 级别开关
-    bool m_infoOn = false;   // info 级别开关
-    bool m_warnOn = false;   // warn 级别开关
-    bool m_errorOn = false;  // error 级别开关
-    bool m_fatalOn = false;  // fatal 级别开关
-    bool m_proxyOn = false;
+    bool traceOn = false;  // trace 级别开关
+    bool debugOn = false;  // debug 级别开关
+    bool infoOn = false;   // info 级别开关
+    bool warnOn = false;   // warn 级别开关
+    bool errorOn = false;  // error 级别开关
+    bool fatalOn = false;  // fatal 级别开关
+    bool proxyOn = false;
 };
 
 /** @brief Single logger introspection entry */
 // @zh: 单条日志器内省条目
 struct LoggerInfo
 {
-    std::string m_loggerName;  // 日志器名
-    std::string m_type;        // 类型:"console" 或 "file"(对应 log_mgr() 的 console/file 分面身份)
-    std::string m_dir;         // file 类型的日志目录(console 时为空串)
-    LoggerState m_loggerState;
+    std::string loggerName;  // 日志器名
+    std::string type;        // 类型:"console" 或 "file"(对应 log_mgr() 的 console/file 分面身份)
+    std::string dir;         // file 类型的日志目录(console 时为空串)
+    LoggerState loggerState;
 };
 
 }  // namespace yomk::payload

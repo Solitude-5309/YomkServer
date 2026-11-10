@@ -61,7 +61,7 @@
 |---|---|
 | `yomk::log_mgr().console().list()` / `.file().list()` | 该类型全部日志器名（StringArray 字典序） |
 | `yomk::log_mgr().console(name).get_info()` / `.file(name).get_info()` | 单器状态 `LoggerInfo`（两表允许同名，须按类型精确单查；未注册 `Failed`） |
-| `yomk::log_mgr().console().status()` / `.file().status()` | 全局主闸状态 `LoggerState`（六级别开关 + `m_proxyOn`；与逐器门控层相互独立） |
+| `yomk::log_mgr().console().status()` / `.file().status()` | 全局主闸状态 `LoggerState`（六级别开关 + `proxyOn`；与逐器门控层相互独立） |
 | `yomk::log_mgr().all()` | 全部日志器及逐器门控状态（LoggerInfoList；每条内嵌 `LoggerState` 状态段为该器门控层真值） |
 
 > 以下为用法片段（假设框架已 `init()`）；完整可编译、带 main 的程序见文末「完整示例」。
@@ -87,7 +87,7 @@ yomk::log_mgr().console("Network").level(yomk::payload::LogLevel::Debug).enable(
 
 // 代理：拦截全部 Debug 不进控制台
 yomk::log_mgr().console().proxy([](const yomk::payload::Log& log) {
-    return log.m_level != yomk::payload::LogLevel::Debug;   // false 消费该条
+    return log.level != yomk::payload::LogLevel::Debug;   // false 消费该条
 }).apply();
 yomk::log_mgr().console().proxy(nullptr).apply();           // 卸载代理，恢复默认
 

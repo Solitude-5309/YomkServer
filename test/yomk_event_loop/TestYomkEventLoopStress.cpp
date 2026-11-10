@@ -166,7 +166,7 @@ int main()
             [&loop, N]
             {
                 return g_execCount.load() == static_cast<long>(N) &&
-                       loopSnap(loop, 0).m_pending == 0;
+                       loopSnap(loop, 0).pending == 0;
             },
             30000);
         auto t2 = std::chrono::steady_clock::now();
@@ -212,7 +212,7 @@ int main()
             [&loop, N]
             {
                 return g_execCount.load() == static_cast<long>(N) &&
-                       loopSnap(loop, 0).m_pending == 0;
+                       loopSnap(loop, 0).pending == 0;
             },
             30000);
         auto t2 = std::chrono::steady_clock::now();
@@ -247,7 +247,7 @@ int main()
         auto t1 = std::chrono::steady_clock::now();
 
         YOMK_TEST_CHECK(
-            loopSnap(loop, 0).m_pending == static_cast<std::size_t>(N),
+            loopSnap(loop, 0).pending == static_cast<std::size_t>(N),
             "S3 积压确认（pending==N==" + std::to_string(N) + "，无界队列大规模增长无崩溃）");
 
         openGate();
@@ -255,7 +255,7 @@ int main()
             [&loop, N]
             {
                 return g_execCount.load() == static_cast<long>(N) &&
-                       loopSnap(loop, 0).m_pending == 0;
+                       loopSnap(loop, 0).pending == 0;
             },
             30000);
         auto t2 = std::chrono::steady_clock::now();
@@ -294,7 +294,7 @@ int main()
             [&loop, count]
             {
                 return g_execCount.load() == static_cast<long>(count) &&
-                       loopSnap(loop, 0).m_pending == 0;
+                       loopSnap(loop, 0).pending == 0;
             },
             30000);
         auto t2 = std::chrono::steady_clock::now();

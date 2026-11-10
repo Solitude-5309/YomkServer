@@ -35,12 +35,12 @@ struct Response
 {
     Response() = default;
     Response(ResStatus status, const std::string& msg = "", YomkMsgPtr d = nullptr)
-        : m_status(status), m_msg(msg), m_data(d)
+        : status(status), msg(msg), data(d)
     {
     }
-    ResStatus m_status = ResStatus::Invalid;  // 本次请求的状态
-    std::string m_msg;                        // 对状态的说明(不携带返回数据)
-    YomkMsgPtr m_data = nullptr;              // 携带的返回数据
+    ResStatus status = ResStatus::Invalid;  // 本次请求的状态
+    std::string msg;                        // 对状态的说明(不携带返回数据)
+    YomkMsgPtr data = nullptr;              // 携带的返回数据
 };
 
 }  // namespace yomk::payload

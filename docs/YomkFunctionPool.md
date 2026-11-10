@@ -45,7 +45,7 @@ yomk::fn_pool().fn_name("calcSum")
 
 // 调用（返回值即函数返回值；未注册的名字返回 ResStatus::Failed）
 auto resp = yomk::fn_pool().fn_name("calcSum").msg(yomk::msgs::Int32Array::shared(std::vector<std::int32_t>{1, 2, 3})).call();
-auto sum = yomk::msgs::unpack<yomk::msgs::Int32>(resp.m_data);   // 结果在 m_data
+auto sum = yomk::msgs::unpack<yomk::msgs::Int32>(resp.data);   // 结果在 data
 
 // 同名重复 install 即运行时热替换，无需先注销（返回 Succeeded）
 yomk::fn_pool().fn_name("calcSum").fn(newFunc).install();
@@ -60,12 +60,12 @@ yomk::fn_pool().list();
 - 同名重复注册即运行时热替换（覆盖旧函数并返回 `Succeeded`），无需先注销。
 - 未注册的名字：`call()` / `uninstall()` 均返回 `Failed`（not-found 归 `Failed` 不归 `Invalid`，与全框架三态约定一致）。
 - `install()` 终结定名（`register` 为 C++ 保留字）。
-- 函数体收到的 `pkg` 即调用侧 `.msg()` 累积的消息包；返回值整体作为 `call()` 的 `Response` 回传（`m_data` 携带结果消息）。
+- 函数体收到的 `pkg` 即调用侧 `.msg()` 累积的消息包；返回值整体作为 `call()` 的 `Response` 回传（`data` 携带结果消息）。
 - 服务成员函数注册到函数池时须用 `weakFunc(&Class::Method)` 弱绑定——服务删除后回调自动失效（返回 `Failed`），见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 常见问题 FAQ
 
-- **`call()` 阻塞吗？** 阻塞至函数执行完成，返回值即函数自身的 `Response`（结果消息在 `m_data`）。
+- **`call()` 阻塞吗？** 阻塞至函数执行完成，返回值即函数自身的 `Response`（结果消息在 `data`）。
 - **热替换要先注销吗？** 不用：同名 `install()` 即覆盖并返回 `Succeeded`，无需先 `uninstall()`。
 - **未注册的名字返回什么？** `call()` / `uninstall()` 均返回 `Failed`（not-found 归 `Failed` 不归 `Invalid`，与全框架三态约定一致）。
 
