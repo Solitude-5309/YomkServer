@@ -512,13 +512,14 @@ L13 起旧伞门面已删除，按域显式导入替代：
 
 ### 第三方扩展指南（yomk 命名空间并入）
 
-第三方仓库为框架扩展时**只写两个目录**，安装到框架 site-packages 后按 PEP 420 与框架子包平级合并：
+第三方仓库为框架扩展时**只写三个目录**，安装到框架 site-packages 后按 PEP 420 与框架子包平级合并：
 
 | 目录 | 内容 | 纪律 |
 |---|---|---|
 | `src/yomk/msg/<域>/`（如 `extension`） | 扩展消息类型（消息子包，与 `yomk/msg/server` 等平级） | 不得创建 `yomk/msg/__init__.py` |
 | `src/yomk/<域>/`（如 `extension`） | 扩展运行时域（与 `yomk/server` 等平级） | 不得创建 `yomk/__init__.py`、`yomk/msg/__init__.py`、`yomk/url/__init__.py` |
+| `src/yomk/url/<域>/`（如 `extension`） | 扩展 URL 常量池（并入框架 `yomk.url` 常量池，与 `yomk/url/ctx` 同构） | 不得创建 `yomk/__init__.py`、`yomk/msg/__init__.py`、`yomk/url/__init__.py` |
 
 - 命名空间守卫：`yomk/`、`yomk/msg/`、`yomk/url/` 三层无 `__init__.py` 是合并的前提，扩展仓库自带任一则遮蔽框架其它子包
 - 第三方运行时服务**不做隐式发现**：框架只拉起 5 个内置服务，扩展服务须由使用方显式 `server().srv(ExtService).create()` 注册
-- 完整可运行模板见 `template/extension/`（`src/yomk/msg/extension` + `src/yomk/extension` + 安装/测试脚本），其 `install.sh` 内置命名空间守卫与导入冒烟
+- 完整可运行模板见 `template/extension/`（`src/yomk/msg/extension` + `src/yomk/extension` + `src/yomk/url/extension` + 安装/测试脚本），其 `install.sh` 内置命名空间守卫与导入冒烟

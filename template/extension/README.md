@@ -1,7 +1,8 @@
 # TemplateExtension —— 第三方扩展示例模板（yomk 命名空间并入形态）
 
 本模板演示第三方仓库如何为 YomkServerPy 提供扩展：**独立仓库只写
-`yomk/msg/extension/`（消息类型）与 `yomk/extension/`（运行时服务）两个目录**，
+`yomk/msg/extension/`（消息类型）、`yomk/extension/`（运行时服务）与
+`yomk/url/extension/`（URL 常量池）三个目录**，
 安装到框架 site-packages 后按 PEP 420 命名空间与框架子包平级合并。
 
 ## 目录结构
@@ -13,9 +14,13 @@ template/extension/
 │   │   ├── __init__.py             #   导出 ExtensionRequest / ExtensionResponse
 │   │   ├── ExtensionMsg.py         #   消息类型定义
 │   │   └── py.typed
-│   └── extension/          # 运行时域子包（并入框架 yomk 命名空间段）
-│       ├── __init__.py             #   __version__ + 导出 ExtensionService
-│       ├── ExtensionService.py     #   运行时服务（YomkService 子类）
+│   ├── extension/          # 运行时域子包（并入框架 yomk 命名空间段）
+│   │   ├── __init__.py             #   __version__ + 导出 ExtensionService
+│   │   ├── ExtensionService.py     #   运行时服务（YomkService 子类）
+│   │   └── py.typed
+│   └── url/extension/      # URL 常量池子包（并入框架 yomk.url 常量池，与 yomk/url/ctx 同构）
+│       ├── __init__.py             #   EXTENSION_ECHO 等端点常量
+│       ├── __init__.pyi            #   类型桩
 │       └── py.typed
 ├── test/test_extension.py
 ├── install.sh
@@ -24,13 +29,13 @@ template/extension/
 
 ## 命名空间纪律（必须遵守）
 
-框架的 `yomk/` 与 `yomk/msg/` 两层是 **PEP 420 命名空间包**（无 `__init__.py`，
+框架的 `yomk/`、`yomk/msg/`、`yomk/url/` 三层是 **PEP 420 命名空间包**（无 `__init__.py`，
 `import yomk` 不加载任何子模块、`yomk.__file__ is None`）。第三方扩展依赖
 该机制与框架合并，因此：
 
-- 扩展仓库**不得创建** `yomk/__init__.py` 或 `yomk/msg/__init__.py`
+- 扩展仓库**不得创建** `yomk/__init__.py`、`yomk/msg/__init__.py` 或 `yomk/url/__init__.py`
   （install.sh 安装前会做守卫检查）；
-- 只新增自己的叶子目录（本模板为 `yomk/msg/extension/` 与 `yomk/extension/`）；
+- 只新增自己的叶子目录（本模板为 `yomk/msg/extension/`、`yomk/extension/` 与 `yomk/url/extension/`）；
 - 扩展域的 `__init__.py` 内自带版本常量（框架各域由构建期注入
   `_version.py`，扩展可简化为普通常量）。
 
@@ -58,4 +63,7 @@ python3 test/test_extension.py
 ```python
 from yomk.msg.extension import ExtensionRequest, ExtensionResponse   # 扩展消息
 from yomk.extension import ExtensionService                    # 扩展运行时
+from yomk.url.extension import EXTENSION_ECHO                  # 扩展 URL 常量（并入框架 yomk.url 常量池）
+
+server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()
 ```
