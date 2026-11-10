@@ -20,7 +20,9 @@ void YomkServerPrivate::addService(YomkService* srv)
         auto iter = m_serviceMap.find(srv->name());
         if (iter != m_serviceMap.end())
         {
-            YOMK_DIAG_INFO("service '" + srv->name() + "' already exists, replace with current service");
+            // C-5 已采纳:同名替换即覆盖既有注册,级别 WARN(默认最小级别下 INFO 会被抑制,热替换将无感知);
+            // 可见性另由旧服务 markDeleted 的删除 WARN(C-3)与本 WARN 双重承担
+            YOMK_DIAG_WARN("service '" + srv->name() + "' already exists, replace with current service");
             oldSrv = std::move(iter->second);
         }
         m_serviceMap[srv->name()].reset(srv);

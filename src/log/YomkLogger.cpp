@@ -136,7 +136,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
             break;
     }
 
-    return {yomk::payload::ResStatus::Succeeded, "success."};
+    return {yomk::payload::ResStatus::Succeeded, "success"};
 }
 
 yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr pkg)
@@ -151,7 +151,7 @@ yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr pkg)
     m_consoleLogProxyFunc = consoleLogProxy->d.m_consoleLogProxyFunc;
     // 传空回调即卸载 proxy,恢复默认输出;两字段同锁一致更新
     m_consoleLogProxy = (m_consoleLogProxyFunc != nullptr);
-    return {yomk::payload::ResStatus::Succeeded, "success."};
+    return {yomk::payload::ResStatus::Succeeded, "success"};
 }
 
 yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr pkg)
@@ -166,7 +166,7 @@ yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr pkg)
     m_fileLogProxyFunc = fileLogProxy->d.m_fileLogProxyFunc;
     // 传空回调即卸载 proxy,恢复默认落盘;两字段同锁一致更新
     m_fileLogProxy = (m_fileLogProxyFunc != nullptr);
-    return {yomk::payload::ResStatus::Succeeded, "success."};
+    return {yomk::payload::ResStatus::Succeeded, "success"};
 }
 
 yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr pkg)

@@ -34,7 +34,8 @@ void YomkServicePrivate::installFunc(const std::string& funcName, YomkServiceFun
     std::unique_lock<std::shared_mutex> lock(m_funcMapMtx);
     if (m_funcMap.find(funcName) != m_funcMap.end())
     {
-        YOMK_DIAG_INFO("function '" + funcName + "' already exists, replace with current function");
+        // C-5 已采纳:重复安装即覆盖既有注册,级别 WARN(默认最小级别下 INFO 会被抑制,热替换将无感知)
+        YOMK_DIAG_WARN("function '" + funcName + "' already exists, replace with current function");
     }
 
     m_funcMap[funcName] = func;

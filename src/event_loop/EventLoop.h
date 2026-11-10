@@ -11,7 +11,8 @@
 class EventLoop
 {
 public:
-    EventLoop();
+    // loop 名随构造固化,供诊断文案携带具体循环名;默认名仅供白盒测试等无名场景,生产路径恒传具体名
+    explicit EventLoop(const std::string& loopName = "unnamed");
     ~EventLoop();
 
 public:
@@ -26,6 +27,7 @@ public:
     void run();
 
 private:
+    std::string m_loopName;  // 循环名(仅诊断文案内省用)
     std::queue<yomk::msgs::EventPtr> m_eventQueue;
     std::mutex m_queueMutex;
     std::condition_variable m_condition;

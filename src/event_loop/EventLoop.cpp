@@ -6,7 +6,7 @@
 
 #include "yomk/YomkDiag.h"
 
-EventLoop::EventLoop() : m_running(false), m_eventId(1) {}
+EventLoop::EventLoop(const std::string& loopName) : m_running(false), m_eventId(1), m_loopName(loopName) {}
 
 EventLoop::~EventLoop()
 {
@@ -132,8 +132,8 @@ int EventLoop::postWait(yomk::msgs::EventPtr event)
     if (inWorkerThread)
     {
         YOMK_DIAG_ERROR(
-            "EventLoop deadlock: post wait in worker thread, is not allowed, directly execute current event to resolve "
-            "deadlock");
+            "EventLoop: " + m_loopName + " post wait in worker thread detected deadlock, directly execute current event "
+            "to resolve deadlock");
         event->d.handle();
         return 0;
     }

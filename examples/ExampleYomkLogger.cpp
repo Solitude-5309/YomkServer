@@ -77,7 +77,7 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
 }
 
 // API 结果行：打印 yomk::payload::Response 三要素中的 status/msg（数据形态各异，由调用处按需展开）。
-// 日志调用的结果行自带流向证据：代理消费 msg="console log proxy is success."、放行 msg="success."。
+// 日志调用的结果行自带流向证据：代理消费 msg="ok"、放行 msg="success"。
 // status 三态：0=ResStatus::Succeeded 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {

@@ -24,7 +24,14 @@ public:
     void markRegistered() { m_registered = true; }
     // 框架内部使用:服务被删除/同名替换时置位(deinit 之前,拦截迟到回调);弱绑定判活为双层
     // (弱引用 + 此标志),置位后在途回调立即丢弃.例外:shutdown 排空期不置位,回调照常执行
-    void markDeleted() { m_deleted.store(true); }
+    // C-3 已采纳:删除时点补 WARN,框架层不再静默;shutdown 排空路径不经过本方法。
+    // 此后弱绑定调用走 weakFunc 判活丢弃(YomkService.h 弱绑定 lambda 内 diag ERROR + 契约返回值),
+    // 与本 WARN 构成"删除时点 WARN + 调用时点 ERROR"两级可见性
+    void markDeleted()
+    {
+        m_deleted.store(true);
+        YOMK_DIAG_WARN("service '" + m_name + "' deleted, weak-bound callbacks discarded from now on");
+    }
     bool deleted() const { return m_deleted.load(); }
 
 public:

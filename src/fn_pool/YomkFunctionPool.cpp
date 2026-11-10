@@ -42,7 +42,9 @@ yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr pkg)
         itFunc->second.m_func = yFunc->d.m_func;
         itFunc->second.m_msgName = yFunc->d.m_msgName;
         itFunc->second.m_description = yFunc->d.m_description;
-        YOMK_DIAG_INFO("function '" + yFunc->d.m_funcName + "' already exists, hot-swap to current function");
+        // C-5 已采纳:热替换即覆盖既有注册,级别 WARN(默认最小级别下 INFO 会被抑制,热替换将无感知);
+        // 下一行 return 的 Response.msg 携带同串,通道不动
+        YOMK_DIAG_WARN("function '" + yFunc->d.m_funcName + "' already exists, hot-swap to current function");
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "function '" + yFunc->d.m_funcName + "' already exists, hot-swap to current function");
     }
     m_functions.emplace(yFunc->d.m_funcName, PoolFuncInfo{yFunc->d.m_func, yFunc->d.m_msgName, yFunc->d.m_description});

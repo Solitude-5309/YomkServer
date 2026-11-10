@@ -40,7 +40,7 @@ yomk::payload::Response YomkEventLoop::start(YomkMsgPtr pkg)
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop start success");
     }
 
-    EventLoopPtr eventLoop = std::make_shared<EventLoop>();
+    EventLoopPtr eventLoop = std::make_shared<EventLoop>(eventloop->d.m_eventLoopName);
     eventLoop->setDefaultServiceFunc(eventloop->d.m_defaultServiceFunc, eventloop->d.m_msgName);
     eventLoop->start();
     m_eventLoop.emplace(eventloop->d.m_eventLoopName, eventLoop);

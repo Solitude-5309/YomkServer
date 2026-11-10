@@ -44,7 +44,7 @@ static bool parseRequestUrl(std::string_view url, std::string_view& srvName, std
     srvName = url.substr(0, posEnd);
     if (srvName.empty())
     {
-        errMsg = "url parse error: srv name is empty";
+        errMsg = "url parse error: " + std::string(url) + ", srv name is empty";
         YOMK_DIAG_WARN(errMsg);
         return false;
     }
@@ -52,7 +52,7 @@ static bool parseRequestUrl(std::string_view url, std::string_view& srvName, std
     funcName = url.substr(posEnd);
     if (funcName.empty())
     {
-        errMsg = "url parse error: function name is empty";
+        errMsg = "url parse error: " + std::string(url) + ", function name is empty";
         YOMK_DIAG_WARN(errMsg);
         return false;
     }
