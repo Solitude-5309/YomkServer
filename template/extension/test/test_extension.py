@@ -11,16 +11,18 @@ test_extension.py —— 第三方扩展示例的运行级验证
 
 import sys
 
-from yomk.server import server
+from yomk.server import __version__, server
 from yomk.msg.server import ResStatus
 from yomk.msg.extension import ExtensionRequest, ExtensionResponse
-from yomk.extension import ExtensionService
+from yomk.extension import ExtensionService, __version__ as extension_version
 from yomk.url.extension import EXTENSION_ECHO   # URL 常量池（并入框架 yomk.url 命名空间段）
+from yomk.log import log
 
 
 def main():
     server().async_thread(1).init()
     try:
+        log().tag("test_extension").info(f"version: framework={__version__} extension={extension_version}")
         # 第三方运行时服务：显式注册（框架不做隐式发现）
         ret = server().srv(ExtensionService).create()
         assert ret == 0, f"srv(ExtensionService).create() == {ret}"
@@ -32,7 +34,7 @@ def main():
         assert isinstance(data, ExtensionResponse) and data.msg == "echo" \
             and data.data == "hello ext", data
 
-        print("extension smoke OK:", data)
+        log().tag("test_extension").info("extension smoke OK:", data)
         return 0
     finally:
         server().shutdown()
