@@ -6,7 +6,7 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
 2. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）
 3. set：正常 set、不存在 key、空 key、类型不匹配
 4. keys/keyInfo/listAll：随增删变化、空 key、不存在 key、keyInfo 结构化包字段与 listAll 结构化列表
-5. destroy：正常销毁、重复销毁、不存在 key、空 key（等价不存在）、销毁后 keys 计数
+5. destroy：正常销毁、重复销毁、不存在 key、空 key（独立 Invalid 分支）、销毁后 keys 计数
 
 语言机制说明（非功能缺口）：
 - 门面 context_get(key, default) 不携带目标类型参数、eOk 返回存储值本身，
@@ -66,18 +66,20 @@ def main():
 
     # create：空 key
     resp = raw_ctx("create", Context("", "value", "main"))
-    check(resp.status == ResStatus.eNo, "create 空 key 返回 eNo")
-    check(resp.msg == "key is empty", "create 空 key 错误消息一致")
+    check(resp.status == ResStatus.eInvalid, "create 空 key 返回 eInvalid")
+    check(resp.msg == "context key is empty", "create 空 key 错误消息一致")
 
     # create：空 value（None）
     resp = raw_ctx("create", Context("null_value_key", None, "main"))
-    check(resp.status == ResStatus.eNo, "create None value 返回 eNo")
-    check(resp.msg == "value is empty", "create None value 错误消息一致")
+    check(resp.status == ResStatus.eInvalid, "create None value 返回 eInvalid")
+    check(resp.msg == "create context key 'null_value_key' failed: value is empty",
+          "create None value 错误消息一致")
 
     # create：重复 key
     resp = raw_ctx("create", Context("str_key", "dup", "main"))
     check(resp.status == ResStatus.eNo, "create 重复 key 返回 eNo")
-    check(resp.msg == "key already exists", "create 重复 key 错误消息一致")
+    check(resp.msg == "context key 'str_key' already exists",
+          "create 重复 key 错误消息一致")
 
     # get：正常 get
     check(ctx().key("str_key").msg().with_default("default").get() == "hello", "get 正常返回原始 value")
@@ -98,17 +100,19 @@ def main():
     # set：不存在 key
     resp = raw_ctx("set", Context("no_such_key", "x", "main"))
     check(resp.status == ResStatus.eNo, "set 不存在 key 返回 eNo")
-    check(resp.msg == "key is not exist", "set 不存在 key 错误消息一致")
+    check(resp.msg == "context key 'no_such_key' does not exist",
+          "set 不存在 key 错误消息一致")
 
     # set：空 key
     resp = raw_ctx("set", Context("", "x", "main"))
-    check(resp.status == ResStatus.eNo, "set 空 key 返回 eNo")
-    check(resp.msg == "key is empty", "set 空 key 错误消息一致")
+    check(resp.status == ResStatus.eInvalid, "set 空 key 返回 eInvalid")
+    check(resp.msg == "set context key is empty", "set 空 key 错误消息一致")
 
     # set：类型不匹配
     resp = raw_ctx("set", Context("str_key", 100, "main"))
     check(resp.status == ResStatus.eNo, "set 类型不匹配返回 eNo")
-    check(resp.msg == "context type not match", "set 类型不匹配错误消息一致")
+    check(resp.msg == "context type not match: key 'str_key' expect 'str', got 'int'",
+          "set 类型不匹配错误消息一致")
 
     # keys：包含已创建 key
     resp = ctx().keys()
@@ -133,13 +137,14 @@ def main():
 
     # keyInfo：空 key
     resp = ctx().key("").info()
-    check(resp.status == ResStatus.eNo, "keyInfo 空 key 返回 eNo")
-    check(resp.msg == "key is empty", "keyInfo 空 key 错误消息一致")
+    check(resp.status == ResStatus.eInvalid, "keyInfo 空 key 返回 eInvalid")
+    check(resp.msg == "context key is empty", "keyInfo 空 key 错误消息一致")
 
     # keyInfo：不存在 key
     resp = ctx().key("no_such_key").info()
     check(resp.status == ResStatus.eNo, "keyInfo 不存在 key 返回 eNo")
-    check(resp.msg == "key is not exist", "keyInfo 不存在 key 错误消息一致")
+    check(resp.msg == "context key 'no_such_key' does not exist",
+          "keyInfo 不存在 key 错误消息一致")
 
     # listAll：跨组聚合（组 → 键元信息两层结构化列表，msg 恒 "ok"）
     resp = ctx().all()
@@ -172,17 +177,19 @@ def main():
     # destroy：重复销毁
     resp = raw_ctx("destroy", ContextGroupKey("main", "int_key"))
     check(resp.status == ResStatus.eNo, "destroy 重复销毁返回 eNo")
-    check(resp.msg == "key is not exist", "destroy 重复销毁错误消息一致")
+    check(resp.msg == "context key 'int_key' does not exist",
+          "destroy 重复销毁错误消息一致")
 
     # destroy：不存在 key
     resp = raw_ctx("destroy", ContextGroupKey("main", "no_such_key"))
     check(resp.status == ResStatus.eNo, "destroy 不存在 key 返回 eNo")
-    check(resp.msg == "key is not exist", "destroy 不存在 key 错误消息一致")
+    check(resp.msg == "context key 'no_such_key' does not exist",
+          "destroy 不存在 key 错误消息一致")
 
-    # destroy：空 key（源码不单独判空，等价于不存在的 key）
+    # destroy：空 key（独立空键分支：eInvalid，不等价于不存在）
     resp = raw_ctx("destroy", ContextGroupKey("main", ""))
-    check(resp.status == ResStatus.eNo, "destroy 空 key 返回 eNo")
-    check(resp.msg == "key is not exist", "destroy 空 key 错误消息一致")
+    check(resp.status == ResStatus.eInvalid, "destroy 空 key 返回 eInvalid")
+    check(resp.msg == "context key is empty", "destroy 空 key 错误消息一致")
 
     # keys：销毁后只剩一个 key
     resp = ctx().keys()

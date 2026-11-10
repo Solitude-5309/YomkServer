@@ -103,16 +103,18 @@ def main():
     check(resp == ResStatus.eOk, "创建 ck_key 成功")
 
     resp = raw_ctx("set_checker", ContextChecker("", _accept, "main"))
-    check(resp.status == ResStatus.eNo, "set_checker 空 key 返回 eNo")
-    check(resp.msg == "key is empty", "set_checker 空 key 消息一致")
+    check(resp.status == ResStatus.eInvalid, "set_checker 空 key 返回 eInvalid")
+    check(resp.msg == "set checker key is empty", "set_checker 空 key 消息一致")
 
     resp = raw_ctx("set_checker", ContextChecker("ck_key", None, "main"))
-    check(resp.status == ResStatus.eNo, "set_checker None checkFunc 返回 eNo")
-    check(resp.msg == "checkFunc is empty", "set_checker None checkFunc 消息一致")
+    check(resp.status == ResStatus.eInvalid, "set_checker None checkFunc 返回 eInvalid")
+    check(resp.msg == "set checker key 'ck_key' failed: checkFunc is empty",
+          "set_checker None checkFunc 消息一致")
 
     resp = raw_ctx("set_checker", ContextChecker("no_such_key", _accept, "main"))
     check(resp.status == ResStatus.eNo, "set_checker 不存在 key 返回 eNo")
-    check(resp.msg == "key is not exist", "set_checker 不存在 key 消息一致")
+    check(resp.msg == "context key 'no_such_key' does not exist",
+          "set_checker 不存在 key 消息一致")
 
     resp = raw_ctx("set_checker", ContextChecker("ck_key", _accept, "main"))
     check(resp.status == ResStatus.eOk, "set_checker 正常设置返回 eOk")
@@ -142,7 +144,8 @@ def main():
     g_checker_calls.clear()
     resp = raw_ctx("set", Context("ck_key", "rejected", "main"))
     check(resp.status == ResStatus.eNo, "reject-checker 下 set 返回 eNo")
-    check(resp.msg == "checker reject set context", "reject-checker 消息一致")
+    check(resp.msg == "set context key 'ck_key' rejected by checker",
+          "reject-checker 消息一致")
     check(len(g_checker_calls) == 1, "reject-checker 被调用 1 次")
 
     # value 未变（仍为 accepted）
@@ -176,17 +179,18 @@ def main():
     check(resp == ResStatus.eOk, "创建 mon_bound 成功")
 
     resp = raw_ctx("set_monitor", ContextMonitor("", _noop, False, "main"))
-    check(resp.status == ResStatus.eNo, "set_monitor 空 key 返回 eNo")
-    check(resp.msg == "key is empty", "set_monitor 空 key 消息一致")
+    check(resp.status == ResStatus.eInvalid, "set_monitor 空 key 返回 eInvalid")
+    check(resp.msg == "set monitor key is empty", "set_monitor 空 key 消息一致")
 
     resp = raw_ctx("set_monitor", ContextMonitor("mon_bound", None, False, "main"))
-    check(resp.status == ResStatus.eNo, "set_monitor None func 返回 eNo")
-    check(resp.msg == "context monitor function is empty",
+    check(resp.status == ResStatus.eInvalid, "set_monitor None func 返回 eInvalid")
+    check(resp.msg == "set monitor key 'mon_bound' failed: monitor function is empty",
           "set_monitor None func 消息一致")
 
     resp = raw_ctx("set_monitor", ContextMonitor("no_such_key", _noop, False, "main"))
     check(resp.status == ResStatus.eNo, "set_monitor 不存在 key 返回 eNo")
-    check(resp.msg == "key is not exist", "set_monitor 不存在 key 消息一致")
+    check(resp.msg == "context key 'no_such_key' does not exist",
+          "set_monitor 不存在 key 消息一致")
 
     resp = raw_ctx("set_monitor", ContextMonitor("mon_bound", _noop, False, "main"))
     check(resp.status == ResStatus.eOk, "set_monitor 正常设置返回 eOk")

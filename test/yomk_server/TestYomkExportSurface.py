@@ -27,7 +27,7 @@ import yomk.msg
 g_failed = 0
 
 DOMAINS = ["server", "boot", "ctx", "fn_pool", "event_loop", "log", "srv_info",
-           "url.fn_pool", "url.log", "url.srv_info"]
+           "url.fn_pool", "url.log", "url.srv_info", "url.ctx"]
 
 # 域名 → __all__ 快照（与各域 src/yomk/<域>/__init__.py 定型清单一致）
 EXPECTED = {
@@ -68,7 +68,7 @@ EXPECTED = {
         "YomkServerInfo",
     ],
     # url 常量池（yomk.url 命名空间 + 各域子包，与 msg 同构）：无 __version__（非版本化域），
-    # 逐域轮次扩充（第 2 轮 fn_pool、第 3 轮 log、第 4 轮 srv_info）
+    # 逐域轮次扩充（第 2 轮 fn_pool、第 3 轮 log、第 4 轮 srv_info、第 5 轮 ctx）
     "url.fn_pool": [
         "FP_ALL", "FP_CALL", "FP_NAME", "FP_NAMES", "FP_REGISTER",
         "FP_UNREGISTER",
@@ -84,6 +84,12 @@ EXPECTED = {
     ],
     "url.srv_info": [
         "SRV_ALL", "SRV_FUNCTION", "SRV_FUNCTIONS", "SRV_SERVICES",
+    ],
+    "url.ctx": [
+        "CTX_ALL", "CTX_CREATE", "CTX_DESTROY", "CTX_GET", "CTX_GROUPS",
+        "CTX_KEY", "CTX_KEYS", "CTX_SET", "CTX_SET_CHECKER",
+        "CTX_SET_MONITOR", "CTX_TURN_OFF_CHECKER", "CTX_TURN_OFF_MONITOR",
+        "CTX_TURN_ON_CHECKER", "CTX_TURN_ON_MONITOR",
     ],
 }
 

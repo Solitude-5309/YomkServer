@@ -207,10 +207,10 @@ def show_arm_boot_create():
     log_action("写入初始伺服电源状态", "/YomkContext/create arm.servo_power",
                lambda: ctx().key("arm.servo_power").value(False).create())
 
-    # 重复创建同名键：eNo "key already exists"，排他语义——更新请走 SET（见场景 3）
+    # 重复创建同名键：eNo "context key '<key>' already exists"，排他语义——更新请走 SET（见场景 3）
     log_action("重复创建同名键", "/YomkContext/create arm.mode (重复)",
                lambda: ctx().key("arm.mode").value("auto").create())
-    log_verify("重复创建同名键 -> eNo(key already exists)：创建排他，更新请用 SET")
+    log_verify("重复创建同名键 -> eNo(context key 'arm.mode' already exists)：创建排他，更新请用 SET")
 
 # 场景 2：示教器 HMI 读取机械臂状态
 def show_arm_read_status():
@@ -263,7 +263,7 @@ def show_arm_update_status():
     # 强类型契约：arm.mode 是 str，误用 float 类型写入被拒
     log_action("误用类型改写运行模式", "/YomkContext/set arm.mode (float)",
                lambda: ctx().key("arm.mode").value(1.0).set())
-    log_verify("误用类型改写运行模式 -> eNo(context type not match)：强类型防误写")
+    log_verify("误用类型改写运行模式 -> eNo(context type not match: key 'arm.mode' expect 'str', got 'float')：强类型防误写")
 
 # 场景 4：速度倍率安全门控（速度倍率是安全关键参数）
 def show_arm_guard_speed_ratio():
@@ -405,7 +405,7 @@ def show_arm_dashboard():
     # 未命中惯例：查询未注册键返回 eNo
     log_action("查询未注册键", "/YomkContext/key arm.ghost",
                lambda: ctx().key("arm.ghost").info())
-    log_verify("查询未注册的键 -> eNo(key is not exist)")
+    log_verify("查询未注册的键 -> eNo(context key 'arm.ghost' does not exist)")
 
     # 全量导出（组 → 键元信息两层结构化列表），逐组逐键展开全部字段
     all_resp = log_action("全量导出键值表", "/YomkContext/all", lambda: ctx().all())
@@ -442,7 +442,7 @@ def show_arm_task_cleanup():
     # 重复销毁：not-found 惯例
     log_action("重复销毁运行模式键", "/YomkContext/destroy arm.mode (重复)",
                lambda: ctx().key("arm.mode").destroy())
-    log_verify("重复销毁同名键 -> eNo(key is not exist)")
+    log_verify("重复销毁同名键 -> eNo(context key 'arm.mode' does not exist)")
 
     # 收尾确认：键值表已空，会话闭环
     keys_resp = log_action("收尾确认键值表已空", "/YomkContext/keys", lambda: ctx().keys())

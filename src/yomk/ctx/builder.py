@@ -1,12 +1,29 @@
+from yomk._diag import error as diag_error
+from yomk._diag import warn as diag_warn
 from yomk.msg.ctx import (
     Context,
     ContextChecker,
     ContextGroupKey,
     ContextMonitor,
 )
-from yomk.msg.server import ResStatus
+from yomk.msg.server import ResStatus, Response
 from yomk.server import _facade
-from yomk._diag import error as diag_error
+from yomk.url.ctx import (
+    CTX_ALL,
+    CTX_CREATE,
+    CTX_DESTROY,
+    CTX_GET,
+    CTX_GROUPS,
+    CTX_KEY,
+    CTX_KEYS,
+    CTX_SET,
+    CTX_SET_CHECKER,
+    CTX_SET_MONITOR,
+    CTX_TURN_OFF_CHECKER,
+    CTX_TURN_OFF_MONITOR,
+    CTX_TURN_ON_CHECKER,
+    CTX_TURN_ON_MONITOR,
+)
 
 
 class GroupSwitch:
@@ -16,39 +33,54 @@ class GroupSwitch:
         self._monitor = monitor  # False = 校验门控，True = 变更监听
 
     def enable(self):
-        url = "/YomkContext/turn_on_monitor" if self._monitor else "/YomkContext/turn_on_checker"
+        url = CTX_TURN_ON_MONITOR if self._monitor else CTX_TURN_ON_CHECKER
         return _facade.chain_status(_facade.api_request(url, self._group))
 
     def disable(self):
-        url = "/YomkContext/turn_off_monitor" if self._monitor else "/YomkContext/turn_off_checker"
+        url = CTX_TURN_OFF_MONITOR if self._monitor else CTX_TURN_OFF_CHECKER
         return _facade.chain_status(_facade.api_request(url, self._group))
 
 
 class ContextValueBuilder:
-    # 读路径分面：ctx().key(n).group(g).msg() 之后 with_default(d).get() 直取值本体
-    def __init__(self, key, group):
+    # 读路径分面：ctx().key(n).group(g).msg(cls) 之后 with_default(v).get()
+    # 直取值本体；cls 非 None 时做类型比对（U-09，对齐 C++ ContextValue<T>
+    # kName 比对），不符 WARN 携 expect/got 并回退默认值
+    def __init__(self, key, group, cls=None):
         self._key = key
         self._group = group
+        self._cls = cls
         self._default = None
 
-    def with_default(self, d):
-        self._default = d
+    def with_default(self, v):
+        self._default = v
         return self
 
     def get(self):
-        # 未命中/失败回退 default（未初始化同）
+        # 未初始化：C++ requireServer 记 ERROR 诊断后回退默认值
         if _facade.current_server() is None:
+            diag_error("YomkServer is not initialized")
             return self._default
-        res = _facade.api_request(
-            "/YomkContext/get", Context(self._key, self._default, self._group))
+        res = _facade.api_request(CTX_GET, Context(self._key, self._default, self._group))
         if res.status == ResStatus.eOk:
-            return res.data
-        diag_error("get context failed")
+            # 类型比对：cls 为 None 时跳过（动态超集）；命中即返回
+            if res.data is None or self._cls is None \
+                    or type(res.data).__name__ == self._cls.__name__:
+                return res.data
+            # 具体值原则：类型不匹配静默回退默认值会掩盖写入侧错配，
+            # 输出期望/实际类型名定位（对齐 C++ YomkContextApi.h:163-164）
+            diag_warn("typed read context key '" + self._key
+                      + "' type mismatch, expect '" + self._cls.__name__
+                      + "', got '" + type(res.data).__name__
+                      + "', return default value")
+            return self._default
+        diag_error("get context failed: " + res.msg)
         return self._default
 
 
 class ContextBuilder:
     # context 域 builder：key/group/value 累积 + 写终结三态收敛 + 读终结 Response
+    # + msg(cls) 类型化分面。写路径未初始化由请求域收敛（对齐 C++），读终结
+    # 五处（get/keys/info/groups/all）自带 requireServer 守卫
     def __init__(self):
         self._key = ""
         self._group = "main"
@@ -58,37 +90,37 @@ class ContextBuilder:
         self._monitor = None
         self._async_monitor = False
 
-    def key(self, n):
-        self._key = n
+    def key(self, name):
+        self._key = name
         return self
 
-    def group(self, g="main"):
-        self._group = g
+    def group(self, name="main"):
+        self._group = name
         return self
 
-    def value(self, v):
-        self._value = v
+    def value(self, ctx):
+        self._value = ctx
         return self
 
     def create(self):
         return _facade.chain_status(_facade.api_request(
-            "/YomkContext/create", Context(self._key, self._value, self._group)))
+            CTX_CREATE, Context(self._key, self._value, self._group)))
 
     def set(self):
         return _facade.chain_status(_facade.api_request(
-            "/YomkContext/set", Context(self._key, self._value, self._group)))
+            CTX_SET, Context(self._key, self._value, self._group)))
 
     def destroy(self):
         return _facade.chain_status(_facade.api_request(
-            "/YomkContext/destroy", ContextGroupKey(self._group, self._key)))
+            CTX_DESTROY, ContextGroupKey(self._group, self._key)))
 
-    def checker_fn(self, fn):
-        self._checker = fn
+    def checker_fn(self, check_func):
+        self._checker = check_func
         self._cb_kind = "checker"
         return self
 
-    def monitor_fn(self, fn):
-        self._monitor = fn
+    def monitor_fn(self, monitor_func):
+        self._monitor = monitor_func
         self._cb_kind = "monitor"
         return self
 
@@ -101,7 +133,7 @@ class ContextBuilder:
         # 键级回调终结：按累积种类派发（后调覆盖先调）；未累积返回 Invalid 并记诊断
         if self._cb_kind == "checker":
             return _facade.chain_status(_facade.api_request(
-                "/YomkContext/set_checker",
+                CTX_SET_CHECKER,
                 ContextChecker(self._key, self._checker, self._group)))
         if self._cb_kind == "monitor":
             if self._async_monitor:
@@ -110,7 +142,7 @@ class ContextBuilder:
             else:
                 pkg = ContextMonitor(self._key, self._monitor, False, self._group)
             return _facade.chain_status(
-                _facade.api_request("/YomkContext/set_monitor", pkg))
+                _facade.api_request(CTX_SET_MONITOR, pkg))
         diag_error("apply: no checker/monitor accumulated")
         return ResStatus.Invalid
 
@@ -122,22 +154,44 @@ class ContextBuilder:
         # 组级变更监听开关分面
         return GroupSwitch(self._group, True)
 
+    # —— 读路径终结：自带 requireServer 守卫（对齐 C++ ContextBuilder
+    #    keys/info/groups/all 与 ContextValue::get）——
+    @staticmethod
+    def _require_server():
+        server = _facade.current_server()
+        if server is None:
+            diag_error("YomkServer is not initialized")
+            return Response(ResStatus.eInvalid, "YomkServer is not initialized")
+        return None
+
     def keys(self):
-        return _facade.api_request("/YomkContext/keys", self._group)
+        guard = self._require_server()
+        if guard:
+            return guard
+        return _facade.api_request(CTX_KEYS, self._group)
 
     def info(self):
-        return _facade.api_request(
-            "/YomkContext/key", ContextGroupKey(self._group, self._key))
+        guard = self._require_server()
+        if guard:
+            return guard
+        return _facade.api_request(CTX_KEY, ContextGroupKey(self._group, self._key))
 
     def groups(self):
-        return _facade.api_request("/YomkContext/groups", None)
+        guard = self._require_server()
+        if guard:
+            return guard
+        return _facade.api_request(CTX_GROUPS, None)
 
     def all(self):
-        return _facade.api_request("/YomkContext/all", None)
+        guard = self._require_server()
+        if guard:
+            return guard
+        return _facade.api_request(CTX_ALL, None)
 
     def msg(self, cls=None):
-        # 切入读路径分面（cls 为类型指定位，忽略；get 不做类型校验）
-        return ContextValueBuilder(self._key, self._group)
+        # 切入读路径分面；cls 为期望类型（对齐 C++ msg<T>() kName 比对对象），
+        # 省略时 get() 不做类型校验
+        return ContextValueBuilder(self._key, self._group, cls)
 
 
 def ctx():
