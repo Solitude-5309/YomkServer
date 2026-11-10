@@ -1,6 +1,5 @@
 from readerwriterlock import rwlock
 
-from yomk._diag import error as diag_error
 from yomk._diag import info as diag_info
 from yomk.msg.fn_pool import CallFunction, FuncInfo, Function
 from yomk.msg.server import ResStatus, Response
@@ -24,62 +23,71 @@ class YomkFunctionPool(YomkService):
         self.install_func("/name", self.funcInfo, "String")
         self.install_func("/all", self.listAll)
 
-    def registerFunction(self, function: Function):
+    def registerFunction(self, function):
+        # 载荷类型错配：Failed + 携带实际类型（对齐 C++ unpack 失败路径，零 diag）。
+        # 端点载荷形参一律不带类型注解：Cython 会把注解编译为边界 TypeError，
+        # 使下方运行时守卫失效（pyi 同理标注 Any）
         if not isinstance(function, Function):
-            raise TypeError("function must be Function")
+            return Response(
+                ResStatus.eNo,
+                "pkg is not Function, got '" + type(function).__name__ + "'")
 
         # 合一校验：空名或空函数体均视为参数无效；
         # eNo 为 not-found/业务拒绝框架惯例，eInvalid 仅用于参数无效
         if not function.name or not function.func:
-            diag_error(
-                "funcName or func is empty, please check Function.m_funcName")
             return Response(ResStatus.eInvalid, "funcName or func is empty")
 
         with self.m_functionsMutex.gen_wlock():
             if function.name in self.m_functions:
-                # 重复名=更新语义：整对象替换覆盖 func、msg_name、description 三字段
-                # （未在替换对象上声明的元数据即被清除），先更新再返回显式区分的文案
-                diag_info(
-                    f"function name: {function.name} is already exist, update to current function")
+                # 重复名=热替换语义：整对象替换覆盖 func、msg_name、description 三字段
+                # （未在替换对象上声明的元数据即被清除），diag 与 Response.msg 同串
+                msg = ("function '" + function.name +
+                       "' already exists, hot-swap to current function")
+                diag_info(msg)
                 self.m_functions[function.name] = function
-                return Response(
-                    ResStatus.eOk,
-                    "find function name is already exist, update to current function")
+                return Response(ResStatus.eOk, msg)
             self.m_functions[function.name] = function
 
         return Response(ResStatus.eOk, "register function success")
 
-    def unRegisterFunction(self, func_name: str):
+    def unRegisterFunction(self, func_name):
         # 注销已注册函数：参数无效 eInvalid、
         # 未注册 eNo（not-found 框架惯例；eInvalid 仅用于参数无效）
+        if not isinstance(func_name, str):
+            return Response(
+                ResStatus.eNo,
+                "pkg is not String, got '" + type(func_name).__name__ + "'")
         if not func_name:
-            diag_error("funcName is empty, please check String.")
             return Response(ResStatus.eInvalid, "funcName is empty")
 
         with self.m_functionsMutex.gen_wlock():
             if func_name not in self.m_functions:
-                diag_error(
-                    f"funcName: {func_name} is not register, can not unregister")
-                return Response(ResStatus.eNo, "funcName is not register")
+                # 名字有效但未注册:ResStatus::Failed(与 funcInfo/Context/EventLoop 的
+                # not-found 惯例一致;ResStatus::Invalid 仅用于参数无效)
+                return Response(
+                    ResStatus.eNo,
+                    "function '" + func_name + "' is not registered")
             del self.m_functions[func_name]
 
         return Response(ResStatus.eOk, "unregister function success")
 
-    def callFunction(self, call_func: CallFunction):
+    def callFunction(self, call_func):
         if not isinstance(call_func, CallFunction):
-            raise TypeError("call_func must be CallFunction")
+            return Response(
+                ResStatus.eNo,
+                "pkg is not CallFunction, got '" + type(call_func).__name__ + "'")
 
         if not call_func.name:
-            diag_error("funcName is empty, please check CallFunction.m_funcName.")
             return Response(ResStatus.eInvalid, "funcName is empty")
 
         with self.m_functionsMutex.gen_rlock():
-            if call_func.name not in self.m_functions:
-                diag_error(
-                    f"funcName: {call_func.name} is not register, please check CallFunction.m_funcName.")
-                return Response(ResStatus.eNo, "funcName is not register")
-            else:
-                func = self.m_functions[call_func.name].func
+            entry = self.m_functions.get(call_func.name)
+            if entry is None:
+                # 未注册同 unregister:ResStatus::Failed(not-found 框架惯例)
+                return Response(
+                    ResStatus.eNo,
+                    "function '" + call_func.name + "' is not registered")
+            func = entry.func
 
         return func(call_func.pkg)
 
@@ -89,18 +97,21 @@ class YomkFunctionPool(YomkService):
             names = sorted(self.m_functions)
         return Response(ResStatus.eOk, "ok", names)
 
-    def funcInfo(self, func_name: str):
+    def funcInfo(self, func_name):
         # 内省：单个函数元信息查询，命中返回结构化 FuncInfo 包（msg 恒 "ok"，数据走 data）
+        if not isinstance(func_name, str):
+            return Response(
+                ResStatus.eNo,
+                "pkg is not String, got '" + type(func_name).__name__ + "'")
         if not func_name:
-            diag_error("funcName is empty, please check String.")
             return Response(ResStatus.eInvalid, "funcName is empty")
 
         with self.m_functionsMutex.gen_rlock():
             entry = self.m_functions.get(func_name)
             if entry is None:
-                diag_error(
-                    f"funcName: {func_name} is not register, please check funcName")
-                return Response(ResStatus.eNo, "funcName is not register")
+                return Response(
+                    ResStatus.eNo,
+                    "function '" + func_name + "' is not registered")
             # 命中：结构化包恒挂，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）
             info = FuncInfo(func_name, entry.msg_name, entry.description)
 

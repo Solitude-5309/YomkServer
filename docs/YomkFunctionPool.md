@@ -43,10 +43,12 @@ fn_pool().list()
 
 ## 注意事项
 
-- 同名重复注册即运行时热替换（覆盖旧函数并返回 `Succeeded`），无需先注销；服务端错误日志实串 `"find function name is already exist, update to current function"`。
-- 未注册的名字：`call()` / `uninstall()` 均返回 `Failed`（not-found 归 `Failed` 不归 `Invalid`，与全框架三态约定一致）。
+- 同名重复注册即运行时热替换（覆盖旧函数与 msg_name/description 元数据并返回 `Succeeded`），无需先注销；诊断 INFO 与 `Response.msg` 同串 `"function '<name>' already exists, hot-swap to current function"`（对齐 C++ 0032fc7 契约）。
+- 未注册的名字：`call()` / `uninstall()` / `get_info()` 均返回 `Failed` + `"function '<name>' is not registered"`（not-found 归 `Failed` 不归 `Invalid`，与全框架三态约定一致；失败路径不打诊断日志，`Response.msg` 已携带同信息）。
 - 注册/注销的终结动词定名为 `install()` / `uninstall()`。
 - 入参非法（`install` 空名/空函数等）返回 `Invalid`（服务端契约消息 `"funcName or func is empty"`）。
+- 裸链误用载荷类型（如向 `/register` 传非 `Function` 对象）返回 `Failed` + `"pkg is not X, got '<实际类型>'"`，不抛异常（对齐 C++ unpack 失败契约）。
+- 内置服务端点 URL 常量集中定义于 `yomk.url` 常量池（`from yomk.url.fn_pool import FP_CALL` 等，命名 `FP_` 前缀对齐 C++ `yomk::url::fpXxx`）；`yomk.url` 为纯命名空间层（与 `yomk.msg` 同构），用户新增模块只需自带 `yomk/url/<模块>/__init__.py` 即可并入。`fn_pool()` 链式入口与用户裸链请求均可引用。
 - 函数体收到的 `pkg` 即调用侧 `.msg()` 累积的对象；函数返回的 `Response` 整体作为 `call()` 的返回值回传（`data` 携带结果对象）。
 - 服务成员函数注册到函数池时须用 `self.weak_func(...)` 弱绑定——服务删除后回调自动失效（返回 `Failed`），见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 - 单函数内省 `get_info()` 的 `data` 为 `FuncInfo`（`func_name` / `msg_name` / `description`，见 [服务自省](YomkServerInfo.md)）。

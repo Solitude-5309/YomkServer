@@ -5,7 +5,7 @@ TestYomkLayout.py
 @brief 新包布局、类型声明与本地诊断一致性测试（L9）
 
 覆盖内容（5 个 Section）：
-S1. 命名空间骨架：src/yomk 与 src/yomk/msg 无 __init__.py/.pyi/py.typed；
+S1. 命名空间骨架：src/yomk、src/yomk/msg 与 src/yomk/url 无 __init__.py/.pyi/py.typed；
     import yomk 不加载任何子模块（yomk.__file__ is None）
 S2. pyi 完整性：每个 .py 有同名 .pyi；每个 .pyi 有对应源（_version.pyi 对应
     _version.py.in）；每个运行时域有 _version.py.in/_version.pyi；每个叶子子包
@@ -70,6 +70,9 @@ def s1_namespace_skeleton():
         check(not (PKG_DIR / name).exists(), "src/yomk/%s 不存在" % name)
         check(not (PKG_DIR / "msg" / name).exists(),
               "src/yomk/msg/%s 不存在" % name)
+        # url 常量池与 msg 同构：纯命名空间层（用户自挂模块只需自带 __init__.py）
+        check(not (PKG_DIR / "url" / name).exists(),
+              "src/yomk/url/%s 不存在" % name)
 
     result = run_python(
         "import sys\n"

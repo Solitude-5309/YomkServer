@@ -1,9 +1,9 @@
 """
 TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 测试
 
-（8 节 53 断言）：
+（9 节 57 断言）：
 1. CRUD 闭环：REGISTER echo 函数 → CALL 回传消息 → UNREGISTER → CALL eNo
-2. 注册边界：空函数名 / None func 均 eInvalid；重复注册为"更新"语义（CALL 走新实现，msg 含 update）
+2. 注册边界：空函数名 / None func 均 eInvalid；重复注册为热替换语义（CALL 走新实现，msg 含 hot-swap）
 3. 注销边界：空名 eInvalid / 未注册名 eNo
 4. 调用边界：空名 eInvalid / 未注册 eNo / pkg=None 原样透传给函数（探针计数）
 5. 内省：info_names 存活列表包含注册名（注意空表陷阱：须在有存活条目时调用）/ info_name 命中返回结构化 FuncInfo 包
@@ -13,6 +13,8 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
 7. 异常契约：CALL 链（request→invoke→callFunction→用户函数）无 try/catch，
    用户函数异常穿透直达调用方——测试侧捕获验证 what；随后正常 CALL 验证池存活
 8. 超长名：65536 字符函数名全生命周期（REGISTER/CALL/INFO_NAME/UNREGISTER）eOk 且完整回显
+9. 载荷类型错配（对齐 C++ 0032fc7）：裸链误用载荷不再抛 TypeError，统一 Failed +
+   "pkg is not X, got '<type>'"（register/call/unregister/name 四端点）
 
 语言形态说明：
 - Function 三形态：Function(name, func) 无类型 / Function(name, func, "String") 声明类型 /
@@ -113,8 +115,8 @@ check(r == ResStatus.eOk, "REGISTER v1 返回 eOk")
 r = fn_pool().fn_name("fp_upd").call()
 check(r.msg == "v1", "CALL 走 v1 实现")
 r = raw_fn("register", Function("fp_upd", v2_func, "", ""))
-check(r.status == ResStatus.eOk, "重复 REGISTER 返回 eOk（更新语义）")
-check("update" in r.msg, "重复 REGISTER 消息说明更新语义")
+check(r.status == ResStatus.eOk, "重复 REGISTER 返回 eOk（热替换语义）")
+check("hot-swap" in r.msg, "重复 REGISTER 消息说明热替换语义（对齐 C++ 0032fc7 文案）")
 r = fn_pool().fn_name("fp_upd").call()
 check(r.msg == "v2", "更新后 CALL 走 v2 实现")
 r = fn_pool().fn_name("fp_upd").uninstall()
@@ -261,6 +263,20 @@ check(r.data is not None and r.data.func_name == long_name,
       "INFO_NAME 完整回显超长函数名")
 r = fn_pool().fn_name(long_name).uninstall()
 check(r == ResStatus.eOk, "UNREGISTER 超长函数名返回 eOk")
+
+# ============ Section 9: 载荷类型错配契约（裸链误用 → Failed Response，不再抛 TypeError） ============
+r = raw_fn("register", "not_a_Function")
+check(r.status == ResStatus.eNo and r.msg == "pkg is not Function, got 'str'",
+      "REGISTER 非 Function 载荷返回 eNo + pkg is not Function, got 'str'")
+r = raw_fn("call", 123)
+check(r.status == ResStatus.eNo and r.msg == "pkg is not CallFunction, got 'int'",
+      "CALL 非 CallFunction 载荷返回 eNo + pkg is not CallFunction, got 'int'")
+r = raw_fn("unregister", 123)
+check(r.status == ResStatus.eNo and r.msg == "pkg is not String, got 'int'",
+      "UNREGISTER 非 String 载荷返回 eNo + pkg is not String, got 'int'")
+r = raw_fn("name", ["x"])
+check(r.status == ResStatus.eNo and r.msg == "pkg is not String, got 'list'",
+      "INFO_NAME 非 String 载荷返回 eNo + pkg is not String, got 'list'")
 
 # ============ 收尾清理（不污染后续测试的共享池）============
 r = fn_pool().fn_name("fp_plain").uninstall()

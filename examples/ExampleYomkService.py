@@ -313,8 +313,8 @@ def show_arm_station_upgrade():
     log_action_int(
         "留痕工位升级：同名注册替换 /TelemetryService", "server().srv_ptr().add() /TelemetryService",
         lambda: server().srv_ptr(TelemetryService(server().instance())).srv_name("/TelemetryService").add())
-    log_verify("框架直出 service already exists -> update to current service：旧实例 deinit 注销钩子，实例 #1 随即回收")
-    log_verify("新实例 init 重挂 telemetry_hook，函数池直出 already exist -> update to current function：服务与钩子一并换新")
+    log_verify("框架直出 service already exists -> replace with current service：旧实例 deinit 注销钩子，实例 #1 随即回收")
+    log_verify("新实例 init 重挂 telemetry_hook，函数池直出 already exists -> hot-swap to current function：服务与钩子一并换新")
 
     log_action(
         "直调留痕钩子（替换后）", "fn_pool().call() telemetry_hook (V2)",
@@ -342,7 +342,7 @@ def show_arm_station_offline():
     log_action(
         "直调留痕钩子（已下线）", "fn_pool().call() telemetry_hook (已下线)",
         lambda: fn_pool().fn_name("telemetry_hook").msg("diag check V2").call())
-    log_verify("钩子返回 eNo(funcName is not register)：deinit 显式注销承担失效语义，删除即停不悬垂")
+    log_verify("钩子返回 eNo(function 'telemetry_hook' is not registered)：deinit 显式注销承担失效语义，删除即停不悬垂")
 
     log_action(
         "重发运动指令（留痕缺失）", "server().url().request() /MotionService/move",

@@ -226,7 +226,7 @@ def show_arm_tool_hot_swap():
 
     log_action("热替换班次握手工具 tool.handshake（V2）", "/YomkFunctionPool/register tool.handshake (V2, 带声明类型)",
                lambda: fn_pool().fn_name("tool.handshake").fn(handshake_v2).msg_name("String").install())
-    log_verify("already exist 提示 + eOk：同名重复注册即运行时热替换，无需先注销")
+    log_verify("hot-swap 提示 + eOk：同名重复注册即运行时热替换，无需先注销")
 
     log_action_start("复查握手工具元信息")
     resp = fn_pool().fn_name("tool.handshake").get_info()
@@ -260,7 +260,7 @@ def show_arm_tool_dashboard():
     log_action_start("单查未注册工具 tool.ghost")
     resp = fn_pool().fn_name("tool.ghost").get_info()
     log_resp("/YomkFunctionPool/name tool.ghost", resp)
-    log_verify("未注册名字 -> eNo(funcName is not register)：not-found 是框架统一惯例")
+    log_verify("未注册名字 -> eNo(function '...' is not registered)：not-found 是框架统一惯例")
 
     log_action_start("全量导出工具元信息")
     resp = fn_pool().all()
@@ -283,7 +283,7 @@ def show_arm_tool_cleanup():
 
     log_action("调用已注销工具 tool.payloadSum", "/YomkFunctionPool/call tool.payloadSum (已注销)",
                lambda: fn_pool().fn_name("tool.payloadSum").call())
-    log_verify("已注销名字 -> eNo(funcName is not register)：开始行与结果行之间无 arm.tool 日志，函数已不在池中")
+    log_verify("已注销名字 -> eNo(function '...' is not registered)：开始行与结果行之间无 arm.tool 日志，函数已不在池中")
 
     log_action("重复注销负载合计工具 tool.payloadSum", "/YomkFunctionPool/unregister tool.payloadSum (重复)",
                lambda: fn_pool().fn_name("tool.payloadSum").uninstall())

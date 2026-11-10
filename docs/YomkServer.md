@@ -101,7 +101,7 @@ class MyService(YomkService):
 
 ## 注意事项
 
-- **服务名以 `/` 开头**：服务名即 URL 前缀，如 `set_name("/MyService")`；请求 URL 为 `"/服务名/函数名"`。内置服务的 URL 常量以字符串形式散建于 `src/yomk/<域>/builder.py` 装配处，自定义服务的 URL 可按同风格集中管理。
+- **服务名以 `/` 开头**：服务名即 URL 前缀，如 `set_name("/MyService")`；请求 URL 为 `"/服务名/函数名"`。内置服务的端点 URL 常量集中于 `yomk.url` 常量池（`src/yomk/url/<域>/__init__.py`，逐域扩充）；`yomk.url` 为纯命名空间层（与 `yomk.msg` 同构），用户自定义模块自带 `__init__.py` 即可并入。
 - **deinit() 的四个触发时机**：`srv_name(n).remove()` 删除单个服务、`shutdown()` 关闭全部服务、同名服务被 `add()` 替换（旧服务先置位注销标志并 deinit，新服务随后 init，任意时刻同名服务至多一次活跃生命周期）、忘记关闭时进程退出经 atexit 兜底。覆写 `deinit()` 用于停止线程、注销外部资源。
 - **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃；`shutdown()` 走排空语义（拒新 → 排空 → join 异步请求池，再清空服务表逐个 deinit），在途请求安全执行完毕后服务才释放；幂等，假定在主线程调用。
 - **关闭后不支持二次 init**：init 进程内幂等由 once 标志把关，`shutdown()` 之后再次 `init()` 不会重建服务器，全部入口回到未初始化守卫态。**`shutdown()` 置空单例**：门面在 `shutdown()` 时置空单例，`instance()` 返回 `None`，不保留已关闭实例快照。
