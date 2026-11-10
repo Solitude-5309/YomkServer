@@ -122,7 +122,7 @@ int MyService::init()
 
 ## 注意事项
 
-- **服务名以 `/` 开头**：服务名即 URL 前缀，如 `name("/MyService")`；请求 URL 为 `"/服务名/函数名"`。内置服务 URL 常量化于 `yomk::url` 命名空间，自定义服务的 URL 常量可按同风格追加。
+- **服务名以 `/` 开头**：服务名即 URL 前缀，如 `name("/MyService")`；请求 URL 为 `"/服务名/函数名"`。内置服务 URL 常量化于 `yomk::url` 命名空间，自定义服务的 URL 常量可按同风格追加——请求链一律引用常量（`yomk::server().url(yomk::url::fpCall)`），不裸写 URL 字符串字面量。
 - **deinit() 的四个触发时机**：`srv_name(n).remove()` 删除单个服务、`shutdown()` 关闭全部服务、同名服务被 `add()` 替换（旧服务先置位注销标志并 deinit，新服务随后 init，任意时刻同名服务至多一次活跃生命周期）、忘记关闭时进程退出经 atexit 兜底。覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
 - **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃；`shutdown()` 走排空语义（拒新 → 排空 → join 异步请求池，再清空服务表逐个 deinit），在途请求安全执行完毕后服务才析构；幂等，假定在主线程调用。
 - **关闭后不支持二次 init**：init 进程内幂等由 call_once 把关，`shutdown()` 之后再次 `init()` 不会重建服务器，全部入口回到未初始化守卫态。
@@ -135,7 +135,7 @@ int MyService::init()
 
 ## 扩展模块四件套
 
-自定义扩展的对外头文件按 SDK `include/yomk/` 各域的同一设计组织为四件套：`XxxUrl.h`（`yomk::url` 命名空间 URL 常量，`inline constexpr std::string_view`）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG`）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态——前置累积 `url/msg` + 无参终结 `request`，builder 持 `string_view` 视图仅单表达式内联使用）。完整可编译模板见 `template/extension/`（`ExtensionApi.h` 提供 `yomk::ext().version()` 终结）。
+自定义扩展的对外头文件按 SDK `include/yomk/` 各域的同一设计组织为四件套：`XxxUrl.h`（`yomk::url` 命名空间 URL 常量，`inline constexpr std::string_view`；请求侧一律取常量、不裸写字符串字面量，见「注意事项」）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG`）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态——前置累积 `url/msg` + 无参终结 `request`，builder 持 `string_view` 视图仅单表达式内联使用）。完整可编译模板见 `template/extension/`（`ExtensionApi.h` 提供 `yomk::ext().version()` 终结）。
 
 ## 常见问题 FAQ
 

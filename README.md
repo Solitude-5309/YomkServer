@@ -136,7 +136,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 2. 请求与响应模型 (Request / Response)
 
-- **URL 寻址**：格式为 `"/服务名/函数名"`，如 `"/MyService/hello"`；内置服务 URL 常量见 `yomk::url` 命名空间。
+- **URL 寻址**：格式为 `"/服务名/函数名"`，如 `"/MyService/hello"`；内置服务 URL 常量见 `yomk::url` 命名空间（自定义服务常量按同风格追加），请求链一律引用常量、不裸写 URL 字符串字面量。
 - **返回值 `yomk::payload::Response`**：`status`（`ResStatus::Succeeded (0)` 调用成功；`ResStatus::Failed (1)` 服务端执行失败，含服务/函数不存在等 not-found；`ResStatus::Invalid (-1)` 入参非法或服务器未初始化）、`msg` 状态描述文本、`data` 可选负载消息包。
 - **同步调用** `.request()` 阻塞返回完整应答；`.status()` 只保留三态收敛（细节进诊断日志）；**异步调用** `.async(func).request()` 投递到框架内置线程池并发执行，不阻塞当前线程，`func` 传 `nullptr` 即只投递不取回。
 
@@ -332,4 +332,4 @@ target_link_libraries(my_app PRIVATE YomkServer::YomkServer)
 
 ## 扩展开发
 
-独立业务扩展编译为共享库（`.so`），支持 `find_package()` 被其他工程引用；对外头文件按 SDK 各域同一设计组织为**模块四件套**（`XxxApi.h` 链式域入口 / `XxxUrl.h` URL 常量 / `XxxPayload.h` 专属载荷 / `XxxMsg.h` 专属消息包）。完整可编译扩展模板见 [`template/extension/`](template/extension/)（`yomk::ext().version()` 形态），设计与模块化编程规范详见 [skill/yomkserver-modular](skill/yomkserver-modular/SKILL.md)。
+独立业务扩展编译为共享库（`.so`），支持 `find_package()` 被其他工程引用；对外头文件按 SDK 各域同一设计组织为**模块四件套**（`XxxApi.h` 链式域入口 / `XxxUrl.h` URL 常量 / `XxxPayload.h` 专属载荷 / `XxxMsg.h` 专属消息包），请求链一律引用 `yomk::url` 常量、不裸写 URL 字符串字面量。完整可编译扩展模板见 [`template/extension/`](template/extension/)（`yomk::ext().version()` 形态），设计与模块化编程规范详见 [skill/yomkserver-modular](skill/yomkserver-modular/SKILL.md)。

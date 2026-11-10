@@ -7,7 +7,7 @@ include(cmake/AbiInfo.cmake)
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 3.6.15 LANGUAGES CXX)
+project(Yomk VERSION 3.6.16 LANGUAGES CXX)
 
 # ---------- 各域模块版本号 ----------
 # 集中定义，当前全部取项目版本号；若某域需要独立版本，只改对应行。

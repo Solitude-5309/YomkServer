@@ -1204,8 +1204,8 @@ int main(int argc, char* argv[])
 
     yomk::server().srv<ExtensionService>().create();
 
-    // 测试版本查询
-    yomk::payload::Response resp = yomk::server().url("/ExtensionService/version").request();
+    // 测试版本查询（url 常量见 ExtensionUrl.h，经 ExtensionApi.h 已引入）
+    yomk::payload::Response resp = yomk::server().url(yomk::url::extVersion).request();
     if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
@@ -1527,6 +1527,7 @@ ExtensionName/
 
 ```cpp
 #include <yomk/server/YomkServerApi.h>
+#include <yomk/extension/ExtensionUrl.h>
 #include <yomk/extension/ExtensionService.h>
 #include <iostream>
 
@@ -1539,8 +1540,8 @@ int main(int argc, char* argv[])
     // 注册 ExtensionService（扩展服务需先注册才能使用）
     yomk::server().srv<ExtensionService>().create();
 
-    // 版本查询请求
-    yomk::payload::Response resp = yomk::server().url("/ExtensionService/version").request();
+    // 版本查询请求（url 常量见 ExtensionUrl.h）
+    yomk::payload::Response resp = yomk::server().url(yomk::url::extVersion).request();
     if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
