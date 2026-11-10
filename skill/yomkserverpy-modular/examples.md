@@ -237,7 +237,7 @@ fi
 echo "-- python3: $(python3 --version 2>&1)"
 
 if python3 -c "import yomk.server" 2>/dev/null; then
-    echo "-- yomk 命名空间锚点: yomk.__file__ = $(python3 -c 'import yomk; print(yomk.__file__)')（None 即 PEP 420 命名空间包正常形态）"
+    echo "-- yomk 命名空间锚点: yomk.__file__ = $(python3 -c 'import yomk; print(getattr(yomk, "__file__", None))')（None 即 PEP 420 命名空间包正常形态）"
     echo "-- 框架版本: $(python3 -c 'import yomk.server; print(yomk.server.__version__)')"
     echo "环境检查通过"
 else
@@ -414,7 +414,7 @@ def change_logger(ctx):
 
 server().init()
 
-# 键级回调只能注册到已存在的键：先 create 再注册（键不存在 Failed "key is not exist"）
+# 键级回调只能注册到已存在的键：先 create 再注册（键不存在 Failed "context key '<k>' does not exist"）
 ctx().key("config").value("default").create()
 ctx().key("config").checker_fn(non_empty_checker).apply()          # 同步 checker
 ctx().key("config").monitor_fn(change_logger).apply()              # 同步 monitor（写锁外即时执行）
@@ -425,7 +425,7 @@ ctx().group("main").checker().enable()
 ctx().group("main").monitor().enable()
 
 ctx().key("config").value("new_value").set()   # checker 放行 + monitor 触发
-ctx().key("config").value("").set()            # 被拒：Failed（契约 "checker reject set context"）
+ctx().key("config").value("").set()            # 被拒：Failed（契约 "set context key 'config' rejected by checker"）
 
 # 自定义组：非 main 组首次寻址即惰性自动创建（组不支持销毁、组表只增不减；异步监控池每组自持单线程）
 ctx().group("motion").key("state").value("idle").create()
@@ -433,13 +433,15 @@ ctx().group("motion").key("state").monitor_fn(change_logger).async_(True).apply(
 ctx().group("motion").monitor().enable()                          # 自定义组同样默认关，须显式开
 ctx().group("motion").key("state").value("running").set()
 
-# 类型化读（msg(cls) 仅类型指定位，不做运行期校验；未命中回退默认值）
+# 类型化读（msg(cls) 为期望类型，命中后做类型名比对，不符记 WARN 回退默认值；cls 省略不校验）
 val = ctx().key("config").msg(str).with_default("fallback").get()
 
-# 写路径失败契约（裸链可查 msg，status 均 Failed）：
-# "key is empty" / "value is empty" / "key already exists"（create）
-# "key is not exist" / "context type not match" / "checker reject set context"（set）
-# "group name is empty"（空组名）
+# 写路径失败契约（裸链可查 msg）：入参非法 Invalid——
+# "context key is empty"（键空）/ "create context key '<k>' failed: value is empty"（create）
+# "set context key '<k>' failed: value is empty"（set）/ "group name is empty"（空组名）；
+# 业务未命中/冲突 Failed——
+# "context key '<k>' already exists"（create）/ "context key '<k>' does not exist"（set/destroy/回调注册）
+# "context type not match: key '<k>' expect ..., got ..." / "set context key '<k>' rejected by checker"（set）
 ```
 
 服务成员函数作 checker/monitor 时必须弱绑定（服务删除后 checker 自动放行、monitor 自动丢弃，不影响他人）：
@@ -497,17 +499,17 @@ if resp.status == ResStatus.eOk:
 event_loop().loop("worker_loop").tag_count(5).get_info()
 event_loop().list()              # 全部循环名
 
-# 停止：停线程但保留队列事件 → 再次 start() 续跑；期间投递被拒（契约 Failed）：
-# "event loop not exist"（循环不存在）；"event loop not running, post rejected" / "post wait rejected"（已停止）
+# 停止：停线程但保留队列事件 → 再次 start() 续跑（仅续跑停止前已在队列中的事件）；期间投递被拒（契约 Failed）：
+# "event loop '<名>' does not exist"（循环不存在）；"event loop '<名>' not running, post rejected" / "post wait rejected"（已停止）
 event_loop().loop("worker_loop").stop()
-event_loop().msg("task_4").loop("worker_loop").post()   # Failed "event loop not running, post rejected"
-event_loop().loop("worker_loop").start()                # 续跑，task_4 补跑
+event_loop().msg("task_4").loop("worker_loop").post()   # Failed "event loop '<名>' not running, post rejected"——被拒不入队
+event_loop().loop("worker_loop").start()                # 续跑停止前的存量事件；task_4 不会补跑，如需执行须 start() 后重新 post
 
 # 销毁：停线程 + 清空队列 + 移出循环表，不可续跑
 event_loop().loop("worker_loop").destroy()
 ```
 
-注：投递终结返回的三态**仅表示入队/完成标记，非执行结果**；事件未带 handler 时回落默认处理函数，两者皆空静默出队；工作线程内调用 `post_wait` 触发死锁自检（本线程直接执行该事件，诊断 `"EventLoop deadlock: post wait in worker thread..."`）；服务成员函数作处理函数须 `self.weak_func(...)`。
+注：投递终结返回的三态**仅表示入队/完成标记，非执行结果**；事件未带 handler 时回落默认处理函数，两者皆空静默出队；工作线程内调用 `post_wait` 触发死锁自检（本线程直接执行该事件，诊断 `"EventLoop: <loop名> post wait in worker thread detected deadlock, directly execute current event to resolve deadlock"`）；服务成员函数作处理函数须 `self.weak_func(...)`。
 
 ---
 
@@ -539,7 +541,7 @@ fn_pool().fn_name("validate_amount").fn(validate_amount).install()
 fn_pool().fn_name("calc_sum").fn(calc_sum).msg_name("list").description("对列表求和").install()
 resp = fn_pool().fn_name("validate_amount").msg("100.5").call()
 
-# 同名重复 install = 运行时热替换（返回 Succeeded，无需先注销；诊断 "find function name is already exist, update to current function"）
+# 同名重复 install = 运行时热替换（返回 Succeeded，无需先注销；诊断 WARN 与 Response.msg 同串 "function '<名>' already exists, hot-swap to current function"）
 fn_pool().fn_name("calc_sum").fn(calc_sum_v2).install()
 
 # 单函数内省：命中 msg 恒 "ok"，data 为 FuncInfo 包（func_name/msg_name/description）

@@ -18,7 +18,7 @@
 ```python
 from yomk.msg.server import ResStatus, Response
 from yomk.server import server
-from yomk.event_loop import event_loop
+from yomk.event_loop import event_loop, Event
 
 server().init()
 
@@ -58,7 +58,7 @@ event_loop().loop("TaskLoop").destroy()
 - 工作线程内调用 `post_wait` 会触发死锁自检：直接在本线程执行当前事件并返回（诊断日志 `"EventLoop: <loop名> post wait in worker thread detected deadlock..."`，携带循环名）。
 - 服务成员函数注册为事件处理函数时须用 `self.weak_func(...)` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 - URL 常量池：裸链端点建议用 `yomk.url.event_loop` 的 `LOOP_START/LOOP_STOP/LOOP_POST/LOOP_POST_WAIT/LOOP_DESTROY/LOOP_LOOPS/LOOP_LOOP/LOOP_ALL`（与 C++ `YomkEventLoopUrl.h` 逐字一致），如 `server().url(LOOP_POST_WAIT).msg(Event(...)).request()`。
-- 诊断契约（对齐 C++）：not-found 为 WARN；同名 `start()` 重启为 INFO（`"event loop already running, start is idempotent"`）；工作线程异常为 ERROR（`"EventLoop: <name> exec event id: <id> caught, ..."`）；循环未运行仅由返回码承载，无诊断日志。
+- 诊断契约（对齐 C++）：not-found 为 WARN；同名 `start()` 在循环**已运行**时为 INFO（`"event loop already running, start is idempotent"`），停止后续跑（复用停启续跑场景）不记诊断；工作线程异常为 ERROR（`"EventLoop: <name> exec event id: <id> caught, ..."`）；循环未运行仅由返回码承载，无诊断日志。
 
 ## 完整示例
 

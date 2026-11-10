@@ -43,13 +43,13 @@ fn_pool().fn_name("save").msg(pkg).call()                    # 函数池调用
 - 无需静态工厂与指针基类流转：直接实例化，对象引用天然多态。
 - 无需解包：属性直接访问；类型守卫自行 `isinstance`。
 - 无内置类型表：Python 原生类型（`str/int/float/bool/list/dict`）与自定义类均可直传。
-- `.msg(cls)` 收运行时类对象参数（仅作定位，见下）。
+- `.msg(cls)` 收运行时类对象参数，供 `get()` 做期望类型名比对（见下）。
 
 ## 注意事项
 
 - **期望消息类型名仅作内省元数据，不拦截调用**：`install_func("/x", fn, "MsgName")` 第三参、`fn_pool().msg_name(m)`、`event_loop().msg_name(m)` 声明的字符串与 `FuncInfo.msg_name` 保持一致，供自省读取，运行期不做校验。
 - 期望类型名与函数说明均供自省读取：函数池与函数单查返回 `FuncInfo`（`func_name` / `msg_name` / `description` 三字段，见 [服务自省](YomkServerInfo.md)）。
-- 上下文类型化读 `ctx().key(k).msg(cls).with_default(d).get()` 中的 `cls` 为类型指定位语法糖；**`get()` 不做类型校验**，未命中/失败一律回退 `with_default` 的兜底值。
+- 上下文类型化读 `ctx().key(k).msg(cls).with_default(d).get()` 中的 `cls` 为期望类型（对齐 C++ `msg<T>()` kName 语义）：命中后做类型名比对，不符记 WARN `"typed read context key '<k>' type mismatch, expect '<期望>', got '<实际>', return default value"` 并回退 `with_default` 的兜底值；未命中/失败同样回退兜底值；`cls` 省略时**不校验**。
 - 事件循环 `post_wait` 的执行结果经事件对象回传：链式终结收敛为 `ResStatus`；需要取回事件 `data`/处理响应时用裸链 `server().url("/YomkEventLoop/post_wait").msg(...).request()`，`data` 为该 `Event` 对象（含 `m_eventId` / `m_response`）。
 
 ## 完整示例

@@ -146,7 +146,7 @@ srv_info().fn_url("/XxxService/my_desc").get_info()  # 单函数元信息（结�
 srv_info().all()                                   # 全量拓扑（ServerServiceInfo 层级列表：service_name + funcs）
 ```
 
-服务器层内省之外，四个内置模块均提供模块内层内省链（Context 的 `ctx().keys()/key(k).info()/groups()/all()`、EventLoop 的 `event_loop().list()/loop(n).get_info()/all()`、FunctionPool 的 `fn_pool().list()/fn_name(n).get_info()/all()`、Logger 的 `log_mgr().console()/file().list()/get_info()/status()/all()`），见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。
+服务器层内省之外，四个内置模块均提供模块内层内省链（Context 的 `ctx().keys()/key(k).info()/groups()/all()`、EventLoop 的 `event_loop().list()/loop(n).get_info()/all()`、FunctionPool 的 `fn_pool().list()/fn_name(n).get_info()/all()`、Logger 的 `log_mgr().console()/file().list()/get_info()/status()` 与 `log_mgr().all()`——`.all()` 仅 `log_mgr()` 直调可达），见 [reference.md](reference.md) 对应小节与 [examples.md](examples.md) 示例5。
 
 ## 任务三：创建扩展库
 
@@ -219,7 +219,7 @@ class MyService(YomkService):
         return 0
 ```
 
-- `weak_func(func, discard="response")` 的 `discard` 声明失效丢弃形态（按回调返回类型三分支，三种形态均同时打错误日志）：`"response"` → `Failed` + 契约消息 `"service has been deleted or unregistered, callback ignored."`；`"check"`（checker 用）→ 放行 `CheckStatus.eAccept`；`"none"`（void 语义回调）→ `None`。
+- `weak_func(func, discard=None)` 的 `discard` 声明失效丢弃形态（三种形态均同时打错误日志）：`"response"` → `Failed` + 契约消息 `"service has been deleted or unregistered, callback ignored."`；`"check"`（checker 用）→ 放行 `CheckStatus.eAccept`；`"none"`（void 语义回调）→ `None`。`discard=None` 未显式声明时由**消费槽位注册期按 API 形态自动填充缺省**（checker→`"check"`、monitor→`"none"`、函数池/事件循环→`"response"`，未过槽位直调兜底 `"response"`）；显式声明与槽位不符时**注册期立即 diag_error**（早于回调真正被调用），携带具体值。
 - **双层判活**：包装层查服务注销标志，调用层查服务表命中；服务删除即刻失效。
 - `install_func("/x", self.method)` 注册到**本服务**函数表已自动弱绑定，无需手动处理。
 - 覆写 `deinit()` 主动停止**非弱绑定路径**的残留引用（如自持线程、外部订阅句柄）并注销外部子系统登记。
@@ -227,10 +227,10 @@ class MyService(YomkService):
 
 ## 优雅关闭（shutdown）
 
-`server().shutdown()` 关闭服务器：**幂等**，假定主线程调用。序列为——拒绝新请求 → 排空请求池 → join 异步请求池 → 清空服务表逐个 `deinit`，在途请求安全执行完毕后服务才释放。
+`server().shutdown()` 关闭服务器：**幂等**，假定主线程调用。序列为——拒绝新请求并排空/join 异步请求池 → 清空服务表逐个 `deinit`，在途请求安全执行完毕后服务才释放（排空路径不置位注销标志、不记删除 WARN）。
 
 - **deinit 的四个触发时机**：`srv_name(n).remove()` 删除单个服务；`shutdown()` 关闭全部服务；同名服务被 `add()` 热替换（旧服务先置位注销标志并 deinit，新服务随后 init）；进程退出 atexit 兜底（忘记 shutdown 时）。
-- **关闭后不支持二次 init**：init 进程内幂等由 once 标志把关，`shutdown()` 之后再次 `init()` 不会重建服务器，全部入口回到未初始化守卫态（终结动作 `Invalid`/`-1`、异步静默丢弃、类型化读回退默认值；守卫消息 `"YomkServer is not init"`）。
+- **关闭后不支持二次 init**：init 进程内幂等由 once 标志把关，`shutdown()` 之后再次 `init()` 不会重建服务器，全部入口回到未初始化守卫态（终结动作 `Invalid`/`-1`、异步丢弃并记诊断、类型化读回退默认值；守卫消息 `"YomkServer is not initialized"`）。
 - **`shutdown()` 置空单例**：门面在 `shutdown()` 时置空单例，`instance()` 返回 `None`，不保留已关闭实例快照。
 - `version()` / `instance()` / `shutdown()` 免初始化安全。
 
@@ -268,7 +268,7 @@ class MyService(YomkService):
 1. **运行验证**：工程目录 `bash check_env.sh`（环境/依赖就绪）→ `python main.py`；观察六级别日志行与业务请求响应输出，进程退出无未捕获异常
 2. **测试约定**：工程 `test/` 内为独立可执行脚本，逐用例输出 `[PASS]/[FAIL]` 与 `Test Summary`，存在失败时退出码为 1；驱动侧 `print`，服务体内走日志通道
 3. **框架全量回归**（改动框架源码后）：仓库根 `./build_ubuntu.sh` 构建 → `./test/run_tests.sh` 全量用例全绿
-4. **静态检查**：当前仓库暂未提供静态门禁/sanitizer 脚本，落地后在此补 `run_static_checks.sh` 用法
+4. **静态检查**（改动框架源码后）：仓库根 `bash test/run_static_checks.sh`——ruff（E4/E7/E9/F 规则集，零告警）+ mypy（零告警）双门禁，输出 `[PASS]` 与日志目录
 
 ## 详细参考
 

@@ -29,7 +29,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 
 | 位置 | 简述 |
 |---|---|
-| `src/yomk/` | 新包唯一 Python 面：`boot/ server/ ctx/ event_loop/ fn_pool/ log/ srv_info/` 七域 + `msg/<域>/` 消息子包；每域 `builder.py`（链式 API）+ `py.typed`/`.pyi` 类型桩；PEP 420 命名空间包（`yomk/`、`yomk/msg/` 两层无 `__init__.py`）；模块经 Cython 独立编译为 `yomk/<域>/*.so` |
+| `src/yomk/` | 新包唯一 Python 面：`boot/ server/ ctx/ event_loop/ fn_pool/ log/ srv_info/` 七域 + `msg/<域>/` 消息子包 + `url/<域>/` 端点常量池（纯命名空间层）+ `_diag.py` 诊断通道；链式 API 六域各带 `builder.py`（boot 域为 `YomkBoot.py` 编排基类）+ `py.typed`/`.pyi` 类型桩；PEP 420 命名空间包（`yomk/`、`yomk/msg/`、`yomk/url/` 三层无 `__init__.py`）；模块经 Cython 独立编译为 `yomk/<域>/*.so` |
 | `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池、日志、服务内省六大主题 |
 | `template/` | 脚手架：`project/` 新工程模板、`extension/` 扩展库模板 |
 | `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |
@@ -169,9 +169,9 @@ ctx().all()                              # 跨组聚合：组 → 键元信息�
 ctx().key("speed_ratio").group("robot_a").value(1.0).create()
 ```
 
-组名约定：组名经 `.group(g)` 分面指定，缺省 `"main"`；键所属组随 `ContextKeyInfo.group` 一并内省返回。空组名返回 `eNo` `"group name is empty"`；非 main 组首次寻址即自动创建，监控池每组自持（每组一个单线程池，随建组只增不减）。
+组名约定：组名经 `.group(g)` 分面指定，缺省 `"main"`；键所属组随 `ContextKeyInfo.group` 一并内省返回。空组名返回 `eInvalid` `"group name is empty"`；非 main 组首次寻址即自动创建，监控池每组自持（每组一个单线程池，随建组只增不减）。
 
-内部结构：Context 功能承载在 `ContextGroup`（底层实例组，不继承 `YomkService`）上——键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持，内省快照携带所属组名。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表 `m_customGroup`（dict + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `find_group` 定位 → 组实例委托"。`find_group` 三段式：空组名返回 `eNo "group name is empty"`；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（组不支持销毁，只增不减，同名寻址复用同组）。
+内部结构：Context 功能承载在 `ContextGroup`（底层实例组，不继承 `YomkService`）上——键存储、checker/monitor 门控开关与单线程异步监控池均为每组自持，内省快照携带所属组名。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表 `m_customGroup`（dict + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `find_group` 定位 → 组实例委托"。`find_group` 三段式：空组名返回 `eInvalid "group name is empty"`；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（组不支持销毁，只增不减，同名寻址复用同组）。
 
 完整可运行演示见 `examples/ExampleYomkContext.py`（创建/读取/更新/销毁、checker 拒绝/接受、异步监控）。
 
@@ -305,7 +305,7 @@ resp = srv_info().all()
 ### 9. 服务生命周期与弱绑定 (Weak Binding)
 
 - **deinit 的四个触发时机**：`server().srv_name(n).remove()` 删除单个服务、`server().shutdown()` 关闭全部服务、同名服务被 `add()` 热替换（旧服务先 deinit 再注册新服务）、忘记关闭时进程退出经 atexit 兜底。覆写 `deinit()` 用于停止线程、注销外部资源。
-- **弱绑定**：服务成员函数注册到**外部子系统**（函数池 / 事件循环 / Context checker·monitor / 异步响应回调）时必须经 `self.weak_func(方法)` 包装——服务删除后回调自动判活失效（按 `discard` 声明给出契约返回值），避免访问已注销服务的 `self`；`install_func()` 注册到本服务函数表已自动弱绑定，无需手动处理。
+- **弱绑定**：服务成员函数注册到**外部子系统**（函数池 / 事件循环 / Context checker·monitor / 异步响应回调）时必须经 `self.weak_func(方法)` 包装——服务删除后回调自动判活失效（按 `discard` 声明给出契约返回值），避免访问已注销服务的 `self`；`discard` 省略时由消费槽位按 API 形态自动填充缺省（checker→`"check"`、monitor→`"none"`、函数池/事件循环→`"response"`），显式声明与槽位不符注册期即诊断；`install_func()` 注册到本服务函数表已自动弱绑定，无需手动处理。
 
 详见 [服务总线 YomkServer.md](docs/YomkServer.md)。
 
@@ -411,7 +411,7 @@ examples/
 
 ## 测试
 
-一键测试脚本 `./test/run_tests.sh` 已就绪，测试按模块子目录组织（YomkServer / YomkContext / YomkEventLoop / YomkFunctionPool / YomkLogger / YomkServerInfo），覆盖生命周期、并发与压力场景：
+一键测试脚本 `./test/run_tests.sh` 已就绪，测试按模块子目录组织（yomk_server / yomk_context / yomk_event_loop / yomk_function_pool / yomk_logger / yomk_server_info / yomk_layout），覆盖生命周期、并发与压力场景：
 
 ```bash
 ./test/run_tests.sh                      # 快速模式（压测规模缩为 10000）
@@ -486,7 +486,7 @@ log().tag("demo").info("started, version =", server().version())
 
 ### 命名空间包形态（PEP 420）
 
-`yomk/` 与 `yomk/msg/` 两层是命名空间包：**无 `__init__.py`，`import yomk` 不加载任何子模块，`yomk.__file__ is None`**；六个功能域（`yomk/server` 等）与六个消息子包（`yomk/msg/server` 等）才是普通包。该形态是第三方扩展并入的基础（见 [第三方扩展指南](#第三方扩展指南yomk-命名空间并入)）。
+`yomk/`、`yomk/msg/`、`yomk/url/` 三层是命名空间包：**无 `__init__.py`，`import yomk` 不加载任何子模块，`yomk.__file__ is None`**；七个功能域（`yomk/server` 等）与六个消息子包（`yomk/msg/server` 等）及 `yomk/url/<域>` 常量池子包才是普通包。该形态是第三方扩展并入的基础（见 [第三方扩展指南](#第三方扩展指南yomk-命名空间并入)）。
 
 ### 从 YomkApi 迁移（对照表）
 
@@ -496,12 +496,12 @@ L13 起旧伞门面已删除，按域显式导入替代：
 |---|---|
 | `import YomkApi` | 按域显式导入（见上） |
 | `server()` / `YomkService` / `YomkServer` / `ServerBuilder` / `AsyncRequestBuilder` | `from yomk.server import server, YomkService, YomkServer, ServerBuilder, AsyncRequestBuilder`；`YomkBoot` 独立 boot 域：`from yomk.boot import YomkBoot` |
-| `ctx()` / `YomkContext` / `ContextGroup` | `from yomk.ctx import ctx, YomkContext, ContextGroup` |
-| `fn_pool()` / `YomkFunctionPool` | `from yomk.fn_pool import fn_pool, YomkFunctionPool` |
-| `event_loop()` / `YomkEventLoop` / `EventLoop` / `Event` | `from yomk.event_loop import event_loop, YomkEventLoop, EventLoop, Event` |
-| `log()` / `log_mgr()` / `ConsoleLogger` / `FileLogger` | `from yomk.log import log, log_mgr, ConsoleLogger, FileLogger` |
-| `YomkServerInfo` | `from yomk.srv_info import YomkServerInfo` |
-| `ResStatus` / `Response` | `from yomk.msg.server import ResStatus, Response`（`Response` 更名 `Response`） |
+| `ctx()` / `YomkContext` / `ContextGroup` | `from yomk.ctx import ctx`；内部类经子模块路径：`from yomk.ctx.YomkContext import YomkContext`、`from yomk.ctx.ContextGroup import ContextGroup`（U-12 瘦身后包根不再导出内部类，直接 `from yomk.ctx import YomkContext` 会静默绑定同名子模块而非类） |
+| `fn_pool()` / `YomkFunctionPool` | `from yomk.fn_pool import fn_pool`；`from yomk.fn_pool.YomkFunctionPool import YomkFunctionPool`（包根不导出） |
+| `event_loop()` / `YomkEventLoop` / `EventLoop` / `Event` | `from yomk.event_loop import event_loop, Event`；`from yomk.event_loop.YomkEventLoop import YomkEventLoop`、`from yomk.event_loop.EventLoop import EventLoop`（包根不导出内部类） |
+| `log()` / `log_mgr()` / `ConsoleLogger` / `FileLogger` | `from yomk.log import log, log_mgr`；`from yomk.log.ConsoleLogger import ConsoleLogger`、`from yomk.log.FileLogger import FileLogger`（包根不导出） |
+| `YomkServerInfo` | `from yomk.srv_info.YomkServerInfo import YomkServerInfo`（包根不导出） |
+| `ResStatus` / `Response` | `from yomk.msg.server import ResStatus, Response`（旧 `YomkResponse` 更名 `Response`） |
 | `Context` 等 ctx 消息 | `from yomk.msg.ctx import ...` |
 | `Function` 等 fn_pool 消息 | `from yomk.msg.fn_pool import ...` |
 | `Log` 等 log 消息 | `from yomk.msg.log import ...` |
@@ -517,8 +517,8 @@ L13 起旧伞门面已删除，按域显式导入替代：
 | 目录 | 内容 | 纪律 |
 |---|---|---|
 | `src/yomk/msg/<域>/`（如 `extension`） | 扩展消息类型（消息子包，与 `yomk/msg/server` 等平级） | 不得创建 `yomk/msg/__init__.py` |
-| `src/yomk/<域>/`（如 `extension`） | 扩展运行时域（与 `yomk/server` 等平级） | 不得创建 `yomk/__init__.py` |
+| `src/yomk/<域>/`（如 `extension`） | 扩展运行时域（与 `yomk/server` 等平级） | 不得创建 `yomk/__init__.py`、`yomk/msg/__init__.py`、`yomk/url/__init__.py` |
 
-- 命名空间守卫：`yomk/`、`yomk/msg/` 两层无 `__init__.py` 是合并的前提，扩展仓库自带任一则遮蔽框架其它子包
+- 命名空间守卫：`yomk/`、`yomk/msg/`、`yomk/url/` 三层无 `__init__.py` 是合并的前提，扩展仓库自带任一则遮蔽框架其它子包
 - 第三方运行时服务**不做隐式发现**：框架只拉起 5 个内置服务，扩展服务须由使用方显式 `server().srv(ExtService).create()` 注册
 - 完整可运行模板见 `template/extension/`（`src/yomk/msg/extension` + `src/yomk/extension` + 安装/测试脚本），其 `install.sh` 内置命名空间守卫与导入冒烟

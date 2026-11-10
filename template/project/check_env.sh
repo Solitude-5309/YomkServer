@@ -12,7 +12,7 @@ fi
 echo "-- python3: $(python3 --version 2>&1)"
 
 if python3 -c "import yomk.server" 2>/dev/null; then
-    echo "-- yomk 命名空间锚点: yomk.__file__ = $(python3 -c 'import yomk; print(yomk.__file__)')（None 即 PEP 420 命名空间包正常形态）"
+    echo "-- yomk 命名空间锚点: yomk.__file__ = $(python3 -c 'import yomk; print(getattr(yomk, "__file__", None))')（None 即 PEP 420 命名空间包正常形态）"
     echo "-- 框架版本: $(python3 -c 'import yomk.server; print(yomk.server.__version__)')"
     echo "环境检查通过"
 else
