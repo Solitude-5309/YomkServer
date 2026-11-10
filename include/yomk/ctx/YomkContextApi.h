@@ -461,6 +461,16 @@ public:
     {
         return ContextValue<T>(m_key, m_group);
     }
+    /**
+     * @brief Get the ctx module version string
+     * @return Version string (compile-time constant, does not go through the request channel)
+     */
+    // @zh: 获取 ctx 模块版本号
+    // @zh: return 版本字符串（编译期常量，不经请求通道）
+    std::string version()
+    {
+        return YOMK_CTX_VERSION;
+    }
 };
 }  // namespace yomk::detail
 

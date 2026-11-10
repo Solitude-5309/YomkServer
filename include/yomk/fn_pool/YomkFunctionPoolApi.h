@@ -225,6 +225,16 @@ public:
         }
         return yomk::server().url(yomk::url::fpAll).request();
     }
+    /**
+     * @brief Get the fn_pool module version string
+     * @return Version string (compile-time constant, does not go through the request channel)
+     */
+    // @zh: 获取 fn_pool 模块版本号
+    // @zh: return 版本字符串（编译期常量，不经请求通道）
+    std::string version()
+    {
+        return YOMK_FN_POOL_VERSION;
+    }
 };
 }  // namespace yomk::detail
 

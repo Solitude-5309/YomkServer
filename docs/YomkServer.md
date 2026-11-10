@@ -43,7 +43,7 @@ builder 按值传递、全程 `auto` 接收，仅限单表达式内联使用（�
 | 链 | 终结与返回 |
 |---|---|
 | `yomk::server().async_thread(n)` | `.init()`：初始化单例并自动启动内置服务（Logger / Context / EventLoop / FunctionPool / ServerInfo）；`n` 为异步请求线程池大小（省略 = 0 自动检测），仅首次生效；进程内幂等，并挂 atexit 兜底销毁 |
-| — | `.version()`：版本字符串，免初始化可用 |
+| — | `.version()`：框架版本字符串，免初始化可用；各域入口（`ctx()` / `event_loop()` / `fn_pool()` / `log_mgr()` / `srv_info()`）同样提供 `.version()` 模块版本终结（编译期常量直返，版本号集中定义于顶层 CMakeLists，支持按域独立 bump） |
 | — | `.instance()`：`shared_ptr<YomkServer>` 全局快照；未初始化返回 `nullptr` |
 | — | `.shutdown()`：关闭服务器（见"注意事项"）；未初始化空转 |
 | `yomk::server().srv<T>(name)` | `.create()` → `int`：创建并注册 `YomkService` 派生服务；`name` 省略则沿用 T 构造时的默认名；0 成功，-1 失败（未初始化 / 未先调 `srv<T>` / `T::init()` 非 0） |

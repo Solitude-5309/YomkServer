@@ -45,7 +45,7 @@ public:
         auto srv = YomkServerRef::serverSnapshot();
         if (!srv)
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return srv->request(m_url, m_msg);
     }

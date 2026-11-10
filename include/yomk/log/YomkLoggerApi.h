@@ -827,6 +827,16 @@ public:
         }
         return yomk::server().url(yomk::url::loggerAll).request();
     }
+    /**
+     * @brief Get the log module version string
+     * @return Version string (compile-time constant, does not go through the request channel)
+     */
+    // @zh: 获取 log 模块版本号
+    // @zh: return 版本字符串（编译期常量，不经请求通道）
+    std::string version()
+    {
+        return YOMK_LOG_VERSION;
+    }
 };
 }  // namespace yomk::detail
 

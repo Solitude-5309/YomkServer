@@ -7,7 +7,18 @@ include(cmake/AbiInfo.cmake)
 option(YOMK_BUILD_TESTS "Build YomkServer internal tests" OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(Yomk VERSION 3.6.10 LANGUAGES CXX)
+project(Yomk VERSION 3.6.11 LANGUAGES CXX)
+
+# ---------- 各域模块版本号 ----------
+# 集中定义，当前全部取项目版本号；若某域需要独立版本，只改对应行。
+# 各域以 PUBLIC 编译定义注入对应 API 头，经各域链式入口的 version() 终结对外可见（见下方 target_compile_definitions）。
+set(YOMK_BOOT_VERSION "${PROJECT_VERSION}")   # boot 域暂无 version() 消费点（YomkBoot 为抽象接口），宏预留对齐模块化约定
+set(YOMK_CTX_VERSION "${PROJECT_VERSION}")
+set(YOMK_EVENT_LOOP_VERSION "${PROJECT_VERSION}")
+set(YOMK_FN_POOL_VERSION "${PROJECT_VERSION}")
+set(YOMK_LOG_VERSION "${PROJECT_VERSION}")
+set(YOMK_SRV_INFO_VERSION "${PROJECT_VERSION}")
+# server 域即框架本体，沿用既有 YOMKSERVER_VERSION（= 项目版本号），不重复定义
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 # compile_commands.json 导出到源码根目录，供 clangd 使用：
@@ -87,7 +98,17 @@ add_library(YomkServer SHARED
 target_compile_definitions(YomkServer PRIVATE YOMK_LIBRARY)
 
 # 编译期注入框架版本号（对应顶层 project(Yomk VERSION x.x.x) 定义的 VERSION），供 YOMK_VERSION 获取
-target_compile_definitions(YomkServer PUBLIC YOMKSERVER_VERSION="${PROJECT_VERSION}")  # 闭环 6：version() 终结进头文件内联，宏须对消费方可见
+# 编译期注入版本号（对应顶层 project(Yomk VERSION x.x.x) 定义的 VERSION 及顶部各域模块版本号）
+# 闭环 6：version() 终结进头文件内联，宏须对消费方可见
+target_compile_definitions(YomkServer PUBLIC
+    YOMKSERVER_VERSION="${PROJECT_VERSION}"       # 框架本体（server 域）
+    YOMK_BOOT_VERSION="${YOMK_BOOT_VERSION}"
+    YOMK_CTX_VERSION="${YOMK_CTX_VERSION}"
+    YOMK_EVENT_LOOP_VERSION="${YOMK_EVENT_LOOP_VERSION}"
+    YOMK_FN_POOL_VERSION="${YOMK_FN_POOL_VERSION}"
+    YOMK_LOG_VERSION="${YOMK_LOG_VERSION}"
+    YOMK_SRV_INFO_VERSION="${YOMK_SRV_INFO_VERSION}"
+)
 
 # 导出头文件
 target_include_directories(YomkServer

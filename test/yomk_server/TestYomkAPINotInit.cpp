@@ -1,7 +1,7 @@
 // 链式 API 未初始化守卫全集测试
 //
 // 覆盖内容：
-// 1. version() 免初始化可调用（不依赖单例，返回非空版本号）
+// 1. version() 与各域 version() 免初始化可调用（不依赖单例，返回非空版本号）
 // 2. 未初始化守卫默认值：instance()() 为空、shutdown() 安全空转（幂等）；
 // request 返回 ResStatus::Invalid + 契约消息 "YomkServer is not initialized"；asyncRequest 静默返回
 // 回调不触发；create()/add()/remove() 返回 -1
@@ -59,10 +59,15 @@ int main()
 {
     std::cout << "===== 1. version 免初始化可调用 =====" << std::endl;
     {
-        // YOMKSERVER_VERSION 为库私有编译定义（target_compile_definitions PRIVATE），
-        // 测试侧不引用宏，以返回非空字符串实证免初始化可用
+        // 测试侧不引用版本宏，以返回非空字符串实证免初始化可用；
+        // 各域模块版本号终结为编译期常量直返，同样不经请求通道、免初始化可用
         std::string ver = yomk::server().version();
         YOMK_TEST_CHECK(!ver.empty(), "version() 未初始化时返回非空版本号: " + ver);
+        YOMK_TEST_CHECK(!yomk::ctx().version().empty(), "ctx().version() 未初始化时返回非空版本号");
+        YOMK_TEST_CHECK(!yomk::event_loop().version().empty(), "event_loop().version() 未初始化时返回非空版本号");
+        YOMK_TEST_CHECK(!yomk::fn_pool().version().empty(), "fn_pool().version() 未初始化时返回非空版本号");
+        YOMK_TEST_CHECK(!yomk::log_mgr().version().empty(), "log_mgr().version() 未初始化时返回非空版本号");
+        YOMK_TEST_CHECK(!yomk::srv_info().version().empty(), "srv_info().version() 未初始化时返回非空版本号");
     }
 
     std::cout << "===== 2. instance() 与未初始化 shutdown 空转 =====" << std::endl;

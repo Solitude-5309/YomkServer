@@ -7,6 +7,7 @@
 // 3. API 层独有守卫（已初始化态，区别于服务器层守卫）：add(nullptr) 返回 -1、
 // remove("") 返回 -1；增删往返、重复删除与守卫放行至服务器层
 // 4. 幂等：二次 shutdown 不崩溃；进程退出 atexit 幂等清理（正常退出码 0 即证）
+// 5. 各域模块版本号：与框架版本一致（集中取项目版本号），shutdown 后仍可调用
 //
 // 说明：本程序验证已初始化态与关闭后态，与 TestYomkAPINotInit（未初始化态）进程隔离
 //
@@ -19,6 +20,11 @@
 #include <vector>
 
 #include "yomk/server/YomkServerApi.h"
+#include "yomk/srv_info/YomkServerInfoApi.h"
+#include "yomk/ctx/YomkContextApi.h"
+#include "yomk/event_loop/YomkEventLoopApi.h"
+#include "yomk/fn_pool/YomkFunctionPoolApi.h"
+#include "yomk/log/YomkLoggerApi.h"
 
 static int g_failed = 0;
 
@@ -111,6 +117,19 @@ int main()
 
         yomk::server().init();
         YOMK_TEST_CHECK(yomk::server().instance() == nullptr, "关闭后 init 再调不再重建，实例保持为空（call_once 已消耗，不支持二次初始化）");
+    }
+
+    std::cout << "===== 6. 各域模块版本号（shutdown 后仍可调用，编译期常量直返） =====" << std::endl;
+    {
+        const std::string fw = yomk::server().version();
+        YOMK_TEST_CHECK(!fw.empty(), "框架版本号非空");
+        // 当前各域版本号集中取项目版本号（见顶层 CMakeLists），与框架版本一致；
+        // 某域独立 bump 版本后仅需更新该域断言
+        YOMK_TEST_CHECK(yomk::ctx().version() == fw, "ctx 域版本号与框架一致: " + yomk::ctx().version());
+        YOMK_TEST_CHECK(yomk::event_loop().version() == fw, "event_loop 域版本号与框架一致");
+        YOMK_TEST_CHECK(yomk::fn_pool().version() == fw, "fn_pool 域版本号与框架一致");
+        YOMK_TEST_CHECK(yomk::log_mgr().version() == fw, "log 域版本号与框架一致");
+        YOMK_TEST_CHECK(yomk::srv_info().version() == fw, "srv_info 域版本号与框架一致");
     }
 
     std::cout << (g_failed == 0 ? "ALL PASSED" : "SOME FAILED") << " (" << g_failed << " failed)" << std::endl;

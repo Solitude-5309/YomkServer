@@ -131,6 +131,16 @@ public:
         }
         return yomk::server().url(yomk::url::srvAll).request();
     }
+    /**
+     * @brief Get the srv_info module version string
+     * @return Version string (compile-time constant, does not go through the request channel)
+     */
+    // @zh: 获取 srv_info 模块版本号
+    // @zh: return 版本字符串（编译期常量，不经请求通道）
+    std::string version()
+    {
+        return YOMK_SRV_INFO_VERSION;
+    }
 };
 }  // namespace yomk::detail
 

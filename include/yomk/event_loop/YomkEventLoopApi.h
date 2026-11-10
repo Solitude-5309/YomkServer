@@ -259,6 +259,16 @@ public:
         }
         return yomk::server().url(yomk::url::loopAll).request();
     }
+    /**
+     * @brief Get the event_loop module version string
+     * @return Version string (compile-time constant, does not go through the request channel)
+     */
+    // @zh: 获取 event_loop 模块版本号
+    // @zh: return 版本字符串（编译期常量，不经请求通道）
+    std::string version()
+    {
+        return YOMK_EVENT_LOOP_VERSION;
+    }
 };
 }  // namespace yomk::detail
 
