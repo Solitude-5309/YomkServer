@@ -8,6 +8,7 @@ from yomk.msg.ctx import (
 )
 from yomk.msg.server import ResStatus, Response
 from yomk.server import _facade
+from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.ctx import (
     CTX_ALL,
     CTX_CREATE,
@@ -115,12 +116,15 @@ class ContextBuilder:
             CTX_DESTROY, ContextGroupKey(self._group, self._key)))
 
     def checker_fn(self, check_func):
-        self._checker = check_func
+        # checker 槽期望 CheckStatus：未声明 discard 的弱绑定回调按 "check"
+        # 填充缺省；显式填错注册期即诊断（U-08 落点，见 YomkService._yomk_weak_slot_fill）
+        self._checker = _yomk_weak_slot_fill(check_func, "checker", "check")
         self._cb_kind = "checker"
         return self
 
     def monitor_fn(self, monitor_func):
-        self._monitor = monitor_func
+        # monitor 槽 void 语义：未声明 discard 按 "none" 填充；显式填错注册期即诊断
+        self._monitor = _yomk_weak_slot_fill(monitor_func, "monitor", "none")
         self._cb_kind = "monitor"
         return self
 

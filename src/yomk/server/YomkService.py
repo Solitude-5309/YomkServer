@@ -66,11 +66,15 @@ class YomkService:
         # 注销标志查询
         return self.m_deleted
 
-    def weak_func(self, func, discard="response"):
+    def weak_func(self, func, discard=None):
         # 包装回调为弱绑定判活回调：weakref(self) 引用计数层
         # + deleted() 注销标志层，双层独立生效；丢弃时按 discard 声明给出契约返回值
-        # （"response" 返 eNo+契约消息 / "check" 放行 eAccept / "none" 返 None——
-        # 动态类型下由调用方声明丢弃形态）
+        # （"response" 返 eNo+契约消息 / "check" 放行 eAccept / "none" 返 None）
+        # discard=None 表示未显式声明：由消费槽位按 API 形态填充缺省
+        # （checker→"check"、monitor→"none"、fn_pool/event_loop→"response"，
+        # 见 _yomk_weak_slot_fill）；未过槽位直调的兜底 "response"（兼容旧默认）。
+        # 包装结果携带 __yomk_discard__（当前生效值）与
+        # __yomk_discard_explicit__（是否用户显式声明）元数据，供槽位注册期校验
         # 绑定方法持实例强引用，直接持有会抵消判活：经 WeakMethod 弱化宿主；
         # 拆分两 helper 是刻意的——绑定方法不得被
         # 本函数闭包捕获（cython 函数级 scope 会持 func 参数），仅裸函数参与捕获
@@ -88,9 +92,14 @@ class YomkService:
             srv = self_ref()
             live_func = meth_ref()
             if srv is None or live_func is None or srv.m_deleted:
-                return _yomk_weak_discard_result(discard)
+                # discard=None（未过槽位直调）按 "response" 解析，兼容旧默认
+                return _yomk_weak_discard_result(wrapper.__yomk_discard__
+                                                 if wrapper.__yomk_discard__ is not None
+                                                 else "response")
             return live_func(*args, **kwargs)
 
+        wrapper.__yomk_discard__ = discard
+        wrapper.__yomk_discard_explicit__ = discard is not None
         return wrapper
 
     def _weak_plain(self, func, discard):
@@ -100,9 +109,14 @@ class YomkService:
         def wrapper(*args, **kwargs):
             srv = self_ref()
             if srv is None or srv.m_deleted:
-                return _yomk_weak_discard_result(discard)
+                # discard=None（未过槽位直调）按 "response" 解析，兼容旧默认
+                return _yomk_weak_discard_result(wrapper.__yomk_discard__
+                                                 if wrapper.__yomk_discard__ is not None
+                                                 else "response")
             return func(*args, **kwargs)
 
+        wrapper.__yomk_discard__ = discard
+        wrapper.__yomk_discard_explicit__ = discard is not None
         return wrapper
 
     def init(self):
@@ -183,6 +197,27 @@ class YomkService:
             diag_error("server has been destroyed, async request ignored")
             return
         srv.async_request(url, pkg, callback)
+
+
+def _yomk_weak_slot_fill(cb, slot, expected):
+    # 消费槽位的 discard 适配（注册期、早于回调真正被调用）：
+    # - weak_func 未显式声明 discard → 填充槽位缺省 expected
+    #   （checker 槽 "check"、monitor 槽 "none"、fn_pool/event_loop 槽 "response"）；
+    # - 显式声明与槽位不符 → 立即诊断告知问题所在（保留用户显式值）；
+    # - 非 weak_func 产物（裸回调，无 __yomk_discard_explicit__ 元数据）→
+    #   不校验，原样透传。判据用 explicit 属性存在性：__yomk_discard__ 的 None
+    # 值兼有"未声明"语义，不能作"非 weak_func 产物"的判据
+    if getattr(cb, "__yomk_discard_explicit__", None) is None:
+        return cb
+    if not cb.__yomk_discard_explicit__:
+        cb.__yomk_discard__ = expected
+        return cb
+    d = getattr(cb, "__yomk_discard__", None)
+    if d != expected:
+        diag_error("weak_func discard '" + d + "' mismatches " + slot
+                   + " slot (expects '" + expected
+                   + "'), discarded callback will return wrong type")
+    return cb
 
 
 def _yomk_weak_discard_result(discard):

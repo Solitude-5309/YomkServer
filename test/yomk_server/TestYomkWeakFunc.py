@@ -1,7 +1,7 @@
 """
 TestYomkWeakFunc.py —— YomkService.weak_func 弱绑定生命周期语义测试
 
-覆盖内容（4 节）：
+覆盖内容（5 节）：
 1. 存活路径：四类丢弃形态回调均真实执行（"none"/"response"/"check"/默认返回值），
    install_func 自动弱绑定经 invoke 命中执行
 2. 销毁丢弃（引用计数路径）：服务实例失去引用（del + gc.collect()）后回调丢弃——
@@ -9,14 +9,18 @@ TestYomkWeakFunc.py —— YomkService.weak_func 弱绑定生命周期语义测�
    eNo+契约消息、"check" 默认放行 eAccept
 3. 删除即停（注销标志路径）：持引用不释放经框架 del_service 置位注销标志，回调与
    自动弱绑定 invoke 立即丢弃（双层判活标志层独立于引用计数生效）
-4. 丢弃不执行实证：所有丢弃用例均以副作用计数未变化断言，而非仅看返回值
+4. 槽位适配（U-08 落点）：discard 未声明时由消费槽位按 API 形态填充缺省
+   （checker→"check"、monitor→"none"、fn_pool/event_loop→"response"），未过槽位
+   直调兜底 "response"；显式声明与槽位不符注册期立即诊断；裸回调无元数据不校验；
+   槽位填充后服务死亡：checker 丢弃返回 eAccept（修复前误返 Response）
+5. 丢弃不执行实证：所有丢弃用例均以副作用计数未变化断言，而非仅看返回值
 
 语言机制说明：
 - 不存在构造期告警分支：python 无 shared_from_this 类机制，
   weakref 在 __init__ 内即生效，不存在"构造期绑定永久失效"场景；"绑定后对象销毁"
   契约由第 2 节引用计数路径承载
-- 丢弃形态不设按静态返回类型的分支（python 动态类型）：由调用方经
-  weak_func 的 discard 声明参数（"none"/"response"/"check"/默认返回值）指定
+- 丢弃形态不设按静态返回类型的分支（python 动态类型）：缺省由消费槽位按 API 形态
+  填充（第 4 节），调用方也可经 weak_func 的 discard 参数显式声明（误配注册期诊断）
 
 说明：不依赖单例与服务器生命周期，YomkServer.create 直接持有，服务由测试本地变量
 控制销毁时机（避开 init 单例约束，单进程即可覆盖全部场景）
@@ -25,11 +29,16 @@ TestYomkWeakFunc.py —— YomkService.weak_func 弱绑定生命周期语义测�
 """
 
 import gc
+import io
+import contextlib
 import sys
 
 from yomk.msg.server import ResStatus, Response
 from yomk.msg.ctx import CheckStatus, Context
 from yomk.server import YomkServer, YomkService
+from yomk.ctx.builder import ContextBuilder  # 白盒：直用内部 builder 验证槽位适配
+from yomk.fn_pool.builder import FnPoolBuilder
+from yomk.event_loop.builder import EventLoopBuilder
 
 g_failed = 0
 
@@ -184,12 +193,83 @@ def test_mark_deleted_discard(server):
     check(srv.deleted() is True, "删除即停：deleted() 查询返回 True")
 
 
+# 4. 槽位适配（U-08 落点）：discard 未声明由消费槽位按 API 形态填充缺省；
+#    显式误配注册期立即诊断；裸回调不校验；填充后丢弃返回类型正确
+def test_slot_fill(server):
+    srv = BindSrv(server)
+
+    # 未声明 discard：各槽位按 API 形态填充缺省
+    cb_check = srv.weak_func(lambda c: CheckStatus.eReject)
+    ContextBuilder().key("k").checker_fn(cb_check)
+    check(cb_check.__yomk_discard__ == "check", "槽位适配：checker 槽未声明填充 'check'")
+
+    cb_monitor = srv.weak_func(lambda c: None)
+    ContextBuilder().key("k").monitor_fn(cb_monitor)
+    check(cb_monitor.__yomk_discard__ == "none", "槽位适配：monitor 槽未声明填充 'none'")
+
+    cb_fn = srv.weak_func(lambda p: Response(ResStatus.eOk, "ok"))
+    FnPoolBuilder().fn(cb_fn)
+    check(cb_fn.__yomk_discard__ == "response", "槽位适配：fn_pool 槽未声明填充 'response'")
+
+    cb_el = srv.weak_func(lambda p: Response(ResStatus.eOk, "ok"))
+    EventLoopBuilder().handle_fn(cb_el)
+    check(cb_el.__yomk_discard__ == "response", "槽位适配：event_loop 槽未声明填充 'response'")
+
+    # 显式声明与槽位一致：注册期无诊断
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        ContextBuilder().key("k").checker_fn(
+            srv.weak_func(lambda c: CheckStatus.eAccept, discard="check"))
+    check("mismatches" not in buf.getvalue(), "槽位适配：显式 'check' 与 checker 槽一致无诊断")
+
+    # 显式声明与槽位不符：注册期立即诊断（早于回调真正被调用），携带具体值
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        ContextBuilder().key("k").checker_fn(
+            srv.weak_func(lambda c: None, discard="response"))
+    check("weak_func discard 'response' mismatches checker slot (expects 'check')"
+          in buf.getvalue(), "槽位适配：checker 槽显式误配注册期诊断并携带具体值")
+
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        ContextBuilder().key("k").monitor_fn(
+            srv.weak_func(lambda c: None, discard="response"))
+    check("mismatches monitor slot (expects 'none')" in buf.getvalue(),
+          "槽位适配：monitor 槽显式误配注册期诊断")
+
+    # 裸回调（非 weak_func 产物，无元数据）：不校验原样透传
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        ContextBuilder().key("k").checker_fn(lambda c: CheckStatus.eReject)
+    check("mismatches" not in buf.getvalue(), "槽位适配：裸回调无元数据不校验")
+
+    # 槽位填充后的丢弃行为：服务死亡 checker 丢弃返回 eAccept（修复前误返 Response）
+    cb2 = srv.weak_func(lambda c: CheckStatus.eReject)
+    ContextBuilder().key("k").checker_fn(cb2)
+    del cb_check, cb_monitor, cb_fn, cb_el
+    del srv  # 释放强引用走引用计数丢弃路径
+    gc.collect()
+    status = cb2(None)
+    check(status == CheckStatus.eAccept,
+          "槽位适配：填充后服务死亡 checker 丢弃返回 eAccept（修复前误返 Response）")
+
+    # 兼容性：未过槽位直调的未声明回调兜底 "response"（旧默认不变）
+    srv2 = BindSrv(server)
+    cb_direct = srv2.weak_func(lambda p: Response(ResStatus.eOk, "alive"))
+    del srv2
+    gc.collect()
+    resp = cb_direct(None)
+    check(resp.status == ResStatus.eNo and DISCARD_MSG in resp.msg,
+          "槽位适配：未过槽位直调兜底 'response'（旧默认兼容）")
+
+
 def main():
     server = YomkServer.create(1)
 
     test_alive_callbacks(server)
     test_destroy_discard(server)
     test_mark_deleted_discard(server)
+    test_slot_fill(server)
 
     if g_failed > 0:
         print(f"TestYomkWeakFunc failed, count: {g_failed}")

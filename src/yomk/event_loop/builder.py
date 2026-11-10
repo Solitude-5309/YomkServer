@@ -1,6 +1,7 @@
 from yomk.event_loop.EventLoop import Event
 from yomk.msg.event_loop import EventLoopPkg, EventLoopQuery
 from yomk.server import _facade
+from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.event_loop import (
     LOOP_ALL,
     LOOP_DESTROY,
@@ -30,7 +31,9 @@ class EventLoopBuilder:
         return self
 
     def handle_fn(self, fn):
-        self._fn = fn
+        # event_loop 槽期望 Response（响应供 post_wait 等待者读取）：未声明 discard
+        # 按 "response" 填充；显式填错注册期即诊断（U-08 落点）
+        self._fn = _yomk_weak_slot_fill(fn, "event_loop", "response")
         return self
 
     def msg_name(self, msg_name):

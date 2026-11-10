@@ -1,5 +1,6 @@
 from yomk.msg.fn_pool import CallFunction, Function
 from yomk.server import _facade
+from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.fn_pool import (FP_ALL, FP_CALL, FP_NAME, FP_NAMES,
                               FP_REGISTER, FP_UNREGISTER)
 
@@ -18,7 +19,9 @@ class FnPoolBuilder:
         return self
 
     def fn(self, f):
-        self._fn = f
+        # fn_pool 槽期望 Response：未声明 discard 的弱绑定回调按 "response" 填充；
+        # 显式填错注册期即诊断（U-08 落点，见 YomkService._yomk_weak_slot_fill）
+        self._fn = _yomk_weak_slot_fill(f, "fn_pool", "response")
         return self
 
     def msg_name(self, m):

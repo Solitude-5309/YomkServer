@@ -87,17 +87,18 @@ class MyService(YomkService):
     def init(self):
         fn_pool().fn_name("my_work").fn(self.weak_func(self.my_work)).install()
 
-        # checker/monitor 同一 weak_func 适配；前提是键已存在（先 create 再注册）
+        # checker/monitor 同一 weak_func 适配，discard 可省略——消费槽位按 API 形态
+        # 自动填充缺省（checker→"check"、monitor→"none"）；前提是键已存在（先 create 再注册）
         ctx().key("k").value("v").create()
-        ctx().key("k").checker_fn(self.weak_func(self.my_check, discard="check")).apply()
-        ctx().key("k").monitor_fn(self.weak_func(self.my_monitor, discard="none")).apply()
+        ctx().key("k").checker_fn(self.weak_func(self.my_check)).apply()
+        ctx().key("k").monitor_fn(self.weak_func(self.my_monitor)).apply()
 
         # 异步响应回调：框架不自动弱绑定，同样用 weak_func（普通 lambda 须自包含数据）
         server().url("/OtherService/func").async_(self.weak_func(self.on_resp)).request()
         return 0
 ```
 
-`weak_func(func, discard="response")` 的 `discard` 声明失效丢弃形态（按回调返回类型三分支）：`"response"` 得 `Failed` + 契约消息 `"service has been deleted or unregistered, callback ignored."`；`"check"`（checker 用）放行 `CheckStatus.eAccept`；`"none"`（void 语义回调）得 `None`；三种形态均同时打错误日志。
+`weak_func(func, discard=None)` 的 `discard` 声明失效丢弃形态：`None`（缺省，未显式声明）由**消费槽位注册期按 API 形态自动填充**——checker 槽填 `"check"`、monitor 槽填 `"none"`、fn_pool/event_loop 槽填 `"response"`，未过槽位直调兜底 `"response"`；也可显式声明：`"response"` 得 `eNo` + 契约消息 `"service has been deleted or unregistered, callback ignored."`、`"check"`（checker 用）放行 `CheckStatus.eAccept`、`"none"`（void 语义回调）得 `None`，三种形态均同时打错误日志。显式声明与槽位不符时**注册期立即打错误诊断**（早于回调真正被调用），携带具体值告知问题所在；裸回调（非 weak_func 产物）无丢弃契约，不做校验。
 
 ## 注意事项
 

@@ -65,7 +65,7 @@ ctx().key("config").destroy()          # 删除键
 - **键级回调注册前提**：`checker_fn`/`monitor_fn` 只能注册到**已存在**的键（键不存在返回 `Failed "context key '<key>' does not exist"`），即先 `create()` 再注册。
 - **Checker 生效条件**：组级开关 ON **且**该键已注册 checker 才参与门控；门控在写锁内执行，**回调内重入 set 会死锁**。
 - **Monitor 执行语义**：`.async_(True)` 经该组单线程池按 set 提交序保序送达；同步形态在写锁外即时执行，并发 set 下不保证跨线程序。仅通知"发生了一次 set"并回传该次键值快照（`Context` 包，`key/value/group` 字段），**不保证快照实时性**（读最新值请再走 `get()`）。
-- 服务成员函数注册为 checker/monitor 时须用 `self.weak_func(...)` 弱绑定（checker 用 `discard="check"`、monitor 用 `discard="none"`），见 [YomkServer.md](YomkServer.md) 弱绑定一节。
+- 服务成员函数注册为 checker/monitor 时须用 `self.weak_func(...)` 弱绑定，`discard` 可省略——消费槽位注册期按 API 形态自动填充缺省（checker→`"check"`、monitor→`"none"`）；也可显式声明，误配注册期即诊断。见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 内部结构
 
