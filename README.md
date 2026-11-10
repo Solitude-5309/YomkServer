@@ -287,7 +287,25 @@ cmake --build . -j
 YOMK_TEST_STRESS_SCALE=50000 ./bin/TestYomkEventLoopStress
 ```
 
-### 4. 一键静态代码检查
+### 4. 一键运行全部示例
+
+默认构建即产出 6 个 Examples 示例可执行（输出到 `<仓库根>/bin/`），`run_example.sh` 与 `run_tests.sh` 同一套运转逻辑，一键跑完全部示例：
+
+```bash
+./test/run_example.sh                     # 全部 6 个示例
+./test/run_example.sh ExampleYomkService  # 只跑指定示例（可多个，拼错名字报错退出）
+./test/run_example.sh --bin DIR           # 指定示例可执行目录（默认 <仓库根>/bin）
+./test/run_example.sh --timeout N         # 单示例超时秒数（默认 300）
+```
+
+运行器行为与 `run_tests.sh` 一致：
+
+- **失败即停**：任一示例退出码非 0（含超时被杀）立即终止，终端输出日志末尾 30 行与完整日志路径
+- **日志落盘**：`test/test_logs/<时间戳>_example/` 下每个示例一份日志 + `summary.log` 汇总
+- **现场清理**：每个示例在独立临时目录运行（隔离 CWD）；临时产物统一落 `test/test_logs/tmp`，退出时整目录删除（含失败/中断/超时路径，经 EXIT trap 兜底）
+- **无人值守**：示例均以 `getchar()` 等回车退出，运行器统一以 `</dev/null` 供其立即 EOF 正常返回
+
+### 5. 一键静态代码检查
 
 cppcheck + clang-tidy 双工具零告警门禁（任一告警即非零退出），全量扫描 `src`（含全部 Modules）与 `include`：
 

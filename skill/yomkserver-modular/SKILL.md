@@ -314,6 +314,7 @@ YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定�
 2. **测试程序**：扩展模板自带 `test/`（独立 main + `[PASS]/[FAIL]` 断言 + Test Summary 汇总，退出码 0/1）；新增业务接口时同步在测试程序中追加用例，`build_ubuntu.sh` 选择编译测试后在 `test/build/` 运行验证
 3. **框架质量工具**（框架仓库内，可为生成的工程参考搭建同类能力）：
    - `test/run_tests.sh`：一键全量测试（`--full` 完整规模 / `--timeout N` 单测试超时；压测规模由环境变量 `YOMK_TEST_STRESS_SCALE` 参数化）
+   - `test/run_example.sh`：一键运行 examples/ 全部示例（与 `run_tests.sh` 同一套运转逻辑：失败即停、日志落盘 `test/test_logs/<时间戳>_example/`、独立临时目录隔离并清理；支持位置参数单选示例、`--bin`/`--timeout`；示例以 `</dev/null` 自动越过 `getchar()` 等回车退出）
    - `test/run_static_checks.sh`：cppcheck + clang-tidy 零告警门禁（`--cppcheck` / `--tidy` 单独运行；依赖仓库根 `compile_commands.json`）
    - `YOMK_TEST_SANITIZER=off|asan|tsan`：CMake 测试构建的 sanitizer 开关
    - 测试组织范式：`test/` 按模块分子目录，每个被测主题一个独立可执行程序（纯 main + CHECK 断言）

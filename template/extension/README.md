@@ -67,7 +67,7 @@ extension/
 ```cpp
 #include <yomk/server/YomkServerApi.h>
 #include <yomk/extension/ExtensionApi.h>
-#include <iostream>
+#include <yomk/log/YomkLoggerApi.h>
 
 using namespace yomk;
 
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
-        std::cout << "version: " << version->d << std::endl; // 输出: extension v0.0.1
+        yomk::log().info("version: ", version->d); // 输出: extension v0.0.1
     }
 
     return 0;
