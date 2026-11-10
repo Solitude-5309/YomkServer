@@ -118,7 +118,7 @@ int MyService::init()
 }
 ```
 
-失效后的丢弃行为（按回调返回类型）：`Response` 回调得到 `ResStatus::Failed` + "service has been deleted or unregistered, callback ignored."；checker 回调放行（`CheckStatus::Accept`）；void 回调直接丢弃；其他返回类型得到 `Ret{}` 默认值；均同时打错误日志。
+失效后的丢弃行为（按回调返回类型）：`Response` 回调得到 `ResStatus::Failed` + "service has been deleted or unregistered, callback ignored"；checker 回调放行（`CheckStatus::Accept`）；void 回调直接丢弃；其他返回类型得到 `Ret{}` 默认值；均同时打错误日志。
 
 ## 注意事项
 

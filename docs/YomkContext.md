@@ -45,7 +45,7 @@ auto val = yomk::ctx().key("config").msg<yomk::msgs::String>().with_default(null
 
 // 3. 变更前校验门控：只能注册到已存在的键；组开关默认关，注册后须显式 enable
 yomk::ctx().key("config").checker_fn([](const yomk::payload::Context& ctx) {
-    // Accept 放行本次 set；Reject 拦截（set 返回 Failed "checker reject set context"，monitor 不触发）
+    // Accept 放行本次 set；Reject 拦截（set 返回 Failed "set context key '<键>' rejected by checker"，monitor 不触发）
     return yomk::payload::CheckStatus::Accept;
 }).apply();
 yomk::ctx().group("main").checker().enable();

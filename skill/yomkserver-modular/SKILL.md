@@ -207,11 +207,11 @@ int XxxService::init() {
 
 // 服务列表（返回 StringArray）
 yomk::payload::Response resp = yomk::srv_info().services();
-// 指定服务的函数列表（FuncInfoList 结构化清单：m_funcName/m_msgName/m_description，m_msg 恒 "ok"）
+// 指定服务的函数列表（FuncInfoList 结构化清单：funcName/msgName/description，msg 恒 "ok"）
 resp = yomk::srv_info().srv_name("/XxxService").functions();
-// 单函数元信息查询（命中返回结构化 FuncInfo 包：m_msgName=类型名、m_description=四参说明，m_msg 恒 "ok"）
+// 单函数元信息查询（命中返回结构化 FuncInfo 包：msgName=类型名、description=四参说明，msg 恒 "ok"）
 resp = yomk::srv_info().fn_url("/XxxService/my_func").get_info();
-// 全量拓扑（ServerServiceInfoList 层级包：m_serviceName 服务名 + m_funcs 函数元信息列表）
+// 全量拓扑（ServerServiceInfoList 层级包：serviceName 服务名 + funcs 函数元信息列表）
 resp = yomk::srv_info().all();
 ```
 
@@ -226,11 +226,12 @@ resp = yomk::srv_info().all();
 ```
 ExtensionName/
 ├── include/
-│   ├── XxxService.h        // 对外接口头文件（服务类声明；内部头文件放 src/）
-│   ├── XxxApi.h            // 模块 API：链式域入口（四件套，参考 include/yomk 各域设计）
-│   ├── XxxMsg.h           // 模块消息包目录（YOMK_DEFINE_MSG）
-│   ├── XxxPayload.h        // 模块专属载荷目录（namespace yomk::payload）
-│   └── XxxUrl.h            // 模块 URL 常量（yomk::url 命名空间）
+│   └── xxx/                 // 小写扩展名目录，安装后对外引用统一 <yomk/<扩展名小写>/...>（与 SDK 各域共用 <prefix>/include 同一 include 根）
+│       ├── XxxService.h     // 对外接口头文件（服务类声明；内部头文件放 src/）
+│       ├── XxxApi.h         // 模块 API：链式域入口（四件套，参考 include/yomk 各域设计）
+│       ├── XxxMsg.h         // 模块消息包目录（YOMK_DEFINE_MSG）
+│       ├── XxxPayload.h     // 模块专属载荷目录（namespace yomk::payload）
+│       └── XxxUrl.h         // 模块 URL 常量（yomk::url 命名空间）
 ├── src/
 │   └── XxxService.cpp      // 服务实现
 ├── test/
@@ -251,7 +252,7 @@ ExtensionName/
    - **第三方依赖传递**：扩展以 PUBLIC 链接的额外第三方库分两类——自带 CMake 包的，Config 模板必须在 `find_dependency(YomkServer)` 后追加 `find_dependency(<第三方包>)`，否则下游链接扩展 target 会因找不到库而失败；不带包、仅以裸库名 `-l` 链接的，导出配置不记录它，由下游/测试工程用 `link_directories(${ExtensionName_LIB_DIR})` 补库搜索路径
 3. 安装后其他工程可通过 `find_package(ExtensionName)` 引用。
    - **编译验证只走 `source build_ubuntu.sh`**（交互式询问前置路径与安装路径，默认均取 `$YOMK_PREFIX_PATH`，把扩展安装进 YomkServer 的安装目录）；README 编译章节只保留这条交互式命令，不得提供非交互式的单路径安装命令
-   - **include 路径说明**：导出 target 不含 include 路径是设计如此，头文件路径由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供；若把扩展安装到扩展自己的 install/，测试程序会因 `#include <ExtensionName/XxxService.h>` 找不到头文件而编译失败
+   - **include 路径说明**：导出 target 不含 include 路径是设计如此，头文件路径由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供；若把扩展安装到扩展自己的 install/，测试程序会因 `#include <yomk/xxx/XxxService.h>`（小写扩展名目录）找不到头文件而编译失败
 4. `build_ubuntu.sh` 支持可选编译测试程序（`test/` 有独立 CMakeLists）
 5. **扩展库注册系统动态库缓存**：`build_ubuntu.sh` 安装完成后必须将 `${INSTALL_DIR}/lib` 幂等注册到 `/etc/ld.so.conf.d/yomk.conf`（扩展属于 yomk，复用同一 conf 文件，`grep -qxF` 判重后追加），并执行 `sudo ldconfig` 刷新缓存。新增的 so 不会自动进入 ld.so.cache，不刷新则新开任意终端都找不到扩展 so。禁止只用会话级 `export LD_LIBRARY_PATH` 代替（新终端即失效）。写 `/etc` 与 `ldconfig` 永远需要 sudo，与 `INSTALL_DIR` 是否可写无关
 6. 测试程序经 `yomk::server().init()` 初始化后，用 `yomk::server().srv<XxxService>().create()` 注册扩展服务（或 `.srv_name(n).srv_ptr(new XxxService(...)).add()`）并验证功能

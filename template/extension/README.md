@@ -80,9 +80,9 @@ int main(int argc, char *argv[])
 
     // 版本查询：扩展链式域入口（推荐）与裸 URL 请求等价
     yomk::payload::Response resp = yomk::ext().version();
-    if (resp.m_status == yomk::payload::ResStatus::Succeeded)
+    if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
-        auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.m_data);
+        auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
         std::cout << "version: " << version->d << std::endl; // 输出: extension v0.0.1
     }
 

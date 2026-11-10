@@ -120,7 +120,7 @@ protected:
                     return;
                 else if constexpr (std::is_same_v<Ret, yomk::payload::Response>)
                     return yomk::payload::Response{
-                        yomk::payload::ResStatus::Failed, "service has been deleted or unregistered, callback ignored."};
+                        yomk::payload::ResStatus::Failed, "service has been deleted or unregistered, callback ignored"};
                 else if constexpr (std::is_same_v<Ret, yomk::payload::CheckStatus>)
                     return yomk::payload::CheckStatus::Accept;
                 else

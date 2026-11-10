@@ -9,6 +9,6 @@
 //
 // struct ExtTask
 // {
-//     std::string m_taskName;
-//     YomkMsgPtr m_pkg;
+//     std::string taskName;
+//     YomkMsgPtr pkg;
 // };
