@@ -27,7 +27,7 @@ Python 链对象按值持有、无悬垂风险，但 `log()` 域入口在调用�
 
 | 链 | 终结与返回 |
 |---|---|
-| `server().async_thread(n)` | `.init()`：初始化单例并自动启动内置服务（Logger / Context / EventLoop / FunctionPool / ServerInfo），返回服务器实例；`n` 为异步请求线程池大小（省略 = 0 自动检测），仅首次生效；进程内幂等，并挂 atexit 兜底销毁 |
+| `server().async_thread(n)` | `.init()`：初始化单例并自动启动内置服务（Logger / Context / EventLoop / FunctionPool / ServerInfo），无返回值；`n` 为异步请求线程池大小（省略 = 0 自动检测），仅首次生效；进程内幂等，并挂 atexit 兜底销毁。派生服务的 `init()` 建议显式 `return 0` 表示初始化成功 |
 | — | `.version()`：版本字符串，免初始化可用 |
 | — | `.instance()`：全局单例 `YomkServer`；未初始化返回 `None`（`shutdown()` 后亦为 `None`，见"注意事项"） |
 | — | `.shutdown()`：关闭服务器（见"注意事项"）；未初始化空转 |
@@ -107,6 +107,8 @@ class MyService(YomkService):
 - **关闭后不支持二次 init**：init 进程内幂等由 once 标志把关，`shutdown()` 之后再次 `init()` 不会重建服务器，全部入口回到未初始化守卫态。**`shutdown()` 置空单例**：门面在 `shutdown()` 时置空单例，`instance()` 返回 `None`，不保留已关闭实例快照。
 - **未初始化守卫（全框架统一约定）**：终结动作返回 `ResStatus.Invalid`（request / status / 各域写与内省终结）或 `-1`（create / add / remove），异步 `.request()` 静默丢弃、回调不触发，类型化读 `get()` 原样返回调用方默认值；守卫消息 `"YomkServer is not init"` 经裸链 `server().url(u).msg(pkg).request()` 可查（写路径链式终结收敛为 `ResStatus`，不带 msg）；均记录错误诊断日志，不抛异常。`version()` / `instance()` / `shutdown()` 免初始化安全。
 - **所有权**：`create()` / `add()` 注册成功后实例交由框架服务表持有，调用方不应再将其作为活跃对象复用；`init()` 失败时框架回滚注销。
+- **服务对 server 为弱引用**（对齐 C++ weak_ptr 模型）：服务存活不阻碍 server 销毁；server 销毁后服务内 `request()` 返 `Failed` + `"server has been destroyed"`，`async_request()` 丢弃并记日志。派生服务读 `self.server` 得到活的 server 或 `None`，语义与旧强引用版一致。
+- **diag 门控**：诊断通道默认只输出 `WARN` 及以上（对齐 C++ 默认行为）。`from yomk import _diag` 后用 `_diag.set_min_level(_diag.TRACE)` 调整进程级阈值、`_diag.enabled(_diag.TRACE)` 做热路径自查；级别常量 TRACE=0 … FATAL=5。热路径建议先 `enabled()` 判断再构造消息字符串（C++ 侧为宏级零构造开销，Python 无法完全复刻）。诊断输出取不到调用点位置时（`.so` 编译调用点无 Python 帧、栈过浅）自动省略位置段，不会因此异常。
 
 ## 启动编排（YomkBoot）
 

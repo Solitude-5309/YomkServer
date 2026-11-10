@@ -129,13 +129,13 @@ def test_url_parse_boundaries():
     check(resp.status == ResStatus.eNo and "please start with /" in resp.msg,
           "request 无 / 开头 url 返回 eNo + please start with /")
 
-    # 无第二 /：not found service name 契约
+    # 无第二 /：no service name 契约（对齐 C++ 0032fc7 文案）
     resp = server.request("/")
-    check(resp.status == ResStatus.eNo and "not found service name" in resp.msg,
-          "request \"/\" 返回 eNo + not found service name")
+    check(resp.status == ResStatus.eNo and "no service name" in resp.msg,
+          "request \"/\" 返回 eNo + no service name")
     resp = server.request("/Only")
-    check(resp.status == ResStatus.eNo and "not found service name" in resp.msg,
-          "request \"/Only\"（无第二 /）返回 eNo + not found service name")
+    check(resp.status == ResStatus.eNo and "no service name" in resp.msg,
+          "request \"/Only\"（无第二 /）返回 eNo + no service name")
 
     # 多段路径：srv_name="/RouteSrv"、func_name="/b/c" 未安装 -> not found（语义现状）
     resp = server.request("/RouteSrv/b/c")

@@ -52,10 +52,10 @@ def shutdown_locked() -> None:
         g_server = None
 
 
-def boot_locked(boot: Any = None) -> int:
+def boot_locked(boot: Any = None, async_thread_count: int = 0) -> int:
     # 初始化并执行启动编排流程（before -> start -> after）；
     # 钩子未显式返回（None）等价成功 0
-    init_locked()
+    init_locked(async_thread_count)
     if boot is None:
         return 0
 

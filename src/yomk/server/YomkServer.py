@@ -5,6 +5,8 @@ from readerwriterlock import rwlock
 
 from yomk.msg.server import ResStatus, Response
 from yomk._diag import error as diag_error
+from yomk._diag import info as diag_info
+from yomk._diag import warn as diag_warn
 from yomk.server.YomkService import YomkService
 
 
@@ -43,7 +45,7 @@ class YomkServer:
         for srv_name in srv_names:
             srv_cls = service_creators.get(srv_name)
             if srv_cls is None:
-                diag_error("yomk does not support service: " + srv_name)
+                diag_warn("yomk does not support service: " + srv_name)
                 continue
             self.add_service(srv_cls(self))
 
@@ -58,14 +60,15 @@ class YomkServer:
 
     def add_service(self, service):
         if not isinstance(service, YomkService):
-            diag_error("service is null, please check the service.")
+            diag_warn("service is null, please check the service")
             return -1
 
         old_srv = None
         with self.rwlock_services.gen_wlock():
             if (service.get_name() in self.services):
-                diag_error(
-                    f"service already exists -> {service.get_name()}, update to current service")
+                # 文档化热替换：级别 INFO（对齐 C++），Response 不携带该信息
+                diag_info(
+                    f"service '{service.get_name()}' already exists, replace with current service")
             old_srv = self.services.get(service.get_name())
             self.services[service.get_name()] = service
             # 入表即锁定服务名：注册后改名被拒绝，保证服务名与 service map 键一致
@@ -96,7 +99,7 @@ class YomkServer:
         srv = None
         with self.rwlock_services.gen_wlock():
             if (srv_name not in self.services):
-                diag_error("service not found, can not delete -> " + srv_name)
+                diag_warn("service not found: " + srv_name + ", delete ignored")
                 return -1
             srv = self.services.pop(srv_name)
 
@@ -126,14 +129,15 @@ class YomkServer:
 
     def service_names(self):
         with self.rwlock_services.gen_rlock():
-            return list(self.services.keys())
+            # 字典序输出（对齐 C++ std::map 迭代序）
+            return sorted(self.services.keys())
 
     def service_func_infos(self, srv_name):
         with self.rwlock_services.gen_rlock():
             srv = self.services.get(srv_name)
         if srv is None:
-            diag_error("service not found. " + srv_name +
-                       ", please start the service.")
+            diag_warn("service not found: " + srv_name +
+                      ", please start the service")
             return {}
         return srv.func_infos()
 
@@ -144,10 +148,10 @@ class YomkServer:
             return "", "", "url parse error: " + str(url) + ", please start with /"
         pos_end = url.find("/", 1)
         if pos_end == -1:
-            return "", "", "url parse error: " + url + ", not found service name."
+            return "", "", "url parse error: " + url + ", no service name"
         srv_name = url[:pos_end]
         if not srv_name:
-            return "", "", "url parse error: srv is empty. "
+            return "", "", "url parse error: srv name is empty"
         func_name = url[pos_end:]
         if not func_name:
             return "", "", "url parse error: function name is empty"
@@ -156,14 +160,14 @@ class YomkServer:
     def request(self, url, pkg=None):
         srv_name, func_name, err_msg = self._parse_request_url(url)
         if err_msg:
-            diag_error(err_msg)
+            diag_warn(err_msg)
             return Response(ResStatus.eNo, err_msg)
 
         with self.rwlock_services.gen_rlock():
             srv = self.services.get(srv_name)
         if srv is None:
-            diag_error("service not found. " + srv_name +
-                       ", please start the service.")
+            diag_warn("service not found: " + srv_name +
+                      ", please start the service")
             return Response(
                 ResStatus.eNo,
                 "service not found: " + srv_name
@@ -173,12 +177,12 @@ class YomkServer:
     def async_request(self, url, pkg=None, callback=None):
         srv_name, func_name, err_msg = self._parse_request_url(url)
         if err_msg:
-            diag_error(err_msg)
+            diag_warn(err_msg)
             return
 
         # 服务器已关闭直接拒绝，池已停止时 submit 同样异常兜底
         if self.shutdown_done:
-            diag_error("server is shutting down, async request ignored.")
+            diag_error("server is shutting down, async request ignored")
             return
 
         def task():
@@ -194,4 +198,4 @@ class YomkServer:
         try:
             self.executor.submit(task)
         except RuntimeError:
-            diag_error("server is shutting down, async request ignored.")
+            diag_error("server is shutting down, async request ignored")

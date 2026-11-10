@@ -1,5 +1,5 @@
 import weakref
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from readerwriterlock import rwlock
 
@@ -7,6 +7,8 @@ from yomk.msg.ctx import CheckStatus
 from yomk.msg.fn_pool import FuncInfo
 from yomk.msg.server import ResStatus, Response
 from yomk._diag import error as diag_error
+from yomk._diag import info as diag_info
+from yomk._diag import warn as diag_warn
 
 if TYPE_CHECKING:
     from yomk.server.YomkServer import YomkServer
@@ -15,7 +17,10 @@ if TYPE_CHECKING:
 class YomkService:
     def __init__(self, server: "YomkServer"):
         self.name: str = ""
-        self.server: "YomkServer" = server
+        # 弱引用持有 server（对齐 C++ weak_ptr 模型）：
+        # 服务存活不阻碍 server 销毁，销毁后经判活走 "server has been destroyed" 契约；
+        # 经 property 解引用，属性名与读写语义保持不变
+        self._server_ref = weakref.ref(server) if server is not None else None
         self.functions: dict[str, Callable[[Any], Response]] = {}
         self.function_infos: dict[str, FuncInfo] = {}
         self.registered: bool = False
@@ -26,15 +31,25 @@ class YomkService:
         if not server:
             diag_error("server is null")
 
+    @property
+    def server(self) -> Optional["YomkServer"]:
+        # 弱引用解引用：server 已销毁返回 None（对齐 C++ weak_ptr 判活）
+        return self._server_ref() if self._server_ref is not None else None
+
+    @server.setter
+    def server(self, value: Optional["YomkServer"]) -> None:
+        # 兼容既有赋值用法（如 YomkServerInfo 置 None 解除强引用）
+        self._server_ref = weakref.ref(value) if value is not None else None
+
     def get_name(self):
         return self.name
 
     def set_name(self, name):
         if not name:
-            diag_error("name is empty, set name failed, use default name")
+            diag_warn("name is empty, set name failed, use default name")
             return
         if self.registered:
-            diag_error("service is registered, rename is not allowed -> " + name)
+            diag_warn("service rename refused, already registered, refused name '" + name + "'")
             return
         self.name = name
 
@@ -99,18 +114,19 @@ class YomkService:
     def install_func(self, name, function, msg_name="", description=""):
         # msg_name 为期望消息类型元数据，description 为使用者自定义函数说明，均仅供内省
         if not name.startswith("/"):
-            diag_error("install function name is error: " +
-                       name + ", please start with /")
+            diag_warn("function name parse error: " +
+                      name + ", please start with /")
             return
 
         if not function:
-            diag_error("install function is empty")
+            diag_warn("function is null, install function refused: " + name)
             return
 
         with self.rwlock_functions.gen_wlock():
             if (name in self.functions):
-                diag_error(
-                    f"install function already exists -> {name}, update to current function")
+                # 文档化热替换：级别 INFO（对齐 C++）
+                diag_info(
+                    f"function '{name}' already exists, replace with current function")
             self.functions[name] = self.weak_func(function)
             if msg_name or description:
                 self.function_infos[name] = FuncInfo(
@@ -122,7 +138,8 @@ class YomkService:
     def func_infos(self):
         infos: dict[str, FuncInfo] = {}
         with self.rwlock_functions.gen_rlock():
-            for func_name in self.functions:
+            # 字典序遍历（对齐 C++ std::map 迭代序）
+            for func_name in sorted(self.functions):
                 info = FuncInfo(func_name)
                 stored = self.function_infos.get(func_name)
                 if stored:
@@ -132,9 +149,8 @@ class YomkService:
         return infos
 
     def invoke(self, name, pkg):
+        # 失败路径不打 diag：Response 已携带同信息（对齐 C++ 双重报警删除）
         if not name or not name.startswith("/"):
-            diag_error("function name parse error: " + str(name) +
-                       ", please start with /")
             return Response(
                 ResStatus.eNo,
                 "function name parse error: " +
@@ -142,23 +158,31 @@ class YomkService:
             )
         with self.rwlock_functions.gen_rlock():
             if (name not in self.functions):
-                diag_error(
-                    f"function not found -> {name}, please use YomkInstallFunc to install this function.")
                 return Response(ResStatus.eNo, "function not found: " + name)
             func = self.functions[name]
         return func(pkg)
 
     def request(self, url, pkg=None):
-        if not self.server:
+        # 构造时 server 为空（或被置 None）→ "service is null"；
+        # server 已销毁（弱引用失效）→ "server has been destroyed"（对齐 C++ 契约）
+        if self._server_ref is None:
             diag_error("service is null, please check service")
             return Response(ResStatus.eNo, "service is null")
-        return self.server.request(url, pkg)
+        srv = self._server_ref()
+        if srv is None:
+            diag_error("server has been destroyed, request ignored")
+            return Response(ResStatus.eNo, "server has been destroyed")
+        return srv.request(url, pkg)
 
     def async_request(self, url, pkg=None, callback=None):
-        if not self.server:
+        if self._server_ref is None:
             diag_error("service is null, please check service")
             return
-        self.server.async_request(url, pkg, callback)
+        srv = self._server_ref()
+        if srv is None:
+            diag_error("server has been destroyed, async request ignored")
+            return
+        srv.async_request(url, pkg, callback)
 
 
 def _yomk_weak_discard_result(discard):

@@ -132,8 +132,9 @@ class ServerBuilder:
         return self
 
     def run(self):
-        # 执行启动编排（before -> start -> after），返回 0/钩子错误码
-        return _facade.boot_locked(self._boot)
+        # 执行启动编排（before -> start -> after），返回 0/钩子错误码；
+        # 透传累积的异步线程数（对齐 C++：run 复用本 builder 的 async_thread 累积值）
+        return _facade.boot_locked(self._boot, self._async_thread_count)
 
 
 def server():

@@ -6,6 +6,7 @@ bin/
 .qoder/
 .trae/
 install/
+plans/
 *~
 *.autosave
 *.a
