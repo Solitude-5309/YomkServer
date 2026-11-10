@@ -1,6 +1,6 @@
 from readerwriterlock import rwlock
 
-from yomk._diag import error as diag_error
+from yomk._diag import warn as diag_warn
 from yomk.event_loop.EventLoop import Event, EventLoop
 from yomk.msg.event_loop import EventLoopInfo, EventLoopPkg, EventLoopQuery
 from yomk.msg.server import ResStatus, Response
@@ -8,6 +8,10 @@ from yomk.server import YomkService
 
 
 class YomkEventLoop(YomkService):
+    # 事件循环内置服务：链式 builder 全部终结经 api_request 到达本域端点。
+    # 诊断契约（对齐 C++ 0032fc7）：not-found 一律 WARN 携具体循环名；
+    # unpack 失败无 diag（Response.msg 已携具体类型名）；循环未运行由 rc
+    # 映射（无 diag）；成功路径无 diag
     def __init__(self, server):
         super().__init__(server)
         self.set_name("/YomkEventLoop")
@@ -26,73 +30,99 @@ class YomkEventLoop(YomkService):
         self.install_func("/all", self.list_all)
         return 0
 
-    def start(self, pkg: EventLoopPkg):
-        if not isinstance(pkg, EventLoopPkg):
-            raise TypeError("pkg must be EventLoopPkg")
+    @staticmethod
+    def _unpack(contract_name, expected, pkg):
+        # 裸链误用载荷：eNo + "pkg is not <X>, got '<type>'"（对齐 C++
+        # unpack 失败契约，typeOf 语言映射 type(pkg).__name__；报文型名以
+        # C++ 契约名为准（如 start 载荷报文名 EventLoop、Python 载体
+        # EventLoopPkg）；Response.msg 已携带同信息，不打诊断日志）
+        if isinstance(pkg, expected):
+            return None
+        return Response(ResStatus.eNo,
+                        "pkg is not " + contract_name
+                        + ", got '" + type(pkg).__name__ + "'")
+
+    def _not_found(self, loop_name):
+        # not-found 契约：WARN 携具体名 + 同串 Response（对齐 C++ stop/
+        # destroy/post/post_wait/loopInfo 五处）
+        diag_warn("event loop '" + loop_name + "' does not exist")
+        return Response(ResStatus.eNo,
+                        "event loop '" + loop_name + "' does not exist")
+
+    def start(self, pkg):
+        bad = self._unpack("EventLoop", EventLoopPkg, pkg)
+        if bad:
+            return bad
         # 空名是合法 map 键
         with self.m_eventLoopMutex.gen_wlock():
-            if pkg.m_eventloopName in self.m_eventLoop:
+            if pkg.m_eventLoopName in self.m_eventLoop:
                 # 已存在仅重启，不重设默认函数
-                self.m_eventLoop[pkg.m_eventloopName].start()
+                self.m_eventLoop[pkg.m_eventLoopName].start()
                 return Response(ResStatus.eOk, "event loop start success")
             event_loop = EventLoop()
             event_loop.set_default_service_func(
                 pkg.m_defaultServiceFunc, pkg.m_msgName)
             event_loop.start()
-            self.m_eventLoop[pkg.m_eventloopName] = event_loop
+            self.m_eventLoop[pkg.m_eventLoopName] = event_loop
             return Response(ResStatus.eOk, "event loop start success")
 
     def stop(self, pkg):
+        bad = self._unpack("String", str, pkg)
+        if bad:
+            return bad
         with self.m_eventLoopMutex.gen_rlock():
             if pkg in self.m_eventLoop:
                 self.m_eventLoop[pkg].stop()
                 return Response(ResStatus.eOk, "event loop stop success")
-            else:
-                diag_error("event loop: " + pkg +
-                           " not exist, please check event loop name")
-                return Response(ResStatus.eNo, "event loop not exist")
+        return self._not_found(pkg)
 
     def destroy(self, pkg):
+        bad = self._unpack("String", str, pkg)
+        if bad:
+            return bad
         with self.m_eventLoopMutex.gen_wlock():
             if pkg in self.m_eventLoop:
                 # 调底层 destroy（stop+清队列+释放等待者）后出表
                 self.m_eventLoop[pkg].destroy()
                 del self.m_eventLoop[pkg]
                 return Response(ResStatus.eOk, "event loop destroy success")
-            else:
-                diag_error("event loop: " + pkg +
-                           " not exist, please check event loop name")
-                return Response(ResStatus.eNo, "event loop not exist")
+        return self._not_found(pkg)
 
-    def post(self, pkg: Event):
-        if not isinstance(pkg, Event):
-            raise TypeError("pkg must be Event")
+    def post(self, pkg):
+        bad = self._unpack("Event", Event, pkg)
+        if bad:
+            return bad
         with self.m_eventLoopMutex.gen_rlock():
-            if pkg.m_eventLoopName in self.m_eventLoop:
-                # 内层返回码映射：0 成功；其余（实际仅 2=循环未运行被拒）统一 eNo
-                rc = self.m_eventLoop[pkg.m_eventLoopName].post(pkg)
-                if rc != 0:
-                    return Response(ResStatus.eNo, "event loop not running, post rejected")
-                return Response(ResStatus.eOk, "event loop post success")
-            else:
-                diag_error("event loop: " + pkg.m_eventLoopName +
-                           " not exist, please check event loop name")
-                return Response(ResStatus.eNo, "event loop not exist")
+            loop = self.m_eventLoop.get(pkg.m_eventLoopName)
+            if loop is None:
+                return self._not_found(pkg.m_eventLoopName)
+            # 内层返回码映射：0 成功；其余（实际仅 2=循环未运行被拒，
+            # 事件为空不可达）统一 eNo，文案携循环名
+            rc = loop.post(pkg)
+            if rc != 0:
+                return Response(
+                    ResStatus.eNo,
+                    "event loop '" + pkg.m_eventLoopName
+                    + "' not running, post rejected")
+            return Response(ResStatus.eOk, "event loop post success")
 
-    def post_wait(self, pkg: Event):
-        if not isinstance(pkg, Event):
-            raise TypeError("pkg must be Event")
+    def post_wait(self, pkg):
+        bad = self._unpack("Event", Event, pkg)
+        if bad:
+            return bad
         with self.m_eventLoopMutex.gen_rlock():
-            if pkg.m_eventLoopName in self.m_eventLoop:
-                # 内层返回码映射：0 成功（回传 event 携带执行结果）；其余统一 eNo（未入队未执行，不回传）
-                rc = self.m_eventLoop[pkg.m_eventLoopName].post_wait(pkg)
-                if rc != 0:
-                    return Response(ResStatus.eNo, "event loop not running, post wait rejected")
-                return Response(ResStatus.eOk, "event loop post wait success", pkg)
-            else:
-                diag_error("event loop: " + pkg.m_eventLoopName +
-                           " not exist, please check event loop name")
-                return Response(ResStatus.eNo, "event loop not exist")
+            loop = self.m_eventLoop.get(pkg.m_eventLoopName)
+            if loop is None:
+                return self._not_found(pkg.m_eventLoopName)
+            # 内层返回码映射：0 成功（回传 event 携带执行结果）；其余统一
+            # eNo（未入队未执行，不回传），文案携循环名
+            rc = loop.post_wait(pkg)
+            if rc != 0:
+                return Response(
+                    ResStatus.eNo,
+                    "event loop '" + pkg.m_eventLoopName
+                    + "' not running, post wait rejected")
+            return Response(ResStatus.eOk, "event loop post wait success", pkg)
 
     def loops(self, pkg):
         # 内省：列出全部事件循环名（sorted 字典序，
@@ -102,10 +132,11 @@ class YomkEventLoop(YomkService):
         return Response(ResStatus.eOk, "ok", loop_names)
 
     def loop_info(self, pkg):
-        # 内省：单个事件循环元信息，收结构化 EventLoopQuery：unpack 失败返回 eNo；
-        # 名称按字面量精确匹配、不做任何切分；采样数越界回退默认 3（不抛不崩）
-        if not isinstance(pkg, EventLoopQuery):
-            return Response(ResStatus.eNo, "pkg is null or pkg is not EventLoopQuery")
+        # 内省：单个事件循环元信息，收结构化 EventLoopQuery：unpack 失败返回
+        # eNo；名称按字面量精确匹配、不做任何切分；采样数越界回退默认 3（不抛不崩）
+        bad = self._unpack("EventLoopQuery", EventLoopQuery, pkg)
+        if bad:
+            return bad
         loop_name = pkg.m_loopName
         # 归一化采样数：非 int（含 bool）或超 2^64-1 上限回退默认 3，与全量内省缺省一致
         tag_count = 3
@@ -114,13 +145,9 @@ class YomkEventLoop(YomkService):
             tag_count = pkg.m_tagCount
 
         with self.m_eventLoopMutex.gen_rlock():
-            if loop_name in self.m_eventLoop:
-                # 锁内拷循环对象，锁外取数（info_snapshot 自锁队列锁）
-                event_loop = self.m_eventLoop[loop_name]
-            else:
-                diag_error("event loop: " + loop_name +
-                           " not exist, please check event loop name")
-                return Response(ResStatus.eNo, "event loop not exist")
+            event_loop = self.m_eventLoop.get(loop_name)
+        if event_loop is None:
+            return self._not_found(loop_name)
 
         # 命中：结构化快照，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）
         info = EventLoopInfo(loop_name)

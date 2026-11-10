@@ -27,7 +27,7 @@ import yomk.msg
 g_failed = 0
 
 DOMAINS = ["server", "boot", "ctx", "fn_pool", "event_loop", "log", "srv_info",
-           "url.fn_pool", "url.log", "url.srv_info", "url.ctx"]
+           "url.fn_pool", "url.log", "url.srv_info", "url.ctx", "url.event_loop"]
 
 # 域名 → __all__ 快照（与各域 src/yomk/<域>/__init__.py 定型清单一致）
 EXPECTED = {
@@ -68,7 +68,7 @@ EXPECTED = {
         "YomkServerInfo",
     ],
     # url 常量池（yomk.url 命名空间 + 各域子包，与 msg 同构）：无 __version__（非版本化域），
-    # 逐域轮次扩充（第 2 轮 fn_pool、第 3 轮 log、第 4 轮 srv_info、第 5 轮 ctx）
+    # 逐域轮次扩充（第 2 轮 fn_pool、第 3 轮 log、第 4 轮 srv_info、第 5 轮 ctx、第 6 轮 event_loop）
     "url.fn_pool": [
         "FP_ALL", "FP_CALL", "FP_NAME", "FP_NAMES", "FP_REGISTER",
         "FP_UNREGISTER",
@@ -90,6 +90,10 @@ EXPECTED = {
         "CTX_KEY", "CTX_KEYS", "CTX_SET", "CTX_SET_CHECKER",
         "CTX_SET_MONITOR", "CTX_TURN_OFF_CHECKER", "CTX_TURN_OFF_MONITOR",
         "CTX_TURN_ON_CHECKER", "CTX_TURN_ON_MONITOR",
+    ],
+    "url.event_loop": [
+        "LOOP_ALL", "LOOP_DESTROY", "LOOP_LOOP", "LOOP_LOOPS", "LOOP_POST",
+        "LOOP_POST_WAIT", "LOOP_START", "LOOP_STOP",
     ],
 }
 

@@ -95,10 +95,10 @@ def s3_event_and_pkg():
     check(waited["flag"], "Event waitCallback：可赋值并执行")
 
     pkg = EventLoopPkg("/LP", func, "String")
-    check(pkg.m_eventloopName == "/LP" and pkg.m_defaultServiceFunc is func and pkg.m_msgName == "String",
+    check(pkg.m_eventLoopName == "/LP" and pkg.m_defaultServiceFunc is func and pkg.m_msgName == "String",
           "EventLoopPkg 构造：loop 名/默认 func/msg 名透传")
     pkg_def = EventLoopPkg()
-    check(pkg_def.m_eventloopName == "" and pkg_def.m_defaultServiceFunc is None and pkg_def.m_msgName == "",
+    check(pkg_def.m_eventLoopName == "" and pkg_def.m_defaultServiceFunc is None and pkg_def.m_msgName == "",
           "EventLoopPkg 默认构造：loop 名空/func None/msg 名空")
 
 

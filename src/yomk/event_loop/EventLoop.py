@@ -2,6 +2,7 @@ import queue
 import threading
 
 from yomk._diag import error as diag_error
+from yomk._diag import info as diag_info
 from yomk.msg.event_loop import EventLoopInfo
 
 
@@ -52,7 +53,7 @@ class EventLoop:
                     continue
 
             if not event:
-                diag_error("EventLoop: event is null, please check event")
+                # 空事件静默跳过（对齐 C++ run()：无诊断）
                 continue
             # 异常吞噬后仍无条件触发等待回调
             try:
@@ -67,7 +68,8 @@ class EventLoop:
 
     def start(self):
         if self.m_running:
-            diag_error("EventLoop already running, please do not start it again")
+            # 幂等重启（对齐 C++）：INFO 级，非错误
+            diag_info("event loop already running, start is idempotent")
             return 0
         # 持队列锁创建线程
         with self.m_queueMutex:
@@ -109,13 +111,12 @@ class EventLoop:
             pass
 
     def post(self, event):
-        # 判序先判运行态（返 2，与入队成功 0/事件为空 1 区分，供上层映射错误码），后判事件
+        # 判序先判运行态（返 2，与入队成功 0/事件为空 1 区分，供上层映射
+        # 错误码）；未运行/事件为空无诊断（对齐 C++ rc2/rc1 均 NO diag）
         if not self.m_running:
-            diag_error("EventLoop not running, please start event loop.")
             return 2
 
         if not event:
-            diag_error("EventLoop: event is null, please check event")
             return 1
 
         with self.m_queueMutex:
@@ -129,13 +130,11 @@ class EventLoop:
         return 0
 
     def post_wait(self, event):
-        # 前置检查与 post 全同
+        # 前置检查与 post 全同（未运行/事件为空均无诊断）
         if not self.m_running:
-            diag_error("EventLoop not running, please start event loop.")
             return 2
 
         if not event:
-            diag_error("EventLoop: event is null, please check event")
             return 1
 
         # 自 join 防护读取持队列锁：与 start 持锁创建线程互斥串行，避免无锁并发读写

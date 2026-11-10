@@ -31,10 +31,10 @@ ExampleYomkEventLoop —— YomkEventLoop 线程隔离事件循环示例：机�
        跨循环彼此并行。
 场景 4 show_arm_motion_sync_wait [/YomkEventLoop/post_wait]
        回原点是关键动作：/YomkEventLoop/post_wait 阻塞至事件在循环线程执行完毕才返回，
-       Event 包三要素回传（eventId 单调递增 / loopName / 处理函数返回值）。
+       收敛为 ResStatus；回传 Event 走 data 携带执行结果（tag / 处理函数响应）。
 场景 5 show_arm_temp_handler    [/YomkEventLoop/post_wait(临时 handle_fn)]
-       紧急巡检例程投递时指定临时处理函数：优先于默认函数，返回临时函数
-       的结果——同一循环可混用两种来源。
+       紧急巡检例程投递时指定临时处理函数：优先于默认函数——同一循环
+       可混用两种来源，执行结果由回传 Event 的响应承载。
 场景 6 show_arm_line_pause      [/YomkEventLoop/stop / /YomkEventLoop/start(同名续跑) / /YomkEventLoop/post]
        班中暂停：STOP 只停线程、保留队列事件；停止后投递被拒；
        再次 START 续跑消化保留事件。
@@ -300,7 +300,7 @@ def show_arm_line_pause():
 
     log_action("停止态投递被拒", "/YomkEventLoop/post motionLoop (已停止)",
                lambda: event_loop().msg("rejected").loop("motionLoop").post())
-    log_verify("停止后投递 -> eNo(event loop not running, post rejected)：循环未运行不接收新事件")
+    log_verify("停止后投递 -> eNo(event loop 'motionLoop' not running, post rejected)：循环未运行不接收新事件")
 
     log_action("恢复运行（续跑）", "/YomkEventLoop/start motionLoop (续跑)",
                lambda: event_loop().loop("motionLoop").handle_fn(motion_handle).msg_name("String").start())
@@ -374,7 +374,7 @@ def show_arm_line_off():
     log_action_start("已销毁循环查询被拒")
     resp = event_loop().loop("motionLoop").get_info()
     log_resp("/YomkEventLoop/loop motionLoop (已销毁)", resp)
-    log_verify("对已销毁循环的一切操作 -> eNo(event loop not exist)：not-found 惯例，销毁不可续跑")
+    log_verify("对已销毁循环的一切操作 -> eNo(event loop 'motionLoop' does not exist)：not-found 惯例，销毁不可续跑")
 
 def main():
     # 初始化框架（事件循环服务 /YomkEventLoop 随之自动启动）

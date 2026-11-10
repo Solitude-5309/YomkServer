@@ -2,7 +2,8 @@ from typing import Any, Callable, List, Optional
 
 
 class EventLoopPkg:
-    m_eventloopName: str
+    # 字段名与 C++ payload m_eventLoopName（大写 L）一致，裸链载荷跨语言可移植
+    m_eventLoopName: str
     m_defaultServiceFunc: Optional[Callable[[Any], Any]]
     m_msgName: str
 

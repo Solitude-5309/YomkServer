@@ -1,6 +1,8 @@
 class EventLoopPkg:
+    # start 载荷（/YomkEventLoop/start 专用）：字段名与 C++ payload
+    # m_eventLoopName（大写 L）一致，裸链载荷跨语言可移植
     def __init__(self, event_loop_name="", default_service_func=None, msg_name=""):
-        self.m_eventloopName = event_loop_name
+        self.m_eventLoopName = event_loop_name
         self.m_defaultServiceFunc = default_service_func
         self.m_msgName = msg_name
 
