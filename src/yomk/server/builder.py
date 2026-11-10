@@ -17,7 +17,7 @@ class AsyncRequestBuilder:
         # 异步终结无返回；未初始化记诊断
         server = _facade.current_server()
         if server is None:
-            diag_error("YomkServer is not init")
+            diag_error("YomkServer is not initialized")
             return None
         return server.async_request(self._url, self._msg, self._callback)
 
@@ -87,7 +87,7 @@ class ServerBuilder:
         # 创建并注册服务，返回 0/-1
         server = _facade.current_server()
         if server is None:
-            diag_error("YomkServer is not init")
+            diag_error("YomkServer is not initialized")
             return -1
         if self._srv_cls is None:
             # 未累积服务类守卫（诊断走 diag 通道）
@@ -107,7 +107,7 @@ class ServerBuilder:
         # 注册已构造服务，返回 0/-1
         server = _facade.current_server()
         if server is None:
-            diag_error("YomkServer is not init")
+            diag_error("YomkServer is not initialized")
             return -1
         if not self._srv:
             diag_error("YomkService is null")
@@ -120,7 +120,7 @@ class ServerBuilder:
         # 按名称注销服务，返回 0/-1
         server = _facade.current_server()
         if server is None:
-            diag_error("YomkServer is not init")
+            diag_error("YomkServer is not initialized")
             return -1
         if not self._srv_name:
             diag_error("service name is empty")

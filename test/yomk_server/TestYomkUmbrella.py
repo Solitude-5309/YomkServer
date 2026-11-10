@@ -249,7 +249,7 @@ def main():
           "S8: 关闭后 instance() is None（单例置空）")
     res = srv_info().all()
     check(res.status == ResStatus.Invalid and
-          res.msg == "YomkServer is not init",
+          res.msg == "YomkServer is not initialized",
           f"S8: 关闭后 all() Invalid + 契约串（实际 {res.status}/{res.msg!r}）")
 
     print("ALL PASSED" if g_failed == 0 else "SOME FAILED")

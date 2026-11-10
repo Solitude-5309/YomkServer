@@ -367,7 +367,7 @@ def show_arm_power_off():
             log_srv_brief("srv_info().all()", srv.service_name, len(srv.funcs))
     log_verify("6 个服务 = 5 个内置 + 1 个运动工位：留痕工位已在场景 7 下线，拓扑实时反映运行期服务表")
 
-    log().tag("arm.demo").info('收班预告：shutdown 后框架已关闭，此后任何请求统一返回 eInvalid "YomkServer is not init"；')
+    log().tag("arm.demo").info('收班预告：shutdown 后框架已关闭，此后任何请求统一返回 eInvalid "YomkServer is not initialized"；')
     log().tag("arm.demo").info("本示例所有日志门面随之静默——下面的静默段正是演示效果，示例日志至此结束，程序停在 input 等待回车退出")
 
     def shutdown_and_guard():

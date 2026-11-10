@@ -3,7 +3,8 @@ TestYomkAPILifecycle.py —— YomkAPI init/shutdown 单例生命周期测试
 
 覆盖内容：
 1. 单例三承诺：二次 init(n) 返回同一实例（async_thread_count 仅首次生效）；
-   shutdown 后守卫回归未初始化态；关闭后 init 再调返回 None（不支持二次初始化）
+   shutdown 后守卫回归未初始化态；关闭后 init 再调返回 None 且补 WARN
+   （不支持二次初始化，对齐 C++ "server already shut down, init ignored"）
 2. 内置服务：init 拉起 /YomkContext /YomkFunctionPool /YomkEventLoop
 3. API 层独有守卫（已初始化态，区别于服务器层守卫）：srv_ptr(None).add() 返回 -1、
    srv_name("").remove() 返回 -1
@@ -21,7 +22,9 @@ TestYomkAPILifecycle.py —— YomkAPI init/shutdown 单例生命周期测试
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """
 
+import io
 import sys
+from contextlib import redirect_stdout
 
 from yomk.msg.server import ResStatus
 from yomk.server import YomkService, server
@@ -96,12 +99,16 @@ def main():
 
     resp = server().url("/Any/func").request()
     check(resp.status == ResStatus.eInvalid, "关闭后 request 守卫回归 eInvalid")
-    check(resp.msg == "YomkServer is not init", f"关闭后契约消息回归: {resp.msg}")
+    check(resp.msg == "YomkServer is not initialized", f"关闭后契约消息回归: {resp.msg}")
     check(server().srv(DummySrv).create() == -1, "关闭后 new_service 守卫回归 -1")
 
-    server().init()
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        server().init()
     check(server().instance() is None,
           "关闭后 init 再调不重建单例（once 已消耗，不支持二次初始化）")
+    check("server already shut down, init ignored (re-init is not supported)" in buf.getvalue(),
+          "关闭后 init 补 WARN 指出实际状态（幂等语义不变）")
 
     print(("ALL PASSED" if g_failed == 0 else "SOME FAILED") +
           f" ({g_failed} failed)")

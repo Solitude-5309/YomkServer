@@ -60,7 +60,7 @@ ctx().key("config").destroy()          # 删除键
 - **组名约定**：`.group()` 省略即缺省 `"main"`；空组名 `Invalid "group name is empty"`（WARN 诊断）。非 main 组首次寻址即惰性自动创建（组名唯一、同名寻址复用同组、**不支持销毁组**，组表只增不减），异步监控池每组自持（单线程）。
 - **诊断契约**（经 `yomk._diag` 输出，与 C++ 对齐）：空组名/空键/空值/键不存在/类型错配/checker 拒绝/监控池停止后投递丢弃走 `WARN`（文案携具体键值与期望/实际类型名）；同步 monitor 回调异常 `ERROR`；裸链误用载荷不打诊断，统一返 `Failed "pkg is not Context/ContextGroupKey/String/ContextChecker/ContextMonitor, got '<type>'"`。
 - **URL 常量**：ctx 域 14 个端点常量与 C++ `YomkContextUrl.h` 一一对应，从 `yomk.url.ctx` 导入（`CTX_CREATE`/`CTX_GET`/`CTX_SET`/`CTX_DESTROY`/`CTX_KEYS`/`CTX_KEY`/`CTX_GROUPS`/`CTX_ALL`/`CTX_TURN_ON_CHECKER` 等）；builder 内部即用这些常量组链，用户自定义注册亦可直接复用。
-- **读终结未初始化守卫**：`get()`/`keys()`/`info()`/`groups()`/`all()` 在 server 未初始化时记 `ERROR` 诊断，`get()` 回退默认值、其余返回 `Invalid "YomkServer is not initialized"`；写路径未初始化由请求域收敛（`Invalid "YomkServer is not init"`）。
+- **读终结未初始化守卫**：`get()`/`keys()`/`info()`/`groups()`/`all()` 在 server 未初始化时记 `ERROR` 诊断，`get()` 回退默认值、其余返回 `Invalid "YomkServer is not initialized"`；写路径未初始化由请求域收敛（`Invalid "YomkServer is not initialized"`）。
 - **读取快照勿原地修改**：`get()` 返回存储对象的引用快照，改动请构造新值再 `.set()`；原地修改与并发读竞争、可能崩溃。
 - **键级回调注册前提**：`checker_fn`/`monitor_fn` 只能注册到**已存在**的键（键不存在返回 `Failed "context key '<key>' does not exist"`），即先 `create()` 再注册。
 - **Checker 生效条件**：组级开关 ON **且**该键已注册 checker 才参与门控；门控在写锁内执行，**回调内重入 set 会死锁**。

@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from yomk.msg.server import ResStatus, Response
 from yomk._diag import error as diag_error
+from yomk._diag import warn as diag_warn
 from yomk.server.YomkServer import YomkServer
 
 # 门面共享状态：只允许经模块属性访问（from yomk.server import _facade），
@@ -22,8 +23,8 @@ def api_request(url: str, pkg: Any = None) -> Response:
     # 统一门面请求入口：未 init 记诊断并返回 eInvalid
     server = g_server
     if server is None:
-        diag_error("YomkServer is not init")
-        return Response(ResStatus.eInvalid, "YomkServer is not init")
+        diag_error("YomkServer is not initialized")
+        return Response(ResStatus.eInvalid, "YomkServer is not initialized")
     return server.request(url, pkg)
 
 
@@ -39,6 +40,11 @@ def init_locked(async_thread_count: int = 0) -> Optional[YomkServer]:
             g_server = srv
             _init_done = True
             atexit.register(shutdown_locked)
+        elif g_server is None:
+            # 二调守卫：shutdown 后再 init 是静默 no-op，用户会误以为初始化
+            # 成功——补 WARN 指出实际状态（幂等语义不变，不支持二次初始化；
+            # 对齐 C++ YomkServerApi.h init()）
+            diag_warn("server already shut down, init ignored (re-init is not supported)")
     return g_server
 
 

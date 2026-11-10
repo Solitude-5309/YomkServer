@@ -4,7 +4,7 @@ TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试
 覆盖内容：
 1. version() 免初始化可调用（不依赖单例，返回非空版本号）
 2. 未初始化守卫默认值：server().instance() 为 None、shutdown() 安全空转（幂等）
-3. request() 返回 eInvalid + 契约消息 "YomkServer is not init"；async_ 链静默
+3. request() 返回 eInvalid + 契约消息 "YomkServer is not initialized"；async_ 链静默
    投递、回调不触发
 4. 服务管理守卫：srv().create()/srv_ptr().add()/srv_name().remove() 返回 -1
 5. 链式终结动作守卫抽样：统一守卫入口 _api_request 验证（ctx create/
@@ -77,7 +77,7 @@ def main():
     print("===== 3. request()/async_() 未初始化守卫 =====")
     resp = server().url("/Any/func").request()
     check(resp.status == ResStatus.eInvalid, "request 未初始化返回 eInvalid")
-    check(resp.msg == "YomkServer is not init",
+    check(resp.msg == "YomkServer is not initialized",
           f"request 未初始化契约消息: {resp.msg}")
 
     server().url("/Any/func").async_(on_async_cb).request()
@@ -100,7 +100,7 @@ def main():
     check(resp == ResStatus.eInvalid,
           "event_loop_start 未初始化返回 eInvalid")
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息同根改由读路径 Response 承载
-    check(event_loop().list().msg == "YomkServer is not init",
+    check(event_loop().list().msg == "YomkServer is not initialized",
           "模块 API 守卫契约消息同根（读路径 event_loop_info_loops）")
 
     sentinel = object()
@@ -115,7 +115,7 @@ def main():
     check(resp == ResStatus.eInvalid,
           "console_log_info_tag 未初始化返回 eInvalid")
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息同根改由读路径 Response 承载
-    check(log_mgr().all().msg == "YomkServer is not init",
+    check(log_mgr().all().msg == "YomkServer is not initialized",
           "模块 API 守卫契约消息同根（读路径 logger_info_all）")
     check(log().tag("tag").warn("hello") == ResStatus.eInvalid,
           "console_log_warn_tag 未初始化返回 eInvalid")

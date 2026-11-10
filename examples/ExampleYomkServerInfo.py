@@ -40,7 +40,7 @@ xxx"——操作是用户视角的业务动作，随后结果行标注本次接�
        注销不存在的服务返回 -1——自省读的是运行期服务表。
 场景 6 show_arm_power_off        [server().shutdown() / srv_info().services()]
        收班断电：server().shutdown() 排空在途请求并释放全部服务，关闭后任何自省调用
-       统一返回 eInvalid "YomkServer is not init"；日志门面随之静默——
+       统一返回 eInvalid "YomkServer is not initialized"；日志门面随之静默——
        静默即演示效果，收班预告已提前说明，示例日志到此为止。
 
 演示服务规划（机械臂产线装配工位，跨场景流转）：
@@ -365,7 +365,7 @@ def show_arm_power_off():
         "关闭后框架单例清空，任何自省调用统一返回 eInvalid——本条守卫演示"
         "将在静默中完成，静默即演示效果。")
 
-    log().tag("arm.demo").info('收班预告：shutdown 后框架已关闭，此后任何自省调用统一返回 eInvalid "YomkServer is not init"；')
+    log().tag("arm.demo").info('收班预告：shutdown 后框架已关闭，此后任何自省调用统一返回 eInvalid "YomkServer is not initialized"；')
     log().tag("arm.demo").info("本示例所有日志门面随之静默——下面的静默段正是演示效果，示例日志至此结束，程序停在 input 等待回车退出")
 
     def shutdown_and_guard():

@@ -12,7 +12,7 @@ S2. 删除内置服务契约与恢复：srv_name("/YomkLogger").remove() → 服
 S1. shutdown 全链路统一收尾（压轴）：event_loop().post() 积压、to_sink 发射缓冲、
     异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘
     （FileLogger __del__ write，CPython 引用计数确定性保证析构即落盘）、
-    API 回归 eInvalid + "YomkServer is not init"（门面守卫级）、二次 shutdown 幂等
+    API 回归 eInvalid + "YomkServer is not initialized"（门面守卫级）、二次 shutdown 幂等
 
 执行顺序约束：server().init 为进程级一次性（shutdown 后不可再 init），故 shutdown 段
 必须压轴，重入/删除恢复段在其前完成
@@ -199,25 +199,25 @@ def test_s1_shutdown(N):
     check("s1_shutdown_flush_marker" in content,
           "shutdown 返回后文件日志已落盘且含标记串（__del__ write）")
 
-    # API 守卫级回归：g_server 已置空 → eInvalid + "YomkServer is not init"
+    # API 守卫级回归：g_server 已置空 → eInvalid + "YomkServer is not initialized"
     post_loop = event_loop().loop("integration_loop").post()
     check(post_loop == ResStatus.eInvalid,
           "shutdown 后 event_loop_post 回归 eInvalid（写路径收敛为 ResStatus）")
-    check(event_loop().list().msg == "YomkServer is not init",
+    check(event_loop().list().msg == "YomkServer is not initialized",
           "shutdown 后 event_loop_post 守卫契约消息同根（读路径 INFO_LOOPS）")
     post_ctx = ctx().key("drain_key").value("x").set()
     check(post_ctx == ResStatus.eInvalid,
           "shutdown 后 context_set 回归 eInvalid（写路径收敛为 ResStatus）")
     check(raw_ctx("set", Context("drain_key", "x", "main")).msg
-          == "YomkServer is not init",
+          == "YomkServer is not initialized",
           "shutdown 后 context_set 守卫契约消息同根（server 域裸链）")
     post_log = log_mgr().all()
     check(post_log.status == ResStatus.eInvalid
-          and post_log.msg == "YomkServer is not init",
+          and post_log.msg == "YomkServer is not initialized",
           "shutdown 后 logger_info_all 回归 eInvalid + 守卫消息")
     post_info = srv_info().all()
     check(post_info.status == ResStatus.eInvalid
-          and post_info.msg == "YomkServer is not init",
+          and post_info.msg == "YomkServer is not initialized",
           "shutdown 后 server_info_all 回归 eInvalid + 守卫消息")
 
     server().shutdown()  # 幂等：二次调用空转安全
