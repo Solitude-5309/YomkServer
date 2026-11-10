@@ -68,8 +68,8 @@ yomk::ctx().key("config").destroy();                   // 删除键
 
 > ⚠️ **Warning**：`get()` 返回只读快照——原地修改与并发读竞争、可能崩溃；改动请构造新消息对象再 `.set()`。
 
-- **写路径失败契约**（文案携带具体键名与期望/实际类型名）：`create` 键名为空 `Failed` "context key is empty"、value 为空 `Failed` "create context key '<键>' failed: value is empty"、键已存在 `Failed` "context key '<键>' already exists"；`set` 键不存在 `Failed` "context key '<键>' does not exist"、类型不匹配 `Failed` "context type not match: key '<键>' expect '<期望类型>', got '<实际类型>'"、被 checker 拦截 `Failed` "set context key '<键>' rejected by checker"、value 为空 `Failed` "set context key '<键>' failed: value is empty"。
-- **组名约定**：`.group()` 省略即缺省 `"main"`；空组名 `Failed` "group name is empty"。非 main 组首次寻址即惰性自动创建（组名唯一、同名寻址复用同组、**不支持销毁组**，组表只增不减），异步监控池每组自持（单线程）。
+- **写路径失败契约**（文案携带具体键名与期望/实际类型名；三态约定：入参非法= `Invalid`，业务未命中/冲突= `Failed`）：`create` 键名为空 `Invalid` "context key is empty"、value 为空 `Invalid` "create context key '<键>' failed: value is empty"、键已存在 `Failed` "context key '<键>' already exists"；`set` 键不存在 `Failed` "context key '<键>' does not exist"、类型不匹配 `Failed` "context type not match: key '<键>' expect '<期望类型>', got '<实际类型>'"、被 checker 拦截 `Failed` "set context key '<键>' rejected by checker"、value 为空 `Invalid` "set context key '<键>' failed: value is empty"。
+- **组名约定**：`.group()` 省略即缺省 `"main"`；空组名 `Invalid` "group name is empty"（入参非法）。非 main 组首次寻址即惰性自动创建（组名唯一、同名寻址复用同组、**不支持销毁组**，组表只增不减），异步监控池每组自持（单线程）。
 - **读取快照勿原地修改**：`get()` 返回只读快照，改动请构造新消息对象再 `.set()`；原地修改与并发读竞争、可能崩溃。
 - **键级回调注册前提**：`checker_fn`/`monitor_fn` 只能注册到**已存在**的键（键不存在返回 `Failed` "context key '<键>' does not exist"），即先 `create()` 再注册。
 - **Checker 生效条件**：组级开关 ON **且**该键已注册 checker 才参与门控；门控在写锁内执行，**回调内重入 set 会死锁**。
@@ -79,7 +79,7 @@ yomk::ctx().key("config").destroy();                   // 删除键
 
 ## 内部结构
 
-Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 组级开关与单线程异步监控池均为每组自持，内省快照携带所属组名（`ContextKeyInfo.m_group`）。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表（map + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `findGroup` 定位 → 组实例委托"。`findGroup` 三段式：空组名返回 `Failed` "group name is empty"；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（锁外裸指针长期安全——组不销毁、表只增不减）。
+Context 功能承载在 `ContextGroup`（底层实例组，不继承 YomkService）上：键存储、checker/monitor 组级开关与单线程异步监控池均为每组自持，内省快照携带所属组名（`ContextKeyInfo.m_group`）。`YomkContext` 服务持默认组成员 `m_main`（组名 "main"，成员直取免查找）与自定义组表（map + 读写锁），负责 14 个端点的装配与组路由：处理函数统一"解出组名 → `findGroup` 定位 → 组实例委托"。`findGroup` 三段式：空组名返回 `Invalid` "group name is empty"（入参非法）；main 成员直取；非 main 读锁快查自定义组表、未命中写锁内惰性自动创建（锁外裸指针长期安全——组不销毁、表只增不减）。
 
 ## 常见问题 FAQ
 

@@ -227,7 +227,7 @@ public:
     {
         if (!detail::requireServer())
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return yomk::server().url(yomk::url::loopLoops).request();
     }
@@ -241,7 +241,7 @@ public:
     {
         if (!detail::requireServer())
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return yomk::server().url(yomk::url::loopLoop).msg(yomk::msgs::EventLoopQuery::shared(yomk::payload::EventLoopQuery{m_name, m_tagCount})).request();
     }
@@ -255,7 +255,7 @@ public:
     {
         if (!detail::requireServer())
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return yomk::server().url(yomk::url::loopAll).request();
     }

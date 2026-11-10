@@ -492,7 +492,7 @@ public:
     {
         if (!detail::requireServer())
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return yomk::server().url(yomk::url::loggerLoggers).msg(yomk::msgs::String::shared("file")).request();
     }
@@ -508,7 +508,7 @@ public:
     {
         if (!detail::requireServer())
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return yomk::server().url(yomk::url::loggerLogger).msg(yomk::msgs::LoggerQuery::shared(yomk::payload::LoggerQuery{m_file, "file"})).request();
     }
@@ -522,7 +522,7 @@ public:
     {
         if (!detail::requireServer())
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return yomk::server().url(yomk::url::loggerFileGlobalState).request();
     }
@@ -647,7 +647,7 @@ public:
     {
         if (!detail::requireServer())
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return yomk::server().url(yomk::url::loggerLoggers).msg(yomk::msgs::String::shared("console")).request();
     }
@@ -663,7 +663,7 @@ public:
     {
         if (!detail::requireServer())
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return yomk::server().url(yomk::url::loggerLogger).msg(yomk::msgs::LoggerQuery::shared(yomk::payload::LoggerQuery{m_name, "console"})).request();
     }
@@ -677,7 +677,7 @@ public:
     {
         if (!detail::requireServer())
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return yomk::server().url(yomk::url::loggerConsoleGlobalState).request();
     }
@@ -823,7 +823,7 @@ public:
     {
         if (!detail::requireServer())
         {
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return yomk::server().url(yomk::url::loggerAll).request();
     }

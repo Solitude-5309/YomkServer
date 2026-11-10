@@ -2,7 +2,7 @@
 //
 // 覆盖内容：
 // 1. parseRequestUrl 全边界（经公开 request 路径）：空串/无 / 开头/无第二 /、多段路径语义、
-// 合法命中与 pkg 透传端到端、超长 URL；"srv is empty"与"funcName is empty"两分支不可达
+// 合法命中与 pkg 透传端到端、超长 URL；"srv name is empty"与"function name is empty"两分支不可达
 // （url[0]=='/' 且 posEnd>=1 保证 srvName 至少含 /、funcName 以 / 开头必非空），书面豁免
 // 2. asyncRequest 解析边界：非法 url 回调永不触发；合法 url 回调到达；func 为空分支
 // 3. addService 守卫与回滚：nullptr、init 返回 -1、init 抛 bad_alloc/runtime_error（异常
@@ -163,15 +163,15 @@ static void testUrlParseBoundaries()
         resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("please start with /") != std::string::npos,
         "request 无 / 开头 url 返回 ResStatus::Failed + please start with /");
 
-    // 无第二 /：not found service name 契约
+    // 无第二 /：no service name 契约
     resp = server->request("/");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("not found service name") != std::string::npos,
-        "request \"/\" 返回 ResStatus::Failed + not found service name");
+        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("no service name") != std::string::npos,
+        "request \"/\" 返回 ResStatus::Failed + no service name");
     resp = server->request("/Only");
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("not found service name") != std::string::npos,
-        "request \"/Only\"（无第二 /）返回 ResStatus::Failed + not found service name");
+        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("no service name") != std::string::npos,
+        "request \"/Only\"（无第二 /）返回 ResStatus::Failed + no service name");
 
     // 多段路径：srvName="/RouteSrv"、funcName="/b/c" 未安装 → not found（语义现状）
     resp = server->request("/RouteSrv/b/c");

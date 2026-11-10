@@ -5,7 +5,7 @@
 // 1. 默认名 "main"、setName/getName
 // 2. 六级别输出（级别标签 [TRACE]/[DEBUG]/[INFO ]/[WARN ]/[ERROR]/[FATAL] + [名/tag] + 内容）
 // 3. 非法级别 default 降级：log(LogLevel(99)) →
-// "Unknown log level: 99" 提示 + 降级 Info 输出
+// "unknown log level 99, fallback to Info" WARN 提示 + 降级 Info 输出
 // 4. 时间戳格式 [YYYY-MM-DD HH:MM:SS.mmm]
 // 5. 超长名（4096）与空内容
 // 5a. tag 显示语义：tag 非空显示 [tag]、空 tag 回退 [日志器名]
@@ -188,8 +188,8 @@ int main()
                 out = cap.str();
             }
             YOMK_TEST_CHECK(
-                out.find("Unknown log level: 99") != std::string::npos,
-                "非法级别 99 走 default 错误提示（P2-c 修复后活分支）");
+                out.find("unknown log level 99, fallback to Info") != std::string::npos,
+                "非法级别 99 走 default 分支（WARN 带具体数值 + 降级 Info）");
             YOMK_TEST_CHECK(
                 out.find("[INFO ] [lg1_direct_console] lg1_dc_badlevel_marker") != std::string::npos,
                 "非法级别降级 Info 输出 marker");
@@ -287,7 +287,7 @@ int main()
                 "14c-2: Trace 恢复后输出正常");
 
             // 14d unknown 级别按 Info 门控：关 Info 后 log(99) 在门控层直接丢弃
-            // （不进入 default 降级分支，无 Unknown log level 提示）；恢复后降级行为回归
+            // （不进入 default 降级分支，无 unknown log level 提示）；恢复后降级行为回归
             gateLogger.setLevelOn(ConsoleLogger::LogLevel::Info, false);
             std::string outGateBad;
             {
@@ -297,7 +297,7 @@ int main()
             }
             YOMK_TEST_CHECK(
                 outGateBad.find("lg1_dc_gate_bad_marker") == std::string::npos &&
-                    outGateBad.find("Unknown log level") == std::string::npos,
+                    outGateBad.find("unknown log level") == std::string::npos,
                 "14d: unknown 级别随 Info 门控直接丢弃（无降级提示）");
             gateLogger.setLevelOn(ConsoleLogger::LogLevel::Info, true);
             std::string outGateBad2;
@@ -307,9 +307,9 @@ int main()
                 outGateBad2 = cap.str();
             }
             YOMK_TEST_CHECK(
-                outGateBad2.find("Unknown log level: 99") != std::string::npos &&
+                outGateBad2.find("unknown log level 99, fallback to Info") != std::string::npos &&
                     outGateBad2.find("[INFO ] [lg1_dc_gate] lg1_dc_gate_bad2_marker") != std::string::npos,
-                "14d: 恢复后 unknown 级别回归 default 降级 Info 输出");
+                "14d: 恢复后 unknown 级别回归 default 分支（WARN + 降级 Info 输出）");
         }
     }
 
@@ -348,8 +348,8 @@ int main()
                 outBad = cap.str();
             }
             YOMK_TEST_CHECK(
-                outBad.find("Unknown log level: 99") != std::string::npos,
-                "FileLogger 非法级别 99 走 default 错误提示（P2-c 修复后活分支）");
+                outBad.find("unknown log level 99, fallback to Info") != std::string::npos,
+                "FileLogger 非法级别 99 走 default 分支（WARN 带具体数值 + 降级 Info）");
         }
         YOMK_TEST_CHECK(fs::file_size(logFile, ec) == 0, "write 前缓冲内容不落盘（文件仍空）");
 
@@ -543,7 +543,7 @@ int main()
                 "15c: 恢复后落盘正常");
 
             // 15d unknown 级别按 Info 门控：关 Info 后 log(99) 门控层直接丢弃
-            // （不进入 default 降级分支，无 Unknown log level 提示）；恢复后降级行为回归
+            // （不进入 default 降级分支，无 unknown log level 提示）；恢复后降级行为回归
             gateFl.setLevelOn(FileLogger::LogLevel::Info, false);
             auto sizeBeforeBad = fs::file_size(gateLogFile, ec);
             std::string outBadGate;
@@ -554,7 +554,7 @@ int main()
             }
             gateFl.write();
             YOMK_TEST_CHECK(
-                outBadGate.find("Unknown log level") == std::string::npos,
+                outBadGate.find("unknown log level") == std::string::npos,
                 "15d: unknown 级别随 Info 门控直接丢弃（无降级提示）");
             YOMK_TEST_CHECK(
                 fs::file_size(gateLogFile, ec) == sizeBeforeBad, "15d: 关断期间 log(99) 不落盘（文件不增长）");
@@ -569,9 +569,9 @@ int main()
             bool gateReadOk3 = false;
             std::string gateContent3 = readFile(gateLogFile, gateReadOk3);
             YOMK_TEST_CHECK(
-                outBadGate2.find("Unknown log level: 99") != std::string::npos &&
+                outBadGate2.find("unknown log level 99, fallback to Info") != std::string::npos &&
                     gateContent3.find("[INFO ] lg1_df_gate_bad2_marker") != std::string::npos,
-                "15d: 恢复后 unknown 级别回归 default 降级 Info 落盘");
+                "15d: 恢复后 unknown 级别回归 default 分支（WARN + 降级 Info 落盘）");
         }
     }
 

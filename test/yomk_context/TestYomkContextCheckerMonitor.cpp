@@ -114,10 +114,10 @@ int main()
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "创建 ck_key 成功");
 
         auto emptyKey = yomk::ctx().key("").checker_fn([](const yomk::payload::Context&) { return CheckStatus::Accept; }).apply();
-        YOMK_TEST_CHECK(emptyKey == yomk::payload::ResStatus::Failed, "set_checker 空 key 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(emptyKey == yomk::payload::ResStatus::Invalid, "set_checker 空 key 返回 ResStatus::Invalid(入参非法三态统一)");
 
         auto nullFunc = yomk::ctx().key("ck_key").checker_fn(nullptr).apply();
-        YOMK_TEST_CHECK(nullFunc == yomk::payload::ResStatus::Failed, "set_checker null checkFunc 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(nullFunc == yomk::payload::ResStatus::Invalid, "set_checker null checkFunc 返回 ResStatus::Invalid(入参非法三态统一)");
 
         auto noKey =
             yomk::ctx().key("no_such_key").checker_fn([](const yomk::payload::Context&) { return CheckStatus::Accept; }).apply();
@@ -197,10 +197,10 @@ int main()
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "创建 mon_bound 成功");
 
         auto emptyKey = yomk::ctx().key("").monitor_fn([](const yomk::payload::Context&) {}).apply();
-        YOMK_TEST_CHECK(emptyKey == yomk::payload::ResStatus::Failed, "set_monitor 空 key 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(emptyKey == yomk::payload::ResStatus::Invalid, "set_monitor 空 key 返回 ResStatus::Invalid(入参非法三态统一)");
 
         auto nullFunc = yomk::ctx().key("mon_bound").monitor_fn(nullptr).apply();
-        YOMK_TEST_CHECK(nullFunc == yomk::payload::ResStatus::Failed, "set_monitor null func 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(nullFunc == yomk::payload::ResStatus::Invalid, "set_monitor null func 返回 ResStatus::Invalid(入参非法三态统一)");
 
         auto noKey = yomk::ctx().key("no_such_key").monitor_fn([](const yomk::payload::Context&) {}).apply();
         YOMK_TEST_CHECK(noKey == yomk::payload::ResStatus::Failed, "set_monitor 不存在 key 返回 ResStatus::Failed");

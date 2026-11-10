@@ -106,7 +106,7 @@ int main()
 
         yomk::payload::Response resp = yomk::server().url("/Any/func").request();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Invalid, "关闭后 request 守卫回归 ResStatus::Invalid");
-        YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not init", "关闭后契约消息回归: " + resp.m_msg);
+        YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not initialized", "关闭后契约消息回归: " + resp.m_msg);
         YOMK_TEST_CHECK(yomk::server().srv<DummySrv>().create() == -1, "关闭后 create() 守卫回归 -1");
 
         yomk::server().init();

@@ -75,13 +75,13 @@ int main()
     // create：空 key
     {
         auto resp = yomk::ctx().key("").value(yomk::msgs::String::shared(std::string("value"))).create();
-        YOMK_TEST_CHECK(resp == yomk::payload::ResStatus::Failed, "create 空 key 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(resp == yomk::payload::ResStatus::Invalid, "create 空 key 返回 ResStatus::Invalid(入参非法三态统一)");
     }
 
     // create：空 value（nullptr）
     {
         auto resp = yomk::ctx().key("null_value_key").create();
-        YOMK_TEST_CHECK(resp == yomk::payload::ResStatus::Failed, "create nullptr value 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(resp == yomk::payload::ResStatus::Invalid, "create nullptr value 返回 ResStatus::Invalid(入参非法三态统一)");
     }
 
     // create：重复 key
@@ -155,7 +155,7 @@ int main()
     // set：空 key
     {
         auto resp = yomk::ctx().key("").value(yomk::msgs::String::shared(std::string("x"))).set();
-        YOMK_TEST_CHECK(resp == yomk::payload::ResStatus::Failed, "set 空 key 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(resp == yomk::payload::ResStatus::Invalid, "set 空 key 返回 ResStatus::Invalid(入参非法三态统一)");
     }
 
     // set：类型不匹配
@@ -193,15 +193,15 @@ int main()
     // keyInfo：空 key
     {
         auto resp = yomk::ctx().key("").info();
-        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Failed, "keyInfo 空 key 返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(resp.m_msg == "key is empty", "keyInfo 空 key 错误消息一致");
+        YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Invalid, "keyInfo 空 key 返回 ResStatus::Invalid(入参非法三态统一)");
+        YOMK_TEST_CHECK(resp.m_msg == "context key is empty", "keyInfo 空 key 错误消息一致");
     }
 
     // keyInfo：不存在 key
     {
         auto resp = yomk::ctx().key("no_such_key").info();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Failed, "keyInfo 不存在 key 返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(resp.m_msg == "key is not exist", "keyInfo 不存在 key 错误消息一致");
+        YOMK_TEST_CHECK(resp.m_msg == "context key 'no_such_key' does not exist", "keyInfo 不存在 key 错误消息一致(具体键名)");
     }
 
     // listAll：跨组聚合（组 → 键元信息两层结构化包，m_msg 恒 "ok"）
@@ -247,10 +247,10 @@ int main()
         YOMK_TEST_CHECK(resp == yomk::payload::ResStatus::Failed, "destroy 不存在 key 返回 ResStatus::Failed");
     }
 
-    // destroy：空 key（源码不单独判空，等价于不存在的 key）
+    // destroy：空 key（入参非法三态统一）
     {
         auto resp = yomk::ctx().key("").destroy();
-        YOMK_TEST_CHECK(resp == yomk::payload::ResStatus::Failed, "destroy 空 key 返回 ResStatus::Failed");
+        YOMK_TEST_CHECK(resp == yomk::payload::ResStatus::Invalid, "destroy 空 key 返回 ResStatus::Invalid(入参非法三态统一)");
     }
 
     // keys：销毁后只剩一个 key

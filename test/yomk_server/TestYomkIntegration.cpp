@@ -9,7 +9,7 @@
 // 固定名 "/YomkLogger" 生效）→ LOGGER API 恢复且全链路可用
 // S1. yomk::server().shutdown() 全链路统一收尾（压轴）：event_loop().post() 积压、log().to_sink(...).info 缓冲、
 // 异步 monitor 投递三类在途状态一次性排空——monitor 计数守恒、文件落盘（FileLogger
-// 析构 write）、API 回归 ResStatus::Invalid + "YomkServer is not init"（API 守卫级：shutdown 内
+// 析构 write）、API 回归 ResStatus::Invalid + "YomkServer is not initialized"（API 守卫级：shutdown 内
 // setServer(nullptr)，serverSnapshot 空守卫；服务级 ResStatus::Failed 仅出现在服务表内服务缺失时）、
 // 二次 shutdown 幂等
 //
@@ -258,17 +258,17 @@ int main()
         YOMK_TEST_CHECK(readOk && fileContent.find("s1_shutdown_flush_marker") != std::string::npos,
               "shutdown 返回后文件日志已落盘且含标记串（析构 write）");
 
-        // API 守卫级回归：serverSnapshot 已置空 → ResStatus::Invalid + "YomkServer is not init"
+        // API 守卫级回归：serverSnapshot 已置空 → ResStatus::Invalid + "YomkServer is not initialized"
         YOMK_TEST_CHECK(yomk::event_loop().msg(nullptr).loop("integration_loop").handle_fn(YomkServiceFunc()).post() == yomk::payload::ResStatus::Invalid,
               "shutdown 后 event_loop().post() 回归 ResStatus::Invalid（失败原因经错误日志承载）");
         auto postCtx = yomk::ctx().key("drain_key").value(yomk::msgs::String::shared(std::string("x"))).set();
         YOMK_TEST_CHECK(postCtx == yomk::payload::ResStatus::Invalid,
               "shutdown 后 setContext 回归 ResStatus::Invalid");
         auto postLog = yomk::log_mgr().all();
-        YOMK_TEST_CHECK(postLog.m_status == yomk::payload::ResStatus::Invalid && postLog.m_msg == "YomkServer is not init",
+        YOMK_TEST_CHECK(postLog.m_status == yomk::payload::ResStatus::Invalid && postLog.m_msg == "YomkServer is not initialized",
               "shutdown 后 LOGGER API 回归 ResStatus::Invalid + 守卫消息");
         auto postInfo = yomk::srv_info().all();
-        YOMK_TEST_CHECK(postInfo.m_status == yomk::payload::ResStatus::Invalid && postInfo.m_msg == "YomkServer is not init",
+        YOMK_TEST_CHECK(postInfo.m_status == yomk::payload::ResStatus::Invalid && postInfo.m_msg == "YomkServer is not initialized",
               "shutdown 后 SERVER_INFO API 回归 ResStatus::Invalid + 守卫消息");
 
         // 跨线程守卫语义：shutdown 返回后另起线程调用，epoch 已传播（happens-before
@@ -279,7 +279,7 @@ int main()
             std::thread worker([&crossResp]() { crossResp = yomk::log_mgr().all(); });
             worker.join();
             YOMK_TEST_CHECK(crossResp.m_status == yomk::payload::ResStatus::Invalid &&
-                                crossResp.m_msg == "YomkServer is not init",
+                                crossResp.m_msg == "YomkServer is not initialized",
                   "shutdown 后跨线程 LOGGER API 回归 ResStatus::Invalid + 守卫消息（epoch 传播）");
         }
 

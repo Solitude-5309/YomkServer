@@ -3,7 +3,7 @@
 // 覆盖内容：
 // 1. version() 免初始化可调用（不依赖单例，返回非空版本号）
 // 2. 未初始化守卫默认值：instance()() 为空、shutdown() 安全空转（幂等）；
-// request 返回 ResStatus::Invalid + 契约消息 "YomkServer is not init"；asyncRequest 静默返回
+// request 返回 ResStatus::Invalid + 契约消息 "YomkServer is not initialized"；asyncRequest 静默返回
 // 回调不触发；create()/add()/remove() 返回 -1
 // 3. 模块 API 守卫：五模块全量——
 // EventLoop 9 入口、FunctionPool 6 入口、Logger 23 入口、Context 12 入口 + GET 特殊形态、
@@ -78,7 +78,7 @@ int main()
     {
         yomk::payload::Response resp = yomk::server().url("/Any/func").request();
         YOMK_TEST_CHECK(resp.m_status == yomk::payload::ResStatus::Invalid, "request 未初始化返回 ResStatus::Invalid");
-        YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not init", "request 未初始化契约消息: " + resp.m_msg);
+        YOMK_TEST_CHECK(resp.m_msg == "YomkServer is not initialized", "request 未初始化契约消息: " + resp.m_msg);
 
         yomk::server().url("/Any/func").async([](yomk::payload::Response) { ++g_asyncCbCount; }).request();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));

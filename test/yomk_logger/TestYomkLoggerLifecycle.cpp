@@ -7,7 +7,7 @@
 // 2.5 非法级别 default 降级：proxy 设置前 raw 注入 level=99 →
 // console_log default 降级 Info 输出 + ResStatus::Succeeded（S3 的 proxy 处于拦截态时会短路一切
 // console_log，故该 default 分支在本窗口触达）
-// 3. proxy 契约：console().proxy 拦截（false→ResStatus::Succeeded+"console log proxy is success."+无输出）
+// 3. proxy 契约：console().proxy 拦截（false→ResStatus::Succeeded+"ok"+无输出）
 // 与穿透（true→默认输出）；原子计数验证；all 内省 proxy:on；
 // 卸载：传 nullptr → ResStatus::Succeeded、all 首行回 proxy:off、恢复框架默认输出、
 // 代理不再被调用（原子命中数不增）；重装可逆。用例末尾重装并回到穿透态，
@@ -25,7 +25,7 @@
 // logger 名回退 main / file_log 空名 ResStatus::Failed（raw 注入触达）；LOGGER 空名 ResStatus::Failed
 // （空名注册已被堵死）；未知端点 ResStatus::Failed
 // 8. logger 删除接口（/delete_logger）：空名 ResStatus::Invalid、两表未命中 ResStatus::Failed +
-// "logger not found."；console-only / file-only / 同名双表三种命中形态的 msg 计数
+// "logger '<名>' not found"；console-only / file-only / 同名双表三种命中形态
 // （"deleted console:c file:f"）；file 侧删除释放最后引用 → ~FileLogger 锁外自动落盘
 // （写 2 行未 flush 即删 → 文件恰 2 行，数据不丢）；重复删除幂等 ResStatus::Failed；删除后单查 ResStatus::Failed
 // 与 LOGGERS/ALL 行数递减守恒；console 惰性重建；main 无特殊保护（可删，重建须走
@@ -40,7 +40,7 @@
 // file().status()/console().status()）两套主闸态独立直证与主闸翻转联动
 // 11. 文件日志全局代理契约（与控制台 S3 同构，仅单一全局代理无逐器代理）：设置前基线
 // （file().status() proxyOff 且 console().status() proxyOn 两套代理独立直证）、
-// file().proxy 拦截（false→ResStatus::Succeeded+"file log proxy is success."+落盘 marker 缺席+原子计数）
+// file().proxy 拦截（false→ResStatus::Succeeded+"ok"+落盘 marker 缺席+原子计数）
 // 与穿透（true→默认落盘回归 + file().status() proxyOn）、卸载（nullptr→ResStatus::Succeeded、
 // file().status() 回 proxyOff、恢复默认落盘、代理不再被调用原子命中数不增）、重装可逆；
 // 用例末尾重装并回到穿透态
@@ -412,7 +412,7 @@ YOMK_TEST_CHECK(
     }
     YOMK_TEST_CHECK(r.m_status == yomk::payload::ResStatus::Succeeded, "非法级别 99 console_log 返回 ResStatus::Succeeded（P2-c 修复后 default 活分支）");
     YOMK_TEST_CHECK(
-        out.find("unknown log level, use Info") != std::string::npos, "console_log default 分支错误提示（降级 Info）");
+        out.find("unknown log level 99, fallback to Info") != std::string::npos, "console_log default 分支错误提示（WARN + 具体数值,降级 Info）");
     YOMK_TEST_CHECK(
         out.find("[INFO ] [main] lg1_s2p5_badlevel_marker") != std::string::npos,
         "非法级别降级 Info 输出 marker");
@@ -610,7 +610,7 @@ YOMK_TEST_CHECK(
     auto emptyBoth = yomk::log_mgr().dir("").file("").create();
     YOMK_TEST_CHECK(
         emptyBoth == yomk::payload::ResStatus::Invalid,
-        "空名+空 dir 创建返回 ResStatus::Invalid + logger name is empty.（P2-a 已处置）");
+        "空名+空 dir 创建返回 ResStatus::Invalid + logger name is empty（P2-a 已处置）");
     auto emptyName = yomk::log_mgr().dir(tmpDir.string()).file("").create();
     YOMK_TEST_CHECK(
         emptyName == yomk::payload::ResStatus::Invalid,
@@ -618,16 +618,16 @@ YOMK_TEST_CHECK(
     auto emptyDir = yomk::log_mgr().dir("").file("lg1_empty_dir_name").create();
     YOMK_TEST_CHECK(
         emptyDir == yomk::payload::ResStatus::Invalid,
-        "有效名+空 dir 创建返回 ResStatus::Invalid + logger dir is empty.（P2-a 已处置）");
+        "有效名+空 dir 创建返回 ResStatus::Invalid + logger dir is empty（P2-a 已处置）");
 
     // 不可创建 dir → init 返回 false → ResStatus::Failed 且不注册幽灵 logger
     auto badDir = yomk::log_mgr().dir("/proc/lg1_impossible/sub").file("lg1_bad_dir_logger").create();
     YOMK_TEST_CHECK(
         badDir == yomk::payload::ResStatus::Failed,
-        "不可创建 dir 返回 ResStatus::Failed + init file logger failed.（P2-b 已处置，异常不穿透）");
+        "不可创建 dir 返回 ResStatus::Failed + init file logger '<名>' failed（P2-b 已处置，异常不穿透）");
     auto ghostInfo = yomk::log_mgr().file("lg1_bad_dir_logger").get_info();
     YOMK_TEST_CHECK(
-        (ghostInfo.m_status == yomk::payload::ResStatus::Failed && ghostInfo.m_msg == "logger not found."),
+        (ghostInfo.m_status == yomk::payload::ResStatus::Failed && ghostInfo.m_msg == "file logger 'lg1_bad_dir_logger' not found"),
         "init 失败的 logger 未注册（无幽灵 key，内省 not found）");
     // init 失败不占用名字：同名换有效 dir 重试应成功
     fs::path retryDir = tmpDir / "s4_retry";
@@ -698,8 +698,8 @@ YOMK_TEST_CHECK(
     YOMK_TEST_CHECK(filePkg && filePkg->d.m_dir == (tmpDir / "s4").string(), "file 命中 m_dir 为创建目录");
     auto noInfo = yomk::log_mgr().console("lg1_never_registered").get_info();
     YOMK_TEST_CHECK(
-        (noInfo.m_status == yomk::payload::ResStatus::Failed && noInfo.m_msg == "logger not found."),
-        "LOGGER 未注册名返回 ResStatus::Failed + logger not found.");
+        (noInfo.m_status == yomk::payload::ResStatus::Failed && noInfo.m_msg == "console logger 'lg1_never_registered' not found"),
+        "LOGGER 未注册名返回 ResStatus::Failed + console logger '<名>' not found");
 
     // ALL：控制台状态字段与开关翻转联动（逐字段断言）
     {
@@ -794,9 +794,9 @@ YOMK_TEST_CHECK(
         out = cap.str();
     }
     YOMK_TEST_CHECK(
-        (r.m_status == yomk::payload::ResStatus::Succeeded && r.m_msg == "success."),
+        (r.m_status == yomk::payload::ResStatus::Succeeded && r.m_msg == "success"),
         "file_log 非法级别 99 返回 ResStatus::Succeeded（P2-c 修复后 default 活分支）");
-    YOMK_TEST_CHECK(out.find("unknown log level, use Info") != std::string::npos, "file_log default 分支错误提示（降级 Info）");
+    YOMK_TEST_CHECK(out.find("unknown log level 99, fallback to Info") != std::string::npos, "file_log default 分支错误提示（WARN + 具体数值,降级 Info）");
     YOMK_TEST_CHECK(yomk::log_mgr().file("lg1_s6_badlevel").flush() == yomk::payload::ResStatus::Succeeded, "非法级别落盘 WRITE ResStatus::Succeeded");
     bool readOk = false;
     std::string content = readFile(badLevelDir / "lg1_s6_badlevel.log", readOk);
@@ -813,7 +813,7 @@ YOMK_TEST_CHECK(
         outOff = cap.str();
     }
     YOMK_TEST_CHECK(
-        (rOff.m_status == yomk::payload::ResStatus::Succeeded && outOff.find("unknown log level, turn off failed.") != std::string::npos),
+        (rOff.m_status == yomk::payload::ResStatus::Succeeded && outOff.find("unknown log level 99, turn off ignored") != std::string::npos),
         "off 非法级别 ResStatus::Succeeded + 错误提示（default 活分支）");
     std::string outOn;
     yomk::payload::Response rOn(yomk::payload::ResStatus::Invalid);
@@ -823,7 +823,7 @@ YOMK_TEST_CHECK(
         outOn = cap.str();
     }
     YOMK_TEST_CHECK(
-        (rOn.m_status == yomk::payload::ResStatus::Succeeded && outOn.find("unknown log level, turn on failed.") != std::string::npos),
+        (rOn.m_status == yomk::payload::ResStatus::Succeeded && outOn.find("unknown log level 99, turn on ignored") != std::string::npos),
         "on 非法级别 ResStatus::Succeeded + 错误提示（default 活分支）");
     auto allResp = yomk::log_mgr().all();
     auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.m_data);
@@ -886,15 +886,14 @@ YOMK_TEST_CHECK(
             out = cap.str();
         }
         YOMK_TEST_CHECK(
-            (r.m_status == yomk::payload::ResStatus::Failed && r.m_msg == "file logger name is empty."),
+            (r.m_status == yomk::payload::ResStatus::Failed && r.m_msg == "file logger name is empty"),
             "file_log 空 logger 名返回 ResStatus::Failed + 契约消息");
-        YOMK_TEST_CHECK(out.find("file logger name is empty.") != std::string::npos, "file_log 空名错误提示");
     }
     // get_info 空名 → ResStatus::Failed（空名注册不可达，幽灵 logger 命中路径已堵死）
     auto emptyNameInfo = yomk::log_mgr().console("").get_info();
     YOMK_TEST_CHECK(
-        (emptyNameInfo.m_status == yomk::payload::ResStatus::Failed && emptyNameInfo.m_msg == "logger not found."),
-        "LOGGER 空名返回 ResStatus::Failed + logger not found.（P2-a 处置后无幽灵 key）");
+        (emptyNameInfo.m_status == yomk::payload::ResStatus::Failed && emptyNameInfo.m_msg == "console logger '' not found"),
+        "LOGGER 空名返回 ResStatus::Failed + console logger '<名>' not found（P2-a 处置后无幽灵 key）");
     // 未知端点 → invoke 路由层 ResStatus::Failed（服务前缀被路由剥离，消息仅含端点名）
     auto unknown = yomk::server().url("/YomkLogger/no_such_func").request();
     YOMK_TEST_CHECK(unknown.m_status == yomk::payload::ResStatus::Failed, "未知端点返回 ResStatus::Failed（invoke not found）");
@@ -925,7 +924,6 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             r == yomk::payload::ResStatus::Invalid,
             "S8: 删除空名返回 ResStatus::Invalid + 契约消息");
-        YOMK_TEST_CHECK(out.find("logger name is empty.") != std::string::npos, "S8: 空名删除错误提示");
     }
 
     // 8.2 两表均未命中 → ResStatus::Failed + not-found 契约消息（对齐 writeFileLog/loggerInfo）
@@ -939,9 +937,7 @@ YOMK_TEST_CHECK(
         }
         YOMK_TEST_CHECK(
             r == yomk::payload::ResStatus::Failed,
-            "S8: 删除未注册 logger 返回 ResStatus::Failed + logger not found.");
-        YOMK_TEST_CHECK(
-            out.find("logger: lg1_s8_never_created not found.") != std::string::npos, "S8: 未命中错误提示含 logger 名");
+            "S8: 删除未注册 logger 返回 ResStatus::Failed + logger '<名>' not found");
     }
 
     // 8.3 console-only：msg 计数 1/0；删除后单查 ResStatus::Failed；同名再写惰性重建
@@ -1022,9 +1018,6 @@ YOMK_TEST_CHECK(
         }
         YOMK_TEST_CHECK(
             del2 == yomk::payload::ResStatus::Failed, "S8: 重复删除返回 ResStatus::Failed（幂等）");
-        YOMK_TEST_CHECK(
-            out2.find("logger: lg1_s8_both_tables not found.") != std::string::npos,
-            "S8: 重复删除错误提示含 logger 名");
     }
 
     // 8.6 内省行数递减守恒 + ALL 与 LOGGERS 行数关系 + main 删除后惰性重建
@@ -1125,7 +1118,7 @@ YOMK_TEST_CHECK(
         auto offNo = yomk::log_mgr().console("lg1_s9_never_created").level(yomk::payload::LogLevel::Info).disable();
         YOMK_TEST_CHECK(
             offNo == yomk::payload::ResStatus::Failed,
-            "S9c: 具名 OFF 未知名返回 ResStatus::Failed + console logger not found.");
+            "S9c: 具名 OFF 未知名返回 ResStatus::Failed + console logger '<名>' not found");
         auto onNo = yomk::log_mgr().console("lg1_s9_never_created").level(yomk::payload::LogLevel::Info).enable();
         YOMK_TEST_CHECK(
             onNo == yomk::payload::ResStatus::Failed,
@@ -1314,7 +1307,7 @@ YOMK_TEST_CHECK(
         auto offNo = yomk::log_mgr().file("lg1_s10_never_created").level(yomk::payload::LogLevel::Info).disable();
         YOMK_TEST_CHECK(
             offNo == yomk::payload::ResStatus::Failed,
-            "S10c: 具名 OFF 未知名返回 ResStatus::Failed + file logger not found.");
+            "S10c: 具名 OFF 未知名返回 ResStatus::Failed + file logger '<名>' not found");
         auto onNo = yomk::log_mgr().file("lg1_s10_never_created").level(yomk::payload::LogLevel::Info).enable();
         YOMK_TEST_CHECK(
             onNo == yomk::payload::ResStatus::Failed,

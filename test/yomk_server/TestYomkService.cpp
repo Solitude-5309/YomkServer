@@ -217,8 +217,8 @@ static void testInvoke(DemoService* demo)
     // 命中：函数内解包失败（pkg 为 nullptr）返回 ResStatus::Failed
     resp = demo->invoke("/echo", nullptr);
     YOMK_TEST_CHECK(
-        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("pkg is null") != std::string::npos,
-        "invoke 命中但 pkg 为空，函数解包守卫返回 ResStatus::Failed");
+        resp.m_status == yomk::payload::ResStatus::Failed && resp.m_msg.find("pkg is not String, got 'null'") != std::string::npos,
+        "invoke 命中但 pkg 为空，函数解包守卫返回 ResStatus::Failed + got 'null'");
 
     // 异常路径：空名/无 / 开头返回 ResStatus::Failed + parse error 契约消息
     resp = demo->invoke("");

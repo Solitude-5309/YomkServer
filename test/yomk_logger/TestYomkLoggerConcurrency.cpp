@@ -820,7 +820,7 @@ int main()
             "S4a: 8 线程并发同名创建恰 1 个 ResStatus::Succeeded（实际 " + std::to_string(g_s4aCreateOk.load()) + "）");
         YOMK_TEST_CHECK(
             g_s4aCreateNo.load() == kThreads - 1,
-            "S4a: 其余 " + std::to_string(kThreads - 1) + " 个 ResStatus::Failed \"logger name already exists.\"（实际 " +
+            "S4a: 其余 " + std::to_string(kThreads - 1) + " 个 ResStatus::Failed \"logger '<名>' already exists\"（实际 " +
                 std::to_string(g_s4aCreateNo.load()) + "）——unique_lock 互斥下重名检查守恒");
         YOMK_TEST_CHECK(fs::exists(sameDir / (kSameName + ".log")), "S4a: 胜出者日志文件已落盘");
 

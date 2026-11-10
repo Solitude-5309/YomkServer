@@ -69,6 +69,11 @@ int ContextGroup::create(const std::string& key, YomkMsgPtr value)
 
 int ContextGroup::destroy(const std::string& key)
 {
+    if (key.empty())
+    {
+        YOMK_DIAG_WARN("key is empty, please check key");
+        return 2;
+    }
     {
         std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         auto itContext = m_contexts.find(key);

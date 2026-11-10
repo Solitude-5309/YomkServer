@@ -46,7 +46,7 @@ public:
 public:
     // 返回:0 成功 / 1 key 为空 / 2 value 为空 / 3 key 已存在
     int create(const std::string& key, YomkMsgPtr value);
-    // 返回:0 成功 / 1 key 不存在
+    // 返回:0 成功 / 1 key 不存在 / 2 key 为空
     int destroy(const std::string& key);
     // 命中时 value 填现值,key 为空或未命中时填 defaultValue;返回:0 命中 / 1 key 为空 / 2 key 不存在
     int get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPtr& value);

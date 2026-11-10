@@ -54,7 +54,7 @@ ContextGroup* YomkContext::findGroup(const std::string& groupName, yomk::payload
     if (groupName.empty())
     {
         YOMK_DIAG_WARN("group name is empty, please check Context.m_group");
-        resp = yomk::payload::Response(yomk::payload::ResStatus::Failed, "group name is empty");
+        resp = yomk::payload::Response(yomk::payload::ResStatus::Invalid, "group name is empty");
         return nullptr;
     }
     if (groupName == "main")
@@ -97,14 +97,13 @@ yomk::payload::Response YomkContext::create(YomkMsgPtr pkg)
     }
 
     // 返回码映射(约定见 ContextGroup::create):0 成功 / 1 key 为空 / 2 value 为空 / 3 key 已存在
+    // 三态约定:入参非法(key/value 为空)= Invalid,业务冲突(已存在)= Failed
     int rc = group->create(context->d.m_key, context->d.m_value);
-    if (rc == 1)
+    if (rc == 1 || rc == 2)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key is empty");
-    }
-    if (rc == 2)
-    {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "create context key '" + context->d.m_key + "' failed: value is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Invalid,
+                                       rc == 1 ? "context key is empty"
+                                               : "create context key '" + context->d.m_key + "' failed: value is empty");
     }
     if (rc == 3)
     {
@@ -127,9 +126,14 @@ yomk::payload::Response YomkContext::destroy(YomkMsgPtr pkg)
         return fail;
     }
 
-    // 返回码映射(约定见 ContextGroup::destroy):0 成功 / 1 key 不存在
+    // 返回码映射(约定见 ContextGroup::destroy):0 成功 / 1 key 不存在 / 2 key 为空
+    // 三态约定:入参非法(键空)= Invalid,业务未命中(不存在)= Failed
     int rc = group->destroy(groupKey->d.m_key);
-    if (rc != 0)
+    if (rc == 2)
+    {
+        return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "context key is empty");
+    }
+    if (rc == 1)
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key '" + groupKey->d.m_key + "' does not exist");
     }
@@ -155,7 +159,7 @@ yomk::payload::Response YomkContext::get(YomkMsgPtr pkg)
     int rc = group->get(context->d.m_key, context->d.m_value, value);
     if (rc == 1)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key is empty, return default value", value);
+        return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "context key is empty, return default value", value);
     }
     if (rc == 2)
     {
@@ -179,8 +183,13 @@ yomk::payload::Response YomkContext::set(YomkMsgPtr pkg)
     }
 
     // 失败文案经 detail 透传(ContextGroup::set 失败时已携带 key 值与期望/实际类型名,此处无需再分支拼装)
+    // 三态约定:入参非法(键空/value 空,rc 1/5)= Invalid,业务未命中/冲突(2/3/4)= Failed
     std::string detail;
     int rc = group->set(context->d.m_key, context->d.m_value, detail);
+    if (rc == 1 || rc == 5)
+    {
+        return yomk::payload::Response(yomk::payload::ResStatus::Invalid, detail);
+    }
     if (rc != 0)
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, detail);
@@ -275,14 +284,13 @@ yomk::payload::Response YomkContext::setChecker(YomkMsgPtr pkg)
     }
 
     // 返回码映射(约定见 ContextGroup::setChecker):0 成功 / 1 key 为空 / 2 checkFunc 为空 / 3 key 不存在
+    // 三态约定:入参非法(键空/回调空)= Invalid
     int rc = group->setChecker(checker->d.m_key, checker->d.m_checkFunc);
-    if (rc == 1)
+    if (rc == 1 || rc == 2)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "set checker key is empty");
-    }
-    if (rc == 2)
-    {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "set checker key '" + checker->d.m_key + "' failed: checkFunc is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Invalid,
+                                       rc == 1 ? "set checker key is empty"
+                                               : "set checker key '" + checker->d.m_key + "' failed: checkFunc is empty");
     }
     if (rc == 3)
     {
@@ -306,14 +314,13 @@ yomk::payload::Response YomkContext::setMonitor(YomkMsgPtr pkg)
     }
 
     // 返回码映射(约定见 ContextGroup::setMonitor):0 成功 / 1 key 为空 / 2 monitorFunc 为空 / 3 key 不存在
+    // 三态约定:入参非法(键空/回调空)= Invalid
     int rc = group->setMonitor(monitor->d.m_key, monitor->d.m_contextMonitorFunc, monitor->d.m_asyncMonitor);
-    if (rc == 1)
+    if (rc == 1 || rc == 2)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "set monitor key is empty");
-    }
-    if (rc == 2)
-    {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "set monitor key '" + monitor->d.m_key + "' failed: monitor function is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Invalid,
+                                       rc == 1 ? "set monitor key is empty"
+                                               : "set monitor key '" + monitor->d.m_key + "' failed: monitor function is empty");
     }
     if (rc == 3)
     {
@@ -374,7 +381,7 @@ yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr pkg)
     int rc = group->keyInfo(groupKey->d.m_key, info);
     if (rc == 1)
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "context key is empty");
+        return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "context key is empty");
     }
     if (rc == 2)
     {

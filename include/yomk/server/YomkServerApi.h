@@ -134,7 +134,7 @@ public:
         auto srv = YomkServerRef::serverSnapshot();
         if (!srv)
         {
-            YOMK_DIAG_ERROR("YomkServer is not init");
+            YOMK_DIAG_ERROR("YomkServer is not initialized");
             return;
         }
         return srv->asyncRequest(m_url, m_msg, m_func);
@@ -147,7 +147,7 @@ inline bool requireServer()
 {
     if (YomkServerRef::serverSnapshot())
         return true;
-    YOMK_DIAG_ERROR("YomkServer is not init");
+    YOMK_DIAG_ERROR("YomkServer is not initialized");
     return false;
 }
 
@@ -211,8 +211,8 @@ public:
         auto srv = YomkServerRef::serverSnapshot();
         if (!srv)
         {
-            YOMK_DIAG_ERROR("YomkServer is not init");
-            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not init");
+            YOMK_DIAG_ERROR("YomkServer is not initialized");
+            return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
         return srv->request(m_url, m_msg);
     }
@@ -393,7 +393,7 @@ public:
         auto server = YomkServerRef::serverSnapshot();
         if (!server)
         {
-            YOMK_DIAG_ERROR("YomkServer is not init");
+            YOMK_DIAG_ERROR("YomkServer is not initialized");
             return -1;
         }
         if (!m_newSvc)
@@ -416,7 +416,7 @@ public:
         auto server = YomkServerRef::serverSnapshot();
         if (!server)
         {
-            YOMK_DIAG_ERROR("YomkServer is not init");
+            YOMK_DIAG_ERROR("YomkServer is not initialized");
             return -1;
         }
         if (!m_srvPtr)
@@ -441,7 +441,7 @@ public:
         auto server = YomkServerRef::serverSnapshot();
         if (!server)
         {
-            YOMK_DIAG_ERROR("YomkServer is not init");
+            YOMK_DIAG_ERROR("YomkServer is not initialized");
             return -1;
         }
         if (m_srvName.empty())

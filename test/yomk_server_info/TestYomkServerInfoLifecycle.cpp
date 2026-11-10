@@ -348,8 +348,8 @@ int main()
 
         auto noFuncPart = yomk::srv_info().fn_url("/FmtSrv").get_info();
         YOMK_TEST_CHECK(noFuncPart.m_status == yomk::payload::ResStatus::Failed &&
-                  noFuncPart.m_msg.find("not found function name") != std::string::npos,
-              "无第二个 / 返回 ResStatus::Failed + not found function name: " + noFuncPart.m_msg);
+                  noFuncPart.m_msg.find("no function name") != std::string::npos,
+              "无第二个 / 返回 ResStatus::Failed + no function name: " + noFuncPart.m_msg);
 
         auto noSrv = yomk::srv_info().fn_url("/NoSuchSrv/f").get_info();
         YOMK_TEST_CHECK(noSrv.m_status == yomk::payload::ResStatus::Failed && noSrv.m_msg == "service not found: /NoSuchSrv",
@@ -360,8 +360,8 @@ int main()
               "函数不存在契约消息精确匹配: " + noFunc.m_msg);
 
         auto nullPkg = yomk::server().url("/YomkServerInfo/function").request();
-        YOMK_TEST_CHECK(nullPkg.m_status == yomk::payload::ResStatus::Failed && nullPkg.m_msg.find("pkg is null") != std::string::npos,
-              "null pkg 返回 ResStatus::Failed + pkg is null（unpack 守卫）");
+        YOMK_TEST_CHECK(nullPkg.m_status == yomk::payload::ResStatus::Failed && nullPkg.m_msg.find("pkg is not String, got 'null'") != std::string::npos,
+              "null pkg 返回 ResStatus::Failed + got 'null'（unpack 守卫）");
 
         // description 透出：四参安装的 /echo 命中时说明承载于 FuncInfo 包；无说明的 /ping 恒挂包但说明为空
         auto hitDesc = yomk::srv_info().fn_url("/FmtSrv/echo").get_info();
