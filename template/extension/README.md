@@ -14,12 +14,15 @@ template/extension/
 │   │   ├── __init__.py             #   导出 ExtensionRequest / ExtensionResponse
 │   │   ├── ExtensionMsg.py         #   消息类型定义
 │   │   └── py.typed
-│   ├── extension/          # 运行时域子包（并入框架 yomk 命名空间段）
-│   │   ├── __init__.py             #   __version__ + 导出 ExtensionService
-│   │   ├── ExtensionService.py     #   运行时服务（YomkService 子类）
+│   ├── extension/          # 运行时域子包（并入框架 yomk 命名空间段，与框架各域同构：builder + 类型桩）
+│   │   ├── __init__.py             #   __version__ + 导出 extension/ExtensionBuilder/ExtensionService
+│   │   ├── __init__.pyi            #   类型桩
+│   │   ├── builder.py              #   extension 域 builder（版本查询终结 extension().version()）
+│   │   ├── builder.pyi             #   类型桩
+│   │   ├── ExtensionService.py     #   运行时服务（YomkService 子类，/echo 与 /version 端点）
 │   │   └── py.typed
 │   └── url/extension/      # URL 常量池子包（并入框架 yomk.url 常量池，与 yomk/url/ctx 同构）
-│       ├── __init__.py             #   EXTENSION_ECHO 等端点常量
+│       ├── __init__.py             #   EXTENSION_ECHO / EXTENSION_VERSION 等端点常量
 │       ├── __init__.pyi            #   类型桩
 │       └── py.typed
 ├── test/test_extension.py
@@ -62,8 +65,22 @@ python3 test/test_extension.py
 
 ```python
 from yomk.msg.extension import ExtensionRequest, ExtensionResponse   # 扩展消息
-from yomk.extension import ExtensionService                    # 扩展运行时
+from yomk.extension import ExtensionService, extension         # 扩展运行时 + extension 域 builder
 from yomk.url.extension import EXTENSION_ECHO                  # 扩展 URL 常量（并入框架 yomk.url 常量池）
 
+server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()
+extension().version()   # 扩展版本查询终结（对齐 C++ ExtensionApi.h extVersion()，返回 Response）
+```
+
+extension 域 builder 与框架各域同构，遵循三条 API 形态纪律：
+
+1. **builder 是模块自己的 API**——只封装本模块自有接口（模板仅版本查询终结
+   `extension().version()`），不重复框架通用请求链路；新增业务终结方法时在
+   `yomk/extension/builder.py` 按同风格追加。
+2. **builder 可省略**（可选件）：不提供时须在运行时域 `__init__` 或 URL 常量池
+   注释中写明统一请求调用形态，并说明各 URL 常量的功能作用。
+3. **推荐优先使用统一请求接口**（框架封装好的统一请求形态，屏蔽 URL 之下的路由细节）：
+
+```python
 server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()
 ```

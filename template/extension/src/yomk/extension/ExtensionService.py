@@ -1,6 +1,8 @@
 # 扩展运行时服务（第三方运行时扩展示例）
 # 纪律：第三方服务不做隐式发现——使用方须显式 server().srv(ExtensionService).create()
-# 注册（见 test/test_extension.py）；框架只拉起 5 个内置服务
+# 注册（见 test/test_extension.py）；框架只拉起 5 个内置服务。
+# 调用方推荐优先使用框架封装好的统一请求接口访问本服务：
+#   server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
 from yomk.server import YomkService
 from yomk.msg.server import ResStatus, Response
 from yomk.msg.extension import ExtensionRequest, ExtensionResponse
@@ -14,7 +16,9 @@ class ExtensionService(YomkService):
 
     def init(self):
         self.install_func("/echo", self.echo)
-        log().tag("ExtensionService::init").info("install func [ /echo ] to ", self.get_name())
+        self.install_func("/version", self.version)
+        log().tag("ExtensionService::init").info(
+            "install func [ /echo /version ] to ", self.get_name())
         return 0
 
     def echo(self, pkg):
@@ -24,3 +28,9 @@ class ExtensionService(YomkService):
             return Response(ResStatus.eNo, "pkg type mismatch, ExtensionRequest expected")
         return Response(ResStatus.eOk, "echo",
                         ExtensionResponse("ok", "echo", pkg.payload))
+
+    def version(self, pkg):
+        # 版本查询终结（对齐 C++ ExtensionService::version）：版本号单一来源为
+        # yomk.extension.__init__.__version__，调用期延迟导入避开循环 import
+        from yomk.extension import __version__
+        return Response(ResStatus.Succeeded, "ok", f"extension v{__version__}")

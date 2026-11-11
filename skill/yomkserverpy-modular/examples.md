@@ -671,7 +671,7 @@ log_mgr().location().show_file(True).show_func(True).apply()   # [main.py:42:<mo
 
 ## 示例7：创建扩展库（yomk 命名空间并入形态）
 
-扩展为 yomk 命名空间并入形态：独立仓库源树只写 `src/yomk/<域>/`（运行时服务）、`src/yomk/msg/<域>/`（消息类型）与 `src/yomk/url/<域>/`（URL 常量池，并入框架 `yomk.url` 常量池）三个叶子目录，`install.sh` 按 PEP 420 命名空间合并装入 YomkServerPy 的 site-packages/yomk/ 下（与框架子包平级共存，不动框架文件），安装后任意终端可 `from yomk.<域> import ExtensionService`。占位符替换：域名 `extension` → 用户指定名（snake_case；域目录、import、服务类 `ExtensionService`、消息类 `ExtensionRequest`/`ExtensionResponse` 同步替换）。纪律：**不得创建** `yomk/__init__.py`、`yomk/msg/__init__.py` 或 `yomk/url/__init__.py`；扩展服务由使用方**显式注册**（框架不做隐式发现）。
+扩展为 yomk 命名空间并入形态：独立仓库源树只写 `src/yomk/<域>/`（运行时服务 + 可选 builder）、`src/yomk/msg/<域>/`（消息类型）与 `src/yomk/url/<域>/`（URL 常量池，并入框架 `yomk.url` 常量池）三个叶子目录，`install.sh` 按 PEP 420 命名空间合并装入 YomkServerPy 的 site-packages/yomk/ 下（与框架子包平级共存，不动框架文件），安装后任意终端可 `from yomk.<域> import ExtensionService`。占位符替换：域名 `extension` → 用户指定名（snake_case；域目录、import、服务类 `ExtensionService`、消息类 `ExtensionRequest`/`ExtensionResponse` 同步替换）。纪律：**不得创建** `yomk/__init__.py`、`yomk/msg/__init__.py` 或 `yomk/url/__init__.py`；扩展服务由使用方**显式注册**（框架不做隐式发现）；调用方**推荐优先**使用统一请求接口 `server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()`（builder 为模块自有 API 的可选件，只封装本模块自有接口）。
 
 ### 目录结构（模板实名）
 
@@ -683,11 +683,14 @@ ExtensionName/
 │   │   ├── ExtensionMsg.py          #   消息类型定义
 │   │   └── py.typed
 │   ├── extension/           # 运行时域子包（并入框架 yomk 命名空间段）
-│   │   ├── __init__.py              #   __version__ + re-export 服务类
+│   │   ├── __init__.py              #   __version__ + re-export 服务类与 builder
+│   │   ├── __init__.pyi             #   类型桩
+│   │   ├── builder.py               #   extension 域 builder（可选件：只封装本模块自有接口）
+│   │   ├── builder.pyi              #   类型桩
 │   │   ├── ExtensionService.py      #   服务实现（YomkService 子类）
 │   │   └── py.typed
 │   └── url/extension/       # URL 常量池子包（并入框架 yomk.url 常量池，与 yomk/url/ctx 同构）
-│       ├── __init__.py              #   EXTENSION_ECHO 等端点常量（大写蛇形）
+│       ├── __init__.py              #   EXTENSION_ECHO 等端点常量（大写蛇形，注明功能作用与统一请求形态）
 │       ├── __init__.pyi             #   类型桩
 │       └── py.typed
 ├── test/
@@ -738,19 +741,66 @@ class ExtensionResponse:
 ```python
 # 第三方扩展 yomk.extension：运行时域子包（PEP 420 命名空间并入框架 yomk）
 # 与框架 yomk/server、yomk/ctx 等域平级；扩展仓库不得创建 yomk/__init__.py
-from .ExtensionService import ExtensionService
-
-# 扩展版本号（单一来源：本文件；子模块不得反向 import 域入口，防循环导入）
+# 版本常量须先于子模块导入（ExtensionService.version 延迟引用本模块 __version__）
 __version__ = "0.0.1"
 
-__all__ = ["ExtensionService"]
+from .ExtensionService import ExtensionService
+from .builder import ExtensionBuilder, extension
+
+__all__ = [
+    "__version__",
+    "extension", "ExtensionBuilder",
+    "ExtensionService",
+]
+```
+
+### src/yomk/extension/builder.py
+```python
+# extension 域 builder（与框架各域 builder.py 同构）。
+# 扩展 API 形态纪律：
+#   1. builder 是模块自己的 API——只封装本模块自有接口，不重复框架通用请求链路；
+#   2. builder 为可选件，可以不写；不提供时须在本域 __init__ 或 url 常量池注释中
+#      写明统一请求调用形态，并说明各 URL 常量的功能作用，保证使用方无 builder
+#      也有文档可循；
+#   3. 推荐优先使用框架封装好的统一请求接口（屏蔽 URL 之下的路由细节）：
+#        server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
+#      builder 终结仅作模块自有便捷入口。
+# 模板接口最小化，仅提供版本查询终结；新增业务终结方法时按同风格在本文件追加
+# （内部仍走 _facade.api_request）
+from yomk.server import _facade
+from yomk.url.extension import EXTENSION_VERSION
+
+
+class ExtensionBuilder:
+    def version(self):
+        # 扩展版本查询终结（对齐 C++ ExtensionApi.h extVersion()），返回 Response
+        return _facade.api_request(EXTENSION_VERSION, None)
+
+
+def extension():
+    # extension 域链式入口
+    return ExtensionBuilder()
+```
+
+### src/yomk/extension/builder.pyi
+```python
+from yomk.msg.server import Response
+
+
+class ExtensionBuilder:
+    def version(self) -> Response: ...
+
+
+def extension() -> ExtensionBuilder: ...
 ```
 
 ### src/yomk/extension/ExtensionService.py
 ```python
 # 扩展运行时服务（第三方运行时扩展示例）
 # 纪律：第三方服务不做隐式发现——使用方须显式 server().srv(ExtensionService).create()
-# 注册（见 test/test_extension.py）；框架只拉起 5 个内置服务
+# 注册（见 test/test_extension.py）；框架只拉起 5 个内置服务。
+# 调用方推荐优先使用框架封装好的统一请求接口访问本服务：
+#   server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
 from yomk.server import YomkService
 from yomk.msg.server import ResStatus, Response
 from yomk.msg.extension import ExtensionRequest, ExtensionResponse
@@ -764,7 +814,9 @@ class ExtensionService(YomkService):
 
     def init(self):
         self.install_func("/echo", self.echo)
-        log().tag("ExtensionService::init").info("install func [ /echo ] to ", self.get_name())
+        self.install_func("/version", self.version)
+        log().tag("ExtensionService::init").info(
+            "install func [ /echo /version ] to ", self.get_name())
         return 0
 
     def echo(self, pkg):
@@ -774,6 +826,12 @@ class ExtensionService(YomkService):
             return Response(ResStatus.eNo, "pkg type mismatch, ExtensionRequest expected")
         return Response(ResStatus.eOk, "echo",
                         ExtensionResponse("ok", "echo", pkg.payload))
+
+    def version(self, pkg):
+        # 版本查询终结（对齐 C++ ExtensionService::version）：版本号单一来源为
+        # yomk.extension.__init__.__version__，调用期延迟导入避开循环 import
+        from yomk.extension import __version__
+        return Response(ResStatus.Succeeded, "ok", f"extension v{__version__}")
 ```
 
 ### src/yomk/url/extension/__init__.py
@@ -781,11 +839,18 @@ class ExtensionService(YomkService):
 # /ExtensionService/* 第三方扩展 URL 常量（与框架 src/yomk/url/<域>/ 同构）。
 # yomk.url 为纯命名空间层（与 yomk.msg 同构，无 __init__）：扩展自带 yomk/url/extension/
 # 叶子子包即可并入框架常量池，与 yomk/url/ctx 等平级共存。
+#
+# 使用方式（推荐优先）：统一请求接口（server 域链式形态，屏蔽 URL 之下的路由细节）
+#   server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
+# 扩展域 builder（extension().version() 等）为可选件，只封装模块自有接口；
+# 不提供 builder 的扩展须在此处写明统一请求形态与各常量功能作用。
 __all__ = [
     "EXTENSION_ECHO",
+    "EXTENSION_VERSION",
 ]
 
-EXTENSION_ECHO = "/ExtensionService/echo"
+EXTENSION_ECHO = "/ExtensionService/echo"        # 回显端点：请求包 ExtensionRequest，回包 ExtensionResponse（data 位）
+EXTENSION_VERSION = "/ExtensionService/version"  # 版本查询端点：data 位为 "extension v<版本>" 字符串
 ```
 
 ### src/yomk/url/extension/__init__.pyi
@@ -794,6 +859,7 @@ __all__: list[str]
 
 
 EXTENSION_ECHO: str
+EXTENSION_VERSION: str
 ```
 
 ### test/test_extension.py
@@ -804,35 +870,44 @@ EXTENSION_ECHO: str
 test_extension.py —— 第三方扩展示例的运行级验证
 
 流程：框架 init（内置 5 服务）→ 显式注册扩展运行时服务
-（server().srv(ExtensionService).create()，无隐式发现）→ 裸请求 EXTENSION_ECHO
-（扩展消息 ExtensionRequest 作请求包，强类型 ExtensionResponse 承载回包）→ shutdown。
+（server().srv(ExtensionService).create()，无隐式发现）→ 统一请求接口打 EXTENSION_ECHO
+（扩展消息 ExtensionRequest 作请求包，强类型 ExtensionResponse 承载回包）→
+extension 域 builder 版本查询终结（extension().version()）→ shutdown。
 退出码 0 = 通过。
 """
 
 import sys
 
-from yomk.server import server
+from yomk.server import __version__, server
 from yomk.msg.server import ResStatus
 from yomk.msg.extension import ExtensionRequest, ExtensionResponse
-from yomk.extension import ExtensionService
+from yomk.extension import ExtensionService, extension, __version__ as extension_version
 from yomk.url.extension import EXTENSION_ECHO   # URL 常量池（并入框架 yomk.url 命名空间段）
+from yomk.log import log
 
 
 def main():
     server().async_thread(1).init()
     try:
+        log().tag("test_extension").info(f"version: framework={__version__} extension={extension_version}")
         # 第三方运行时服务：显式注册（框架不做隐式发现）
         ret = server().srv(ExtensionService).create()
         assert ret == 0, f"srv(ExtensionService).create() == {ret}"
 
-        # 扩展消息作请求包直发（裸 URL 请求，端点经 yomk.url.extension 常量池）
+        # 统一请求接口（推荐优先）：扩展消息作请求包直发，端点经 yomk.url.extension 常量池
         resp = server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
         assert resp.status == ResStatus.eOk, (resp.status, resp.msg)
         data = resp.data
         assert isinstance(data, ExtensionResponse) and data.msg == "echo" \
             and data.data == "hello ext", data
 
-        print("extension smoke OK:", data)
+        log().tag("test_extension").info("extension smoke OK:", data)
+
+        # extension 域 builder 版本查询终结（对齐 C++ ExtensionApi.h extVersion()）
+        ver = extension().version()
+        assert ver.status == ResStatus.Succeeded, (ver.status, ver.msg)
+        assert ver.data == f"extension v{extension_version}", ver
+        log().tag("test_extension").info("extension version OK:", ver.data)
         return 0
     finally:
         server().shutdown()
@@ -939,46 +1014,90 @@ echo "可运行验证: python3 ${SCRIPT_DIR}/test/test_extension.py"
 
 ### README.md
 ````markdown
-# ExtensionName 扩展（yomk 命名空间并入形态）
+# ExtensionName —— 第三方扩展示例模板（yomk 命名空间并入形态）
 
-基于 [YomkServerPy](https://github.com/Solitude-5309/YomkServerPy) 框架的扩展模板：**独立仓库只写
-`src/yomk/msg/extension/`（消息类型）、`src/yomk/extension/`（运行时服务）与
-`src/yomk/url/extension/`（URL 常量池）三个目录**，
+本模板演示第三方仓库如何为 YomkServerPy 提供扩展：**独立仓库只写
+`yomk/msg/extension/`（消息类型）、`yomk/extension/`（运行时服务）与
+`yomk/url/extension/`（URL 常量池）三个目录**，
 安装到框架 site-packages 后按 PEP 420 命名空间与框架子包平级合并。
 
-## 功能
+## 目录结构
 
-| URL | 功能 | 说明 |
-|-----|------|------|
-| `/ExtensionService/echo` | 回声 | 扩展消息强类型往返（ExtensionRequest → ExtensionResponse） |
-
-## 前置条件
-
-- Python >= 3.10
-- YomkServerPy 已安装到系统
-
-## 安装
-
-```bash
-bash install.sh            # 交互式，前置路径默认取 $YOMK_PREFIX_PATH，可交互修改
+```
+ExtensionName/
+├── src/yomk/               # 扩展源树（与框架同构：只写自己的叶子目录）
+│   ├── msg/extension/      # 消息子包（并入框架 yomk.msg 命名空间段）
+│   │   ├── __init__.py             #   导出 ExtensionRequest / ExtensionResponse
+│   │   ├── ExtensionMsg.py         #   消息类型定义
+│   │   └── py.typed
+│   ├── extension/          # 运行时域子包（并入框架 yomk 命名空间段，与框架各域同构：builder + 类型桩）
+│   │   ├── __init__.py             #   __version__ + 导出 extension/ExtensionBuilder/ExtensionService
+│   │   ├── __init__.pyi            #   类型桩
+│   │   ├── builder.py              #   extension 域 builder（可选件：只封装本模块自有接口）
+│   │   ├── builder.pyi             #   类型桩
+│   │   ├── ExtensionService.py     #   运行时服务（YomkService 子类，/echo 与 /version 端点）
+│   │   └── py.typed
+│   └── url/extension/      # URL 常量池子包（并入框架 yomk.url 常量池，与 yomk/url/ctx 同构）
+│       ├── __init__.py             #   EXTENSION_ECHO / EXTENSION_VERSION 等端点常量（注明功能作用与统一请求形态）
+│       ├── __init__.pyi            #   端点常量类型桩
+│       └── py.typed
+├── test/test_extension.py
+├── install.sh
+└── README.md
 ```
 
-> 扩展按 PEP 420 命名空间并入框架 yomk/：仅落扩展自身叶子目录，不动框架文件。
-> 测试程序不随扩展安装，就地在模板目录下 `test/` 运行验证。
+## 命名空间纪律（必须遵守）
 
-## 使用示例
+框架的 `yomk/`、`yomk/msg/`、`yomk/url/` 三层是 **PEP 420 命名空间包**（无 `__init__.py`，
+`import yomk` 不加载任何子模块、`yomk.__file__ is None`）。第三方扩展依赖
+该机制与框架合并，因此：
+
+- 扩展仓库**不得创建** `yomk/__init__.py`、`yomk/msg/__init__.py` 或 `yomk/url/__init__.py`
+  （install.sh 安装前会做守卫检查）；
+- 只新增自己的叶子目录（本模板为 `yomk/msg/extension/`、`yomk/extension/` 与 `yomk/url/extension/`）；
+- 扩展域的 `__init__.py` 内自带版本常量（框架各域由构建期注入
+  `_version.py`，扩展可简化为普通常量）。
+
+## 第三方运行时服务纪律
+
+框架只拉起 5 个内置服务，**不做隐式发现**。扩展服务由使用方显式注册：
 
 ```python
 from yomk.server import server
-from yomk.msg.extension import ExtensionRequest
 from yomk.extension import ExtensionService
-from yomk.url.extension import EXTENSION_ECHO
 
 server().async_thread(1).init()
 server().srv(ExtensionService).create()   # 显式注册后 /ExtensionService/* 才可达
+```
 
-resp = server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()
-print(resp.data)   # ExtensionResponse(status=ok, msg='echo', data='hi')
-server().shutdown()
+## 安装与验证
+
+```bash
+bash install.sh        # 交互输入框架安装路径（默认取 YOMK_PREFIX_PATH）
+python3 test/test_extension.py
+```
+
+安装后可用：
+
+```python
+from yomk.msg.extension import ExtensionRequest, ExtensionResponse   # 扩展消息
+from yomk.extension import ExtensionService, extension         # 扩展运行时 + extension 域 builder
+from yomk.url.extension import EXTENSION_ECHO                  # 扩展 URL 常量（并入框架 yomk.url 常量池）
+
+server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()
+extension().version()   # 扩展版本查询终结（对齐 C++ ExtensionApi.h extVersion()，返回 Response）
+```
+
+extension 域 builder 与框架各域同构，遵循三条 API 形态纪律：
+
+1. **builder 是模块自己的 API**——只封装本模块自有接口（模板仅版本查询终结
+   `extension().version()`），不重复框架通用请求链路；新增业务终结方法时在
+   `yomk/extension/builder.py` 按同风格追加。
+2. **builder 可省略**（可选件）：不提供时须在运行时域 `__init__` 或 URL 常量池
+   注释中写明统一请求调用形态并说明各 URL 常量的功能作用。
+3. **推荐优先使用统一请求接口**（框架封装好的统一请求形态，屏蔽 URL 之下的路由细节）：
+
+```python
+server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()
 ```
 ````

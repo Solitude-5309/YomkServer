@@ -115,6 +115,14 @@ class MyService(YomkService):
 
 `YomkBoot`（`yomk.boot` 域，ABC 纯虚）提供 before / start / after 三段式契约（`before()` 前置准备如读配置、`start()` 主体如创建注册服务、`after()` 后置动作如挂载监听），封装从框架初始化到业务就绪的完整流程。经 `server().boot_ptr(boot).run()` 消费：内部先完成框架 init，再按序执行三段；任一阶段返回非 0 立即中止并原样传播该返回值。参考实现见 `examples/boot/ArmBoot.py`。
 
+## 第三方扩展的 API 形态
+
+第三方扩展（仓库 `template/extension/` 形态）的运行时域 `yomk/<域>/` 与框架各域同构，可选提供 `builder.py`（+ `__init__.pyi`/`builder.pyi` 类型桩）。约定三条 API 形态纪律：
+
+1. **builder 是模块自己的 API**：只封装本模块自有接口（模板仅版本查询终结 `extension().version()`），不重复框架通用请求链路；
+2. **builder 可省略**：不提供时须在运行时域 `__init__` 或 URL 常量池注释中写明统一请求调用形态，并说明各 URL 常量的功能作用，保证使用方无 builder 也有文档可循；
+3. **推荐优先使用统一请求接口**：`server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()` 是框架封装好的统一请求形态（屏蔽 URL 之下的路由细节），扩展调用首选；builder 终结仅作模块自有便捷入口。
+
 ## 完整示例
 
 完整可运行演示见 `examples/ExampleYomkService.py`（控制柜一次上电会话 8 个场景覆盖服务定义、注册、同步/异步请求、跨服务调用、自省、热替换、删除断链与优雅关闭，读运行输出即可理解每个调用）。
