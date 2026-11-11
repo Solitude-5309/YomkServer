@@ -135,7 +135,7 @@ int MyService::init()
 
 ## 扩展模块四件套
 
-自定义扩展的对外头文件按 SDK `include/yomk/` 各域的同一设计组织为四件套：`XxxUrl.h`（`yomk::url` 命名空间 URL 常量，`inline constexpr std::string_view`；请求侧一律取常量、不裸写字符串字面量，见「注意事项」）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG`）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态——前置累积 `url/msg` + 无参终结 `request`，builder 持 `string_view` 视图仅单表达式内联使用）。完整可编译模板见 `template/extension/`（`ExtensionApi.h` 提供 `yomk::ext().version()` 终结）。
+自定义扩展的对外头文件按 SDK `include/yomk/` 各域的同一设计组织为四件套：`XxxUrl.h`（`yomk::url` 命名空间 URL 常量，`inline constexpr std::string_view`；请求侧一律取常量、不裸写字符串字面量，见「注意事项」）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG`）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态。约定：①只写本模块业务的终结方法，不重复封装通用请求链；②可不写 API 方法，但须在 Api 文件注释写清统一调用方式及 url 的功能作用，如 `yomk::server().url(yomk::url::extVersion).request()`；③请求一律优先使用统一请求接口 `yomk::server().url(<url>).request()`，扩展终结方法仅是其上的薄封装。模板仅内置 `version()` 终结）。完整可编译模板见 `template/extension/`（`ExtensionApi.h` 提供 `yomk::ext().version()` 终结）。
 
 ## 常见问题 FAQ
 

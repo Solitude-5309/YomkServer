@@ -56,9 +56,15 @@ extension/
 | `ExtensionUrl.h` | URL 常量（`yomk::url::extVersion` 等，`inline constexpr std::string_view`） | `yomk/fn_pool/YomkFunctionPoolUrl.h` |
 | `ExtensionPayload.h` | 扩展专属载荷类型（`namespace yomk::payload`） | `yomk/fn_pool/YomkFunctionPoolPayload.h` |
 | `ExtensionMsg.h` | 扩展专属消息包（`YOMK_DEFINE_MSG`） | `yomk/fn_pool/YomkFunctionPoolMsg.h` |
-| `ExtensionApi.h` | 链式域入口 `yomk::ext()`：前置累积（`url/msg`）+ 无参终结（`request/version`） | `yomk/fn_pool/YomkFunctionPoolApi.h` |
+| `ExtensionApi.h` | 链式域入口 `yomk::ext()`：无参终结 `version()`（通用 url/msg/request 请求链走 `yomk::server()`，不重复封装） | `yomk/fn_pool/YomkFunctionPoolApi.h` |
 
-新增业务时先补 Url 常量与 Payload/Msg 类型，再在 `ExtensionApi.h` 上追加终结方法（如 `yomk::ext().task(req).submit()` 形态）。
+`ExtensionApi.h` 的设计约定：
+
+1. Api 头是模块自己的 API，只写本模块业务的终结方法（如 `yomk::ext().version()`），不重复封装通用请求链；
+2. 也可以完全不写 API 方法，但须在 Api 文件注释中写清统一调用方式及 url 的功能作用，如 `yomk::server().url(yomk::url::extVersion).request()`（`/ExtensionService/version` 版本查询）；
+3. 请求一律优先使用统一请求接口 `yomk::server().url(<url>).request()`，扩展终结方法仅是其上的薄封装，屏蔽裸 URL、不另造请求通道。
+
+新增业务时先补 Url 常量与 Payload/Msg 类型，再按需在 `ExtBuilder` 上追加终结方法（如 `yomk::ext().task(req).submit()` 形态）。
 
 ## 使用示例
 
