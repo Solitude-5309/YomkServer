@@ -23,6 +23,16 @@
 //    (段错误);若持锁释放,则排空期间在途任务取快照抢同一把锁,与释放方互锁挂起.
 //    锁与持有器本体永不析构,在途任务的迟到快照读永远拿到可用锁与空快照,
 //    根除静态析构窗口内对已销毁锁加锁的挂起与对控制块的并发拷贝段错误.
+// 3. 退出闸门:thread_local cached 是普通 TLS 对象,其析构早于 atexit 回调执行
+//    (退出链 LIFO),destroy() 期间快照若走缓存即命中已析构 TLS 的残留悬垂指针,
+//    在已释放控制块上加减引用计数,deinit 返回时二次 dispose 触发 double free.
+//    故 destroy() 首步置位 destroyed() 闸门,serverSnapshot() 首行短路直接返回空,
+//    全程不触碰已析构缓存;destroyed() 亦堆分配永生——若为普通函数局部 static,
+//    其构造晚于 atexit 注册,退出链 LIFO 下会在被读取之前先析构,同构陷阱.
+//    显式 shutdown() 路径不受影响:走 setServer(nullptr),不置闸门,进程未退出.
+//    另:destroy() 显式调 local->shutdown() 同步排空而非依赖 reset 触发析构——
+//    在途快照持有者会推迟 delete(shared_ptr 语义),极端下进程消亡时 deinit sweep
+//    被整体跳过;显式排空保证 deinit 必然在 atexit 处理器内完成.
 struct YomkServerRef
 {
     // 全局版本号:server 注入与置空统一经 setServer,写后 fetch_add(1, release)
@@ -32,8 +42,20 @@ struct YomkServerRef
         static std::atomic<uint64_t> e(0);
         return e;
     }
+    // 退出闸门:atexit destroy() 置位后,所有快照首行短路,不再触碰已析构的
+    // thread_local 缓存(其析构早于 atexit 回调,残留指针悬垂).堆分配永生,
+    // 与 mtx()/holder() 同风格,不参与静态析构顺序
+    static std::atomic<bool>& destroyed()
+    {
+        static std::atomic<bool>* const d = new std::atomic<bool>(false);
+        return *d;
+    }
     static std::shared_ptr<YomkServer> serverSnapshot()
     {
+        if (destroyed().load(std::memory_order_acquire))
+        {
+            return {};
+        }
         // 每线程缓存快照,热路径仅 1 次 epoch acquire load + 比对;慢路径仅首调与
         // 失效后进入.!cached 使空快照永不作为有效命中:未初始化期每次调用仍走慢
         // 路径,契约消息语义不变.并发 shutdown 的陈旧窗口内至多一调用命中缓存
@@ -62,10 +84,24 @@ struct YomkServerRef
     {
         void destroy()
         {
+            // 闸门必须先于排空置位:deinit 内的域调用必须立刻短路;release/acquire 跨线程可见
+            destroyed().store(true, std::memory_order_release);
             std::shared_ptr<YomkServer> local;
             {
                 std::lock_guard<std::mutex> lock(mtx());
                 local = std::move(holder().server);
+            }
+            // 失效所有线程缓存(纵深防御):即使有路径在闸门置位前读缓存,
+            // cachedEpoch != epoch() 仍强制走慢路径取到空 holder
+            epoch().fetch_add(1, std::memory_order_release);
+            // 显式同步排空,不依赖 reset 恰为最后引用:退出期若有在途快照持有者
+            // (分离线程等),reset 不触发析构,delete 连带 deinit sweep 被推迟到其
+            // 释放时——极端下进程消亡、线程被杀,deinit 整体跳过.先显式 shutdown
+            // (幂等,析构兜底的再调仅空转)保证 deinit 必然在本 atexit 处理器内
+            // 同步完成,reset 仅回收壳对象
+            if (local)
+            {
+                local->shutdown();
             }
             local.reset();
         }

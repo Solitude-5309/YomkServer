@@ -371,15 +371,41 @@ target_link_libraries(TestYomkMsg PRIVATE
 # -------------el TestYomkMsg ----------------
 
 # -------------sl TestYomkIntegration ----------------
-set(TestYomkIntegration_SOURCES 
+set(TestYomkIntegration_SOURCES
     ${TestYomkServer_DIR}/yomk_server/TestYomkIntegration.cpp
 )
-add_executable(TestYomkIntegration 
+add_executable(TestYomkIntegration
     ${TestYomkIntegration_SOURCES}
 )
 target_link_libraries(TestYomkIntegration PRIVATE
     ${YomkServerLib}
 )
 # -------------el TestYomkIntegration ----------------
+
+# -------------sl TestYomkExitPath ----------------
+# atexit 真实退出路径回归：deinit 域入口 + 退出闸门 + 多线程退出窗口（禁止显式 shutdown）
+set(TestYomkExitPath_SOURCES
+    ${TestYomkServer_DIR}/yomk_server/TestYomkExitPath.cpp
+)
+add_executable(TestYomkExitPath
+    ${TestYomkExitPath_SOURCES}
+)
+target_link_libraries(TestYomkExitPath PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkExitPath ----------------
+
+# -------------sl TestYomkExitPathShutdown ----------------
+# 显式 shutdown 路径对照：deinit 域入口存活语义 + atexit 幂等
+set(TestYomkExitPathShutdown_SOURCES
+    ${TestYomkServer_DIR}/yomk_server/TestYomkExitPathShutdown.cpp
+)
+add_executable(TestYomkExitPathShutdown
+    ${TestYomkExitPathShutdown_SOURCES}
+)
+target_link_libraries(TestYomkExitPathShutdown PRIVATE
+    ${YomkServerLib}
+)
+# -------------el TestYomkExitPathShutdown ----------------
 
 # 测试程序仅供框架内部开发验证使用，不执行 install
