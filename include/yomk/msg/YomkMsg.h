@@ -35,19 +35,57 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
  *       by this macro, see YomkStdMsg.h for the standard type message catalog, YomkServerMsg.h
  *       for the core payload message catalog, and each Yomk{Module}Msg.h for module-specific
  *       message catalogs
+ * @note The payload's namespace is independent of the message class namespace; MsgName shares
+ *       the single yomk::msgs root — use YOMK_DEFINE_MSG_NS when isolation is needed
  */
 // @zh: 定义消息类型：在 yomk::msgs 内生成 YomkMsg 派生类 MsgName
 // @zh: DataType 载荷数据类型
 // @zh: MsgName 消息类名（同时作为类型标识 kName，供解包/动态查找比对）
 // @zh: VarName 载荷成员名（框架约定统一为 d，如 pkg->d）
 // @zh: note 生成类提供 shared(...) 工厂；自定义消息仅此宏声明，标准类型消息目录见 YomkStdMsg.h，核心载荷消息目录见 YomkServerMsg.h，模块专属消息目录见各 Yomk{Module}Msg.h
+// @zh: note 载荷类型命名空间与消息类命名空间相互独立；MsgName 全局共用 yomk::msgs 单一根，需隔离时改用 YOMK_DEFINE_MSG_NS
 #define YOMK_DEFINE_MSG(DataType, MsgName, VarName)                               \
-    namespace yomk::msgs                                                          \
+    YOMK_DEFINE_MSG_IMPL(yomk::msgs, , DataType, MsgName, VarName)
+
+/**
+ * @brief Define a namespaced message type: generate the YomkMsg derived class MsgName
+ *        inside yomk::msgs::NS, with a fully qualified kName
+ * @param NS Sub-namespace under yomk::msgs (C++17 nested-namespace tokens, e.g. my::mod;
+ *        must contain no whitespace, kName embeds the stringized form verbatim)
+ * @param DataType Payload data type; write it root-qualified (leading ::) when it shares a
+ *        name with NS or an ancestor namespace, since the macro expands inside yomk::msgs::NS
+ * @param MsgName Message class name
+ * @param VarName Payload member name (framework convention fixes it to d, e.g. pkg->d)
+ * @note kName is "yomk::msgs::NS::MsgName", matching the C++ qualified name, so namespace
+ *       isolation and runtime type-ID uniqueness are guaranteed by the same mechanism.
+ *       Use this form for custom messages that must not sit at the yomk::msgs root
+ */
+// @zh: 定义带命名空间的消息类型：在 yomk::msgs::NS 内生成 YomkMsg 派生类 MsgName，kName 全限定
+// @zh: NS yomk::msgs 下的子命名空间（C++17 嵌套命名空间 token，如 my::mod；不得含空格，kName 按字面串化嵌入）
+// @zh: DataType 载荷数据类型；与 NS 或其祖先命名空间同名时写根限定名（:: 开头），宏体在 yomk::msgs::NS 内展开
+// @zh: MsgName 消息类名
+// @zh: VarName 载荷成员名（框架约定统一为 d，如 pkg->d）
+// @zh: note kName 为 "yomk::msgs::NS::MsgName"，与 C++ 全限定名一致，命名空间隔离与运行期类型 ID 唯一由同一机制保证；不宜落在 yomk::msgs 根的自定义消息用本形式
+#define YOMK_DEFINE_MSG_NS(NS, DataType, MsgName, VarName)                        \
+    YOMK_DEFINE_MSG_IMPL(yomk::msgs::NS, "yomk::msgs::" #NS "::", DataType, MsgName, VarName)
+
+/**
+ * @brief Shared implementation of YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS
+ * @param NSOpen Namespace tokens to open, e.g. yomk::msgs or yomk::msgs::my::mod (C++17)
+ * @param NamePrefix String-literal prefix for kName; empty for the root-level form
+ * @note Internal use only — declare messages via YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS
+ */
+// @zh: YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS 共用实现
+// @zh: NSOpen 要打开的命名空间 token，如 yomk::msgs 或 yomk::msgs::my::mod（C++17 嵌套命名空间）
+// @zh: NamePrefix kName 的字符串字面量前缀；根级形式传空
+// @zh: note 仅供内部使用——消息一律经 YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS 声明
+#define YOMK_DEFINE_MSG_IMPL(NSOpen, NamePrefix, DataType, MsgName, VarName)      \
+    namespace NSOpen                                                              \
     {                                                                             \
     class MsgName : public ::YomkMsg                                              \
     {                                                                             \
     public:                                                                       \
-        static constexpr const char* kName = #MsgName;                            \
+        static constexpr const char* kName = NamePrefix #MsgName;                 \
         MsgName() { m_name = kName; }                                             \
         MsgName(const DataType& value) : VarName(value) { m_name = kName; }       \
         MsgName(DataType&& value) : VarName(std::move(value)) { m_name = kName; } \
