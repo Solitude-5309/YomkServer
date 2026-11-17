@@ -4,8 +4,8 @@
 # 调用方推荐优先使用框架封装好的统一请求接口访问本服务：
 #   server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
 from yomk.server import YomkService
-from yomk.msg.server import ResStatus, Response
-from yomk.msg.extension import ExtensionRequest, ExtensionResponse
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.extension import ExtensionRequest, ExtensionResponse
 from yomk.log import log
 
 

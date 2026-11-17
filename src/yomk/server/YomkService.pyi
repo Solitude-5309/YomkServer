@@ -1,7 +1,7 @@
 from typing import Any, Callable, Dict, Optional
 
-from yomk.msg.fn_pool import FuncInfo
-from yomk.msg.server import Response
+from yomk.msgs.fn_pool import FuncInfo
+from yomk.msgs.server import Response
 
 
 class YomkService:

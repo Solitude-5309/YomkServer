@@ -1,7 +1,7 @@
 import threading
 from typing import Any, Optional
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server.YomkServer import YomkServer
 
 g_server: Optional[YomkServer]

@@ -2,8 +2,8 @@ from typing import Any, Dict
 
 from yomk.log.ConsoleLogger import ConsoleLogger
 from yomk.log.FileLogger import FileLogger
-from yomk.msg.log import LoggerState
-from yomk.msg.server import Response
+from yomk.msgs.log import LoggerState
+from yomk.msgs.server import Response
 from yomk.server import YomkService
 
 

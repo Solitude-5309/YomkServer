@@ -7,7 +7,7 @@ from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn
 from yomk.log.ConsoleLogger import ConsoleLogger
 from yomk.log.FileLogger import FileLogger
-from yomk.msg.log import (
+from yomk.msgs.log import (
     ConsoleLogProxy,
     FileLogProxy,
     Log,
@@ -16,7 +16,7 @@ from yomk.msg.log import (
     LoggerQuery,
     LoggerState,
 )
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService
 
 if TYPE_CHECKING:

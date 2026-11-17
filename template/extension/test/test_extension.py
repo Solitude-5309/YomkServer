@@ -13,8 +13,8 @@ extension 域 builder 版本查询终结（extension().version()）→ shutdown�
 import sys
 
 from yomk.server import __version__, server
-from yomk.msg.server import ResStatus
-from yomk.msg.extension import ExtensionRequest, ExtensionResponse
+from yomk.msgs.server import ResStatus
+from yomk.msgs.extension import ExtensionRequest, ExtensionResponse
 from yomk.extension import ExtensionService, extension, __version__ as extension_version
 from yomk.url.extension import EXTENSION_ECHO   # URL 常量池（并入框架 yomk.url 命名空间段）
 from yomk.log import log

@@ -30,8 +30,8 @@ TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试
 import sys
 import time
 
-from yomk.msg.server import ResStatus
-from yomk.msg.log import Log
+from yomk.msgs.server import ResStatus
+from yomk.msgs.log import Log
 from yomk.server import YomkService, server
 from yomk.ctx import ctx
 from yomk.event_loop import event_loop

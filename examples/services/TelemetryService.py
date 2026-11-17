@@ -12,7 +12,7 @@
 机制，显式注销承担同等失效语义，钩子不会悬垂。
 """
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService, server
 from yomk.fn_pool import fn_pool
 from yomk.log import log

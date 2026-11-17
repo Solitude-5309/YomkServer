@@ -22,7 +22,7 @@ import importlib
 import sys
 
 import yomk
-import yomk.msg
+import yomk.msgs
 
 g_failed = 0
 
@@ -109,8 +109,8 @@ def check(cond, msg):
 def main():
     check(yomk.__file__ is None,
           "命名空间锚点: yomk 顶层无 __init__（__file__ is None）")
-    check(yomk.msg.__file__ is None,
-          "命名空间锚点: yomk.msg 层无 __init__（__file__ is None）")
+    check(yomk.msgs.__file__ is None,
+          "命名空间锚点: yomk.msgs 层无 __init__（__file__ is None）")
 
     for domain in DOMAINS:
         mod = importlib.import_module(f"yomk.{domain}")

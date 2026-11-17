@@ -1,14 +1,14 @@
 import sys
 
 from yomk.log import _logSourceLoc  # 私有子模块（U-12 后包根 __init__ 不再显式携带，靠包内子模块回退解析）
-from yomk.msg.log import (
+from yomk.msgs.log import (
     ConsoleLogProxy,
     FileLogProxy,
     Log,
     LogFile,
     LoggerQuery,
 )
-from yomk.msg.server import ResStatus
+from yomk.msgs.server import ResStatus
 from yomk.server import _facade
 from yomk.url.log import (
     LOG_ALL,

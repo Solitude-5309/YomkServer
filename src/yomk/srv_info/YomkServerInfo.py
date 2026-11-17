@@ -1,8 +1,8 @@
 import weakref
 from typing import TYPE_CHECKING
 
-from yomk.msg.server import ResStatus, Response
-from yomk.msg.srv_info import ServerServiceInfo
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.srv_info import ServerServiceInfo
 from yomk.server import YomkService
 from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn

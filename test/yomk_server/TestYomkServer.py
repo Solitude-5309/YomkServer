@@ -37,7 +37,7 @@ import time
 import io
 import contextlib
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkServer, YomkService
 
 g_failed = 0

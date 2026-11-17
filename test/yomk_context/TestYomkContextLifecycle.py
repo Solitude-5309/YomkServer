@@ -22,7 +22,7 @@ TestYomkContextLifecycle.py —— YomkContext 服务生命周期与异常安全
 import sys
 import time
 
-from yomk.msg.server import ResStatus
+from yomk.msgs.server import ResStatus
 from yomk.server import YomkServer, server
 from yomk.ctx import ctx
 from yomk.ctx.YomkContext import YomkContext  # 白盒测试直用内部类，非公开面

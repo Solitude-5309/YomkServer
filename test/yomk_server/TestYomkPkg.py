@@ -33,11 +33,11 @@ S5. 框架结构体默认值：Function/CallFunction/Context/
 
 import sys
 
-from yomk.msg.server import ResStatus, Response
-from yomk.msg.ctx import Context, ContextChecker, ContextMonitor
-from yomk.msg.fn_pool import CallFunction, FuncInfo, Function
-from yomk.msg.event_loop import EventLoopPkg
-from yomk.msg.log import ConsoleLogProxy, Log, LogFile
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.ctx import Context, ContextChecker, ContextMonitor
+from yomk.msgs.fn_pool import CallFunction, FuncInfo, Function
+from yomk.msgs.event_loop import EventLoopPkg
+from yomk.msgs.log import ConsoleLogProxy, Log, LogFile
 from yomk.event_loop import Event
 
 g_failed = 0

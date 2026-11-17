@@ -3,9 +3,9 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from readerwriterlock import rwlock
 
-from yomk.msg.ctx import CheckStatus
-from yomk.msg.fn_pool import FuncInfo
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.ctx import CheckStatus
+from yomk.msgs.fn_pool import FuncInfo
+from yomk.msgs.server import ResStatus, Response
 from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn
 

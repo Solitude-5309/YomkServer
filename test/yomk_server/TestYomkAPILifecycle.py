@@ -26,7 +26,7 @@ import io
 import sys
 from contextlib import redirect_stdout
 
-from yomk.msg.server import ResStatus
+from yomk.msgs.server import ResStatus
 from yomk.server import YomkService, server
 
 g_failed = 0

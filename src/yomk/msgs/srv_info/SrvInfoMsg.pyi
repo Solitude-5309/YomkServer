@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from yomk.msg.fn_pool import FuncInfo
+from yomk.msgs.fn_pool import FuncInfo
 
 
 class ServerServiceInfo:

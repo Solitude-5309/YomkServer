@@ -20,7 +20,7 @@
 ## 使用示例
 
 ```python
-from yomk.msg.ctx import CheckStatus
+from yomk.msgs.ctx import CheckStatus
 from yomk.server import server
 from yomk.ctx import ctx
 from yomk.log import log

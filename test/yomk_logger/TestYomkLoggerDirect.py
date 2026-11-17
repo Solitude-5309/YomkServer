@@ -34,7 +34,7 @@ import shutil
 import sys
 import tempfile
 
-from yomk.msg.log import Log
+from yomk.msgs.log import Log
 from yomk.log.ConsoleLogger import ConsoleLogger  # 白盒测试直用内部类，非公开面
 from yomk.log.FileLogger import FileLogger
 

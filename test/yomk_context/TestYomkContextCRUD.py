@@ -23,8 +23,8 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
 
 import sys
 
-from yomk.msg.server import ResStatus
-from yomk.msg.ctx import Context, ContextGroupInfo, ContextGroupKey, ContextKeyInfo
+from yomk.msgs.server import ResStatus
+from yomk.msgs.ctx import Context, ContextGroupInfo, ContextGroupKey, ContextKeyInfo
 from yomk.server import server
 from yomk.ctx import ctx
 

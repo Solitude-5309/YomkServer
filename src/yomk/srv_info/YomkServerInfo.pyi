@@ -1,6 +1,6 @@
 from typing import Any
 
-from yomk.msg.server import Response
+from yomk.msgs.server import Response
 from yomk.server import YomkService
 
 

@@ -2,14 +2,14 @@ from readerwriterlock import rwlock
 
 from yomk._diag import warn as diag_warn
 from yomk.ctx.ContextGroup import ContextGroup
-from yomk.msg.ctx import (
+from yomk.msgs.ctx import (
     Context,
     ContextChecker,
     ContextGroupInfo,
     ContextGroupKey,
     ContextMonitor,
 )
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService
 
 

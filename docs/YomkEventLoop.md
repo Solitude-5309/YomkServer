@@ -16,7 +16,7 @@
 ## 使用示例
 
 ```python
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import server
 from yomk.event_loop import event_loop, Event
 

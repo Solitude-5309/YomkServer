@@ -1,6 +1,6 @@
 from typing import Any, Callable, Optional
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 
 
 class GroupSwitch:

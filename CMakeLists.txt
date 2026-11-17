@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.14)
 # （server().version() 经 yomk.server.__version__ 暴露；构建期注入，无运行时读取），
 # 另经 write_basic_package_version_file(SameMajorVersion) 供下游 find_package。
 # 本行即版本唯一来源，发布时手动 bump。
-project(YomkServerPy VERSION 2.3.13 LANGUAGES C)
+project(YomkServerPy VERSION 2.3.14 LANGUAGES C)
 
 # ---------- 各运行时域版本号 ----------
 # 集中定义，当前全部取项目版本号；若某域需要独立版本，只改对应行。
@@ -99,12 +99,12 @@ set(YOMK_VERSIONED_PACKAGES boot server ctx event_loop fn_pool log srv_info)
 set(YOMK_CYTHON_MODULES
     _diag
     boot/YomkBoot
-    msg/server/ServerMsg
-    msg/ctx/ContextMsg
-    msg/event_loop/EventLoopMsg
-    msg/fn_pool/FnPoolMsg
-    msg/log/LogMsg
-    msg/srv_info/SrvInfoMsg
+    msgs/server/ServerMsg
+    msgs/ctx/ContextMsg
+    msgs/event_loop/EventLoopMsg
+    msgs/fn_pool/FnPoolMsg
+    msgs/log/LogMsg
+    msgs/srv_info/SrvInfoMsg
     server/YomkService
     server/YomkServer
     server/_facade
@@ -192,7 +192,7 @@ foreach(pkg IN LISTS YOMK_VERSIONED_PACKAGES)
         COMMAND ${CMAKE_COMMAND} -E remove_directory
             "${BUILD_SITE_DIR}/yomk/${pkg}/__pycache__"
         COMMAND ${CMAKE_COMMAND} -E remove_directory
-            "${BUILD_SITE_DIR}/yomk/msg/${pkg}/__pycache__"
+            "${BUILD_SITE_DIR}/yomk/msgs/${pkg}/__pycache__"
         COMMAND ${CMAKE_COMMAND} -E remove -f
             "${BUILD_SITE_DIR}/yomk/${pkg}/_version.py.in")
 endforeach()

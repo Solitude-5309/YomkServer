@@ -1,7 +1,7 @@
 from typing import Any, Callable, Optional
 
 from yomk.boot import YomkBoot
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server.YomkServer import YomkServer
 from yomk.server.YomkService import YomkService
 

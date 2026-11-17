@@ -18,7 +18,7 @@ import sys
 import threading
 import time
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import server as server_api
 from yomk.fn_pool import fn_pool
 

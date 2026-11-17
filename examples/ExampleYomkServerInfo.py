@@ -54,7 +54,7 @@ xxx"——操作是用户视角的业务动作，随后结果行标注本次接�
 
 import sys
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService, server
 from yomk.srv_info import srv_info
 from yomk.log import log

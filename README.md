@@ -29,7 +29,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 
 | 位置 | 简述 |
 |---|---|
-| `src/yomk/` | 新包唯一 Python 面：`boot/ server/ ctx/ event_loop/ fn_pool/ log/ srv_info/` 七域 + `msg/<域>/` 消息子包 + `url/<域>/` 端点常量池（纯命名空间层）+ `_diag.py` 诊断通道；链式 API 六域各带 `builder.py`（boot 域为 `YomkBoot.py` 编排基类）+ `py.typed`/`.pyi` 类型桩；PEP 420 命名空间包（`yomk/`、`yomk/msg/`、`yomk/url/` 三层无 `__init__.py`）；模块经 Cython 独立编译为 `yomk/<域>/*.so` |
+| `src/yomk/` | 新包唯一 Python 面：`boot/ server/ ctx/ event_loop/ fn_pool/ log/ srv_info/` 七域 + `msg/<域>/` 消息子包 + `url/<域>/` 端点常量池（纯命名空间层）+ `_diag.py` 诊断通道；链式 API 六域各带 `builder.py`（boot 域为 `YomkBoot.py` 编排基类）+ `py.typed`/`.pyi` 类型桩；PEP 420 命名空间包（`yomk/`、`yomk/msgs/`、`yomk/url/` 三层无 `__init__.py`）；模块经 Cython 独立编译为 `yomk/<域>/*.so` |
 | `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池、日志、服务内省六大主题 |
 | `template/` | 脚手架：`project/` 新工程模板、`extension/` 扩展库模板 |
 | `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |
@@ -45,7 +45,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 ```python
 from yomk.server import server, YomkService
 from yomk.log import log
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 
 # 1. 自定义服务：继承 YomkService，init() 中安装功能函数
 class MyService(YomkService):
@@ -474,7 +474,7 @@ from yomk.event_loop import event_loop
 from yomk.log import log, log_mgr
 from yomk.srv_info import srv_info
 # 消息类型（按需）
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 
 server().async_thread(1).init()
 log().tag("demo").info("started, version =", server().version())
@@ -486,7 +486,7 @@ log().tag("demo").info("started, version =", server().version())
 
 ### 命名空间包形态（PEP 420）
 
-`yomk/`、`yomk/msg/`、`yomk/url/` 三层是命名空间包：**无 `__init__.py`，`import yomk` 不加载任何子模块，`yomk.__file__ is None`**；七个功能域（`yomk/server` 等）与六个消息子包（`yomk/msg/server` 等）及 `yomk/url/<域>` 常量池子包才是普通包。该形态是第三方扩展并入的基础（见 [第三方扩展指南](#第三方扩展指南yomk-命名空间并入)）。
+`yomk/`、`yomk/msgs/`、`yomk/url/` 三层是命名空间包：**无 `__init__.py`，`import yomk` 不加载任何子模块，`yomk.__file__ is None`**；七个功能域（`yomk/server` 等）与六个消息子包（`yomk/msgs/server` 等）及 `yomk/url/<域>` 常量池子包才是普通包。该形态是第三方扩展并入的基础（见 [第三方扩展指南](#第三方扩展指南yomk-命名空间并入)）。
 
 ### 从 YomkApi 迁移（对照表）
 
@@ -501,11 +501,11 @@ L13 起旧伞门面已删除，按域显式导入替代：
 | `event_loop()` / `YomkEventLoop` / `EventLoop` / `Event` | `from yomk.event_loop import event_loop, Event`；`from yomk.event_loop.YomkEventLoop import YomkEventLoop`、`from yomk.event_loop.EventLoop import EventLoop`（包根不导出内部类） |
 | `log()` / `log_mgr()` / `ConsoleLogger` / `FileLogger` | `from yomk.log import log, log_mgr`；`from yomk.log.ConsoleLogger import ConsoleLogger`、`from yomk.log.FileLogger import FileLogger`（包根不导出） |
 | `YomkServerInfo` | `from yomk.srv_info.YomkServerInfo import YomkServerInfo`（包根不导出） |
-| `ResStatus` / `Response` | `from yomk.msg.server import ResStatus, Response`（旧 `YomkResponse` 更名 `Response`） |
-| `Context` 等 ctx 消息 | `from yomk.msg.ctx import ...` |
-| `Function` 等 fn_pool 消息 | `from yomk.msg.fn_pool import ...` |
-| `Log` 等 log 消息 | `from yomk.msg.log import ...` |
-| `ServerServiceInfo` | `from yomk.msg.srv_info import ServerServiceInfo` |
+| `ResStatus` / `Response` | `from yomk.msgs.server import ResStatus, Response`（旧 `YomkResponse` 更名 `Response`） |
+| `Context` 等 ctx 消息 | `from yomk.msgs.ctx import ...` |
+| `Function` 等 fn_pool 消息 | `from yomk.msgs.fn_pool import ...` |
+| `Log` 等 log 消息 | `from yomk.msgs.log import ...` |
+| `ServerServiceInfo` | `from yomk.msgs.srv_info import ServerServiceInfo` |
 | `server().services()/functions()/fn_url()/get_info()/all()` | 改道 `from yomk.srv_info import srv_info`：`srv_info().services()` 等（服务内省自 server 域移至 srv_info 域） |
 | `YomkApi._yomk_*` 诊断开关 | `from yomk.log._logSourceLoc import ...`（共享六级诊断在 `yomk._diag`） |
 | `__version__` | `from yomk.server import __version__` 或 `yomk.<域>.__version__` |
@@ -516,10 +516,10 @@ L13 起旧伞门面已删除，按域显式导入替代：
 
 | 目录 | 内容 | 纪律 |
 |---|---|---|
-| `src/yomk/msg/<域>/`（如 `extension`） | 扩展消息类型（消息子包，与 `yomk/msg/server` 等平级） | 不得创建 `yomk/msg/__init__.py` |
-| `src/yomk/<域>/`（如 `extension`） | 扩展运行时域（与 `yomk/server` 等平级） | 不得创建 `yomk/__init__.py`、`yomk/msg/__init__.py`、`yomk/url/__init__.py` |
-| `src/yomk/url/<域>/`（如 `extension`） | 扩展 URL 常量池（并入框架 `yomk.url` 常量池，与 `yomk/url/ctx` 同构） | 不得创建 `yomk/__init__.py`、`yomk/msg/__init__.py`、`yomk/url/__init__.py` |
+| `src/yomk/msgs/<域>/`（如 `extension`） | 扩展消息类型（消息子包，与 `yomk/msgs/server` 等平级） | 不得创建 `yomk/msgs/__init__.py` |
+| `src/yomk/<域>/`（如 `extension`） | 扩展运行时域（与 `yomk/server` 等平级） | 不得创建 `yomk/__init__.py`、`yomk/msgs/__init__.py`、`yomk/url/__init__.py` |
+| `src/yomk/url/<域>/`（如 `extension`） | 扩展 URL 常量池（并入框架 `yomk.url` 常量池，与 `yomk/url/ctx` 同构） | 不得创建 `yomk/__init__.py`、`yomk/msgs/__init__.py`、`yomk/url/__init__.py` |
 
-- 命名空间守卫：`yomk/`、`yomk/msg/`、`yomk/url/` 三层无 `__init__.py` 是合并的前提，扩展仓库自带任一则遮蔽框架其它子包
+- 命名空间守卫：`yomk/`、`yomk/msgs/`、`yomk/url/` 三层无 `__init__.py` 是合并的前提，扩展仓库自带任一则遮蔽框架其它子包
 - 第三方运行时服务**不做隐式发现**：框架只拉起 5 个内置服务，扩展服务须由使用方显式 `server().srv(ExtService).create()` 注册
-- 完整可运行模板见 `template/extension/`（`src/yomk/msg/extension` + `src/yomk/extension` + `src/yomk/url/extension` + 安装/测试脚本），其 `install.sh` 内置命名空间守卫与导入冒烟
+- 完整可运行模板见 `template/extension/`（`src/yomk/msgs/extension` + `src/yomk/extension` + `src/yomk/url/extension` + 安装/测试脚本），其 `install.sh` 内置命名空间守卫与导入冒烟

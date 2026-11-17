@@ -2,7 +2,7 @@ import atexit
 import threading
 from typing import Any, Optional
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn
 from yomk.server.YomkServer import YomkServer

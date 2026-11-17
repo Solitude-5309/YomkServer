@@ -109,7 +109,7 @@ PY_SITE_DIR=$(ls -d "${PREFIX}"/lib/python*[0-9].[0-9]*/site-packages 2>/dev/nul
 # 产物校验（L13 起新包为唯一 Python 面）：per-domain .so + 纯 Python 面就位
 for f in yomk/boot/YomkBoot.so yomk/server/__init__.py yomk/server/py.typed yomk/server/YomkServer.so \
          yomk/server/builder.py yomk/ctx/_version.py \
-         yomk/msg/server/ServerMsg.so yomk/msg/ctx/ContextMsg.so; do
+         yomk/msgs/server/ServerMsg.so yomk/msgs/ctx/ContextMsg.so; do
     [ -f "${PY_SITE_DIR}/${f}" ] || fail "未找到 ${PY_SITE_DIR}/${f}，请先构建: $(build_hint)"
 done
 

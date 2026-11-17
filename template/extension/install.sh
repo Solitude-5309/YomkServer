@@ -2,10 +2,10 @@
 # 第三方扩展安装脚本（交互式）
 # 用法: bash install.sh
 # 交互询问 YomkServerPy 安装路径（前置路径），默认取环境变量 YOMK_PREFIX_PATH，可修改
-# 扩展源树布局为 src/yomk/msg/extension/（消息）+ src/yomk/extension/（运行时）
+# 扩展源树布局为 src/yomk/msgs/extension/（消息）+ src/yomk/extension/（运行时）
 # + src/yomk/url/extension/（URL 常量池，并入框架 yomk.url 常量池），按 PEP 420 命名空间
 # 并入框架 site-packages/yomk/（与框架子包平级共存，合并安装，不动框架文件）
-# 安装后任意终端可 import yomk.extension / yomk.msg.extension / yomk.url.extension
+# 安装后任意终端可 import yomk.extension / yomk.msgs.extension / yomk.url.extension
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -41,17 +41,17 @@ if [ -z "${SITE_PACKAGES}" ]; then
 fi
 
 # 校验框架新包（PEP 420 命名空间包：yomk/ 顶层无 __init__.py，域入口就位）
-if [ ! -f "${SITE_PACKAGES}/yomk/server/__init__.py" ] || [ ! -d "${SITE_PACKAGES}/yomk/msg" ]; then
+if [ ! -f "${SITE_PACKAGES}/yomk/server/__init__.py" ] || [ ! -d "${SITE_PACKAGES}/yomk/msgs" ]; then
     echo "错误: site-packages 中未找到 yomk 命名空间包: ${SITE_PACKAGES}"
     exit 1
 fi
 echo "-- 框架新包校验通过: ${SITE_PACKAGES}/yomk"
 
-# 命名空间守卫：扩展仓库自身不得带 yomk/__init__.py、yomk/msg/__init__.py 或 yomk/url/__init__.py
+# 命名空间守卫：扩展仓库自身不得带 yomk/__init__.py、yomk/msgs/__init__.py 或 yomk/url/__init__.py
 # （会破坏 PEP 420 合并，遮蔽框架其它子包）
-if [ -f "${SCRIPT_DIR}/src/yomk/__init__.py" ] || [ -f "${SCRIPT_DIR}/src/yomk/msg/__init__.py" ] \
+if [ -f "${SCRIPT_DIR}/src/yomk/__init__.py" ] || [ -f "${SCRIPT_DIR}/src/yomk/msgs/__init__.py" ] \
    || [ -f "${SCRIPT_DIR}/src/yomk/url/__init__.py" ]; then
-    echo "错误: 扩展源树含 yomk/__init__.py / yomk/msg/__init__.py / yomk/url/__init__.py，违反命名空间包纪律，禁止安装"
+    echo "错误: 扩展源树含 yomk/__init__.py / yomk/msgs/__init__.py / yomk/url/__init__.py，违反命名空间包纪律，禁止安装"
     exit 1
 fi
 
@@ -66,26 +66,26 @@ if [ -d "${SITE_PACKAGES}/yomk/extension" ]; then
     echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/extension"
     ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/extension"
 fi
-if [ -d "${SITE_PACKAGES}/yomk/msg/extension" ]; then
-    echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/msg/extension"
-    ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/msg/extension"
+if [ -d "${SITE_PACKAGES}/yomk/msgs/extension" ]; then
+    echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/msgs/extension"
+    ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/msgs/extension"
 fi
 if [ -d "${SITE_PACKAGES}/yomk/url/extension" ]; then
     echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/url/extension"
     ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/url/extension"
 fi
 ${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/extension" "${SITE_PACKAGES}/yomk/"
-${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/msg/extension" "${SITE_PACKAGES}/yomk/msg/"
+${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/msgs/extension" "${SITE_PACKAGES}/yomk/msgs/"
 ${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/url/extension" "${SITE_PACKAGES}/yomk/url/"
 
 # 安装后验证：新终端等价环境（仅 PYTHONPATH 指向 site-packages）下导入扩展域与 URL 常量池
-if PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension, yomk.msg.extension, yomk.url.extension; print('扩展版本:', yomk.extension.__version__)" 2>/dev/null; then
+if PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension, yomk.msgs.extension, yomk.url.extension; print('扩展版本:', yomk.extension.__version__)" 2>/dev/null; then
     echo "-- 扩展导入验证通过"
 else
     echo "错误: 扩展安装后无法导入，错误详情:"
-    PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension, yomk.msg.extension, yomk.url.extension"
+    PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension, yomk.msgs.extension, yomk.url.extension"
     exit 1
 fi
 
-echo "安装完成，扩展已并入框架 yomk 命名空间，新开任意终端即可 import yomk.extension / yomk.msg.extension / yomk.url.extension"
+echo "安装完成，扩展已并入框架 yomk 命名空间，新开任意终端即可 import yomk.extension / yomk.msgs.extension / yomk.url.extension"
 echo "可运行验证: python3 ${SCRIPT_DIR}/test/test_extension.py"

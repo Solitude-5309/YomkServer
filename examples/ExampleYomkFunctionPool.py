@@ -47,7 +47,7 @@ ExampleYomkFunctionPool —— YomkFunctionPool 动态函数池示例：机械�
 
 import sys
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import server
 from yomk.fn_pool import fn_pool
 from yomk.log import log

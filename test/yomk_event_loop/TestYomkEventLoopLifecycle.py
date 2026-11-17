@@ -33,8 +33,8 @@ import threading
 import time
 import weakref
 
-from yomk.msg.server import ResStatus, Response
-from yomk.msg.event_loop import EventLoopInfo, EventLoopPkg
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.event_loop import EventLoopInfo, EventLoopPkg
 from yomk.server import server as server_api
 from yomk.event_loop import event_loop
 from yomk.event_loop.EventLoop import Event, EventLoop  # 白盒测试直用内部类，非公开面

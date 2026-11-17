@@ -9,7 +9,7 @@
 与全局 server().url(u).msg(m).request() 等价，但无需获取全局单例。
 """
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService
 from yomk.log import log
 

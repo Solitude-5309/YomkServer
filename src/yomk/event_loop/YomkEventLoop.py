@@ -2,8 +2,8 @@ from readerwriterlock import rwlock
 
 from yomk._diag import warn as diag_warn
 from yomk.event_loop.EventLoop import Event, EventLoop
-from yomk.msg.event_loop import EventLoopInfo, EventLoopPkg, EventLoopQuery
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.event_loop import EventLoopInfo, EventLoopPkg, EventLoopQuery
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService
 
 

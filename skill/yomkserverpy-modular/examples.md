@@ -28,9 +28,9 @@ ProjectName/
 
 ### main.py
 ```python
-from yomk.msg.server import ResStatus, Response
-from yomk.msg.ctx import CheckStatus
-from yomk.msg.log import Log
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.ctx import CheckStatus
+from yomk.msgs.log import Log
 from yomk.boot import YomkBoot
 from yomk.server import YomkService, server
 from yomk.ctx import ctx
@@ -671,14 +671,14 @@ log_mgr().location().show_file(True).show_func(True).apply()   # [main.py:42:<mo
 
 ## 示例7：创建扩展库（yomk 命名空间并入形态）
 
-扩展为 yomk 命名空间并入形态：独立仓库源树只写 `src/yomk/<域>/`（运行时服务 + 可选 builder）、`src/yomk/msg/<域>/`（消息类型）与 `src/yomk/url/<域>/`（URL 常量池，并入框架 `yomk.url` 常量池）三个叶子目录，`install.sh` 按 PEP 420 命名空间合并装入 YomkServerPy 的 site-packages/yomk/ 下（与框架子包平级共存，不动框架文件），安装后任意终端可 `from yomk.<域> import ExtensionService`。占位符替换：域名 `extension` → 用户指定名（snake_case；域目录、import、服务类 `ExtensionService`、消息类 `ExtensionRequest`/`ExtensionResponse` 同步替换）。纪律：**不得创建** `yomk/__init__.py`、`yomk/msg/__init__.py` 或 `yomk/url/__init__.py`；扩展服务由使用方**显式注册**（框架不做隐式发现）；调用方**推荐优先**使用统一请求接口 `server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()`（builder 为模块自有 API 的可选件，只封装本模块自有接口）。
+扩展为 yomk 命名空间并入形态：独立仓库源树只写 `src/yomk/<域>/`（运行时服务 + 可选 builder）、`src/yomk/msgs/<域>/`（消息类型）与 `src/yomk/url/<域>/`（URL 常量池，并入框架 `yomk.url` 常量池）三个叶子目录，`install.sh` 按 PEP 420 命名空间合并装入 YomkServerPy 的 site-packages/yomk/ 下（与框架子包平级共存，不动框架文件），安装后任意终端可 `from yomk.<域> import ExtensionService`。占位符替换：域名 `extension` → 用户指定名（snake_case；域目录、import、服务类 `ExtensionService`、消息类 `ExtensionRequest`/`ExtensionResponse` 同步替换）。纪律：**不得创建** `yomk/__init__.py`、`yomk/msgs/__init__.py` 或 `yomk/url/__init__.py`；扩展服务由使用方**显式注册**（框架不做隐式发现）；调用方**推荐优先**使用统一请求接口 `server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()`（builder 为模块自有 API 的可选件，只封装本模块自有接口）。
 
 ### 目录结构（模板实名）
 
 ```
 ExtensionName/
 ├── src/yomk/
-│   ├── msg/extension/       # 消息子包（并入框架 yomk.msg 命名空间段）
+│   ├── msg/extension/       # 消息子包（并入框架 yomk.msgs 命名空间段）
 │   │   ├── __init__.py              #   re-export 扩展消息类
 │   │   ├── ExtensionMsg.py          #   消息类型定义
 │   │   └── py.typed
@@ -699,18 +699,18 @@ ExtensionName/
 └── README.md
 ```
 
-### src/yomk/msg/extension/__init__.py
+### src/yomk/msgs/extension/__init__.py
 ```python
-# 第三方扩展 yomk.msg.extension：消息类型子包（PEP 420 命名空间并入框架 yomk.msg）
-# 独立仓库只写 yomk/msg/extension/ 目录，安装到框架 site-packages 后与
-# yomk/msg/server、yomk/msg/ctx 等框架子包平级共存（yomk/msg 层无 __init__.py，
-# 属命名空间段，扩展仓库不得创建 yomk/__init__.py 或 yomk/msg/__init__.py）
+# 第三方扩展 yomk.msgs.extension：消息类型子包（PEP 420 命名空间并入框架 yomk.msgs）
+# 独立仓库只写 yomk/msgs/extension/ 目录，安装到框架 site-packages 后与
+# yomk/msgs/server、yomk/msgs/ctx 等框架子包平级共存（yomk/msgs 层无 __init__.py，
+# 属命名空间段，扩展仓库不得创建 yomk/__init__.py 或 yomk/msgs/__init__.py）
 from .ExtensionMsg import ExtensionRequest, ExtensionResponse
 
 __all__ = ["ExtensionRequest", "ExtensionResponse"]
 ```
 
-### src/yomk/msg/extension/ExtensionMsg.py
+### src/yomk/msgs/extension/ExtensionMsg.py
 ```python
 # 扩展消息类型定义（与框架 msg 子包同风格：结构化数据，框架按消息包/持有语义传递）
 
@@ -784,7 +784,7 @@ def extension():
 
 ### src/yomk/extension/builder.pyi
 ```python
-from yomk.msg.server import Response
+from yomk.msgs.server import Response
 
 
 class ExtensionBuilder:
@@ -802,8 +802,8 @@ def extension() -> ExtensionBuilder: ...
 # 调用方推荐优先使用框架封装好的统一请求接口访问本服务：
 #   server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
 from yomk.server import YomkService
-from yomk.msg.server import ResStatus, Response
-from yomk.msg.extension import ExtensionRequest, ExtensionResponse
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.extension import ExtensionRequest, ExtensionResponse
 from yomk.log import log
 
 
@@ -837,7 +837,7 @@ class ExtensionService(YomkService):
 ### src/yomk/url/extension/__init__.py
 ```python
 # /ExtensionService/* 第三方扩展 URL 常量（与框架 src/yomk/url/<域>/ 同构）。
-# yomk.url 为纯命名空间层（与 yomk.msg 同构，无 __init__）：扩展自带 yomk/url/extension/
+# yomk.url 为纯命名空间层（与 yomk.msgs 同构，无 __init__）：扩展自带 yomk/url/extension/
 # 叶子子包即可并入框架常量池，与 yomk/url/ctx 等平级共存。
 #
 # 使用方式（推荐优先）：统一请求接口（server 域链式形态，屏蔽 URL 之下的路由细节）
@@ -879,8 +879,8 @@ extension 域 builder 版本查询终结（extension().version()）→ shutdown�
 import sys
 
 from yomk.server import __version__, server
-from yomk.msg.server import ResStatus
-from yomk.msg.extension import ExtensionRequest, ExtensionResponse
+from yomk.msgs.server import ResStatus
+from yomk.msgs.extension import ExtensionRequest, ExtensionResponse
 from yomk.extension import ExtensionService, extension, __version__ as extension_version
 from yomk.url.extension import EXTENSION_ECHO   # URL 常量池（并入框架 yomk.url 命名空间段）
 from yomk.log import log
@@ -923,10 +923,10 @@ if __name__ == "__main__":
 # 第三方扩展安装脚本（交互式）
 # 用法: bash install.sh
 # 交互询问 YomkServerPy 安装路径（前置路径），默认取环境变量 YOMK_PREFIX_PATH，可修改
-# 扩展源树布局为 src/yomk/msg/extension/（消息）+ src/yomk/extension/（运行时）
+# 扩展源树布局为 src/yomk/msgs/extension/（消息）+ src/yomk/extension/（运行时）
 # + src/yomk/url/extension/（URL 常量池，并入框架 yomk.url 常量池），按 PEP 420 命名空间
 # 并入框架 site-packages/yomk/（与框架子包平级共存，合并安装，不动框架文件）
-# 安装后任意终端可 import yomk.extension / yomk.msg.extension / yomk.url.extension
+# 安装后任意终端可 import yomk.extension / yomk.msgs.extension / yomk.url.extension
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -962,17 +962,17 @@ if [ -z "${SITE_PACKAGES}" ]; then
 fi
 
 # 校验框架新包（PEP 420 命名空间包：yomk/ 顶层无 __init__.py，域入口就位）
-if [ ! -f "${SITE_PACKAGES}/yomk/server/__init__.py" ] || [ ! -d "${SITE_PACKAGES}/yomk/msg" ]; then
+if [ ! -f "${SITE_PACKAGES}/yomk/server/__init__.py" ] || [ ! -d "${SITE_PACKAGES}/yomk/msgs" ]; then
     echo "错误: site-packages 中未找到 yomk 命名空间包: ${SITE_PACKAGES}"
     exit 1
 fi
 echo "-- 框架新包校验通过: ${SITE_PACKAGES}/yomk"
 
-# 命名空间守卫：扩展仓库自身不得带 yomk/__init__.py、yomk/msg/__init__.py 或 yomk/url/__init__.py
+# 命名空间守卫：扩展仓库自身不得带 yomk/__init__.py、yomk/msgs/__init__.py 或 yomk/url/__init__.py
 # （会破坏 PEP 420 合并，遮蔽框架其它子包）
-if [ -f "${SCRIPT_DIR}/src/yomk/__init__.py" ] || [ -f "${SCRIPT_DIR}/src/yomk/msg/__init__.py" ] \
+if [ -f "${SCRIPT_DIR}/src/yomk/__init__.py" ] || [ -f "${SCRIPT_DIR}/src/yomk/msgs/__init__.py" ] \
    || [ -f "${SCRIPT_DIR}/src/yomk/url/__init__.py" ]; then
-    echo "错误: 扩展源树含 yomk/__init__.py / yomk/msg/__init__.py / yomk/url/__init__.py，违反命名空间包纪律，禁止安装"
+    echo "错误: 扩展源树含 yomk/__init__.py / yomk/msgs/__init__.py / yomk/url/__init__.py，违反命名空间包纪律，禁止安装"
     exit 1
 fi
 
@@ -987,28 +987,28 @@ if [ -d "${SITE_PACKAGES}/yomk/extension" ]; then
     echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/extension"
     ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/extension"
 fi
-if [ -d "${SITE_PACKAGES}/yomk/msg/extension" ]; then
-    echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/msg/extension"
-    ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/msg/extension"
+if [ -d "${SITE_PACKAGES}/yomk/msgs/extension" ]; then
+    echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/msgs/extension"
+    ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/msgs/extension"
 fi
 if [ -d "${SITE_PACKAGES}/yomk/url/extension" ]; then
     echo "-- 移除旧版本: ${SITE_PACKAGES}/yomk/url/extension"
     ${SUDO} rm -rf "${SITE_PACKAGES}/yomk/url/extension"
 fi
 ${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/extension" "${SITE_PACKAGES}/yomk/"
-${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/msg/extension" "${SITE_PACKAGES}/yomk/msg/"
+${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/msgs/extension" "${SITE_PACKAGES}/yomk/msgs/"
 ${SUDO} cp -R "${SCRIPT_DIR}/src/yomk/url/extension" "${SITE_PACKAGES}/yomk/url/"
 
 # 安装后验证：新终端等价环境（仅 PYTHONPATH 指向 site-packages）下导入扩展域与 URL 常量池
-if PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension, yomk.msg.extension, yomk.url.extension; print('扩展版本:', yomk.extension.__version__)" 2>/dev/null; then
+if PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension, yomk.msgs.extension, yomk.url.extension; print('扩展版本:', yomk.extension.__version__)" 2>/dev/null; then
     echo "-- 扩展导入验证通过"
 else
     echo "错误: 扩展安装后无法导入，错误详情:"
-    PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension, yomk.msg.extension, yomk.url.extension"
+    PYTHONPATH="${SITE_PACKAGES}" python3 -c "import yomk.extension, yomk.msgs.extension, yomk.url.extension"
     exit 1
 fi
 
-echo "安装完成，扩展已并入框架 yomk 命名空间，新开任意终端即可 import yomk.extension / yomk.msg.extension / yomk.url.extension"
+echo "安装完成，扩展已并入框架 yomk 命名空间，新开任意终端即可 import yomk.extension / yomk.msgs.extension / yomk.url.extension"
 echo "可运行验证: python3 ${SCRIPT_DIR}/test/test_extension.py"
 ```
 
@@ -1017,7 +1017,7 @@ echo "可运行验证: python3 ${SCRIPT_DIR}/test/test_extension.py"
 # ExtensionName —— 第三方扩展示例模板（yomk 命名空间并入形态）
 
 本模板演示第三方仓库如何为 YomkServerPy 提供扩展：**独立仓库只写
-`yomk/msg/extension/`（消息类型）、`yomk/extension/`（运行时服务）与
+`yomk/msgs/extension/`（消息类型）、`yomk/extension/`（运行时服务）与
 `yomk/url/extension/`（URL 常量池）三个目录**，
 安装到框架 site-packages 后按 PEP 420 命名空间与框架子包平级合并。
 
@@ -1026,7 +1026,7 @@ echo "可运行验证: python3 ${SCRIPT_DIR}/test/test_extension.py"
 ```
 ExtensionName/
 ├── src/yomk/               # 扩展源树（与框架同构：只写自己的叶子目录）
-│   ├── msg/extension/      # 消息子包（并入框架 yomk.msg 命名空间段）
+│   ├── msg/extension/      # 消息子包（并入框架 yomk.msgs 命名空间段）
 │   │   ├── __init__.py             #   导出 ExtensionRequest / ExtensionResponse
 │   │   ├── ExtensionMsg.py         #   消息类型定义
 │   │   └── py.typed
@@ -1048,13 +1048,13 @@ ExtensionName/
 
 ## 命名空间纪律（必须遵守）
 
-框架的 `yomk/`、`yomk/msg/`、`yomk/url/` 三层是 **PEP 420 命名空间包**（无 `__init__.py`，
+框架的 `yomk/`、`yomk/msgs/`、`yomk/url/` 三层是 **PEP 420 命名空间包**（无 `__init__.py`，
 `import yomk` 不加载任何子模块、`yomk.__file__ is None`）。第三方扩展依赖
 该机制与框架合并，因此：
 
-- 扩展仓库**不得创建** `yomk/__init__.py`、`yomk/msg/__init__.py` 或 `yomk/url/__init__.py`
+- 扩展仓库**不得创建** `yomk/__init__.py`、`yomk/msgs/__init__.py` 或 `yomk/url/__init__.py`
   （install.sh 安装前会做守卫检查）；
-- 只新增自己的叶子目录（本模板为 `yomk/msg/extension/`、`yomk/extension/` 与 `yomk/url/extension/`）；
+- 只新增自己的叶子目录（本模板为 `yomk/msgs/extension/`、`yomk/extension/` 与 `yomk/url/extension/`）；
 - 扩展域的 `__init__.py` 内自带版本常量（框架各域由构建期注入
   `_version.py`，扩展可简化为普通常量）。
 
@@ -1080,7 +1080,7 @@ python3 test/test_extension.py
 安装后可用：
 
 ```python
-from yomk.msg.extension import ExtensionRequest, ExtensionResponse   # 扩展消息
+from yomk.msgs.extension import ExtensionRequest, ExtensionResponse   # 扩展消息
 from yomk.extension import ExtensionService, extension         # 扩展运行时 + extension 域 builder
 from yomk.url.extension import EXTENSION_ECHO                  # 扩展 URL 常量（并入框架 yomk.url 常量池）
 

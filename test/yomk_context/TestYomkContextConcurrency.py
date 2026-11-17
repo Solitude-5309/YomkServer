@@ -29,8 +29,8 @@ import sys
 import threading
 import time
 
-from yomk.msg.server import ResStatus
-from yomk.msg.ctx import CheckStatus
+from yomk.msgs.server import ResStatus
+from yomk.msgs.ctx import CheckStatus
 from yomk.server import server
 from yomk.ctx import ctx
 

@@ -1,7 +1,7 @@
 from typing import Any, Dict, Tuple
 
 from yomk.ctx.ContextGroup import ContextGroup
-from yomk.msg.server import Response
+from yomk.msgs.server import Response
 from yomk.server import YomkService
 
 

@@ -1,8 +1,8 @@
 from readerwriterlock import rwlock
 
 from yomk._diag import warn as diag_warn
-from yomk.msg.fn_pool import CallFunction, FuncInfo, Function
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.fn_pool import CallFunction, FuncInfo, Function
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService
 
 

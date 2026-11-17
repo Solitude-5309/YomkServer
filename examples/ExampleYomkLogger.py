@@ -58,8 +58,8 @@ from pathlib import Path
 
 import sys
 
-from yomk.msg.server import ResStatus
-from yomk.msg.log import Log
+from yomk.msgs.server import ResStatus
+from yomk.msgs.log import Log
 from yomk.server import server
 from yomk.log import log, log_mgr
 

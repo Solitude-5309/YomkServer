@@ -33,8 +33,8 @@ import io
 import contextlib
 import sys
 
-from yomk.msg.server import ResStatus, Response
-from yomk.msg.ctx import CheckStatus, Context
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.ctx import CheckStatus, Context
 from yomk.server import YomkServer, YomkService
 from yomk.ctx.builder import ContextBuilder  # 白盒：直用内部 builder 验证槽位适配
 from yomk.fn_pool.builder import FnPoolBuilder

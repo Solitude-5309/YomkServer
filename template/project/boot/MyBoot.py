@@ -6,7 +6,7 @@ from yomk.boot import YomkBoot
 from yomk.server import server
 from yomk.ctx import ctx
 from yomk.log import log
-from yomk.msg.server import ResStatus
+from yomk.msgs.server import ResStatus
 
 class MyBoot(YomkBoot):
     def __init__(self, srv_names):

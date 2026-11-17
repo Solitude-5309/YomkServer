@@ -3,7 +3,7 @@ import threading
 
 from yomk._diag import warn as diag_warn
 from yomk.log._logSourceLoc import _yomk_log_local_time_formatted
-from yomk.msg.log import Log
+from yomk.msgs.log import Log
 
 # 跨实例行级共享锁（对齐 C++ ConsoleLogger.cpp 类级 static std::mutex s_mutex）：
 # 全部 ConsoleLogger 实例共用一把，保证任意实例间逐行原子输出、多器行不交错

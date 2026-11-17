@@ -31,8 +31,8 @@ import io
 import contextlib
 import sys
 
-from yomk.msg.server import ResStatus, Response
-from yomk.msg.fn_pool import FuncInfo, Function
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.fn_pool import FuncInfo, Function
 from yomk.server import server as server_api
 from yomk.fn_pool import fn_pool
 

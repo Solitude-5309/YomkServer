@@ -1,4 +1,4 @@
-from yomk.msg.server import Response
+from yomk.msgs.server import Response
 
 
 class SrvInfoBuilder:

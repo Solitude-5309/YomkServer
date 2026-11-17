@@ -35,8 +35,8 @@ TestYomkContextCheckerMonitor.py —— YomkContext checker 与 monitor（同步
 import sys
 import time
 
-from yomk.msg.server import ResStatus
-from yomk.msg.ctx import CheckStatus, Context, ContextChecker, ContextMonitor
+from yomk.msgs.server import ResStatus
+from yomk.msgs.ctx import CheckStatus, Context, ContextChecker, ContextMonitor
 from yomk.server import server
 from yomk.ctx import ctx
 

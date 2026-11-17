@@ -34,7 +34,7 @@ import shutil
 import sys
 import tempfile
 
-from yomk.msg.server import ResStatus
+from yomk.msgs.server import ResStatus
 from yomk.server import server
 from yomk.log import log, log_mgr
 

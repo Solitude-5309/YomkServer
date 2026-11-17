@@ -1,4 +1,4 @@
-from yomk.msg.fn_pool import CallFunction, Function
+from yomk.msgs.fn_pool import CallFunction, Function
 from yomk.server import _facade
 from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.fn_pool import (FP_ALL, FP_CALL, FP_NAME, FP_NAMES,

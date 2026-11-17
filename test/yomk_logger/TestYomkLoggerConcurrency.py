@@ -48,8 +48,8 @@ import tempfile
 import threading
 import time
 
-from yomk.msg.server import ResStatus
-from yomk.msg.log import Log
+from yomk.msgs.server import ResStatus
+from yomk.msgs.log import Log
 from yomk.server import server as server_api
 from yomk.log import log, log_mgr
 

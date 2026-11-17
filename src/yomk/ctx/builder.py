@@ -1,12 +1,12 @@
 from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn
-from yomk.msg.ctx import (
+from yomk.msgs.ctx import (
     Context,
     ContextChecker,
     ContextGroupKey,
     ContextMonitor,
 )
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import _facade
 from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.ctx import (

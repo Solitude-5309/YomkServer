@@ -29,7 +29,7 @@ import sys
 import threading
 import time
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkServer, YomkService
 
 g_failed = 0

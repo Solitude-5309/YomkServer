@@ -1,6 +1,6 @@
 from typing import Any, Callable, Optional
 
-from yomk.msg.event_loop import EventLoopInfo
+from yomk.msgs.event_loop import EventLoopInfo
 
 
 class Event:

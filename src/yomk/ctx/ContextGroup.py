@@ -4,7 +4,7 @@ from readerwriterlock import rwlock
 
 from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn
-from yomk.msg.ctx import CheckStatus, Context, ContextKeyInfo
+from yomk.msgs.ctx import CheckStatus, Context, ContextKeyInfo
 
 
 class Monitor:

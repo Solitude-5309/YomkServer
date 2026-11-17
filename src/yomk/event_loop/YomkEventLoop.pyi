@@ -1,8 +1,8 @@
 from typing import Any, Dict
 
 from yomk.event_loop.EventLoop import Event, EventLoop
-from yomk.msg.event_loop import EventLoopPkg, EventLoopQuery
-from yomk.msg.server import Response
+from yomk.msgs.event_loop import EventLoopPkg, EventLoopQuery
+from yomk.msgs.server import Response
 from yomk.server import YomkService
 
 

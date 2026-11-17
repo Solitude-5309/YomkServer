@@ -75,7 +75,7 @@ import sys
 import threading
 import time
 
-from yomk.msg.server import ResStatus
+from yomk.msgs.server import ResStatus
 from yomk.server import __version__, server
 from yomk.fn_pool import fn_pool
 from yomk.srv_info import srv_info

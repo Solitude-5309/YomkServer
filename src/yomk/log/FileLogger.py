@@ -4,7 +4,7 @@ import threading
 from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn
 from yomk.log._logSourceLoc import _yomk_log_local_time_formatted
-from yomk.msg.log import Log
+from yomk.msgs.log import Log
 
 
 class FileLogger:

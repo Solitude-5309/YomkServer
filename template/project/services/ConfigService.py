@@ -4,7 +4,7 @@ from typedefine.TypeDefine import CTX_CONFIG_PATH, APP_VERSION
 from yomk.server import YomkService
 from yomk.ctx import ctx
 from yomk.log import log
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 
 
 class ConfigService(YomkService):

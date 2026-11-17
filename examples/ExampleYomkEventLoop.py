@@ -56,7 +56,7 @@ import sys
 import threading
 import time
 
-from yomk.msg.server import ResStatus, Response
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import server
 from yomk.event_loop import event_loop
 from yomk.log import log

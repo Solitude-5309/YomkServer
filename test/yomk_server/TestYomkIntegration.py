@@ -31,8 +31,8 @@ import sys
 import tempfile
 import time
 
-from yomk.msg.server import ResStatus, Response
-from yomk.msg.ctx import Context
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.ctx import Context
 from yomk.server import server
 from yomk.ctx import ctx
 from yomk.event_loop import event_loop

@@ -42,9 +42,9 @@ import gc
 import sys
 import threading
 
-from yomk.msg.server import ResStatus, Response
-from yomk.msg.fn_pool import FuncInfo
-from yomk.msg.srv_info import ServerServiceInfo
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.fn_pool import FuncInfo
+from yomk.msgs.srv_info import ServerServiceInfo
 from yomk.server import YomkServer, YomkService, server
 from yomk.srv_info import srv_info
 from yomk.srv_info.YomkServerInfo import YomkServerInfo  # 白盒测试直用内部类，非公开面

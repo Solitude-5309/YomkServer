@@ -40,8 +40,8 @@ import shutil
 import sys
 import tempfile
 
-from yomk.msg.server import ResStatus
-from yomk.msg.log import Log, LogFile, LoggerInfo
+from yomk.msgs.server import ResStatus
+from yomk.msgs.log import Log, LogFile, LoggerInfo
 from yomk.server import server as server_api
 from yomk.log import log, log_mgr
 
