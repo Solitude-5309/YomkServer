@@ -2,7 +2,7 @@
 
 ## 链式域入口（七个）
 
-框架全部操作经七个链式域入口暴露，累积方法（`url/msg/srv/key/loop/fn_name/tag/dir` 等）前置、任意顺序组合，终结动作（`request/create/set/start/call/remove/list/get_info` 等）一律无参：
+框架全部操作经七个链式域入口暴露，累积方法（`url/msg/srv/key/loop/fn_name/tag/dir` 等）前置、任意顺序组合，终结动作（`request/create/set/start/call/remove/list/get_info` 等）一律无参（唯一例外：log 域六级发射终端接收可变参数包）：
 
 | 入口 | 模块 | 职责 |
 |------|------|------|
@@ -16,7 +16,7 @@
 
 **builder 通用规则（必须遵守）**：
 
-- builder 按值传递，链式表达式须**单表达式内联**使用，接收变量一律 `auto` 或不接收；内部持 `string_view`，缓存 builder 复用即悬垂。
+- builder 按值传递，链式表达式须**单表达式内联**使用，接收变量一律 `auto` 或不接收；部分 builder 内部持 `string_view`（server/ctx 域），其余持拷贝（event_loop/fn_pool/srv_info 域及 log 域 `tag` 等累积字段）——统一按各头文件 warning 缓存复用即悬垂/失效，不缓存复用。
 - `yomk::log()` 域入口在**调用行**捕获位置前缀，缓存 builder 还会导致位置错误。
 - 按模块头导入（无伞形聚合头）：`<yomk/server/YomkServerApi.h>`、`YomkServerInfoApi.h`、`YomkLoggerApi.h`、`YomkContextApi.h`、`YomkEventLoopApi.h`、`YomkFunctionPoolApi.h`；自定义消息包含 `<yomk/msg/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`，标准类型见 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息见 `<yomk/server/YomkServerMsg.h>`，模块专属消息/载荷见 `<yomk/{ctx,event_loop,fn_pool,log,srv_info}/Yomk{Module}Msg.h>` / `Yomk{Module}Payload.h`（对应 `*Api.h` 已按需包含）；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs` 命名空间。
 
@@ -113,7 +113,7 @@ installFunc("/x", &C::m, "MsgName", "Description")  // 第四参：函数说明�
 weakFunc(&Class::Method)                         // 弱绑定成员函数（不装 funcMap），注册到外部子系统必用
 ```
 
-弱绑定判活：回调触发时先 `weak_ptr.lock()`，服务已删除则安全丢弃，不会悬垂 `this`。同一 `weakFunc` 是泛型模板，按调用处目标 `std::function` 类型自动适配全部回调签名，丢弃行为按返回类型：功能函数/FunctionPool/EventLoop（`Response(YomkMsgPtr)` → `Failed`）、异步响应（`void(Response)` → 丢弃 + 错误日志 "service has been deleted or unregistered, callback ignored"）、checker（`CheckStatus(const Context&)` → 放行 `Accept`）、void monitor（→ 丢弃）。其他返回类型 → `Ret{}` 默认值。构造期绑定（init 之前）永久无效。
+弱绑定判活：回调触发时先 `weak_ptr.lock()`，服务已删除则安全丢弃，不会悬垂 `this`。同一 `weakFunc` 是泛型模板，按调用处目标 `std::function` 类型自动适配全部回调签名，丢弃行为按返回类型（所有丢弃分支统一前置记录错误日志 "service has been deleted or unregistered, callback ignored"）：功能函数/FunctionPool/EventLoop（`Response(YomkMsgPtr)` → `Failed`）、异步响应（`void(Response)` → 丢弃）、checker（`CheckStatus(const Context&)` → 放行 `Accept`）、void monitor（→ 丢弃）。其他返回类型 → `Ret{}` 默认值。构造期绑定（init 之前）永久无效。
 
 `YomkService` 还提供便捷成员：`invoke(funcName, pkg)`（不经 URL 路由直调本服务函数）、`request(url, pkg)` / `asyncRequest(url, pkg, cb)`（转调 server 域链），以及 `funcInfos()` 本服务元信息。
 
@@ -135,7 +135,7 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 | `.async_thread(n)` | `.init()`：初始化单例并自动启动内置服务（Logger/Context/EventLoop/FunctionPool/ServerInfo）；`n` 异步线程池大小（省略 = 0 自动检测），仅首次生效；进程内幂等（call_once），挂 atexit 兜底销毁 |
 | — | `.version()` 版本字符串（各域入口 `srv_info()/log_mgr()/ctx()/event_loop()/fn_pool()` 同样提供 `.version()` 模块版本终结，编译期常量直返）/ `.instance()` `shared_ptr<YomkServer>` 快照（未初始化 `nullptr`）/ `.shutdown()` 优雅关闭（未初始化空转）——三者免初始化安全 |
 | `.srv<T>(name)` | `.create()` → `int`：创建并注册 `YomkService` 派生服务；`name` 省略沿用 T 构造默认名；0 成功，-1 失败（未初始化 / 未先调 `srv<T>` / `T::init()` 非 0 自动回滚） |
-| `.srv_name(n).srv_ptr(s)` | `.add()` → `int`：注册已有实例，所有权移交框架；累积非空 `srv_name` 时注册前先改名；同名替换 = 旧服务置注销标志 + deinit 后安装新服务；守卫拒绝时指针仍归调用方 |
+| `.srv_name(n).srv_ptr(s)` | `.add()` → `int`：注册已有实例，所有权移交框架；累积非空 `srv_name` 时注册前先改名；同名替换 = 旧服务置注销标志 + deinit 后安装新服务；builder 层守卫拒绝（未初始化 / `srv_ptr` 为空）时指针仍归调用方，`T::init()` 非 0 则框架回滚并销毁实例 |
 | `.srv_name(n)` | `.remove()` → `int`：按名注销并释放所有权；-1 = 不存在 / 名称为空 / 未初始化 |
 | `.boot_ptr(cfg)` | `.run()` → `int`：先 init 再按 before → start → after 执行 `YomkBoot` 编排；`cfg` 裸指针所有权移交 `run`；任一阶段非 0 立即中止并传播；`boot_ptr` 省略 = 仅 init 返回 0 |
 
@@ -161,15 +161,15 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 - 键级回调（`checker_fn`/`monitor_fn`）只能注册到**已存在**的键（否则 `Failed` "context key '{k}' does not exist"），即先 `create()` 再注册；monitors 为追加式（可注册多个）。
 - Checker 生效条件：组开关 ON **且**该键已注册 checker；门控在写锁内执行，**回调内重入 set 会死锁**。Reject 拦截 set（`Failed` "set context key '{k}' rejected by checker"），monitor 不触发。
 - Monitor 仅通知"发生了一次 set"并回传该次键值快照（不保证实时，留存请拷贝；需最新值回调内重读 `get()`）；`.async(true)` 经该组单线程池按 set 提交序保序送达；同步形态锁外即时执行、并发下不保证跨线程序、回调内重入 set 会递归。
-- 组名约定：`.group()` 省略即 `"main"`；空组名 `Failed` "group name is empty"；非 main 组首次寻址惰性自动创建，组名唯一、**不支持销毁组**，异步监控池每组自持。
-- 写路径失败契约：空键名 `Failed` "context key is empty"；create 值空 `Failed` "create context key '{k}' failed: value is empty"、键已存在 `Failed` "context key '{k}' already exists"；set 键不存在 `Failed` "context key '{k}' does not exist"、类型不符 `Failed` "context type not match: ..."。
+- 组名约定：`.group()` 省略即 `"main"`；空组名 `Invalid` "group name is empty"；非 main 组首次寻址惰性自动创建，组名唯一、**不支持销毁组**，异步监控池每组自持。
+- 写路径失败契约：空键名 `Invalid` "context key is empty"（set 路径 detail 为 "set context key is empty"）；create 值空 `Invalid` "create context key '{k}' failed: value is empty"、键已存在 `Failed` "context key '{k}' already exists"；set 键不存在 `Failed` "context key '{k}' does not exist"、类型不符 `Failed` "context type not match: ..."。入参非法（空名/空值）一律 `Invalid`，运行期状态冲突（已存在/不存在）用 `Failed`。
 - `get()` 返回只读快照，值对象发布后勿原地修改；类型化读按 `kName` 运行期比对，`T` 须为 `YomkMsg` 派生。
 
 ## EventLoop 域（yomk::event_loop()）
 
 | 场景 | 链 | 终结与返回 |
 |---|---|---|
-| 启动 | `.loop(name).handle_fn(fn).msg_name(m)` | `.start()` → `ResStatus`；`handle_fn` 为循环默认处理函数、`msg_name` 期望类型名（均仅内省元数据），可省略 |
+| 启动 | `.loop(name).handle_fn(fn).msg_name(m)` | `.start()` → `ResStatus`；`handle_fn` 为循环默认处理函数（未带一次性处理器时实际回落执行）、`msg_name` 期望类型名（仅内省元数据），两者均可省略 |
 | 停止 | `.loop(name)` | `.stop()` → `ResStatus`（停线程**保留队列**） |
 | 销毁 | `.loop(name)` | `.destroy()` → `ResStatus`（停线程 + 清空队列 + 移出循环表，不可续跑） |
 | 非阻塞投递 | `.msg(data).loop(name).handle_fn(fn).tag(t)` | `.post()` → `ResStatus`（仅入队结果）；`handle_fn`/`tag` 可省略 |

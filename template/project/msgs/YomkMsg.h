@@ -17,4 +17,4 @@ struct ConfigKeyValue
     std::string value;
 };
 YOMK_DEFINE_MSG(::ConfigKeyValue, ConfigKeyValue, req);
-    // 访问: ptr->req.key, ptr->req.value
+// 访问: ptr->req.key, ptr->req.value

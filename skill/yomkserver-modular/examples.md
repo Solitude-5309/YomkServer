@@ -942,7 +942,7 @@ yomk::log_mgr().file("app").level(yomk::payload::LogLevel::Info).enable();
 // 删除日志器：同名 console/file 两表一并清除（均无命中才 Failed）；移除时析构自动落盘，
 // 但不删除磁盘上的 .log 文件（数据保全，清理归调用方）
 yomk::payload::Response del = yomk::log_mgr().file("app").remove();   // Succeeded, msg: "deleted console:0 file:1"
-yomk::log_mgr().file("app").remove();                                 // Failed, msg: "logger not found."
+yomk::log_mgr().file("app").remove();                                 // Failed, msg: "logger 'app' not found"
 // 注：默认日志器 "main" 无特殊保护，删除后下次写控制台日志惰性重建
 
 // 控制台日志代理
@@ -980,9 +980,9 @@ ExtensionName/
 │   └── extension/            // 小写扩展名目录，安装后对外引用统一 <yomk/<扩展名小写>/...>
 │       ├── ExtensionService.h
 │       ├── ExtensionApi.h    // 模块 API：链式域入口 yomk::ext()（四件套，参考 include/yomk 各域设计）
-│       ├── ExtensionMsg.h    // 模块消息包目录（YOMK_DEFINE_MSG，模板为注释占位）
-│       ├── ExtensionPayload.h // 模块专属载荷目录（namespace yomk::payload，模板为注释占位）
-│       └── ExtensionUrl.h    // 模块 URL 常量（yomk::url 命名空间）
+│       ├── ExtensionMsg.h    // 模块消息包目录（YOMK_DEFINE_MSG_NS，消息落 yomk::msgs::ext）
+│       ├── ExtensionPayload.h // 模块专属载荷目录（namespace yomk::payload::ext）
+│       └── ExtensionUrl.h    // 模块 URL 常量（namespace yomk::url::ext）
 ├── src/
 │   └── ExtensionService.cpp
 ├── test/
@@ -1008,6 +1008,7 @@ ExtensionName/
 // 域已由命名空间表达，常量名不再自我前缀（version 而非 extVersion）。
 namespace yomk::url::ext
 {
+// /ExtensionService/*
 inline constexpr std::string_view version = "/ExtensionService/version";
 }  // namespace yomk::url::ext
 ```
@@ -1020,17 +1021,17 @@ inline constexpr std::string_view version = "/ExtensionService/version";
 #include "yomk/server/YomkServerPayload.h"
 
 // Extension 扩展专属载荷（namespace yomk::payload::ext，扩展专属子命名空间，不占 yomk::payload 根）。
-// 当前模板仅 /version 接口（返回值复用标准类型 msgs::String），暂无专属载荷；
+// 模板自带示例载荷 ExtTask（当前业务未使用，仅作形态示例，新增业务时替换之）；
 // 新增业务数据结构在此定义，形态参考 yomk/fn_pool/YomkFunctionPoolPayload.h：
 //
-// namespace yomk::payload::ext
-// {
-// struct ExtTask
-// {
-//     std::string taskName;
-//     YomkMsgPtr pkg;
-// };
-// }  // namespace yomk::payload::ext
+namespace yomk::payload::ext
+{
+struct ExtTask
+{
+    std::string taskName;
+    YomkMsgPtr pkg;
+};
+}  // namespace yomk::payload::ext
 ```
 
 ### include/extension/ExtensionMsg.h
@@ -1041,11 +1042,12 @@ inline constexpr std::string_view version = "/ExtensionService/version";
 #include "yomk/msg/YomkMsg.h"
 
 // Extension 扩展专属消息包（成员名均为 d，与 SDK 各 Yomk{Module}Msg.h 同一设计）。
-// 当前模板 /version 返回值复用标准类型 msgs::String，暂无专属消息；
-// 新增业务消息在此用 YOMK_DEFINE_MSG_NS 声明（类落 yomk::msgs::<NS> 子命名空间，kName 全限定），
-// 参考 yomk/fn_pool/YomkFunctionPoolMsg.h：
+// 消息经 YOMK_DEFINE_MSG_NS 声明：类落 yomk::msgs::ext 子命名空间（不占 yomk::msgs 根），
+// kName 为全限定 "yomk::msgs::ext::ExtTask"，命名空间隔离与运行期类型 ID 唯一由同一机制保证。
+// 模板自带示例消息 ExtTask（与示例载荷 ExtTask 配套，仅作形态示例，新增业务时替换之），
+// 新增业务消息在此按同形式追加，参考 yomk/fn_pool/YomkFunctionPoolMsg.h：
 //
-// YOMK_DEFINE_MSG_NS(ext, yomk::payload::ext::ExtTask, ExtTask, d);
+YOMK_DEFINE_MSG_NS(ext, yomk::payload::ext::ExtTask, ExtTask, d);
 ```
 
 ### include/extension/ExtensionApi.h
@@ -1121,7 +1123,7 @@ private:
 ```cpp
 #include <yomk/log/YomkLoggerApi.h>
 
-#include "ExtensionService.h"
+#include "extension/ExtensionService.h"
 
 namespace yomk::service::ext
 {
@@ -1139,7 +1141,7 @@ int ExtensionService::init()
 
 yomk::payload::Response ExtensionService::version(YomkMsgPtr pkg)
 {
-    std::string version = "ExtensionName v" EXTENSION_VERSION;
+    std::string version = "extension v" EXTENSION_VERSION;
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(version));
 }
 }  // namespace yomk::service::ext
@@ -1490,7 +1492,11 @@ source build_ubuntu.sh
 ExtensionName/
 ├── include/
 │   └── extension/           # 小写扩展名目录（安装后对外引用统一 <yomk/<扩展名小写>/...>）
-│       └── ExtensionService.h  # 对外接口头文件（服务类声明；内部头文件放 src/）
+│       ├── ExtensionService.h  # 对外接口头文件（服务类声明，落 yomk::service::ext；内部头文件放 src/）
+│       ├── ExtensionApi.h      # 模块 API：链式域入口 yomk::ext()（四件套，参考 include/yomk 各域设计）
+│       ├── ExtensionMsg.h      # 模块消息包目录（YOMK_DEFINE_MSG_NS，消息落 yomk::msgs::ext）
+│       ├── ExtensionPayload.h  # 模块专属载荷目录（namespace yomk::payload::ext）
+│       └── ExtensionUrl.h      # 模块 URL 常量（namespace yomk::url::ext）
 ├── src/
 │   └── ExtensionService.cpp
 ├── test/
@@ -1527,7 +1533,7 @@ int main(int argc, char* argv[])
     if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
-        std::cout << "version: " << version->d << std::endl;   // 输出: ExtensionName v0.0.1
+        std::cout << "version: " << version->d << std::endl;   // 输出: extension v0.0.1
     }
 
     return 0;

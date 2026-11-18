@@ -1,6 +1,6 @@
 ---
 name: yomkserver-modular
-description: 基于 YomkServer 框架的模块化 C++17 编程，核心理念"一切皆服务，一切皆请求"，API 为七个链式域入口（yomk::server/srv_info/log/log_mgr/ctx/event_loop/fn_pool）。用于创建 YomkServer 工程与服务、全局状态管理（Context）、事件循环（EventLoop）、公共函数池（FunctionPool）、日志系统（Logger）与内省调试。当用户需要编写 YomkServer 模块化代码、创建服务、管理全局状态、处理事件队列、注册公共函数或搭建工程结构时使用。**当用户提到"创建工程"、"新建项目"、"create a project"等任何与创建工程相关的请求时，必须立即使用任务一生成完整可编译的工程骨架，不要先询问需求。** 仅用于基于 YomkServer 框架的开发，不适用于与 YomkServer 无关的普通 C++ 工程或问题。
+description: 基于 YomkServer 框架的模块化 C++17 编程，核心理念"一切皆服务，一切皆请求"，API 为七个链式域入口（yomk::server/srv_info/log/log_mgr/ctx/event_loop/fn_pool）。当用户需要创建 YomkServer 工程（"创建工程"、"新建项目"、"create a project"等任何与创建工程相关的请求）、创建扩展库、在工程中编写服务、管理全局状态（Context）、处理事件循环（EventLoop）、注册公共函数（FunctionPool）、使用日志（Logger）或内省调试时使用。仅用于基于 YomkServer 框架的开发，不适用于与 YomkServer 无关的普通 C++ 工程或问题。
 ---
 
 # YomkServer 模块化编程框架
@@ -19,7 +19,10 @@ description: 基于 YomkServer 框架的模块化 C++17 编程，核心理念"�
 | **YomkFunctionPool** | 动态函数池（运行时注册/热替换） | `yomk::fn_pool()` |
 | **YomkLogger** | 多级别、多输出日志 | 发射 `yomk::log()` / 管理 `yomk::log_mgr()` |
 
-按模块头导入（无伞形聚合头）：`<yomk/server/YomkServerApi.h>`（`yomk::server()`）、`<yomk/srv_info/YomkServerInfoApi.h>`（`yomk::srv_info()`）、`<yomk/log/YomkLoggerApi.h>`（`yomk::log()` / `yomk::log_mgr()`）、`<yomk/ctx/YomkContextApi.h>`（`yomk::ctx()`）、`<yomk/event_loop/YomkEventLoopApi.h>`（`yomk::event_loop()`）、`<yomk/fn_pool/YomkFunctionPoolApi.h>`（`yomk::fn_pool()`）；另按需包含 `<yomk/msg/YomkMsg.h>` 使用 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`（标准类型见 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息见 `<yomk/server/YomkServerMsg.h>`，模块专属消息/载荷见 `<yomk/{ctx,event_loop,fn_pool,log,srv_info}/Yomk{Module}Msg.h>` / `Yomk{Module}Payload.h`）。API 形态为**链式调用：累积环节返回 builder 自身、终结环节执行并返回结果**；单条链在一个表达式内内联使用（builder 持 `string_view`，缓存跨语句即悬垂）。载荷类型（`Response`/`ResStatus`/`LogLevel` 等）位于 `yomk::payload`，服务实现内惯用 `using namespace yomk::payload;`；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs`。
+- 按模块头导入（无伞形聚合头）：`<yomk/server/YomkServerApi.h>`（`yomk::server()`）、`<yomk/srv_info/YomkServerInfoApi.h>`（`yomk::srv_info()`）、`<yomk/log/YomkLoggerApi.h>`（`yomk::log()` / `yomk::log_mgr()`）、`<yomk/ctx/YomkContextApi.h>`（`yomk::ctx()`）、`<yomk/event_loop/YomkEventLoopApi.h>`（`yomk::event_loop()`）、`<yomk/fn_pool/YomkFunctionPoolApi.h>`（`yomk::fn_pool()`）
+- 消息：`<yomk/msg/YomkMsg.h>` 提供 `YOMK_DEFINE_MSG` 与 `yomk::msgs::unpack`；标准类型见 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息见 `<yomk/server/YomkServerMsg.h>`，模块专属消息/载荷见 `<yomk/{ctx,event_loop,fn_pool,log,srv_info}/Yomk{Module}Msg.h>` / `Yomk{Module}Payload.h`
+- API 形态为**链式调用**：累积环节返回 builder 自身、终结环节执行并返回结果；单条链在一个表达式内内联使用（builder 持 `string_view`，缓存跨语句即悬垂）
+- 命名空间：载荷类型（`Response`/`ResStatus`/`LogLevel` 等）位于 `yomk::payload`，服务实现内惯用 `using namespace yomk::payload;`；`YOMK_DEFINE_MSG` 生成类型位于 `yomk::msgs`
 
 各环节完整签名、返回值与失败契约见 [reference.md](reference.md)。
 
@@ -87,6 +90,8 @@ ProjectName/
 - 所有文件必须完整生成，确保 `source build_ubuntu.sh` 可直接编译运行
 
 ## 任务二：扩展业务服务
+
+**触发条件**：当用户要求在已有工程中添加服务或新功能时。
 
 在已有工程中添加新服务的标准步骤：
 
@@ -191,7 +196,9 @@ yomk::server().shutdown();
 ```
 
 - `deinit()` 的四个触发时机：`.srv_name(n).remove()` 删除单个服务、`.shutdown()` 关闭全部服务、忘记关闭时服务器析构兜底（避免服务持有的 joinable 线程随析构触发 `std::terminate`）、同名服务被 `.srv_name(n).srv_ptr(s).add()` 替换（旧服务先被锁外 `deinit`，再安装新服务）
-- 关闭时先停请求池（拒新 → 排空 → join 工作线程）再逐服务 `deinit`，`shutdown` 返回后无任何异步任务在执行，之后再提交的异步请求被拒绝；异步任务应保持轻量，重活经 EventLoop 或业务自建线程处理；请求池大小经 `yomk::server().async_thread(n).init()` 配置（仅首次初始化生效），未显式关闭时退出经 atexit 兜底——排空语义、双池分离与单例清理细节见 [reference.md](reference.md) server 域生命周期表
+- 关闭顺序：先停请求池（拒新 → 排空 → join 工作线程）再逐服务 `deinit`；`shutdown` 返回后无任何异步任务在执行，之后再提交的异步请求被拒绝
+- 异步任务应保持轻量，重活经 EventLoop 或业务自建线程处理；请求池大小经 `yomk::server().async_thread(n).init()` 配置（仅首次初始化生效）
+- 未显式关闭时退出经 atexit 兜底——排空语义、双池分离与单例清理细节见 [reference.md](reference.md) server 域生命周期表
 - 覆写了 `deinit()` 的服务需保证幂等语义友好（重复触发只来自异常使用，但停止线程/释放资源应可重复执行不崩溃）
 
 ### 服务内省（调试）
@@ -227,11 +234,11 @@ resp = yomk::srv_info().all();
 ExtensionName/
 ├── include/
 │   └── xxx/                 // 小写扩展名目录，安装后对外引用统一 <yomk/<扩展名小写>/...>（与 SDK 各域共用 <prefix>/include 同一 include 根）
-│       ├── XxxService.h     // 对外接口头文件（服务类声明；内部头文件放 src/）
+│       ├── XxxService.h     // 对外接口头文件（服务类声明，落 yomk::service::ext；内部头文件放 src/）
 │       ├── XxxApi.h         // 模块 API：链式域入口（四件套，参考 include/yomk 各域设计）
-│       ├── XxxMsg.h         // 模块消息包目录（YOMK_DEFINE_MSG）
-│       ├── XxxPayload.h     // 模块专属载荷目录（namespace yomk::payload）
-│       └── XxxUrl.h         // 模块 URL 常量（yomk::url 命名空间）
+│       ├── XxxMsg.h         // 模块消息包目录（YOMK_DEFINE_MSG_NS，消息落 yomk::msgs::ext）
+│       ├── XxxPayload.h     // 模块专属载荷目录（namespace yomk::payload::ext）
+│       └── XxxUrl.h         // 模块 URL 常量（namespace yomk::url::ext）
 ├── src/
 │   └── XxxService.cpp      // 服务实现
 ├── test/
@@ -259,9 +266,16 @@ ExtensionName/
 7. **测试程序只编译不安装**：测试程序仅供扩展开发验证使用，由 `build_ubuntu.sh` 编译到 `test/build/`（不加 `--target install`、不设 `CMAKE_INSTALL_PREFIX`），不随扩展安装；test/CMakeLists.txt 不添加 install 规则
 8. **模板接口最小化**：模板服务默认只包含一个 `/version` 接口（方法名为 `version`，不带 `get` 前缀），不生成任何示例业务接口（如加减乘除）；业务功能通过「继续扩展」添加
 9. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
-10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回，如 `"ExtensionName v" EXTENSION_VERSION`
+10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回（用小写扩展名），如 `"extension v" EXTENSION_VERSION`
 11. **README 使用示例完整可复制**：README 使用示例必须提供完整的 main.cpp（含 include、`yomk::server().init()`、`yomk::server().srv<XxxService>().create()` 注册扩展服务、请求与输出），用户复制后即可编译运行；不得只提供请求代码片段
-12. **模块四件套**：对外头文件按 SDK `include/yomk/` 各域同一设计组织——`XxxUrl.h`（`namespace yomk::url::ext` 子命名空间 URL 常量，`inline constexpr std::string_view`；域已由命名空间表达，常量名不再自我前缀）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload::ext`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG_NS`，消息落 `yomk::msgs::ext` 子命名空间、kName 全限定）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态，Builder 落 `yomk::detail::ext`。设计约定：①Api 头是模块自己的 API，只写本模块业务的终结方法，不重复封装通用请求链；②可以完全不写 API 方法，但须在 Api 文件注释写清统一调用方式及 url 的功能作用，如 `yomk::server().url(yomk::url::ext::version).request()`；③请求一律优先使用统一请求接口 `yomk::server().url(<url>).request()`，扩展终结方法仅是其上的薄封装，屏蔽裸 URL、不另造请求通道。模板仅内置无参终结 `version()`）。扩展服务类落 `yomk::service::ext`（如 `yomk::service::ext::ExtensionService`；`yomk::ext` 为链式入口函数，函数与命名空间不可同名）。完整形态见 `template/extension/include/extension/Extension{Url,Payload,Msg,Api}.h`；模板四件套暂为注释占位（模板接口最小化），新增业务时先补 Url/Payload/Msg 再在 Api 上追加终结方法。**请求链一律引用 `yomk::url` 子命名空间常量、不裸写 URL 字符串字面量**（含测试程序与使用示例）
+12. **模块四件套**：对外头文件按 SDK `include/yomk/` 各域同一设计组织，四件 + 服务类同落扩展专属子命名空间：
+    - `XxxUrl.h`：`namespace yomk::url::ext` 子命名空间 URL 常量，`inline constexpr std::string_view`；域已由命名空间表达，常量名不再自我前缀
+    - `XxxPayload.h`：扩展专属载荷，`namespace yomk::payload::ext`
+    - `XxxMsg.h`：扩展专属消息包，`YOMK_DEFINE_MSG_NS` 声明，消息类落 `yomk::msgs::ext` 子命名空间、kName 全限定
+    - `XxxApi.h`：链式域入口 `yomk::ext()` 形态，Builder 落 `yomk::detail::ext`；Api 头是模块自己的 API，只写本模块业务的终结方法，不重复封装通用请求链；可以完全不写 API 方法，但须在 Api 文件注释写清统一调用方式及 url 的功能作用（如 `yomk::server().url(yomk::url::ext::version).request()`）；模板仅内置无参终结 `version()`
+    - 服务类落 `yomk::service::ext`（如 `yomk::service::ext::ExtensionService`）；不落 `yomk::ext`——其为链式入口函数，函数与命名空间不可同名，故服务域独立取名
+    - 完整形态见 `template/extension/include/extension/Extension{Url,Payload,Msg,Api}.h`；模板内置 `ExtTask` 载荷与同名消息作形态示例（新增业务时替换之）
+    - 请求一律优先使用统一请求接口 `yomk::server().url(<url>).request()`，扩展终结方法仅是其上的薄封装，屏蔽裸 URL、不另造请求通道。**请求链一律引用 url 常量、不裸写 URL 字符串字面量**（含测试程序与使用示例；SDK 内置域常量在 `yomk::url` 根，扩展常量落 `yomk::url::ext` 子命名空间）
 
 ### 生成规则
 
@@ -274,8 +288,8 @@ ExtensionName/
 
 在已有扩展中添加新功能：
 
-1. **模块四件套补声明**：`XxxUrl.h` 加 URL 常量（请求链一律引用常量，不裸写 URL 字符串字面量）、`XxxPayload.h`/`XxxMsg.h` 加载荷/消息包（当前为注释占位）、`XxxApi.h` 加终结方法（如 `yomk::ext().task(req).submit()` 形态）；不写终结方法时，须在 Api 文件注释写清 `yomk::server().url(<url>).request()` 统一调用方式及 url 功能作用
-2. **对外接口头文件添加方法声明**（`include/XxxService.h`；仅内部使用的声明放 `src/` 内部头文件）
+1. **模块四件套补声明**：`XxxUrl.h` 加 URL 常量（请求链一律引用常量，不裸写 URL 字符串字面量）、`XxxPayload.h`/`XxxMsg.h` 加载荷/消息包（模板内置 `ExtTask` 为形态示例，新增业务时替换）、`XxxApi.h` 加终结方法（如 `yomk::ext().task(req).submit()` 形态）；不写终结方法时，须在 Api 文件注释写清 `yomk::server().url(<url>).request()` 统一调用方式及 url 功能作用
+2. **对外接口头文件添加方法声明**（`include/XxxService.h`，类落 `yomk::service::ext`；仅内部使用的声明放 `src/` 内部头文件）
 3. **实现添加功能函数**（`src/XxxService.cpp`）：`installFunc` + 实现
 4. **测试程序添加测试用例**（`test/TestXxx.cpp`）
 
@@ -287,6 +301,7 @@ ExtensionName/
 YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定义
 ```
 消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名（如 `YOMK_DEFINE_MSG(MyData, MyData, d)`）。
+- **命名空间策略**：工程自有消息（`msgs/YomkMsg.h`，工程本地头）用根级 `YOMK_DEFINE_MSG`，消息落 `yomk::msgs` 根；扩展库消息（共享 include 根，须与其他扩展隔离）用 `YOMK_DEFINE_MSG_NS(ext, 数据类, 消息名称, d)`，消息类落 `yomk::msgs::ext` 子命名空间、kName 全限定
 - `yomk::msgs::消息名称::shared(数据类实例)` — 创建消息包（类内静态工厂）
 - `yomk::msgs::unpack<yomk::msgs::消息名称>(pkg)` — 解包模板，返回 shared_ptr，失败返回 nullptr（不自动 return，需手动判空处理）
 
@@ -300,7 +315,7 @@ YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定�
 1. 每个 Service 只负责单一业务域
 2. 服务间通过 `yomk::server().url(...).request()` 通信，不直接引用
 3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
-4. 服务成员函数注册到外部子系统（FunctionPool/EventLoop/Context checker·monitor/异步响应）必须用 `weakFunc(&Class::Method)` 弱绑定，服务删除后回调自动失效；本服务 funcMap（`installFunc("/x", &C::m)`）已自动弱绑定
+4. 服务成员函数注册到外部子系统（FunctionPool/EventLoop/Context checker·monitor/异步响应）**必须**用 `weakFunc(&Class::Method)` 弱绑定，服务删除后回调自动失效；本服务 funcMap（`installFunc`）已自动弱绑定——判活机制与各回调签名适配见任务二「服务删除与弱绑定回调」与 [reference.md](reference.md) "installFunc / weakFunc"，此处不重复
 5. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）
 6. 配置路径通过 Context 传递，不用构造参数
 7. 扩展库只负责处理逻辑，不关心数据来源，所有外部数据必须通过请求参数传入
@@ -312,12 +327,7 @@ YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定�
 
 1. **编译验证**：`source build_ubuntu.sh` 走通配置 → 编译 → 安装；运行可执行文件确认内置服务与业务服务日志正常
 2. **测试程序**：扩展模板自带 `test/`（独立 main + `[PASS]/[FAIL]` 断言 + Test Summary 汇总，退出码 0/1）；新增业务接口时同步在测试程序中追加用例，`build_ubuntu.sh` 选择编译测试后在 `test/build/` 运行验证
-3. **框架质量工具**（框架仓库内，可为生成的工程参考搭建同类能力）：
-   - `test/run_tests.sh`：一键全量测试（`--full` 完整规模 / `--timeout N` 单测试超时；压测规模由环境变量 `YOMK_TEST_STRESS_SCALE` 参数化）
-   - `test/run_example.sh`：一键运行 examples/ 全部示例（与 `run_tests.sh` 同一套运转逻辑：失败即停、日志落盘 `test/test_logs/<时间戳>_example/`、独立临时目录隔离并清理；支持位置参数单选示例、`--bin`/`--timeout`；示例以 `</dev/null` 自动越过 `getchar()` 等回车退出）
-   - `test/run_static_checks.sh`：cppcheck + clang-tidy 零告警门禁（`--cppcheck` / `--tidy` 单独运行；依赖仓库根 `compile_commands.json`）
-   - `YOMK_TEST_SANITIZER=off|asan|tsan`：CMake 测试构建的 sanitizer 开关
-   - 测试组织范式：`test/` 按模块分子目录，每个被测主题一个独立可执行程序（纯 main + CHECK 断言）
+3. **框架质量工具**（框架仓库内，可为生成的工程参考搭建同类能力）：`test/run_tests.sh`（一键全量测试）、`test/run_example.sh`（一键运行 examples/ 全部示例）、`test/run_static_checks.sh`（cppcheck + clang-tidy 零告警门禁）、环境变量 `YOMK_TEST_SANITIZER=off|asan|tsan`（测试构建 sanitizer 开关）；测试组织范式：`test/` 按模块分子目录，每个被测主题一个独立可执行程序（纯 main + CHECK 断言）。各脚本参数细节见仓库 `test/` 内脚本头注释
 
 ## 详细参考
 
