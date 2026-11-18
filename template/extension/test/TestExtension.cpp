@@ -13,10 +13,10 @@ int main(int argc, char* argv[])
 {
     yomk::server().init();
 
-    yomk::server().srv<ExtensionService>().create();
+    yomk::server().srv<yomk::service::ext::ExtensionService>().create();
 
     // 测试版本查询（url 常量见 ExtensionUrl.h，经 ExtensionApi.h 已引入）
-    yomk::payload::Response resp = yomk::server().url(yomk::url::extVersion).request();
+    yomk::payload::Response resp = yomk::server().url(yomk::url::ext::version).request();
     if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);

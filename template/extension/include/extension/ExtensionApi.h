@@ -8,10 +8,11 @@
 // 1. Api 头是模块自己的 API，只写本模块业务的终结方法（模板仅 version()），
 //    不重复封装通用请求链（url/msg/request 归 yomk::server()）；
 // 2. 也可以完全不写 API 方法，但须在本文件注释写清统一调用方式及 url 的功能作用，
-//    如：yomk::server().url(yomk::url::extVersion).request() —— extVersion 即 /ExtensionService/version 版本查询；
+//    如：yomk::server().url(yomk::url::ext::version).request() —— version 即 /ExtensionService/version 版本查询；
 // 3. 请求一律优先使用统一请求接口 yomk::server().url(<url>).request()，
 //    扩展终结方法只是其上的薄封装（如 yomk::ext().version()），屏蔽裸 URL、不另造请求通道。
-namespace yomk::detail
+// Builder 落 yomk::detail::ext 子命名空间，域入口 yomk::ext() 保持不变。
+namespace yomk::detail::ext
 {
 class ExtBuilder
 {
@@ -22,10 +23,10 @@ public:
      */
     yomk::payload::Response version()
     {
-        return yomk::server().url(yomk::url::extVersion).request();
+        return yomk::server().url(yomk::url::ext::version).request();
     }
 };
-}  // namespace yomk::detail
+}  // namespace yomk::detail::ext
 
 namespace yomk
 {
@@ -33,8 +34,8 @@ namespace yomk
  * @brief Extension 扩展域链式入口
  * @return ExtBuilder（按值, 仅用于单表达式链式调用）
  */
-inline detail::ExtBuilder ext()
+inline detail::ext::ExtBuilder ext()
 {
-    return detail::ExtBuilder{};
+    return detail::ext::ExtBuilder{};
 }
 }  // namespace yomk

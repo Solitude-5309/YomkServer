@@ -2,6 +2,8 @@
 
 #include "extension/ExtensionService.h"
 
+namespace yomk::service::ext
+{
 ExtensionService::ExtensionService(YomkServer* server) : YomkService(server)
 {
     name("/ExtensionService");
@@ -19,3 +21,4 @@ yomk::payload::Response ExtensionService::version(YomkMsgPtr pkg)
     std::string version = "extension v" EXTENSION_VERSION;
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(version));
 }
+}  // namespace yomk::service::ext

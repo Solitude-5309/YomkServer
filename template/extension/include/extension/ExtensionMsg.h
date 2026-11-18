@@ -4,7 +4,8 @@
 #include "yomk/msg/YomkMsg.h"
 
 // Extension 扩展专属消息包（成员名均为 d，与 SDK 各 Yomk{Module}Msg.h 同一设计）。
-// 当前模板 /version 返回值复用标准类型 msgs::String，暂无专属消息；
-// 新增业务消息在此用 YOMK_DEFINE_MSG 声明，参考 yomk/fn_pool/YomkFunctionPoolMsg.h：
+// 消息经 YOMK_DEFINE_MSG_NS 声明：类落 yomk::msgs::ext 子命名空间（不占 yomk::msgs 根），
+// kName 为全限定 "yomk::msgs::ext::ExtTask"，命名空间隔离与运行期类型 ID 唯一由同一机制保证；
+// 新增业务消息在此按同形式追加，参考 yomk/fn_pool/YomkFunctionPoolMsg.h：
 //
-// YOMK_DEFINE_MSG(yomk::payload::ExtTask, ExtTask, d);
+YOMK_DEFINE_MSG_NS(ext, yomk::payload::ext::ExtTask, ExtTask, d);
