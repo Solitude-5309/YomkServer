@@ -1,4 +1,3 @@
-
 import json
 from typedefine.TypeDefine import CTX_CONFIG_PATH, APP_VERSION
 from yomk.server import YomkService

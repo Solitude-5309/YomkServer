@@ -4,11 +4,11 @@
 
 ## 示例0：标准工程模板（创建新工程时必须生成）
 
-将 `ProjectName` 替换为用户指定的工程名，所有文件必须完整生成。
+将 `TemplateProject` 替换为用户指定的工程名，所有文件必须完整生成。
 
 ### 目录结构
 ```
-ProjectName/
+TemplateProject/
 ├── main.py
 ├── boot/
 │   └── MyBoot.py
@@ -28,16 +28,8 @@ ProjectName/
 
 ### main.py
 ```python
-from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.ctx import CheckStatus
-from yomk.msgs.log import Log
-from yomk.boot import YomkBoot
-from yomk.server import YomkService, server
-from yomk.ctx import ctx
-from yomk.event_loop import Event, event_loop
-from yomk.fn_pool import fn_pool
-from yomk.log import log, log_mgr
-
+from yomk.server import server
+from yomk.log import log
 from boot.MyBoot import MyBoot
 
 server().boot_ptr(MyBoot(["/ConfigService"])).run()
@@ -51,6 +43,11 @@ from pathlib import Path
 from typedefine.TypeDefine import CTX_CONFIG_PATH
 from services.ConfigService import ConfigService
 from msgs.YomkMsgs import *
+from yomk.boot import YomkBoot
+from yomk.server import server
+from yomk.ctx import ctx
+from yomk.log import log
+from yomk.msgs.server import ResStatus
 
 class MyBoot(YomkBoot):
     def __init__(self, srv_names):
@@ -114,7 +111,7 @@ class MyBoot(YomkBoot):
 ```python
 """
 Type Define
-统一存放常量定义、宏定义、类型定义等可复用公共定义
+统一存放常量定义、类型定义等可复用公共定义
 """
 
 # Context
@@ -141,6 +138,10 @@ class ConfigKeyValue:
 ```python
 import json
 from typedefine.TypeDefine import CTX_CONFIG_PATH, APP_VERSION
+from yomk.server import YomkService
+from yomk.ctx import ctx
+from yomk.log import log
+from yomk.msgs.server import ResStatus, Response
 
 
 class ConfigService(YomkService):
@@ -196,7 +197,7 @@ class ConfigService(YomkService):
         return Response(ResStatus.eOk, "ok")
 
     def reload_config(self, pkg):
-        # reload：先回取 context 中的 config_path，缺失即 eNo
+        # reload 先回取 context 中的 config_path，缺失即 eNo
         self.config_path = ctx().key(CTX_CONFIG_PATH).msg().with_default("").get()
         if not self.config_path:
             return Response(ResStatus.eNo, "config_path not found in context")
@@ -216,7 +217,7 @@ class ConfigService(YomkService):
 ### config/config.json
 ```json
 {
-    "name": "ProjectName",
+    "name": "TemplateProject",
     "description": "Create a new project based on YomkServerPy"
 }
 ```
@@ -250,7 +251,7 @@ fi
 
 ### README.md
 ````markdown
-# ProjectName
+# TemplateProject
 
 基于 [YomkServerPy](https://github.com/Solitude-5309/YomkServerPy) 模块化框架的空白工程模板。
 
@@ -273,7 +274,7 @@ YomkServerPy 是基于 Python 的模块化服务开发框架，核心设计理�
 ## 工程结构
 
 ```
-ProjectName/
+TemplateProject/
 ├── main.py                 # 程序入口
 ├── boot/
 │   └── MyBoot.py           # 生命周期管理
@@ -297,7 +298,7 @@ ProjectName/
 | `config/` | 配置文件目录 |
 | `msgs/` | 所有服务间通信的消息包定义集中管理 |
 | `services/` | 所有服务实现，按业务类别分子目录存放 |
-| `typedefine/` | 常量定义、宏定义、类型别名等公共定义 |
+| `typedefine/` | 常量定义、类型别名等公共定义 |
 
 ## Linux 运行
 
@@ -310,7 +311,7 @@ python main.py
 
 ## 生命周期说明
 
-`MyBoot` 管理程序三阶段生命周期（经 `server().boot_ptr(MyBoot(...)).run()` 消费，内部先完成框架 init）：
+`MyBoot` 管理程序三阶段生命周期：
 
 | 阶段 | 方法 | 用途 |
 |------|------|------|
@@ -321,12 +322,11 @@ python main.py
 ## 核心组件速查
 
 | 组件 | 用途 | 链式域入口 |
-|------|------|--------------|
-| YomkServer / YomkService | 服务注册与请求通信 | `server().srv(cls).create()` / `server().url(u).msg(pkg).request()` |
-| YomkContext | 全局 K-V 状态管理 | `ctx().key(k).value(v).create()` / `.set()` / `.msg(cls).with_default(d).get()` |
+|------|------|------------|
+| YomkContext | 全局 K-V 状态管理 | `ctx().key(k).group(g).value(v).create()` / `.set()` / `.destroy()`；读取 `ctx().key(k).msg().with_default(d).get()` |
 | YomkEventLoop | 线程隔离事件循环 | `event_loop().loop(n).handle_fn(f).start()` / `.post()` / `.post_wait()` |
-| YomkFunctionPool | 动态公共函数池 | `fn_pool().fn_name(n).fn(f).install()` / `.call()` |
-| YomkLogger | 六级别日志系统 | `log().tag(t).info(*args)` / 管理走 `log_mgr()` |
+| YomkFunctionPool | 动态公共函数池 | `fn_pool().fn_name(n).fn(f).install()` / `.msg(pkg).call()` |
+| YomkLogger | 多级别日志系统 | `log().info(...)` / `log().error(...)`；文件日志器 `log_mgr().dir(d).file(n).create()` |
 ````
 
 ---
@@ -678,7 +678,7 @@ log_mgr().location().show_file(True).show_func(True).apply()   # [main.py:42:<mo
 ```
 ExtensionName/
 ├── src/yomk/
-│   ├── msg/extension/       # 消息子包（并入框架 yomk.msgs 命名空间段）
+│   ├── msgs/extension/      # 消息子包（并入框架 yomk.msgs 命名空间段）
 │   │   ├── __init__.py              #   re-export 扩展消息类
 │   │   ├── ExtensionMsg.py          #   消息类型定义
 │   │   └── py.typed
@@ -1026,7 +1026,7 @@ echo "可运行验证: python3 ${SCRIPT_DIR}/test/test_extension.py"
 ```
 ExtensionName/
 ├── src/yomk/               # 扩展源树（与框架同构：只写自己的叶子目录）
-│   ├── msg/extension/      # 消息子包（并入框架 yomk.msgs 命名空间段）
+│   ├── msgs/extension/     # 消息子包（并入框架 yomk.msgs 命名空间段）
 │   │   ├── __init__.py             #   导出 ExtensionRequest / ExtensionResponse
 │   │   ├── ExtensionMsg.py         #   消息类型定义
 │   │   └── py.typed

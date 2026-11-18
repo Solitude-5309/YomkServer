@@ -18,10 +18,6 @@
 ```python
 from yomk.server import server
 from yomk.srv_info import srv_info
-from yomk.ctx import ctx
-from yomk.event_loop import event_loop
-from yomk.fn_pool import fn_pool
-from yomk.log import log_mgr
 
 server().init()
 server().srv(MyService).create()

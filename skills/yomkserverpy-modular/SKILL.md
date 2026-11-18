@@ -33,7 +33,7 @@ description: 基于YomkServerPy框架的模块化Python工程编程。核心理�
 ### 目录结构
 
 ```
-ProjectName/
+TemplateProject/
 ├── main.py               // 入口：server().boot_ptr(MyBoot(...)).run() 启动
 ├── boot/
 │   └── MyBoot.py         // 生命周期：before/start/after
@@ -62,8 +62,8 @@ ProjectName/
 
 ### 生成规则
 
-- **优先复制模板**：本 skill 所在 `skill/` 目录的上层即 YomkServerPy 仓库根；若其下存在 `template/project/` 目录，**优先整体复制并替换 `ProjectName` 占位符**——与模板零漂移且省时；目录不存在时按 [examples.md](examples.md) 示例0 逐文件生成
-- 将 `ProjectName` 替换为用户指定名称
+- **优先复制模板**：本 skill 所在 `skills/` 目录的上层即 YomkServerPy 仓库根；若其下存在 `template/project/` 目录，**优先整体复制并替换 `TemplateProject` 占位符**——与模板零漂移且省时；目录不存在时按 [examples.md](examples.md) 示例0 逐文件生成
+- 将 `TemplateProject` 替换为用户指定名称
 - 所有文件必须完整生成，确保 `python main.py` 可直接运行
 
 ## 任务二：扩展业务服务
@@ -193,7 +193,7 @@ ExtensionName/                        // 扩展仓库根（域名 extension → 
 
 ### 生成规则
 
-- **优先复制模板**：本 skill 所在 `skill/` 目录的上层即 YomkServerPy 仓库根；若其下存在 `template/extension/` 目录，优先复制并替换域名/类名占位符（模板实名：`src/yomk/extension/` + `src/yomk/msgs/extension/` + `src/yomk/url/extension/`、服务文件 `ExtensionService.py`、消息文件 `ExtensionMsg.py`、测试 `test/test_extension.py`）；目录不存在时按 [examples.md](examples.md) 示例7 逐文件生成
+- **优先复制模板**：本 skill 所在 `skills/` 目录的上层即 YomkServerPy 仓库根；若其下存在 `template/extension/` 目录，优先复制并替换域名/类名占位符（模板实名：`src/yomk/extension/` + `src/yomk/msgs/extension/` + `src/yomk/url/extension/`、服务文件 `ExtensionService.py`、消息文件 `ExtensionMsg.py`、测试 `test/test_extension.py`）；目录不存在时按 [examples.md](examples.md) 示例7 逐文件生成
 - 将扩展名（域名）替换为用户指定名称
 - 所有文件必须完整生成，确保 `bash install.sh` 可直接安装运行
 

@@ -49,8 +49,8 @@ class Response:
 ```python
 class YomkServer:                            # 底层单例类（业务代码经 server() 链消费，不直接持有）
     def add_service(self, service: YomkService) -> int   # 0 成功 / -1 失败（内部自动 init，失败回滚注销）
-    def request(self, url: str, pkg) -> Response
-    def async_request(self, url: str, pkg, callback) -> None
+    def request(self, url: str, pkg=None) -> Response
+    def async_request(self, url: str, pkg=None, callback=None) -> None
 
 class YomkBoot(ABC):                         # 独立 boot 域：from yomk.boot import YomkBoot
     def before(self) -> int   # 服务启动前：创建资源
@@ -166,7 +166,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 | 链 | 终结与返回 |
 |-----|------|
-| `server().async_thread(n)` | `.init()`：初始化单例并自动启动内置服务（Logger/Context/EventLoop/FunctionPool/ServerInfo），返回服务器实例；`n` 异步线程池大小（省略 = 0 自动检测），仅首次生效；进程内幂等 + atexit 兜底 |
+| `server().async_thread(n)` | `.init()`：初始化单例并自动启动内置服务（Logger/Context/EventLoop/FunctionPool/ServerInfo），无返回值（取单例经 `instance()`）；`n` 异步线程池大小（省略 = 0 自动检测），仅首次生效；进程内幂等 + atexit 兜底 |
 | — | `.version()` → `str` 框架版本（免初始化）；`.instance()` → `YomkServer` 单例（未初始化/shutdown 后 `None`）；`.shutdown()` → 优雅关闭（免初始化空转） |
 | `server().url(u).msg(pkg)` | `.request()` → `Response`（阻塞至应答）；`.status()` → 三态 `ResStatus` |
 | `server().url(u).async_(cb)` | 切入异步分面继续 `.msg(pkg).request()` → `None`：投递内置线程池立即返回，结果经 `cb` 送达；**`cb` 传 `None` 仅投递不取回**；`.msg()` 可放 `.async_()` 前后任意侧 |

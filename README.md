@@ -29,9 +29,10 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 
 | 位置 | 简述 |
 |---|---|
-| `src/yomk/` | 新包唯一 Python 面：`boot/ server/ ctx/ event_loop/ fn_pool/ log/ srv_info/` 七域 + `msg/<域>/` 消息子包 + `url/<域>/` 端点常量池（纯命名空间层）+ `_diag.py` 诊断通道；链式 API 六域各带 `builder.py`（boot 域为 `YomkBoot.py` 编排基类）+ `py.typed`/`.pyi` 类型桩；PEP 420 命名空间包（`yomk/`、`yomk/msgs/`、`yomk/url/` 三层无 `__init__.py`）；模块经 Cython 独立编译为 `yomk/<域>/*.so` |
+| `src/yomk/` | 新包唯一 Python 面：`boot/ server/ ctx/ event_loop/ fn_pool/ log/ srv_info/` 七域 + `msgs/<域>/` 消息子包 + `url/<域>/` 端点常量池（纯命名空间层）+ `_diag.py` 诊断通道；链式 API 六域各带 `builder.py`（boot 域为 `YomkBoot.py` 编排基类）+ `py.typed`/`.pyi` 类型桩；PEP 420 命名空间包（`yomk/`、`yomk/msgs/`、`yomk/url/` 三层无 `__init__.py`）；模块经 Cython 独立编译为 `yomk/<域>/*.so` |
 | `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池、日志、服务内省六大主题 |
 | `template/` | 脚手架：`project/` 新工程模板、`extension/` 扩展库模板 |
+| `skills/yomkserverpy-modular/` | 模块化使用 skill：SKILL.md、reference.md、examples.md |
 | `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |
 | `test/` | 测试集合与一键测试脚本 `run_tests.sh` |
 | `CMakeLists.txt`、`cmake/`、`build_ubuntu.sh` | 构建安装体系：Cython 编译、install 规则与环境指纹报告（`abi_report.txt`） |
