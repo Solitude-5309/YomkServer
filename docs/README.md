@@ -18,5 +18,5 @@
 
 - [yomk注释原则](yomk注释原则.md)：头文件英文 Doxygen + `@zh:` 双语注释、内部 STL 极简注释
 - [yomk文档原则](yomk文档原则.md)：本文档体系的分片结构、导航与示例规范
-- [skill/yomkserver-modular](../skill/yomkserver-modular/SKILL.md)：模块化编程规范（扩展开发）
+- [skills/yomkserver-modular](../skills/yomkserver-modular/SKILL.md)：模块化编程规范（扩展开发）
 - API 精确契约：头文件 Doxygen 注释（`include/yomk/`），逐参数与返回码以之为准

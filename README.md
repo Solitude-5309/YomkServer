@@ -350,4 +350,4 @@ target_link_libraries(my_app PRIVATE YomkServer::YomkServer)
 
 ## 扩展开发
 
-独立业务扩展编译为共享库（`.so`），支持 `find_package()` 被其他工程引用；对外头文件按 SDK 各域同一设计组织为**模块四件套**（`XxxApi.h` 链式域入口 / `XxxUrl.h` URL 常量 / `XxxPayload.h` 专属载荷 / `XxxMsg.h` 专属消息包），请求链一律引用 `yomk::url` 常量、不裸写 URL 字符串字面量。完整可编译扩展模板见 [`template/extension/`](template/extension/)（`yomk::ext().version()` 形态），设计与模块化编程规范详见 [skill/yomkserver-modular](skill/yomkserver-modular/SKILL.md)。
+独立业务扩展编译为共享库（`.so`），支持 `find_package()` 被其他工程引用；对外头文件按 SDK 各域同一设计组织为**模块四件套**（`XxxApi.h` 链式域入口 / `XxxUrl.h` URL 常量 / `XxxPayload.h` 专属载荷 / `XxxMsg.h` 专属消息包），请求链一律引用 `yomk::url` 常量、不裸写 URL 字符串字面量。完整可编译扩展模板见 [`template/extension/`](template/extension/)（`yomk::ext().version()` 形态），设计与模块化编程规范详见 [skills/yomkserver-modular](skills/yomkserver-modular/SKILL.md)。
