@@ -2,7 +2,7 @@ from readerwriterlock import rwlock
 
 from yomk._diag import warn as diag_warn
 from yomk.event_loop.EventLoop import EventLoop
-from yomk.msgs.event_loop import Event, EventLoopInfo, EventLoopInfoList, EventLoop as EventLoopPkg, EventLoopQuery
+from yomk.msgs.event_loop import Event, EventLoopInfo, EventLoopInfoList, EventLoopOpts, EventLoopQuery
 from yomk.msgs.std_msg import String, StringArray, type_mismatch
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.YomkMsg import unpack
@@ -21,7 +21,7 @@ class YomkEventLoop(YomkService):
         self.m_eventLoopMutex = rwlock.RWLockFair()
 
     def init(self):
-        self.install_func("/start", self.start, EventLoopPkg.kName)
+        self.install_func("/start", self.start, EventLoopOpts.kName)
         self.install_func("/stop", self.stop, String.kName)
         self.install_func("/post", self.post, Event.kName)
         self.install_func("/post_wait", self.post_wait, Event.kName)
@@ -40,8 +40,8 @@ class YomkEventLoop(YomkService):
                         "event loop '" + loop_name + "' does not exist")
 
     def start(self, pkg):
-        if unpack(pkg, EventLoopPkg) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, EventLoopPkg.kName))
+        if unpack(pkg, EventLoopOpts) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, EventLoopOpts.kName))
         # 空名是合法 map 键
         with self.m_eventLoopMutex.gen_wlock():
             if pkg.m_eventLoopName in self.m_eventLoop:

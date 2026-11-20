@@ -20,11 +20,12 @@ class Event(YomkMsg):
         self.m_response = self.m_serviceFunc(self.m_pkg)
 
 
-class EventLoop(YomkMsg):
+class EventLoopOpts(YomkMsg):
     # start 载荷（/YomkEventLoop/start 专用）：字段名与 C++ payload
     # m_eventLoopName（大写 L）一致，裸链载荷跨语言可移植。
-    # 原 EventLoopPkg：迁入 msgs 域后与运行时 EventLoop 类
-    # （yomk.event_loop.EventLoop）分属不同包，无需避让，改回本名
+    # 命名说明：start 配置语义承载类，命名 Opts 与运行时 EventLoop 类
+    # （yomk.event_loop.EventLoop）显式区分——同域同名靠 import 别名区分
+    # 是 kName 引用的陷阱源，类名本身即消歧
     def __init__(self, event_loop_name="", default_service_func=None, msg_name=""):
         self.m_eventLoopName = event_loop_name
         self.m_defaultServiceFunc = default_service_func

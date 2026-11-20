@@ -5,7 +5,7 @@ TestYomkPkg.py
 @brief 数据模型层独立测试
 
 覆盖内容（3 个 Section）：
-S3. Event / EventLoop（消息类，原 EventLoopPkg，闭环 2 改回本名）结构契约：
+S3. Event / EventLoopOpts（start 配置消息类，闭环 4 定名 Opts）结构契约：
     默认构造字段、带参构造透传、handle() 有无 serviceFunc、m_eventId 初值
     （入队时由框架分配）、m_waitCallback 赋值执行、tag 透传
 S4. Response 契约：默认构造（eInvalid/空 msg/None data）、枚举值序
@@ -32,7 +32,7 @@ import sys
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.ctx import Context, ContextChecker, ContextMonitor
 from yomk.msgs.fn_pool import CallFunction, FuncInfo, Function
-from yomk.msgs.event_loop import EventLoop as EventLoopPkg  # 消息类已改回 EventLoop（闭环 2），别名保持断言不动
+from yomk.msgs.event_loop import EventLoopOpts  # start 配置消息类（与运行时 EventLoop 类显式区分，闭环 4 定名）
 from yomk.msgs.log import ConsoleLogProxy, Log, LogFile
 from yomk.event_loop import Event
 
@@ -50,9 +50,9 @@ def check(cond, msg):
         g_failed += 1
 
 
-# ============ S3. Event / EventLoopPkg 结构契约 ============
+# ============ S3. Event / EventLoopOpts 结构契约 ============
 def s3_event_and_pkg():
-    print("===== S3. Event / EventLoopPkg 结构契约 =====")
+    print("===== S3. Event / EventLoopOpts 结构契约 =====")
     ev = Event()
     check(ev.m_eventLoopName == "" and ev.m_pkg is None and ev.m_serviceFunc is None,
           "Event 默认构造：loop 名空/pkg None/func None")
@@ -90,12 +90,12 @@ def s3_event_and_pkg():
     ev3.m_waitCallback()
     check(waited["flag"], "Event waitCallback：可赋值并执行")
 
-    pkg = EventLoopPkg("/LP", func, "String")
+    pkg = EventLoopOpts("/LP", func, "String")
     check(pkg.m_eventLoopName == "/LP" and pkg.m_defaultServiceFunc is func and pkg.m_msgName == "String",
-          "EventLoopPkg 构造：loop 名/默认 func/msg 名透传")
-    pkg_def = EventLoopPkg()
+          "EventLoopOpts 构造：loop 名/默认 func/msg 名透传")
+    pkg_def = EventLoopOpts()
     check(pkg_def.m_eventLoopName == "" and pkg_def.m_defaultServiceFunc is None and pkg_def.m_msgName == "",
-          "EventLoopPkg 默认构造：loop 名空/func None/msg 名空")
+          "EventLoopOpts 默认构造：loop 名空/func None/msg 名空")
 
 
 # ============ S4. Response 契约 ============

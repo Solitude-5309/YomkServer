@@ -24,10 +24,10 @@ class Event(YomkMsg):
     def handle(self) -> None: ...
 
 
-class EventLoop(YomkMsg):
+class EventLoopOpts(YomkMsg):
     # start 载荷（/YomkEventLoop/start 专用）：字段名与 C++ payload
     # m_eventLoopName（大写 L）一致，裸链载荷跨语言可移植。
-    # 原 EventLoopPkg：迁入 msgs 域后与运行时 EventLoop 类分属不同包，改回本名
+    # 命名说明：与运行时 EventLoop 类显式区分（Opts = 启动配置语义）
     m_eventLoopName: str
     m_defaultServiceFunc: Optional[Callable[[Any], Any]]
     m_msgName: str

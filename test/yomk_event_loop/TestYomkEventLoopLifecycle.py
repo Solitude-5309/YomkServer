@@ -34,7 +34,7 @@ import time
 import weakref
 
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.event_loop import EventLoopInfo, EventLoop as EventLoopPkg
+from yomk.msgs.event_loop import EventLoopInfo, EventLoopOpts
 from yomk.server import server as server_api
 from yomk.event_loop import event_loop
 from yomk.event_loop.EventLoop import EventLoop  # 白盒测试直用内部类，非公开面
@@ -533,7 +533,7 @@ def section_11():
           == 0, "删除内置 /YomkEventLoop 返回 0")
     # 契约消息断言经 server 域裸链直取 Response（链式终结收敛无 msg）
     after_del = server_api().url("/YomkEventLoop/start").msg(
-        EventLoopPkg("/L2", None, "")).request()
+        EventLoopOpts("/L2", None, "")).request()
     check(after_del.status == ResStatus.eNo and after_del.msg == "service not found: /YomkEventLoop",
           "删除后 EVENTLOOP API 服务级 eNo + 精确消息")
     srv_names = server_api().instance().service_names()

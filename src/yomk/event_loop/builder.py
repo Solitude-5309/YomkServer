@@ -1,4 +1,4 @@
-from yomk.msgs.event_loop import Event, EventLoop, EventLoopInfoList, EventLoopQuery
+from yomk.msgs.event_loop import Event, EventLoopInfoList, EventLoopOpts, EventLoopQuery
 from yomk.msgs.server import ResStatus
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import unpack
@@ -58,7 +58,7 @@ class EventLoopBuilder:
         # 同名循环不重建：复用既有实例，本次累积的 handle_fn/msg_name 不生效
         return _facade.chain_status(_facade.api_request(
             LOOP_START,
-            EventLoop(self._name, self._fn, self._msg_name)))
+            EventLoopOpts(self._name, self._fn, self._msg_name)))
 
     def stop(self):
         return _facade.chain_status(

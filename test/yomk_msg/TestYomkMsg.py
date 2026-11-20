@@ -60,7 +60,7 @@ from yomk.msgs.ctx import (
     ContextKeyInfoList,
     ContextMonitor,
 )
-from yomk.msgs.event_loop import Event, EventLoop, EventLoopInfo, EventLoopInfoList, EventLoopQuery
+from yomk.msgs.event_loop import Event, EventLoopInfo, EventLoopInfoList, EventLoopOpts, EventLoopQuery
 from yomk.msgs.fn_pool import CallFunction, FuncInfo, FuncInfoList, Function
 from yomk.msgs.log import (
     ConsoleLogProxy,
@@ -270,9 +270,9 @@ def s6_framework_knames():
         ContextGroupInfoList: "yomk.msgs.ctx.ContextGroupInfoList",
         ContextChecker: "yomk.msgs.ctx.ContextChecker",
         ContextMonitor: "yomk.msgs.ctx.ContextMonitor",
-        # event_loop（Event 迁入 msgs/event_loop；EventLoopPkg 改回 EventLoop）
+        # event_loop（Event 迁入 msgs/event_loop；start 载荷定名 EventLoopOpts）
         Event: "yomk.msgs.event_loop.Event",
-        EventLoop: "yomk.msgs.event_loop.EventLoop",
+        EventLoopOpts: "yomk.msgs.event_loop.EventLoopOpts",
         EventLoopQuery: "yomk.msgs.event_loop.EventLoopQuery",
         EventLoopInfo: "yomk.msgs.event_loop.EventLoopInfo",
         EventLoopInfoList: "yomk.msgs.event_loop.EventLoopInfoList",
