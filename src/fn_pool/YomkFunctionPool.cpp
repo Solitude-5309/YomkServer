@@ -1,10 +1,12 @@
 #include "YomkFunctionPool.h"
+#include "yomk/fn_pool/YomkFunctionPoolUrl.h"
 
 #include <iostream>
 #include <vector>
 #include "yomk/YomkDiag.h"
 #include "yomk/fn_pool/YomkFunctionPoolMsg.h"
 #include "yomk/srv_info/YomkServerInfoMsg.h"
+
 YomkFunctionPool::YomkFunctionPool(YomkServer* server) : YomkService(server)
 {
     name("/YomkFunctionPool");
@@ -12,13 +14,13 @@ YomkFunctionPool::YomkFunctionPool(YomkServer* server) : YomkService(server)
 
 int YomkFunctionPool::init()
 {
-    installFunc("/register", &YomkFunctionPool::registerFunction, yomk::msgs::Function::kName);
-    installFunc("/unregister", &YomkFunctionPool::unRegisterFunction, yomk::msgs::String::kName);
-    installFunc("/call", &YomkFunctionPool::callFunction, yomk::msgs::CallFunction::kName);
+    installFunc("/register", &YomkFunctionPool::registerFunction, yomk::msgs::Function::kName, yomk::url::fpRegisterDesc);
+    installFunc("/unregister", &YomkFunctionPool::unRegisterFunction, yomk::msgs::String::kName, yomk::url::fpUnregisterDesc);
+    installFunc("/call", &YomkFunctionPool::callFunction, yomk::msgs::CallFunction::kName, yomk::url::fpCallDesc);
     // 调试内省接口,端点挂在本服务 funcMap
-    installFunc("/names", &YomkFunctionPool::funcNames);
-    installFunc("/name", &YomkFunctionPool::funcInfo, yomk::msgs::String::kName);
-    installFunc("/all", &YomkFunctionPool::listAll);
+    installFunc("/names", &YomkFunctionPool::funcNames, "", yomk::url::fpNamesDesc);
+    installFunc("/name", &YomkFunctionPool::funcInfo, yomk::msgs::String::kName, yomk::url::fpNameDesc);
+    installFunc("/all", &YomkFunctionPool::listAll, "", yomk::url::fpAllDesc);
     return 0;
 }
 

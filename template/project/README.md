@@ -29,8 +29,10 @@ TemplateProject/
 │   └── MyBoot.cpp
 ├── config/
 │   └── config.txt          // 配置文件
-├── msgs/
-│   └── YomkMsg.h            // 消息包定义（项目本地）
+├── interfaces/             // 工程对外接口声明：载荷 + 消息包 + URL/描述常量
+│   ├── ProjectPayload.h    // 载荷结构体（namespace yomk::payload::prj）
+│   ├── ProjectMsg.h        // 消息包注册（YOMK_DEFINE_MSG_NS(prj, ...)，落 yomk::msgs::prj）
+│   └── ConfigServiceUrl.h  // URL 常量与语义描述常量（installFunc 第三/四参引用，惯例见 docs/YomkServer.md）
 ├── services/               // 服务实现（按业务分子目录）
 │   └── ConfigService.h/.cpp
 ├── typedefine/
@@ -47,7 +49,7 @@ TemplateProject/
 |------|------|
 | `boot/` | 程序生命周期管理（before/start/after），路径推导、Context 创建、按需启动服务 |
 | `config/` | 配置文件目录，安装后与 bin/ 同级 |
-| `msgs/` | 所有服务间通信的消息包定义集中管理 |
+| `interfaces/` | 工程对外接口声明集中管理：载荷（ProjectPayload.h，`yomk::payload::prj`）+ 消息包注册（ProjectMsg.h，`YOMK_DEFINE_MSG_NS(prj, ...)`）+ URL/语义描述常量（按服务分子文件，installFunc 第三/四参引用） |
 | `services/` | 所有服务实现，按业务类别分子目录存放 |
 | `typedefine/` | 常量定义、宏定义、类型别名等公共定义 |
 

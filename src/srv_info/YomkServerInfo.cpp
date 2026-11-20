@@ -1,4 +1,5 @@
 #include "YomkServerInfo.h"
+#include "yomk/srv_info/YomkServerInfoUrl.h"
 #include "yomk/YomkDiag.h"
 #include "yomk/srv_info/YomkServerInfoMsg.h"
 
@@ -13,10 +14,10 @@ YomkServerInfo::YomkServerInfo(YomkServer* server) : YomkService(server)
 
 int YomkServerInfo::init()
 {
-    installFunc("/services", &YomkServerInfo::listServices);
-    installFunc("/functions", &YomkServerInfo::listFunctions, yomk::msgs::String::kName);
-    installFunc("/function", &YomkServerInfo::functionInfo, yomk::msgs::String::kName);
-    installFunc("/all", &YomkServerInfo::listAll);
+    installFunc("/services", &YomkServerInfo::listServices, "", yomk::url::srvServicesDesc);
+    installFunc("/functions", &YomkServerInfo::listFunctions, yomk::msgs::String::kName, yomk::url::srvFunctionsDesc);
+    installFunc("/function", &YomkServerInfo::functionInfo, yomk::msgs::String::kName, yomk::url::srvFunctionDesc);
+    installFunc("/all", &YomkServerInfo::listAll, "", yomk::url::srvAllDesc);
     return 0;
 }
 

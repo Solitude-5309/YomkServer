@@ -2,6 +2,8 @@
 
 #include "extension/ExtensionService.h"
 
+#include "extension/ExtensionUrl.h"
+
 namespace yomk::service::ext
 {
 ExtensionService::ExtensionService(YomkServer* server) : YomkService(server)
@@ -11,7 +13,7 @@ ExtensionService::ExtensionService(YomkServer* server) : YomkService(server)
 
 int ExtensionService::init()
 {
-    installFunc("/version", &ExtensionService::version);
+    installFunc("/version", &ExtensionService::version, "", yomk::url::ext::versionDesc);
     yomk::log().tag("ExtensionService::init").info("install func [ /version ] to", name());
     return 0;
 }

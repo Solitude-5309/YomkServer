@@ -1,4 +1,5 @@
 #include "YomkContext.h"
+#include "yomk/ctx/YomkContextUrl.h"
 #include "yomk/ctx/YomkContextMsg.h"
 #include "yomk/YomkDiag.h"
 
@@ -9,20 +10,20 @@ YomkContext::YomkContext(YomkServer* server) : YomkService(server), m_main("main
 
 int YomkContext::init()
 {
-    installFunc("/create", &YomkContext::create, yomk::msgs::Context::kName);
-    installFunc("/destroy", &YomkContext::destroy, yomk::msgs::ContextGroupKey::kName);
-    installFunc("/get", &YomkContext::get, yomk::msgs::Context::kName);
-    installFunc("/set", &YomkContext::set, yomk::msgs::Context::kName);
-    installFunc("/turn_on_checker", &YomkContext::turnOnChecker);
-    installFunc("/turn_off_checker", &YomkContext::turnOffChecker);
-    installFunc("/turn_on_monitor", &YomkContext::turnOnMonitor);
-    installFunc("/turn_off_monitor", &YomkContext::turnOffMonitor);
-    installFunc("/set_checker", &YomkContext::setChecker, yomk::msgs::ContextChecker::kName);
-    installFunc("/set_monitor", &YomkContext::setMonitor, yomk::msgs::ContextMonitor::kName);
-    installFunc("/groups", &YomkContext::groups);
-    installFunc("/keys", &YomkContext::keys);
-    installFunc("/key", &YomkContext::keyInfo, yomk::msgs::ContextGroupKey::kName);
-    installFunc("/all", &YomkContext::listAll);
+    installFunc("/create", &YomkContext::create, yomk::msgs::Context::kName, yomk::url::ctxCreateDesc);
+    installFunc("/destroy", &YomkContext::destroy, yomk::msgs::ContextGroupKey::kName, yomk::url::ctxDestroyDesc);
+    installFunc("/get", &YomkContext::get, yomk::msgs::Context::kName, yomk::url::ctxGetDesc);
+    installFunc("/set", &YomkContext::set, yomk::msgs::Context::kName, yomk::url::ctxSetDesc);
+    installFunc("/turn_on_checker", &YomkContext::turnOnChecker, yomk::msgs::String::kName, yomk::url::ctxTurnOnCheckerDesc);
+    installFunc("/turn_off_checker", &YomkContext::turnOffChecker, yomk::msgs::String::kName, yomk::url::ctxTurnOffCheckerDesc);
+    installFunc("/turn_on_monitor", &YomkContext::turnOnMonitor, yomk::msgs::String::kName, yomk::url::ctxTurnOnMonitorDesc);
+    installFunc("/turn_off_monitor", &YomkContext::turnOffMonitor, yomk::msgs::String::kName, yomk::url::ctxTurnOffMonitorDesc);
+    installFunc("/set_checker", &YomkContext::setChecker, yomk::msgs::ContextChecker::kName, yomk::url::ctxSetCheckerDesc);
+    installFunc("/set_monitor", &YomkContext::setMonitor, yomk::msgs::ContextMonitor::kName, yomk::url::ctxSetMonitorDesc);
+    installFunc("/groups", &YomkContext::groups, "", yomk::url::ctxGroupsDesc);
+    installFunc("/keys", &YomkContext::keys, yomk::msgs::String::kName, yomk::url::ctxKeysDesc);
+    installFunc("/key", &YomkContext::keyInfo, yomk::msgs::ContextGroupKey::kName, yomk::url::ctxKeyDesc);
+    installFunc("/all", &YomkContext::listAll, "", yomk::url::ctxAllDesc);
     return 0;
 }
 

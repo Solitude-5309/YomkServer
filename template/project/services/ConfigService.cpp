@@ -3,6 +3,8 @@
 
 #include "ConfigService.h"
 
+#include "interfaces/ConfigServiceUrl.h"
+
 #include <algorithm>
 #include <fstream>
 
@@ -25,12 +27,12 @@ ConfigService::ConfigService(YomkServer* server) : YomkService(server)
 
 int ConfigService::init()
 {
-    // 安装功能函数
-    installFunc("/load", &ConfigService::loadConfig);
-    installFunc("/get", &ConfigService::getConfig);
-    installFunc("/set", &ConfigService::setConfig);
-    installFunc("/reload", &ConfigService::reloadConfig);
-    installFunc("/version", &ConfigService::version);
+    // 安装功能函数（URL 与语义描述常量见 interfaces/ConfigServiceUrl.h）
+    installFunc("/load", &ConfigService::loadConfig, "", yomk::url::cfgLoadDesc);
+    installFunc("/get", &ConfigService::getConfig, yomk::msgs::prj::ConfigKey::kName, yomk::url::cfgGetDesc);
+    installFunc("/set", &ConfigService::setConfig, yomk::msgs::prj::ConfigKeyValue::kName, yomk::url::cfgSetDesc);
+    installFunc("/reload", &ConfigService::reloadConfig, "", yomk::url::cfgReloadDesc);
+    installFunc("/version", &ConfigService::version, "", yomk::url::cfgVersionDesc);
     yomk::log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to", name());
     return 0;
 }
@@ -69,10 +71,11 @@ yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr pkg)
 
 yomk::payload::Response ConfigService::getConfig(YomkMsgPtr pkg)
 {
-    auto data = yomk::msgs::unpack<yomk::msgs::ConfigKey>(pkg);
+    auto data = yomk::msgs::unpack<yomk::msgs::prj::ConfigKey>(pkg);
     if (!data)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ConfigKey"};
+        return {yomk::payload::ResStatus::Failed,
+                std::string("pkg is not ") + yomk::msgs::prj::ConfigKey::kName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
     }
 
     auto it = m_configMap.find(data->req.key);
@@ -86,10 +89,11 @@ yomk::payload::Response ConfigService::getConfig(YomkMsgPtr pkg)
 
 yomk::payload::Response ConfigService::setConfig(YomkMsgPtr pkg)
 {
-    auto data = yomk::msgs::unpack<yomk::msgs::ConfigKeyValue>(pkg);
+    auto data = yomk::msgs::unpack<yomk::msgs::prj::ConfigKeyValue>(pkg);
     if (!data)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not ConfigKeyValue"};
+        return {yomk::payload::ResStatus::Failed,
+                std::string("pkg is not ") + yomk::msgs::prj::ConfigKeyValue::kName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
     }
 
     m_configMap[data->req.key] = data->req.value;

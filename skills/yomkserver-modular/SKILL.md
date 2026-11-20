@@ -58,8 +58,10 @@ ProjectName/
 │   └── MyBoot.cpp
 ├── config/
 │   └── config.txt        // 配置文件（纯文本 key: value 格式）
-├── msgs/
-│   └── YomkMsg.h          // 所有消息包定义（项目本地，非 SDK 头）
+├── interfaces/            // 工程对外接口声明：载荷 + 消息包 + URL/描述常量
+│   ├── ProjectPayload.h   // 载荷结构体（namespace yomk::payload::prj）
+│   ├── ProjectMsg.h       // 消息包注册（YOMK_DEFINE_MSG_NS(prj, ...)，落 yomk::msgs::prj）
+│   └── ConfigServiceUrl.h // URL 常量与语义描述常量（installFunc 第三/四参引用）
 ├── services/
 │   └── ConfigService.h/.cpp  // 内置配置服务
 ├── typedefine/
@@ -97,13 +99,33 @@ ProjectName/
 
 ### 步骤
 
-1. **定义消息包**（`msgs/YomkMsg.h`）：
+1. **定义载荷与消息包**（`interfaces/ProjectPayload.h` + `interfaces/ProjectMsg.h`）：
 ```cpp
+// ProjectPayload.h：载荷结构体，落 yomk::payload::prj（工程本地，非 SDK 头）
+namespace yomk::payload::prj
+{
 struct MyData { std::string field1; int field2; };
-YOMK_DEFINE_MSG(MyData, MyData, d);  // 参数：数据类, 消息名称, 成员变量名
+}  // namespace yomk::payload::prj
+
+// ProjectMsg.h：统一注册消息包，类落 yomk::msgs::prj（kName 全限定 "yomk::msgs::prj::MyData"）
+YOMK_DEFINE_MSG_NS(prj, yomk::payload::prj::MyData, MyData, d);  // 参数: NS, 数据类, 消息名称, 成员变量名
 ```
 
-2. **创建服务文件**（`services/XxxService.h` + `services/XxxService.cpp`）：
+2. **定义 URL 与语义描述常量**（`interfaces/XxxServiceUrl.h`，与 SDK 各域 XxxUrl.h 同风格）：
+```cpp
+namespace yomk::url
+{
+inline constexpr std::string_view cfgMyFunc = "/XxxService/my_func";
+inline constexpr const char* cfgMyFuncDesc = R"(
+Semantic: 端点功能语义一句话
+Returns: data 负载包类型（无负载写 data 无负载）
+Idempotent: true/false —— false 时说明重调后果
+SideEffect: 可观察副作用（纯读写 无）
+Fail: Invalid=入参非法；Failed=业务未命中/冲突
+)";
+}  // namespace yomk::url
+```
+3. **创建服务文件**（`services/XxxService.h` + `services/XxxService.cpp`）：
 ```cpp
 // .h
 class XxxService : public YomkService {
@@ -118,29 +140,30 @@ private:
 // .cpp
 XxxService::XxxService(YomkServer *server) : YomkService(server) { name("/XxxService"); }
 int XxxService::init() {
-    installFunc("/my_func", &XxxService::myFunc);
+    installFunc("/my_func", &XxxService::myFunc, yomk::msgs::prj::MyData::kName, yomk::url::cfgMyFuncDesc);
     yomk::log().tag("XxxService::init").info("install func [ /my_func ] to", name());
     return 0;
 }
 yomk::payload::Response XxxService::myFunc(YomkMsgPtr pkg) {
     auto data = yomk::msgs::unpack<yomk::msgs::MyData>(pkg);  // 解包（失败返回 nullptr，需判空）
-    if (!data) { return {yomk::payload::ResStatus::Failed, "pkg is null or pkg is not MyData"}; }
+    if (!data) { return {yomk::payload::ResStatus::Failed,
+        std::string("pkg is not ") + yomk::msgs::prj::MyData::kName + ", got '" + yomk::msgs::typeOf(pkg) + "'"}; }
     // 业务逻辑...
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 ```
 
-3. **注册到 Boot**（`boot/MyBoot.cpp` 的 `start()` 映射表中添加）：
+4. **注册到 Boot**（`boot/MyBoot.cpp` 的 `start()` 映射表中添加）：
 ```cpp
 {"/XxxService", []() { return new XxxService(yomk::server().instance().get()); }},
 ```
 
-4. **启动列表添加**（`main.cpp` 中 `run()` 的服务名参数）：
+5. **启动列表添加**（`main.cpp` 中 `run()` 的服务名参数）：
 ```cpp
 yomk::server().boot_ptr(new MyBoot(argc, argv, {"/ConfigService", "/XxxService"})).run();
 ```
 
-5. **CMakeLists.txt 添加源文件**：
+6. **CMakeLists.txt 添加源文件**：
 ```cmake
 add_executable(${PROJECT_NAME}
     ...
@@ -170,7 +193,7 @@ int ret = yomk::server().srv_name("/XxxService").remove();   // -1 = 不存在/�
 
 ```cpp
 int XxxService::init() {
-    installFunc("/my_func", &XxxService::myFunc);  // 本服务 funcMap 已自动弱绑定
+    installFunc("/my_func", &XxxService::myFunc, yomk::msgs::prj::MyData::kName, yomk::url::cfgMyFuncDesc);  // 本服务 funcMap 已自动弱绑定
     // 注册到 FunctionPool：弱绑定，服务删除后回调自动失效
     yomk::fn_pool().fn_name("my_work").fn(weakFunc(&XxxService::myFunc)).install();
     // Context checker/monitor 签名不同，同一 weakFunc 自动适配（键须已存在）：
@@ -203,12 +226,12 @@ yomk::server().shutdown();
 
 ### 服务内省（调试）
 
-框架内置 `/YomkServerInfo` 服务（随 `.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时用第三参声明期望消息类型、第四参追加函数说明（一律引用 `T::kName`、禁止手写消息名字符串；仅作内省元数据，不参与运行时校验）：
+框架内置 `/YomkServerInfo` 服务（随 `.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时第三参声明期望消息类型（一律引用 `T::kName`、禁止手写消息名字符串），**第四参写功能语义描述**——非强制约束，是让内省消费者不读源码即可理解端点行为的语义澄清。描述常量与 URL 常量同置各自 `XxxUrl.h`（紧跟对应 URL 常量之后，命名对称如 `ctxCreate`/`ctxCreateDesc`，类型 `inline constexpr const char*`），installFunc 第四参仅引用常量：复杂端点（副作用/状态变更/失败模式多样）用六字段 R"(...)" 块（`Semantic → Returns → Precond → Idempotent → SideEffect → Fail`），纯查询端点单行 `"Semantic: …；Returns: …"`；文案须与实现相符，`Fail` 按三态归因（Invalid=入参非法，Failed=业务未命中/冲突）。框架全部内置端点均已填写，自定义服务遵循同一格式：
 
 ```cpp
 int XxxService::init() {
-    installFunc("/my_func", &XxxService::myFunc, yomk::msgs::MyData::kName);  // 内省可见类型 MyData
-    installFunc("/my_desc", &XxxService::myFunc, yomk::msgs::MyData::kName, "对函数的说明");  // 四参：内省可见类型 + 说明（内容自定义）
+    installFunc("/my_func", &XxxService::myFunc, yomk::msgs::prj::MyData::kName);  // 内省可见类型 MyData
+    installFunc("/my_desc", &XxxService::myFunc, yomk::msgs::prj::MyData::kName, "对函数的说明");  // 四参：内省可见类型 + 说明（内容自定义）
     return 0;
 }
 
@@ -288,7 +311,7 @@ ExtensionName/
 
 在已有扩展中添加新功能：
 
-1. **模块四件套补声明**：`XxxUrl.h` 加 URL 常量（请求链一律引用常量，不裸写 URL 字符串字面量）、`XxxPayload.h`/`XxxMsg.h` 加载荷/消息包（模板内置 `ExtTask` 为形态示例，新增业务时替换）、`XxxApi.h` 加终结方法（如 `yomk::ext().task(req).submit()` 形态）；不写终结方法时，须在 Api 文件注释写清 `yomk::server().url(<url>).request()` 统一调用方式及 url 功能作用
+1. **模块四件套补声明**：`XxxUrl.h` 加 URL 常量与语义描述常量（描述紧跟对应 URL，命名对称 `<常量名>Desc`，格式见下文内省小节；请求链一律引用常量，不裸写 URL 字符串字面量）、`XxxPayload.h`/`XxxMsg.h` 加载荷/消息包（模板内置 `ExtTask` 为形态示例，新增业务时替换）、`XxxApi.h` 加终结方法（如 `yomk::ext().task(req).submit()` 形态）；不写终结方法时，须在 Api 文件注释写清 `yomk::server().url(<url>).request()` 统一调用方式及 url 功能作用
 2. **对外接口头文件添加方法声明**（`include/XxxService.h`，类落 `yomk::service::ext`；仅内部使用的声明放 `src/` 内部头文件）
 3. **实现添加功能函数**（`src/XxxService.cpp`）：`installFunc` + 实现
 4. **测试程序添加测试用例**（`test/TestXxx.cpp`）
@@ -301,7 +324,7 @@ ExtensionName/
 YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定义
 ```
 消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名（如 `YOMK_DEFINE_MSG(MyData, MyData, d)`）。
-- **命名空间策略**：工程自有消息（`msgs/YomkMsg.h`，工程本地头）用根级 `YOMK_DEFINE_MSG`，消息落 `yomk::msgs` 根（kName 同为全限定 `"yomk::msgs::MsgName"`）；扩展库消息（共享 include 根，须与其他扩展隔离）用 `YOMK_DEFINE_MSG_NS(ext, 数据类, 消息名称, d)`，消息类落 `yomk::msgs::ext` 子命名空间；两种形式下声明期望消息类型名一律引用 `T::kName`、禁止手写字符串
+- **命名空间策略**：工程自有消息（`interfaces/ProjectPayload.h` + `interfaces/ProjectMsg.h`，工程本地头）用 `YOMK_DEFINE_MSG_NS(prj, 数据类, 消息名称, d)`，载荷落 `yomk::payload::prj`、消息类落 `yomk::msgs::prj` 子命名空间（与框架消息隔离）；扩展库消息（共享 include 根，须与其他扩展隔离）用 `YOMK_DEFINE_MSG_NS(ext, 数据类, 消息名称, d)`，消息类落 `yomk::msgs::ext` 子命名空间；两种形式下声明期望消息类型名一律引用 `T::kName`、禁止手写字符串
 - `yomk::msgs::消息名称::shared(数据类实例)` — 创建消息包（类内静态工厂）
 - `yomk::msgs::unpack<yomk::msgs::消息名称>(pkg)` — 解包模板，返回 shared_ptr，失败返回 nullptr（不自动 return，需手动判空处理）
 
@@ -316,7 +339,7 @@ YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定�
 2. 服务间通过 `yomk::server().url(...).request()` 通信，不直接引用
 3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
 4. 服务成员函数注册到外部子系统（FunctionPool/EventLoop/Context checker·monitor/异步响应）**必须**用 `weakFunc(&Class::Method)` 弱绑定，服务删除后回调自动失效；本服务 funcMap（`installFunc`）已自动弱绑定——判活机制与各回调签名适配见任务二「服务删除与弱绑定回调」与 [reference.md](reference.md) "installFunc / weakFunc"，此处不重复
-5. 消息定义集中 `msgs/`，服务实现放 `services/`（按业务分子目录）
+5. 载荷/消息包/URL 常量集中 `interfaces/`（ProjectPayload.h + ProjectMsg.h + 按服务分子文件的 XxxUrl.h，installFunc 第三/四参引用），服务实现放 `services/`（按业务分子目录）
 6. 配置路径通过 Context 传递，不用构造参数
 7. 扩展库只负责处理逻辑，不关心数据来源，所有外部数据必须通过请求参数传入
 8. 返回值语义遵循框架状态码约定：not-found/拒绝用 ResStatus::Failed，参数非法用 ResStatus::Invalid（详见 [reference.md](reference.md) "状态码约定"）

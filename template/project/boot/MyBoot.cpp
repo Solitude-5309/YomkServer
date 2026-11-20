@@ -51,7 +51,7 @@ int MyBoot::after()
     }
     yomk::log().tag("MyBoot::after").info("started successfully.");
 
-    resp = yomk::server().url("/ConfigService/get").msg(yomk::msgs::ConfigKey::shared(ConfigKey{"name"})).request();
+    resp = yomk::server().url("/ConfigService/get").msg(yomk::msgs::prj::ConfigKey::shared(yomk::payload::prj::ConfigKey{"name"})).request();
     if (resp.status != yomk::payload::ResStatus::Succeeded)
     {
         yomk::log().tag("MyBoot::after").error("get config name failed: ", resp.msg);
@@ -72,7 +72,7 @@ int MyBoot::after()
     auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
     yomk::log().tag("MyBoot::after").info("project version: ", version->d);
 
-    resp = yomk::server().url("/ConfigService/get").msg(yomk::msgs::ConfigKey::shared(ConfigKey{"description"})).request();
+    resp = yomk::server().url("/ConfigService/get").msg(yomk::msgs::prj::ConfigKey::shared(yomk::payload::prj::ConfigKey{"description"})).request();
     if (resp.status != yomk::payload::ResStatus::Succeeded)
     {
         yomk::log().tag("MyBoot::after").error("get config description failed: ", resp.msg);

@@ -1,4 +1,5 @@
 #include "YomkEventLoop.h"
+#include "yomk/event_loop/YomkEventLoopUrl.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -13,15 +14,15 @@ YomkEventLoop::YomkEventLoop(YomkServer* server) : YomkService(server)
 
 int YomkEventLoop::init()
 {
-    installFunc("/start", &YomkEventLoop::start, yomk::msgs::EventLoop::kName);
-    installFunc("/stop", &YomkEventLoop::stop, yomk::msgs::String::kName);
-    installFunc("/post", &YomkEventLoop::post, yomk::msgs::Event::kName);
-    installFunc("/post_wait", &YomkEventLoop::postWait, yomk::msgs::Event::kName);
-    installFunc("/destroy", &YomkEventLoop::destroy, yomk::msgs::String::kName);
+    installFunc("/start", &YomkEventLoop::start, yomk::msgs::EventLoop::kName, yomk::url::loopStartDesc);
+    installFunc("/stop", &YomkEventLoop::stop, yomk::msgs::String::kName, yomk::url::loopStopDesc);
+    installFunc("/post", &YomkEventLoop::post, yomk::msgs::Event::kName, yomk::url::loopPostDesc);
+    installFunc("/post_wait", &YomkEventLoop::postWait, yomk::msgs::Event::kName, yomk::url::loopPostWaitDesc);
+    installFunc("/destroy", &YomkEventLoop::destroy, yomk::msgs::String::kName, yomk::url::loopDestroyDesc);
     // 调试内省接口,端点挂在本服务 funcMap
-    installFunc("/loops", &YomkEventLoop::loops);
-    installFunc("/loop", &YomkEventLoop::loopInfo, yomk::msgs::EventLoopQuery::kName);
-    installFunc("/all", &YomkEventLoop::listAll);
+    installFunc("/loops", &YomkEventLoop::loops, "", yomk::url::loopLoopsDesc);
+    installFunc("/loop", &YomkEventLoop::loopInfo, yomk::msgs::EventLoopQuery::kName, yomk::url::loopLoopDesc);
+    installFunc("/all", &YomkEventLoop::listAll, "", yomk::url::loopAllDesc);
     return 0;
 }
 

@@ -34,7 +34,7 @@ extension/
 │       ├── ExtensionApi.h       # 模块 API：链式域入口 yomk::ext()（四件套，参考 include/yomk 各域设计）
 │       ├── ExtensionMsg.h       # 模块消息包目录（YOMK_DEFINE_MSG_NS，消息落 yomk::msgs::ext）
 │       ├── ExtensionPayload.h   # 模块专属载荷目录（namespace yomk::payload::ext）
-│       └── ExtensionUrl.h       # 模块 URL 常量（namespace yomk::url::ext，inline constexpr string_view）
+│       └── ExtensionUrl.h       # 模块 URL 常量与语义描述常量（namespace yomk::url::ext，URL 为 string_view、描述为 const char* 紧跟其后）
 ├── src/
 │   └── ExtensionService.cpp # 服务实现
 ├── test/

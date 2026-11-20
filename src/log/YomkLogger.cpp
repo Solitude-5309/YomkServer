@@ -1,4 +1,5 @@
 #include "YomkLogger.h"
+#include "yomk/log/YomkLoggerUrl.h"
 
 #include <iostream>
 #include "yomk/YomkDiag.h"
@@ -8,6 +9,7 @@
 using namespace yomk::payload;
 
 // 初始化列表须按 YomkLogger.h 声明序书写(-Wreorder)
+
 YomkLogger::YomkLogger(YomkServer* server)
     : YomkService(server),
       m_showConsoleTraceLog(true),
@@ -35,22 +37,22 @@ YomkLogger::~YomkLogger() {}
 
 int YomkLogger::init()
 {
-    installFunc("/set_console_log_proxy", &YomkLogger::setConsoleLogProxy, yomk::msgs::ConsoleLogProxy::kName);
-    installFunc("/set_file_log_proxy", &YomkLogger::setFileLogProxy, yomk::msgs::FileLogProxy::kName);
-    installFunc("/console_log", &YomkLogger::consoleLog, yomk::msgs::Log::kName);
-    installFunc("/create_file_logger", &YomkLogger::createFileLogger, yomk::msgs::LogFile::kName);
-    installFunc("/file_log", &YomkLogger::fileLog, yomk::msgs::Log::kName);
-    installFunc("/write_file_log", &YomkLogger::writeFileLog, yomk::msgs::String::kName);
-    installFunc("/delete_logger", &YomkLogger::deleteLogger, yomk::msgs::String::kName);
-    installFunc("/off_console_log_by_level", &YomkLogger::offConsoleLogByLevel, yomk::msgs::Log::kName);
-    installFunc("/on_console_log_by_level", &YomkLogger::onConsoleLogByLevel, yomk::msgs::Log::kName);
-    installFunc("/loggers", &YomkLogger::loggers, yomk::msgs::String::kName);
-    installFunc("/logger", &YomkLogger::loggerInfo, yomk::msgs::LoggerQuery::kName);
-    installFunc("/all", &YomkLogger::listAll);
-    installFunc("/console_global_state", &YomkLogger::consoleGlobalState);
-    installFunc("/off_file_log_by_level", &YomkLogger::offFileLogByLevel, yomk::msgs::Log::kName);
-    installFunc("/on_file_log_by_level", &YomkLogger::onFileLogByLevel, yomk::msgs::Log::kName);
-    installFunc("/file_global_state", &YomkLogger::fileGlobalState);
+    installFunc("/set_console_log_proxy", &YomkLogger::setConsoleLogProxy, yomk::msgs::ConsoleLogProxy::kName, yomk::url::loggerSetConsoleProxyDesc);
+    installFunc("/set_file_log_proxy", &YomkLogger::setFileLogProxy, yomk::msgs::FileLogProxy::kName, yomk::url::loggerSetFileLogProxyDesc);
+    installFunc("/console_log", &YomkLogger::consoleLog, yomk::msgs::Log::kName, yomk::url::loggerConsoleLogDesc);
+    installFunc("/create_file_logger", &YomkLogger::createFileLogger, yomk::msgs::LogFile::kName, yomk::url::loggerCreateFileLoggerDesc);
+    installFunc("/file_log", &YomkLogger::fileLog, yomk::msgs::Log::kName, yomk::url::loggerFileLogDesc);
+    installFunc("/write_file_log", &YomkLogger::writeFileLog, yomk::msgs::String::kName, yomk::url::loggerWriteFileLogDesc);
+    installFunc("/delete_logger", &YomkLogger::deleteLogger, yomk::msgs::String::kName, yomk::url::loggerDeleteLoggerDesc);
+    installFunc("/off_console_log_by_level", &YomkLogger::offConsoleLogByLevel, yomk::msgs::Log::kName, yomk::url::loggerOffConsoleLogByLevelDesc);
+    installFunc("/on_console_log_by_level", &YomkLogger::onConsoleLogByLevel, yomk::msgs::Log::kName, yomk::url::loggerOnConsoleLogByLevelDesc);
+    installFunc("/loggers", &YomkLogger::loggers, yomk::msgs::String::kName, yomk::url::loggerLoggersDesc);
+    installFunc("/logger", &YomkLogger::loggerInfo, yomk::msgs::LoggerQuery::kName, yomk::url::loggerLoggerDesc);
+    installFunc("/all", &YomkLogger::listAll, "", yomk::url::loggerAllDesc);
+    installFunc("/console_global_state", &YomkLogger::consoleGlobalState, "", yomk::url::loggerConsoleGlobalStateDesc);
+    installFunc("/off_file_log_by_level", &YomkLogger::offFileLogByLevel, yomk::msgs::Log::kName, yomk::url::loggerOffFileLogByLevelDesc);
+    installFunc("/on_file_log_by_level", &YomkLogger::onFileLogByLevel, yomk::msgs::Log::kName, yomk::url::loggerOnFileLogByLevelDesc);
+    installFunc("/file_global_state", &YomkLogger::fileGlobalState, "", yomk::url::loggerFileGlobalStateDesc);
     return 0;
 }
 
