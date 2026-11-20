@@ -1,3 +1,3 @@
-from .EventLoopMsg import EventLoopInfo, EventLoopPkg, EventLoopQuery
+from .EventLoopMsg import Event, EventLoop, EventLoopInfo, EventLoopInfoList, EventLoopQuery
 
-__all__ = ["EventLoopInfo", "EventLoopPkg", "EventLoopQuery"]
+__all__ = ["Event", "EventLoop", "EventLoopInfo", "EventLoopInfoList", "EventLoopQuery"]

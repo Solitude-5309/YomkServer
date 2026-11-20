@@ -28,7 +28,8 @@ from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.event_loop import EventLoopInfo
 from yomk.server import server as server_api
 from yomk.event_loop import event_loop
-from yomk.event_loop.EventLoop import Event, EventLoop  # 白盒测试直用内部类，非公开面
+from yomk.event_loop.EventLoop import EventLoop  # 白盒测试直用内部类，非公开面
+from yomk.msgs.event_loop import Event  # Event 已迁 msgs 域（闭环 2）
 
 FAILED = 0
 

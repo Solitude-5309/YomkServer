@@ -1,8 +1,9 @@
 from enum import Enum
 from typing import Any, Callable, List, Optional
+from yomk.msgs.YomkMsg import YomkMsg
 
 
-class Context:
+class Context(YomkMsg):
     key: str
     value: Any
     group: str
@@ -11,7 +12,7 @@ class Context:
                  group: str = "main") -> None: ...
 
 
-class ContextKeyInfo:
+class ContextKeyInfo(YomkMsg):
     key: str
     type_name: str
     checker_on: bool
@@ -30,7 +31,7 @@ class CheckStatus(Enum):
     eReject = 1
 
 
-class ContextChecker:
+class ContextChecker(YomkMsg):
     key: str
     check_func: Optional[Callable[[Context], CheckStatus]]
     group: str
@@ -40,7 +41,7 @@ class ContextChecker:
                  group: str = "main") -> None: ...
 
 
-class ContextMonitor:
+class ContextMonitor(YomkMsg):
     key: str
     monitor_func: Optional[Callable[[Context], None]]
     async_monitor: bool
@@ -52,16 +53,30 @@ class ContextMonitor:
                  group: str = "main") -> None: ...
 
 
-class ContextGroupKey:
+class ContextGroupKey(YomkMsg):
     group: str
     key: str
 
     def __init__(self, group: str = "main", key: str = "") -> None: ...
 
 
-class ContextGroupInfo:
+class ContextGroupInfo(YomkMsg):
     group_name: str
     keys: List[ContextKeyInfo]
 
     def __init__(self, group_name: str = "",
                  keys: Optional[List[ContextKeyInfo]] = None) -> None: ...
+
+
+class ContextKeyInfoList(YomkMsg):
+    # ContextKeyInfo 清单（对齐 C++ ContextKeyInfoList；返回数据承载）
+    items: list[ContextKeyInfo]
+
+    def __init__(self, items: list[ContextKeyInfo] | None = None) -> None: ...
+
+
+class ContextGroupInfoList(YomkMsg):
+    # ContextGroupInfo 清单（对齐 C++ ContextGroupInfoList；返回数据承载）
+    items: list[ContextGroupInfo]
+
+    def __init__(self, items: list[ContextGroupInfo] | None = None) -> None: ...

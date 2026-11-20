@@ -4,6 +4,7 @@ from .LogMsg import (
     Log,
     LogFile,
     LoggerInfo,
+    LoggerInfoList,
     LoggerQuery,
     LoggerState,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "Log",
     "LogFile",
     "LoggerInfo",
+    "LoggerInfoList",
     "LoggerQuery",
     "LoggerState",
 ]

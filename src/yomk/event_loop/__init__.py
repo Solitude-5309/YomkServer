@@ -4,7 +4,7 @@ except ImportError:
     __version__ = "unknown"
 
 from .builder import EventLoopBuilder, event_loop
-from .EventLoop import Event
+from yomk.msgs.event_loop import Event
 
 __all__ = [
     "__version__",

@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Any
+from yomk.msgs.YomkMsg import YomkMsg
 
 
 class ResStatus(Enum):
@@ -13,7 +14,7 @@ class ResStatus(Enum):
     Invalid = -1
 
 
-class Response:
+class Response(YomkMsg):
     def __init__(
         self,
         status: ResStatus = ResStatus.eInvalid,

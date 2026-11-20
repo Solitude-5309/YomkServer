@@ -1,5 +1,4 @@
-from yomk.event_loop.EventLoop import Event
-from yomk.msgs.event_loop import EventLoopPkg, EventLoopQuery
+from yomk.msgs.event_loop import Event, EventLoop as EventLoopPkg, EventLoopQuery
 from yomk.server import _facade
 from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.event_loop import (

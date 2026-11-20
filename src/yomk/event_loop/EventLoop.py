@@ -1,24 +1,11 @@
 import queue
 import threading
 
+# Event 已迁入 msgs/event_loop/EventLoopMsg.py（标准 msg 目录地位），
+# 经 yomk.event_loop/__init__ re-export 保持消费路径不变
+
 from yomk._diag import error as diag_error
 from yomk._diag import info as diag_info
-
-
-class Event:
-    def __init__(self, event_loop_name="", pkg=None, func=None, tag=""):
-        self.m_eventLoopName = event_loop_name
-        self.m_pkg = pkg
-        self.m_serviceFunc = func
-        self.m_eventId = 0
-        self.m_response = None
-        self.m_waitCallback = None
-        self.m_tag = tag
-
-    def handle(self):
-        if not self.m_serviceFunc:
-            return
-        self.m_response = self.m_serviceFunc(self.m_pkg)
 
 
 class EventLoop:

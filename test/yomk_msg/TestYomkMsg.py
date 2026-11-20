@@ -4,7 +4,7 @@
 TestYomkMsg.py
 @brief 标准工具层与标准内置集测试（闭环 1：YomkMsg / unpack / std_msg）
 
-覆盖内容（5 个 Section）：
+覆盖内容（7 个 Section）：
 S1. kName 生成契约：规则 B 自动生成（父包.限定名）、顶层模块回退（无父包
     用完整 __module__）、显式定义覆盖自动值、孙类再生成（子类必然获得
     与父类不同的 kName）
@@ -17,6 +17,10 @@ S4. type_of 两态：YomkMsg 实例报 kName、None 及体系外对象报 "null"
     （对齐 C++ typeOf：非消息即无运行时类型名，无第三态）
 S5. type_mismatch 文案字面：标准格式 "pkg is not <expected>, got '<actual>'"，
     expected 传 cls.kName、actual 走 type_of 两态
+S6. 框架 msg kName 全查（闭环 2）：22 类改继承 + 6 结构化 List，28 类
+    kName 字面逐一断言；Event 的 yomk.event_loop re-export 同一性
+S7. 结构化 List msg 结构契约（闭环 2）：6 类 items 默认/None 归一/透传，
+    元素为 msg 类实例
 
 语言机制说明（非功能缺口）：
 - 测试脚本以顶层脚本运行，__module__ 为 "__main__"（无父包），本地定义
@@ -46,6 +50,30 @@ from yomk.msgs import (
     type_of,
     unpack,
 )
+from yomk.msgs.ctx import (
+    Context,
+    ContextChecker,
+    ContextGroupInfo,
+    ContextGroupInfoList,
+    ContextGroupKey,
+    ContextKeyInfo,
+    ContextKeyInfoList,
+    ContextMonitor,
+)
+from yomk.msgs.event_loop import Event, EventLoop, EventLoopInfo, EventLoopInfoList, EventLoopQuery
+from yomk.msgs.fn_pool import CallFunction, FuncInfo, FuncInfoList, Function
+from yomk.msgs.log import (
+    ConsoleLogProxy,
+    FileLogProxy,
+    Log,
+    LogFile,
+    LoggerInfo,
+    LoggerInfoList,
+    LoggerQuery,
+    LoggerState,
+)
+from yomk.msgs.server import Response
+from yomk.msgs.srv_info import ServerServiceInfo, ServerServiceInfoList
 
 g_failed = 0
 
@@ -225,12 +253,85 @@ def s5_type_mismatch():
           "期望/实际双侧均为 kName")
 
 
+# ============ S6. 框架 msg kName 全查（闭环 2） ============
+def s6_framework_knames():
+    print("===== S6. 框架 msg kName 全查 =====")
+
+    # 22 类改继承 + 6 个结构化 List，kName 全部规则 B 自动生成，字面逐一钉死
+    expected = {
+        # server
+        Response: "yomk.msgs.server.Response",
+        # ctx
+        Context: "yomk.msgs.ctx.Context",
+        ContextGroupKey: "yomk.msgs.ctx.ContextGroupKey",
+        ContextKeyInfo: "yomk.msgs.ctx.ContextKeyInfo",
+        ContextKeyInfoList: "yomk.msgs.ctx.ContextKeyInfoList",
+        ContextGroupInfo: "yomk.msgs.ctx.ContextGroupInfo",
+        ContextGroupInfoList: "yomk.msgs.ctx.ContextGroupInfoList",
+        ContextChecker: "yomk.msgs.ctx.ContextChecker",
+        ContextMonitor: "yomk.msgs.ctx.ContextMonitor",
+        # event_loop（Event 迁入 msgs/event_loop；EventLoopPkg 改回 EventLoop）
+        Event: "yomk.msgs.event_loop.Event",
+        EventLoop: "yomk.msgs.event_loop.EventLoop",
+        EventLoopQuery: "yomk.msgs.event_loop.EventLoopQuery",
+        EventLoopInfo: "yomk.msgs.event_loop.EventLoopInfo",
+        EventLoopInfoList: "yomk.msgs.event_loop.EventLoopInfoList",
+        # fn_pool
+        Function: "yomk.msgs.fn_pool.Function",
+        CallFunction: "yomk.msgs.fn_pool.CallFunction",
+        FuncInfo: "yomk.msgs.fn_pool.FuncInfo",
+        FuncInfoList: "yomk.msgs.fn_pool.FuncInfoList",
+        # log
+        LogFile: "yomk.msgs.log.LogFile",
+        Log: "yomk.msgs.log.Log",
+        ConsoleLogProxy: "yomk.msgs.log.ConsoleLogProxy",
+        FileLogProxy: "yomk.msgs.log.FileLogProxy",
+        LoggerQuery: "yomk.msgs.log.LoggerQuery",
+        LoggerInfo: "yomk.msgs.log.LoggerInfo",
+        LoggerInfoList: "yomk.msgs.log.LoggerInfoList",
+        LoggerState: "yomk.msgs.log.LoggerState",
+        # srv_info
+        ServerServiceInfo: "yomk.msgs.srv_info.ServerServiceInfo",
+        ServerServiceInfoList: "yomk.msgs.srv_info.ServerServiceInfoList",
+    }
+    for cls, kname in expected.items():
+        check(cls.kName == kname, f"{cls.__name__}.kName == {kname!r}")
+
+    # Event 兼容路径：from yomk.event_loop import Event 与 msgs 路径同一类对象
+    import yomk.event_loop
+    check(yomk.event_loop.Event is Event,
+          "yomk.event_loop.Event re-export 与 msgs 路径同一类")
+
+
+# ============ S7. 结构化 List msg 结构契约（闭环 2） ============
+def s7_structured_lists():
+    print("===== S7. 结构化 List msg 结构契约 =====")
+
+    # 统一 items 字段：默认空 list、None 归一、构造透传
+    samples = {
+        ContextKeyInfoList: ContextKeyInfoList([ContextKeyInfo("k")]),
+        ContextGroupInfoList: ContextGroupInfoList([ContextGroupInfo("g")]),
+        EventLoopInfoList: EventLoopInfoList([EventLoopInfo("loop")]),
+        LoggerInfoList: LoggerInfoList([LoggerInfo("lg")]),
+        FuncInfoList: FuncInfoList([FuncInfo("fn")]),
+        ServerServiceInfoList: ServerServiceInfoList([ServerServiceInfo("/svc")]),
+    }
+    for cls, inst in samples.items():
+        check(cls().items == [], f"{cls.__name__}() 默认 items==[]")
+        check(cls(None).items == [], f"{cls.__name__}(None) 归一为 []")
+        check(len(inst.items) == 1, f"{cls.__name__} 构造透传")
+        check(isinstance(inst.items[0], YomkMsg),
+              f"{cls.__name__} 元素为 msg 类实例")
+
+
 def main():
     s1_kname_rules()
     s2_std_classes()
     s3_unpack()
     s4_type_of()
     s5_type_mismatch()
+    s6_framework_knames()
+    s7_structured_lists()
 
     print("===== summary =====")
     if g_failed:

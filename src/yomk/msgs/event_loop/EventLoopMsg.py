@@ -1,13 +1,37 @@
-class EventLoopPkg:
+from yomk.msgs.YomkMsg import YomkMsg
+
+
+class Event(YomkMsg):
+    # 事件消息（对齐 C++ Event msg 目录地位）：运行时域 event_loop 经
+    # yomk.event_loop/__init__ re-export，from yomk.event_loop import Event
+    # 消费路径保持不变
+    def __init__(self, event_loop_name="", pkg=None, func=None, tag=""):
+        self.m_eventLoopName = event_loop_name
+        self.m_pkg = pkg
+        self.m_serviceFunc = func
+        self.m_eventId = 0
+        self.m_response = None
+        self.m_waitCallback = None
+        self.m_tag = tag
+
+    def handle(self):
+        if not self.m_serviceFunc:
+            return
+        self.m_response = self.m_serviceFunc(self.m_pkg)
+
+
+class EventLoop(YomkMsg):
     # start 载荷（/YomkEventLoop/start 专用）：字段名与 C++ payload
-    # m_eventLoopName（大写 L）一致，裸链载荷跨语言可移植
+    # m_eventLoopName（大写 L）一致，裸链载荷跨语言可移植。
+    # 原 EventLoopPkg：迁入 msgs 域后与运行时 EventLoop 类
+    # （yomk.event_loop.EventLoop）分属不同包，无需避让，改回本名
     def __init__(self, event_loop_name="", default_service_func=None, msg_name=""):
         self.m_eventLoopName = event_loop_name
         self.m_defaultServiceFunc = default_service_func
         self.m_msgName = msg_name
 
 
-class EventLoopQuery:
+class EventLoopQuery(YomkMsg):
     # 事件循环单查载荷（/YomkEventLoop/loop 专用）：
     # 名称 + 队列头 tag 采样数，类型化字段无解析歧义
     def __init__(self, loop_name="", tag_count=3):
@@ -15,7 +39,7 @@ class EventLoopQuery:
         self.m_tagCount = tag_count   # 队列头采样条数（缺省 3，与全量内省缺省一致）
 
 
-class EventLoopInfo:
+class EventLoopInfo(YomkMsg):
     # 事件循环内省元信息（/YomkEventLoop/loop 与 /YomkEventLoop/all 返回数据）
     def __init__(self, loop_name="", running=False, pending=0,
                  has_default_func=False, msg_name="", next_tags=None):
@@ -26,3 +50,9 @@ class EventLoopInfo:
         self.msg_name = msg_name          # 默认处理函数期望消息类型名（可空）
         # 队列头起最多 tag_count 条事件 tag（存原值，空串保留）
         self.next_tags = next_tags if next_tags is not None else []
+
+
+class EventLoopInfoList(YomkMsg):
+    # EventLoopInfo 清单（对齐 C++ EventLoopInfoList；/YomkEventLoop/all 返回数据承载）
+    def __init__(self, items=None):
+        self.items = items if items is not None else []

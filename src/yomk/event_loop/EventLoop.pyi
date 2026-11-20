@@ -1,25 +1,7 @@
 from typing import Any, Callable, Optional
 
+from yomk.msgs.event_loop import Event as Event
 from yomk.msgs.event_loop import EventLoopInfo
-
-
-class Event:
-    m_eventLoopName: str
-    m_pkg: Any
-    m_serviceFunc: Optional[Callable[[Any], Any]]
-    m_eventId: int
-    m_response: Any
-    m_waitCallback: Optional[Callable[[], None]]
-    m_tag: str
-
-    def __init__(
-        self,
-        event_loop_name: str = "",
-        pkg: Any = None,
-        func: Optional[Callable[[Any], Any]] = None,
-        tag: str = ""
-    ) -> None: ...
-    def handle(self) -> None: ...
 
 
 class EventLoop:

@@ -1,4 +1,7 @@
-class FuncInfo:
+from yomk.msgs.YomkMsg import YomkMsg
+
+
+class FuncInfo(YomkMsg):
     # 功能函数元信息（/YomkFunctionPool/name 与 /all、/YomkServerInfo/function
     # 单查与 /all 清单段返回数据），预留扩展（如安全性校验）
     def __init__(self, func_name="", msg_name="", description=""):
@@ -7,7 +10,7 @@ class FuncInfo:
         self.description = description
 
 
-class Function:
+class Function(YomkMsg):
     def __init__(self, name, func, msg_name="", description=""):
         self.name = name
         self.func = func
@@ -16,7 +19,13 @@ class Function:
         self.description = description
 
 
-class CallFunction:
+class CallFunction(YomkMsg):
     def __init__(self, name, pkg):
         self.name = name
         self.pkg = pkg
+
+
+class FuncInfoList(YomkMsg):
+    # FuncInfo 清单（对齐 C++ FuncInfoList；返回数据承载）
+    def __init__(self, items=None):
+        self.items = items if items is not None else []

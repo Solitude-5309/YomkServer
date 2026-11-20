@@ -1,4 +1,4 @@
-from yomk.event_loop.EventLoop import Event as Event
+from yomk.msgs.event_loop.EventLoopMsg import Event as Event
 from yomk.event_loop.builder import EventLoopBuilder as EventLoopBuilder
 from yomk.event_loop.builder import event_loop as event_loop
 

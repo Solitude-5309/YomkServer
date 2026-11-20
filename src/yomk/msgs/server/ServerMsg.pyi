@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Any
+from yomk.msgs.YomkMsg import YomkMsg
 
 
 class ResStatus(Enum):
@@ -13,7 +14,7 @@ class ResStatus(Enum):
     Invalid = -1
 
 
-class Response:
+class Response(YomkMsg):
     status: ResStatus   # 本次请求的状态
     msg: str            # 对状态的说明（不携带返回数据）
     data: Any           # 携带的返回数据

@@ -1,10 +1,13 @@
-class LogFile:
+from yomk.msgs.YomkMsg import YomkMsg
+
+
+class LogFile(YomkMsg):
     def __init__(self, logger="", dir=""):
         self.m_logger = logger
         self.m_dir = dir
 
 
-class Log:
+class Log(YomkMsg):
     # Log：六级日志级别为固定 int 常量，值序 Trace=0..Fatal=5，
     # 非法值注入合法化（log 路径 default 降级 Info 分支可触达）
     eTrace = 0
@@ -21,13 +24,13 @@ class Log:
         self.m_tag = tag         # 日志标签：随记录显示 [tag] 段，区别于 m_logger
 
 
-class ConsoleLogProxy:
+class ConsoleLogProxy(YomkMsg):
     def __init__(self, console_log_proxy_func=None):
         # func(Log) -> bool，None 等价卸载
         self.m_consoleLogProxyFunc = console_log_proxy_func
 
 
-class FileLogProxy:
+class FileLogProxy(YomkMsg):
     # 文件日志代理回调载体（/YomkLogger/set_file_log_proxy 请求数据；
     # 语义与控制台代理对称，两代理各自独立）
     def __init__(self, file_log_proxy_func=None):
@@ -35,14 +38,14 @@ class FileLogProxy:
         self.m_fileLogProxyFunc = file_log_proxy_func
 
 
-class LoggerQuery:
+class LoggerQuery(YomkMsg):
     # 日志器单查请求（/YomkLogger/logger 请求数据：名 + 类型，两表允许同名须按类型区分）
     def __init__(self, logger_name="", type=""):
         self.m_logger_name = logger_name
         self.m_type = type  # 类型："console" 或 "file"
 
 
-class LoggerInfo:
+class LoggerInfo(YomkMsg):
     # 日志器内省元信息（/YomkLogger/logger 返回数据、/YomkLogger/all 清单段元素）
     def __init__(self, logger_name="", type="", dir="", logger_state=None):
         self.logger_name = logger_name  # 日志器名
@@ -57,7 +60,7 @@ class LoggerInfo:
                              else LoggerState())
 
 
-class LoggerState:
+class LoggerState(YomkMsg):
     # 日志器状态（trace/debug/info/warn/error/fatal/proxy 七开关）：console 条目
     # 承载控制台逐器门控层真值，console 全局主闸态经 /console_global_state 查询；
     # file 条目承载文件逐器门控层真值，file 全局主闸态经 /file_global_state
@@ -74,3 +77,9 @@ class LoggerState:
         # proxy_on：代理已安装——/console_global_state 报控制台代理、
         # /file_global_state 报文件代理（两套代理各自独立）
         self.proxy_on = proxy_on
+
+
+class LoggerInfoList(YomkMsg):
+    # LoggerInfo 清单（对齐 C++ LoggerInfoList；返回数据承载）
+    def __init__(self, items=None):
+        self.items = items if items is not None else []

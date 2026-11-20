@@ -1,7 +1,8 @@
 from typing import Callable, Optional
+from yomk.msgs.YomkMsg import YomkMsg
 
 
-class LogFile:
+class LogFile(YomkMsg):
     # 文件日志器创建载荷（/YomkLogger/create_file_logger 请求数据）
     m_logger: str   # 日志器名
     m_dir: str      # 日志目录
@@ -9,7 +10,7 @@ class LogFile:
     def __init__(self, logger: str = "", dir: str = "") -> None: ...
 
 
-class Log:
+class Log(YomkMsg):
     # 日志载荷（console_log/file_log/按级别开关端点共用）：日志级别为固定 int 常量，
     # 六级值序 Trace=0..Fatal=5
     eTrace: int
@@ -28,14 +29,14 @@ class Log:
                  logger: str = "", tag: str = "") -> None: ...
 
 
-class ConsoleLogProxy:
+class ConsoleLogProxy(YomkMsg):
     # 控制台日志代理回调载体（/YomkLogger/set_console_log_proxy 请求数据）
     m_consoleLogProxyFunc: Optional[Callable[[Log], bool]]
 
     def __init__(self, console_log_proxy_func: Optional[Callable[[Log], bool]] = None) -> None: ...
 
 
-class FileLogProxy:
+class FileLogProxy(YomkMsg):
     # 文件日志代理回调载体（/YomkLogger/set_file_log_proxy 请求数据；
     # 语义与控制台代理对称，两代理各自独立）
     m_fileLogProxyFunc: Optional[Callable[[Log], bool]]
@@ -43,7 +44,7 @@ class FileLogProxy:
     def __init__(self, file_log_proxy_func: Optional[Callable[[Log], bool]] = None) -> None: ...
 
 
-class LoggerQuery:
+class LoggerQuery(YomkMsg):
     # 日志器单查请求（/YomkLogger/logger 请求数据：名 + 类型，两表允许同名须按类型区分）
     m_logger_name: str
     m_type: str  # 类型："console" 或 "file"
@@ -51,7 +52,7 @@ class LoggerQuery:
     def __init__(self, logger_name: str = "", type: str = "") -> None: ...
 
 
-class LoggerState:
+class LoggerState(YomkMsg):
     # 日志器状态（trace/debug/info/warn/error/fatal/proxy 七开关）：console 条目
     # 承载控制台逐器门控层真值，file 条目承载文件逐器门控层真值；两套主闸相互独立
     trace_on: bool
@@ -68,7 +69,7 @@ class LoggerState:
                  proxy_on: bool = False) -> None: ...
 
 
-class LoggerInfo:
+class LoggerInfo(YomkMsg):
     # 日志器内省元信息（/YomkLogger/logger 返回数据、/YomkLogger/all 清单段元素）
     logger_name: str  # 日志器名
     type: str
@@ -78,3 +79,10 @@ class LoggerInfo:
     def __init__(self, logger_name: str = "", type: str = "",
                  dir: str = "",
                  logger_state: Optional[LoggerState] = None) -> None: ...
+
+
+class LoggerInfoList(YomkMsg):
+    # LoggerInfo 清单（对齐 C++ LoggerInfoList；返回数据承载）
+    items: list[LoggerInfo]
+
+    def __init__(self, items: list[LoggerInfo] | None = None) -> None: ...

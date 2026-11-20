@@ -1,8 +1,33 @@
 from typing import Any, Callable, List, Optional
+from yomk.msgs.YomkMsg import YomkMsg
 
 
-class EventLoopPkg:
-    # 字段名与 C++ payload m_eventLoopName（大写 L）一致，裸链载荷跨语言可移植
+class Event(YomkMsg):
+    # 事件消息（对齐 C++ Event msg 目录地位）；运行时域经
+    # yomk.event_loop/__init__ re-export，消费路径保持不变
+    m_eventLoopName: str
+    m_pkg: Any
+    m_serviceFunc: Optional[Callable[[Any], Any]]
+    m_eventId: int
+    m_response: Any
+    m_waitCallback: Any
+    m_tag: str
+
+    def __init__(
+        self,
+        event_loop_name: str = "",
+        pkg: Any = None,
+        func: Optional[Callable[[Any], Any]] = None,
+        tag: str = ""
+    ) -> None: ...
+
+    def handle(self) -> None: ...
+
+
+class EventLoop(YomkMsg):
+    # start 载荷（/YomkEventLoop/start 专用）：字段名与 C++ payload
+    # m_eventLoopName（大写 L）一致，裸链载荷跨语言可移植。
+    # 原 EventLoopPkg：迁入 msgs 域后与运行时 EventLoop 类分属不同包，改回本名
     m_eventLoopName: str
     m_defaultServiceFunc: Optional[Callable[[Any], Any]]
     m_msgName: str
@@ -15,7 +40,7 @@ class EventLoopPkg:
     ) -> None: ...
 
 
-class EventLoopQuery:
+class EventLoopQuery(YomkMsg):
     # 事件循环单查载荷（/YomkEventLoop/loop 专用）：
     # 名称 + 队列头 tag 采样数，类型化字段无解析歧义
     m_loopName: str  # 循环名（按字面量精确匹配，不做任何切分）
@@ -24,7 +49,7 @@ class EventLoopQuery:
     def __init__(self, loop_name: str = "", tag_count: int = 3) -> None: ...
 
 
-class EventLoopInfo:
+class EventLoopInfo(YomkMsg):
     # 事件循环内省元信息（/YomkEventLoop/loop 与 /YomkEventLoop/all 返回数据）
     loop_name: str                      # 循环名
     running: bool                       # worker 是否运行中
@@ -37,3 +62,10 @@ class EventLoopInfo:
                  pending: int = 0, has_default_func: bool = False,
                  msg_name: str = "",
                  next_tags: Optional[List[str]] = None) -> None: ...
+
+
+class EventLoopInfoList(YomkMsg):
+    # EventLoopInfo 清单（对齐 C++ EventLoopInfoList；/YomkEventLoop/all 返回数据承载）
+    items: List[EventLoopInfo]
+
+    def __init__(self, items: Optional[List[EventLoopInfo]] = None) -> None: ...

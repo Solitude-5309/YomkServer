@@ -5,8 +5,9 @@ TestYomkPkg.py
 @brief 数据模型层独立测试
 
 覆盖内容（3 个 Section）：
-S3. Event / EventLoopPkg 结构契约：默认构造字段、带参构造透传、handle() 有无
-    serviceFunc、m_eventId 初值（入队时由框架分配）、m_waitCallback 赋值执行、tag 透传
+S3. Event / EventLoop（消息类，原 EventLoopPkg，闭环 2 改回本名）结构契约：
+    默认构造字段、带参构造透传、handle() 有无 serviceFunc、m_eventId 初值
+    （入队时由框架分配）、m_waitCallback 赋值执行、tag 透传
 S4. Response 契约：默认构造（eInvalid/空 msg/None data）、枚举值序
     （eInvalid=-1/eOk=0/eNo=1）、双参构造、三参构造 data 透传
 S5. 框架结构体默认值：Function/CallFunction/Context/
@@ -14,16 +15,11 @@ S5. 框架结构体默认值：Function/CallFunction/Context/
     默认构造与字段
 
 语言机制说明：
-- 消息包为普通类（无类型注册与运行期转换体系），
-  框架侧无标准类型消息包被测对象，不设对应用例
-- bool/int/float/str/list 等 30 种标准类型消息不设对应用例：原生
-  bool/int/float/str/list 实例直传，属性面与 str() 呈现即类型本身，消息经服务
-  路由全程对象直递（无序列化 wire 层），类型包枚举无承载必要
-- 7 个列表类消息包不设对应用例：原生 list 即等价物（元素类型自由，无逐族
-  定型要求；差异同属上条 wire 层缺失的语言差异）
-- 类型解包体系不设对应用例：python 属性直读即取值路径，类型守卫由调用方
-  isinstance 自备，ctx().msg(cls) 类型指定位仅作内省元数据
-  （详见 docs/YomkMsg.md）
+- 消息类继承 YomkMsg 得 kName（闭环 2 起全部框架 msg 类接入），结构契约
+  本文件按类覆盖；kName 字面全查与 unpack/type_of/type_mismatch 语义、
+  std 类 9 个由 test/yomk_msg/TestYomkMsg.py 承载，两文件分工不重叠
+- 端点载荷形态仍为裸标量/裸 list（A 方案 std 实例迁移属闭环 3，本文件
+  断言与载荷形态无关，不受影响）
 - void* 裸指针形态为 C 系语言特有，python 无对应类型，不设对应用例；
   LogFile/Log/ConsoleLogProxy 已随 Logger 模块落地并覆盖断言
 - Event 默认构造 m_response 初始为 None，语义为"未执行时 response 为空"
@@ -36,7 +32,7 @@ import sys
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.ctx import Context, ContextChecker, ContextMonitor
 from yomk.msgs.fn_pool import CallFunction, FuncInfo, Function
-from yomk.msgs.event_loop import EventLoopPkg
+from yomk.msgs.event_loop import EventLoop as EventLoopPkg  # 消息类已改回 EventLoop（闭环 2），别名保持断言不动
 from yomk.msgs.log import ConsoleLogProxy, Log, LogFile
 from yomk.event_loop import Event
 

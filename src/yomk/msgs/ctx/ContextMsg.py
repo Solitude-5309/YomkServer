@@ -1,7 +1,8 @@
 from enum import Enum
+from yomk.msgs.YomkMsg import YomkMsg
 
 
-class Context:
+class Context(YomkMsg):
     # key 所属组名随包携带（缺省 main；组名约定永远是 API 最后一个参数，下同）
     def __init__(self, key="", value=None, group="main"):
         self.key = key
@@ -9,7 +10,7 @@ class Context:
         self.group = group
 
 
-class ContextKeyInfo:
+class ContextKeyInfo(YomkMsg):
     # Context 键内省元信息（/YomkContext/key 单查返回数据；同时是 ContextGroupInfo.keys 清单元素）
     def __init__(self, key="", type_name="", checker_on=False,
                  monitor_count=0, async_monitor_count=0, group="main"):
@@ -26,14 +27,14 @@ class CheckStatus(Enum):
     eReject = 1
 
 
-class ContextChecker:
+class ContextChecker(YomkMsg):
     def __init__(self, key="", check_func=None, group="main"):
         self.key = key
         self.check_func = check_func
         self.group = group                # 目标 key 所属组名（缺省 main）
 
 
-class ContextMonitor:
+class ContextMonitor(YomkMsg):
     # 单回调 + 布尔标志（对齐 C++ ContextMonitor：回调与通知形态正交两字段，
     # 形状自洽、裸链跨语言可移植；async_monitor 只传 True/False）
     def __init__(self, key="", monitor_func=None, async_monitor=False, group="main"):
@@ -43,15 +44,27 @@ class ContextMonitor:
         self.group = group                # 目标 key 所属组名（缺省 main）
 
 
-class ContextGroupKey:
+class ContextGroupKey(YomkMsg):
     # Context 组寻址载体（/destroy 与 /key 请求报文：定位某组下的某键，组名缺省 main）
     def __init__(self, group="main", key=""):
         self.group = group
         self.key = key
 
 
-class ContextGroupInfo:
+class ContextGroupInfo(YomkMsg):
     # Context 组级内省条目（/YomkContext/all 返回数据元素：组名 + 该组下全部键元信息）
     def __init__(self, group_name="", keys=None):
         self.group_name = group_name      # 组名
         self.keys = keys if keys is not None else []  # 该组全部键的内省元信息（字典序）
+
+
+class ContextKeyInfoList(YomkMsg):
+    # ContextKeyInfo 清单（对齐 C++ ContextKeyInfoList；返回数据承载）
+    def __init__(self, items=None):
+        self.items = items if items is not None else []
+
+
+class ContextGroupInfoList(YomkMsg):
+    # ContextGroupInfo 清单（对齐 C++ ContextGroupInfoList；返回数据承载）
+    def __init__(self, items=None):
+        self.items = items if items is not None else []
