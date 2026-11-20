@@ -6,6 +6,7 @@
 // Extension 扩展专属消息包（成员名均为 d，与 SDK 各 Yomk{Module}Msg.h 同一设计）。
 // 消息经 YOMK_DEFINE_MSG_NS 声明：类落 yomk::msgs::ext 子命名空间（不占 yomk::msgs 根），
 // kName 为全限定 "yomk::msgs::ext::ExtTask"，命名空间隔离与运行期类型 ID 唯一由同一机制保证。
+// 各处声明的期望消息类型名（installFunc 第三参 / msg_name）一律引用 T::kName，禁止手写消息名字符串。
 // 模板自带示例消息 ExtTask（与示例载荷 ExtTask 配套，仅作形态示例，新增业务时替换之），
 // 新增业务消息在此按同形式追加，参考 yomk/fn_pool/YomkFunctionPoolMsg.h：
 //

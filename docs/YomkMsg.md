@@ -65,7 +65,8 @@ yomk::fn_pool().fn_name("save").msg(pkg).call();                                
 
 ## 注意事项
 
-- 类型匹配以运行期类型名为准（宏的 `MsgName` 参数即 `kName`）；各处声明的"期望消息类型名"——`installFunc("/x", &C::m, "MsgName")` 第三参、`yomk::fn_pool().msg_name(...)`、`yomk::event_loop().msg_name(...)`——与该字符串保持一致，仅作内省元数据，不拦截调用。
+- 类型匹配以运行期类型名为准：`kName` 为全限定类型标识（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名。各处声明的"期望消息类型名"——`installFunc("/x", &C::m, yomk::msgs::Msg::kName)` 第三参、`yomk::fn_pool().msg_name(...)`、`yomk::event_loop().msg_name(...)`——一律引用 `T::kName`，**禁止手写消息名字符串**；仅作内省元数据，不拦截调用。
+- `kName` 是类型身份的唯一权威常量；`name()`/`typeOf()` 返回的是实例携带串（构造时源自 `kName`，可经 `name()` 伪造），仅用于错误文案展示；`unpack` 以"`kName` 比对 + dynamic_pointer_cast"双保险防伪。
 - 期望类型名与说明字符串均供自省读取（函数池与函数单查返回 `FuncInfo`：`funcName` / `msgName` / `description`，见 [服务自省](YomkServerInfo.md)）。
 - 上下文类型化读自带同类校验：`yomk::ctx().key(k).msg<MsgName>()...get()` 内部按 `kName` 比对 + 指针转换，与 `unpack` 语义一致。
 

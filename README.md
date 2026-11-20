@@ -66,7 +66,7 @@ public:
     int init() override
     {
         // 注册功能函数；第三个参数可选，声明期望消息类型名供自省识别
-        installFunc("/hello", &MyService::hello, "String");
+        installFunc("/hello", &MyService::hello, yomk::msgs::String::kName);
         return 0; // 返回 0 表示服务初始化成功
     }
 

@@ -725,7 +725,7 @@ yomk::payload::Response taskHandler(YomkMsgPtr pkg)
 }
 
 // 启动事件循环（handle_fn = 循环默认处理函数；msg_name 可加声明期望类型，仅内省元数据）
-yomk::event_loop().loop("worker_loop").handle_fn(taskHandler).msg_name("String").start();
+yomk::event_loop().loop("worker_loop").handle_fn(taskHandler).msg_name(yomk::msgs::String::kName).start();
 
 // 异步投递（走默认处理函数；tag 可选，仅内省可见）
 yomk::event_loop().msg(yomk::msgs::String::shared("task_1")).loop("worker_loop").post();
@@ -772,7 +772,7 @@ yomk::payload::Response validateAmount(YomkMsgPtr pkg)
 }
 
 // 注册（msg_name/description 可省略，仅内省元数据）+ 调用（阻塞至函数执行完成）
-yomk::fn_pool().fn_name("validate_amount").fn(validateAmount).msg_name("String").install();
+yomk::fn_pool().fn_name("validate_amount").fn(validateAmount).msg_name(yomk::msgs::String::kName).install();
 yomk::payload::Response resp = yomk::fn_pool().fn_name("validate_amount").msg(yomk::msgs::String::shared("100.5")).call();
 
 // 同名重复 install 即运行时热替换，无需先注销（返回 Succeeded）
@@ -803,8 +803,8 @@ void MyService::deinit() {
 ```cpp
 int DemoService::init()
 {
-    installFunc("/with_type", &DemoService::withType, "String");  // 内省可见类型 String
-    installFunc("/with_desc", &DemoService::withType, "String", "对函数的说明");  // 四参：内省可见类型 + 说明
+    installFunc("/with_type", &DemoService::withType, yomk::msgs::String::kName);  // 内省可见类型 String
+    installFunc("/with_desc", &DemoService::withType, yomk::msgs::String::kName, "对函数的说明");  // 四参：内省可见类型 + 说明
     installFunc("/no_type", &DemoService::noType);                // 不声明类型，内省无类型
     return 0;
 }
@@ -850,11 +850,11 @@ resp = yomk::ctx().all();
 
 ### EventLoop 模块内省
 
-Event 可携带 tag 标记（`post` 链上 `.tag(t)` 可选，缺省空）；启动时可用 `.msg_name("String")` 声明默认处理函数期望的消息类型（仅内省元数据）：
+Event 可携带 tag 标记（`post` 链上 `.tag(t)` 可选，缺省空）；启动时可用 `.msg_name(yomk::msgs::String::kName)` 声明默认处理函数期望的消息类型（引用 T::kName 禁手写，仅内省元数据）：
 
 ```cpp
 yomk::event_loop().loop("loop_a").start();
-yomk::event_loop().loop("loop_b").handle_fn(defaultHandle).msg_name("String").start();
+yomk::event_loop().loop("loop_b").handle_fn(defaultHandle).msg_name(yomk::msgs::String::kName).start();
 
 // 投递事件时可选打 tag（仅内省标记，不参与路由/处理）
 yomk::event_loop().msg(yomk::msgs::String::shared("data")).loop("loop_a").handle_fn(myHandle).tag("tag1").post();
@@ -879,8 +879,8 @@ resp = yomk::event_loop().all();
 注册时可用 `.msg_name(m)` 声明期望消息类型、`.description(d)` 追加函数说明（与 installFunc 第三/四参同款语义，仅内省元数据）：
 
 ```cpp
-yomk::fn_pool().fn_name("func_a").fn(funcA).msg_name("String").install();
-yomk::fn_pool().fn_name("func_desc").fn(funcA).msg_name("String").description("函数说明").install();
+yomk::fn_pool().fn_name("func_a").fn(funcA).msg_name(yomk::msgs::String::kName).install();
+yomk::fn_pool().fn_name("func_desc").fn(funcA).msg_name(yomk::msgs::String::kName).description("函数说明").install();
 yomk::fn_pool().fn_name("func_b").fn(funcB).install();
 
 // 注册函数名清单（StringArray）

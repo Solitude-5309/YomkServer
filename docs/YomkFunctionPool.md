@@ -40,7 +40,7 @@ yomk::fn_pool().fn_name("calcSum")
         for (int v : arr->d) sum += v;
         return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::Int32::shared(sum)};
     })
-    .msg_name("Int32Array").description("对 Int32Array 求和")
+    .msg_name(yomk::msgs::Int32Array::kName).description("对 Int32Array 求和")
     .install();
 
 // 调用（返回值即函数返回值；未注册的名字返回 ResStatus::Failed）

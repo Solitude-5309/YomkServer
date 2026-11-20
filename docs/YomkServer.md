@@ -68,7 +68,7 @@ public:
     MyService(YomkServer* server) : YomkService(server) { name("/MyService"); }
     int init() override
     {
-        installFunc("/hello", &MyService::hello, "String"); // 注册即自动弱绑定
+        installFunc("/hello", &MyService::hello, yomk::msgs::String::kName); // 注册即自动弱绑定
         return 0;
     }
     yomk::payload::Response hello(YomkMsgPtr pkg)

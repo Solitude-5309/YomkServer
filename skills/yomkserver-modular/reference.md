@@ -100,7 +100,7 @@ YOMK_DEFINE_MSG(MyData, MyData, d);   // 生成 yomk::msgs::MyData / MyDataPtr�
   **注意**：模板形参 `A&&...` 无法从花括号初始化列表推导，传聚合对象须带类型：`MyData::shared(MyData{"a", 1})`、`Int32Array::shared(std::vector<std::int32_t>{1,2,3})`。
 - `yomk::msgs::MyData::shared(std::move(data))` — 右值重载移动入包，大对象免拷贝。
 - `yomk::msgs::unpack<yomk::msgs::MyData>(pkg)` — 按运行期类型名解包，pkg 为空或类型不匹配返回 `nullptr`（不自动 return，调用方手动判空），不抛异常。
-- 消息名（宏第二参）即运行期类型名 `kName`；各处声明的"期望消息类型名"字符串（`installFunc` 第三参、`fn_pool().msg_name()`、`event_loop().msg_name()`）与其保持一致，仅作内省元数据、不拦截调用。
+- 运行期类型名 `kName` 为全限定名（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名；是类型身份唯一权威常量（`name()`/`typeOf()` 为实例携带串、可伪造，仅用于错误文案展示）。各处声明的"期望消息类型名"（`installFunc` 第三参、`fn_pool().msg_name()`、`event_loop().msg_name()`）一律引用 `T::kName`、禁止手写字符串；仅作内省元数据、不拦截调用。
 
 **内置标准类型**（成员名均为 `d`，共 30 种）：`Bool`、`Char`、`UChar`、`Byte`、`Int8`、`Uint8`、`Int16`、`Uint16`、`Int32`、`Uint32`、`Int64`、`Uint64`、`Float32`、`Float64`、`String` 及对应 `XxxArray`（如 `StringArray`、`Int32Array`）。
 
@@ -108,8 +108,8 @@ YOMK_DEFINE_MSG(MyData, MyData, d);   // 生成 yomk::msgs::MyData / MyDataPtr�
 
 ```cpp
 installFunc("/x", &C::m)                         // 成员函数直装本服务 funcMap（内部自动 weakFunc 包装）
-installFunc("/x", &C::m, "MsgName")              // 第三参：期望消息类型名（字符串字面量，仅内省元数据）
-installFunc("/x", &C::m, "MsgName", "Description")  // 第四参：函数说明（自由字符串，透传不解析）
+installFunc("/x", &C::m, yomk::msgs::MsgName::kName)              // 第三参：期望消息类型名（引用 T::kName 禁手写，仅内省元数据）
+installFunc("/x", &C::m, yomk::msgs::MsgName::kName, "Description")  // 第四参：函数说明（自由字符串，透传不解析）
 weakFunc(&Class::Method)                         // 弱绑定成员函数（不装 funcMap），注册到外部子系统必用
 ```
 

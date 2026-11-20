@@ -41,7 +41,7 @@ yomk::srv_info().all();                                        // 全量服务�
 
 ## 说明
 
-- 期望消息类型名通过声明处元数据进入内省：`installFunc("/x", &C::m, "MsgName")` 第三参、`yomk::fn_pool().msg_name(m)`、`yomk::event_loop().msg_name(m)`，仅作内省元数据，不影响调用。
+- 期望消息类型名通过声明处元数据进入内省：`installFunc("/x", &C::m, yomk::msgs::Msg::kName)` 第三参、`yomk::fn_pool().msg_name(m)`、`yomk::event_loop().msg_name(m)`，一律引用 `T::kName`（禁止手写字符串），仅作内省元数据，不影响调用。
 - 函数说明通过 `installFunc` 第四参或 `yomk::fn_pool().description(d)` 声明（自由字符串，内容使用者自定义，框架透传不解析）；`fn_url(...).get_info()` 与函数池单查 `fn_pool().fn_name(name).get_info()` 命中均返回结构化 FuncInfo 包。
 - 各内置模块另有模块级自省链：
 
