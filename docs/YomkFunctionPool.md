@@ -6,7 +6,7 @@
 
 | 场景 | 链 | 终结与返回 |
 |---|---|---|
-| 注册 | `fn_pool().fn_name(name).fn(f).msg_name(m).description(d)` | `.install()` → `ResStatus`；`msg_name`（期望消息类型名）与 `description`（函数说明）均为内省元数据，可省略 |
+| 注册 | `fn_pool().fn_name(name).fn(f).msg_name(m).description(d)` | `.install()` → `ResStatus`；`msg_name`（期望消息类型名，**一律传 `msg.kName`**，内省值为全限定 kName）与 `description`（函数说明）均为内省元数据，可省略 |
 | 注销 | `fn_pool().fn_name(name)` | `.uninstall()` → `ResStatus`（名字不存在 `Failed`） |
 | 调用 | `fn_pool().fn_name(name).msg(data)` | `.call()` → `Response`（即函数返回值；`msg` 可省略 = 空消息；**阻塞至函数执行完成**；名字不存在 `Failed`） |
 | 内省 | `fn_pool().fn_name(name)` / — | `.get_info()` 单函数元信息 / `.list()` 函数名清单 / `.all()` 全量元信息（`FuncInfo` 列表），均 → `Response` |
@@ -20,7 +20,7 @@ from yomk.fn_pool import fn_pool
 
 server().init()
 
-# 注册函数（msg_name/description 可选，仅作内省元数据）
+# 注册函数（msg_name 一律传 msg.kName，description 可选，均仅作内省元数据；类型校验由端点体内 unpack 承担，见 docs/YomkMsg.md）
 def calc_sum(pkg):
     if not isinstance(pkg, list):
         return Response(ResStatus.eNo, "pkg is not list")

@@ -44,6 +44,8 @@ Python 链对象按值持有、无悬垂风险，但 `log()` 域入口在调用�
 
 ```python
 from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.std_msg import String
+from yomk.msgs.YomkMsg import unpack
 from yomk.boot import YomkBoot
 from yomk.server import YomkService, server
 from yomk.ctx import ctx
@@ -56,17 +58,19 @@ class MyService(YomkService):
         self.set_name("/MyService")
 
     def init(self):
-        self.install_func("/hello", self.hello)  # 注册即自动弱绑定
+        # 三参声明期望消息类型（一律传 msg.kName）；String 为标准标量类
+        self.install_func("/hello", self.hello, String.kName)  # 注册即自动弱绑定
 
     def hello(self, pkg):
-        if not isinstance(pkg, str):
-            return Response(ResStatus.eNo, "pkg is not str")
-        return Response(ResStatus.eOk, "hello " + pkg)
+        # 端点体内精确校验：unpack + type_mismatch（期望/实际双侧均为 kName）
+        if unpack(pkg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+        return Response(ResStatus.eOk, "hello " + pkg.value)
 
 server().init()                                  # 框架初始化
 server().srv(MyService).create()                 # 创建并注册服务
 
-ret = server().url("/MyService/hello").msg("yomk").request()  # 同步请求
+ret = server().url("/MyService/hello").msg(String("yomk")).request()  # 同步请求（载荷为 String 实例）
 log().info("Response:", ret.msg)
 
 # 异步请求：立即返回，回包到达时在回调线程执行

@@ -1,12 +1,15 @@
 """
 机械臂控制示例消息包定义
 
-服务间传递的数据结构在此集中定义：普通类即可作为框架内传输的消息包
-（python 版对象直传；类型识别名经 type(value).__name__ 供自省识别）。
+服务间传递的数据结构在此集中定义：继承 YomkMsg 即为标准消息类
+（kName 运行期类型名自动生成、随类重命名跟随，禁止手写；端点声明与
+unpack 精确比对统一消费，见 docs/YomkMsg.md）。
 """
 
+from yomk.msgs import YomkMsg
 
-class MoveCmd:
+
+class MoveCmd(YomkMsg):
     # 运动指令：末端目标位姿与速度倍率
     def __init__(self, x=0.0, y=0.0, z=0.0, speed_ratio=0.0):
         self.x = x                      # 目标 X（mm）
@@ -15,7 +18,7 @@ class MoveCmd:
         self.speed_ratio = speed_ratio  # 速度倍率 0.0~1.0
 
 
-class MoveResp:
+class MoveResp(YomkMsg):
     # 运动回执：到位反馈（演示回包 data 可传自定义强类型，不局限于 String）
     def __init__(self, reach_x=0.0, reach_y=0.0, reach_z=0.0):
         self.reach_x = reach_x  # 到位 X（mm）

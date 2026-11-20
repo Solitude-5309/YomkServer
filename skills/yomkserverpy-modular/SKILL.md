@@ -26,6 +26,14 @@ description: 基于YomkServerPy框架的模块化Python工程编程。核心理�
 
 当用户提到"创建工程"、搭建 YomkServerPy 工程骨架或新增扩展库时，**必须立即使用任务一（或任务三）生成完整可运行的工程骨架，不要先询问需求、不要列选项、不要讨论方案**；骨架落地后再按任务二补业务服务。
 
+## 消息定义标准（写任何服务前必须遵守）
+
+完整规则与实战陷阱见 [YomkMsg.md](YomkMsg.md)（agent 必读），三条铁律摘要：
+
+1. **定义**：消息类必须继承 `YomkMsg`（`from yomk.msgs import YomkMsg`）——kName 运行期类型名自动生成、随重命名跟随，**禁止手写**；标准标量/数组用 std 类（`String`/`Int64`/`BoolArray`/... ，定义于 `yomk.msgs.std_msg`）。
+2. **声明**：`install_func` 第三参一律传 `Xxx.kName`（如 `String.kName`），**禁止手写报文串**（旧写法已废弃）。
+3. **校验**：端点体内 `if unpack(pkg, Xxx) is None: return Response(ResStatus.eNo, type_mismatch(pkg, Xxx.kName))`——框架不做分发校验，责任在端点作者；契约文案双侧均为 kName（体系外对象 got 侧报 `"null"`）。标量端点取值 `pkg.value`；内省清单取值 `.items`。
+
 ## 任务一：生成工程模板
 
 当用户要求创建新工程时，**必须**生成完整可运行的工程骨架。

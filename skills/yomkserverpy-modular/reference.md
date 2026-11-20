@@ -128,7 +128,7 @@ class CallFunction:
 
 class FuncInfo:                              # 功能函数元信息（函数池/服务内省单查与清单同族）
     func_name: str      # 路由名，带 "/" 前缀
-    msg_name: str       # 期望消息类型名（未声明为空，仅内省元数据）
+    msg_name: str       # 期望消息类型名（install_func 三参传入值；约定传 msg.kName，内省值即全限定 kName）
     description: str    # 函数说明（使用者自定义，框架透传不解析）
 
 class Event:                                 # 事件循环投递包
@@ -297,6 +297,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 | FunctionPool install 空名/空函数 | `Invalid` | `"funcName or func is empty"` |
 | 日志具名门控/查询未命中（console / file） | `Failed` | `"console logger '<名>' not found"` / `"file logger '<名>' not found"` |
 | 日志按类型查询，type 非 `"console"/"file"` | `Failed` | `"unknown logger type '<type>'"` |
+| 端点载荷类型不符（任意端点，端点体 unpack 校验） | `Failed` | `"pkg is not <期望 msg 的 kName>, got '<实际类型名或 null>'"`——双侧均为 kName，体系外对象报 `null`（写法见 docs/YomkMsg.md 端点标准形态） |
 
 诊断日志（非返回值契约）：服务同名热替换 `"service '<名>' already exists, replace with current service"`（WARN）、函数池热替换 `"function '<名>' already exists, hot-swap to current function"`（WARN）、服务删除 `"service '<名>' deleted, weak-bound callbacks discarded from now on"`（WARN）、空 console 名回退 `"console logger name is empty, use main"`、死锁自检 `"EventLoop: <loop名> post wait in worker thread detected deadlock, directly execute current event to resolve deadlock"`。
 

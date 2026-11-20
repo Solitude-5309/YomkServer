@@ -123,12 +123,14 @@ APP_VERSION = "0.0.1"
 
 ### msgs/YomkMsgs.py
 ```python
-# ConfigService 消息包
-class ConfigKey:
+# ConfigService 消息包（标准形态：继承 YomkMsg 免费得 kName，禁止手写报文名）
+from yomk.msgs import YomkMsg
+
+class ConfigKey(YomkMsg):
     def __init__(self, key: str):
         self.key = key
 
-class ConfigKeyValue:
+class ConfigKeyValue(YomkMsg):
     def __init__(self, key: str, value: str):
         self.key = key
         self.value = value
@@ -335,14 +337,16 @@ python main.py
 
 演示在示例0基础上添加 `UserService`，展示完整的扩展流程。
 
-### 1. 添加消息包（msgs/YomkMsgs.py 追加）
+### 1. 添加消息包（msgs/YomkMsgs.py 追加；继承 YomkMsg，kName 自动生成禁止手写）
 ```python
 # UserService 消息包
-class UserQuery:
+from yomk.msgs import YomkMsg
+
+class UserQuery(YomkMsg):
     def __init__(self, user_id: str):
         self.user_id = user_id
 
-class UserInfo:
+class UserInfo(YomkMsg):
     def __init__(self, user_id: str, name: str, age: int):
         self.user_id = user_id
         self.name = name
@@ -359,12 +363,16 @@ class UserService(YomkService):
         self.set_name("/UserService")
 
     def init(self):
-        self.install_func("/get_user", self.get_user)
-        self.install_func("/create_user", self.create_user)
+        # 声明一律传 msg.kName（禁止手写报文串）
+        self.install_func("/get_user", self.get_user, UserQuery.kName)
+        self.install_func("/create_user", self.create_user, UserInfo.kName)
         log().tag("UserService::init").info("install func [ /get_user /create_user ] to ", self.get_name())
         return 0
 
     def get_user(self, pkg):
+        # 端点体精确校验：unpack + type_mismatch（框架不做分发校验，责任在端点作者）
+        if unpack(pkg, UserQuery) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, UserQuery.kName))
         log().tag("UserService").info("query user: ", pkg.user_id)   # 服务体内走日志通道，不用 print
         # 业务逻辑...
         info = UserInfo(pkg.user_id, "Alice", 25)
@@ -578,13 +586,13 @@ class PoolUserService(YomkService):
 
 ## 示例5：服务内省（调试）
 
-期望消息类型由 `install_func` 三参形式声明、函数说明由四参声明（均仅作内省元数据，不参与运行时校验；说明经 `srv_info().fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）。内省查询走独立域入口 `srv_info()`（`from yomk.srv_info import srv_info`）：
+期望消息类型由 `install_func` 三参形式声明（**一律传 `msg.kName`**，内省值为全限定 kName）、函数说明由四参声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 unpack + type_mismatch 承担，见 docs/YomkMsg.md；说明经 `srv_info().fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）。内省查询走独立域入口 `srv_info()`（`from yomk.srv_info import srv_info`）：
 
 ```python
 class DemoService(YomkService):
     def init(self):
-        self.install_func("/with_type", self.with_type, "MyData")  # 三参：内省可见类型 MyData
-        self.install_func("/with_desc", self.with_desc, "MyData", "函数说明")  # 四参：类型 + 说明
+        self.install_func("/with_type", self.with_type, MyData.kName)  # 三参：内省可见类型（kName 全限定）
+        self.install_func("/with_desc", self.with_desc, MyData.kName, "函数说明")  # 四参：类型 + 说明
         self.install_func("/no_type", self.no_type)                # 兼容写法，内省无类型
         return 0
 
@@ -671,14 +679,14 @@ log_mgr().location().show_file(True).show_func(True).apply()   # [main.py:42:<mo
 
 ## 示例7：创建扩展库（yomk 命名空间并入形态）
 
-扩展为 yomk 命名空间并入形态：独立仓库源树只写 `src/yomk/<域>/`（运行时服务 + 可选 builder）、`src/yomk/msgs/<域>/`（消息类型）与 `src/yomk/url/<域>/`（URL 常量池，并入框架 `yomk.url` 常量池）三个叶子目录，`install.sh` 按 PEP 420 命名空间合并装入 YomkServerPy 的 site-packages/yomk/ 下（与框架子包平级共存，不动框架文件），安装后任意终端可 `from yomk.<域> import ExtensionService`。占位符替换：域名 `extension` → 用户指定名（snake_case；域目录、import、服务类 `ExtensionService`、消息类 `ExtensionRequest`/`ExtensionResponse` 同步替换）。纪律：**不得创建** `yomk/__init__.py`、`yomk/msgs/__init__.py` 或 `yomk/url/__init__.py`；扩展服务由使用方**显式注册**（框架不做隐式发现）；调用方**推荐优先**使用统一请求接口 `server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()`（builder 为模块自有 API 的可选件，只封装本模块自有接口）。
+扩展为 yomk 命名空间并入形态：独立仓库源树只写 `src/yomk/<域>/`（运行时服务 + 可选 builder）、`src/yomk/msgs/<域>/`（消息类型）与 `src/yomk/url/<域>/`（URL 常量池，并入框架 `yomk.url` 常量池）三个叶子目录，`install.sh` 按 PEP 420 命名空间合并装入 YomkServerPy 的 site-packages/yomk/ 下（与框架子包平级共存，不动框架文件），安装后任意终端可 `from yomk.<域> import ExtensionService`。占位符替换：域名 `extension` → 用户指定名（snake_case；域目录、import、服务类 `ExtensionService`、消息类 `ExtensionRequest`/`ExtensionResponse` 同步替换）。纪律：**不得创建或覆盖** `yomk/__init__.py`、`yomk/msgs/__init__.py` 或 `yomk/url/__init__.py`；扩展服务由使用方**显式注册**（框架不做隐式发现）；调用方**推荐优先**使用统一请求接口 `server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()`（builder 为模块自有 API 的可选件，只封装本模块自有接口）。
 
 ### 目录结构（模板实名）
 
 ```
 ExtensionName/
 ├── src/yomk/
-│   ├── msgs/extension/      # 消息子包（并入框架 yomk.msgs 命名空间段）
+│   ├── msgs/extension/      # 消息子包（并入框架 yomk.msgs 包）
 │   │   ├── __init__.py              #   re-export 扩展消息类
 │   │   ├── ExtensionMsg.py          #   消息类型定义
 │   │   └── py.typed
@@ -703,8 +711,8 @@ ExtensionName/
 ```python
 # 第三方扩展 yomk.msgs.extension：消息类型子包（PEP 420 命名空间并入框架 yomk.msgs）
 # 独立仓库只写 yomk/msgs/extension/ 目录，安装到框架 site-packages 后与
-# yomk/msgs/server、yomk/msgs/ctx 等框架子包平级共存（yomk/msgs 层无 __init__.py，
-# 属命名空间段，扩展仓库不得创建 yomk/__init__.py 或 yomk/msgs/__init__.py）
+# yomk/msgs/server、yomk/msgs/ctx 等框架子包平级共存（框架 yomk/msgs 层有 __init__.py
+# ——标准工具层顶层导出；扩展仓库不得创建或覆盖 yomk/__init__.py 或 yomk/msgs/__init__.py）
 from .ExtensionMsg import ExtensionRequest, ExtensionResponse
 
 __all__ = ["ExtensionRequest", "ExtensionResponse"]

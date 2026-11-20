@@ -29,7 +29,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 
 | 位置 | 简述 |
 |---|---|
-| `src/yomk/` | 新包唯一 Python 面：`boot/ server/ ctx/ event_loop/ fn_pool/ log/ srv_info/` 七域 + `msgs/<域>/` 消息子包 + `url/<域>/` 端点常量池（纯命名空间层）+ `_diag.py` 诊断通道；链式 API 六域各带 `builder.py`（boot 域为 `YomkBoot.py` 编排基类）+ `py.typed`/`.pyi` 类型桩；PEP 420 命名空间包（`yomk/`、`yomk/msgs/`、`yomk/url/` 三层无 `__init__.py`）；模块经 Cython 独立编译为 `yomk/<域>/*.so` |
+| `src/yomk/` | 新包唯一 Python 面：`boot/ server/ ctx/ event_loop/ fn_pool/ log/ srv_info/` 七域 + `msgs/<域>/` 消息子包 + `url/<域>/` 端点常量池（纯命名空间层）+ `_diag.py` 诊断通道；链式 API 六域各带 `builder.py`（boot 域为 `YomkBoot.py` 编排基类）+ `py.typed`/`.pyi` 类型桩；PEP 420 命名空间包（`yomk/`、`yomk/url/` 两层无 `__init__.py`；`yomk/msgs/` 为标准工具层常规包）；模块经 Cython 独立编译为 `yomk/<域>/*.so` |
 | `examples/` | 可运行示例：服务调用、共享上下文、事件循环、函数池、日志、服务内省六大主题 |
 | `template/` | 脚手架：`project/` 新工程模板、`extension/` 扩展库模板 |
 | `skills/yomkserverpy-modular/` | 模块化使用 skill：SKILL.md、reference.md、examples.md |
@@ -120,11 +120,14 @@ server().shutdown()
 
 ### 2. 消息包 (Message)
 
-用于在服务与事件循环间传递数据。Python 版无需宏或类型注册：普通类即消息定义，实例直接传递，属性直接访问：
+用于在服务与事件循环间传递数据。消息类**继承 `YomkMsg` 即接入标准类型系统**：运行期类型名 `kName` 自动生成（随重命名跟随，禁止手写），端点声明、精确校验、错误文案统一消费它，实例直接传递、属性直接访问（详见 [docs/YomkMsg.md](docs/YomkMsg.md)）：
 
 ```python
-# 定义消息（普通类）
-class MoveCmd:
+from yomk.msgs import YomkMsg
+from yomk.msgs.std_msg import String
+
+# 定义消息（继承即得 kName；标准标量/数组另有 String/Int64/BoolArray 等 std 类）
+class MoveCmd(YomkMsg):
     def __init__(self, x, y, z, speed_ratio):
         self.x = x
         self.y = y
@@ -208,9 +211,9 @@ event_loop().loop("TaskLoop").destroy()
 统一函数注册与调度中心，面向过程开发范式，支持运行时注册、更新和热替换，业务逻辑快速迭代：
 
 ```python
-# 注册函数（函数签名：(pkg) -> Response；msg_name 声明期望消息类型、description 附函数说明，均仅内省元数据）
+# 注册函数（函数签名：(pkg) -> Response；msg_name 声明期望消息类型——一律传 msg.kName 禁止手写串、description 附函数说明，均仅供内省）
 fn_pool().fn_name("calc").fn(func_v1).install()
-fn_pool().fn_name("greet").fn(greet).msg_name("String").description("向指定的人问好").install()
+fn_pool().fn_name("greet").fn(greet).msg_name(String.kName).description("向指定的人问好").install()
 
 # 调用（未注册的名字返回 eNo；阻塞至函数执行完成）
 resp = fn_pool().fn_name("calc").msg("data").call()
@@ -299,7 +302,7 @@ resp = srv_info().fn_url("/MotionService/move").get_info()
 resp = srv_info().all()
 ```
 
-说明：期望消息类型由 `install_func()` 三参形式声明（函数池/事件循环侧为 `.msg_name()` 分面），自定义函数说明经第四参或 `.description()` 声明（均仅作内省元数据，不参与运行时校验）；自省读的是运行期服务表，注册/删除即时反映到下一次查询。完整可运行演示见 `examples/ExampleYomkServerInfo.py`（四类查询、注册/删除实时视图、关闭后返回值契约）。
+说明：期望消息类型由 `install_func()` 三参形式声明（函数池/事件循环侧为 `.msg_name()` 分面，**一律传 `msg.kName`**，内省值为全限定 kName），自定义函数说明经第四参或 `.description()` 声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 `unpack` + `type_mismatch` 承担，见 [docs/YomkMsg.md](docs/YomkMsg.md)）；自省读的是运行期服务表，注册/删除即时反映到下一次查询。完整可运行演示见 `examples/ExampleYomkServerInfo.py`（四类查询、注册/删除实时视图、关闭后返回值契约）。
 
 详见 [服务自省 YomkServerInfo.md](docs/YomkServerInfo.md)。
 
@@ -487,7 +490,7 @@ log().tag("demo").info("started, version =", server().version())
 
 ### 命名空间包形态（PEP 420）
 
-`yomk/`、`yomk/msgs/`、`yomk/url/` 三层是命名空间包：**无 `__init__.py`，`import yomk` 不加载任何子模块，`yomk.__file__ is None`**；七个功能域（`yomk/server` 等）与六个消息子包（`yomk/msgs/server` 等）及 `yomk/url/<域>` 常量池子包才是普通包。该形态是第三方扩展并入的基础（见 [第三方扩展指南](#第三方扩展指南yomk-命名空间并入)）。
+`yomk/` 与 `yomk/url/` 两层是命名空间包：**无 `__init__.py`，`import yomk` 不加载任何子模块，`yomk.__file__ is None`**；七个功能域（`yomk/server` 等）、`yomk/msgs/`（标准工具层常规包：顶层导出 YomkMsg/unpack/type_of/type_mismatch 与 std 类 9 个）及其消息子包、`yomk/url/<域>` 常量池子包是普通包。该形态是第三方扩展并入的基础（见 [第三方扩展指南](#第三方扩展指南yomk-命名空间并入)）。
 
 ### 从 YomkApi 迁移（对照表）
 
@@ -517,7 +520,7 @@ L13 起旧伞门面已删除，按域显式导入替代：
 
 | 目录 | 内容 | 纪律 |
 |---|---|---|
-| `src/yomk/msgs/<域>/`（如 `extension`） | 扩展消息类型（消息子包，与 `yomk/msgs/server` 等平级） | 不得创建 `yomk/msgs/__init__.py` |
+| `src/yomk/msgs/<域>/`（如 `extension`） | 扩展消息类型（消息子包，与 `yomk/msgs/server` 等平级） | 不得创建或覆盖 `yomk/msgs/__init__.py` |
 | `src/yomk/<域>/`（如 `extension`） | 扩展运行时域（与 `yomk/server` 等平级） | 不得创建 `yomk/__init__.py`、`yomk/msgs/__init__.py`、`yomk/url/__init__.py` |
 | `src/yomk/url/<域>/`（如 `extension`） | 扩展 URL 常量池（并入框架 `yomk.url` 常量池，与 `yomk/url/ctx` 同构） | 不得创建 `yomk/__init__.py`、`yomk/msgs/__init__.py`、`yomk/url/__init__.py` |
 

@@ -1,57 +1,118 @@
-# YomkMsg（消息包）
+# YomkMsg（消息与类型系统）
 
-业务数据的安全封装与传递：Python 版**普通类即消息定义**——实例直接作为请求负载传入功能函数、经回包 `data` 原样返回，属性直接访问，无序列化封套、无指针封送。消息在请求域、共享上下文、事件循环与函数池四条链上流转，形态完全一致。
+业务数据的安全封装与传递：消息类**继承 `YomkMsg` 即接入标准类型系统**——免费获得运行期类型名 `kName`，端点声明、精确校验、错误文案统一消费它，全程零手写报文名。实例直接作为请求负载传入功能函数、经回包 `data` 原样返回，属性直接访问，无序列化封套、无指针封送。
+
+## 核心概念：kName
+
+`kName` 是挂在消息类上的运行期类型名（类属性），**继承即得，禁止手写**：
+
+- 自动生成规则（规则 B）：**最近一级父包 + "." + 类限定名**。如 `yomk.msgs.ctx` 包里的 `Context` → `"yomk.msgs.ctx.Context"`；std 类定义于 `yomk.msgs.std_msg` → `"yomk.msgs.String"`；
+- 顶层模块（无父包，如直接运行的脚本）回退用完整 `__module__`：`"__main__.Foo"`；
+- 随类重命名自动跟随；类体显式定义 `kName` 可覆盖自动值（预留跨语言字面对齐口子）；
+- 与 C++ 口径一致：main 分支根级宏亦带 `yomk::msgs::` 前缀，kName 全库无裸名；
+- 基类 `YomkMsg.kName` 为空串，不参与比对。
 
 ## API 速查
 
 | 操作 | Python 形态 |
 |---|---|
-| 定义消息 | 普通类（构造函数即字段声明），可集中在独立模块管理（见 `examples/msgs/ArmMsgs.py`） |
-| 构造消息包 | 直接实例化：`MoveCmd(100.0, 50.0, 200.0, 0.8)` |
-| 接收端取数 | 功能函数体内直接读参数属性；需要类型收窄时自行 `isinstance` 判断 |
-| 请求负载 | `server().url(u).msg(pkg).request()`，`pkg` 任意对象，缺省 `None` |
+| 定义消息 | `class MyMsg(YomkMsg):` + 构造函数即字段声明 |
+| 标准标量/数组 | `String` / `Bool` / `Int64` / `Float64` / `Bytes`（字段 `value`）；`BoolArray` / `IntArray` / `FloatArray` / `StringArray`（字段 `items`） |
+| 结构化清单 | 各域 List msg（如 `ContextKeyInfoList`、`FuncInfoList`，字段 `items`） |
+| 端点声明 | `self.install_func("/x", self.x, MyMsg.kName)` |
+| 端点体校验 | `if unpack(pkg, MyMsg) is None: return Response(eNo, type_mismatch(pkg, MyMsg.kName))` |
+| 调用方解包返回 | `unpack(res.data, MyMsg)` → 命中返回对象，未命中 `None` |
+| 请求负载 | `server().url(u).msg(MyMsg(...)).request()` |
+
+## 标准内置集（std 类）
+
+C++ 30 个 std msg 收敛直译为 9 类（定义于 `yomk.msgs.std_msg`，`from yomk.msgs import ...`）：
+
+| std 类 | 承载 | 收敛的 C++ 类型 |
+|---|---|---|
+| `Bool` / `Int64` / `Float64` / `String` / `Bytes` | 标量（字段 `value`） | 11 个整型/字符变体 → `Int64`；Float32/64 → `Float64`；`Bytes` 为 Python 端新增 |
+| `BoolArray` / `IntArray` / `FloatArray` / `StringArray` | 列表（字段 `items`） | 15 个 `*Array` 收敛 |
+
+## 端点标准形态（必须遵守）
+
+三条消费规则，框架服务与用户服务同规（可抄范本见 `template/extension/src/yomk/extension/ExtensionService.py`、`template/project/services/ConfigService.py`）：
+
+1. **端点声明**：第三参一律传 `msg.kName`，**禁止手写字面量**——kName 随类定义自动生成、随重命名跟随，手写串与内省值漂移即失真；
+2. **端点体内精确校验**（框架不做分发校验，责任在端点作者）：
 
 ```python
-# 1. 定义消息（普通类）
-class UserInfo:
+def echo(self, pkg):
+    if unpack(pkg, ExtensionRequest) is None:
+        return Response(ResStatus.eNo, type_mismatch(pkg, ExtensionRequest.kName))
+    ...
+```
+
+3. **调用方构造**：载荷是消息类实例，裸值直发会被精确身份校验拒绝。
+
+## unpack 语义
+
+`unpack(pkg, cls)`（对齐 C++ `unpack<Msg>` nullptr 语义，判空即用，不抛异常）：
+
+- **命中 ⟺ `type(pkg)` 就是 cls 本身**（isinstance + kName 精确比对）——不是普通 isinstance 兼容判断：子类必然获得与父类不同的自动 kName，**子类实例解包为父类返回 None 是设计行为**；
+- cls 无 kName（体系外类）→ 退化为纯 isinstance，不卡死；
+- 已知边界（文档化不做防御）：子类显式覆盖与父类相同的 kName 可冒充父类，责任归用户。
+
+`type_of(pkg)` / `type_mismatch(pkg, expected)`（对齐 C++ `typeOf`/`typeMismatch`，定义于 `yomk.msgs.std_msg`）：
+
+- `type_of` 两态：YomkMsg 实例 → 其 kName；None 及体系外对象（非消息）→ `"null"`；
+- `type_mismatch` 构造标准不符文案 `"pkg is not <expected>, got '<type_of(pkg)>'"`，expected 由调用方传 `cls.kName`——期望/实际双侧均为权威 kName。
+
+## 完整示例（定义 → 声明 → 端点校验 → 调用）
+
+```python
+from yomk.msgs import YomkMsg
+from yomk.server import YomkService
+from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.YomkMsg import unpack
+from yomk.msgs.std_msg import type_mismatch
+
+# 1. 定义（继承即得 kName）
+class UserInfo(YomkMsg):
     def __init__(self, uid, name):
         self.uid = uid
         self.name = name
 
-# 2. 构造并传入
-pkg = UserInfo(1001, "Alice")
+class RegisterResp(YomkMsg):
+    def __init__(self, uid, greeting):
+        self.uid = uid
+        self.greeting = greeting
 
-# 3. 功能函数中取数（类型不符的处理由调用方手写）
-def register(self, pkg):
-    if not isinstance(pkg, UserInfo):
-        return Response(ResStatus.eNo, "pkg is not UserInfo")
-    return Response(ResStatus.eOk, "hello " + pkg.name)
-```
+class UserService(YomkService):
+    def init(self):
+        # 2. 声明（传 kName，禁止手写）
+        self.install_func("/register", self.register, UserInfo.kName)
+        return 0
 
-消息包即插即用，各域链的 `.msg()` / `.value()` 分面同形：
+    # 3. 端点体精确校验（责任在端点作者）
+    def register(self, pkg):
+        if unpack(pkg, UserInfo) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, UserInfo.kName))
+        return Response(ResStatus.eOk, "hello",
+                        RegisterResp(pkg.uid, "hello " + pkg.name))
 
-```python
-server().url("/MyService/register").msg(pkg).request()      # 请求负载
-ctx().key("user").value(pkg).create()                        # 上下文存储
-event_loop().msg(pkg).loop("TaskLoop").post()                # 事件数据
-fn_pool().fn_name("save").msg(pkg).call()                    # 函数池调用
+# 4. 调用方构造与解包
+res = server().url("/UserService/register").msg(UserInfo(1001, "Alice")).request()
+rsp = unpack(res.data, RegisterResp)      # 未命中 None，判空即用
 ```
 
 ## 语言设计说明
 
-- 无需宏：普通类即消息定义。
-- 无需静态工厂与指针基类流转：直接实例化，对象引用天然多态。
-- 无需解包：属性直接访问；类型守卫自行 `isinstance`。
-- 无内置类型表：Python 原生类型（`str/int/float/bool/list/dict`）与自定义类均可直传。
-- `.msg(cls)` 收运行时类对象参数，供 `get()` 做期望类型名比对（见下）。
+- 无需宏/工厂/指针基类流转：继承一个基类即完整接入，对象引用直传；
+- 类型不符不会静默：守约则全检，失约（忘写 unpack）在首次字段访问即以 AttributeError + 堆栈响亮炸出、归因到行——责任分明是设计目标；
+- std 类之外的原生类型（`dict` 等）与任意自定义类仍可直传（体系外对象安全退化），但失去精确身份校验。
 
 ## 注意事项
 
-- **期望消息类型名仅作内省元数据，不拦截调用**：`install_func("/x", fn, "MsgName")` 第三参、`fn_pool().msg_name(m)`、`event_loop().msg_name(m)` 声明的字符串与 `FuncInfo.msg_name` 保持一致，供自省读取，运行期不做校验。
-- 期望类型名与函数说明均供自省读取：函数池与函数单查返回 `FuncInfo`（`func_name` / `msg_name` / `description` 三字段，见 [服务自省](YomkServerInfo.md)）。
-- 上下文类型化读 `ctx().key(k).msg(cls).with_default(d).get()` 中的 `cls` 为期望类型（对齐 C++ `msg<T>()` kName 语义）：命中后做类型名比对，不符记 WARN `"typed read context key '<k>' type mismatch, expect '<期望>', got '<实际>', return default value"` 并回退 `with_default` 的兜底值；未命中/失败同样回退兜底值；`cls` 省略时**不校验**。
+- **声明与内省**：`install_func` 第三参、`fn_pool().msg_name(m)`、`event_loop().msg_name(m)` 的值存入 `FuncInfo.msg_name` 供内省读取（值为全限定 kName），运行期不做拦截（责任模型见上）。
+- 上下文类型化读 `ctx().key(k).msg(cls).with_default(d).get()` 中的 `cls` 为期望类型：命中后做类型名比对，不符记 WARN 并回退 `with_default` 兜底值；`cls` 省略时不校验。
 - 事件循环 `post_wait` 的执行结果经事件对象回传：链式终结收敛为 `ResStatus`；需要取回事件 `data`/处理响应时用裸链 `server().url("/YomkEventLoop/post_wait").msg(...).request()`，`data` 为该 `Event` 对象（含 `m_eventId` / `m_response`）。
+- 内省端点返回 List msg（如 `/all` 返 `FuncInfoList`），链式门面读路径已解包、仍返回裸 list；裸链直调时用 `unpack(res.data, XxxList).items` 取清单。
 
 ## 完整示例
 
-最小完整示例见根目录 [README](../README.md) 的"快速上手"一节；消息直传与属性读取的行为验证见 `test/yomk_server/TestYomkPkg.py`，多文件工程的集中管理范式见 `examples/msgs/ArmMsgs.py`。
+最小完整示例见根目录 [README](../README.md) 的"快速上手"一节；标准形态的可抄范本见 `template/extension/src/yomk/extension/ExtensionService.py` 与 `template/project/services/ConfigService.py`；kName 生成与 unpack 语义的行为验证见 `test/yomk_msg/TestYomkMsg.py`，多文件工程的集中管理范式见 `examples/msgs/ArmMsgs.py`。

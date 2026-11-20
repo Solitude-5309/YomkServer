@@ -131,7 +131,10 @@ class YomkService:
         pass
 
     def install_func(self, name, function, msg_name="", description=""):
-        # msg_name 为期望消息类型元数据，description 为使用者自定义函数说明，均仅供内省
+        # msg_name 为期望消息类型元数据，description 为使用者自定义函数说明，均仅供内省。
+        # 取值约定（决策 5）：一律传 msg.kName（如 String.kName / 自定义消息类.kName），
+        # 禁止手写字面量——kName 随类定义自动生成、随重命名跟随，手写串与内省值漂移
+        # 即失真；内省值即全限定 kName（详见 docs/YomkMsg.md）
         if not name.startswith("/"):
             diag_warn("function name parse error: " +
                       name + ", please start with /")
