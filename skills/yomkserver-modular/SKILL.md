@@ -226,7 +226,7 @@ yomk::server().shutdown();
 
 ### 服务内省（调试）
 
-框架内置 `/YomkServerInfo` 服务（随 `.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时第三参声明期望消息类型（一律引用 `T::kName`、禁止手写消息名字符串），**第四参写功能语义描述**——非强制约束，是让内省消费者不读源码即可理解端点行为的语义澄清。描述常量与 URL 常量同置各自 `XxxUrl.h`（紧跟对应 URL 常量之后，命名对称如 `ctxCreate`/`ctxCreateDesc`，类型 `inline constexpr const char*`），installFunc 第四参仅引用常量：复杂端点（副作用/状态变更/失败模式多样）用六字段 R"(...)" 块（`Semantic → Returns → Precond → Idempotent → SideEffect → Fail`），纯查询端点单行 `"Semantic: …；Returns: …"`；文案须与实现相符，`Fail` 按三态归因（Invalid=入参非法，Failed=业务未命中/冲突）。框架全部内置端点均已填写，自定义服务遵循同一格式。内省数据的消费入口为 `yomk::srv_info()`（services/functions/get_info/all），模板工程 `MyBoot::after()` 末尾提供了完整的消费演示（遍历 `/functions` 输出各端点语义）：
+框架内置 `/YomkServerInfo` 服务（随 `.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时第三参声明期望消息类型（一律引用 `T::kName`、禁止手写消息名字符串），**第四参写功能语义描述**——非强制约束，是让内省消费者不读源码即可理解端点行为的语义澄清。描述常量与 URL 常量同置各自 `XxxUrl.h`（URL 常量集中在前、语义描述常量集中在后（按序一一对应），命名对称，如 `ctxCreate`/`ctxCreateDesc`，类型 `inline constexpr const char*`），installFunc 第四参仅引用常量：复杂端点（副作用/状态变更/失败模式多样）用六字段 R"(...)" 块（`Semantic → Returns → Precond → Idempotent → SideEffect → Fail`），纯查询端点单行 `"Semantic: …；Returns: …"`；文案须与实现相符，`Fail` 按三态归因（Invalid=入参非法，Failed=业务未命中/冲突）。框架全部内置端点均已填写，自定义服务遵循同一格式。内省数据的消费入口为 `yomk::srv_info()`（services/functions/get_info/all），模板工程 `MyBoot::after()` 末尾提供了完整的消费演示（遍历 `/functions` 输出各端点语义）：
 
 ```cpp
 int XxxService::init() {
@@ -311,7 +311,7 @@ ExtensionName/
 
 在已有扩展中添加新功能：
 
-1. **模块四件套补声明**：`XxxUrl.h` 加 URL 常量与语义描述常量（描述紧跟对应 URL，命名对称 `<常量名>Desc`，格式见下文内省小节；请求链一律引用常量，不裸写 URL 字符串字面量）、`XxxPayload.h`/`XxxMsg.h` 加载荷/消息包（模板内置 `ExtTask` 为形态示例，新增业务时替换）、`XxxApi.h` 加终结方法（如 `yomk::ext().task(req).submit()` 形态）；不写终结方法时，须在 Api 文件注释写清 `yomk::server().url(<url>).request()` 统一调用方式及 url 功能作用
+1. **模块四件套补声明**：`XxxUrl.h` 加 URL 常量与语义描述常量（URL 集中在前、描述集中在后按序一一对应，命名对称 `<常量名>Desc`，格式见下文内省小节；请求链一律引用常量，不裸写 URL 字符串字面量）、`XxxPayload.h`/`XxxMsg.h` 加载荷/消息包（模板内置 `ExtTask` 为形态示例，新增业务时替换）、`XxxApi.h` 加终结方法（如 `yomk::ext().task(req).submit()` 形态）；不写终结方法时，须在 Api 文件注释写清 `yomk::server().url(<url>).request()` 统一调用方式及 url 功能作用
 2. **对外接口头文件添加方法声明**（`include/XxxService.h`，类落 `yomk::service::ext`；仅内部使用的声明放 `src/` 内部头文件）
 3. **实现添加功能函数**（`src/XxxService.cpp`）：`installFunc` + 实现
 4. **测试程序添加测试用例**（`test/TestXxx.cpp`）

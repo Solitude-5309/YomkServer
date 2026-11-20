@@ -10,6 +10,8 @@ namespace yomk::url::ext
 // /ExtensionService/*（语义描述与 URL 常量同置：inline constexpr const char*，
 //  installFunc 第四参引用，格式惯例见 docs/YomkServer.md「内省描述惯例」）
 inline constexpr std::string_view version = "/ExtensionService/version";
+
+// 语义描述常量：与上方 URL 常量按序一一对应（installFunc 第四参引用；格式惯例见 docs/YomkServer.md「内省描述惯例」）
 inline constexpr const char* versionDesc = R"(
 Semantic: 返回扩展版本号
 Returns: data 为 String 包（"extension v<版本号>"）

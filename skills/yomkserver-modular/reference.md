@@ -113,7 +113,7 @@ installFunc("/x", &C::m, yomk::msgs::MsgName::kName, "Description")  // 第四�
 weakFunc(&Class::Method)                         // 弱绑定成员函数（不装 funcMap），注册到外部子系统必用
 ```
 
-**第四参语义描述惯例**（非强制约束，语义澄清，越清晰越好）：描述常量与 URL 常量同置各域 `XxxUrl.h`（紧跟对应 URL 常量之后，命名对称 `<常量名>Desc`，`inline constexpr const char*`），installFunc 第四参仅引用常量，安装表一行一端点。复杂端点（副作用/状态变更/失败模式多样）用六字段 R"(...)" 块，字段序 `Semantic → Returns → Precond → Idempotent → SideEffect → Fail`；纯查询端点单行 `"Semantic: …；Returns: …"`。文案必须与实现相符（依据处理函数真实分支写，不确定的分支不写）；`Fail` 按三态归因（Invalid=入参非法，Failed=业务未命中/冲突）。框架全部内置端点已按此填写，见 `src/` 各文件描述常量块与 `docs/YomkServer.md`「内省描述惯例」。
+**第四参语义描述惯例**（非强制约束，语义澄清，越清晰越好）：描述常量与 URL 常量同置各域 `XxxUrl.h`（URL 常量集中在前、语义描述常量集中在后按序一一对应，命名对称 `<常量名>Desc`，`inline constexpr const char*`），installFunc 第四参仅引用常量，安装表一行一端点。复杂端点（副作用/状态变更/失败模式多样）用六字段 R"(...)" 块，字段序 `Semantic → Returns → Precond → Idempotent → SideEffect → Fail`；纯查询端点单行 `"Semantic: …；Returns: …"`。文案必须与实现相符（依据处理函数真实分支写，不确定的分支不写）；`Fail` 按三态归因（Invalid=入参非法，Failed=业务未命中/冲突）。框架全部内置端点已按此填写，见 `src/` 各文件描述常量块与 `docs/YomkServer.md`「内省描述惯例」。
 
 弱绑定判活：回调触发时先 `weak_ptr.lock()`，服务已删除则安全丢弃，不会悬垂 `this`。同一 `weakFunc` 是泛型模板，按调用处目标 `std::function` 类型自动适配全部回调签名，丢弃行为按返回类型（所有丢弃分支统一前置记录错误日志 "service has been deleted or unregistered, callback ignored"）：功能函数/FunctionPool/EventLoop（`Response(YomkMsgPtr)` → `Failed`）、异步响应（`void(Response)` → 丢弃）、checker（`CheckStatus(const Context&)` → 放行 `Accept`）、void monitor（→ 丢弃）。其他返回类型 → `Ret{}` 默认值。构造期绑定（init 之前）永久无效。
 
