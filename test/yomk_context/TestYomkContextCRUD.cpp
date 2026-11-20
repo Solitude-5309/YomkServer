@@ -183,7 +183,7 @@ int main()
         auto info = yomk::msgs::unpack<yomk::msgs::ContextKeyInfo>(resp.data);
         YOMK_TEST_CHECK(info != nullptr, "keyInfo 数据为 ContextKeyInfo 包");
         YOMK_TEST_CHECK(info && info->d.key == "str_key", "keyInfo 字段 m_key 一致");
-        YOMK_TEST_CHECK(info && info->d.typeName == "String", "keyInfo 字段 m_typeName 一致");
+        YOMK_TEST_CHECK(info && info->d.typeName == yomk::msgs::String::kName, "keyInfo 字段 m_typeName 一致");
         YOMK_TEST_CHECK(info && !info->d.checkerOn, "keyInfo 字段 m_checkerOn 为 false");
         YOMK_TEST_CHECK(info && info->d.monitorCount == 0 && info->d.asyncMonitorCount == 0,
               "keyInfo 字段 monitor 计数为 0");
@@ -217,7 +217,7 @@ int main()
         YOMK_TEST_CHECK(arr && arr->d[0].keys.size() == 2, "listAll 返回 2 个键信息");
         YOMK_TEST_CHECK(arr && arr->d[0].keys[0].key == "int_key" && arr->d[0].keys[1].key == "str_key",
               "listAll 键序为 map 字典序（int_key, str_key）");
-        YOMK_TEST_CHECK(arr && arr->d[0].keys[0].typeName == "Int32" && arr->d[0].keys[1].typeName == "String",
+        YOMK_TEST_CHECK(arr && arr->d[0].keys[0].typeName == yomk::msgs::Int32::kName && arr->d[0].keys[1].typeName == yomk::msgs::String::kName,
               "listAll 类型名一致");
         YOMK_TEST_CHECK(arr && arr->d[0].keys[0].group == "main" && arr->d[0].keys[1].group == "main",
               "listAll 键所属组一致");

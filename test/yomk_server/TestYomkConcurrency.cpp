@@ -103,7 +103,7 @@ public:
         auto sp = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!sp)
         {
-            return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+            return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
         }
         return {yomk::payload::ResStatus::Succeeded, sp->d};
     }
@@ -279,7 +279,7 @@ int main()
         for (int round = 0; round < 200; ++round)
         {
             echoSrv->installFunc(
-                "/echo", echoSrv->weakFunc(std::bind(&ConcSrv::echo, echoSrv, std::placeholders::_1)), "String");
+                "/echo", echoSrv->weakFunc(std::bind(&ConcSrv::echo, echoSrv, std::placeholders::_1)), yomk::msgs::String::kName);
             echoSrv->installFunc("/echo", echoSrv->weakFunc(std::bind(&ConcSrv::echo, echoSrv, std::placeholders::_1)));
         }
         stop.store(true);

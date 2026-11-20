@@ -93,7 +93,7 @@ private:
         auto data = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!data)
         {
-            return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+            return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
         }
         return {yomk::payload::ResStatus::Succeeded, "echo:" + data->d};
     }
@@ -194,7 +194,7 @@ static void testInstallFunc(DemoService* demo)
     infos = demo->funcInfos();
     YOMK_TEST_CHECK(findFuncInfo(infos, "/desc", &msgName, &description) && msgName.empty() && description.empty(),
           "两参覆盖四参注册清除类型名与说明");
-    demo->installFunc("/desc", [](YomkMsgPtr pkg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "manual"}; }, "String",
+    demo->installFunc("/desc", [](YomkMsgPtr pkg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "manual"}; }, yomk::msgs::String::kName,
                       "demo description");
     infos = demo->funcInfos();
     YOMK_TEST_CHECK(
@@ -217,7 +217,7 @@ static void testInvoke(DemoService* demo)
     // 命中：函数内解包失败（pkg 为 nullptr）返回 ResStatus::Failed
     resp = demo->invoke("/echo", nullptr);
     YOMK_TEST_CHECK(
-        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("pkg is not String, got 'null'") != std::string::npos,
+        resp.status == yomk::payload::ResStatus::Failed && resp.msg.find(std::string("pkg is not ") + yomk::msgs::String::kName + ", got 'null'") != std::string::npos,
         "invoke 命中但 pkg 为空，函数解包守卫返回 ResStatus::Failed + got 'null'");
 
     // 异常路径：空名/无 / 开头返回 ResStatus::Failed + parse error 契约消息

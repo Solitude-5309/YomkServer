@@ -28,8 +28,8 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
 /**
  * @brief Define a message type: generate the YomkMsg derived class MsgName inside yomk::msgs
  * @param DataType Payload data type
- * @param MsgName Message class name (also serves as the type identifier kName, used for unpack
- *        and dynamic lookup comparison)
+ * @param MsgName Message class name (kName is "yomk::msgs::MsgName", the fully
+ *        qualified type identifier used for unpack and dynamic lookup comparison)
  * @param VarName Payload member name (framework convention fixes it to d, e.g. pkg->d)
  * @note The generated class provides the shared(...) factory; custom messages are declared only
  *       by this macro, see YomkStdMsg.h for the standard type message catalog, YomkServerMsg.h
@@ -40,12 +40,12 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
  */
 // @zh: 定义消息类型：在 yomk::msgs 内生成 YomkMsg 派生类 MsgName
 // @zh: DataType 载荷数据类型
-// @zh: MsgName 消息类名（同时作为类型标识 kName，供解包/动态查找比对）
+// @zh: MsgName 消息类名（kName 为 "yomk::msgs::MsgName"，全限定类型标识，供解包/动态查找比对）
 // @zh: VarName 载荷成员名（框架约定统一为 d，如 pkg->d）
 // @zh: note 生成类提供 shared(...) 工厂；自定义消息仅此宏声明，标准类型消息目录见 YomkStdMsg.h，核心载荷消息目录见 YomkServerMsg.h，模块专属消息目录见各 Yomk{Module}Msg.h
 // @zh: note 载荷类型命名空间与消息类命名空间相互独立；MsgName 全局共用 yomk::msgs 单一根，需隔离时改用 YOMK_DEFINE_MSG_NS
 #define YOMK_DEFINE_MSG(DataType, MsgName, VarName)                               \
-    YOMK_DEFINE_MSG_IMPL(yomk::msgs, , DataType, MsgName, VarName)
+    YOMK_DEFINE_MSG_IMPL(yomk::msgs, "yomk::msgs::", DataType, MsgName, VarName)
 
 /**
  * @brief Define a namespaced message type: generate the YomkMsg derived class MsgName
@@ -72,12 +72,12 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
 /**
  * @brief Shared implementation of YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS
  * @param NSOpen Namespace tokens to open, e.g. yomk::msgs or yomk::msgs::my::mod (C++17)
- * @param NamePrefix String-literal prefix for kName; empty for the root-level form
+ * @param NamePrefix String-literal prefix for kName; "yomk::msgs::" for the root-level form
  * @note Internal use only — declare messages via YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS
  */
 // @zh: YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS 共用实现
 // @zh: NSOpen 要打开的命名空间 token，如 yomk::msgs 或 yomk::msgs::my::mod（C++17 嵌套命名空间）
-// @zh: NamePrefix kName 的字符串字面量前缀；根级形式传空
+// @zh: NamePrefix kName 的字符串字面量前缀；根级形式传 "yomk::msgs::"
 // @zh: note 仅供内部使用——消息一律经 YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS 声明
 #define YOMK_DEFINE_MSG_IMPL(NSOpen, NamePrefix, DataType, MsgName, VarName)      \
     namespace NSOpen                                                              \

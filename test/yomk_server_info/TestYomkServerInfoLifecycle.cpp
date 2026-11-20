@@ -37,6 +37,7 @@
 #include <vector>
 
 #include "srv_info/YomkServerInfo.h"
+#include "yomk/ctx/YomkContextMsg.h"
 #include "yomk/server/YomkServerApi.h"
 #include "yomk/srv_info/YomkServerInfoApi.h"
 
@@ -105,7 +106,7 @@ static std::vector<std::string> unpackStringArray(const yomk::payload::Response&
         return lines;
     }
     std::shared_ptr<yomk::msgs::StringArray> arr = nullptr;
-    if (resp.data && resp.data->name() == "StringArray")
+    if (resp.data && resp.data->name() == yomk::msgs::StringArray::kName)
     {
         arr = std::dynamic_pointer_cast<yomk::msgs::StringArray>(resp.data);
     }
@@ -125,7 +126,7 @@ static std::vector<yomk::payload::FuncInfo> unpackFuncInfoList(const yomk::paylo
         return funcs;
     }
     std::shared_ptr<yomk::msgs::FuncInfoList> listPkg = nullptr;
-    if (resp.data && resp.data->name() == "FuncInfoList")
+    if (resp.data && resp.data->name() == yomk::msgs::FuncInfoList::kName)
     {
         listPkg = std::dynamic_pointer_cast<yomk::msgs::FuncInfoList>(resp.data);
     }
@@ -176,7 +177,7 @@ public:
         auto yText = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!yText)
         {
-            return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+            return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
         }
         return {yomk::payload::ResStatus::Succeeded, yText->d};
     }
@@ -307,7 +308,7 @@ int main()
         auto ctx = yomk::srv_info().srv_name("/YomkContext").functions();
         auto ctxFuncs = unpackFuncInfoList(ctx);
         const yomk::payload::FuncInfo* create = findFunc(ctxFuncs, "/create");
-        YOMK_TEST_CHECK(ctx.status == yomk::payload::ResStatus::Succeeded && create != nullptr && create->msgName == "Context",
+        YOMK_TEST_CHECK(ctx.status == yomk::payload::ResStatus::Succeeded && create != nullptr && create->msgName == yomk::msgs::Context::kName,
               "内置 /YomkContext 含 /create 期望类型 Context");
         YOMK_TEST_CHECK(findFunc(ctxFuncs, "/keys") != nullptr, "内置 /YomkContext 无类型端点 /keys（m_msgName 空）");
 
@@ -360,7 +361,7 @@ int main()
               "函数不存在契约消息精确匹配: " + noFunc.msg);
 
         auto nullPkg = yomk::server().url("/YomkServerInfo/function").request();
-        YOMK_TEST_CHECK(nullPkg.status == yomk::payload::ResStatus::Failed && nullPkg.msg.find("pkg is not String, got 'null'") != std::string::npos,
+        YOMK_TEST_CHECK(nullPkg.status == yomk::payload::ResStatus::Failed && nullPkg.msg.find(std::string("pkg is not ") + yomk::msgs::String::kName + ", got 'null'") != std::string::npos,
               "null pkg 返回 ResStatus::Failed + got 'null'（unpack 守卫）");
 
         // description 透出：四参安装的 /echo 命中时说明承载于 FuncInfo 包；无说明的 /ping 恒挂包但说明为空

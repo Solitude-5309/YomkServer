@@ -59,7 +59,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not Log, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Log::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     if (logPkg->d.logger.empty())
     {
@@ -144,7 +144,7 @@ yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr pkg)
     auto consoleLogProxy = yomk::msgs::unpack<yomk::msgs::ConsoleLogProxy>(pkg);
     if (!consoleLogProxy)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not ConsoleLogProxy, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::ConsoleLogProxy::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     // 与 consoleLog 读侧互斥
     std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
@@ -159,7 +159,7 @@ yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr pkg)
     auto fileLogProxy = yomk::msgs::unpack<yomk::msgs::FileLogProxy>(pkg);
     if (!fileLogProxy)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not FileLogProxy, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::FileLogProxy::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     // 与 fileLog 读侧互斥;语义与 setConsoleLogProxy 对称
     std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
@@ -174,7 +174,7 @@ yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr pkg)
     auto logFile = yomk::msgs::unpack<yomk::msgs::LogFile>(pkg);
     if (!logFile)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not LogFile, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::LogFile::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
 
     // 空名/空目录拒绝:ResStatus::Invalid(参数无效惯例)
@@ -211,7 +211,7 @@ yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not Log, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Log::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
 
     if (logPkg->d.logger.empty())
@@ -282,7 +282,7 @@ yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
     auto fileLogger = m_fileLoggers.find(str->d);
@@ -300,7 +300,7 @@ yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr pkg)
     auto yName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yName)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
 
     // 空名拒绝(同 createFileLogger 惯例)
@@ -346,7 +346,7 @@ yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not Log, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Log::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
 
     // 具名请求:逐器门控路径(写第二层,不触碰全局主闸;未命中 ResStatus::Failed 不惰性创建)
@@ -389,7 +389,7 @@ yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not Log, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Log::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
@@ -472,7 +472,7 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not Log, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Log::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
@@ -515,7 +515,7 @@ yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not Log, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Log::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
@@ -598,7 +598,7 @@ yomk::payload::Response YomkLogger::loggers(YomkMsgPtr pkg)
     auto type = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!type)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not String, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     std::vector<std::string> names;
     if (type->d == "console")
@@ -628,7 +628,7 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
     auto query = yomk::msgs::unpack<yomk::msgs::LoggerQuery>(pkg);
     if (!query)
     {
-        return {yomk::payload::ResStatus::Failed, "pkg is not LoggerQuery, got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::LoggerQuery::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
     }
     // 按类型单表精确查找:两表允许同名,同名歧义由 type 消除;命中锁内构造结构化快照
     yomk::payload::LoggerInfo info;
