@@ -114,11 +114,11 @@
 
 | 服务 | installFunc 调用数 | 有返回 data 的端点 |
 |---|---|---|
-| YomkContext | 14 | 4（/get、/groups、/keys、/key、/all 中 5 处，其中 /get 为非空值包） |
-| YomkEventLoop | 8 | 3（/post_wait、/loops、/loop、/all） |
-| YomkFunctionPool | 6 | 3（/call、/names、/name、/all） |
+| YomkContext | 14 | 5（/get、/groups、/keys、/key、/all） |
+| YomkEventLoop | 8 | 4（/post_wait、/loops、/loop、/all） |
+| YomkFunctionPool | 6 | 4（/call、/names、/name、/all） |
 | YomkLogger | 16 | 5（/loggers、/logger、/all、/console_global_state、/file_global_state） |
 | YomkServerInfo | 4 | 4（全部） |
-| **合计** | **48** | — |
+| **合计** | **48** | **22** |
 
 > 注：`msgName` 仅为内省元数据，不参与运行期类型校验；类型校验发生在 `unpack` / 上下文 `get()`。响应数据统一挂在 `Response.data`（`YomkMsgPtr`），失败时通常为空。
