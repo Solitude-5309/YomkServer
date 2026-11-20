@@ -49,7 +49,8 @@ auto pkg = yomk::msgs::UserInfoMsg::shared(UserInfo{1001, "Alice"});
 auto info = yomk::msgs::unpack<yomk::msgs::UserInfoMsg>(pkg);
 if (!info)
 {
-    return {yomk::payload::ResStatus::Failed, "pkg is not UserInfoMsg"};
+    return {yomk::payload::ResStatus::Failed,
+        std::string("pkg is not ") + yomk::msgs::UserInfoMsg::kName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
 }
 return {yomk::payload::ResStatus::Succeeded, "hello " + info->d.name};
 ```

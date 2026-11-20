@@ -798,7 +798,7 @@ void MyService::deinit() {
 
 ## 示例5：服务内省（调试）
 
-内省类型元数据由 installFunc 第三参声明、函数说明由第四参声明（手写字符串字面量，仅作内省元数据，不参与运行时校验）：
+内省类型元数据由 installFunc 第三参声明（引用 `T::kName`、禁手写）、函数说明由第四参声明（自由字符串，仅作内省元数据，不参与运行时校验）：
 
 ```cpp
 int DemoService::init()
