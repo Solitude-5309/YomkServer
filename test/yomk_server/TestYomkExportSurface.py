@@ -109,8 +109,9 @@ def check(cond, msg):
 def main():
     check(yomk.__file__ is None,
           "命名空间锚点: yomk 顶层无 __init__（__file__ is None）")
-    check(yomk.msgs.__file__ is None,
-          "命名空间锚点: yomk.msgs 层无 __init__（__file__ is None）")
+    # yomk.msgs 自标准工具层（闭环 1）起为常规包：标准工具 + std 类顶层导出 12 项
+    check(yomk.msgs.__file__ is not None,
+          "命名空间锚点: yomk.msgs 层有 __init__（标准工具层顶层导出）")
 
     for domain in DOMAINS:
         mod = importlib.import_module(f"yomk.{domain}")

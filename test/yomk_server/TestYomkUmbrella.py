@@ -5,7 +5,8 @@ TestYomkUmbrella.py —— 新包七域公开面锚点 + 冒烟（L12 起）
 
 本文件是**运行期公开面锚点**测试：
 显式 import 七域入口与 boot 域类型（不再经伞门面 YomkApi），断言命名空间锚点
-（yomk / yomk.msgs 顶层无 __init__）、各域 builder 公开方法面与
+（yomk 顶层无 __init__；yomk.msgs 自标准工具层起为常规包、顶层导出 12 项）、
+各域 builder 公开方法面与
 各域 builder.py 定型清单逐一对表，再走 S1-S8 七域冒烟。
 
 语言机制说明：
@@ -125,7 +126,13 @@ def main():
 
     # ============ 锚点段：命名空间 + 七域入口类型与公开方法对表 ============
     check(yomk.__file__ is None, "锚点: yomk 顶层无 __init__（__file__ is None）")
-    check(yomk.msgs.__file__ is None, "锚点: yomk.msgs 层无 __init__（__file__ is None）")
+    # yomk.msgs 自标准工具层（闭环 1）起为常规包：标准工具 + std 类顶层导出 12 项
+    check(yomk.msgs.__file__ is not None,
+          "锚点: yomk.msgs 层有 __init__（标准工具层顶层导出）")
+    check(callable(getattr(yomk.msgs, "unpack", None))
+          and hasattr(yomk.msgs, "YomkMsg") and hasattr(yomk.msgs, "String")
+          and callable(getattr(yomk.msgs, "type_of", None)),
+          "锚点: yomk.msgs 顶层导出标准工具与 std 类")
 
     anchor_ok = True
     for head_name, (type_name, methods) in EXPECTED_HEADS.items():
