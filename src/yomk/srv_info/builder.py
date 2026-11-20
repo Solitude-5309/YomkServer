@@ -1,3 +1,8 @@
+from yomk.msgs.fn_pool import FuncInfoList
+from yomk.msgs.server import ResStatus
+from yomk.msgs.srv_info import ServerServiceInfoList
+from yomk.msgs.std_msg import String, StringArray
+from yomk.msgs.YomkMsg import unpack
 from yomk.server import _facade
 from yomk.url.srv_info import (
     SRV_ALL,
@@ -25,20 +30,28 @@ class SrvInfoBuilder:
         return self
 
     def services(self):
-        # 查询所有服务名称
-        return _facade.api_request(SRV_SERVICES, None)
+        # 门面 unwrap 保形：data 解包 List msg 后仍以裸 list 返回（公开面零变化）
+        res = _facade.api_request(SRV_SERVICES, None)
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, StringArray).items
+        return res
 
     def functions(self):
-        # 查询指定服务的功能函数清单（用 srv_name 累积）
-        return _facade.api_request(SRV_FUNCTIONS, self._srv_name)
+        # 查询指定服务的功能函数清单（用 srv_name 累积；入参 String 化 + unwrap 保形）
+        res = _facade.api_request(SRV_FUNCTIONS, String(self._srv_name))
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, FuncInfoList).items
+        return res
 
     def get_info(self):
-        # 查询指定功能函数元信息（用 fn_url 累积）
-        return _facade.api_request(SRV_FUNCTION, self._fn_url)
+        # 查询指定功能函数元信息（用 fn_url 累积；入参 String 化）
+        return _facade.api_request(SRV_FUNCTION, String(self._fn_url))
 
     def all(self):
-        # 查询框架全量服务及功能函数拓扑
-        return _facade.api_request(SRV_ALL, None)
+        res = _facade.api_request(SRV_ALL, None)
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, ServerServiceInfoList).items
+        return res
 
 
 def srv_info():

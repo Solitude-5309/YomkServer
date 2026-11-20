@@ -43,6 +43,7 @@ import sys
 import threading
 
 from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.std_msg import String
 from yomk.msgs.fn_pool import FuncInfo
 from yomk.msgs.srv_info import ServerServiceInfo
 from yomk.server import YomkServer, YomkService, server
@@ -65,7 +66,7 @@ def name_in(names, srv_name):
     return srv_name in names
 
 def unpack_string_array(resp):
-    # 仅 /services 的 data 为 list[str]
+    # srv_info().services() 门面已 unwrap（闭环 3 List msg 在端点边界），data 为裸 list[str]
     if resp.status != ResStatus.eOk or resp.data is None:
         return []
     return list(resp.data)
@@ -110,7 +111,7 @@ class FmtSrv(YomkService):
     # /echo 四参安装（msg_name "String"，附函数说明）
     def init(self):
         self.install_func("/ping", self.ping)
-        self.install_func("/echo", self.echo, "String",
+        self.install_func("/echo", self.echo, String.kName,
                           "echo demo description")
         return 0
 
@@ -151,13 +152,13 @@ def main():
     check(r.status == ResStatus.eNo and r.msg == "server has been destroyed",
           "/services server destroyed: eNo + 契约消息: " + r.msg)
 
-    # /functions 先做空名校验，须传非空 srvName 越过前置校验到达判活失败点
-    r = info.invoke("/functions", "/Any")
+    # /functions 先做 unpack 校验，须传非空 String 越过前置校验到达判活失败点
+    r = info.invoke("/functions", String("/Any"))
     check(r.status == ResStatus.eNo and r.msg == "server has been destroyed",
           "/functions server destroyed: eNo + 契约消息")
 
-    # /function 先做 URL 解析校验，须传合法 url 越过前置校验到达判活失败点
-    r = info.invoke("/function", "/Any/f")
+    # /function 先做 unpack 与 URL 解析校验，须传合法 String url 越过前置校验
+    r = info.invoke("/function", String("/Any/f"))
     check(r.status == ResStatus.eNo and r.msg == "server has been destroyed",
           "/function server destroyed: eNo + 契约消息")
 
@@ -208,8 +209,8 @@ def main():
     funcs = unpack_func_info_list(resp)
     check(len(funcs) == 2, f"FmtSrv 恰 2 个功能函数: {len(funcs)}")
     check(find_func(funcs, "/echo") is not None and
-          find_func(funcs, "/echo").msg_name == "String",
-          "四参安装元数据 \"/echo\" msg_name == \"String\"")
+          find_func(funcs, "/echo").msg_name == "yomk.msgs.String",
+          "四参安装元数据 \"/echo\" msg_name == String.kName（全限定）")
     check(find_func(funcs, "/ping") is not None and
           find_func(funcs, "/ping").msg_name == "",
           "两参安装元数据 \"/ping\" msg_name 为空")
@@ -226,18 +227,18 @@ def main():
     ctx_funcs = unpack_func_info_list(ctx)
     check(ctx.status == ResStatus.eOk and
           find_func(ctx_funcs, "/create") is not None and
-          find_func(ctx_funcs, "/create").msg_name == "Context",
-          "内置 /YomkContext 含 \"/create\" 且 msg_name == \"Context\"")
+          find_func(ctx_funcs, "/create").msg_name == "yomk.msgs.ctx.Context",
+          "内置 /YomkContext 含 \"/create\" 且 msg_name == Context.kName（全限定）")
     check(find_func(ctx_funcs, "/keys") is not None and
-          find_func(ctx_funcs, "/keys").msg_name == "",
-          "内置 /YomkContext 无类型端点 \"/keys\"")
+          find_func(ctx_funcs, "/keys").msg_name == "yomk.msgs.String",
+          "内置 /YomkContext \"/keys\" 闭环 3 补声明 String.kName")
 
     self_resp = srv_info().srv_name("/YomkServerInfo").functions()
     self_funcs = unpack_func_info_list(self_resp)
     check(self_resp.status == ResStatus.eOk and len(self_funcs) == 4,
           "/YomkServerInfo 自身恰 4 个端点")
     check(find_func(self_funcs, "/function") is not None and
-          find_func(self_funcs, "/function").msg_name == "String" and
+          find_func(self_funcs, "/function").msg_name == "yomk.msgs.String" and
           find_func(self_funcs, "/all") is not None,
           "自身清单含带类型与无类型两种端点")
 
@@ -249,7 +250,7 @@ def main():
     check(isinstance(hit_typed.data, FuncInfo),
           "命中四参函数：数据为 FuncInfo 包")
     check(hit_typed.data is not None and hit_typed.data.func_name == "/echo"
-          and hit_typed.data.msg_name == "String",
+          and hit_typed.data.msg_name == "yomk.msgs.String",
           "命中四参函数字段 func_name/msg_name 一致")
     check(hit_typed.data is not None and hit_typed.data.description == "echo demo description",
           "四参函数 description 承载函数说明")
@@ -286,8 +287,8 @@ def main():
 
     null_pkg = server().url("/YomkServerInfo/function").request()
     check(null_pkg.status == ResStatus.eNo
-          and null_pkg.msg == "pkg is not String, got 'NoneType'",
-          "null pkg 返回 eNo + unpack 契约消息（NoneType）")
+          and null_pkg.msg == "pkg is not yomk.msgs.String, got 'null'",
+          "null pkg 返回 eNo + unpack 契约消息（体系外对象报 null）")
 
     # ============ S4. /all ============
     print("===== S4. /all 端点 =====")
@@ -303,7 +304,7 @@ def main():
     fmt = find_service_info(all_list, "/FmtSrv")
     check(fmt is not None, "/all 含 FmtSrv 服务条目")
     check(fmt is not None and len(fmt.funcs) == 2 and
-          fmt.funcs[0].func_name == "/echo" and fmt.funcs[0].msg_name == "String" and
+          fmt.funcs[0].func_name == "/echo" and fmt.funcs[0].msg_name == "yomk.msgs.String" and
           fmt.funcs[1].func_name == "/ping" and fmt.funcs[1].msg_name == "",
           "FmtSrv 段：/echo [String] 与 /ping 字段齐全（字典序）")
 
@@ -313,7 +314,7 @@ def main():
     check(find_func_info(self_srv, "/services") is not None,
           "内置段含 \"/services\" 条目")
     check(find_func_info(self_srv, "/functions") is not None and
-          find_func_info(self_srv, "/functions").msg_name == "String",
+          find_func_info(self_srv, "/functions").msg_name == "yomk.msgs.String",
           "内置段含 \"/functions\" 条目且 msg_name == \"String\"")
     check(find_func_info(self_srv, "/all") is not None,
           "内置段含 \"/all\" 条目")
@@ -403,7 +404,7 @@ def main():
     check(long_funcs.status == ResStatus.eOk and len(long_func_list) == 2,
           "超长名服务 /functions 返回 2 条")
     check(find_func(long_func_list, "/echo") is not None and
-          find_func(long_func_list, "/echo").msg_name == "String" and
+          find_func(long_func_list, "/echo").msg_name == "yomk.msgs.String" and
           find_func(long_func_list, "/ping") is not None,
           "超长名下函数元数据字段完整")
 
@@ -417,7 +418,7 @@ def main():
     check(long_srv is not None, "/all 含超长服务名条目（无截断）")
     check(long_srv is not None and len(long_srv.funcs) == 2 and
           long_srv.funcs[0].func_name == "/echo" and
-          long_srv.funcs[0].msg_name == "String" and
+          long_srv.funcs[0].msg_name == "yomk.msgs.String" and
           long_srv.funcs[1].func_name == "/ping",
           "/all 超长条目函数字段完整（echo [String] 与 ping，无截断）")
 

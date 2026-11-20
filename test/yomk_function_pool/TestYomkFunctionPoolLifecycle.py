@@ -273,17 +273,21 @@ check(r == ResStatus.eOk, "UNREGISTER 超长函数名返回 eOk")
 
 # ============ Section 9: 载荷类型错配契约（裸链误用 → Failed Response，不再抛 TypeError） ============
 r = raw_fn("register", "not_a_Function")
-check(r.status == ResStatus.eNo and r.msg == "pkg is not Function, got 'str'",
-      "REGISTER 非 Function 载荷返回 eNo + pkg is not Function, got 'str'")
+check(r.status == ResStatus.eNo
+      and r.msg == "pkg is not yomk.msgs.fn_pool.Function, got 'null'",
+      "REGISTER 非 Function 载荷返回 eNo + got 侧体系外对象报 null（kName 契约）")
 r = raw_fn("call", 123)
-check(r.status == ResStatus.eNo and r.msg == "pkg is not CallFunction, got 'int'",
-      "CALL 非 CallFunction 载荷返回 eNo + pkg is not CallFunction, got 'int'")
+check(r.status == ResStatus.eNo
+      and r.msg == "pkg is not yomk.msgs.fn_pool.CallFunction, got 'null'",
+      "CALL 非 CallFunction 载荷返回 eNo + got 侧体系外对象报 null（kName 契约）")
 r = raw_fn("unregister", 123)
-check(r.status == ResStatus.eNo and r.msg == "pkg is not String, got 'int'",
-      "UNREGISTER 非 String 载荷返回 eNo + pkg is not String, got 'int'")
+check(r.status == ResStatus.eNo
+      and r.msg == "pkg is not yomk.msgs.String, got 'null'",
+      "UNREGISTER 非 String 载荷返回 eNo + got 侧体系外对象报 null（kName 契约）")
 r = raw_fn("name", ["x"])
-check(r.status == ResStatus.eNo and r.msg == "pkg is not String, got 'list'",
-      "INFO_NAME 非 String 载荷返回 eNo + pkg is not String, got 'list'")
+check(r.status == ResStatus.eNo
+      and r.msg == "pkg is not yomk.msgs.String, got 'null'",
+      "INFO_NAME 非 String 载荷返回 eNo + got 侧体系外对象报 null（kName 契约）")
 
 # ============ 收尾清理（不污染后续测试的共享池）============
 r = fn_pool().fn_name("fp_plain").uninstall()

@@ -1,4 +1,7 @@
-from yomk.msgs.fn_pool import CallFunction, Function
+from yomk.msgs.fn_pool import CallFunction, FuncInfoList, Function
+from yomk.msgs.server import ResStatus
+from yomk.msgs.std_msg import String, StringArray
+from yomk.msgs.YomkMsg import unpack
 from yomk.server import _facade
 from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.fn_pool import (FP_ALL, FP_CALL, FP_NAME, FP_NAMES,
@@ -43,21 +46,28 @@ class FnPoolBuilder:
 
     def uninstall(self):
         return _facade.chain_status(
-            _facade.api_request(FP_UNREGISTER, self._name))
+            _facade.api_request(FP_UNREGISTER, String(self._name)))
 
     def call(self):
         # 阻塞调用已注册函数
         return _facade.api_request(FP_CALL, CallFunction(self._name, self._pkg))
 
     def list(self):
-        return _facade.api_request(FP_NAMES, None)
+        # 门面 unwrap 保形（返回裸 list 函数名，公开面零变化）
+        res = _facade.api_request(FP_NAMES, None)
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, StringArray).items
+        return res
 
     def get_info(self):
-        # 查询单个已注册函数元信息（用 fn_name 累积）
-        return _facade.api_request(FP_NAME, self._name)
+        # 查询单个已注册函数元信息（用 fn_name 累积；入参 String 化）
+        return _facade.api_request(FP_NAME, String(self._name))
 
     def all(self):
-        return _facade.api_request(FP_ALL, None)
+        res = _facade.api_request(FP_ALL, None)
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, FuncInfoList).items
+        return res
 
 
 def fn_pool():

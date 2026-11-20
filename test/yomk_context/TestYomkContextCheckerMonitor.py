@@ -37,6 +37,7 @@ import time
 
 from yomk.msgs.server import ResStatus
 from yomk.msgs.ctx import CheckStatus, Context, ContextChecker, ContextMonitor
+from yomk.msgs.std_msg import String
 from yomk.server import server
 from yomk.ctx import ctx
 
@@ -121,11 +122,11 @@ def main():
     check(resp.msg == "set checker success", "set_checker 成功消息一致")
 
     # ============ Section 2: checker 开关 ============
-    resp = raw_ctx("turn_on_checker", "main")
+    resp = raw_ctx("turn_on_checker", String("main"))
     check(resp.status == ResStatus.eOk, "turn_on_checker 返回 eOk")
     check(resp.msg == "turn on checker success", "turn_on_checker 消息一致")
 
-    resp = raw_ctx("turn_off_checker", "main")
+    resp = raw_ctx("turn_off_checker", String("main"))
     check(resp.status == ResStatus.eOk, "turn_off_checker 返回 eOk")
     check(resp.msg == "turn off checker success", "turn_off_checker 消息一致")
 
@@ -197,11 +198,11 @@ def main():
     check(resp.msg == "set context monitor success", "set_monitor 成功消息一致")
 
     # ============ Section 7: monitor 开关 ============
-    resp = raw_ctx("turn_on_monitor", "main")
+    resp = raw_ctx("turn_on_monitor", String("main"))
     check(resp.status == ResStatus.eOk, "turn_on_monitor 返回 eOk")
     check(resp.msg == "turn on monitor success", "turn_on_monitor 消息一致")
 
-    resp = raw_ctx("turn_off_monitor", "main")
+    resp = raw_ctx("turn_off_monitor", String("main"))
     check(resp.status == ResStatus.eOk, "turn_off_monitor 返回 eOk")
     check(resp.msg == "turn off monitor success", "turn_off_monitor 消息一致")
 

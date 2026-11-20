@@ -41,6 +41,7 @@ import sys
 import tempfile
 
 from yomk.msgs.server import ResStatus
+from yomk.msgs.std_msg import String
 from yomk.msgs.log import Log, LogFile, LoggerInfo
 from yomk.server import server as server_api
 from yomk.log import log, log_mgr
@@ -310,7 +311,7 @@ def main():
           "FILE_LOG not-found 契约消息（携带具体名）")
     no_write = log_mgr().file("lg1_never_created").flush()
     check(no_write == ResStatus.eNo, "FILE_LOG_WRITE 未创建 logger 返回 eNo")
-    check(raw_logger("/YomkLogger/write_file_log", "lg1_never_created").msg
+    check(raw_logger("/YomkLogger/write_file_log", String("lg1_never_created")).msg
           == "file logger 'lg1_never_created' not found",
           "FILE_LOG_WRITE not-found 契约消息（携带具体名）")
 
@@ -465,10 +466,11 @@ def main():
     # ============ Section 7: 异常路径（空包 / 错类型包 / 未知端点） ============
     r, out = capture(lambda: server_api().url("/YomkLogger/console_log").request())
     check(r.status == ResStatus.eNo, "console_log 空包返回 eNo")
-    check(r.msg == "pkg is not Log, got 'NoneType'", "console_log 空包契约消息")
+    check(r.msg == "pkg is not yomk.msgs.log.Log, got 'null'", "console_log 空包契约消息")
     r = server_api().url("/YomkLogger/console_log").msg("wrong").request()
     check(r.status == ResStatus.eNo, "console_log 错类型包返回 eNo")
-    check(r.msg == "pkg is not Log, got 'str'", "console_log 错类型包契约消息")
+    check(r.msg == "pkg is not yomk.msgs.log.Log, got 'null'",
+          "console_log 错类型包契约消息")
     check(server_api().url("/YomkLogger/file_log").request().status == ResStatus.eNo,
           "file_log 空包返回 eNo")
     check(server_api().url("/YomkLogger/write_file_log").request().status == ResStatus.eNo,
@@ -503,12 +505,12 @@ def main():
 
     # ============ Section 8: logger 删除接口（/delete_logger 全语义） ============
     # 8.1 空名 -> eInvalid（与 createFileLogger 的空名惯例同口径）
-    r, out = capture(lambda: raw_logger("/YomkLogger/delete_logger", ""))
+    r, out = capture(lambda: raw_logger("/YomkLogger/delete_logger", String("")))
     check(r.status == ResStatus.eInvalid and r.msg == "logger name is empty",
           "S8: 删除空名返回 eInvalid + 契约消息")
 
     # 8.2 两表均未命中 -> eNo + not-found 契约消息
-    r, out = capture(lambda: raw_logger("/YomkLogger/delete_logger", "lg1_s8_never_created"))
+    r, out = capture(lambda: raw_logger("/YomkLogger/delete_logger", String("lg1_s8_never_created")))
     check(r.status == ResStatus.eNo
           and r.msg == "logger 'lg1_s8_never_created' not found",
           "S8: 删除未注册 logger 返回 eNo + not-found 契约消息（携带具体名）")
@@ -519,7 +521,7 @@ def main():
     check(r == ResStatus.eOk, "S8: console-only 预热创建 eOk")
     check(log_mgr().console(name).get_info().status ==
           ResStatus.eOk, "S8: 创建后单查命中 eOk")
-    r, _ = capture(lambda: raw_logger("/YomkLogger/delete_logger", name))
+    r, _ = capture(lambda: raw_logger("/YomkLogger/delete_logger", String(name)))
     check(r.status == ResStatus.eOk and r.msg == "deleted console:1 file:0",
           f"S8: console-only 删除 eOk + msg 计数: {r.msg}")
     check(log_mgr().console(name).get_info().status ==
@@ -545,7 +547,7 @@ def main():
     # 前置对照：未 flush 前 init 建的空文件仍为空
     content_before = read_file(os.path.join(dir84, name + ".log"))
     check(content_before == "", "S8: 删除前未 flush，文件仍为空")
-    r, _ = capture(lambda: raw_logger("/YomkLogger/delete_logger", name))
+    r, _ = capture(lambda: raw_logger("/YomkLogger/delete_logger", String(name)))
     check(r.status == ResStatus.eOk and r.msg == "deleted console:0 file:1",
           f"S8: file-only 删除 eOk + msg 计数: {r.msg}")
     content = read_file(os.path.join(dir84, name + ".log"))
@@ -563,13 +565,13 @@ def main():
     check(r == ResStatus.eOk, "S8: 双表用例 console 侧创建 eOk")
     check(log_mgr().dir(dir85).file(name).create() ==
           ResStatus.eOk, "S8: 双表用例 file 侧创建 eOk")
-    r, _ = capture(lambda: raw_logger("/YomkLogger/delete_logger", name))
+    r, _ = capture(lambda: raw_logger("/YomkLogger/delete_logger", String(name)))
     check(r.status == ResStatus.eOk and r.msg == "deleted console:1 file:1",
           f"S8: 同名双表一次删除 eOk + msg 计数: {r.msg}")
     check(log_mgr().console(name).get_info().status == ResStatus.eNo and
           log_mgr().file(name).get_info().status == ResStatus.eNo,
           "S8: 双表删除后按类型单查均 eNo（两表均已清理）")
-    r, out2 = capture(lambda: raw_logger("/YomkLogger/delete_logger", name))
+    r, out2 = capture(lambda: raw_logger("/YomkLogger/delete_logger", String(name)))
     check(r.status == ResStatus.eNo
           and r.msg == "logger 'lg1_s8_both_tables' not found",
           "S8: 重复删除返回 eNo（幂等）+ not-found 契约消息（携带具体名）")
@@ -618,12 +620,13 @@ def main():
 
     # 8.7 异常路径：空包 / 错类型包（YomkUnPackPkgResponse 契约分支）
     r_null = server_api().url("/YomkLogger/delete_logger").request()
-    check(r_null.status == ResStatus.eNo and r_null.msg == "pkg is not String, got 'NoneType'",
+    check(r_null.status == ResStatus.eNo and r_null.msg == "pkg is not yomk.msgs.String, got 'null'",
           "S8: delete_logger 空包返回 eNo + 契约消息")
     r_wrong = raw_logger(
         "/YomkLogger/delete_logger", Log(Log.eInfo, "x", "y"))
-    check(r_wrong.status == ResStatus.eNo and r_wrong.msg == "pkg is not String, got 'Log'",
-          "S8: delete_logger 错类型包（Log）返回 eNo + 契约消息")
+    check(r_wrong.status == ResStatus.eNo
+          and r_wrong.msg == "pkg is not yomk.msgs.String, got 'yomk.msgs.log.Log'",
+          "S8: delete_logger 错类型包（Log）返回 eNo + 契约消息（got 报 Log 的 kName）")
 
     # ============ Section 9: 服务级具名开关与全局态端点（两级主闸并联） ============
     tag_a = "lg1_s9_tagA"

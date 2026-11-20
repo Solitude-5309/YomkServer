@@ -1,7 +1,10 @@
 import sys
 
 from yomk.log import _logSourceLoc  # 私有子模块（U-12 后包根 __init__ 不再显式携带，靠包内子模块回退解析）
+from yomk.msgs.std_msg import String, StringArray
+from yomk.msgs.YomkMsg import unpack
 from yomk.msgs.log import (
+    LoggerInfoList,
     ConsoleLogProxy,
     FileLogProxy,
     Log,
@@ -161,7 +164,10 @@ class ConsoleMgrBuilder:
             LOG_SET_CONSOLE_PROXY, ConsoleLogProxy(self._proxy)))
 
     def list(self):
-        return _facade.api_request(LOG_LOGGERS, "console")
+        res = _facade.api_request(LOG_LOGGERS, String("console"))
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, StringArray).items
+        return res
 
     def get_info(self):
         return _facade.api_request(
@@ -202,7 +208,10 @@ class FileMgrBuilder:
             LOG_SET_FILE_LOG_PROXY, FileLogProxy(self._proxy)))
 
     def list(self):
-        return _facade.api_request(LOG_LOGGERS, "file")
+        res = _facade.api_request(LOG_LOGGERS, String("file"))
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, StringArray).items
+        return res
 
     def get_info(self):
         return _facade.api_request(
@@ -218,11 +227,11 @@ class FileMgrBuilder:
 
     def flush(self):
         return _facade.chain_status(
-            _facade.api_request(LOG_WRITE_FILE_LOG, self._name))
+            _facade.api_request(LOG_WRITE_FILE_LOG, String(self._name)))
 
     def remove(self):
         return _facade.chain_status(
-            _facade.api_request(LOG_DELETE_LOGGER, self._name))
+            _facade.api_request(LOG_DELETE_LOGGER, String(self._name)))
 
 
 class LocBuilder:
@@ -271,7 +280,10 @@ class LogMgrBuilder:
         return LocBuilder()
 
     def all(self):
-        return _facade.api_request(LOG_ALL, None)
+        res = _facade.api_request(LOG_ALL, None)
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, LoggerInfoList).items
+        return res
 
 
 def log():

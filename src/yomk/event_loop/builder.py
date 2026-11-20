@@ -1,4 +1,7 @@
-from yomk.msgs.event_loop import Event, EventLoop as EventLoopPkg, EventLoopQuery
+from yomk.msgs.event_loop import Event, EventLoop, EventLoopInfoList, EventLoopQuery
+from yomk.msgs.server import ResStatus
+from yomk.msgs.std_msg import String, StringArray
+from yomk.msgs.YomkMsg import unpack
 from yomk.server import _facade
 from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.event_loop import (
@@ -55,11 +58,11 @@ class EventLoopBuilder:
         # 同名循环不重建：复用既有实例，本次累积的 handle_fn/msg_name 不生效
         return _facade.chain_status(_facade.api_request(
             LOOP_START,
-            EventLoopPkg(self._name, self._fn, self._msg_name)))
+            EventLoop(self._name, self._fn, self._msg_name)))
 
     def stop(self):
         return _facade.chain_status(
-            _facade.api_request(LOOP_STOP, self._name))
+            _facade.api_request(LOOP_STOP, String(self._name)))
 
     def post(self):
         # 异步投递，返回入队三态
@@ -75,17 +78,25 @@ class EventLoopBuilder:
 
     def destroy(self):
         return _facade.chain_status(
-            _facade.api_request(LOOP_DESTROY, self._name))
+            _facade.api_request(LOOP_DESTROY, String(self._name)))
 
     def list(self):
-        return _facade.api_request(LOOP_LOOPS, None)
+        # 门面 unwrap 保形：eOk 时 data 解包 List msg 后仍以裸 list 返回
+        # （公开面零变化原则，闭环 3）
+        res = _facade.api_request(LOOP_LOOPS, None)
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, StringArray).items
+        return res
 
     def get_info(self):
         return _facade.api_request(
             LOOP_LOOP, EventLoopQuery(self._name, self._tag_count))
 
     def all(self):
-        return _facade.api_request(LOOP_ALL, None)
+        res = _facade.api_request(LOOP_ALL, None)
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, EventLoopInfoList).items
+        return res
 
 
 def event_loop():

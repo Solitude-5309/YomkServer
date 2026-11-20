@@ -2,8 +2,10 @@ from readerwriterlock import rwlock
 
 from yomk._diag import warn as diag_warn
 from yomk.event_loop.EventLoop import EventLoop
-from yomk.msgs.event_loop import Event, EventLoopInfo, EventLoop as EventLoopPkg, EventLoopQuery
+from yomk.msgs.event_loop import Event, EventLoopInfo, EventLoopInfoList, EventLoop as EventLoopPkg, EventLoopQuery
+from yomk.msgs.std_msg import String, StringArray, type_mismatch
 from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.YomkMsg import unpack
 from yomk.server import YomkService
 
 
@@ -19,28 +21,16 @@ class YomkEventLoop(YomkService):
         self.m_eventLoopMutex = rwlock.RWLockFair()
 
     def init(self):
-        self.install_func("/start", self.start, "EventLoop")
-        self.install_func("/stop", self.stop, "String")
-        self.install_func("/post", self.post, "Event")
-        self.install_func("/post_wait", self.post_wait, "Event")
-        self.install_func("/destroy", self.destroy, "String")
+        self.install_func("/start", self.start, EventLoopPkg.kName)
+        self.install_func("/stop", self.stop, String.kName)
+        self.install_func("/post", self.post, Event.kName)
+        self.install_func("/post_wait", self.post_wait, Event.kName)
+        self.install_func("/destroy", self.destroy, String.kName)
         # 调试内省接口，端点挂在本服务 funcMap
         self.install_func("/loops", self.loops)
-        self.install_func("/loop", self.loop_info, "EventLoopQuery")
+        self.install_func("/loop", self.loop_info, EventLoopQuery.kName)
         self.install_func("/all", self.list_all)
         return 0
-
-    @staticmethod
-    def _unpack(contract_name, expected, pkg):
-        # 裸链误用载荷：eNo + "pkg is not <X>, got '<type>'"（对齐 C++
-        # unpack 失败契约，typeOf 语言映射 type(pkg).__name__；报文型名以
-        # C++ 契约名为准（如 start 载荷报文名 EventLoop、Python 载体
-        # EventLoopPkg）；Response.msg 已携带同信息，不打诊断日志）
-        if isinstance(pkg, expected):
-            return None
-        return Response(ResStatus.eNo,
-                        "pkg is not " + contract_name
-                        + ", got '" + type(pkg).__name__ + "'")
 
     def _not_found(self, loop_name):
         # not-found 契约：WARN 携具体名 + 同串 Response（对齐 C++ stop/
@@ -50,9 +40,8 @@ class YomkEventLoop(YomkService):
                         "event loop '" + loop_name + "' does not exist")
 
     def start(self, pkg):
-        bad = self._unpack("EventLoop", EventLoopPkg, pkg)
-        if bad:
-            return bad
+        if unpack(pkg, EventLoopPkg) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, EventLoopPkg.kName))
         # 空名是合法 map 键
         with self.m_eventLoopMutex.gen_wlock():
             if pkg.m_eventLoopName in self.m_eventLoop:
@@ -67,31 +56,28 @@ class YomkEventLoop(YomkService):
             return Response(ResStatus.eOk, "event loop start success")
 
     def stop(self, pkg):
-        bad = self._unpack("String", str, pkg)
-        if bad:
-            return bad
+        if unpack(pkg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
         with self.m_eventLoopMutex.gen_rlock():
-            if pkg in self.m_eventLoop:
-                self.m_eventLoop[pkg].stop()
+            if pkg.value in self.m_eventLoop:
+                self.m_eventLoop[pkg.value].stop()
                 return Response(ResStatus.eOk, "event loop stop success")
-        return self._not_found(pkg)
+        return self._not_found(pkg.value)
 
     def destroy(self, pkg):
-        bad = self._unpack("String", str, pkg)
-        if bad:
-            return bad
+        if unpack(pkg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
         with self.m_eventLoopMutex.gen_wlock():
-            if pkg in self.m_eventLoop:
+            if pkg.value in self.m_eventLoop:
                 # 调底层 destroy（stop+清队列+释放等待者）后出表
-                self.m_eventLoop[pkg].destroy()
-                del self.m_eventLoop[pkg]
+                self.m_eventLoop[pkg.value].destroy()
+                del self.m_eventLoop[pkg.value]
                 return Response(ResStatus.eOk, "event loop destroy success")
-        return self._not_found(pkg)
+        return self._not_found(pkg.value)
 
     def post(self, pkg):
-        bad = self._unpack("Event", Event, pkg)
-        if bad:
-            return bad
+        if unpack(pkg, Event) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, Event.kName))
         with self.m_eventLoopMutex.gen_rlock():
             loop = self.m_eventLoop.get(pkg.m_eventLoopName)
             if loop is None:
@@ -107,9 +93,8 @@ class YomkEventLoop(YomkService):
             return Response(ResStatus.eOk, "event loop post success")
 
     def post_wait(self, pkg):
-        bad = self._unpack("Event", Event, pkg)
-        if bad:
-            return bad
+        if unpack(pkg, Event) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, Event.kName))
         with self.m_eventLoopMutex.gen_rlock():
             loop = self.m_eventLoop.get(pkg.m_eventLoopName)
             if loop is None:
@@ -129,14 +114,14 @@ class YomkEventLoop(YomkService):
         # 同 FunctionPool names / Context keys 内省先例）
         with self.m_eventLoopMutex.gen_rlock():
             loop_names = sorted(self.m_eventLoop.keys())
-        return Response(ResStatus.eOk, "ok", loop_names)
+        return Response(ResStatus.eOk, "ok", StringArray(loop_names))
 
     def loop_info(self, pkg):
         # 内省：单个事件循环元信息，收结构化 EventLoopQuery：unpack 失败返回
         # eNo；名称按字面量精确匹配、不做任何切分；采样数越界回退默认 3（不抛不崩）
-        bad = self._unpack("EventLoopQuery", EventLoopQuery, pkg)
-        if bad:
-            return bad
+        if unpack(pkg, EventLoopQuery) is None:
+            return Response(ResStatus.eNo,
+                            type_mismatch(pkg, EventLoopQuery.kName))
         loop_name = pkg.m_loopName
         # 归一化采样数：非 int（含 bool）或超 2^64-1 上限回退默认 3，与全量内省缺省一致
         tag_count = 3
@@ -165,7 +150,7 @@ class YomkEventLoop(YomkService):
             info = EventLoopInfo(name)
             loop.info_snapshot(info, 3)
             infos.append(info)
-        return Response(ResStatus.eOk, "ok", infos)
+        return Response(ResStatus.eOk, "ok", EventLoopInfoList(infos))
 
     def deinit(self):
         # 收尾残留 loop：写锁内快照并清表，锁外逐个 destroy

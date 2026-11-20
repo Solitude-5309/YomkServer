@@ -3,10 +3,13 @@ from yomk._diag import warn as diag_warn
 from yomk.msgs.ctx import (
     Context,
     ContextChecker,
+    ContextGroupInfoList,
     ContextGroupKey,
     ContextMonitor,
 )
 from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.std_msg import String, StringArray
+from yomk.msgs.YomkMsg import unpack
 from yomk.server import _facade
 from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.ctx import (
@@ -35,11 +38,11 @@ class GroupSwitch:
 
     def enable(self):
         url = CTX_TURN_ON_MONITOR if self._monitor else CTX_TURN_ON_CHECKER
-        return _facade.chain_status(_facade.api_request(url, self._group))
+        return _facade.chain_status(_facade.api_request(url, String(self._group)))
 
     def disable(self):
         url = CTX_TURN_OFF_MONITOR if self._monitor else CTX_TURN_OFF_CHECKER
-        return _facade.chain_status(_facade.api_request(url, self._group))
+        return _facade.chain_status(_facade.api_request(url, String(self._group)))
 
 
 class ContextValueBuilder:
@@ -168,10 +171,14 @@ class ContextBuilder:
         return None
 
     def keys(self):
+        # 入参 String 化 + 门面 unwrap 保形（返回裸 list 键名，公开面零变化）
         guard = self._require_server()
         if guard:
             return guard
-        return _facade.api_request(CTX_KEYS, self._group)
+        res = _facade.api_request(CTX_KEYS, String(self._group))
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, StringArray).items
+        return res
 
     def info(self):
         guard = self._require_server()
@@ -183,13 +190,19 @@ class ContextBuilder:
         guard = self._require_server()
         if guard:
             return guard
-        return _facade.api_request(CTX_GROUPS, None)
+        res = _facade.api_request(CTX_GROUPS, None)
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, StringArray).items
+        return res
 
     def all(self):
         guard = self._require_server()
         if guard:
             return guard
-        return _facade.api_request(CTX_ALL, None)
+        res = _facade.api_request(CTX_ALL, None)
+        if res.status == ResStatus.eOk:
+            res.data = unpack(res.data, ContextGroupInfoList).items
+        return res
 
     def msg(self, cls=None):
         # 切入读路径分面；cls 为期望类型（对齐 C++ msg<T>() kName 比对对象），
