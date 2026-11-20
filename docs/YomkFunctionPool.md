@@ -36,7 +36,7 @@ yomk::fn_pool().fn_name("calcSum")
         auto arr = yomk::msgs::unpack<yomk::msgs::Int32Array>(pkg);
         if (!arr)
             return yomk::payload::Response{yomk::payload::ResStatus::Failed,
-            std::string("pkg is not ") + yomk::msgs::Int32Array::kName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+            yomk::msgs::typeMismatch(pkg, yomk::msgs::Int32Array::kName)};
         int sum = 0;
         for (int v : arr->d) sum += v;
         return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::Int32::shared(sum)};

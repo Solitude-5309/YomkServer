@@ -37,7 +37,7 @@ yomk::payload::Response YomkServerInfo::listFunctions(YomkMsgPtr pkg)
     auto ySrvName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!ySrvName)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     if (ySrvName->d.empty())
     {
@@ -66,7 +66,7 @@ yomk::payload::Response YomkServerInfo::functionInfo(YomkMsgPtr pkg)
     auto yUrl = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yUrl)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     const std::string& url = yUrl->d;
     if (url.empty() || url[0] != '/')

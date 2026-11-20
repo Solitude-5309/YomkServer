@@ -88,7 +88,7 @@ yomk::payload::Response YomkContext::create(YomkMsgPtr pkg)
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(pkg);
     if (!context)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Context::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Context::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(context->d.group, fail);
@@ -118,7 +118,7 @@ yomk::payload::Response YomkContext::destroy(YomkMsgPtr pkg)
     auto groupKey = yomk::msgs::unpack<yomk::msgs::ContextGroupKey>(pkg);
     if (!groupKey)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::ContextGroupKey::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::ContextGroupKey::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(groupKey->d.group, fail);
@@ -146,7 +146,7 @@ yomk::payload::Response YomkContext::get(YomkMsgPtr pkg)
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(pkg);
     if (!context)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Context::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Context::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(context->d.group, fail);
@@ -174,7 +174,7 @@ yomk::payload::Response YomkContext::set(YomkMsgPtr pkg)
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(pkg);
     if (!context)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Context::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Context::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(context->d.group, fail);
@@ -203,7 +203,7 @@ yomk::payload::Response YomkContext::turnOnChecker(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -221,7 +221,7 @@ yomk::payload::Response YomkContext::turnOffChecker(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -239,7 +239,7 @@ yomk::payload::Response YomkContext::turnOnMonitor(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -257,7 +257,7 @@ yomk::payload::Response YomkContext::turnOffMonitor(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -275,7 +275,7 @@ yomk::payload::Response YomkContext::setChecker(YomkMsgPtr pkg)
     auto checker = yomk::msgs::unpack<yomk::msgs::ContextChecker>(pkg);
     if (!checker)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::ContextChecker::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::ContextChecker::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(checker->d.group, fail);
@@ -305,7 +305,7 @@ yomk::payload::Response YomkContext::setMonitor(YomkMsgPtr pkg)
     auto monitor = yomk::msgs::unpack<yomk::msgs::ContextMonitor>(pkg);
     if (!monitor)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::ContextMonitor::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::ContextMonitor::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(monitor->d.group, fail);
@@ -350,7 +350,7 @@ yomk::payload::Response YomkContext::keys(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -368,7 +368,7 @@ yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr pkg)
     auto groupKey = yomk::msgs::unpack<yomk::msgs::ContextGroupKey>(pkg);
     if (!groupKey)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::ContextGroupKey::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::ContextGroupKey::kName)};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(groupKey->d.group, fail);

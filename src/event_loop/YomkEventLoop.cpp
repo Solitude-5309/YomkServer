@@ -31,7 +31,7 @@ yomk::payload::Response YomkEventLoop::start(YomkMsgPtr pkg)
     auto eventloop = yomk::msgs::unpack<yomk::msgs::EventLoop>(pkg);
     if (!eventloop)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::EventLoop::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::EventLoop::kName)};
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(eventloop->d.eventLoopName);
@@ -54,7 +54,7 @@ yomk::payload::Response YomkEventLoop::stop(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
@@ -73,7 +73,7 @@ yomk::payload::Response YomkEventLoop::post(YomkMsgPtr pkg)
     auto event = yomk::msgs::unpack<yomk::msgs::Event>(pkg);
     if (!event)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Event::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Event::kName)};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(event->d.eventLoopName);
@@ -97,7 +97,7 @@ yomk::payload::Response YomkEventLoop::postWait(YomkMsgPtr pkg)
     auto event = yomk::msgs::unpack<yomk::msgs::Event>(pkg);
     if (!event)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Event::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Event::kName)};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(event->d.eventLoopName);
@@ -121,7 +121,7 @@ yomk::payload::Response YomkEventLoop::destroy(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
@@ -157,7 +157,7 @@ yomk::payload::Response YomkEventLoop::loopInfo(YomkMsgPtr pkg)
     auto query = yomk::msgs::unpack<yomk::msgs::EventLoopQuery>(pkg);
     if (!query)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::EventLoopQuery::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::EventLoopQuery::kName)};
     }
     // 名称按字面量精确匹配,采样数为类型化字段
     const std::string& loopName = query->d.loopName;

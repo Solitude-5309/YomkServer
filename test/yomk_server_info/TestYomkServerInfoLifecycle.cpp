@@ -177,7 +177,7 @@ public:
         auto yText = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!yText)
         {
-            return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
         }
         return {yomk::payload::ResStatus::Succeeded, yText->d};
     }

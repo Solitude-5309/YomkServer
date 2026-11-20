@@ -29,7 +29,7 @@ yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr pkg)
     auto yFunc = yomk::msgs::unpack<yomk::msgs::Function>(pkg);
     if (!yFunc)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::Function::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Function::kName)};
     }
     if (yFunc->d.funcName.empty() || yFunc->d.func == nullptr)
     {
@@ -58,7 +58,7 @@ yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr pkg)
     auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yFuncName)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     if (yFuncName->d.empty())
     {
@@ -81,7 +81,7 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
     auto yCallFunc = yomk::msgs::unpack<yomk::msgs::CallFunction>(pkg);
     if (!yCallFunc)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::CallFunction::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::CallFunction::kName)};
     }
     if (yCallFunc->d.funcName.empty())
     {
@@ -123,7 +123,7 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
     auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yFuncName)
     {
-        return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
     }
     if (yFuncName->d.empty())
     {

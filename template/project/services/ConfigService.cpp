@@ -75,7 +75,7 @@ yomk::payload::Response ConfigService::getConfig(YomkMsgPtr pkg)
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed,
-                std::string("pkg is not ") + yomk::msgs::prj::ConfigKey::kName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+                yomk::msgs::typeMismatch(pkg, yomk::msgs::prj::ConfigKey::kName)};
     }
 
     auto it = m_configMap.find(data->req.key);
@@ -93,7 +93,7 @@ yomk::payload::Response ConfigService::setConfig(YomkMsgPtr pkg)
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed,
-                std::string("pkg is not ") + yomk::msgs::prj::ConfigKeyValue::kName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+                yomk::msgs::typeMismatch(pkg, yomk::msgs::prj::ConfigKeyValue::kName)};
     }
 
     m_configMap[data->req.key] = data->req.value;

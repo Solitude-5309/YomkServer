@@ -140,7 +140,7 @@ private:
         auto data = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!data)
         {
-            return {yomk::payload::ResStatus::Failed, std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "\'"};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
         }
         return {yomk::payload::ResStatus::Succeeded, "echo:" + data->d};
     }

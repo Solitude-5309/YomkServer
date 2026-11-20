@@ -50,7 +50,7 @@ auto info = yomk::msgs::unpack<yomk::msgs::UserInfoMsg>(pkg);
 if (!info)
 {
     return {yomk::payload::ResStatus::Failed,
-        std::string("pkg is not ") + yomk::msgs::UserInfoMsg::kName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+        yomk::msgs::typeMismatch(pkg, yomk::msgs::UserInfoMsg::kName)};
 }
 return {yomk::payload::ResStatus::Succeeded, "hello " + info->d.name};
 ```

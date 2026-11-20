@@ -76,7 +76,7 @@ public:
         auto msg = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!msg)
             return {yomk::payload::ResStatus::Failed,
-            std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+            yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
         return {yomk::payload::ResStatus::Succeeded, "hello " + msg->d};
     }
 };
