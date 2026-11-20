@@ -11,7 +11,7 @@ int MotionService::init()
 {
     // 2 参注册：无消息元数据；4 参注册：声明 /move 期望 MoveCmd 并附函数说明，供自省识别
     installFunc("/echo", &MotionService::echo);
-    installFunc("/move", &MotionService::move, "MoveCmd", "运动控制：按指令运动到目标位姿并留痕");
+    installFunc("/move", &MotionService::move, yomk::msgs::MoveCmd::kName, "运动控制：按指令运动到目标位姿并留痕");
     yomk::log().tag("arm.motion").info("init: install /echo (no meta), /move [MoveCmd] + description");
     return 0;
 }

@@ -74,15 +74,15 @@ public:
 public:
     virtual int init() override
     {
-        installFunc("/echo", &DemoService::echo, "String");            // 三参：内省元数据 String
+        installFunc("/echo", &DemoService::echo, yomk::msgs::String::kName);            // 三参：内省元数据 String
         installFunc("/plain", &DemoService::plain);                  // 两参：无元数据
         // 四参注册：含函数说明；三参注册：说明缺省为空
-        installFunc("/desc", &DemoService::reinstall, "String", "demo description");  // 四参：含函数说明
-        installFunc("/desc0", &DemoService::plain, "String");          // 三参：说明缺省为空
-        installFunc("/reinstall", &DemoService::reinstall, "String");  // 先三参
+        installFunc("/desc", &DemoService::reinstall, yomk::msgs::String::kName, "demo description");  // 四参：含函数说明
+        installFunc("/desc0", &DemoService::plain, yomk::msgs::String::kName);          // 三参：说明缺省为空
+        installFunc("/reinstall", &DemoService::reinstall, yomk::msgs::String::kName);  // 先三参
         installFunc("/reinstall", &DemoService::reinstall);          // 两参覆盖：清残留信息
         installFunc("/restore", &DemoService::restore);              // 先两参
-        installFunc("/restore", &DemoService::restore, "String");      // 三参覆盖：恢复元数据
+        installFunc("/restore", &DemoService::restore, yomk::msgs::String::kName);      // 三参覆盖：恢复元数据
         return 0;
     }
 
@@ -175,18 +175,18 @@ static void testInstallFunc(DemoService* demo)
     YOMK_TEST_CHECK(!findFuncInfo(infos, "/null_func"), "空函数对象安装被拒，funcInfos 不含");
 
     // 三参元数据与覆盖安装
-    YOMK_TEST_CHECK(findFuncInfo(infos, "/echo", &msgName) && msgName == "String", "三参安装声明元数据 m_msgName == String");
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/echo", &msgName) && msgName == yomk::msgs::String::kName, "三参安装声明元数据 m_msgName == String");
     YOMK_TEST_CHECK(findFuncInfo(infos, "/plain", &msgName) && msgName.empty(), "两参安装无元数据");
     YOMK_TEST_CHECK(findFuncInfo(infos, "/reinstall", &msgName) && msgName.empty(), "两参覆盖安装清除残留信息");
-    YOMK_TEST_CHECK(findFuncInfo(infos, "/restore", &msgName) && msgName == "String", "三参覆盖安装恢复元数据");
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/restore", &msgName) && msgName == yomk::msgs::String::kName, "三参覆盖安装恢复元数据");
 
     // 四参函数说明：/desc 声明说明，/desc0 说明缺省为空
     std::string description;
     YOMK_TEST_CHECK(
-        findFuncInfo(infos, "/desc", &msgName, &description) && msgName == "String"
+        findFuncInfo(infos, "/desc", &msgName, &description) && msgName == yomk::msgs::String::kName
             && description == "demo description",
         "四参安装声明 m_msgName == String 与 m_description == demo description");
-    YOMK_TEST_CHECK(findFuncInfo(infos, "/desc0", &msgName, &description) && msgName == "String" && description.empty(),
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/desc0", &msgName, &description) && msgName == yomk::msgs::String::kName && description.empty(),
           "三参安装说明缺省 m_description 为空");
 
     // 覆盖语义：四参注册后接两参覆盖 → 类型名与说明均清除；再四参恢复
@@ -198,7 +198,7 @@ static void testInstallFunc(DemoService* demo)
                       "demo description");
     infos = demo->funcInfos();
     YOMK_TEST_CHECK(
-        findFuncInfo(infos, "/desc", &msgName, &description) && msgName == "String"
+        findFuncInfo(infos, "/desc", &msgName, &description) && msgName == yomk::msgs::String::kName
             && description == "demo description",
         "四参覆盖恢复类型名与说明");
 }

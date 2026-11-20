@@ -9,19 +9,19 @@ YomkContext::YomkContext(YomkServer* server) : YomkService(server), m_main("main
 
 int YomkContext::init()
 {
-    installFunc("/create", &YomkContext::create, "Context");
-    installFunc("/destroy", &YomkContext::destroy, "ContextGroupKey");
-    installFunc("/get", &YomkContext::get, "Context");
-    installFunc("/set", &YomkContext::set, "Context");
+    installFunc("/create", &YomkContext::create, yomk::msgs::Context::kName);
+    installFunc("/destroy", &YomkContext::destroy, yomk::msgs::ContextGroupKey::kName);
+    installFunc("/get", &YomkContext::get, yomk::msgs::Context::kName);
+    installFunc("/set", &YomkContext::set, yomk::msgs::Context::kName);
     installFunc("/turn_on_checker", &YomkContext::turnOnChecker);
     installFunc("/turn_off_checker", &YomkContext::turnOffChecker);
     installFunc("/turn_on_monitor", &YomkContext::turnOnMonitor);
     installFunc("/turn_off_monitor", &YomkContext::turnOffMonitor);
-    installFunc("/set_checker", &YomkContext::setChecker, "ContextChecker");
-    installFunc("/set_monitor", &YomkContext::setMonitor, "ContextMonitor");
+    installFunc("/set_checker", &YomkContext::setChecker, yomk::msgs::ContextChecker::kName);
+    installFunc("/set_monitor", &YomkContext::setMonitor, yomk::msgs::ContextMonitor::kName);
     installFunc("/groups", &YomkContext::groups);
     installFunc("/keys", &YomkContext::keys);
-    installFunc("/key", &YomkContext::keyInfo, "ContextGroupKey");
+    installFunc("/key", &YomkContext::keyInfo, yomk::msgs::ContextGroupKey::kName);
     installFunc("/all", &YomkContext::listAll);
     return 0;
 }

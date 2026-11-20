@@ -244,7 +244,7 @@ static void showArmToolMeta()
 
     logAction(
         "登记班次握手工具 tool.handshake（带元数据）", "install() tool.handshake (4参)",
-        [&] { return yomk::fn_pool().fn_name("tool.handshake").fn(handshake).msg_name("String").description("班次握手：向指定操作工回执问候").install(); });
+        [&] { return yomk::fn_pool().fn_name("tool.handshake").fn(handshake).msg_name(yomk::msgs::String::kName).description("班次握手：向指定操作工回执问候").install(); });
 
     logAction("查看握手工具元信息");
     yomk::payload::Response resp = yomk::fn_pool().fn_name("tool.handshake").get_info();
@@ -304,7 +304,7 @@ static void showArmToolHotSwap()
 
     logAction(
         "热替换班次握手工具 tool.handshake（V2）", "install() tool.handshake (V2, 3参)",
-        [&] { return yomk::fn_pool().fn_name("tool.handshake").fn(handshakeV2).msg_name("String").install(); });
+        [&] { return yomk::fn_pool().fn_name("tool.handshake").fn(handshakeV2).msg_name(yomk::msgs::String::kName).install(); });
     logVerify("already exist 提示 + ResStatus::Succeeded：同名重复注册即运行时热替换，无需先注销");
 
     logAction("复查握手工具元信息");

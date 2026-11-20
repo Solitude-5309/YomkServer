@@ -14,8 +14,8 @@ YomkServerInfo::YomkServerInfo(YomkServer* server) : YomkService(server)
 int YomkServerInfo::init()
 {
     installFunc("/services", &YomkServerInfo::listServices);
-    installFunc("/functions", &YomkServerInfo::listFunctions, "String");
-    installFunc("/function", &YomkServerInfo::functionInfo, "String");
+    installFunc("/functions", &YomkServerInfo::listFunctions, yomk::msgs::String::kName);
+    installFunc("/function", &YomkServerInfo::functionInfo, yomk::msgs::String::kName);
     installFunc("/all", &YomkServerInfo::listAll);
     return 0;
 }

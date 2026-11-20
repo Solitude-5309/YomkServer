@@ -243,23 +243,23 @@ int main()
 
         // 3 参：声明期望消息类型名，get_info() 显示 [类型]
         YOMK_TEST_CHECK(
-            yomk::fn_pool().fn_name("fp_three").fn(echoFunc).msg_name("String").install() == yomk::payload::ResStatus::Succeeded,
+            yomk::fn_pool().fn_name("fp_three").fn(echoFunc).msg_name(yomk::msgs::String::kName).install() == yomk::payload::ResStatus::Succeeded,
             "install() 3 参（String 类型）返回 ResStatus::Succeeded");
         auto threeResp = yomk::fn_pool().fn_name("fp_three").get_info();
         auto threeInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(threeResp.data);
         YOMK_TEST_CHECK(threeResp.msg == "ok" && threeInfo && threeInfo->d.funcName == "fp_three" &&
-                  threeInfo->d.msgName == "String",
+                  threeInfo->d.msgName == yomk::msgs::String::kName,
               "3 参注册 get_info() 字段 m_msgName == \"String\"");
 
         // 4 参：追加函数说明，get_info() m_msg 契约保持、说明挂数据段
-        YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_desc").fn(echoFunc).msg_name("String").description("fp description").install() == yomk::payload::ResStatus::Succeeded,
+        YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_desc").fn(echoFunc).msg_name(yomk::msgs::String::kName).description("fp description").install() == yomk::payload::ResStatus::Succeeded,
               "install() 4 参（String 类型 + 说明）返回 ResStatus::Succeeded");
         auto infoDesc = yomk::fn_pool().fn_name("fp_desc").get_info();
         YOMK_TEST_CHECK(infoDesc.status == yomk::payload::ResStatus::Succeeded && infoDesc.msg == "ok",
               "4 参注册 get_info() 命中 m_msg 恒为 ok");
         auto descInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(infoDesc.data);
         YOMK_TEST_CHECK(descInfo != nullptr, "4 参注册 get_info() 结构化包恒挂");
-        YOMK_TEST_CHECK(descInfo && descInfo->d.funcName == "fp_desc" && descInfo->d.msgName == "String",
+        YOMK_TEST_CHECK(descInfo && descInfo->d.funcName == "fp_desc" && descInfo->d.msgName == yomk::msgs::String::kName,
               "4 参注册字段 m_funcName/m_msgName 一致");
         YOMK_TEST_CHECK(descInfo && descInfo->d.description == "fp description", "字段 m_description 承载函数说明");
         auto threeData = yomk::fn_pool().fn_name("fp_three").get_info();

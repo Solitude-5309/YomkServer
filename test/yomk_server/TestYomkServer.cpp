@@ -116,8 +116,8 @@ public:
         {
             return g_initRet;  // 既有回滚路径：init 返回非 0
         }
-        installFunc("/ping", &RouteSrv::ping, "String");
-        installFunc("/echo", &RouteSrv::echo, "String");
+        installFunc("/ping", &RouteSrv::ping, yomk::msgs::String::kName);
+        installFunc("/echo", &RouteSrv::echo, yomk::msgs::String::kName);
         // 存弱绑定回调至全局：服务删除后仍可从外部调用，验证删除即停端到端
         g_weakCb = weakFunc(&RouteSrv::ping);
         return 0;
@@ -336,8 +336,8 @@ static void testIntrospection()
     auto infos = server->serviceFuncInfos("/RouteSrv");
     YOMK_TEST_CHECK(infos.count("/ping") == 1 && infos.count("/echo") == 1, "serviceFuncInfos 命中 /ping 与 /echo");
     YOMK_TEST_CHECK(
-        infos["/ping"].funcName == "/ping" && infos["/ping"].msgName == "String" &&
-            infos["/echo"].msgName == "String",
+        infos["/ping"].funcName == "/ping" && infos["/ping"].msgName == yomk::msgs::String::kName &&
+            infos["/echo"].msgName == yomk::msgs::String::kName,
         "serviceFuncInfos 元数据正确（m_funcName/m_msgName）");
     YOMK_TEST_CHECK(server->serviceFuncInfos("/NoSuch").empty(), "serviceFuncInfos 不存在服务返回空表");
 

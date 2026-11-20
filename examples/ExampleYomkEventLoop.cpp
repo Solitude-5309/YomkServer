@@ -243,7 +243,7 @@ static void showArmLineStart()
         "msg_name 仅作内省元数据；对已存在名称再次 start() 是幂等重启。");
 
     logAction(
-        "启动运动指令循环", "loop(motionLoop).start()", [&] { return yomk::event_loop().loop("motionLoop").handle_fn(motionHandle).msg_name("String").start(); });
+        "启动运动指令循环", "loop(motionLoop).start()", [&] { return yomk::event_loop().loop("motionLoop").handle_fn(motionHandle).msg_name(yomk::msgs::String::kName).start(); });
 
     logAction("查看循环运行状态");
     yomk::payload::Response resp = yomk::event_loop().loop("motionLoop").get_info();
@@ -257,7 +257,7 @@ static void showArmLineStart()
 
     // 重复启动同名循环：幂等重启，不报错也不影响线程与队列
     logAction(
-        "重复启动同名循环", "loop(motionLoop).start()（重复）", [&] { return yomk::event_loop().loop("motionLoop").handle_fn(motionHandle).msg_name("String").start(); });
+        "重复启动同名循环", "loop(motionLoop).start()（重复）", [&] { return yomk::event_loop().loop("motionLoop").handle_fn(motionHandle).msg_name(yomk::msgs::String::kName).start(); });
     logVerify("对已存在名称再次 start() -> ResStatus::Succeeded：幂等重启，线程与队列不受影响");
 }
 
@@ -403,7 +403,7 @@ static void showArmLinePause()
         "停止态投递被拒", "POST motionLoop (已停止)", [&] { return yomk::event_loop().msg(yomk::msgs::String::shared("rejected")).loop("motionLoop").post(); });
     logVerify("停止后投递 -> ResStatus::Failed(event loop not running, post rejected)：循环未运行不接收新事件");
 
-    logAction("恢复运行（续跑）", "loop(motionLoop).start()（续跑）", [&] { return yomk::event_loop().loop("motionLoop").handle_fn(motionHandle).msg_name("String").start(); });
+    logAction("恢复运行（续跑）", "loop(motionLoop).start()（续跑）", [&] { return yomk::event_loop().loop("motionLoop").handle_fn(motionHandle).msg_name(yomk::msgs::String::kName).start(); });
     yomk::log().tag("arm.demo").info("等待保留事件被续跑消化...");
     std::this_thread::sleep_for(std::chrono::milliseconds(600));
 

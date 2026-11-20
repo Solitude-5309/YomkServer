@@ -13,14 +13,14 @@ YomkEventLoop::YomkEventLoop(YomkServer* server) : YomkService(server)
 
 int YomkEventLoop::init()
 {
-    installFunc("/start", &YomkEventLoop::start, "EventLoop");
-    installFunc("/stop", &YomkEventLoop::stop, "String");
-    installFunc("/post", &YomkEventLoop::post, "Event");
-    installFunc("/post_wait", &YomkEventLoop::postWait, "Event");
-    installFunc("/destroy", &YomkEventLoop::destroy, "String");
+    installFunc("/start", &YomkEventLoop::start, yomk::msgs::EventLoop::kName);
+    installFunc("/stop", &YomkEventLoop::stop, yomk::msgs::String::kName);
+    installFunc("/post", &YomkEventLoop::post, yomk::msgs::Event::kName);
+    installFunc("/post_wait", &YomkEventLoop::postWait, yomk::msgs::Event::kName);
+    installFunc("/destroy", &YomkEventLoop::destroy, yomk::msgs::String::kName);
     // 调试内省接口,端点挂在本服务 funcMap
     installFunc("/loops", &YomkEventLoop::loops);
-    installFunc("/loop", &YomkEventLoop::loopInfo, "EventLoopQuery");
+    installFunc("/loop", &YomkEventLoop::loopInfo, yomk::msgs::EventLoopQuery::kName);
     installFunc("/all", &YomkEventLoop::listAll);
     return 0;
 }
