@@ -10,7 +10,7 @@
 ```
 template/extension/
 ├── src/yomk/               # 扩展源树（与框架同构：只写自己的叶子目录）
-│   ├── msg/extension/      # 消息子包（并入框架 yomk.msgs 命名空间段）
+│   ├── msgs/extension/     # 消息子包（并入框架 yomk.msgs 包）
 │   │   ├── __init__.py             #   导出 ExtensionRequest / ExtensionResponse
 │   │   ├── ExtensionMsg.py         #   消息类型定义
 │   │   └── py.typed
@@ -32,12 +32,13 @@ template/extension/
 
 ## 命名空间纪律（必须遵守）
 
-框架的 `yomk/`、`yomk/msgs/`、`yomk/url/` 三层是 **PEP 420 命名空间包**（无 `__init__.py`，
-`import yomk` 不加载任何子模块、`yomk.__file__ is None`）。第三方扩展依赖
-该机制与框架合并，因此：
+框架的 `yomk/` 与 `yomk/url/` 层是 **PEP 420 命名空间包**（无 `__init__.py`，
+`import yomk` 不加载任何子模块、`yomk.__file__ is None`）；`yomk/msgs/` 层自
+标准工具层起为常规包（有 `__init__.py`，顶层导出 YomkMsg/unpack/type_of/
+type_mismatch 与 std 类 9 个）。第三方扩展依赖包合并机制与框架共存，因此：
 
-- 扩展仓库**不得创建** `yomk/__init__.py`、`yomk/msgs/__init__.py` 或 `yomk/url/__init__.py`
-  （install.sh 安装前会做守卫检查）；
+- 扩展仓库**不得创建或覆盖** `yomk/__init__.py`、`yomk/msgs/__init__.py` 或
+  `yomk/url/__init__.py`（install.sh 安装前会做守卫检查）；
 - 只新增自己的叶子目录（本模板为 `yomk/msgs/extension/`、`yomk/extension/` 与 `yomk/url/extension/`）；
 - 扩展域的 `__init__.py` 内自带版本常量（框架各域由构建期注入
   `_version.py`，扩展可简化为普通常量）。
@@ -84,3 +85,27 @@ extension 域 builder 与框架各域同构，遵循三条 API 形态纪律：
 ```python
 server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()
 ```
+
+## 消息定义标准（必须遵守）
+
+扩展消息类**继承框架 `YomkMsg`**（`from yomk.msgs import YomkMsg`），继承即得
+运行期类型名 `kName`（自动生成全限定名如 `yomk.msgs.extension.ExtensionRequest`，
+随类重命名自动跟随，**禁止手写**）：
+
+```python
+from yomk.msgs import YomkMsg
+
+class ExtensionRequest(YomkMsg):
+    def __init__(self, payload):
+        self.payload = payload
+```
+
+三条消费规则（框架服务同规，见 `template/extension/src/yomk/extension/ExtensionService.py`）：
+
+1. **端点声明**：`install_func("/echo", self.echo, ExtensionRequest.kName)`
+   ——第三参一律传 `msg.kName`，禁止手写字面量；
+2. **端点体内精确校验**（框架不做分发校验，责任在端点作者）：
+   `if unpack(pkg, ExtensionRequest) is None: return Response(eNo, type_mismatch(pkg, ExtensionRequest.kName))`
+   ——失败文案期望/实际双侧均为 kName，零手写；
+3. **调用方构造**：`server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()`
+   ——载荷是消息类实例，裸值直发会被精确身份校验拒绝。

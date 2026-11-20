@@ -4,6 +4,9 @@ from yomk.server import YomkService
 from yomk.ctx import ctx
 from yomk.log import log
 from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.YomkMsg import unpack
+from yomk.msgs.std_msg import type_mismatch
+from msgs.YomkMsgs import ConfigKey, ConfigKeyValue
 
 
 class ConfigService(YomkService):
@@ -14,9 +17,10 @@ class ConfigService(YomkService):
         self.config_json = {}
 
     def init(self):
+        # 端点声明第三参传 msg.kName（禁止手写字面量，与框架服务同规）
         self.install_func("/load", self.load_config)
-        self.install_func("/get", self.get_config)
-        self.install_func("/set", self.set_config)
+        self.install_func("/get", self.get_config, ConfigKey.kName)
+        self.install_func("/set", self.set_config, ConfigKeyValue.kName)
         self.install_func("/reload", self.reload_config)
         self.install_func("/version", self.version)
         log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to ", self.get_name())
@@ -34,6 +38,10 @@ class ConfigService(YomkService):
         return Response(ResStatus.eOk, "ok")
 
     def get_config(self, pkg):
+        # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）；
+        # 失败文案走 type_mismatch——期望/实际双侧均为 kName，零手写报文名
+        if unpack(pkg, ConfigKey) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, ConfigKey.kName))
         tokens = pkg.key.split('.')
         current = self.config_json
         for token in tokens:
@@ -48,6 +56,9 @@ class ConfigService(YomkService):
         return Response(ResStatus.eOk, "ok", value)
 
     def set_config(self, pkg):
+        if unpack(pkg, ConfigKeyValue) is None:
+            return Response(ResStatus.eNo,
+                            type_mismatch(pkg, ConfigKeyValue.kName))
         tokens = pkg.key.split('.')
         current = self.config_json
         for token in tokens[:-1]:

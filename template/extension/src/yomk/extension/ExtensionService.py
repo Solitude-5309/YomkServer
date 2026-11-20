@@ -3,10 +3,12 @@
 # 注册（见 test/test_extension.py）；框架只拉起 5 个内置服务。
 # 调用方推荐优先使用框架封装好的统一请求接口访问本服务：
 #   server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
-from yomk.server import YomkService
+from yomk.msgs.std_msg import type_mismatch
 from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.YomkMsg import unpack
 from yomk.msgs.extension import ExtensionRequest, ExtensionResponse
 from yomk.log import log
+from yomk.server import YomkService
 
 
 class ExtensionService(YomkService):
@@ -15,17 +17,20 @@ class ExtensionService(YomkService):
         self.set_name("/ExtensionService")
 
     def init(self):
-        self.install_func("/echo", self.echo)
+        # 第三参传 msg.kName（禁止手写字面量，与框架服务同规）
+        self.install_func("/echo", self.echo, ExtensionRequest.kName)
         self.install_func("/version", self.version)
         log().tag("ExtensionService::init").info(
             "install func [ /echo /version ] to ", self.get_name())
         return 0
 
     def echo(self, pkg):
-        # 入参 pkg 为注册消息类型的实例（消息包/持有语义：框架不拷贝）；
+        # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）；
+        # 失败文案走 type_mismatch——期望/实际两侧均为 kName，零手写报文名；
         # 返回框架 Response，强类型回包以 ExtensionResponse 承载在 data 位
-        if not isinstance(pkg, ExtensionRequest):
-            return Response(ResStatus.eNo, "pkg type mismatch, ExtensionRequest expected")
+        if unpack(pkg, ExtensionRequest) is None:
+            return Response(ResStatus.eNo,
+                            type_mismatch(pkg, ExtensionRequest.kName))
         return Response(ResStatus.eOk, "echo",
                         ExtensionResponse("ok", "echo", pkg.payload))
 
