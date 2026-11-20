@@ -161,11 +161,33 @@ int MyBoot::after()
     auto description = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
     yomk::log().tag("MyBoot::after").info("config description: ", description->d);
 
+    // 内省演示：经 /YomkServerInfo 查询 ConfigService 函数清单——
+    // 不读服务源码即可获得每个端点的期望消息类型与语义描述（installFunc 第三/四参，
+    // 描述常量见 interfaces/ConfigServiceUrl.h）。agent/运维据此理解端点契约、自纠调用行为。
+    resp = yomk::srv_info().srv_name("/ConfigService").functions();
+    if (resp.status != yomk::payload::ResStatus::Succeeded)
+    {
+        yomk::log().tag("MyBoot::after").error("introspect functions failed: ", resp.msg);
+        return -1;
+    }
+    auto funcs = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(resp.data);
+    if (!funcs)
+    {
+        yomk::log().tag("MyBoot::after").error("introspect functions: unexpected data type");
+        return -1;
+    }
+    yomk::log().tag("MyBoot::after").info("---- ConfigService 内省（/functions，", funcs->d.size(), " 个端点）----");
+    for (const auto& fn : funcs->d)
+    {
+        // description 为多行语义块（Semantic/Returns/Precond/Idempotent/SideEffect/Fail），原样透出
+        yomk::log().tag("MyBoot::after").info(fn.funcName, "  期望消息: ", fn.msgName.empty() ? "(无)" : fn.msgName, "\n", fn.description);
+    }
+
     return 0;
 }
 ```
 
-### typedefine/TypeDefine.h
+> 内省消费链：`yomk::srv_info()` 需包含 `<yomk/srv_info/YomkServerInfoApi.h>`；返回的 `FuncInfoList` 逐条携带 funcName / msgName / description——description 即 installFunc 第四参的多行语义块，写端点的人填、调端点的人读，无需读源码。
 ```cpp
 #pragma once
 #include <string>

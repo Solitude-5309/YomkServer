@@ -74,7 +74,7 @@ TemplateProject
 |------|------|------|
 | 启动前 | `before()` | 创建 Context、EventLoop、注册 FunctionPool、设置日志代理等 |
 | 启动中 | `start()` | 注册并启动服务 |
-| 启动后 | `after()` | 调用服务接口做初始化、自启动任务等 |
+| 启动后 | `after()` | 调用服务接口做初始化、自启动任务等；末尾经 `yomk::srv_info()` 演示内省消费（输出 ConfigService 各端点的期望消息类型与语义描述） |
 
 ## 核心组件速查
 

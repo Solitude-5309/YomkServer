@@ -107,7 +107,7 @@ installFunc 第四参是端点的**功能语义澄清**——非强制约束，�
 - **复杂端点**（有副作用/状态变更/失败模式多样）：六字段 R"(...)" 块，字段序按消费优先级 `Semantic → Returns → Precond → Idempotent → SideEffect → Fail`（是什么/回什么/何时能调/能否重调/动什么/错了会怎样）；
 - **纯查询端点**：单行 `"Semantic: …；Returns: …"`，有失败分支时附 `Invalid=…/Failed=…`。
 
-文案必须与实现相符（依据处理函数真实分支写，不确定的分支不写）；`Fail` 按框架三态归因（Invalid=入参非法，Failed=业务未命中/冲突）。
+文案必须与实现相符（依据处理函数真实分支写，不确定的分支不写）；`Fail` 按框架三态归因（Invalid=入参非法，Failed=业务未命中/冲突）。内省数据的消费入口为 `yomk::srv_info()`，模板工程 `MyBoot::after()` 末尾提供完整消费演示（遍历 `/functions` 逐端点输出语义）。
 
 ```cpp
 // yomk/ctx/YomkContextUrl.h —— URL 与语义描述同置（自描述路由表）
