@@ -13,7 +13,7 @@ ExtensionService::ExtensionService(YomkServer* server) : YomkService(server)
 
 int ExtensionService::init()
 {
-    installFunc("/version", &ExtensionService::version, "", yomk::url::ext::versionDesc);
+    installFunc("/version", &ExtensionService::version, "", yomk::url::ext::kVersionDesc);
     yomk::log().tag("ExtensionService::init").info("install func [ /version ] to", name());
     return 0;
 }

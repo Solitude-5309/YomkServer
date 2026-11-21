@@ -3,29 +3,30 @@
 
 // /YomkLogger/* 内置服务 URL 常量:inline constexpr std::string_view 编译期常量,
 // 请求链全程 string_view 透传,调用路径零堆分配.
+// 常量名 = k + 域前缀驼峰 + 端点驼峰（kCtxCreate）；语义描述常量同名 + Desc（kCtxCreateDesc）。规范见 docs/yomk命名原则.md
 // yomk::url 为开放命名空间:用户自定义服务的 url 常量可按同风格直接追加.
 namespace yomk::url
 {
 // /YomkLogger/*
-inline constexpr std::string_view loggerSetConsoleProxy = "/YomkLogger/set_console_log_proxy";
-inline constexpr std::string_view loggerSetFileLogProxy = "/YomkLogger/set_file_log_proxy";
-inline constexpr std::string_view loggerConsoleLog = "/YomkLogger/console_log";
-inline constexpr std::string_view loggerCreateFileLogger = "/YomkLogger/create_file_logger";
-inline constexpr std::string_view loggerFileLog = "/YomkLogger/file_log";
-inline constexpr std::string_view loggerWriteFileLog = "/YomkLogger/write_file_log";
-inline constexpr std::string_view loggerDeleteLogger = "/YomkLogger/delete_logger";
-inline constexpr std::string_view loggerOnConsoleLogByLevel = "/YomkLogger/on_console_log_by_level";
-inline constexpr std::string_view loggerOffConsoleLogByLevel = "/YomkLogger/off_console_log_by_level";
-inline constexpr std::string_view loggerOnFileLogByLevel = "/YomkLogger/on_file_log_by_level";
-inline constexpr std::string_view loggerOffFileLogByLevel = "/YomkLogger/off_file_log_by_level";
-inline constexpr std::string_view loggerLoggers = "/YomkLogger/loggers";
-inline constexpr std::string_view loggerLogger = "/YomkLogger/logger";
-inline constexpr std::string_view loggerAll = "/YomkLogger/all";
-inline constexpr std::string_view loggerFileGlobalState = "/YomkLogger/file_global_state";
-inline constexpr std::string_view loggerConsoleGlobalState = "/YomkLogger/console_global_state";
+inline constexpr std::string_view kLoggerSetConsoleProxy = "/YomkLogger/set_console_log_proxy";
+inline constexpr std::string_view kLoggerSetFileLogProxy = "/YomkLogger/set_file_log_proxy";
+inline constexpr std::string_view kLoggerConsoleLog = "/YomkLogger/console_log";
+inline constexpr std::string_view kLoggerCreateFileLogger = "/YomkLogger/create_file_logger";
+inline constexpr std::string_view kLoggerFileLog = "/YomkLogger/file_log";
+inline constexpr std::string_view kLoggerWriteFileLog = "/YomkLogger/write_file_log";
+inline constexpr std::string_view kLoggerDeleteLogger = "/YomkLogger/delete_logger";
+inline constexpr std::string_view kLoggerOnConsoleLogByLevel = "/YomkLogger/on_console_log_by_level";
+inline constexpr std::string_view kLoggerOffConsoleLogByLevel = "/YomkLogger/off_console_log_by_level";
+inline constexpr std::string_view kLoggerOnFileLogByLevel = "/YomkLogger/on_file_log_by_level";
+inline constexpr std::string_view kLoggerOffFileLogByLevel = "/YomkLogger/off_file_log_by_level";
+inline constexpr std::string_view kLoggerLoggers = "/YomkLogger/loggers";
+inline constexpr std::string_view kLoggerLogger = "/YomkLogger/logger";
+inline constexpr std::string_view kLoggerAll = "/YomkLogger/all";
+inline constexpr std::string_view kLoggerFileGlobalState = "/YomkLogger/file_global_state";
+inline constexpr std::string_view kLoggerConsoleGlobalState = "/YomkLogger/console_global_state";
 
 // 语义描述常量：与上方 URL 常量按序一一对应（installFunc 第四参引用；格式惯例见 docs/YomkServer.md「内省描述惯例」）
-inline constexpr const char* loggerSetConsoleProxyDesc = R"(
+inline constexpr const char* kLoggerSetConsoleProxyDesc = R"(
 # Overview
 安装控制台输出代理：全局唯一，任意 console 日志器发射的每条记录都先过该回调。
 
@@ -41,7 +42,7 @@ data 无负载，msg "success"。
 # Notes
 代理是全局而非逐器；回调应快速返回，勿在回调内再发日志以免递归；重复安装为覆盖（幂等）；pkg 非 ConsoleLogProxy → Failed。
 )";
-inline constexpr const char* loggerSetFileLogProxyDesc = R"(
+inline constexpr const char* kLoggerSetFileLogProxyDesc = R"(
 # Overview
 安装文件输出代理：全局唯一，任意 file 日志器发射的每条记录都先过该回调。
 
@@ -57,7 +58,7 @@ data 无负载，msg "success"。
 # Notes
 代理先于日志器表查找，故拦截态下未知名日志器的记录同样被短路；与控制台代理互相独立；重复安装为覆盖（幂等）；pkg 非 FileLogProxy → Failed。
 )";
-inline constexpr const char* loggerConsoleLogDesc = R"(
+inline constexpr const char* kLoggerConsoleLogDesc = R"(
 # Overview
 写一条控制台日志：先过控制台代理，再经"全局主闸 × 逐器级别门控"两级 AND 决定是否输出到 stdout。
 
@@ -73,7 +74,7 @@ data 无负载；被代理拦截时 msg "ok"，否则 msg "success"。
 # Notes
 未知 level 回退 Info 并 WARN；控制台与文件两套代理、两套门控互相独立；pkg 非 Log → Failed。
 )";
-inline constexpr const char* loggerCreateFileLoggerDesc = R"(
+inline constexpr const char* kLoggerCreateFileLoggerDesc = R"(
 # Overview
 创建文件日志器并初始化落盘文件：注册后该名即可用于 /file_log 缓冲写入。
 
@@ -89,7 +90,7 @@ data 无负载，msg "success"。
 # Notes
 非幂等——重名创建必 Failed；Invalid=名/目录为空；Failed=重名/初始化失败；pkg 非 LogFile → Failed。
 )";
-inline constexpr const char* loggerFileLogDesc = R"(
+inline constexpr const char* kLoggerFileLogDesc = R"(
 # Overview
 向指定文件日志器缓冲写入一条日志；不落盘，需 /write_file_log 触发。
 
@@ -105,7 +106,7 @@ data 无负载；被代理拦截时 msg "ok"，否则 msg "success"。
 # Notes
 日志器不存在 → Failed；logger 为空 → Failed；pkg 非 Log → Failed。
 )";
-inline constexpr const char* loggerWriteFileLogDesc = R"(
+inline constexpr const char* kLoggerWriteFileLogDesc = R"(
 # Overview
 把指定文件日志器的内存缓冲落盘并清空缓冲。
 
@@ -121,7 +122,7 @@ data 无负载，msg "success"。
 # Notes
 日志器不存在 → Failed；落盘 I/O 在本端点调用线程内完成；pkg 非 String → Failed。
 )";
-inline constexpr const char* loggerDeleteLoggerDesc = R"(
+inline constexpr const char* kLoggerDeleteLoggerDesc = R"(
 # Overview
 删除指定名字的日志器：控制台表与文件表各删一次同名项。
 
@@ -137,7 +138,7 @@ data 无负载，msg "deleted console:<N> file:<M>"（N/M 为各表实际删除�
 # Notes
 不删除磁盘上的 .log 文件（清理归调用方）；名空 → Invalid；"main" 控制台日志器也可被删除，之后再次发日志会按名重建；pkg 非 String → Failed。
 )";
-inline constexpr const char* loggerOnConsoleLogByLevelDesc = R"(
+inline constexpr const char* kLoggerOnConsoleLogByLevelDesc = R"(
 # Overview
 打开 Log 包指定级别的控制台输出门控：logger 为空改全局主闸，非空改指定控制台日志器的逐器门控。
 
@@ -153,7 +154,7 @@ data 无负载，msg "success"（未知 level 亦返回 Succeeded，仅 WARN 留
 # Notes
 逐器路径不惰性创建，日志器不存在 → Failed；两级 AND 生效，任一级关闭即不输出；pkg 非 Log → Failed。
 )";
-inline constexpr const char* loggerOffConsoleLogByLevelDesc = R"(
+inline constexpr const char* kLoggerOffConsoleLogByLevelDesc = R"(
 # Overview
 关闭 Log 包指定级别的控制台输出门控：logger 为空改全局主闸，非空改指定控制台日志器的逐器门控。
 
@@ -169,7 +170,7 @@ data 无负载，msg "success"（未知 level 亦返回 Succeeded，仅 WARN 留
 # Notes
 逐器路径不惰性创建，日志器不存在 → Failed；两级 AND 生效，任一级关闭即不输出；pkg 非 Log → Failed。
 )";
-inline constexpr const char* loggerOnFileLogByLevelDesc = R"(
+inline constexpr const char* kLoggerOnFileLogByLevelDesc = R"(
 # Overview
 打开 Log 包指定级别的文件输出门控：logger 为空改全局主闸，非空改指定文件日志器的逐器门控。
 
@@ -185,7 +186,7 @@ data 无负载，msg "success"（未知 level 亦返回 Succeeded，仅 WARN 留
 # Notes
 文件侧主闸与控制台侧互相独立；逐器路径不惰性创建，日志器不存在 → Failed；pkg 非 Log → Failed。
 )";
-inline constexpr const char* loggerOffFileLogByLevelDesc = R"(
+inline constexpr const char* kLoggerOffFileLogByLevelDesc = R"(
 # Overview
 关闭 Log 包指定级别的文件输出门控：logger 为空改全局主闸，非空改指定文件日志器的逐器门控。
 
@@ -201,7 +202,7 @@ data 无负载，msg "success"（未知 level 亦返回 Succeeded，仅 WARN 留
 # Notes
 文件侧主闸与控制台侧互相独立；逐器路径不惰性创建，日志器不存在 → Failed；pkg 非 Log → Failed。
 )";
-inline constexpr const char* loggerLoggersDesc = R"(
+inline constexpr const char* kLoggerLoggersDesc = R"(
 # Overview
 按类型列出日志器名清单（控制台表或文件表）。
 
@@ -217,7 +218,7 @@ data 为 StringArray 包（map 字典序），msg "ok"。
 # Notes
 其他取值 → Failed（msg 带实际类型值）；pkg 非 String → Failed。
 )";
-inline constexpr const char* loggerLoggerDesc = R"(
+inline constexpr const char* kLoggerLoggerDesc = R"(
 # Overview
 按类型 + 名查询单日志器内省快照：逐器六级别门控态、proxyOn、文件日志器目录。
 
@@ -233,7 +234,7 @@ data 为 LoggerInfo 包（loggerName/type/dir/loggerState），msg "ok"。
 # Notes
 loggerState 六级别为逐器门控真值（非全局主闸），proxyOn 为该侧全局代理态；type 未知或名未命中 → Failed；pkg 非 LoggerQuery → Failed。
 )";
-inline constexpr const char* loggerAllDesc = R"(
+inline constexpr const char* kLoggerAllDesc = R"(
 # Overview
 全量日志器内省快照：控制台段在前、文件段在后。
 
@@ -249,7 +250,7 @@ data 为 LoggerInfoList 包（段内按 map 字典序），msg "ok"。
 # Notes
 跨两表快照非原子一致；任一侧为空时仅少该段，不返回 Failed。
 )";
-inline constexpr const char* loggerFileGlobalStateDesc = R"(
+inline constexpr const char* kLoggerFileGlobalStateDesc = R"(
 # Overview
 文件全局主闸态内省：六级别开关 + 文件代理是否已装。
 
@@ -265,7 +266,7 @@ data 为 LoggerState 包（traceOn/debugOn/infoOn/warnOn/errorOn/fatalOn/proxyOn
 # Notes
 六级别为独立 atomic，组合结果不构成原子快照（并发切换中可能读到新旧混合）；与控制台主闸互相独立。
 )";
-inline constexpr const char* loggerConsoleGlobalStateDesc = R"(
+inline constexpr const char* kLoggerConsoleGlobalStateDesc = R"(
 # Overview
 控制台全局主闸态内省：六级别开关 + 控制台代理是否已装。
 

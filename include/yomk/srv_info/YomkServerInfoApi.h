@@ -86,7 +86,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::srvServices).request();
+        return yomk::server().url(yomk::url::kSrvServices).request();
     }
     /**
      * @brief Query all functions of the service given by srv_name() (introspection read terminator)
@@ -101,7 +101,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::srvFunctions).msg(yomk::msgs::String::shared(m_srvName)).request();
+        return yomk::server().url(yomk::url::kSrvFunctions).msg(yomk::msgs::String::shared(m_srvName)).request();
     }
     /**
      * @brief Query the metadata of the function given by fn_url() (introspection read terminator)
@@ -115,7 +115,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::srvFunction).msg(yomk::msgs::String::shared(m_fnUrl)).request();
+        return yomk::server().url(yomk::url::kSrvFunction).msg(yomk::msgs::String::shared(m_fnUrl)).request();
     }
     /**
      * @brief Query the full topology of framework services and their functions (introspection read terminator)
@@ -129,7 +129,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::srvAll).request();
+        return yomk::server().url(yomk::url::kSrvAll).request();
     }
     /**
      * @brief Get the srv_info module version string

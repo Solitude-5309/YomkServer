@@ -28,11 +28,11 @@ ConfigService::ConfigService(YomkServer* server) : YomkService(server)
 int ConfigService::init()
 {
     // 安装功能函数（URL 与语义描述常量见 interfaces/ConfigServiceUrl.h）
-    installFunc("/load", &ConfigService::loadConfig, "", yomk::url::cfgLoadDesc);
-    installFunc("/get", &ConfigService::getConfig, yomk::msgs::prj::ConfigKey::kName, yomk::url::cfgGetDesc);
-    installFunc("/set", &ConfigService::setConfig, yomk::msgs::prj::ConfigKeyValue::kName, yomk::url::cfgSetDesc);
-    installFunc("/reload", &ConfigService::reloadConfig, "", yomk::url::cfgReloadDesc);
-    installFunc("/version", &ConfigService::version, "", yomk::url::cfgVersionDesc);
+    installFunc("/load", &ConfigService::loadConfig, "", yomk::url::kCfgLoadDesc);
+    installFunc("/get", &ConfigService::getConfig, yomk::msgs::prj::ConfigKey::kName, yomk::url::kCfgGetDesc);
+    installFunc("/set", &ConfigService::setConfig, yomk::msgs::prj::ConfigKeyValue::kName, yomk::url::kCfgSetDesc);
+    installFunc("/reload", &ConfigService::reloadConfig, "", yomk::url::kCfgReloadDesc);
+    installFunc("/version", &ConfigService::version, "", yomk::url::kCfgVersionDesc);
     yomk::log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to", name());
     return 0;
 }

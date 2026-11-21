@@ -225,14 +225,14 @@ template <typename... Args>
 yomk::payload::ResStatus emitConsoleLog(yomk::payload::LogLevel lv,
     const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
 {
-    return yomk::server().url(yomk::url::loggerConsoleLog).msg(yomk::msgs::Log::shared(yomk::payload::Log{lv, buildLogContent(loc, std::forward<Args>(args)...), tag, tag})).status();
+    return yomk::server().url(yomk::url::kLoggerConsoleLog).msg(yomk::msgs::Log::shared(yomk::payload::Log{lv, buildLogContent(loc, std::forward<Args>(args)...), tag, tag})).status();
 }
 // 文件 emit 核心: Log 的 name 字段为 logFile
 template <typename... Args>
 yomk::payload::ResStatus emitFileLog(yomk::payload::LogLevel lv,
     const std::string& logFile, const std::string& tag, const YomkSourceLoc& loc, Args&&... args)
 {
-    return yomk::server().url(yomk::url::loggerFileLog).msg(yomk::msgs::Log::shared(yomk::payload::Log{lv, buildLogContent(loc, std::forward<Args>(args)...), logFile, tag})).status();
+    return yomk::server().url(yomk::url::kLoggerFileLog).msg(yomk::msgs::Log::shared(yomk::payload::Log{lv, buildLogContent(loc, std::forward<Args>(args)...), logFile, tag})).status();
 }
 // 逐级别开关公共核心: console/file × on/off × 六级别共用.
 // loggerName 空 = 全局主闸; 具名 = 逐器门控, 文件路径未知名返回 ResStatus::Failed
@@ -240,8 +240,8 @@ inline yomk::payload::ResStatus setLogByLevel(
     bool console, bool on, yomk::payload::LogLevel lv, const std::string& loggerName)
 {
     std::string_view url = console
-        ? (on ? yomk::url::loggerOnConsoleLogByLevel : yomk::url::loggerOffConsoleLogByLevel)
-        : (on ? yomk::url::loggerOnFileLogByLevel : yomk::url::loggerOffFileLogByLevel);
+        ? (on ? yomk::url::kLoggerOnConsoleLogByLevel : yomk::url::kLoggerOffConsoleLogByLevel)
+        : (on ? yomk::url::kLoggerOnFileLogByLevel : yomk::url::kLoggerOffFileLogByLevel);
     return yomk::server().url(url).msg(yomk::msgs::Log::shared(yomk::payload::Log{lv, "", loggerName})).status();
 }
 
@@ -480,7 +480,7 @@ public:
     // @zh: note 与控制台代理相互独立
     yomk::payload::ResStatus apply()
     {
-        return yomk::server().url(yomk::url::loggerSetFileLogProxy).msg(yomk::msgs::FileLogProxy::shared(yomk::payload::FileLogProxy{m_proxy})).status();
+        return yomk::server().url(yomk::url::kLoggerSetFileLogProxy).msg(yomk::msgs::FileLogProxy::shared(yomk::payload::FileLogProxy{m_proxy})).status();
     }
     /**
      * @brief Query all file logger names of this type
@@ -494,7 +494,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::loggerLoggers).msg(yomk::msgs::String::shared("file")).request();
+        return yomk::server().url(yomk::url::kLoggerLoggers).msg(yomk::msgs::String::shared("file")).request();
     }
     /**
      * @brief Query the specified file logger state
@@ -510,7 +510,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::loggerLogger).msg(yomk::msgs::LoggerQuery::shared(yomk::payload::LoggerQuery{m_file, "file"})).request();
+        return yomk::server().url(yomk::url::kLoggerLogger).msg(yomk::msgs::LoggerQuery::shared(yomk::payload::LoggerQuery{m_file, "file"})).request();
     }
     /**
      * @brief Query the file global master switch state (6 levels + proxy)
@@ -524,7 +524,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::loggerFileGlobalState).request();
+        return yomk::server().url(yomk::url::kLoggerFileGlobalState).request();
     }
     /**
      * @brief Create file logger, terminates the chain (reads the dir + file accumulation)
@@ -534,7 +534,7 @@ public:
     // @zh: return 三态 ResStatus；空名/空目录返回 Invalid，同名已存在返回 Failed
     yomk::payload::ResStatus create()
     {
-        return yomk::server().url(yomk::url::loggerCreateFileLogger).msg(yomk::msgs::LogFile::shared(yomk::payload::LogFile{m_file, m_dir})).status();
+        return yomk::server().url(yomk::url::kLoggerCreateFileLogger).msg(yomk::msgs::LogFile::shared(yomk::payload::LogFile{m_file, m_dir})).status();
     }
     /**
      * @brief Flush the specified logger's buffer to disk
@@ -544,7 +544,7 @@ public:
     // @zh: return 三态 ResStatus；未知名返回 Failed
     yomk::payload::ResStatus flush()
     {
-        return yomk::server().url(yomk::url::loggerWriteFileLog).msg(yomk::msgs::String::shared(m_file)).status();
+        return yomk::server().url(yomk::url::kLoggerWriteFileLog).msg(yomk::msgs::String::shared(m_file)).status();
     }
     /**
      * @brief Remove the specified logger (does not delete the .log file on disk)
@@ -554,7 +554,7 @@ public:
     // @zh: return 三态 ResStatus；未知名返回 Failed
     yomk::payload::ResStatus remove()
     {
-        return yomk::server().url(yomk::url::loggerDeleteLogger).msg(yomk::msgs::String::shared(m_file)).status();
+        return yomk::server().url(yomk::url::kLoggerDeleteLogger).msg(yomk::msgs::String::shared(m_file)).status();
     }
 
 private:
@@ -635,7 +635,7 @@ public:
     // @zh: return 三态 ResStatus
     yomk::payload::ResStatus apply()
     {
-        return yomk::server().url(yomk::url::loggerSetConsoleProxy).msg(yomk::msgs::ConsoleLogProxy::shared(yomk::payload::ConsoleLogProxy{m_proxy})).status();
+        return yomk::server().url(yomk::url::kLoggerSetConsoleProxy).msg(yomk::msgs::ConsoleLogProxy::shared(yomk::payload::ConsoleLogProxy{m_proxy})).status();
     }
     /**
      * @brief Query all console logger names
@@ -649,7 +649,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::loggerLoggers).msg(yomk::msgs::String::shared("console")).request();
+        return yomk::server().url(yomk::url::kLoggerLoggers).msg(yomk::msgs::String::shared("console")).request();
     }
     /**
      * @brief Query the specified console logger state
@@ -665,7 +665,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::loggerLogger).msg(yomk::msgs::LoggerQuery::shared(yomk::payload::LoggerQuery{m_name, "console"})).request();
+        return yomk::server().url(yomk::url::kLoggerLogger).msg(yomk::msgs::LoggerQuery::shared(yomk::payload::LoggerQuery{m_name, "console"})).request();
     }
     /**
      * @brief Query the console global master switch state (6 levels + proxy)
@@ -679,7 +679,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::loggerConsoleGlobalState).request();
+        return yomk::server().url(yomk::url::kLoggerConsoleGlobalState).request();
     }
 };
 
@@ -825,7 +825,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::loggerAll).request();
+        return yomk::server().url(yomk::url::kLoggerAll).request();
     }
     /**
      * @brief Get the log module version string

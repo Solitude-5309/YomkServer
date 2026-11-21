@@ -1,20 +1,20 @@
 #pragma once
 
 // /ConfigService/* 工程自有服务 URL 常量：与 SDK 内置模块同风格（参考 yomk/ctx/YomkContextUrl.h），
-// URL 为 inline constexpr std::string_view 集中在前，语义描述为 inline constexpr const char* <常量名>Desc 集中在后
+// URL 为 inline constexpr std::string_view 集中在前，语义描述为 inline constexpr const char* 同名 + Desc 集中在后
 // （与 URL 按序一一对应，installFunc 第四参引用；格式惯例见 docs/YomkServer.md「内省描述惯例」）。
-// yomk::url 为开放命名空间：工程自有服务的 url 常量按同风格直接追加（自前缀 cfg 区分模块）。
+// yomk::url 为开放命名空间：工程自有服务的 url 常量按同风格直接追加（k + 自前缀 Cfg + 端点，如 kCfgLoad）。
 namespace yomk::url
 {
 // /ConfigService/*
-inline constexpr std::string_view cfgLoad = "/ConfigService/load";
-inline constexpr std::string_view cfgGet = "/ConfigService/get";
-inline constexpr std::string_view cfgSet = "/ConfigService/set";
-inline constexpr std::string_view cfgReload = "/ConfigService/reload";
-inline constexpr std::string_view cfgVersion = "/ConfigService/version";
+inline constexpr std::string_view kCfgLoad = "/ConfigService/load";
+inline constexpr std::string_view kCfgGet = "/ConfigService/get";
+inline constexpr std::string_view kCfgSet = "/ConfigService/set";
+inline constexpr std::string_view kCfgReload = "/ConfigService/reload";
+inline constexpr std::string_view kCfgVersion = "/ConfigService/version";
 
 // 语义描述常量：与上方 URL 常量按序一一对应（installFunc 第四参引用；格式惯例见 docs/YomkServer.md「内省描述惯例」）
-inline constexpr const char* cfgLoadDesc = R"(
+inline constexpr const char* kCfgLoadDesc = R"(
 # Overview
 从 Context 指定路径加载配置文件（key: value 文本），填充内存配置表。
 
@@ -30,7 +30,7 @@ data 无负载，msg "ok"。
 # Notes
 Context 无路径键或文件打不开 → Failed；同名键以文件中靠后的值为准。
 )";
-inline constexpr const char* cfgGetDesc = R"(
+inline constexpr const char* kCfgGetDesc = R"(
 # Overview
 按键查询内存配置值。
 
@@ -46,7 +46,7 @@ data 为 String 包（配置值），msg "ok"。
 # Notes
 键不存在 → Failed "key not found: <键>"；pkg 非 ConfigKey → Failed。
 )";
-inline constexpr const char* cfgSetDesc = R"(
+inline constexpr const char* kCfgSetDesc = R"(
 # Overview
 写内存配置键值；不落盘。
 
@@ -62,7 +62,7 @@ data 无负载，msg "ok"。
 # Notes
 不校验键值合法性；pkg 非 ConfigKeyValue → Failed。
 )";
-inline constexpr const char* cfgReloadDesc = R"(
+inline constexpr const char* kCfgReloadDesc = R"(
 # Overview
 清空内存配置表并重新加载配置文件。
 
@@ -78,7 +78,7 @@ data 无负载，msg "ok"。
 # Notes
 清空后加载失败 → Failed 且内存表为空（不保留旧值）。
 )";
-inline constexpr const char* cfgVersionDesc = R"(
+inline constexpr const char* kCfgVersionDesc = R"(
 # Overview
 返回工程版本号。
 

@@ -145,7 +145,7 @@ public:
             return m_default;
         }
         yomk::payload::Response response =
-            yomk::server().url(yomk::url::ctxGet).msg(yomk::msgs::Context::shared(yomk::payload::Context{std::string(m_key), m_default, std::string(m_group)})).request();
+            yomk::server().url(yomk::url::kCtxGet).msg(yomk::msgs::Context::shared(yomk::payload::Context{std::string(m_key), m_default, std::string(m_group)})).request();
         if (response.status == yomk::payload::ResStatus::Succeeded)
         {
             std::shared_ptr<T> ctxData = nullptr;
@@ -196,7 +196,7 @@ public:
     // @zh: return 三态 ResStatus
     yomk::payload::ResStatus enable()
     {
-        return yomk::server().url(m_monitor ? yomk::url::ctxTurnOnMonitor : yomk::url::ctxTurnOnChecker).msg(yomk::msgs::String::shared(std::string(m_group))).status();
+        return yomk::server().url(m_monitor ? yomk::url::kCtxTurnOnMonitor : yomk::url::kCtxTurnOnChecker).msg(yomk::msgs::String::shared(std::string(m_group))).status();
     }
     /**
      * @brief Turn off the group-level switch (checker gating or change monitor, decided by the facet)
@@ -206,7 +206,7 @@ public:
     // @zh: return 三态 ResStatus
     yomk::payload::ResStatus disable()
     {
-        return yomk::server().url(m_monitor ? yomk::url::ctxTurnOffMonitor : yomk::url::ctxTurnOffChecker).msg(yomk::msgs::String::shared(std::string(m_group))).status();
+        return yomk::server().url(m_monitor ? yomk::url::kCtxTurnOffMonitor : yomk::url::kCtxTurnOffChecker).msg(yomk::msgs::String::shared(std::string(m_group))).status();
     }
 };
 
@@ -282,7 +282,7 @@ public:
     // @zh: return 三态 ResStatus；key 空 / value 空 / key 已存在均失败
     yomk::payload::ResStatus create()
     {
-        return yomk::server().url(yomk::url::ctxCreate).msg(yomk::msgs::Context::shared(yomk::payload::Context{std::string(m_key), m_value, std::string(m_group)})).status();
+        return yomk::server().url(yomk::url::kCtxCreate).msg(yomk::msgs::Context::shared(yomk::payload::Context{std::string(m_key), m_value, std::string(m_group)})).status();
     }
     /**
      * @brief Replace the whole context value terminator
@@ -292,7 +292,7 @@ public:
     // @zh: return 三态 ResStatus；key 不存在 / value 空 / 类型不匹配 / checker 拒绝均失败
     yomk::payload::ResStatus set()
     {
-        return yomk::server().url(yomk::url::ctxSet).msg(yomk::msgs::Context::shared(yomk::payload::Context{std::string(m_key), m_value, std::string(m_group)})).status();
+        return yomk::server().url(yomk::url::kCtxSet).msg(yomk::msgs::Context::shared(yomk::payload::Context{std::string(m_key), m_value, std::string(m_group)})).status();
     }
     /**
      * @brief Destroy the specified context key terminator
@@ -302,7 +302,7 @@ public:
     // @zh: return 三态 ResStatus；key 不存在失败
     yomk::payload::ResStatus destroy()
     {
-        return yomk::server().url(yomk::url::ctxDestroy).msg(yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{std::string(m_group), std::string(m_key)})).status();
+        return yomk::server().url(yomk::url::kCtxDestroy).msg(yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{std::string(m_group), std::string(m_key)})).status();
     }
     // —— 键级回调: checker_fn/monitor_fn 累积回调, async 累积通知形态, apply() 无参终结派发 ——
     // 命名 _fn 后缀与组级开关分面 .checker()/.monitor() 按名字分层(不靠参数区分重载)
@@ -362,9 +362,9 @@ public:
         switch (m_cbKind)
         {
         case CallbackKind::Checker:
-            return yomk::server().url(yomk::url::ctxSetChecker).msg(yomk::msgs::ContextChecker::shared(yomk::payload::ContextChecker{std::string(m_key), m_checker, std::string(m_group)})).status();
+            return yomk::server().url(yomk::url::kCtxSetChecker).msg(yomk::msgs::ContextChecker::shared(yomk::payload::ContextChecker{std::string(m_key), m_checker, std::string(m_group)})).status();
         case CallbackKind::Monitor:
-            return yomk::server().url(yomk::url::ctxSetMonitor).msg(yomk::msgs::ContextMonitor::shared(yomk::payload::ContextMonitor{std::string(m_key), m_monitor, m_asyncMonitor, std::string(m_group)})).status();
+            return yomk::server().url(yomk::url::kCtxSetMonitor).msg(yomk::msgs::ContextMonitor::shared(yomk::payload::ContextMonitor{std::string(m_key), m_monitor, m_asyncMonitor, std::string(m_group)})).status();
         case CallbackKind::None:
         default:
             YOMK_DIAG_ERROR("apply: no checker/monitor accumulated");
@@ -404,7 +404,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::ctxKeys).msg(yomk::msgs::String::shared(std::string(m_group))).request();
+        return yomk::server().url(yomk::url::kCtxKeys).msg(yomk::msgs::String::shared(std::string(m_group))).request();
     }
     /**
      * @brief Query the status of the specified context key
@@ -418,7 +418,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::ctxKey).msg(yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{std::string(m_group), std::string(m_key)})).request();
+        return yomk::server().url(yomk::url::kCtxKey).msg(yomk::msgs::ContextGroupKey::shared(yomk::payload::ContextGroupKey{std::string(m_group), std::string(m_key)})).request();
     }
     /**
      * @brief Query the list of all group names
@@ -432,7 +432,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::ctxGroups).request();
+        return yomk::server().url(yomk::url::kCtxGroups).request();
     }
     /**
      * @brief Query introspection metadata of all groups and all their keys
@@ -446,7 +446,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::ctxAll).request();
+        return yomk::server().url(yomk::url::kCtxAll).request();
     }
     /**
      * @brief Enter the typed read facet

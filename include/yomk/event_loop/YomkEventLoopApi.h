@@ -171,7 +171,7 @@ public:
     // @zh: note 同名循环不重建：复用既有实例并触发其启动，本次累积的 handle_fn / msg_name 不生效；仅新循环名会创建循环并绑定默认处理函数
     yomk::payload::ResStatus start()
     {
-        return yomk::server().url(yomk::url::loopStart).msg(yomk::msgs::EventLoop::shared(yomk::payload::EventLoop{m_name, m_fn, m_msgName})).status();
+        return yomk::server().url(yomk::url::kLoopStart).msg(yomk::msgs::EventLoop::shared(yomk::payload::EventLoop{m_name, m_fn, m_msgName})).status();
     }
     /**
      * @brief Terminate the chain by stopping the event loop thread (pending events are kept)
@@ -181,7 +181,7 @@ public:
     // @zh: return 三态 ResStatus
     yomk::payload::ResStatus stop()
     {
-        return yomk::server().url(yomk::url::loopStop).msg(yomk::msgs::String::shared(m_name)).status();
+        return yomk::server().url(yomk::url::kLoopStop).msg(yomk::msgs::String::shared(m_name)).status();
     }
     /**
      * @brief Terminate the chain by posting the event asynchronously (reads msg / loop / handle_fn / tag accumulations)
@@ -193,7 +193,7 @@ public:
     // @zh: note 非阻塞
     yomk::payload::ResStatus post()
     {
-        return yomk::server().url(yomk::url::loopPost).msg(yomk::msgs::Event::shared(yomk::payload::Event(m_name, m_data, m_fn, m_tag))).status();
+        return yomk::server().url(yomk::url::kLoopPost).msg(yomk::msgs::Event::shared(yomk::payload::Event(m_name, m_data, m_fn, m_tag))).status();
     }
     /**
      * @brief Terminate the chain by posting the event synchronously (reads msg / loop / handle_fn / tag accumulations)
@@ -205,7 +205,7 @@ public:
     // @zh: note 阻塞等待事件执行完成
     yomk::payload::ResStatus post_wait()
     {
-        return yomk::server().url(yomk::url::loopPostWait).msg(yomk::msgs::Event::shared(yomk::payload::Event(m_name, m_data, m_fn, m_tag))).status();
+        return yomk::server().url(yomk::url::kLoopPostWait).msg(yomk::msgs::Event::shared(yomk::payload::Event(m_name, m_data, m_fn, m_tag))).status();
     }
     /**
      * @brief Terminate the chain by destroying the event loop and draining the queue
@@ -215,7 +215,7 @@ public:
     // @zh: return 三态 ResStatus
     yomk::payload::ResStatus destroy()
     {
-        return yomk::server().url(yomk::url::loopDestroy).msg(yomk::msgs::String::shared(m_name)).status();
+        return yomk::server().url(yomk::url::kLoopDestroy).msg(yomk::msgs::String::shared(m_name)).status();
     }
     /**
      * @brief Query the list of all loop names
@@ -229,7 +229,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::loopLoops).request();
+        return yomk::server().url(yomk::url::kLoopLoops).request();
     }
     /**
      * @brief Query the status and pending event count of the given loop
@@ -243,7 +243,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::loopLoop).msg(yomk::msgs::EventLoopQuery::shared(yomk::payload::EventLoopQuery{m_name, m_tagCount})).request();
+        return yomk::server().url(yomk::url::kLoopLoop).msg(yomk::msgs::EventLoopQuery::shared(yomk::payload::EventLoopQuery{m_name, m_tagCount})).request();
     }
     /**
      * @brief Query the full status of all loops
@@ -257,7 +257,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::loopAll).request();
+        return yomk::server().url(yomk::url::kLoopAll).request();
     }
     /**
      * @brief Get the event_loop module version string

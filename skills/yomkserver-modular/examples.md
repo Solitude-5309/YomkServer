@@ -297,11 +297,11 @@ ConfigService::ConfigService(YomkServer* server) : YomkService(server)
 int ConfigService::init()
 {
     // 安装功能函数
-    installFunc("/load", &ConfigService::loadConfig, "", yomk::url::cfgLoadDesc);
-    installFunc("/get", &ConfigService::getConfig, yomk::msgs::prj::ConfigKey::kName, yomk::url::cfgGetDesc);
-    installFunc("/set", &ConfigService::setConfig, yomk::msgs::prj::ConfigKeyValue::kName, yomk::url::cfgSetDesc);
-    installFunc("/reload", &ConfigService::reloadConfig, "", yomk::url::cfgReloadDesc);
-    installFunc("/version", &ConfigService::version, "", yomk::url::cfgVersionDesc);
+    installFunc("/load", &ConfigService::loadConfig, "", yomk::url::kCfgLoadDesc);
+    installFunc("/get", &ConfigService::getConfig, yomk::msgs::prj::ConfigKey::kName, yomk::url::kCfgGetDesc);
+    installFunc("/set", &ConfigService::setConfig, yomk::msgs::prj::ConfigKeyValue::kName, yomk::url::kCfgSetDesc);
+    installFunc("/reload", &ConfigService::reloadConfig, "", yomk::url::kCfgReloadDesc);
+    installFunc("/version", &ConfigService::version, "", yomk::url::kCfgVersionDesc);
     yomk::log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to", name());
     return 0;
 }
@@ -1068,12 +1068,13 @@ ExtensionName/
 // /ExtensionService/* 扩展服务 URL 常量：与 SDK 内置模块同风格（参考 yomk/fn_pool/YomkFunctionPoolUrl.h），
 // inline constexpr std::string_view 编译期常量，请求链全程 string_view 透传，调用路径零堆分配。
 // yomk::url::ext 为扩展子命名空间：扩展的 url 常量落各自子命名空间，不占 yomk::url 根；
-// 域已由命名空间表达，常量名不再自我前缀（version 而非 extVersion）。
+// 常量名一律 k 前缀 + PascalCase：域由命名空间表达、不再自我前缀（kVersion 而非 kExtVersion）；
+// 语义描述常量同名 + Desc（kVersionDesc）。规范见 docs/yomk命名原则.md §1.4 / §5。
 namespace yomk::url::ext
 {
-// /ExtensionService/*（语义描述与 URL 常量同置：installFunc 第四参引用 versionDesc）
+// /ExtensionService/*（语义描述与 URL 常量同置：installFunc 第四参引用 kVersionDesc）
 inline constexpr std::string_view version = "/ExtensionService/version";
-inline constexpr const char* versionDesc = R"(
+inline constexpr const char* kVersionDesc = R"(
 # Overview
 返回扩展版本号，用于确认当前加载的扩展构建版本。
 
@@ -1141,7 +1142,7 @@ YOMK_DEFINE_MSG_NS(ext, yomk::payload::ext::ExtTask, ExtTask, d);
 // 1. Api 头是模块自己的 API，只写本模块业务的终结方法（模板仅 version()），
 //    不重复封装通用请求链（url/msg/request 归 yomk::server()）；
 // 2. 也可以完全不写 API 方法，但须在本文件注释写清统一调用方式及 url 的功能作用，
-//    如：yomk::server().url(yomk::url::ext::version).request() —— version 即 /ExtensionService/version 版本查询；
+//    如：yomk::server().url(yomk::url::ext::kVersion).request() —— version 即 /ExtensionService/version 版本查询；
 // 3. 请求一律优先使用统一请求接口 yomk::server().url(<url>).request()，
 //    扩展终结方法只是其上的薄封装（如 yomk::ext().version()），屏蔽裸 URL、不另造请求通道。
 // Builder 落 yomk::detail::ext 子命名空间，域入口 yomk::ext() 保持不变。
@@ -1156,7 +1157,7 @@ public:
      */
     yomk::payload::Response version()
     {
-        return yomk::server().url(yomk::url::ext::version).request();
+        return yomk::server().url(yomk::url::ext::kVersion).request();
     }
 };
 }  // namespace yomk::detail::ext
@@ -1213,7 +1214,7 @@ ExtensionService::ExtensionService(YomkServer* server) : YomkService(server)
 
 int ExtensionService::init()
 {
-    installFunc("/version", &ExtensionService::version, "", yomk::url::ext::versionDesc);
+    installFunc("/version", &ExtensionService::version, "", yomk::url::ext::kVersionDesc);
     yomk::log().tag("ExtensionService::init").info("install func [ /version ] to", name());
     return 0;
 }
@@ -1268,7 +1269,7 @@ int main(int argc, char* argv[])
     yomk::server().srv<yomk::service::ext::ExtensionService>().create();
 
     // 测试版本查询（url 常量见 ExtensionUrl.h，经 ExtensionApi.h 已引入）
-    yomk::payload::Response resp = yomk::server().url(yomk::url::ext::version).request();
+    yomk::payload::Response resp = yomk::server().url(yomk::url::ext::kVersion).request();
     if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
@@ -1608,7 +1609,7 @@ int main(int argc, char* argv[])
     yomk::server().srv<yomk::service::ext::ExtensionService>().create();
 
     // 版本查询请求（url 常量见 ExtensionUrl.h）
-    yomk::payload::Response resp = yomk::server().url(yomk::url::ext::version).request();
+    yomk::payload::Response resp = yomk::server().url(yomk::url::ext::kVersion).request();
     if (resp.status == yomk::payload::ResStatus::Succeeded)
     {
         auto version = yomk::msgs::unpack<yomk::msgs::String>(resp.data);

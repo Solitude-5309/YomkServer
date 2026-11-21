@@ -11,9 +11,15 @@
 2. 链式 DSL 方法用 snake_case，与普通接口 camelCase 形成层感区分：
    `plug_sys().plg_name(n).get_info()`。判据是"是否在链式表达式内"，不是"是否用户可见"。
 3. 载荷 struct 字段 camelCase：`funcName`、`manifestPath`。
-4. 成员变量 `m_` 前缀、编译期常量 `k` 前缀：`m_msgName`、`kName`。
-5. 宏与版本常量全大写下划线、**逐词分写**：`YOMK_DEFINE_MSG`、`YOMK_PLUGIN_ABI_VERSION`
-   （❌ `YOMKPLUGIN_ABI_VERSION` 式连写）。
+4. 成员变量 `m_` 前缀；**所有非宏常量一律 `k` 前缀 + PascalCase**——编译期数值、字符串常量、
+   URL 常量、语义描述常量、静态数据成员同此一条规则：`m_msgName`、`kName`、`kDigitBufSize`、
+   `kCtxCreate`、`kCtxCreateDesc`。判据是"是否声明为 `const`/`constexpr` 的具名常量"，
+   与它是否用户可见、是否为 `string_view` 无关；枚举值（`ResStatus::Succeeded`）是枚举类型的
+   成员，不套 `k` 前缀。
+5. 宏与版本宏全大写下划线、**逐词分写**：`YOMK_DEFINE_MSG`、`YOMK_PLUGIN_ABI_VERSION`
+   （❌ `YOMKPLUGIN_ABI_VERSION` 式连写）。宏与常量风格不混用：一旦写成 `constexpr` 声明，
+   就不得再取 `YOMK_*` 全大写名（例：诊断级别 `kYomkDiagLevelWarn`，不是 `YOMK_DIAG_LEVEL_WARN`；
+   两者在作用域、类型与调试体验上都不是一回事）。
 
 ## 2. 端点命名：动词优先
 1. 传输为单一 request() 的端点即 RPC 方法名，查询/枚举类动词置首：
@@ -39,12 +45,15 @@
    定版保留、不追溯；新代码不再新增缩写。
 
 ## 5. 前缀与域词（产品自定）
-1. URL 常量前缀是各产品的开发习惯，产品自定并在产品内保持一致；
+1. 域前缀取各产品的开发习惯，产品自定并在产品内保持一致；
    本文档不做登记与准入，也不约束产品外的使用方。
-2. 建议取服务名去产品名的驼峰：服务 `/YomkFunctionPool` → 常量前缀 `fnPool`（或既定缩写）。
-3. 常量名 = 前缀 + 端点驼峰，与路径逐字对齐：`ddsGetVersion = "/YomkDdsHandler/get_version"`。
-4. 现有产品前缀速查（仅记录，非准入）：YomkServer `srvInfo`/`ctx`/`eventLoop`/`fnPool`/`logger`、
-   YomkDds `dds`、YomkPlugSys `plugin`。
+2. 建议取服务名去产品名的驼峰：服务 `/YomkFunctionPool` → 域前缀 `FnPool`（或既定缩写）。
+3. **常量名 = `k` + 域前缀驼峰 + 端点驼峰**，与路径逐字对齐（§1.4 的 `k` 规则对 URL 常量同样生效）：
+   `kDdsGetVersion = "/YomkDdsHandler/get_version"`、`kCtxCreate = "/YomkContext/create"`；
+   语义描述常量取同名 + `Desc`：`kCtxCreateDesc`。
+4. 现有产品域前缀速查（仅记录，非准入）：YomkServer `Ctx`/`EventLoop`/`FnPool`/`Logger`/`Srv`、
+   YomkDds `Dds`、YomkPlugSys `Plugin`（即 `kCtxCreate`、`kEventLoopStart`、`kFnPoolRegister`、
+   `kLoggerConsoleLog`、`kSrvServices`）。
 
 ## 6. 目录与文件
 1. 目录取域入口短名，文件取类全名：`include/yomk/ctx/YomkContextApi.h`；
@@ -54,6 +63,8 @@
 1. 内省三件套：点查 `get_info()`、枚举 `list_<宾语>()`、全量 `all()`。
 2. 分面/链式类后缀 `Builder`；三态结果枚举 `{Invalid, Succeeded, Failed}`。
 3. 消息包成员名 `d`、运行时类型标识 `kName`、消息命名空间 `yomk::msgs`、载荷 `yomk::payload`。
+4. 常量命名：`k` + 域前缀驼峰 + 端点驼峰；语义描述常量为同名 + `Desc`
+   （`kCtxCreate` / `kCtxCreateDesc`，URL 常量 `string_view`、描述常量 `const char*`）。
 
 ## 结语
 > 风格一致比风格选择更重要：选定一种，贯穿始终。本指引在评审中参照执行，

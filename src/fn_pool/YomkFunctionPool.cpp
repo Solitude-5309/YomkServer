@@ -14,13 +14,13 @@ YomkFunctionPool::YomkFunctionPool(YomkServer* server) : YomkService(server)
 
 int YomkFunctionPool::init()
 {
-    installFunc("/register", &YomkFunctionPool::registerFunction, yomk::msgs::Function::kName, yomk::url::fpRegisterDesc);
-    installFunc("/unregister", &YomkFunctionPool::unRegisterFunction, yomk::msgs::String::kName, yomk::url::fpUnregisterDesc);
-    installFunc("/call", &YomkFunctionPool::callFunction, yomk::msgs::CallFunction::kName, yomk::url::fpCallDesc);
+    installFunc("/register", &YomkFunctionPool::registerFunction, yomk::msgs::Function::kName, yomk::url::kFpRegisterDesc);
+    installFunc("/unregister", &YomkFunctionPool::unRegisterFunction, yomk::msgs::String::kName, yomk::url::kFpUnregisterDesc);
+    installFunc("/call", &YomkFunctionPool::callFunction, yomk::msgs::CallFunction::kName, yomk::url::kFpCallDesc);
     // 调试内省接口,端点挂在本服务 funcMap
-    installFunc("/names", &YomkFunctionPool::funcNames, "", yomk::url::fpNamesDesc);
-    installFunc("/name", &YomkFunctionPool::funcInfo, yomk::msgs::String::kName, yomk::url::fpNameDesc);
-    installFunc("/all", &YomkFunctionPool::listAll, "", yomk::url::fpAllDesc);
+    installFunc("/names", &YomkFunctionPool::funcNames, "", yomk::url::kFpNamesDesc);
+    installFunc("/name", &YomkFunctionPool::funcInfo, yomk::msgs::String::kName, yomk::url::kFpNameDesc);
+    installFunc("/all", &YomkFunctionPool::listAll, "", yomk::url::kFpAllDesc);
     return 0;
 }
 

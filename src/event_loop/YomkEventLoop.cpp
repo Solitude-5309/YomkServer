@@ -14,15 +14,15 @@ YomkEventLoop::YomkEventLoop(YomkServer* server) : YomkService(server)
 
 int YomkEventLoop::init()
 {
-    installFunc("/start", &YomkEventLoop::start, yomk::msgs::EventLoop::kName, yomk::url::loopStartDesc);
-    installFunc("/stop", &YomkEventLoop::stop, yomk::msgs::String::kName, yomk::url::loopStopDesc);
-    installFunc("/post", &YomkEventLoop::post, yomk::msgs::Event::kName, yomk::url::loopPostDesc);
-    installFunc("/post_wait", &YomkEventLoop::postWait, yomk::msgs::Event::kName, yomk::url::loopPostWaitDesc);
-    installFunc("/destroy", &YomkEventLoop::destroy, yomk::msgs::String::kName, yomk::url::loopDestroyDesc);
+    installFunc("/start", &YomkEventLoop::start, yomk::msgs::EventLoop::kName, yomk::url::kLoopStartDesc);
+    installFunc("/stop", &YomkEventLoop::stop, yomk::msgs::String::kName, yomk::url::kLoopStopDesc);
+    installFunc("/post", &YomkEventLoop::post, yomk::msgs::Event::kName, yomk::url::kLoopPostDesc);
+    installFunc("/post_wait", &YomkEventLoop::postWait, yomk::msgs::Event::kName, yomk::url::kLoopPostWaitDesc);
+    installFunc("/destroy", &YomkEventLoop::destroy, yomk::msgs::String::kName, yomk::url::kLoopDestroyDesc);
     // 调试内省接口,端点挂在本服务 funcMap
-    installFunc("/loops", &YomkEventLoop::loops, "", yomk::url::loopLoopsDesc);
-    installFunc("/loop", &YomkEventLoop::loopInfo, yomk::msgs::EventLoopQuery::kName, yomk::url::loopLoopDesc);
-    installFunc("/all", &YomkEventLoop::listAll, "", yomk::url::loopAllDesc);
+    installFunc("/loops", &YomkEventLoop::loops, "", yomk::url::kLoopLoopsDesc);
+    installFunc("/loop", &YomkEventLoop::loopInfo, yomk::msgs::EventLoopQuery::kName, yomk::url::kLoopLoopDesc);
+    installFunc("/all", &YomkEventLoop::listAll, "", yomk::url::kLoopAllDesc);
     return 0;
 }
 

@@ -14,10 +14,10 @@ YomkServerInfo::YomkServerInfo(YomkServer* server) : YomkService(server)
 
 int YomkServerInfo::init()
 {
-    installFunc("/services", &YomkServerInfo::listServices, "", yomk::url::srvServicesDesc);
-    installFunc("/functions", &YomkServerInfo::listFunctions, yomk::msgs::String::kName, yomk::url::srvFunctionsDesc);
-    installFunc("/function", &YomkServerInfo::functionInfo, yomk::msgs::String::kName, yomk::url::srvFunctionDesc);
-    installFunc("/all", &YomkServerInfo::listAll, "", yomk::url::srvAllDesc);
+    installFunc("/services", &YomkServerInfo::listServices, "", yomk::url::kSrvServicesDesc);
+    installFunc("/functions", &YomkServerInfo::listFunctions, yomk::msgs::String::kName, yomk::url::kSrvFunctionsDesc);
+    installFunc("/function", &YomkServerInfo::functionInfo, yomk::msgs::String::kName, yomk::url::kSrvFunctionDesc);
+    installFunc("/all", &YomkServerInfo::listAll, "", yomk::url::kSrvAllDesc);
     return 0;
 }
 

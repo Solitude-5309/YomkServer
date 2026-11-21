@@ -155,7 +155,7 @@ public:
     // @zh: note 终结定名 install（register 为 C++ 保留字）；同名函数覆盖更新并返回 Succeeded
     yomk::payload::ResStatus install()
     {
-        return yomk::server().url(yomk::url::fpRegister).msg(yomk::msgs::Function::shared(yomk::payload::Function{m_name, m_fn, m_msgName, m_desc})).status();
+        return yomk::server().url(yomk::url::kFpRegister).msg(yomk::msgs::Function::shared(yomk::payload::Function{m_name, m_fn, m_msgName, m_desc})).status();
     }
     /**
      * @brief Terminate the chain by unregistering the function from the function pool
@@ -165,7 +165,7 @@ public:
     // @zh: return 三态 ResStatus；函数不存在返回 Failed
     yomk::payload::ResStatus uninstall()
     {
-        return yomk::server().url(yomk::url::fpUnregister).msg(yomk::msgs::String::shared(m_name)).status();
+        return yomk::server().url(yomk::url::kFpUnregister).msg(yomk::msgs::String::shared(m_name)).status();
     }
     /**
      * @brief Terminate the chain by calling a function registered in the function pool (reads fn_name / msg accumulations)
@@ -181,7 +181,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::fpCall).msg(yomk::msgs::CallFunction::shared(yomk::payload::CallFunction{m_name, m_data})).request();
+        return yomk::server().url(yomk::url::kFpCall).msg(yomk::msgs::CallFunction::shared(yomk::payload::CallFunction{m_name, m_data})).request();
     }
     /**
      * @brief Query the list of all function names
@@ -195,7 +195,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::fpNames).request();
+        return yomk::server().url(yomk::url::kFpNames).request();
     }
     /**
      * @brief Query the metadata of the given function
@@ -209,7 +209,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::fpName).msg(yomk::msgs::String::shared(m_name)).request();
+        return yomk::server().url(yomk::url::kFpName).msg(yomk::msgs::String::shared(m_name)).request();
     }
     /**
      * @brief Query the metadata of all functions
@@ -223,7 +223,7 @@ public:
         {
             return yomk::payload::Response(yomk::payload::ResStatus::Invalid, "YomkServer is not initialized");
         }
-        return yomk::server().url(yomk::url::fpAll).request();
+        return yomk::server().url(yomk::url::kFpAll).request();
     }
     /**
      * @brief Get the fn_pool module version string

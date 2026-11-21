@@ -3,21 +3,22 @@
 
 // /YomkEventLoop/* 内置服务 URL 常量:inline constexpr std::string_view 编译期常量,
 // 请求链全程 string_view 透传,调用路径零堆分配.
+// 常量名 = k + 域前缀驼峰 + 端点驼峰（kCtxCreate）；语义描述常量同名 + Desc（kCtxCreateDesc）。规范见 docs/yomk命名原则.md
 // yomk::url 为开放命名空间:用户自定义服务的 url 常量可按同风格直接追加.
 namespace yomk::url
 {
 // /YomkEventLoop/*
-inline constexpr std::string_view loopStart = "/YomkEventLoop/start";
-inline constexpr std::string_view loopStop = "/YomkEventLoop/stop";
-inline constexpr std::string_view loopPost = "/YomkEventLoop/post";
-inline constexpr std::string_view loopPostWait = "/YomkEventLoop/post_wait";
-inline constexpr std::string_view loopDestroy = "/YomkEventLoop/destroy";
-inline constexpr std::string_view loopLoops = "/YomkEventLoop/loops";
-inline constexpr std::string_view loopLoop = "/YomkEventLoop/loop";
-inline constexpr std::string_view loopAll = "/YomkEventLoop/all";
+inline constexpr std::string_view kLoopStart = "/YomkEventLoop/start";
+inline constexpr std::string_view kLoopStop = "/YomkEventLoop/stop";
+inline constexpr std::string_view kLoopPost = "/YomkEventLoop/post";
+inline constexpr std::string_view kLoopPostWait = "/YomkEventLoop/post_wait";
+inline constexpr std::string_view kLoopDestroy = "/YomkEventLoop/destroy";
+inline constexpr std::string_view kLoopLoops = "/YomkEventLoop/loops";
+inline constexpr std::string_view kLoopLoop = "/YomkEventLoop/loop";
+inline constexpr std::string_view kLoopAll = "/YomkEventLoop/all";
 
 // 语义描述常量：与上方 URL 常量按序一一对应（installFunc 第四参引用；格式惯例见 docs/YomkServer.md「内省描述惯例」）
-inline constexpr const char* loopStartDesc = R"(
+inline constexpr const char* kLoopStartDesc = R"(
 # Overview
 创建事件循环并启动专用消费线程；同名循环已存在则复用既有实例并再次触发启动。
 
@@ -33,7 +34,7 @@ data 无负载，msg "event loop start success"。
 # Notes
 循环名不做非空校验（空名会创建空名循环）；同名复用时本次携带的 defaultServiceFunc/msgName 不生效；pkg 非 EventLoop → Failed。
 )";
-inline constexpr const char* loopStopDesc = R"(
+inline constexpr const char* kLoopStopDesc = R"(
 # Overview
 停止事件循环的消费线程，实例与其事件队列保留。
 
@@ -49,7 +50,7 @@ data 无负载，msg "event loop stop success"。
 # Notes
 循环不存在 → Failed；停机期间 /post 与 /post_wait 均被拒（Failed）；pkg 非 String → Failed。
 )";
-inline constexpr const char* loopPostDesc = R"(
+inline constexpr const char* kLoopPostDesc = R"(
 # Overview
 向事件循环投递事件：FIFO 入队后立即返回，由消费线程异步执行。
 
@@ -65,7 +66,7 @@ data 无负载，msg "event loop post success"。
 # Notes
 循环不存在或未运行 → Failed（未入队）；执行结果不回传，需要结果请用 /post_wait；pkg 非 Event → Failed。
 )";
-inline constexpr const char* loopPostWaitDesc = R"(
+inline constexpr const char* kLoopPostWaitDesc = R"(
 # Overview
 投递事件并阻塞调用线程，直到该事件在消费线程执行完毕。
 
@@ -81,7 +82,7 @@ data 为执行后的 Event 包（携带 Response），msg "event loop post wait 
 # Notes
 循环不存在或未运行 → Failed（未入队未执行）；循环被 /destroy 丢弃事件时等待者会被唤醒；pkg 非 Event → Failed。
 )";
-inline constexpr const char* loopDestroyDesc = R"(
+inline constexpr const char* kLoopDestroyDesc = R"(
 # Overview
 销毁事件循环：停止 worker、清空未执行队列并释放实例（不可重启）。
 
@@ -97,7 +98,7 @@ data 无负载，msg "event loop destroy success"。
 # Notes
 循环不存在 → Failed；销毁后同名需重新 /start 创建新实例；pkg 非 String → Failed。
 )";
-inline constexpr const char* loopLoopsDesc = R"(
+inline constexpr const char* kLoopLoopsDesc = R"(
 # Overview
 返回全部事件循环名清单。
 
@@ -113,7 +114,7 @@ data 为 StringArray 包（map 字典序），msg "ok"。
 # Notes
 未登记过的循环不出现在清单中（stop 后仍保留）。
 )";
-inline constexpr const char* loopLoopDesc = R"(
+inline constexpr const char* kLoopLoopDesc = R"(
 # Overview
 查询单个事件循环的内省快照：运行态、积压数、默认处理函数元信息与队列头 tag 采样。
 
@@ -129,7 +130,7 @@ data 为 EventLoopInfo 包（loopName/running/pending/hasDefaultFunc/msgName/nex
 # Notes
 tagCount 为 0 时 nextTags 为空；采样存 tag 原值（空串保留）；循环不存在 → Failed；pkg 非 EventLoopQuery → Failed。
 )";
-inline constexpr const char* loopAllDesc = R"(
+inline constexpr const char* kLoopAllDesc = R"(
 # Overview
 全量事件循环内省快照。
 

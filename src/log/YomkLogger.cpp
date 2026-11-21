@@ -37,22 +37,22 @@ YomkLogger::~YomkLogger() {}
 
 int YomkLogger::init()
 {
-    installFunc("/set_console_log_proxy", &YomkLogger::setConsoleLogProxy, yomk::msgs::ConsoleLogProxy::kName, yomk::url::loggerSetConsoleProxyDesc);
-    installFunc("/set_file_log_proxy", &YomkLogger::setFileLogProxy, yomk::msgs::FileLogProxy::kName, yomk::url::loggerSetFileLogProxyDesc);
-    installFunc("/console_log", &YomkLogger::consoleLog, yomk::msgs::Log::kName, yomk::url::loggerConsoleLogDesc);
-    installFunc("/create_file_logger", &YomkLogger::createFileLogger, yomk::msgs::LogFile::kName, yomk::url::loggerCreateFileLoggerDesc);
-    installFunc("/file_log", &YomkLogger::fileLog, yomk::msgs::Log::kName, yomk::url::loggerFileLogDesc);
-    installFunc("/write_file_log", &YomkLogger::writeFileLog, yomk::msgs::String::kName, yomk::url::loggerWriteFileLogDesc);
-    installFunc("/delete_logger", &YomkLogger::deleteLogger, yomk::msgs::String::kName, yomk::url::loggerDeleteLoggerDesc);
-    installFunc("/off_console_log_by_level", &YomkLogger::offConsoleLogByLevel, yomk::msgs::Log::kName, yomk::url::loggerOffConsoleLogByLevelDesc);
-    installFunc("/on_console_log_by_level", &YomkLogger::onConsoleLogByLevel, yomk::msgs::Log::kName, yomk::url::loggerOnConsoleLogByLevelDesc);
-    installFunc("/loggers", &YomkLogger::loggers, yomk::msgs::String::kName, yomk::url::loggerLoggersDesc);
-    installFunc("/logger", &YomkLogger::loggerInfo, yomk::msgs::LoggerQuery::kName, yomk::url::loggerLoggerDesc);
-    installFunc("/all", &YomkLogger::listAll, "", yomk::url::loggerAllDesc);
-    installFunc("/console_global_state", &YomkLogger::consoleGlobalState, "", yomk::url::loggerConsoleGlobalStateDesc);
-    installFunc("/off_file_log_by_level", &YomkLogger::offFileLogByLevel, yomk::msgs::Log::kName, yomk::url::loggerOffFileLogByLevelDesc);
-    installFunc("/on_file_log_by_level", &YomkLogger::onFileLogByLevel, yomk::msgs::Log::kName, yomk::url::loggerOnFileLogByLevelDesc);
-    installFunc("/file_global_state", &YomkLogger::fileGlobalState, "", yomk::url::loggerFileGlobalStateDesc);
+    installFunc("/set_console_log_proxy", &YomkLogger::setConsoleLogProxy, yomk::msgs::ConsoleLogProxy::kName, yomk::url::kLoggerSetConsoleProxyDesc);
+    installFunc("/set_file_log_proxy", &YomkLogger::setFileLogProxy, yomk::msgs::FileLogProxy::kName, yomk::url::kLoggerSetFileLogProxyDesc);
+    installFunc("/console_log", &YomkLogger::consoleLog, yomk::msgs::Log::kName, yomk::url::kLoggerConsoleLogDesc);
+    installFunc("/create_file_logger", &YomkLogger::createFileLogger, yomk::msgs::LogFile::kName, yomk::url::kLoggerCreateFileLoggerDesc);
+    installFunc("/file_log", &YomkLogger::fileLog, yomk::msgs::Log::kName, yomk::url::kLoggerFileLogDesc);
+    installFunc("/write_file_log", &YomkLogger::writeFileLog, yomk::msgs::String::kName, yomk::url::kLoggerWriteFileLogDesc);
+    installFunc("/delete_logger", &YomkLogger::deleteLogger, yomk::msgs::String::kName, yomk::url::kLoggerDeleteLoggerDesc);
+    installFunc("/off_console_log_by_level", &YomkLogger::offConsoleLogByLevel, yomk::msgs::Log::kName, yomk::url::kLoggerOffConsoleLogByLevelDesc);
+    installFunc("/on_console_log_by_level", &YomkLogger::onConsoleLogByLevel, yomk::msgs::Log::kName, yomk::url::kLoggerOnConsoleLogByLevelDesc);
+    installFunc("/loggers", &YomkLogger::loggers, yomk::msgs::String::kName, yomk::url::kLoggerLoggersDesc);
+    installFunc("/logger", &YomkLogger::loggerInfo, yomk::msgs::LoggerQuery::kName, yomk::url::kLoggerLoggerDesc);
+    installFunc("/all", &YomkLogger::listAll, "", yomk::url::kLoggerAllDesc);
+    installFunc("/console_global_state", &YomkLogger::consoleGlobalState, "", yomk::url::kLoggerConsoleGlobalStateDesc);
+    installFunc("/off_file_log_by_level", &YomkLogger::offFileLogByLevel, yomk::msgs::Log::kName, yomk::url::kLoggerOffFileLogByLevelDesc);
+    installFunc("/on_file_log_by_level", &YomkLogger::onFileLogByLevel, yomk::msgs::Log::kName, yomk::url::kLoggerOnFileLogByLevelDesc);
+    installFunc("/file_global_state", &YomkLogger::fileGlobalState, "", yomk::url::kLoggerFileGlobalStateDesc);
     return 0;
 }
 

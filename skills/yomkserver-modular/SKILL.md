@@ -235,7 +235,7 @@ yomk::server().shutdown();
 
 ### 服务内省（调试）
 
-框架内置 `/YomkServerInfo` 服务（随 `.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时第三参声明期望消息类型（一律引用 `T::kName`、禁止手写消息名字符串），**第四参写功能语义描述**——非强制约束，是让内省消费者不读源码即可理解端点行为的语义澄清。描述常量与 URL 常量同置各自 `XxxUrl.h`（URL 常量集中在前、语义描述常量集中在后（按序一一对应），命名对称，如 `ctxCreate`/`ctxCreateDesc`，类型 `inline constexpr const char*`），installFunc 第四参仅引用常量：一律多行 `R"(...)"` 块，固定五章节且顺序不变（`# Overview` 做什么 / `# Inputs` 载荷字段与前置参数 / `# Outputs` status·msg·data 与回调载荷 / `# Behavior` 同步异步·阻塞·副作用·线程上下文 / `# Notes` 约束·线程安全·生命周期陷阱·失败归因），某章节无内容时保留标题、正文留空；文案须与实现相符，失败按三态归因写在 Notes（Invalid=入参非法，Failed=业务未命中/冲突）。框架全部内置端点均已填写，自定义服务遵循同一格式。内省数据的消费入口为 `yomk::srv_info()`（services/functions/get_info/all），模板工程 `MyBoot::after()` 末尾提供了完整的消费演示（遍历 `/functions` 输出各端点语义）：
+框架内置 `/YomkServerInfo` 服务（随 `.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时第三参声明期望消息类型（一律引用 `T::kName`、禁止手写消息名字符串），**第四参写功能语义描述**——非强制约束，是让内省消费者不读源码即可理解端点行为的语义澄清。描述常量与 URL 常量同置各自 `XxxUrl.h`（URL 常量集中在前、语义描述常量集中在后（按序一一对应），命名对称，如 `kCtxCreate`/`kCtxCreateDesc`，类型 `inline constexpr const char*`），installFunc 第四参仅引用常量：一律多行 `R"(...)"` 块，固定五章节且顺序不变（`# Overview` 做什么 / `# Inputs` 载荷字段与前置参数 / `# Outputs` status·msg·data 与回调载荷 / `# Behavior` 同步异步·阻塞·副作用·线程上下文 / `# Notes` 约束·线程安全·生命周期陷阱·失败归因），某章节无内容时保留标题、正文留空；文案须与实现相符，失败按三态归因写在 Notes（Invalid=入参非法，Failed=业务未命中/冲突）。框架全部内置端点均已填写，自定义服务遵循同一格式。内省数据的消费入口为 `yomk::srv_info()`（services/functions/get_info/all），模板工程 `MyBoot::after()` 末尾提供了完整的消费演示（遍历 `/functions` 输出各端点语义）：
 
 ```cpp
 int XxxService::init() {
@@ -301,10 +301,10 @@ ExtensionName/
 10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回（用小写扩展名），如 `"extension v" EXTENSION_VERSION`
 11. **README 使用示例完整可复制**：README 使用示例必须提供完整的 main.cpp（含 include、`yomk::server().init()`、`yomk::server().srv<XxxService>().create()` 注册扩展服务、请求与输出），用户复制后即可编译运行；不得只提供请求代码片段
 12. **模块四件套**：对外头文件按 SDK `include/yomk/` 各域同一设计组织，四件 + 服务类同落扩展专属子命名空间：
-    - `XxxUrl.h`：`namespace yomk::url::ext` 子命名空间 URL 常量，`inline constexpr std::string_view`；域已由命名空间表达，常量名不再自我前缀
+    - `XxxUrl.h`：`namespace yomk::url::ext` 子命名空间 URL 常量，`inline constexpr std::string_view`；常量名一律 `k` 前缀 + PascalCase（`kVersion`），域由命名空间表达、不再自我前缀；语义描述常量同名 + `Desc`（`kVersionDesc`）
     - `XxxPayload.h`：扩展专属载荷，`namespace yomk::payload::ext`
     - `XxxMsg.h`：扩展专属消息包，`YOMK_DEFINE_MSG_NS` 声明，消息类落 `yomk::msgs::ext` 子命名空间、kName 全限定
-    - `XxxApi.h`：链式域入口 `yomk::ext()` 形态，Builder 落 `yomk::detail::ext`；Api 头是模块自己的 API，只写本模块业务的终结方法，不重复封装通用请求链；可以完全不写 API 方法，但须在 Api 文件注释写清统一调用方式及 url 的功能作用（如 `yomk::server().url(yomk::url::ext::version).request()`）；模板仅内置无参终结 `version()`
+    - `XxxApi.h`：链式域入口 `yomk::ext()` 形态，Builder 落 `yomk::detail::ext`；Api 头是模块自己的 API，只写本模块业务的终结方法，不重复封装通用请求链；可以完全不写 API 方法，但须在 Api 文件注释写清统一调用方式及 url 的功能作用（如 `yomk::server().url(yomk::url::ext::kVersion).request()`）；模板仅内置无参终结 `version()`
     - 服务类落 `yomk::service::ext`（如 `yomk::service::ext::ExtensionService`）；不落 `yomk::ext`——其为链式入口函数，函数与命名空间不可同名，故服务域独立取名
     - 完整形态见 `template/extension/include/extension/Extension{Url,Payload,Msg,Api}.h`；模板内置 `ExtTask` 载荷与同名消息作形态示例（新增业务时替换之）
     - 请求一律优先使用统一请求接口 `yomk::server().url(<url>).request()`，扩展终结方法仅是其上的薄封装，屏蔽裸 URL、不另造请求通道。**请求链一律引用 url 常量、不裸写 URL 字符串字面量**（含测试程序与使用示例；SDK 内置域常量在 `yomk::url` 根，扩展常量落 `yomk::url::ext` 子命名空间）
@@ -320,7 +320,7 @@ ExtensionName/
 
 在已有扩展中添加新功能：
 
-1. **模块四件套补声明**：`XxxUrl.h` 加 URL 常量与语义描述常量（URL 集中在前、描述集中在后按序一一对应，命名对称 `<常量名>Desc`，格式见下文内省小节；请求链一律引用常量，不裸写 URL 字符串字面量）、`XxxPayload.h`/`XxxMsg.h` 加载荷/消息包（模板内置 `ExtTask` 为形态示例，新增业务时替换）、`XxxApi.h` 加终结方法（如 `yomk::ext().task(req).submit()` 形态）；不写终结方法时，须在 Api 文件注释写清 `yomk::server().url(<url>).request()` 统一调用方式及 url 功能作用
+1. **模块四件套补声明**：`XxxUrl.h` 加 URL 常量与语义描述常量（URL 集中在前、描述集中在后按序一一对应，命名对称 `<常量名>` 与 `<常量名>Desc`，如 `kVersion`/`kVersionDesc`，格式见下文内省小节；请求链一律引用常量，不裸写 URL 字符串字面量）、`XxxPayload.h`/`XxxMsg.h` 加载荷/消息包（模板内置 `ExtTask` 为形态示例，新增业务时替换）、`XxxApi.h` 加终结方法（如 `yomk::ext().task(req).submit()` 形态）；不写终结方法时，须在 Api 文件注释写清 `yomk::server().url(<url>).request()` 统一调用方式及 url 功能作用
 2. **对外接口头文件添加方法声明**（`include/XxxService.h`，类落 `yomk::service::ext`；仅内部使用的声明放 `src/` 内部头文件）
 3. **实现添加功能函数**（`src/XxxService.cpp`）：`installFunc` + 实现
 4. **测试程序添加测试用例**（`test/TestXxx.cpp`）
