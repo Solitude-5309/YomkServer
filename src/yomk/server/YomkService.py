@@ -141,9 +141,9 @@ class YomkService:
         以 "/" 开头的名称注册函数；重复注册直接覆盖既有注册。
 
         Args:
-            msg_name: Expected message type name; pass ``MsgClass.kName`` instead
+            msg_name: Expected message type name; pass ``MsgClass.TYPE_NAME`` instead
                 of a literal so the value follows renames.
-                期望消息类型名，一律传消息类的 kName，勿手写字面量。
+                期望消息类型名，一律传消息类的 TYPE_NAME，勿手写字面量。
             description: Free-form description for introspection only.
                 仅供内省的自定义说明。
         """

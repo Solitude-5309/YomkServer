@@ -123,7 +123,7 @@ APP_VERSION = "0.0.1"
 
 ### msgs/YomkMsgs.py
 ```python
-# ConfigService 消息包（标准形态：继承 YomkMsg 免费得 kName，禁止手写报文名）
+# ConfigService 消息包（标准形态：继承 YomkMsg 免费得 TYPE_NAME，禁止手写报文名）
 from yomk.msgs import YomkMsg
 
 class ConfigKey(YomkMsg):
@@ -337,7 +337,7 @@ python main.py
 
 演示在示例0基础上添加 `UserService`，展示完整的扩展流程。
 
-### 1. 添加消息包（msgs/YomkMsgs.py 追加；继承 YomkMsg，kName 自动生成禁止手写）
+### 1. 添加消息包（msgs/YomkMsgs.py 追加；继承 YomkMsg，TYPE_NAME 自动生成禁止手写）
 ```python
 # UserService 消息包
 from yomk.msgs import YomkMsg
@@ -363,16 +363,16 @@ class UserService(YomkService):
         self.set_name("/UserService")
 
     def init(self):
-        # 声明一律传 msg.kName（禁止手写报文串）
-        self.install_func("/get_user", self.get_user, UserQuery.kName)
-        self.install_func("/create_user", self.create_user, UserInfo.kName)
+        # 声明一律传 msg.TYPE_NAME（禁止手写报文串）
+        self.install_func("/get_user", self.get_user, UserQuery.TYPE_NAME)
+        self.install_func("/create_user", self.create_user, UserInfo.TYPE_NAME)
         log().tag("UserService::init").info("install func [ /get_user /create_user ] to ", self.get_name())
         return 0
 
     def get_user(self, pkg):
         # 端点体精确校验：unpack + type_mismatch（框架不做分发校验，责任在端点作者）
         if unpack(pkg, UserQuery) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, UserQuery.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, UserQuery.TYPE_NAME))
         log().tag("UserService").info("query user: ", pkg.user_id)   # 服务体内走日志通道，不用 print
         # 业务逻辑...
         info = UserInfo(pkg.user_id, "Alice", 25)
@@ -586,7 +586,7 @@ class PoolUserService(YomkService):
 
 ## 示例5：服务内省（调试）
 
-期望消息类型由 `install_func` 三参形式声明（**一律传 `msg.kName`**，内省值为全限定 kName）、函数说明由四参声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 unpack + type_mismatch 承担，见 docs/YomkMsg.md；说明经 `srv_info().fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）。**全部内置 48 个端点均已预置五章节内省文本**（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`，常量 `<URL>_DESC` 与 URL 同置 `yomk.url.<域>`，字段名按 Python 实际带 `m_` 前缀），`srv_info().all()` 即可读完端点语义；自定义服务建议沿用同一格式。内省查询走独立域入口 `srv_info()`（`from yomk.srv_info import srv_info`）：
+期望消息类型由 `install_func` 三参形式声明（**一律传 `msg.TYPE_NAME`**，内省值为全限定 TYPE_NAME）、函数说明由四参声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 unpack + type_mismatch 承担，见 docs/YomkMsg.md；说明经 `srv_info().fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）。**全部内置 48 个端点均已预置五章节内省文本**（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`，常量 `<URL>_DESC` 与 URL 同置 `yomk.url.<域>`，字段名按 Python 实际带 `m_` 前缀），`srv_info().all()` 即可读完端点语义；自定义服务建议沿用同一格式。内省查询走独立域入口 `srv_info()`（`from yomk.srv_info import srv_info`）：
 
 ```python
 # 五章节内省描述：常量与 URL 常量同置 yomk.url.<域> 常量池
@@ -609,8 +609,8 @@ pkg 非 MyData → Failed。
 
 class DemoService(YomkService):
     def init(self):
-        self.install_func("/with_type", self.with_type, MyData.kName)  # 三参：内省可见类型（kName 全限定）
-        self.install_func("/with_desc", self.with_desc, MyData.kName, WITH_DESC)  # 四参：类型 + 五章节描述
+        self.install_func("/with_type", self.with_type, MyData.TYPE_NAME)  # 三参：内省可见类型（TYPE_NAME 全限定）
+        self.install_func("/with_desc", self.with_desc, MyData.TYPE_NAME, WITH_DESC)  # 四参：类型 + 五章节描述
         self.install_func("/no_type", self.no_type)                # 兼容写法，内省无类型
         return 0
 

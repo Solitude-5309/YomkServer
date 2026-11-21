@@ -122,13 +122,13 @@ server().shutdown()
 
 ### 2. 消息包 (Message)
 
-用于在服务与事件循环间传递数据。消息类**继承 `YomkMsg` 即接入标准类型系统**：运行期类型名 `kName` 自动生成（随重命名跟随，禁止手写），端点声明、精确校验、错误文案统一消费它，实例直接传递、属性直接访问（详见 [docs/YomkMsg.md](docs/YomkMsg.md)）：
+用于在服务与事件循环间传递数据。消息类**继承 `YomkMsg` 即接入标准类型系统**：运行期类型名（类常量 `TYPE_NAME`）自动生成（随重命名跟随，禁止手写），端点声明、精确校验、错误文案统一消费它，实例直接传递、属性直接访问（详见 [docs/YomkMsg.md](docs/YomkMsg.md)）：
 
 ```python
 from yomk.msgs import YomkMsg
 from yomk.msgs.std_msg import String
 
-# 定义消息（继承即得 kName；标准标量/数组另有 String/Int64/BoolArray 等 std 类）
+# 定义消息（继承即得 TYPE_NAME；标准标量/数组另有 String/Int64/BoolArray 等 std 类）
 class MoveCmd(YomkMsg):
     def __init__(self, x, y, z, speed_ratio):
         self.x = x
@@ -213,9 +213,9 @@ event_loop().loop("TaskLoop").destroy()
 统一函数注册与调度中心，面向过程开发范式，支持运行时注册、更新和热替换，业务逻辑快速迭代：
 
 ```python
-# 注册函数（函数签名：(pkg) -> Response；msg_name 声明期望消息类型——一律传 msg.kName 禁止手写串、description 附函数说明，均仅供内省）
+# 注册函数（函数签名：(pkg) -> Response；msg_name 声明期望消息类型——一律传 msg.TYPE_NAME 禁止手写串、description 附函数说明，均仅供内省）
 fn_pool().fn_name("calc").fn(func_v1).install()
-fn_pool().fn_name("greet").fn(greet).msg_name(String.kName).description("向指定的人问好").install()
+fn_pool().fn_name("greet").fn(greet).msg_name(String.TYPE_NAME).description("向指定的人问好").install()
 
 # 调用（未注册的名字返回 eNo；阻塞至函数执行完成）
 resp = fn_pool().fn_name("calc").msg("data").call()
@@ -304,7 +304,7 @@ resp = srv_info().fn_url("/MotionService/move").get_info()
 resp = srv_info().all()
 ```
 
-说明：期望消息类型由 `install_func()` 三参形式声明（函数池/事件循环侧为 `.msg_name()` 分面，**一律传 `msg.kName`**，内省值为全限定 kName），自定义函数说明经第四参或 `.description()` 声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 `unpack` + `type_mismatch` 承担，见 [docs/YomkMsg.md](docs/YomkMsg.md)）；自省读的是运行期服务表，注册/删除即时反映到下一次查询。完整可运行演示见 `examples/ExampleYomkServerInfo.py`（四类查询、注册/删除实时视图、关闭后返回值契约）。
+说明：期望消息类型由 `install_func()` 三参形式声明（函数池/事件循环侧为 `.msg_name()` 分面，**一律传 `msg.TYPE_NAME`**，内省值为全限定 TYPE_NAME），自定义函数说明经第四参或 `.description()` 声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 `unpack` + `type_mismatch` 承担，见 [docs/YomkMsg.md](docs/YomkMsg.md)）；自省读的是运行期服务表，注册/删除即时反映到下一次查询。完整可运行演示见 `examples/ExampleYomkServerInfo.py`（四类查询、注册/删除实时视图、关闭后返回值契约）。
 
 详见 [服务自省 YomkServerInfo.md](docs/YomkServerInfo.md)。
 

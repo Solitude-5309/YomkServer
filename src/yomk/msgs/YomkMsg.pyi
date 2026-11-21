@@ -1,10 +1,10 @@
-from typing import Optional, Type, TypeVar
+from typing import ClassVar, Optional, Type, TypeVar
 
 _T = TypeVar("_T")
 
 
 class YomkMsg:
-    kName: str
+    TYPE_NAME: ClassVar[str]
 
     def __init__(self) -> None: ...
 

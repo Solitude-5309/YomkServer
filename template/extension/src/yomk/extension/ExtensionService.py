@@ -17,8 +17,8 @@ class ExtensionService(YomkService):
         self.set_name("/ExtensionService")
 
     def init(self):
-        # 第三参传 msg.kName（禁止手写字面量，与框架服务同规）
-        self.install_func("/echo", self.echo, ExtensionRequest.kName)
+        # 第三参传 msg.TYPE_NAME（禁止手写字面量，与框架服务同规）
+        self.install_func("/echo", self.echo, ExtensionRequest.TYPE_NAME)
         self.install_func("/version", self.version)
         log().tag("ExtensionService::init").info(
             "install func [ /echo /version ] to ", self.get_name())
@@ -26,11 +26,11 @@ class ExtensionService(YomkService):
 
     def echo(self, pkg):
         # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）；
-        # 失败文案走 type_mismatch——期望/实际两侧均为 kName，零手写报文名；
+        # 失败文案走 type_mismatch——期望/实际两侧均为 TYPE_NAME，零手写报文名；
         # 返回框架 Response，强类型回包以 ExtensionResponse 承载在 data 位
         if unpack(pkg, ExtensionRequest) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ExtensionRequest.kName))
+                            type_mismatch(pkg, ExtensionRequest.TYPE_NAME))
         return Response(ResStatus.eOk, "echo",
                         ExtensionResponse("ok", "echo", pkg.payload))
 

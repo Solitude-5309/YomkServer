@@ -111,7 +111,7 @@ class FmtSrv(YomkService):
     # /echo 四参安装（msg_name "String"，附函数说明）
     def init(self):
         self.install_func("/ping", self.ping)
-        self.install_func("/echo", self.echo, String.kName,
+        self.install_func("/echo", self.echo, String.TYPE_NAME,
                           "echo demo description")
         return 0
 
@@ -210,7 +210,7 @@ def main():
     check(len(funcs) == 2, f"FmtSrv 恰 2 个功能函数: {len(funcs)}")
     check(find_func(funcs, "/echo") is not None and
           find_func(funcs, "/echo").msg_name == "yomk.msgs.String",
-          "四参安装元数据 \"/echo\" msg_name == String.kName（全限定）")
+          "四参安装元数据 \"/echo\" msg_name == String.TYPE_NAME（全限定）")
     check(find_func(funcs, "/ping") is not None and
           find_func(funcs, "/ping").msg_name == "",
           "两参安装元数据 \"/ping\" msg_name 为空")
@@ -228,10 +228,10 @@ def main():
     check(ctx.status == ResStatus.eOk and
           find_func(ctx_funcs, "/create") is not None and
           find_func(ctx_funcs, "/create").msg_name == "yomk.msgs.ctx.Context",
-          "内置 /YomkContext 含 \"/create\" 且 msg_name == Context.kName（全限定）")
+          "内置 /YomkContext 含 \"/create\" 且 msg_name == Context.TYPE_NAME（全限定）")
     check(find_func(ctx_funcs, "/keys") is not None and
           find_func(ctx_funcs, "/keys").msg_name == "yomk.msgs.String",
-          "内置 /YomkContext \"/keys\" 闭环 3 补声明 String.kName")
+          "内置 /YomkContext \"/keys\" 闭环 3 补声明 String.TYPE_NAME")
 
     self_resp = srv_info().srv_name("/YomkServerInfo").functions()
     self_funcs = unpack_func_info_list(self_resp)

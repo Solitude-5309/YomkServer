@@ -8,7 +8,7 @@
 |---|---|---|
 | 创建 | `ctx().key(k).group(g).value(v)` | `.create()` → `ResStatus`（g 省略 = 缺省 `"main"`） |
 | 设置（整体替换） | `ctx().key(k).group(g).value(v)` | `.set()` → `ResStatus` |
-| 类型化读 | `ctx().key(k).group(g).msg(cls)` | `.with_default(d).get()` → 值本体；`.with_default` 可省略（未命中回退 `None`）；`cls` 为期望类型，命中后做类型比对（对齐 C++ `msg<T>()` kName 语义）：不符记 WARN `typed read context key '<key>' type mismatch, expect '<期望>', got '<实际>', return default value` 并回退默认值；`cls` 省略时不校验（Python 动态超集） |
+| 类型化读 | `ctx().key(k).group(g).msg(cls)` | `.with_default(d).get()` → 值本体；`.with_default` 可省略（未命中回退 `None`）；`cls` 为期望类型，命中后做类型名比对（对齐 C++ `msg<T>()` 类型名语义）：不符记 WARN `typed read context key '<key>' type mismatch, expect '<期望>', got '<实际>', return default value` 并回退默认值；`cls` 省略时不校验（Python 动态超集） |
 | 销毁键 | `ctx().key(k).group(g)` | `.destroy()` → `ResStatus` |
 | 键级校验门控 | `ctx().key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus` |
 | 键级变更监听 | `ctx().key(k).group(g).monitor_fn(fn).async_(on)` | `.apply()` → `ResStatus`；`.async_(on)` 可省略 = 同步 |

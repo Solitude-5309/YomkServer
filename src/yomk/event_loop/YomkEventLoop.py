@@ -30,17 +30,17 @@ class YomkEventLoop(YomkService):
         self.m_eventLoopMutex = rwlock.RWLockFair()
 
     def init(self):
-        self.install_func("/start", self.start, EventLoopOpts.kName,
+        self.install_func("/start", self.start, EventLoopOpts.TYPE_NAME,
                           LOOP_START_DESC)
-        self.install_func("/stop", self.stop, String.kName, LOOP_STOP_DESC)
-        self.install_func("/post", self.post, Event.kName, LOOP_POST_DESC)
-        self.install_func("/post_wait", self.post_wait, Event.kName,
+        self.install_func("/stop", self.stop, String.TYPE_NAME, LOOP_STOP_DESC)
+        self.install_func("/post", self.post, Event.TYPE_NAME, LOOP_POST_DESC)
+        self.install_func("/post_wait", self.post_wait, Event.TYPE_NAME,
                           LOOP_POST_WAIT_DESC)
-        self.install_func("/destroy", self.destroy, String.kName,
+        self.install_func("/destroy", self.destroy, String.TYPE_NAME,
                           LOOP_DESTROY_DESC)
         # 调试内省接口，端点挂在本服务 funcMap
         self.install_func("/loops", self.loops, "", LOOP_LOOPS_DESC)
-        self.install_func("/loop", self.loop_info, EventLoopQuery.kName,
+        self.install_func("/loop", self.loop_info, EventLoopQuery.TYPE_NAME,
                           LOOP_LOOP_DESC)
         self.install_func("/all", self.list_all, "", LOOP_ALL_DESC)
         return 0
@@ -54,7 +54,7 @@ class YomkEventLoop(YomkService):
 
     def start(self, pkg):
         if unpack(pkg, EventLoopOpts) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, EventLoopOpts.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, EventLoopOpts.TYPE_NAME))
         # 空名是合法 map 键
         with self.m_eventLoopMutex.gen_wlock():
             if pkg.m_eventLoopName in self.m_eventLoop:
@@ -70,7 +70,7 @@ class YomkEventLoop(YomkService):
 
     def stop(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         with self.m_eventLoopMutex.gen_rlock():
             if pkg.value in self.m_eventLoop:
                 self.m_eventLoop[pkg.value].stop()
@@ -79,7 +79,7 @@ class YomkEventLoop(YomkService):
 
     def destroy(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         with self.m_eventLoopMutex.gen_wlock():
             if pkg.value in self.m_eventLoop:
                 # 调底层 destroy（stop+清队列+释放等待者）后出表
@@ -90,7 +90,7 @@ class YomkEventLoop(YomkService):
 
     def post(self, pkg):
         if unpack(pkg, Event) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Event.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Event.TYPE_NAME))
         with self.m_eventLoopMutex.gen_rlock():
             loop = self.m_eventLoop.get(pkg.m_eventLoopName)
             if loop is None:
@@ -107,7 +107,7 @@ class YomkEventLoop(YomkService):
 
     def post_wait(self, pkg):
         if unpack(pkg, Event) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Event.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Event.TYPE_NAME))
         with self.m_eventLoopMutex.gen_rlock():
             loop = self.m_eventLoop.get(pkg.m_eventLoopName)
             if loop is None:
@@ -134,7 +134,7 @@ class YomkEventLoop(YomkService):
         # eNo；名称按字面量精确匹配、不做任何切分；采样数越界回退默认 3（不抛不崩）
         if unpack(pkg, EventLoopQuery) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, EventLoopQuery.kName))
+                            type_mismatch(pkg, EventLoopQuery.TYPE_NAME))
         loop_name = pkg.m_loopName
         # 归一化采样数：非 int（含 bool）或超 2^64-1 上限回退默认 3，与全量内省缺省一致
         tag_count = 3

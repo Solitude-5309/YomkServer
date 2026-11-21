@@ -35,8 +35,8 @@ def main():
         assert isinstance(data, ExtensionResponse) and data.msg == "echo" \
             and data.data == "hello ext", data
 
-        # 类型不符契约（闭环 3 起标准形态）：错包 → eNo + kName 双侧文案
-        # （期望侧 ExtensionRequest.kName；got 侧体系外对象报 "null"）
+        # 类型不符契约（闭环 3 起标准形态）：错包 → eNo + TYPE_NAME 双侧文案
+        # （期望侧 ExtensionRequest.TYPE_NAME；got 侧体系外对象报 "null"）
         bad = server().url(EXTENSION_ECHO).msg("wrong type").request()
         assert bad.status == ResStatus.eNo, (bad.status, bad.msg)
         assert bad.msg == "pkg is not yomk.msgs.extension.ExtensionRequest, got 'null'", bad.msg

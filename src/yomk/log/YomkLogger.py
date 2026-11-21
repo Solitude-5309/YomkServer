@@ -85,41 +85,41 @@ class YomkLogger(YomkService):
 
     def init(self):
         self.install_func("/set_console_log_proxy",
-                          self.set_console_log_proxy, ConsoleLogProxy.kName,
+                          self.set_console_log_proxy, ConsoleLogProxy.TYPE_NAME,
                           LOG_SET_CONSOLE_PROXY_DESC)
         self.install_func("/set_file_log_proxy",
-                          self.set_file_log_proxy, FileLogProxy.kName,
+                          self.set_file_log_proxy, FileLogProxy.TYPE_NAME,
                           LOG_SET_FILE_LOG_PROXY_DESC)
-        self.install_func("/console_log", self.console_log, Log.kName,
+        self.install_func("/console_log", self.console_log, Log.TYPE_NAME,
                           LOG_CONSOLE_LOG_DESC)
         self.install_func("/create_file_logger",
-                          self.create_file_logger, LogFile.kName,
+                          self.create_file_logger, LogFile.TYPE_NAME,
                           LOG_CREATE_FILE_LOGGER_DESC)
-        self.install_func("/file_log", self.file_log, Log.kName,
+        self.install_func("/file_log", self.file_log, Log.TYPE_NAME,
                           LOG_FILE_LOG_DESC)
-        self.install_func("/write_file_log", self.write_file_log, String.kName,
+        self.install_func("/write_file_log", self.write_file_log, String.TYPE_NAME,
                           LOG_WRITE_FILE_LOG_DESC)
-        self.install_func("/delete_logger", self.delete_logger, String.kName,
+        self.install_func("/delete_logger", self.delete_logger, String.TYPE_NAME,
                           LOG_DELETE_LOGGER_DESC)
         self.install_func("/off_console_log_by_level",
-                          self.off_console_log_by_level, Log.kName,
+                          self.off_console_log_by_level, Log.TYPE_NAME,
                           LOG_OFF_CONSOLE_LOG_BY_LEVEL_DESC)
         self.install_func("/on_console_log_by_level",
-                          self.on_console_log_by_level, Log.kName,
+                          self.on_console_log_by_level, Log.TYPE_NAME,
                           LOG_ON_CONSOLE_LOG_BY_LEVEL_DESC)
         # 调试内省接口，端点挂在本服务 funcMap；/loggers、/logger 均传类型参数
-        self.install_func("/loggers", self.loggers, String.kName,
+        self.install_func("/loggers", self.loggers, String.TYPE_NAME,
                           LOG_LOGGERS_DESC)
-        self.install_func("/logger", self.logger_info, LoggerQuery.kName,
+        self.install_func("/logger", self.logger_info, LoggerQuery.TYPE_NAME,
                           LOG_LOGGER_DESC)
         self.install_func("/all", self.list_all, "", LOG_ALL_DESC)
         self.install_func("/console_global_state", self.console_global_state, "",
                           LOG_CONSOLE_GLOBAL_STATE_DESC)
         self.install_func("/off_file_log_by_level",
-                          self.off_file_log_by_level, Log.kName,
+                          self.off_file_log_by_level, Log.TYPE_NAME,
                           LOG_OFF_FILE_LOG_BY_LEVEL_DESC)
         self.install_func("/on_file_log_by_level",
-                          self.on_file_log_by_level, Log.kName,
+                          self.on_file_log_by_level, Log.TYPE_NAME,
                           LOG_ON_FILE_LOG_BY_LEVEL_DESC)
         self.install_func("/file_global_state", self.file_global_state, "",
                           LOG_FILE_GLOBAL_STATE_DESC)
@@ -127,7 +127,7 @@ class YomkLogger(YomkService):
 
     def console_log(self, pkg):
         if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
         if not pkg.m_logger:
             # 空名自愈：WARN + 兜底 main
             diag_warn("console logger name is empty, use main")
@@ -184,7 +184,7 @@ class YomkLogger(YomkService):
 
     def set_console_log_proxy(self, pkg):
         if unpack(pkg, ConsoleLogProxy) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, ConsoleLogProxy.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, ConsoleLogProxy.TYPE_NAME))
         # 与 console_log 读侧互斥；传 None 即卸载 proxy、恢复默认输出；两字段同锁一致更新
         with self.m_consoleLogProxyMutex:
             self.m_consoleLogProxyFunc = pkg.m_consoleLogProxyFunc
@@ -193,7 +193,7 @@ class YomkLogger(YomkService):
 
     def set_file_log_proxy(self, pkg):
         if unpack(pkg, FileLogProxy) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, FileLogProxy.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, FileLogProxy.TYPE_NAME))
         # 与 file_log 读侧互斥；传 None 即卸载 proxy、恢复默认落盘；两字段同锁一致更新
         with self.m_fileLogProxyMutex:
             self.m_fileLogProxyFunc = pkg.m_fileLogProxyFunc
@@ -202,7 +202,7 @@ class YomkLogger(YomkService):
 
     def create_file_logger(self, pkg):
         if unpack(pkg, LogFile) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, LogFile.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, LogFile.TYPE_NAME))
 
         # 空名/空目录拒绝：eInvalid（参数无效惯例，msg 已携带信息不打诊断）
         if not pkg.m_logger:
@@ -230,7 +230,7 @@ class YomkLogger(YomkService):
 
     def file_log(self, pkg):
         if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
 
         if not pkg.m_logger:
             return Response(ResStatus.eNo, "file logger name is empty")
@@ -277,7 +277,7 @@ class YomkLogger(YomkService):
 
     def write_file_log(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         with self.m_fileLoggersMutex.gen_rlock():
             file_logger = self.m_fileLoggers.get(pkg.value)
             if file_logger is None:
@@ -289,7 +289,7 @@ class YomkLogger(YomkService):
 
     def delete_logger(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
 
         # 空名拒绝（同 createFileLogger 惯例）
         if not pkg.value:
@@ -321,7 +321,7 @@ class YomkLogger(YomkService):
 
     def off_console_log_by_level(self, pkg):
         if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
 
         # 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
         if pkg.m_logger:
@@ -348,7 +348,7 @@ class YomkLogger(YomkService):
 
     def on_console_log_by_level(self, pkg):
         if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
 
         # 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
         if pkg.m_logger:
@@ -401,7 +401,7 @@ class YomkLogger(YomkService):
 
     def off_file_log_by_level(self, pkg):
         if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
 
         # 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
         if pkg.m_logger:
@@ -428,7 +428,7 @@ class YomkLogger(YomkService):
 
     def on_file_log_by_level(self, pkg):
         if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
 
         # 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
         if pkg.m_logger:
@@ -480,7 +480,7 @@ class YomkLogger(YomkService):
 
     def loggers(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         if pkg.value == "console":
             # 单读锁遍历 console 表：纯名清单，不再嵌套双锁
             with self.m_consoleLoggersMutex.gen_rlock():
@@ -545,7 +545,7 @@ class YomkLogger(YomkService):
 
     def logger_info(self, pkg):
         if unpack(pkg, LoggerQuery) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, LoggerQuery.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, LoggerQuery.TYPE_NAME))
         # 按类型单表精确查找：两表允许同名，不再先 console 后 file 双表 fallback（同名歧义由 type 消除）；
         # 命中：锁内构造结构化快照，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）
         if pkg.m_type == "console":

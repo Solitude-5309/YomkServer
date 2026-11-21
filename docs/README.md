@@ -7,7 +7,7 @@
 | 分片 | 一句话摘要 |
 |---|---|
 | [YomkServer / YomkService](YomkServer.md) | 进程内服务总线：URL 路由同步/异步调用、服务生命周期、弱绑定、启动编排 |
-| [YomkMsg](YomkMsg.md) | 轻量消息包：继承 `YomkMsg` 即接入 `kName` 类型系统、`unpack` 校验解包 |
+| [YomkMsg](YomkMsg.md) | 轻量消息包：继承 `YomkMsg` 即接入 `TYPE_NAME` 类型系统、`unpack` 校验解包 |
 | [YomkLogger](YomkLogger.md) | 日志系统：控制台/文件双路输出、六级门控、代理拦截、位置前缀 |
 | [YomkContext](YomkContext.md) | 共享上下文：跨服务键值、Checker 校验门控、Monitor 变更监听 |
 | [YomkEventLoop](YomkEventLoop.md) | 事件循环：具名单线程 FIFO 队列，循环间并行、停启续跑 |

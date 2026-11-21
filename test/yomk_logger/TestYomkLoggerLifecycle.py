@@ -626,7 +626,7 @@ def main():
         "/YomkLogger/delete_logger", Log(Log.eInfo, "x", "y"))
     check(r_wrong.status == ResStatus.eNo
           and r_wrong.msg == "pkg is not yomk.msgs.String, got 'yomk.msgs.log.Log'",
-          "S8: delete_logger 错类型包（Log）返回 eNo + 契约消息（got 报 Log 的 kName）")
+          "S8: delete_logger 错类型包（Log）返回 eNo + 契约消息（got 报 Log 的 TYPE_NAME）")
 
     # ============ Section 9: 服务级具名开关与全局态端点（两级主闸并联） ============
     tag_a = "lg1_s9_tagA"

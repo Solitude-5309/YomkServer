@@ -15,8 +15,8 @@ S5. 框架结构体默认值：Function/CallFunction/Context/
     默认构造与字段
 
 语言机制说明：
-- 消息类继承 YomkMsg 得 kName（闭环 2 起全部框架 msg 类接入），结构契约
-  本文件按类覆盖；kName 字面全查与 unpack/type_of/type_mismatch 语义、
+- 消息类继承 YomkMsg 得 TYPE_NAME（闭环 2 起全部框架 msg 类接入），结构契约
+  本文件按类覆盖；TYPE_NAME 字面全查与 unpack/type_of/type_mismatch 语义、
   std 类 9 个由 test/yomk_msg/TestYomkMsg.py 承载，两文件分工不重叠
 - 端点载荷形态仍为裸标量/裸 list（A 方案 std 实例迁移属闭环 3，本文件
   断言与载荷形态无关，不受影响）

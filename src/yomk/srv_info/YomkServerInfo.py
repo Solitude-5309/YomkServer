@@ -36,9 +36,9 @@ class YomkServerInfo(YomkService):
     def init(self):
         self.install_func("/services", self.list_services, "",
                           SRV_SERVICES_DESC)
-        self.install_func("/functions", self.list_functions, String.kName,
+        self.install_func("/functions", self.list_functions, String.TYPE_NAME,
                           SRV_FUNCTIONS_DESC)
-        self.install_func("/function", self.function_info, String.kName,
+        self.install_func("/function", self.function_info, String.TYPE_NAME,
                           SRV_FUNCTION_DESC)
         self.install_func("/all", self.list_all, "", SRV_ALL_DESC)
         return 0
@@ -58,7 +58,7 @@ class YomkServerInfo(YomkService):
 
     def list_functions(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         srv_name = pkg.value
         if not srv_name:
             # 空参误用：WARN 后返 eInvalid
@@ -78,7 +78,7 @@ class YomkServerInfo(YomkService):
 
     def function_info(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         url = pkg.value
         if not url or url[0] != "/":
             # url 解析失败：WARN + 同串 Response

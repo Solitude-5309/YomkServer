@@ -89,7 +89,7 @@ server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()
 ## 消息定义标准（必须遵守）
 
 扩展消息类**继承框架 `YomkMsg`**（`from yomk.msgs import YomkMsg`），继承即得
-运行期类型名 `kName`（自动生成全限定名如 `yomk.msgs.extension.ExtensionRequest`，
+运行期类型名 `TYPE_NAME`（自动生成全限定名如 `yomk.msgs.extension.ExtensionRequest`，
 随类重命名自动跟随，**禁止手写**）：
 
 ```python
@@ -102,10 +102,10 @@ class ExtensionRequest(YomkMsg):
 
 三条消费规则（框架服务同规，见 `template/extension/src/yomk/extension/ExtensionService.py`）：
 
-1. **端点声明**：`install_func("/echo", self.echo, ExtensionRequest.kName)`
-   ——第三参一律传 `msg.kName`，禁止手写字面量；
+1. **端点声明**：`install_func("/echo", self.echo, ExtensionRequest.TYPE_NAME)`
+   ——第三参一律传 `msg.TYPE_NAME`，禁止手写字面量；
 2. **端点体内精确校验**（框架不做分发校验，责任在端点作者）：
-   `if unpack(pkg, ExtensionRequest) is None: return Response(eNo, type_mismatch(pkg, ExtensionRequest.kName))`
-   ——失败文案期望/实际双侧均为 kName，零手写；
+   `if unpack(pkg, ExtensionRequest) is None: return Response(eNo, type_mismatch(pkg, ExtensionRequest.TYPE_NAME))`
+   ——失败文案期望/实际双侧均为 TYPE_NAME，零手写；
 3. **调用方构造**：`server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()`
    ——载荷是消息类实例，裸值直发会被精确身份校验拒绝。

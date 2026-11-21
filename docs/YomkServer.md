@@ -76,13 +76,13 @@ class MyService(YomkService):
         self.set_name("/MyService")
 
     def init(self):
-        # 四参：期望消息类型（一律传 msg.kName）+ 内省描述（注册即自动弱绑定）
-        self.install_func("/hello", self.hello, String.kName, HELLO_DESC)
+        # 四参：期望消息类型（一律传 msg.TYPE_NAME）+ 内省描述（注册即自动弱绑定）
+        self.install_func("/hello", self.hello, String.TYPE_NAME, HELLO_DESC)
 
     def hello(self, pkg):
-        # 端点体内精确校验：unpack + type_mismatch（期望/实际双侧均为 kName）
+        # 端点体内精确校验：unpack + type_mismatch（期望/实际双侧均为 TYPE_NAME）
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         return Response(ResStatus.eOk, "hello " + pkg.value)
 
 server().init()                                  # 框架初始化

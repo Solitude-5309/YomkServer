@@ -6,7 +6,7 @@
 
 | 场景 | 链 | 终结与返回 |
 |---|---|---|
-| 启动 | `event_loop().loop(name).handle_fn(fn).msg_name(m)` | `.start()` → `ResStatus`；`handle_fn` 为循环默认处理函数（投递未携带回调时执行），`msg_name` 为期望消息类型名（**一律传 `msg.kName`**，内省值为全限定 kName），均可省略 |
+| 启动 | `event_loop().loop(name).handle_fn(fn).msg_name(m)` | `.start()` → `ResStatus`；`handle_fn` 为循环默认处理函数（投递未携带回调时执行），`msg_name` 为期望消息类型名（**一律传 `msg.TYPE_NAME`**，内省值为全限定 TYPE_NAME），均可省略 |
 | 停止 | `event_loop().loop(name)` | `.stop()` → `ResStatus`（停线程但**保留队列事件**） |
 | 销毁 | `event_loop().loop(name)` | `.destroy()` → `ResStatus`（停线程 + 清空队列 + 移出循环表，不可续跑） |
 | 非阻塞投递 | `event_loop().msg(data).loop(name).handle_fn(fn).tag(t)` | `.post()` → `ResStatus`（**仅表示入队结果，非执行结果**）；`handle_fn`/`tag` 可省略 |

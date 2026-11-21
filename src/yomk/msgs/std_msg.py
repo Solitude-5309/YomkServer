@@ -1,6 +1,6 @@
 """Standard built-in message set.
 
-标准内置消息集：标量用 value 字段，数组用 items 字段，kName 由 YomkMsg 自动生成。
+标准内置消息集：标量用 value 字段，数组用 items 字段，TYPE_NAME 由 YomkMsg 自动生成。
 Bytes 为 Python 端独有，承载二进制载荷。
 """
 
@@ -98,18 +98,18 @@ class StringArray(YomkMsg):
 
 
 def type_of(pkg):
-    """Return the runtime kName of a message, or "null" for None and non-messages.
+    """Return the runtime type name of a message, or "null" for None and non-messages.
 
-    返回消息的运行期 kName；None 与体系外对象返回 "null"。
+    返回消息的运行期类型名（TYPE_NAME）；None 与体系外对象返回 "null"。
     """
     if isinstance(pkg, YomkMsg):
-        return type(pkg).kName
+        return type(pkg).TYPE_NAME
     return "null"
 
 
 def type_mismatch(pkg, expected):
-    """Build the standard type-mismatch text, expecting ``cls.kName``.
+    """Build the standard type-mismatch text, expecting ``cls.TYPE_NAME``.
 
-    构造标准类型不符文案；expected 由调用方传 ``cls.kName``。
+    构造标准类型不符文案；expected 由调用方传 ``cls.TYPE_NAME``。
     """
     return "pkg is not " + expected + ", got '" + type_of(pkg) + "'"

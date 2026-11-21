@@ -25,7 +25,7 @@ class MotionService(YomkService):
     def init(self):
         # 2 参注册：无消息元数据；4 参注册：声明 /move 期望 MoveCmd 并附函数说明，供自省识别
         self.install_func("/echo", self.echo)
-        self.install_func("/move", self.move, MoveCmd.kName, "运动控制：按指令运动到目标位姿并留痕")
+        self.install_func("/move", self.move, MoveCmd.TYPE_NAME, "运动控制：按指令运动到目标位姿并留痕")
         log().tag("arm.motion").info("init: install /echo (no meta), /move [MoveCmd] + description")
         return 0
 

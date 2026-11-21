@@ -46,26 +46,26 @@ class YomkContext(YomkService):
         self.m_customGroupMutex = rwlock.RWLockFair()
 
     def init(self):
-        self.install_func("/create", self.create, Context.kName, CTX_CREATE_DESC)
-        self.install_func("/destroy", self.destroy, ContextGroupKey.kName,
+        self.install_func("/create", self.create, Context.TYPE_NAME, CTX_CREATE_DESC)
+        self.install_func("/destroy", self.destroy, ContextGroupKey.TYPE_NAME,
                           CTX_DESTROY_DESC)
-        self.install_func("/get", self.get, Context.kName, CTX_GET_DESC)
-        self.install_func("/set", self.set, Context.kName, CTX_SET_DESC)
-        self.install_func("/turn_on_checker", self.turn_on_checker, String.kName,
+        self.install_func("/get", self.get, Context.TYPE_NAME, CTX_GET_DESC)
+        self.install_func("/set", self.set, Context.TYPE_NAME, CTX_SET_DESC)
+        self.install_func("/turn_on_checker", self.turn_on_checker, String.TYPE_NAME,
                           CTX_TURN_ON_CHECKER_DESC)
-        self.install_func("/turn_off_checker", self.turn_off_checker, String.kName,
+        self.install_func("/turn_off_checker", self.turn_off_checker, String.TYPE_NAME,
                           CTX_TURN_OFF_CHECKER_DESC)
-        self.install_func("/set_checker", self.set_checker, ContextChecker.kName,
+        self.install_func("/set_checker", self.set_checker, ContextChecker.TYPE_NAME,
                           CTX_SET_CHECKER_DESC)
-        self.install_func("/turn_on_monitor", self.turn_on_monitor, String.kName,
+        self.install_func("/turn_on_monitor", self.turn_on_monitor, String.TYPE_NAME,
                           CTX_TURN_ON_MONITOR_DESC)
-        self.install_func("/turn_off_monitor", self.turn_off_monitor, String.kName,
+        self.install_func("/turn_off_monitor", self.turn_off_monitor, String.TYPE_NAME,
                           CTX_TURN_OFF_MONITOR_DESC)
-        self.install_func("/set_monitor", self.set_monitor, ContextMonitor.kName,
+        self.install_func("/set_monitor", self.set_monitor, ContextMonitor.TYPE_NAME,
                           CTX_SET_MONITOR_DESC)
         self.install_func("/groups", self.groups, "", CTX_GROUPS_DESC)
-        self.install_func("/keys", self.keys, String.kName, CTX_KEYS_DESC)
-        self.install_func("/key", self.key_info, ContextGroupKey.kName,
+        self.install_func("/keys", self.keys, String.TYPE_NAME, CTX_KEYS_DESC)
+        self.install_func("/key", self.key_info, ContextGroupKey.TYPE_NAME,
                           CTX_KEY_DESC)
         self.install_func("/all", self.list_all, "", CTX_ALL_DESC)
 
@@ -105,7 +105,7 @@ class YomkContext(YomkService):
 
     def turn_on_monitor(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         group, fail = self.find_group(pkg.value)
         if group is None:
             return fail
@@ -114,7 +114,7 @@ class YomkContext(YomkService):
 
     def turn_off_monitor(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         group, fail = self.find_group(pkg.value)
         if group is None:
             return fail
@@ -124,7 +124,7 @@ class YomkContext(YomkService):
     def set_monitor(self, pkg):
         if unpack(pkg, ContextMonitor) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ContextMonitor.kName))
+                            type_mismatch(pkg, ContextMonitor.TYPE_NAME))
 
         group, fail = self.find_group(pkg.group)
         if group is None:
@@ -151,7 +151,7 @@ class YomkContext(YomkService):
     def set_checker(self, pkg):
         if unpack(pkg, ContextChecker) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ContextChecker.kName))
+                            type_mismatch(pkg, ContextChecker.TYPE_NAME))
 
         group, fail = self.find_group(pkg.group)
         if group is None:
@@ -174,7 +174,7 @@ class YomkContext(YomkService):
 
     def turn_on_checker(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         group, fail = self.find_group(pkg.value)
         if group is None:
             return fail
@@ -183,7 +183,7 @@ class YomkContext(YomkService):
 
     def turn_off_checker(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         group, fail = self.find_group(pkg.value)
         if group is None:
             return fail
@@ -192,7 +192,7 @@ class YomkContext(YomkService):
 
     def create(self, pkg):
         if unpack(pkg, Context) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Context.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Context.TYPE_NAME))
 
         group, fail = self.find_group(pkg.group)
         if group is None:
@@ -216,7 +216,7 @@ class YomkContext(YomkService):
     def destroy(self, pkg):
         if unpack(pkg, ContextGroupKey) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ContextGroupKey.kName))
+                            type_mismatch(pkg, ContextGroupKey.TYPE_NAME))
 
         group, fail = self.find_group(pkg.group)
         if group is None:
@@ -234,7 +234,7 @@ class YomkContext(YomkService):
 
     def get(self, pkg):
         if unpack(pkg, Context) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Context.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Context.TYPE_NAME))
 
         group, fail = self.find_group(pkg.group)
         if group is None:
@@ -258,7 +258,7 @@ class YomkContext(YomkService):
 
     def set(self, pkg):
         if unpack(pkg, Context) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Context.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, Context.TYPE_NAME))
 
         group, fail = self.find_group(pkg.group)
         if group is None:
@@ -283,7 +283,7 @@ class YomkContext(YomkService):
 
     def keys(self, pkg):
         if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
         group, fail = self.find_group(pkg.value)
         if group is None:
             return fail
@@ -292,7 +292,7 @@ class YomkContext(YomkService):
     def key_info(self, pkg):
         if unpack(pkg, ContextGroupKey) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ContextGroupKey.kName))
+                            type_mismatch(pkg, ContextGroupKey.TYPE_NAME))
 
         group, fail = self.find_group(pkg.group)
         if group is None:
