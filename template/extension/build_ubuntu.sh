@@ -3,6 +3,7 @@
 # 用法: source build_ubuntu.sh（也兼容直接执行 ./build_ubuntu.sh，两种方式失败均正确退出）
 # 依次交互询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取环境变量 YOMK_PREFIX_PATH，可修改
 # 扩展库与 YomkServer 安装到一起（头文件由 YomkServer::YomkServer 的 INTERFACE include 统一提供）
+# 构建产物只落扩展根下一棵构建树 build/（测试程序在其内 build/test），test/ 下不生成 build 目录
 # 安装后将扩展 lib 注册到系统动态库搜索路径（复用 yomk.conf）并刷新 ldconfig 缓存，新开任意终端即可找到扩展 so
 
 # 兼容直接执行：脚本内部以 return 表达失败（source 语义），直接执行时 return 在顶层非法
@@ -16,7 +17,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_NAME="extension"
 BUILD_DIR="${SCRIPT_DIR}/build"
 TEST_DIR="${SCRIPT_DIR}/test"
-TEST_BUILD_DIR="${TEST_DIR}/build"
+# 测试程序复用扩展根下唯一的构建目录（build/test），test/ 下不再生成 build/
+TEST_BUILD_DIR="${BUILD_DIR}/test"
 _ORIG_DIR="$(pwd)"
 
 # 路径规范化：展开 ~ 、相对路径补全

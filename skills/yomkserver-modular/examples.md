@@ -1245,7 +1245,7 @@ message(STATUS "ExtensionName libraries: ${ExtensionName_LIBRARIES}")
 add_executable(TestExtensionName TestExtensionName.cpp)
 target_link_libraries(TestExtensionName PRIVATE ExtensionName::ExtensionName YomkServer::YomkServer)
 
-# 测试程序仅供扩展开发验证使用，仅编译到 test/build/，不随扩展安装
+# 测试程序仅供扩展开发验证使用，仅编译到扩展根构建树的 build/test/，不随扩展安装
 ```
 
 ### test/TestExtensionName.cpp
@@ -1354,7 +1354,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_NAME="ExtensionName"
 BUILD_DIR="${SCRIPT_DIR}/build"
 TEST_DIR="${SCRIPT_DIR}/test"
-TEST_BUILD_DIR="${TEST_DIR}/build"
+TEST_BUILD_DIR="${BUILD_DIR}/test"
 _ORIG_DIR="$(pwd)"
 
 # 路径规范化：展开 ~ 、相对路径补全
@@ -1563,7 +1563,7 @@ install(FILES
 source build_ubuntu.sh
 ```
 
-> 交互式编译：依次询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取 `$YOMK_PREFIX_PATH`，可修改。扩展库与 YomkServer 安装到一起（头文件由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供）。测试程序仅编译到 `test/build/` 供验证，不随扩展安装。
+> 交互式编译：依次询问 YomkServer 安装路径（前置路径）与扩展安装路径，默认均取 `$YOMK_PREFIX_PATH`，可修改。扩展库与 YomkServer 安装到一起（头文件由 `YomkServer::YomkServer` 的 INTERFACE include 统一提供）。构建产物只落扩展根下一棵构建树 `build/`，测试程序编译到其中 `build/test/` 供验证，不随扩展安装。
 
 ## 工程结构
 

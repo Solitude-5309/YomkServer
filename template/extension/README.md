@@ -21,7 +21,7 @@ source build_ubuntu.sh     # 交互式，前置路径与安装路径默认均取
 ```
 
 > 扩展库需与 YomkServer 安装到一起：头文件统一安装到 `include/yomk/extension/`，对外引用统一走 `<yomk/extension/...>`，与 YomkServer 各域共用同一 include 根（`<prefix>/include`）。
-> 测试程序不随扩展安装，编译产物在模板目录下 `test/build`，可在该目录直接运行 `TestExtension` 验证。
+> 构建产物统一落在模板目录下的单棵构建树 `build/`，测试程序编译到其中 `build/test`，可在该目录直接运行 `TestExtension` 验证；`test/` 下不生成 build 目录。
 > 若未配置 `YOMK_PREFIX_PATH` 环境变量，脚本会提示警告，此时手动输入路径即可。
 
 ## 工程结构
@@ -38,7 +38,7 @@ extension/
 ├── src/
 │   └── ExtensionService.cpp # 服务实现
 ├── test/
-│   ├── CMakeLists.txt       # 测试构建配置（测试程序编译到 test/build，不随扩展安装）
+│   ├── CMakeLists.txt       # 测试构建配置（测试程序编译到 build/test，不随扩展安装）
 │   └── TestExtension.cpp
 ├── cmake/
 │   └── ProjectConfig.cmake.in

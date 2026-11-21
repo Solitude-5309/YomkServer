@@ -295,7 +295,7 @@ ExtensionName/
 4. `build_ubuntu.sh` 支持可选编译测试程序（`test/` 有独立 CMakeLists）
 5. **扩展库注册系统动态库缓存**：`build_ubuntu.sh` 安装完成后必须将 `${INSTALL_DIR}/lib` 幂等注册到 `/etc/ld.so.conf.d/yomk.conf`（扩展属于 yomk，复用同一 conf 文件，`grep -qxF` 判重后追加），并执行 `sudo ldconfig` 刷新缓存。新增的 so 不会自动进入 ld.so.cache，不刷新则新开任意终端都找不到扩展 so。禁止只用会话级 `export LD_LIBRARY_PATH` 代替（新终端即失效）。写 `/etc` 与 `ldconfig` 永远需要 sudo，与 `INSTALL_DIR` 是否可写无关
 6. 测试程序经 `yomk::server().init()` 初始化后，用 `yomk::server().srv<XxxService>().create()` 注册扩展服务（或 `.srv_name(n).srv_ptr(new XxxService(...)).add()`）并验证功能
-7. **测试程序只编译不安装**：测试程序仅供扩展开发验证使用，由 `build_ubuntu.sh` 编译到 `test/build/`（不加 `--target install`、不设 `CMAKE_INSTALL_PREFIX`），不随扩展安装；test/CMakeLists.txt 不添加 install 规则
+7. **测试程序只编译不安装**：测试程序仅供扩展开发验证使用，由 `build_ubuntu.sh` 编译到扩展根下唯一构建树的 `build/test/`（不加 `--target install`、不设 `CMAKE_INSTALL_PREFIX`），不随扩展安装；`test/` 下不生成 build 目录，test/CMakeLists.txt 不添加 install 规则
 8. **模板接口最小化**：模板服务默认只包含一个 `/version` 接口（方法名为 `version`，不带 `get` 前缀），不生成任何示例业务接口（如加减乘除）；业务功能通过「继续扩展」添加
 9. **数据源无关原则**：扩展只负责处理逻辑，不关心数据来源。所有外部数据（如文件内容、路径等）必须通过请求参数传入，扩展内部不硬编码任何数据源
 10. **版本号传递**：`project()` 的 `VERSION` 通过 `target_compile_definitions(${PROJECT_NAME} PRIVATE XXX_VERSION="${PROJECT_VERSION}")` 编译期注入版本宏，`/version` 接口内以字符串拼接返回（用小写扩展名），如 `"extension v" EXTENSION_VERSION`
@@ -358,7 +358,7 @@ YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定�
 生成或修改工程/扩展后，必须自证可编译可运行：
 
 1. **编译验证**：`source build_ubuntu.sh` 走通配置 → 编译 → 安装；运行可执行文件确认内置服务与业务服务日志正常
-2. **测试程序**：扩展模板自带 `test/`（独立 main + `[PASS]/[FAIL]` 断言 + Test Summary 汇总，退出码 0/1）；新增业务接口时同步在测试程序中追加用例，`build_ubuntu.sh` 选择编译测试后在 `test/build/` 运行验证
+2. **测试程序**：扩展模板自带 `test/`（独立 main + `[PASS]/[FAIL]` 断言 + Test Summary 汇总，退出码 0/1）；新增业务接口时同步在测试程序中追加用例，`build_ubuntu.sh` 选择编译测试后在 `build/test/` 运行验证
 3. **框架质量工具**（框架仓库内，可为生成的工程参考搭建同类能力）：`test/run_tests.sh`（一键全量测试）、`test/run_example.sh`（一键运行 examples/ 全部示例）、`test/run_static_checks.sh`（cppcheck + clang-tidy 零告警门禁）、环境变量 `YOMK_TEST_SANITIZER=off|asan|tsan`（测试构建 sanitizer 开关）；测试组织范式：`test/` 按模块分子目录，每个被测主题一个独立可执行程序（纯 main + CHECK 断言）。各脚本参数细节见仓库 `test/` 内脚本头注释
 
 ## 详细参考
