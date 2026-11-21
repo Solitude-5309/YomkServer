@@ -2,7 +2,7 @@
 
 强类型消息包：业务数据通过 `YomkMsg` 及其派生类安全封装与传递，支持拷贝与移动语义，用于在服务请求、上下文、事件循环与函数池之间传递数据。跨边界统一以基类指针 `YomkMsgPtr`（`std::shared_ptr<YomkMsg>`）流转，接收端用 `unpack` 按运行期类型名还原具体类型。
 
-消息基类、`YOMK_DEFINE_MSG` 宏与 `yomk::msgs::unpack` 位于 `<yomk/msg/YomkMsg.h>`；内置 30 种标准类型位于 `<yomk/msg/YomkStdMsg.h>`；核心载荷消息包（`Response`）位于 `<yomk/server/YomkServerMsg.h>`；模块专属载荷/消息分别位于 `YomkContext{Payload,Msg}.h`、`YomkLogger{Payload,Msg}.h`、`YomkEventLoop{Payload,Msg}.h`、`YomkFunctionPool{Payload,Msg}.h`、`YomkServerInfo{Payload,Msg}.h`（对应的 `*Api.h` 已按需包含）。
+消息基类、`YOMK_DEFINE_MSG` / `YOMK_DEFINE_MSG_NS` 宏与 `yomk::msgs::unpack` 位于 `<yomk/msg/YomkMsg.h>`；内置 30 种标准类型位于 `<yomk/msg/YomkStdMsg.h>`；核心载荷消息包（`Response`）位于 `<yomk/server/YomkServerMsg.h>`；模块专属载荷/消息分别位于 `YomkContext{Payload,Msg}.h`、`YomkLogger{Payload,Msg}.h`、`YomkEventLoop{Payload,Msg}.h`、`YomkFunctionPool{Payload,Msg}.h`、`YomkServerInfo{Payload,Msg}.h`（对应的 `*Api.h` 已按需包含）。
 
 ## 适用与不适用
 
@@ -19,8 +19,10 @@
 | API | 说明 |
 |---|---|
 | `YOMK_DEFINE_MSG(DataType, MsgName, VarName)` | 声明自定义消息类型：在 `yomk::msgs` 命名空间内生成 `YomkMsg` 派生类 `MsgName`（载荷成员 `VarName`，框架约定统一取 `d`）与别名 `MsgNamePtr`；宏自带命名空间注入，建议放置在任意命名空间之外 |
+| `YOMK_DEFINE_MSG_NS(NS, DataType, MsgName, VarName)` | 同上，但生成类落 `yomk::msgs::NS` 子命名空间、`kTypeName` 为 `"yomk::msgs::NS::MsgName"`；工程/扩展自有消息用它，避免占用 `yomk::msgs` 根（`NS` 为 C++17 嵌套命名空间 token，不得含空格；载荷类型与 NS 或祖先同名时写根限定名 `::` 开头） |
 | `yomk::msgs::MsgName::shared(args...)` | 类内静态工厂，转发构造参数创建 `shared_ptr<MsgName>` 包装的消息包 |
 | `pkg->typeName()` / `yomk::msgs::typeOf(pkg)` | 运行期类型名读取：基类纯虚 `typeName()` 返回各类型静态 `kTypeName`（`std::string_view`，零分配）；`typeOf` 为判空包装（空包返回 `"null"`），用于错误文案 |
+| `yomk::msgs::typeMismatch(pkg, expected)` | 标准类型不符文案：`"pkg is not <期望类型>, got '<实际类型>'"`（空包的实际类型报 `"null"`），供 `unpack` 判空分支统一返回 |
 | `yomk::msgs::unpack<yomk::msgs::MsgName>(pkg)` | 按消息类型解包模板：返回 `shared_ptr<MsgName>`；pkg 为空或类型名不匹配时返回 `nullptr`，不抛异常；失败处理由调用方手写（如 `if (!ptr) return {...}`） |
 
 ## 内置标准类型

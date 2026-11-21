@@ -175,19 +175,19 @@ int main()
         YOMK_TEST_CHECK(arr && contains(arr->d, "int_key"), "keys 包含 int_key");
     }
 
-    // keyInfo：正常 key（结构化返回，m_msg 恒 "ok"，数据走 m_data）
+    // keyInfo：正常 key（结构化返回，msg 恒 "ok"，数据走 data）
     {
         auto resp = yomk::ctx().key("str_key").info();
         YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "keyInfo 正常 key 返回 ResStatus::Succeeded");
-        YOMK_TEST_CHECK(resp.msg == "ok", "keyInfo 命中 m_msg 恒为 ok");
+        YOMK_TEST_CHECK(resp.msg == "ok", "keyInfo 命中 msg 恒为 ok");
         auto info = yomk::msgs::unpack<yomk::msgs::ContextKeyInfo>(resp.data);
         YOMK_TEST_CHECK(info != nullptr, "keyInfo 数据为 ContextKeyInfo 包");
-        YOMK_TEST_CHECK(info && info->d.key == "str_key", "keyInfo 字段 m_key 一致");
-        YOMK_TEST_CHECK(info && info->d.typeName == yomk::msgs::String::kTypeName, "keyInfo 字段 m_typeName 一致");
-        YOMK_TEST_CHECK(info && !info->d.checkerOn, "keyInfo 字段 m_checkerOn 为 false");
+        YOMK_TEST_CHECK(info && info->d.key == "str_key", "keyInfo 字段 key 一致");
+        YOMK_TEST_CHECK(info && info->d.typeName == yomk::msgs::String::kTypeName, "keyInfo 字段 typeName 一致");
+        YOMK_TEST_CHECK(info && !info->d.checkerOn, "keyInfo 字段 checkerOn 为 false");
         YOMK_TEST_CHECK(info && info->d.monitorCount == 0 && info->d.asyncMonitorCount == 0,
               "keyInfo 字段 monitor 计数为 0");
-        YOMK_TEST_CHECK(info && info->d.group == "main", "keyInfo 字段 m_group 一致");
+        YOMK_TEST_CHECK(info && info->d.group == "main", "keyInfo 字段 group 一致");
     }
 
     // keyInfo：空 key
@@ -204,7 +204,7 @@ int main()
         YOMK_TEST_CHECK(resp.msg == "context key 'no_such_key' does not exist", "keyInfo 不存在 key 错误消息一致(具体键名)");
     }
 
-    // listAll：跨组聚合（组 → 键元信息两层结构化包，m_msg 恒 "ok"）
+    // listAll：跨组聚合（组 → 键元信息两层结构化包，msg 恒 "ok"）
     {
         auto resp = yomk::ctx().all();
         YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "listAll 返回 ResStatus::Succeeded");
@@ -213,7 +213,7 @@ int main()
         YOMK_TEST_CHECK(arr != nullptr, "listAll 数据为 ContextGroupInfoList");
         YOMK_TEST_CHECK(arr && arr->d.size() == 1, "listAll 返回 1 个组信息");
         YOMK_TEST_CHECK(arr && arr->d[0].groupName == "main", "listAll 组名为 main");
-        // 组内 m_keys 为 std::map 快照，中序遍历字典序：int_key < str_key；逐字段断言（均未挂 checker/monitor）
+        // 组内 keys 为 std::map 快照，中序遍历字典序：int_key < str_key；逐字段断言（均未挂 checker/monitor）
         YOMK_TEST_CHECK(arr && arr->d[0].keys.size() == 2, "listAll 返回 2 个键信息");
         YOMK_TEST_CHECK(arr && arr->d[0].keys[0].key == "int_key" && arr->d[0].keys[1].key == "str_key",
               "listAll 键序为 map 字典序（int_key, str_key）");

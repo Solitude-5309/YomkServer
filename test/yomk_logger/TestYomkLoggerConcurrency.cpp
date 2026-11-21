@@ -1224,7 +1224,7 @@ int main()
                                     g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
                                 }
                                 snap.allLines = listPkg->d.size();
-                                // 结构化清单按 m_type 计数（与按类型端点行数计数语义一致）
+                                // 结构化清单按 type 计数（与按类型端点行数计数语义一致）
                                 for (const auto& li : listPkg->d)
                                 {
                                     if (li.type == "console")

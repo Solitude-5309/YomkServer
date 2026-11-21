@@ -510,7 +510,7 @@ static void showArmLoggerDashboard()
     {
         logLoggerInfo("get_info", shiftInfo->d);
     }
-    logVerify("type=file、dir 承载日志目录：m_msg 恒 \"ok\"，数据走 m_data 结构化包");
+    logVerify("type=file、dir 承载日志目录：msg 恒 \"ok\"，数据走 data 结构化包");
 
     logAction("单查未注册日志器 ghost");
     resp = yomk::log_mgr().console("ghost").get_info();

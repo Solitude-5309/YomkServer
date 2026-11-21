@@ -338,7 +338,7 @@ static void testIntrospection()
     YOMK_TEST_CHECK(
         infos["/ping"].funcName == "/ping" && infos["/ping"].msgName == yomk::msgs::String::kTypeName &&
             infos["/echo"].msgName == yomk::msgs::String::kTypeName,
-        "serviceFuncInfos 元数据正确（m_funcName/m_msgName）");
+        "serviceFuncInfos 元数据正确（funcName/msgName）");
     YOMK_TEST_CHECK(server->serviceFuncInfos("/NoSuch").empty(), "serviceFuncInfos 不存在服务返回空表");
 
     server->delService("/RouteSrv");

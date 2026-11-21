@@ -23,8 +23,8 @@
 // 说明：白盒段直连内部类 EventLoop（include event_loop/EventLoop.h，CMake 已追加 src 目录），
 // 不触 yomk::server().init()（类级测试与请求路由无关）；API 段使用 yomk::server().init() 单例拉起内置 /YomkEventLoop，
 // 末尾 yomk::server().shutdown() 收尾（call_once 约束，shutdown 后不可再初始化）。
-// 停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询 infoSnapshot 至 m_running==false
-// 确认 m_running 已置位后才释放阻塞事件，杜绝工作线程抢跑后续排队事件的竞态（确定性断言）。
+// 停止/销毁经辅助线程调用（内部 join 等待在途事件收尾）；主线程轮询 infoSnapshot 至 running==false
+// 确认 running 已置位后才释放阻塞事件，杜绝工作线程抢跑后续排队事件的竞态（确定性断言）。
 // 阻塞门与观测变量全部为文件级（同 g_asyncMutex 既有 TSan-clean 风格）：阻塞门用原子自旋实现，
 // 规避 std::condition_variable::wait_for 在 TSan 下的已知误报路径与各 section 局部互斥量
 // 栈槽地址复用导致的元数据串扰；工作线程自旋以 1ms 粒度休眠，开销可忽略。
@@ -205,17 +205,17 @@ int main()
 
         // 辅助线程停止：stop 内部 join 等待 e1 收尾，须与主线程释放阻塞门配合
         std::thread stopper([&loop] { loop.stop(); });
-        // 轮询确认 m_running 已置 false：e1 收尾后工作线程必从 while 条件退出，不会抢跑 e2/e3
+        // 轮询确认 running 已置 false：e1 收尾后工作线程必从 while 条件退出，不会抢跑 e2/e3
         bool stopped =
             waitUntil([&loop] { return !loopSnap(loop).running; }, 2000);
-        YOMK_TEST_CHECK(stopped, "停止过程中快照观察到 m_running==false");
+        YOMK_TEST_CHECK(stopped, "停止过程中快照观察到 running==false");
 
         openGate();      // 释放 e1
         stopper.join();  // stop 返回：工作线程已退出
 
         YOMK_TEST_CHECK(orderSnapshot().empty(), "停止后排队事件 e2/e3 未被执行");
         auto stopSnap = loopSnap(loop);
-        YOMK_TEST_CHECK(!stopSnap.running, "停止后 m_running==false");
+        YOMK_TEST_CHECK(!stopSnap.running, "停止后 running==false");
         YOMK_TEST_CHECK(stopSnap.pending == 2, "停止后 pending==2（未执行事件保留在队列）");
 
         // 续跑：对已停止未销毁的循环再次 start，积压按原 FIFO 顺序执行
@@ -255,14 +255,14 @@ int main()
         std::thread destroyer([&loop] { loop.destroy(); });
         bool stopped =
             waitUntil([&loop] { return !loopSnap(loop).running; }, 2000);
-        YOMK_TEST_CHECK(stopped, "销毁过程中快照观察到 m_running==false（先停止）");
+        YOMK_TEST_CHECK(stopped, "销毁过程中快照观察到 running==false（先停止）");
 
         openGate();
         destroyer.join();
 
         YOMK_TEST_CHECK(orderSnapshot().empty(), "销毁后排队事件 c1/c2 永不执行");
         auto destroySnap = loopSnap(loop);
-        YOMK_TEST_CHECK(!destroySnap.running, "销毁后 m_running==false");
+        YOMK_TEST_CHECK(!destroySnap.running, "销毁后 running==false");
         YOMK_TEST_CHECK(destroySnap.pending == 0, "销毁后 pending==0（队列已清空）");
 
         // 不可续跑：destroy 后再 start，无任何事件执行
@@ -478,14 +478,14 @@ int main()
         };
         YOMK_TEST_CHECK(
             waitUntil([&infoOf] { auto info = infoOf(); return info && !info->d.running; }, 2000),
-            "API 停止过程中 get_info() 观察到 m_running==false");
+            "API 停止过程中 get_info() 观察到 running==false");
 
         openGate();
         stopper.join();
 
         YOMK_TEST_CHECK(orderSnapshot().empty(), "API 停止后排队事件未执行");
         auto infoStopped = infoOf();
-        YOMK_TEST_CHECK(infoStopped && !infoStopped->d.running, "API 停止后 m_running==false");
+        YOMK_TEST_CHECK(infoStopped && !infoStopped->d.running, "API 停止后 running==false");
         YOMK_TEST_CHECK(infoStopped && infoStopped->d.pending == 2, "API 停止后 pending==2（未执行事件保留）");
 
         // 停止态投递被拒（契约回归）：服务层映射 ResStatus::Failed，调用方可区分"已入队"与"被拒"
@@ -504,7 +504,7 @@ int main()
         // 冻结窗口队列 2 条（c1/c2），大 tagCount >= 2 截断不生效全部列出
         auto oob = yomk::event_loop().loop("api_loop").tag_count(1000000000000000000ULL).get_info();
         YOMK_TEST_CHECK(oob.status == yomk::payload::ResStatus::Succeeded, "越界数字 tagCount 返回 ResStatus::Succeeded（不崩溃）");
-        YOMK_TEST_CHECK(oob.msg == "ok", "越界数字 tagCount 命中 m_msg 恒为 ok");
+        YOMK_TEST_CHECK(oob.msg == "ok", "越界数字 tagCount 命中 msg 恒为 ok");
         auto oobInfo = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(oob.data);
         YOMK_TEST_CHECK(oobInfo != nullptr, "越界数字 tagCount 解包 EventLoopInfo 成功");
         YOMK_TEST_CHECK(oobInfo && oobInfo->d.pending == 2, "越界数字串不影响循环状态（pending 仍为 2）");
@@ -696,7 +696,7 @@ int main()
         std::thread destroyer([&loop] { loop.destroy(); });
         YOMK_TEST_CHECK(
             waitUntil([&loop] { return !loopSnap(loop).running; }, 2000),
-            "destroy 过程中观察到 m_running==false（先停止）");
+            "destroy 过程中观察到 running==false（先停止）");
 
         // 释放 g1：worker 退出 -> destroy 清队列丢弃 e2 并触发其等待回调 -> T1 解除阻塞
         openGate();
@@ -757,7 +757,7 @@ int main()
         std::thread resetter([&loopHolder] { loopHolder.reset(); });
         YOMK_TEST_CHECK(
             waitUntil([raw] { return !loopSnap(*raw).running; }, 2000),
-            "析构过程中观察到 m_running==false（~EventLoop 先走 destroy 停止）");
+            "析构过程中观察到 running==false（~EventLoop 先走 destroy 停止）");
 
         // 释放 g1：worker 退出 -> 析构清队列丢弃 e2 并触发其等待回调 -> T1 解除阻塞 -> 析构完成
         openGate();

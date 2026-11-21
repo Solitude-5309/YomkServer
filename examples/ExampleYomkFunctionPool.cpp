@@ -164,7 +164,7 @@ static void logVerify(const std::string& text)
 // ---------------------------------------------------------------------------
 
 // 负载合计工具：跨模块共享的无状态计算函数（场景 1 以 2 参形式登记）。
-// 入参 StringArray 各轴负载（kg），合计结果同时放进 msg 与 m_data——调用方两者都能拿到
+// 入参 StringArray 各轴负载（kg），合计结果同时放进 msg 与 data——调用方两者都能拿到
 yomk::payload::Response payloadSum(YomkMsgPtr pkg)
 {
     // 解包入参：宏已自动判空，失败自动返回 {ResStatus::Failed, "错误信息"}（空参守卫见场景 3）
@@ -188,7 +188,7 @@ yomk::payload::Response payloadSum(YomkMsgPtr pkg)
     oss << "负载合计工具完成：payload=" << totalKg << "kg";
     yomk::log().tag("arm.tool").info(oss.str());
 
-    // msg 描述结果，m_data 携带结果数据——调用方两者都能拿到
+    // msg 描述结果，data 携带结果数据——调用方两者都能拿到
     return {yomk::payload::ResStatus::Succeeded, "payload=" + std::to_string(totalKg) + "kg", yomk::msgs::String::shared(std::to_string(totalKg))};
 }
 

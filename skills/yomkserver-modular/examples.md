@@ -344,7 +344,7 @@ yomk::payload::Response ConfigService::getConfig(YomkMsgPtr pkg)
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed,
-                std::string("pkg is not ") + yomk::msgs::prj::ConfigKey::kTypeName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+                yomk::msgs::typeMismatch(pkg, yomk::msgs::prj::ConfigKey::kTypeName)};
     }
 
     auto it = m_configMap.find(data->req.key);
@@ -362,7 +362,7 @@ yomk::payload::Response ConfigService::setConfig(YomkMsgPtr pkg)
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed,
-                std::string("pkg is not ") + yomk::msgs::prj::ConfigKeyValue::kTypeName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+                yomk::msgs::typeMismatch(pkg, yomk::msgs::prj::ConfigKeyValue::kTypeName)};
     }
 
     m_configMap[data->req.key] = data->req.value;
@@ -635,7 +635,7 @@ yomk::payload::Response UserService::getUser(YomkMsgPtr pkg)
     if (!query)
     {
         return {yomk::payload::ResStatus::Failed,
-            std::string("pkg is not ") + yomk::msgs::prj::UserQuery::kTypeName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+            yomk::msgs::typeMismatch(pkg, yomk::msgs::prj::UserQuery::kTypeName)};
     }
     yomk::log().tag("UserService::getUser").info("query user: ", query->req.userId);
 
@@ -650,7 +650,7 @@ yomk::payload::Response UserService::createUser(YomkMsgPtr pkg)
     if (!user)
     {
         return {yomk::payload::ResStatus::Failed,
-            std::string("pkg is not ") + yomk::msgs::prj::UserInfo::kTypeName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+            yomk::msgs::typeMismatch(pkg, yomk::msgs::prj::UserInfo::kTypeName)};
     }
     yomk::log().tag("UserService::createUser").info("create user: ", user->d.name);
 
@@ -764,7 +764,7 @@ yomk::payload::Response taskHandler(YomkMsgPtr pkg)
     if (!taskData)
     {
         return {yomk::payload::ResStatus::Failed,
-            std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+            yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     yomk::log().tag("TaskHandler").debug("processing in thread: ", std::this_thread::get_id());
     return {yomk::payload::ResStatus::Succeeded, "task done"};
@@ -810,7 +810,7 @@ yomk::payload::Response validateAmount(YomkMsgPtr pkg)
     if (!amountStr)
     {
         return {yomk::payload::ResStatus::Failed,
-            std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+            yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     double amount = std::stod(amountStr->d);
     if (amount <= 0)

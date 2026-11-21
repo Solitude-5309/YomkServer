@@ -77,7 +77,7 @@ public:
         if (!msg)
         {
             return {yomk::payload::ResStatus::Failed,
-            std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+            yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
         }
         return {yomk::payload::ResStatus::Succeeded, "hello " + msg->d};
     }
@@ -247,11 +247,11 @@ cmake .. -DYOMK_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
 cmake --build . -j
 ```
 
-构建产物为 27 个测试可执行（输出到 `<仓库根>/bin/`），按模块划分：
+构建产物为 29 个测试可执行（输出到 `<仓库根>/bin/`），按模块划分：
 
 | 模块 | 测试目标 |
 |---|---|
-| YomkServer (11) | TestYomkSimpleThreadPool、TestYomkWeakFunc、TestYomkAPINotInit、TestYomkAPILifecycle、TestYomkBoot、TestYomkServer、TestYomkService、TestYomkShutdownSeq、TestYomkConcurrency、TestYomkMsg、TestYomkIntegration |
+| YomkServer (13) | TestYomkSimpleThreadPool、TestYomkWeakFunc、TestYomkAPINotInit、TestYomkAPILifecycle、TestYomkBoot、TestYomkServer、TestYomkService、TestYomkShutdownSeq、TestYomkConcurrency、TestYomkMsg、TestYomkIntegration、TestYomkExitPath、TestYomkExitPathShutdown |
 | YomkServerInfo (1) | TestYomkServerInfoLifecycle |
 | FunctionPool (3) | TestYomkFunctionPoolLifecycle、TestYomkFunctionPoolConcurrency、TestYomkFunctionPoolStress |
 | Context (4) | TestYomkContextCRUD、TestYomkContextCheckerMonitor、TestYomkContextLifecycle、TestYomkContextConcurrency |

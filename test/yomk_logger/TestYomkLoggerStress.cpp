@@ -307,7 +307,7 @@ static std::string makeName(const char* prefix, uint64_t index)
 // shared_ptr，其 const 只约束
 // 指针本身、不约束所指对象，故此处有意掏空包内 vector；调用方不得在解包后复用同一 resp
 // 的数据段（11 个调用点已逐一核实：8 处传就地临时对象，3 处传变量者在解包前只读
-// m_status、解包后不再触及该 resp）
+// status、解包后不再触及该 resp）
 static std::vector<std::string> unpackLines(const yomk::payload::Response& resp)
 {
     std::vector<std::string> lines;

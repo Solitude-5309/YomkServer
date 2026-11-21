@@ -214,7 +214,7 @@ int main()
             std::string out = cap.str();
             YOMK_TEST_CHECK(
                 out.find("[INFO ] [lg1_dc_tag] lg1_dc_tagged_marker") != std::string::npos,
-                "tag 非空显示 [tag]（m_tag 优先于日志器名）");
+                "tag 非空显示 [tag]（tag 优先于日志器名）");
             YOMK_TEST_CHECK(
                 out.find("[INFO ] [lg1_direct_console] lg1_dc_fallback_marker") != std::string::npos,
                 "空 tag 回退显示 [日志器名]");

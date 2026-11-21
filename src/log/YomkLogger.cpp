@@ -793,14 +793,14 @@ yomk::payload::Response YomkLogger::listAll(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::LoggerInfoList::shared(std::move(loggers))};
 }
 
-// 控制台全局主闸态内省(无参形态同 /all,LoggerState 包走 m_data)
+// 控制台全局主闸态内省(无参形态同 /all,LoggerState 包走 data)
 yomk::payload::Response YomkLogger::consoleGlobalState(YomkMsgPtr pkg)
 {
     (void)pkg;
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::LoggerState::shared(currentConsoleState())};
 }
 
-// 文件全局主闸态内省(无参形态同 /all,LoggerState 包走 m_data)
+// 文件全局主闸态内省(无参形态同 /all,LoggerState 包走 data)
 yomk::payload::Response YomkLogger::fileGlobalState(YomkMsgPtr pkg)
 {
     (void)pkg;

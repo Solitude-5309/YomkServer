@@ -156,7 +156,7 @@ int XxxService::init() {
 yomk::payload::Response XxxService::myFunc(YomkMsgPtr pkg) {
     auto data = yomk::msgs::unpack<yomk::msgs::MyData>(pkg);  // 解包（失败返回 nullptr，需判空）
     if (!data) { return {yomk::payload::ResStatus::Failed,
-        std::string("pkg is not ") + yomk::msgs::prj::MyData::kTypeName + ", got '" + yomk::msgs::typeOf(pkg) + "'"}; }
+        yomk::msgs::typeMismatch(pkg, yomk::msgs::prj::MyData::kTypeName)}; }
     // 业务逻辑...
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }

@@ -372,14 +372,16 @@ int main()
 }
 
 // ============ Section 2: 自定义 tag（自动创建 console logger） ============
-{{CoutCapture cap;
-YOMK_TEST_CHECK(
-    yomk::log().tag("lg1_tag_logger").info("lg1_s2_tag_marker") == yomk::payload::ResStatus::Succeeded,
-    "log().tag(...).info 新 tag 返回 ResStatus::Succeeded");
-YOMK_TEST_CHECK(
-    (cap.str().find("[lg1_tag_logger]") != std::string::npos &&
-     cap.str().find("lg1_s2_tag_marker") != std::string::npos),
-    "新 tag 自动创建 console logger 并以其名输出");
+{
+{
+    CoutCapture cap;
+    YOMK_TEST_CHECK(
+        yomk::log().tag("lg1_tag_logger").info("lg1_s2_tag_marker") == yomk::payload::ResStatus::Succeeded,
+        "log().tag(...).info 新 tag 返回 ResStatus::Succeeded");
+    YOMK_TEST_CHECK(
+        (cap.str().find("[lg1_tag_logger]") != std::string::npos &&
+         cap.str().find("lg1_s2_tag_marker") != std::string::npos),
+        "新 tag 自动创建 console logger 并以其名输出");
 }
 {
     // 链式 tag 参数字面量传入（tag ":" 行号），运行时 string tag 走底层 API 直连
@@ -428,7 +430,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             (st != nullptr && st->traceOn && st->debugOn && st->infoOn && st->warnOn && st->errorOn &&
              st->fatalOn && !st->proxyOn),
-            "proxy 设置前 ALL 控制台状态六级全 on（m_traceOn/m_fatalOn 默认 true）+ proxyOff");
+            "proxy 设置前 ALL 控制台状态六级全 on（traceOn/fatalOn 默认 true）+ proxyOff");
     }
 
     g_proxyHits.store(0);
@@ -675,27 +677,27 @@ YOMK_TEST_CHECK(
             }
         }
     }
-    YOMK_TEST_CHECK(hasFile, "LOGGERS(file) 含 lg1_file_logger 行（dir 经 LOGGER 单查 m_dir 校验）");
+    YOMK_TEST_CHECK(hasFile, "LOGGERS(file) 含 lg1_file_logger 行（dir 经 LOGGER 单查 dir 校验）");
 
-    // LOGGER(name)：console/file 命中结构化返回（LoggerInfo 包，m_msg 恒 "ok"）与未注册
+    // LOGGER(name)：console/file 命中结构化返回（LoggerInfo 包，msg 恒 "ok"）与未注册
     auto consoleInfo = yomk::log_mgr().console("main").get_info();
     YOMK_TEST_CHECK(
         (consoleInfo.status == yomk::payload::ResStatus::Succeeded && consoleInfo.msg == "ok"),
-        "LOGGER(main) 命中 m_msg 恒为 ok");
+        "LOGGER(main) 命中 msg 恒为 ok");
     auto consolePkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(consoleInfo.data);
     YOMK_TEST_CHECK(consolePkg != nullptr, "LOGGER(main) 数据为 LoggerInfo 包");
     YOMK_TEST_CHECK(consolePkg && consolePkg->d.loggerName == "main" && consolePkg->d.type == "console",
           "LOGGER(main) 字段 loggerName/type 一致");
-    YOMK_TEST_CHECK(consolePkg && consolePkg->d.dir.empty(), "console 命中 m_dir 为空");
+    YOMK_TEST_CHECK(consolePkg && consolePkg->d.dir.empty(), "console 命中 dir 为空");
     auto fileInfo = yomk::log_mgr().file("lg1_file_logger").get_info();
     YOMK_TEST_CHECK(
         (fileInfo.status == yomk::payload::ResStatus::Succeeded && fileInfo.msg == "ok"),
-        "LOGGER(lg1_file_logger) 命中 m_msg 恒为 ok");
+        "LOGGER(lg1_file_logger) 命中 msg 恒为 ok");
     auto filePkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(fileInfo.data);
     YOMK_TEST_CHECK(filePkg != nullptr, "LOGGER(lg1_file_logger) 数据为 LoggerInfo 包");
     YOMK_TEST_CHECK(filePkg && filePkg->d.loggerName == "lg1_file_logger" && filePkg->d.type == "file",
           "LOGGER(lg1_file_logger) 字段 loggerName/type 一致");
-    YOMK_TEST_CHECK(filePkg && filePkg->d.dir == (tmpDir / "s4").string(), "file 命中 m_dir 为创建目录");
+    YOMK_TEST_CHECK(filePkg && filePkg->d.dir == (tmpDir / "s4").string(), "file 命中 dir 为创建目录");
     auto noInfo = yomk::log_mgr().console("lg1_never_registered").get_info();
     YOMK_TEST_CHECK(
         (noInfo.status == yomk::payload::ResStatus::Failed && noInfo.msg == "console logger 'lg1_never_registered' not found"),
@@ -732,16 +734,18 @@ YOMK_TEST_CHECK(
 }
 
 // ============ Section 6: 边界值（数值特殊值 / 超大内容 / 非法级别） ============
-{// 变参 fold：整数边界与浮点特殊值（ostringstream 默认格式字符串化）
- {CoutCapture cap;
-YOMK_TEST_CHECK(
-    yomk::log().tag("lg1_s6_num").info("i=", INT_MAX, " j=", INT_MIN, " z=", 0, " n=", -1) == yomk::payload::ResStatus::Succeeded,
-    "INT_MAX/INT_MIN/0/-1 变参日志返回 ResStatus::Succeeded");
-std::string out = cap.str();
-YOMK_TEST_CHECK(
-    (out.find("i= 2147483647") != std::string::npos && out.find("j= -2147483648") != std::string::npos &&
-     out.find("z= 0") != std::string::npos && out.find("n= -1") != std::string::npos),
-    "整数边界值字符串化正确（变参以空格分隔，ostringstream 默认格式）");
+{
+// 变参 fold：整数边界与浮点特殊值（ostringstream 默认格式字符串化）
+{
+    CoutCapture cap;
+    YOMK_TEST_CHECK(
+        yomk::log().tag("lg1_s6_num").info("i=", INT_MAX, " j=", INT_MIN, " z=", 0, " n=", -1) == yomk::payload::ResStatus::Succeeded,
+        "INT_MAX/INT_MIN/0/-1 变参日志返回 ResStatus::Succeeded");
+    std::string out = cap.str();
+    YOMK_TEST_CHECK(
+        (out.find("i= 2147483647") != std::string::npos && out.find("j= -2147483648") != std::string::npos &&
+         out.find("z= 0") != std::string::npos && out.find("n= -1") != std::string::npos),
+        "整数边界值字符串化正确（变参以空格分隔，ostringstream 默认格式）");
 }
 {
     CoutCapture cap;
@@ -1193,7 +1197,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             (gs != nullptr && gs->d.traceOn && gs->d.debugOn && gs->d.infoOn && gs->d.warnOn &&
              gs->d.errorOn && gs->d.fatalOn),
-            "S9f: 全局主闸六级全 on（m_traceOn/m_fatalOn 初值 true）");
+            "S9f: 全局主闸六级全 on（traceOn/fatalOn 初值 true）");
         YOMK_TEST_CHECK(gs != nullptr && gs->d.proxyOn, "S9f: 全局态含 S3 已设 proxyOn");
         YOMK_TEST_CHECK(yomk::log_mgr().console().level(yomk::payload::LogLevel::Debug).disable() == yomk::payload::ResStatus::Succeeded, "S9f: 无参 OFF_DEBUG 返回 ResStatus::Succeeded");
         auto gResp2 = yomk::log_mgr().console().status();
@@ -1383,7 +1387,7 @@ YOMK_TEST_CHECK(
         YOMK_TEST_CHECK(
             (gs != nullptr && gs->d.traceOn && gs->d.debugOn && gs->d.infoOn && gs->d.warnOn &&
              gs->d.errorOn && gs->d.fatalOn),
-            "S10f: 文件主闸六级全 on（m_traceOn/m_fatalOn 初值 true）");
+            "S10f: 文件主闸六级全 on（traceOn/fatalOn 初值 true）");
         YOMK_TEST_CHECK(
             gs != nullptr && !gs->d.proxyOn,
             "S10f: 文件态 proxyOn=false（文件代理未设置时恒 false）");
@@ -1546,14 +1550,14 @@ YOMK_TEST_CHECK(
 }
 
 // ============ 收尾清理 ============
-yomk::server().shutdown();
-fs::remove_all(tmpDir, ec);
+    yomk::server().shutdown();
+    fs::remove_all(tmpDir, ec);
 
-if (g_failed == 0)
-{
-    std::cout << "TestYomkLoggerLifecycle all check passed." << std::endl;
-    return 0;
-}
-std::cout << "TestYomkLoggerLifecycle FAILED (" << g_failed << " checks failed)." << std::endl;
-return 1;
+    if (g_failed == 0)
+    {
+        std::cout << "TestYomkLoggerLifecycle all check passed." << std::endl;
+        return 0;
+    }
+    std::cout << "TestYomkLoggerLifecycle FAILED (" << g_failed << " checks failed)." << std::endl;
+    return 1;
 }

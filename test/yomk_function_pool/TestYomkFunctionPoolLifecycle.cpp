@@ -8,7 +8,7 @@
 // 5. 内省：list() 存活列表包含注册名（空表陷阱教训）/ get_info() 命中 "名 [类型]" 与
 // 无类型两种格式、未注册 ResStatus::Failed、空名 ResStatus::Invalid / all() FuncInfoList 相对计数与字段断言
 // 6. 注册形态：fn_name+fn 两步（无类型）/ +msg_name 三步（声明期望消息类型名）/
-// +description 四步（追加函数说明，get_info() m_msg 契约保持 + 数据段可读）与同名热替换覆盖语义
+// +description 四步（追加函数说明，get_info() msg 契约保持 + 数据段可读）与同名热替换覆盖语义
 // 7. 异常契约：call() 链（request→invoke→callFunction→用户函数）无任何 try/catch，
 // 用户函数抛 std::exception 异常穿透直达调用方——测试侧捕获 what 验证；随后正常 call() 验证池存活
 // 8. 超长名：65536 字符函数名全生命周期（install()/call()/get_info()/uninstall()）ResStatus::Succeeded 且完整回显
@@ -54,7 +54,7 @@ static yomk::payload::Response echoFunc(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "echo", pkg};
 }
 
-// probe：记录是否收到 nullptr 入参（验证 m_pkg=nullptr 透传）
+// probe：记录是否收到 nullptr 入参（验证 pkg=nullptr 透传）
 static yomk::payload::Response nullProbeFunc(YomkMsgPtr pkg)
 {
     if (pkg == nullptr)
@@ -146,7 +146,7 @@ int main()
             "uninstall() 未注册名返回 ResStatus::Failed（FPC2 契约：not-found 统一 ResStatus::Failed）");
     }
 
-    // ============ Section 4: 调用边界与 m_pkg=nullptr 透传 ============
+    // ============ Section 4: 调用边界与 pkg=nullptr 透传 ============
     {
         YOMK_TEST_CHECK(
             yomk::fn_pool().fn_name("").msg(yomk::msgs::String::shared(std::string("x"))).call().status == yomk::payload::ResStatus::Invalid,
@@ -160,8 +160,8 @@ int main()
         YOMK_TEST_CHECK(
             yomk::fn_pool().fn_name("fp_probe").fn(nullProbeFunc).install() == yomk::payload::ResStatus::Succeeded,
             "install() 探针函数返回 ResStatus::Succeeded");
-        YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_probe").msg(nullptr).call().status == yomk::payload::ResStatus::Succeeded, "call() m_pkg=nullptr 正常执行");
-        YOMK_TEST_CHECK(g_nullPkgSeen.load() == 1, "函数收到 nullptr 入参（m_pkg 原样透传）");
+        YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_probe").msg(nullptr).call().status == yomk::payload::ResStatus::Succeeded, "call() pkg=nullptr 正常执行");
+        YOMK_TEST_CHECK(g_nullPkgSeen.load() == 1, "函数收到 nullptr 入参（pkg 原样透传）");
         YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_probe").uninstall() == yomk::payload::ResStatus::Succeeded, "清理 fp_probe");
     }
 
@@ -192,12 +192,12 @@ int main()
         // get_info()：结构化返回（FuncInfo 包恒挂）与未注册/空名
         auto infoResp = yomk::fn_pool().fn_name("fp_plain").get_info();
         YOMK_TEST_CHECK(infoResp.status == yomk::payload::ResStatus::Succeeded, "get_info() 已注册名返回 ResStatus::Succeeded");
-        YOMK_TEST_CHECK(infoResp.msg == "ok", "get_info() 命中 m_msg 恒为 ok");
+        YOMK_TEST_CHECK(infoResp.msg == "ok", "get_info() 命中 msg 恒为 ok");
         auto infoPlainResp = yomk::msgs::unpack<yomk::msgs::FuncInfo>(infoResp.data);
         YOMK_TEST_CHECK(infoPlainResp != nullptr, "get_info() 数据为 FuncInfo 包");
-        YOMK_TEST_CHECK(infoPlainResp && infoPlainResp->d.funcName == "fp_plain", "get_info() 字段 m_funcName 一致");
+        YOMK_TEST_CHECK(infoPlainResp && infoPlainResp->d.funcName == "fp_plain", "get_info() 字段 funcName 一致");
         YOMK_TEST_CHECK(infoPlainResp && infoPlainResp->d.msgName.empty() && infoPlainResp->d.description.empty(),
-              "2 参注册 m_msgName/m_description 均为空");
+              "2 参注册 msgName/description 均为空");
         YOMK_TEST_CHECK(
             yomk::fn_pool().fn_name("fp_never_registered").get_info().status == yomk::payload::ResStatus::Failed,
             "get_info() 未注册名返回 ResStatus::Failed（与 unregister/call 一致——FPC2 后全接口统一）");
@@ -225,7 +225,7 @@ int main()
                 }
             }
         }
-        YOMK_TEST_CHECK(allArr != nullptr && allFound, "all() 列表包含 fp_plain（m_msgName/m_description 均空）");
+        YOMK_TEST_CHECK(allArr != nullptr && allFound, "all() 列表包含 fp_plain（msgName/description 均空）");
         YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_count_probe").uninstall() == yomk::payload::ResStatus::Succeeded, "清理 fp_count_probe");
     }
 
@@ -249,23 +249,23 @@ int main()
         auto threeInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(threeResp.data);
         YOMK_TEST_CHECK(threeResp.msg == "ok" && threeInfo && threeInfo->d.funcName == "fp_three" &&
                   threeInfo->d.msgName == yomk::msgs::String::kTypeName,
-              "3 参注册 get_info() 字段 m_msgName == \"String\"");
+              "3 参注册 get_info() 字段 msgName == \"String\"");
 
-        // 4 参：追加函数说明，get_info() m_msg 契约保持、说明挂数据段
+        // 4 参：追加函数说明，get_info() msg 契约保持、说明挂数据段
         YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_desc").fn(echoFunc).msg_name(yomk::msgs::String::kTypeName).description("fp description").install() == yomk::payload::ResStatus::Succeeded,
               "install() 4 参（String 类型 + 说明）返回 ResStatus::Succeeded");
         auto infoDesc = yomk::fn_pool().fn_name("fp_desc").get_info();
         YOMK_TEST_CHECK(infoDesc.status == yomk::payload::ResStatus::Succeeded && infoDesc.msg == "ok",
-              "4 参注册 get_info() 命中 m_msg 恒为 ok");
+              "4 参注册 get_info() 命中 msg 恒为 ok");
         auto descInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(infoDesc.data);
         YOMK_TEST_CHECK(descInfo != nullptr, "4 参注册 get_info() 结构化包恒挂");
         YOMK_TEST_CHECK(descInfo && descInfo->d.funcName == "fp_desc" && descInfo->d.msgName == yomk::msgs::String::kTypeName,
-              "4 参注册字段 m_funcName/m_msgName 一致");
-        YOMK_TEST_CHECK(descInfo && descInfo->d.description == "fp description", "字段 m_description 承载函数说明");
+              "4 参注册字段 funcName/msgName 一致");
+        YOMK_TEST_CHECK(descInfo && descInfo->d.description == "fp description", "字段 description 承载函数说明");
         auto threeData = yomk::fn_pool().fn_name("fp_three").get_info();
         auto threeDescInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(threeData.data);
         YOMK_TEST_CHECK(threeDescInfo && threeDescInfo->d.description.empty(),
-              "3 参注册（无说明）m_description 为空（结构化包恒挂）");
+              "3 参注册（无说明）description 为空（结构化包恒挂）");
 
         // 覆盖语义：4 参后接 2 参同名热替换 → 类型后缀与说明均清除
         YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_desc").fn(echoFunc).install() == yomk::payload::ResStatus::Succeeded, "2 参覆盖 4 参注册返回 ResStatus::Succeeded");

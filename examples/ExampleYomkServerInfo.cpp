@@ -27,8 +27,8 @@
 // 带 QualityCheckReq 元数据与函数说明，2 参注册的 /report 双空）；
 // 不存在的工位返回空清单 ResStatus::Succeeded，空服务名返回 ResStatus::Invalid。
 // 场景 3 showArmFuncLookup      [INFO_FUNCTION]
-// 函数名片单查：命中返回结构化 FuncInfo 包（m_msg 恒 "ok"，
-// m_msgName=期望消息类型名、m_description=函数说明）；4 种坏 URL 均
+// 函数名片单查：命中返回结构化 FuncInfo 包（msg 恒 "ok"，
+// msgName=期望消息类型名、description=函数说明）；4 种坏 URL 均
 // 返回 ResStatus::Failed（url 解析失败 / 目标不存在），是普通返回值不崩溃。
 // 场景 4 showArmPlantTopology   [all()]
 // 全厂拓扑总览：ServerServiceInfoList 层级包逐服务逐函数导出——
@@ -339,7 +339,7 @@ static void showArmStationFunctions()
         "工位职能清单",
         "INFO_FUNCTIONS",
         "查阅装配工位能干什么：INFO_FUNCTIONS 返回 FuncInfoList 结构化清单"
-        "（m_funcName/m_msgName/m_description）——4 参注册的 /quality_check 带"
+        "（funcName/msgName/description）——4 参注册的 /quality_check 带"
         "元数据，2 参注册的 /report 双空，差异一目了然。");
 
     logAction("查阅装配工位职能清单");
@@ -373,7 +373,7 @@ static void showArmFuncLookup()
         3,
         "功能函数名片单查",
         "INFO_FUNCTION",
-        "按 URL 调阅单个函数的名片：命中返回结构化 FuncInfo 包（m_msg 恒 ok），"
+        "按 URL 调阅单个函数的名片：命中返回结构化 FuncInfo 包（msg 恒 ok），"
         "msgName 与 description 承载注册时声明的元数据；url 解析失败与目标"
         "不存在均为 ResStatus::Failed。");
 
@@ -385,7 +385,7 @@ static void showArmFuncLookup()
     {
         logFuncInfo("INFO_FUNCTION", info->d);
     }
-    logVerify("命中契约：m_msg 恒 ok、数据走 m_data；m_msgName=QualityCheckReq、m_description=第四参说明——与场景 2 清单同族");
+    logVerify("命中契约：msg 恒 ok、数据走 data；msgName=QualityCheckReq、description=第四参说明——与场景 2 清单同族");
 
     logAction("调阅状态上报函数名片");
     resp = yomk::srv_info().fn_url("/ArmStation/report").get_info();
@@ -419,7 +419,7 @@ static void showArmPlantTopology()
         "全厂拓扑总览",
         "all()",
         "一次拉取全厂服务拓扑：all() 返回 ServerServiceInfoList 层级包"
-        "（m_serviceName 服务名 + m_funcs 函数元信息列表），排障时一眼看清"
+        "（serviceName 服务名 + funcs 函数元信息列表），排障时一眼看清"
         "调用拓扑。");
 
     logAction("导出全厂服务拓扑");

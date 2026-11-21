@@ -4,7 +4,7 @@
 // 1. 命名：注册前设置/读取、空名拒绝、yomk::server().add() 两参形式注册前改名
 // 2. 注册锁定：add() 成功后改名被拒（名字与注册键一致承诺）
 // 3. installFunc：合法名、非法名（空串/无 / 开头）拒绝、空函数拒绝、
-// 三参元数据（m_msgName）、四参函数说明（m_description）、
+// 三参元数据（msgName）、四参函数说明（description）、
 // 两参覆盖清除残留信息、三参/四参覆盖恢复
 // 4. funcInfos 内省
 // 5. invoke：命中（自身响应 + pkg 透传回显）、非法名/未安装返回 ResStatus::Failed 契约消息
@@ -36,7 +36,7 @@ static int g_failed = 0;
         }                                                                         \
     } while (0)
 
-// 内省辅助：在 funcInfos 中查找 funcName，命中可选返回其 m_msgName 与 m_description
+// 内省辅助：在 funcInfos 中查找 funcName，命中可选返回其 msgName 与 description
 static bool findFuncInfo(const std::map<std::string, yomk::payload::FuncInfo>& infos, const std::string& funcName,
                          std::string* msgName = nullptr, std::string* description = nullptr)
 {
@@ -175,7 +175,7 @@ static void testInstallFunc(DemoService* demo)
     YOMK_TEST_CHECK(!findFuncInfo(infos, "/null_func"), "空函数对象安装被拒，funcInfos 不含");
 
     // 三参元数据与覆盖安装
-    YOMK_TEST_CHECK(findFuncInfo(infos, "/echo", &msgName) && msgName == yomk::msgs::String::kTypeName, "三参安装声明元数据 m_msgName == String");
+    YOMK_TEST_CHECK(findFuncInfo(infos, "/echo", &msgName) && msgName == yomk::msgs::String::kTypeName, "三参安装声明元数据 msgName == String");
     YOMK_TEST_CHECK(findFuncInfo(infos, "/plain", &msgName) && msgName.empty(), "两参安装无元数据");
     YOMK_TEST_CHECK(findFuncInfo(infos, "/reinstall", &msgName) && msgName.empty(), "两参覆盖安装清除残留信息");
     YOMK_TEST_CHECK(findFuncInfo(infos, "/restore", &msgName) && msgName == yomk::msgs::String::kTypeName, "三参覆盖安装恢复元数据");
@@ -185,9 +185,9 @@ static void testInstallFunc(DemoService* demo)
     YOMK_TEST_CHECK(
         findFuncInfo(infos, "/desc", &msgName, &description) && msgName == yomk::msgs::String::kTypeName
             && description == "demo description",
-        "四参安装声明 m_msgName == String 与 m_description == demo description");
+        "四参安装声明 msgName == String 与 description == demo description");
     YOMK_TEST_CHECK(findFuncInfo(infos, "/desc0", &msgName, &description) && msgName == yomk::msgs::String::kTypeName && description.empty(),
-          "三参安装说明缺省 m_description 为空");
+          "三参安装说明缺省 description 为空");
 
     // 覆盖语义：四参注册后接两参覆盖 → 类型名与说明均清除；再四参恢复
     demo->installFunc("/desc", [](YomkMsgPtr pkg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "manual"}; });

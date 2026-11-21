@@ -37,8 +37,8 @@
 // 线程池执行——主线程与池线程 id 对比自证。
 // 场景 4 showArmMoveChain      [REQUEST / 成员 request() / 强类型回包]
 // 运动指令调用链：一次 REQUEST 触发 main→/move→/record 调用链
-// （arm.motion/arm.telemetry 日志夹在中间），回包 m_data 携带强类型
-// MoveResp——m_data 不止能传 String。
+// （arm.motion/arm.telemetry 日志夹在中间），回包 data 携带强类型
+// MoveResp——data 不止能传 String。
 // 场景 5 showArmIntrospect     [INFO_FUNCTIONS / INFO_FUNCTION]
 // 自省读取工位职能：4 参注册的 /move 带 MoveCmd 元数据与函数说明、
 // 2 参注册的 /echo 双空；INFO_FUNCTION 按 URL 调阅单张函数名片
@@ -337,7 +337,7 @@ static void showArmMoveChain()
         oss << "[REQUEST /MotionService/move] | (no MoveResp data)";
     }
     yomk::log().tag("arm.demo").info(oss.str());
-    logVerify("arm.motion 与 arm.telemetry 日志夹在开始行与结果行之间：调用链 main→/move→/record 同步执行；m_data 携带强类型 MoveResp");
+    logVerify("arm.motion 与 arm.telemetry 日志夹在开始行与结果行之间：调用链 main→/move→/record 同步执行；data 携带强类型 MoveResp");
 }
 
 // 场景 5：自省读取工位职能（简要展示，细节见 ExampleYomkServerInfo）
@@ -373,7 +373,7 @@ static void showArmIntrospect()
     {
         logFuncInfo("INFO_FUNCTION", info->d);
     }
-    logVerify("命中契约：m_msg 恒 ok、元数据走 m_data");
+    logVerify("命中契约：msg 恒 ok、元数据走 data");
 }
 
 // 场景 6：留痕工位升级（同名替换，服务与钩子一并热切换）

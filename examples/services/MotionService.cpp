@@ -58,7 +58,7 @@ yomk::payload::Response MotionService::move(YomkMsgPtr pkg)
     oss << "留痕回执：" << traceResp.msg;
     yomk::log().tag("arm.motion").info(oss.str());
 
-    // 到位回执：m_data 携带强类型 MoveResp，不止能传 String
+    // 到位回执：data 携带强类型 MoveResp，不止能传 String
     MoveResp respData{cmdPkg->cmd.x, cmdPkg->cmd.y, cmdPkg->cmd.z};
     return {yomk::payload::ResStatus::Succeeded, "move success", yomk::msgs::MoveResp::shared(respData)};
 }

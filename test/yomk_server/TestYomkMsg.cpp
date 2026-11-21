@@ -7,9 +7,9 @@
 // unpack（null/类型名不匹配均返回 nullptr，命中返回解包指针）、
 // 服务函数级手写判空返回 ResStatus::Failed + 契约消息、手写判空提前 return（标志位观测）、
 // 运行时类型名解包（按包 typeName() 匹配后 dynamic_pointer_cast）
-// S3. Event 结构：默认/三参/四参构造、handle() 有无 serviceFunc、m_eventId 初值、m_waitCallback
+// S3. Event 结构：默认/三参/四参构造、handle() 有无 serviceFunc、eventId 初值、waitCallback
 // S4. yomk::payload::Response 契约：默认构造、枚举值序（ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1）、双参/三参构造
-// S5. 框架结构体默认值（Log::m_level 无类内初始化不作值断言）+ 结构体消息包版 typeName 就位
+// S5. 框架结构体默认值（Log::level 无类内初始化不作值断言）+ 结构体消息包版 typeName 就位
 //
 // 说明：全程不调 yomk::server().init()（纯类型/模板测试，不依赖单例）；typeName() 由各类型的静态
 // kTypeName 返回、不可改写，"类型名匹配但动态类型不符"已非可达分支，故不设该断言
@@ -277,10 +277,10 @@ int main()
               "EventLoop 默认：名称/消息名空、默认 func 空");
         yomk::payload::LogFile lf;
         YOMK_TEST_CHECK(lf.logger.empty() && lf.dir.empty(), "LogFile 默认：logger/dir 空");
-        // Log::m_level 为无类内初始化的 POD enum，默认值不稳定，不作值断言
+        // Log::level 为无类内初始化的 POD enum，默认值不稳定，不作值断言
         yomk::payload::Log lg;
         YOMK_TEST_CHECK(lg.log.empty() && lg.logger.empty() && lg.tag.empty(),
-              "Log 默认：内容/logger/tag 空（m_level 无默认初始化不断言）");
+              "Log 默认：内容/logger/tag 空（level 无默认初始化不断言）");
         yomk::payload::ConsoleLogProxy cp;
         YOMK_TEST_CHECK(!cp.consoleLogProxyFunc, "ConsoleLogProxy 默认：代理 func 空");
         yomk::payload::Context ctx;
