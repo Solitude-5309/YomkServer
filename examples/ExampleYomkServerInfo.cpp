@@ -220,8 +220,8 @@ static void logVerify(const std::string& text)
 // 质量抽检请求：此处仅作 /quality_check 的期望消息类型元数据，供自省识别
 struct QualityCheckReq
 {
-    std::string m_station;  // 工位号
-    std::int32_t m_count;   // 抽检件数
+    std::string station;    // 工位号
+    std::int32_t count;     // 抽检件数
 };
 
 YOMK_DEFINE_MSG(::QualityCheckReq, QualityCheckReq, req);
@@ -268,10 +268,10 @@ public:
             return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::QualityCheckReq::kTypeName)};
         }
         std::ostringstream oss;
-        oss << "质量抽检执行：工位 " << data->req.m_station << " 抽检 " << data->req.m_count << " 件";
+        oss << "质量抽检执行：工位 " << data->req.station << " 抽检 " << data->req.count << " 件";
         yomk::log().tag("arm.station").info(oss.str());
         return {yomk::payload::ResStatus::Succeeded,
-            "quality check passed: " + data->req.m_station + ", " + std::to_string(data->req.m_count) + " pcs"};
+            "quality check passed: " + data->req.station + ", " + std::to_string(data->req.count) + " pcs"};
     }
 };
 
