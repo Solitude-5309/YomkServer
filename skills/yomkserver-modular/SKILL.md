@@ -117,11 +117,20 @@ namespace yomk::url
 {
 inline constexpr std::string_view cfgMyFunc = "/XxxService/my_func";
 inline constexpr const char* cfgMyFuncDesc = R"(
-Semantic: 端点功能语义一句话
-Returns: data 负载包类型（无负载写 data 无负载）
-Idempotent: true/false —— false 时说明重调后果
-SideEffect: 可观察副作用（纯读写 无）
-Fail: Invalid=入参非法；Failed=业务未命中/冲突
+# Overview
+端点做什么：一句话语义 + 与相邻端点的边界。
+
+# Inputs
+请求包类型与字段；前置参数（路径/缺省值）。
+
+# Outputs
+data 负载包类型（无负载写 data 无负载）；成功 msg。
+
+# Behavior
+同步/异步、是否阻塞、可观察副作用、执行线程。
+
+# Notes
+前置条件、线程安全、生命周期陷阱、失败归因（Invalid=入参非法；Failed=业务未命中/冲突）。
 )";
 }  // namespace yomk::url
 ```
@@ -226,7 +235,7 @@ yomk::server().shutdown();
 
 ### 服务内省（调试）
 
-框架内置 `/YomkServerInfo` 服务（随 `.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时第三参声明期望消息类型（一律引用 `T::kName`、禁止手写消息名字符串），**第四参写功能语义描述**——非强制约束，是让内省消费者不读源码即可理解端点行为的语义澄清。描述常量与 URL 常量同置各自 `XxxUrl.h`（URL 常量集中在前、语义描述常量集中在后（按序一一对应），命名对称，如 `ctxCreate`/`ctxCreateDesc`，类型 `inline constexpr const char*`），installFunc 第四参仅引用常量：复杂端点（副作用/状态变更/失败模式多样）用六字段 R"(...)" 块（`Semantic → Returns → Precond → Idempotent → SideEffect → Fail`），纯查询端点单行 `"Semantic: …；Returns: …"`；文案须与实现相符，`Fail` 按三态归因（Invalid=入参非法，Failed=业务未命中/冲突）。框架全部内置端点均已填写，自定义服务遵循同一格式。内省数据的消费入口为 `yomk::srv_info()`（services/functions/get_info/all），模板工程 `MyBoot::after()` 末尾提供了完整的消费演示（遍历 `/functions` 输出各端点语义）：
+框架内置 `/YomkServerInfo` 服务（随 `.init()` 自动启动），提供调试内省：服务列表、函数列表、单函数类型查询。功能函数安装时第三参声明期望消息类型（一律引用 `T::kName`、禁止手写消息名字符串），**第四参写功能语义描述**——非强制约束，是让内省消费者不读源码即可理解端点行为的语义澄清。描述常量与 URL 常量同置各自 `XxxUrl.h`（URL 常量集中在前、语义描述常量集中在后（按序一一对应），命名对称，如 `ctxCreate`/`ctxCreateDesc`，类型 `inline constexpr const char*`），installFunc 第四参仅引用常量：一律多行 `R"(...)"` 块，固定五章节且顺序不变（`# Overview` 做什么 / `# Inputs` 载荷字段与前置参数 / `# Outputs` status·msg·data 与回调载荷 / `# Behavior` 同步异步·阻塞·副作用·线程上下文 / `# Notes` 约束·线程安全·生命周期陷阱·失败归因），某章节无内容时保留标题、正文留空；文案须与实现相符，失败按三态归因写在 Notes（Invalid=入参非法，Failed=业务未命中/冲突）。框架全部内置端点均已填写，自定义服务遵循同一格式。内省数据的消费入口为 `yomk::srv_info()`（services/functions/get_info/all），模板工程 `MyBoot::after()` 末尾提供了完整的消费演示（遍历 `/functions` 输出各端点语义）：
 
 ```cpp
 int XxxService::init() {

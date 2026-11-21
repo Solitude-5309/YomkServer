@@ -179,7 +179,7 @@ int MyBoot::after()
     yomk::log().tag("MyBoot::after").info("---- ConfigService 内省（/functions，", funcs->d.size(), " 个端点）----");
     for (const auto& fn : funcs->d)
     {
-        // description 为多行语义块（Semantic/Returns/Precond/Idempotent/SideEffect/Fail），原样透出
+        // description 为多行语义块（五章节：# Overview / # Inputs / # Outputs / # Behavior / # Notes），原样透出
         yomk::log().tag("MyBoot::after").info(fn.funcName, "  期望消息: ", fn.msgName.empty() ? "(无)" : fn.msgName, "\n", fn.description);
     }
 
@@ -845,14 +845,30 @@ void MyService::deinit() {
 
 ## 示例5：服务内省（调试）
 
-内省类型元数据由 installFunc 第三参声明（引用 `T::kName`、禁手写）、函数说明由第四参声明（自由字符串，仅作内省元数据，不参与运行时校验）：
+内省类型元数据由 installFunc 第三参声明（引用 `T::kName`、禁手写）、函数说明由第四参声明（多行五章节块，仅作内省元数据，不参与运行时校验）：
 
 ```cpp
 int DemoService::init()
 {
     installFunc("/with_type", &DemoService::withType, yomk::msgs::String::kName);  // 内省可见类型 String
     installFunc("/with_desc", &DemoService::withType, yomk::msgs::String::kName, "对函数的说明");  // 四参：内省可见类型 + 说明
-    installFunc("/no_type", &DemoService::noType, "", "Semantic: 无类型演示端点");  // 不声明类型，内省无类型
+    // 四参说明按五章节填写（某章节无内容时保留标题、正文留空）
+    installFunc("/no_type", &DemoService::noType, "", R"(
+# Overview
+无类型演示端点：不声明期望消息类型，内省 msgName 为空串。
+
+# Inputs
+无（不带请求包）。
+
+# Outputs
+data 无负载，msg "ok"。
+
+# Behavior
+同步纯读；幂等。
+
+# Notes
+仅演示内省元数据，无实际业务。
+)");  // 不声明类型，内省无类型
     return 0;
 }
 
@@ -1058,10 +1074,20 @@ namespace yomk::url::ext
 // /ExtensionService/*（语义描述与 URL 常量同置：installFunc 第四参引用 versionDesc）
 inline constexpr std::string_view version = "/ExtensionService/version";
 inline constexpr const char* versionDesc = R"(
-Semantic: 返回扩展版本号
-Returns: data 为 String 包（"extension v<版本号>"）
-Idempotent: true
-SideEffect: 无（纯读）
+# Overview
+返回扩展版本号，用于确认当前加载的扩展构建版本。
+
+# Inputs
+无（不带请求包）。
+
+# Outputs
+data 为 String 包（"extension v<版本号>"，版本号由编译期 EXTENSION_VERSION 注入），msg "ok"。
+
+# Behavior
+同步纯读，不修改任何状态；幂等。
+
+# Notes
+无失败分支。
 )";
 }  // namespace yomk::url::ext
 ```

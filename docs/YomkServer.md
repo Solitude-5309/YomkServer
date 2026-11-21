@@ -104,10 +104,10 @@ int main()
 installFunc 第四参是端点的**功能语义澄清**——非强制约束，仅为让内省消费者（主要是 coding agent）不读源码即可理解端点行为，越清晰越好。全部内置服务端点均已按此惯例填写，自定义服务遵循同一格式：
 
 - **布局**：描述常量与 URL 常量**同置各域 `XxxUrl.h`**——URL 常量集中在前、语义描述常量集中在后（按序一一对应），命名对称（`ctxCreate` / `ctxCreateDesc`），类型用 `inline constexpr const char*`（installFunc 第四参收 `const std::string&`，C 串可隐式转换；URL 常量仍为 `string_view` 供请求链透传）。installFunc 第四参仅引用常量，安装表一行一端点，一眼可扫；
-- **复杂端点**（有副作用/状态变更/失败模式多样）：六字段 R"(...)" 块，字段序按消费优先级 `Semantic → Returns → Precond → Idempotent → SideEffect → Fail`（是什么/回什么/何时能调/能否重调/动什么/错了会怎样）；
-- **纯查询端点**：单行 `"Semantic: …；Returns: …"`，有失败分支时附 `Invalid=…/Failed=…`。
+- **格式**：一律多行 `R"(...)"` 块，固定五章节且顺序不变——`# Overview`（做什么、语义边界）、`# Inputs`（请求载荷字段与前置参数）、`# Outputs`（返回的 status/msg/data 与回调载荷）、`# Behavior`（同步/异步、阻塞语义、副作用、线程上下文）、`# Notes`（约束、前置条件、线程安全、生命周期陷阱、失败归因）。标题行逐字固定（`# ` 后接英文节名），正文用中文；某章节无内容时**保留标题、正文留空**，不得删除章节；
+- **失败归因写在 Notes**：按框架三态归因（Invalid=入参非法，Failed=业务未命中/冲突），并写清哪种失败走哪一态。
 
-文案必须与实现相符（依据处理函数真实分支写，不确定的分支不写）；`Fail` 按框架三态归因（Invalid=入参非法，Failed=业务未命中/冲突）。内省数据的消费入口为 `yomk::srv_info()`，模板工程 `MyBoot::after()` 末尾提供完整消费演示（遍历 `/functions` 逐端点输出语义）。
+文案必须与实现相符（依据处理函数真实分支写，不确定的分支不写）。内省数据的消费入口为 `yomk::srv_info()`，模板工程 `MyBoot::after()` 末尾提供完整消费演示（遍历 `/functions` 逐端点输出语义）。
 
 ```cpp
 // yomk/ctx/YomkContextUrl.h —— URL 先集中、描述后集中（自描述路由表）
@@ -116,14 +116,37 @@ inline constexpr std::string_view ctxGroups = "/YomkContext/groups";
 
 // 语义描述常量：与上方 URL 常量按序一一对应
 inline constexpr const char* ctxCreateDesc = R"(
-Semantic: 在指定组（缺省 main）创建上下文键并写入值包
-Returns: data 无负载，成功 msg "create context success"
-Precond: 目标组已存在，键名非空，value 包非空
-Idempotent: false —— 键已存在时重调必 Failed
-SideEffect: 向组存储写入键值对
-Fail: Invalid=键名为空/value 为空；Failed=键已存在
+# Overview
+在指定组（缺省 main）创建上下文键并写入值包；create 是键的唯一创建入口，set 只能更新已存在的键。
+
+# Inputs
+Context 包：key 键名；value 值包（非空）；group 组名（缺省 "main"）。
+
+# Outputs
+data 无负载，成功 msg "create context success"。
+
+# Behavior
+同步执行，在组存储写入键值对；非幂等——键已存在时重调必 Failed。
+
+# Notes
+key/value 为空 → Invalid；group 名为空 → Invalid；自定义组不存在时按名惰性创建；pkg 非 Context → Failed。
 )";
-inline constexpr const char* ctxGroupsDesc = "Semantic: 返回全部组名列表；Returns: StringArray 包";
+inline constexpr const char* ctxGroupsDesc = R"(
+# Overview
+返回全部组名清单（main 恒首位，自定义组按 map 字典序追加）。
+
+# Inputs
+无（不带请求包）。
+
+# Outputs
+data 为 StringArray 包，msg "ok"。
+
+# Behavior
+同步快照读取，持组表读锁拷贝；幂等。
+
+# Notes
+组清单只增不减——自定义组一经创建不会消失。
+)";
 ```
 
 ```cpp

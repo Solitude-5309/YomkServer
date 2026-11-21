@@ -101,7 +101,7 @@ int MyBoot::after()
     yomk::log().tag("MyBoot::after").info("---- ConfigService 内省（/functions，", funcs->d.size(), " 个端点）----");
     for (const auto& fn : funcs->d)
     {
-        // description 为多行语义块（Semantic/Returns/Precond/Idempotent/SideEffect/Fail），原样透出
+        // description 为多行语义块（五章节：# Overview / # Inputs / # Outputs / # Behavior / # Notes），原样透出
         yomk::log().tag("MyBoot::after").info(fn.funcName, "  期望消息: ", fn.msgName.empty() ? "(无)" : fn.msgName, "\n", fn.description);
     }
 

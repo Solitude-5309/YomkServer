@@ -15,15 +15,83 @@ inline constexpr std::string_view cfgVersion = "/ConfigService/version";
 
 // 语义描述常量：与上方 URL 常量按序一一对应（installFunc 第四参引用；格式惯例见 docs/YomkServer.md「内省描述惯例」）
 inline constexpr const char* cfgLoadDesc = R"(
-Semantic: 从 Context 指定路径加载配置文件（key: value 文本），填充内存配置表
-Returns: data 无负载
-Precond: Context 中已存在配置文件路径键且文件可读
-Idempotent: true —— 重复加载以文件内容覆盖内存表
-SideEffect: 覆写内存配置表
-Fail: Failed=Context 无路径键/文件打开失败（空行与无冒号行跳过）
+# Overview
+从 Context 指定路径加载配置文件（key: value 文本），填充内存配置表。
+
+# Inputs
+无（不带请求包）；配置文件路径取自 Context 键 CTX_CONFIG_PATH。
+
+# Outputs
+data 无负载，msg "ok"。
+
+# Behavior
+同步执行：读取文件并逐行解析后覆写内存表；空行与无冒号行跳过。
+
+# Notes
+Context 无路径键或文件打不开 → Failed；同名键以文件中靠后的值为准。
 )";
-inline constexpr const char* cfgGetDesc = "Semantic: 按键查询内存配置值；Returns: data 为 String 包；Failed=pkg 非 ConfigKey/键不存在";
-inline constexpr const char* cfgSetDesc = "Semantic: 写内存配置键值（不落盘，持久化需扩展 /load 逆操作）；Failed=pkg 非 ConfigKeyValue";
-inline constexpr const char* cfgReloadDesc = "Semantic: 清空内存配置表并重新加载配置文件；Returns: data 无负载；Failed=同 /load";
-inline constexpr const char* cfgVersionDesc = "Semantic: 返回工程版本号（编译期 APP_VERSION 注入）；Returns: data 为 String 包";
+inline constexpr const char* cfgGetDesc = R"(
+# Overview
+按键查询内存配置值。
+
+# Inputs
+ConfigKey 包（yomk::msgs::prj::ConfigKey），req.key 为配置键。
+
+# Outputs
+data 为 String 包（配置值），msg "ok"。
+
+# Behavior
+同步纯读，不修改内存表；幂等。
+
+# Notes
+键不存在 → Failed "key not found: <键>"；pkg 非 ConfigKey → Failed。
+)";
+inline constexpr const char* cfgSetDesc = R"(
+# Overview
+写内存配置键值；不落盘。
+
+# Inputs
+ConfigKeyValue 包（yomk::msgs::prj::ConfigKeyValue），req.key 与 req.value。
+
+# Outputs
+data 无负载，msg "ok"。
+
+# Behavior
+同步执行，覆盖写内存表；同值重写结果不变（幂等）；持久化需自行实现 /load 的逆操作。
+
+# Notes
+不校验键值合法性；pkg 非 ConfigKeyValue → Failed。
+)";
+inline constexpr const char* cfgReloadDesc = R"(
+# Overview
+清空内存配置表并重新加载配置文件。
+
+# Inputs
+无（不带请求包）；路径取自 Context 键 CTX_CONFIG_PATH。
+
+# Outputs
+data 无负载，msg "ok"。
+
+# Behavior
+同步执行：先清空内存表，再复用 /load 的读取逻辑；副作用同 /load。
+
+# Notes
+清空后加载失败 → Failed 且内存表为空（不保留旧值）。
+)";
+inline constexpr const char* cfgVersionDesc = R"(
+# Overview
+返回工程版本号。
+
+# Inputs
+无（不带请求包）。
+
+# Outputs
+data 为 String 包（版本号，编译期由 CMake project() VERSION 注入 APP_VERSION），msg "ok"。
+
+# Behavior
+同步纯读，不修改任何状态；幂等。
+
+# Notes
+版本号取自构建配置，运行期不可变。
+)";
 }  // namespace yomk::url
