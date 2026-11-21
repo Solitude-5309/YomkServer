@@ -39,9 +39,9 @@ from yomk.msgs import (
     Bool,
     BoolArray,
     Bytes,
-    Float64,
+    Float,
     FloatArray,
-    Int64,
+    Int,
     IntArray,
     String,
     StringArray,
@@ -145,8 +145,8 @@ def s2_std_classes():
     # 9 个 std 类 TYPE_NAME 字面断言（全限定形态，对齐 C++ 全限定口径）
     expected_type_names = {
         Bool: "yomk.msgs.Bool",
-        Int64: "yomk.msgs.Int64",
-        Float64: "yomk.msgs.Float64",
+        Int: "yomk.msgs.Int",
+        Float: "yomk.msgs.Float",
         String: "yomk.msgs.String",
         Bytes: "yomk.msgs.Bytes",
         BoolArray: "yomk.msgs.BoolArray",
@@ -160,10 +160,10 @@ def s2_std_classes():
     # 标量字段 value：默认值 + 构造透传
     check(Bool().value is False, "Bool 默认 value=False")
     check(Bool(True).value is True, "Bool(True) 透传")
-    check(Int64().value == 0, "Int64 默认 value=0")
-    check(Int64(42).value == 42, "Int64(42) 透传")
-    check(Float64().value == 0.0, "Float64 默认 value=0.0")
-    check(Float64(1.5).value == 1.5, "Float64(1.5) 透传")
+    check(Int().value == 0, "Int 默认 value=0")
+    check(Int(42).value == 42, "Int(42) 透传")
+    check(Float().value == 0.0, "Float 默认 value=0.0")
+    check(Float(1.5).value == 1.5, "Float(1.5) 透传")
     check(String().value == "", "String 默认 value=''")
     check(String("hello").value == "hello", "String('hello') 透传")
     check(Bytes().value == b"", "Bytes 默认 value=b''")
@@ -190,7 +190,7 @@ def s3_unpack():
     check(unpack(s, String) is s, "命中返回原对象")
 
     # 跨类型未命中：None（对齐 C++ nullptr）
-    check(unpack(Int64(1), String) is None, "跨类型未命中 → None")
+    check(unpack(Int(1), String) is None, "跨类型未命中 → None")
     check(unpack(BoolArray([True]), StringArray) is None, "数组跨类型未命中 → None")
 
     # 子类不冒充父类：子类自动 TYPE_NAME 与父类不同（精确身份匹配）
@@ -223,7 +223,7 @@ def s4_type_of():
 
     # 第一态：YomkMsg 实例 → TYPE_NAME
     check(type_of(String("x")) == "yomk.msgs.String", "消息实例 → TYPE_NAME")
-    check(type_of(Int64(1)) == "yomk.msgs.Int64", "Int64 实例 → TYPE_NAME")
+    check(type_of(Int(1)) == "yomk.msgs.Int", "Int 实例 → TYPE_NAME")
     check(type_of(StringArray(["a"])) == "yomk.msgs.StringArray", "数组实例 → TYPE_NAME")
 
     # 第二态：None 及体系外对象 → "null"（对齐 C++ typeOf：非消息即无运行时类型名）
@@ -248,8 +248,8 @@ def s5_type_mismatch():
     check(type_mismatch("bare", String.TYPE_NAME)
           == "pkg is not yomk.msgs.String, got 'null'",
           "体系外对象文案（非消息 → 'null'）")
-    check(type_mismatch(Int64(1), Bool.TYPE_NAME)
-          == "pkg is not yomk.msgs.Bool, got 'yomk.msgs.Int64'",
+    check(type_mismatch(Int(1), Bool.TYPE_NAME)
+          == "pkg is not yomk.msgs.Bool, got 'yomk.msgs.Int'",
           "期望/实际双侧均为 TYPE_NAME")
 
 

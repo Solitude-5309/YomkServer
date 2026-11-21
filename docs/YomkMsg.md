@@ -18,7 +18,7 @@
 | 操作 | Python 形态 |
 |---|---|
 | 定义消息 | `class MyMsg(YomkMsg):` + 构造函数即字段声明 |
-| 标准标量/数组 | `String` / `Bool` / `Int64` / `Float64` / `Bytes`（字段 `value`）；`BoolArray` / `IntArray` / `FloatArray` / `StringArray`（字段 `items`） |
+| 标准标量/数组 | `String` / `Bool` / `Int` / `Float` / `Bytes`（字段 `value`）；`BoolArray` / `IntArray` / `FloatArray` / `StringArray`（字段 `items`） |
 | 结构化清单 | 各域 List msg（如 `ContextKeyInfoList`、`FuncInfoList`，字段 `items`） |
 | 端点声明 | `self.install_func("/x", self.x, MyMsg.TYPE_NAME)` |
 | 端点体校验 | `if unpack(pkg, MyMsg) is None: return Response(eNo, type_mismatch(pkg, MyMsg.TYPE_NAME))` |
@@ -31,8 +31,10 @@ C++ 30 个 std msg 收敛直译为 9 类（定义于 `yomk.msgs.std_msg`，`from
 
 | std 类 | 承载 | 收敛的 C++ 类型 |
 |---|---|---|
-| `Bool` / `Int64` / `Float64` / `String` / `Bytes` | 标量（字段 `value`） | 11 个整型/字符变体 → `Int64`；Float32/64 → `Float64`；`Bytes` 为 Python 端新增 |
+| `Bool` / `Int` / `Float` / `String` / `Bytes` | 标量（字段 `value`） | 11 个整型/字符变体 → `Int`；Float32/64 → `Float`；`Bytes` 为 Python 端新增 |
 | `BoolArray` / `IntArray` / `FloatArray` / `StringArray` | 列表（字段 `items`） | 15 个 `*Array` 收敛 |
+
+Python 的 `int` / `float` 不区分位宽，故标量类名为 `Int` / `Float`，不带 C++ 的 `64` 后缀；C++ 侧仍是 `Int64` / `Float64`，两侧 `TYPE_NAME` 不同，跨语言共享时需单独映射。
 
 ## 端点标准形态（必须遵守）
 

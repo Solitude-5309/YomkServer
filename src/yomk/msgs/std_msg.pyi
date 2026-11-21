@@ -7,13 +7,13 @@ class Bool(YomkMsg):
     def __init__(self, value: bool = False) -> None: ...
 
 
-class Int64(YomkMsg):
+class Int(YomkMsg):
     value: int
 
     def __init__(self, value: int = 0) -> None: ...
 
 
-class Float64(YomkMsg):
+class Float(YomkMsg):
     value: float
 
     def __init__(self, value: float = 0.0) -> None: ...

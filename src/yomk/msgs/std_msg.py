@@ -17,20 +17,20 @@ class Bool(YomkMsg):
         self.value = value
 
 
-class Int64(YomkMsg):
-    """64-bit integer scalar message.
+class Int(YomkMsg):
+    """Integer scalar message.
 
-    64 位整型标量消息。
+    整型标量消息；Python int 不区分位宽。
     """
 
     def __init__(self, value=0):
         self.value = value
 
 
-class Float64(YomkMsg):
-    """64-bit float scalar message.
+class Float(YomkMsg):
+    """Float scalar message.
 
-    64 位浮点标量消息。
+    浮点标量消息；Python float 不区分位宽。
     """
 
     def __init__(self, value=0.0):

@@ -21,7 +21,7 @@
 
 ## std 类与 List
 
-- 标量 `String/Bool/Int64/Float64/Bytes`（字段 `value`），数组 `BoolArray/IntArray/FloatArray/StringArray`（字段 `items`），定义于 `yomk.msgs.std_msg`；
+- 标量 `String/Bool/Int/Float/Bytes`（字段 `value`），数组 `BoolArray/IntArray/FloatArray/StringArray`（字段 `items`），定义于 `yomk.msgs.std_msg`；
 - 结构化清单用各域 List msg（`ContextKeyInfoList`、`FuncInfoList` 等，字段 `items`）；
 - 内省端点（`/all` 等）返回 **List msg 实例**（裸链直调时）；链式门面读路径已解包、返回裸 list——两种形态不要混认。
 

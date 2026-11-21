@@ -128,7 +128,7 @@ server().shutdown()
 from yomk.msgs import YomkMsg
 from yomk.msgs.std_msg import String
 
-# 定义消息（继承即得 TYPE_NAME；标准标量/数组另有 String/Int64/BoolArray 等 std 类）
+# 定义消息（继承即得 TYPE_NAME；标准标量/数组另有 String/Int/BoolArray 等 std 类）
 class MoveCmd(YomkMsg):
     def __init__(self, x, y, z, speed_ratio):
         self.x = x
