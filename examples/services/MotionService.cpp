@@ -11,7 +11,7 @@ int MotionService::init()
 {
     // 2 参注册：无消息元数据；4 参注册：声明 /move 期望 MoveCmd 并附函数说明，供自省识别
     installFunc("/echo", &MotionService::echo);
-    installFunc("/move", &MotionService::move, yomk::msgs::MoveCmd::kName, "运动控制：按指令运动到目标位姿并留痕");
+    installFunc("/move", &MotionService::move, yomk::msgs::MoveCmd::kTypeName, "运动控制：按指令运动到目标位姿并留痕");
     yomk::log().tag("arm.motion").info("init: install /echo (no meta), /move [MoveCmd] + description");
     return 0;
 }
@@ -21,7 +21,7 @@ yomk::payload::Response MotionService::echo(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     std::ostringstream oss;
     oss << "通讯自检回环：收到 \"" << str->d << "\"";
@@ -34,7 +34,7 @@ yomk::payload::Response MotionService::move(YomkMsgPtr pkg)
     auto cmdPkg = yomk::msgs::unpack<yomk::msgs::MoveCmd>(pkg);
     if (!cmdPkg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::MoveCmd::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::MoveCmd::kTypeName)};
     }
 
     std::ostringstream oss;

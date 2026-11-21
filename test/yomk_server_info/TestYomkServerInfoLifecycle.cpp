@@ -106,7 +106,7 @@ static std::vector<std::string> unpackStringArray(const yomk::payload::Response&
         return lines;
     }
     std::shared_ptr<yomk::msgs::StringArray> arr = nullptr;
-    if (resp.data && resp.data->name() == yomk::msgs::StringArray::kName)
+    if (resp.data && resp.data->typeName() == yomk::msgs::StringArray::kTypeName)
     {
         arr = std::dynamic_pointer_cast<yomk::msgs::StringArray>(resp.data);
     }
@@ -126,7 +126,7 @@ static std::vector<yomk::payload::FuncInfo> unpackFuncInfoList(const yomk::paylo
         return funcs;
     }
     std::shared_ptr<yomk::msgs::FuncInfoList> listPkg = nullptr;
-    if (resp.data && resp.data->name() == yomk::msgs::FuncInfoList::kName)
+    if (resp.data && resp.data->typeName() == yomk::msgs::FuncInfoList::kTypeName)
     {
         listPkg = std::dynamic_pointer_cast<yomk::msgs::FuncInfoList>(resp.data);
     }
@@ -162,7 +162,7 @@ public:
     virtual int init() override
     {
         installFunc("/ping", &FmtSrv::ping);
-        installFunc("/echo", &FmtSrv::echo, yomk::msgs::String::kName, "echo demo description");
+        installFunc("/echo", &FmtSrv::echo, yomk::msgs::String::kTypeName, "echo demo description");
         return 0;
     }
 
@@ -177,7 +177,7 @@ public:
         auto yText = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!yText)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
         }
         return {yomk::payload::ResStatus::Succeeded, yText->d};
     }
@@ -292,7 +292,7 @@ int main()
         auto funcs = unpackFuncInfoList(resp);
         YOMK_TEST_CHECK(funcs.size() == 2, "FmtSrv 恰 2 个功能函数: " + std::to_string(funcs.size()));
         const yomk::payload::FuncInfo* echo = findFunc(funcs, "/echo");
-        YOMK_TEST_CHECK(echo != nullptr && echo->msgName == yomk::msgs::String::kName && echo->description == "echo demo description",
+        YOMK_TEST_CHECK(echo != nullptr && echo->msgName == yomk::msgs::String::kTypeName && echo->description == "echo demo description",
               "四参安装条目 /echo：类型 String + 说明透出");
         const yomk::payload::FuncInfo* ping = findFunc(funcs, "/ping");
         YOMK_TEST_CHECK(ping != nullptr && ping->msgName.empty(), "两参安装条目 /ping（m_msgName 空）");
@@ -308,7 +308,7 @@ int main()
         auto ctx = yomk::srv_info().srv_name("/YomkContext").functions();
         auto ctxFuncs = unpackFuncInfoList(ctx);
         const yomk::payload::FuncInfo* create = findFunc(ctxFuncs, "/create");
-        YOMK_TEST_CHECK(ctx.status == yomk::payload::ResStatus::Succeeded && create != nullptr && create->msgName == yomk::msgs::Context::kName,
+        YOMK_TEST_CHECK(ctx.status == yomk::payload::ResStatus::Succeeded && create != nullptr && create->msgName == yomk::msgs::Context::kTypeName,
               "内置 /YomkContext 含 /create 期望类型 Context");
         YOMK_TEST_CHECK(findFunc(ctxFuncs, "/keys") != nullptr, "内置 /YomkContext 无类型端点 /keys（m_msgName 空）");
 
@@ -317,7 +317,7 @@ int main()
         YOMK_TEST_CHECK(self.status == yomk::payload::ResStatus::Succeeded && selfFuncs.size() == 4,
               "/YomkServerInfo 自身恰 4 个端点");
         const yomk::payload::FuncInfo* function = findFunc(selfFuncs, "/function");
-        YOMK_TEST_CHECK(function != nullptr && function->msgName == yomk::msgs::String::kName && findFunc(selfFuncs, "/all") != nullptr,
+        YOMK_TEST_CHECK(function != nullptr && function->msgName == yomk::msgs::String::kTypeName && findFunc(selfFuncs, "/all") != nullptr,
               "自身条目含带类型 /function 与无类型 /all");
     }
 
@@ -329,7 +329,7 @@ int main()
               "命中三参函数：ResStatus::Succeeded 且 m_msg 恒为 ok");
         auto typedInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(hitTyped.data);
         YOMK_TEST_CHECK(typedInfo != nullptr, "命中三参函数：数据为 FuncInfo 包");
-        YOMK_TEST_CHECK(typedInfo && typedInfo->d.funcName == "/echo" && typedInfo->d.msgName == yomk::msgs::String::kName,
+        YOMK_TEST_CHECK(typedInfo && typedInfo->d.funcName == "/echo" && typedInfo->d.msgName == yomk::msgs::String::kTypeName,
               "命中三参函数字段 m_funcName/m_msgName 一致");
 
         auto hitPlain = yomk::srv_info().fn_url("/FmtSrv/ping").get_info();
@@ -361,7 +361,7 @@ int main()
               "函数不存在契约消息精确匹配: " + noFunc.msg);
 
         auto nullPkg = yomk::server().url("/YomkServerInfo/function").request();
-        YOMK_TEST_CHECK(nullPkg.status == yomk::payload::ResStatus::Failed && nullPkg.msg.find(std::string("pkg is not ") + yomk::msgs::String::kName + ", got 'null'") != std::string::npos,
+        YOMK_TEST_CHECK(nullPkg.status == yomk::payload::ResStatus::Failed && nullPkg.msg.find(std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got 'null'") != std::string::npos,
               "null pkg 返回 ResStatus::Failed + got 'null'（unpack 守卫）");
 
         // description 透出：四参安装的 /echo 命中时说明承载于 FuncInfo 包；无说明的 /ping 恒挂包但说明为空
@@ -369,7 +369,7 @@ int main()
         YOMK_TEST_CHECK(hitDesc.status == yomk::payload::ResStatus::Succeeded && hitDesc.msg == "ok",
               "四参函数命中：m_msg 恒为 ok");
         auto descInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(hitDesc.data);
-        YOMK_TEST_CHECK(descInfo && descInfo->d.msgName == yomk::msgs::String::kName, "四参函数命中：m_msgName == \"String\"");
+        YOMK_TEST_CHECK(descInfo && descInfo->d.msgName == yomk::msgs::String::kTypeName, "四参函数命中：m_msgName == \"String\"");
         YOMK_TEST_CHECK(descInfo && descInfo->d.description == "echo demo description",
               "四参函数命中：m_description == \"echo demo description\"");
         YOMK_TEST_CHECK(hitPlain.data != nullptr && plainInfo && plainInfo->d.description.empty(),
@@ -389,7 +389,7 @@ int main()
         const yomk::payload::ServerServiceInfo* fmt = findServiceInfo(list, "/FmtSrv");
         YOMK_TEST_CHECK(fmt != nullptr, "/all 含 FmtSrv 服务条目");
         YOMK_TEST_CHECK(fmt && fmt->funcs.size() == 2 && fmt->funcs[0].funcName == "/echo" &&
-                  fmt->funcs[0].msgName == yomk::msgs::String::kName && fmt->funcs[1].funcName == "/ping" &&
+                  fmt->funcs[0].msgName == yomk::msgs::String::kTypeName && fmt->funcs[1].funcName == "/ping" &&
                   fmt->funcs[1].msgName.empty(),
               "FmtSrv 段：/echo [String] 与 /ping 字段齐全（map 字典序）");
 
@@ -398,7 +398,7 @@ int main()
         YOMK_TEST_CHECK(self != nullptr, "/all 含 /YomkServerInfo 服务条目");
         YOMK_TEST_CHECK(findFuncInfo(self, "/services") != nullptr, "内置段含 \"/services\" 条目");
         YOMK_TEST_CHECK(findFuncInfo(self, "/functions") != nullptr &&
-                  findFuncInfo(self, "/functions")->msgName == yomk::msgs::String::kName,
+                  findFuncInfo(self, "/functions")->msgName == yomk::msgs::String::kTypeName,
               "内置段含 \"/functions\" 条目且 m_msgName == \"String\"");
         YOMK_TEST_CHECK(findFuncInfo(self, "/all") != nullptr, "内置段含 \"/all\" 条目");
     }
@@ -536,7 +536,7 @@ int main()
         const yomk::payload::FuncInfo* longEcho = findFunc(longFuncList, "/echo");
         const yomk::payload::FuncInfo* longPing = findFunc(longFuncList, "/ping");
         YOMK_TEST_CHECK(
-            (longEcho != nullptr && longEcho->msgName == yomk::msgs::String::kName && longPing != nullptr &&
+            (longEcho != nullptr && longEcho->msgName == yomk::msgs::String::kTypeName && longPing != nullptr &&
              longPing->msgName.empty()),
             "超长名下函数条目字段完整");
 
@@ -551,7 +551,7 @@ int main()
         const yomk::payload::ServerServiceInfo* longSrv = findServiceInfo(longAll, longName);
         YOMK_TEST_CHECK(longSrv != nullptr, "/all 含超长服务名条目（无截断）");
         YOMK_TEST_CHECK(longSrv && longSrv->funcs.size() == 2 && longSrv->funcs[0].funcName == "/echo" &&
-                  longSrv->funcs[0].msgName == yomk::msgs::String::kName && longSrv->funcs[1].funcName == "/ping",
+                  longSrv->funcs[0].msgName == yomk::msgs::String::kTypeName && longSrv->funcs[1].funcName == "/ping",
               "/all 超长条目函数字段完整（echo [String] 与 ping，无截断）");
 
         YOMK_TEST_CHECK(yomk::server().srv_name(longName).remove() == 0, "超长名服务删除返回 0");

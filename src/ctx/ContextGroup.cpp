@@ -141,11 +141,11 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
         return kSetKeyNotExist;
     }
 
-    if (itContext->second.value->name() != value->name())
+    if (itContext->second.value->typeName() != value->typeName())
     {
         // 具体值原则:期望/实际类型名一并输出,用户一眼定位类型错配
-        YOMK_DIAG_WARN("context type not match: key '" + key + "' expect '" + itContext->second.value->name() + "', got '" + value->name() + "'");
-        detail = "context type not match: key '" + key + "' expect '" + itContext->second.value->name() + "', got '" + value->name() + "'";
+        YOMK_DIAG_WARN("context type not match: key '" + key + "' expect '" + std::string(itContext->second.value->typeName()) + "', got '" + std::string(value->typeName()) + "'");
+        detail = "context type not match: key '" + key + "' expect '" + std::string(itContext->second.value->typeName()) + "', got '" + std::string(value->typeName()) + "'";
         return kSetTypeMismatch;
     }
 
@@ -329,7 +329,7 @@ int ContextGroup::keyInfo(const std::string& key, yomk::payload::ContextKeyInfo&
     const auto& ctx = itContext->second;
     info = yomk::payload::ContextKeyInfo();
     info.key = ctx.key;
-    info.typeName = ctx.value ? ctx.value->name() : "";
+    info.typeName = ctx.value ? std::string(ctx.value->typeName()) : std::string();
     info.checkerOn = static_cast<bool>(ctx.checker);
     info.monitorCount = ctx.monitors.size();
     for (auto& monitor : ctx.monitors)
@@ -355,7 +355,7 @@ std::vector<yomk::payload::ContextKeyInfo> ContextGroup::listAll()
             const auto& ctx = iter.second;
             yomk::payload::ContextKeyInfo info;
             info.key = ctx.key;
-            info.typeName = ctx.value ? ctx.value->name() : "";
+            info.typeName = ctx.value ? std::string(ctx.value->typeName()) : std::string();
             info.checkerOn = static_cast<bool>(ctx.checker);
             info.monitorCount = ctx.monitors.size();
             for (auto& monitor : ctx.monitors)

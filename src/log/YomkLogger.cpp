@@ -37,21 +37,21 @@ YomkLogger::~YomkLogger() {}
 
 int YomkLogger::init()
 {
-    installFunc("/set_console_log_proxy", &YomkLogger::setConsoleLogProxy, yomk::msgs::ConsoleLogProxy::kName, yomk::url::kLoggerSetConsoleProxyDesc);
-    installFunc("/set_file_log_proxy", &YomkLogger::setFileLogProxy, yomk::msgs::FileLogProxy::kName, yomk::url::kLoggerSetFileLogProxyDesc);
-    installFunc("/console_log", &YomkLogger::consoleLog, yomk::msgs::Log::kName, yomk::url::kLoggerConsoleLogDesc);
-    installFunc("/create_file_logger", &YomkLogger::createFileLogger, yomk::msgs::LogFile::kName, yomk::url::kLoggerCreateFileLoggerDesc);
-    installFunc("/file_log", &YomkLogger::fileLog, yomk::msgs::Log::kName, yomk::url::kLoggerFileLogDesc);
-    installFunc("/write_file_log", &YomkLogger::writeFileLog, yomk::msgs::String::kName, yomk::url::kLoggerWriteFileLogDesc);
-    installFunc("/delete_logger", &YomkLogger::deleteLogger, yomk::msgs::String::kName, yomk::url::kLoggerDeleteLoggerDesc);
-    installFunc("/off_console_log_by_level", &YomkLogger::offConsoleLogByLevel, yomk::msgs::Log::kName, yomk::url::kLoggerOffConsoleLogByLevelDesc);
-    installFunc("/on_console_log_by_level", &YomkLogger::onConsoleLogByLevel, yomk::msgs::Log::kName, yomk::url::kLoggerOnConsoleLogByLevelDesc);
-    installFunc("/loggers", &YomkLogger::loggers, yomk::msgs::String::kName, yomk::url::kLoggerLoggersDesc);
-    installFunc("/logger", &YomkLogger::loggerInfo, yomk::msgs::LoggerQuery::kName, yomk::url::kLoggerLoggerDesc);
+    installFunc("/set_console_log_proxy", &YomkLogger::setConsoleLogProxy, yomk::msgs::ConsoleLogProxy::kTypeName, yomk::url::kLoggerSetConsoleProxyDesc);
+    installFunc("/set_file_log_proxy", &YomkLogger::setFileLogProxy, yomk::msgs::FileLogProxy::kTypeName, yomk::url::kLoggerSetFileLogProxyDesc);
+    installFunc("/console_log", &YomkLogger::consoleLog, yomk::msgs::Log::kTypeName, yomk::url::kLoggerConsoleLogDesc);
+    installFunc("/create_file_logger", &YomkLogger::createFileLogger, yomk::msgs::LogFile::kTypeName, yomk::url::kLoggerCreateFileLoggerDesc);
+    installFunc("/file_log", &YomkLogger::fileLog, yomk::msgs::Log::kTypeName, yomk::url::kLoggerFileLogDesc);
+    installFunc("/write_file_log", &YomkLogger::writeFileLog, yomk::msgs::String::kTypeName, yomk::url::kLoggerWriteFileLogDesc);
+    installFunc("/delete_logger", &YomkLogger::deleteLogger, yomk::msgs::String::kTypeName, yomk::url::kLoggerDeleteLoggerDesc);
+    installFunc("/off_console_log_by_level", &YomkLogger::offConsoleLogByLevel, yomk::msgs::Log::kTypeName, yomk::url::kLoggerOffConsoleLogByLevelDesc);
+    installFunc("/on_console_log_by_level", &YomkLogger::onConsoleLogByLevel, yomk::msgs::Log::kTypeName, yomk::url::kLoggerOnConsoleLogByLevelDesc);
+    installFunc("/loggers", &YomkLogger::loggers, yomk::msgs::String::kTypeName, yomk::url::kLoggerLoggersDesc);
+    installFunc("/logger", &YomkLogger::loggerInfo, yomk::msgs::LoggerQuery::kTypeName, yomk::url::kLoggerLoggerDesc);
     installFunc("/all", &YomkLogger::listAll, "", yomk::url::kLoggerAllDesc);
     installFunc("/console_global_state", &YomkLogger::consoleGlobalState, "", yomk::url::kLoggerConsoleGlobalStateDesc);
-    installFunc("/off_file_log_by_level", &YomkLogger::offFileLogByLevel, yomk::msgs::Log::kName, yomk::url::kLoggerOffFileLogByLevelDesc);
-    installFunc("/on_file_log_by_level", &YomkLogger::onFileLogByLevel, yomk::msgs::Log::kName, yomk::url::kLoggerOnFileLogByLevelDesc);
+    installFunc("/off_file_log_by_level", &YomkLogger::offFileLogByLevel, yomk::msgs::Log::kTypeName, yomk::url::kLoggerOffFileLogByLevelDesc);
+    installFunc("/on_file_log_by_level", &YomkLogger::onFileLogByLevel, yomk::msgs::Log::kTypeName, yomk::url::kLoggerOnFileLogByLevelDesc);
     installFunc("/file_global_state", &YomkLogger::fileGlobalState, "", yomk::url::kLoggerFileGlobalStateDesc);
     return 0;
 }
@@ -61,7 +61,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
     }
     if (logPkg->d.logger.empty())
     {
@@ -146,7 +146,7 @@ yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr pkg)
     auto consoleLogProxy = yomk::msgs::unpack<yomk::msgs::ConsoleLogProxy>(pkg);
     if (!consoleLogProxy)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::ConsoleLogProxy::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::ConsoleLogProxy::kTypeName)};
     }
     // 与 consoleLog 读侧互斥
     std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
@@ -161,7 +161,7 @@ yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr pkg)
     auto fileLogProxy = yomk::msgs::unpack<yomk::msgs::FileLogProxy>(pkg);
     if (!fileLogProxy)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::FileLogProxy::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::FileLogProxy::kTypeName)};
     }
     // 与 fileLog 读侧互斥;语义与 setConsoleLogProxy 对称
     std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
@@ -176,7 +176,7 @@ yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr pkg)
     auto logFile = yomk::msgs::unpack<yomk::msgs::LogFile>(pkg);
     if (!logFile)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::LogFile::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::LogFile::kTypeName)};
     }
 
     // 空名/空目录拒绝:ResStatus::Invalid(参数无效惯例)
@@ -213,7 +213,7 @@ yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
     }
 
     if (logPkg->d.logger.empty())
@@ -284,7 +284,7 @@ yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
     auto fileLogger = m_fileLoggers.find(str->d);
@@ -302,7 +302,7 @@ yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr pkg)
     auto yName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
 
     // 空名拒绝(同 createFileLogger 惯例)
@@ -348,7 +348,7 @@ yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
     }
 
     // 具名请求:逐器门控路径(写第二层,不触碰全局主闸;未命中 ResStatus::Failed 不惰性创建)
@@ -391,7 +391,7 @@ yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
@@ -474,7 +474,7 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
@@ -517,7 +517,7 @@ yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
     auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
     if (!logPkg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
@@ -600,7 +600,7 @@ yomk::payload::Response YomkLogger::loggers(YomkMsgPtr pkg)
     auto type = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!type)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     std::vector<std::string> names;
     if (type->d == "console")
@@ -630,7 +630,7 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
     auto query = yomk::msgs::unpack<yomk::msgs::LoggerQuery>(pkg);
     if (!query)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::LoggerQuery::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::LoggerQuery::kTypeName)};
     }
     // 按类型单表精确查找:两表允许同名,同名歧义由 type 消除;命中锁内构造结构化快照
     yomk::payload::LoggerInfo info;

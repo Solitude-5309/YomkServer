@@ -12,7 +12,7 @@
    `plug_sys().plg_name(n).get_info()`。判据是"是否在链式表达式内"，不是"是否用户可见"。
 3. 载荷 struct 字段 camelCase：`funcName`、`manifestPath`。
 4. 成员变量 `m_` 前缀；**所有非宏常量一律 `k` 前缀 + PascalCase**——编译期数值、字符串常量、
-   URL 常量、语义描述常量、静态数据成员同此一条规则：`m_msgName`、`kName`、`kDigitBufSize`、
+   URL 常量、语义描述常量、静态数据成员同此一条规则：`m_msgName`、`kTypeName`、`kDigitBufSize`、
    `kCtxCreate`、`kCtxCreateDesc`。判据是"是否声明为 `const`/`constexpr` 的具名常量"，
    与它是否用户可见、是否为 `string_view` 无关；枚举值（`ResStatus::Succeeded`）是枚举类型的
    成员，不套 `k` 前缀。
@@ -62,7 +62,7 @@
 ## 7. 现有惯例速查（仅记录）
 1. 内省三件套：点查 `get_info()`、枚举 `list_<宾语>()`、全量 `all()`。
 2. 分面/链式类后缀 `Builder`；三态结果枚举 `{Invalid, Succeeded, Failed}`。
-3. 消息包成员名 `d`、运行时类型标识 `kName`、消息命名空间 `yomk::msgs`、载荷 `yomk::payload`。
+3. 消息包成员名 `d`、运行时类型标识 `kTypeName`、消息命名空间 `yomk::msgs`、载荷 `yomk::payload`。
 4. 常量命名：`k` + 域前缀驼峰 + 端点驼峰；语义描述常量为同名 + `Desc`
    （`kCtxCreate` / `kCtxCreateDesc`，URL 常量 `string_view`、描述常量 `const char*`）。
 

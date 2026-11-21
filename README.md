@@ -66,7 +66,7 @@ public:
     int init() override
     {
         // 注册功能函数；第三个参数可选，声明期望消息类型名供自省识别
-        installFunc("/hello", &MyService::hello, yomk::msgs::String::kName);
+        installFunc("/hello", &MyService::hello, yomk::msgs::String::kTypeName);
         return 0; // 返回 0 表示服务初始化成功
     }
 
@@ -77,7 +77,7 @@ public:
         if (!msg)
         {
             return {yomk::payload::ResStatus::Failed,
-            std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
+            std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got '" + yomk::msgs::typeOf(pkg) + "'"};
         }
         return {yomk::payload::ResStatus::Succeeded, "hello " + msg->d};
     }

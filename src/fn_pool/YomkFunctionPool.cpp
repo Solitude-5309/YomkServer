@@ -14,12 +14,12 @@ YomkFunctionPool::YomkFunctionPool(YomkServer* server) : YomkService(server)
 
 int YomkFunctionPool::init()
 {
-    installFunc("/register", &YomkFunctionPool::registerFunction, yomk::msgs::Function::kName, yomk::url::kFpRegisterDesc);
-    installFunc("/unregister", &YomkFunctionPool::unRegisterFunction, yomk::msgs::String::kName, yomk::url::kFpUnregisterDesc);
-    installFunc("/call", &YomkFunctionPool::callFunction, yomk::msgs::CallFunction::kName, yomk::url::kFpCallDesc);
+    installFunc("/register", &YomkFunctionPool::registerFunction, yomk::msgs::Function::kTypeName, yomk::url::kFpRegisterDesc);
+    installFunc("/unregister", &YomkFunctionPool::unRegisterFunction, yomk::msgs::String::kTypeName, yomk::url::kFpUnregisterDesc);
+    installFunc("/call", &YomkFunctionPool::callFunction, yomk::msgs::CallFunction::kTypeName, yomk::url::kFpCallDesc);
     // 调试内省接口,端点挂在本服务 funcMap
     installFunc("/names", &YomkFunctionPool::funcNames, "", yomk::url::kFpNamesDesc);
-    installFunc("/name", &YomkFunctionPool::funcInfo, yomk::msgs::String::kName, yomk::url::kFpNameDesc);
+    installFunc("/name", &YomkFunctionPool::funcInfo, yomk::msgs::String::kTypeName, yomk::url::kFpNameDesc);
     installFunc("/all", &YomkFunctionPool::listAll, "", yomk::url::kFpAllDesc);
     return 0;
 }
@@ -29,7 +29,7 @@ yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr pkg)
     auto yFunc = yomk::msgs::unpack<yomk::msgs::Function>(pkg);
     if (!yFunc)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Function::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Function::kTypeName)};
     }
     if (yFunc->d.funcName.empty() || yFunc->d.func == nullptr)
     {
@@ -58,7 +58,7 @@ yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr pkg)
     auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yFuncName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     if (yFuncName->d.empty())
     {
@@ -81,7 +81,7 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
     auto yCallFunc = yomk::msgs::unpack<yomk::msgs::CallFunction>(pkg);
     if (!yCallFunc)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::CallFunction::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::CallFunction::kTypeName)};
     }
     if (yCallFunc->d.funcName.empty())
     {
@@ -123,7 +123,7 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
     auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yFuncName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     if (yFuncName->d.empty())
     {

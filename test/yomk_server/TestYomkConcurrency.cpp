@@ -86,7 +86,7 @@ public:
     int init() override
     {
         installFunc("/ping", &ConcSrv::ping);
-        installFunc("/echo", &ConcSrv::echo, yomk::msgs::String::kName);
+        installFunc("/echo", &ConcSrv::echo, yomk::msgs::String::kTypeName);
         g_weakCb = weakFunc(&ConcSrv::ping);
         return 0;
     }
@@ -103,7 +103,7 @@ public:
         auto sp = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!sp)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
         }
         return {yomk::payload::ResStatus::Succeeded, sp->d};
     }
@@ -279,7 +279,7 @@ int main()
         for (int round = 0; round < 200; ++round)
         {
             echoSrv->installFunc(
-                "/echo", echoSrv->weakFunc(std::bind(&ConcSrv::echo, echoSrv, std::placeholders::_1)), yomk::msgs::String::kName);
+                "/echo", echoSrv->weakFunc(std::bind(&ConcSrv::echo, echoSrv, std::placeholders::_1)), yomk::msgs::String::kTypeName);
             echoSrv->installFunc("/echo", echoSrv->weakFunc(std::bind(&ConcSrv::echo, echoSrv, std::placeholders::_1)));
         }
         stop.store(true);

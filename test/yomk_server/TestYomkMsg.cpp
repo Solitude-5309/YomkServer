@@ -1,19 +1,18 @@
 // YomkMsg 消息包体系独立测试（标准类型全集/解包语义全分支的独立覆盖）
 //
-// 覆盖内容（5 个 Section，约 66 断言）：
-// S1. 标准类型消息包全集（15 标量 + 15 Array = 30 类型）：逐类型构造 name() == 类型名 且
+// 覆盖内容（5 个 Section，约 64 断言）：
+// S1. 标准类型消息包全集（15 标量 + 15 Array = 30 类型）：逐类型构造 typeName() == 类型名 且
 // 成员 d 值往返（Array 构造多元素断言 size 与元素）；默认构造零值代表（Int32/String）
 // S2. unpack 模板与运行时类型名解包全分支（错误消息精确断言）：
-// unpack（null/名不匹配/名匹配但动态类型不符均返回 nullptr，命中返回解包指针）、
+// unpack（null/类型名不匹配均返回 nullptr，命中返回解包指针）、
 // 服务函数级手写判空返回 ResStatus::Failed + 契约消息、手写判空提前 return（标志位观测）、
-// 运行时类型名解包（按包 name() 匹配后 dynamic_pointer_cast；
-// 含名匹配但动态类型不符的 cast 失败）
+// 运行时类型名解包（按包 typeName() 匹配后 dynamic_pointer_cast）
 // S3. Event 结构：默认/三参/四参构造、handle() 有无 serviceFunc、m_eventId 初值、m_waitCallback
 // S4. yomk::payload::Response 契约：默认构造、枚举值序（ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1）、双参/三参构造
-// S5. 框架结构体默认值（Log::m_level 无类内初始化不作值断言）+ 结构体消息包版 name 就位
+// S5. 框架结构体默认值（Log::m_level 无类内初始化不作值断言）+ 结构体消息包版 typeName 就位
 //
-// 说明：全程不调 yomk::server().init()（纯类型/模板测试，不依赖单例）；YomkMsg::name() 公有 setter 用于
-// 伪造类型名以触达 unpack 的 dynamic_pointer_cast 失败分支（名字匹配但实际类型不符）
+// 说明：全程不调 yomk::server().init()（纯类型/模板测试，不依赖单例）；typeName() 由各类型的静态
+// kTypeName 返回、不可改写，"类型名匹配但动态类型不符"已非可达分支，故不设该断言
 //
 // 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
@@ -51,97 +50,94 @@ int main()
     std::cout << "===== S1. 标准类型消息包全集 =====" << std::endl;
     {
         auto boolPkg = yomk::msgs::Bool::shared(true);
-        YOMK_TEST_CHECK(boolPkg->name() == yomk::msgs::Bool::kName && boolPkg->d == true, "Bool 构造往返：name 与 d");
+        YOMK_TEST_CHECK(boolPkg->typeName() == yomk::msgs::Bool::kTypeName && boolPkg->d == true, "Bool 构造往返：typeName 与 d");
         auto charPkg = yomk::msgs::Char::shared('A');
-        YOMK_TEST_CHECK(charPkg->name() == yomk::msgs::Char::kName && charPkg->d == 'A', "Char 构造往返：name 与 d");
+        YOMK_TEST_CHECK(charPkg->typeName() == yomk::msgs::Char::kTypeName && charPkg->d == 'A', "Char 构造往返：typeName 与 d");
         auto uCharPkg = yomk::msgs::UChar::shared(static_cast<unsigned char>(200));
-        YOMK_TEST_CHECK(uCharPkg->name() == yomk::msgs::UChar::kName && uCharPkg->d == 200, "UChar 构造往返：name 与 d");
+        YOMK_TEST_CHECK(uCharPkg->typeName() == yomk::msgs::UChar::kTypeName && uCharPkg->d == 200, "UChar 构造往返：typeName 与 d");
         auto bytePkg = yomk::msgs::Byte::shared(static_cast<unsigned char>(201));
-        YOMK_TEST_CHECK(bytePkg->name() == yomk::msgs::Byte::kName && bytePkg->d == 201, "Byte 构造往返：name 与 d（与 UChar 同底层但类型名独立）");
+        YOMK_TEST_CHECK(bytePkg->typeName() == yomk::msgs::Byte::kTypeName && bytePkg->d == 201, "Byte 构造往返：typeName 与 d（与 UChar 同底层但类型名独立）");
         auto int8Pkg = yomk::msgs::Int8::shared(static_cast<std::int8_t>(-5));
-        YOMK_TEST_CHECK(int8Pkg->name() == yomk::msgs::Int8::kName && int8Pkg->d == -5, "Int8 构造往返：name 与 d");
+        YOMK_TEST_CHECK(int8Pkg->typeName() == yomk::msgs::Int8::kTypeName && int8Pkg->d == -5, "Int8 构造往返：typeName 与 d");
         auto uint8Pkg = yomk::msgs::Uint8::shared(static_cast<std::uint8_t>(250));
-        YOMK_TEST_CHECK(uint8Pkg->name() == yomk::msgs::Uint8::kName && uint8Pkg->d == 250, "Uint8 构造往返：name 与 d");
+        YOMK_TEST_CHECK(uint8Pkg->typeName() == yomk::msgs::Uint8::kTypeName && uint8Pkg->d == 250, "Uint8 构造往返：typeName 与 d");
         auto int16Pkg = yomk::msgs::Int16::shared(static_cast<std::int16_t>(-300));
-        YOMK_TEST_CHECK(int16Pkg->name() == yomk::msgs::Int16::kName && int16Pkg->d == -300, "Int16 构造往返：name 与 d");
+        YOMK_TEST_CHECK(int16Pkg->typeName() == yomk::msgs::Int16::kTypeName && int16Pkg->d == -300, "Int16 构造往返：typeName 与 d");
         auto uint16Pkg = yomk::msgs::Uint16::shared(static_cast<std::uint16_t>(60000));
-        YOMK_TEST_CHECK(uint16Pkg->name() == yomk::msgs::Uint16::kName && uint16Pkg->d == 60000, "Uint16 构造往返：name 与 d");
+        YOMK_TEST_CHECK(uint16Pkg->typeName() == yomk::msgs::Uint16::kTypeName && uint16Pkg->d == 60000, "Uint16 构造往返：typeName 与 d");
         auto int32Pkg = yomk::msgs::Int32::shared(-70000);
-        YOMK_TEST_CHECK(int32Pkg->name() == yomk::msgs::Int32::kName && int32Pkg->d == -70000, "Int32 构造往返：name 与 d");
+        YOMK_TEST_CHECK(int32Pkg->typeName() == yomk::msgs::Int32::kTypeName && int32Pkg->d == -70000, "Int32 构造往返：typeName 与 d");
         auto uint32Pkg = yomk::msgs::Uint32::shared(4000000000u);
-        YOMK_TEST_CHECK(uint32Pkg->name() == yomk::msgs::Uint32::kName && uint32Pkg->d == 4000000000u, "Uint32 构造往返：name 与 d");
+        YOMK_TEST_CHECK(uint32Pkg->typeName() == yomk::msgs::Uint32::kTypeName && uint32Pkg->d == 4000000000u, "Uint32 构造往返：typeName 与 d");
         auto int64Pkg = yomk::msgs::Int64::shared(-5000000000LL);
-        YOMK_TEST_CHECK(int64Pkg->name() == yomk::msgs::Int64::kName && int64Pkg->d == -5000000000LL, "Int64 构造往返：name 与 d");
+        YOMK_TEST_CHECK(int64Pkg->typeName() == yomk::msgs::Int64::kTypeName && int64Pkg->d == -5000000000LL, "Int64 构造往返：typeName 与 d");
         auto uint64Pkg = yomk::msgs::Uint64::shared(10000000000ULL);
-        YOMK_TEST_CHECK(uint64Pkg->name() == yomk::msgs::Uint64::kName && uint64Pkg->d == 10000000000ULL, "Uint64 构造往返：name 与 d");
+        YOMK_TEST_CHECK(uint64Pkg->typeName() == yomk::msgs::Uint64::kTypeName && uint64Pkg->d == 10000000000ULL, "Uint64 构造往返：typeName 与 d");
         auto float32Pkg = yomk::msgs::Float32::shared(1.5f);
-        YOMK_TEST_CHECK(float32Pkg->name() == yomk::msgs::Float32::kName && float32Pkg->d == 1.5f, "Float32 构造往返：name 与 d（1.5 精确可表示）");
+        YOMK_TEST_CHECK(float32Pkg->typeName() == yomk::msgs::Float32::kTypeName && float32Pkg->d == 1.5f, "Float32 构造往返：typeName 与 d（1.5 精确可表示）");
         auto float64Pkg = yomk::msgs::Float64::shared(2.25);
-        YOMK_TEST_CHECK(float64Pkg->name() == yomk::msgs::Float64::kName && float64Pkg->d == 2.25, "Float64 构造往返：name 与 d");
+        YOMK_TEST_CHECK(float64Pkg->typeName() == yomk::msgs::Float64::kTypeName && float64Pkg->d == 2.25, "Float64 构造往返：typeName 与 d");
         auto strPkg = yomk::msgs::String::shared(std::string("hello"));
-        YOMK_TEST_CHECK(strPkg->name() == yomk::msgs::String::kName && strPkg->d == "hello", "String 构造往返：name 与 d");
+        YOMK_TEST_CHECK(strPkg->typeName() == yomk::msgs::String::kTypeName && strPkg->d == "hello", "String 构造往返：typeName 与 d");
 
         auto boolArrPkg = yomk::msgs::BoolArray::shared(std::vector<bool>{true, false, true});
-        YOMK_TEST_CHECK(boolArrPkg->name() == yomk::msgs::BoolArray::kName && boolArrPkg->d.size() == 3 && boolArrPkg->d[0] && !boolArrPkg->d[1],
+        YOMK_TEST_CHECK(boolArrPkg->typeName() == yomk::msgs::BoolArray::kTypeName && boolArrPkg->d.size() == 3 && boolArrPkg->d[0] && !boolArrPkg->d[1],
               "BoolArray 构造往返（vector<bool> 位压缩语义）");
         auto charArrPkg = yomk::msgs::CharArray::shared(std::vector<char>{'x', 'y'});
-        YOMK_TEST_CHECK(charArrPkg->name() == yomk::msgs::CharArray::kName && charArrPkg->d.size() == 2 && charArrPkg->d[0] == 'x',
+        YOMK_TEST_CHECK(charArrPkg->typeName() == yomk::msgs::CharArray::kTypeName && charArrPkg->d.size() == 2 && charArrPkg->d[0] == 'x',
               "CharArray 构造往返");
         auto uCharArrPkg = yomk::msgs::UCharArray::shared(std::vector<unsigned char>{1, 2});
-        YOMK_TEST_CHECK(uCharArrPkg->name() == yomk::msgs::UCharArray::kName && uCharArrPkg->d.size() == 2 && uCharArrPkg->d[1] == 2,
+        YOMK_TEST_CHECK(uCharArrPkg->typeName() == yomk::msgs::UCharArray::kTypeName && uCharArrPkg->d.size() == 2 && uCharArrPkg->d[1] == 2,
               "UCharArray 构造往返");
         auto byteArrPkg = yomk::msgs::ByteArray::shared(std::vector<unsigned char>{9, 8});
-        YOMK_TEST_CHECK(byteArrPkg->name() == yomk::msgs::ByteArray::kName && byteArrPkg->d.size() == 2 && byteArrPkg->d[0] == 9,
+        YOMK_TEST_CHECK(byteArrPkg->typeName() == yomk::msgs::ByteArray::kTypeName && byteArrPkg->d.size() == 2 && byteArrPkg->d[0] == 9,
               "ByteArray 构造往返");
         auto int8ArrPkg = yomk::msgs::Int8Array::shared(std::vector<signed char>{-1, 2});
-        YOMK_TEST_CHECK(int8ArrPkg->name() == yomk::msgs::Int8Array::kName && int8ArrPkg->d.size() == 2 && int8ArrPkg->d[0] == -1,
+        YOMK_TEST_CHECK(int8ArrPkg->typeName() == yomk::msgs::Int8Array::kTypeName && int8ArrPkg->d.size() == 2 && int8ArrPkg->d[0] == -1,
               "Int8Array 构造往返（底层 vector<signed char>，负值保真）");
         auto uint8ArrPkg = yomk::msgs::Uint8Array::shared(std::vector<unsigned char>{250, 251});
-        YOMK_TEST_CHECK(uint8ArrPkg->name() == yomk::msgs::Uint8Array::kName && uint8ArrPkg->d.size() == 2 && uint8ArrPkg->d[0] == 250,
+        YOMK_TEST_CHECK(uint8ArrPkg->typeName() == yomk::msgs::Uint8Array::kTypeName && uint8ArrPkg->d.size() == 2 && uint8ArrPkg->d[0] == 250,
               "Uint8Array 构造往返");
         auto int16ArrPkg = yomk::msgs::Int16Array::shared(std::vector<std::int16_t>{-1, 2});
-        YOMK_TEST_CHECK(int16ArrPkg->name() == yomk::msgs::Int16Array::kName && int16ArrPkg->d.size() == 2 && int16ArrPkg->d[0] == -1,
+        YOMK_TEST_CHECK(int16ArrPkg->typeName() == yomk::msgs::Int16Array::kTypeName && int16ArrPkg->d.size() == 2 && int16ArrPkg->d[0] == -1,
               "Int16Array 构造往返");
         auto uint16ArrPkg = yomk::msgs::Uint16Array::shared(std::vector<std::uint16_t>{1, 2});
-        YOMK_TEST_CHECK(uint16ArrPkg->name() == yomk::msgs::Uint16Array::kName && uint16ArrPkg->d.size() == 2 && uint16ArrPkg->d[1] == 2,
+        YOMK_TEST_CHECK(uint16ArrPkg->typeName() == yomk::msgs::Uint16Array::kTypeName && uint16ArrPkg->d.size() == 2 && uint16ArrPkg->d[1] == 2,
               "Uint16Array 构造往返");
         auto int32ArrPkg = yomk::msgs::Int32Array::shared(std::vector<std::int32_t>{-1, 2});
-        YOMK_TEST_CHECK(int32ArrPkg->name() == yomk::msgs::Int32Array::kName && int32ArrPkg->d.size() == 2 && int32ArrPkg->d[0] == -1,
+        YOMK_TEST_CHECK(int32ArrPkg->typeName() == yomk::msgs::Int32Array::kTypeName && int32ArrPkg->d.size() == 2 && int32ArrPkg->d[0] == -1,
               "Int32Array 构造往返");
         auto uint32ArrPkg = yomk::msgs::Uint32Array::shared(std::vector<std::uint32_t>{1, 2});
-        YOMK_TEST_CHECK(uint32ArrPkg->name() == yomk::msgs::Uint32Array::kName && uint32ArrPkg->d.size() == 2 && uint32ArrPkg->d[1] == 2,
+        YOMK_TEST_CHECK(uint32ArrPkg->typeName() == yomk::msgs::Uint32Array::kTypeName && uint32ArrPkg->d.size() == 2 && uint32ArrPkg->d[1] == 2,
               "Uint32Array 构造往返");
         auto int64ArrPkg = yomk::msgs::Int64Array::shared(std::vector<std::int64_t>{-1, 2});
-        YOMK_TEST_CHECK(int64ArrPkg->name() == yomk::msgs::Int64Array::kName && int64ArrPkg->d.size() == 2 && int64ArrPkg->d[0] == -1,
+        YOMK_TEST_CHECK(int64ArrPkg->typeName() == yomk::msgs::Int64Array::kTypeName && int64ArrPkg->d.size() == 2 && int64ArrPkg->d[0] == -1,
               "Int64Array 构造往返");
         auto uint64ArrPkg = yomk::msgs::Uint64Array::shared(std::vector<std::uint64_t>{1, 2});
-        YOMK_TEST_CHECK(uint64ArrPkg->name() == yomk::msgs::Uint64Array::kName && uint64ArrPkg->d.size() == 2 && uint64ArrPkg->d[1] == 2,
+        YOMK_TEST_CHECK(uint64ArrPkg->typeName() == yomk::msgs::Uint64Array::kTypeName && uint64ArrPkg->d.size() == 2 && uint64ArrPkg->d[1] == 2,
               "Uint64Array 构造往返");
         auto float32ArrPkg = yomk::msgs::Float32Array::shared(std::vector<float>{0.5f, 1.5f});
-        YOMK_TEST_CHECK(float32ArrPkg->name() == yomk::msgs::Float32Array::kName && float32ArrPkg->d.size() == 2 && float32ArrPkg->d[1] == 1.5f,
+        YOMK_TEST_CHECK(float32ArrPkg->typeName() == yomk::msgs::Float32Array::kTypeName && float32ArrPkg->d.size() == 2 && float32ArrPkg->d[1] == 1.5f,
               "Float32Array 构造往返");
         auto float64ArrPkg = yomk::msgs::Float64Array::shared(std::vector<double>{0.25, 0.5});
-        YOMK_TEST_CHECK(float64ArrPkg->name() == yomk::msgs::Float64Array::kName && float64ArrPkg->d.size() == 2 && float64ArrPkg->d[0] == 0.25,
+        YOMK_TEST_CHECK(float64ArrPkg->typeName() == yomk::msgs::Float64Array::kTypeName && float64ArrPkg->d.size() == 2 && float64ArrPkg->d[0] == 0.25,
               "Float64Array 构造往返");
         auto strArrPkg = yomk::msgs::StringArray::shared(std::vector<std::string>{"a", "b"});
-        YOMK_TEST_CHECK(strArrPkg->name() == yomk::msgs::StringArray::kName && strArrPkg->d.size() == 2 && strArrPkg->d[1] == "b",
+        YOMK_TEST_CHECK(strArrPkg->typeName() == yomk::msgs::StringArray::kTypeName && strArrPkg->d.size() == 2 && strArrPkg->d[1] == "b",
               "StringArray 构造往返");
 
         auto zeroInt = yomk::msgs::Int32();
-        YOMK_TEST_CHECK(zeroInt.name() == yomk::msgs::Int32::kName && zeroInt.d == 0, "Int32 默认构造：name 就位且 d 零值");
+        YOMK_TEST_CHECK(zeroInt.typeName() == yomk::msgs::Int32::kTypeName && zeroInt.d == 0, "Int32 默认构造：typeName 就位且 d 零值");
         auto emptyStr = yomk::msgs::String();
-        YOMK_TEST_CHECK(emptyStr.name() == yomk::msgs::String::kName && emptyStr.d.empty(), "String 默认构造：name 就位且 d 空");
+        YOMK_TEST_CHECK(emptyStr.typeName() == yomk::msgs::String::kTypeName && emptyStr.d.empty(), "String 默认构造：typeName 就位且 d 空");
     }
 
     // ============ S2. unpack 模板与运行时类型名解包全分支 ============
     std::cout << "===== S2. unpack 模板与运行时类型名解包全分支 =====" << std::endl;
     {
-        // 分支素材：命中包 / 名字不匹配包（公有 setter 伪造）/ 名字匹配但实际类型不符包
+        // 分支素材：命中包 / 类型不符包（真实 Int32，类型名天然不同，无需伪造）
         auto okPkg = yomk::msgs::String::shared(std::string("hello"));
-        auto fakeNamePkg = yomk::msgs::String::shared(std::string("x"));
-        fakeNamePkg->name(yomk::msgs::Int32::kName);  // 名字伪造为 Int32 的 kName（实际仍是 String）
-        auto fakeTypePkg = yomk::msgs::Int32::shared(1);
-        fakeTypePkg->name(yomk::msgs::String::kName);  // 名字伪造为 String 的 kName（实际是 Int32，cast 必败）
+        auto missPkg = yomk::msgs::Int32::shared(1);  // 真实异类型：typeName() 天然返回 Int32 的类型名
 
         // --- unpack + 服务函数级手写判空：失败返回 ResStatus::Failed + 契约消息，命中需手动继续 ---
         auto unpackResp = [](YomkMsgPtr pkg) -> yomk::payload::Response
@@ -149,16 +145,16 @@ int main()
             auto s = yomk::msgs::unpack<yomk::msgs::String>(pkg);
             if (!s)
             {
-                return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+                return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
             }
             return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, s->d);
         };
         yomk::payload::Response nullResp = unpackResp(nullptr);
-        YOMK_TEST_CHECK(nullResp.status == yomk::payload::ResStatus::Failed && nullResp.msg == std::string("pkg is not ") + yomk::msgs::String::kName + ", got 'null'",
+        YOMK_TEST_CHECK(nullResp.status == yomk::payload::ResStatus::Failed && nullResp.msg == std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got 'null'",
               "unpack null pkg：服务函数级判空返回 ResStatus::Failed + 具体契约消息(实际类型 null)");
-        yomk::payload::Response nameMissResp = unpackResp(fakeNamePkg);
-        YOMK_TEST_CHECK(nameMissResp.status == yomk::payload::ResStatus::Failed && nameMissResp.msg == std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::Int32::kName + "'",
-              "unpack 名字不匹配：具体契约消息(实际类型名)");
+        yomk::payload::Response nameMissResp = unpackResp(missPkg);
+        YOMK_TEST_CHECK(nameMissResp.status == yomk::payload::ResStatus::Failed && nameMissResp.msg == std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got '" + yomk::msgs::Int32::kTypeName + "'",
+              "unpack 类型名不匹配：具体契约消息(实际类型名)");
         yomk::payload::Response hitResp = unpackResp(okPkg);
         YOMK_TEST_CHECK(hitResp.status == yomk::payload::ResStatus::Succeeded && hitResp.msg == "hello",
               "unpack 命中：解包指针可用且 d 正确");
@@ -178,8 +174,8 @@ int main()
         unpackVoid(nullptr);
         YOMK_TEST_CHECK(reached == false, "unpack null pkg：手写判空提前 return，后续语句未执行");
         reached = false;
-        unpackVoid(fakeNamePkg);
-        YOMK_TEST_CHECK(reached == false, "unpack 名字不匹配：提前 return");
+        unpackVoid(missPkg);
+        YOMK_TEST_CHECK(reached == false, "unpack 类型名不匹配：提前 return");
         std::string voidOut;
         auto unpackVoidHit = [&](YomkMsgPtr pkg)
         {
@@ -196,36 +192,29 @@ int main()
         // --- unpack 直接调用：不提前 return（指针 nullptr，调用方手动判空） ---
         auto nullPtr = yomk::msgs::unpack<yomk::msgs::String>(nullptr);
         YOMK_TEST_CHECK(nullPtr == nullptr, "unpack null pkg：不提前返回，指针为 nullptr");
-        auto missPtr = yomk::msgs::unpack<yomk::msgs::String>(fakeNamePkg);
-        YOMK_TEST_CHECK(missPtr == nullptr, "unpack 名字不匹配：指针为 nullptr（后续语句可达）");
+        auto missPtr = yomk::msgs::unpack<yomk::msgs::String>(missPkg);
+        YOMK_TEST_CHECK(missPtr == nullptr, "unpack 类型名不匹配：指针为 nullptr（后续语句可达）");
         auto hitPtr = yomk::msgs::unpack<yomk::msgs::String>(okPkg);
         YOMK_TEST_CHECK(hitPtr != nullptr && hitPtr->d == "hello", "unpack 命中：指针非空且 d 正确");
 
-        // --- unpack 名字匹配但动态类型不符：合并为单失败路径，返回 nullptr ---
-        auto typeMissPtr = yomk::msgs::unpack<yomk::msgs::String>(fakeTypePkg);
-        YOMK_TEST_CHECK(typeMissPtr == nullptr, "unpack 名匹配但动态类型不符：cast 失败指针 nullptr");
+        // --- 名匹配但动态类型不符分支已不存在：typeName() 直接返回各类型的静态 kTypeName，
+        //     名字命中即意味着动态类型就是该类型，无需再断言 cast 失败 ---
 
-        // --- 运行时类型名解包（name() 匹配 + dynamic_pointer_cast） ---
-        std::string rtName = yomk::msgs::String::kName;
+        // --- 运行时类型名解包（typeName() 匹配 + dynamic_pointer_cast） ---
+        std::string rtName = yomk::msgs::String::kTypeName;
         std::shared_ptr<yomk::msgs::String> tHit = nullptr;
-        if (okPkg && okPkg->name() == rtName)
+        if (okPkg && okPkg->typeName() == rtName)
         {
             tHit = std::dynamic_pointer_cast<yomk::msgs::String>(okPkg);
         }
         YOMK_TEST_CHECK(tHit != nullptr && tHit->d == "hello", "运行时名匹配：cast 成功");
-        std::string wrongName = yomk::msgs::Int32::kName;
+        std::string wrongName = yomk::msgs::Int32::kTypeName;
         std::shared_ptr<yomk::msgs::String> tMiss = nullptr;
-        if (okPkg && okPkg->name() == wrongName)
+        if (okPkg && okPkg->typeName() == wrongName)
         {
             tMiss = std::dynamic_pointer_cast<yomk::msgs::String>(okPkg);
         }
         YOMK_TEST_CHECK(tMiss == nullptr, "运行时名不匹配：指针 nullptr");
-        std::shared_ptr<yomk::msgs::String> tBad = nullptr;
-        if (fakeTypePkg && fakeTypePkg->name() == rtName)
-        {
-            tBad = std::dynamic_pointer_cast<yomk::msgs::String>(fakeTypePkg);
-        }
-        YOMK_TEST_CHECK(tBad == nullptr, "名匹配但动态类型不符：cast 失败指针 nullptr");
     }
 
     // ============ S3. Event 结构契约 ============
@@ -304,7 +293,7 @@ int main()
 
         // 结构体消息包版：YOMK_DEFINE_MSG 宏生成的 name 就位且 d 默认构造
         auto ctxPkg = yomk::msgs::Context::shared();
-        YOMK_TEST_CHECK(ctxPkg->name() == yomk::msgs::Context::kName && ctxPkg->d.key.empty(), "Context 消息包版：name 就位且 d 默认构造");
+        YOMK_TEST_CHECK(ctxPkg->typeName() == yomk::msgs::Context::kTypeName && ctxPkg->d.key.empty(), "Context 消息包版：typeName 就位且 d 默认构造");
     }
 
     std::cout << (g_failed == 0 ? "ALL PASSED" : "SOME FAILED") << " (" << g_failed << " failed)" << std::endl;

@@ -36,12 +36,12 @@ yomk::fn_pool().fn_name("calcSum")
         auto arr = yomk::msgs::unpack<yomk::msgs::Int32Array>(pkg);
         if (!arr)
             return yomk::payload::Response{yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(pkg, yomk::msgs::Int32Array::kName)};
+            yomk::msgs::typeMismatch(pkg, yomk::msgs::Int32Array::kTypeName)};
         int sum = 0;
         for (int v : arr->d) sum += v;
         return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::Int32::shared(sum)};
     })
-    .msg_name(yomk::msgs::Int32Array::kName).description("对 Int32Array 求和")
+    .msg_name(yomk::msgs::Int32Array::kTypeName).description("对 Int32Array 求和")
     .install();
 
 // 调用（返回值即函数返回值；未注册的名字返回 ResStatus::Failed）

@@ -14,14 +14,14 @@ YomkEventLoop::YomkEventLoop(YomkServer* server) : YomkService(server)
 
 int YomkEventLoop::init()
 {
-    installFunc("/start", &YomkEventLoop::start, yomk::msgs::EventLoop::kName, yomk::url::kLoopStartDesc);
-    installFunc("/stop", &YomkEventLoop::stop, yomk::msgs::String::kName, yomk::url::kLoopStopDesc);
-    installFunc("/post", &YomkEventLoop::post, yomk::msgs::Event::kName, yomk::url::kLoopPostDesc);
-    installFunc("/post_wait", &YomkEventLoop::postWait, yomk::msgs::Event::kName, yomk::url::kLoopPostWaitDesc);
-    installFunc("/destroy", &YomkEventLoop::destroy, yomk::msgs::String::kName, yomk::url::kLoopDestroyDesc);
+    installFunc("/start", &YomkEventLoop::start, yomk::msgs::EventLoop::kTypeName, yomk::url::kLoopStartDesc);
+    installFunc("/stop", &YomkEventLoop::stop, yomk::msgs::String::kTypeName, yomk::url::kLoopStopDesc);
+    installFunc("/post", &YomkEventLoop::post, yomk::msgs::Event::kTypeName, yomk::url::kLoopPostDesc);
+    installFunc("/post_wait", &YomkEventLoop::postWait, yomk::msgs::Event::kTypeName, yomk::url::kLoopPostWaitDesc);
+    installFunc("/destroy", &YomkEventLoop::destroy, yomk::msgs::String::kTypeName, yomk::url::kLoopDestroyDesc);
     // 调试内省接口,端点挂在本服务 funcMap
     installFunc("/loops", &YomkEventLoop::loops, "", yomk::url::kLoopLoopsDesc);
-    installFunc("/loop", &YomkEventLoop::loopInfo, yomk::msgs::EventLoopQuery::kName, yomk::url::kLoopLoopDesc);
+    installFunc("/loop", &YomkEventLoop::loopInfo, yomk::msgs::EventLoopQuery::kTypeName, yomk::url::kLoopLoopDesc);
     installFunc("/all", &YomkEventLoop::listAll, "", yomk::url::kLoopAllDesc);
     return 0;
 }
@@ -31,7 +31,7 @@ yomk::payload::Response YomkEventLoop::start(YomkMsgPtr pkg)
     auto eventloop = yomk::msgs::unpack<yomk::msgs::EventLoop>(pkg);
     if (!eventloop)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::EventLoop::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::EventLoop::kTypeName)};
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(eventloop->d.eventLoopName);
@@ -54,7 +54,7 @@ yomk::payload::Response YomkEventLoop::stop(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
@@ -73,7 +73,7 @@ yomk::payload::Response YomkEventLoop::post(YomkMsgPtr pkg)
     auto event = yomk::msgs::unpack<yomk::msgs::Event>(pkg);
     if (!event)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Event::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Event::kTypeName)};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(event->d.eventLoopName);
@@ -97,7 +97,7 @@ yomk::payload::Response YomkEventLoop::postWait(YomkMsgPtr pkg)
     auto event = yomk::msgs::unpack<yomk::msgs::Event>(pkg);
     if (!event)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Event::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Event::kTypeName)};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(event->d.eventLoopName);
@@ -121,7 +121,7 @@ yomk::payload::Response YomkEventLoop::destroy(YomkMsgPtr pkg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
@@ -157,7 +157,7 @@ yomk::payload::Response YomkEventLoop::loopInfo(YomkMsgPtr pkg)
     auto query = yomk::msgs::unpack<yomk::msgs::EventLoopQuery>(pkg);
     if (!query)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::EventLoopQuery::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::EventLoopQuery::kTypeName)};
     }
     // 名称按字面量精确匹配,采样数为类型化字段
     const std::string& loopName = query->d.loopName;

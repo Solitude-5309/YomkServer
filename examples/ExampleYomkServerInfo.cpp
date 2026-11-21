@@ -239,7 +239,7 @@ public:
         // 2 参注册：无元数据；4 参注册：声明 /quality_check 期望 QualityCheckReq
         // 并附函数说明，供自省识别
         installFunc("/report", &ArmStationService::report);
-        installFunc("/quality_check", &ArmStationService::qualityCheck, yomk::msgs::QualityCheckReq::kName,
+        installFunc("/quality_check", &ArmStationService::qualityCheck, yomk::msgs::QualityCheckReq::kTypeName,
                     "装配工位质量抽检：按件抽检并回执结论");
         yomk::log().tag("arm.station").info("init: install /report (no meta), /quality_check [QualityCheckReq] + description");
         return 0;
@@ -251,7 +251,7 @@ public:
         auto status = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!status)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
         }
         std::ostringstream oss;
         oss << "工位状态上报：收到 \"" << status->d << "\"";
@@ -265,7 +265,7 @@ public:
         auto data = yomk::msgs::unpack<yomk::msgs::QualityCheckReq>(pkg);
         if (!data)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::QualityCheckReq::kName)};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::QualityCheckReq::kTypeName)};
         }
         std::ostringstream oss;
         oss << "质量抽检执行：工位 " << data->req.m_station << " 抽检 " << data->req.m_count << " 件";

@@ -55,7 +55,7 @@ extension/
 |--------|------|------|
 | `ExtensionUrl.h` | URL 常量（`namespace yomk::url::ext` 下的 `kVersion` 等，`inline constexpr std::string_view`，常量名 `k` 前缀 + PascalCase） | `yomk/fn_pool/YomkFunctionPoolUrl.h` |
 | `ExtensionPayload.h` | 扩展专属载荷类型（`namespace yomk::payload::ext`） | `yomk/fn_pool/YomkFunctionPoolPayload.h` |
-| `ExtensionMsg.h` | 扩展专属消息包（`YOMK_DEFINE_MSG_NS`，消息落 `yomk::msgs::ext`，kName 全限定） | `yomk/fn_pool/YomkFunctionPoolMsg.h` |
+| `ExtensionMsg.h` | 扩展专属消息包（`YOMK_DEFINE_MSG_NS`，消息落 `yomk::msgs::ext`，kTypeName 全限定） | `yomk/fn_pool/YomkFunctionPoolMsg.h` |
 | `ExtensionApi.h` | 链式域入口 `yomk::ext()`：无参终结 `version()`（通用 url/msg/request 请求链走 `yomk::server()`，不重复封装） | `yomk/fn_pool/YomkFunctionPoolApi.h` |
 
 `ExtensionApi.h` 的设计约定：

@@ -20,6 +20,7 @@
 |---|---|
 | `YOMK_DEFINE_MSG(DataType, MsgName, VarName)` | 声明自定义消息类型：在 `yomk::msgs` 命名空间内生成 `YomkMsg` 派生类 `MsgName`（载荷成员 `VarName`，框架约定统一取 `d`）与别名 `MsgNamePtr`；宏自带命名空间注入，建议放置在任意命名空间之外 |
 | `yomk::msgs::MsgName::shared(args...)` | 类内静态工厂，转发构造参数创建 `shared_ptr<MsgName>` 包装的消息包 |
+| `pkg->typeName()` / `yomk::msgs::typeOf(pkg)` | 运行期类型名读取：基类纯虚 `typeName()` 返回各类型静态 `kTypeName`（`std::string_view`，零分配）；`typeOf` 为判空包装（空包返回 `"null"`），用于错误文案 |
 | `yomk::msgs::unpack<yomk::msgs::MsgName>(pkg)` | 按消息类型解包模板：返回 `shared_ptr<MsgName>`；pkg 为空或类型名不匹配时返回 `nullptr`，不抛异常；失败处理由调用方手写（如 `if (!ptr) return {...}`） |
 
 ## 内置标准类型
@@ -50,7 +51,7 @@ auto info = yomk::msgs::unpack<yomk::msgs::UserInfoMsg>(pkg);
 if (!info)
 {
     return {yomk::payload::ResStatus::Failed,
-        yomk::msgs::typeMismatch(pkg, yomk::msgs::UserInfoMsg::kName)};
+        yomk::msgs::typeMismatch(pkg, yomk::msgs::UserInfoMsg::kTypeName)};
 }
 return {yomk::payload::ResStatus::Succeeded, "hello " + info->d.name};
 ```
@@ -66,10 +67,10 @@ yomk::fn_pool().fn_name("save").msg(pkg).call();                                
 
 ## 注意事项
 
-- 类型匹配以运行期类型名为准：`kName` 为全限定类型标识（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名。各处声明的"期望消息类型名"——`installFunc("/x", &C::m, yomk::msgs::Msg::kName)` 第三参、`yomk::fn_pool().msg_name(...)`、`yomk::event_loop().msg_name(...)`——一律引用 `T::kName`，**禁止手写消息名字符串**；仅作内省元数据，不拦截调用。
-- `kName` 是类型身份的唯一权威常量；`name()`/`typeOf()` 返回的是实例携带串（构造时源自 `kName`，可经 `name()` 伪造），仅用于错误文案展示；`unpack` 以"`kName` 比对 + dynamic_pointer_cast"双保险防伪。
+- 类型匹配以运行期类型名为准：`kTypeName` 为全限定类型标识（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名。各处声明的"期望消息类型名"——`installFunc("/x", &C::m, yomk::msgs::Msg::kTypeName)` 第三参、`yomk::fn_pool().msg_name(...)`、`yomk::event_loop().msg_name(...)`——一律引用 `T::kTypeName`，**禁止手写消息名字符串**；仅作内省元数据，不拦截调用。
+- `kTypeName` 是类型身份的唯一权威常量；`typeName()` 为基类纯虚函数，直接返回各类型的静态 `kTypeName`（`std::string_view`，零分配、不可伪造），`typeOf(pkg)` 是其判空包装，供错误文案展示；`unpack` 以"`typeName()` 比对 + dynamic_pointer_cast"两步完成解包。
 - 期望类型名与说明字符串均供自省读取（函数池与函数单查返回 `FuncInfo`：`funcName` / `msgName` / `description`，见 [服务自省](YomkServerInfo.md)）。
-- 上下文类型化读自带同类校验：`yomk::ctx().key(k).msg<MsgName>()...get()` 内部按 `kName` 比对 + 指针转换，与 `unpack` 语义一致。
+- 上下文类型化读自带同类校验：`yomk::ctx().key(k).msg<MsgName>()...get()` 内部按 `kTypeName` 比对 + 指针转换，与 `unpack` 语义一致。
 
 ## 常见问题 FAQ
 

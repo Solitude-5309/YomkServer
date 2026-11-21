@@ -68,7 +68,7 @@ public:
     MyService(YomkServer* server) : YomkService(server) { name("/MyService"); }
     int init() override
     {
-        installFunc("/hello", &MyService::hello, yomk::msgs::String::kName); // 注册即自动弱绑定
+        installFunc("/hello", &MyService::hello, yomk::msgs::String::kTypeName); // 注册即自动弱绑定
         return 0;
     }
     yomk::payload::Response hello(YomkMsgPtr pkg)
@@ -76,7 +76,7 @@ public:
         auto msg = yomk::msgs::unpack<yomk::msgs::String>(pkg);
         if (!msg)
             return {yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+            yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
         return {yomk::payload::ResStatus::Succeeded, "hello " + msg->d};
     }
 };
@@ -151,7 +151,7 @@ data 为 StringArray 包，msg "ok"。
 
 ```cpp
 // src/ctx/YomkContext.cpp —— 安装表仅引用常量
-installFunc("/create", &YomkContext::create, yomk::msgs::Context::kName, yomk::url::kCtxCreateDesc);
+installFunc("/create", &YomkContext::create, yomk::msgs::Context::kTypeName, yomk::url::kCtxCreateDesc);
 installFunc("/groups", &YomkContext::groups, "", yomk::url::kCtxGroupsDesc);
 ```
 
@@ -192,7 +192,7 @@ int MyService::init()
 
 ## 扩展模块四件套
 
-自定义扩展的对外头文件按 SDK `include/yomk/` 各域的同一设计组织为四件套：`XxxUrl.h`（`namespace yomk::url::ext` 子命名空间 URL 常量，`inline constexpr std::string_view`；常量名一律 `k` 前缀 + PascalCase（`kVersion`），域由命名空间表达、不再自我前缀；URL 常量集中在前、语义描述常量集中在后（`inline constexpr const char*` 同名 + `Desc`，如 `kVersionDesc`，按序一一对应；内省描述惯例见「注意事项」）；请求侧一律取常量、不裸写字符串字面量）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload::ext`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG_NS`，消息落 `yomk::msgs::ext` 子命名空间、kName 全限定）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态，Builder 落 `yomk::detail::ext`。约定：①只写本模块业务的终结方法，不重复封装通用请求链；②可不写 API 方法，但须在 Api 文件注释写清统一调用方式及 url 的功能作用，如 `yomk::server().url(yomk::url::ext::kVersion).request()`；③请求一律优先使用统一请求接口 `yomk::server().url(<url>).request()`，扩展终结方法仅是其上的薄封装。模板仅内置 `version()` 终结）。扩展服务类落 `yomk::service::ext`（如 `yomk::service::ext::ExtensionService`；`yomk::ext` 为链式入口函数，函数与命名空间不可同名）。完整可编译模板见 `template/extension/`（`ExtensionApi.h` 提供 `yomk::ext().version()` 终结）。
+自定义扩展的对外头文件按 SDK `include/yomk/` 各域的同一设计组织为四件套：`XxxUrl.h`（`namespace yomk::url::ext` 子命名空间 URL 常量，`inline constexpr std::string_view`；常量名一律 `k` 前缀 + PascalCase（`kVersion`），域由命名空间表达、不再自我前缀；URL 常量集中在前、语义描述常量集中在后（`inline constexpr const char*` 同名 + `Desc`，如 `kVersionDesc`，按序一一对应；内省描述惯例见「注意事项」）；请求侧一律取常量、不裸写字符串字面量）、`XxxPayload.h`（扩展专属载荷，`namespace yomk::payload::ext`）、`XxxMsg.h`（扩展专属消息包，`YOMK_DEFINE_MSG_NS`，消息落 `yomk::msgs::ext` 子命名空间、kTypeName 全限定）、`XxxApi.h`（链式域入口 `yomk::ext()` 形态，Builder 落 `yomk::detail::ext`。约定：①只写本模块业务的终结方法，不重复封装通用请求链；②可不写 API 方法，但须在 Api 文件注释写清统一调用方式及 url 的功能作用，如 `yomk::server().url(yomk::url::ext::kVersion).request()`；③请求一律优先使用统一请求接口 `yomk::server().url(<url>).request()`，扩展终结方法仅是其上的薄封装。模板仅内置 `version()` 终结）。扩展服务类落 `yomk::service::ext`（如 `yomk::service::ext::ExtensionService`；`yomk::ext` 为链式入口函数，函数与命名空间不可同名）。完整可编译模板见 `template/extension/`（`ExtensionApi.h` 提供 `yomk::ext().version()` 终结）。
 
 ## 常见问题 FAQ
 

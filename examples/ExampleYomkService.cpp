@@ -64,7 +64,7 @@
 // yomk::server().url(u).request(pkg) / .async(cb).request(pkg)  同步 / 异步请求
 // yomk::server().instance().get() / yomk::server().instance()            全局单例
 // yomk::srv_info().services() / .srv_name(n).functions() / .fn_url(u).get_info() / .all()  调用拓扑自省
-// installFunc("/x", &C::m[, yomk::msgs::Msg::kName][, "desc"]) / weakFunc(&Class::Method) / 成员 request  服务侧 API
+// installFunc("/x", &C::m[, yomk::msgs::Msg::kTypeName][, "desc"]) / weakFunc(&Class::Method) / 成员 request  服务侧 API
 
 #include <chrono>
 #include <functional>

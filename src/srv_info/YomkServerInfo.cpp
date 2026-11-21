@@ -15,8 +15,8 @@ YomkServerInfo::YomkServerInfo(YomkServer* server) : YomkService(server)
 int YomkServerInfo::init()
 {
     installFunc("/services", &YomkServerInfo::listServices, "", yomk::url::kSrvServicesDesc);
-    installFunc("/functions", &YomkServerInfo::listFunctions, yomk::msgs::String::kName, yomk::url::kSrvFunctionsDesc);
-    installFunc("/function", &YomkServerInfo::functionInfo, yomk::msgs::String::kName, yomk::url::kSrvFunctionDesc);
+    installFunc("/functions", &YomkServerInfo::listFunctions, yomk::msgs::String::kTypeName, yomk::url::kSrvFunctionsDesc);
+    installFunc("/function", &YomkServerInfo::functionInfo, yomk::msgs::String::kTypeName, yomk::url::kSrvFunctionDesc);
     installFunc("/all", &YomkServerInfo::listAll, "", yomk::url::kSrvAllDesc);
     return 0;
 }
@@ -37,7 +37,7 @@ yomk::payload::Response YomkServerInfo::listFunctions(YomkMsgPtr pkg)
     auto ySrvName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!ySrvName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     if (ySrvName->d.empty())
     {
@@ -66,7 +66,7 @@ yomk::payload::Response YomkServerInfo::functionInfo(YomkMsgPtr pkg)
     auto yUrl = yomk::msgs::unpack<yomk::msgs::String>(pkg);
     if (!yUrl)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
     }
     const std::string& url = yUrl->d;
     if (url.empty() || url[0] != '/')

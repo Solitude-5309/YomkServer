@@ -841,13 +841,13 @@ YOMK_TEST_CHECK(
         CoutCapture cap;
         auto r = yomk::server().url("/YomkLogger/console_log").request();
         YOMK_TEST_CHECK(r.status == yomk::payload::ResStatus::Failed, "console_log nullptr 包返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(r.msg == std::string("pkg is not ") + yomk::msgs::Log::kName + ", got 'null'", "console_log 空包契约消息(实际类型 null)");
+        YOMK_TEST_CHECK(r.msg == std::string("pkg is not ") + yomk::msgs::Log::kTypeName + ", got 'null'", "console_log 空包契约消息(实际类型 null)");
     }
     // console_log 收错类型包（String）→ 同分支 ResStatus::Failed
     {
         auto r = yomk::server().url("/YomkLogger/console_log").msg(yomk::msgs::String::shared(std::string("wrong"))).request();
         YOMK_TEST_CHECK(r.status == yomk::payload::ResStatus::Failed, "console_log 错类型包返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(r.msg == std::string("pkg is not ") + yomk::msgs::Log::kName + ", got '" + yomk::msgs::String::kName + "'", "console_log 错类型包契约消息(实际类型名)");
+        YOMK_TEST_CHECK(r.msg == std::string("pkg is not ") + yomk::msgs::Log::kTypeName + ", got '" + yomk::msgs::String::kTypeName + "'", "console_log 错类型包契约消息(实际类型名)");
     }
     // file_log / write_file_log / create_file_logger / logger 空包
     YOMK_TEST_CHECK(yomk::server().url("/YomkLogger/file_log").request().status == yomk::payload::ResStatus::Failed, "file_log nullptr 包返回 ResStatus::Failed");
@@ -1068,11 +1068,11 @@ YOMK_TEST_CHECK(
     {
         auto rNull = yomk::server().url("/YomkLogger/delete_logger").request();
         YOMK_TEST_CHECK(
-            (rNull.status == yomk::payload::ResStatus::Failed && rNull.msg == std::string("pkg is not ") + yomk::msgs::String::kName + ", got 'null'"),
+            (rNull.status == yomk::payload::ResStatus::Failed && rNull.msg == std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got 'null'"),
             "S8: delete_logger nullptr 包返回 ResStatus::Failed + 具体契约消息(实际类型 null)");
         auto rWrong = yomk::server().url("/YomkLogger/delete_logger").msg(yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "x", "y"})).request();
         YOMK_TEST_CHECK(
-            (rWrong.status == yomk::payload::ResStatus::Failed && rWrong.msg == std::string("pkg is not ") + yomk::msgs::String::kName + ", got '" + yomk::msgs::Log::kName + "'"),
+            (rWrong.status == yomk::payload::ResStatus::Failed && rWrong.msg == std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got '" + yomk::msgs::Log::kTypeName + "'"),
             "S8: delete_logger 错类型包（Log）返回 ResStatus::Failed + 具体契约消息(实际类型名)");
     }
 }

@@ -100,7 +100,7 @@ YOMK_DEFINE_MSG(MyData, MyData, d);   // 生成 yomk::msgs::MyData / MyDataPtr�
   **注意**：模板形参 `A&&...` 无法从花括号初始化列表推导，传聚合对象须带类型：`MyData::shared(MyData{"a", 1})`、`Int32Array::shared(std::vector<std::int32_t>{1,2,3})`。
 - `yomk::msgs::MyData::shared(std::move(data))` — 右值重载移动入包，大对象免拷贝。
 - `yomk::msgs::unpack<yomk::msgs::MyData>(pkg)` — 按运行期类型名解包，pkg 为空或类型不匹配返回 `nullptr`（不自动 return，调用方手动判空），不抛异常。
-- 运行期类型名 `kName` 为全限定名（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名；是类型身份唯一权威常量（`name()`/`typeOf()` 为实例携带串、可伪造，仅用于错误文案展示）。各处声明的"期望消息类型名"（`installFunc` 第三参、`fn_pool().msg_name()`、`event_loop().msg_name()`）一律引用 `T::kName`、禁止手写字符串；仅作内省元数据、不拦截调用。
+- 运行期类型名 `kTypeName` 为全限定名（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名；是类型身份唯一权威常量（基类纯虚 `typeName()` 直接返回它、`std::string_view` 零分配且不可伪造；`typeOf()` 为判空包装，用于错误文案展示）。各处声明的"期望消息类型名"（`installFunc` 第三参、`fn_pool().msg_name()`、`event_loop().msg_name()`）一律引用 `T::kTypeName`、禁止手写字符串；仅作内省元数据、不拦截调用。
 
 **内置标准类型**（成员名均为 `d`，共 30 种）：`Bool`、`Char`、`UChar`、`Byte`、`Int8`、`Uint8`、`Int16`、`Uint16`、`Int32`、`Uint32`、`Int64`、`Uint64`、`Float32`、`Float64`、`String` 及对应 `XxxArray`（如 `StringArray`、`Int32Array`）。
 
@@ -108,8 +108,8 @@ YOMK_DEFINE_MSG(MyData, MyData, d);   // 生成 yomk::msgs::MyData / MyDataPtr�
 
 ```cpp
 installFunc("/x", &C::m)                         // 成员函数直装本服务 funcMap（内部自动 weakFunc 包装）
-installFunc("/x", &C::m, yomk::msgs::MsgName::kName)              // 第三参：期望消息类型名（引用 T::kName 禁手写，仅内省元数据）
-installFunc("/x", &C::m, yomk::msgs::MsgName::kName, "Description")  // 第四参：语义描述（惯例见下）
+installFunc("/x", &C::m, yomk::msgs::MsgName::kTypeName)              // 第三参：期望消息类型名（引用 T::kTypeName 禁手写，仅内省元数据）
+installFunc("/x", &C::m, yomk::msgs::MsgName::kTypeName, "Description")  // 第四参：语义描述（惯例见下）
 weakFunc(&Class::Method)                         // 弱绑定成员函数（不装 funcMap），注册到外部子系统必用
 ```
 
@@ -165,7 +165,7 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 - Monitor 仅通知"发生了一次 set"并回传该次键值快照（不保证实时，留存请拷贝；需最新值回调内重读 `get()`）；`.async(true)` 经该组单线程池按 set 提交序保序送达；同步形态锁外即时执行、并发下不保证跨线程序、回调内重入 set 会递归。
 - 组名约定：`.group()` 省略即 `"main"`；空组名 `Invalid` "group name is empty"；非 main 组首次寻址惰性自动创建，组名唯一、**不支持销毁组**，异步监控池每组自持。
 - 写路径失败契约：空键名 `Invalid` "context key is empty"（set 路径 detail 为 "set context key is empty"）；create 值空 `Invalid` "create context key '{k}' failed: value is empty"、键已存在 `Failed` "context key '{k}' already exists"；set 键不存在 `Failed` "context key '{k}' does not exist"、类型不符 `Failed` "context type not match: ..."。入参非法（空名/空值）一律 `Invalid`，运行期状态冲突（已存在/不存在）用 `Failed`。
-- `get()` 返回只读快照，值对象发布后勿原地修改；类型化读按 `kName` 运行期比对，`T` 须为 `YomkMsg` 派生。
+- `get()` 返回只读快照，值对象发布后勿原地修改；类型化读按 `kTypeName` 运行期比对，`T` 须为 `YomkMsg` 派生。
 
 ## EventLoop 域（yomk::event_loop()）
 

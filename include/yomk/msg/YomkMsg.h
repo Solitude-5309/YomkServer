@@ -1,15 +1,20 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 /**
- * @brief Base class of message types: carrier of the runtime type name (compared against kName)
+ * @brief Base class of message types: accessor of the runtime type name (compared against
+ *        kTypeName)
  * @note Custom messages are derived via the YOMK_DEFINE_MSG macro, not by inheriting this class
  *       and naming it manually
+ * @note Abstract: each generated class exposes its static kTypeName through typeName(), so the
+ *       type name is read from static storage and no per-instance copy is stored
  */
-// @zh: 消息类型基类：运行时类型名载体（kName 比对对象）
+// @zh: 消息类型基类：运行时类型名访问口（kTypeName 比对对象）
 // @zh: note 自定义消息经 YOMK_DEFINE_MSG 宏派生，不直接继承本类手工命名
+// @zh: note 抽象基类：类型名由各生成类的静态 kTypeName 经纯虚 typeName() 取得，实例内不存副本
 class YomkMsg
 {
 public:
@@ -17,18 +22,14 @@ public:
     virtual ~YomkMsg() {}
 
 public:
-    void name(const std::string& name) { m_name = name; }
-    std::string name() { return m_name; }
-
-protected:
-    std::string m_name;
+    virtual std::string_view typeName() const = 0;
 };
 using YomkMsgPtr = std::shared_ptr<YomkMsg>;
 
 /**
  * @brief Define a message type: generate the YomkMsg derived class MsgName inside yomk::msgs
  * @param DataType Payload data type
- * @param MsgName Message class name (kName is "yomk::msgs::MsgName", the fully
+ * @param MsgName Message class name (kTypeName is "yomk::msgs::MsgName", the fully
  *        qualified type identifier used for unpack and dynamic lookup comparison)
  * @param VarName Payload member name (framework convention fixes it to d, e.g. pkg->d)
  * @note The generated class provides the shared(...) factory; custom messages are declared only
@@ -40,7 +41,7 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
  */
 // @zh: 定义消息类型：在 yomk::msgs 内生成 YomkMsg 派生类 MsgName
 // @zh: DataType 载荷数据类型
-// @zh: MsgName 消息类名（kName 为 "yomk::msgs::MsgName"，全限定类型标识，供解包/动态查找比对）
+// @zh: MsgName 消息类名（kTypeName 为 "yomk::msgs::MsgName"，全限定类型标识，供解包/动态查找比对）
 // @zh: VarName 载荷成员名（框架约定统一为 d，如 pkg->d）
 // @zh: note 生成类提供 shared(...) 工厂；自定义消息仅此宏声明，标准类型消息目录见 YomkStdMsg.h，核心载荷消息目录见 YomkServerMsg.h，模块专属消息目录见各 Yomk{Module}Msg.h
 // @zh: note 载荷类型命名空间与消息类命名空间相互独立；MsgName 全局共用 yomk::msgs 单一根，需隔离时改用 YOMK_DEFINE_MSG_NS
@@ -49,35 +50,35 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
 
 /**
  * @brief Define a namespaced message type: generate the YomkMsg derived class MsgName
- *        inside yomk::msgs::NS, with a fully qualified kName
+ *        inside yomk::msgs::NS, with a fully qualified kTypeName
  * @param NS Sub-namespace under yomk::msgs (C++17 nested-namespace tokens, e.g. my::mod;
- *        must contain no whitespace, kName embeds the stringized form verbatim)
+ *        must contain no whitespace, kTypeName embeds the stringized form verbatim)
  * @param DataType Payload data type; write it root-qualified (leading ::) when it shares a
  *        name with NS or an ancestor namespace, since the macro expands inside yomk::msgs::NS
  * @param MsgName Message class name
  * @param VarName Payload member name (framework convention fixes it to d, e.g. pkg->d)
- * @note kName is "yomk::msgs::NS::MsgName", matching the C++ qualified name, so namespace
+ * @note kTypeName is "yomk::msgs::NS::MsgName", matching the C++ qualified name, so namespace
  *       isolation and runtime type-ID uniqueness are guaranteed by the same mechanism.
  *       Use this form for custom messages that must not sit at the yomk::msgs root
  */
-// @zh: 定义带命名空间的消息类型：在 yomk::msgs::NS 内生成 YomkMsg 派生类 MsgName，kName 全限定
-// @zh: NS yomk::msgs 下的子命名空间（C++17 嵌套命名空间 token，如 my::mod；不得含空格，kName 按字面串化嵌入）
+// @zh: 定义带命名空间的消息类型：在 yomk::msgs::NS 内生成 YomkMsg 派生类 MsgName，kTypeName 全限定
+// @zh: NS yomk::msgs 下的子命名空间（C++17 嵌套命名空间 token，如 my::mod；不得含空格，kTypeName 按字面串化嵌入）
 // @zh: DataType 载荷数据类型；与 NS 或其祖先命名空间同名时写根限定名（:: 开头），宏体在 yomk::msgs::NS 内展开
 // @zh: MsgName 消息类名
 // @zh: VarName 载荷成员名（框架约定统一为 d，如 pkg->d）
-// @zh: note kName 为 "yomk::msgs::NS::MsgName"，与 C++ 全限定名一致，命名空间隔离与运行期类型 ID 唯一由同一机制保证；不宜落在 yomk::msgs 根的自定义消息用本形式
+// @zh: note kTypeName 为 "yomk::msgs::NS::MsgName"，与 C++ 全限定名一致，命名空间隔离与运行期类型 ID 唯一由同一机制保证；不宜落在 yomk::msgs 根的自定义消息用本形式
 #define YOMK_DEFINE_MSG_NS(NS, DataType, MsgName, VarName)                        \
     YOMK_DEFINE_MSG_IMPL(yomk::msgs::NS, "yomk::msgs::" #NS "::", DataType, MsgName, VarName)
 
 /**
  * @brief Shared implementation of YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS
  * @param NSOpen Namespace tokens to open, e.g. yomk::msgs or yomk::msgs::my::mod (C++17)
- * @param NamePrefix String-literal prefix for kName; "yomk::msgs::" for the root-level form
+ * @param NamePrefix String-literal prefix for kTypeName; "yomk::msgs::" for the root-level form
  * @note Internal use only — declare messages via YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS
  */
 // @zh: YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS 共用实现
 // @zh: NSOpen 要打开的命名空间 token，如 yomk::msgs 或 yomk::msgs::my::mod（C++17 嵌套命名空间）
-// @zh: NamePrefix kName 的字符串字面量前缀；根级形式传 "yomk::msgs::"
+// @zh: NamePrefix kTypeName 的字符串字面量前缀；根级形式传 "yomk::msgs::"
 // @zh: note 仅供内部使用——消息一律经 YOMK_DEFINE_MSG / YOMK_DEFINE_MSG_NS 声明
 #define YOMK_DEFINE_MSG_IMPL(NSOpen, NamePrefix, DataType, MsgName, VarName)      \
     namespace NSOpen                                                              \
@@ -85,10 +86,11 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
     class MsgName : public ::YomkMsg                                              \
     {                                                                             \
     public:                                                                       \
-        static constexpr const char* kName = NamePrefix #MsgName;                 \
-        MsgName() { m_name = kName; }                                             \
-        MsgName(const DataType& value) : VarName(value) { m_name = kName; }       \
-        MsgName(DataType&& value) : VarName(std::move(value)) { m_name = kName; } \
+        static constexpr const char* kTypeName = NamePrefix #MsgName;             \
+        std::string_view typeName() const override { return kTypeName; }          \
+        MsgName() {}                                                              \
+        MsgName(const DataType& value) : VarName(value) {}                        \
+        MsgName(DataType&& value) : VarName(std::move(value)) {}                  \
         virtual ~MsgName() {}                                                     \
                                                                                   \
     public:                                                                       \
@@ -118,18 +120,18 @@ namespace yomk::msgs
 // @zh:      用于错误文案报出"实际收到的类型"（具体值原则：期望/实际类型一并输出）
 inline std::string typeOf(const YomkMsgPtr& pkg)
 {
-    return pkg ? pkg->name() : "null";
+    return pkg ? std::string(pkg->typeName()) : "null";
 }
 
 /**
  * @brief Build the standard type-mismatch message "pkg is not <expected>, got '<actual>'"
  * @param pkg Message pointer, may be empty
- * @param expected The expected message type name (usually the target message's kName)
+ * @param expected The expected message type name (usually the target message's kTypeName)
  * @return The full mismatch message; reports "null" as the actual type when pkg is empty
  */
 // @zh: 构造标准类型不符文案 "pkg is not <期望类型>, got '<实际类型>'"
 // @zh: pkg 消息指针，可为空
-// @zh: expected 期望的消息类型名（通常是目标消息的 kName）
+// @zh: expected 期望的消息类型名（通常是目标消息的 kTypeName）
 // @zh: return 完整不符文案；pkg 为空时报实际类型为 "null"。
 // @zh:      typeOf(pkg) 的常用上层封装，供类型校验失败分支统一返回文案
 inline std::string typeMismatch(const YomkMsgPtr& pkg, const char* expected)
@@ -152,7 +154,7 @@ inline std::string typeMismatch(const YomkMsgPtr& pkg, const char* expected)
 template <class Msg>
 std::shared_ptr<Msg> unpack(const YomkMsgPtr& pkg)
 {
-    if (pkg && pkg->name() == Msg::kName)
+    if (pkg && pkg->typeName() == Msg::kTypeName)
     {
         return std::dynamic_pointer_cast<Msg>(pkg);
     }
