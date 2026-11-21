@@ -18,8 +18,7 @@ def _yomk_loc_base_name(path):
 
 
 def _yomk_source_loc_prefix(filename, lineno, funcname):
-    # 按进程级三开关拼位置前缀 "[file:line:func]"（file 取 basename）；
-    # 三项全关返回空串——无位置前缀
+    # 按三开关拼 "[file:line:func]"（file 取 basename）；三项全关返回空串
     if not (_yomk_loc_show_file or _yomk_loc_show_line or _yomk_loc_show_func):
         return ""
     parts = []
@@ -44,8 +43,8 @@ def _yomk_log_local_time_formatted():
 
 
 def _yomk_err_pos_log(msg):
-    # 框架自诊断通道（ERROR 用途）：直写 stdout，固定携带 file:line/func，
-    # 不受位置三开关控制；保留 sys._getframe(1)，不要在其上加 wrapper
+    # 框架自诊断：直写 stdout、固定带位置，不受三开关控制；
+    # 保留 _getframe(1)，不要在其上加 wrapper
     frame = sys._getframe(1)
     sys.stdout.write(_yomk_log_local_time_formatted() + " [ERROR] [Yomk] [" +
                      frame.f_code.co_filename + ":" + str(frame.f_lineno) +

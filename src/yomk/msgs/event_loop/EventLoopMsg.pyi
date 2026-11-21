@@ -3,8 +3,6 @@ from yomk.msgs.YomkMsg import YomkMsg
 
 
 class Event(YomkMsg):
-    # 事件消息（对齐 C++ Event msg 目录地位）；运行时域经
-    # yomk.event_loop/__init__ re-export，消费路径保持不变
     m_eventLoopName: str
     m_pkg: Any
     m_serviceFunc: Optional[Callable[[Any], Any]]
@@ -25,9 +23,6 @@ class Event(YomkMsg):
 
 
 class EventLoopOpts(YomkMsg):
-    # start 载荷（/YomkEventLoop/start 专用）：字段名与 C++ payload
-    # m_eventLoopName（大写 L）一致，裸链载荷跨语言可移植。
-    # 命名说明：与运行时 EventLoop 类显式区分（Opts = 启动配置语义）
     m_eventLoopName: str
     m_defaultServiceFunc: Optional[Callable[[Any], Any]]
     m_msgName: str
@@ -41,22 +36,19 @@ class EventLoopOpts(YomkMsg):
 
 
 class EventLoopQuery(YomkMsg):
-    # 事件循环单查载荷（/YomkEventLoop/loop 专用）：
-    # 名称 + 队列头 tag 采样数，类型化字段无解析歧义
-    m_loopName: str  # 循环名（按字面量精确匹配，不做任何切分）
-    m_tagCount: int  # 队列头采样条数（缺省 3，与全量内省缺省一致）
+    m_loopName: str
+    m_tagCount: int
 
     def __init__(self, loop_name: str = "", tag_count: int = 3) -> None: ...
 
 
 class EventLoopInfo(YomkMsg):
-    # 事件循环内省元信息（/YomkEventLoop/loop 与 /YomkEventLoop/all 返回数据）
-    loop_name: str                      # 循环名
-    running: bool                       # worker 是否运行中
-    pending: int                        # 积压事件数
-    has_default_func: bool              # 是否注册默认处理函数
-    msg_name: str                       # 默认处理函数期望消息类型名（可空）
-    next_tags: List[str]                # 队列头起最多 tag_count 条事件 tag（存原值，空串保留）
+    loop_name: str
+    running: bool
+    pending: int
+    has_default_func: bool
+    msg_name: str
+    next_tags: List[str]
 
     def __init__(self, loop_name: str = "", running: bool = False,
                  pending: int = 0, has_default_func: bool = False,
@@ -65,7 +57,6 @@ class EventLoopInfo(YomkMsg):
 
 
 class EventLoopInfoList(YomkMsg):
-    # EventLoopInfo 清单（对齐 C++ EventLoopInfoList；/YomkEventLoop/all 返回数据承载）
     items: List[EventLoopInfo]
 
     def __init__(self, items: Optional[List[EventLoopInfo]] = None) -> None: ...

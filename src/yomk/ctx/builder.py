@@ -1,3 +1,8 @@
+"""Chained context key-value builders for the ctx domain.
+
+ctx 域链式上下文键值 Builder。
+"""
+
 from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn
 from yomk.msgs.ctx import (
@@ -31,7 +36,11 @@ from yomk.url.ctx import (
 
 
 class GroupSwitch:
-    # 组级开关分面：ctx().group(g).checker()/monitor() 之后仅 enable()/disable()
+    """Group-level switch facet entered by ctx().group(g).checker() / .monitor().
+
+    组级开关分面：group(g).checker() / .monitor() 之后仅 enable() / disable()。
+    """
+
     def __init__(self, group, monitor):
         self._group = group
         self._monitor = monitor  # False = 校验门控，True = 变更监听
@@ -46,9 +55,11 @@ class GroupSwitch:
 
 
 class ContextValueBuilder:
-    # 读路径分面：ctx().key(n).group(g).msg(cls) 之后 with_default(v).get()
-    # 直取值本体；cls 非 None 时做类型比对（U-09，对齐 C++ ContextValue<T>
-    # kName 比对），不符 WARN 携 expect/got 并回退默认值
+    """Typed read facet: with_default() accumulates and get() terminates.
+
+    类型化读分面：msg(cls) 之后 with_default() 累积、get() 终结。
+    """
+
     def __init__(self, key, group, cls=None):
         self._key = key
         self._group = group
@@ -60,18 +71,23 @@ class ContextValueBuilder:
         return self
 
     def get(self):
-        # 未初始化：C++ requireServer 记 ERROR 诊断后回退默认值
+        """Return the stored value, or the accumulated default when the read misses.
+
+        返回存储值快照；未命中、未初始化或类型不匹配时回退累积的默认值，
+        类型不匹配额外记 WARN 并携带期望/实际类型名。
+
+        Warning:
+            The snapshot is read-only; build a new value and set() instead of mutating it in place.
+            返回只读快照，改动请构造新值再 set()，勿原地修改。
+        """
         if _facade.current_server() is None:
             diag_error("YomkServer is not initialized")
             return self._default
         res = _facade.api_request(CTX_GET, Context(self._key, self._default, self._group))
         if res.status == ResStatus.eOk:
-            # 类型比对：cls 为 None 时跳过（动态超集）；命中即返回
             if res.data is None or self._cls is None \
                     or type(res.data).__name__ == self._cls.__name__:
                 return res.data
-            # 具体值原则：类型不匹配静默回退默认值会掩盖写入侧错配，
-            # 输出期望/实际类型名定位（对齐 C++ YomkContextApi.h:163-164）
             diag_warn("typed read context key '" + self._key
                       + "' type mismatch, expect '" + self._cls.__name__
                       + "', got '" + type(res.data).__name__
@@ -82,14 +98,29 @@ class ContextValueBuilder:
 
 
 class ContextBuilder:
-    # context 域 builder：key/group/value 累积 + 写终结三态收敛 + 读终结 Response
-    # + msg(cls) 类型化分面。写路径未初始化由请求域收敛（对齐 C++），读终结
-    # 五处（get/keys/info/groups/all）自带 requireServer 守卫
+    """Chained builder for context key-value read and write within a group.
+
+    上下文组内键值读写链式 Builder。
+
+    Usage:
+        Read:  ctx().key(k).group(g).msg(cls).with_default(d).get()
+        Write: ctx().key(k).group(g).value(v).create() / .set() / .destroy()
+        Group: ctx().group(g).checker().enable() / ctx().group(g).monitor().enable()
+        Query: keys() / info() / groups() / all()
+
+        读链经 msg(cls) 做类型比对后取值；写链终结返回三态 ResStatus；
+        组级开关建组默认关；内省终结返回 Response。
+
+    Warning:
+        The builder only accumulates views; use it inline in one expression, never cache or reuse it.
+        Builder 仅累积视图，只限单表达式内联使用，禁止缓存复用。
+    """
+
     def __init__(self):
         self._key = ""
         self._group = "main"
         self._value = None
-        self._cb_kind = None  # "checker" / "monitor" / None（后调覆盖先调）
+        self._cb_kind = None  # 后调覆盖先调
         self._checker = None
         self._monitor = None
         self._async_monitor = False
@@ -107,44 +138,58 @@ class ContextBuilder:
         return self
 
     def create(self):
+        """Create a context key; fails if the key exists or key/value is empty.
+
+        创建上下文键并写入值；键已存在、键为空或值为空时失败，返回三态 ResStatus。
+        """
         return _facade.chain_status(_facade.api_request(
             CTX_CREATE, Context(self._key, self._value, self._group)))
 
     def set(self):
+        """Replace the whole context value.
+
+        整体替换上下文值；键不存在、值为空、类型不匹配或被 checker 拒绝时失败，
+        返回三态 ResStatus。
+        """
         return _facade.chain_status(_facade.api_request(
             CTX_SET, Context(self._key, self._value, self._group)))
 
     def destroy(self):
+        """Destroy a context key; fails if the key does not exist.
+
+        销毁上下文键；键不存在时失败，返回三态 ResStatus。
+        """
         return _facade.chain_status(_facade.api_request(
             CTX_DESTROY, ContextGroupKey(self._group, self._key)))
 
     def checker_fn(self, check_func):
-        # checker 槽期望 CheckStatus：未声明 discard 的弱绑定回调按 "check"
-        # 填充缺省；显式填错注册期即诊断（U-08 落点，见 YomkService._yomk_weak_slot_fill）
+        # checker 槽缺省填充 "check"；显式误配在注册期诊断
         self._checker = _yomk_weak_slot_fill(check_func, "checker", "check")
         self._cb_kind = "checker"
         return self
 
     def monitor_fn(self, monitor_func):
-        # monitor 槽 void 语义：未声明 discard 按 "none" 填充；显式填错注册期即诊断
+        # monitor 槽为 void 语义，缺省填充 "none"
         self._monitor = _yomk_weak_slot_fill(monitor_func, "monitor", "none")
         self._cb_kind = "monitor"
         return self
 
     def async_(self, on=True):
-        # 累积监听通知形态（monitor_fn 之后使用），缺省同步
+        # 监听通知形态：缺省同步
         self._async_monitor = on
         return self
 
     def apply(self):
-        # 键级回调终结：按累积种类派发（后调覆盖先调）；未累积返回 Invalid 并记诊断
+        """Terminate with the accumulated checker or monitor callback.
+
+        按累积种类派发键级回调；未累积任何回调返回 Invalid 并记诊断。
+        """
         if self._cb_kind == "checker":
             return _facade.chain_status(_facade.api_request(
                 CTX_SET_CHECKER,
                 ContextChecker(self._key, self._checker, self._group)))
         if self._cb_kind == "monitor":
-            # 单回调+布尔标志（对齐 C++ ContextMonitor 形状）：同一回调，
-            # async_monitor 决定同步派发/异步池投递
+            # 单回调 + 布尔标志：async_monitor 决定同步派发或异步池投递
             pkg = ContextMonitor(self._key, self._monitor,
                                  self._async_monitor, self._group)
             return _facade.chain_status(
@@ -153,17 +198,16 @@ class ContextBuilder:
         return ResStatus.Invalid
 
     def checker(self):
-        # 组级校验门控开关分面
         return GroupSwitch(self._group, False)
 
     def monitor(self):
-        # 组级变更监听开关分面
         return GroupSwitch(self._group, True)
 
-    # —— 读路径终结：自带 requireServer 守卫（对齐 C++ ContextBuilder
-    #    keys/info/groups/all 与 ContextValue::get）——
+    # —— 读路径终结: Response ——
+
     @staticmethod
     def _require_server():
+        # 未初始化时直接返回错误 Response，由读终结原样返回
         server = _facade.current_server()
         if server is None:
             diag_error("YomkServer is not initialized")
@@ -171,7 +215,10 @@ class ContextBuilder:
         return None
 
     def keys(self):
-        # 入参 String 化 + 门面 unwrap 保形（返回裸 list 键名，公开面零变化）
+        """Return all key names in the group as a plain list.
+
+        返回组内全部键名（裸 list）；未初始化返回 Invalid。
+        """
         guard = self._require_server()
         if guard:
             return guard
@@ -181,12 +228,20 @@ class ContextBuilder:
         return res
 
     def info(self):
+        """Return introspection metadata of the target key.
+
+        返回指定键的内省元信息；未初始化返回 Invalid。
+        """
         guard = self._require_server()
         if guard:
             return guard
         return _facade.api_request(CTX_KEY, ContextGroupKey(self._group, self._key))
 
     def groups(self):
+        """Return all group names as a plain list.
+
+        返回全部组名（裸 list）；未初始化返回 Invalid。
+        """
         guard = self._require_server()
         if guard:
             return guard
@@ -196,6 +251,10 @@ class ContextBuilder:
         return res
 
     def all(self):
+        """Return grouped introspection metadata as a plain list.
+
+        返回全部组及其键的内省元信息（裸 list）；未初始化返回 Invalid。
+        """
         guard = self._require_server()
         if guard:
             return guard
@@ -205,11 +264,16 @@ class ContextBuilder:
         return res
 
     def msg(self, cls=None):
-        # 切入读路径分面；cls 为期望类型（对齐 C++ msg<T>() kName 比对对象），
-        # 省略时 get() 不做类型校验
+        """Enter the typed read facet; cls is the expected type.
+
+        切入读路径分面；cls 为期望类型，省略时 get() 不做类型比对。
+        """
         return ContextValueBuilder(self._key, self._group, cls)
 
 
 def ctx():
-    # context 域链式入口
+    """Return the ctx domain chained entry.
+
+    返回 ctx 域链式入口。
+    """
     return ContextBuilder()

@@ -35,6 +35,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 | `skills/yomkserverpy-modular/` | 模块化使用 skill：SKILL.md、reference.md、examples.md |
 | `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |
 | `test/` | 测试集合与一键测试脚本 `run_tests.sh` |
+| `docs/` | 使用文档分片（每域一篇，[索引](docs/README.md)）与规范：[yomk注释原则](docs/yomk注释原则.md)（双语 docstring 格式、内部注释正面清单与删除清单） |
 | `CMakeLists.txt`、`cmake/`、`build_ubuntu.sh` | 构建安装体系：Cython 编译、install 规则与环境指纹报告（`abi_report.txt`） |
 
 ---
@@ -500,7 +501,7 @@ L13 起旧伞门面已删除，按域显式导入替代：
 |---|---|
 | `import YomkApi` | 按域显式导入（见上） |
 | `server()` / `YomkService` / `YomkServer` / `ServerBuilder` / `AsyncRequestBuilder` | `from yomk.server import server, YomkService, YomkServer, ServerBuilder, AsyncRequestBuilder`；`YomkBoot` 独立 boot 域：`from yomk.boot import YomkBoot` |
-| `ctx()` / `YomkContext` / `ContextGroup` | `from yomk.ctx import ctx`；内部类经子模块路径：`from yomk.ctx.YomkContext import YomkContext`、`from yomk.ctx.ContextGroup import ContextGroup`（U-12 瘦身后包根不再导出内部类，直接 `from yomk.ctx import YomkContext` 会静默绑定同名子模块而非类） |
+| `ctx()` / `YomkContext` / `ContextGroup` | `from yomk.ctx import ctx`；内部类经子模块路径：`from yomk.ctx.YomkContext import YomkContext`、`from yomk.ctx.ContextGroup import ContextGroup`（包根不再导出内部类，直接 `from yomk.ctx import YomkContext` 会静默绑定同名子模块而非类） |
 | `fn_pool()` / `YomkFunctionPool` | `from yomk.fn_pool import fn_pool`；`from yomk.fn_pool.YomkFunctionPool import YomkFunctionPool`（包根不导出） |
 | `event_loop()` / `YomkEventLoop` / `EventLoop` / `Event` | `from yomk.event_loop import event_loop, Event`；`from yomk.event_loop.YomkEventLoop import YomkEventLoop`、`from yomk.event_loop.EventLoop import EventLoop`（包根不导出内部类） |
 | `log()` / `log_mgr()` / `ConsoleLogger` / `FileLogger` | `from yomk.log import log, log_mgr`；`from yomk.log.ConsoleLogger import ConsoleLogger`、`from yomk.log.FileLogger import FileLogger`（包根不导出） |

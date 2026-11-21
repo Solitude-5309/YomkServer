@@ -8,8 +8,7 @@ from yomk.msgs.ctx import CheckStatus, Context, ContextKeyInfo
 
 
 class Monitor:
-    # 组内 monitor 存储条目：(回调, 通知形态布尔)，回调与形态正交（对齐
-    # C++ ContextMonitor 单回调+标志形状）
+    # 组内 monitor 存储条目：(回调, 通知形态布尔)，回调与形态正交
     def __init__(self, monitor_func=None, async_monitor=False):
         self.monitor_func = monitor_func
         self.async_monitor = async_monitor
@@ -26,11 +25,9 @@ class ContextEntry:
 
 class ContextGroup:
     # Context 底层实例组：完整承载单组功能（键存储、checker/monitor 门控开关、
-    # 自持单线程异步监控池），不继承 YomkService；YomkContext 按组名路由到
-    # ContextGroup 实例（与 EventLoop 模块同款双层写法）。
-    # 诊断契约（对齐 C++ 0032fc7）：用户误用自愈路径一律 WARN 携具体值
-    # （空键/空值/已存在/不存在/类型错配/拒绝/pool 停止），同步 monitor 回调
-    # 异常 ERROR，unpack 失败无 diag（服务层负责）
+    # 自持单线程异步监控池），不继承 YomkService；YomkContext 按组名路由到本实例。
+    # 诊断契约：用户误用自愈路径一律 WARN 并携带具体值，同步 monitor 回调异常记
+    # ERROR，unpack 失败不在此层记诊断（由服务层负责）。
     def __init__(self, name):
         self.m_name = name
         self.m_checkerEnabled = False
@@ -99,7 +96,7 @@ class ContextGroup:
 
     # 返回：(rc, detail)；0 成功 / 1 key 为空 / 2 key 不存在 / 3 类型不匹配 /
     # 4 checker 拒绝 / 5 value 为空；失败 detail 携带具体值与期望/实际类型名，
-    # 经 YomkContext 透传进 Response.msg（对齐 C++ set(key, value, detail&)）
+    # 由 YomkContext 透传进 Response.msg
     def set(self, key, value):
         detail = "ok"
         if not key:

@@ -1,7 +1,7 @@
 import sys
 import time
 
-# diag 级别常量（对齐 C++ YOMK_DIAG_LEVEL_*，值一致：YomkDiag.h:71-76）
+# diag 级别常量：数值越大越严重，与日志六级一一对应
 TRACE = 0
 DEBUG = 1
 INFO = 2
@@ -18,13 +18,12 @@ _LEVEL_LABELS = {
     FATAL: "FATAL",
 }
 
-# 进程级最小输出级别（对齐 C++ yomkDiagSetMinLevel，默认 WARN：YomkDiag.h:81-96）
+# 进程级最小输出级别，默认 WARN
 _min_level = WARN
 
 
 def set_min_level(level: int) -> None:
-    # 设置进程级 diag 最小输出级别，低于阈值的消息整条丢弃；
-    # 任意线程随时可调（int 赋值在 GIL 下原子，对齐 C++ atomic<int> 语义）
+    # 任意线程可调；int 赋值在 GIL 下原子
     global _min_level
     _min_level = level
 
@@ -41,15 +40,10 @@ def _timestamp() -> str:
 
 
 def _emit(level: int, msg: str) -> None:
-    # 门控：低于最小级别的消息整条丢弃。
-    # 语言差异说明：C++ 宏在阈值判断后才求值消息表达式（抑制时零字符串构造开销）；
-    # Python 调用点已构造完字符串，无法完全复刻零开销，
-    # 热路径可先 `if diag.enabled(diag.TRACE):` 再构造消息。
+    # 门控：低于最小级别整条丢弃；调用点已构造字符串，热路径可先用 enabled() 自查
     if level < _min_level:
         return
-    # 取调用点帧：_emit <- trace/debug/... <- 调用点。
-    # 本模块经 Cython 编译后帧链不可靠（.so 调用点无 Python 帧，栈浅时 _getframe
-    # 直接抛 ValueError），取不到帧则省略位置段，绝不因诊断输出崩溃
+    # 取调用点帧；Cython 编译后帧链不可靠，取不到则省略位置段，避免诊断本身崩溃
     try:
         frame = sys._getframe(2)
     except ValueError:

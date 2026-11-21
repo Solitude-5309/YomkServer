@@ -27,21 +27,13 @@ if TYPE_CHECKING:
 
 
 class YomkLogger(YomkService):
-    # 日志模块服务：16 端点装配序与契约消息均为固定对外契约。
-    # 端点载荷形参一律无注解（Cython 会把 pyi/源码注解编译为边界 TypeError，
-    # 先于运行时守卫抛异常，误用载荷须走 unpack 契约 Response 而非异常）。
-    # 诊断通道对齐 C++ 0032fc7 契约：WARN = 空参自愈/误用降级，ERROR = 框架/IO
-    # 失败；失败路径不打诊断（Response.msg 已携带同信息，双重报警删除原则）。
-    # 锁序约定：嵌套双读仅 list_all 内省快照，一律按 m_consoleLoggersMutex ->
-    # m_fileLoggersMutex 的顺序持有，全仓无反向嵌套点（console_log/file_log 的
-    # proxy 锁在独立作用域释放后才取 logger 表锁；logger_info/write_file_log/
-    # create_file_logger/set_named_console_level/set_named_file_level/
-    # set_file_log_proxy 均单锁；current_console_state/named_console_state 的
-    # console proxyOn 与 current_file_state/logger_info/list_all 的 file proxyOn
-    # 均在表锁外先独立取 proxy 锁）；m_consoleLogProxyMutex 与 m_fileLogProxyMutex
-    # 为叶子锁，其临界区内不得获取任何其他锁。
-    # 后续维护新增嵌套时须沿用此序，否则有死锁风险。两表保持 dict 但内省输出显式
-    # sorted :map 字典序（python dict 为插入序，ServerInfo 轮先例）。
+    # 日志模块服务：16 端点装配序与契约消息为固定对外契约。端点载荷形参一律无注解
+    # （Cython 会把注解编译为边界 TypeError，先于运行时守卫抛出，误用载荷须走 unpack
+    # 的契约 Response）。诊断分级：WARN = 空参自愈/误用降级，ERROR = 框架/IO 失败；
+    # 失败路径不再重复打诊断（Response.msg 已携带同信息）。
+    # 锁序：嵌套双读仅 list_all，一律 console 表 -> file 表，全仓无反向嵌套点，
+    # 新增嵌套须沿用此序；两把 proxy 锁为叶子锁，临界区内不得获取其他锁。
+    # 两表为 dict（插入序），内省输出一律显式 sorted。
     def __init__(self, server: "YomkServer"):
         super().__init__(server)
         self.set_name("/YomkLogger")
@@ -104,7 +96,7 @@ class YomkLogger(YomkService):
         if unpack(pkg, Log) is None:
             return Response(ResStatus.eNo, type_mismatch(pkg, Log.kName))
         if not pkg.m_logger:
-            # 空名自愈：WARN + 兜底 main（对齐 C++ YomkLogger.cpp:66）
+            # 空名自愈：WARN + 兜底 main
             diag_warn("console logger name is empty, use main")
             pkg.m_logger = "main"
 
@@ -154,7 +146,7 @@ class YomkLogger(YomkService):
             if self.m_showConsoleInfoLog:
                 console_logger.log(Log.eInfo, pkg.m_tag, pkg.m_log)
 
-        # 成功文案无尾句号（C-1 已采纳清理，对齐主流开源库机器消费文案惯例）
+        # 成功文案不带尾句号（机器消费惯例）
         return Response(ResStatus.eOk, "success")
 
     def set_console_log_proxy(self, pkg):
@@ -195,7 +187,7 @@ class YomkLogger(YomkService):
             file_logger.set_name(pkg.m_logger)
             file_logger.set_dir(pkg.m_dir)
             if not file_logger.init():
-                # 框架/IO 失败：ERROR 诊断 + eNo 同串 Response（对齐 C++ :201-202）
+                # 框架/IO 失败：ERROR 诊断 + eNo 同串 Response
                 diag_error("init file logger '" + pkg.m_logger + "' failed")
                 return Response(ResStatus.eNo,
                                 "init file logger '" + pkg.m_logger + "' failed")

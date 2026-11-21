@@ -17,9 +17,8 @@ if TYPE_CHECKING:
 class YomkServerInfo(YomkService):
     # 服务表内省服务：四端点 /services /functions /function /all；
     # 经 weakref 判活（server 销毁后四端点均返 eNo）。
-    # 诊断通道对齐 C++ 0032fc7 契约：WARN = 空参/url 解析失败/服务未命中，
-    # ERROR = server 已销毁；失败路径不打诊断（Response.msg 已携带同信息，
-    # 双重报警删除原则）；pkg 类型错配统一无 diag。
+    # 诊断契约：WARN = 空参/url 解析失败/服务未命中，ERROR = server 已销毁；
+    # 失败路径不再重复打诊断（Response.msg 已携带同信息），pkg 类型错配无诊断。
     def __init__(self, server: "YomkServer"):
         super().__init__(server)
         # 清除基类对 server 的强引用，仅保留弱引用：
@@ -44,7 +43,7 @@ class YomkServerInfo(YomkService):
         if server is None:
             diag_error("server has been destroyed, list services ignored")
             return Response(ResStatus.eNo, "server has been destroyed")
-        # 服务名字典序输出（对齐 C++ std::map 迭代序）
+        # 服务名按字典序输出
         return Response(ResStatus.eOk, "ok",
                         StringArray(sorted(server.service_names())))
 
@@ -53,7 +52,7 @@ class YomkServerInfo(YomkService):
             return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
         srv_name = pkg.value
         if not srv_name:
-            # 空参误用自愈提示：WARN（对齐 C++ YomkServerInfo.cpp:43）
+            # 空参误用：WARN 后返 eInvalid
             diag_warn("srvName is empty, please check String.d")
             return Response(ResStatus.eInvalid, "srvName is empty")
 
@@ -64,8 +63,7 @@ class YomkServerInfo(YomkService):
 
         infos = server.service_func_infos(srv_name)
         # 结构化清单：FuncInfo 三字段与 /function 单查、/all 聚合同族
-        # （func_name 为带 / 前缀 url 段）；显式 sorted :map 字典序（python dict
-        # 为插入序，类头注释先例）；不存在的服务返回空表（eOk）
+        # （func_name 为带 / 前缀 url 段）；显式 sorted 输出；服务不存在时返回空表（eOk）
         funcs = [infos[name] for name in sorted(infos.keys())]
         return Response(ResStatus.eOk, "ok", FuncInfoList(funcs))
 
@@ -74,7 +72,7 @@ class YomkServerInfo(YomkService):
             return Response(ResStatus.eNo, type_mismatch(pkg, String.kName))
         url = pkg.value
         if not url or url[0] != "/":
-            # url 解析失败：WARN + 同串 Response（对齐 C++ :71-75）
+            # url 解析失败：WARN + 同串 Response
             diag_warn("url parse error: " + url + ", please start with /")
             return Response(ResStatus.eNo,
                             "url parse error: " + url + ", please start with /")
@@ -93,17 +91,17 @@ class YomkServerInfo(YomkService):
             diag_error("server has been destroyed, function info ignored")
             return Response(ResStatus.eNo, "server has been destroyed")
 
-        # 命中：结构化包恒挂，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）；
-        # 复用 FuncInfo 与函数池 /name 单查端点同族
+        # 命中：结构化包恒挂，数据全部走 data（msg 恒 "ok"）；
+        # 复用 FuncInfo，与函数池 /name 单查端点同族
         for name in sorted(server.service_names()):
             if name == srv_name:
                 info = server.service_func_infos(srv_name).get(func_name)
                 if info is None:
-                    # 函数未命中无 diag（Response.msg 已携带同信息，对齐 C++ :100-102）
+                    # 函数未命中无诊断（Response.msg 已携带同信息）
                     return Response(ResStatus.eNo, "function not found: " + url)
                 return Response(ResStatus.eOk, "ok", info)
 
-        # 服务未命中：WARN + 同串 Response（对齐 C++ :113-114）
+        # 服务未命中：WARN + 同串 Response
         diag_warn("service not found: " + srv_name)
         return Response(ResStatus.eNo, "service not found: " + srv_name)
 

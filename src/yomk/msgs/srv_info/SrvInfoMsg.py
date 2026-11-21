@@ -1,15 +1,28 @@
+"""Server info domain payloads.
+
+服务器信息域消息：服务及其函数的内省条目。
+"""
+
 from yomk.msgs.YomkMsg import YomkMsg
 
 
 class ServerServiceInfo(YomkMsg):
-    # 服务级内省条目（/YomkServerInfo/all 返回数据元素：服务名 + 该服务注册的函数元信息列表）
+    """One service with its function introspection entries.
+
+    单个服务及其函数内省条目。
+    """
+
     def __init__(self, service_name="", funcs=None):
-        self.service_name = service_name   # 服务名（带 / 前缀，如 "/FmtSrv"）
-        # 函数元信息（与 /function 单查同族 FuncInfo，func_name 为带 / 前缀 url 段）
+        self.service_name = service_name
+        # 元素 func_name 为带 / 前缀的 url 段
         self.funcs = funcs if funcs is not None else []
 
 
 class ServerServiceInfoList(YomkMsg):
-    # ServerServiceInfo 清单（对齐 C++ ServerServiceInfoList；返回数据承载）
+    """List payload of ServerServiceInfo.
+
+    ServerServiceInfo 清单载荷。
+    """
+
     def __init__(self, items=None):
         self.items = items if items is not None else []

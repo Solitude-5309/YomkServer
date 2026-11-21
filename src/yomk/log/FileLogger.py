@@ -8,15 +8,11 @@ from yomk.msgs.log import Log
 
 
 class FileLogger:
-    # 文件日志器，log 入内存缓冲、write 追加落盘清缓冲、
-    # 析构自动 write 兜底；init 建目录与空文件（异常捕获转 bool 不穿透）、
-    # 六级门控（关断级别 log 入口直接丢弃不入缓冲）
+    # 文件日志器：log 入内存缓冲，write 追加落盘；逐器门控关断的级别在入口丢弃
     def __init__(self):
         self.m_name = "main"
         self.m_dir = ""
-        # 级别门控随 sink 自持（每实例独立、默认全开）：两级主闸并联架构的第二层
-        # （逐器门控），第一层为 YomkLogger 文件全局主闸（经 /file_global_state
-        # 内省），输出取两层 AND
+        # 逐器门控：与文件全局主闸取 AND，默认全开
         self.m_showTraceLog = True
         self.m_showDebugLog = True
         self.m_showInfoLog = True
@@ -88,7 +84,7 @@ class FileLogger:
             if dir_path and not os.path.exists(dir_path):
                 os.makedirs(dir_path)   # 多级递归创建
         except OSError as e:
-            # 建目录 IO 失败：ERROR 诊断（对齐 C++ FileLogger.cpp:54）
+            # 建目录 IO 失败
             diag_error("init file logger fs error: " +
                        log_file_path + ", " + str(e))
             return False
@@ -101,9 +97,7 @@ class FileLogger:
         return True
 
     def log(self, log_level, tag, log_msg):
-        # 级别门控在缓冲锁外判定（GIL 下 bool 读原子，无新锁）：关断级别直接丢弃
-        # 不入缓冲（unknown 级别按 Info 门控，与下方 default 降级语义一致）；
-        # 位置在取时间戳之前避免白算
+        # 门控在缓冲锁外判定：关断级别不入缓冲；unknown 级别按 Info 处理
         if log_level == Log.eTrace:
             if not self.m_showTraceLog:
                 return

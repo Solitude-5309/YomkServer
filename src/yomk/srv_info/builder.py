@@ -1,3 +1,8 @@
+"""Server info domain chained builder: service, function and aggregate introspection.
+
+服务器信息域链式 Builder：服务、函数与聚合内省。
+"""
+
 from yomk.msgs.fn_pool import FuncInfoList
 from yomk.msgs.server import ResStatus
 from yomk.msgs.srv_info import ServerServiceInfoList
@@ -13,41 +18,64 @@ from yomk.url.srv_info import (
 
 
 class SrvInfoBuilder:
-    # server_info 域 builder：服务名/函数 URL 累积 + 四类内省终结
-    # （从旧 ServerBuilder 迁出的 services/functions/fn_url/get_info/all）
+    """Server info builder: read-only introspection of services and functions.
+
+    服务器信息 Builder：服务与函数的只读内省。
+
+    Usage:
+        services()                         # 全部服务名
+        srv_name(n).functions()            # 指定服务的函数清单
+        fn_url(u).get_info()               # 指定函数元信息
+        all()                              # 全部服务及其函数
+
+        四个终结均返回 Response，data 为裸 list 或单条元信息；
+        服务不存在时 functions() 返回空表，get_info() 返回 No。
+    """
+
     def __init__(self):
         self._srv_name = ""
         self._fn_url = ""
 
     def srv_name(self, srv_name):
-        # 形参名对齐 C++ SrvInfoBuilder::srv_name(srvName)（YomkServerInfoApi.h）
         self._srv_name = srv_name
         return self
 
     def fn_url(self, url):
-        # 形参名对齐 C++ SrvInfoBuilder::fn_url(url)
         self._fn_url = url
         return self
 
     def services(self):
-        # 门面 unwrap 保形：data 解包 List msg 后仍以裸 list 返回（公开面零变化）
+        """Return all registered service names as a plain list.
+
+        返回全部已注册服务名（裸 list）；服务器已销毁返回 No。
+        """
         res = _facade.api_request(SRV_SERVICES, None)
         if res.status == ResStatus.eOk:
             res.data = unpack(res.data, StringArray).items
         return res
 
     def functions(self):
-        # 查询指定服务的功能函数清单（用 srv_name 累积；入参 String 化 + unwrap 保形）
+        """Return the function list of the accumulated service.
+
+        返回累积服务的函数清单（裸 list）；服务不存在返回空表。
+        """
         res = _facade.api_request(SRV_FUNCTIONS, String(self._srv_name))
         if res.status == ResStatus.eOk:
             res.data = unpack(res.data, FuncInfoList).items
         return res
 
     def get_info(self):
-        # 查询指定功能函数元信息（用 fn_url 累积；入参 String 化）
+        """Return introspection metadata of the accumulated function URL.
+
+        返回累积函数 URL 的元信息；服务或函数不存在返回 No。
+        """
         return _facade.api_request(SRV_FUNCTION, String(self._fn_url))
 
     def all(self):
+        """Return all services with their functions as a plain list.
+
+        返回全部服务及其函数的内省快照（裸 list）；服务器已销毁返回 No。
+        """
         res = _facade.api_request(SRV_ALL, None)
         if res.status == ResStatus.eOk:
             res.data = unpack(res.data, ServerServiceInfoList).items
@@ -55,5 +83,8 @@ class SrvInfoBuilder:
 
 
 def srv_info():
-    # server_info 域链式入口
+    """Return the server info domain chained entry.
+
+    返回服务器信息域链式入口。
+    """
     return SrvInfoBuilder()

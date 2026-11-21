@@ -1,3 +1,8 @@
+"""Built-in URL constants of the /YomkContext service.
+
+/YomkContext 内置服务 URL 常量。
+"""
+
 __all__ = [
     "CTX_ALL",
     "CTX_CREATE",
@@ -14,7 +19,6 @@ __all__ = [
     "CTX_TURN_ON_CHECKER",
     "CTX_TURN_ON_MONITOR",
 ]
-# 与 C++ YomkContextUrl.h 逐字一致（ctxCreate 等 camelCase → CTX_* 大写蛇形）
 CTX_CREATE = "/YomkContext/create"
 CTX_GET = "/YomkContext/get"
 CTX_SET = "/YomkContext/set"

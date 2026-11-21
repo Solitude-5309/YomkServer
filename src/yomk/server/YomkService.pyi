@@ -6,13 +6,11 @@ from yomk.msgs.server import Response
 
 class YomkService:
     name: str
-    server: Any  # property：弱引用解引用，活的 server 或 None（销毁后）
-    _server_ref: Any  # weakref.ref(server)
+    server: Any
+    _server_ref: Any
     functions: Dict[str, Callable[[Any], Response]]
     function_infos: Dict[str, FuncInfo]
     registered: bool
-    # 注销标志：del_service/同名替换置位，
-    # shutdown 不置位——删除即停（weak_func 判活叠加此标志），排空期回调照常执行
     m_deleted: bool
     rwlock_functions: Any
 

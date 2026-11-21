@@ -2,8 +2,6 @@ from typing import Any
 
 
 class FileLogger:
-    # 文件日志器（sink），log 入内存缓冲、write 追加落盘清缓冲、
-    # 析构自动 write 兜底；init 建目录与空文件、六级门控（关断级别不入缓冲）
     m_name: str
     m_dir: str
     m_showTraceLog: bool

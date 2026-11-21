@@ -17,10 +17,9 @@ from yomk.server import YomkService
 
 
 class YomkContext(YomkService):
-    # 上下文内置服务：链式 builder 全部终结经 api_request 到达本域端点。
-    # 诊断契约（对齐 C++ 0032fc7）：空组名/空键/空值/不存在/类型错配/拒绝
-    # 一律 WARN（ContextGroup 层发出），unpack 失败无 diag（Response.msg 已携
-    # 具体类型名），成功路径无 diag
+    # 上下文内置服务：链式 builder 的全部终结都经 api_request 到达本域端点。
+    # 诊断契约：空组名/空键/空值/不存在/类型错配/拒绝一律 WARN（由 ContextGroup
+    # 发出）；unpack 失败不打诊断（Response.msg 已携具体类型名），成功路径无诊断。
     def __init__(self, server):
         super().__init__(server)
         self.set_name("/YomkContext")

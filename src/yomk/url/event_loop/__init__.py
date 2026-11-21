@@ -1,3 +1,8 @@
+"""Built-in URL constants of the /YomkEventLoop service.
+
+/YomkEventLoop 内置服务 URL 常量。
+"""
+
 __all__ = [
     "LOOP_ALL",
     "LOOP_DESTROY",
@@ -8,7 +13,6 @@ __all__ = [
     "LOOP_START",
     "LOOP_STOP",
 ]
-# 与 C++ YomkEventLoopUrl.h 逐字一致（loopStart 等 camelCase → LOOP_* 大写蛇形）
 LOOP_START = "/YomkEventLoop/start"
 LOOP_STOP = "/YomkEventLoop/stop"
 LOOP_POST = "/YomkEventLoop/post"

@@ -1,6 +1,11 @@
+"""Chained logging builders for emission and management.
+
+日志发射与管理链式 Builder。
+"""
+
 import sys
 
-from yomk.log import _logSourceLoc  # 私有子模块（U-12 后包根 __init__ 不再显式携带，靠包内子模块回退解析）
+from yomk.log import _logSourceLoc  # 私有子模块：不随包根 __init__ 导出
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import unpack
 from yomk.msgs.log import (
@@ -34,12 +39,10 @@ from yomk.url.log import (
 
 
 def _chain_log_content(loc, args):
-    # 发射正文 = 位置前缀（进程级三开关）+ 逐参追加（str() 流式化、bool → true/false、
-    # 单空格分隔；前缀为空时首参不加前导空格）
+    # 正文 = 位置前缀 + 逐参追加：单空格分隔，bool → true/false，
+    # 浮点按 6 位有效数字输出，其余用 str()
     msg = _logSourceLoc._yomk_source_loc_prefix(*loc)
     for arg in args:
-        # 浮点对齐 C++ snprintf "%g"（6 位有效数字，YomkLoggerApi.h）：
-        # str(2.0)="2.0" 而 %g 输出 "2"；bool → true/false、整数/其余对象仍 str()
         s = ("true" if arg is True else
              ("false" if arg is False else
               ("%.6g" % arg if isinstance(arg, float) else str(arg))))
@@ -48,7 +51,15 @@ def _chain_log_content(loc, args):
 
 
 class SinkLogBuilder:
-    # 具名文件发射分面：log().to_sink(name) 之后 tag 累积并以级别方法终结
+    """Named file emission facet entered by log().to_sink(name).
+
+    具名文件发射分面：to_sink(name) 之后 tag 累积、六级方法终结。
+
+    Note:
+        Level terminators block until the write completes and return Invalid if uninitialized.
+        六级发射方法阻塞至写入完成，未初始化返回 Invalid。
+    """
+
     def __init__(self, loc, sink):
         self._loc = loc
         self._sink = sink
@@ -90,7 +101,16 @@ class SinkLogBuilder:
 
 
 class LogBuilder:
-    # log 发射域 builder：主控制台发射本体（不经 to_sink 即主控制台路径）
+    """Main console emission builder returned by log().
+
+    主控制台日志发射 Builder。
+
+    Note:
+        Level terminators block until the write completes; the source location
+        is captured at the log() call site, not at the terminator.
+        六级方法阻塞至写入完成，位置取自 log() 调用行；未初始化返回 Invalid。
+    """
+
     def __init__(self, loc):
         self._loc = loc
         self._tag = "main"
@@ -100,7 +120,10 @@ class LogBuilder:
         return self
 
     def to_sink(self, name):
-        # 切入具名文件发射分面（未知名写入返回 Failed，不惰性创建）
+        """Switch to the named file emission facet.
+
+        切入具名文件发射分面；未知名在写入时失败，不做惰性创建。
+        """
         return SinkLogBuilder(self._loc, name)
 
     def info(self, *args):
@@ -135,7 +158,18 @@ class LogBuilder:
 
 
 class ConsoleMgrBuilder:
-    # log_mgr 控制台管理分面：门控/代理/内省
+    """Console management facet: gating, proxy and introspection.
+
+    控制台管理分面：门控、代理与内省。
+
+    Note:
+        Empty name switches the global master gate, a name targets one logger;
+        level defaults to Info and proxy(None) restores the default sink.
+        Console and file master gates are independent.
+        name 为空 = 全局主闸，具名 = 逐器门控；level 缺省 Info；proxy(None) 恢复默认输出；
+        控制台与文件主闸相互独立。
+    """
+
     def __init__(self, name):
         self._name = name
         self._level = Log.eInfo
@@ -146,7 +180,6 @@ class ConsoleMgrBuilder:
         return self
 
     def enable(self):
-        # name 空 = 全局主闸，具名 = 逐器门控
         return _facade.chain_status(_facade.api_request(
             LOG_ON_CONSOLE_LOG_BY_LEVEL, Log(self._level, "", self._name)))
 
@@ -159,7 +192,6 @@ class ConsoleMgrBuilder:
         return self
 
     def apply(self):
-        # None = 恢复默认输出
         return _facade.chain_status(_facade.api_request(
             LOG_SET_CONSOLE_PROXY, ConsoleLogProxy(self._proxy)))
 
@@ -174,12 +206,21 @@ class ConsoleMgrBuilder:
             LOG_LOGGER, LoggerQuery(self._name, "console"))
 
     def status(self):
-        # 全局主闸状态（6 级别 + proxy，与文件侧主闸相互独立）
         return _facade.api_request(LOG_CONSOLE_GLOBAL_STATE, None)
 
 
 class FileMgrBuilder:
-    # log_mgr 文件管理分面：门控/代理/内省/生命周期
+    """File management facet: gating, proxy, lifecycle and introspection.
+
+    文件管理分面：门控、代理、生命周期与内省。
+
+    Note:
+        Empty name switches the file global gate; gate toggles on unknown names
+        fail, while create() creates the logger from the directory accumulated
+        by log_mgr().dir().
+        name 为空 = 文件全局主闸；未知名门控失败，create() 按 dir() 累积目录创建。
+    """
+
     def __init__(self, name, dir_):
         self._name = name
         self._dir = dir_
@@ -191,7 +232,6 @@ class FileMgrBuilder:
         return self
 
     def enable(self):
-        # name 空 = 文件全局主闸，具名 = 逐器门控（未知名 Failed）
         return _facade.chain_status(_facade.api_request(
             LOG_ON_FILE_LOG_BY_LEVEL, Log(self._level, "", self._name)))
 
@@ -221,7 +261,6 @@ class FileMgrBuilder:
         return _facade.api_request(LOG_FILE_GLOBAL_STATE, None)
 
     def create(self):
-        # 创建文件日志器（dir 累积自 log_mgr().dir()）
         return _facade.chain_status(_facade.api_request(
             LOG_CREATE_FILE_LOGGER, LogFile(self._name, self._dir)))
 
@@ -235,7 +274,11 @@ class FileMgrBuilder:
 
 
 class LocBuilder:
-    # 位置前缀三开关分面：构造承接当前进程状态，apply 一次性落三开关（恒 Succeeded）
+    """Location prefix facet with three switches applied at once.
+
+    位置前缀三开关分面：apply() 一次性落盘，恒返回 Succeeded。
+    """
+
     def __init__(self):
         self._show_file = _logSourceLoc._yomk_loc_show_file
         self._show_line = _logSourceLoc._yomk_loc_show_line
@@ -261,12 +304,20 @@ class LocBuilder:
 
 
 class LogMgrBuilder:
-    # log 管理域 builder：dir 累积 + console/file/location 分面 + 全量内省
+    """Log management builder returned by log_mgr().
+
+    日志管理 Builder：dir 累积 + console/file/location 分面 + 全量内省。
+
+    Note:
+        Call dir() before file().create(); a later dir() does not affect builders
+        that were already created.
+        dir() 须先于 file().create()，创建时按累积值快照。
+    """
+
     def __init__(self):
         self._dir = ""
 
     def dir(self, d):
-        # 须先于 file() 累积（create 用）
         self._dir = d
         return self
 
@@ -287,12 +338,17 @@ class LogMgrBuilder:
 
 
 def log():
-    # log 发射域链式入口；调用行位置在此捕获，
-    # 仅限单表达式内联使用，禁止缓存复用 Builder
+    """Return the console log emission entry; the caller location is captured here.
+
+    返回主控制台发射入口，调用行位置在此捕获；仅限单表达式内联使用，禁止缓存复用。
+    """
     frame = sys._getframe(1)
     return LogBuilder((frame.f_code.co_filename, frame.f_lineno, frame.f_code.co_name))
 
 
 def log_mgr():
-    # log 管理域链式入口
+    """Return the log management entry.
+
+    返回日志管理域链式入口。
+    """
     return LogMgrBuilder()

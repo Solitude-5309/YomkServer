@@ -10,10 +10,9 @@ from yomk.server import YomkService
 
 
 class YomkEventLoop(YomkService):
-    # 事件循环内置服务：链式 builder 全部终结经 api_request 到达本域端点。
-    # 诊断契约（对齐 C++ 0032fc7）：not-found 一律 WARN 携具体循环名；
-    # unpack 失败无 diag（Response.msg 已携具体类型名）；循环未运行由 rc
-    # 映射（无 diag）；成功路径无 diag
+    # 事件循环内置服务：链式 builder 的全部终结都经 api_request 到达本域端点。
+    # 诊断契约：not-found 一律 WARN 并携带具体循环名；unpack 失败不打诊断；
+    # 循环未运行只经返回码体现；成功路径无诊断。
     def __init__(self, server):
         super().__init__(server)
         self.set_name("/YomkEventLoop")
@@ -33,8 +32,8 @@ class YomkEventLoop(YomkService):
         return 0
 
     def _not_found(self, loop_name):
-        # not-found 契约：WARN 携具体名 + 同串 Response（对齐 C++ stop/
-        # destroy/post/post_wait/loopInfo 五处）
+        # not-found 契约：WARN 携具体名 + 同串 Response（stop/destroy/post/
+        # post_wait/loopInfo 五处共用）
         diag_warn("event loop '" + loop_name + "' does not exist")
         return Response(ResStatus.eNo,
                         "event loop '" + loop_name + "' does not exist")

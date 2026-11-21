@@ -13,34 +13,27 @@ class Monitor:
 
 
 class ContextEntry:
-    # Context 单条目内部结构（ContextGroup 持有），与消息包 Context 区分，仅服务内部使用
     value: Any
-    checker: Any          # check_func 或 None（可空）
-    monitors: List[Any]   # [Monitor]
+    checker: Any
+    monitors: List[Any]
 
     def __init__(self, value: Any) -> None: ...
 
 
 class ContextGroup:
-    # Context 底层实例组：完整承载单组功能（键存储、checker/monitor 门控开关、
-    # 自持单线程异步监控池），不继承 YomkService；YomkContext 按组名路由到
-    # ContextGroup 实例（与 EventLoop 模块同款双层写法）
     m_name: str
     m_checkerEnabled: bool
     m_monitorEnabled: bool
-    m_contexts: Dict[str, ContextEntry]   # {key: ContextEntry}（单条目结构）
+    m_contexts: Dict[str, ContextEntry]
     m_contextsMutex: Any
-    # 构造即建监控池：固定单线程保事件顺序
     m_monitorPool: Optional[ThreadPoolExecutor]
 
     def __init__(self, name: str) -> None: ...
     def name(self) -> str: ...
-    # 排空式停止监控池（拒新 -> 排空 -> join）；shutdown 幂等，重复调用安全
     def stop(self) -> None: ...
     def create(self, key: str, value: Any) -> int: ...
     def destroy(self, key: str) -> int: ...
     def get(self, key: str, default_value: Any) -> tuple[int, Any]: ...
-    # 失败 detail 携带具体值与期望/实际类型名，经 YomkContext 透传进 Response.msg
     def set(self, key: str, value: Any) -> tuple[int, str]: ...
     def turn_on_checker(self) -> None: ...
     def turn_off_checker(self) -> None: ...

@@ -1,9 +1,17 @@
+"""Function pool domain payloads.
+
+函数池域消息：注册载荷、调用载荷与内省条目。
+"""
+
 from yomk.msgs.YomkMsg import YomkMsg
 
 
 class FuncInfo(YomkMsg):
-    # 功能函数元信息（/YomkFunctionPool/name 与 /all、/YomkServerInfo/function
-    # 单查与 /all 清单段返回数据），预留扩展（如安全性校验）
+    """Function introspection entry.
+
+    函数内省条目：函数名、期望消息类型与说明。
+    """
+
     def __init__(self, func_name="", msg_name="", description=""):
         self.func_name = func_name
         self.msg_name = msg_name
@@ -11,21 +19,34 @@ class FuncInfo(YomkMsg):
 
 
 class Function(YomkMsg):
+    """Function registration payload.
+
+    函数注册载荷：名、回调、期望消息类型与说明。
+    """
+
     def __init__(self, name, func, msg_name="", description=""):
         self.name = name
         self.func = func
         self.msg_name = msg_name
-        # 函数说明，内容使用者自定义，与 msg_name 同为仅内省元数据
         self.description = description
 
 
 class CallFunction(YomkMsg):
+    """Function call payload.
+
+    函数调用载荷：函数名与入参。
+    """
+
     def __init__(self, name, pkg):
         self.name = name
         self.pkg = pkg
 
 
 class FuncInfoList(YomkMsg):
-    # FuncInfo 清单（对齐 C++ FuncInfoList；返回数据承载）
+    """List payload of FuncInfo.
+
+    FuncInfo 清单载荷。
+    """
+
     def __init__(self, items=None):
         self.items = items if items is not None else []

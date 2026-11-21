@@ -1,10 +1,17 @@
+"""Event loop domain payloads.
+
+事件循环域消息：投递事件、启动配置、单查与内省条目。
+"""
+
 from yomk.msgs.YomkMsg import YomkMsg
 
 
 class Event(YomkMsg):
-    # 事件消息（对齐 C++ Event msg 目录地位）：运行时域 event_loop 经
-    # yomk.event_loop/__init__ re-export，from yomk.event_loop import Event
-    # 消费路径保持不变
+    """Event payload posted to a loop.
+
+    事件投递载荷：目标循环、数据、单次处理器与 tag。
+    """
+
     def __init__(self, event_loop_name="", pkg=None, func=None, tag=""):
         self.m_eventLoopName = event_loop_name
         self.m_pkg = pkg
@@ -21,11 +28,11 @@ class Event(YomkMsg):
 
 
 class EventLoopOpts(YomkMsg):
-    # start 载荷（/YomkEventLoop/start 专用）：字段名与 C++ payload
-    # m_eventLoopName（大写 L）一致，裸链载荷跨语言可移植。
-    # 命名说明：start 配置语义承载类，命名 Opts 与运行时 EventLoop 类
-    # （yomk.event_loop.EventLoop）显式区分——同域同名靠 import 别名区分
-    # 是 kName 引用的陷阱源，类名本身即消歧
+    """Start options payload: loop name, default handler and expected message type.
+
+    启动配置载荷：循环名、默认处理函数与期望消息类型。
+    """
+
     def __init__(self, event_loop_name="", default_service_func=None, msg_name=""):
         self.m_eventLoopName = event_loop_name
         self.m_defaultServiceFunc = default_service_func
@@ -33,27 +40,37 @@ class EventLoopOpts(YomkMsg):
 
 
 class EventLoopQuery(YomkMsg):
-    # 事件循环单查载荷（/YomkEventLoop/loop 专用）：
-    # 名称 + 队列头 tag 采样数，类型化字段无解析歧义
+    """Single loop query payload: name plus head-tag sample count.
+
+    单循环查询载荷：循环名与队头 tag 采样数。
+    """
+
     def __init__(self, loop_name="", tag_count=3):
-        self.m_loopName = loop_name   # 循环名（按字面量精确匹配，不做任何切分）
-        self.m_tagCount = tag_count   # 队列头采样条数（缺省 3，与全量内省缺省一致）
+        self.m_loopName = loop_name   # 字面量精确匹配
+        self.m_tagCount = tag_count   # 队头采样条数，缺省 3
 
 
 class EventLoopInfo(YomkMsg):
-    # 事件循环内省元信息（/YomkEventLoop/loop 与 /YomkEventLoop/all 返回数据）
+    """Loop introspection entry: running state, backlog, default handler and head tags.
+
+    循环内省条目：运行态、积压数、默认函数与队头 tag。
+    """
+
     def __init__(self, loop_name="", running=False, pending=0,
                  has_default_func=False, msg_name="", next_tags=None):
-        self.loop_name = loop_name        # 循环名
-        self.running = running            # worker 是否运行中
-        self.pending = pending            # 积压事件数
-        self.has_default_func = has_default_func  # 是否注册默认处理函数
-        self.msg_name = msg_name          # 默认处理函数期望消息类型名（可空）
-        # 队列头起最多 tag_count 条事件 tag（存原值，空串保留）
-        self.next_tags = next_tags if next_tags is not None else []
+        self.loop_name = loop_name
+        self.running = running
+        self.pending = pending
+        self.has_default_func = has_default_func
+        self.msg_name = msg_name
+        self.next_tags = next_tags if next_tags is not None else []  # 空串保留原值
 
 
 class EventLoopInfoList(YomkMsg):
-    # EventLoopInfo 清单（对齐 C++ EventLoopInfoList；/YomkEventLoop/all 返回数据承载）
+    """List payload of EventLoopInfo.
+
+    EventLoopInfo 清单载荷。
+    """
+
     def __init__(self, items=None):
         self.items = items if items is not None else []

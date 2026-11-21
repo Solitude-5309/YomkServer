@@ -39,7 +39,7 @@ class EventLoop:
                     continue
 
             if not event:
-                # 空事件静默跳过（对齐 C++ run()：无诊断）
+                # 空事件静默跳过，不打诊断
                 continue
             # 异常吞噬后仍无条件触发等待回调
             try:
@@ -54,7 +54,7 @@ class EventLoop:
 
     def start(self):
         if self.m_running:
-            # 幂等重启（对齐 C++）：INFO 级，非错误
+            # 重复 start 幂等：INFO 级，非错误
             diag_info("event loop already running, start is idempotent")
             return 0
         # 持队列锁创建线程
@@ -97,8 +97,8 @@ class EventLoop:
             pass
 
     def post(self, event):
-        # 判序先判运行态（返 2，与入队成功 0/事件为空 1 区分，供上层映射
-        # 错误码）；未运行/事件为空无诊断（对齐 C++ rc2/rc1 均 NO diag）
+        # 先判运行态再判事件：返 2（未运行）/ 1（事件为空）/ 0（已入队），
+        # 供上层映射错误码；两种失败均无诊断
         if not self.m_running:
             return 2
 
@@ -127,8 +127,7 @@ class EventLoop:
         with self.m_queueMutex:
             in_worker = self.m_thread is not None and threading.get_ident() == self.m_thread.ident
         if in_worker:
-            # C-2 已采纳：文案补循环名（事件自带字段）+ 去 "is not allowed"
-            # 冗余从句，前缀对齐域内 "EventLoop: <名>" 格式（C++ 侧同步同文案）
+            # worker 线程内直接执行当前事件，解开自等死锁
             diag_error(
                 "EventLoop: " + event.m_eventLoopName +
                 " post wait in worker thread detected deadlock, directly execute current event to resolve deadlock")

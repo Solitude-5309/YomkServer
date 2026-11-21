@@ -69,14 +69,12 @@ class ContextGroupInfo(YomkMsg):
 
 
 class ContextKeyInfoList(YomkMsg):
-    # ContextKeyInfo 清单（对齐 C++ ContextKeyInfoList；返回数据承载）
     items: list[ContextKeyInfo]
 
     def __init__(self, items: list[ContextKeyInfo] | None = None) -> None: ...
 
 
 class ContextGroupInfoList(YomkMsg):
-    # ContextGroupInfo 清单（对齐 C++ ContextGroupInfoList；返回数据承载）
     items: list[ContextGroupInfo]
 
     def __init__(self, items: list[ContextGroupInfo] | None = None) -> None: ...

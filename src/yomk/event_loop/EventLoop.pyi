@@ -5,8 +5,6 @@ from yomk.msgs.event_loop import EventLoopInfo
 
 
 class EventLoop:
-    # 事件循环底层实例（非服务）：单 worker 线程消费事件队列，
-    # YomkEventLoop 按循环名持有（与 Context 模块同款双层写法）
     m_event_queue: Any
     m_queueMutex: Any
     m_condition: Any
@@ -17,7 +15,6 @@ class EventLoop:
     m_defaultMsgName: str
 
     def __init__(self) -> None: ...
-    # 双参 msg_name 同存，内省快照依赖
     def set_default_service_func(self, func: Optional[Callable[[Any], Any]],
                                  msg_name: str = "") -> None: ...
     def run(self) -> None: ...

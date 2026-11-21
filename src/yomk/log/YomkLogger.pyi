@@ -8,8 +8,6 @@ from yomk.server import YomkService
 
 
 class YomkLogger(YomkService):
-    # 日志服务（/YomkLogger 16 端点）：控制台/文件两套日志器表 + 两套全局主闸
-    # + 两套代理（相互独立），输出取主闸 × 逐器两层 AND
     m_consoleLoggers: Dict[str, ConsoleLogger]
     m_consoleLoggersMutex: Any
     m_fileLoggers: Dict[str, FileLogger]
@@ -35,8 +33,6 @@ class YomkLogger(YomkService):
 
     def __init__(self, server: Any) -> None: ...
     def init(self) -> None: ...
-    # 端点载荷形参一律 Any（无运行时守卫意义）：Cython 会把注解编译为边界
-    # TypeError，先于运行时 unpack 守卫抛异常，误用载荷须返回契约 Response
     def console_log(self, pkg: Any) -> Response: ...
     def set_console_log_proxy(self, pkg: Any) -> Response: ...
     def set_file_log_proxy(self, pkg: Any) -> Response: ...

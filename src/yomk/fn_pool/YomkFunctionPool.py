@@ -26,7 +26,6 @@ class YomkFunctionPool(YomkService):
         self.install_func("/all", self.listAll)
 
     def registerFunction(self, function):
-        # 载荷类型错配：Failed + 携带实际类型（对齐 C++ unpack 失败路径，零 diag）。
         # 端点载荷形参一律不带类型注解：Cython 会把注解编译为边界 TypeError，
         # 使下方运行时守卫失效（pyi 同理标注 Any）
         if unpack(function, Function) is None:
@@ -40,9 +39,9 @@ class YomkFunctionPool(YomkService):
 
         with self.m_functionsMutex.gen_wlock():
             if function.name in self.m_functions:
-                # 重复名=热替换语义：整对象替换覆盖 func、msg_name、description 三字段
-                # （未在替换对象上声明的元数据即被清除），diag 与 Response.msg 同串；
-                # C-5 已采纳：覆盖既有注册，级别 WARN（误覆盖默认可见，Response.msg 通道不变）
+                # 重复名=热替换语义：整对象替换覆盖 func、msg_name、description
+                # 三字段（未在替换对象上声明的元数据即被清除）；WARN 可见 + 同串
+                # Response.msg，误覆盖默认不静默。
                 msg = ("function '" + function.name +
                        "' already exists, hot-swap to current function")
                 diag_warn(msg)
