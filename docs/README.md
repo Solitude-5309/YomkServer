@@ -17,5 +17,6 @@
 ## 规范与配套
 
 - [yomk注释原则](yomk注释原则.md)：公开 API 双语 docstring（PEP 257 + Google 风格）、内部注释单语中文——内容参考 C++ 规范，形式按 Python 主流
+- [内省描述惯例](YomkServer.md#内省描述惯例第四参-description)：`install_func` 第四参的五章节固定格式与 URL 常量池布局（全部内置端点均适用）
 - [skills/yomkserverpy-modular](../skills/yomkserverpy-modular/SKILL.md)：模块化编程规范（扩展开发）
 - API 精确契约：源码 docstring（`src/yomk/` 与其 `.pyi` 类型桩），逐参数与返回码以之为准

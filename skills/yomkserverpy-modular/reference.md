@@ -65,6 +65,8 @@ class YomkService:
     def deinit(self) -> None                 # 注销/shutdown 时由框架调用（默认空实现，可覆盖停线程/注销外部资源）
     def install_func(self, name: str, function, msg_name="", description="") -> None
         # 注册本服务功能函数（name 须以 / 开头）；msg_name/description 仅内省元数据；
+        # 内置端点统一预置五章节 description（# Overview/# Inputs/# Outputs/# Behavior/# Notes，
+        # 常量 <URL>_DESC 与 URL 同置 yomk.url.<域>）；自定义建议沿用；
         # 成员函数注册即自动 weak_func 弱绑定
     def weak_func(self, func, discard=None) -> callable
         # 弱绑定包装：服务删除/注销后回调自动判活失效，见下表；
@@ -129,7 +131,7 @@ class CallFunction:
 class FuncInfo:                              # 功能函数元信息（函数池/服务内省单查与清单同族）
     func_name: str      # 路由名，带 "/" 前缀
     msg_name: str       # 期望消息类型名（install_func 三参传入值；约定传 msg.kName，内省值即全限定 kName）
-    description: str    # 函数说明（使用者自定义，框架透传不解析）
+    description: str    # 函数说明（使用者自定义，框架透传不解析；内置端点为五章节文本）
 
 class Event:                                 # 事件循环投递包
     def __init__(self, event_loop_name="", pkg=None, func=None, tag="")
@@ -182,7 +184,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 - **deinit 四触发时机**：`srv_name(n).remove()`、`shutdown()`、同名被替换、进程退出 atexit 兜底。
 - **shutdown 排空序列**：拒新并排空/join 异步请求池 → 清空服务表逐个 `deinit`；排空路径**不置位注销标志、不记删除 WARN**，在途回调照常执行；幂等，假定主线程调用。**关闭后不支持二次 init**（once 标志把关，全部入口回到守卫态）；`instance()` 在 shutdown 后置空返回 `None`。
 
-拓扑内省注记：`functions()/get_info()/all()` 命中 `msg` 恒 `"ok"`；`functions()` 服务不存在返回**空清单**（非 Failed），`fn_url(...).get_info()` 未命中 `Failed`。
+拓扑内省注记：`functions()/get_info()/all()` 命中 `msg` 恒 `"ok"`；`functions()` 服务不存在返回**空清单**（非 Failed），`fn_url(...).get_info()` 未命中 `Failed`。全部内置 48 个端点的 `FuncInfo.description` 均为五章节内省文本（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`，字段名按 Python 实际带 `m_` 前缀），`all()` 即可一次读全拓扑语义。
 
 ### log()/log_mgr() 域——发射 / 门控 / 代理 / 前缀 / 文件日志器 / 内省
 

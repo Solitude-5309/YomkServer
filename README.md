@@ -17,7 +17,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 
 | 模块 | 简述 |
 |---|---|
-| [服务（`YomkService` / `Function`）](docs/YomkServer.md) | 两级模块化的载体：服务封装独立业务域或技术组件，`install_func()` 安装服务内功能函数 |
+| [服务（`YomkService` / `Function`）](docs/YomkServer.md) | 两级模块化的载体：服务封装独立业务域或技术组件，`install_func()` 安装服务内功能函数（第三参期望类型、第四参五章节内省描述） |
 | [共享上下文（`YomkContext`）](docs/YomkContext.md) | 全局键值状态增删改查，支持变更前校验门控（Checker）与变更监控（Monitor） |
 | [线程隔离事件循环（`YomkEventLoop`）](docs/YomkEventLoop.md) | 单线程 FIFO 执行队列：同循环内保序、跨循环并行，适配 I/O 密集与高并发调度 |
 | [动态函数池（`YomkFunctionPool`）](docs/YomkFunctionPool.md) | 函数统一注册与调度，支持同名热替换，面向过程范式快速迭代 |
@@ -35,7 +35,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 | `skills/yomkserverpy-modular/` | 模块化使用 skill：SKILL.md、reference.md、examples.md |
 | `scripts/` | `install_env.sh` 安装校验与 `PYTHONPATH` / `YOMK_PREFIX_PATH` 持久化 |
 | `test/` | 测试集合与一键测试脚本 `run_tests.sh` |
-| `docs/` | 使用文档分片（每域一篇，[索引](docs/README.md)）与规范：[yomk注释原则](docs/yomk注释原则.md)（双语 docstring 格式、内部注释正面清单与删除清单） |
+| `docs/` | 使用文档分片（每域一篇，[索引](docs/README.md)）与规范：[yomk注释原则](docs/yomk注释原则.md)（双语 docstring 格式、内部注释正面清单与删除清单）、内省描述惯例（见 [YomkServer.md](docs/YomkServer.md#内省描述惯例第四参-description)） |
 | `CMakeLists.txt`、`cmake/`、`build_ubuntu.sh` | 构建安装体系：Cython 编译、install 规则与环境指纹报告（`abi_report.txt`） |
 
 ---
@@ -114,6 +114,7 @@ server().shutdown()
       .msg(pkg).request())
   ```
 - **跨服务调用**：服务实现内部用成员 `self.request(url, pkg)` 调用其他服务（`YomkService` 基类提供，与 `server().url(url).msg(pkg).request()` 裸链等价；见 `examples/services/MotionService.py`）。
+- **端点内省描述**：`install_func(name, fn, msg_name, description)` 第三参声明期望消息类型、第四参写功能语义（固定 `# Overview / # Inputs / # Outputs / # Behavior / # Notes` 五章节）；全部内置端点均已填写，经 `srv_info()` 原样读取，见 [内省描述惯例](docs/YomkServer.md#内省描述惯例第四参-description)。
 
 完整可运行演示见 `examples/ExampleYomkService.py`（控制柜一次上电会话 8 个场景：上电自检与工位注册、通讯自检与寻址异常、异步下发、运动调用链、自省读取、工位热替换、工位下线断链传播、收班断电，读运行输出即可理解每个调用）。
 

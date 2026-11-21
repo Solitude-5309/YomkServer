@@ -21,6 +21,24 @@ from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray, type_mismatch
 from yomk.msgs.YomkMsg import unpack
 from yomk.server import YomkService
+from yomk.url.log import (
+    LOG_ALL_DESC,
+    LOG_CONSOLE_GLOBAL_STATE_DESC,
+    LOG_CONSOLE_LOG_DESC,
+    LOG_CREATE_FILE_LOGGER_DESC,
+    LOG_DELETE_LOGGER_DESC,
+    LOG_FILE_GLOBAL_STATE_DESC,
+    LOG_FILE_LOG_DESC,
+    LOG_LOGGER_DESC,
+    LOG_LOGGERS_DESC,
+    LOG_OFF_CONSOLE_LOG_BY_LEVEL_DESC,
+    LOG_OFF_FILE_LOG_BY_LEVEL_DESC,
+    LOG_ON_CONSOLE_LOG_BY_LEVEL_DESC,
+    LOG_ON_FILE_LOG_BY_LEVEL_DESC,
+    LOG_SET_CONSOLE_PROXY_DESC,
+    LOG_SET_FILE_LOG_PROXY_DESC,
+    LOG_WRITE_FILE_LOG_DESC,
+)
 
 if TYPE_CHECKING:
     from yomk.server import YomkServer
@@ -67,29 +85,44 @@ class YomkLogger(YomkService):
 
     def init(self):
         self.install_func("/set_console_log_proxy",
-                          self.set_console_log_proxy, ConsoleLogProxy.kName)
+                          self.set_console_log_proxy, ConsoleLogProxy.kName,
+                          LOG_SET_CONSOLE_PROXY_DESC)
         self.install_func("/set_file_log_proxy",
-                          self.set_file_log_proxy, FileLogProxy.kName)
-        self.install_func("/console_log", self.console_log, Log.kName)
+                          self.set_file_log_proxy, FileLogProxy.kName,
+                          LOG_SET_FILE_LOG_PROXY_DESC)
+        self.install_func("/console_log", self.console_log, Log.kName,
+                          LOG_CONSOLE_LOG_DESC)
         self.install_func("/create_file_logger",
-                          self.create_file_logger, LogFile.kName)
-        self.install_func("/file_log", self.file_log, Log.kName)
-        self.install_func("/write_file_log", self.write_file_log, String.kName)
-        self.install_func("/delete_logger", self.delete_logger, String.kName)
+                          self.create_file_logger, LogFile.kName,
+                          LOG_CREATE_FILE_LOGGER_DESC)
+        self.install_func("/file_log", self.file_log, Log.kName,
+                          LOG_FILE_LOG_DESC)
+        self.install_func("/write_file_log", self.write_file_log, String.kName,
+                          LOG_WRITE_FILE_LOG_DESC)
+        self.install_func("/delete_logger", self.delete_logger, String.kName,
+                          LOG_DELETE_LOGGER_DESC)
         self.install_func("/off_console_log_by_level",
-                          self.off_console_log_by_level, Log.kName)
+                          self.off_console_log_by_level, Log.kName,
+                          LOG_OFF_CONSOLE_LOG_BY_LEVEL_DESC)
         self.install_func("/on_console_log_by_level",
-                          self.on_console_log_by_level, Log.kName)
+                          self.on_console_log_by_level, Log.kName,
+                          LOG_ON_CONSOLE_LOG_BY_LEVEL_DESC)
         # 调试内省接口，端点挂在本服务 funcMap；/loggers、/logger 均传类型参数
-        self.install_func("/loggers", self.loggers, String.kName)
-        self.install_func("/logger", self.logger_info, LoggerQuery.kName)
-        self.install_func("/all", self.list_all)
-        self.install_func("/console_global_state", self.console_global_state)
+        self.install_func("/loggers", self.loggers, String.kName,
+                          LOG_LOGGERS_DESC)
+        self.install_func("/logger", self.logger_info, LoggerQuery.kName,
+                          LOG_LOGGER_DESC)
+        self.install_func("/all", self.list_all, "", LOG_ALL_DESC)
+        self.install_func("/console_global_state", self.console_global_state, "",
+                          LOG_CONSOLE_GLOBAL_STATE_DESC)
         self.install_func("/off_file_log_by_level",
-                          self.off_file_log_by_level, Log.kName)
+                          self.off_file_log_by_level, Log.kName,
+                          LOG_OFF_FILE_LOG_BY_LEVEL_DESC)
         self.install_func("/on_file_log_by_level",
-                          self.on_file_log_by_level, Log.kName)
-        self.install_func("/file_global_state", self.file_global_state)
+                          self.on_file_log_by_level, Log.kName,
+                          LOG_ON_FILE_LOG_BY_LEVEL_DESC)
+        self.install_func("/file_global_state", self.file_global_state, "",
+                          LOG_FILE_GLOBAL_STATE_DESC)
         return 0
 
     def console_log(self, pkg):

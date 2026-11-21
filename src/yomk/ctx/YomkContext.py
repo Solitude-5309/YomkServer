@@ -14,6 +14,22 @@ from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray, type_mismatch
 from yomk.msgs.YomkMsg import unpack
 from yomk.server import YomkService
+from yomk.url.ctx import (
+    CTX_ALL_DESC,
+    CTX_CREATE_DESC,
+    CTX_DESTROY_DESC,
+    CTX_GET_DESC,
+    CTX_GROUPS_DESC,
+    CTX_KEY_DESC,
+    CTX_KEYS_DESC,
+    CTX_SET_CHECKER_DESC,
+    CTX_SET_DESC,
+    CTX_SET_MONITOR_DESC,
+    CTX_TURN_OFF_CHECKER_DESC,
+    CTX_TURN_OFF_MONITOR_DESC,
+    CTX_TURN_ON_CHECKER_DESC,
+    CTX_TURN_ON_MONITOR_DESC,
+)
 
 
 class YomkContext(YomkService):
@@ -30,20 +46,28 @@ class YomkContext(YomkService):
         self.m_customGroupMutex = rwlock.RWLockFair()
 
     def init(self):
-        self.install_func("/create", self.create, Context.kName)
-        self.install_func("/destroy", self.destroy, ContextGroupKey.kName)
-        self.install_func("/get", self.get, Context.kName)
-        self.install_func("/set", self.set, Context.kName)
-        self.install_func("/turn_on_checker", self.turn_on_checker, String.kName)
-        self.install_func("/turn_off_checker", self.turn_off_checker, String.kName)
-        self.install_func("/set_checker", self.set_checker, ContextChecker.kName)
-        self.install_func("/turn_on_monitor", self.turn_on_monitor, String.kName)
-        self.install_func("/turn_off_monitor", self.turn_off_monitor, String.kName)
-        self.install_func("/set_monitor", self.set_monitor, ContextMonitor.kName)
-        self.install_func("/groups", self.groups)
-        self.install_func("/keys", self.keys, String.kName)
-        self.install_func("/key", self.key_info, ContextGroupKey.kName)
-        self.install_func("/all", self.list_all)
+        self.install_func("/create", self.create, Context.kName, CTX_CREATE_DESC)
+        self.install_func("/destroy", self.destroy, ContextGroupKey.kName,
+                          CTX_DESTROY_DESC)
+        self.install_func("/get", self.get, Context.kName, CTX_GET_DESC)
+        self.install_func("/set", self.set, Context.kName, CTX_SET_DESC)
+        self.install_func("/turn_on_checker", self.turn_on_checker, String.kName,
+                          CTX_TURN_ON_CHECKER_DESC)
+        self.install_func("/turn_off_checker", self.turn_off_checker, String.kName,
+                          CTX_TURN_OFF_CHECKER_DESC)
+        self.install_func("/set_checker", self.set_checker, ContextChecker.kName,
+                          CTX_SET_CHECKER_DESC)
+        self.install_func("/turn_on_monitor", self.turn_on_monitor, String.kName,
+                          CTX_TURN_ON_MONITOR_DESC)
+        self.install_func("/turn_off_monitor", self.turn_off_monitor, String.kName,
+                          CTX_TURN_OFF_MONITOR_DESC)
+        self.install_func("/set_monitor", self.set_monitor, ContextMonitor.kName,
+                          CTX_SET_MONITOR_DESC)
+        self.install_func("/groups", self.groups, "", CTX_GROUPS_DESC)
+        self.install_func("/keys", self.keys, String.kName, CTX_KEYS_DESC)
+        self.install_func("/key", self.key_info, ContextGroupKey.kName,
+                          CTX_KEY_DESC)
+        self.install_func("/all", self.list_all, "", CTX_ALL_DESC)
 
     def deinit(self):
         # 排空式停止监控池由组自持（拒新 -> 排空 -> join）：返回前存量异步监控任务已全部执行；

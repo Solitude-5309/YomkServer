@@ -31,7 +31,7 @@ DOMAINS = ["server", "boot", "ctx", "fn_pool", "event_loop", "log", "srv_info",
 
 # 域名 → __all__ 快照（与各域 src/yomk/<域>/__init__.py 定型清单一致；
 # 公开面对齐 C++ 口径：仅域入口 + builder + payload + YomkService 基类，
-# 服务类/内部类不导出（U-12 决策 a)，__version__ 保留））
+# 服务类/内部类不导出，__version__ 保留）
 EXPECTED = {
     "server": [
         "__version__",
@@ -66,10 +66,12 @@ EXPECTED = {
         "srv_info", "SrvInfoBuilder",
     ],
     # url 常量池（yomk.url 命名空间 + 各域子包，与 msg 同构）：无 __version__（非版本化域），
-    # 逐域轮次扩充（第 2 轮 fn_pool、第 3 轮 log、第 4 轮 srv_info、第 5 轮 ctx、第 6 轮 event_loop）
+    # 每域导出 URL 常量 + 与之一一对应的 *_DESC 内省描述常量
     "url.fn_pool": [
         "FP_ALL", "FP_CALL", "FP_NAME", "FP_NAMES", "FP_REGISTER",
         "FP_UNREGISTER",
+        "FP_ALL_DESC", "FP_CALL_DESC", "FP_NAME_DESC", "FP_NAMES_DESC",
+        "FP_REGISTER_DESC", "FP_UNREGISTER_DESC",
     ],
     "url.log": [
         "LOG_ALL", "LOG_CONSOLE_GLOBAL_STATE", "LOG_CONSOLE_LOG",
@@ -79,19 +81,36 @@ EXPECTED = {
         "LOG_ON_CONSOLE_LOG_BY_LEVEL", "LOG_ON_FILE_LOG_BY_LEVEL",
         "LOG_SET_CONSOLE_PROXY", "LOG_SET_FILE_LOG_PROXY",
         "LOG_WRITE_FILE_LOG",
+        "LOG_ALL_DESC", "LOG_CONSOLE_GLOBAL_STATE_DESC", "LOG_CONSOLE_LOG_DESC",
+        "LOG_CREATE_FILE_LOGGER_DESC", "LOG_DELETE_LOGGER_DESC",
+        "LOG_FILE_GLOBAL_STATE_DESC", "LOG_FILE_LOG_DESC", "LOG_LOGGER_DESC",
+        "LOG_LOGGERS_DESC", "LOG_OFF_CONSOLE_LOG_BY_LEVEL_DESC",
+        "LOG_OFF_FILE_LOG_BY_LEVEL_DESC", "LOG_ON_CONSOLE_LOG_BY_LEVEL_DESC",
+        "LOG_ON_FILE_LOG_BY_LEVEL_DESC", "LOG_SET_CONSOLE_PROXY_DESC",
+        "LOG_SET_FILE_LOG_PROXY_DESC", "LOG_WRITE_FILE_LOG_DESC",
     ],
     "url.srv_info": [
         "SRV_ALL", "SRV_FUNCTION", "SRV_FUNCTIONS", "SRV_SERVICES",
+        "SRV_ALL_DESC", "SRV_FUNCTION_DESC", "SRV_FUNCTIONS_DESC",
+        "SRV_SERVICES_DESC",
     ],
     "url.ctx": [
         "CTX_ALL", "CTX_CREATE", "CTX_DESTROY", "CTX_GET", "CTX_GROUPS",
         "CTX_KEY", "CTX_KEYS", "CTX_SET", "CTX_SET_CHECKER",
         "CTX_SET_MONITOR", "CTX_TURN_OFF_CHECKER", "CTX_TURN_OFF_MONITOR",
         "CTX_TURN_ON_CHECKER", "CTX_TURN_ON_MONITOR",
+        "CTX_ALL_DESC", "CTX_CREATE_DESC", "CTX_DESTROY_DESC", "CTX_GET_DESC",
+        "CTX_GROUPS_DESC", "CTX_KEY_DESC", "CTX_KEYS_DESC", "CTX_SET_DESC",
+        "CTX_SET_CHECKER_DESC", "CTX_SET_MONITOR_DESC",
+        "CTX_TURN_OFF_CHECKER_DESC", "CTX_TURN_OFF_MONITOR_DESC",
+        "CTX_TURN_ON_CHECKER_DESC", "CTX_TURN_ON_MONITOR_DESC",
     ],
     "url.event_loop": [
         "LOOP_ALL", "LOOP_DESTROY", "LOOP_LOOP", "LOOP_LOOPS", "LOOP_POST",
         "LOOP_POST_WAIT", "LOOP_START", "LOOP_STOP",
+        "LOOP_ALL_DESC", "LOOP_DESTROY_DESC", "LOOP_LOOP_DESC",
+        "LOOP_LOOPS_DESC", "LOOP_POST_DESC", "LOOP_POST_WAIT_DESC",
+        "LOOP_START_DESC", "LOOP_STOP_DESC",
     ],
 }
 
@@ -109,7 +128,7 @@ def check(cond, msg):
 def main():
     check(yomk.__file__ is None,
           "命名空间锚点: yomk 顶层无 __init__（__file__ is None）")
-    # yomk.msgs 自标准工具层（闭环 1）起为常规包：标准工具 + std 类顶层导出 12 项
+    # yomk.msgs 为标准工具层常规包：标准工具 + std 类顶层导出
     check(yomk.msgs.__file__ is not None,
           "命名空间锚点: yomk.msgs 层有 __init__（标准工具层顶层导出）")
 

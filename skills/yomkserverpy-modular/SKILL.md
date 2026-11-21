@@ -31,7 +31,7 @@ description: 基于YomkServerPy框架的模块化Python工程编程。核心理�
 完整规则与实战陷阱见 [YomkMsg.md](YomkMsg.md)（agent 必读），三条铁律摘要：
 
 1. **定义**：消息类必须继承 `YomkMsg`（`from yomk.msgs import YomkMsg`）——kName 运行期类型名自动生成、随重命名跟随，**禁止手写**；标准标量/数组用 std 类（`String`/`Int64`/`BoolArray`/... ，定义于 `yomk.msgs.std_msg`）。
-2. **声明**：`install_func` 第三参一律传 `Xxx.kName`（如 `String.kName`），**禁止手写报文串**（旧写法已废弃）。
+2. **声明**：`install_func` 第三参一律传 `Xxx.kName`（如 `String.kName`），**禁止手写报文串**（旧写法已废弃）；第四参写内省描述——内置端点统一五章节格式（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`），自定义服务建议沿用并把常量放 `yomk.url.<域>` 常量池（见 docs/YomkServer.md「内省描述惯例」）。
 3. **校验**：端点体内 `if unpack(pkg, Xxx) is None: return Response(ResStatus.eNo, type_mismatch(pkg, Xxx.kName))`——框架不做分发校验，责任在端点作者；契约文案双侧均为 kName（体系外对象 got 侧报 `"null"`）。标量端点取值 `pkg.value`；内省清单取值 `.items`。
 
 ## 任务一：生成工程模板
@@ -140,12 +140,29 @@ resp = server().url("/XxxService/my_func").msg(MyData("hello", 1)).request()
 
 ### 服务内省（调试）
 
-框架内置 `/YomkServerInfo` 服务（随 `server().init()` 自动启动），经服务器域内省读终结查询：服务列表、函数列表、单函数元信息、全量拓扑。功能函数安装时用 `install_func` 三参形式声明期望消息类型、四参附函数说明（均仅作内省元数据，不参与运行时校验；说明经 `fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）：
+框架内置 `/YomkServerInfo` 服务（随 `server().init()` 自动启动），经服务器域内省读终结查询：服务列表、函数列表、单函数元信息、全量拓扑。功能函数安装时用 `install_func` 三参形式声明期望消息类型、四参附函数说明（均仅作内省元数据，不参与运行时校验；说明经 `fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）。**全部内置 48 个端点均已预置五章节内省文本**（Overview / Inputs / Outputs / Behavior / Notes，正文中文、字段名按 Python 实际带 `m_` 前缀），常量与 URL 同置 `yomk.url.<域>` 常量池（`<URL常量名>_DESC`）；直接用 `srv_info().all()` 即可读完端点语义。自定义服务建议沿用同一格式：
 
 ```python
+MY_DESC = """
+# Overview
+示例端点：回显入参。
+
+# Inputs
+String 包，value 为待回显文本。
+
+# Outputs
+data 无负载，msg 为回显文本。
+
+# Behavior
+同步执行，纯读无副作用。
+
+# Notes
+pkg 非 String → Failed。
+"""
+
 def init(self):
     self.install_func("/my_func", self.my_func, "MyData")  # 三参：内省可见类型 MyData
-    self.install_func("/my_desc", self.my_desc, "MyData", "说明")  # 四参：类型 + 函数说明
+    self.install_func("/my_desc", self.my_desc, "MyData", MY_DESC)  # 四参：类型 + 五章节内省描述
     return 0
 
 srv_info().services()                              # 服务列表（data 为服务名列表）

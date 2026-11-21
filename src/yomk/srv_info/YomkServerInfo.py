@@ -7,6 +7,12 @@ from yomk.msgs.std_msg import String, StringArray, type_mismatch
 from yomk.msgs.fn_pool import FuncInfoList
 from yomk.msgs.YomkMsg import unpack
 from yomk.server import YomkService
+from yomk.url.srv_info import (
+    SRV_ALL_DESC,
+    SRV_FUNCTION_DESC,
+    SRV_FUNCTIONS_DESC,
+    SRV_SERVICES_DESC,
+)
 from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn
 
@@ -28,10 +34,13 @@ class YomkServerInfo(YomkService):
         self.set_name("/YomkServerInfo")
 
     def init(self):
-        self.install_func("/services", self.list_services)
-        self.install_func("/functions", self.list_functions, String.kName)
-        self.install_func("/function", self.function_info, String.kName)
-        self.install_func("/all", self.list_all)
+        self.install_func("/services", self.list_services, "",
+                          SRV_SERVICES_DESC)
+        self.install_func("/functions", self.list_functions, String.kName,
+                          SRV_FUNCTIONS_DESC)
+        self.install_func("/function", self.function_info, String.kName,
+                          SRV_FUNCTION_DESC)
+        self.install_func("/all", self.list_all, "", SRV_ALL_DESC)
         return 0
 
     def _locked_server(self):

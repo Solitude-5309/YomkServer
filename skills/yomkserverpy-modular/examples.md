@@ -586,13 +586,31 @@ class PoolUserService(YomkService):
 
 ## 示例5：服务内省（调试）
 
-期望消息类型由 `install_func` 三参形式声明（**一律传 `msg.kName`**，内省值为全限定 kName）、函数说明由四参声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 unpack + type_mismatch 承担，见 docs/YomkMsg.md；说明经 `srv_info().fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）。内省查询走独立域入口 `srv_info()`（`from yomk.srv_info import srv_info`）：
+期望消息类型由 `install_func` 三参形式声明（**一律传 `msg.kName`**，内省值为全限定 kName）、函数说明由四参声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 unpack + type_mismatch 承担，见 docs/YomkMsg.md；说明经 `srv_info().fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）。**全部内置 48 个端点均已预置五章节内省文本**（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`，常量 `<URL>_DESC` 与 URL 同置 `yomk.url.<域>`，字段名按 Python 实际带 `m_` 前缀），`srv_info().all()` 即可读完端点语义；自定义服务建议沿用同一格式。内省查询走独立域入口 `srv_info()`（`from yomk.srv_info import srv_info`）：
 
 ```python
+# 五章节内省描述：常量与 URL 常量同置 yomk.url.<域> 常量池
+WITH_DESC = """
+# Overview
+带说明的示例端点。
+
+# Inputs
+MyData 包。
+
+# Outputs
+data 无负载，msg "ok"。
+
+# Behavior
+同步执行，纯读无副作用。
+
+# Notes
+pkg 非 MyData → Failed。
+"""
+
 class DemoService(YomkService):
     def init(self):
         self.install_func("/with_type", self.with_type, MyData.kName)  # 三参：内省可见类型（kName 全限定）
-        self.install_func("/with_desc", self.with_desc, MyData.kName, "函数说明")  # 四参：类型 + 说明
+        self.install_func("/with_desc", self.with_desc, MyData.kName, WITH_DESC)  # 四参：类型 + 五章节描述
         self.install_func("/no_type", self.no_type)                # 兼容写法，内省无类型
         return 0
 
@@ -605,10 +623,10 @@ resp = srv_info().services()
 # 指定服务的函数结构化清单（data 为 FuncInfo 列表，与单查同族；服务不存在返回空清单）
 resp = srv_info().srv_name("/DemoService").functions()
 # resp.data: [FuncInfo("/no_type"), FuncInfo("/with_type", "MyData"),
-#             FuncInfo("/with_desc", "MyData", "函数说明")]
+#             FuncInfo("/with_desc", "MyData", WITH_DESC)]
 
 # 单函数元信息（命中 msg 恒 "ok"，data 为 FuncInfo 包：func_name/msg_name/description）
-srv_info().fn_url("/DemoService/with_desc").get_info()  # ok, msg_name="MyData", description="函数说明"
+srv_info().fn_url("/DemoService/with_desc").get_info()  # ok, msg_name="MyData", description=WITH_DESC
 srv_info().fn_url("/DemoService/with_type").get_info()  # ok, msg_name="MyData"
 srv_info().fn_url("/DemoService/no_type").get_info()    # ok, msg_name 空串（未声明）
 srv_info().fn_url("/DemoService/not_exist").get_info()  # Failed

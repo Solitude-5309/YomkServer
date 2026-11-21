@@ -6,6 +6,14 @@ from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray, type_mismatch
 from yomk.msgs.YomkMsg import unpack
 from yomk.server import YomkService
+from yomk.url.fn_pool import (
+    FP_ALL_DESC,
+    FP_CALL_DESC,
+    FP_NAME_DESC,
+    FP_NAMES_DESC,
+    FP_REGISTER_DESC,
+    FP_UNREGISTER_DESC,
+)
 
 
 class YomkFunctionPool(YomkService):
@@ -17,13 +25,16 @@ class YomkFunctionPool(YomkService):
 
     def init(self):
         # URL 装配顺序/register /unregister /call /names /name /all
-        self.install_func("/register", self.registerFunction, Function.kName)
-        self.install_func("/unregister", self.unRegisterFunction, String.kName)
-        self.install_func("/call", self.callFunction, CallFunction.kName)
+        self.install_func("/register", self.registerFunction, Function.kName,
+                          FP_REGISTER_DESC)
+        self.install_func("/unregister", self.unRegisterFunction, String.kName,
+                          FP_UNREGISTER_DESC)
+        self.install_func("/call", self.callFunction, CallFunction.kName,
+                          FP_CALL_DESC)
         # 调试内省接口，端点挂在本服务 funcMap
-        self.install_func("/names", self.funcNames)
-        self.install_func("/name", self.funcInfo, String.kName)
-        self.install_func("/all", self.listAll)
+        self.install_func("/names", self.funcNames, "", FP_NAMES_DESC)
+        self.install_func("/name", self.funcInfo, String.kName, FP_NAME_DESC)
+        self.install_func("/all", self.listAll, "", FP_ALL_DESC)
 
     def registerFunction(self, function):
         # 端点载荷形参一律不带类型注解：Cython 会把注解编译为边界 TypeError，

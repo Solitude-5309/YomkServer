@@ -7,6 +7,16 @@ from yomk.msgs.std_msg import String, StringArray, type_mismatch
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.YomkMsg import unpack
 from yomk.server import YomkService
+from yomk.url.event_loop import (
+    LOOP_ALL_DESC,
+    LOOP_DESTROY_DESC,
+    LOOP_LOOP_DESC,
+    LOOP_LOOPS_DESC,
+    LOOP_POST_DESC,
+    LOOP_POST_WAIT_DESC,
+    LOOP_START_DESC,
+    LOOP_STOP_DESC,
+)
 
 
 class YomkEventLoop(YomkService):
@@ -20,15 +30,19 @@ class YomkEventLoop(YomkService):
         self.m_eventLoopMutex = rwlock.RWLockFair()
 
     def init(self):
-        self.install_func("/start", self.start, EventLoopOpts.kName)
-        self.install_func("/stop", self.stop, String.kName)
-        self.install_func("/post", self.post, Event.kName)
-        self.install_func("/post_wait", self.post_wait, Event.kName)
-        self.install_func("/destroy", self.destroy, String.kName)
+        self.install_func("/start", self.start, EventLoopOpts.kName,
+                          LOOP_START_DESC)
+        self.install_func("/stop", self.stop, String.kName, LOOP_STOP_DESC)
+        self.install_func("/post", self.post, Event.kName, LOOP_POST_DESC)
+        self.install_func("/post_wait", self.post_wait, Event.kName,
+                          LOOP_POST_WAIT_DESC)
+        self.install_func("/destroy", self.destroy, String.kName,
+                          LOOP_DESTROY_DESC)
         # 调试内省接口，端点挂在本服务 funcMap
-        self.install_func("/loops", self.loops)
-        self.install_func("/loop", self.loop_info, EventLoopQuery.kName)
-        self.install_func("/all", self.list_all)
+        self.install_func("/loops", self.loops, "", LOOP_LOOPS_DESC)
+        self.install_func("/loop", self.loop_info, EventLoopQuery.kName,
+                          LOOP_LOOP_DESC)
+        self.install_func("/all", self.list_all, "", LOOP_ALL_DESC)
         return 0
 
     def _not_found(self, loop_name):

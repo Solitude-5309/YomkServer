@@ -52,14 +52,32 @@ from yomk.ctx import ctx
 from yomk.fn_pool import fn_pool
 from yomk.log import log
 
+# 端点内省描述：五章节固定格式（见下节「内省描述惯例」）
+HELLO_DESC = """
+# Overview
+打招呼示例端点。
+
+# Inputs
+String 包，value 为称呼。
+
+# Outputs
+data 无负载，msg 为问候语。
+
+# Behavior
+同步执行，纯读无副作用。
+
+# Notes
+pkg 非 String → Failed。
+"""
+
 class MyService(YomkService):
     def __init__(self, server):
         super().__init__(server)
         self.set_name("/MyService")
 
     def init(self):
-        # 三参声明期望消息类型（一律传 msg.kName）；String 为标准标量类
-        self.install_func("/hello", self.hello, String.kName)  # 注册即自动弱绑定
+        # 四参：期望消息类型（一律传 msg.kName）+ 内省描述（注册即自动弱绑定）
+        self.install_func("/hello", self.hello, String.kName, HELLO_DESC)
 
     def hello(self, pkg):
         # 端点体内精确校验：unpack + type_mismatch（期望/实际双侧均为 kName）
@@ -80,6 +98,32 @@ log().info("Response:", ret.msg)
 
 server().srv_name("/MyService").remove()         # 删除服务（触发 deinit）
 server().shutdown()                              # 优雅关闭
+```
+
+## 内省描述惯例（第四参 description）
+
+`install_func(name, function, msg_name="", description="")` 第四参是端点的**功能语义澄清**——非强制约束，仅为让内省消费者（主要是 coding agent）不读源码即可理解端点行为，越清晰越好。全部内置服务的 48 个端点均已按此惯例填写，自定义服务遵循同一格式：
+
+- **布局**：描述常量与 URL 常量**同置各域 `src/yomk/url/<域>/__init__.py`**——URL 常量集中在前、描述常量集中在后（按序一一对应），命名对称（`CTX_CREATE` / `CTX_CREATE_DESC`），类型为三引号多行 `str`（首尾带换行，等价 C++ `R"(...)"`）；`__all__` 与同名 `.pyi` 同步登记。`install_func` 第四参仅引用常量，安装表一行一端点，一眼可扫；
+- **格式**：一律多行字符串，固定五章节且顺序不变——`# Overview`（做什么、语义边界）、`# Inputs`（请求载荷字段与前置参数）、`# Outputs`（返回的 status/msg/data 与回调载荷）、`# Behavior`（同步/异步、阻塞语义、副作用、线程上下文）、`# Notes`（约束、前置条件、线程安全、生命周期陷阱、失败归因）。标题行逐字固定（`# ` 后接英文节名），正文用中文；某章节无内容时**保留标题、正文留空**，不得删除章节；
+- **字段名按 Python 实际**：消息属性带 `m_` 前缀（如 `m_logger`、`m_tag`、`m_eventLoopName`），跨语言移植描述时不得照抄 C++ 字段名；
+- **失败归因写在 Notes**：按框架三态归因（Invalid=入参非法，Failed=业务未命中/冲突），并写清哪种失败走哪一态。
+
+文案必须与实现相符（依据处理函数真实分支写，不确定的分支不写）。内省数据的消费入口为 `srv_info()`（`services` / `functions` / `fn_url(...).get_info()` / `all()`），`FuncInfo.description` 原样透出。
+
+```python
+# src/yomk/url/ctx/__init__.py —— URL 先集中、描述后集中（自描述路由表）
+CTX_CREATE = "/YomkContext/create"
+CTX_KEYS = "/YomkContext/keys"
+
+CTX_CREATE_DESC = """
+# Overview
+在指定组（缺省 main）创建上下文键并写入值包；create 是键的唯一创建入口，set 只能更新已存在的键。
+
+# Inputs
+Context 包：key 键名；value 值包（非空）；group 组名（缺省 "main"）。
+...
+"""
 ```
 
 ## 弱绑定（防失效回调）
