@@ -9,9 +9,6 @@ class YomkMsg:
     def __init__(self) -> None: ...
 
 
-def class_arg_name(cls: object) -> str: ...
-
-
 def require_msg(v: object, who: str) -> None: ...
 
 

@@ -26,7 +26,7 @@
 | 上下文值 | `ctx().key(k).value(pkg).create()/.set()` | `TypeError: value() requires a YomkMsg instance or None, got 'str'` |
 | 上下文兜底 | `ctx().key(k).msg(cls).with_default(pkg)` | `TypeError: with_default requires '<cls.TYPE_NAME>' or None, got 'str'` |
 
-分类口径：入口类型契约违例一律 `TypeError`（调用方编程错误，当场炸出并归因到行）；got 侧统一由 `type_name_of` 生成——消息报 `TYPE_NAME`、`None` 报 `"null"`、体系外对象报其宿主类名（如 `"str"`）。`ResStatus` 只表运行期业务失败。跨边界收到的消息包类型不符期望时，端点返回 `Failed/eNo` + `type_mismatch` 文案，不抛异常。
+分类口径：入口类型契约违例一律 `TypeError`（调用方编程错误，当场炸出并归因到行）；got 侧统一由 `type_name_of` 生成——消息报 `TYPE_NAME`、`None` 报 `"null"`、类对象报其类名（如 `"String"`）、其余对象报宿主类名（如 `"str"`）。`ResStatus` 只表运行期业务失败。跨边界收到的消息包类型不符期望时，端点返回 `Failed/eNo` + `type_mismatch` 文案，不抛异常。
 
 ## API 速查
 
@@ -77,7 +77,7 @@ def echo(self, pkg):
 
 `type_name_of(pkg)` / `type_mismatch(pkg, expected)`（对齐 C++ `typeNameOf`/`typeMismatch`，与基类/解包/守卫同置 `yomk.msgs.YomkMsg`）：
 
-- `type_name_of` 三态：具体消息实例 → 其 `TYPE_NAME`；`None` → `"null"`；体系外对象 → 其宿主类名（如 `"str"`，始终返回类型名，不以 `"null"` 掩盖误用）；
+- `type_name_of` 四态：具体消息实例 → 其 `TYPE_NAME`；`None` → `"null"`；类对象 → 其 `__name__`（如 `"String"` / `"str"`，供 cls 实参诊断）；其余对象 → 其宿主类名（如 `"str"`；始终返回类型名，不以 `"null"` 掩盖误用）；
 - `type_mismatch` 构造标准不符文案 `"pkg is not <expected>, got '<type_name_of(pkg)>'"`，expected 由调用方传 `cls.TYPE_NAME`——期望/实际双侧均为权威 TYPE_NAME。
 
 ## 完整示例（定义 → 声明 → 端点校验 → 调用）

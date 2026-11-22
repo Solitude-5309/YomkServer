@@ -16,7 +16,6 @@ from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import (
     YomkMsg,
-    class_arg_name,
     require_msg,
     type_name_of,
     unpack,
@@ -72,7 +71,7 @@ class ContextValueBuilder:
                 and cls is not YomkMsg):
             raise TypeError(
                 "context typed read class must derive YomkMsg, got '"
-                + class_arg_name(cls) + "'")
+                + type_name_of(cls) + "'")
         self._key = key
         self._group = group
         self._cls = cls

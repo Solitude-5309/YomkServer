@@ -19,7 +19,8 @@
 | `unpack(x, 非消息类 / YomkMsg 基类)` | 抛 `TypeError`（`unpack requires a concrete YomkMsg subclass`） |
 | `type_name_of(具体消息实例)` | 其 TYPE_NAME |
 | `type_name_of(None)` | `"null"` |
-| `type_name_of(裸str / 任意非消息对象)` | 其宿主类名（如 `"str"`；始终返回类型名，不以 `"null"` 掩盖误用） |
+| `type_name_of(类对象)` | 其 `__name__`（如 `"String"` / `"str"`，供 cls 实参诊断） |
+| `type_name_of(裸str / 其余对象)` | 其宿主类名（如 `"str"`；始终返回类型名，不以 `"null"` 掩盖误用） |
 
 ## std 类与 List
 

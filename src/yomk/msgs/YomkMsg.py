@@ -32,15 +32,6 @@ class YomkMsg:
         cls.TYPE_NAME = (parent if parent else mod) + "." + cls.__qualname__
 
 
-def class_arg_name(cls):
-    """Describe a class argument by its own ``__name__`` when available.
-
-    描述类实参：优先类自身的 ``__name__``，非类回退宿主类名。
-    """
-    name = getattr(cls, "__name__", None)
-    return name if isinstance(name, str) else type(cls).__name__
-
-
 def require_msg(v, who):
     """Raise TypeError unless v is a concrete YomkMsg instance or None.
 
@@ -65,7 +56,7 @@ def unpack(pkg, cls):
     if not (isinstance(cls, type) and issubclass(cls, YomkMsg)
             and cls is not YomkMsg):
         raise TypeError("unpack requires a concrete YomkMsg subclass, got '"
-                        + class_arg_name(cls) + "'")
+                        + type_name_of(cls) + "'")
     if isinstance(pkg, YomkMsg) and type(pkg) is not YomkMsg \
             and type(pkg).TYPE_NAME == cls.TYPE_NAME:
         return pkg
@@ -73,15 +64,17 @@ def unpack(pkg, cls):
 
 
 def type_name_of(pkg):
-    """Return the runtime type name of a message, or its host class name otherwise.
+    """Return the runtime type name of a message, or a descriptive name otherwise.
 
-    返回消息的运行期类型名（TYPE_NAME）；None 返回 "null"，体系外对象返回其宿主
-    类名（如 "str"），从不以 "null" 掩盖误用。对应 C++ ``typeNameOf``。
+    返回消息的运行期类型名（TYPE_NAME）；None 返回 "null"，类对象返回其类名，
+    其余返回宿主类名，从不以 "null" 掩盖误用。对应 C++ ``typeNameOf``。
     """
     if pkg is None:
         return "null"
     if isinstance(pkg, YomkMsg) and type(pkg) is not YomkMsg:
         return type(pkg).TYPE_NAME
+    if isinstance(pkg, type):
+        return pkg.__name__
     return type(pkg).__name__
 
 
