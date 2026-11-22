@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from readerwriterlock import rwlock
 
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.YomkMsg import require_msg
+from yomk.msgs.YomkMsg import require_msg_payload
 from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn
 from yomk.server.YomkService import YomkService
@@ -198,7 +198,7 @@ class YomkServer:
         按 URL 路由到目标服务；解析失败或服务不存在返回 No。
         载荷必须是消息实例或 None，否则入口当场 TypeError。
         """
-        require_msg(pkg, "request()")
+        require_msg_payload(pkg, "request()")
         srv_name, func_name, err_msg = self._parse_request_url(url)
         if err_msg:
             diag_warn(err_msg)
@@ -221,7 +221,7 @@ class YomkServer:
         异步提交请求，结果经 callback 回调，无返回值；解析失败、已关闭或池已停止时
         记诊断并丢弃。载荷必须是消息实例或 None，否则入口当场 TypeError。
         """
-        require_msg(pkg, "async_request()")
+        require_msg_payload(pkg, "async_request()")
         srv_name, func_name, err_msg = self._parse_request_url(url)
         if err_msg:
             diag_warn(err_msg)

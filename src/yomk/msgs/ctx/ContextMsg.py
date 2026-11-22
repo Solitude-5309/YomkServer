@@ -4,7 +4,7 @@ ctx 域消息：组名 group 恒为构造参数最后一位，缺省 "main"。
 """
 
 from enum import Enum
-from yomk.msgs.YomkMsg import YomkMsg, require_msg
+from yomk.msgs.YomkMsg import YomkMsg, require_msg_payload
 
 
 class Context(YomkMsg):
@@ -14,7 +14,7 @@ class Context(YomkMsg):
     """
 
     def __init__(self, key="", value=None, group="main"):
-        require_msg(value, "Context.value")
+        require_msg_payload(value, "Context.value")
         self.key = key
         self.value = value
         self.group = group

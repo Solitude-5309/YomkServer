@@ -15,7 +15,7 @@ S3. unpack 语义：命中返回原对象、跨类型未命中返回 None、子�
     非消息类/基类 cls 直接 TypeError
 S4. type_name_of 四态：YomkMsg 实例报 TYPE_NAME、None 报 "null"、类对象报其
     类名（如 "String"/"str"）、其余对象报宿主类名（返回类型名而非句子描述）；
-    is_msg_instance / is_msg_subclass 判据真值表（require_msg / unpack / type_name_of 共用）
+    is_msg_payload / is_msg_subclass 判据真值表（require_msg_payload / unpack / type_name_of 共用；None 属合法空载荷）
 S5. type_mismatch 文案字面：标准格式 "pkg is not <expected>, got '<actual>'"，
     expected 传 cls.TYPE_NAME、actual 走 type_name_of 四态
 S6. 框架 msg TYPE_NAME 全查（闭环 2）：22 类改继承 + 6 结构化 List，28 类
@@ -51,7 +51,11 @@ from yomk.msgs import (
     type_name_of,
     unpack,
 )
-from yomk.msgs.YomkMsg import is_msg_instance, is_msg_subclass
+from yomk.msgs.YomkMsg import (
+    is_msg_payload,
+    is_msg_subclass,
+    require_msg_subclass,
+)
 from yomk.msgs.ctx import (
     Context,
     ContextChecker,
@@ -244,21 +248,31 @@ def s3_unpack():
 def s4_type_name_of():
     print("===== S4. type_name_of 四态 =====")
 
-    # is_msg_instance：require_msg / unpack / type_name_of 共用判据
-    check(is_msg_instance(String("x")) is True, "具体消息实例 → True")
-    check(is_msg_instance(StringArray(["a"])) is True, "数组实例 → True")
-    check(is_msg_instance(None) is False, "None → False")
-    check(is_msg_instance(YomkMsg()) is False, "直基类实例 → False")
-    check(is_msg_instance("bare") is False, "裸 str → False")
-    check(is_msg_instance(String) is False, "类对象 → False")
+    # is_msg_payload：require_msg_payload / unpack / type_name_of 共用载荷判据
+    check(is_msg_payload(String("x")) is True, "具体消息实例 → True")
+    check(is_msg_payload(StringArray(["a"])) is True, "数组实例 → True")
+    check(is_msg_payload(None) is True, "None 空载荷 → True")
+    check(is_msg_payload(YomkMsg()) is False, "直基类实例 → False")
+    check(is_msg_payload("bare") is False, "裸 str → False")
+    check(is_msg_payload(String) is False, "类对象 → False")
 
-    # is_msg_subclass：unpack / msg(cls) 共用的类域判据
+    # is_msg_subclass：require_msg_subclass / unpack 共用的类域判据
     check(is_msg_subclass(String) is True, "具体消息类 → True")
     check(is_msg_subclass(StringArray) is True, "数组消息类 → True")
     check(is_msg_subclass(YomkMsg) is False, "基类 → False")
     check(is_msg_subclass(str) is False, "体系外类 → False")
     check(is_msg_subclass("str") is False, "非类 → False")
     check(is_msg_subclass(None) is False, "None → False")
+
+    # require_msg_subclass：类域守卫，与 require_msg_payload 成对
+    require_msg_subclass(String, "probe()")
+    check(True, "具体消息类 → 不抛")
+    try:
+        require_msg_subclass(YomkMsg, "probe()")
+        check(False, "基类应抛 TypeError")
+    except TypeError as e:
+        check(str(e) == "probe() requires a concrete YomkMsg subclass, got 'YomkMsg'",
+              "基类 → TypeError 文案一致")
 
     # 第一态：YomkMsg 实例 → TYPE_NAME
     check(type_name_of(String("x")) == "yomk.msgs.String", "消息实例 → TYPE_NAME")

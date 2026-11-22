@@ -32,12 +32,13 @@ class YomkMsg:
         cls.TYPE_NAME = (parent if parent else mod) + "." + cls.__qualname__
 
 
-def is_msg_instance(v):
-    """Return True only for concrete YomkMsg subclass instances.
+def is_msg_payload(msg):
+    """Return True for a concrete YomkMsg instance or None (empty payload).
 
-    判据：仅具体消息子类实例为真；None、YomkMsg 直基类实例与体系外对象均为假。
+    载荷判据：具体消息子类实例或 None（空载荷）为真；YomkMsg 直基类实例、
+    类对象与体系外对象为假。与 require_msg_payload 契约同口径。
     """
-    return isinstance(v, YomkMsg) and type(v) is not YomkMsg
+    return msg is None or (isinstance(msg, YomkMsg) and type(msg) is not YomkMsg)
 
 
 def is_msg_subclass(cls):
@@ -49,16 +50,28 @@ def is_msg_subclass(cls):
             and cls is not YomkMsg)
 
 
-def require_msg(v, who):
-    """Raise TypeError unless v is a concrete YomkMsg instance or None.
+def require_msg_payload(msg, who):
+    """Raise TypeError unless msg is a concrete YomkMsg instance or None.
 
-    类型契约守卫：v 必须是具体消息实例或 None（空载荷），否则入口当场
+    类型契约守卫：msg 必须是具体消息实例或 None（空载荷），否则入口当场
     ``TypeError``。直接基类实例不可用（C++ 侧 YomkMsg 为抽象类），同样拒绝。
     """
-    if v is None or is_msg_instance(v):
+    if is_msg_payload(msg):
         return
     raise TypeError(who + " requires a YomkMsg instance or None, got '"
-                    + type_name_of(v) + "'")
+                    + type_name_of(msg) + "'")
+
+
+def require_msg_subclass(cls, who):
+    """Raise TypeError unless cls is a concrete YomkMsg subclass.
+
+    类域守卫：cls 必须是具体消息子类，否则当场 ``TypeError``；基类与
+    非类同样拒绝。与 require_msg_payload 成对，分别守类域与载荷入口。
+    """
+    if is_msg_subclass(cls):
+        return
+    raise TypeError(who + " requires a concrete YomkMsg subclass, got '"
+                    + type_name_of(cls) + "'")
 
 
 def unpack(pkg, cls):
@@ -68,10 +81,10 @@ def unpack(pkg, cls):
     对象（无类型边界探测）。cls 必须是具体消息类，否则 ``TypeError``。子类因
     TYPE_NAME 不同不会被当作父类实例命中，这是设计行为。
     """
-    if not is_msg_subclass(cls):
-        raise TypeError("unpack requires a concrete YomkMsg subclass, got '"
-                        + type_name_of(cls) + "'")
-    if is_msg_instance(pkg) and type(pkg).TYPE_NAME == cls.TYPE_NAME:
+    if pkg is None:
+        return None
+    require_msg_subclass(cls, "unpack")
+    if is_msg_payload(pkg) and type(pkg).TYPE_NAME == cls.TYPE_NAME:
         return pkg
     return None
 
@@ -84,7 +97,7 @@ def type_name_of(pkg):
     """
     if pkg is None:
         return "null"
-    if is_msg_instance(pkg):
+    if is_msg_payload(pkg):
         return type(pkg).TYPE_NAME
     if isinstance(pkg, type):
         return pkg.__name__

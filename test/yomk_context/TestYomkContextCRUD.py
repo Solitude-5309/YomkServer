@@ -134,7 +134,7 @@ def main():
                      "value() requires a YomkMsg instance or None, got 'str'",
                      "value() 裸值 TypeError 文案一致")
     check_type_error(lambda: ctx().key("str_key").msg(str),
-                     "context typed read class must derive YomkMsg, got 'str'",
+                     "context typed read class requires a concrete YomkMsg subclass, got 'str'",
                      "msg(str) TypeError 文案一致")
     check_type_error(lambda: ctx().key("str_key").msg(String).with_default("fallback"),
                      "with_default requires 'yomk.msgs.String' or None, got 'str'",
