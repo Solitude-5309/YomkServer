@@ -14,7 +14,7 @@ TestYomkService.py —— YomkService 命名/函数注册/调用白盒单元测�
 
 语言机制说明（非功能缺口）：
 - deleted/markDeleted 弱绑定判活不适用：python 功能函数为直接引用，无弱绑定包装层
-- python 消息包为普通类，"pkg 为空解包失败返回 eNo" 的守卫
+- python 消息包一律 YomkMsg 派生并经 unpack 解包，"pkg 为空解包失败返回 eNo" 的守卫
   由测试函数内显式判断承载（消息契约："pkg is null"）
 - 空服务器守卫形态：python 无转发层，set_name/install_func/func_infos/invoke 直接作用于本地
   字段/表，仅 request/async_request 保留 server 判空契约。
@@ -28,6 +28,7 @@ import io
 import contextlib
 import sys
 
+from yomk.msgs import String, YomkMsg, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService, server
 
@@ -49,8 +50,8 @@ def find_func_info(infos, func_name):
         return False, "", ""
     return True, info.msg_name, info.description
 
-class DemoPkg:
-    """演示消息包：python 消息包为普通类"""
+class DemoPkg(YomkMsg):
+    """演示消息包：YomkMsg 派生，TYPE_NAME 由框架生成"""
 
     def __init__(self, d=""):
         self.d = d
@@ -63,24 +64,25 @@ class DemoService(YomkService):
         self.set_name("/DemoService")
 
     def init(self):
-        # 三参：内省元数据 String
-        self.install_func("/echo", self.echo, "String")
+        # 三参：内省元数据 String.TYPE_NAME
+        self.install_func("/echo", self.echo, String.TYPE_NAME)
         self.install_func("/plain", self.plain)                    # 两参：无元数据
-        self.install_func("/reinstall", self.reinstall, "String")  # 先三参
+        self.install_func("/reinstall", self.reinstall, String.TYPE_NAME)  # 先三参
         # 两参覆盖：清残留元数据
         self.install_func("/reinstall", self.reinstall)
         self.install_func("/restore", self.restore)                # 先两参
-        self.install_func("/restore", self.restore, "String")      # 三参覆盖：恢复元数据
+        self.install_func("/restore", self.restore, String.TYPE_NAME)      # 三参覆盖：恢复元数据
         # 四参：类型元数据 + 函数说明；三参缺省说明为空
-        self.install_func("/desc", self.desc, "String", "demo description")
-        self.install_func("/desc0", self.desc0, "String")
+        self.install_func("/desc", self.desc, String.TYPE_NAME, "demo description")
+        self.install_func("/desc0", self.desc0, String.TYPE_NAME)
         return 0
 
     def echo(self, pkg):
-        # String 解包回显：pkg 为空时函数内守卫返回 eNo
-        if not pkg:
+        # DemoPkg 解包回显：未命中（含空包）时函数内守卫返回 eNo
+        msg = unpack(pkg, DemoPkg)
+        if msg is None:
             return Response(ResStatus.eNo, "pkg is null")
-        return Response(ResStatus.eOk, "echo:" + pkg.d)
+        return Response(ResStatus.eOk, "echo:" + msg.d)
 
     def plain(self, pkg):
         return Response(ResStatus.eOk, "plain")
@@ -158,20 +160,21 @@ def test_install_func(demo):
 
     # 三参元数据与覆盖安装
     found, msg_name, _ = find_func_info(infos, "/echo")
-    check(found and msg_name == "String", "三参安装声明元数据 msg_name == String")
+    check(found and msg_name == String.TYPE_NAME,
+          "三参安装声明元数据 msg_name == yomk.msgs.String")
     found, msg_name, _ = find_func_info(infos, "/plain")
     check(found and msg_name == "", "两参安装无元数据")
     found, msg_name, _ = find_func_info(infos, "/reinstall")
     check(found and msg_name == "", "两参覆盖安装清除残留元数据")
     found, msg_name, _ = find_func_info(infos, "/restore")
-    check(found and msg_name == "String", "三参覆盖安装恢复元数据")
+    check(found and msg_name == String.TYPE_NAME, "三参覆盖安装恢复元数据")
 
     # 四参函数说明：类型元数据与说明齐备；三参缺省说明为空
     found, msg_name, desc = find_func_info(infos, "/desc")
-    check(found and msg_name == "String" and desc == "demo description",
+    check(found and msg_name == String.TYPE_NAME and desc == "demo description",
           "四参安装类型元数据与函数说明齐备")
     found, msg_name, desc = find_func_info(infos, "/desc0")
-    check(found and msg_name == "String" and desc == "",
+    check(found and msg_name == String.TYPE_NAME and desc == "",
           "三参安装缺省函数说明为空")
 
     # 运行期覆盖安装：两参清除类型名与说明，再四参恢复
@@ -179,9 +182,9 @@ def test_install_func(demo):
     found, msg_name, desc = find_func_info(demo.func_infos(), "/desc")
     check(found and msg_name == "" and desc == "",
           "运行期两参覆盖安装清除类型名与函数说明")
-    demo.install_func("/desc", demo.desc, "String", "demo description")
+    demo.install_func("/desc", demo.desc, String.TYPE_NAME, "demo description")
     found, msg_name, desc = find_func_info(demo.func_infos(), "/desc")
-    check(found and msg_name == "String" and desc == "demo description",
+    check(found and msg_name == String.TYPE_NAME and desc == "demo description",
           "运行期四参覆盖安装恢复类型名与函数说明")
 
 # 5. invoke：命中（含 pkg 透传）与异常路径契约

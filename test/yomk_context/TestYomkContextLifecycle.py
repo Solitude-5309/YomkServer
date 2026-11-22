@@ -23,6 +23,7 @@ import sys
 import time
 
 from yomk.msgs.server import ResStatus
+from yomk.msgs.std_msg import String
 from yomk.server import YomkServer, server
 from yomk.ctx import ctx
 from yomk.ctx.YomkContext import YomkContext  # 白盒测试直用内部类，非公开面
@@ -79,14 +80,14 @@ def main():
 
     # ============ Section 2: 常规运行（异步 monitor 池工作）============
     ctx().monitor().enable()
-    resp = ctx().key("life_base").value("b0").create()
+    resp = ctx().key("life_base").value(String("b0")).create()
     check(resp == ResStatus.eOk, "创建 life_base 成功")
 
     g_async_calls.clear()
     ctx().key("life_base").monitor_fn(lambda c: g_async_calls.append(1)).async_(True).apply()
 
-    ctx().key("life_base").value("b1").set()
-    ctx().key("life_base").value("b2").set()
+    ctx().key("life_base").value(String("b1")).set()
+    ctx().key("life_base").value(String("b2")).set()
 
     reached = wait_for_count(g_async_calls, 2, 2.0)
     check(reached and len(g_async_calls) == 2,
@@ -95,7 +96,7 @@ def main():
 
     # ============ Section 3: del_service 触发 deinit + 排空 ============
     ctx().monitor().enable()
-    resp = ctx().key("life_drain").value("d0").create()
+    resp = ctx().key("life_drain").value(String("d0")).create()
     check(resp == ResStatus.eOk, "创建 life_drain 成功")
 
     g_async_calls.clear()
@@ -103,7 +104,7 @@ def main():
 
     n = 50
     for i in range(n):
-        ctx().key("life_drain").value(f"d{i}").set()
+        ctx().key("life_drain").value(String(f"d{i}")).set()
 
     # 立即删除服务：触发 deinit 排空 monitor 池
     del_ret = server().srv_name("/YomkContext").remove()
@@ -134,15 +135,15 @@ def main():
     check(len(infos) == 14, "重新注册后 init 重新装配 14 个功能函数")
 
     ctx().monitor().enable()
-    resp = ctx().key("life_rebuild").value("r0").create()
+    resp = ctx().key("life_rebuild").value(String("r0")).create()
     check(resp == ResStatus.eOk, "重新注册后创建 life_rebuild 成功")
 
     g_async_calls.clear()
     ctx().key("life_rebuild").monitor_fn(lambda c: g_async_calls.append(1)).async_(True).apply()
 
-    ctx().key("life_rebuild").value("r1").set()
-    ctx().key("life_rebuild").value("r2").set()
-    ctx().key("life_rebuild").value("r3").set()
+    ctx().key("life_rebuild").value(String("r1")).set()
+    ctx().key("life_rebuild").value(String("r2")).set()
+    ctx().key("life_rebuild").value(String("r3")).set()
 
     reached = wait_for_count(g_async_calls, 3, 2.0)
     check(reached and len(g_async_calls) == 3,

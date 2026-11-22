@@ -37,16 +37,17 @@ ExampleYomkFunctionPool —— YomkFunctionPool 动态函数池示例：机械�
        收班清柜：注销后调用、重复注销均返回 eNo（not-found 惯例）；
        /YomkFunctionPool/all 确认清单已空，班次闭环。
 
-工具函数规划（跨场景流转，模拟多模块共享同一批无状态工具）：
-  tool.payloadSum  无元数据登记            三轴负载合计（入参各轴 kg 列表，出参合计）
-  tool.handshake   声明类型+说明登记       班次握手（入参操作工名，出参问候语）
-  tool.handshake   声明类型再登记(V2)      热替换为升级版问候（场景 4）
+工具函数规划（跨场景流转，模拟多模块共享同一批无状态工具；载荷一律消息包）：
+  tool.payloadSum  无元数据登记           三轴负载合计（入参 StringArray，出参合计）
+  tool.handshake   声明类型+说明登记      班次握手（入参 String 操作工名，出参问候语）
+  tool.handshake   声明类型再登记(V2)     热替换为升级版问候（场景 4）
 
 运行方式：PYTHONPATH=src python3 examples/ExampleYomkFunctionPool.py
 """
 
 import sys
 
+from yomk.msgs import String, StringArray, type_mismatch, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import server
 from yomk.fn_pool import fn_pool
@@ -124,17 +125,17 @@ def log_verify(text):
 # ---------------------------------------------------------------------------
 
 # 负载合计工具：跨模块共享的无状态计算函数（场景 1 以无元数据形态登记）。
-# 入参为各轴负载列表（kg），合计结果同时放进 msg 与 data——调用方两者都能拿到
+# 入参为各轴负载消息（StringArray），合计结果同时放进 msg 与 data——调用方两者都能拿到
 def payload_sum(pkg) -> Response:
-    # 入参守卫：pkg 为 None 或不是字符串列表时自动返回 eNo
+    # 入参守卫：按期望类型解包，None 或类型不符时自动返回 eNo
     # （守卫置于函数入口，判空与拒绝文案同处一地，调用方空参只会收到拒绝不会异常中断，见场景 3）
-    if not isinstance(pkg, list) or not all(isinstance(load, str) for load in pkg):
-        return Response(
-            ResStatus.eNo, " pkg is null or pkg is not StringArray. ")
+    loads = unpack(pkg, StringArray)
+    if loads is None:
+        return Response(ResStatus.eNo, type_mismatch(pkg, StringArray.TYPE_NAME))
 
-    log().tag("arm.tool").info(f"负载合计工具执行：收到 {len(pkg)} 轴负载（调用方线程同步执行）")
+    log().tag("arm.tool").info(f"负载合计工具执行：收到 {len(loads.items)} 轴负载（调用方线程同步执行）")
 
-    total_kg = sum(int(load) for load in pkg)
+    total_kg = sum(int(load) for load in loads.items)
 
     log().tag("arm.tool").info(f"负载合计工具完成：payload={total_kg}kg")
 
@@ -144,11 +145,11 @@ def payload_sum(pkg) -> Response:
 
 # 班次握手工具：演示带元数据的登记与调用（场景 2 以类型+说明形态登记，场景 4 被热替换）
 def handshake(pkg) -> Response:
-    if not isinstance(pkg, str):
-        return Response(
-            ResStatus.eNo, " pkg is null or pkg is not String. ")
-    log().tag("arm.tool").info(f"班次握手工具执行：向 {pkg} 回执问候")
-    return Response(ResStatus.eOk, "shift hello, " + pkg)
+    name = unpack(pkg, String)
+    if name is None:
+        return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+    log().tag("arm.tool").info(f"班次握手工具执行：向 {name.value} 回执问候")
+    return Response(ResStatus.eOk, "shift hello, " + name.value)
 
 # ---------------------------------------------------------------------------
 # 6 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。
@@ -169,7 +170,7 @@ def show_arm_tool_register():
                lambda: fn_pool().fn_name("tool.payloadSum").fn(payload_sum).install())
 
     log_action("调用负载合计工具 tool.payloadSum", "/YomkFunctionPool/call tool.payloadSum",
-               lambda: fn_pool().fn_name("tool.payloadSum").msg(["12", "8", "5"]).call())
+               lambda: fn_pool().fn_name("tool.payloadSum").msg(StringArray(["12", "8", "5"])).call())
     log_verify("arm.tool 日志夹在开始行与结果行之间——CALL 在调用方线程同步执行；"
                "返回值即函数返回值，msg 与 data 双份携带 payload=25kg")
 
@@ -183,17 +184,17 @@ def show_arm_tool_meta():
         "元数据，调用时框架不做类型校验；/YomkFunctionPool/name 单查可逐字段读取元信息。")
 
     log_action("登记班次握手工具 tool.handshake（带元数据）", "/YomkFunctionPool/register tool.handshake (类型+说明)",
-               lambda: fn_pool().fn_name("tool.handshake").fn(handshake).msg_name("String").description("班次握手：向指定操作工回执问候").install())
+               lambda: fn_pool().fn_name("tool.handshake").fn(handshake).msg_name(String.TYPE_NAME).description("班次握手：向指定操作工回执问候").install())
 
     log_action_start("查看握手工具元信息")
     resp = fn_pool().fn_name("tool.handshake").get_info()
     log_resp("/YomkFunctionPool/name tool.handshake", resp)
     if resp.data is not None:
         log_func_info("/YomkFunctionPool/name", resp.data)
-    log_verify("msgName=String、description 随行：元数据仅供内省读阅，CALL 时框架不做类型校验")
+    log_verify("msgName=" + String.TYPE_NAME + "、description 随行：元数据仅供内省读阅，CALL 时框架不做类型校验")
 
     log_action("调用班次握手工具 tool.handshake", "/YomkFunctionPool/call tool.handshake",
-               lambda: fn_pool().fn_name("tool.handshake").msg("张工").call())
+               lambda: fn_pool().fn_name("tool.handshake").msg(String("张工")).call())
 
 # 场景 3：空参调用统一守卫
 def show_arm_tool_null_guard():
@@ -218,14 +219,14 @@ def show_arm_tool_hot_swap():
         "注销；msg_name 与说明元数据随新注册整体刷新，随后调用走新实现。")
 
     def handshake_v2(pkg) -> Response:
-        if not isinstance(pkg, str):
-            return Response(
-                ResStatus.eNo, " pkg is null or pkg is not String. ")
-        log().tag("arm.tool").info(f"班次握手工具 V2 执行：向 {pkg} 升级问候")
-        return Response(ResStatus.eOk, "shift hello V2, " + pkg)
+        name = unpack(pkg, String)
+        if name is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+        log().tag("arm.tool").info(f"班次握手工具 V2 执行：向 {name.value} 升级问候")
+        return Response(ResStatus.eOk, "shift hello V2, " + name.value)
 
     log_action("热替换班次握手工具 tool.handshake（V2）", "/YomkFunctionPool/register tool.handshake (V2, 带声明类型)",
-               lambda: fn_pool().fn_name("tool.handshake").fn(handshake_v2).msg_name("String").install())
+               lambda: fn_pool().fn_name("tool.handshake").fn(handshake_v2).msg_name(String.TYPE_NAME).install())
     log_verify("hot-swap 提示 + eOk：同名重复注册即运行时热替换，无需先注销")
 
     log_action_start("复查握手工具元信息")
@@ -233,10 +234,10 @@ def show_arm_tool_hot_swap():
     log_resp("/YomkFunctionPool/name tool.handshake", resp)
     if resp.data is not None:
         log_func_info("/YomkFunctionPool/name", resp.data)
-    log_verify("msgName 保持 String、说明未传被清空为(未指定)：元数据随新注册整体替换而非合并")
+    log_verify("msgName 保持 " + String.TYPE_NAME + "、说明未传被清空为(未指定)：元数据随新注册整体替换而非合并")
 
     log_action("调用升级后的握手工具 tool.handshake", "/YomkFunctionPool/call tool.handshake (V2)",
-               lambda: fn_pool().fn_name("tool.handshake").msg("张工").call())
+               lambda: fn_pool().fn_name("tool.handshake").msg(String("张工")).call())
     log_verify("arm.tool 日志为 V2 文案：热替换立即生效，旧实现不再被调用")
 
 # 场景 5：产线运维面板巡检

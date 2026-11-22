@@ -1,14 +1,14 @@
 from enum import Enum
-from typing import Any, Callable, List, Optional
+from typing import Callable, List, Optional
 from yomk.msgs.YomkMsg import YomkMsg
 
 
 class Context(YomkMsg):
     key: str
-    value: Any
+    value: Optional[YomkMsg]
     group: str
 
-    def __init__(self, key: str = "", value: Any = None,
+    def __init__(self, key: str = "", value: Optional[YomkMsg] = None,
                  group: str = "main") -> None: ...
 
 

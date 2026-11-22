@@ -31,6 +31,7 @@ import sys
 import tempfile
 import time
 
+from yomk.msgs import String
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.ctx import Context
 from yomk.server import server
@@ -78,7 +79,7 @@ g_reentry_sync = []
 def on_reentry_async(ctx_obj):
     # 异步 monitor：监控池线程内同步重入 /YomkContext/set（无捕获 + append 计数）
     g_reentry_async.append(1)
-    ctx().key("reentry_out").value("out_" + str(len(g_reentry_async))).set()
+    ctx().key("reentry_out").value(String("out_" + str(len(g_reentry_async)))).set()
 
 def on_reentry_sync(ctx_obj):
     # 同步 monitor：重入 SET 的内联观察点（每次重入 SET 恰好触发一次）
@@ -91,9 +92,9 @@ def test_s3_reentry(K):
     del g_reentry_sync[:]
 
     check(ctx().monitor().enable() == ResStatus.eOk, "开启 monitor 开关")
-    check(ctx().key("reentry_key").value("k0").create() == ResStatus.eOk,
+    check(ctx().key("reentry_key").value(String("k0")).create() == ResStatus.eOk,
           "创建 reentry_key 成功")
-    check(ctx().key("reentry_out").value("out_init").create() == ResStatus.eOk,
+    check(ctx().key("reentry_out").value(String("out_init")).create() == ResStatus.eOk,
           "创建 reentry_out 成功")
 
     check(ctx().key("reentry_key").monitor_fn(on_reentry_async)
@@ -104,7 +105,7 @@ def test_s3_reentry(K):
 
     all_set_ok = True
     for i in range(K):
-        if ctx().key("reentry_key").value("k" + str(i)).set() != ResStatus.eOk:
+        if ctx().key("reentry_key").value(String("k" + str(i))).set() != ResStatus.eOk:
             all_set_ok = False
     check(all_set_ok, f"K 次投递 SET 全部 eOk（K={K}）")
 
@@ -113,8 +114,8 @@ def test_s3_reentry(K):
     check(len(g_reentry_async) == K, "异步 monitor 计数守恒 == K")
     check(len(g_reentry_sync) == K, "重入 SET 触发同步 monitor 计数守恒 == K")
 
-    last = ctx().key("reentry_out").msg().with_default("").get()
-    check(last == "out_" + str(K),
+    last = ctx().key("reentry_out").msg(String).with_default(String("")).get()
+    check(last is not None and last.value == "out_" + str(K),
           "重入写入末值可读（异步 monitor 按提交序保序，末次重入为 out_K）")
 
     cleanup_ok = ctx().monitor().disable() == ResStatus.eOk and \
@@ -175,14 +176,14 @@ def test_s1_shutdown(N):
 
     # 异步 monitor 投递（shutdown 排空断言主体；S3 清场时开关已关，此处重新开启）
     check(ctx().monitor().enable() == ResStatus.eOk, "重新开启 monitor 开关")
-    check(ctx().key("drain_key").value("d0").create() == ResStatus.eOk, "创建 drain_key 成功")
+    check(ctx().key("drain_key").value(String("d0")).create() == ResStatus.eOk, "创建 drain_key 成功")
     del g_drain_calls[:]
     check(ctx().key("drain_key").monitor_fn(on_drain)
           .async_(True).apply() == ResStatus.eOk,
           "挂 drain_key 异步 monitor")
     drain_set_ok = True
     for i in range(N):
-        if ctx().key("drain_key").value("d" + str(i)).set() != ResStatus.eOk:
+        if ctx().key("drain_key").value(String("d" + str(i))).set() != ResStatus.eOk:
             drain_set_ok = False
     check(drain_set_ok, f"N 次异步通知投递全部 eOk（N={N}）")
 
@@ -206,10 +207,10 @@ def test_s1_shutdown(N):
           "shutdown 后 event_loop_post 回归 eInvalid（写路径收敛为 ResStatus）")
     check(event_loop().list().msg == "YomkServer is not initialized",
           "shutdown 后 event_loop_post 守卫契约消息同根（读路径 INFO_LOOPS）")
-    post_ctx = ctx().key("drain_key").value("x").set()
+    post_ctx = ctx().key("drain_key").value(String("x")).set()
     check(post_ctx == ResStatus.eInvalid,
           "shutdown 后 context_set 回归 eInvalid（写路径收敛为 ResStatus）")
-    check(raw_ctx("set", Context("drain_key", "x", "main")).msg
+    check(raw_ctx("set", Context("drain_key", String("x"), "main")).msg
           == "YomkServer is not initialized",
           "shutdown 后 context_set 守卫契约消息同根（server 域裸链）")
     post_log = log_mgr().all()

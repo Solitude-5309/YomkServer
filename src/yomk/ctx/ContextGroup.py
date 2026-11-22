@@ -7,6 +7,11 @@ from yomk._diag import warn as diag_warn
 from yomk.msgs.ctx import CheckStatus, Context, ContextKeyInfo
 
 
+def _type_name(value):
+    # 值消息包类型名；空值为空串（内省字段口径，对齐 C++ typeName）
+    return value.TYPE_NAME if value is not None else ""
+
+
 class Monitor:
     # 组内 monitor 存储条目：(回调, 通知形态布尔)，回调与形态正交
     def __init__(self, monitor_func=None, async_monitor=False):
@@ -118,11 +123,11 @@ class ContextGroup:
                 detail = "context key '" + key + "' does not exist"
                 return 2, detail
 
-            # 类型校验同名 key 的值类型名必须一致（新值为 None 时
-            # NoneType 必不匹配，自然被拒）；具体值原则：期望/实际类型名
-            # 一并输出，用户一眼定位类型错配
-            expect = type(entry.value).__name__
-            got = type(value).__name__
+            # 类型校验同名 key 的值类型名（TYPE_NAME）必须一致（新值为 None 时
+            # 已在入口拒绝）；具体值原则：期望/实际类型名一并输出，用户一眼定位
+            # 类型错配
+            expect = _type_name(entry.value)
+            got = _type_name(value)
             if expect != got:
                 diag_warn("context type not match: key '" + key
                           + "' expect '" + expect + "', got '" + got + "'")
@@ -257,7 +262,7 @@ class ContextGroup:
                     async_count += 1
             info = ContextKeyInfo(
                 key,
-                type(entry.value).__name__ if entry.value is not None else "",
+                _type_name(entry.value),
                 bool(entry.checker),
                 len(entry.monitors),
                 async_count,
@@ -278,7 +283,7 @@ class ContextGroup:
                         async_count += 1
                 infos.append(ContextKeyInfo(
                     key,
-                    type(entry.value).__name__ if entry.value is not None else "",
+                    _type_name(entry.value),
                     bool(entry.checker),
                     len(entry.monitors),
                     async_count,

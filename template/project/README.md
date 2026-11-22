@@ -70,7 +70,7 @@ python main.py
 
 | 组件 | 用途 | 链式域入口 |
 |------|------|------------|
-| YomkContext | 全局 K-V 状态管理 | `ctx().key(k).group(g).value(v).create()` / `.set()` / `.destroy()`；读取 `ctx().key(k).msg().with_default(d).get()` |
+| YomkContext | 全局 K-V 状态管理 | `ctx().key(k).group(g).value(msg).create()` / `.set()` / `.destroy()`；读取 `ctx().key(k).msg(cls).with_default(msg).get()` |
 | YomkEventLoop | 线程隔离事件循环 | `event_loop().loop(n).handle_fn(f).start()` / `.post()` / `.post_wait()` |
-| YomkFunctionPool | 动态公共函数池 | `fn_pool().fn_name(n).fn(f).install()` / `.msg(pkg).call()` |
+| YomkFunctionPool | 动态公共函数池 | `fn_pool().fn_name(n).fn(f).install()` / `.msg(msg).call()` |
 | YomkLogger | 多级别日志系统 | `log().info(...)` / `log().error(...)`；文件日志器 `log_mgr().dir(d).file(n).create()` |

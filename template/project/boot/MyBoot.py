@@ -6,6 +6,7 @@ from yomk.boot import YomkBoot
 from yomk.server import server
 from yomk.ctx import ctx
 from yomk.log import log
+from yomk.msgs import String
 from yomk.msgs.server import ResStatus
 
 class MyBoot(YomkBoot):
@@ -19,7 +20,8 @@ class MyBoot(YomkBoot):
         # 通过 __file__ 推导配置文件路径
         project_dir = Path(__file__).resolve().parent.parent
         config_path = str(project_dir / "config" / "config.json")
-        ctx().key(CTX_CONFIG_PATH).value(config_path).create()
+        # 上下文值一律消息包：路径以 String 消息写入
+        ctx().key(CTX_CONFIG_PATH).value(String(config_path)).create()
         log().tag("MyBoot::before").info("config path: ", config_path)
         return 0
 

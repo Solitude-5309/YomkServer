@@ -11,7 +11,8 @@ TestYomkUmbrella.py —— 新包七域公开面锚点 + 冒烟（L12 起）
 
 语言机制说明：
 - 日志发射走链式 API：S5 经链式调用发射并返回 Succeeded；
-- String 消息以裸 str 承载、服务实例直接传递（消息包/持有语义的框架形态）；
+- 消息包以 YomkMsg 实例跨边界承载（如 String("...")）、服务实例直接传递
+  （消息包/持有语义的框架形态）；
 - S8 关闭守卫：shutdown 后 instance() 返回 None；
 - 旧伞面 ServerBuilder 的 services/functions/fn_url/get_info/all 四查询
   已迁至 srv_info 域（SrvInfoBuilder），锚点表按新归属对表；
@@ -28,6 +29,7 @@ import sys
 
 import yomk
 import yomk.msgs
+from yomk.msgs import String, unpack
 from yomk.boot import YomkBoot
 from yomk.server import server, YomkServer, YomkService
 from yomk.ctx import ctx
@@ -74,7 +76,7 @@ EXPECTED_HEADS = {
 EXPECTED_FACETS = [
     ("AsyncRequestBuilder", lambda: server().async_(None)),
     ("GroupSwitch", lambda: ctx().group("main").checker()),
-    ("ContextValueBuilder", lambda: ctx().key("k").msg()),
+    ("ContextValueBuilder", lambda: ctx().key("k").msg(String)),
     ("SinkLogBuilder", lambda: log().to_sink("s")),
     ("ConsoleMgrBuilder", lambda: log_mgr().console("c")),
     ("FileMgrBuilder", lambda: log_mgr().file("f")),
@@ -197,12 +199,13 @@ def main():
     check(ret == 0, "S3: boot_ptr().run() == 0")
 
     # ============ S4 上下文 ============
-    ret = ctx().key("umb_k").group("main").value("v1").create()
+    ret = ctx().key("umb_k").group("main").value(String("v1")).create()
     check(ret == Succeeded, "S4: ctx create Succeeded")
-    ret = ctx().key("umb_k").group("main").value("v2").set()
+    ret = ctx().key("umb_k").group("main").value(String("v2")).set()
     check(ret == Succeeded, "S4: ctx set Succeeded")
-    got = ctx().key("umb_k").group("main").msg().with_default("x").get()
-    check(got == "v2", f"S4: 类型化读回 == v2（实际 {got!r}）")
+    got = ctx().key("umb_k").group("main").msg(String).with_default(String("x")).get()
+    check(got is not None and got.value == "v2",
+          f"S4: 类型化读回 == v2（实际 {got!r}）")
     res = ctx().group("main").keys()
     check(res.status == ResStatus.eOk and "umb_k" in (res.data or []),
           f"S4: keys() 含 umb_k（实际 {res.data!r}）")
@@ -219,20 +222,21 @@ def main():
 
     # ============ S6 函数池 ============
     ret = fn_pool().fn_name("/umb_echo").fn(umb_echo).msg_name(
-        "UmbMsg").description("umbrella s6").install()
+        String.TYPE_NAME).description("umbrella s6").install()
     check(ret == Succeeded, "S6: install Succeeded")
     res = fn_pool().fn_name("/umb_echo").get_info()
     info = res.data
     check(res.status == ResStatus.eOk and info is not None and
-          info.func_name == "/umb_echo" and info.msg_name == "UmbMsg" and
+          info.func_name == "/umb_echo" and info.msg_name == String.TYPE_NAME and
           info.description == "umbrella s6",
           f"S6: get_info 三字段对表（实际 {info}）")
     res = fn_pool().list()
     check(res.status == ResStatus.eOk and "/umb_echo" in (res.data or []),
           f"S6: list 含 /umb_echo（实际 {res.data!r}）")
-    res = fn_pool().fn_name("/umb_echo").msg("ping").call()
+    res = fn_pool().fn_name("/umb_echo").msg(String("ping")).call()
     check(res.status == ResStatus.eOk and res.msg == "echo" and
-          res.data == "ping",
+          unpack(res.data, String) is not None and
+          unpack(res.data, String).value == "ping",
           f"S6: call 阻塞返回 msg==echo/data 透传（实际 {res.msg!r}/{res.data!r}）")
     res = fn_pool().all()
     check(res.status == ResStatus.eOk and res.data, "S6: all 非空")
@@ -242,7 +246,7 @@ def main():
     # ============ S7 事件循环 ============
     ret = event_loop().loop("umb_loop").handle_fn(None).msg_name("").start()
     check(ret == Succeeded, "S7: 无默认 handler start Succeeded")
-    ret = event_loop().loop("umb_loop").msg("hi").post_wait()
+    ret = event_loop().loop("umb_loop").msg(String("hi")).post_wait()
     check(ret == Succeeded, "S7: post_wait Succeeded（无 handler 静默出队）")
     res = event_loop().list()
     check(res.status == ResStatus.eOk and "umb_loop" in (res.data or []),

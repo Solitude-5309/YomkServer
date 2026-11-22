@@ -13,6 +13,7 @@ extension 域 builder 版本查询终结（extension().version()）→ shutdown�
 import sys
 
 from yomk.server import __version__, server
+from yomk.msgs import String
 from yomk.msgs.server import ResStatus
 from yomk.msgs.extension import ExtensionRequest, ExtensionResponse
 from yomk.extension import ExtensionService, extension, __version__ as extension_version
@@ -35,11 +36,20 @@ def main():
         assert isinstance(data, ExtensionResponse) and data.msg == "echo" \
             and data.data == "hello ext", data
 
+        # 类型契约：跨边界载荷只收 YomkMsg 实例，裸值在入口当场 TypeError
+        try:
+            server().url(EXTENSION_ECHO).msg("wrong type")
+        except TypeError as e:
+            assert str(e) == "msg() requires a YomkMsg instance or None, got 'str'", e
+        else:
+            raise AssertionError("msg() 传裸值应抛 TypeError")
+
         # 类型不符契约（闭环 3 起标准形态）：错包 → eNo + TYPE_NAME 双侧文案
-        # （期望侧 ExtensionRequest.TYPE_NAME；got 侧体系外对象报 "null"）
-        bad = server().url(EXTENSION_ECHO).msg("wrong type").request()
+        # （期望侧 ExtensionRequest.TYPE_NAME；got 侧为传入消息的 TYPE_NAME）
+        bad = server().url(EXTENSION_ECHO).msg(String("wrong type")).request()
         assert bad.status == ResStatus.eNo, (bad.status, bad.msg)
-        assert bad.msg == "pkg is not yomk.msgs.extension.ExtensionRequest, got 'null'", bad.msg
+        assert bad.msg == ("pkg is not yomk.msgs.extension.ExtensionRequest, "
+                           "got 'yomk.msgs.String'"), bad.msg
 
         log().tag("test_extension").info("extension smoke OK:", data)
 

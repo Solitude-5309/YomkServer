@@ -13,13 +13,13 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
 7. 异常契约：CALL 链（request→invoke→callFunction→用户函数）无 try/catch，
    用户函数异常穿透直达调用方——测试侧捕获验证 what；随后正常 CALL 验证池存活
 8. 超长名：65536 字符函数名全生命周期（REGISTER/CALL/INFO_NAME/UNREGISTER）eOk 且完整回显
-9. 载荷类型错配（对齐 C++ 0032fc7）：裸链误用载荷不再抛 TypeError，统一 Failed +
-   "pkg is not X, got '<type>'"（register/call/unregister/name 四端点）
+9. 载荷契约：builder.msg() 传裸值入口 TypeError；裸链传错类型消息包统一 Failed +
+   "pkg is not X, got '<TYPE_NAME>'"（register/call/unregister/name 四端点）
 
 语言形态说明：
-- Function 三形态：Function(name, func) 无类型 / Function(name, func, "String") 声明类型 /
-  Function(name, func, "String", "说明") 附函数说明（经 fn_pool().install() 的
-  msg_name 与 description 形参承载）
+- Function 三形态：Function(name, func) 无类型 / Function(name, func, String.TYPE_NAME)
+  声明类型 / Function(name, func, String.TYPE_NAME, "说明") 附函数说明（经
+  fn_pool().install() 的 msg_name 与 description 形参承载，一律传 TYPE_NAME）
 - 内省清单端点 info_names data 为 list[str]；info_name 与 info_all 命中均为 FuncInfo
   结构化（info_all 为 FuncInfo 列表，总数由列表长度承载）
 - 池总数不可得时以 None 作哨兵值承载
@@ -31,6 +31,7 @@ import io
 import contextlib
 import sys
 
+from yomk.msgs import String, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.fn_pool import FuncInfo, Function
 from yomk.server import server as server_api
@@ -97,12 +98,14 @@ check(server is not None, "init 返回非空服务器")
 # ============ Section 1: CRUD 闭环 ============
 r = fn_pool().fn_name("fp_echo").fn(echo_func).install()
 check(r == ResStatus.eOk, "REGISTER 注册函数返回 eOk")
-r = fn_pool().fn_name("fp_echo").msg("hello_fp").call()
+r = fn_pool().fn_name("fp_echo").msg(String("hello_fp")).call()
 check(r.status == ResStatus.eOk, "CALL 已注册函数返回 eOk")
-check(r.data == "hello_fp" and r.msg == "echo", "CALL 回传消息一致（echo 语义）")
+check(unpack(r.data, String) is not None and
+      unpack(r.data, String).value == "hello_fp" and r.msg == "echo",
+      "CALL 回传消息一致（echo 语义）")
 r = fn_pool().fn_name("fp_echo").uninstall()
 check(r == ResStatus.eOk, "UNREGISTER 注销函数返回 eOk")
-r = fn_pool().fn_name("fp_echo").msg("x").call()
+r = fn_pool().fn_name("fp_echo").msg(String("x")).call()
 check(r.status == ResStatus.eNo, "注销后 CALL 返回 eNo（not-found 统一 eNo）")
 
 # ============ Section 2: 注册边界与重复注册更新语义 ============
@@ -136,9 +139,9 @@ r = fn_pool().fn_name("fp_never_registered").uninstall()
 check(r == ResStatus.eNo, "UNREGISTER 未注册名返回 eNo（not-found 统一 eNo）")
 
 # ============ Section 4: 调用边界与 pkg=None 透传 ============
-r = fn_pool().fn_name("").msg("x").call()
+r = fn_pool().fn_name("").msg(String("x")).call()
 check(r.status == ResStatus.eInvalid, "CALL 空函数名返回 eInvalid")
-r = fn_pool().fn_name("fp_never_registered").msg("x").call()
+r = fn_pool().fn_name("fp_never_registered").msg(String("x")).call()
 check(r.status == ResStatus.eNo, "CALL 未注册名返回 eNo（not-found 统一 eNo）")
 
 del null_pkg_seen[:]
@@ -198,20 +201,20 @@ check(r.msg == "ok" and isinstance(r.data, FuncInfo)
       and r.data.description == "",
       "无声明安装 INFO_NAME 结构化字段（纯名无类型无说明）")
 
-r = fn_pool().fn_name("fp_three").fn(echo_func).msg_name("String").install()
+r = fn_pool().fn_name("fp_three").fn(echo_func).msg_name(String.TYPE_NAME).install()
 check(r == ResStatus.eOk, "声明 String 类型安装返回 eOk")
 r = fn_pool().fn_name("fp_three").get_info()
-check(r.msg == "ok" and r.data is not None and r.data.msg_name == "String",
-      "声明类型安装 INFO_NAME 字段 msg_name == \"String\"")
+check(r.msg == "ok" and r.data is not None and r.data.msg_name == String.TYPE_NAME,
+      "声明类型安装 INFO_NAME 字段 msg_name == yomk.msgs.String")
 
 # 类型+说明：追加函数说明，结构化包恒挂、说明走 description 字段
-r = fn_pool().fn_name("fp_desc").fn(echo_func).msg_name("String").description("fp description").install()
+r = fn_pool().fn_name("fp_desc").fn(echo_func).msg_name(String.TYPE_NAME).description("fp description").install()
 check(r == ResStatus.eOk, "声明类型+说明安装返回 eOk")
 r = fn_pool().fn_name("fp_desc").get_info()
 check(r.status == ResStatus.eOk and r.msg == "ok",
       "类型+说明安装 INFO_NAME 命中 msg 恒为 ok")
 check(r.data is not None and r.data.func_name == "fp_desc"
-      and r.data.msg_name == "String",
+      and r.data.msg_name == String.TYPE_NAME,
       "类型+说明安装字段 func_name/msg_name 一致")
 check(r.data is not None and r.data.description == "fp description",
       "字段 description 承载函数说明")
@@ -271,23 +274,39 @@ check(r.data is not None and r.data.func_name == long_name,
 r = fn_pool().fn_name(long_name).uninstall()
 check(r == ResStatus.eOk, "UNREGISTER 超长函数名返回 eOk")
 
-# ============ Section 9: 载荷类型错配契约（裸链误用 → Failed Response，不再抛 TypeError） ============
-r = raw_fn("register", "not_a_Function")
+# ============ Section 9: 载荷契约（入参 TypeError / 端点类型不符 Failed） ============
+def check_type_error(fn, text, name):
+    # 入口类型契约违例：必须当场 TypeError 且文案一致
+    try:
+        fn()
+    except TypeError as e:
+        check(str(e) == text, name)
+        return
+    check(False, name + "（未抛 TypeError）")
+
+check_type_error(lambda: fn_pool().fn_name("fp_echo").msg("bare"),
+                 "msg() requires a YomkMsg instance or None, got 'str'",
+                 "CALL 裸值入口 TypeError 文案一致")
+check_type_error(lambda: fn_pool().fn_name("fp_echo").msg(123),
+                 "msg() requires a YomkMsg instance or None, got 'int'",
+                 "CALL 非消息入口 TypeError 文案一致")
+
+r = raw_fn("register", String("not_a_Function"))
 check(r.status == ResStatus.eNo
-      and r.msg == "pkg is not yomk.msgs.fn_pool.Function, got 'null'",
-      "REGISTER 非 Function 载荷返回 eNo + got 侧体系外对象报 null（TYPE_NAME 契约）")
-r = raw_fn("call", 123)
+      and r.msg == "pkg is not yomk.msgs.fn_pool.Function, got 'yomk.msgs.String'",
+      "REGISTER 错类型消息包返回 eNo + got 侧为全限定 TYPE_NAME")
+r = raw_fn("call", String("not_a_CallFunction"))
 check(r.status == ResStatus.eNo
-      and r.msg == "pkg is not yomk.msgs.fn_pool.CallFunction, got 'null'",
-      "CALL 非 CallFunction 载荷返回 eNo + got 侧体系外对象报 null（TYPE_NAME 契约）")
-r = raw_fn("unregister", 123)
+      and r.msg == "pkg is not yomk.msgs.fn_pool.CallFunction, got 'yomk.msgs.String'",
+      "CALL 错类型消息包返回 eNo + got 侧为全限定 TYPE_NAME")
+r = raw_fn("unregister", Function("fp_x", alive_func))
 check(r.status == ResStatus.eNo
-      and r.msg == "pkg is not yomk.msgs.String, got 'null'",
-      "UNREGISTER 非 String 载荷返回 eNo + got 侧体系外对象报 null（TYPE_NAME 契约）")
-r = raw_fn("name", ["x"])
+      and r.msg == "pkg is not yomk.msgs.String, got 'yomk.msgs.fn_pool.Function'",
+      "UNREGISTER 错类型消息包返回 eNo + got 侧为全限定 TYPE_NAME")
+r = raw_fn("name", Function("fp_x", alive_func))
 check(r.status == ResStatus.eNo
-      and r.msg == "pkg is not yomk.msgs.String, got 'null'",
-      "INFO_NAME 非 String 载荷返回 eNo + got 侧体系外对象报 null（TYPE_NAME 契约）")
+      and r.msg == "pkg is not yomk.msgs.String, got 'yomk.msgs.fn_pool.Function'",
+      "INFO_NAME 错类型消息包返回 eNo + got 侧为全限定 TYPE_NAME")
 
 # ============ 收尾清理（不污染后续测试的共享池）============
 r = fn_pool().fn_name("fp_plain").uninstall()

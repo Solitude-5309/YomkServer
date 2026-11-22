@@ -30,6 +30,7 @@ TestYomkAPINotInit.py —— YomkAPI 未初始化守卫全集测试
 import sys
 import time
 
+from yomk.msgs import String
 from yomk.msgs.server import ResStatus
 from yomk.msgs.log import Log
 from yomk.server import YomkService, server
@@ -103,9 +104,9 @@ def main():
     check(event_loop().list().msg == "YomkServer is not initialized",
           "模块 API 守卫契约消息同根（读路径 event_loop_info_loops）")
 
-    sentinel = object()
-    check(ctx().key("guard_key").msg().with_default(sentinel).get() is sentinel,
-          "context_get 未初始化原样返回调用方默认值")
+    fallback = String("fallback")
+    check(ctx().key("guard_key").msg(String).with_default(fallback).get() is fallback,
+          "context_get 未初始化原样返回调用方默认值消息")
 
     print("===== 6. LOG 模块便捷 API 守卫全量（Logger 模块轮 P1 收口 23 条） =====")
     # Logger 23 条顺序（同第 5 节排布口径）

@@ -4,16 +4,17 @@ ctx 域消息：组名 group 恒为构造参数最后一位，缺省 "main"。
 """
 
 from enum import Enum
-from yomk.msgs.YomkMsg import YomkMsg
+from yomk.msgs.YomkMsg import YomkMsg, require_msg
 
 
 class Context(YomkMsg):
     """Context create/set payload: key, value and owning group.
 
-    上下文创建/写值载荷：键、值与所属组。
+    上下文创建/写值载荷：键、值包与所属组；值必须是消息实例或 None（空值）。
     """
 
     def __init__(self, key="", value=None, group="main"):
+        require_msg(value, "Context.value")
         self.key = key
         self.value = value
         self.group = group

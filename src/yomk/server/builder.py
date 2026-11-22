@@ -5,6 +5,7 @@
 
 from yomk.server import _facade
 from yomk._diag import error as diag_error
+from yomk.msgs.YomkMsg import require_msg
 
 
 class AsyncRequestBuilder:
@@ -23,6 +24,7 @@ class AsyncRequestBuilder:
         self._msg = None
 
     def msg(self, m):
+        require_msg(m, "msg()")
         self._msg = m
         return self
 
@@ -64,6 +66,7 @@ class ServerBuilder:
         return self
 
     def msg(self, m):
+        require_msg(m, "msg()")
         self._msg = m
         return self
 

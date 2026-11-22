@@ -2,19 +2,19 @@
 TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Context 模块 MC1）
 
 覆盖内容：
-1. create：正常创建（str/int）、空 key、空 value（None）、重复 key
+1. create：正常创建（String/Int 消息值）、空 key、空 value（None）、重复 key
 2. get：正常 get、不存在 key（返回默认 value）、空 key（返回默认 value）
 3. set：正常 set、不存在 key、空 key、类型不匹配
 4. keys/keyInfo/listAll：随增删变化、空 key、不存在 key、keyInfo 结构化包字段与 listAll 结构化列表
 5. destroy：正常销毁、重复销毁、不存在 key、空 key（独立 Invalid 分支）、销毁后 keys 计数
+6. 类型契约：ctx 写值/读类型/默认值传裸值时入口 TypeError
 
 语言机制说明（非功能缺口）：
-- 门面 context_get(key, default) 不携带目标类型参数、eOk 返回存储值本身，
-  调用方以 python 动态类型自然规避"类型不匹配"失败路径
+- 上下文值必须是 YomkMsg 实例：读写链一律以消息承载，裸 Python 值只在消息载荷内部
 - 内置服务注册校验以 server.service_names() 承载
 - keyInfo 命中为结构化返回：msg 恒 "ok"，data 为 ContextKeyInfo 包（字段 type_name
-  为 python 原生类型名 str/int/bool，value 为 None 时空串）；listAll 命中同为结构化
-  返回：msg 恒 "ok"，data 为 ContextKeyInfo 列表（键序为字典序）
+  为值消息的 TYPE_NAME（全限定，如 "yomk.msgs.String"），value 为 None 时空串）；
+  listAll 命中同为结构化返回：msg 恒 "ok"，data 为 ContextKeyInfo 列表（键序为字典序）
 
 风格：纯 main() + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
 全程使用门面单例；
@@ -24,6 +24,7 @@ TestYomkContextCRUD.py —— YomkContext CRUD 与边界值白盒测试（Contex
 import sys
 
 from yomk.msgs.server import ResStatus
+from yomk.msgs import Int, String
 from yomk.msgs.ctx import Context, ContextGroupInfo, ContextGroupKey, ContextKeyInfo
 from yomk.server import server
 from yomk.ctx import ctx
@@ -45,6 +46,16 @@ def check(cond, msg):
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
 
+
+def check_type_error(fn, text, msg):
+    # 入口类型契约违例：必须当场 TypeError 且文案一致
+    try:
+        fn()
+    except TypeError as e:
+        check(str(e) == text, msg)
+        return
+    check(False, msg + "（未抛 TypeError）")
+
 def main():
     # 拉起内置服务 /YomkContext
     server().async_thread(1).init()
@@ -56,16 +67,16 @@ def main():
           "serviceNames 包含 /YomkContext")
 
     # create：正常创建 String 类型 value
-    resp = raw_ctx("create", Context("str_key", "hello", "main"))
+    resp = raw_ctx("create", Context("str_key", String("hello"), "main"))
     check(resp.status == ResStatus.eOk, "create 正常 String value 返回 eOk")
     check(resp.msg == "create context success", "create 成功消息一致")
 
-    # create：正常创建 Int32 类型 value
-    resp = ctx().key("int_key").value(42).create()
-    check(resp == ResStatus.eOk, "create 正常 Int32 value 返回 eOk")
+    # create：正常创建 Int 类型 value
+    resp = ctx().key("int_key").value(Int(42)).create()
+    check(resp == ResStatus.eOk, "create 正常 Int value 返回 eOk")
 
     # create：空 key
-    resp = raw_ctx("create", Context("", "value", "main"))
+    resp = raw_ctx("create", Context("", String("value"), "main"))
     check(resp.status == ResStatus.eInvalid, "create 空 key 返回 eInvalid")
     check(resp.msg == "context key is empty", "create 空 key 错误消息一致")
 
@@ -76,43 +87,63 @@ def main():
           "create None value 错误消息一致")
 
     # create：重复 key
-    resp = raw_ctx("create", Context("str_key", "dup", "main"))
+    resp = raw_ctx("create", Context("str_key", String("dup"), "main"))
     check(resp.status == ResStatus.eNo, "create 重复 key 返回 eNo")
     check(resp.msg == "context key 'str_key' already exists",
           "create 重复 key 错误消息一致")
 
-    # get：正常 get
-    check(ctx().key("str_key").msg().with_default("default").get() == "hello", "get 正常返回原始 value")
+    # get：正常 get（返回消息，载荷取值）
+    check(ctx().key("str_key").msg(String).with_default(String("default")).get().value == "hello",
+          "get 正常返回原始 value")
 
     # get：不存在 key，返回默认 value
-    check(ctx().key("no_such_key").msg().with_default("default").get() == "default",
+    check(ctx().key("no_such_key").msg(String).with_default(String("default")).get().value == "default",
           "get 不存在 key 返回默认值")
 
     # get：空 key，返回默认 value
-    check(ctx().key("").msg().with_default("default").get() == "default", "get 空 key 返回默认值")
+    check(ctx().key("").msg(String).with_default(String("default")).get().value == "default",
+          "get 空 key 返回默认值")
 
     # set：正常 set 同类型 value
-    resp = raw_ctx("set", Context("str_key", "world", "main"))
+    resp = raw_ctx("set", Context("str_key", String("world"), "main"))
     check(resp.status == ResStatus.eOk, "set 正常同类型返回 eOk")
     check(resp.msg == "set context success", "set 成功消息一致")
-    check(ctx().key("str_key").msg().with_default("default").get() == "world", "set 后 get 返回新 value")
+    check(ctx().key("str_key").msg(String).with_default(String("default")).get().value == "world",
+          "set 后 get 返回新 value")
 
     # set：不存在 key
-    resp = raw_ctx("set", Context("no_such_key", "x", "main"))
+    resp = raw_ctx("set", Context("no_such_key", String("x"), "main"))
     check(resp.status == ResStatus.eNo, "set 不存在 key 返回 eNo")
     check(resp.msg == "context key 'no_such_key' does not exist",
           "set 不存在 key 错误消息一致")
 
     # set：空 key
-    resp = raw_ctx("set", Context("", "x", "main"))
+    resp = raw_ctx("set", Context("", String("x"), "main"))
     check(resp.status == ResStatus.eInvalid, "set 空 key 返回 eInvalid")
     check(resp.msg == "set context key is empty", "set 空 key 错误消息一致")
 
     # set：类型不匹配
-    resp = raw_ctx("set", Context("str_key", 100, "main"))
+    resp = raw_ctx("set", Context("str_key", Int(100), "main"))
     check(resp.status == ResStatus.eNo, "set 类型不匹配返回 eNo")
-    check(resp.msg == "context type not match: key 'str_key' expect 'str', got 'int'",
+    check(resp.msg == "context type not match: key 'str_key' "
+                      "expect 'yomk.msgs.String', got 'yomk.msgs.Int'",
           "set 类型不匹配错误消息一致")
+
+    # 类型契约：裸值写入/读类型/默认值在入口当场 TypeError
+    check_type_error(lambda: ctx().key("bare").value("bare"),
+                     "value() requires a YomkMsg instance or None, got 'str'",
+                     "value() 裸值 TypeError 文案一致")
+    check_type_error(lambda: ctx().key("str_key").msg(str),
+                     "context typed read class must derive YomkMsg, got 'str'",
+                     "msg(str) TypeError 文案一致")
+    check_type_error(lambda: ctx().key("str_key").msg(String).with_default("fallback"),
+                     "with_default requires 'yomk.msgs.String' or None, got 'str'",
+                     "with_default 裸值 TypeError 文案一致")
+    check_type_error(lambda: ctx().key("str_key").msg(String).with_default(Int(0)),
+                     "with_default requires 'yomk.msgs.String' or None, got 'yomk.msgs.Int'",
+                     "with_default 类型不符 TypeError 文案一致")
+    check(ctx().key("str_key").msg(String).with_default(None).get().value == "world",
+          "with_default(None) 合法，命中仍返回现值")
 
     # keys：包含已创建 key
     resp = ctx().keys()
@@ -129,7 +160,7 @@ def main():
     check(isinstance(resp.data, ContextKeyInfo),
           "keyInfo 数据为 ContextKeyInfo 包")
     check(resp.data.key == "str_key", "keyInfo 字段 key 一致")
-    check(resp.data.type_name == "str", "keyInfo 字段 type_name 一致")
+    check(resp.data.type_name == "yomk.msgs.String", "keyInfo 字段 type_name 为全限定 TYPE_NAME")
     check(resp.data.checker_on is False, "keyInfo 字段 checker_on 为 False")
     check(resp.data.monitor_count == 0 and resp.data.async_monitor_count == 0,
           "keyInfo 字段 monitor 计数为 0")
@@ -161,8 +192,9 @@ def main():
           "listAll 元素为 ContextKeyInfo 包")
     check(resp.data[0].keys[0].key == "int_key" and resp.data[0].keys[1].key == "str_key",
           "listAll 键序为字典序（int_key, str_key）")
-    check(resp.data[0].keys[0].type_name == "int" and resp.data[0].keys[1].type_name == "str",
-          "listAll 类型名一致")
+    check(resp.data[0].keys[0].type_name == "yomk.msgs.Int"
+          and resp.data[0].keys[1].type_name == "yomk.msgs.String",
+          "listAll 类型名为全限定 TYPE_NAME")
     check(resp.data[0].keys[0].group == "main" and resp.data[0].keys[1].group == "main",
           "listAll 键所属组一致")
     check(all(not i.checker_on and i.monitor_count == 0

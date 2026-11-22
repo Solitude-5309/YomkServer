@@ -75,6 +75,7 @@ import sys
 import threading
 import time
 
+from yomk.msgs import String
 from yomk.msgs.server import ResStatus
 from yomk.server import __version__, server
 from yomk.fn_pool import fn_pool
@@ -212,16 +213,16 @@ def show_arm_link_check():
 
     log_action(
         "通讯自检：请求运动服务回环", "server().url().request() /MotionService/echo",
-        lambda: server().url("/MotionService/echo").msg("ping").request())
+        lambda: server().url("/MotionService/echo").msg(String("ping")).request())
     log_verify("arm.motion 日志夹在开始行与结果行之间——request 在调用方线程同步执行；回包 data 携带回显文本")
 
     log_action(
         "请求不存在的服务 /GhostService", "server().url().request() /GhostService/echo",
-        lambda: server().url("/GhostService/echo").msg("ping").request())
+        lambda: server().url("/GhostService/echo").msg(String("ping")).request())
 
     log_action(
         "请求运动服务不存在的函数", "server().url().request() /MotionService/not_exist",
-        lambda: server().url("/MotionService/not_exist").msg("ping").request())
+        lambda: server().url("/MotionService/not_exist").msg(String("ping")).request())
     log_verify("两种 not-found 均为 eNo 且 msg 说明原因：寻址失败是普通返回值，不报错不崩溃")
 
 # 场景 3：异步下发示教任务（server().async_().request() 线程自证）
@@ -240,7 +241,7 @@ def show_arm_async_teach():
             f"（池线程: {threading.current_thread().name}）")
 
     log_action_start("异步下发示教点自检请求")
-    server().url("/MotionService/echo").async_(on_teach_done).msg("teach point #1").request()
+    server().url("/MotionService/echo").async_(on_teach_done).msg(String("teach point #1")).request()
     log_verify("server().async_().request() 无同步结果行：发送即返回，控制回路不等回调")
 
     # 等待异步回调送达，保证回调日志先于下一条验证行出现、可读
@@ -307,7 +308,7 @@ def show_arm_station_upgrade():
 
     log_action(
         "直调留痕钩子（替换前）", "fn_pool().call() telemetry_hook (V1)",
-        lambda: fn_pool().fn_name("telemetry_hook").msg("diag check V1").call())
+        lambda: fn_pool().fn_name("telemetry_hook").msg(String("diag check V1")).call())
     log_verify("留痕记录 [实例#1]：diag check V1——钩子由当前实例 init 注册、按名直调")
 
     log_action_int(
@@ -318,7 +319,7 @@ def show_arm_station_upgrade():
 
     log_action(
         "直调留痕钩子（替换后）", "fn_pool().call() telemetry_hook (V2)",
-        lambda: fn_pool().fn_name("telemetry_hook").msg("diag check V2").call())
+        lambda: fn_pool().fn_name("telemetry_hook").msg(String("diag check V2")).call())
     log_verify("留痕记录 [实例#2]：diag check V2——旧实例已回收而钩子仍可用，钩子确已换新")
 
 # 场景 7：留痕工位下线（删除即停与断链传播）
@@ -341,7 +342,7 @@ def show_arm_station_offline():
 
     log_action(
         "直调留痕钩子（已下线）", "fn_pool().call() telemetry_hook (已下线)",
-        lambda: fn_pool().fn_name("telemetry_hook").msg("diag check V2").call())
+        lambda: fn_pool().fn_name("telemetry_hook").msg(String("diag check V2")).call())
     log_verify("钩子返回 eNo(function 'telemetry_hook' is not registered)：deinit 显式注销承担失效语义，删除即停不悬垂")
 
     log_action(
@@ -372,7 +373,7 @@ def show_arm_power_off():
 
     def shutdown_and_guard():
         server().shutdown()
-        return server().url("/MotionService/echo").msg("after shutdown").request()  # eInvalid：结果行随日志门面静默，行为已由收班预告说明
+        return server().url("/MotionService/echo").msg(String("after shutdown")).request()  # eInvalid：结果行随日志门面静默，行为已由收班预告说明
 
     log_action("收班断电：优雅关闭框架", "server().shutdown() + server().url().request() (关闭后守卫)", shutdown_and_guard)
 

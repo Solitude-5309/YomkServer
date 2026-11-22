@@ -31,6 +31,7 @@ import time
 
 from yomk.msgs.server import ResStatus
 from yomk.msgs.ctx import CheckStatus
+from yomk.msgs.std_msg import String
 from yomk.server import server
 from yomk.ctx import ctx
 
@@ -77,7 +78,7 @@ def main():
     # ============ Section 1: 并发 get/set 共享键（读写锁竞争）============
     print("===== 1. 并发 get/set 共享键 =====")
     reset_globals()
-    resp = ctx().key("conc_rw").value("v_init").create()
+    resp = ctx().key("conc_rw").value(String("v_init")).create()
     check(resp == ResStatus.eOk, "1.1 创建 conc_rw 成功")
 
     t_cnt, k_cnt = 8, 500
@@ -87,13 +88,13 @@ def main():
         for i in range(k_cnt):
             if i % 2 == 0:
                 # conc_rw 始终存在且值为非空 str，命中 eOk 路径返回非空值
-                v = ctx().key("conc_rw").msg().with_default("").get()
-                if v:
+                v = ctx().key("conc_rw").msg(String).with_default(String("")).get()
+                if v is not None:
                     ok_get.append(1)
                 else:
                     g_illegal.append(1)
             else:
-                r = ctx().key("conc_rw").value(f"v{t}_{i}").set()
+                r = ctx().key("conc_rw").value(String(f"v{t}_{i}")).set()
                 if r == ResStatus.eOk:
                     ok_set.append(1)
                 else:
@@ -121,7 +122,7 @@ def main():
     def cd_worker(t):
         key = f"conc_cd_{t}"
         for _ in range(k_cnt):
-            c = ctx().key(key).value("x").create()
+            c = ctx().key(key).value(String("x")).create()
             if c == ResStatus.eOk:
                 ok_create.append(1)
             else:
@@ -152,7 +153,7 @@ def main():
     # ============ Section 3: 并发 set_monitor 同键（修复验证）============
     print("===== 3. 并发 set_monitor 同键 =====")
     reset_globals()
-    resp = ctx().key("conc_mon").value("m0").create()
+    resp = ctx().key("conc_mon").value(String("m0")).create()
     check(resp == ResStatus.eOk, "3.1 创建 conc_mon 成功")
     ctx().monitor().enable()
 
@@ -180,7 +181,7 @@ def main():
 
     # 单次 set 触发全部已注册 monitor：计数 == 注册次数，证明并发 append 无丢失/损坏
     g_sync_mon.clear()
-    sr = ctx().key("conc_mon").value("m1").set()
+    sr = ctx().key("conc_mon").value(String("m1")).set()
     check(sr == ResStatus.eOk, "3.4 触发 set 返回 eOk")
     check(len(g_sync_mon) == t_cnt * k_cnt,
           "3.5 并发注册的 monitor 全部落地（计数 == 注册次数）")
@@ -189,7 +190,7 @@ def main():
     # ============ Section 4: 并发 set_checker × keyInfo 同键（修复验证读写竞争）============
     print("===== 4. 并发 set_checker x keyInfo 同键 =====")
     reset_globals()
-    resp = ctx().key("conc_ck").value("c0").create()
+    resp = ctx().key("conc_ck").value(String("c0")).create()
     check(resp == ResStatus.eOk, "4.1 创建 conc_ck 成功")
 
     t_cnt, k_cnt = 16, 100  # 半数写 checker、半数读 keyInfo
@@ -226,7 +227,7 @@ def main():
     ctx().checker().enable()
     g_checker_calls.clear()
     ctx().key("conc_ck").checker_fn(lambda c: (g_checker_calls.append(1), CheckStatus.eAccept)[1]).apply()
-    sr = ctx().key("conc_ck").value("c1").set()
+    sr = ctx().key("conc_ck").value(String("c1")).set()
     check(sr == ResStatus.eOk, "4.5 并发注册后 set 仍 eOk")
     check(len(g_checker_calls) == 1, "4.6 checker 有效并被调用 1 次")
     ctx().checker().disable()
@@ -234,7 +235,7 @@ def main():
     # ============ Section 5: 并发 set 触发 checker ============
     print("===== 5. 并发 set 触发 checker =====")
     reset_globals()
-    resp = ctx().key("conc_setck").value("s0").create()
+    resp = ctx().key("conc_setck").value(String("s0")).create()
     check(resp == ResStatus.eOk, "5.1 创建 conc_setck 成功")
     ctx().key("conc_setck").checker_fn(lambda c: (g_checker_calls.append(1), CheckStatus.eAccept)[1]).apply()
     ctx().checker().enable()
@@ -245,7 +246,7 @@ def main():
 
     def setck_worker():
         for i in range(k_cnt):
-            r = ctx().key("conc_setck").value(f"s{i}").set()
+            r = ctx().key("conc_setck").value(String(f"s{i}")).set()
             if r == ResStatus.eOk:
                 ok_set.append(1)
             else:
@@ -268,7 +269,7 @@ def main():
     # ============ Section 6: 并发 set 触发 sync + async monitor ============
     print("===== 6. 并发 set 触发 sync+async monitor =====")
     reset_globals()
-    resp = ctx().key("conc_setmon").value("n0").create()
+    resp = ctx().key("conc_setmon").value(String("n0")).create()
     check(resp == ResStatus.eOk, "6.1 创建 conc_setmon 成功")
     ctx().key("conc_setmon").monitor_fn(lambda c: g_sync_mon.append(1)).apply()
     ctx().key("conc_setmon").monitor_fn(lambda c: g_async_mon.append(1)).async_(True).apply()
@@ -281,7 +282,7 @@ def main():
 
     def setmon_worker():
         for i in range(k_cnt):
-            r = ctx().key("conc_setmon").value(f"n{i}").set()
+            r = ctx().key("conc_setmon").value(String(f"n{i}")).set()
             if r == ResStatus.eOk:
                 ok_set.append(1)
             else:
@@ -306,8 +307,8 @@ def main():
     # ============ Section 7: 同步 monitor 重入安全（锁外执行正面验证）============
     print("===== 7. 同步 monitor 重入安全 =====")
     reset_globals()
-    cra = ctx().key("conc_a").value("a0").create()
-    crb = ctx().key("conc_b").value("b0").create()
+    cra = ctx().key("conc_a").value(String("a0")).create()
+    crb = ctx().key("conc_b").value(String("b0")).create()
     check(cra == ResStatus.eOk and crb == ResStatus.eOk,
           "7.1 创建 conc_a/conc_b 成功")
 
@@ -322,7 +323,7 @@ def main():
     ctx().monitor().enable()
 
     g_reentrant_ok.clear()
-    sr = ctx().key("conc_a").value("a1").set()
+    sr = ctx().key("conc_a").value(String("a1")).set()
     check(sr == ResStatus.eOk, "7.2 set(conc_a) 返回 eOk（monitor 重入未死锁）")
     check(len(g_reentrant_ok) == 1, "7.3 monitor 内重入 INFO_KEY(conc_b) 成功 1 次")
     ctx().monitor().disable()
@@ -332,7 +333,7 @@ def main():
     reset_globals()
     m_keys = 64  # 预建 keyspace 大小
     for n in range(m_keys):
-        cr = ctx().key(f"stress_{n}").value(f"init{n}").create()
+        cr = ctx().key(f"stress_{n}").value(String(f"init{n}")).create()
         if cr != ResStatus.eOk:
             g_illegal.append(1)
     check(len(g_illegal) == 0, "8.1 预建 keyspace 成功")
@@ -354,13 +355,13 @@ def main():
             key = f"stress_{i % m_keys}"
             op = i % 8
             if op == 0:
-                v = ctx().key(key).msg().with_default("").get()
-                if v:
+                v = ctx().key(key).msg(String).with_default(String("")).get()
+                if v is not None:
                     ok_ops.append(1)
                 else:
                     g_illegal.append(1)
             elif op == 1:
-                r = ctx().key(key).value("sv").set()
+                r = ctx().key(key).value(String("sv")).set()
                 if r == ResStatus.eOk:
                     ok_ops.append(1)
                 else:
@@ -397,7 +398,7 @@ def main():
                     g_illegal.append(1)
             else:
                 tk = f"stress_tmp_{t}"
-                c = ctx().key(tk).value("tmp").create()
+                c = ctx().key(tk).value(String("tmp")).create()
                 d = ctx().key(tk).destroy()
                 if c == ResStatus.eOk and d == ResStatus.eOk:
                     ok_ops.append(1)

@@ -27,7 +27,7 @@ arm.watch 通知 / arm.telemetry 上报），日志流即执行序、顺着读�
        示教器读速度倍率命中只读快照；查询未上线负载模块的键返回兜底
        默认值（is 同一对象自证兜底路径，调用方永不拿到空值）。
 场景 3 show_arm_update_status    [/YomkContext/set]
-       切自动模式并提速；误用 float 改 str 键被拒（强类型防误写）；
+       切自动模式并提速；误用 Int 消息改写 String 键被拒（强类型防误写）；
        SET 整体替换值对象——先前持有者冻结旧快照，无撕裂读。
 场景 4 show_arm_guard_speed_ratio [/YomkContext/set_checker / /YomkContext/turn_on_checker / /YomkContext/turn_off_checker]
        倍率超 1.0 有撞机风险：挂校验回调后，全局门控未开时 checker 保留
@@ -45,12 +45,12 @@ arm.watch 通知 / arm.telemetry 上报），日志流即执行序、顺着读�
        下电流程逐键销毁；销毁后 GET 回落兜底默认值、重复销毁返回 eNo；
        /YomkContext/keys 确认键值表已空，会话闭环。
 
-共享键规划（跨场景流转，模拟多模块共享同一份状态）：
-  arm.mode        str    运行模式（idle/teach/auto）
-  arm.speed_ratio float  全局速度倍率 0.0~1.0
-  arm.servo_power bool   伺服电源指令状态
-  arm.tcp_pose    list   末端位姿 [x,y,z,qx,qy,qz,qw]
-  arm.payload_kg  float  末端负载 kg（全程未注册，作 GET 兜底演示）
+共享键规划（跨场景流转，模拟多模块共享同一份状态；值一律为标准消息包）：
+  arm.mode        String     运行模式（idle/teach/auto）
+  arm.speed_ratio Float      全局速度倍率 0.0~1.0
+  arm.servo_power Bool       伺服电源指令状态
+  arm.tcp_pose    FloatArray 末端位姿 [x,y,z,qx,qy,qz,qw]
+  arm.payload_kg  Float      末端负载 kg（全程未注册，作 GET 兜底演示）
 
 运行方式：PYTHONPATH=src python3 examples/ExampleYomkContext.py
 """
@@ -59,6 +59,7 @@ import sys
 import threading
 import time
 
+from yomk.msgs import Bool, Float, FloatArray, Int, String, unpack
 from yomk.msgs.server import ResStatus
 from yomk.msgs.ctx import CheckStatus, Context
 from yomk.server import server
@@ -154,35 +155,38 @@ def ensure_key(op, key, value):
 
 # 速度倍率安全门控：倍率是安全关键参数，超过 1.0（100%）有撞机风险，一律拒绝
 def checker_speed_ratio(ctx: Context) -> CheckStatus:
-    ratio = ctx.value
-    if not isinstance(ratio, float):
-        log().tag("arm.guard").warn(f"checker: {ctx.key} 值不是 float，无法校验 -> eReject")
+    # 上下文值一律消息包：按期望类型解包，未命中即类型不符
+    ratio = unpack(ctx.value, Float)
+    if ratio is None:
+        log().tag("arm.guard").warn(f"checker: {ctx.key} 值不是 Float，无法校验 -> eReject")
         return CheckStatus.eReject
-    if ratio > 1.0:
-        log().tag("arm.guard").warn(f"checker: {ctx.key}={fmt_f64(ratio)} 超过安全倍率 1.0（撞机风险）-> eReject")
+    if ratio.value > 1.0:
+        log().tag("arm.guard").warn(f"checker: {ctx.key}={fmt_f64(ratio.value)} 超过安全倍率 1.0（撞机风险）-> eReject")
         return CheckStatus.eReject
-    log().tag("arm.guard").info(f"checker: {ctx.key}={fmt_f64(ratio)} 在安全范围内 -> eAccept")
+    log().tag("arm.guard").info(f"checker: {ctx.key}={fmt_f64(ratio.value)} 在安全范围内 -> eAccept")
     return CheckStatus.eAccept
 
 # 安全 PLC 的上电告警：伺服电源指令属安全相关事件，收到快照即告警记录
 def monitor_servo_power_alarm(ctx: Context) -> None:
-    state = "ON" if ctx.value else "OFF"
+    power = unpack(ctx.value, Bool)
+    state = "ON" if power is not None and power.value else "OFF"
     log().tag("arm.watch").warn(f"[告警] 伺服电源指令: {ctx.key}={state}（安全 PLC 收到本次写入快照）")
 
 # 操作黑匣子：记录每一次伺服电源指令的快照，供事后追溯；
 # 与告警回调同批执行，展示 set_monitor 的追加式多播
 def monitor_servo_power_log(ctx: Context) -> None:
-    state = "ON" if ctx.value else "OFF"
+    power = unpack(ctx.value, Bool)
+    state = "ON" if power is not None and power.value else "OFF"
     log().tag("arm.watch").info(f"[黑匣子] 记录操作: {ctx.key}->{state}（追加式多播：与告警回调按注册序同批执行）")
 
 # 数字孪生位姿上报：async_monitor=True 经单线程池送达（按 set 提交序保序），
 # 执行线程是池线程——上报动作不阻塞运动控制回路
 def monitor_pose_telemetry(ctx: Context) -> None:
-    pose = ctx.value
-    if not isinstance(pose, list):
-        log().tag("arm.telemetry").warn(f"上报失败: {ctx.key} 值不是 list")
+    pose = unpack(ctx.value, FloatArray)
+    if pose is None:
+        log().tag("arm.telemetry").warn(f"上报失败: {ctx.key} 值不是 FloatArray")
         return
-    log().tag("arm.telemetry").info(f"位姿上报: {ctx.key}={fmt_pose(pose)}"
+    log().tag("arm.telemetry").info(f"位姿上报: {ctx.key}={fmt_pose(pose.items)}"
         f"（池线程 {threading.current_thread().name}，按 set 提交序送达）")
 
 # ---------------------------------------------------------------------------
@@ -201,15 +205,15 @@ def show_arm_boot_create():
         "重复创建同名键会被拒绝——创建是排他的。")
 
     log_action("写入初始运行模式", "/YomkContext/create arm.mode",
-               lambda: ctx().key("arm.mode").value("idle").create())
+               lambda: ctx().key("arm.mode").value(String("idle")).create())
     log_action("写入初始速度倍率", "/YomkContext/create arm.speed_ratio",
-               lambda: ctx().key("arm.speed_ratio").value(0.5).create())
+               lambda: ctx().key("arm.speed_ratio").value(Float(0.5)).create())
     log_action("写入初始伺服电源状态", "/YomkContext/create arm.servo_power",
-               lambda: ctx().key("arm.servo_power").value(False).create())
+               lambda: ctx().key("arm.servo_power").value(Bool(False)).create())
 
     # 重复创建同名键：eNo "context key '<key>' already exists"，排他语义——更新请走 SET（见场景 3）
     log_action("重复创建同名键", "/YomkContext/create arm.mode (重复)",
-               lambda: ctx().key("arm.mode").value("auto").create())
+               lambda: ctx().key("arm.mode").value(String("auto")).create())
     log_verify("重复创建同名键 -> eNo(context key 'arm.mode' already exists)：创建排他，更新请用 SET")
 
 # 场景 2：示教器 HMI 读取机械臂状态
@@ -222,15 +226,15 @@ def show_arm_read_status():
         "兜底默认值——调用方永不拿到空值。")
 
     # 兜底默认值：GET 未命中时原样返回该值（按值兜底，按 is 同一性识别兜底路径）
-    ratio_fallback = 0.0
+    ratio_fallback = Float(0.0)
 
     log_action_start("示教器读取速度倍率")
-    ratio = ctx().key("arm.speed_ratio").msg().with_default(ratio_fallback).get()
-    log_get("arm.speed_ratio", fmt_f64(ratio), ratio is ratio_fallback)
+    ratio = ctx().key("arm.speed_ratio").msg(Float).with_default(ratio_fallback).get()
+    log_get("arm.speed_ratio", fmt_f64(ratio.value), ratio is ratio_fallback)
 
     log_action_start("示教器查询未上线的负载模块")
-    payload = ctx().key("arm.payload_kg").msg().with_default(ratio_fallback).get()
-    log_get("arm.payload_kg", fmt_f64(payload), payload is ratio_fallback)
+    payload = ctx().key("arm.payload_kg").msg(Float).with_default(ratio_fallback).get()
+    log_get("arm.payload_kg", fmt_f64(payload.value), payload is ratio_fallback)
     log_verify("查询未注册的键 -> 返回兜底默认值 0.0（is 同一对象），调用方永不拿到空值")
 
 # 场景 3：机械臂切自动模式并提速
@@ -240,30 +244,31 @@ def show_arm_update_status():
         "运行参数调整",
         "/YomkContext/set",
         "切入自动模式并提速：SET 整体替换值对象，先前 GET 的持有者仍是旧快照（无撕裂读）；"
-        "值类型必须与创建时一致，误写类型会被拒绝。")
+        "值类型（消息包 TYPE_NAME）必须与创建时一致，误写类型会被拒绝。")
 
     # 示教器先前读到的旧快照（0.5）——SET 之后它不应被改动
-    ratio_fallback = 0.0
+    ratio_fallback = Float(0.0)
     log_action_start("示教器留存当前倍率快照")
-    old_snapshot = ctx().key("arm.speed_ratio").msg().with_default(ratio_fallback).get()
-    log_get("arm.speed_ratio", fmt_f64(old_snapshot), old_snapshot is ratio_fallback)
+    old_snapshot = ctx().key("arm.speed_ratio").msg(Float).with_default(ratio_fallback).get()
+    log_get("arm.speed_ratio", fmt_f64(old_snapshot.value), old_snapshot is ratio_fallback)
 
     log_action("切入自动模式", "/YomkContext/set arm.mode",
-               lambda: ctx().key("arm.mode").value("auto").set())
+               lambda: ctx().key("arm.mode").value(String("auto")).set())
     log_action("提高速度倍率至 0.8", "/YomkContext/set arm.speed_ratio",
-               lambda: ctx().key("arm.speed_ratio").value(0.8).set())
+               lambda: ctx().key("arm.speed_ratio").value(Float(0.8)).set())
 
     # 新旧快照对比：验证 SET 的整体替换语义（业务结论，不限于单次接口调用）
     log_action_start("新旧快照对比")
-    fresh = ctx().key("arm.speed_ratio").msg().with_default(ratio_fallback).get()
-    log_get("arm.speed_ratio 旧快照", fmt_f64(old_snapshot), old_snapshot is ratio_fallback)
-    log_get("arm.speed_ratio 新快照", fmt_f64(fresh), fresh is ratio_fallback)
+    fresh = ctx().key("arm.speed_ratio").msg(Float).with_default(ratio_fallback).get()
+    log_get("arm.speed_ratio 旧快照", fmt_f64(old_snapshot.value), old_snapshot is ratio_fallback)
+    log_get("arm.speed_ratio 新快照", fmt_f64(fresh.value), fresh is ratio_fallback)
     log_verify("/YomkContext/set 整体替换值对象：留存快照保持 0.5 不变，新读取得到 0.8——旧快照即冻结")
 
-    # 强类型契约：arm.mode 是 str，误用 float 类型写入被拒
-    log_action("误用类型改写运行模式", "/YomkContext/set arm.mode (float)",
-               lambda: ctx().key("arm.mode").value(1.0).set())
-    log_verify("误用类型改写运行模式 -> eNo(context type not match: key 'arm.mode' expect 'str', got 'float')：强类型防误写")
+    # 强类型契约：arm.mode 是 String 消息，误用 Int 消息写入被拒
+    log_action("误用类型改写运行模式", "/YomkContext/set arm.mode (Int)",
+               lambda: ctx().key("arm.mode").value(Int(1)).set())
+    log_verify("误用类型改写运行模式 -> eNo(context type not match: key 'arm.mode' "
+               "expect 'yomk.msgs.String', got 'yomk.msgs.Int')：强类型防误写")
 
 # 场景 4：速度倍率安全门控（速度倍率是安全关键参数）
 def show_arm_guard_speed_ratio():
@@ -278,31 +283,31 @@ def show_arm_guard_speed_ratio():
     log_action("挂载倍率安全校验", "/YomkContext/set_checker arm.speed_ratio",
                lambda: ctx().key("arm.speed_ratio").checker_fn(checker_speed_ratio).apply())
     log_action("门控未开时尝试超限写入", "/YomkContext/set arm.speed_ratio=1.2",
-               lambda: ctx().key("arm.speed_ratio").value(1.2).set())
+               lambda: ctx().key("arm.speed_ratio").value(Float(1.2)).set())
     log_verify("校验已挂但全局门控未开 -> 1.2 照样写入（注意 arm.guard 日志未出现）")
 
     # 打开全局门控：合法值放行，超限被拒且值不变
     log_action("打开全局校验门控", "/YomkContext/turn_on_checker", lambda: ctx().checker().enable())
     log_action("写入合法倍率 0.9", "/YomkContext/set arm.speed_ratio=0.9",
-               lambda: ctx().key("arm.speed_ratio").value(0.9).set())
+               lambda: ctx().key("arm.speed_ratio").value(Float(0.9)).set())
     log_verify("门控打开后合法值 0.9 -> arm.guard 日志 eAccept，写入成功")
     log_action("尝试写入超限倍率 1.2", "/YomkContext/set arm.speed_ratio=1.2",
-               lambda: ctx().key("arm.speed_ratio").value(1.2).set())
+               lambda: ctx().key("arm.speed_ratio").value(Float(1.2)).set())
     log_action_start("确认被拒后倍率保持不变")
-    ratio_fallback = 0.0
-    ratio = ctx().key("arm.speed_ratio").msg().with_default(ratio_fallback).get()
-    log_get("arm.speed_ratio", fmt_f64(ratio), ratio is ratio_fallback)
+    ratio_fallback = Float(0.0)
+    ratio = ctx().key("arm.speed_ratio").msg(Float).with_default(ratio_fallback).get()
+    log_get("arm.speed_ratio", fmt_f64(ratio.value), ratio is ratio_fallback)
     log_verify("超限写入 -> eNo(checker reject set context) 且值保持 0.9 未变；arm.guard 日志给出拒绝理由")
 
     # 关闭全局门控（现场调试模式）：门控旁路，checker 仍在键上
     log_action("现场调试关闭门控", "/YomkContext/turn_off_checker", lambda: ctx().checker().disable())
     log_action("门控关闭后再次写入 1.2", "/YomkContext/set arm.speed_ratio=1.2",
-               lambda: ctx().key("arm.speed_ratio").value(1.2).set())
+               lambda: ctx().key("arm.speed_ratio").value(Float(1.2)).set())
     log_verify("门控关闭后 1.2 -> 写入成功：门控旁路，校验保留但不生效")
 
     # 收尾恢复安全值，并保持全局开关为默认 OFF
     log_action("恢复安全倍率 0.5", "/YomkContext/set arm.speed_ratio=0.5",
-               lambda: ctx().key("arm.speed_ratio").value(0.5).set())
+               lambda: ctx().key("arm.speed_ratio").value(Float(0.5)).set())
 
 # 场景 5：安全 PLC 订阅伺服电源指令
 def show_arm_watch_servo_power():
@@ -321,7 +326,7 @@ def show_arm_watch_servo_power():
 
     # 对照：全局监控默认 OFF，写入静默（注意观察无 arm.watch 日志）
     log_action("全局监控关闭时下发上电指令", "/YomkContext/set arm.servo_power=true",
-               lambda: ctx().key("arm.servo_power").value(True).set())
+               lambda: ctx().key("arm.servo_power").value(Bool(True)).set())
     log_verify("全局监控默认 OFF -> 上电指令写入成功但无 arm.watch 日志（monitor 保留但不执行）")
 
     log_action("开启全局监控", "/YomkContext/turn_on_monitor", lambda: ctx().monitor().enable())
@@ -329,12 +334,12 @@ def show_arm_watch_servo_power():
     # 同步通知在 set 返回前（写锁外）执行：arm.watch 日志会夹在"开始执行"与
     # 结果行之间，属预期时序——顺着日志读即可看出通知归属这次操作
     log_action("下发下电指令", "/YomkContext/set arm.servo_power=false",
-               lambda: ctx().key("arm.servo_power").value(False).set())
+               lambda: ctx().key("arm.servo_power").value(Bool(False)).set())
     log_verify("监控开启后写入 -> 两条 arm.watch 日志夹在开始行与结果行之间（同步通知写锁外、set 返回前执行）")
 
     log_action("暂停全局监控", "/YomkContext/turn_off_monitor", lambda: ctx().monitor().disable())
     log_action("再上电验证通知已暂停", "/YomkContext/set arm.servo_power=true",
-               lambda: ctx().key("arm.servo_power").value(True).set())
+               lambda: ctx().key("arm.servo_power").value(Bool(True)).set())
     log_verify("监控暂停后写入 -> 无 arm.watch 日志：通知暂停，monitor 保留在键上")
 
     # 收尾保持全局监控 OFF 默认；场景 6 自行按需开启
@@ -349,7 +354,8 @@ def show_arm_report_pose():
         "保序），执行线程是池线程——上报不阻塞运动控制回路。")
 
     # 位姿键可能晚于主控创建（数字孪生模块后启动），幂等补建
-    ensure_key("数字孪生创建位姿", "arm.tcp_pose", [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
+    ensure_key("数字孪生创建位姿", "arm.tcp_pose",
+               FloatArray([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]))
 
     # arrange：全局监控在场景 5 收尾已恢复 OFF，此处按需开启
     log_action("开启全局监控", "/YomkContext/turn_on_monitor", lambda: ctx().monitor().enable())
@@ -360,11 +366,14 @@ def show_arm_report_pose():
 
     # 连续 3 次位姿更新（模拟插补运动）：提交序 #1 -> #2 -> #3
     log_action("插补运动 #1", "/YomkContext/set arm.tcp_pose",
-               lambda: ctx().key("arm.tcp_pose").value([100.0, 0.0, 200.0, 0.0, 0.0, 0.0, 1.0]).set())
+               lambda: ctx().key("arm.tcp_pose")
+               .value(FloatArray([100.0, 0.0, 200.0, 0.0, 0.0, 0.0, 1.0])).set())
     log_action("插补运动 #2", "/YomkContext/set arm.tcp_pose",
-               lambda: ctx().key("arm.tcp_pose").value([120.0, 40.0, 220.0, 0.0, 0.0, 0.707, 0.707]).set())
+               lambda: ctx().key("arm.tcp_pose")
+               .value(FloatArray([120.0, 40.0, 220.0, 0.0, 0.0, 0.707, 0.707])).set())
     log_action("插补运动 #3", "/YomkContext/set arm.tcp_pose",
-               lambda: ctx().key("arm.tcp_pose").value([150.0, 80.0, 250.0, 0.0, 0.0, 1.0, 0.0]).set())
+               lambda: ctx().key("arm.tcp_pose")
+               .value(FloatArray([150.0, 80.0, 250.0, 0.0, 0.0, 1.0, 0.0])).set())
 
     log().tag("arm.demo").info("等待异步上报送达（单线程池按提交序执行）...")
     time.sleep(0.3)
@@ -433,10 +442,10 @@ def show_arm_task_cleanup():
                lambda: ctx().key("arm.mode").destroy())
 
     # 销毁后行为：GET 回落兜底默认值
-    mode_fallback = "unknown"
+    mode_fallback = String("unknown")
     log_action_start("确认销毁后读取回落")
-    mode = ctx().key("arm.mode").msg().with_default(mode_fallback).get()
-    log_get("arm.mode", mode, mode is mode_fallback)
+    mode = ctx().key("arm.mode").msg(String).with_default(mode_fallback).get()
+    log_get("arm.mode", mode.value, mode is mode_fallback)
     log_verify("销毁后 GET -> 返回兜底默认值（is 同一对象），键已消失")
 
     # 重复销毁：not-found 惯例

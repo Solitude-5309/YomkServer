@@ -53,7 +53,7 @@ CTX_CREATE_DESC = """
 在指定组（缺省 main）创建上下文键并写入值包；create 是键的唯一创建入口，set 只能更新已存在的键。
 
 # Inputs
-Context 包：key 键名；value 值包（非空）；group 组名（缺省 "main"）。
+Context 包：key 键名；value 值包（非空 YomkMsg 实例）；group 组名（缺省 "main"）。
 
 # Outputs
 data 无负载，成功 msg "create context success"。
@@ -69,7 +69,7 @@ CTX_GET_DESC = """
 读取上下文键当前值；键名为空或键不存在时回填并返回请求携带的默认值，故"未命中"不等于无返回。
 
 # Inputs
-Context 包：key 键名；value 默认值包（可为 None）；group 组名（缺省 "main"）。
+Context 包：key 键名；value 默认值包（可为 None，须与读取类型一致）；group 组名（缺省 "main"）。
 
 # Outputs
 data 为键的当前值包；未命中时 data 为请求携带的默认值包（可为 None）。
@@ -85,7 +85,7 @@ CTX_SET_DESC = """
 更新已存在上下文键的值，值包类型必须与原值类型一致；本端点不创建键。
 
 # Inputs
-Context 包：key 键名；value 新值包（非 None）；group 组名（缺省 "main"）。
+Context 包：key 键名；value 新值包（非 None 的 YomkMsg 实例）；group 组名（缺省 "main"）。
 
 # Outputs
 data 无负载，成功 msg "set context success"；失败时 msg 携带期望/实际类型名或拒绝来源。
@@ -238,7 +238,7 @@ data 为 ContextKeyInfo 包（key/type_name/checker_on/monitor_count/async_monit
 同步快照读取，持组读锁构造；幂等。
 
 # Notes
-checker_on 报该键是否已装 checker（非组总闸态）；type_name 为值消息包类型名（值为 None 时为空串）；Invalid=键名为空；Failed=键不存在；pkg 非 ContextGroupKey → Failed。
+checker_on 报该键是否已装 checker（非组总闸态）；type_name 为值消息包的 TYPE_NAME（全限定，值为 None 时为空串）；Invalid=键名为空；Failed=键不存在；pkg 非 ContextGroupKey → Failed。
 """
 CTX_GROUPS_DESC = """
 # Overview

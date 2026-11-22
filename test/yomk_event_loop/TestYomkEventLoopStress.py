@@ -24,6 +24,7 @@ import sys
 import threading
 import time
 
+from yomk.msgs import String
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.event_loop import EventLoopInfo
 from yomk.server import server as server_api
@@ -236,7 +237,7 @@ def section_5(n):
 
     t0 = time.perf_counter()
     for _k in range(n):
-        event_loop().msg("payload").loop("stress_loop").handle_fn(count_handler()).post()
+        event_loop().msg(String("payload")).loop("stress_loop").handle_fn(count_handler()).post()
     t1 = time.perf_counter()
     drained = wait_until(lambda: len(EXEC_COUNT) == n, 30.0)
     t2 = time.perf_counter()

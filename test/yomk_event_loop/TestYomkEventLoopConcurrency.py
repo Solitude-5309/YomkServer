@@ -26,6 +26,7 @@ import sys
 import threading
 import time
 
+from yomk.msgs import String
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.event_loop import EventLoopInfo
 from yomk.server import server as server_api
@@ -275,7 +276,7 @@ def section_5():
 
     def api_poster():
         for _k in range(25):
-            if event_loop().msg("x").loop("conc_loop").handle_fn(count_handler()).post() == ResStatus.eOk:
+            if event_loop().msg(String("x")).loop("conc_loop").handle_fn(count_handler()).post() == ResStatus.eOk:
                 with stat_lock:
                     api_post_ok[0] += 1
 

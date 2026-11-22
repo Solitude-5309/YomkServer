@@ -144,6 +144,9 @@ from yomk.server import YomkService
 from yomk.ctx import ctx
 from yomk.log import log
 from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.YomkMsg import unpack
+from yomk.msgs.std_msg import String, type_mismatch
+from msgs.YomkMsgs import ConfigKey, ConfigKeyValue
 
 
 class ConfigService(YomkService):
@@ -154,15 +157,18 @@ class ConfigService(YomkService):
         self.config_json = {}
 
     def init(self):
+        # 端点声明第三参传 msg.TYPE_NAME（禁止手写字面量，与框架服务同规）
         self.install_func("/load", self.load_config)
-        self.install_func("/get", self.get_config)
-        self.install_func("/set", self.set_config)
+        self.install_func("/get", self.get_config, ConfigKey.TYPE_NAME)
+        self.install_func("/set", self.set_config, ConfigKeyValue.TYPE_NAME)
         self.install_func("/reload", self.reload_config)
         self.install_func("/version", self.version)
         log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to ", self.get_name())
 
     def load_config(self, pkg):
-        self.config_path = ctx().key(CTX_CONFIG_PATH).msg().with_default("").get()
+        # 类型化读：msg(String) 声明期望类型，with_default 传同类型消息或 None
+        cfg = ctx().key(CTX_CONFIG_PATH).msg(String).with_default(String("")).get()
+        self.config_path = cfg.value
         if not self.config_path:
             return Response(ResStatus.eNo, "config_path not found in context")
         try:
@@ -174,6 +180,9 @@ class ConfigService(YomkService):
         return Response(ResStatus.eOk, "ok")
 
     def get_config(self, pkg):
+        # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）
+        if unpack(pkg, ConfigKey) is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, ConfigKey.TYPE_NAME))
         tokens = pkg.key.split('.')
         current = self.config_json
         for token in tokens:
@@ -188,6 +197,9 @@ class ConfigService(YomkService):
         return Response(ResStatus.eOk, "ok", value)
 
     def set_config(self, pkg):
+        if unpack(pkg, ConfigKeyValue) is None:
+            return Response(ResStatus.eNo,
+                            type_mismatch(pkg, ConfigKeyValue.TYPE_NAME))
         tokens = pkg.key.split('.')
         current = self.config_json
         for token in tokens[:-1]:
@@ -200,7 +212,8 @@ class ConfigService(YomkService):
 
     def reload_config(self, pkg):
         # reload 先回取 context 中的 config_path，缺失即 eNo
-        self.config_path = ctx().key(CTX_CONFIG_PATH).msg().with_default("").get()
+        cfg = ctx().key(CTX_CONFIG_PATH).msg(String).with_default(String("")).get()
+        self.config_path = cfg.value
         if not self.config_path:
             return Response(ResStatus.eNo, "config_path not found in context")
         try:
@@ -325,9 +338,9 @@ python main.py
 
 | 组件 | 用途 | 链式域入口 |
 |------|------|------------|
-| YomkContext | 全局 K-V 状态管理 | `ctx().key(k).group(g).value(v).create()` / `.set()` / `.destroy()`；读取 `ctx().key(k).msg().with_default(d).get()` |
-| YomkEventLoop | 线程隔离事件循环 | `event_loop().loop(n).handle_fn(f).start()` / `.post()` / `.post_wait()` |
-| YomkFunctionPool | 动态公共函数池 | `fn_pool().fn_name(n).fn(f).install()` / `.msg(pkg).call()` |
+| YomkContext | 全局 K-V 状态管理 | `ctx().key(k).group(g).value(msg).create()` / `.set()` / `.destroy()`；读取 `ctx().key(k).msg(cls).with_default(msg).get()`（值一律消息实例） |
+| YomkEventLoop | 线程隔离事件循环 | `event_loop().loop(n).handle_fn(f).start()` / `.msg(msg).post()` / `.post_wait()` |
+| YomkFunctionPool | 动态公共函数池 | `fn_pool().fn_name(n).fn(f).install()` / `.msg(msg).call()` |
 | YomkLogger | 多级别日志系统 | `log().info(...)` / `log().error(...)`；文件日志器 `log_mgr().dir(d).file(n).create()` |
 ````
 
@@ -409,21 +422,25 @@ server().boot_ptr(MyBoot(["/ConfigService", "/UserService"])).run()
 ## 示例2：Context Checker/Monitor
 
 ```python
+from yomk.msgs import String
+from yomk.msgs.ctx import CheckStatus
+from yomk.msgs.YomkMsg import unpack
 
-# 检查函数：只允许非空字符串
+# 检查函数：只允许非空字符串（ctx.value 是消息实例，先 unpack 再取值）
 def non_empty_checker(ctx) -> CheckStatus:
-    if not ctx.value or str(ctx.value).strip() == "":
+    text = unpack(ctx.value, String)
+    if text is None or text.value.strip() == "":
         return CheckStatus.eReject
     return CheckStatus.eAccept
 
-# 监控函数：记录变更（收到的是本次 set 的键值快照，不保证实时——读最新值请再 get()）
+# 监控函数：记录变更（收到的是本次 set 的消息快照，不保证实时——读最新值请再 get()）
 def change_logger(ctx):
-    log().tag("monitor").info("key=", ctx.key, " new_value=", ctx.value)
+    log().tag("monitor").info("key=", ctx.key, " new_value=", ctx.value.value)
 
 server().init()
 
 # 键级回调只能注册到已存在的键：先 create 再注册（键不存在 Failed "context key '<k>' does not exist"）
-ctx().key("config").value("default").create()
+ctx().key("config").value(String("default")).create()
 ctx().key("config").checker_fn(non_empty_checker).apply()          # 同步 checker
 ctx().key("config").monitor_fn(change_logger).apply()              # 同步 monitor（写锁外即时执行）
 ctx().key("config").monitor_fn(change_logger).async_(True).apply() # 异步 monitor：该组单线程池按提交序保序送达
@@ -432,21 +449,22 @@ ctx().key("config").monitor_fn(change_logger).async_(True).apply() # 异步 moni
 ctx().group("main").checker().enable()
 ctx().group("main").monitor().enable()
 
-ctx().key("config").value("new_value").set()   # checker 放行 + monitor 触发
-ctx().key("config").value("").set()            # 被拒：Failed（契约 "set context key 'config' rejected by checker"）
+ctx().key("config").value(String("new_value")).set()   # checker 放行 + monitor 触发
+ctx().key("config").value(String("")).set()            # 被拒：Failed（契约 "set context key 'config' rejected by checker"）
 
 # 自定义组：非 main 组首次寻址即惰性自动创建（组不支持销毁、组表只增不减；异步监控池每组自持单线程）
-ctx().group("motion").key("state").value("idle").create()
+ctx().group("motion").key("state").value(String("idle")).create()
 ctx().group("motion").key("state").monitor_fn(change_logger).async_(True).apply()
 ctx().group("motion").monitor().enable()                          # 自定义组同样默认关，须显式开
-ctx().group("motion").key("state").value("running").set()
+ctx().group("motion").key("state").value(String("running")).set()
 
-# 类型化读（msg(cls) 为期望类型，命中后做类型名比对，不符记 WARN 回退默认值；cls 省略不校验）
-val = ctx().key("config").msg(str).with_default("fallback").get()
+# 类型化读（msg(cls) 必填；with_default 传同 TYPE_NAME 消息或 None；不符记 WARN 回退兜底消息）
+val = ctx().key("config").msg(String).with_default(String("fallback")).get()
+print(val.value)
 
 # 写路径失败契约（裸链可查 msg）：入参非法 Invalid——
-# "context key is empty"（键空）/ "create context key '<k>' failed: value is empty"（create）
-# "set context key '<k>' failed: value is empty"（set）/ "group name is empty"（空组名）；
+# "context key is empty"（键空）/ "create context key '<k>' failed: value is empty"（create 时 value 为 None）
+# "set context key '<k>' failed: value is empty"（set 时 value 为 None）/ "group name is empty"（空组名）；
 # 业务未命中/冲突 Failed——
 # "context key '<k>' already exists"（create）/ "context key '<k>' does not exist"（set/destroy/回调注册）
 # "context type not match: key '<k>' expect ..., got ..." / "set context key '<k>' rejected by checker"（set）
@@ -457,7 +475,7 @@ val = ctx().key("config").msg(str).with_default("fallback").get()
 ```python
 class GuardService(YomkService):
     def init(self):
-        ctx().key("guard").value("on").create()
+        ctx().key("guard").value(String("on")).create()
         ctx().key("guard").checker_fn(
             self.weak_func(self.check, discard="check")).apply()          # 失效形态：放行 CheckStatus.eAccept
         ctx().key("guard").monitor_fn(
@@ -478,27 +496,31 @@ class GuardService(YomkService):
 
 ```python
 import threading
+from yomk.msgs import String
+from yomk.msgs.YomkMsg import unpack
 
 def task_handler(pkg) -> Response:
-    log().tag("worker").info("processing: ", pkg, " in thread ", threading.get_ident())
+    text = unpack(pkg, String)
+    log().tag("worker").info("processing: ", text.value if text else "<non-String>",
+                             " in thread ", threading.get_ident())
     return Response(ResStatus.eOk, "task done")
 
 server().init()
 
 # 启动事件循环（msg_name 为默认处理函数期望消息类型，仅内省元数据；同名再次 start = 续跑不重建，
 # 本次累积的 handle_fn/msg_name 不生效）
-event_loop().loop("worker_loop").handle_fn(task_handler).msg_name("str").start()
+event_loop().loop("worker_loop").handle_fn(task_handler).msg_name(String.TYPE_NAME).start()
 
 # 非阻塞投递（走默认处理函数；tag 仅内省可见，用于观察队列积压）
-event_loop().msg("task_1").loop("worker_loop").tag("billing").post()
+event_loop().msg(String("task_1")).loop("worker_loop").tag("billing").post()
 
 # 单次事件临时 handler（优先于默认处理函数）+ 同步投递（阻塞至执行完成）
-(event_loop().msg("task_2").loop("worker_loop")
+(event_loop().msg(String("task_2")).loop("worker_loop")
     .handle_fn(lambda pkg: Response(ResStatus.eOk, "ad-hoc done")).post_wait())
 
 # 取回执行结果：链式 post_wait 终结仅收敛三态，需要 Event 回包时用裸链
 resp = (server().url("/YomkEventLoop/post_wait")
-        .msg(Event("worker_loop", "task_3", task_handler, "tag3")).request())
+        .msg(Event("worker_loop", String("task_3"), task_handler, "tag3")).request())
 if resp.status == ResStatus.eOk:
     ev = resp.data                       # Event 对象：m_eventId / m_response 携带处理响应
     log().info("event result: ", ev.m_response.msg)
@@ -510,7 +532,7 @@ event_loop().list()              # 全部循环名
 # 停止：停线程但保留队列事件 → 再次 start() 续跑（仅续跑停止前已在队列中的事件）；期间投递被拒（契约 Failed）：
 # "event loop '<名>' does not exist"（循环不存在）；"event loop '<名>' not running, post rejected" / "post wait rejected"（已停止）
 event_loop().loop("worker_loop").stop()
-event_loop().msg("task_4").loop("worker_loop").post()   # Failed "event loop '<名>' not running, post rejected"——被拒不入队
+event_loop().msg(String("task_4")).loop("worker_loop").post()   # Failed "event loop '<名>' not running, post rejected"——被拒不入队
 event_loop().loop("worker_loop").start()                # 续跑停止前的存量事件；task_4 不会补跑，如需执行须 start() 后重新 post
 
 # 销毁：停线程 + 清空队列 + 移出循环表，不可续跑
@@ -524,10 +546,14 @@ event_loop().loop("worker_loop").destroy()
 ## 示例4：FunctionPool 公共函数池
 
 ```python
+from yomk.msgs import IntArray, String, type_mismatch, unpack
 
 def validate_amount(pkg) -> Response:
+    text = unpack(pkg, String)
+    if text is None:
+        return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
     try:
-        amount = float(pkg)
+        amount = float(text.value)
         if amount <= 0:
             return Response(ResStatus.eNo, "invalid amount")
         return Response(ResStatus.eOk, "valid")
@@ -535,9 +561,10 @@ def validate_amount(pkg) -> Response:
         return Response(ResStatus.eNo, "invalid amount")
 
 def calc_sum(pkg) -> Response:
-    if not isinstance(pkg, list):
-        return Response(ResStatus.eNo, "pkg is not list")
-    return Response(ResStatus.eOk, "ok", sum(pkg))
+    nums = unpack(pkg, IntArray)
+    if nums is None:
+        return Response(ResStatus.eNo, type_mismatch(pkg, IntArray.TYPE_NAME))
+    return Response(ResStatus.eOk, "ok", sum(nums.items))
 
 def calc_sum_v2(pkg) -> Response:      # 热替换后的新版本实现
     return calc_sum(pkg)
@@ -546,19 +573,19 @@ server().init()
 
 # 注册（msg_name/description 仅内省元数据）+ 调用（call 阻塞至函数执行完成，返回值整体进 data）
 fn_pool().fn_name("validate_amount").fn(validate_amount).install()
-fn_pool().fn_name("calc_sum").fn(calc_sum).msg_name("list").description("对列表求和").install()
-resp = fn_pool().fn_name("validate_amount").msg("100.5").call()
+fn_pool().fn_name("calc_sum").fn(calc_sum).msg_name(IntArray.TYPE_NAME).description("对整数列表求和").install()
+resp = fn_pool().fn_name("validate_amount").msg(String("100.5")).call()
 
 # 同名重复 install = 运行时热替换（返回 Succeeded，无需先注销；诊断 WARN 与 Response.msg 同串 "function '<名>' already exists, hot-swap to current function"）
 fn_pool().fn_name("calc_sum").fn(calc_sum_v2).install()
 
 # 单函数内省：命中 msg 恒 "ok"，data 为 FuncInfo 包（func_name/msg_name/description）
-resp = fn_pool().fn_name("calc_sum").get_info()   # msg_name="list", description="对列表求和"
+resp = fn_pool().fn_name("calc_sum").get_info()   # msg_name=IntArray.TYPE_NAME, description="对整数列表求和"
 
 # 注销与未命中口径（not-found 归 Failed 不归 Invalid）
 fn_pool().fn_name("calc_sum").uninstall()          # Succeeded
 fn_pool().fn_name("calc_sum").uninstall()          # Failed（已注销）
-fn_pool().fn_name("calc_sum").msg([1, 2]).call()   # Failed（名字不存在）
+fn_pool().fn_name("calc_sum").msg(IntArray([1, 2])).call()   # Failed（名字不存在）
 
 # 入参非法归 Invalid：空名/空函数（契约 "funcName or func is empty"）
 fn_pool().fn_name("").fn(validate_amount).install()     # Invalid
@@ -738,10 +765,14 @@ __all__ = ["ExtensionRequest", "ExtensionResponse"]
 
 ### src/yomk/msgs/extension/ExtensionMsg.py
 ```python
-# 扩展消息类型定义（与框架 msg 子包同风格：结构化数据，框架按消息包/持有语义传递）
+# 扩展消息类型定义（标准形态：继承 YomkMsg 免费得 TYPE_NAME——运行期类型名
+# 自动生成、随类重命名跟随，禁止手写；unpack 精确比对 / install_func 声明
+# / 错误文案统一消费它，无需任何手写报文名）
+
+from yomk.msgs import YomkMsg
 
 
-class ExtensionRequest:
+class ExtensionRequest(YomkMsg):
     """扩展请求包：payload 为调用方自定义数据（裸 str / 结构化对象均可）"""
 
     def __init__(self, payload):
@@ -751,7 +782,7 @@ class ExtensionRequest:
         return f"ExtensionRequest(payload={self.payload!r})"
 
 
-class ExtensionResponse:
+class ExtensionResponse(YomkMsg):
     """扩展应答包：作为 Response.data 承载强类型回包（强类型回包形态）"""
 
     def __init__(self, status, msg, data=None):
@@ -827,10 +858,12 @@ def extension() -> ExtensionBuilder: ...
 # 注册（见 test/test_extension.py）；框架只拉起 5 个内置服务。
 # 调用方推荐优先使用框架封装好的统一请求接口访问本服务：
 #   server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
-from yomk.server import YomkService
+from yomk.msgs.std_msg import type_mismatch
 from yomk.msgs.server import ResStatus, Response
+from yomk.msgs.YomkMsg import unpack
 from yomk.msgs.extension import ExtensionRequest, ExtensionResponse
 from yomk.log import log
+from yomk.server import YomkService
 
 
 class ExtensionService(YomkService):
@@ -839,17 +872,20 @@ class ExtensionService(YomkService):
         self.set_name("/ExtensionService")
 
     def init(self):
-        self.install_func("/echo", self.echo)
+        # 第三参传 msg.TYPE_NAME（禁止手写字面量，与框架服务同规）
+        self.install_func("/echo", self.echo, ExtensionRequest.TYPE_NAME)
         self.install_func("/version", self.version)
         log().tag("ExtensionService::init").info(
             "install func [ /echo /version ] to ", self.get_name())
         return 0
 
     def echo(self, pkg):
-        # 入参 pkg 为注册消息类型的实例（消息包/持有语义：框架不拷贝）；
+        # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）；
+        # 失败文案走 type_mismatch——期望/实际两侧均为 TYPE_NAME，零手写报文名；
         # 返回框架 Response，强类型回包以 ExtensionResponse 承载在 data 位
-        if not isinstance(pkg, ExtensionRequest):
-            return Response(ResStatus.eNo, "pkg type mismatch, ExtensionRequest expected")
+        if unpack(pkg, ExtensionRequest) is None:
+            return Response(ResStatus.eNo,
+                            type_mismatch(pkg, ExtensionRequest.TYPE_NAME))
         return Response(ResStatus.eOk, "echo",
                         ExtensionResponse("ok", "echo", pkg.payload))
 

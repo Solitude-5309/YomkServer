@@ -9,6 +9,7 @@
 与全局 server().url(u).msg(m).request() 等价，但无需获取全局单例。
 """
 
+from yomk.msgs import String, type_mismatch, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService
 from yomk.log import log
@@ -26,29 +27,29 @@ class MotionService(YomkService):
         # 2 参注册：无消息元数据；4 参注册：声明 /move 期望 MoveCmd 并附函数说明，供自省识别
         self.install_func("/echo", self.echo)
         self.install_func("/move", self.move, MoveCmd.TYPE_NAME, "运动控制：按指令运动到目标位姿并留痕")
-        log().tag("arm.motion").info("init: install /echo (no meta), /move [MoveCmd] + description")
+        log().tag("arm.motion").info("init: install /echo (no meta), /move [" + MoveCmd.TYPE_NAME + "] + description")
         return 0
 
     # 通讯自检：收到字符串原样回显
     def echo(self, pkg) -> Response:
-        if not isinstance(pkg, str):
-            return Response(
-                ResStatus.eNo, " pkg is null or pkg is not String. ")
-        log().tag("arm.motion").info(f'通讯自检回环：收到 "{pkg}"')
-        return Response(ResStatus.eOk, "echo success", "echo: " + pkg)
+        text = unpack(pkg, String)
+        if text is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+        log().tag("arm.motion").info(f'通讯自检回环：收到 "{text.value}"')
+        return Response(ResStatus.eOk, "echo success", "echo: " + text.value)
 
     # 运动指令：先跨服务留痕，再返回 MoveResp 强类型到位回执
     def move(self, pkg) -> Response:
-        if not isinstance(pkg, MoveCmd):
-            return Response(
-                ResStatus.eNo, " pkg is null or pkg is not MoveCmd. ")
-        log().tag("arm.motion").info(f"运动指令执行：目标 ({pkg.x}, {pkg.y}, {pkg.z})mm，倍率 {pkg.speed_ratio}")
+        cmd = unpack(pkg, MoveCmd)
+        if cmd is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, MoveCmd.TYPE_NAME))
+        log().tag("arm.motion").info(f"运动指令执行：目标 ({cmd.x}, {cmd.y}, {cmd.z})mm，倍率 {cmd.speed_ratio}")
 
-        # 跨服务调用：成员 request() 与 server().url(u).msg(pkg).request() 裸链等价，URL 直达留痕工位；
+        # 跨服务调用：成员 request() 与 server().url(u).msg(pkg).request() 等价，URL 直达留痕工位；
         # 留痕是运动的依赖前置，留痕缺失时失败沿调用链传播
         trace_resp = self.request(
             "/TelemetryService/record",
-            f"运动留痕：move -> ({pkg.x},{pkg.y},{pkg.z})mm")
+            String(f"运动留痕：move -> ({cmd.x},{cmd.y},{cmd.z})mm"))
         if trace_resp.status != ResStatus.eOk:
             log().tag("arm.motion").info("留痕失败：" + trace_resp.msg)
             return Response(ResStatus.eNo, "move failed: " + trace_resp.msg)
@@ -56,4 +57,4 @@ class MotionService(YomkService):
 
         # 到位回执：data 携带强类型 MoveResp，不止能传 String
         return Response(
-            ResStatus.eOk, "move success", MoveResp(pkg.x, pkg.y, pkg.z))
+            ResStatus.eOk, "move success", MoveResp(cmd.x, cmd.y, cmd.z))

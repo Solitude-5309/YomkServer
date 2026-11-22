@@ -33,6 +33,7 @@ import threading
 import time
 import weakref
 
+from yomk.msgs import String
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.event_loop import EventLoopInfo, EventLoopOpts
 from yomk.server import server as server_api
@@ -346,13 +347,13 @@ def section_8():
     check(order_snapshot() == [], "停止态投递的事件重启后仍未执行（停止期间投递被拒）")
 
     # 默认处理函数：事件无 serviceFunc 时由 set_default_service_func 兜底
-    loop.set_default_service_func(counting_handler("dflt"), "MsgX")
+    loop.set_default_service_func(counting_handler("dflt"), String.TYPE_NAME)
     check(loop.post(Event("wb", None, None, ""))
           == 0, "post 无 serviceFunc 事件返回 0")
     check(wait_until(lambda: bool(order_snapshot()) and order_snapshot()[-1] == "dflt", 2.0),
           "无 serviceFunc 事件由默认处理函数执行")
 
-    # infoLine 分支：defaultFunc:on [MsgX]、空 tag "-" 占位、tagCount=0 与超队列长度
+    # infoLine 分支：defaultFunc:on [TYPE_NAME]、空 tag "-" 占位、tagCount=0 与超队列长度
     check(loop.post(Event("wb", None, gate_handler(), "blk"))
           == 0, "post 阻塞事件 blk 返回 0")
     check(wait_gate_started(2.0), "阻塞事件 blk 已进入执行")
@@ -364,7 +365,8 @@ def section_8():
 
     line = line_of(loop, "wb")
     check("defaultFunc:on" in line, "infoLine 显示 defaultFunc:on")
-    check("[MsgX]" in line, "infoLine 附加默认函数类型名 [MsgX]")
+    check("[" + String.TYPE_NAME + "]" in line,
+          "infoLine 附加默认函数类型名 [" + String.TYPE_NAME + "]")
     check("nextNEventTag(3): t2, -" in line, "infoLine 空 tag 以 - 占位（t2, -）")
     check("nextNEventTag(0):" in line_of(
         loop, "wb", 0), "tagCount=0 输出空 tag 集")
@@ -386,13 +388,13 @@ def section_9():
     start_resp = event_loop().loop("api_loop").start()
     check(start_resp == ResStatus.eOk, "START api_loop 返回 eOk")
 
-    post_resp = event_loop().msg("block").loop("api_loop").handle_fn(gate_handler()).tag("b1").post()
+    post_resp = event_loop().msg(String("block")).loop("api_loop").handle_fn(gate_handler()).tag("b1").post()
     check(post_resp == ResStatus.eOk, "POST 阻塞事件 b1 返回 eOk")
     check(wait_gate_started(2.0), "阻塞事件 b1 已进入执行")
 
-    check(event_loop().msg("c1").loop("api_loop").handle_fn(counting_handler("c1")).tag("c1").post() == ResStatus.eOk,
+    check(event_loop().msg(String("c1")).loop("api_loop").handle_fn(counting_handler("c1")).tag("c1").post() == ResStatus.eOk,
           "POST 计数事件 c1 返回 eOk")
-    check(event_loop().msg("c2").loop("api_loop").handle_fn(counting_handler("c2")).tag("c2").post() == ResStatus.eOk,
+    check(event_loop().msg(String("c2")).loop("api_loop").handle_fn(counting_handler("c2")).tag("c2").post() == ResStatus.eOk,
           "POST 计数事件 c2 返回 eOk")
 
     # 辅助线程 STOP：服务层 stop 内部 join 等待在途事件收尾
@@ -411,9 +413,9 @@ def section_9():
     check(info is not None and info.pending == 2, "API 停止后 pending=2（未执行事件保留）")
 
     # 停止态投递被拒（契约回归）：服务层映射 eNo，调用方可区分"已入队"与"被拒"
-    check(event_loop().msg("rx").loop("api_loop").handle_fn(counting_handler("rx")).tag("rx").post() == ResStatus.eNo,
+    check(event_loop().msg(String("rx")).loop("api_loop").handle_fn(counting_handler("rx")).tag("rx").post() == ResStatus.eNo,
           "停止态 POST 返回 eNo（投递被拒）")
-    check(event_loop().msg("rx2").loop("api_loop").handle_fn(counting_handler("rx2")).tag("rx2").post_wait() == ResStatus.eNo,
+    check(event_loop().msg(String("rx2")).loop("api_loop").handle_fn(counting_handler("rx2")).tag("rx2").post_wait() == ResStatus.eNo,
           "停止态 POST_WAIT 返回 eNo（被拒且不等待）")
     check((lambda o: o is not None and o.pending == 2)(info_of_api("api_loop")),
           "被拒投递未入队（pending 仍为 2）")
@@ -439,7 +441,7 @@ def section_9():
     # POST_WAIT 回传 Event 走 data：写路径链式终结收敛为 ResStatus（无 data），
     # 经 server 域 url/msg/request 裸链直取 Response（端点行为与链式终结一致）
     pw = server_api().url("/YomkEventLoop/post_wait").msg(
-        Event("api_loop", "pw1", counting_handler("pw1"), "pw1")).request()
+        Event("api_loop", String("pw1"), counting_handler("pw1"), "pw1")).request()
     check(pw.status == ResStatus.eOk, "POST_WAIT 返回 eOk")
     pw_ev = pw.data
     check(pw_ev is not None, "POST_WAIT 回传 Event 可用")
@@ -452,9 +454,9 @@ def section_9():
     # 不存在循环名：五个操作接口均 eNo（不影响既有循环与执行顺序观测）
     check(event_loop().loop("no_such").stop() ==
           ResStatus.eNo, "STOP 不存在循环返回 eNo")
-    check(event_loop().msg("x").loop("no_such").post() == ResStatus.eNo,
+    check(event_loop().msg(String("x")).loop("no_such").post() == ResStatus.eNo,
           "POST 不存在循环返回 eNo")
-    check(event_loop().msg("x").loop("no_such").post_wait() == ResStatus.eNo,
+    check(event_loop().msg(String("x")).loop("no_such").post_wait() == ResStatus.eNo,
           "POST_WAIT 不存在循环返回 eNo")
     check(event_loop().loop("no_such").destroy() ==
           ResStatus.eNo, "DESTROY 不存在循环返回 eNo")
@@ -493,7 +495,7 @@ def section_9():
     # 空循环名边界：空串为合法 map 键，全生命周期 eOk
     check(event_loop().loop("").start() ==
           ResStatus.eOk, "START 空循环名返回 eOk")
-    check(event_loop().msg("x").loop("").handle_fn(counting_handler("empty")).post() == ResStatus.eOk,
+    check(event_loop().msg(String("x")).loop("").handle_fn(counting_handler("empty")).post() == ResStatus.eOk,
           "POST 空循环名返回 eOk")
     check(wait_until(lambda: bool(order_snapshot()) and order_snapshot()[-1] == "empty", 2.0),
           "空循环名事件正常执行")
@@ -543,7 +545,7 @@ def section_11():
           == 0, "new_service 无参重注册返回 0（构造函数固定名生效）")
     check(event_loop().loop("/L2").start() ==
           ResStatus.eOk, "重注册后 EVENTLOOP_START 恢复可用")
-    pw_relink = event_loop().msg("relink").loop("/L2").handle_fn(counting_handler("relink")).tag("relink").post_wait()
+    pw_relink = event_loop().msg(String("relink")).loop("/L2").handle_fn(counting_handler("relink")).tag("relink").post_wait()
     check(pw_relink == ResStatus.eOk,
           "重注册后 EVENTLOOP_POST_WAIT 全链路 eOk")
 

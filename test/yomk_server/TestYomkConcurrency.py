@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 
+from yomk.msgs import String, YomkMsg, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkServer, YomkService
 
@@ -69,17 +70,17 @@ def wait_for(pred, timeout_s, desc):
     return False
 
 
-class DemoPkg:
-    # String 消息包的测试载体（pkg.d 字段）
+class DemoPkg(YomkMsg):
+    # 消息包测试载体（d 字段），TYPE_NAME 由框架生成
     def __init__(self, d=""):
         self.d = d
 
 
 class ConcSrv(YomkService):
-    # 并发演示服务：/ping 固定响应、/echo 回显 pkg.d
+    # 并发演示服务：/ping 固定响应、/echo 回显消息包 d 字段
     def init(self):
         self.install_func("/ping", self.ping)
-        self.install_func("/echo", self.echo, "String")
+        self.install_func("/echo", self.echo, String.TYPE_NAME)
         return 0
 
     def ping(self, pkg):
@@ -88,10 +89,11 @@ class ConcSrv(YomkService):
 
     def echo(self, pkg):
         g_hit.append(1)
-        if pkg is None:
-            # 直接属性访问需空值守卫
+        msg = unpack(pkg, DemoPkg)
+        if msg is None:
+            # 未命中（含空包）统一守卫
             return Response(ResStatus.eNo, "pkg is null")
-        return Response(ResStatus.eOk, pkg.d)
+        return Response(ResStatus.eOk, msg.d)
 
 
 def register_conc_srv(server, name):
@@ -254,7 +256,7 @@ def test_request_install_func_concurrency():
 
     # 三参/两参覆盖安装交替
     for _ in range(200):
-        echo_srv.install_func("/echo", echo_srv.echo, "String")
+        echo_srv.install_func("/echo", echo_srv.echo, String.TYPE_NAME)
         echo_srv.install_func("/echo", echo_srv.echo)
     stop.set()
     for th in workers:

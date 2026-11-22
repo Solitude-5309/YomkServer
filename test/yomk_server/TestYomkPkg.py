@@ -18,8 +18,9 @@ S5. 框架结构体默认值：Function/CallFunction/Context/
 - 消息类继承 YomkMsg 得 TYPE_NAME（闭环 2 起全部框架 msg 类接入），结构契约
   本文件按类覆盖；TYPE_NAME 字面全查与 unpack/type_of/type_mismatch 语义、
   std 类 9 个由 test/yomk_msg/TestYomkMsg.py 承载，两文件分工不重叠
-- 端点载荷形态仍为裸标量/裸 list（A 方案 std 实例迁移属闭环 3，本文件
-  断言与载荷形态无关，不受影响）
+- 消息包一律 YomkMsg 实例（信封构造的 pkg 位置传消息）；TYPE_NAME 字面全查与
+  unpack/type_of/type_mismatch 语义、std 类 9 个由 test/yomk_msg/TestYomkMsg.py
+  承载，两文件分工不重叠
 - void* 裸指针形态为 C 系语言特有，python 无对应类型，不设对应用例；
   LogFile/Log/ConsoleLogProxy 已随 Logger 模块落地并覆盖断言
 - Event 默认构造 m_response 初始为 None，语义为"未执行时 response 为空"
@@ -29,6 +30,7 @@ S5. 框架结构体默认值：Function/CallFunction/Context/
 
 import sys
 
+from yomk.msgs import String
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.ctx import Context, ContextChecker, ContextMonitor
 from yomk.msgs.fn_pool import CallFunction, FuncInfo, Function
@@ -65,9 +67,10 @@ def s3_event_and_pkg():
         handled["count"] += 1
         return Response(ResStatus.eOk, "handled")
 
-    ev3 = Event("/L1", "p", func)  # 三参形态（tag 走默认参）
-    check(ev3.m_eventLoopName == "/L1" and ev3.m_pkg == "p" and ev3.m_eventId == 0 and ev3.m_tag == "",
-          "Event 三参构造：字段透传，eventId 保持 0（入队时由框架分配）")
+    pkg3 = String("p")
+    ev3 = Event("/L1", pkg3, func)  # 三参形态（tag 走默认参）
+    check(ev3.m_eventLoopName == "/L1" and ev3.m_pkg is pkg3 and ev3.m_eventId == 0 and ev3.m_tag == "",
+          "Event 三参构造：字段透传（pkg 为消息实例），eventId 保持 0（入队时由框架分配）")
     ev3.handle()
     check(handled["count"] == 1 and ev3.m_response.status == ResStatus.eOk and ev3.m_response.msg == "handled",
           "Event handle：执行 serviceFunc 并填充 response")
@@ -90,9 +93,10 @@ def s3_event_and_pkg():
     ev3.m_waitCallback()
     check(waited["flag"], "Event waitCallback：可赋值并执行")
 
-    pkg = EventLoopOpts("/LP", func, "String")
-    check(pkg.m_eventLoopName == "/LP" and pkg.m_defaultServiceFunc is func and pkg.m_msgName == "String",
-          "EventLoopOpts 构造：loop 名/默认 func/msg 名透传")
+    pkg = EventLoopOpts("/LP", func, String.TYPE_NAME)
+    check(pkg.m_eventLoopName == "/LP" and pkg.m_defaultServiceFunc is func
+          and pkg.m_msgName == String.TYPE_NAME,
+          "EventLoopOpts 构造：loop 名/默认 func/msg 名（全限定 TYPE_NAME）透传")
     pkg_def = EventLoopOpts()
     check(pkg_def.m_eventLoopName == "" and pkg_def.m_defaultServiceFunc is None and pkg_def.m_msgName == "",
           "EventLoopOpts 默认构造：loop 名空/func None/msg 名空")

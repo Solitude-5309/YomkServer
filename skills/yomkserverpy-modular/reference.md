@@ -42,7 +42,7 @@ class Response:
 | `log()...` 发射终结 | `Invalid` |
 | `version()` / `instance()` / `shutdown()` | **免初始化安全**（`instance()` 未初始化返回 `None`） |
 
-类型化读 `get()` 未命中回退默认值（链式形态直接得默认值本体）：键名为空 `Invalid` `"context key is empty, return default value"`、键不存在 `Failed` `"context key '<k>' does not exist, return default value"`；命中后做类型名比对，与 `msg(cls)` 声明不符记 WARN 并回退兜底值（`cls` 省略不校验）。
+类型化读 `get()` 未命中回退兜底消息（`with_default` 的值或 `None`；链式形态直接得到消息实例）：键名为空 `Invalid` `"context key is empty, return default value"`、键不存在 `Failed` `"context key '<k>' does not exist, return default value"`；`cls` **必填**且须为具体消息类（省略/体系外类 → `TypeError`），`d` 须同 `TYPE_NAME` 消息或 `None`（违例 → `TypeError`）；命中后做类型名比对，与 `msg(cls)` 声明不符记 WARN 并回退 `d`。
 
 ## 核心类
 
@@ -216,10 +216,10 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 
 | 链 | 终结与返回 |
 |---|---|
-| `ctx().key(k).group(g="main").value(v)` | `.create()` → `ResStatus` |
-| `ctx().key(k).group(g).value(v)` | `.set()` → `ResStatus`（整体替换） |
+| `ctx().key(k).group(g="main").value(msg)` | `.create()` → `ResStatus`；`msg` 为具体消息实例（裸值 `TypeError`） |
+| `ctx().key(k).group(g).value(msg)` | `.set()` → `ResStatus`（整体替换；新值 TYPE_NAME 须与存量一致） |
 | `ctx().key(k).group(g)` | `.destroy()` → `ResStatus` |
-| `ctx().key(k).group(g).msg(cls)` | 切入类型化读分面，`.with_default(d).get()` → 值本体（`with_default` 省略回退 `None`）；`cls` 为期望类型，**命中后做类型名比对**，不符记 WARN `"typed read context key '<k>' type mismatch, expect '<期望>', got '<实际>', return default value"` 并回退兜底值（`cls` 省略不校验） |
+| `ctx().key(k).group(g).msg(cls)` | 切入类型化读分面，`.with_default(d).get()` → 消息实例（字段经 `.value` / `.items` 读取；`with_default` 省略回退 `None`）；`cls` **必填**且须为具体消息类（违例 → `TypeError`），`d` 须同 `TYPE_NAME` 消息或 `None`（违例 → `TypeError`）；**命中后做类型名比对**，不符记 WARN `"typed read context key '<k>' type mismatch, expect '<期望>', got '<实际>', return default value"` 并回退 `d` |
 | `ctx().key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus`；fn: `(Context) -> CheckStatus`；未累积任何回调直接 `apply()` 返回 `Invalid` |
 | `ctx().key(k).group(g).monitor_fn(fn).async_(on=True)` | `.apply()` → `ResStatus`；`.async_()` 可省略 = 同步 |
 | `ctx().group(g).checker()` / `.monitor()` | 组级开关分面 `GroupSwitch`：`.enable()` / `.disable()` → `ResStatus`（**建组默认关**，须显式开启；开关只关断不删回调） |
@@ -240,7 +240,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 |---|---|
 | `event_loop().loop(name).handle_fn(fn).msg_name(m)` | `.start()` → `ResStatus`；`handle_fn` 循环默认处理函数、`msg_name` 期望类型名（内省元数据），均可省略；**同名 start 不重建**：复用既有实例触发启动（停止后续跑），本次累积的 `handle_fn`/`msg_name` **不生效** |
 | `event_loop().loop(name)` | `.stop()` → `ResStatus`（停线程、**保留队列事件**）；`.destroy()` → `ResStatus`（停线程 + 清空队列 + 移出循环表，不可续跑） |
-| `event_loop().msg(data).loop(name).handle_fn(fn).tag(t)` | `.post()` → `ResStatus`（**仅入队结果，非执行结果**）；`.post_wait()` → `ResStatus`（阻塞至事件执行完成）；`handle_fn`/`tag` 可省略 |
+| `event_loop().msg(msg).loop(name).handle_fn(fn).tag(t)` | `.post()` → `ResStatus`（**仅入队结果，非执行结果**）；`.post_wait()` → `ResStatus`（阻塞至事件执行完成）；`msg` 必须是具体消息实例，省略 = 空载荷 `None`（裸值 `TypeError`）；`handle_fn`/`tag` 可省略 |
 | `event_loop().loop(name).tag_count(n)` / — | `.get_info()` 单循环 `EventLoopInfo`（含队列头 n 条 tag 采样，n 省略 = 3）/ `.list()` 循环名清单 / `.all()` 全量，均 → `Response` |
 
 语义注记：
@@ -258,13 +258,13 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 |---|---|
 | `fn_pool().fn_name(name).fn(f).msg_name(m).description(d)` | `.install()` → `ResStatus`；`msg_name`/`description` 内省元数据可省略；**同名重复 install 即运行时热替换**（`Succeeded`，诊断 WARN 与 `Response.msg` 同串 `"function '<名>' already exists, hot-swap to current function"`） |
 | `fn_pool().fn_name(name)` | `.uninstall()` → `ResStatus`（名字不存在 `Failed`） |
-| `fn_pool().fn_name(name).msg(data)` | `.call()` → `Response`（**阻塞至函数执行完成**；`msg` 可省略 = 空消息；名字不存在 `Failed`） |
+| `fn_pool().fn_name(name).msg(msg)` | `.call()` → `Response`（**阻塞至函数执行完成**；`msg` 必须是具体消息实例，省略 = 空载荷 `None`（裸值 `TypeError`）；名字不存在 `Failed`） |
 | `fn_pool().fn_name(name)` / — | `.get_info()` 单函数 `FuncInfo` / `.list()` 函数名清单 / `.all()` 全量 `FuncInfo`，均 → `Response` |
 
 语义注记：
 
 - 入参非法（空名/空函数）`Invalid`，契约 `"funcName or func is empty"`；not-found 归 `Failed` 不归 `Invalid`（三态口径一致）。
-- 函数体收到的 `pkg` 即调用侧 `.msg()` 对象；函数返回的 `Response` 整体作为 `call()` 返回值（结果在 `data`）。
+- 函数体收到的 `pkg` 即调用侧 `.msg(msg)` 累积的消息实例（省略即 `None` 空载荷）；函数返回的 `Response` 整体作为 `call()` 返回值（结果在 `data`）。
 - 成员函数注册须 `self.weak_func(...)`——服务删除后 `call()` 得 `Failed` + 契约消息。
 - 注册/注销的终结动词定名为 `install/uninstall`。
 
@@ -299,7 +299,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 | FunctionPool install 空名/空函数 | `Invalid` | `"funcName or func is empty"` |
 | 日志具名门控/查询未命中（console / file） | `Failed` | `"console logger '<名>' not found"` / `"file logger '<名>' not found"` |
 | 日志按类型查询，type 非 `"console"/"file"` | `Failed` | `"unknown logger type '<type>'"` |
-| 端点载荷类型不符（任意端点，端点体 unpack 校验） | `Failed` | `"pkg is not <期望 msg 的 TYPE_NAME>, got '<实际类型名或 null>'"`——双侧均为 TYPE_NAME，体系外对象报 `null`（写法见 docs/YomkMsg.md 端点标准形态） |
+| 端点载荷类型不符（任意端点，端点体 unpack 校验） | `Failed` | `"pkg is not <期望 TYPE_NAME>, got '<实际 TYPE_NAME>'"`——双侧均为 TYPE_NAME，体系外对象 got 侧报 `"<non-YomkMsg <类名>>"`（写法见 docs/YomkMsg.md 端点标准形态） |
 
 诊断日志（非返回值契约）：服务同名热替换 `"service '<名>' already exists, replace with current service"`（WARN）、函数池热替换 `"function '<名>' already exists, hot-swap to current function"`（WARN）、服务删除 `"service '<名>' deleted, weak-bound callbacks discarded from now on"`（WARN）、空 console 名回退 `"console logger name is empty, use main"`、死锁自检 `"EventLoop: <loop名> post wait in worker thread detected deadlock, directly execute current event to resolve deadlock"`。
 

@@ -7,7 +7,7 @@ Python Modular Fast Development Framework (Cython)
 YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编译为 C 扩展加速，对外提供纯 Python API。遵循关注点分离、约定优于配置的设计哲学，沿用"一切皆服务，一切皆请求"的设计理念，通过标准化的通信接口和灵活的模块机制，实现系统组件的高度解耦和动态组合。
 
 - **进程内服务总线**：服务（`YomkService`）注册到服务器（`YomkServer`），通过 URL 格式 `"/服务名/功能函数名"` 进行同步或异步调用。两级模块化——`YomkService` 封装独立业务域或技术组件，`Function` 为服务内以唯一 URL 路径标识的功能单元
-- **轻量消息包**：普通 Python 类即可定义消息，实例直接作为请求负载传入、经回包 `data` 返回，属性直接访问
+- **轻量消息包**：继承 `YomkMsg` 定义消息类，实例直接作为请求负载传入、经回包 `data` 返回，属性直接访问；跨边界载荷一律消息实例或 `None`，裸值在入口当场 `TypeError`
 - **开箱即用内置能力**：`server().init()` 即自动装配共享上下文、线程隔离事件循环、动态函数池、分级日志与服务内省五个内置模块，无需额外配置
 - **链式域入口**：七个域入口——`server()` / `log()` / `log_mgr()` / `ctx()` / `event_loop()` / `fn_pool()` / `srv_info()`——以"前置累积 + 无参终结"的链式形态暴露全部能力，屏蔽底层 URL 路由；API 是壳而非墙，需要时可直接取 `server().instance()` 裸调 `request()`
 
@@ -47,6 +47,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 ```python
 from yomk.server import server, YomkService
 from yomk.log import log
+from yomk.msgs import String, type_mismatch, unpack
 from yomk.msgs.server import ResStatus, Response
 
 # 1. 自定义服务：继承 YomkService，init() 中安装功能函数
@@ -55,11 +56,15 @@ class MyService(YomkService):
         super().__init__(server)
 
     def init(self):
-        self.install_func("/hello", self.hello)  # 功能函数名以 / 开头
+        # 功能函数名以 / 开头；第三参声明期望消息类型（一律传 TYPE_NAME）
+        self.install_func("/hello", self.hello, String.TYPE_NAME)
 
-    # 功能函数统一签名：(pkg) -> Response
+    # 功能函数统一签名：(pkg) -> Response；载荷是消息实例，unpack 精确校验
     def hello(self, pkg):
-        return Response(ResStatus.eOk, f"hello {pkg}")
+        req = unpack(pkg, String)
+        if req is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+        return Response(ResStatus.eOk, f"hello {req.value}")
 
 # 2. 初始化框架（自动启动内置服务：Context / FunctionPool / EventLoop / Logger / ServerInfo）
 server().init()
@@ -68,14 +73,14 @@ server().init()
 server().srv(MyService, "/MyService").create()
 
 # 4. 同步请求：url/msg 前置累积，request() 无参终结
-resp = server().url("/MyService/hello").msg("yomk").request()
+resp = server().url("/MyService/hello").msg(String("yomk")).request()
 log().info("Response received:", resp.msg)
 
 # 5. 异步请求：投递立即返回，回包到达时在回调线程输出；
 #    shutdown() 排空异步请求池，保证回调送达
 (server().url("/MyService/hello")
     .async_(lambda r: log().info("Async:", r.msg))
-    .msg("yomk2").request())
+    .msg(String("yomk2")).request())
 
 server().shutdown()
 ```
@@ -150,10 +155,14 @@ print(resp.data.reach_x)
 统一管理框架运行时的全局键值状态，支持变更前校验门控（Checker）与变更监控（Monitor）：
 
 ```python
-# 1. 创建 / 读取 / 更新 / 销毁（读终结 get() 未命中回 with_default 兜底值）
-ctx().key("config").value("init_value").create()
-val = ctx().key("config").msg(str).with_default(None).get()
-ctx().key("config").value("new_value").set()
+from yomk.msgs import Float, String
+
+# 1. 创建 / 读取 / 更新 / 销毁（值一律消息包；读终结 get() 按 TYPE_NAME 比对，
+#    未命中/类型不符回 with_default 兜底消息）
+ctx().key("config").value(String("init_value")).create()
+val = ctx().key("config").msg(String).with_default(String("fallback")).get()
+print(val.value)
+ctx().key("config").value(String("new_value")).set()
 ctx().key("config").destroy()
 
 # 2. 变更前校验门控（Checker）：回调返回 eReject 拦截本次 set，返回 eAccept 放行；
@@ -162,7 +171,7 @@ ctx().key("config").checker_fn(lambda ctx: CheckStatus.eAccept).apply()
 ctx().group("main").checker().enable()   # .disable() 关闭
 
 # 3. 变更后监听（Monitor）：async_(True) 时按提交序异步送达
-ctx().key("config").monitor_fn(lambda ctx: print(ctx.value)).apply()
+ctx().key("config").monitor_fn(lambda ctx: print(ctx.value.value)).apply()
 ctx().group("main").monitor().enable()   # .disable() 关闭
 
 # 4. 运行期自省
@@ -172,7 +181,7 @@ ctx().groups()                           # 全部组名清单
 ctx().all()                              # 跨组聚合：组 → 键元信息两层结构
 
 # 5. 自定义组：非 main 组名首次寻址即自动创建（惰性、不支持销毁、组名唯一）
-ctx().key("speed_ratio").group("robot_a").value(1.0).create()
+ctx().key("speed_ratio").group("robot_a").value(Float(1.0)).create()
 ```
 
 组名约定：组名经 `.group(g)` 分面指定，缺省 `"main"`；键所属组随 `ContextKeyInfo.group` 一并内省返回。空组名返回 `eInvalid` `"group name is empty"`；非 main 组首次寻址即自动创建，监控池每组自持（每组一个单线程池，随建组只增不减）。
@@ -192,11 +201,11 @@ ctx().key("speed_ratio").group("robot_a").value(1.0).create()
 event_loop().loop("TaskLoop").handle_fn(event_handle).start()
 
 # 非阻塞投递：立即返回（三态仅表示入队结果），事件由循环线程异步执行
-event_loop().msg("task1").loop("TaskLoop").post()
+event_loop().msg(String("task1")).loop("TaskLoop").post()
 
 # 阻塞投递：等待执行完成，链式终结返回 ResStatus；
 # 需要事件执行结果（Event 对象含 m_eventId / m_response）时用 server 域裸链
-res = server().url("/YomkEventLoop/post_wait").msg(Event("TaskLoop", "task2")).request()
+res = server().url("/YomkEventLoop/post_wait").msg(Event("TaskLoop", String("task2"))).request()
 print(res.data.m_eventId, res.data.m_eventLoopName, res.data.m_response.msg)
 
 # 停止（保留队列事件，可再次 start 续跑）与销毁（清空队列，不可续跑）
@@ -217,8 +226,8 @@ event_loop().loop("TaskLoop").destroy()
 fn_pool().fn_name("calc").fn(func_v1).install()
 fn_pool().fn_name("greet").fn(greet).msg_name(String.TYPE_NAME).description("向指定的人问好").install()
 
-# 调用（未注册的名字返回 eNo；阻塞至函数执行完成）
-resp = fn_pool().fn_name("calc").msg("data").call()
+# 调用（未注册的名字返回 eNo；阻塞至函数执行完成；载荷为消息实例）
+resp = fn_pool().fn_name("calc").msg(String("data")).call()
 
 # 单函数内省：命中 msg 恒 "ok"，data 为 FuncInfo 包（func_name/msg_name/description）
 resp = fn_pool().fn_name("greet").get_info()

@@ -46,8 +46,8 @@ ExampleYomkEventLoop —— YomkEventLoop 线程隔离事件循环示例：机�
        对已销毁循环的一切操作均返回 eNo（not-found 惯例），清单确认已空。
 
 循环规划（跨场景流转，模拟主控/示教器两模块各自专用线程）：
-  motionLoop  带元数据启动（motion_handle + "String"）    主控运动指令循环
-  teachLoop   无元数据启动（仅默认处理函数 teach_handle） 示教器循环
+  motionLoop  带元数据启动（motion_handle + String.TYPE_NAME）  主控运动指令循环
+  teachLoop   无元数据启动（仅默认处理函数 teach_handle）       示教器循环
 
 运行方式：PYTHONPATH=src python3 examples/ExampleYomkEventLoop.py
 """
@@ -56,6 +56,7 @@ import sys
 import threading
 import time
 
+from yomk.msgs import String, type_mismatch, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import server
 from yomk.event_loop import event_loop
@@ -137,22 +138,29 @@ def log_loop_line(api, loop_name):
 # 模拟 200ms 运动耗时，让队列积压与 FIFO 消费顺序在日志中稳定可见；
 # 第 1 条指令执行时递归投递 3 条微调指令排到队尾——同循环 FIFO 的直观证据
 def motion_handle(pkg) -> Response:
-    log().tag("arm.motion").info(f"执行运动指令: {pkg}（循环线程 {threading.current_thread().name}）")
+    # 事件载荷一律消息包：按期望类型解包，未命中即类型不符
+    cmd = unpack(pkg, String)
+    if cmd is None:
+        return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+    log().tag("arm.motion").info(f"执行运动指令: {cmd.value}（循环线程 {threading.current_thread().name}）")
 
     time.sleep(0.2)
 
     # 演示处理函数内递归投递：仅 mv1 会追加 3 条微调指令到队尾，
     # 它们排在已入队的 mv2..mv5 之后消费——同循环 FIFO 的直观证据
-    if pkg == "mv1":
+    if cmd.value == "mv1":
         for i in range(1, 4):
-            event_loop().msg("fine" + str(i)).loop("motionLoop").tag("fine" + str(i)).post()
+            event_loop().msg(String("fine" + str(i))).loop("motionLoop").tag("fine" + str(i)).post()
         log().tag("arm.motion").info("指令 mv1 触发 3 条微调指令，已追加到队列尾部")
 
     return Response(ResStatus.eOk, "eventHandle success. ")
 
 # 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 无元数据启动时指定）
 def teach_handle(pkg) -> Response:
-    log().tag("arm.teach").info(f"示教器事件: {pkg}（循环线程 {threading.current_thread().name}）")
+    ev = unpack(pkg, String)
+    if ev is None:
+        return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+    log().tag("arm.teach").info(f"示教器事件: {ev.value}（循环线程 {threading.current_thread().name}）")
     return Response(ResStatus.eOk, "teachHandle success")
 
 # ---------------------------------------------------------------------------
@@ -170,7 +178,7 @@ def show_arm_line_start():
         "msg_name 仅作内省元数据；对已存在名称再次 START 是幂等重启。")
 
     log_action("启动运动指令循环", "/YomkEventLoop/start motionLoop",
-               lambda: event_loop().loop("motionLoop").handle_fn(motion_handle).msg_name("String").start())
+               lambda: event_loop().loop("motionLoop").handle_fn(motion_handle).msg_name(String.TYPE_NAME).start())
 
     log_action_start("查看循环运行状态")
     resp = event_loop().loop("motionLoop").get_info()
@@ -181,7 +189,7 @@ def show_arm_line_start():
 
     # 重复启动同名循环：幂等重启，不报错也不影响线程与队列
     log_action("重复启动同名循环", "/YomkEventLoop/start motionLoop (重复)",
-               lambda: event_loop().loop("motionLoop").handle_fn(motion_handle).msg_name("String").start())
+               lambda: event_loop().loop("motionLoop").handle_fn(motion_handle).msg_name(String.TYPE_NAME).start())
     log_verify("对已存在名称再次 START -> eOk：幂等重启，线程与队列不受影响")
 
 # 场景 2：插补运动连续下发（异步投递 + 队列观察 + FIFO）
@@ -197,7 +205,7 @@ def show_arm_motion_queue():
     for i in range(1, 6):
         cmd = "mv" + str(i)
         log_action("下发运动指令 " + cmd, "/YomkEventLoop/post motionLoop",
-                   lambda cmd=cmd: event_loop().msg(cmd).loop("motionLoop").tag(cmd).post())
+                   lambda cmd=cmd: event_loop().msg(String(cmd)).loop("motionLoop").tag(cmd).post())
 
     log_action_start("立即观察队列积压")
     resp = event_loop().loop("motionLoop").tag_count(5).get_info()
@@ -233,13 +241,13 @@ def show_arm_dual_loop():
     # 两循环交错投递：各自专用线程并行消费，日志交错出现；
     # 操作行带指令名，与循环线程的消费日志一一对应
     log_action("主控下发轨迹指令 track1", "/YomkEventLoop/post motionLoop",
-               lambda: event_loop().msg("track1").loop("motionLoop").tag("track1").post())
+               lambda: event_loop().msg(String("track1")).loop("motionLoop").tag("track1").post())
     log_action("示教器记录示教点 point1", "/YomkEventLoop/post teachLoop",
-               lambda: event_loop().msg("point1").loop("teachLoop").tag("point1").post())
+               lambda: event_loop().msg(String("point1")).loop("teachLoop").tag("point1").post())
     log_action("主控下发轨迹指令 track2", "/YomkEventLoop/post motionLoop",
-               lambda: event_loop().msg("track2").loop("motionLoop").tag("track2").post())
+               lambda: event_loop().msg(String("track2")).loop("motionLoop").tag("track2").post())
     log_action("示教器记录示教点 point2", "/YomkEventLoop/post teachLoop",
-               lambda: event_loop().msg("point2").loop("teachLoop").tag("point2").post())
+               lambda: event_loop().msg(String("point2")).loop("teachLoop").tag("point2").post())
 
     log().tag("arm.demo").info("等待两循环消费（各 2 条 x 200ms）...")
     time.sleep(0.6)
@@ -255,7 +263,7 @@ def show_arm_motion_sync_wait():
         "执行完毕——返回即已执行；写路径终结收敛为 ResStatus，执行结果由处理函数线程内日志自报。")
 
     log_action("下发回原点指令并等待完成", "/YomkEventLoop/post_wait motionLoop",
-               lambda: event_loop().msg("goHome").loop("motionLoop").post_wait())
+               lambda: event_loop().msg(String("goHome")).loop("motionLoop").post_wait())
     log_verify("/YomkEventLoop/post_wait 返回时回原点已在循环线程执行完毕（耗时 200ms）——返回即已执行")
 
 # 场景 5：紧急任务临时处理函数（优先于默认函数）
@@ -272,7 +280,7 @@ def show_arm_temp_handler():
         return Response(ResStatus.eOk, "tempHandle result")
 
     log_action("投递紧急巡检任务（临时函数）", "/YomkEventLoop/post_wait motionLoop (temp_handle)",
-               lambda: event_loop().msg("safetyCheck").loop("motionLoop").handle_fn(temp_handle).post_wait())
+               lambda: event_loop().msg(String("safetyCheck")).loop("motionLoop").handle_fn(temp_handle).post_wait())
     log_verify("上方 arm.motion 行为临时函数自报：投递级 handle_fn 优先于循环默认函数（同一循环混用两种来源）")
 
 # 场景 6：班中暂停与恢复（STOP / START 续跑）
@@ -285,9 +293,9 @@ def show_arm_line_pause():
 
     # 投递 2 条积压指令后立即暂停：线程停止但事件保留在队列
     log_action("下发待消化指令 hold1", "/YomkEventLoop/post motionLoop",
-               lambda: event_loop().msg("hold1").loop("motionLoop").tag("hold1").post())
+               lambda: event_loop().msg(String("hold1")).loop("motionLoop").tag("hold1").post())
     log_action("下发待消化指令 hold2", "/YomkEventLoop/post motionLoop",
-               lambda: event_loop().msg("hold2").loop("motionLoop").tag("hold2").post())
+               lambda: event_loop().msg(String("hold2")).loop("motionLoop").tag("hold2").post())
     log_action("暂停运动循环", "/YomkEventLoop/stop motionLoop",
                lambda: event_loop().loop("motionLoop").stop())
 
@@ -299,11 +307,11 @@ def show_arm_line_pause():
     log_verify("running=off 且积压事件保留在队列：STOP 只停线程不清队列，可续跑")
 
     log_action("停止态投递被拒", "/YomkEventLoop/post motionLoop (已停止)",
-               lambda: event_loop().msg("rejected").loop("motionLoop").post())
+               lambda: event_loop().msg(String("rejected")).loop("motionLoop").post())
     log_verify("停止后投递 -> eNo(event loop 'motionLoop' not running, post rejected)：循环未运行不接收新事件")
 
     log_action("恢复运行（续跑）", "/YomkEventLoop/start motionLoop (续跑)",
-               lambda: event_loop().loop("motionLoop").handle_fn(motion_handle).msg_name("String").start())
+               lambda: event_loop().loop("motionLoop").handle_fn(motion_handle).msg_name(String.TYPE_NAME).start())
     log().tag("arm.demo").info("等待保留事件被续跑消化...")
     time.sleep(0.6)
 
@@ -368,7 +376,7 @@ def show_arm_line_off():
                if not loops_resp.data else "循环清单非空：存在未销毁循环")
 
     log_action("已销毁循环投递被拒", "/YomkEventLoop/post motionLoop (已销毁)",
-               lambda: event_loop().msg("any").loop("motionLoop").post())
+               lambda: event_loop().msg(String("any")).loop("motionLoop").post())
     log_action("已销毁循环停止被拒", "/YomkEventLoop/stop motionLoop (已销毁)",
                lambda: event_loop().loop("motionLoop").stop())
     log_action_start("已销毁循环查询被拒")

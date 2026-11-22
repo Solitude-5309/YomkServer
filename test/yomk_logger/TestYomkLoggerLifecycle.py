@@ -467,10 +467,10 @@ def main():
     r, out = capture(lambda: server_api().url("/YomkLogger/console_log").request())
     check(r.status == ResStatus.eNo, "console_log 空包返回 eNo")
     check(r.msg == "pkg is not yomk.msgs.log.Log, got 'null'", "console_log 空包契约消息")
-    r = server_api().url("/YomkLogger/console_log").msg("wrong").request()
-    check(r.status == ResStatus.eNo, "console_log 错类型包返回 eNo")
-    check(r.msg == "pkg is not yomk.msgs.log.Log, got 'null'",
-          "console_log 错类型包契约消息")
+    r = server_api().url("/YomkLogger/console_log").msg(String("wrong")).request()
+    check(r.status == ResStatus.eNo, "console_log 错类型消息包返回 eNo")
+    check(r.msg == "pkg is not yomk.msgs.log.Log, got 'yomk.msgs.String'",
+          "console_log 错类型包 got 侧为全限定 TYPE_NAME")
     check(server_api().url("/YomkLogger/file_log").request().status == ResStatus.eNo,
           "file_log 空包返回 eNo")
     check(server_api().url("/YomkLogger/write_file_log").request().status == ResStatus.eNo,

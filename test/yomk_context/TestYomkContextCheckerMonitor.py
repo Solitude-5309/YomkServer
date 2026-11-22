@@ -100,7 +100,7 @@ def main():
     check(srv is not None, "init 返回非空服务器")
 
     # ============ Section 1: set_checker 边界 ============
-    resp = ctx().key("ck_key").value("init").create()
+    resp = ctx().key("ck_key").value(String("init")).create()
     check(resp == ResStatus.eOk, "创建 ck_key 成功")
 
     resp = raw_ctx("set_checker", ContextChecker("", _accept, "main"))
@@ -136,47 +136,47 @@ def main():
     ctx().checker().enable()
 
     g_checker_calls.clear()
-    resp = ctx().key("ck_key").value("accepted").set()
+    resp = ctx().key("ck_key").value(String("accepted")).set()
     check(resp == ResStatus.eOk, "accept-checker 下 set 返回 eOk")
     check(len(g_checker_calls) == 1, "accept-checker 被调用 1 次")
 
     # reject-checker 覆盖
     ctx().key("ck_key").checker_fn(lambda c: (g_checker_calls.append(1), CheckStatus.eReject)[1]).apply()
     g_checker_calls.clear()
-    resp = raw_ctx("set", Context("ck_key", "rejected", "main"))
+    resp = raw_ctx("set", Context("ck_key", String("rejected"), "main"))
     check(resp.status == ResStatus.eNo, "reject-checker 下 set 返回 eNo")
     check(resp.msg == "set context key 'ck_key' rejected by checker",
           "reject-checker 消息一致")
     check(len(g_checker_calls) == 1, "reject-checker 被调用 1 次")
 
     # value 未变（仍为 accepted）
-    check(ctx().key("ck_key").msg().with_default("default").get() == "accepted",
+    check(ctx().key("ck_key").msg(String).with_default(String("default")).get().value == "accepted",
           "reject 后 value 保持不变")
 
     # ============ Section 4: 空 checker 守卫（对应前置修复）============
     # checker 仍全局开启；ck_nochecker 从未设置 checker
-    resp = ctx().key("ck_nochecker").value("v0").create()
+    resp = ctx().key("ck_nochecker").value(String("v0")).create()
     check(resp == ResStatus.eOk, "创建 ck_nochecker 成功")
 
-    resp = ctx().key("ck_nochecker").value("v1").set()
+    resp = ctx().key("ck_nochecker").value(String("v1")).set()
     check(resp == ResStatus.eOk,
           "全局开启 checker 但未设 checker 的 key set 视为 accept（不崩溃）")
 
-    check(ctx().key("ck_nochecker").msg().with_default("default").get() == "v1",
+    check(ctx().key("ck_nochecker").msg(String).with_default(String("default")).get().value == "v1",
           "空 checker 守卫下 value 正常更新")
 
     # ============ Section 5: checker 关闭后不生效 ============
     ctx().checker().disable()
     # ck_key 当前为 reject-checker，但 checker 已关闭，set 应成功
-    resp = ctx().key("ck_key").value("after_off").set()
+    resp = ctx().key("ck_key").value(String("after_off")).set()
     check(resp == ResStatus.eOk,
           "checker 关闭后 reject-checker 不生效，set 成功")
 
-    check(ctx().key("ck_key").msg().with_default("default").get() == "after_off",
+    check(ctx().key("ck_key").msg(String).with_default(String("default")).get().value == "after_off",
           "checker 关闭后 value 更新成功")
 
     # ============ Section 6: set_monitor 边界 ============
-    resp = ctx().key("mon_bound").value("m0").create()
+    resp = ctx().key("mon_bound").value(String("m0")).create()
     check(resp == ResStatus.eOk, "创建 mon_bound 成功")
 
     resp = raw_ctx("set_monitor", ContextMonitor("", _noop, False, "main"))
@@ -207,12 +207,12 @@ def main():
     check(resp.msg == "turn off monitor success", "turn_off_monitor 消息一致")
 
     # ============ Section 8: 同步 monitor 触发 ============
-    resp = ctx().key("mon_sync").value("s0").create()
+    resp = ctx().key("mon_sync").value(String("s0")).create()
     check(resp == ResStatus.eOk, "创建 mon_sync 成功")
 
     def on_sync(ctx_obj):
         g_sync_monitor_calls.append(1)
-        g_last_sync_value[0] = ctx_obj.value
+        g_last_sync_value[0] = ctx_obj.value.value
 
     ctx().key("mon_sync").monitor_fn(on_sync).apply()
 
@@ -220,21 +220,21 @@ def main():
     g_sync_monitor_calls.clear()
     g_last_sync_value[0] = ""
 
-    resp = ctx().key("mon_sync").value("s1").set()
+    resp = ctx().key("mon_sync").value(String("s1")).set()
     check(resp == ResStatus.eOk, "开启 monitor 后 set 返回 eOk")
     check(len(g_sync_monitor_calls) == 1, "同步 monitor 被调用 1 次")
     check(g_last_sync_value[0] == "s1", "同步 monitor 拿到最新 value s1")
 
     ctx().monitor().disable()
     g_sync_monitor_calls.clear()
-    resp = ctx().key("mon_sync").value("s2").set()
+    resp = ctx().key("mon_sync").value(String("s2")).set()
     check(resp == ResStatus.eOk, "关闭 monitor 后 set 仍返回 eOk")
     check(len(g_sync_monitor_calls) == 0, "关闭 monitor 后同步 monitor 不触发")
 
     # ============ Section 9: 同步 monitor 异常吞掉 ============
     # （非 Exception 变体说明见文件头）
     ctx().monitor().enable()
-    resp = ctx().key("mon_throw").value("t0").create()
+    resp = ctx().key("mon_throw").value(String("t0")).create()
     check(resp == ResStatus.eOk, "创建 mon_throw 成功")
 
     # monitor A：抛 RuntimeError
@@ -250,7 +250,7 @@ def main():
     g_throw_b_calls.clear()
     g_sync_monitor_calls.clear()
 
-    resp = ctx().key("mon_throw").value("t1").set()
+    resp = ctx().key("mon_throw").value(String("t1")).set()
     check(resp == ResStatus.eOk, "同步 monitor 抛异常被吞掉，set 仍返回 eOk")
     check(len(g_throw_a_calls) == 1, "抛 RuntimeError 的 monitor 被调用")
     check(len(g_throw_b_calls) == 1, "抛自定义异常的 monitor 被调用")
@@ -259,7 +259,7 @@ def main():
 
     # ============ Section 10: 多同步 monitor 顺序 ============
     ctx().monitor().enable()
-    resp = ctx().key("mon_multi").value("u0").create()
+    resp = ctx().key("mon_multi").value(String("u0")).create()
     check(resp == ResStatus.eOk, "创建 mon_multi 成功")
 
     g_order.clear()
@@ -267,7 +267,7 @@ def main():
     ctx().key("mon_multi").monitor_fn(lambda c: g_order.append("2")).apply()
     ctx().key("mon_multi").monitor_fn(lambda c: g_order.append("3")).apply()
 
-    resp = ctx().key("mon_multi").value("u1").set()
+    resp = ctx().key("mon_multi").value(String("u1")).set()
     check(resp == ResStatus.eOk, "多 monitor set 返回 eOk")
     check(len(g_order) == 3, "3 个同步 monitor 全部触发")
     check(g_order == ["1", "2", "3"], "多同步 monitor 按注册顺序触发")
@@ -275,21 +275,21 @@ def main():
 
     # ============ Section 11: 异步 monitor 触发与顺序 ============
     ctx().monitor().enable()
-    resp = ctx().key("mon_async").value("a0").create()
+    resp = ctx().key("mon_async").value(String("a0")).create()
     check(resp == ResStatus.eOk, "创建 mon_async 成功")
 
     g_async_calls.clear()
     g_async_order.clear()
 
     def on_async(ctx_obj):
-        g_async_order.append(ctx_obj.value)
+        g_async_order.append(ctx_obj.value.value)
         g_async_calls.append(1)
 
     ctx().key("mon_async").monitor_fn(on_async).async_(True).apply()
 
-    ctx().key("mon_async").value("a1").set()
-    ctx().key("mon_async").value("a2").set()
-    ctx().key("mon_async").value("a3").set()
+    ctx().key("mon_async").value(String("a1")).set()
+    ctx().key("mon_async").value(String("a2")).set()
+    ctx().key("mon_async").value(String("a3")).set()
 
     reached = wait_for_count(g_async_calls, 3, 2.0)
     check(reached, "异步 monitor 在等待窗口内全部触发（计数 == 3）")
@@ -299,14 +299,14 @@ def main():
 
     # ============ Section 12: 并发 set 异步保序（末条收敛真值，C1 回归）============
     ctx().monitor().enable()
-    resp = ctx().key("mon_conc").value("c_init").create()
+    resp = ctx().key("mon_conc").value(String("c_init")).create()
     check(resp == ResStatus.eOk, "创建 mon_conc 成功")
 
     g_async_calls.clear()
     g_async_order.clear()
 
     def on_async_conc(ctx_obj):
-        g_async_order.append(ctx_obj.value)
+        g_async_order.append(ctx_obj.value.value)
         g_async_calls.append(1)
 
     ctx().key("mon_conc").monitor_fn(on_async_conc).async_(True).apply()
@@ -322,7 +322,7 @@ def main():
 
     def conc_worker(t):
         for i in range(k_iters):
-            ctx().key("mon_conc").value(f"t{t}_i{i}").set()
+            ctx().key("mon_conc").value(String(f"t{t}_i{i}")).set()
 
     for t in range(k_threads):
         workers.append(threading.Thread(target=conc_worker, args=(t,)))
@@ -336,11 +336,11 @@ def main():
     check(reached, "并发 set 后异步 monitor 在等待窗口内全部触发（计数 == 总提交数）")
 
     # 所有写线程已 join，终值稳定
-    final_val = ctx().key("mon_conc").msg().with_default("default").get()
-    check(final_val != "default" and final_val != "", "读取 mon_conc 终值成功")
+    final_val = ctx().key("mon_conc").msg(String).with_default(String("default")).get()
+    check(final_val.value != "default" and final_val.value != "", "读取 mon_conc 终值成功")
 
     check(len(g_async_order) == k_total, "异步顺序记录条数 == 总提交数")
-    check(len(g_async_order) > 0 and g_async_order[-1] == final_val,
+    check(len(g_async_order) > 0 and g_async_order[-1] == final_val.value,
           "并发 set 下异步末条 == 最终值（锁内入队 ⇒ 末条收敛真值）")
 
     # 每线程子序列严格递增且恰好完整（确定性断言：入队序=提交序 + 单线程 FIFO）
@@ -355,7 +355,7 @@ def main():
 
     # ============ Section 13: 异步 monitor 排空（deinit），末尾调用 shutdown ============
     ctx().monitor().enable()
-    resp = ctx().key("mon_drain").value("d0").create()
+    resp = ctx().key("mon_drain").value(String("d0")).create()
     check(resp == ResStatus.eOk, "创建 mon_drain 成功")
 
     g_drain_calls.clear()
@@ -363,7 +363,7 @@ def main():
 
     n = 50
     for i in range(n):
-        ctx().key("mon_drain").value(f"d{i}").set()
+        ctx().key("mon_drain").value(String(f"d{i}")).set()
 
     # 立即 shutdown，触发 Context deinit 排空 monitor 池
     server().shutdown()

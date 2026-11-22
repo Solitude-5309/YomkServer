@@ -94,7 +94,7 @@ log().info("Response:", ret.msg)
 # 异步请求：立即返回，回包到达时在回调线程执行
 (server().url("/MyService/hello")
     .async_(lambda r: log().info("Async:", r.msg))
-    .msg("yomk").request())
+    .msg(String("yomk2")).request())
 
 server().srv_name("/MyService").remove()         # 删除服务（触发 deinit）
 server().shutdown()                              # 优雅关闭
@@ -137,7 +137,7 @@ class MyService(YomkService):
 
         # checker/monitor 同一 weak_func 适配，discard 可省略——消费槽位按 API 形态
         # 自动填充缺省（checker→"check"、monitor→"none"）；前提是键已存在（先 create 再注册）
-        ctx().key("k").value("v").create()
+        ctx().key("k").value(String("v")).create()
         ctx().key("k").checker_fn(self.weak_func(self.my_check)).apply()
         ctx().key("k").monitor_fn(self.weak_func(self.my_monitor)).apply()
 

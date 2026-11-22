@@ -28,11 +28,12 @@ description: 基于YomkServerPy框架的模块化Python工程编程。核心理�
 
 ## 消息定义标准（写任何服务前必须遵守）
 
-完整规则与实战陷阱见 [YomkMsg.md](YomkMsg.md)（agent 必读），三条铁律摘要：
+完整规则与实战陷阱见 [YomkMsg.md](YomkMsg.md)（agent 必读），四条铁律摘要：
 
-1. **定义**：消息类必须继承 `YomkMsg`（`from yomk.msgs import YomkMsg`）——运行期类型名 `TYPE_NAME` 自动生成、随重命名跟随，**禁止手写**；标准标量/数组用 std 类（`String`/`Int`/`BoolArray`/... ，定义于 `yomk.msgs.std_msg`）。
+1. **定义**：消息类必须继承 `YomkMsg`（`from yomk.msgs import YomkMsg`）——运行期类型名 `TYPE_NAME` 自动生成、随重命名跟随，**禁止手写**（类体显式定义直接 `TypeError`）；标准标量/数组用 std 类（`String`/`Int`/`BoolArray`/... ，定义于 `yomk.msgs.std_msg`）。
 2. **声明**：`install_func` 第三参一律传 `Xxx.TYPE_NAME`（如 `String.TYPE_NAME`），**禁止手写报文串**（旧写法已废弃）；第四参写内省描述——内置端点统一五章节格式（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`），自定义服务建议沿用并把常量放 `yomk.url.<域>` 常量池（见 docs/YomkServer.md「内省描述惯例」）。
-3. **校验**：端点体内 `if unpack(pkg, Xxx) is None: return Response(ResStatus.eNo, type_mismatch(pkg, Xxx.TYPE_NAME))`——框架不做分发校验，责任在端点作者；契约文案双侧均为 TYPE_NAME（体系外对象 got 侧报 `"null"`）。标量端点取值 `pkg.value`；内省清单取值 `.items`。
+3. **校验**：端点体内 `if unpack(pkg, Xxx) is None: return Response(ResStatus.eNo, type_mismatch(pkg, Xxx.TYPE_NAME))`——框架不做分发校验，责任在端点作者；契约文案双侧均为 TYPE_NAME（体系外对象 got 侧报 `"<non-YomkMsg str>"`）。标量端点取值 `pkg.value`；内省清单取值 `.items`。
+4. **载荷**：跨边界（`.msg()` / `self.request()` / `fn_pool().msg()` / `event_loop().msg()` / `Event(...)` / `ctx().value()` / `with_default()`）一律传具体消息实例或 `None`；裸值、`dict`/`list`、体系外对象、`YomkMsg` 基类实例在入口当场 `TypeError`。
 
 ## 任务一：生成工程模板
 
@@ -61,10 +62,10 @@ TemplateProject/
 
 ### 关键约定
 
-1. `MyBoot.before()`：输出 starting 提示，通过 `Path(__file__)` 推导配置路径，存入 Context（`ctx().key(CTX_CONFIG_PATH).value(path).create()`）
+1. `MyBoot.before()`：输出 starting 提示，通过 `Path(__file__)` 推导配置路径，以消息实例存入 Context（`ctx().key(CTX_CONFIG_PATH).value(String(path)).create()`）
 2. `MyBoot.start()`：服务创建器映射表（lambda 惰性创建 `XxxService(server().instance())`）+ `srv_names` 按需启动，`server().srv(cls, name).create()` 失败返回 -1
 3. `MyBoot.after()`：调用 `/ConfigService/load` 加载配置，随后请求 `/get`（name、description）与 `/version`（工程版本号）并输出
-4. 消息包为普通 Python 类，集中定义在 `msgs/YomkMsgs.py`
+4. 消息类继承 `YomkMsg`（`TYPE_NAME` 自动生成），集中定义在 `msgs/YomkMsgs.py`；跨边界载荷一律消息实例或 `None`
 5. 运行方式：`bash check_env.sh` 检查环境（PYTHONPATH 由框架安装环节配置）→ `python main.py`
 6. **版本号传递**：工程版本在 `typedefine/TypeDefine.py` 定义 `APP_VERSION` 常量（单一来源：本文件），由 `ConfigService` 的 `/version` 接口返回（不放 config.json），`MyBoot.after()` 请求该接口并输出版本号
 
@@ -82,7 +83,9 @@ TemplateProject/
 
 1. **定义消息包**（`msgs/YomkMsgs.py`）：
 ```python
-class MyData:
+from yomk.msgs import YomkMsg
+
+class MyData(YomkMsg):
     def __init__(self, field1: str, field2: int):
         self.field1 = field1
         self.field2 = field2
@@ -90,12 +93,14 @@ class MyData:
 
 2. **创建服务文件**（`services/XxxService.py`）：
 ```python
+from yomk.msgs import type_mismatch, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService, server
 from yomk.ctx import ctx
 from yomk.event_loop import event_loop
 from yomk.fn_pool import fn_pool
 from yomk.log import log, log_mgr
+from msgs.YomkMsgs import MyData
 
 class XxxService(YomkService):
     def __init__(self, server):
@@ -103,12 +108,15 @@ class XxxService(YomkService):
         self.set_name("/XxxService")
 
     def init(self):
-        self.install_func("/my_func", self.my_func)  # 注册即自动弱绑定
+        # 第三参声明期望消息类型（一律 TYPE_NAME）；注册即自动弱绑定
+        self.install_func("/my_func", self.my_func, MyData.TYPE_NAME)
         log().tag("XxxService").info("install func [ /my_func ]")
         return 0
 
     def my_func(self, pkg):
-        # pkg 即调用方传入的消息对象
+        req = unpack(pkg, MyData)                    # pkg 即调用方传入的消息实例
+        if req is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, MyData.TYPE_NAME))
         # 业务逻辑...
         return Response(ResStatus.eOk, "success")
 ```
@@ -161,8 +169,8 @@ pkg 非 String → Failed。
 """
 
 def init(self):
-    self.install_func("/my_func", self.my_func, "MyData")  # 三参：内省可见类型 MyData
-    self.install_func("/my_desc", self.my_desc, "MyData", MY_DESC)  # 四参：类型 + 五章节内省描述
+    self.install_func("/my_func", self.my_func, MyData.TYPE_NAME)  # 三参：期望消息类型
+    self.install_func("/my_desc", self.my_desc, MyData.TYPE_NAME, MY_DESC)  # 四参：类型 + 五章节内省描述
     return 0
 
 srv_info().services()                              # 服务列表（data 为服务名列表）
@@ -242,7 +250,7 @@ class MyService(YomkService):
         # 1) 函数池：服务删除后 call() 得 Failed + 契约消息
         fn_pool().fn_name("my_work").fn(self.weak_func(self.my_work)).install()
         # 2) Context checker/monitor：前提是键已存在（先 create 再注册）
-        ctx().key("k").value("v").create()
+        ctx().key("k").value(String("v")).create()
         ctx().key("k").checker_fn(self.weak_func(self.my_check, discard="check")).apply()
         ctx().key("k").monitor_fn(self.weak_func(self.my_monitor, discard="none")).apply()
         # 3) 事件循环处理函数
@@ -271,9 +279,10 @@ class MyService(YomkService):
 
 ### 消息包
 
-- 消息包为普通 Python 类，定义在 `msgs/YomkMsgs.py`
-- 作为 `pkg` 参数传入服务函数，直接通过属性访问字段
-- 返回值通过 `Response.data` 携带任意数据
+- 消息类必须继承 `YomkMsg`（`from yomk.msgs import YomkMsg`），集中定义在工程 `msgs/`；`TYPE_NAME` 自动生成、禁止手写（类体定义直接 `TypeError`）
+- 跨边界载荷一律具体消息实例或 `None`：`server().url(u).msg()` / `self.request()` / `fn_pool().msg()` / `event_loop().msg()` / `Event(...)` / `ctx().value()` / `with_default()` 传裸值当场 `TypeError`
+- 端点声明第三参传 `Xxx.TYPE_NAME`；端点体内 `unpack(pkg, Xxx)` 校验，未命中返 `Response(eNo, type_mismatch(pkg, Xxx.TYPE_NAME))`；字段经 `pkg.value` / `pkg.items` 访问
+- 返回值通过 `Response.data` 携带；完整规则见 [YomkMsg.md](YomkMsg.md)
 
 ### 设计原则
 

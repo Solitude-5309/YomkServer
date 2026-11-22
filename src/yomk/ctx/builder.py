@@ -13,8 +13,14 @@ from yomk.msgs.ctx import (
     ContextMonitor,
 )
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.std_msg import String, StringArray
-from yomk.msgs.YomkMsg import unpack
+from yomk.msgs.std_msg import String, StringArray, type_of
+from yomk.msgs.YomkMsg import (
+    YomkMsg,
+    arg_type_name,
+    class_arg_name,
+    require_msg,
+    unpack,
+)
 from yomk.server import _facade
 from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.ctx import (
@@ -60,15 +66,32 @@ class ContextValueBuilder:
     类型化读分面：msg(cls) 之后 with_default() 累积、get() 终结。
     """
 
-    def __init__(self, key, group, cls=None):
+    def __init__(self, key, group, cls):
+        # 期望类型必须是具体消息类：读值才可能按 TYPE_NAME 精确比对
+        if not (isinstance(cls, type) and issubclass(cls, YomkMsg)
+                and cls is not YomkMsg):
+            raise TypeError(
+                "context typed read class must derive YomkMsg, got '"
+                + class_arg_name(cls) + "'")
         self._key = key
         self._group = group
         self._cls = cls
         self._default = None
 
     def with_default(self, v):
-        self._default = v
-        return self
+        """Accumulate the fallback used when the read misses or mismatches.
+
+        累积未命中/类型不符时的兜底值：必须是同 TYPE_NAME 的消息或 None。
+        """
+        if v is None:
+            self._default = None
+            return self
+        if isinstance(v, YomkMsg) and type(v) is not YomkMsg \
+                and v.TYPE_NAME == self._cls.TYPE_NAME:
+            self._default = v
+            return self
+        raise TypeError("with_default requires '" + self._cls.TYPE_NAME
+                        + "' or None, got '" + arg_type_name(v) + "'")
 
     def get(self):
         """Return the stored value, or the accumulated default when the read misses.
@@ -85,12 +108,14 @@ class ContextValueBuilder:
             return self._default
         res = _facade.api_request(CTX_GET, Context(self._key, self._default, self._group))
         if res.status == ResStatus.eOk:
-            if res.data is None or self._cls is None \
-                    or type(res.data).__name__ == self._cls.__name__:
+            if res.data is None:
+                return self._default
+            if isinstance(res.data, YomkMsg) \
+                    and res.data.TYPE_NAME == self._cls.TYPE_NAME:
                 return res.data
             diag_warn("typed read context key '" + self._key
-                      + "' type mismatch, expect '" + self._cls.__name__
-                      + "', got '" + type(res.data).__name__
+                      + "' type mismatch, expect '" + self._cls.TYPE_NAME
+                      + "', got '" + type_of(res.data)
                       + "', return default value")
             return self._default
         diag_error("get context failed: " + res.msg)
@@ -134,6 +159,7 @@ class ContextBuilder:
         return self
 
     def value(self, ctx):
+        require_msg(ctx, "value()")
         self._value = ctx
         return self
 
@@ -263,10 +289,10 @@ class ContextBuilder:
             res.data = unpack(res.data, ContextGroupInfoList).items
         return res
 
-    def msg(self, cls=None):
-        """Enter the typed read facet; cls is the expected type.
+    def msg(self, cls):
+        """Enter the typed read facet; cls is the required expected message class.
 
-        切入读路径分面；cls 为期望类型，省略时 get() 不做类型比对。
+        切入读路径分面；cls 为必填的期望消息类，get() 按 TYPE_NAME 精确比对。
         """
         return ContextValueBuilder(self._key, self._group, cls)
 

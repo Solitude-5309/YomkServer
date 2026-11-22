@@ -54,6 +54,7 @@ xxx"——操作是用户视角的业务动作，随后结果行标注本次接�
 
 import sys
 
+from yomk.msgs import String, YomkMsg, type_mismatch, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService, server
 from yomk.srv_info import srv_info
@@ -161,8 +162,8 @@ def log_verify(text):
 # arm.station 日志夹在调用方开始行与结果行之间，归属一目了然。
 # ---------------------------------------------------------------------------
 
-class QualityCheckReq:
-    # 质量抽检请求：此处仅作 /quality_check 的期望消息类型元数据，供自省识别
+class QualityCheckReq(YomkMsg):
+    # 质量抽检请求消息包：/quality_check 的期望载荷类型（TYPE_NAME 由框架生成，供自省识别）
     def __init__(self, station="", count=0):
         self.station = station  # 工位号
         self.count = count      # 抽检件数
@@ -178,31 +179,30 @@ class ArmStationService(YomkService):
         # 并附函数说明，供自省识别
         self.install_func("/report", self.report)
         self.install_func(
-            "/quality_check", self.quality_check, "QualityCheckReq",
+            "/quality_check", self.quality_check, QualityCheckReq.TYPE_NAME,
             "装配工位质量抽检：按件抽检并回执结论")
-        log().tag("arm.station").info("init: install /report (no meta), /quality_check [QualityCheckReq] + description")
+        log().tag("arm.station").info("init: install /report (no meta), /quality_check [" + QualityCheckReq.TYPE_NAME + "] + description")
         return 0
 
     # 工位状态上报：收到状态文本回执确认
     def report(self, pkg) -> Response:
-        if not isinstance(pkg, str):
-            return Response(
-                ResStatus.eNo,
-                "pkg is not String, got '" + type(pkg).__name__ + "'")
-        log().tag("arm.station").info(f'工位状态上报：收到 "{pkg}"')
+        text = unpack(pkg, String)
+        if text is None:
+            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+        log().tag("arm.station").info(f'工位状态上报：收到 "{text.value}"')
         return Response(
-            ResStatus.eOk, "station report received: " + pkg)
+            ResStatus.eOk, "station report received: " + text.value)
 
     # 质量抽检：按件抽检并回执结论
     def quality_check(self, pkg) -> Response:
-        if not isinstance(pkg, QualityCheckReq):
+        req = unpack(pkg, QualityCheckReq)
+        if req is None:
             return Response(
-                ResStatus.eNo,
-                "pkg is not QualityCheckReq, got '" + type(pkg).__name__ + "'")
-        log().tag("arm.station").info(f"质量抽检执行：工位 {pkg.station} 抽检 {pkg.count} 件")
+                ResStatus.eNo, type_mismatch(pkg, QualityCheckReq.TYPE_NAME))
+        log().tag("arm.station").info(f"质量抽检执行：工位 {req.station} 抽检 {req.count} 件")
         return Response(
             ResStatus.eOk,
-            f"quality check passed: {pkg.station}, {pkg.count} pcs")
+            f"quality check passed: {req.station}, {req.count} pcs")
 
 # ---------------------------------------------------------------------------
 # 6 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。
@@ -239,7 +239,7 @@ def show_arm_plant_roster():
     log_verify("清单多一项 /ArmStation 且排最前：服务名按字典序排列，注册即时反映到下一次查询")
 
     log_action("试运行工位功能：状态上报", "server().url().request() /ArmStation/report",
-               lambda: server().url("/ArmStation/report").msg("joint ready").request())
+               lambda: server().url("/ArmStation/report").msg(String("joint ready")).request())
     log_action("试运行工位功能：质量抽检", "server().url().request() /ArmStation/quality_check",
                lambda: server().url("/ArmStation/quality_check").msg(QualityCheckReq("S3", 5)).request())
     log_verify("arm.station 日志夹在开始行与结果行之间——request 在调用方线程同步执行；返回值即函数返回值，msg 携带回执")
@@ -287,7 +287,8 @@ def show_arm_func_lookup():
     log_resp("srv_info().fn_url().get_info() /ArmStation/quality_check", resp)
     if resp.data is not None:
         log_func_info("srv_info().fn_url().get_info()", resp.data)
-    log_verify("命中契约：msg 恒 ok、数据走 data；msgName=QualityCheckReq、description=第四参说明——与场景 2 清单同族")
+    log_verify("命中契约：msg 恒 ok、数据走 data；msgName=" + QualityCheckReq.TYPE_NAME
+               + "、description=第四参说明——与场景 2 清单同族")
 
     log_action_start("调阅状态上报函数名片")
     resp = srv_info().fn_url("/ArmStation/report").get_info()

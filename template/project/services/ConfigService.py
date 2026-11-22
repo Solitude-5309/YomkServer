@@ -5,7 +5,7 @@ from yomk.ctx import ctx
 from yomk.log import log
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.YomkMsg import unpack
-from yomk.msgs.std_msg import type_mismatch
+from yomk.msgs.std_msg import String, type_mismatch
 from msgs.YomkMsgs import ConfigKey, ConfigKeyValue
 
 
@@ -26,7 +26,9 @@ class ConfigService(YomkService):
         log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to ", self.get_name())
 
     def load_config(self, pkg):
-        self.config_path = ctx().key(CTX_CONFIG_PATH).msg().with_default("").get()
+        # 类型化读：msg(String) 声明期望类型，with_default 传同类型消息或 None
+        cfg = ctx().key(CTX_CONFIG_PATH).msg(String).with_default(String("")).get()
+        self.config_path = cfg.value
         if not self.config_path:
             return Response(ResStatus.eNo, "config_path not found in context")
         try:
@@ -71,7 +73,8 @@ class ConfigService(YomkService):
 
     def reload_config(self, pkg):
         # reload 先回取 context 中的 config_path，缺失即 eNo
-        self.config_path = ctx().key(CTX_CONFIG_PATH).msg().with_default("").get()
+        cfg = ctx().key(CTX_CONFIG_PATH).msg(String).with_default(String("")).get()
+        self.config_path = cfg.value
         if not self.config_path:
             return Response(ResStatus.eNo, "config_path not found in context")
         try:

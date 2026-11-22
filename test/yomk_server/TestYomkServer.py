@@ -23,7 +23,7 @@ TestYomkServer.py —— YomkServer URL 解析路由与服务增删改查白盒�
 - 删除即停端到端（全局弱绑定回调丢弃）不适用：python 无全局弱绑定回调机制
 - 内置服务映射表 5/5：/YomkContext、/YomkFunctionPool、/YomkEventLoop、
   /YomkLogger、/YomkServerInfo
-- 消息包解包为普通类属性访问（DemoPkg 载体）；promise/future 同步点以 Event + 容器承载
+- 消息包一律 YomkMsg 派生（DemoPkg 载体）并统一经 unpack 解包；promise/future 同步点以 Event + 容器承载
 
 说明：全程不触碰 shutdown/server().init（服务器实例独立，每节 YomkServer.create(1)，
 节首重置全局观测变量）；排空/幂等/拒新语义归后续 shutdown 序列测试
@@ -37,6 +37,7 @@ import time
 import io
 import contextlib
 
+from yomk.msgs import String, YomkMsg, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkServer, YomkService
 
@@ -78,8 +79,8 @@ def name_count(names, srv_name):
     return names.count(srv_name)
 
 
-class DemoPkg:
-    """演示消息包：python 消息包为普通类"""
+class DemoPkg(YomkMsg):
+    """演示消息包：YomkMsg 派生，TYPE_NAME 由框架生成"""
 
     def __init__(self, d=""):
         self.d = d
@@ -97,8 +98,8 @@ class RouteSrv(YomkService):
             raise RuntimeError("init failed on purpose")
         if g_init_ret != 0:
             return g_init_ret  # 既有回滚路径：init 返回非 0
-        self.install_func("/ping", self.ping, "String")
-        self.install_func("/echo", self.echo, "String")
+        self.install_func("/ping", self.ping, String.TYPE_NAME)
+        self.install_func("/echo", self.echo, String.TYPE_NAME)
         return 0
 
     def deinit(self):
@@ -111,10 +112,11 @@ class RouteSrv(YomkService):
         return Response(ResStatus.eOk, "pong")
 
     def echo(self, pkg):
-        # String 解包回显：pkg 为空时函数内守卫返回 eNo
-        if not pkg:
+        # DemoPkg 解包回显：未命中（含空包）在函数内守卫返回 eNo
+        msg = unpack(pkg, DemoPkg)
+        if msg is None:
             return Response(ResStatus.eNo, "pkg is null")
-        return Response(ResStatus.eOk, "echo:" + pkg.d)
+        return Response(ResStatus.eOk, "echo:" + msg.d)
 
 
 # 1. URL 解析全边界与路由（经公开 request 路径）
@@ -306,9 +308,9 @@ def test_introspection():
     infos = server.service_func_infos("/RouteSrv")
     check("/ping" in infos and "/echo" in infos,
           "service_func_infos 命中 /ping 与 /echo")
-    check(infos["/ping"].func_name == "/ping" and infos["/ping"].msg_name == "String"
-          and infos["/echo"].msg_name == "String",
-          "service_func_infos 元数据正确（func_name/msg_name）")
+    check(infos["/ping"].func_name == "/ping" and infos["/ping"].msg_name == String.TYPE_NAME
+          and infos["/echo"].msg_name == String.TYPE_NAME,
+          "service_func_infos 元数据正确（func_name/msg_name 为全限定 TYPE_NAME）")
     check(server.service_func_infos("/NoSuch")
           == {}, "service_func_infos 不存在服务返回空表")
 

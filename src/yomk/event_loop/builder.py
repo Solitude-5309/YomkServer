@@ -6,7 +6,7 @@
 from yomk.msgs.event_loop import Event, EventLoopInfoList, EventLoopOpts, EventLoopQuery
 from yomk.msgs.server import ResStatus
 from yomk.msgs.std_msg import String, StringArray
-from yomk.msgs.YomkMsg import unpack
+from yomk.msgs.YomkMsg import require_msg, unpack
 from yomk.server import _facade
 from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.event_loop import (
@@ -57,6 +57,7 @@ class EventLoopBuilder:
         return self
 
     def msg(self, data):
+        require_msg(data, "msg()")
         self._data = data
         return self
 

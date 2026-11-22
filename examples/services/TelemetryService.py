@@ -12,6 +12,7 @@
 机制，显式注销承担同等失效语义，钩子不会悬垂。
 """
 
+from yomk.msgs import String, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService, server
 from yomk.fn_pool import fn_pool
@@ -56,8 +57,10 @@ class TelemetryService(YomkService):
 
     # 留痕功能函数：URL 为 /TelemetryService/record，记录一条运动留痕并回执
     def record(self, pkg: Any) -> Response:
-        if not isinstance(pkg, str):
+        # 载荷一律消息包：按期望类型解包，None 或类型不符统一拒绝
+        trace = unpack(pkg, String)
+        if trace is None:
             return Response(
                 ResStatus.eNo, " pkg is null or pkg is not String. ")
-        log().tag("arm.telemetry").info(f"留痕记录 [实例#{self.instance_id}]：{pkg}")
+        log().tag("arm.telemetry").info(f"留痕记录 [实例#{self.instance_id}]：{trace.value}")
         return Response(ResStatus.eOk, "trace recorded")
