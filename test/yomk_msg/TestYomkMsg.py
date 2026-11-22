@@ -13,10 +13,10 @@ S2. std 类结构契约：9 个 std 类 TYPE_NAME 字面断言（yomk.msgs.Strin
 S3. unpack 语义：命中返回原对象、跨类型未命中返回 None、子类不冒充父类
     （子类自动 TYPE_NAME 不同）、裸 str 对 String 被拒（精确身份语义）、
     非消息类/基类 cls 直接 TypeError
-S4. type_of 三态：YomkMsg 实例报 TYPE_NAME、None 报 "null"、体系外对象报
-    "<non-YomkMsg xxx>" 外来标记（不冒充框架类型名）
+S4. type_name_of 三态：YomkMsg 实例报 TYPE_NAME、None 报 "null"、体系外对象报
+    宿主类名（如 "str"，返回类型名而非句子描述）
 S5. type_mismatch 文案字面：标准格式 "pkg is not <expected>, got '<actual>'"，
-    expected 传 cls.TYPE_NAME、actual 走 type_of 三态
+    expected 传 cls.TYPE_NAME、actual 走 type_name_of 三态
 S6. 框架 msg TYPE_NAME 全查（闭环 2）：22 类改继承 + 6 结构化 List，28 类
     TYPE_NAME 字面逐一断言；Event 的 yomk.event_loop re-export 同一性
 S7. 结构化 List msg 结构契约（闭环 2）：6 类 items 默认/None 归一/透传，
@@ -47,7 +47,7 @@ from yomk.msgs import (
     StringArray,
     YomkMsg,
     type_mismatch,
-    type_of,
+    type_name_of,
     unpack,
 )
 from yomk.msgs.ctx import (
@@ -230,24 +230,24 @@ def s3_unpack():
               "unpack 非类目标 → TypeError 文案一致")
 
 
-# ============ S4. type_of 三态 ============
-def s4_type_of():
-    print("===== S4. type_of 三态 =====")
+# ============ S4. type_name_of 三态 ============
+def s4_type_name_of():
+    print("===== S4. type_name_of 三态 =====")
 
     # 第一态：YomkMsg 实例 → TYPE_NAME
-    check(type_of(String("x")) == "yomk.msgs.String", "消息实例 → TYPE_NAME")
-    check(type_of(Int(1)) == "yomk.msgs.Int", "Int 实例 → TYPE_NAME")
-    check(type_of(StringArray(["a"])) == "yomk.msgs.StringArray", "数组实例 → TYPE_NAME")
+    check(type_name_of(String("x")) == "yomk.msgs.String", "消息实例 → TYPE_NAME")
+    check(type_name_of(Int(1)) == "yomk.msgs.Int", "Int 实例 → TYPE_NAME")
+    check(type_name_of(StringArray(["a"])) == "yomk.msgs.StringArray", "数组实例 → TYPE_NAME")
 
-    # 第二态：None → "null"（对齐 C++ typeOf 的空包语义）
-    check(type_of(None) == "null", "None → 'null'")
+    # 第二态：None → "null"（对齐 C++ typeNameOf 的空包语义）
+    check(type_name_of(None) == "null", "None → 'null'")
 
-    # 第三态：体系外对象 → 外来标记，不得冒充框架类型名或空包
-    check(type_of("bare") == "<non-YomkMsg str>", "裸 str → 外来标记")
-    check(type_of(123) == "<non-YomkMsg int>", "int → 外来标记")
-    check(type_of(["raw"]) == "<non-YomkMsg list>", "裸 list → 外来标记")
-    check(type_of(type("Loose", (), {})) == "<non-YomkMsg type>", "体系外类 → 外来标记")
-    check(type_of(YomkMsg()) == "<non-YomkMsg YomkMsg>", "直接基类实例 → 外来标记")
+    # 第三态：体系外对象 → 宿主类名，不冒充框架类型名或空包
+    check(type_name_of("bare") == "str", "裸 str → 宿主类名")
+    check(type_name_of(123) == "int", "int → 宿主类名")
+    check(type_name_of(["raw"]) == "list", "裸 list → 宿主类名")
+    check(type_name_of(type("Loose", (), {})) == "type", "体系外类 → 宿主类名")
+    check(type_name_of(YomkMsg()) == "YomkMsg", "直接基类实例 → 宿主类名")
 
 
 # ============ S5. type_mismatch 文案字面 ============
@@ -262,8 +262,8 @@ def s5_type_mismatch():
           == "pkg is not yomk.msgs.String, got 'yomk.msgs.Bool'",
           "消息实例入参文案（got 侧报 TYPE_NAME）")
     check(type_mismatch("bare", String.TYPE_NAME)
-          == "pkg is not yomk.msgs.String, got '<non-YomkMsg str>'",
-          "体系外对象文案（外来标记，不冒充 null）")
+          == "pkg is not yomk.msgs.String, got 'str'",
+          "体系外对象文案（got 侧报宿主类名，不冒充 null）")
     check(type_mismatch(Int(1), Bool.TYPE_NAME)
           == "pkg is not yomk.msgs.Bool, got 'yomk.msgs.Int'",
           "期望/实际双侧均为 TYPE_NAME")
@@ -344,7 +344,7 @@ def main():
     s1_type_name_rules()
     s2_std_classes()
     s3_unpack()
-    s4_type_of()
+    s4_type_name_of()
     s5_type_mismatch()
     s6_framework_type_names()
     s7_structured_lists()

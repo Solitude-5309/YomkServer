@@ -32,7 +32,7 @@ description: 基于YomkServerPy框架的模块化Python工程编程。核心理�
 
 1. **定义**：消息类必须继承 `YomkMsg`（`from yomk.msgs import YomkMsg`）——运行期类型名 `TYPE_NAME` 自动生成、随重命名跟随，**禁止手写**（类体显式定义直接 `TypeError`）；标准标量/数组用 std 类（`String`/`Int`/`BoolArray`/... ，定义于 `yomk.msgs.std_msg`）。
 2. **声明**：`install_func` 第三参一律传 `Xxx.TYPE_NAME`（如 `String.TYPE_NAME`），**禁止手写报文串**（旧写法已废弃）；第四参写内省描述——内置端点统一五章节格式（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`），自定义服务建议沿用并把常量放 `yomk.url.<域>` 常量池（见 docs/YomkServer.md「内省描述惯例」）。
-3. **校验**：端点体内 `if unpack(pkg, Xxx) is None: return Response(ResStatus.eNo, type_mismatch(pkg, Xxx.TYPE_NAME))`——框架不做分发校验，责任在端点作者；契约文案双侧均为 TYPE_NAME（体系外对象 got 侧报 `"<non-YomkMsg str>"`）。标量端点取值 `pkg.value`；内省清单取值 `.items`。
+3. **校验**：端点体内 `if unpack(pkg, Xxx) is None: return Response(ResStatus.eNo, type_mismatch(pkg, Xxx.TYPE_NAME))`——框架不做分发校验，责任在端点作者；契约文案期望侧为 TYPE_NAME，实际侧由 `type_name_of` 给出（消息报 TYPE_NAME，体系外对象报宿主类名如 `"str"`）。标量端点取值 `pkg.value`；内省清单取值 `.items`。
 4. **载荷**：跨边界（`.msg()` / `self.request()` / `fn_pool().msg()` / `event_loop().msg()` / `Event(...)` / `ctx().value()` / `with_default()`）一律传具体消息实例或 `None`；裸值、`dict`/`list`、体系外对象、`YomkMsg` 基类实例在入口当场 `TypeError`。
 
 ## 任务一：生成工程模板

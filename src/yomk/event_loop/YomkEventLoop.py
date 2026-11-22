@@ -3,9 +3,9 @@ from readerwriterlock import rwlock
 from yomk._diag import warn as diag_warn
 from yomk.event_loop.EventLoop import EventLoop
 from yomk.msgs.event_loop import Event, EventLoopInfo, EventLoopInfoList, EventLoopOpts, EventLoopQuery
-from yomk.msgs.std_msg import String, StringArray, type_mismatch
+from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.YomkMsg import unpack
+from yomk.msgs.YomkMsg import type_mismatch, unpack
 from yomk.server import YomkService
 from yomk.url.event_loop import (
     LOOP_ALL_DESC,

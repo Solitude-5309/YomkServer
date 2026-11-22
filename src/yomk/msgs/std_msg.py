@@ -4,7 +4,7 @@
 Bytes 为 Python 端独有，承载二进制载荷。
 """
 
-from yomk.msgs.YomkMsg import YomkMsg, arg_type_name
+from yomk.msgs.YomkMsg import YomkMsg
 
 
 class Bool(YomkMsg):
@@ -95,24 +95,3 @@ class StringArray(YomkMsg):
 
     def __init__(self, items=None):
         self.items = items if items is not None else []
-
-
-def type_of(pkg):
-    """Return the runtime type name of a message, or an outward marker otherwise.
-
-    返回消息的运行期类型名（TYPE_NAME）；None 返回 "null"，体系外对象返回
-    "<non-YomkMsg xxx>"，不以 "null" 掩盖误用。
-    """
-    if pkg is None:
-        return "null"
-    if isinstance(pkg, YomkMsg) and type(pkg) is not YomkMsg:
-        return type(pkg).TYPE_NAME
-    return "<non-YomkMsg " + arg_type_name(pkg) + ">"
-
-
-def type_mismatch(pkg, expected):
-    """Build the standard type-mismatch text, expecting ``cls.TYPE_NAME``.
-
-    构造标准类型不符文案；expected 由调用方传 ``cls.TYPE_NAME``。
-    """
-    return "pkg is not " + expected + ", got '" + type_of(pkg) + "'"

@@ -13,12 +13,12 @@ from yomk.msgs.ctx import (
     ContextMonitor,
 )
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.std_msg import String, StringArray, type_of
+from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import (
     YomkMsg,
-    arg_type_name,
     class_arg_name,
     require_msg,
+    type_name_of,
     unpack,
 )
 from yomk.server import _facade
@@ -91,7 +91,7 @@ class ContextValueBuilder:
             self._default = v
             return self
         raise TypeError("with_default requires '" + self._cls.TYPE_NAME
-                        + "' or None, got '" + arg_type_name(v) + "'")
+                        + "' or None, got '" + type_name_of(v) + "'")
 
     def get(self):
         """Return the stored value, or the accumulated default when the read misses.
@@ -115,7 +115,7 @@ class ContextValueBuilder:
                 return res.data
             diag_warn("typed read context key '" + self._key
                       + "' type mismatch, expect '" + self._cls.TYPE_NAME
-                      + "', got '" + type_of(res.data)
+                      + "', got '" + type_name_of(res.data)
                       + "', return default value")
             return self._default
         diag_error("get context failed: " + res.msg)

@@ -1,4 +1,6 @@
 from .YomkMsg import YomkMsg as YomkMsg
+from .YomkMsg import type_mismatch as type_mismatch
+from .YomkMsg import type_name_of as type_name_of
 from .YomkMsg import unpack as unpack
 from .std_msg import Bool as Bool
 from .std_msg import BoolArray as BoolArray
@@ -9,8 +11,6 @@ from .std_msg import Int as Int
 from .std_msg import IntArray as IntArray
 from .std_msg import String as String
 from .std_msg import StringArray as StringArray
-from .std_msg import type_mismatch as type_mismatch
-from .std_msg import type_of as type_of
 
 __all__ = [
     "Bool",
@@ -24,6 +24,6 @@ __all__ = [
     "StringArray",
     "YomkMsg",
     "type_mismatch",
-    "type_of",
+    "type_name_of",
     "unpack",
 ]

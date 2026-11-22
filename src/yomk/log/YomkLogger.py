@@ -18,8 +18,8 @@ from yomk.msgs.log import (
     LoggerState,
 )
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.std_msg import String, StringArray, type_mismatch
-from yomk.msgs.YomkMsg import unpack
+from yomk.msgs.std_msg import String, StringArray
+from yomk.msgs.YomkMsg import type_mismatch, unpack
 from yomk.server import YomkService
 from yomk.url.log import (
     LOG_ALL_DESC,

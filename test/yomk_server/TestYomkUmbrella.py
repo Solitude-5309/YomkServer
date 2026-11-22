@@ -133,7 +133,7 @@ def main():
           "锚点: yomk.msgs 层有 __init__（标准工具层顶层导出）")
     check(callable(getattr(yomk.msgs, "unpack", None))
           and hasattr(yomk.msgs, "YomkMsg") and hasattr(yomk.msgs, "String")
-          and callable(getattr(yomk.msgs, "type_of", None)),
+          and callable(getattr(yomk.msgs, "type_name_of", None)),
           "锚点: yomk.msgs 顶层导出标准工具与 std 类")
 
     anchor_ok = True

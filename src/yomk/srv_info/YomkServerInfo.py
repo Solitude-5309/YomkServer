@@ -3,9 +3,9 @@ from typing import TYPE_CHECKING
 
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.srv_info import ServerServiceInfo, ServerServiceInfoList
-from yomk.msgs.std_msg import String, StringArray, type_mismatch
+from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.fn_pool import FuncInfoList
-from yomk.msgs.YomkMsg import unpack
+from yomk.msgs.YomkMsg import type_mismatch, unpack
 from yomk.server import YomkService
 from yomk.url.srv_info import (
     SRV_ALL_DESC,

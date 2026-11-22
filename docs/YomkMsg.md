@@ -19,14 +19,14 @@
 
 | 边界 | 入口 | 违例行为 |
 |---|---|---|
-| 服务请求 | `server().url(u).msg(pkg)` | `TypeError: msg() requires a YomkMsg instance or None, got '<类型>'` |
+| 服务请求 | `server().url(u).msg(pkg)` | `TypeError: msg() requires a YomkMsg instance or None, got 'str'` |
 | 服务侧调用 | `self.request(url, pkg)` / `install_func` 装载端点的请求 | 同上（`request()` 入口） |
 | 函数池调用 | `fn_pool().fn_name(n).msg(pkg).call()` | 同上（`msg()` 入口） |
 | 事件循环投递 | `event_loop().msg(pkg)` / `Event(..., pkg, ...)` | 同上 |
-| 上下文值 | `ctx().key(k).value(pkg).create()/.set()` | `TypeError: value() requires a YomkMsg instance or None, got '<类型>'` |
-| 上下文兜底 | `ctx().key(k).msg(cls).with_default(pkg)` | `TypeError: with_default requires '<cls.TYPE_NAME>' or None, got '<类型>'` |
+| 上下文值 | `ctx().key(k).value(pkg).create()/.set()` | `TypeError: value() requires a YomkMsg instance or None, got 'str'` |
+| 上下文兜底 | `ctx().key(k).msg(cls).with_default(pkg)` | `TypeError: with_default requires '<cls.TYPE_NAME>' or None, got 'str'` |
 
-分类口径：入口类型契约违例一律 `TypeError`（调用方编程错误，当场炸出并归因到行）；`ResStatus` 只表运行期业务失败。跨边界收到的消息包类型不符期望时，端点返回 `Failed/eNo` + `type_mismatch` 文案，不抛异常。
+分类口径：入口类型契约违例一律 `TypeError`（调用方编程错误，当场炸出并归因到行）；got 侧统一由 `type_name_of` 生成——消息报 `TYPE_NAME`、`None` 报 `"null"`、体系外对象报其宿主类名（如 `"str"`）。`ResStatus` 只表运行期业务失败。跨边界收到的消息包类型不符期望时，端点返回 `Failed/eNo` + `type_mismatch` 文案，不抛异常。
 
 ## API 速查
 
@@ -75,10 +75,10 @@ def echo(self, pkg):
 - `pkg` 为 `None`、体系外对象或类型不符 → 返回 `None`，不抛异常（端点据此走 `type_mismatch` 拒绝路径）；
 - `cls` 必须是具体 `YomkMsg` 子类（不能是基类本身或体系外类）→ 违例抛 `TypeError`（`unpack requires a concrete YomkMsg subclass, got '<类名>'`），调用方编程错误不当成业务失败。
 
-`type_of(pkg)` / `type_mismatch(pkg, expected)`（对齐 C++ `typeOf`/`typeMismatch`，定义于 `yomk.msgs.std_msg`）：
+`type_name_of(pkg)` / `type_mismatch(pkg, expected)`（对齐 C++ `typeNameOf`/`typeMismatch`，与基类/解包/守卫同置 `yomk.msgs.YomkMsg`）：
 
-- `type_of` 三态：具体消息实例 → 其 `TYPE_NAME`；`None` → `"null"`；体系外对象 → `"<non-YomkMsg <宿主类名>>"`（不以 `"null"` 掩盖误用）；
-- `type_mismatch` 构造标准不符文案 `"pkg is not <expected>, got '<type_of(pkg)>'"`，expected 由调用方传 `cls.TYPE_NAME`——期望/实际双侧均为权威 TYPE_NAME。
+- `type_name_of` 三态：具体消息实例 → 其 `TYPE_NAME`；`None` → `"null"`；体系外对象 → 其宿主类名（如 `"str"`，始终返回类型名，不以 `"null"` 掩盖误用）；
+- `type_mismatch` 构造标准不符文案 `"pkg is not <expected>, got '<type_name_of(pkg)>'"`，expected 由调用方传 `cls.TYPE_NAME`——期望/实际双侧均为权威 TYPE_NAME。
 
 ## 完整示例（定义 → 声明 → 端点校验 → 调用）
 
@@ -86,8 +86,7 @@ def echo(self, pkg):
 from yomk.msgs import YomkMsg
 from yomk.server import YomkService
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.YomkMsg import unpack
-from yomk.msgs.std_msg import type_mismatch
+from yomk.msgs.YomkMsg import type_mismatch, unpack
 
 # 1. 定义（继承即得 TYPE_NAME）
 class UserInfo(YomkMsg):

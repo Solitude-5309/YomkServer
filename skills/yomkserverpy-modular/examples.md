@@ -144,8 +144,8 @@ from yomk.server import YomkService
 from yomk.ctx import ctx
 from yomk.log import log
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.YomkMsg import unpack
-from yomk.msgs.std_msg import String, type_mismatch
+from yomk.msgs.YomkMsg import type_mismatch, unpack
+from yomk.msgs.std_msg import String
 from msgs.YomkMsgs import ConfigKey, ConfigKeyValue
 
 
@@ -858,9 +858,8 @@ def extension() -> ExtensionBuilder: ...
 # 注册（见 test/test_extension.py）；框架只拉起 5 个内置服务。
 # 调用方推荐优先使用框架封装好的统一请求接口访问本服务：
 #   server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
-from yomk.msgs.std_msg import type_mismatch
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.YomkMsg import unpack
+from yomk.msgs.YomkMsg import type_mismatch, unpack
 from yomk.msgs.extension import ExtensionRequest, ExtensionResponse
 from yomk.log import log
 from yomk.server import YomkService

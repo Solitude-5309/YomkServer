@@ -53,9 +53,3 @@ class StringArray(YomkMsg):
     items: list[str]
 
     def __init__(self, items: list[str] | None = None) -> None: ...
-
-
-def type_of(pkg: object) -> str: ...
-
-
-def type_mismatch(pkg: object, expected: str) -> str: ...

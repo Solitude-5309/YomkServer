@@ -6,7 +6,7 @@
 
 1. **定义**：消息类必须 `class Xxx(YomkMsg)`（`from yomk.msgs import YomkMsg`）。`TYPE_NAME` 自动生成（最近一级父包 + "." + `__qualname__`，如 `yomk.msgs.ctx.Context`），随重命名自动跟随，**禁止手写**——类体显式定义 `TYPE_NAME` 直接 `TypeError`（对齐 C++ 只能经 `YOMK_DEFINE_MSG` 生成）。
 2. **声明**：`install_func` 第三参一律传 `Xxx.TYPE_NAME`（std 类同规，如 `String.TYPE_NAME`），**禁止手写报文串**（旧写法 `install_func("/x", fn, "Xxx")` 已废弃）。
-3. **校验**：端点体内 `if unpack(pkg, Xxx) is None: return Response(ResStatus.eNo, type_mismatch(pkg, Xxx.TYPE_NAME))`。**框架不做分发校验**（责任在端点作者）；失败文案期望/实际双侧均为 TYPE_NAME——体系外对象 got 侧报 `"<non-YomkMsg str>"`，体系内对象报自身 TYPE_NAME。
+3. **校验**：端点体内 `if unpack(pkg, Xxx) is None: return Response(ResStatus.eNo, type_mismatch(pkg, Xxx.TYPE_NAME))`。**框架不做分发校验**（责任在端点作者）；失败文案期望侧为 TYPE_NAME，实际侧由 `type_name_of` 给出——体系内对象报自身 TYPE_NAME，体系外对象报宿主类名（如 `"str"`）。
 4. **载荷**：跨边界（`server().url().msg()` / `self.request()` / `fn_pool().msg()` / `event_loop().msg()` / `Event(...)` / `ctx().value()` / `with_default()`）一律传具体消息实例或 `None`；裸值、`dict`/`list`、体系外对象、`YomkMsg` 基类实例在入口当场 `TypeError`。
 
 ## unpack 语义速查
@@ -17,9 +17,9 @@
 | `unpack(裸str, String)` | `None`（裸标量不是消息） |
 | 子类实例解包为父类 | `None`（子类自动获得不同 TYPE_NAME，精确身份匹配） |
 | `unpack(x, 非消息类 / YomkMsg 基类)` | 抛 `TypeError`（`unpack requires a concrete YomkMsg subclass`） |
-| `type_of(具体消息实例)` | 其 TYPE_NAME |
-| `type_of(None)` | `"null"` |
-| `type_of(裸str / 任意非消息对象)` | `"<non-YomkMsg str>"`（三态，不以 `"null"` 掩盖误用） |
+| `type_name_of(具体消息实例)` | 其 TYPE_NAME |
+| `type_name_of(None)` | `"null"` |
+| `type_name_of(裸str / 任意非消息对象)` | 其宿主类名（如 `"str"`；始终返回类型名，不以 `"null"` 掩盖误用） |
 
 ## std 类与 List
 

@@ -1,6 +1,7 @@
-"""Message base class and typed unpacking.
+"""Message base class, typed unpacking and type diagnostics.
 
-消息基类与类型化解包：TYPE_NAME 继承即得、随重命名自动跟随；unpack 未命中返回 None。
+消息基类、类型化解包与类型诊断：TYPE_NAME 继承即得、随重命名自动跟随；unpack 未命中
+返回 None；type_name_of / type_mismatch 生成标准错误文案。
 """
 
 
@@ -31,16 +32,6 @@ class YomkMsg:
         cls.TYPE_NAME = (parent if parent else mod) + "." + cls.__qualname__
 
 
-def arg_type_name(v):
-    """Describe a call-site argument: TYPE_NAME for messages, host class otherwise.
-
-    描述调用方实参：消息报 TYPE_NAME，其余报宿主类名，用于 TypeError 文案。
-    """
-    if isinstance(v, YomkMsg) and type(v) is not YomkMsg:
-        return type(v).TYPE_NAME
-    return type(v).__name__
-
-
 def class_arg_name(cls):
     """Describe a class argument by its own ``__name__`` when available.
 
@@ -61,7 +52,7 @@ def require_msg(v, who):
     if isinstance(v, YomkMsg) and type(v) is not YomkMsg:
         return
     raise TypeError(who + " requires a YomkMsg instance or None, got '"
-                    + arg_type_name(v) + "'")
+                    + type_name_of(v) + "'")
 
 
 def unpack(pkg, cls):
@@ -79,3 +70,24 @@ def unpack(pkg, cls):
             and type(pkg).TYPE_NAME == cls.TYPE_NAME:
         return pkg
     return None
+
+
+def type_name_of(pkg):
+    """Return the runtime type name of a message, or its host class name otherwise.
+
+    返回消息的运行期类型名（TYPE_NAME）；None 返回 "null"，体系外对象返回其宿主
+    类名（如 "str"），从不以 "null" 掩盖误用。对应 C++ ``typeNameOf``。
+    """
+    if pkg is None:
+        return "null"
+    if isinstance(pkg, YomkMsg) and type(pkg) is not YomkMsg:
+        return type(pkg).TYPE_NAME
+    return type(pkg).__name__
+
+
+def type_mismatch(pkg, expected):
+    """Build the standard type-mismatch text, expecting ``cls.TYPE_NAME``.
+
+    构造标准类型不符文案；expected 由调用方传 ``cls.TYPE_NAME``。
+    """
+    return "pkg is not " + expected + ", got '" + type_name_of(pkg) + "'"

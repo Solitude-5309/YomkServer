@@ -299,7 +299,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 | FunctionPool install 空名/空函数 | `Invalid` | `"funcName or func is empty"` |
 | 日志具名门控/查询未命中（console / file） | `Failed` | `"console logger '<名>' not found"` / `"file logger '<名>' not found"` |
 | 日志按类型查询，type 非 `"console"/"file"` | `Failed` | `"unknown logger type '<type>'"` |
-| 端点载荷类型不符（任意端点，端点体 unpack 校验） | `Failed` | `"pkg is not <期望 TYPE_NAME>, got '<实际 TYPE_NAME>'"`——双侧均为 TYPE_NAME，体系外对象 got 侧报 `"<non-YomkMsg <类名>>"`（写法见 docs/YomkMsg.md 端点标准形态） |
+| 端点载荷类型不符（任意端点，端点体 unpack 校验） | `Failed` | `"pkg is not <期望 TYPE_NAME>, got '<实际类型名>'"`——期望侧为 TYPE_NAME，实际侧由 `type_name_of` 给出（消息报 TYPE_NAME，体系外对象报宿主类名如 `"str"`）（写法见 docs/YomkMsg.md 端点标准形态） |
 
 诊断日志（非返回值契约）：服务同名热替换 `"service '<名>' already exists, replace with current service"`（WARN）、函数池热替换 `"function '<名>' already exists, hot-swap to current function"`（WARN）、服务删除 `"service '<名>' deleted, weak-bound callbacks discarded from now on"`（WARN）、空 console 名回退 `"console logger name is empty, use main"`、死锁自检 `"EventLoop: <loop名> post wait in worker thread detected deadlock, directly execute current event to resolve deadlock"`。
 
