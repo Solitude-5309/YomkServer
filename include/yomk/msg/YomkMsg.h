@@ -113,12 +113,15 @@ namespace yomk::msgs
  * @param pkg Message pointer, may be empty
  * @return The message's type name; "null" when pkg is empty.
  *         Intended for error messages that report the actual type received
+ * @note Unlike Msg::typeName() (zero-allocation std::string_view), this returns an owning
+ *       std::string and maps an empty pointer to "null"
  */
 // @zh: 消息的运行时类型名，判空安全
 // @zh: pkg 消息指针，可为空
 // @zh: return 类型名；pkg 为空返回 "null"。
 // @zh:      用于错误文案报出"实际收到的类型"（具体值原则：期望/实际类型一并输出）
-inline std::string typeOf(const YomkMsgPtr& pkg)
+// @zh: note 与 Msg::typeName()（零分配 std::string_view）不同：本函数返回自持 std::string，空指针返回 "null"
+inline std::string typeNameOf(const YomkMsgPtr& pkg)
 {
     return pkg ? std::string(pkg->typeName()) : "null";
 }
@@ -133,10 +136,10 @@ inline std::string typeOf(const YomkMsgPtr& pkg)
 // @zh: pkg 消息指针，可为空
 // @zh: expected 期望的消息类型名（通常是目标消息的 kTypeName）
 // @zh: return 完整不符文案；pkg 为空时报实际类型为 "null"。
-// @zh:      typeOf(pkg) 的常用上层封装，供类型校验失败分支统一返回文案
+// @zh:      typeNameOf(pkg) 的常用上层封装，供类型校验失败分支统一返回文案
 inline std::string typeMismatch(const YomkMsgPtr& pkg, const char* expected)
 {
-    return std::string("pkg is not ") + expected + ", got '" + typeOf(pkg) + "'";
+    return std::string("pkg is not ") + expected + ", got '" + typeNameOf(pkg) + "'";
 }
 
 /**

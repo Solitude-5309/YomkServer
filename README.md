@@ -145,7 +145,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 3. 消息包 (YomkMsg)
 
-服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<yomk/msg/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成）；内置 30 种标量/数组类型位于 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息包位于 `<yomk/server/YomkServerMsg.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msg.h`（对应模块 `*Api.h` 已按需包含）。
+服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<yomk/msg/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成），解包失败的文案统一用 `yomk::msgs::typeMismatch(pkg, 消息名::kTypeName)`（内部经 `yomk::msgs::typeNameOf(pkg)` 报实际类型，空包报 `"null"`；`typeNameOf` 与零分配的 `pkg->typeName()` 的区别是返回自持 `std::string`）；内置 30 种标量/数组类型位于 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息包位于 `<yomk/server/YomkServerMsg.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msg.h`（对应模块 `*Api.h` 已按需包含）。
 
 详见 [消息包](docs/YomkMsg.md)。
 
