@@ -474,13 +474,13 @@ static uint64_t introspectionRounds(uint64_t entries)
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listPkg)
+static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listMsg)
 {
-    if (!listPkg)
+    if (!listMsg)
     {
         return nullptr;
     }
-    for (const auto& li : listPkg->d)
+    for (const auto& li : listMsg->d)
     {
         if (li.type == "console")
         {
@@ -507,8 +507,8 @@ static LatencyStat measureIntrospection(uint64_t rounds, bool useAll, uint64_t& 
         }
         if (useAll)
         {
-            auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(resp.data);
-            lastLines = listPkg ? listPkg->d.size() : 0;
+            auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(resp.data);
+            lastLines = listMsg ? listMsg->d.size() : 0;
         }
         else
         {
@@ -1112,21 +1112,21 @@ int main()
         // 结构化后数据段形态不同（LoggerInfo vs 纯名行），逐行字符串比对改为数量与类型计数比对；
         // S4 阶段表内条目不再增删，console/file 两端点各自单锁快照后计数等价；
         // 条目改报逐器门控层真值后，"全 on" 验证语义迁移至主闸 status()（log_mgr().console().status()）
-        auto gsPkg = yomk::msgs::unpack<yomk::msgs::LoggerState>(yomk::log_mgr().console().status().data);
+        auto gsMsg = yomk::msgs::unpack<yomk::msgs::LoggerState>(yomk::log_mgr().console().status().data);
         YOMK_TEST_CHECK(
-            (gsPkg != nullptr && gsPkg->d.debugOn && gsPkg->d.infoOn && gsPkg->d.warnOn &&
-             gsPkg->d.errorOn && gsPkg->d.proxyOn),
+            (gsMsg != nullptr && gsMsg->d.debugOn && gsMsg->d.infoOn && gsMsg->d.warnOn &&
+             gsMsg->d.errorOn && gsMsg->d.proxyOn),
             "S4B: 全局主闸状态全 on（proxy 已在 S1D 安装）");
-        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
-        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
+        auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
+        const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->debugOn && st->infoOn && st->warnOn && st->errorOn && st->proxyOn),
             "S4B: ALL 首条 console 条目逐器门控真值全 on（未做具名开关，含 proxyOn）");
         uint64_t ac = 0;
         uint64_t af = 0;
-        if (listPkg)
+        if (listMsg)
         {
-            for (const auto& li : listPkg->d)
+            for (const auto& li : listMsg->d)
             {
                 if (li.type == "console")
                 {
@@ -1139,7 +1139,7 @@ int main()
             }
         }
         const bool identical =
-            (listPkg != nullptr && listPkg->d.size() == entries && loggersLines.size() == c &&
+            (listMsg != nullptr && listMsg->d.size() == entries && loggersLines.size() == c &&
              ac == c && af == f);
         YOMK_TEST_CHECK(identical, "S4B: ALL 与 LOGGERS 数量及类型计数一致（嵌套双锁原子快照）");
 
@@ -1213,8 +1213,8 @@ int main()
                         g_s4dSnapBadStatus.fetch_add(1, std::memory_order_relaxed);
                         continue;
                     }
-                    auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(resp.data);
-                    const uint64_t lines = listPkg ? listPkg->d.size() : 0;
+                    auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(resp.data);
+                    const uint64_t lines = listMsg ? listMsg->d.size() : 0;
                     g_s4dSnapCount.fetch_add(1, std::memory_order_relaxed);
                     if (lines < prevLines)
                     {

@@ -16,12 +16,12 @@ int MotionService::init()
     return 0;
 }
 
-yomk::payload::Response MotionService::echo(YomkMsgPtr pkg)
+yomk::payload::Response MotionService::echo(YomkMsgPtr msg)
 {
-    auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);  // String 为框架内置消息类型
+    auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);  // String 为框架内置消息类型
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
     std::ostringstream oss;
     oss << "通讯自检回环：收到 \"" << str->d << "\"";
@@ -29,23 +29,23 @@ yomk::payload::Response MotionService::echo(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "echo success", yomk::msgs::String::shared("echo: " + str->d)};
 }
 
-yomk::payload::Response MotionService::move(YomkMsgPtr pkg)
+yomk::payload::Response MotionService::move(YomkMsgPtr msg)
 {
-    auto cmdPkg = yomk::msgs::unpack<yomk::msgs::MoveCmd>(pkg);
-    if (!cmdPkg)
+    auto cmdMsg = yomk::msgs::unpack<yomk::msgs::MoveCmd>(msg);
+    if (!cmdMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::MoveCmd::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::MoveCmd::kTypeName)};
     }
 
     std::ostringstream oss;
-    oss << "运动指令执行：目标 (" << cmdPkg->cmd.x << ", " << cmdPkg->cmd.y << ", " << cmdPkg->cmd.z
-        << ")mm，倍率 " << cmdPkg->cmd.speedRatio;
+    oss << "运动指令执行：目标 (" << cmdMsg->cmd.x << ", " << cmdMsg->cmd.y << ", " << cmdMsg->cmd.z
+        << ")mm，倍率 " << cmdMsg->cmd.speedRatio;
     yomk::log().tag("arm.motion").info(oss.str());
 
-    // 跨服务调用：成员 request() 与全局请求链 yomk::server().url(u).msg(pkg).request() 等价，URL 直达留痕工位；
+    // 跨服务调用：成员 request() 与全局请求链 yomk::server().url(u).msg(msg).request() 等价，URL 直达留痕工位；
     // 留痕是运动的依赖前置，留痕缺失时失败沿调用链传播
     oss.str("");
-    oss << "运动留痕：move -> (" << cmdPkg->cmd.x << "," << cmdPkg->cmd.y << "," << cmdPkg->cmd.z << ")mm";
+    oss << "运动留痕：move -> (" << cmdMsg->cmd.x << "," << cmdMsg->cmd.y << "," << cmdMsg->cmd.z << ")mm";
     yomk::payload::Response traceResp = request("/TelemetryService/record", yomk::msgs::String::shared(oss.str()));
     if (traceResp.status != yomk::payload::ResStatus::Succeeded)
     {
@@ -59,6 +59,6 @@ yomk::payload::Response MotionService::move(YomkMsgPtr pkg)
     yomk::log().tag("arm.motion").info(oss.str());
 
     // 到位回执：data 携带强类型 MoveResp，不止能传 String
-    MoveResp respData{cmdPkg->cmd.x, cmdPkg->cmd.y, cmdPkg->cmd.z};
+    MoveResp respData{cmdMsg->cmd.x, cmdMsg->cmd.y, cmdMsg->cmd.z};
     return {yomk::payload::ResStatus::Succeeded, "move success", yomk::msgs::MoveResp::shared(respData)};
 }

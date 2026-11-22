@@ -79,32 +79,32 @@ std::map<std::string, yomk::payload::FuncInfo> YomkService::funcInfos()
     return m_p->funcInfos();
 }
 
-yomk::payload::Response YomkService::invoke(std::string_view funcName, YomkMsgPtr pkg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
+yomk::payload::Response YomkService::invoke(std::string_view funcName, YomkMsgPtr msg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
     if (!m_p)
     {
         YOMK_DIAG_ERROR("service is null, please check service");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "service is null");
     }
-    return m_p->invoke(funcName, pkg);
+    return m_p->invoke(funcName, msg);
 }
 
-yomk::payload::Response YomkService::request(std::string_view url, YomkMsgPtr pkg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
+yomk::payload::Response YomkService::request(std::string_view url, YomkMsgPtr msg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
     if (!m_p)
     {
         YOMK_DIAG_ERROR("service is null, please check service");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "service is null");
     }
-    return m_p->request(url, pkg);
+    return m_p->request(url, msg);
 }
 
-void YomkService::asyncRequest(std::string_view url, YomkMsgPtr pkg, YomkResponseFunc func)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
+void YomkService::asyncRequest(std::string_view url, YomkMsgPtr msg, YomkResponseFunc func)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
     if (!m_p)
     {
         YOMK_DIAG_ERROR("service is null, please check service");
         return;
     }
-    m_p->asyncRequest(url, pkg, func);
+    m_p->asyncRequest(url, msg, func);
 }

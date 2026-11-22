@@ -143,7 +143,7 @@ public:
     virtual ~XxxService() {}
     virtual int init() override;
 private:
-    yomk::payload::Response myFunc(YomkMsgPtr pkg);
+    yomk::payload::Response myFunc(YomkMsgPtr msg);
 };
 
 // .cpp
@@ -153,10 +153,10 @@ int XxxService::init() {
     yomk::log().tag("XxxService::init").info("install func [ /my_func ] to", name());
     return 0;
 }
-yomk::payload::Response XxxService::myFunc(YomkMsgPtr pkg) {
-    auto data = yomk::msgs::unpack<yomk::msgs::MyData>(pkg);  // 解包（失败返回 nullptr，需判空）
+yomk::payload::Response XxxService::myFunc(YomkMsgPtr msg) {
+    auto data = yomk::msgs::unpack<yomk::msgs::MyData>(msg);  // 解包（失败返回 nullptr，需判空）
     if (!data) { return {yomk::payload::ResStatus::Failed,
-        yomk::msgs::typeMismatch(pkg, yomk::msgs::prj::MyData::kTypeName)}; }
+        yomk::msgs::typeMismatch(msg, yomk::msgs::prj::MyData::kTypeName)}; }
     // 业务逻辑...
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
@@ -210,7 +210,7 @@ int XxxService::init() {
     yomk::ctx().key("key").checker_fn(weakFunc(&XxxService::myCheck)).apply();
     yomk::ctx().key("key").monitor_fn(weakFunc(&XxxService::myMonitor)).apply();
     // 异步响应回调同样适用
-    yomk::server().url("/OtherService/func").async(weakFunc(&XxxService::onResp)).msg(pkg).request();
+    yomk::server().url("/OtherService/func").async(weakFunc(&XxxService::onResp)).msg(msg).request();
     return 0;
 }
 ```
@@ -335,7 +335,7 @@ YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定�
 消息名称由用户自定义（PascalCase），无固定前缀要求，可与数据类同名（如 `YOMK_DEFINE_MSG(MyData, MyData, d)`）。
 - **命名空间策略**：工程自有消息（`interfaces/ProjectPayload.h` + `interfaces/ProjectMsg.h`，工程本地头）用 `YOMK_DEFINE_MSG_NS(prj, 数据类, 消息名称, d)`，载荷落 `yomk::payload::prj`、消息类落 `yomk::msgs::prj` 子命名空间（与框架消息隔离）；扩展库消息（共享 include 根，须与其他扩展隔离）用 `YOMK_DEFINE_MSG_NS(ext, 数据类, 消息名称, d)`，消息类落 `yomk::msgs::ext` 子命名空间；两种形式下声明期望消息类型名一律引用 `T::kTypeName`、禁止手写字符串
 - `yomk::msgs::消息名称::shared(数据类实例)` — 创建消息包（类内静态工厂）
-- `yomk::msgs::unpack<yomk::msgs::消息名称>(pkg)` — 解包模板，返回 shared_ptr，失败返回 nullptr（不自动 return，需手动判空处理）
+- `yomk::msgs::unpack<yomk::msgs::消息名称>(msg)` — 解包模板，返回 shared_ptr，失败返回 nullptr（不自动 return，需手动判空处理）
 
 注意：`YOMK_DEFINE_MSG` 展开生成的真实类型是独立命名空间中的 `yomk::msgs::消息名称` 与 `yomk::msgs::消息名称Ptr`，与 `yomk` 中的载荷/框架类型隔离以避免重名；引用须写全名，裸写消息名会报 not declared；`installFunc` 第三参声明期望消息类型一律引用 `yomk::msgs::消息名称::kTypeName`、禁止手写字符串；解包由 `yomk::msgs::unpack<yomk::msgs::消息名称>` 模板实参承担（类型即名字）。
 `shared()` 无法从花括号初始化列表推导模板参数，聚合体入参须显式构造：`shared(MyData{...})`。

@@ -144,7 +144,7 @@ std::map<std::string, yomk::payload::FuncInfo> YomkServer::serviceFuncInfos(cons
     return m_p->serviceFuncInfos(srvName);
 }
 
-yomk::payload::Response YomkServer::request(std::string_view url, YomkMsgPtr pkg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
+yomk::payload::Response YomkServer::request(std::string_view url, YomkMsgPtr msg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
     std::string_view srvName;
     std::string_view tmpFuncName;
@@ -154,10 +154,10 @@ yomk::payload::Response YomkServer::request(std::string_view url, YomkMsgPtr pkg
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, errMsg);
     }
 
-    return m_p->request(srvName, tmpFuncName, pkg);
+    return m_p->request(srvName, tmpFuncName, msg);
 }
 
-void YomkServer::asyncRequest(std::string_view url, YomkMsgPtr pkg, YomkResponseFunc func)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
+void YomkServer::asyncRequest(std::string_view url, YomkMsgPtr msg, YomkResponseFunc func)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
     std::string_view srvName;
     std::string_view tmpFuncName;
@@ -171,18 +171,18 @@ void YomkServer::asyncRequest(std::string_view url, YomkMsgPtr pkg, YomkResponse
     // 使用 weak_ptr 捕获,避免任务持有 shared_ptr 形成 pool->task->YomkServerPrivate
     // 的循环引用;lambda 执行前 lock() 判活,确保 YomkServerPrivate 仍在.
     std::weak_ptr<YomkServerPrivate> weakP = m_p;
-    auto callback = [srvNameS = std::string(srvName), tmpFuncNameS = std::string(tmpFuncName), pkg, weakP, func]()
+    auto callback = [srvNameS = std::string(srvName), tmpFuncNameS = std::string(tmpFuncName), msg, weakP, func]()
     {
         auto p = weakP.lock();
         if (!p)
             return;
         if (func)
         {
-            func(p->request(srvNameS, tmpFuncNameS, pkg));
+            func(p->request(srvNameS, tmpFuncNameS, msg));
         }
         else
         {
-            p->request(srvNameS, tmpFuncNameS, pkg);
+            p->request(srvNameS, tmpFuncNameS, msg);
         }
     };
     if (!m_p->postRequestTask(callback))

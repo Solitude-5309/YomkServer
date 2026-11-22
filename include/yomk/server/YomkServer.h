@@ -95,7 +95,7 @@ public:
     // @zh: 同步请求：url 按 "/服务名/函数名" 路由
     // @zh: return Response；url 非法 / 服务或函数不存在返回 Failed
     // @zh: note 阻塞至服务应答
-    yomk::payload::Response request(std::string_view url, YomkMsgPtr pkg = nullptr);
+    yomk::payload::Response request(std::string_view url, YomkMsgPtr msg = nullptr);
     /**
      * @brief Asynchronous request: posted to the async request pool and returns immediately
      * @param func Result callback, nullptr = post only without taking the reply back
@@ -104,7 +104,7 @@ public:
     // @zh: 异步请求：投递到异步请求池后立即返回
     // @zh: func 结果回调，nullptr = 仅投递不取回
     // @zh: note 非阻塞；池关闭中投递被拒绝并记诊断；url 非法直接丢弃
-    void asyncRequest(std::string_view url, YomkMsgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    void asyncRequest(std::string_view url, YomkMsgPtr msg = nullptr, YomkResponseFunc func = nullptr);
 
 private:
     YomkServer(std::size_t asyncThreadCount);

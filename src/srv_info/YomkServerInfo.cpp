@@ -21,7 +21,7 @@ int YomkServerInfo::init()
     return 0;
 }
 
-yomk::payload::Response YomkServerInfo::listServices(YomkMsgPtr pkg)
+yomk::payload::Response YomkServerInfo::listServices(YomkMsgPtr msg)
 {
     auto server = m_weakServer.lock();
     if (!server)
@@ -32,12 +32,12 @@ yomk::payload::Response YomkServerInfo::listServices(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(server->serviceNames())};
 }
 
-yomk::payload::Response YomkServerInfo::listFunctions(YomkMsgPtr pkg)
+yomk::payload::Response YomkServerInfo::listFunctions(YomkMsgPtr msg)
 {
-    auto ySrvName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+    auto ySrvName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!ySrvName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
     if (ySrvName->d.empty())
     {
@@ -61,12 +61,12 @@ yomk::payload::Response YomkServerInfo::listFunctions(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::FuncInfoList::shared(std::move(funcs))};
 }
 
-yomk::payload::Response YomkServerInfo::functionInfo(YomkMsgPtr pkg)
+yomk::payload::Response YomkServerInfo::functionInfo(YomkMsgPtr msg)
 {
-    auto yUrl = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+    auto yUrl = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yUrl)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
     const std::string& url = yUrl->d;
     if (url.empty() || url[0] != '/')
@@ -115,9 +115,9 @@ yomk::payload::Response YomkServerInfo::functionInfo(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Failed, "service not found: " + srvName};
 }
 
-yomk::payload::Response YomkServerInfo::listAll(YomkMsgPtr pkg)
+yomk::payload::Response YomkServerInfo::listAll(YomkMsgPtr msg)
 {
-    (void)pkg;
+    (void)msg;
     auto server = m_weakServer.lock();
     if (!server)
     {

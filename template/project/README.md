@@ -80,7 +80,7 @@ TemplateProject
 
 | 组件 | 用途 | 关键 API |
 |------|------|--------|
-| YomkContext | 全局 K-V 状态管理 | `yomk::ctx().key(k).value(pkg).create()` / `.msg<T>().with_default(d).get()` / `.set()` |
+| YomkContext | 全局 K-V 状态管理 | `yomk::ctx().key(k).value(msg).create()` / `.msg<T>().with_default(d).get()` / `.set()` |
 | YomkEventLoop | 线程隔离事件循环 | `yomk::event_loop().loop(name).handle_fn(fn).start()` / `.msg(data).loop(name).post()` |
-| YomkFunctionPool | 动态公共函数池 | `yomk::fn_pool().fn_name(name).fn(f).install()` / `.fn_name(name).msg(pkg).call()` |
+| YomkFunctionPool | 动态公共函数池 | `yomk::fn_pool().fn_name(name).fn(f).install()` / `.fn_name(name).msg(msg).call()` |
 | YomkLogger | 多级别日志系统 | `yomk::log().info(...)` / `.error(...)` / `yomk::log_mgr().dir(d).file(name).create()` |

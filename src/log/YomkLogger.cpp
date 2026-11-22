@@ -56,17 +56,17 @@ int YomkLogger::init()
     return 0;
 }
 
-yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr msg)
 {
-    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
-    if (!logPkg)
+    auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
+    if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
     }
-    if (logPkg->d.logger.empty())
+    if (logMsg->d.logger.empty())
     {
         YOMK_DIAG_WARN("console logger name is empty, use main");
-        logPkg->d.logger = "main";
+        logMsg->d.logger = "main";
     }
 
     // 锁内拷贝 proxy 快照,锁外调用回调(避免用户回调持锁重入)
@@ -77,7 +77,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
         proxyEnabled = m_consoleLogProxy;
         proxyFunc = m_consoleLogProxyFunc;
     }
-    if (proxyEnabled && proxyFunc && !proxyFunc(logPkg->d))
+    if (proxyEnabled && proxyFunc && !proxyFunc(logMsg->d))
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
     }
@@ -86,7 +86,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
     ConsoleLoggerPtr consoleLogger;
     {
         std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-        auto itLogger = m_consoleLoggers.find(logPkg->d.logger);
+        auto itLogger = m_consoleLoggers.find(logMsg->d.logger);
         if (itLogger != m_consoleLoggers.end())
         {
             consoleLogger = itLogger->second;
@@ -95,58 +95,58 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr pkg)
     if (!consoleLogger)
     {
         std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-        auto itLogger = m_consoleLoggers.find(logPkg->d.logger);
+        auto itLogger = m_consoleLoggers.find(logMsg->d.logger);
         if (itLogger == m_consoleLoggers.end())
         {
             std::shared_ptr<ConsoleLogger> newLogger = std::make_shared<ConsoleLogger>();
-            newLogger->setName(logPkg->d.logger);
-            itLogger = m_consoleLoggers.emplace(logPkg->d.logger, newLogger).first;
+            newLogger->setName(logMsg->d.logger);
+            itLogger = m_consoleLoggers.emplace(logMsg->d.logger, newLogger).first;
         }
         consoleLogger = itLogger->second;
     }
 
-    switch (logPkg->d.level)
+    switch (logMsg->d.level)
     {
         case LogLevel::Trace:
             if (m_showConsoleTraceLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Trace, logPkg->d.tag, logPkg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Trace, logMsg->d.tag, logMsg->d.log);
             break;
         case LogLevel::Info:
             if (m_showConsoleInfoLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Info, logPkg->d.tag, logPkg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Info, logMsg->d.tag, logMsg->d.log);
             break;
         case LogLevel::Warn:
             if (m_showConsoleWarningLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Warn, logPkg->d.tag, logPkg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Warn, logMsg->d.tag, logMsg->d.log);
             break;
         case LogLevel::Error:
             if (m_showConsoleErrorLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Error, logPkg->d.tag, logPkg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Error, logMsg->d.tag, logMsg->d.log);
             break;
         case LogLevel::Debug:
             if (m_showConsoleDebugLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Debug, logPkg->d.tag, logPkg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Debug, logMsg->d.tag, logMsg->d.log);
             break;
         case LogLevel::Fatal:
             if (m_showConsoleFatalLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Fatal, logPkg->d.tag, logPkg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Fatal, logMsg->d.tag, logMsg->d.log);
             break;
         default:
-            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logPkg->d.level)) + ", fallback to Info");
+            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logMsg->d.level)) + ", fallback to Info");
             if (m_showConsoleInfoLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Info, logPkg->d.tag, logPkg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Info, logMsg->d.tag, logMsg->d.log);
             break;
     }
 
     return {yomk::payload::ResStatus::Succeeded, "success"};
 }
 
-yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr msg)
 {
-    auto consoleLogProxy = yomk::msgs::unpack<yomk::msgs::ConsoleLogProxy>(pkg);
+    auto consoleLogProxy = yomk::msgs::unpack<yomk::msgs::ConsoleLogProxy>(msg);
     if (!consoleLogProxy)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::ConsoleLogProxy::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::ConsoleLogProxy::kTypeName)};
     }
     // 与 consoleLog 读侧互斥
     std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
@@ -156,12 +156,12 @@ yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "success"};
 }
 
-yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr msg)
 {
-    auto fileLogProxy = yomk::msgs::unpack<yomk::msgs::FileLogProxy>(pkg);
+    auto fileLogProxy = yomk::msgs::unpack<yomk::msgs::FileLogProxy>(msg);
     if (!fileLogProxy)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::FileLogProxy::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::FileLogProxy::kTypeName)};
     }
     // 与 fileLog 读侧互斥;语义与 setConsoleLogProxy 对称
     std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
@@ -171,12 +171,12 @@ yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "success"};
 }
 
-yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr msg)
 {
-    auto logFile = yomk::msgs::unpack<yomk::msgs::LogFile>(pkg);
+    auto logFile = yomk::msgs::unpack<yomk::msgs::LogFile>(msg);
     if (!logFile)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::LogFile::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::LogFile::kTypeName)};
     }
 
     // 空名/空目录拒绝:ResStatus::Invalid(参数无效惯例)
@@ -208,15 +208,15 @@ yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr msg)
 {
-    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
-    if (!logPkg)
+    auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
+    if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
     }
 
-    if (logPkg->d.logger.empty())
+    if (logMsg->d.logger.empty())
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "file logger name is empty");
     }
@@ -230,61 +230,61 @@ yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr pkg)
         proxyEnabled = m_fileLogProxy;
         proxyFunc = m_fileLogProxyFunc;
     }
-    if (proxyEnabled && proxyFunc && !proxyFunc(logPkg->d))
+    if (proxyEnabled && proxyFunc && !proxyFunc(logMsg->d))
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
     }
 
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
 
-    auto itLogger = m_fileLoggers.find(logPkg->d.logger);
+    auto itLogger = m_fileLoggers.find(logMsg->d.logger);
     if (itLogger == m_fileLoggers.end())
     {
-        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "file logger '" + logPkg->d.logger + "' not found");
+        return yomk::payload::Response(yomk::payload::ResStatus::Failed, "file logger '" + logMsg->d.logger + "' not found");
     }
 
-    switch (logPkg->d.level)
+    switch (logMsg->d.level)
     {
         case LogLevel::Trace:
             if (m_showFileTraceLog.load())
-                itLogger->second->log(FileLogger::LogLevel::Trace, logPkg->d.tag, logPkg->d.log);
+                itLogger->second->log(FileLogger::LogLevel::Trace, logMsg->d.tag, logMsg->d.log);
             break;
         case LogLevel::Info:
             if (m_showFileInfoLog.load())
-                itLogger->second->log(FileLogger::LogLevel::Info, logPkg->d.tag, logPkg->d.log);
+                itLogger->second->log(FileLogger::LogLevel::Info, logMsg->d.tag, logMsg->d.log);
             break;
         case LogLevel::Warn:
             if (m_showFileWarningLog.load())
-                itLogger->second->log(FileLogger::LogLevel::Warn, logPkg->d.tag, logPkg->d.log);
+                itLogger->second->log(FileLogger::LogLevel::Warn, logMsg->d.tag, logMsg->d.log);
             break;
         case LogLevel::Error:
             if (m_showFileErrorLog.load())
-                itLogger->second->log(FileLogger::LogLevel::Error, logPkg->d.tag, logPkg->d.log);
+                itLogger->second->log(FileLogger::LogLevel::Error, logMsg->d.tag, logMsg->d.log);
             break;
         case LogLevel::Debug:
             if (m_showFileDebugLog.load())
-                itLogger->second->log(FileLogger::LogLevel::Debug, logPkg->d.tag, logPkg->d.log);
+                itLogger->second->log(FileLogger::LogLevel::Debug, logMsg->d.tag, logMsg->d.log);
             break;
         case LogLevel::Fatal:
             if (m_showFileFatalLog.load())
-                itLogger->second->log(FileLogger::LogLevel::Fatal, logPkg->d.tag, logPkg->d.log);
+                itLogger->second->log(FileLogger::LogLevel::Fatal, logMsg->d.tag, logMsg->d.log);
             break;
         default:
-            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logPkg->d.level)) + ", fallback to Info");
+            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logMsg->d.level)) + ", fallback to Info");
             if (m_showFileInfoLog.load())
-                itLogger->second->log(FileLogger::LogLevel::Info, logPkg->d.tag, logPkg->d.log);
+                itLogger->second->log(FileLogger::LogLevel::Info, logMsg->d.tag, logMsg->d.log);
             break;
     }
 
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr msg)
 {
-    auto str = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+    auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
     auto fileLogger = m_fileLoggers.find(str->d);
@@ -297,12 +297,12 @@ yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr msg)
 {
-    auto yName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+    auto yName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
 
     // 空名拒绝(同 createFileLogger 惯例)
@@ -343,22 +343,22 @@ yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr pkg)
         "deleted console:" + std::to_string(deletedConsole) + " file:" + std::to_string(deletedFile));
 }
 
-yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr msg)
 {
-    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
-    if (!logPkg)
+    auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
+    if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
     }
 
     // 具名请求:逐器门控路径(写第二层,不触碰全局主闸;未命中 ResStatus::Failed 不惰性创建)
-    if (!logPkg->d.logger.empty())
+    if (!logMsg->d.logger.empty())
     {
-        return setNamedConsoleLevel(logPkg->d.logger, logPkg->d.level, false);
+        return setNamedConsoleLevel(logMsg->d.logger, logMsg->d.level, false);
     }
 
     // 空名 = 全局主闸路径(与既有语义一致)
-    switch (logPkg->d.level)
+    switch (logMsg->d.level)
     {
         case LogLevel::Trace:
             m_showConsoleTraceLog.store(false);
@@ -379,29 +379,29 @@ yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr pkg)
             m_showConsoleFatalLog.store(false);
             break;
         default:
-            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logPkg->d.level)) + ", turn off ignored");
+            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logMsg->d.level)) + ", turn off ignored");
             break;
     }
 
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr msg)
 {
-    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
-    if (!logPkg)
+    auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
+    if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
-    if (!logPkg->d.logger.empty())
+    if (!logMsg->d.logger.empty())
     {
-        return setNamedConsoleLevel(logPkg->d.logger, logPkg->d.level, true);
+        return setNamedConsoleLevel(logMsg->d.logger, logMsg->d.level, true);
     }
 
     // 空名 = 全局主闸路径(同上)
-    switch (logPkg->d.level)
+    switch (logMsg->d.level)
     {
         case LogLevel::Trace:
             m_showConsoleTraceLog.store(true);
@@ -422,7 +422,7 @@ yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr pkg)
             m_showConsoleFatalLog.store(true);
             break;
         default:
-            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logPkg->d.level)) + ", turn on ignored");
+            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logMsg->d.level)) + ", turn on ignored");
             break;
     }
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
@@ -469,22 +469,22 @@ yomk::payload::Response YomkLogger::setNamedConsoleLevel(const std::string& logg
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr msg)
 {
-    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
-    if (!logPkg)
+    auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
+    if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
-    if (!logPkg->d.logger.empty())
+    if (!logMsg->d.logger.empty())
     {
-        return setNamedFileLevel(logPkg->d.logger, logPkg->d.level, false);
+        return setNamedFileLevel(logMsg->d.logger, logMsg->d.level, false);
     }
 
     // 空名 = 全局主闸路径(与控制台侧对称)
-    switch (logPkg->d.level)
+    switch (logMsg->d.level)
     {
         case LogLevel::Trace:
             m_showFileTraceLog.store(false);
@@ -505,29 +505,29 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr pkg)
             m_showFileFatalLog.store(false);
             break;
         default:
-            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logPkg->d.level)) + ", turn off ignored");
+            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logMsg->d.level)) + ", turn off ignored");
             break;
     }
 
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr msg)
 {
-    auto logPkg = yomk::msgs::unpack<yomk::msgs::Log>(pkg);
-    if (!logPkg)
+    auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
+    if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
-    if (!logPkg->d.logger.empty())
+    if (!logMsg->d.logger.empty())
     {
-        return setNamedFileLevel(logPkg->d.logger, logPkg->d.level, true);
+        return setNamedFileLevel(logMsg->d.logger, logMsg->d.level, true);
     }
 
     // 空名 = 全局主闸路径(与控制台侧对称)
-    switch (logPkg->d.level)
+    switch (logMsg->d.level)
     {
         case LogLevel::Trace:
             m_showFileTraceLog.store(true);
@@ -548,7 +548,7 @@ yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr pkg)
             m_showFileFatalLog.store(true);
             break;
         default:
-            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logPkg->d.level)) + ", turn on ignored");
+            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logMsg->d.level)) + ", turn on ignored");
             break;
     }
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
@@ -595,12 +595,12 @@ yomk::payload::Response YomkLogger::setNamedFileLevel(const std::string& loggerN
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::loggers(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::loggers(YomkMsgPtr msg)
 {
-    auto type = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+    auto type = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!type)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
     std::vector<std::string> names;
     if (type->d == "console")
@@ -625,12 +625,12 @@ yomk::payload::Response YomkLogger::loggers(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(std::move(names))};
 }
 
-yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr msg)
 {
-    auto query = yomk::msgs::unpack<yomk::msgs::LoggerQuery>(pkg);
+    auto query = yomk::msgs::unpack<yomk::msgs::LoggerQuery>(msg);
     if (!query)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::LoggerQuery::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::LoggerQuery::kTypeName)};
     }
     // 按类型单表精确查找:两表允许同名,同名歧义由 type 消除;命中锁内构造结构化快照
     yomk::payload::LoggerInfo info;
@@ -751,9 +751,9 @@ LoggerState YomkLogger::namedFileState(const FileLoggerPtr& fileLogger, bool pro
     return state;
 }
 
-yomk::payload::Response YomkLogger::listAll(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::listAll(YomkMsgPtr msg)
 {
-    (void)pkg;
+    (void)msg;
     // 两个 proxyOn 各自在双表锁外独立取(两把 proxy 叶子锁独立作用域),再传入逐器门控层求值
     bool proxyOn = false;
     {
@@ -794,15 +794,15 @@ yomk::payload::Response YomkLogger::listAll(YomkMsgPtr pkg)
 }
 
 // 控制台全局主闸态内省(无参形态同 /all,LoggerState 包走 data)
-yomk::payload::Response YomkLogger::consoleGlobalState(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::consoleGlobalState(YomkMsgPtr msg)
 {
-    (void)pkg;
+    (void)msg;
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::LoggerState::shared(currentConsoleState())};
 }
 
 // 文件全局主闸态内省(无参形态同 /all,LoggerState 包走 data)
-yomk::payload::Response YomkLogger::fileGlobalState(YomkMsgPtr pkg)
+yomk::payload::Response YomkLogger::fileGlobalState(YomkMsgPtr msg)
 {
-    (void)pkg;
+    (void)msg;
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::LoggerState::shared(currentFileState())};
 }

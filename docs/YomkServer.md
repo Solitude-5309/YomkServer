@@ -25,10 +25,10 @@ builder 按值传递、全程 `auto` 接收，仅限单表达式内联使用（�
 
 | 链 | 终结与返回 |
 |---|---|
-| `yomk::server().url(u).msg(pkg)` | `.request()` → `Response`，阻塞至服务应答；`.status()` → 三态 `ResStatus`（失败细节进诊断日志） |
-| `yomk::server().url(u).async(cb)` | 切入异步分面，继续 `.msg(pkg)` 后 `.request()` → `void`：投递到框架内置线程池后立即返回，结果经 `cb` 送达；`cb` 传 `nullptr` 仅投递不取回；`.msg()` 可放 `.async()` 之前或之后 |
+| `yomk::server().url(u).msg(msg)` | `.request()` → `Response`，阻塞至服务应答；`.status()` → 三态 `ResStatus`（失败细节进诊断日志） |
+| `yomk::server().url(u).async(cb)` | 切入异步分面，继续 `.msg(msg)` 后 `.request()` → `void`：投递到框架内置线程池后立即返回，结果经 `cb` 送达；`cb` 传 `nullptr` 仅投递不取回；`.msg()` 可放 `.async()` 之前或之后 |
 
-`.msg(pkg)` 为 `YOMK_DEFINE_MSG` 消息对象（见 [消息包](YomkMsg.md)），缺省为空消息。
+`.msg(msg)` 为 `YOMK_DEFINE_MSG` 消息对象（见 [消息包](YomkMsg.md)），缺省为空消息。
 
 返回值 `yomk::payload::Response` 字段：
 
@@ -71,13 +71,13 @@ public:
         installFunc("/hello", &MyService::hello, yomk::msgs::String::kTypeName); // 注册即自动弱绑定
         return 0;
     }
-    yomk::payload::Response hello(YomkMsgPtr pkg)
+    yomk::payload::Response hello(YomkMsgPtr msg)
     {
-        auto msg = yomk::msgs::unpack<yomk::msgs::String>(pkg);
-        if (!msg)
+        auto data = yomk::msgs::unpack<yomk::msgs::String>(msg);
+        if (!data)
             return {yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
-        return {yomk::payload::ResStatus::Succeeded, "hello " + msg->d};
+            yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Succeeded, "hello " + data->d};
     }
 };
 
@@ -129,7 +129,7 @@ data 无负载，成功 msg "create context success"。
 同步执行，在组存储写入键值对；非幂等——键已存在时重调必 Failed。
 
 # Notes
-key/value 为空 → Invalid；group 名为空 → Invalid；自定义组不存在时按名惰性创建；pkg 非 Context → Failed。
+key/value 为空 → Invalid；group 名为空 → Invalid；自定义组不存在时按名惰性创建；请求消息非 Context → Failed。
 )";
 inline constexpr const char* kCtxGroupsDesc = R"(
 # Overview

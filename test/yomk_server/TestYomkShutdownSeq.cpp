@@ -83,8 +83,8 @@ public:
     }
 
 private:
-    yomk::payload::Response ping(YomkMsgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "pong"}; }
-    yomk::payload::Response work(YomkMsgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "work"}; }
+    yomk::payload::Response ping(YomkMsgPtr msg) { return {yomk::payload::ResStatus::Succeeded, "pong"}; }
+    yomk::payload::Response work(YomkMsgPtr msg) { return {yomk::payload::ResStatus::Succeeded, "work"}; }
 };
 
 // 嵌套投递演示服务：/spawn 执行时嵌套发起自身异步请求
@@ -104,7 +104,7 @@ public:
     }
 
 private:
-    yomk::payload::Response spawn(YomkMsgPtr pkg)
+    yomk::payload::Response spawn(YomkMsgPtr msg)
     {
         g_spawnExec.fetch_add(1);
         std::this_thread::sleep_for(std::chrono::milliseconds(200));

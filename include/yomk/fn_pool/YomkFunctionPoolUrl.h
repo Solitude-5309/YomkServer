@@ -30,7 +30,7 @@ data 无负载；首次注册 msg "register function success"，同名热替换 
 同步执行，写函数表；注册后即可经 /call 或统一请求通道调用；热替换时 WARN 留痕。
 
 # Notes
-热替换为整条覆盖——用两参安装同名函数会清掉既有 msgName/description；Invalid=名/函数为空；pkg 非 Function → Failed。
+热替换为整条覆盖——用两参安装同名函数会清掉既有 msgName/description；Invalid=名/函数为空；请求消息非 Function → Failed。
 )";
 inline constexpr const char* kFpUnregisterDesc = R"(
 # Overview
@@ -46,14 +46,14 @@ data 无负载，msg "unregister function success"。
 同步执行，从函数表移除；未注册时 Failed（非幂等）。
 
 # Notes
-Invalid=函数名为空；注销后 /call 与 /name 均不再命中；pkg 非 String → Failed。
+Invalid=函数名为空；注销后 /call 与 /name 均不再命中；请求消息非 String → Failed。
 )";
 inline constexpr const char* kFpCallDesc = R"(
 # Overview
 调用函数池中已注册的函数，透传其携带的负载包。
 
 # Inputs
-CallFunction 包：funcName 函数名；pkg 传给目标函数的消息包（可空，是否接受由目标函数决定）。
+CallFunction 包：funcName 函数名；msg 传给目标函数的消息包（可空，是否接受由目标函数决定）。
 
 # Outputs
 目标函数的 Response 原样回传（status/msg/data 均不加工）。
@@ -94,7 +94,7 @@ data 为 FuncInfo 包（funcName/msgName/description），msg "ok"。
 同步快照读取，命中即构造结构化包；幂等。
 
 # Notes
-两参注册的函数 msgName/description 为空串；Invalid=函数名为空；Failed=未注册；pkg 非 String → Failed。
+两参注册的函数 msgName/description 为空串；Invalid=函数名为空；Failed=未注册；请求消息非 String → Failed。
 )";
 inline constexpr const char* kFpAllDesc = R"(
 # Overview

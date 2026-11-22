@@ -165,13 +165,13 @@ static void logVerify(const std::string& text)
 
 // 负载合计工具：跨模块共享的无状态计算函数（场景 1 以 2 参形式登记）。
 // 入参 StringArray 各轴负载（kg），合计结果同时放进 msg 与 data——调用方两者都能拿到
-yomk::payload::Response payloadSum(YomkMsgPtr pkg)
+yomk::payload::Response payloadSum(YomkMsgPtr msg)
 {
     // 解包入参：宏已自动判空，失败自动返回 {ResStatus::Failed, "错误信息"}（空参守卫见场景 3）
-    auto loads = yomk::msgs::unpack<yomk::msgs::StringArray>(pkg);
+    auto loads = yomk::msgs::unpack<yomk::msgs::StringArray>(msg);
     if (!loads)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::StringArray::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::StringArray::kTypeName)};
     }
 
     std::ostringstream oss;
@@ -193,12 +193,12 @@ yomk::payload::Response payloadSum(YomkMsgPtr pkg)
 }
 
 // 班次握手工具：演示带元数据的登记与调用（场景 2 以 4 参形式登记，场景 4 被热替换）
-yomk::payload::Response handshake(YomkMsgPtr pkg)
+yomk::payload::Response handshake(YomkMsgPtr msg)
 {
-    auto worker = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+    auto worker = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!worker)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
     std::ostringstream oss;
     oss << "班次握手工具执行：向 " << worker->d << " 回执问候";
@@ -289,12 +289,12 @@ static void showArmToolHotSwap()
 
     // lambda 先赋给具名变量再传宏：返回值构造含逗号时，
     // 直接内联进宏会让预处理器把逗号误当实参分隔符
-    YomkServiceFunc handshakeV2 = [](YomkMsgPtr pkg) -> yomk::payload::Response
+    YomkServiceFunc handshakeV2 = [](YomkMsgPtr msg) -> yomk::payload::Response
     {
-        auto worker = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+        auto worker = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!worker)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
         }
         std::ostringstream oss;
         oss << "班次握手工具 V2 执行：向 " << worker->d << " 升级问候";

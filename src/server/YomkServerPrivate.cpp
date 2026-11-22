@@ -113,7 +113,7 @@ bool YomkServerPrivate::postRequestTask(std::function<void()> task)
     return m_requestPool.post(std::move(task));
 }
 
-yomk::payload::Response YomkServerPrivate::request(std::string_view srvName, std::string_view funcName, YomkMsgPtr pkg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
+yomk::payload::Response YomkServerPrivate::request(std::string_view srvName, std::string_view funcName, YomkMsgPtr msg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
     std::shared_ptr<YomkService> srv;
     {
@@ -126,7 +126,7 @@ yomk::payload::Response YomkServerPrivate::request(std::string_view srvName, std
         }
         srv = iter->second;
     }
-    return srv->invoke(funcName, pkg);
+    return srv->invoke(funcName, msg);
 }
 
 std::vector<std::string> YomkServerPrivate::serviceNames()

@@ -44,7 +44,7 @@ data 为 String 包（配置值），msg "ok"。
 同步纯读，不修改内存表；幂等。
 
 # Notes
-键不存在 → Failed "key not found: <键>"；pkg 非 ConfigKey → Failed。
+键不存在 → Failed "key not found: <键>"；请求消息非 ConfigKey → Failed。
 )";
 inline constexpr const char* kCfgSetDesc = R"(
 # Overview
@@ -60,7 +60,7 @@ data 无负载，msg "ok"。
 同步执行，覆盖写内存表；同值重写结果不变（幂等）；持久化需自行实现 /load 的逆操作。
 
 # Notes
-不校验键值合法性；pkg 非 ConfigKeyValue → Failed。
+不校验键值合法性；请求消息非 ConfigKeyValue → Failed。
 )";
 inline constexpr const char* kCfgReloadDesc = R"(
 # Overview

@@ -51,7 +51,7 @@ struct Response
  */
 // @zh: 功能函数签名：接收请求消息，返回响应
 // @zh: note 在请求工作线程执行；应无阻塞副作用，返回的 Response 即投递给调用方的响应
-using YomkServiceFunc = std::function<yomk::payload::Response(YomkMsgPtr pkg)>;
+using YomkServiceFunc = std::function<yomk::payload::Response(YomkMsgPtr msg)>;
 /**
  * @brief Async request completion callback: receives the response after an async() request completes
  * @note Runs on the async request thread pool; must not synchronously wait for the same request inside the callback, does not throw

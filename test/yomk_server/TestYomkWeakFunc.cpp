@@ -64,8 +64,8 @@ public:
     // weakFunc 成员函数指针绑定真实执行计数
     std::atomic<int> memberCount{0};
 
-    yomk::payload::Response workResp(YomkMsgPtr pkg) { return {yomk::payload::ResStatus::Succeeded, "alive"}; }
-    yomk::payload::Response memberWork(YomkMsgPtr pkg)
+    yomk::payload::Response workResp(YomkMsgPtr msg) { return {yomk::payload::ResStatus::Succeeded, "alive"}; }
+    yomk::payload::Response memberWork(YomkMsgPtr msg)
     {
         memberCount.fetch_add(1);
         return {yomk::payload::ResStatus::Succeeded, "member"};
@@ -86,7 +86,7 @@ public:
     {
         // 构造期 weak_from_this() 未生效：框架告警，绑定永久失效
         ctorCb = weakFunc(
-            [this](YomkMsgPtr pkg) -> yomk::payload::Response
+            [this](YomkMsgPtr msg) -> yomk::payload::Response
             {
                 count.fetch_add(1);
                 return {yomk::payload::ResStatus::Succeeded, "ctor"};
@@ -108,7 +108,7 @@ static void testAliveCallbacks(YomkServer* server)
     auto srv = std::make_shared<BindSrv>(server);
     std::function<void()> cbVoid = srv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
     std::function<yomk::payload::Response(YomkMsgPtr)> cbResp = srv->weakFunc(
-        [&respCount](YomkMsgPtr pkg)
+        [&respCount](YomkMsgPtr msg)
         {
             respCount.fetch_add(1);
             return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "alive"};
@@ -120,7 +120,7 @@ static void testAliveCallbacks(YomkServer* server)
             return yomk::payload::CheckStatus::Reject;
         });
     std::function<int(YomkMsgPtr)> cbInt = srv->weakFunc(
-        [&intCount](YomkMsgPtr pkg)
+        [&intCount](YomkMsgPtr msg)
         {
             intCount.fetch_add(1);
             return 42;
@@ -162,7 +162,7 @@ static void testDestroyDiscard(YomkServer* server)
         auto srv = std::make_shared<BindSrv>(server);
         cbVoid = srv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
         cbResp = srv->weakFunc(
-            [&respCount](YomkMsgPtr pkg)
+            [&respCount](YomkMsgPtr msg)
             {
                 respCount.fetch_add(1);
                 return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "alive"};
@@ -174,7 +174,7 @@ static void testDestroyDiscard(YomkServer* server)
                 return yomk::payload::CheckStatus::Reject;
             });
         cbInt = srv->weakFunc(
-            [&intCount](YomkMsgPtr pkg)
+            [&intCount](YomkMsgPtr msg)
             {
                 intCount.fetch_add(1);
                 return 42;
@@ -222,7 +222,7 @@ static void testMarkDeletedDiscard(YomkServer* server)
 
     std::function<void()> cbVoid = rawSrv->weakFunc([&voidCount]() { voidCount.fetch_add(1); });
     std::function<yomk::payload::Response(YomkMsgPtr)> cbResp = rawSrv->weakFunc(
-        [&respCount](YomkMsgPtr pkg)
+        [&respCount](YomkMsgPtr msg)
         {
             respCount.fetch_add(1);
             return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "alive"};

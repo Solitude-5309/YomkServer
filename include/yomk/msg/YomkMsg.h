@@ -31,7 +31,7 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
  * @param DataType Payload data type
  * @param MsgName Message class name (kTypeName is "yomk::msgs::MsgName", the fully
  *        qualified type identifier used for unpack and dynamic lookup comparison)
- * @param VarName Payload member name (framework convention fixes it to d, e.g. pkg->d)
+ * @param VarName Payload member name (framework convention fixes it to d, e.g. msg->d)
  * @note The generated class provides the shared(...) factory; custom messages are declared only
  *       by this macro, see YomkStdMsg.h for the standard type message catalog, YomkServerMsg.h
  *       for the core payload message catalog, and each Yomk{Module}Msg.h for module-specific
@@ -42,7 +42,7 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
 // @zh: 定义消息类型：在 yomk::msgs 内生成 YomkMsg 派生类 MsgName
 // @zh: DataType 载荷数据类型
 // @zh: MsgName 消息类名（kTypeName 为 "yomk::msgs::MsgName"，全限定类型标识，供解包/动态查找比对）
-// @zh: VarName 载荷成员名（框架约定统一为 d，如 pkg->d）
+// @zh: VarName 载荷成员名（框架约定统一为 d，如 msg->d）
 // @zh: note 生成类提供 shared(...) 工厂；自定义消息仅此宏声明，标准类型消息目录见 YomkStdMsg.h，核心载荷消息目录见 YomkServerMsg.h，模块专属消息目录见各 Yomk{Module}Msg.h
 // @zh: note 载荷类型命名空间与消息类命名空间相互独立；MsgName 全局共用 yomk::msgs 单一根，需隔离时改用 YOMK_DEFINE_MSG_NS
 #define YOMK_DEFINE_MSG(DataType, MsgName, VarName)                               \
@@ -56,7 +56,7 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
  * @param DataType Payload data type; write it root-qualified (leading ::) when it shares a
  *        name with NS or an ancestor namespace, since the macro expands inside yomk::msgs::NS
  * @param MsgName Message class name
- * @param VarName Payload member name (framework convention fixes it to d, e.g. pkg->d)
+ * @param VarName Payload member name (framework convention fixes it to d, e.g. msg->d)
  * @note kTypeName is "yomk::msgs::NS::MsgName", matching the C++ qualified name, so namespace
  *       isolation and runtime type-ID uniqueness are guaranteed by the same mechanism.
  *       Use this form for custom messages that must not sit at the yomk::msgs root
@@ -65,7 +65,7 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
 // @zh: NS yomk::msgs 下的子命名空间（C++17 嵌套命名空间 token，如 my::mod；不得含空格，kTypeName 按字面串化嵌入）
 // @zh: DataType 载荷数据类型；与 NS 或其祖先命名空间同名时写根限定名（:: 开头），宏体在 yomk::msgs::NS 内展开
 // @zh: MsgName 消息类名
-// @zh: VarName 载荷成员名（框架约定统一为 d，如 pkg->d）
+// @zh: VarName 载荷成员名（框架约定统一为 d，如 msg->d）
 // @zh: note kTypeName 为 "yomk::msgs::NS::MsgName"，与 C++ 全限定名一致，命名空间隔离与运行期类型 ID 唯一由同一机制保证；不宜落在 yomk::msgs 根的自定义消息用本形式
 #define YOMK_DEFINE_MSG_NS(NS, DataType, MsgName, VarName)                        \
     YOMK_DEFINE_MSG_IMPL(yomk::msgs::NS, "yomk::msgs::" #NS "::", DataType, MsgName, VarName)
@@ -110,56 +110,56 @@ namespace yomk::msgs
 
 /**
  * @brief Runtime type name of a message, null-safe
- * @param pkg Message pointer, may be empty
- * @return The message's type name; "null" when pkg is empty.
+ * @param msg Message pointer, may be empty
+ * @return The message's type name; "null" when msg is empty.
  *         Intended for error messages that report the actual type received
  * @note Unlike Msg::typeName() (zero-allocation std::string_view), this returns an owning
  *       std::string and maps an empty pointer to "null"
  */
 // @zh: 消息的运行时类型名，判空安全
-// @zh: pkg 消息指针，可为空
-// @zh: return 类型名；pkg 为空返回 "null"。
+// @zh: msg 消息指针，可为空
+// @zh: return 类型名；msg 为空返回 "null"。
 // @zh:      用于错误文案报出"实际收到的类型"（具体值原则：期望/实际类型一并输出）
 // @zh: note 与 Msg::typeName()（零分配 std::string_view）不同：本函数返回自持 std::string，空指针返回 "null"
-inline std::string typeNameOf(const YomkMsgPtr& pkg)
+inline std::string typeNameOf(const YomkMsgPtr& msg)
 {
-    return pkg ? std::string(pkg->typeName()) : "null";
+    return msg ? std::string(msg->typeName()) : "null";
 }
 
 /**
- * @brief Build the standard type-mismatch message "pkg is not <expected>, got '<actual>'"
- * @param pkg Message pointer, may be empty
+ * @brief Build the standard type-mismatch message "msg is not <expected>, got '<actual>'"
+ * @param msg Message pointer, may be empty
  * @param expected The expected message type name (usually the target message's kTypeName)
- * @return The full mismatch message; reports "null" as the actual type when pkg is empty
+ * @return The full mismatch message; reports "null" as the actual type when msg is empty
  */
-// @zh: 构造标准类型不符文案 "pkg is not <期望类型>, got '<实际类型>'"
-// @zh: pkg 消息指针，可为空
+// @zh: 构造标准类型不符文案 "msg is not <期望类型>, got '<实际类型>'"
+// @zh: msg 消息指针，可为空
 // @zh: expected 期望的消息类型名（通常是目标消息的 kTypeName）
-// @zh: return 完整不符文案；pkg 为空时报实际类型为 "null"。
-// @zh:      typeNameOf(pkg) 的常用上层封装，供类型校验失败分支统一返回文案
-inline std::string typeMismatch(const YomkMsgPtr& pkg, const char* expected)
+// @zh: return 完整不符文案；msg 为空时报实际类型为 "null"。
+// @zh:      typeNameOf(msg) 的常用上层封装，供类型校验失败分支统一返回文案
+inline std::string typeMismatch(const YomkMsgPtr& msg, const char* expected)
 {
-    return std::string("pkg is not ") + expected + ", got '" + typeNameOf(pkg) + "'";
+    return std::string("msg is not ") + expected + ", got '" + typeNameOf(msg) + "'";
 }
 
 /**
  * @brief Unpack a message by its runtime type name
  * @tparam Msg Target message class (generated by YOMK_DEFINE_MSG)
- * @param pkg Pointer to the message to unpack
- * @return shared_ptr<Msg> on hit; nullptr if pkg is empty or the type does not match
+ * @param msg Pointer to the message to unpack
+ * @return shared_ptr<Msg> on hit; nullptr if msg is empty or the type does not match
  * @note Usable directly as a null check, throws no exceptions
  */
 // @zh: 按运行时类型名解包消息
 // @zh: Msg 目标消息类（YOMK_DEFINE_MSG 生成）
-// @zh: pkg 待解包消息指针
-// @zh: return 命中返回 shared_ptr<Msg>；pkg 为空或类型不符返回 nullptr
+// @zh: msg 待解包消息指针
+// @zh: return 命中返回 shared_ptr<Msg>；msg 为空或类型不符返回 nullptr
 // @zh: note 判空即用，不抛异常
 template <class Msg>
-std::shared_ptr<Msg> unpack(const YomkMsgPtr& pkg)
+std::shared_ptr<Msg> unpack(const YomkMsgPtr& msg)
 {
-    if (pkg && pkg->typeName() == Msg::kTypeName)
+    if (msg && msg->typeName() == Msg::kTypeName)
     {
-        return std::dynamic_pointer_cast<Msg>(pkg);
+        return std::dynamic_pointer_cast<Msg>(msg);
     }
     return nullptr;
 }

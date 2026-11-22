@@ -164,13 +164,13 @@ static size_t loggersTotal()
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listPkg)
+static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listMsg)
 {
-    if (!listPkg)
+    if (!listMsg)
     {
         return nullptr;
     }
-    for (const auto& li : listPkg->d)
+    for (const auto& li : listMsg->d)
     {
         if (li.type == "console")
         {
@@ -425,8 +425,8 @@ int main()
     // 设置前 all 内省 proxy:off
     {
         auto allResp = yomk::log_mgr().all();
-        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
-        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
+        auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
+        const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->traceOn && st->debugOn && st->infoOn && st->warnOn && st->errorOn &&
              st->fatalOn && !st->proxyOn),
@@ -464,8 +464,8 @@ int main()
     // 设置后 all 内省 proxy:on
     {
         auto allResp = yomk::log_mgr().all();
-        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
-        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
+        auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
+        const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
         YOMK_TEST_CHECK(st != nullptr && st->proxyOn, "proxy 设置后 ALL 状态 proxyOn");
     }
 
@@ -493,8 +493,8 @@ int main()
             yomk::log_mgr().console().proxy(nullptr).apply() == yomk::payload::ResStatus::Succeeded,
             "console().proxy(nullptr).apply() 卸载返回 ResStatus::Succeeded");
         auto allResp = yomk::log_mgr().all();
-        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
-        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
+        auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
+        const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
         YOMK_TEST_CHECK(
             st != nullptr && !st->proxyOn,
             "卸载后 ALL 状态回到 proxyOff（P4-e 前恒报 proxyOn）");
@@ -525,8 +525,8 @@ int main()
         g_proxyIntercept.store(false);
         YOMK_TEST_CHECK(yomk::log_mgr().console().proxy(proxy).apply() == yomk::payload::ResStatus::Succeeded, "重装代理返回 ResStatus::Succeeded（卸载可逆）");
         auto allResp = yomk::log_mgr().all();
-        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
-        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
+        auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
+        const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
         YOMK_TEST_CHECK(
             st != nullptr && st->proxyOn,
             "重装后 ALL 状态恢复 proxyOn（S4-S7 不变量已复位）");
@@ -684,20 +684,20 @@ int main()
     YOMK_TEST_CHECK(
         (consoleInfo.status == yomk::payload::ResStatus::Succeeded && consoleInfo.msg == "ok"),
         "LOGGER(main) 命中 msg 恒为 ok");
-    auto consolePkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(consoleInfo.data);
-    YOMK_TEST_CHECK(consolePkg != nullptr, "LOGGER(main) 数据为 LoggerInfo 包");
-    YOMK_TEST_CHECK(consolePkg && consolePkg->d.loggerName == "main" && consolePkg->d.type == "console",
+    auto consoleMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(consoleInfo.data);
+    YOMK_TEST_CHECK(consoleMsg != nullptr, "LOGGER(main) 数据为 LoggerInfo 包");
+    YOMK_TEST_CHECK(consoleMsg && consoleMsg->d.loggerName == "main" && consoleMsg->d.type == "console",
           "LOGGER(main) 字段 loggerName/type 一致");
-    YOMK_TEST_CHECK(consolePkg && consolePkg->d.dir.empty(), "console 命中 dir 为空");
+    YOMK_TEST_CHECK(consoleMsg && consoleMsg->d.dir.empty(), "console 命中 dir 为空");
     auto fileInfo = yomk::log_mgr().file("lg1_file_logger").get_info();
     YOMK_TEST_CHECK(
         (fileInfo.status == yomk::payload::ResStatus::Succeeded && fileInfo.msg == "ok"),
         "LOGGER(lg1_file_logger) 命中 msg 恒为 ok");
-    auto filePkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(fileInfo.data);
-    YOMK_TEST_CHECK(filePkg != nullptr, "LOGGER(lg1_file_logger) 数据为 LoggerInfo 包");
-    YOMK_TEST_CHECK(filePkg && filePkg->d.loggerName == "lg1_file_logger" && filePkg->d.type == "file",
+    auto fileMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(fileInfo.data);
+    YOMK_TEST_CHECK(fileMsg != nullptr, "LOGGER(lg1_file_logger) 数据为 LoggerInfo 包");
+    YOMK_TEST_CHECK(fileMsg && fileMsg->d.loggerName == "lg1_file_logger" && fileMsg->d.type == "file",
           "LOGGER(lg1_file_logger) 字段 loggerName/type 一致");
-    YOMK_TEST_CHECK(filePkg && filePkg->d.dir == (tmpDir / "s4").string(), "file 命中 dir 为创建目录");
+    YOMK_TEST_CHECK(fileMsg && fileMsg->d.dir == (tmpDir / "s4").string(), "file 命中 dir 为创建目录");
     auto noInfo = yomk::log_mgr().console("lg1_never_registered").get_info();
     YOMK_TEST_CHECK(
         (noInfo.status == yomk::payload::ResStatus::Failed && noInfo.msg == "console logger 'lg1_never_registered' not found"),
@@ -706,8 +706,8 @@ int main()
     // ALL：控制台状态字段与开关翻转联动（逐字段断言）
     {
         auto allResp = yomk::log_mgr().all();
-        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
-        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
+        auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
+        const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
         YOMK_TEST_CHECK(
             (st != nullptr && st->traceOn && st->debugOn && st->infoOn && st->warnOn && st->errorOn &&
              st->fatalOn && st->proxyOn),
@@ -830,8 +830,8 @@ int main()
         (rOn.status == yomk::payload::ResStatus::Succeeded && outOn.find("unknown log level 99, turn on ignored") != std::string::npos),
         "on 非法级别 ResStatus::Succeeded + 错误提示（default 活分支）");
     auto allResp = yomk::log_mgr().all();
-    auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
-    const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
+    auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
+    const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
     YOMK_TEST_CHECK(
         (st != nullptr && st->debugOn && st->infoOn && st->warnOn && st->errorOn && st->proxyOn),
         "非法级别 off/on 无副作用（ALL 控制台状态仍全 on）");
@@ -845,13 +845,13 @@ int main()
         CoutCapture cap;
         auto r = yomk::server().url("/YomkLogger/console_log").request();
         YOMK_TEST_CHECK(r.status == yomk::payload::ResStatus::Failed, "console_log nullptr 包返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(r.msg == std::string("pkg is not ") + yomk::msgs::Log::kTypeName + ", got 'null'", "console_log 空包契约消息(实际类型 null)");
+        YOMK_TEST_CHECK(r.msg == std::string("msg is not ") + yomk::msgs::Log::kTypeName + ", got 'null'", "console_log 空包契约消息(实际类型 null)");
     }
     // console_log 收错类型包（String）→ 同分支 ResStatus::Failed
     {
         auto r = yomk::server().url("/YomkLogger/console_log").msg(yomk::msgs::String::shared(std::string("wrong"))).request();
         YOMK_TEST_CHECK(r.status == yomk::payload::ResStatus::Failed, "console_log 错类型包返回 ResStatus::Failed");
-        YOMK_TEST_CHECK(r.msg == std::string("pkg is not ") + yomk::msgs::Log::kTypeName + ", got '" + yomk::msgs::String::kTypeName + "'", "console_log 错类型包契约消息(实际类型名)");
+        YOMK_TEST_CHECK(r.msg == std::string("msg is not ") + yomk::msgs::Log::kTypeName + ", got '" + yomk::msgs::String::kTypeName + "'", "console_log 错类型包契约消息(实际类型名)");
     }
     // file_log / write_file_log / create_file_logger / logger 空包
     YOMK_TEST_CHECK(yomk::server().url("/YomkLogger/file_log").request().status == yomk::payload::ResStatus::Failed, "file_log nullptr 包返回 ResStatus::Failed");
@@ -1036,10 +1036,10 @@ int main()
         YOMK_TEST_CHECK(loggersTotal() == before + 2, "S8: 双表各建一个 → LOGGERS 行数 +2");
         YOMK_TEST_CHECK(yomk::log_mgr().file(name).remove() == yomk::payload::ResStatus::Succeeded, "S8: 计数用例删除 ResStatus::Succeeded");
         YOMK_TEST_CHECK(loggersTotal() == before, "S8: 删除后 LOGGERS 行数回落（递减守恒）");
-        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
-        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
+        auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
+        const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
         YOMK_TEST_CHECK(
-            (listPkg != nullptr && listPkg->d.size() == before && st != nullptr && st->traceOn && st->debugOn &&
+            (listMsg != nullptr && listMsg->d.size() == before && st != nullptr && st->traceOn && st->debugOn &&
              st->infoOn && st->warnOn && st->errorOn && st->fatalOn && st->proxyOn),
             "S8: ALL 日志器数 = LOGGERS 行数，控制台状态六级全 on 不变");
 
@@ -1072,11 +1072,11 @@ int main()
     {
         auto rNull = yomk::server().url("/YomkLogger/delete_logger").request();
         YOMK_TEST_CHECK(
-            (rNull.status == yomk::payload::ResStatus::Failed && rNull.msg == std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got 'null'"),
+            (rNull.status == yomk::payload::ResStatus::Failed && rNull.msg == std::string("msg is not ") + yomk::msgs::String::kTypeName + ", got 'null'"),
             "S8: delete_logger nullptr 包返回 ResStatus::Failed + 具体契约消息(实际类型 null)");
         auto rWrong = yomk::server().url("/YomkLogger/delete_logger").msg(yomk::msgs::Log::shared(yomk::payload::Log{yomk::payload::LogLevel::Info, "x", "y"})).request();
         YOMK_TEST_CHECK(
-            (rWrong.status == yomk::payload::ResStatus::Failed && rWrong.msg == std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got '" + yomk::msgs::Log::kTypeName + "'"),
+            (rWrong.status == yomk::payload::ResStatus::Failed && rWrong.msg == std::string("msg is not ") + yomk::msgs::String::kTypeName + ", got '" + yomk::msgs::Log::kTypeName + "'"),
             "S8: delete_logger 错类型包（Log）返回 ResStatus::Failed + 具体契约消息(实际类型名)");
     }
 }

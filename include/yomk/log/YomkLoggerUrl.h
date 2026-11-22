@@ -40,7 +40,7 @@ data 无负载，msg "success"。
 同步安装：锁内替换回调快照；回调在日志发射线程同步执行（锁内取快照、锁外调用），返回 false 拦截该条、true 穿透默认输出。
 
 # Notes
-代理是全局而非逐器；回调应快速返回，勿在回调内再发日志以免递归；重复安装为覆盖（幂等）；pkg 非 ConsoleLogProxy → Failed。
+代理是全局而非逐器；回调应快速返回，勿在回调内再发日志以免递归；重复安装为覆盖（幂等）；请求消息非 ConsoleLogProxy → Failed。
 )";
 inline constexpr const char* kLoggerSetFileLogProxyDesc = R"(
 # Overview
@@ -56,7 +56,7 @@ data 无负载，msg "success"。
 同步安装：锁内替换回调快照；回调在日志发射线程同步执行，返回 false 拦截该条、true 穿透默认落盘。
 
 # Notes
-代理先于日志器表查找，故拦截态下未知名日志器的记录同样被短路；与控制台代理互相独立；重复安装为覆盖（幂等）；pkg 非 FileLogProxy → Failed。
+代理先于日志器表查找，故拦截态下未知名日志器的记录同样被短路；与控制台代理互相独立；重复安装为覆盖（幂等）；请求消息非 FileLogProxy → Failed。
 )";
 inline constexpr const char* kLoggerConsoleLogDesc = R"(
 # Overview
@@ -72,7 +72,7 @@ data 无负载；被代理拦截时 msg "ok"，否则 msg "success"。
 同步执行：代理判定 → 日志器查找（未命中按名惰性创建控制台日志器并登记）→ 级别门控 → 输出。
 
 # Notes
-未知 level 回退 Info 并 WARN；控制台与文件两套代理、两套门控互相独立；pkg 非 Log → Failed。
+未知 level 回退 Info 并 WARN；控制台与文件两套代理、两套门控互相独立；请求消息非 Log → Failed。
 )";
 inline constexpr const char* kLoggerCreateFileLoggerDesc = R"(
 # Overview
@@ -88,7 +88,7 @@ data 无负载，msg "success"。
 同步执行：创建目录与 <dir>/<logger>.log 文件并登记到文件日志器表；四级日志先入内存缓冲，落盘由 /write_file_log 触发。
 
 # Notes
-非幂等——重名创建必 Failed；Invalid=名/目录为空；Failed=重名/初始化失败；pkg 非 LogFile → Failed。
+非幂等——重名创建必 Failed；Invalid=名/目录为空；Failed=重名/初始化失败；请求消息非 LogFile → Failed。
 )";
 inline constexpr const char* kLoggerFileLogDesc = R"(
 # Overview
@@ -104,7 +104,7 @@ data 无负载；被代理拦截时 msg "ok"，否则 msg "success"。
 同步执行：文件代理判定 → 表查找（不惰性创建）→ 全局主闸 × 逐器门控 → 追加到该日志器内存缓冲。
 
 # Notes
-日志器不存在 → Failed；logger 为空 → Failed；pkg 非 Log → Failed。
+日志器不存在 → Failed；logger 为空 → Failed；请求消息非 Log → Failed。
 )";
 inline constexpr const char* kLoggerWriteFileLogDesc = R"(
 # Overview
@@ -120,7 +120,7 @@ data 无负载，msg "success"。
 同步执行：追加写文件后清空内存缓冲；空缓冲重复调用无副作用（幂等）。
 
 # Notes
-日志器不存在 → Failed；落盘 I/O 在本端点调用线程内完成；pkg 非 String → Failed。
+日志器不存在 → Failed；落盘 I/O 在本端点调用线程内完成；请求消息非 String → Failed。
 )";
 inline constexpr const char* kLoggerDeleteLoggerDesc = R"(
 # Overview
@@ -136,7 +136,7 @@ data 无负载，msg "deleted console:<N> file:<M>"（N/M 为各表实际删除�
 同步执行：分段持两把写锁不嵌套，文件日志器对象锁外析构以保证析构期落盘 I/O 不阻塞其它日志写入；两表都不存在同名项时 Failed。
 
 # Notes
-不删除磁盘上的 .log 文件（清理归调用方）；名空 → Invalid；"main" 控制台日志器也可被删除，之后再次发日志会按名重建；pkg 非 String → Failed。
+不删除磁盘上的 .log 文件（清理归调用方）；名空 → Invalid；"main" 控制台日志器也可被删除，之后再次发日志会按名重建；请求消息非 String → Failed。
 )";
 inline constexpr const char* kLoggerOnConsoleLogByLevelDesc = R"(
 # Overview
@@ -152,7 +152,7 @@ data 无负载，msg "success"（未知 level 亦返回 Succeeded，仅 WARN 留
 同步执行：全局路径改写进程级 atomic；逐器路径表读锁取指针后锁外 setLevelOn；幂等。
 
 # Notes
-逐器路径不惰性创建，日志器不存在 → Failed；两级 AND 生效，任一级关闭即不输出；pkg 非 Log → Failed。
+逐器路径不惰性创建，日志器不存在 → Failed；两级 AND 生效，任一级关闭即不输出；请求消息非 Log → Failed。
 )";
 inline constexpr const char* kLoggerOffConsoleLogByLevelDesc = R"(
 # Overview
@@ -168,7 +168,7 @@ data 无负载，msg "success"（未知 level 亦返回 Succeeded，仅 WARN 留
 同步执行：全局路径改写进程级 atomic；逐器路径表读锁取指针后锁外 setLevelOn；幂等。
 
 # Notes
-逐器路径不惰性创建，日志器不存在 → Failed；两级 AND 生效，任一级关闭即不输出；pkg 非 Log → Failed。
+逐器路径不惰性创建，日志器不存在 → Failed；两级 AND 生效，任一级关闭即不输出；请求消息非 Log → Failed。
 )";
 inline constexpr const char* kLoggerOnFileLogByLevelDesc = R"(
 # Overview
@@ -184,7 +184,7 @@ data 无负载，msg "success"（未知 level 亦返回 Succeeded，仅 WARN 留
 同步执行：全局路径改写进程级 atomic；逐器路径表读锁取指针后锁外 setLevelOn；幂等。
 
 # Notes
-文件侧主闸与控制台侧互相独立；逐器路径不惰性创建，日志器不存在 → Failed；pkg 非 Log → Failed。
+文件侧主闸与控制台侧互相独立；逐器路径不惰性创建，日志器不存在 → Failed；请求消息非 Log → Failed。
 )";
 inline constexpr const char* kLoggerOffFileLogByLevelDesc = R"(
 # Overview
@@ -200,7 +200,7 @@ data 无负载，msg "success"（未知 level 亦返回 Succeeded，仅 WARN 留
 同步执行：全局路径改写进程级 atomic；逐器路径表读锁取指针后锁外 setLevelOn；幂等。
 
 # Notes
-文件侧主闸与控制台侧互相独立；逐器路径不惰性创建，日志器不存在 → Failed；pkg 非 Log → Failed。
+文件侧主闸与控制台侧互相独立；逐器路径不惰性创建，日志器不存在 → Failed；请求消息非 Log → Failed。
 )";
 inline constexpr const char* kLoggerLoggersDesc = R"(
 # Overview
@@ -216,7 +216,7 @@ data 为 StringArray 包（map 字典序），msg "ok"。
 同步快照读取，持对应表读锁拷贝；幂等。
 
 # Notes
-其他取值 → Failed（msg 带实际类型值）；pkg 非 String → Failed。
+其他取值 → Failed（msg 带实际类型值）；请求消息非 String → Failed。
 )";
 inline constexpr const char* kLoggerLoggerDesc = R"(
 # Overview
@@ -232,7 +232,7 @@ data 为 LoggerInfo 包（loggerName/type/dir/loggerState），msg "ok"。
 同步执行：按类型单表精确查找，锁内拷贝指针后锁外构造快照；幂等。
 
 # Notes
-loggerState 六级别为逐器门控真值（非全局主闸），proxyOn 为该侧全局代理态；type 未知或名未命中 → Failed；pkg 非 LoggerQuery → Failed。
+loggerState 六级别为逐器门控真值（非全局主闸），proxyOn 为该侧全局代理态；type 未知或名未命中 → Failed；请求消息非 LoggerQuery → Failed。
 )";
 inline constexpr const char* kLoggerAllDesc = R"(
 # Overview

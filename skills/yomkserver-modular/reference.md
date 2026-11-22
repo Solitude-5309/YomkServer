@@ -52,7 +52,7 @@ struct Response {
     YomkMsgPtr data;    // 携带的返回数据（结构化消息包）
 };
 
-using YomkServiceFunc  = std::function<yomk::payload::Response(YomkMsgPtr pkg)>;
+using YomkServiceFunc  = std::function<yomk::payload::Response(YomkMsgPtr msg)>;
 using YomkResponseFunc = std::function<void(yomk::payload::Response response)>;
 ```
 
@@ -63,7 +63,7 @@ using YomkResponseFunc = std::function<void(yomk::payload::Response response)>;
 ```cpp
 namespace yomk {
     struct Event {
-        std::string eventLoopName; YomkMsgPtr pkg;
+        std::string eventLoopName; YomkMsgPtr msg;
         YomkServiceFunc serviceFunc; std::uint64_t eventId;
         yomk::payload::Response response; std::function<void()> waitCallback;
         std::string tag;   // 用户事件标记，post 时可选，仅内省展示
@@ -99,8 +99,8 @@ YOMK_DEFINE_MSG(MyData, MyData, d);   // 生成 yomk::msgs::MyData / MyDataPtr�
 - `yomk::msgs::MyData::shared(args...)` — 类内静态工厂，转发构造参数 → `shared_ptr` 消息包。
   **注意**：模板形参 `A&&...` 无法从花括号初始化列表推导，传聚合对象须带类型：`MyData::shared(MyData{"a", 1})`、`Int32Array::shared(std::vector<std::int32_t>{1,2,3})`。
 - `yomk::msgs::MyData::shared(std::move(data))` — 右值重载移动入包，大对象免拷贝。
-- `yomk::msgs::unpack<yomk::msgs::MyData>(pkg)` — 按运行期类型名解包，pkg 为空或类型不匹配返回 `nullptr`（不自动 return，调用方手动判空），不抛异常。
-- `yomk::msgs::typeMismatch(pkg, yomk::msgs::MyData::kTypeName)` — 标准不符文案 `"pkg is not <期望>, got '<实际>'"`（空包实际类型报 `"null"`），`typeNameOf(pkg)` 的常用上层封装，判空分支统一用它、不手拼字符串。
+- `yomk::msgs::unpack<yomk::msgs::MyData>(msg)` — 按运行期类型名解包，msg 为空或类型不匹配返回 `nullptr`（不自动 return，调用方手动判空），不抛异常。
+- `yomk::msgs::typeMismatch(msg, yomk::msgs::MyData::kTypeName)` — 标准不符文案 `"msg is not <期望>, got '<实际>'"`（空包实际类型报 `"null"`），`typeNameOf(msg)` 的常用上层封装，判空分支统一用它、不手拼字符串。
 - 运行期类型名 `kTypeName` 为全限定名（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名；是类型身份唯一权威常量（基类纯虚 `typeName()` 直接返回它、`std::string_view` 零分配且不可伪造；`typeNameOf()` 为判空包装（自持 `std::string`，空包返回 `"null"`），用于错误文案展示）。各处声明的"期望消息类型名"（`installFunc` 第三参、`fn_pool().msg_name()`、`event_loop().msg_name()`）一律引用 `T::kTypeName`、禁止手写字符串；仅作内省元数据、不拦截调用。
 
 **内置标准类型**（成员名均为 `d`，共 30 种）：`Bool`、`Char`、`UChar`、`Byte`、`Int8`、`Uint8`、`Int16`、`Uint16`、`Int32`、`Uint32`、`Int64`、`Uint64`、`Float32`、`Float64`、`String` 及对应 `XxxArray`（如 `StringArray`、`Int32Array`）。
@@ -118,7 +118,7 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 
 弱绑定判活：回调触发时先 `weak_ptr.lock()`，服务已删除则安全丢弃，不会悬垂 `this`。同一 `weakFunc` 是泛型模板，按调用处目标 `std::function` 类型自动适配全部回调签名，丢弃行为按返回类型（所有丢弃分支统一前置记录错误日志 "service has been deleted or unregistered, callback ignored"）：功能函数/FunctionPool/EventLoop（`Response(YomkMsgPtr)` → `Failed`）、异步响应（`void(Response)` → 丢弃）、checker（`CheckStatus(const Context&)` → 放行 `Accept`）、void monitor（→ 丢弃）。其他返回类型 → `Ret{}` 默认值。构造期绑定（init 之前）永久无效。
 
-`YomkService` 还提供便捷成员：`invoke(funcName, pkg)`（不经 URL 路由直调本服务函数）、`request(url, pkg)` / `asyncRequest(url, pkg, cb)`（转调 server 域链），以及 `funcInfos()` 本服务元信息。
+`YomkService` 还提供便捷成员：`invoke(funcName, msg)`（不经 URL 路由直调本服务函数）、`request(url, msg)` / `asyncRequest(url, msg, cb)`（转调 server 域链），以及 `funcInfos()` 本服务元信息。
 
 ## 服务器域（yomk::server()）
 
@@ -126,10 +126,10 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 
 | 链 | 终结与返回 |
 |---|---|
-| `.url(u).msg(pkg)` | `.request()` → `Response` 阻塞至服务应答；`.status()` → 三态 `ResStatus`（失败细节进诊断日志） |
-| `.url(u).async(cb)` | 切入异步分面，`.msg(pkg)`（可在 `.async()` 前或后）后 `.request()` → `void`：投递到内置线程池立即返回，结果经 `cb` 送达；`cb` 传 `nullptr` 仅投递不取回 |
+| `.url(u).msg(msg)` | `.request()` → `Response` 阻塞至服务应答；`.status()` → 三态 `ResStatus`（失败细节进诊断日志） |
+| `.url(u).async(cb)` | 切入异步分面，`.msg(msg)`（可在 `.async()` 前或后）后 `.request()` → `void`：投递到内置线程池立即返回，结果经 `cb` 送达；`cb` 传 `nullptr` 仅投递不取回 |
 
-`.msg(pkg)` 可省略 = 空消息。
+`.msg(msg)` 可省略 = 空消息。
 
 ### 生命周期与服务管理
 
@@ -152,8 +152,8 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 
 | 场景 | 链 | 终结与返回 |
 |---|---|---|
-| 创建 | `.key(k).group(g).value(pkg)` | `.create()` → `ResStatus`（g 省略 = 缺省组 `"main"`） |
-| 整体替换 | `.key(k).group(g).value(pkg)` | `.set()` → `ResStatus` |
+| 创建 | `.key(k).group(g).value(msg)` | `.create()` → `ResStatus`（g 省略 = 缺省组 `"main"`） |
+| 整体替换 | `.key(k).group(g).value(msg)` | `.set()` → `ResStatus` |
 | 类型化读 | `.key(k).group(g).msg<T>()` | `.with_default(d).get()` → `shared_ptr<T>`；`.with_default` 可省略 = 未命中回退 `nullptr` |
 | 销毁键 | `.key(k).group(g)` | `.destroy()` → `ResStatus` |
 | 键级校验门控 | `.key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus` |
@@ -190,7 +190,7 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 |---|---|---|
 | 注册 | `.fn_name(name).fn(f).msg_name(m).description(d)` | `.install()` → `ResStatus`；`msg_name/description` 可省略；**同名重复 install 即运行时热替换**（返回 `Succeeded`，无需先注销） |
 | 注销 | `.fn_name(name)` | `.uninstall()` → `ResStatus`（名字不存在 `Failed`） |
-| 调用 | `.fn_name(name).msg(pkg)` | `.call()` → `Response`（即函数返回值，`data` 携带结果；**阻塞**；msg 省略 = 空消息；名字不存在 `Failed`） |
+| 调用 | `.fn_name(name).msg(msg)` | `.call()` → `Response`（即函数返回值，`data` 携带结果；**阻塞**；msg 省略 = 空消息；名字不存在 `Failed`） |
 | 内省 | `.fn_name(name)` / — | `.get_info()` / `.list()` / `.all()`，均 → `Response` |
 
 ## Logger 域

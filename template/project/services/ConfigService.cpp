@@ -37,7 +37,7 @@ int ConfigService::init()
     return 0;
 }
 
-yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr pkg)
+yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr msg)
 {
     // 从 Context 获取配置文件路径
     auto ctxVal = yomk::ctx().key(CTX_CONFIG_PATH).msg<yomk::msgs::String>().with_default(nullptr).get();
@@ -69,13 +69,13 @@ yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
-yomk::payload::Response ConfigService::getConfig(YomkMsgPtr pkg)
+yomk::payload::Response ConfigService::getConfig(YomkMsgPtr msg)
 {
-    auto data = yomk::msgs::unpack<yomk::msgs::prj::ConfigKey>(pkg);
+    auto data = yomk::msgs::unpack<yomk::msgs::prj::ConfigKey>(msg);
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed,
-                yomk::msgs::typeMismatch(pkg, yomk::msgs::prj::ConfigKey::kTypeName)};
+                yomk::msgs::typeMismatch(msg, yomk::msgs::prj::ConfigKey::kTypeName)};
     }
 
     auto it = m_configMap.find(data->req.key);
@@ -87,13 +87,13 @@ yomk::payload::Response ConfigService::getConfig(YomkMsgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(it->second));
 }
 
-yomk::payload::Response ConfigService::setConfig(YomkMsgPtr pkg)
+yomk::payload::Response ConfigService::setConfig(YomkMsgPtr msg)
 {
-    auto data = yomk::msgs::unpack<yomk::msgs::prj::ConfigKeyValue>(pkg);
+    auto data = yomk::msgs::unpack<yomk::msgs::prj::ConfigKeyValue>(msg);
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed,
-                yomk::msgs::typeMismatch(pkg, yomk::msgs::prj::ConfigKeyValue::kTypeName)};
+                yomk::msgs::typeMismatch(msg, yomk::msgs::prj::ConfigKeyValue::kTypeName)};
     }
 
     m_configMap[data->req.key] = data->req.value;
@@ -101,13 +101,13 @@ yomk::payload::Response ConfigService::setConfig(YomkMsgPtr pkg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
-yomk::payload::Response ConfigService::reloadConfig(YomkMsgPtr pkg)
+yomk::payload::Response ConfigService::reloadConfig(YomkMsgPtr msg)
 {
     m_configMap.clear();
     return loadConfig(nullptr);
 }
 
-yomk::payload::Response ConfigService::version(YomkMsgPtr pkg)
+yomk::payload::Response ConfigService::version(YomkMsgPtr msg)
 {
     // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(std::string(APP_VERSION)));

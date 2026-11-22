@@ -73,7 +73,7 @@ std::map<std::string, yomk::payload::FuncInfo> YomkServicePrivate::funcInfos()
     return infos;
 }
 
-yomk::payload::Response YomkServicePrivate::invoke(std::string_view funcName, YomkMsgPtr pkg)
+yomk::payload::Response YomkServicePrivate::invoke(std::string_view funcName, YomkMsgPtr msg)
 {
     if (funcName.empty() || funcName[0] != '/')
     {
@@ -91,10 +91,10 @@ yomk::payload::Response YomkServicePrivate::invoke(std::string_view funcName, Yo
         tmpFunc = iter->second;
     }
 
-    return tmpFunc(pkg);
+    return tmpFunc(msg);
 }
 
-yomk::payload::Response YomkServicePrivate::request(std::string_view url, YomkMsgPtr pkg)
+yomk::payload::Response YomkServicePrivate::request(std::string_view url, YomkMsgPtr msg)
 {
     auto server = m_weakServer.lock();
     if (!server)
@@ -103,10 +103,10 @@ yomk::payload::Response YomkServicePrivate::request(std::string_view url, YomkMs
         return {yomk::payload::ResStatus::Failed, "server has been destroyed"};
     }
 
-    return server->request(url, pkg);
+    return server->request(url, msg);
 }
 
-void YomkServicePrivate::asyncRequest(std::string_view url, YomkMsgPtr pkg, YomkResponseFunc func)
+void YomkServicePrivate::asyncRequest(std::string_view url, YomkMsgPtr msg, YomkResponseFunc func)
 {
     auto server = m_weakServer.lock();
     if (!server)
@@ -114,5 +114,5 @@ void YomkServicePrivate::asyncRequest(std::string_view url, YomkMsgPtr pkg, Yomk
         YOMK_DIAG_ERROR("server has been destroyed, async request ignored");
         return;
     }
-    server->asyncRequest(url, pkg, func);
+    server->asyncRequest(url, msg, func);
 }

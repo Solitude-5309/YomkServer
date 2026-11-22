@@ -70,16 +70,16 @@ public:
         return 0; // 返回 0 表示服务初始化成功
     }
 
-    // 功能函数统一签名：yomk::payload::Response(YomkMsgPtr pkg)
-    yomk::payload::Response hello(YomkMsgPtr pkg)
+    // 功能函数统一签名：yomk::payload::Response(YomkMsgPtr msg)
+    yomk::payload::Response hello(YomkMsgPtr msg)
     {
-        auto msg = yomk::msgs::unpack<yomk::msgs::String>(pkg); // 类型校验与解包；不匹配时为 nullptr，需自行判空
-        if (!msg)
+        auto data = yomk::msgs::unpack<yomk::msgs::String>(msg); // 类型校验与解包；不匹配时为 nullptr，需自行判空
+        if (!data)
         {
             return {yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+            yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
         }
-        return {yomk::payload::ResStatus::Succeeded, "hello " + msg->d};
+        return {yomk::payload::ResStatus::Succeeded, "hello " + data->d};
     }
 };
 
@@ -145,7 +145,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 3. 消息包 (YomkMsg)
 
-服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<yomk/msg/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(pkg)` 解包模板做类型校验（pkg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成），解包失败的文案统一用 `yomk::msgs::typeMismatch(pkg, 消息名::kTypeName)`（内部经 `yomk::msgs::typeNameOf(pkg)` 报实际类型，空包报 `"null"`；`typeNameOf` 与零分配的 `pkg->typeName()` 的区别是返回自持 `std::string`）；内置 30 种标量/数组类型位于 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息包位于 `<yomk/server/YomkServerMsg.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msg.h`（对应模块 `*Api.h` 已按需包含）。
+服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<yomk/msg/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(msg)` 解包模板做类型校验（msg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成），解包失败的文案统一用 `yomk::msgs::typeMismatch(msg, 消息名::kTypeName)`（内部经 `yomk::msgs::typeNameOf(msg)` 报实际类型，空包报 `"null"`；`typeNameOf` 与零分配的 `msg->typeName()` 的区别是返回自持 `std::string`）；内置 30 种标量/数组类型位于 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息包位于 `<yomk/server/YomkServerMsg.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msg.h`（对应模块 `*Api.h` 已按需包含）。
 
 详见 [消息包](docs/YomkMsg.md)。
 
@@ -157,7 +157,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 5. 共享上下文 (YomkContext)
 
-跨服务强类型键值存储：`yomk::ctx().key(k).value(pkg).create()/set()` 写、`.key(k).msg<T>().with_default(d).get()` 类型化读；内置变更前校验门控（Checker，`CheckStatus::Accept` 放行 / `Reject` 拦截）与变更后监听（Monitor，同步/异步），支持分组与运行期内省。
+跨服务强类型键值存储：`yomk::ctx().key(k).value(msg).create()/set()` 写、`.key(k).msg<T>().with_default(d).get()` 类型化读；内置变更前校验门控（Checker，`CheckStatus::Accept` 放行 / `Reject` 拦截）与变更后监听（Monitor，同步/异步），支持分组与运行期内省。
 
 详见 [共享上下文](docs/YomkContext.md)。
 
@@ -169,7 +169,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 7. 动态函数池 (YomkFunctionPool)
 
-跨服务扁平函数注册中心：`yomk::fn_pool().fn_name(name).fn(func).install()` 注册、`.fn_name(name).msg(pkg).call()` 调用，同名重注册即运行时热替换，无需注销。
+跨服务扁平函数注册中心：`yomk::fn_pool().fn_name(name).fn(func).install()` 注册、`.fn_name(name).msg(msg).call()` 调用，同名重注册即运行时热替换，无需注销。
 
 详见 [函数池](docs/YomkFunctionPool.md)。
 

@@ -18,19 +18,19 @@ struct Event
 {
     virtual ~Event() = default;
     std::string eventLoopName;
-    YomkMsgPtr pkg;
+    YomkMsgPtr msg;
     YomkServiceFunc serviceFunc;
     std::uint64_t eventId = 0;
     Response response;
     std::function<void()> waitCallback;
     std::string tag;
-    Event() : eventLoopName(""), pkg(nullptr), serviceFunc(nullptr), waitCallback(nullptr), tag("") {}
-    Event(const std::string& eventLoopName, YomkMsgPtr pkg, YomkServiceFunc serviceFunc)
-        : eventLoopName(eventLoopName), pkg(pkg), serviceFunc(serviceFunc), waitCallback(nullptr), tag("")
+    Event() : eventLoopName(""), msg(nullptr), serviceFunc(nullptr), waitCallback(nullptr), tag("") {}
+    Event(const std::string& eventLoopName, YomkMsgPtr msg, YomkServiceFunc serviceFunc)
+        : eventLoopName(eventLoopName), msg(msg), serviceFunc(serviceFunc), waitCallback(nullptr), tag("")
     {
     }
-    Event(const std::string& eventLoopName, YomkMsgPtr pkg, YomkServiceFunc serviceFunc, const std::string& tag)
-        : eventLoopName(eventLoopName), pkg(pkg), serviceFunc(serviceFunc), waitCallback(nullptr), tag(tag)
+    Event(const std::string& eventLoopName, YomkMsgPtr msg, YomkServiceFunc serviceFunc, const std::string& tag)
+        : eventLoopName(eventLoopName), msg(msg), serviceFunc(serviceFunc), waitCallback(nullptr), tag(tag)
     {
     }
     /** @brief Execution entry on the event loop thread, derived classes may override to customize behavior */
@@ -39,7 +39,7 @@ struct Event
     {
         if (serviceFunc)
         {
-            response = serviceFunc(pkg);
+            response = serviceFunc(msg);
         }
     }
 };

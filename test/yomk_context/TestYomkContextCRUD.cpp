@@ -125,7 +125,7 @@ int main()
         YOMK_TEST_CHECK(yomk::ctx().key("mismatch_key").destroy() == yomk::payload::ResStatus::Succeeded, "销毁 mismatch_key（防污染后续 keys 计数）");
     }
 
-    // get：类型不匹配第二变体（Bool 存 → String GET，验证 UnPackPkgT 通用失败路径）
+    // get：类型不匹配第二变体（Bool 存 → String GET，验证 unpack 通用失败路径）
     {
         auto cr = yomk::ctx().key("mismatch_key2").value(yomk::msgs::Bool::shared(true)).create();
         YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "创建 mismatch_key2（Bool 值）成功");

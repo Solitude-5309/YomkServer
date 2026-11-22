@@ -34,7 +34,7 @@
 yomk::server().init();
 
 // 启动事件循环，绑定默认处理函数
-yomk::event_loop().loop("TaskLoop").handle_fn([](YomkMsgPtr pkg) {
+yomk::event_loop().loop("TaskLoop").handle_fn([](YomkMsgPtr msg) {
     // 在 TaskLoop 专用线程中顺序执行
     return yomk::payload::Response{yomk::payload::ResStatus::Succeeded};
 }).start();
@@ -44,7 +44,7 @@ yomk::event_loop().msg(yomk::msgs::String::shared("task1")).loop("TaskLoop").tag
 
 // 单次事件指定临时处理器（优先于默认处理函数）
 yomk::event_loop().msg(yomk::msgs::String::shared("task2")).loop("TaskLoop")
-    .handle_fn([](YomkMsgPtr pkg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded}; })
+    .handle_fn([](YomkMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded}; })
     .post();
 
 // 阻塞投递

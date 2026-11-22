@@ -32,7 +32,7 @@ data 无负载，msg "event loop start success"。
 同步执行：新名创建实例、绑定默认处理函数、启动 worker 线程并登记；同名复用既有实例并 start；已在运行则幂等早退。
 
 # Notes
-循环名不做非空校验（空名会创建空名循环）；同名复用时本次携带的 defaultServiceFunc/msgName 不生效；pkg 非 EventLoop → Failed。
+循环名不做非空校验（空名会创建空名循环）；同名复用时本次携带的 defaultServiceFunc/msgName 不生效；请求消息非 EventLoop → Failed。
 )";
 inline constexpr const char* kLoopStopDesc = R"(
 # Overview
@@ -48,14 +48,14 @@ data 无负载，msg "event loop stop success"。
 同步执行并等待 worker join；未运行时直接返回成功（幂等）；队列不清空——未执行事件保留，再次 start 续跑。
 
 # Notes
-循环不存在 → Failed；停机期间 /post 与 /post_wait 均被拒（Failed）；pkg 非 String → Failed。
+循环不存在 → Failed；停机期间 /post 与 /post_wait 均被拒（Failed）；请求消息非 String → Failed。
 )";
 inline constexpr const char* kLoopPostDesc = R"(
 # Overview
 向事件循环投递事件：FIFO 入队后立即返回，由消费线程异步执行。
 
 # Inputs
-Event 包：eventLoopName 目标循环；pkg 事件负载；serviceFunc 处理函数（空则用循环默认处理函数）；tag 标签（内省采样用）。
+Event 包：eventLoopName 目标循环；msg 事件负载；serviceFunc 处理函数（空则用循环默认处理函数）；tag 标签（内省采样用）。
 
 # Outputs
 data 无负载，msg "event loop post success"。
@@ -64,14 +64,14 @@ data 无负载，msg "event loop post success"。
 异步非阻塞：入队即返回；事件由 worker 线程按 FIFO 顺序执行，每次投递各执行一次（非幂等）。
 
 # Notes
-循环不存在或未运行 → Failed（未入队）；执行结果不回传，需要结果请用 /post_wait；pkg 非 Event → Failed。
+循环不存在或未运行 → Failed（未入队）；执行结果不回传，需要结果请用 /post_wait；请求消息非 Event → Failed。
 )";
 inline constexpr const char* kLoopPostWaitDesc = R"(
 # Overview
 投递事件并阻塞调用线程，直到该事件在消费线程执行完毕。
 
 # Inputs
-Event 包：eventLoopName 目标循环；pkg 事件负载；serviceFunc 处理函数（空则用循环默认处理函数）；tag 标签。
+Event 包：eventLoopName 目标循环；msg 事件负载；serviceFunc 处理函数（空则用循环默认处理函数）；tag 标签。
 
 # Outputs
 data 为执行后的 Event 包（携带 Response），msg "event loop post wait success"。
@@ -80,7 +80,7 @@ data 为执行后的 Event 包（携带 Response），msg "event loop post wait 
 同步阻塞：入队后等待执行完成；在目标 worker 线程内调用会被识别为自锁，改为就地执行该事件并 ERROR 留痕；非幂等。
 
 # Notes
-循环不存在或未运行 → Failed（未入队未执行）；循环被 /destroy 丢弃事件时等待者会被唤醒；pkg 非 Event → Failed。
+循环不存在或未运行 → Failed（未入队未执行）；循环被 /destroy 丢弃事件时等待者会被唤醒；请求消息非 Event → Failed。
 )";
 inline constexpr const char* kLoopDestroyDesc = R"(
 # Overview
@@ -96,7 +96,7 @@ data 无负载，msg "event loop destroy success"。
 同步执行：先 stop 并 join worker，再清空队列；被丢弃事件的等待回调逐个触发，以释放 /post_wait 等待者。
 
 # Notes
-循环不存在 → Failed；销毁后同名需重新 /start 创建新实例；pkg 非 String → Failed。
+循环不存在 → Failed；销毁后同名需重新 /start 创建新实例；请求消息非 String → Failed。
 )";
 inline constexpr const char* kLoopLoopsDesc = R"(
 # Overview
@@ -128,7 +128,7 @@ data 为 EventLoopInfo 包（loopName/running/pending/hasDefaultFunc/msgName/nex
 同步快照读取，持队列锁拷贝后逐项填充；幂等。
 
 # Notes
-tagCount 为 0 时 nextTags 为空；采样存 tag 原值（空串保留）；循环不存在 → Failed；pkg 非 EventLoopQuery → Failed。
+tagCount 为 0 时 nextTags 为空；采样存 tag 原值（空串保留）；循环不存在 → Failed；请求消息非 EventLoopQuery → Failed。
 )";
 inline constexpr const char* kLoopAllDesc = R"(
 # Overview

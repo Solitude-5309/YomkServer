@@ -97,13 +97,13 @@ public:
         return {yomk::payload::ResStatus::Succeeded, "pong"};
     }
 
-    yomk::payload::Response echo(YomkMsgPtr pkg)
+    yomk::payload::Response echo(YomkMsgPtr msg)
     {
         ++g_hit;
-        auto sp = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+        auto sp = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!sp)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
         }
         return {yomk::payload::ResStatus::Succeeded, sp->d};
     }

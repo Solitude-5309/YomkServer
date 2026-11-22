@@ -21,7 +21,7 @@ struct Function
 struct CallFunction
 {
     std::string funcName;
-    YomkMsgPtr pkg;
+    YomkMsgPtr msg;
 };
 
 }  // namespace yomk::payload

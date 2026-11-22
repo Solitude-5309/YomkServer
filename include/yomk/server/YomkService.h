@@ -85,18 +85,18 @@ protected:
     std::map<std::string, yomk::payload::FuncInfo> funcInfos();
     /** @brief Direct call within the service: bypasses URL routing, semantics identical to request() */
     // @zh: 服务内直调：不经 URL 路由，语义同 request()
-    yomk::payload::Response invoke(std::string_view funcName, YomkMsgPtr pkg = nullptr);
+    yomk::payload::Response invoke(std::string_view funcName, YomkMsgPtr msg = nullptr);
     /** @brief Synchronous request routed via the server (entry for inter-service communication); blocks until the reply */
     // @zh: 经服务器路由的同步请求（服务间通信入口）；阻塞至应答
-    yomk::payload::Response request(std::string_view url, YomkMsgPtr pkg = nullptr);
+    yomk::payload::Response request(std::string_view url, YomkMsgPtr msg = nullptr);
     /** @brief Asynchronous request routed via the server; callback on completion (may be empty = post only) */
     // @zh: 经服务器路由的异步请求；完成后回调（可为空=仅投递）
-    void asyncRequest(std::string_view url, YomkMsgPtr pkg = nullptr, YomkResponseFunc func = nullptr);
+    void asyncRequest(std::string_view url, YomkMsgPtr msg = nullptr, YomkResponseFunc func = nullptr);
     template <typename Class, typename Ret, typename Arg>
     auto weakFunc(Ret (Class::*func)(Arg))
     {
         Class* self = static_cast<Class*>(this);
-        return weakFunc([self, func](Arg pkg) -> Ret { return (self->*func)(std::forward<Arg>(pkg)); });
+        return weakFunc([self, func](Arg msg) -> Ret { return (self->*func)(std::forward<Arg>(msg)); });
     }
     void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
                      const std::string& description = "");

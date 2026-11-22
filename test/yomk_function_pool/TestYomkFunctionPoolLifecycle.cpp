@@ -4,7 +4,7 @@
 // 1. CRUD 闭环：install() echo 函数 → call() 解包回传消息 → uninstall() → call() not-found
 // 2. 注册边界：空函数名 / null func 均 ResStatus::Invalid；重复注册为"更新"语义（call() 走新函数）
 // 3. 注销边界：空名 ResStatus::Invalid / 未注册名 ResStatus::Invalid（现状契约）
-// 4. 调用边界：空名 ResStatus::Invalid / 未注册 ResStatus::Invalid/ CallFunction.pkg=nullptr 原样透传给函数
+// 4. 调用边界：空名 ResStatus::Invalid / 未注册 ResStatus::Invalid/ CallFunction.msg=nullptr 原样透传给函数
 // 5. 内省：list() 存活列表包含注册名（空表陷阱教训）/ get_info() 命中 "名 [类型]" 与
 // 无类型两种格式、未注册 ResStatus::Failed、空名 ResStatus::Invalid / all() FuncInfoList 相对计数与字段断言
 // 6. 注册形态：fn_name+fn 两步（无类型）/ +msg_name 三步（声明期望消息类型名）/
@@ -48,16 +48,16 @@ static int g_failed = 0;
 // ---- 文件级观测装置（TSan-clean 既有模式）----
 static std::atomic<long> g_nullPkgSeen{0};
 
-// echo：回传入参 pkg（验证 call() 消息透传与解包）
-static yomk::payload::Response echoFunc(YomkMsgPtr pkg)
+// echo：回传入参 msg（验证 call() 消息透传与解包）
+static yomk::payload::Response echoFunc(YomkMsgPtr msg)
 {
-    return {yomk::payload::ResStatus::Succeeded, "echo", pkg};
+    return {yomk::payload::ResStatus::Succeeded, "echo", msg};
 }
 
-// probe：记录是否收到 nullptr 入参（验证 pkg=nullptr 透传）
-static yomk::payload::Response nullProbeFunc(YomkMsgPtr pkg)
+// probe：记录是否收到 nullptr 入参（验证 msg=nullptr 透传）
+static yomk::payload::Response nullProbeFunc(YomkMsgPtr msg)
 {
-    if (pkg == nullptr)
+    if (msg == nullptr)
     {
         g_nullPkgSeen.fetch_add(1);
     }
@@ -146,7 +146,7 @@ int main()
             "uninstall() 未注册名返回 ResStatus::Failed（FPC2 契约：not-found 统一 ResStatus::Failed）");
     }
 
-    // ============ Section 4: 调用边界与 pkg=nullptr 透传 ============
+    // ============ Section 4: 调用边界与 msg=nullptr 透传 ============
     {
         YOMK_TEST_CHECK(
             yomk::fn_pool().fn_name("").msg(yomk::msgs::String::shared(std::string("x"))).call().status == yomk::payload::ResStatus::Invalid,
@@ -160,8 +160,8 @@ int main()
         YOMK_TEST_CHECK(
             yomk::fn_pool().fn_name("fp_probe").fn(nullProbeFunc).install() == yomk::payload::ResStatus::Succeeded,
             "install() 探针函数返回 ResStatus::Succeeded");
-        YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_probe").msg(nullptr).call().status == yomk::payload::ResStatus::Succeeded, "call() pkg=nullptr 正常执行");
-        YOMK_TEST_CHECK(g_nullPkgSeen.load() == 1, "函数收到 nullptr 入参（pkg 原样透传）");
+        YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_probe").msg(nullptr).call().status == yomk::payload::ResStatus::Succeeded, "call() msg=nullptr 正常执行");
+        YOMK_TEST_CHECK(g_nullPkgSeen.load() == 1, "函数收到 nullptr 入参（msg 原样透传）");
         YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_probe").uninstall() == yomk::payload::ResStatus::Succeeded, "清理 fp_probe");
     }
 

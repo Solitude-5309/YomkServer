@@ -70,12 +70,12 @@ static std::atomic<uint64_t> g_s2ExecCount{0};
 // ============================================================================
 // 测试用函数
 // ============================================================================
-static yomk::payload::Response stressNoopFunc(YomkMsgPtr /*pkg*/)
+static yomk::payload::Response stressNoopFunc(YomkMsgPtr /*msg*/)
 {
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
-static yomk::payload::Response stressCountFunc(YomkMsgPtr /*pkg*/)
+static yomk::payload::Response stressCountFunc(YomkMsgPtr /*msg*/)
 {
     g_s2ExecCount.fetch_add(1, std::memory_order_relaxed);
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");

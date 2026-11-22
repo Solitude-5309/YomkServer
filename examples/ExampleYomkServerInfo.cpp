@@ -246,12 +246,12 @@ public:
     }
 
     // 工位状态上报：收到状态文本回执确认
-    yomk::payload::Response report(YomkMsgPtr pkg)
+    yomk::payload::Response report(YomkMsgPtr msg)
     {
-        auto status = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+        auto status = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!status)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
         }
         std::ostringstream oss;
         oss << "工位状态上报：收到 \"" << status->d << "\"";
@@ -260,12 +260,12 @@ public:
     }
 
     // 质量抽检：解包 QualityCheckReq，按件抽检并回执结论
-    yomk::payload::Response qualityCheck(YomkMsgPtr pkg)
+    yomk::payload::Response qualityCheck(YomkMsgPtr msg)
     {
-        auto data = yomk::msgs::unpack<yomk::msgs::QualityCheckReq>(pkg);
+        auto data = yomk::msgs::unpack<yomk::msgs::QualityCheckReq>(msg);
         if (!data)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::QualityCheckReq::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::QualityCheckReq::kTypeName)};
         }
         std::ostringstream oss;
         oss << "质量抽检执行：工位 " << data->req.station << " 抽检 " << data->req.count << " 件";
@@ -345,10 +345,10 @@ static void showArmStationFunctions()
     logAction("查阅装配工位职能清单");
     yomk::payload::Response funcsResp = yomk::srv_info().srv_name("/ArmStation").functions();
     logResp("INFO_FUNCTIONS /ArmStation", funcsResp);
-    auto listPkg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.data);
-    if (listPkg)
+    auto listMsg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.data);
+    if (listMsg)
     {
-        for (const auto& func : listPkg->d)
+        for (const auto& func : listMsg->d)
         {
             logFuncInfo("INFO_FUNCTIONS", func);
         }

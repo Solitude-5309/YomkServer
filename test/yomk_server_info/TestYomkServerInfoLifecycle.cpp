@@ -11,7 +11,7 @@
 // /YomkContext 与 /YomkServerInfo 自身条目
 // S3. /function：命中时 msg 精确等于 msgName（特殊契约，非 "ok"）、无类型函数 msg 为空；
 // 四参函数说明挂入数据段（msg 契约保持）、无说明函数数据段为空；
-// URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null pkg
+// URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null msg
 // S4. /all：ServerServiceInfoList 结构化包（按 serviceName 查条目；funcs map 字典序
 // /echo 在 /ping 前，字段断言替代缩进行精确串）
 // S5. 轻量并发快照一致性：3 churn 线程 add/del × 3 内省线程轮询 4 端点（服务表 shared_mutex
@@ -125,14 +125,14 @@ static std::vector<yomk::payload::FuncInfo> unpackFuncInfoList(const yomk::paylo
     {
         return funcs;
     }
-    std::shared_ptr<yomk::msgs::FuncInfoList> listPkg = nullptr;
+    std::shared_ptr<yomk::msgs::FuncInfoList> listMsg = nullptr;
     if (resp.data && resp.data->typeName() == yomk::msgs::FuncInfoList::kTypeName)
     {
-        listPkg = std::dynamic_pointer_cast<yomk::msgs::FuncInfoList>(resp.data);
+        listMsg = std::dynamic_pointer_cast<yomk::msgs::FuncInfoList>(resp.data);
     }
-    if (listPkg)
+    if (listMsg)
     {
-        funcs = listPkg->d;
+        funcs = listMsg->d;
     }
     return funcs;
 }
@@ -166,18 +166,18 @@ public:
         return 0;
     }
 
-    yomk::payload::Response ping(YomkMsgPtr pkg)
+    yomk::payload::Response ping(YomkMsgPtr msg)
     {
-        (void)pkg;
+        (void)msg;
         return {yomk::payload::ResStatus::Succeeded, "pong"};
     }
 
-    yomk::payload::Response echo(YomkMsgPtr pkg)
+    yomk::payload::Response echo(YomkMsgPtr msg)
     {
-        auto yText = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+        auto yText = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!yText)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
         }
         return {yomk::payload::ResStatus::Succeeded, yText->d};
     }
@@ -196,9 +196,9 @@ public:
         return 0;
     }
 
-    yomk::payload::Response hit(YomkMsgPtr pkg)
+    yomk::payload::Response hit(YomkMsgPtr msg)
     {
-        (void)pkg;
+        (void)msg;
         return {yomk::payload::ResStatus::Succeeded, "hit"};
     }
 };
@@ -360,9 +360,9 @@ int main()
         YOMK_TEST_CHECK(noFunc.status == yomk::payload::ResStatus::Failed && noFunc.msg == "function not found: /FmtSrv/nope",
               "函数不存在契约消息精确匹配: " + noFunc.msg);
 
-        auto nullPkg = yomk::server().url("/YomkServerInfo/function").request();
-        YOMK_TEST_CHECK(nullPkg.status == yomk::payload::ResStatus::Failed && nullPkg.msg.find(std::string("pkg is not ") + yomk::msgs::String::kTypeName + ", got 'null'") != std::string::npos,
-              "null pkg 返回 ResStatus::Failed + got 'null'（unpack 守卫）");
+        auto nullMsg = yomk::server().url("/YomkServerInfo/function").request();
+        YOMK_TEST_CHECK(nullMsg.status == yomk::payload::ResStatus::Failed && nullMsg.msg.find(std::string("msg is not ") + yomk::msgs::String::kTypeName + ", got 'null'") != std::string::npos,
+              "null msg 返回 ResStatus::Failed + got 'null'（unpack 守卫）");
 
         // description 透出：四参安装的 /echo 命中时说明承载于 FuncInfo 包；无说明的 /ping 恒挂包但说明为空
         auto hitDesc = yomk::srv_info().fn_url("/FmtSrv/echo").get_info();

@@ -24,12 +24,12 @@ int YomkFunctionPool::init()
     return 0;
 }
 
-yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr pkg)
+yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr msg)
 {
-    auto yFunc = yomk::msgs::unpack<yomk::msgs::Function>(pkg);
+    auto yFunc = yomk::msgs::unpack<yomk::msgs::Function>(msg);
     if (!yFunc)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::Function::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Function::kTypeName)};
     }
     if (yFunc->d.funcName.empty() || yFunc->d.func == nullptr)
     {
@@ -53,12 +53,12 @@ yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "register function success"};
 }
 
-yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr pkg)
+yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr msg)
 {
-    auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+    auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yFuncName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
     if (yFuncName->d.empty())
     {
@@ -76,12 +76,12 @@ yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr pkg)
     return {yomk::payload::ResStatus::Succeeded, "unregister function success"};
 }
 
-yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
+yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr msg)
 {
-    auto yCallFunc = yomk::msgs::unpack<yomk::msgs::CallFunction>(pkg);
+    auto yCallFunc = yomk::msgs::unpack<yomk::msgs::CallFunction>(msg);
     if (!yCallFunc)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::CallFunction::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::CallFunction::kTypeName)};
     }
     if (yCallFunc->d.funcName.empty())
     {
@@ -100,11 +100,11 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr pkg)
         copyFunc = itFunc->second.m_func;
     }
 
-    return copyFunc(yCallFunc->d.pkg);
+    return copyFunc(yCallFunc->d.msg);
 }
 
 // 内省:列出全部注册函数名
-yomk::payload::Response YomkFunctionPool::funcNames(YomkMsgPtr pkg)
+yomk::payload::Response YomkFunctionPool::funcNames(YomkMsgPtr msg)
 {
     std::vector<std::string> funcNames;
     {
@@ -118,12 +118,12 @@ yomk::payload::Response YomkFunctionPool::funcNames(YomkMsgPtr pkg)
 }
 
 // 内省:单个函数元信息查询,命中返回结构化 FuncInfo 包
-yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
+yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr msg)
 {
-    auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+    auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yFuncName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
     if (yFuncName->d.empty())
     {
@@ -145,7 +145,7 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr pkg)
 }
 
 // 内省:全量函数元信息,锁内构造结构化快照(总数由 d.size() 承载)
-yomk::payload::Response YomkFunctionPool::listAll(YomkMsgPtr pkg)
+yomk::payload::Response YomkFunctionPool::listAll(YomkMsgPtr msg)
 {
     std::vector<yomk::payload::FuncInfo> infos;
     {

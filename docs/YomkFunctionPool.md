@@ -20,7 +20,7 @@
 |---|---|---|
 | 注册 | `yomk::fn_pool().fn_name(name).fn(f).msg_name(m).description(d)` | `.install()` → `ResStatus`；`msg_name`（期望消息类型名）与 `description`（函数说明）均为内省元数据，可省略 |
 | 注销 | `yomk::fn_pool().fn_name(name)` | `.uninstall()` → `ResStatus`（名字不存在 `Failed`） |
-| 调用 | `yomk::fn_pool().fn_name(name).msg(pkg)` | `.call()` → `Response`（即函数返回值；`msg` 可省略 = 空消息；**阻塞至函数执行完成**；名字不存在 `Failed`） |
+| 调用 | `yomk::fn_pool().fn_name(name).msg(msg)` | `.call()` → `Response`（即函数返回值；`msg` 可省略 = 空消息；**阻塞至函数执行完成**；名字不存在 `Failed`） |
 | 内省 | `yomk::fn_pool().fn_name(name)` / — | `.get_info()` 单函数元信息 / `.list()` 函数名清单（StringArray）/ `.all()` 全量元信息（FuncInfoList），均 → `Response` |
 
 > 以下为用法片段（假设框架已 `init()`）；完整可编译、带 main 的程序见文末「完整示例」。
@@ -32,11 +32,11 @@ yomk::server().init();
 
 // 注册函数（msg_name/description 可选，仅作内省元数据）
 yomk::fn_pool().fn_name("calcSum")
-    .fn([](YomkMsgPtr pkg) {
-        auto arr = yomk::msgs::unpack<yomk::msgs::Int32Array>(pkg);
+    .fn([](YomkMsgPtr msg) {
+        auto arr = yomk::msgs::unpack<yomk::msgs::Int32Array>(msg);
         if (!arr)
             return yomk::payload::Response{yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(pkg, yomk::msgs::Int32Array::kTypeName)};
+            yomk::msgs::typeMismatch(msg, yomk::msgs::Int32Array::kTypeName)};
         int sum = 0;
         for (int v : arr->d) sum += v;
         return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::Int32::shared(sum)};
@@ -61,7 +61,7 @@ yomk::fn_pool().list();
 - 同名重复注册即运行时热替换（覆盖旧函数并返回 `Succeeded`），无需先注销。
 - 未注册的名字：`call()` / `uninstall()` 均返回 `Failed`（not-found 归 `Failed` 不归 `Invalid`，与全框架三态约定一致）。
 - `install()` 终结定名（`register` 为 C++ 保留字）。
-- 函数体收到的 `pkg` 即调用侧 `.msg()` 累积的消息包；返回值整体作为 `call()` 的 `Response` 回传（`data` 携带结果消息）。
+- 函数体收到的 `msg` 即调用侧 `.msg()` 累积的消息包；返回值整体作为 `call()` 的 `Response` 回传（`data` 携带结果消息）。
 - 服务成员函数注册到函数池时须用 `weakFunc(&Class::Method)` 弱绑定——服务删除后回调自动失效（返回 `Failed`），见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 常见问题 FAQ

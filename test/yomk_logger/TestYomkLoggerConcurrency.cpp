@@ -319,13 +319,13 @@ static std::vector<std::string> unpackLines(const yomk::payload::Response& resp)
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listPkg)
+static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listMsg)
 {
-    if (!listPkg)
+    if (!listMsg)
     {
         return nullptr;
     }
-    for (const auto& li : listPkg->d)
+    for (const auto& li : listMsg->d)
     {
         if (li.type == "console")
         {
@@ -575,9 +575,9 @@ int main()
         YOMK_TEST_CHECK(countBadOccurrence(raceMarkers) == 0, "S2a: 全部 marker 恰出现 1 次（不丢不重）");
 
         auto raceInfo = yomk::log_mgr().console(kRaceTag).get_info();
-        auto racePkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(raceInfo.data);
+        auto raceMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(raceInfo.data);
         YOMK_TEST_CHECK(
-            (raceInfo.status == yomk::payload::ResStatus::Succeeded && racePkg && racePkg->d.type == "console"),
+            (raceInfo.status == yomk::payload::ResStatus::Succeeded && raceMsg && raceMsg->d.type == "console"),
             "S2a: LOGGER(" + kRaceTag + ") 命中 console 类型");
 
         // ---- S2b：分散创建——8 线程各自唯一 tag ----
@@ -636,8 +636,8 @@ int main()
         {
             std::string tag = "lg3_s2_t" + std::to_string(t);
             auto info = yomk::log_mgr().console(tag).get_info();
-            auto spreadPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(info.data);
-            if (info.status != yomk::payload::ResStatus::Succeeded || !spreadPkg || spreadPkg->d.type != "console")
+            auto spreadMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfo>(info.data);
+            if (info.status != yomk::payload::ResStatus::Succeeded || !spreadMsg || spreadMsg->d.type != "console")
             {
                 allSpreadHit = false;
             }
@@ -706,8 +706,8 @@ int main()
                 {
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
-                        auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
-                        const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
+                        auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
+                        const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
                         if (st && !st->proxyOn)
                         {
                             g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
@@ -1215,17 +1215,17 @@ int main()
                             {
                                 g_s5BadStatus.fetch_add(1, std::memory_order_relaxed);
                             }
-                            auto listPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
-                            if (listPkg)
+                            auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
+                            if (listMsg)
                             {
-                                const yomk::payload::LoggerState* st = firstConsoleState(listPkg);
+                                const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
                                 if (st == nullptr || !st->proxyOn)
                                 {
                                     g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
                                 }
-                                snap.allLines = listPkg->d.size();
+                                snap.allLines = listMsg->d.size();
                                 // 结构化清单按 type 计数（与按类型端点行数计数语义一致）
-                                for (const auto& li : listPkg->d)
+                                for (const auto& li : listMsg->d)
                                 {
                                     if (li.type == "console")
                                     {
@@ -1480,16 +1480,16 @@ int main()
             (finalGs != nullptr && finalGs->d.debugOn && finalGs->d.infoOn &&
              finalGs->d.warnOn && finalGs->d.errorOn && finalGs->d.proxyOn),
             "S5: 收尾四级别全 ON 后全局主闸状态全 on（含 S3 已设的 proxyOn）");
-        auto finalListPkg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
-        const yomk::payload::LoggerState* finalSt = firstConsoleState(finalListPkg);
+        auto finalListMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
+        const yomk::payload::LoggerState* finalSt = firstConsoleState(finalListMsg);
         YOMK_TEST_CHECK(
             (finalSt != nullptr && finalSt->debugOn && finalSt->infoOn &&
              finalSt->warnOn && finalSt->errorOn && finalSt->proxyOn),
             "S5: 收尾 ALL 首条 console 条目逐器门控真值全 on（未做具名开关，含 proxyOn）");
         YOMK_TEST_CHECK(
-            finalListPkg != nullptr && finalListPkg->d.size() == finalTotal,
+            finalListMsg != nullptr && finalListMsg->d.size() == finalTotal,
             "S5: ALL 日志器数 == LOGGERS 行数（" +
-                std::to_string(finalListPkg ? finalListPkg->d.size() : 0) + " vs " +
+                std::to_string(finalListMsg ? finalListMsg->d.size() : 0) + " vs " +
                 std::to_string(finalTotal) + "）——跨端点最终一致");
 
         std::string sinkContent = readFile(pairDir / (kFileSink + ".log"));

@@ -186,12 +186,12 @@ static void logLoopLine(const std::string& api, const std::string& loopName)
 // 运动指令处理函数：默认处理函数（场景 1 start() 时指定）。
 // 模拟 200ms 运动耗时，让队列积压与 FIFO 消费顺序在日志中稳定可见；
 // 第 1 条指令执行时递归投递 3 条微调指令排到队尾——同循环 FIFO 的直观证据
-yomk::payload::Response motionHandle(YomkMsgPtr pkg)
+yomk::payload::Response motionHandle(YomkMsgPtr msg)
 {
-    auto cmd = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+    auto cmd = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!cmd)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
     std::ostringstream oss;
     oss << "执行运动指令: " << cmd->d << "（循环线程 " << std::this_thread::get_id() << "）";
@@ -214,15 +214,15 @@ yomk::payload::Response motionHandle(YomkMsgPtr pkg)
 }
 
 // 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 省 msg_name start() 时指定）
-yomk::payload::Response teachHandle(YomkMsgPtr pkg)
+yomk::payload::Response teachHandle(YomkMsgPtr msg)
 {
-    auto msg = yomk::msgs::unpack<yomk::msgs::String>(pkg);
-    if (!msg)
+    auto data = yomk::msgs::unpack<yomk::msgs::String>(msg);
+    if (!data)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
     }
     std::ostringstream oss;
-    oss << "示教器事件: " << msg->d << "（循环线程 " << std::this_thread::get_id() << "）";
+    oss << "示教器事件: " << data->d << "（循环线程 " << std::this_thread::get_id() << "）";
     yomk::log().tag("arm.teach").info(oss.str());
     return {yomk::payload::ResStatus::Succeeded, "teachHandle success"};
 }

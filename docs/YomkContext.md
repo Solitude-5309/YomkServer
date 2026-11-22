@@ -18,8 +18,8 @@
 
 | 场景 | 链 | 终结与返回 |
 |---|---|---|
-| 创建 | `yomk::ctx().key(k).group(g).value(pkg)` | `.create()` → `ResStatus`（g 省略 = 缺省 `"main"`） |
-| 设置（整体替换） | `yomk::ctx().key(k).group(g).value(pkg)` | `.set()` → `ResStatus` |
+| 创建 | `yomk::ctx().key(k).group(g).value(msg)` | `.create()` → `ResStatus`（g 省略 = 缺省 `"main"`） |
+| 设置（整体替换） | `yomk::ctx().key(k).group(g).value(msg)` | `.set()` → `ResStatus` |
 | 类型化读 | `yomk::ctx().key(k).group(g).msg<T>()` | `.with_default(d).get()` → `shared_ptr<T>`；`.with_default` 可省略（未命中回退 `nullptr`） |
 | 销毁键 | `yomk::ctx().key(k).group(g)` | `.destroy()` → `ResStatus` |
 | 键级校验门控 | `yomk::ctx().key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus` |

@@ -15,14 +15,14 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response start(YomkMsgPtr pkg);
-    yomk::payload::Response stop(YomkMsgPtr pkg);
-    yomk::payload::Response post(YomkMsgPtr pkg);
-    yomk::payload::Response postWait(YomkMsgPtr pkg);
-    yomk::payload::Response destroy(YomkMsgPtr pkg);
-    yomk::payload::Response loops(YomkMsgPtr pkg);
-    yomk::payload::Response loopInfo(YomkMsgPtr pkg);
-    yomk::payload::Response listAll(YomkMsgPtr pkg);
+    yomk::payload::Response start(YomkMsgPtr msg);
+    yomk::payload::Response stop(YomkMsgPtr msg);
+    yomk::payload::Response post(YomkMsgPtr msg);
+    yomk::payload::Response postWait(YomkMsgPtr msg);
+    yomk::payload::Response destroy(YomkMsgPtr msg);
+    yomk::payload::Response loops(YomkMsgPtr msg);
+    yomk::payload::Response loopInfo(YomkMsgPtr msg);
+    yomk::payload::Response listAll(YomkMsgPtr msg);
 
 private:
     // 不变量:表可收缩(destroy 移除条目),与其他模块"只增不减"表不同;

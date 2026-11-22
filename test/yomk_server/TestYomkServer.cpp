@@ -2,7 +2,7 @@
 //
 // 覆盖内容：
 // 1. parseRequestUrl 全边界（经公开 request 路径）：空串/无 / 开头/无第二 /、多段路径语义、
-// 合法命中与 pkg 透传端到端、超长 URL；"srv name is empty"与"function name is empty"两分支不可达
+// 合法命中与 msg 透传端到端、超长 URL；"srv name is empty"与"function name is empty"两分支不可达
 // （url[0]=='/' 且 posEnd>=1 保证 srvName 至少含 /、funcName 以 / 开头必非空），书面豁免
 // 2. asyncRequest 解析边界：非法 url 回调永不触发；合法 url 回调到达；func 为空分支
 // 3. addService 守卫与回滚：nullptr、init 返回 -1、init 抛 bad_alloc/runtime_error（异常
@@ -130,17 +130,17 @@ public:
     }
 
 private:
-    yomk::payload::Response ping(YomkMsgPtr pkg)
+    yomk::payload::Response ping(YomkMsgPtr msg)
     {
         g_pingCount.fetch_add(1);
         return {yomk::payload::ResStatus::Succeeded, "pong"};
     }
-    yomk::payload::Response echo(YomkMsgPtr pkg)
+    yomk::payload::Response echo(YomkMsgPtr msg)
     {
-        auto data = yomk::msgs::unpack<yomk::msgs::String>(pkg);
+        auto data = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!data)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(pkg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
         }
         return {yomk::payload::ResStatus::Succeeded, "echo:" + data->d};
     }
@@ -185,11 +185,11 @@ static void testUrlParseBoundaries()
         resp.status == yomk::payload::ResStatus::Failed && resp.msg.find("service not found") != std::string::npos,
         "request 未注册服务返回 ResStatus::Failed + service not found");
 
-    // 合法命中 + pkg 透传端到端
+    // 合法命中 + msg 透传端到端
     resp = server->request("/RouteSrv/ping");
     YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "pong", "request 合法 url 命中返回 ResStatus::Succeeded + pong");
     resp = server->request("/RouteSrv/echo", yomk::msgs::String::shared(std::string("hi")));
-    YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "echo:hi", "request 携 pkg 路由透传，解包回显往返正确");
+    YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "echo:hi", "request 携 msg 路由透传，解包回显往返正确");
 
     // 超长 URL（4096 级服务名）：不崩溃，走 service not found
     resp = server->request("/" + std::string(4096, 'x') + "/ping");

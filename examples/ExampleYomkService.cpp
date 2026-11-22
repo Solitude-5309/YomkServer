@@ -61,7 +61,7 @@
 // yomk::server().srv_name(name).srv_ptr(ptr).add()                注册已有实例（同名即替换）
 // yomk::server().srv_name(name).remove()                     注销服务（删除即停）
 // yomk::server().boot_ptr(cfg).run()                             启动编排（before -> start -> after）
-// yomk::server().url(u).request(pkg) / .async(cb).request(pkg)  同步 / 异步请求
+// yomk::server().url(u).request(msg) / .async(cb).request(msg)  同步 / 异步请求
 // yomk::server().instance().get() / yomk::server().instance()            全局单例
 // yomk::srv_info().services() / .srv_name(n).functions() / .fn_url(u).get_info() / .all()  调用拓扑自省
 // installFunc("/x", &C::m[, yomk::msgs::Msg::kTypeName][, "desc"]) / weakFunc(&Class::Method) / 成员 request  服务侧 API
@@ -326,11 +326,11 @@ static void showArmMoveChain()
 
     logAction("展开到位回执 MoveResp");
     std::ostringstream oss;
-    auto respPkg = yomk::msgs::unpack<yomk::msgs::MoveResp>(moveResp.data);
-    if (respPkg)
+    auto respMsg = yomk::msgs::unpack<yomk::msgs::MoveResp>(moveResp.data);
+    if (respMsg)
     {
-        oss << "[REQUEST /MotionService/move] | MoveResp 到位 (" << respPkg->resp.reachX << ", "
-            << respPkg->resp.reachY << ", " << respPkg->resp.reachZ << ")mm";
+        oss << "[REQUEST /MotionService/move] | MoveResp 到位 (" << respMsg->resp.reachX << ", "
+            << respMsg->resp.reachY << ", " << respMsg->resp.reachZ << ")mm";
     }
     else
     {
@@ -355,10 +355,10 @@ static void showArmIntrospect()
     logAction("查阅运动工位职能清单");
     yomk::payload::Response funcsResp = yomk::srv_info().srv_name("/MotionService").functions();
     logResp("INFO_FUNCTIONS /MotionService", funcsResp);
-    auto listPkg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.data);
-    if (listPkg)
+    auto listMsg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(funcsResp.data);
+    if (listMsg)
     {
-        for (const auto& func : listPkg->d)
+        for (const auto& func : listMsg->d)
         {
             logFuncInfo("INFO_FUNCTIONS", func);
         }
