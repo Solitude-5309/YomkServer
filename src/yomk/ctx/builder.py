@@ -15,7 +15,8 @@ from yomk.msgs.ctx import (
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import (
-    YomkMsg,
+    is_msg_instance,
+    is_msg_subclass,
     require_msg,
     type_name_of,
     unpack,
@@ -67,8 +68,7 @@ class ContextValueBuilder:
 
     def __init__(self, key, group, cls):
         # 期望类型必须是具体消息类：读值才可能按 TYPE_NAME 精确比对
-        if not (isinstance(cls, type) and issubclass(cls, YomkMsg)
-                and cls is not YomkMsg):
+        if not is_msg_subclass(cls):
             raise TypeError(
                 "context typed read class must derive YomkMsg, got '"
                 + type_name_of(cls) + "'")
@@ -85,8 +85,7 @@ class ContextValueBuilder:
         if v is None:
             self._default = None
             return self
-        if isinstance(v, YomkMsg) and type(v) is not YomkMsg \
-                and v.TYPE_NAME == self._cls.TYPE_NAME:
+        if is_msg_instance(v) and v.TYPE_NAME == self._cls.TYPE_NAME:
             self._default = v
             return self
         raise TypeError("with_default requires '" + self._cls.TYPE_NAME
@@ -109,7 +108,7 @@ class ContextValueBuilder:
         if res.status == ResStatus.eOk:
             if res.data is None:
                 return self._default
-            if isinstance(res.data, YomkMsg) \
+            if is_msg_instance(res.data) \
                     and res.data.TYPE_NAME == self._cls.TYPE_NAME:
                 return res.data
             diag_warn("typed read context key '" + self._key

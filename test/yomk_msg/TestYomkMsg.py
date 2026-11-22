@@ -14,7 +14,8 @@ S3. unpack 语义：命中返回原对象、跨类型未命中返回 None、子�
     （子类自动 TYPE_NAME 不同）、裸 str 对 String 被拒（精确身份语义）、
     非消息类/基类 cls 直接 TypeError
 S4. type_name_of 四态：YomkMsg 实例报 TYPE_NAME、None 报 "null"、类对象报其
-    类名（如 "String"/"str"）、其余对象报宿主类名（返回类型名而非句子描述）
+    类名（如 "String"/"str"）、其余对象报宿主类名（返回类型名而非句子描述）；
+    is_msg_instance / is_msg_subclass 判据真值表（require_msg / unpack / type_name_of 共用）
 S5. type_mismatch 文案字面：标准格式 "pkg is not <expected>, got '<actual>'"，
     expected 传 cls.TYPE_NAME、actual 走 type_name_of 四态
 S6. 框架 msg TYPE_NAME 全查（闭环 2）：22 类改继承 + 6 结构化 List，28 类
@@ -50,6 +51,7 @@ from yomk.msgs import (
     type_name_of,
     unpack,
 )
+from yomk.msgs.YomkMsg import is_msg_instance, is_msg_subclass
 from yomk.msgs.ctx import (
     Context,
     ContextChecker,
@@ -241,6 +243,22 @@ def s3_unpack():
 # ============ S4. type_name_of 四态 ============
 def s4_type_name_of():
     print("===== S4. type_name_of 四态 =====")
+
+    # is_msg_instance：require_msg / unpack / type_name_of 共用判据
+    check(is_msg_instance(String("x")) is True, "具体消息实例 → True")
+    check(is_msg_instance(StringArray(["a"])) is True, "数组实例 → True")
+    check(is_msg_instance(None) is False, "None → False")
+    check(is_msg_instance(YomkMsg()) is False, "直基类实例 → False")
+    check(is_msg_instance("bare") is False, "裸 str → False")
+    check(is_msg_instance(String) is False, "类对象 → False")
+
+    # is_msg_subclass：unpack / msg(cls) 共用的类域判据
+    check(is_msg_subclass(String) is True, "具体消息类 → True")
+    check(is_msg_subclass(StringArray) is True, "数组消息类 → True")
+    check(is_msg_subclass(YomkMsg) is False, "基类 → False")
+    check(is_msg_subclass(str) is False, "体系外类 → False")
+    check(is_msg_subclass("str") is False, "非类 → False")
+    check(is_msg_subclass(None) is False, "None → False")
 
     # 第一态：YomkMsg 实例 → TYPE_NAME
     check(type_name_of(String("x")) == "yomk.msgs.String", "消息实例 → TYPE_NAME")

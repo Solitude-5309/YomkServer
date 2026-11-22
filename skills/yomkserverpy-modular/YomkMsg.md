@@ -17,6 +17,10 @@
 | `unpack(裸str, String)` | `None`（裸标量不是消息） |
 | 子类实例解包为父类 | `None`（子类自动获得不同 TYPE_NAME，精确身份匹配） |
 | `unpack(x, 非消息类 / YomkMsg 基类)` | 抛 `TypeError`（`unpack requires a concrete YomkMsg subclass`） |
+| `is_msg_instance(具体消息实例)` | `True`（实例域判据，`require_msg`/`unpack`/`type_name_of` 共用） |
+| `is_msg_instance(None / 基类实例 / 类对象 / 裸值)` | `False` |
+| `is_msg_subclass(具体消息类)` | `True`（类域判据，`unpack`/`msg(cls)` 共用） |
+| `is_msg_subclass(基类 / 体系外类 / 非类 / None)` | `False` |
 | `type_name_of(具体消息实例)` | 其 TYPE_NAME |
 | `type_name_of(None)` | `"null"` |
 | `type_name_of(类对象)` | 其 `__name__`（如 `"String"` / `"str"`，供 cls 实参诊断） |

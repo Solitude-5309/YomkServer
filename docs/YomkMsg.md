@@ -75,6 +75,8 @@ def echo(self, pkg):
 - `pkg` 为 `None`、体系外对象或类型不符 → 返回 `None`，不抛异常（端点据此走 `type_mismatch` 拒绝路径）；
 - `cls` 必须是具体 `YomkMsg` 子类（不能是基类本身或体系外类）→ 违例抛 `TypeError`（`unpack requires a concrete YomkMsg subclass, got '<类名>'`），调用方编程错误不当成业务失败。
 
+`is_msg_instance(v)` / `is_msg_subclass(cls)`（同置 `yomk.msgs.YomkMsg`）：一对形态判据。`is_msg_instance` 只认具体 `YomkMsg` 子类实例——`None`、`YomkMsg` 直基类实例、类对象与体系外对象均为假，由 `require_msg` / `unpack` / `type_name_of` 共用；`is_msg_subclass` 是它的类域对称物，只认具体消息子类（类对象本身），基类、非类与体系外类均为假，由 `unpack` 与 `ctx().key(k).msg(cls)` 共用。两处判据不再分散书写。
+
 `type_name_of(pkg)` / `type_mismatch(pkg, expected)`（对齐 C++ `typeNameOf`/`typeMismatch`，与基类/解包/守卫同置 `yomk.msgs.YomkMsg`）：
 
 - `type_name_of` 四态：具体消息实例 → 其 `TYPE_NAME`；`None` → `"null"`；类对象 → 其 `__name__`（如 `"String"` / `"str"`，供 cls 实参诊断）；其余对象 → 其宿主类名（如 `"str"`；始终返回类型名，不以 `"null"` 掩盖误用）；

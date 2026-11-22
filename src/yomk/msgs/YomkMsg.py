@@ -32,15 +32,30 @@ class YomkMsg:
         cls.TYPE_NAME = (parent if parent else mod) + "." + cls.__qualname__
 
 
+def is_msg_instance(v):
+    """Return True only for concrete YomkMsg subclass instances.
+
+    判据：仅具体消息子类实例为真；None、YomkMsg 直基类实例与体系外对象均为假。
+    """
+    return isinstance(v, YomkMsg) and type(v) is not YomkMsg
+
+
+def is_msg_subclass(cls):
+    """Return True only for concrete YomkMsg subclasses.
+
+    类域判据：仅具体消息子类（类对象本身）为真；基类、非类与体系外类均为假。
+    """
+    return (isinstance(cls, type) and issubclass(cls, YomkMsg)
+            and cls is not YomkMsg)
+
+
 def require_msg(v, who):
     """Raise TypeError unless v is a concrete YomkMsg instance or None.
 
     类型契约守卫：v 必须是具体消息实例或 None（空载荷），否则入口当场
     ``TypeError``。直接基类实例不可用（C++ 侧 YomkMsg 为抽象类），同样拒绝。
     """
-    if v is None:
-        return
-    if isinstance(v, YomkMsg) and type(v) is not YomkMsg:
+    if v is None or is_msg_instance(v):
         return
     raise TypeError(who + " requires a YomkMsg instance or None, got '"
                     + type_name_of(v) + "'")
@@ -53,12 +68,10 @@ def unpack(pkg, cls):
     对象（无类型边界探测）。cls 必须是具体消息类，否则 ``TypeError``。子类因
     TYPE_NAME 不同不会被当作父类实例命中，这是设计行为。
     """
-    if not (isinstance(cls, type) and issubclass(cls, YomkMsg)
-            and cls is not YomkMsg):
+    if not is_msg_subclass(cls):
         raise TypeError("unpack requires a concrete YomkMsg subclass, got '"
                         + type_name_of(cls) + "'")
-    if isinstance(pkg, YomkMsg) and type(pkg) is not YomkMsg \
-            and type(pkg).TYPE_NAME == cls.TYPE_NAME:
+    if is_msg_instance(pkg) and type(pkg).TYPE_NAME == cls.TYPE_NAME:
         return pkg
     return None
 
@@ -71,7 +84,7 @@ def type_name_of(pkg):
     """
     if pkg is None:
         return "null"
-    if isinstance(pkg, YomkMsg) and type(pkg) is not YomkMsg:
+    if is_msg_instance(pkg):
         return type(pkg).TYPE_NAME
     if isinstance(pkg, type):
         return pkg.__name__

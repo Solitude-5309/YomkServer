@@ -1,4 +1,4 @@
-from typing import ClassVar, Optional, Type, TypeVar
+from typing import ClassVar, Optional, Type, TypeGuard, TypeVar
 
 _T = TypeVar("_T")
 
@@ -7,6 +7,12 @@ class YomkMsg:
     TYPE_NAME: ClassVar[str]
 
     def __init__(self) -> None: ...
+
+
+def is_msg_instance(v: object) -> TypeGuard[YomkMsg]: ...
+
+
+def is_msg_subclass(cls: object) -> TypeGuard[Type[YomkMsg]]: ...
 
 
 def require_msg(v: object, who: str) -> None: ...
