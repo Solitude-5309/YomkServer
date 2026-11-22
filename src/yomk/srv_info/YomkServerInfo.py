@@ -24,7 +24,7 @@ class YomkServerInfo(YomkService):
     # 服务表内省服务：四端点 /services /functions /function /all；
     # 经 weakref 判活（server 销毁后四端点均返 eNo）。
     # 诊断契约：WARN = 空参/url 解析失败/服务未命中，ERROR = server 已销毁；
-    # 失败路径不再重复打诊断（Response.msg 已携带同信息），pkg 类型错配无诊断。
+    # 失败路径不再重复打诊断（Response.msg 已携带同信息），msg 类型错配无诊断。
     def __init__(self, server: "YomkServer"):
         super().__init__(server)
         # 清除基类对 server 的强引用，仅保留弱引用：
@@ -47,7 +47,7 @@ class YomkServerInfo(YomkService):
         # server 已销毁时返回 None，由各端点统一走 destroyed 契约
         return self.m_weakServer() if self.m_weakServer else None
 
-    def list_services(self, pkg):
+    def list_services(self, msg):
         server = self._locked_server()
         if server is None:
             diag_error("server has been destroyed, list services ignored")
@@ -56,10 +56,10 @@ class YomkServerInfo(YomkService):
         return Response(ResStatus.eOk, "ok",
                         StringArray(sorted(server.service_names())))
 
-    def list_functions(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
-        srv_name = pkg.value
+    def list_functions(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
+        srv_name = msg.value
         if not srv_name:
             # 空参误用：WARN 后返 eInvalid
             diag_warn("srvName is empty, please check String.d")
@@ -76,10 +76,10 @@ class YomkServerInfo(YomkService):
         funcs = [infos[name] for name in sorted(infos.keys())]
         return Response(ResStatus.eOk, "ok", FuncInfoList(funcs))
 
-    def function_info(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
-        url = pkg.value
+    def function_info(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
+        url = msg.value
         if not url or url[0] != "/":
             # url 解析失败：WARN + 同串 Response
             diag_warn("url parse error: " + url + ", please start with /")
@@ -114,7 +114,7 @@ class YomkServerInfo(YomkService):
         diag_warn("service not found: " + srv_name)
         return Response(ResStatus.eNo, "service not found: " + srv_name)
 
-    def list_all(self, pkg):
+    def list_all(self, msg):
         server = self._locked_server()
         if server is None:
             diag_error("server has been destroyed, list all ignored")

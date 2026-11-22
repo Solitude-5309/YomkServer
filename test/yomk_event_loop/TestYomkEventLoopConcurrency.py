@@ -41,7 +41,7 @@ EXEC_COUNT = []   # 计数 handler 执行总数（S2/S3/S4/S5）
 EXEC_IDS = []     # S1 专用：事件执行时的 eventId（handler 闭包持事件引用）
 
 def count_handler():
-    def _handler(pkg):
+    def _handler(msg):
         EXEC_COUNT.append(1)
         return Response(ResStatus.eOk, "counted")
     return _handler
@@ -59,7 +59,7 @@ class Gate:
 GATE = Gate()
 
 def gate_handler():
-    def _handler(pkg):
+    def _handler(msg):
         GATE.started.set()
         GATE.release.wait()
         return Response(ResStatus.eOk, "gate done")
@@ -114,7 +114,7 @@ def section_1():
         for _k in range(40):
             ev = Event("conc1", None, None, "")
             ev.m_serviceFunc = (lambda e: (
-                lambda pkg: EXEC_IDS.append(e.m_eventId)))(ev)
+                lambda msg: EXEC_IDS.append(e.m_eventId)))(ev)
             if loop.post(ev) == 0:
                 with post_ok_lock:
                     post_ok[0] += 1

@@ -19,13 +19,13 @@ def current_server() -> Optional[YomkServer]:
     return g_server
 
 
-def api_request(url: str, pkg: Any = None) -> Response:
+def api_request(url: str, msg: Any = None) -> Response:
     # 统一门面请求入口：未 init 记诊断并返回 eInvalid
     server = g_server
     if server is None:
         diag_error("YomkServer is not initialized")
         return Response(ResStatus.eInvalid, "YomkServer is not initialized")
-    return server.request(url, pkg)
+    return server.request(url, msg)
 
 
 def init_locked(async_thread_count: int = 0) -> Optional[YomkServer]:

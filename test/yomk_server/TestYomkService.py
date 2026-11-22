@@ -9,17 +9,17 @@ TestYomkService.py —— YomkService 命名/函数注册/调用白盒单元测�
    三参元数据（msg_name）、四参函数说明（description）、两参覆盖清除残留信息、
    三参/四参覆盖恢复
 5. func_infos 内省
-6. invoke：命中（自身响应 + pkg 透传回显）、非法名/未安装返回 eNo 契约消息
+6. invoke：命中（自身响应 + msg 透传回显）、非法名/未安装返回 eNo 契约消息
 7. 空服务器守卫：YomkService(None) 构造后不崩溃 + request/async_request 契约
 
 语言机制说明（非功能缺口）：
 - deleted/markDeleted 弱绑定判活不适用：python 功能函数为直接引用，无弱绑定包装层
-- python 消息包一律 YomkMsg 派生并经 unpack 解包，"pkg 为空解包失败返回 eNo" 的守卫
-  由测试函数内显式判断承载（消息契约："pkg is null"）
+- python 消息包一律 YomkMsg 派生并经 unpack 解包，"msg 为空解包失败返回 eNo" 的守卫
+  由测试函数内显式判断承载（消息契约："msg is null"）
 - 空服务器守卫形态：python 无转发层，set_name/install_func/func_infos/invoke 直接作用于本地
   字段/表，仅 request/async_request 保留 server 判空契约。
   本文件第 7 节按 python 现状文档化断言
-- invoke 的 pkg 参数为必填，测试显式传 None
+- invoke 的 msg 参数为必填，测试显式传 None
 
 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 """
@@ -77,26 +77,26 @@ class DemoService(YomkService):
         self.install_func("/desc0", self.desc0, String.TYPE_NAME)
         return 0
 
-    def echo(self, pkg):
+    def echo(self, msg):
         # DemoPkg 解包回显：未命中（含空包）时函数内守卫返回 eNo
-        msg = unpack(pkg, DemoPkg)
+        msg = unpack(msg, DemoPkg)
         if msg is None:
-            return Response(ResStatus.eNo, "pkg is null")
+            return Response(ResStatus.eNo, "msg is null")
         return Response(ResStatus.eOk, "echo:" + msg.d)
 
-    def plain(self, pkg):
+    def plain(self, msg):
         return Response(ResStatus.eOk, "plain")
 
-    def reinstall(self, pkg):
+    def reinstall(self, msg):
         return Response(ResStatus.eOk, "reinstall")
 
-    def restore(self, pkg):
+    def restore(self, msg):
         return Response(ResStatus.eOk, "restore")
 
-    def desc(self, pkg):
+    def desc(self, msg):
         return Response(ResStatus.eOk, "desc")
 
-    def desc0(self, pkg):
+    def desc0(self, msg):
         return Response(ResStatus.eOk, "desc0")
 
 class NullSrv(YomkService):
@@ -131,11 +131,11 @@ def test_add_service_with_name():
 def test_install_func(demo):
     # 正常路径：运行时追加安装合法名
     demo.install_func(
-        "/manual", lambda pkg: Response(ResStatus.eOk, "manual"))
+        "/manual", lambda msg: Response(ResStatus.eOk, "manual"))
 
     # 非法名：空串与无 / 开头均被拒
-    demo.install_func("", lambda pkg: Response(ResStatus.eOk, ""))
-    demo.install_func("no_slash", lambda pkg: Response(ResStatus.eOk, ""))
+    demo.install_func("", lambda msg: Response(ResStatus.eOk, ""))
+    demo.install_func("no_slash", lambda msg: Response(ResStatus.eOk, ""))
 
     # 空函数对象：安装被拒
     demo.install_func("/null_func", None)
@@ -143,7 +143,7 @@ def test_install_func(demo):
     # C-5 已采纳：重复安装即覆盖既有注册，级别 WARN（默认门控下可见）
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
-        demo.install_func("/manual", lambda pkg: Response(ResStatus.eOk, "manual"))
+        demo.install_func("/manual", lambda msg: Response(ResStatus.eOk, "manual"))
     check("function '/manual' already exists, replace with current function"
           in buf.getvalue(), "重复安装记 WARN（C-5）")
 
@@ -187,22 +187,22 @@ def test_install_func(demo):
     check(found and msg_name == String.TYPE_NAME and desc == "demo description",
           "运行期四参覆盖安装恢复类型名与函数说明")
 
-# 5. invoke：命中（含 pkg 透传）与异常路径契约
+# 5. invoke：命中（含 msg 透传）与异常路径契约
 def test_invoke(demo):
     # 命中：返回函数自身响应
     resp = demo.invoke("/plain", None)
     check(resp.status == ResStatus.eOk and resp.msg == "plain",
           "invoke 命中，返回函数自身响应")
 
-    # 命中：pkg 透传与回显（数据往返）
+    # 命中：msg 透传与回显（数据往返）
     resp = demo.invoke("/echo", DemoPkg("hi"))
     check(resp.status == ResStatus.eOk and resp.msg == "echo:hi",
-          "invoke 命中，pkg 透传回显正确")
+          "invoke 命中，msg 透传回显正确")
 
-    # 命中：pkg 为空，函数内解包守卫返回 eNo
+    # 命中：msg 为空，函数内解包守卫返回 eNo
     resp = demo.invoke("/echo", None)
-    check(resp.status == ResStatus.eNo and "pkg is null" in resp.msg,
-          "invoke 命中但 pkg 为空，函数解包守卫返回 eNo")
+    check(resp.status == ResStatus.eNo and "msg is null" in resp.msg,
+          "invoke 命中但 msg 为空，函数解包守卫返回 eNo")
 
     # 异常路径：空名/无 / 开头返回 eNo + parse error 契约消息
     resp = demo.invoke("", None)
@@ -226,7 +226,7 @@ def test_invoke(demo):
 def test_null_server_guards():
     srv = NullSrv()
     srv.set_name("x")                                    # 不应崩溃（本地字段直接生效）
-    srv.install_func("/x", lambda pkg: Response())   # 不应崩溃（本地表直接生效）
+    srv.install_func("/x", lambda msg: Response())   # 不应崩溃（本地表直接生效）
     ret = srv.async_request("/SomeService/func")         # 不应崩溃（静默）
 
     check(srv.get_name() == "x",

@@ -18,7 +18,7 @@ S5. 框架结构体默认值：Function/CallFunction/Context/
 - 消息类继承 YomkMsg 得 TYPE_NAME（闭环 2 起全部框架 msg 类接入），结构契约
   本文件按类覆盖；TYPE_NAME 字面全查与 unpack/type_name_of/type_mismatch 语义、
   std 类 9 个由 test/yomk_msg/TestYomkMsg.py 承载，两文件分工不重叠
-- 消息包一律 YomkMsg 实例（信封构造的 pkg 位置传消息）；TYPE_NAME 字面全查与
+- 消息包一律 YomkMsg 实例（信封构造的 msg 位置传消息）；TYPE_NAME 字面全查与
   unpack/type_name_of/type_mismatch 语义、std 类 9 个由 test/yomk_msg/TestYomkMsg.py
   承载，两文件分工不重叠
 - void* 裸指针形态为 C 系语言特有，python 无对应类型，不设对应用例；
@@ -53,24 +53,24 @@ def check(cond, msg):
 
 
 # ============ S3. Event / EventLoopOpts 结构契约 ============
-def s3_event_and_pkg():
+def s3_event_and_msg():
     print("===== S3. Event / EventLoopOpts 结构契约 =====")
     ev = Event()
-    check(ev.m_eventLoopName == "" and ev.m_pkg is None and ev.m_serviceFunc is None,
-          "Event 默认构造：loop 名空/pkg None/func None")
+    check(ev.m_eventLoopName == "" and ev.m_msg is None and ev.m_serviceFunc is None,
+          "Event 默认构造：loop 名空/msg None/func None")
     check(ev.m_eventId == 0 and ev.m_tag == "" and ev.m_response is None and ev.m_waitCallback is None,
           "Event 默认构造：eventId 0/tag 空/response None/waitCallback None")
 
     handled = {"count": 0}
 
-    def func(pkg):
+    def func(msg):
         handled["count"] += 1
         return Response(ResStatus.eOk, "handled")
 
-    pkg3 = String("p")
-    ev3 = Event("/L1", pkg3, func)  # 三参形态（tag 走默认参）
-    check(ev3.m_eventLoopName == "/L1" and ev3.m_pkg is pkg3 and ev3.m_eventId == 0 and ev3.m_tag == "",
-          "Event 三参构造：字段透传（pkg 为消息实例），eventId 保持 0（入队时由框架分配）")
+    msg3 = String("p")
+    ev3 = Event("/L1", msg3, func)  # 三参形态（tag 走默认参）
+    check(ev3.m_eventLoopName == "/L1" and ev3.m_msg is msg3 and ev3.m_eventId == 0 and ev3.m_tag == "",
+          "Event 三参构造：字段透传（msg 为消息实例），eventId 保持 0（入队时由框架分配）")
     ev3.handle()
     check(handled["count"] == 1 and ev3.m_response.status == ResStatus.eOk and ev3.m_response.msg == "handled",
           "Event handle：执行 serviceFunc 并填充 response")
@@ -93,12 +93,12 @@ def s3_event_and_pkg():
     ev3.m_waitCallback()
     check(waited["flag"], "Event waitCallback：可赋值并执行")
 
-    pkg = EventLoopOpts("/LP", func, String.TYPE_NAME)
-    check(pkg.m_eventLoopName == "/LP" and pkg.m_defaultServiceFunc is func
-          and pkg.m_msgName == String.TYPE_NAME,
+    msg = EventLoopOpts("/LP", func, String.TYPE_NAME)
+    check(msg.m_eventLoopName == "/LP" and msg.m_defaultServiceFunc is func
+          and msg.m_msgName == String.TYPE_NAME,
           "EventLoopOpts 构造：loop 名/默认 func/msg 名（全限定 TYPE_NAME）透传")
-    pkg_def = EventLoopOpts()
-    check(pkg_def.m_eventLoopName == "" and pkg_def.m_defaultServiceFunc is None and pkg_def.m_msgName == "",
+    msg_def = EventLoopOpts()
+    check(msg_def.m_eventLoopName == "" and msg_def.m_defaultServiceFunc is None and msg_def.m_msgName == "",
           "EventLoopOpts 默认构造：loop 名空/func None/msg 名空")
 
 
@@ -127,8 +127,8 @@ def s5_struct_defaults():
     check(f.name == "" and f.msg_name == "" and f.func is None,
           "Function 空值构造：名称/消息名空、func None")
     cf = CallFunction("", None)
-    check(cf.name == "" and cf.pkg is None,
-          "CallFunction 空值构造：名称空、pkg None")
+    check(cf.name == "" and cf.msg is None,
+          "CallFunction 空值构造：名称空、msg None")
     ctx = Context()
     check(ctx.key == "" and ctx.value is None,
           "Context 默认：key 空、value None")
@@ -155,7 +155,7 @@ def s5_struct_defaults():
 
 
 def main():
-    s3_event_and_pkg()
+    s3_event_and_msg()
     s4_yomk_response()
     s5_struct_defaults()
 

@@ -23,10 +23,10 @@ from yomk.fn_pool import fn_pool
 server().init()
 
 # 注册函数（msg_name 一律传 msg.TYPE_NAME，description 可选，均仅作内省元数据；类型校验由函数体内 unpack 承担，见 docs/YomkMsg.md）
-def calc_sum(pkg):
-    nums = unpack(pkg, IntArray)
+def calc_sum(msg):
+    nums = unpack(msg, IntArray)
     if nums is None:
-        return Response(ResStatus.eNo, type_mismatch(pkg, IntArray.TYPE_NAME))
+        return Response(ResStatus.eNo, type_mismatch(msg, IntArray.TYPE_NAME))
     return Response(ResStatus.eOk, "ok", sum(nums.items))
 
 fn_pool().fn_name("calcSum").fn(calc_sum) \
@@ -50,9 +50,9 @@ fn_pool().list()
 - 未注册的名字：`call()` / `uninstall()` / `get_info()` 均返回 `Failed` + `"function '<name>' is not registered"`（not-found 归 `Failed` 不归 `Invalid`，与全框架三态约定一致；失败路径不打诊断日志，`Response.msg` 已携带同信息）。
 - 注册/注销的终结动词定名为 `install()` / `uninstall()`。
 - 入参非法（`install` 空名/空函数等）返回 `Invalid`（服务端契约消息 `"funcName or func is empty"`）。
-- 端点收错类型包（如向 `/register` 传非 `Function` 消息）返回 `Failed` + `"pkg is not X, got '<实际类型>'"`，不抛异常（对齐 C++ unpack 失败契约）；调用入口 `.msg()` 传裸值则是 `TypeError`，见 [YomkMsg.md](YomkMsg.md#载荷契约跨边界一律消息实例)。
+- 端点收错类型包（如向 `/register` 传非 `Function` 消息）返回 `Failed` + `"msg is not X, got '<实际类型>'"`，不抛异常（对齐 C++ unpack 失败契约）；调用入口 `.msg()` 传裸值则是 `TypeError`，见 [YomkMsg.md](YomkMsg.md#载荷契约跨边界一律消息实例)。
 - 内置服务端点 URL 常量集中定义于 `yomk.url` 常量池（`from yomk.url.fn_pool import FP_CALL` 等，命名 `FP_` 前缀对齐 C++ `yomk::url::fpXxx`）；`yomk.url` 为纯命名空间层（与 `yomk.msgs` 同构），用户新增模块只需自带 `yomk/url/<模块>/__init__.py` 即可并入。`fn_pool()` 链式入口与用户裸链请求均可引用。
-- 函数体收到的 `pkg` 即调用侧 `.msg(msg)` 累积的消息实例（省略即 `None` 空载荷）；函数返回的 `Response` 整体作为 `call()` 的返回值回传（`data` 携带结果对象）。
+- 函数体收到的 `msg` 即调用侧 `.msg(msg)` 累积的消息实例（省略即 `None` 空载荷）；函数返回的 `Response` 整体作为 `call()` 的返回值回传（`data` 携带结果对象）。
 - 服务成员函数注册到函数池时须用 `self.weak_func(...)` 弱绑定——服务删除后回调自动失效（返回 `Failed`），见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 - 单函数内省 `get_info()` 的 `data` 为 `FuncInfo`（`func_name` / `msg_name` / `description`，见 [服务自省](YomkServerInfo.md)）。
 

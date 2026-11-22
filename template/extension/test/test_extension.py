@@ -48,7 +48,7 @@ def main():
         # （期望侧 ExtensionRequest.TYPE_NAME；got 侧为传入消息的 TYPE_NAME）
         bad = server().url(EXTENSION_ECHO).msg(String("wrong type")).request()
         assert bad.status == ResStatus.eNo, (bad.status, bad.msg)
-        assert bad.msg == ("pkg is not yomk.msgs.extension.ExtensionRequest, "
+        assert bad.msg == ("msg is not yomk.msgs.extension.ExtensionRequest, "
                            "got 'yomk.msgs.String'"), bad.msg
 
         log().tag("test_extension").info("extension smoke OK:", data)

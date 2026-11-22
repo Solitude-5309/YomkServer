@@ -11,7 +11,7 @@ S2. /functions：FuncInfo 结构化清单（func_name/msg_name/description 三�
     内置 /YomkContext 与 /YomkServerInfo 自身清单
 S3. /function：命中返回结构化 FuncInfo 包（msg 恒 "ok"，func_name/msg_name/description）；
     四参函数 description 承载说明、无说明函数 description 为空（包恒挂）；
-    URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null pkg
+    URL 解析边界（空串/无 / 开头/无第二个 /）；服务不存在/函数不存在契约消息；null msg
 S4. /all：ServerServiceInfo 层级列表（按 service_name 查条目；funcs 字典序
     /echo 在 /ping 前，字段断言替代缩进行精确串）
 S5. 轻量并发快照一致性：3 churn 线程 add/del × 3 内省线程轮询 4 端点（服务表读写竞争），
@@ -115,11 +115,11 @@ class FmtSrv(YomkService):
                           "echo demo description")
         return 0
 
-    def ping(self, pkg):
+    def ping(self, msg):
         return Response(ResStatus.eOk, "pong")
 
-    def echo(self, pkg):
-        return Response(ResStatus.eOk, pkg)
+    def echo(self, msg):
+        return Response(ResStatus.eOk, msg)
 
 class ChurnSrv(YomkService):
     # churn 压力服务：最小 /hit 函数，供 S5 并发增删使用
@@ -127,7 +127,7 @@ class ChurnSrv(YomkService):
         self.install_func("/hit", self.hit)
         return 0
 
-    def hit(self, pkg):
+    def hit(self, msg):
         return Response(ResStatus.eOk, "hit")
 
 # ---- S5 并发观测容器（list.append GIL 原子收集，节末单线程 check）----
@@ -285,10 +285,10 @@ def main():
     check(no_func.status == ResStatus.eNo and no_func.msg == "function not found: /FmtSrv/nope",
           "函数不存在契约消息精确匹配: " + no_func.msg)
 
-    null_pkg = server().url("/YomkServerInfo/function").request()
-    check(null_pkg.status == ResStatus.eNo
-          and null_pkg.msg == "pkg is not yomk.msgs.String, got 'null'",
-          "null pkg 返回 eNo + unpack 契约消息（体系外对象报 null）")
+    null_msg = server().url("/YomkServerInfo/function").request()
+    check(null_msg.status == ResStatus.eNo
+          and null_msg.msg == "msg is not yomk.msgs.String, got 'null'",
+          "null msg 返回 eNo + unpack 契约消息（体系外对象报 null）")
 
     # ============ S4. /all ============
     print("===== S4. /all 端点 =====")

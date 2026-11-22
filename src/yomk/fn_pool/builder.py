@@ -33,7 +33,7 @@ class FnPoolBuilder:
         self._fn = None
         self._msg_name = ""
         self._description = ""
-        self._pkg = None
+        self._msg = None
 
     def fn_name(self, n):
         self._name = n
@@ -54,7 +54,7 @@ class FnPoolBuilder:
 
     def msg(self, data):
         require_msg_payload(data, "msg()")
-        self._pkg = data
+        self._msg = data
         return self
 
     def install(self):
@@ -79,7 +79,7 @@ class FnPoolBuilder:
 
         阻塞调用已注册函数，返回携带函数返回值的 Response；函数不存在返回 No。
         """
-        return _facade.api_request(FP_CALL, CallFunction(self._name, self._pkg))
+        return _facade.api_request(FP_CALL, CallFunction(self._name, self._msg))
 
     def list(self):
         """Return all registered function names as a plain list.

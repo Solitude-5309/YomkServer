@@ -52,95 +52,95 @@ class YomkEventLoop(YomkService):
         return Response(ResStatus.eNo,
                         "event loop '" + loop_name + "' does not exist")
 
-    def start(self, pkg):
-        if unpack(pkg, EventLoopOpts) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, EventLoopOpts.TYPE_NAME))
+    def start(self, msg):
+        if unpack(msg, EventLoopOpts) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, EventLoopOpts.TYPE_NAME))
         # 空名是合法 map 键
         with self.m_eventLoopMutex.gen_wlock():
-            if pkg.m_eventLoopName in self.m_eventLoop:
+            if msg.m_eventLoopName in self.m_eventLoop:
                 # 已存在仅重启，不重设默认函数
-                self.m_eventLoop[pkg.m_eventLoopName].start()
+                self.m_eventLoop[msg.m_eventLoopName].start()
                 return Response(ResStatus.eOk, "event loop start success")
             event_loop = EventLoop()
             event_loop.set_default_service_func(
-                pkg.m_defaultServiceFunc, pkg.m_msgName)
+                msg.m_defaultServiceFunc, msg.m_msgName)
             event_loop.start()
-            self.m_eventLoop[pkg.m_eventLoopName] = event_loop
+            self.m_eventLoop[msg.m_eventLoopName] = event_loop
             return Response(ResStatus.eOk, "event loop start success")
 
-    def stop(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+    def stop(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
         with self.m_eventLoopMutex.gen_rlock():
-            if pkg.value in self.m_eventLoop:
-                self.m_eventLoop[pkg.value].stop()
+            if msg.value in self.m_eventLoop:
+                self.m_eventLoop[msg.value].stop()
                 return Response(ResStatus.eOk, "event loop stop success")
-        return self._not_found(pkg.value)
+        return self._not_found(msg.value)
 
-    def destroy(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+    def destroy(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
         with self.m_eventLoopMutex.gen_wlock():
-            if pkg.value in self.m_eventLoop:
+            if msg.value in self.m_eventLoop:
                 # 调底层 destroy（stop+清队列+释放等待者）后出表
-                self.m_eventLoop[pkg.value].destroy()
-                del self.m_eventLoop[pkg.value]
+                self.m_eventLoop[msg.value].destroy()
+                del self.m_eventLoop[msg.value]
                 return Response(ResStatus.eOk, "event loop destroy success")
-        return self._not_found(pkg.value)
+        return self._not_found(msg.value)
 
-    def post(self, pkg):
-        if unpack(pkg, Event) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Event.TYPE_NAME))
+    def post(self, msg):
+        if unpack(msg, Event) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Event.TYPE_NAME))
         with self.m_eventLoopMutex.gen_rlock():
-            loop = self.m_eventLoop.get(pkg.m_eventLoopName)
+            loop = self.m_eventLoop.get(msg.m_eventLoopName)
             if loop is None:
-                return self._not_found(pkg.m_eventLoopName)
+                return self._not_found(msg.m_eventLoopName)
             # 内层返回码映射：0 成功；其余（实际仅 2=循环未运行被拒，
             # 事件为空不可达）统一 eNo，文案携循环名
-            rc = loop.post(pkg)
+            rc = loop.post(msg)
             if rc != 0:
                 return Response(
                     ResStatus.eNo,
-                    "event loop '" + pkg.m_eventLoopName
+                    "event loop '" + msg.m_eventLoopName
                     + "' not running, post rejected")
             return Response(ResStatus.eOk, "event loop post success")
 
-    def post_wait(self, pkg):
-        if unpack(pkg, Event) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Event.TYPE_NAME))
+    def post_wait(self, msg):
+        if unpack(msg, Event) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Event.TYPE_NAME))
         with self.m_eventLoopMutex.gen_rlock():
-            loop = self.m_eventLoop.get(pkg.m_eventLoopName)
+            loop = self.m_eventLoop.get(msg.m_eventLoopName)
             if loop is None:
-                return self._not_found(pkg.m_eventLoopName)
+                return self._not_found(msg.m_eventLoopName)
             # 内层返回码映射：0 成功（回传 event 携带执行结果）；其余统一
             # eNo（未入队未执行，不回传），文案携循环名
-            rc = loop.post_wait(pkg)
+            rc = loop.post_wait(msg)
             if rc != 0:
                 return Response(
                     ResStatus.eNo,
-                    "event loop '" + pkg.m_eventLoopName
+                    "event loop '" + msg.m_eventLoopName
                     + "' not running, post wait rejected")
-            return Response(ResStatus.eOk, "event loop post wait success", pkg)
+            return Response(ResStatus.eOk, "event loop post wait success", msg)
 
-    def loops(self, pkg):
+    def loops(self, msg):
         # 内省：列出全部事件循环名（sorted 字典序，
         # 同 FunctionPool names / Context keys 内省先例）
         with self.m_eventLoopMutex.gen_rlock():
             loop_names = sorted(self.m_eventLoop.keys())
         return Response(ResStatus.eOk, "ok", StringArray(loop_names))
 
-    def loop_info(self, pkg):
+    def loop_info(self, msg):
         # 内省：单个事件循环元信息，收结构化 EventLoopQuery：unpack 失败返回
         # eNo；名称按字面量精确匹配、不做任何切分；采样数越界回退默认 3（不抛不崩）
-        if unpack(pkg, EventLoopQuery) is None:
+        if unpack(msg, EventLoopQuery) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, EventLoopQuery.TYPE_NAME))
-        loop_name = pkg.m_loopName
+                            type_mismatch(msg, EventLoopQuery.TYPE_NAME))
+        loop_name = msg.m_loopName
         # 归一化采样数：非 int（含 bool）或超 2^64-1 上限回退默认 3，与全量内省缺省一致
         tag_count = 3
-        if isinstance(pkg.m_tagCount, int) and not isinstance(pkg.m_tagCount, bool) \
-                and 0 <= pkg.m_tagCount <= 2 ** 64 - 1:
-            tag_count = pkg.m_tagCount
+        if isinstance(msg.m_tagCount, int) and not isinstance(msg.m_tagCount, bool) \
+                and 0 <= msg.m_tagCount <= 2 ** 64 - 1:
+            tag_count = msg.m_tagCount
 
         with self.m_eventLoopMutex.gen_rlock():
             event_loop = self.m_eventLoop.get(loop_name)
@@ -152,7 +152,7 @@ class YomkEventLoop(YomkService):
         event_loop.info_snapshot(info, tag_count)
         return Response(ResStatus.eOk, "ok", info)
 
-    def list_all(self, pkg):
+    def list_all(self, msg):
         # 内省：全部事件循环元信息，锁内拷贝快照、锁外逐循环取结构化快照
         # （msg 恒 "ok"，数据走 data；next_tags 取 3 条与单查缺省一致）
         with self.m_eventLoopMutex.gen_rlock():

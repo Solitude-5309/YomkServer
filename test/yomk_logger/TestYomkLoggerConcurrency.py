@@ -329,11 +329,11 @@ def main():
     s3_bad_level_line = []
     s3_stop = threading.Event()
 
-    def s3_proxy_v1(_log_pkg):
+    def s3_proxy_v1(_log_msg):
         s3_v1_hits.append(1)
         return True  # 穿透：继续走默认控制台输出，不影响后续 Section
 
-    def s3_proxy_v2(_log_pkg):
+    def s3_proxy_v2(_log_msg):
         s3_v2_hits.append(1)
         return True
 

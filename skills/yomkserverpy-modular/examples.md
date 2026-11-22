@@ -165,7 +165,7 @@ class ConfigService(YomkService):
         self.install_func("/version", self.version)
         log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to ", self.get_name())
 
-    def load_config(self, pkg):
+    def load_config(self, msg):
         # 类型化读：msg(String) 声明期望类型，with_default 传同类型消息或 None
         cfg = ctx().key(CTX_CONFIG_PATH).msg(String).with_default(String("")).get()
         self.config_path = cfg.value
@@ -179,15 +179,15 @@ class ConfigService(YomkService):
         log().tag("ConfigService::load_config").info("loaded: ", self.config_path)
         return Response(ResStatus.eOk, "ok")
 
-    def get_config(self, pkg):
+    def get_config(self, msg):
         # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）
-        if unpack(pkg, ConfigKey) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, ConfigKey.TYPE_NAME))
-        tokens = pkg.key.split('.')
+        if unpack(msg, ConfigKey) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, ConfigKey.TYPE_NAME))
+        tokens = msg.key.split('.')
         current = self.config_json
         for token in tokens:
             if not isinstance(current, dict) or token not in current:
-                return Response(ResStatus.eNo, "key not found: " + pkg.key)
+                return Response(ResStatus.eNo, "key not found: " + msg.key)
             current = current[token]
 
         if isinstance(current, str):
@@ -196,21 +196,21 @@ class ConfigService(YomkService):
             value = json.dumps(current, ensure_ascii=False)
         return Response(ResStatus.eOk, "ok", value)
 
-    def set_config(self, pkg):
-        if unpack(pkg, ConfigKeyValue) is None:
+    def set_config(self, msg):
+        if unpack(msg, ConfigKeyValue) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ConfigKeyValue.TYPE_NAME))
-        tokens = pkg.key.split('.')
+                            type_mismatch(msg, ConfigKeyValue.TYPE_NAME))
+        tokens = msg.key.split('.')
         current = self.config_json
         for token in tokens[:-1]:
             if not isinstance(current, dict):
-                return Response(ResStatus.eNo, "invalid key path: " + pkg.key)
+                return Response(ResStatus.eNo, "invalid key path: " + msg.key)
             current = current.setdefault(token, {})
-        current[tokens[-1]] = pkg.value
-        log().tag("ConfigService::set_config").info("set ", pkg.key, " = ", pkg.value)
+        current[tokens[-1]] = msg.value
+        log().tag("ConfigService::set_config").info("set ", msg.key, " = ", msg.value)
         return Response(ResStatus.eOk, "ok")
 
-    def reload_config(self, pkg):
+    def reload_config(self, msg):
         # reload 先回取 context 中的 config_path，缺失即 eNo
         cfg = ctx().key(CTX_CONFIG_PATH).msg(String).with_default(String("")).get()
         self.config_path = cfg.value
@@ -224,7 +224,7 @@ class ConfigService(YomkService):
         log().tag("ConfigService::reload_config").info("reloaded: ", self.config_path)
         return Response(ResStatus.eOk, "ok")
 
-    def version(self, pkg):
+    def version(self, msg):
         # 版本号来自 typedefine/TypeDefine.py 定义的 APP_VERSION 常量
         return Response(ResStatus.eOk, "ok", APP_VERSION)
 ```
@@ -382,17 +382,17 @@ class UserService(YomkService):
         log().tag("UserService::init").info("install func [ /get_user /create_user ] to ", self.get_name())
         return 0
 
-    def get_user(self, pkg):
+    def get_user(self, msg):
         # 端点体精确校验：unpack + type_mismatch（框架不做分发校验，责任在端点作者）
-        if unpack(pkg, UserQuery) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, UserQuery.TYPE_NAME))
-        log().tag("UserService").info("query user: ", pkg.user_id)   # 服务体内走日志通道，不用 print
+        if unpack(msg, UserQuery) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, UserQuery.TYPE_NAME))
+        log().tag("UserService").info("query user: ", msg.user_id)   # 服务体内走日志通道，不用 print
         # 业务逻辑...
-        info = UserInfo(pkg.user_id, "Alice", 25)
+        info = UserInfo(msg.user_id, "Alice", 25)
         return Response(ResStatus.eOk, "ok", info)
 
-    def create_user(self, pkg):
-        log().tag("UserService").info("create user: ", pkg.name)
+    def create_user(self, msg):
+        log().tag("UserService").info("create user: ", msg.name)
         # 跨服务调用示例：读取配置
         cfg_resp = server().url("/ConfigService/get").msg(ConfigKey("name")).request()
         return Response(ResStatus.eOk, "user created")
@@ -499,8 +499,8 @@ import threading
 from yomk.msgs import String
 from yomk.msgs.YomkMsg import unpack
 
-def task_handler(pkg) -> Response:
-    text = unpack(pkg, String)
+def task_handler(msg) -> Response:
+    text = unpack(msg, String)
     log().tag("worker").info("processing: ", text.value if text else "<non-String>",
                              " in thread ", threading.get_ident())
     return Response(ResStatus.eOk, "task done")
@@ -516,7 +516,7 @@ event_loop().msg(String("task_1")).loop("worker_loop").tag("billing").post()
 
 # 单次事件临时 handler（优先于默认处理函数）+ 同步投递（阻塞至执行完成）
 (event_loop().msg(String("task_2")).loop("worker_loop")
-    .handle_fn(lambda pkg: Response(ResStatus.eOk, "ad-hoc done")).post_wait())
+    .handle_fn(lambda msg: Response(ResStatus.eOk, "ad-hoc done")).post_wait())
 
 # 取回执行结果：链式 post_wait 终结仅收敛三态，需要 Event 回包时用裸链
 resp = (server().url("/YomkEventLoop/post_wait")
@@ -548,10 +548,10 @@ event_loop().loop("worker_loop").destroy()
 ```python
 from yomk.msgs import IntArray, String, type_mismatch, unpack
 
-def validate_amount(pkg) -> Response:
-    text = unpack(pkg, String)
+def validate_amount(msg) -> Response:
+    text = unpack(msg, String)
     if text is None:
-        return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+        return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
     try:
         amount = float(text.value)
         if amount <= 0:
@@ -560,14 +560,14 @@ def validate_amount(pkg) -> Response:
     except Exception:
         return Response(ResStatus.eNo, "invalid amount")
 
-def calc_sum(pkg) -> Response:
-    nums = unpack(pkg, IntArray)
+def calc_sum(msg) -> Response:
+    nums = unpack(msg, IntArray)
     if nums is None:
-        return Response(ResStatus.eNo, type_mismatch(pkg, IntArray.TYPE_NAME))
+        return Response(ResStatus.eNo, type_mismatch(msg, IntArray.TYPE_NAME))
     return Response(ResStatus.eOk, "ok", sum(nums.items))
 
-def calc_sum_v2(pkg) -> Response:      # 热替换后的新版本实现
-    return calc_sum(pkg)
+def calc_sum_v2(msg) -> Response:      # 热替换后的新版本实现
+    return calc_sum(msg)
 
 server().init()
 
@@ -600,7 +600,7 @@ class PoolUserService(YomkService):
         fn_pool().fn_name("pool_task").fn(self.weak_func(self.pool_task)).install()
         return 0
 
-    def pool_task(self, pkg):
+    def pool_task(self, msg):
         return Response(ResStatus.eOk, "done")
 
     def deinit(self):
@@ -631,7 +631,7 @@ data 无负载，msg "ok"。
 同步执行，纯读无副作用。
 
 # Notes
-pkg 非 MyData → Failed。
+msg 非 MyData → Failed。
 """
 
 class DemoService(YomkService):
@@ -878,17 +878,17 @@ class ExtensionService(YomkService):
             "install func [ /echo /version ] to ", self.get_name())
         return 0
 
-    def echo(self, pkg):
+    def echo(self, msg):
         # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）；
         # 失败文案走 type_mismatch——期望/实际两侧均为 TYPE_NAME，零手写报文名；
         # 返回框架 Response，强类型回包以 ExtensionResponse 承载在 data 位
-        if unpack(pkg, ExtensionRequest) is None:
+        if unpack(msg, ExtensionRequest) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ExtensionRequest.TYPE_NAME))
+                            type_mismatch(msg, ExtensionRequest.TYPE_NAME))
         return Response(ResStatus.eOk, "echo",
-                        ExtensionResponse("ok", "echo", pkg.payload))
+                        ExtensionResponse("ok", "echo", msg.payload))
 
-    def version(self, pkg):
+    def version(self, msg):
         # 版本查询终结（对齐 C++ ExtensionService::version）：版本号单一来源为
         # yomk.extension.__init__.__version__，调用期延迟导入避开循环 import
         from yomk.extension import __version__

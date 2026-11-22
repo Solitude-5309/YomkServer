@@ -37,10 +37,10 @@ class CallFunction(YomkMsg):
     函数调用载荷：函数名与入参。
     """
 
-    def __init__(self, name, pkg):
-        require_msg_payload(pkg, "CallFunction.pkg")
+    def __init__(self, name, msg):
+        require_msg_payload(msg, "CallFunction.msg")
         self.name = name
-        self.pkg = pkg
+        self.msg = msg
 
 
 class FuncInfoList(YomkMsg):

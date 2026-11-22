@@ -63,7 +63,7 @@ arm.motion 运动服务函数体 / arm.telemetry 留痕服务函数体），日�
   server().srv_name(name).srv_ptr(srv).add()   注册已有实例（同名即替换）
   server().srv_name(name).remove()             注销服务（删除即停）
   server().boot_ptr(boot).run()                启动编排（before -> start -> after）
-  server().url(u).msg(pkg).request() / .async_(cb).request()  同步 / 异步请求
+  server().url(u).msg(msg).request() / .async_(cb).request()  同步 / 异步请求
   server().instance()                          全局单例
   srv_info().services() / .functions() / .fn_url(u).get_info() / .all()  调用拓扑自省
   install_func(2/4 参) / 成员 request          服务侧 API

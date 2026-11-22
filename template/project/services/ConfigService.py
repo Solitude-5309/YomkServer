@@ -25,7 +25,7 @@ class ConfigService(YomkService):
         self.install_func("/version", self.version)
         log().tag("ConfigService::init").info("install func [ /load /get /set /reload /version ] to ", self.get_name())
 
-    def load_config(self, pkg):
+    def load_config(self, msg):
         # 类型化读：msg(String) 声明期望类型，with_default 传同类型消息或 None
         cfg = ctx().key(CTX_CONFIG_PATH).msg(String).with_default(String("")).get()
         self.config_path = cfg.value
@@ -39,16 +39,16 @@ class ConfigService(YomkService):
         log().tag("ConfigService::load_config").info("loaded: ", self.config_path)
         return Response(ResStatus.eOk, "ok")
 
-    def get_config(self, pkg):
+    def get_config(self, msg):
         # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）；
         # 失败文案走 type_mismatch——期望/实际双侧均为 TYPE_NAME，零手写报文名
-        if unpack(pkg, ConfigKey) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, ConfigKey.TYPE_NAME))
-        tokens = pkg.key.split('.')
+        if unpack(msg, ConfigKey) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, ConfigKey.TYPE_NAME))
+        tokens = msg.key.split('.')
         current = self.config_json
         for token in tokens:
             if not isinstance(current, dict) or token not in current:
-                return Response(ResStatus.eNo, "key not found: " + pkg.key)
+                return Response(ResStatus.eNo, "key not found: " + msg.key)
             current = current[token]
 
         if isinstance(current, str):
@@ -57,21 +57,21 @@ class ConfigService(YomkService):
             value = json.dumps(current, ensure_ascii=False)
         return Response(ResStatus.eOk, "ok", value)
 
-    def set_config(self, pkg):
-        if unpack(pkg, ConfigKeyValue) is None:
+    def set_config(self, msg):
+        if unpack(msg, ConfigKeyValue) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ConfigKeyValue.TYPE_NAME))
-        tokens = pkg.key.split('.')
+                            type_mismatch(msg, ConfigKeyValue.TYPE_NAME))
+        tokens = msg.key.split('.')
         current = self.config_json
         for token in tokens[:-1]:
             if not isinstance(current, dict):
-                return Response(ResStatus.eNo, "invalid key path: " + pkg.key)
+                return Response(ResStatus.eNo, "invalid key path: " + msg.key)
             current = current.setdefault(token, {})
-        current[tokens[-1]] = pkg.value
-        log().tag("ConfigService::set_config").info("set ", pkg.key, " = ", pkg.value)
+        current[tokens[-1]] = msg.value
+        log().tag("ConfigService::set_config").info("set ", msg.key, " = ", msg.value)
         return Response(ResStatus.eOk, "ok")
 
-    def reload_config(self, pkg):
+    def reload_config(self, msg):
         # reload 先回取 context 中的 config_path，缺失即 eNo
         cfg = ctx().key(CTX_CONFIG_PATH).msg(String).with_default(String("")).get()
         self.config_path = cfg.value
@@ -85,6 +85,6 @@ class ConfigService(YomkService):
         log().tag("ConfigService::reload_config").info("reloaded: ", self.config_path)
         return Response(ResStatus.eOk, "ok")
 
-    def version(self, pkg):
+    def version(self, msg):
         # 版本号来自 typedefine/TypeDefine.py 定义的 APP_VERSION 常量
         return Response(ResStatus.eOk, "ok", APP_VERSION)

@@ -192,13 +192,13 @@ class YomkServer:
             return "", "", "url parse error: " + url + ", function name is empty"
         return srv_name, func_name, None
 
-    def request(self, url, pkg=None):
+    def request(self, url, msg=None):
         """Route a request to the target service.
 
         按 URL 路由到目标服务；解析失败或服务不存在返回 No。
         载荷必须是消息实例或 None，否则入口当场 TypeError。
         """
-        require_msg_payload(pkg, "request()")
+        require_msg_payload(msg, "request()")
         srv_name, func_name, err_msg = self._parse_request_url(url)
         if err_msg:
             diag_warn(err_msg)
@@ -213,15 +213,15 @@ class YomkServer:
                 ResStatus.eNo,
                 "service not found: " + srv_name
             )
-        return srv.invoke(func_name, pkg)
+        return srv.invoke(func_name, msg)
 
-    def async_request(self, url, pkg=None, callback=None):
+    def async_request(self, url, msg=None, callback=None):
         """Submit a request to the async pool; the result goes to callback.
 
         异步提交请求，结果经 callback 回调，无返回值；解析失败、已关闭或池已停止时
         记诊断并丢弃。载荷必须是消息实例或 None，否则入口当场 TypeError。
         """
-        require_msg_payload(pkg, "async_request()")
+        require_msg_payload(msg, "async_request()")
         srv_name, func_name, err_msg = self._parse_request_url(url)
         if err_msg:
             diag_warn(err_msg)
@@ -235,7 +235,7 @@ class YomkServer:
         def task():
             try:
                 # 执行时才查表；拼回完整 URL 复用 request 的解析与路由
-                result = self.request(srv_name + func_name, pkg)
+                result = self.request(srv_name + func_name, msg)
                 if callback:
                     callback(result)
             except Exception as e:

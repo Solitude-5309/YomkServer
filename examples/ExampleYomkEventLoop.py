@@ -130,18 +130,18 @@ def log_loop_line(api, loop_name):
     log().tag("arm.demo").info(f"[{api}] - {loop_name}")
 
 # ---------------------------------------------------------------------------
-# 事件处理函数：签名统一为 Response(pkg)。
+# 事件处理函数：签名统一为 Response(msg)。
 # 可作为默认处理函数（启动时指定）或临时处理函数（投递时指定）。
 # ---------------------------------------------------------------------------
 
 # 运动指令处理函数：默认处理函数（场景 1 START 时指定）。
 # 模拟 200ms 运动耗时，让队列积压与 FIFO 消费顺序在日志中稳定可见；
 # 第 1 条指令执行时递归投递 3 条微调指令排到队尾——同循环 FIFO 的直观证据
-def motion_handle(pkg) -> Response:
+def motion_handle(msg) -> Response:
     # 事件载荷一律消息包：按期望类型解包，未命中即类型不符
-    cmd = unpack(pkg, String)
+    cmd = unpack(msg, String)
     if cmd is None:
-        return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+        return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
     log().tag("arm.motion").info(f"执行运动指令: {cmd.value}（循环线程 {threading.current_thread().name}）")
 
     time.sleep(0.2)
@@ -156,10 +156,10 @@ def motion_handle(pkg) -> Response:
     return Response(ResStatus.eOk, "eventHandle success. ")
 
 # 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 无元数据启动时指定）
-def teach_handle(pkg) -> Response:
-    ev = unpack(pkg, String)
+def teach_handle(msg) -> Response:
+    ev = unpack(msg, String)
     if ev is None:
-        return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+        return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
     log().tag("arm.teach").info(f"示教器事件: {ev.value}（循环线程 {threading.current_thread().name}）")
     return Response(ResStatus.eOk, "teachHandle success")
 
@@ -275,7 +275,7 @@ def show_arm_temp_handler():
         "安全巡检例程无需占用运动处理函数：投递时指定临时处理函数则优先于默认函数，"
         "返回临时函数的结果——同一循环可混用两种来源。")
 
-    def temp_handle(_pkg) -> Response:
+    def temp_handle(_msg) -> Response:
         log().tag("arm.motion").info("临时处理函数在循环线程执行：返回 tempHandle result（非默认函数结果）")
         return Response(ResStatus.eOk, "tempHandle result")
 

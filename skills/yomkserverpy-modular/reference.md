@@ -29,7 +29,7 @@ class Response:
 | 失败 | `Failed` | `eNo (1)` | 执行失败与**存在性未命中**（not-found 恒归此态，不得归 Invalid）：服务/键/函数/循环/日志器不存在、weak_func 失效丢弃、停止后投递被拒 |
 | 无效 | `Invalid` | `eInvalid (-1)` | **入参非法**（空名/空值/空函数）与**服务器未初始化守卫** |
 
-字段语义（固化口径）：`status` 表示本次请求的状态；`msg` 仅作对状态的说明（成功 `"ok"`、错误为契约消息），**返回数据一律放 `data`**。各域写路径链式终结收敛为 `ResStatus`（不带 msg），契约细节经裸链 `server().url(u).msg(pkg).request()` 查 `Response.msg`。
+字段语义（固化口径）：`status` 表示本次请求的状态；`msg` 仅作对状态的说明（成功 `"ok"`、错误为契约消息），**返回数据一律放 `data`**。各域写路径链式终结收敛为 `ResStatus`（不带 msg），契约细节经裸链 `server().url(u).msg(msg).request()` 查 `Response.msg`。
 
 **未初始化守卫（全框架统一约定）**：
 
@@ -49,8 +49,8 @@ class Response:
 ```python
 class YomkServer:                            # 底层单例类（业务代码经 server() 链消费，不直接持有）
     def add_service(self, service: YomkService) -> int   # 0 成功 / -1 失败（内部自动 init，失败回滚注销）
-    def request(self, url: str, pkg=None) -> Response
-    def async_request(self, url: str, pkg=None, callback=None) -> None
+    def request(self, url: str, msg=None) -> Response
+    def async_request(self, url: str, msg=None, callback=None) -> None
 
 class YomkBoot(ABC):                         # 独立 boot 域：from yomk.boot import YomkBoot
     def before(self) -> int   # 服务启动前：创建资源
@@ -75,11 +75,11 @@ class YomkService:
         # 未过槽位直调兜底 "response"；显式声明与槽位不符注册期 diag_error
     def func_infos(self) -> dict[str, FuncInfo]
         # 本服务函数表内省快照（读锁保护，键为函数名）
-    def invoke(self, name: str, pkg) -> Response
+    def invoke(self, name: str, msg) -> Response
         # 本服务功能函数直调（name 须以 / 开头）；空名/不带 / 前缀 Failed
         # "function name parse error: {name}, please start with /"；函数不存在 Failed
-    def request(self, url: str, pkg=None) -> Response    # 跨服务调用（转发所属 Server）
-    def async_request(self, url: str, pkg=None, callback=None) -> None
+    def request(self, url: str, msg=None) -> Response    # 跨服务调用（转发所属 Server）
+    def async_request(self, url: str, msg=None, callback=None) -> None
 ```
 
 ### weak_func 与 discard 三形态
@@ -126,7 +126,7 @@ class Function:                              # 函数池条目
     def __init__(self, name, func, msg_name="", description="")  # func: (Any) -> Response
 
 class CallFunction:
-    def __init__(self, name, pkg)
+    def __init__(self, name, msg)
 
 class FuncInfo:                              # 功能函数元信息（函数池/服务内省单查与清单同族）
     func_name: str      # 路由名，带 "/" 前缀
@@ -134,8 +134,8 @@ class FuncInfo:                              # 功能函数元信息（函数池
     description: str    # 函数说明（使用者自定义，框架透传不解析；内置端点为五章节文本）
 
 class Event:                                 # 事件循环投递包
-    def __init__(self, event_loop_name="", pkg=None, func=None, tag="")
-    # 属性：m_eventLoopName, m_pkg, m_serviceFunc, m_eventId, m_response, m_waitCallback, m_tag
+    def __init__(self, event_loop_name="", msg=None, func=None, tag="")
+    # 属性：m_eventLoopName, m_msg, m_serviceFunc, m_eventId, m_response, m_waitCallback, m_tag
 
 class EventLoopPkg:                          # start 请求报文
     def __init__(self, event_loop_name="", default_service_func=None, msg_name="")
@@ -170,8 +170,8 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 |-----|------|
 | `server().async_thread(n)` | `.init()`：初始化单例并自动启动内置服务（Logger/Context/EventLoop/FunctionPool/ServerInfo），无返回值（取单例经 `instance()`）；`n` 异步线程池大小（省略 = 0 自动检测），仅首次生效；进程内幂等 + atexit 兜底 |
 | — | `.version()` → `str` 框架版本（免初始化）；`.instance()` → `YomkServer` 单例（未初始化/shutdown 后 `None`）；`.shutdown()` → 优雅关闭（免初始化空转） |
-| `server().url(u).msg(pkg)` | `.request()` → `Response`（阻塞至应答）；`.status()` → 三态 `ResStatus` |
-| `server().url(u).async_(cb)` | 切入异步分面继续 `.msg(pkg).request()` → `None`：投递内置线程池立即返回，结果经 `cb` 送达；**`cb` 传 `None` 仅投递不取回**；`.msg()` 可放 `.async_()` 前后任意侧 |
+| `server().url(u).msg(msg)` | `.request()` → `Response`（阻塞至应答）；`.status()` → 三态 `ResStatus` |
+| `server().url(u).async_(cb)` | 切入异步分面继续 `.msg(msg).request()` → `None`：投递内置线程池立即返回，结果经 `cb` 送达；**`cb` 传 `None` 仅投递不取回**；`.msg()` 可放 `.async_()` 前后任意侧 |
 | `server().srv(cls, name="")` | `.create()` → `int`：创建并注册派生服务（`name` 省略沿用构造默认名）；0 成功，-1 失败（未初始化 / `init()` 非 0 回滚注销） |
 | `server().srv_name(n).srv_ptr(s)` | `.add()` → `int`：注册已有实例；累积非空 `srv_name` 时注册前先改名；守卫拒绝时实例仍归调用方 |
 | `server().srv_name(n)` | `.remove()` → `int`：按名注销并触发 `deinit`；-1 三因：不存在 / 名称为空 / 未初始化 |
@@ -264,7 +264,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 语义注记：
 
 - 入参非法（空名/空函数）`Invalid`，契约 `"funcName or func is empty"`；not-found 归 `Failed` 不归 `Invalid`（三态口径一致）。
-- 函数体收到的 `pkg` 即调用侧 `.msg(msg)` 累积的消息实例（省略即 `None` 空载荷）；函数返回的 `Response` 整体作为 `call()` 返回值（结果在 `data`）。
+- 函数体收到的 `msg` 即调用侧 `.msg(msg)` 累积的消息实例（省略即 `None` 空载荷）；函数返回的 `Response` 整体作为 `call()` 返回值（结果在 `data`）。
 - 成员函数注册须 `self.weak_func(...)`——服务删除后 `call()` 得 `Failed` + 契约消息。
 - 注册/注销的终结动词定名为 `install/uninstall`。
 
@@ -299,7 +299,7 @@ class ServerServiceInfo:                     # /YomkServerInfo/all 元素
 | FunctionPool install 空名/空函数 | `Invalid` | `"funcName or func is empty"` |
 | 日志具名门控/查询未命中（console / file） | `Failed` | `"console logger '<名>' not found"` / `"file logger '<名>' not found"` |
 | 日志按类型查询，type 非 `"console"/"file"` | `Failed` | `"unknown logger type '<type>'"` |
-| 端点载荷类型不符（任意端点，端点体 unpack 校验） | `Failed` | `"pkg is not <期望 TYPE_NAME>, got '<实际类型名>'"`——期望侧为 TYPE_NAME，实际侧由 `type_name_of` 给出（消息报 TYPE_NAME，体系外对象报宿主类名如 `"str"`）（写法见 docs/YomkMsg.md 端点标准形态） |
+| 端点载荷类型不符（任意端点，端点体 unpack 校验） | `Failed` | `"msg is not <期望 TYPE_NAME>, got '<实际类型名>'"`——期望侧为 TYPE_NAME，实际侧由 `type_name_of` 给出（消息报 TYPE_NAME，体系外对象报宿主类名如 `"str"`）（写法见 docs/YomkMsg.md 端点标准形态） |
 
 诊断日志（非返回值契约）：服务同名热替换 `"service '<名>' already exists, replace with current service"`（WARN）、函数池热替换 `"function '<名>' already exists, hot-swap to current function"`（WARN）、服务删除 `"service '<名>' deleted, weak-bound callbacks discarded from now on"`（WARN）、空 console 名回退 `"console logger name is empty, use main"`、死锁自检 `"EventLoop: <loop名> post wait in worker thread detected deadlock, directly execute current event to resolve deadlock"`。
 

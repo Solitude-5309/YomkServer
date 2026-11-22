@@ -3,7 +3,7 @@ TestYomkServer.py —— YomkServer URL 解析路由与服务增删改查白盒�
 
 覆盖内容：
 1. URL 解析全边界（经公开 request 路径）：空串/无 / 开头/无第二 /、多段路径语义、
-   合法命中与 pkg 透传端到端、超长 URL；"srv is empty"与"function name is empty"
+   合法命中与 msg 透传端到端、超长 URL；"srv is empty"与"function name is empty"
    两分支不可达（url[0]=='/' 且 posEnd>=1 保证 srvName 至少含 /、funcName 以 /
    开头必非空）
 2. async_request 解析边界：非法 url 回调永不触发；合法 url 回调到达；callback
@@ -106,16 +106,16 @@ class RouteSrv(YomkService):
         global g_deinit_count
         g_deinit_count += 1
 
-    def ping(self, pkg):
+    def ping(self, msg):
         global g_ping_count
         g_ping_count += 1
         return Response(ResStatus.eOk, "pong")
 
-    def echo(self, pkg):
+    def echo(self, msg):
         # DemoPkg 解包回显：未命中（含空包）在函数内守卫返回 eNo
-        msg = unpack(pkg, DemoPkg)
+        msg = unpack(msg, DemoPkg)
         if msg is None:
-            return Response(ResStatus.eNo, "pkg is null")
+            return Response(ResStatus.eNo, "msg is null")
         return Response(ResStatus.eOk, "echo:" + msg.d)
 
 
@@ -151,13 +151,13 @@ def test_url_parse_boundaries():
     check(resp.status == ResStatus.eNo and "service not found" in resp.msg,
           "request 未注册服务返回 eNo + service not found")
 
-    # 合法命中 + pkg 透传端到端
+    # 合法命中 + msg 透传端到端
     resp = server.request("/RouteSrv/ping")
     check(resp.status == ResStatus.eOk and resp.msg == "pong",
           "request 合法 url 命中返回 eOk + pong")
     resp = server.request("/RouteSrv/echo", DemoPkg("hi"))
     check(resp.status == ResStatus.eOk and resp.msg == "echo:hi",
-          "request 携 pkg 路由透传，回显往返正确")
+          "request 携 msg 路由透传，回显往返正确")
 
     # 超长 URL（4096 级服务名）：不崩溃，走 service not found
     resp = server.request("/" + "x" * 4096 + "/ping")

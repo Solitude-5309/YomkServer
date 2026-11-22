@@ -32,7 +32,7 @@ description: 基于YomkServerPy框架的模块化Python工程编程。核心理�
 
 1. **定义**：消息类必须继承 `YomkMsg`（`from yomk.msgs import YomkMsg`）——运行期类型名 `TYPE_NAME` 自动生成、随重命名跟随，**禁止手写**（类体显式定义直接 `TypeError`）；标准标量/数组用 std 类（`String`/`Int`/`BoolArray`/... ，定义于 `yomk.msgs.std_msg`）。
 2. **声明**：`install_func` 第三参一律传 `Xxx.TYPE_NAME`（如 `String.TYPE_NAME`），**禁止手写报文串**（旧写法已废弃）；第四参写内省描述——内置端点统一五章节格式（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`），自定义服务建议沿用并把常量放 `yomk.url.<域>` 常量池（见 docs/YomkServer.md「内省描述惯例」）。
-3. **校验**：端点体内 `if unpack(pkg, Xxx) is None: return Response(ResStatus.eNo, type_mismatch(pkg, Xxx.TYPE_NAME))`——框架不做分发校验，责任在端点作者；契约文案期望侧为 TYPE_NAME，实际侧由 `type_name_of` 给出（消息报 TYPE_NAME，体系外对象报宿主类名如 `"str"`）。标量端点取值 `pkg.value`；内省清单取值 `.items`。
+3. **校验**：端点体内 `if unpack(msg, Xxx) is None: return Response(ResStatus.eNo, type_mismatch(msg, Xxx.TYPE_NAME))`——框架不做分发校验，责任在端点作者；契约文案期望侧为 TYPE_NAME，实际侧由 `type_name_of` 给出（消息报 TYPE_NAME，体系外对象报宿主类名如 `"str"`）。标量端点取值 `msg.value`；内省清单取值 `.items`。
 4. **载荷**：跨边界（`.msg()` / `self.request()` / `fn_pool().msg()` / `event_loop().msg()` / `Event(...)` / `ctx().value()` / `with_default()`）一律传具体消息实例或 `None`；裸值、`dict`/`list`、体系外对象、`YomkMsg` 基类实例在入口当场 `TypeError`。
 
 ## 任务一：生成工程模板
@@ -113,10 +113,10 @@ class XxxService(YomkService):
         log().tag("XxxService").info("install func [ /my_func ]")
         return 0
 
-    def my_func(self, pkg):
-        req = unpack(pkg, MyData)                    # pkg 即调用方传入的消息实例
+    def my_func(self, msg):
+        req = unpack(msg, MyData)                    # msg 即调用方传入的消息实例
         if req is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, MyData.TYPE_NAME))
+            return Response(ResStatus.eNo, type_mismatch(msg, MyData.TYPE_NAME))
         # 业务逻辑...
         return Response(ResStatus.eOk, "success")
 ```
@@ -165,7 +165,7 @@ data 无负载，msg 为回显文本。
 同步执行，纯读无副作用。
 
 # Notes
-pkg 非 String → Failed。
+msg 非 String → Failed。
 """
 
 def init(self):
@@ -281,13 +281,13 @@ class MyService(YomkService):
 
 - 消息类必须继承 `YomkMsg`（`from yomk.msgs import YomkMsg`），集中定义在工程 `msgs/`；`TYPE_NAME` 自动生成、禁止手写（类体定义直接 `TypeError`）
 - 跨边界载荷一律具体消息实例或 `None`：`server().url(u).msg()` / `self.request()` / `fn_pool().msg()` / `event_loop().msg()` / `Event(...)` / `ctx().value()` / `with_default()` 传裸值当场 `TypeError`
-- 端点声明第三参传 `Xxx.TYPE_NAME`；端点体内 `unpack(pkg, Xxx)` 校验，未命中返 `Response(eNo, type_mismatch(pkg, Xxx.TYPE_NAME))`；字段经 `pkg.value` / `pkg.items` 访问
+- 端点声明第三参传 `Xxx.TYPE_NAME`；端点体内 `unpack(msg, Xxx)` 校验，未命中返 `Response(eNo, type_mismatch(msg, Xxx.TYPE_NAME))`；字段经 `msg.value` / `msg.items` 访问
 - 返回值通过 `Response.data` 携带；完整规则见 [YomkMsg.md](YomkMsg.md)
 
 ### 设计原则
 
 1. 每个 Service 只负责单一业务域
-2. 服务间通过 `server().url(u).msg(pkg).request()` 通信，不直接引用
+2. 服务间通过 `server().url(u).msg(msg).request()` 通信，不直接引用
 3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
 4. 消息定义集中 `msgs/`，服务实现放 `services/`
 5. 配置路径通过 Context 传递，不用构造参数

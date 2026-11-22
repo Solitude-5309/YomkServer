@@ -92,7 +92,7 @@ log_mgr().file("app").remove()
 
 - **端点 URL 常量**：`/YomkLogger/*` 16 个端点集中定义于 `yomk.url` 常量池（`from yomk.url.log import LOG_CONSOLE_LOG` 等，命名 `LOG_` 前缀对齐 C++ `yomk::url::loggerXxx`）；`yomk.url` 为纯命名空间层（与 `yomk.msgs` 同构），用户自定义模块自带 `__init__.py` 即可并入。
 - **诊断通道**：空 console logger 名自愈（file 侧空名属失败路径，不打诊断）、未知级别降级、turn on/off 忽略等记 **WARN**；建文件/落盘 IO 失败、init file logger 失败记 **ERROR**；not-found / 空参拒绝等失败路径不打诊断（`Response.msg` 已携带同信息，消息含具体名，如 `file logger 'app' not found`）。
-- **裸链误用载荷**：向 `/YomkLogger/*` 端点传错类型包返回 `eNo` + `"pkg is not X, got '<实际类型>'"`，不抛异常。
+- **裸链误用载荷**：向 `/YomkLogger/*` 端点传错类型包返回 `eNo` + `"msg is not X, got '<实际类型>'"`，不抛异常。
 - 发射链是**同步阻塞**的：内部经请求域投递至 Logger 内置服务，返回 `ResStatus` 表示该条已被受理（门控/代理在受理内生效）；高频路径可先门控再发射。
 - 两级门控并联：全局主闸（`console()/file()` 空名形态）与逐器门控（具名形态）做 AND；控制台开关只影响控制台、文件开关只影响文件。具名门控未命中日志器返回 `Failed`，不惰性创建。
 - 内省归因：`get_info` / `all()` 条目报**逐器门控层**真值（未做具名开关恒全 on）；条目 on 但无输出/未落盘时，查 `console()/file().status()` 确认对应侧**全局主闸**——两层状态各自独立，可唯一归因。

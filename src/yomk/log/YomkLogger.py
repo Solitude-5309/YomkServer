@@ -125,114 +125,114 @@ class YomkLogger(YomkService):
                           LOG_FILE_GLOBAL_STATE_DESC)
         return 0
 
-    def console_log(self, pkg):
-        if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
-        if not pkg.m_logger:
+    def console_log(self, msg):
+        if unpack(msg, Log) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Log.TYPE_NAME))
+        if not msg.m_logger:
             # 空名自愈：WARN + 兜底 main
             diag_warn("console logger name is empty, use main")
-            pkg.m_logger = "main"
+            msg.m_logger = "main"
 
         # 锁内拷贝 proxy 快照，锁外调用回调（避免用户回调持锁重入）
         with self.m_consoleLogProxyMutex:
             proxy_enabled = self.m_consoleLogProxy
             proxy_func = self.m_consoleLogProxyFunc
-        if proxy_enabled and proxy_func and not proxy_func(pkg):
+        if proxy_enabled and proxy_func and not proxy_func(msg):
             return Response(ResStatus.eOk, "ok")
 
         # 双检锁：读锁 miss 后升级写锁二次查找，logger 引用拷出锁外使用
         console_logger = None
         with self.m_consoleLoggersMutex.gen_rlock():
-            found = self.m_consoleLoggers.get(pkg.m_logger)
+            found = self.m_consoleLoggers.get(msg.m_logger)
             if found is not None:
                 console_logger = found
         if console_logger is None:
             with self.m_consoleLoggersMutex.gen_wlock():
-                console_logger = self.m_consoleLoggers.get(pkg.m_logger)
+                console_logger = self.m_consoleLoggers.get(msg.m_logger)
                 if console_logger is None:
                     new_logger = ConsoleLogger()
-                    new_logger.set_name(pkg.m_logger)
-                    self.m_consoleLoggers[pkg.m_logger] = new_logger
+                    new_logger.set_name(msg.m_logger)
+                    self.m_consoleLoggers[msg.m_logger] = new_logger
                     console_logger = new_logger
 
-        if pkg.m_level == Log.eTrace:
+        if msg.m_level == Log.eTrace:
             if self.m_showConsoleTraceLog:
-                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-        elif pkg.m_level == Log.eDebug:
+                console_logger.log(msg.m_level, msg.m_tag, msg.m_log)
+        elif msg.m_level == Log.eDebug:
             if self.m_showConsoleDebugLog:
-                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-        elif pkg.m_level == Log.eInfo:
+                console_logger.log(msg.m_level, msg.m_tag, msg.m_log)
+        elif msg.m_level == Log.eInfo:
             if self.m_showConsoleInfoLog:
-                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-        elif pkg.m_level == Log.eWarn:
+                console_logger.log(msg.m_level, msg.m_tag, msg.m_log)
+        elif msg.m_level == Log.eWarn:
             if self.m_showConsoleWarningLog:
-                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-        elif pkg.m_level == Log.eError:
+                console_logger.log(msg.m_level, msg.m_tag, msg.m_log)
+        elif msg.m_level == Log.eError:
             if self.m_showConsoleErrorLog:
-                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-        elif pkg.m_level == Log.eFatal:
+                console_logger.log(msg.m_level, msg.m_tag, msg.m_log)
+        elif msg.m_level == Log.eFatal:
             if self.m_showConsoleFatalLog:
-                console_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+                console_logger.log(msg.m_level, msg.m_tag, msg.m_log)
         else:
-            diag_warn("unknown log level " + str(pkg.m_level) +
+            diag_warn("unknown log level " + str(msg.m_level) +
                       ", fallback to Info")
             if self.m_showConsoleInfoLog:
-                console_logger.log(Log.eInfo, pkg.m_tag, pkg.m_log)
+                console_logger.log(Log.eInfo, msg.m_tag, msg.m_log)
 
         # 成功文案不带尾句号（机器消费惯例）
         return Response(ResStatus.eOk, "success")
 
-    def set_console_log_proxy(self, pkg):
-        if unpack(pkg, ConsoleLogProxy) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, ConsoleLogProxy.TYPE_NAME))
+    def set_console_log_proxy(self, msg):
+        if unpack(msg, ConsoleLogProxy) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, ConsoleLogProxy.TYPE_NAME))
         # 与 console_log 读侧互斥；传 None 即卸载 proxy、恢复默认输出；两字段同锁一致更新
         with self.m_consoleLogProxyMutex:
-            self.m_consoleLogProxyFunc = pkg.m_consoleLogProxyFunc
+            self.m_consoleLogProxyFunc = msg.m_consoleLogProxyFunc
             self.m_consoleLogProxy = self.m_consoleLogProxyFunc is not None
         return Response(ResStatus.eOk, "success")
 
-    def set_file_log_proxy(self, pkg):
-        if unpack(pkg, FileLogProxy) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, FileLogProxy.TYPE_NAME))
+    def set_file_log_proxy(self, msg):
+        if unpack(msg, FileLogProxy) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, FileLogProxy.TYPE_NAME))
         # 与 file_log 读侧互斥；传 None 即卸载 proxy、恢复默认落盘；两字段同锁一致更新
         with self.m_fileLogProxyMutex:
-            self.m_fileLogProxyFunc = pkg.m_fileLogProxyFunc
+            self.m_fileLogProxyFunc = msg.m_fileLogProxyFunc
             self.m_fileLogProxy = self.m_fileLogProxyFunc is not None
         return Response(ResStatus.eOk, "success")
 
-    def create_file_logger(self, pkg):
-        if unpack(pkg, LogFile) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, LogFile.TYPE_NAME))
+    def create_file_logger(self, msg):
+        if unpack(msg, LogFile) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, LogFile.TYPE_NAME))
 
         # 空名/空目录拒绝：eInvalid（参数无效惯例，msg 已携带信息不打诊断）
-        if not pkg.m_logger:
+        if not msg.m_logger:
             return Response(ResStatus.eInvalid, "logger name is empty")
-        if not pkg.m_dir:
+        if not msg.m_dir:
             return Response(ResStatus.eInvalid, "logger dir is empty")
 
         # 全程持独占锁
         with self.m_fileLoggersMutex.gen_wlock():
-            if pkg.m_logger in self.m_fileLoggers:
+            if msg.m_logger in self.m_fileLoggers:
                 return Response(ResStatus.eNo,
-                                "logger '" + pkg.m_logger + "' already exists")
+                                "logger '" + msg.m_logger + "' already exists")
 
             file_logger = FileLogger()
-            file_logger.set_name(pkg.m_logger)
-            file_logger.set_dir(pkg.m_dir)
+            file_logger.set_name(msg.m_logger)
+            file_logger.set_dir(msg.m_dir)
             if not file_logger.init():
                 # 框架/IO 失败：ERROR 诊断 + eNo 同串 Response
-                diag_error("init file logger '" + pkg.m_logger + "' failed")
+                diag_error("init file logger '" + msg.m_logger + "' failed")
                 return Response(ResStatus.eNo,
-                                "init file logger '" + pkg.m_logger + "' failed")
-            self.m_fileLoggers[pkg.m_logger] = file_logger
+                                "init file logger '" + msg.m_logger + "' failed")
+            self.m_fileLoggers[msg.m_logger] = file_logger
 
         return Response(ResStatus.eOk, "success")
 
-    def file_log(self, pkg):
-        if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
+    def file_log(self, msg):
+        if unpack(msg, Log) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Log.TYPE_NAME))
 
-        if not pkg.m_logger:
+        if not msg.m_logger:
             return Response(ResStatus.eNo, "file logger name is empty")
 
         # 锁内拷贝文件代理快照，锁外调用回调（与 console_log 同款模式，避免用户回调持锁重入）；
@@ -240,135 +240,135 @@ class YomkLogger(YomkService):
         with self.m_fileLogProxyMutex:
             proxy_enabled = self.m_fileLogProxy
             proxy_func = self.m_fileLogProxyFunc
-        if proxy_enabled and proxy_func and not proxy_func(pkg):
+        if proxy_enabled and proxy_func and not proxy_func(msg):
             return Response(ResStatus.eOk, "ok")
 
         with self.m_fileLoggersMutex.gen_rlock():
-            file_logger = self.m_fileLoggers.get(pkg.m_logger)
+            file_logger = self.m_fileLoggers.get(msg.m_logger)
             if file_logger is None:
                 return Response(ResStatus.eNo,
-                                "file logger '" + pkg.m_logger + "' not found")
+                                "file logger '" + msg.m_logger + "' not found")
 
-            if pkg.m_level == Log.eTrace:
+            if msg.m_level == Log.eTrace:
                 if self.m_showFileTraceLog:
-                    file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-            elif pkg.m_level == Log.eDebug:
+                    file_logger.log(msg.m_level, msg.m_tag, msg.m_log)
+            elif msg.m_level == Log.eDebug:
                 if self.m_showFileDebugLog:
-                    file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-            elif pkg.m_level == Log.eInfo:
+                    file_logger.log(msg.m_level, msg.m_tag, msg.m_log)
+            elif msg.m_level == Log.eInfo:
                 if self.m_showFileInfoLog:
-                    file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-            elif pkg.m_level == Log.eWarn:
+                    file_logger.log(msg.m_level, msg.m_tag, msg.m_log)
+            elif msg.m_level == Log.eWarn:
                 if self.m_showFileWarningLog:
-                    file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-            elif pkg.m_level == Log.eError:
+                    file_logger.log(msg.m_level, msg.m_tag, msg.m_log)
+            elif msg.m_level == Log.eError:
                 if self.m_showFileErrorLog:
-                    file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
-            elif pkg.m_level == Log.eFatal:
+                    file_logger.log(msg.m_level, msg.m_tag, msg.m_log)
+            elif msg.m_level == Log.eFatal:
                 if self.m_showFileFatalLog:
-                    file_logger.log(pkg.m_level, pkg.m_tag, pkg.m_log)
+                    file_logger.log(msg.m_level, msg.m_tag, msg.m_log)
             else:
-                diag_warn("unknown log level " + str(pkg.m_level) +
+                diag_warn("unknown log level " + str(msg.m_level) +
                           ", fallback to Info")
                 if self.m_showFileInfoLog:
-                    file_logger.log(Log.eInfo, pkg.m_tag, pkg.m_log)
+                    file_logger.log(Log.eInfo, msg.m_tag, msg.m_log)
 
         return Response(ResStatus.eOk, "success")
 
-    def write_file_log(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+    def write_file_log(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
         with self.m_fileLoggersMutex.gen_rlock():
-            file_logger = self.m_fileLoggers.get(pkg.value)
+            file_logger = self.m_fileLoggers.get(msg.value)
             if file_logger is None:
                 return Response(ResStatus.eNo,
-                                "file logger '" + pkg.value + "' not found")
+                                "file logger '" + msg.value + "' not found")
             file_logger.write()
 
         return Response(ResStatus.eOk, "success")
 
-    def delete_logger(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+    def delete_logger(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
 
         # 空名拒绝（同 createFileLogger 惯例）
-        if not pkg.value:
+        if not msg.value:
             return Response(ResStatus.eInvalid, "logger name is empty")
 
         # 分段持锁不嵌套：删除无需跨表原子快照，同时持两把写锁会阻塞全部日志写入
         deleted_console = 0
         with self.m_consoleLoggersMutex.gen_wlock():
-            if pkg.value in self.m_consoleLoggers:
-                del self.m_consoleLoggers[pkg.value]
+            if msg.value in self.m_consoleLoggers:
+                del self.m_consoleLoggers[msg.value]
                 deleted_console = 1
 
         # 锁内拷出、锁外释放最后引用：FileLogger __del__ 落盘 I/O 不阻塞日志写入
         deleted_file = 0
         removed_file = None
         with self.m_fileLoggersMutex.gen_wlock():
-            removed_file = self.m_fileLoggers.pop(pkg.value, None)
+            removed_file = self.m_fileLoggers.pop(msg.value, None)
             if removed_file is not None:
                 deleted_file = 1
         removed_file = None   # 显式释放触发 __del__ 自动 write（缓冲内容不丢）
 
         if deleted_console == 0 and deleted_file == 0:
-            return Response(ResStatus.eNo, "logger '" + pkg.value + "' not found")
+            return Response(ResStatus.eNo, "logger '" + msg.value + "' not found")
 
         # 不删除磁盘上的 .log 文件（清理归调用方）
         return Response(
             ResStatus.eOk,
             "deleted console:" + str(deleted_console) + " file:" + str(deleted_file))
 
-    def off_console_log_by_level(self, pkg):
-        if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
+    def off_console_log_by_level(self, msg):
+        if unpack(msg, Log) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Log.TYPE_NAME))
 
         # 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
-        if pkg.m_logger:
-            return self.set_named_console_level(pkg.m_logger, pkg.m_level, False)
+        if msg.m_logger:
+            return self.set_named_console_level(msg.m_logger, msg.m_level, False)
 
         # 空名 = 全局主闸路径（与既有语义一致）
-        if pkg.m_level == Log.eTrace:
+        if msg.m_level == Log.eTrace:
             self.m_showConsoleTraceLog = False
-        elif pkg.m_level == Log.eInfo:
+        elif msg.m_level == Log.eInfo:
             self.m_showConsoleInfoLog = False
-        elif pkg.m_level == Log.eWarn:
+        elif msg.m_level == Log.eWarn:
             self.m_showConsoleWarningLog = False
-        elif pkg.m_level == Log.eError:
+        elif msg.m_level == Log.eError:
             self.m_showConsoleErrorLog = False
-        elif pkg.m_level == Log.eFatal:
+        elif msg.m_level == Log.eFatal:
             self.m_showConsoleFatalLog = False
-        elif pkg.m_level == Log.eDebug:
+        elif msg.m_level == Log.eDebug:
             self.m_showConsoleDebugLog = False
         else:
-            diag_warn("unknown log level " + str(pkg.m_level) +
+            diag_warn("unknown log level " + str(msg.m_level) +
                       ", turn off ignored")
 
         return Response(ResStatus.eOk, "success")
 
-    def on_console_log_by_level(self, pkg):
-        if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
+    def on_console_log_by_level(self, msg):
+        if unpack(msg, Log) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Log.TYPE_NAME))
 
         # 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
-        if pkg.m_logger:
-            return self.set_named_console_level(pkg.m_logger, pkg.m_level, True)
+        if msg.m_logger:
+            return self.set_named_console_level(msg.m_logger, msg.m_level, True)
 
         # 空名 = 全局主闸路径（与既有语义一致）
-        if pkg.m_level == Log.eTrace:
+        if msg.m_level == Log.eTrace:
             self.m_showConsoleTraceLog = True
-        elif pkg.m_level == Log.eInfo:
+        elif msg.m_level == Log.eInfo:
             self.m_showConsoleInfoLog = True
-        elif pkg.m_level == Log.eWarn:
+        elif msg.m_level == Log.eWarn:
             self.m_showConsoleWarningLog = True
-        elif pkg.m_level == Log.eError:
+        elif msg.m_level == Log.eError:
             self.m_showConsoleErrorLog = True
-        elif pkg.m_level == Log.eFatal:
+        elif msg.m_level == Log.eFatal:
             self.m_showConsoleFatalLog = True
-        elif pkg.m_level == Log.eDebug:
+        elif msg.m_level == Log.eDebug:
             self.m_showConsoleDebugLog = True
         else:
-            diag_warn("unknown log level " + str(pkg.m_level) +
+            diag_warn("unknown log level " + str(msg.m_level) +
                       ", turn on ignored")
         return Response(ResStatus.eOk, "success")
 
@@ -399,56 +399,56 @@ class YomkLogger(YomkService):
                       ", turn " + ("on" if on else "off") + " ignored")
         return Response(ResStatus.eOk, "success")
 
-    def off_file_log_by_level(self, pkg):
-        if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
+    def off_file_log_by_level(self, msg):
+        if unpack(msg, Log) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Log.TYPE_NAME))
 
         # 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
-        if pkg.m_logger:
-            return self.set_named_file_level(pkg.m_logger, pkg.m_level, False)
+        if msg.m_logger:
+            return self.set_named_file_level(msg.m_logger, msg.m_level, False)
 
         # 空名 = 全局主闸路径（与控制台侧双模式语义对称）
-        if pkg.m_level == Log.eTrace:
+        if msg.m_level == Log.eTrace:
             self.m_showFileTraceLog = False
-        elif pkg.m_level == Log.eInfo:
+        elif msg.m_level == Log.eInfo:
             self.m_showFileInfoLog = False
-        elif pkg.m_level == Log.eWarn:
+        elif msg.m_level == Log.eWarn:
             self.m_showFileWarningLog = False
-        elif pkg.m_level == Log.eError:
+        elif msg.m_level == Log.eError:
             self.m_showFileErrorLog = False
-        elif pkg.m_level == Log.eFatal:
+        elif msg.m_level == Log.eFatal:
             self.m_showFileFatalLog = False
-        elif pkg.m_level == Log.eDebug:
+        elif msg.m_level == Log.eDebug:
             self.m_showFileDebugLog = False
         else:
-            diag_warn("unknown log level " + str(pkg.m_level) +
+            diag_warn("unknown log level " + str(msg.m_level) +
                       ", turn off ignored")
 
         return Response(ResStatus.eOk, "success")
 
-    def on_file_log_by_level(self, pkg):
-        if unpack(pkg, Log) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Log.TYPE_NAME))
+    def on_file_log_by_level(self, msg):
+        if unpack(msg, Log) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Log.TYPE_NAME))
 
         # 具名请求：逐器门控路径（写第二层，不触碰全局主闸；未命中 eNo 不惰性创建）
-        if pkg.m_logger:
-            return self.set_named_file_level(pkg.m_logger, pkg.m_level, True)
+        if msg.m_logger:
+            return self.set_named_file_level(msg.m_logger, msg.m_level, True)
 
         # 空名 = 全局主闸路径（与控制台侧双模式语义对称）
-        if pkg.m_level == Log.eTrace:
+        if msg.m_level == Log.eTrace:
             self.m_showFileTraceLog = True
-        elif pkg.m_level == Log.eInfo:
+        elif msg.m_level == Log.eInfo:
             self.m_showFileInfoLog = True
-        elif pkg.m_level == Log.eWarn:
+        elif msg.m_level == Log.eWarn:
             self.m_showFileWarningLog = True
-        elif pkg.m_level == Log.eError:
+        elif msg.m_level == Log.eError:
             self.m_showFileErrorLog = True
-        elif pkg.m_level == Log.eFatal:
+        elif msg.m_level == Log.eFatal:
             self.m_showFileFatalLog = True
-        elif pkg.m_level == Log.eDebug:
+        elif msg.m_level == Log.eDebug:
             self.m_showFileDebugLog = True
         else:
-            diag_warn("unknown log level " + str(pkg.m_level) +
+            diag_warn("unknown log level " + str(msg.m_level) +
                       ", turn on ignored")
         return Response(ResStatus.eOk, "success")
 
@@ -478,20 +478,20 @@ class YomkLogger(YomkService):
                       ", turn " + ("on" if on else "off") + " ignored")
         return Response(ResStatus.eOk, "success")
 
-    def loggers(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
-        if pkg.value == "console":
+    def loggers(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
+        if msg.value == "console":
             # 单读锁遍历 console 表：纯名清单，不再嵌套双锁
             with self.m_consoleLoggersMutex.gen_rlock():
                 names = sorted(self.m_consoleLoggers)
-        elif pkg.value == "file":
+        elif msg.value == "file":
             # 单读锁遍历 file 表：纯名清单，不再嵌套双锁
             with self.m_fileLoggersMutex.gen_rlock():
                 names = sorted(self.m_fileLoggers)
         else:
             return Response(ResStatus.eNo,
-                            "unknown logger type '" + pkg.value + "'")
+                            "unknown logger type '" + msg.value + "'")
         # 单表显式 sorted :map 中序字典序（python dict 为插入序，类头注释先例）
         return Response(ResStatus.eOk, "ok", StringArray(names))
 
@@ -543,35 +543,35 @@ class YomkLogger(YomkService):
             file_logger.is_level_on(Log.eFatal),
             proxy_on)
 
-    def logger_info(self, pkg):
-        if unpack(pkg, LoggerQuery) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, LoggerQuery.TYPE_NAME))
+    def logger_info(self, msg):
+        if unpack(msg, LoggerQuery) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, LoggerQuery.TYPE_NAME))
         # 按类型单表精确查找：两表允许同名，不再先 console 后 file 双表 fallback（同名歧义由 type 消除）；
         # 命中：锁内构造结构化快照，明确字段承载全部返回数据（msg 恒 "ok"，数据走 data）
-        if pkg.m_type == "console":
+        if msg.m_type == "console":
             # 锁内查找拷引用出锁外使用（与 console_log 双检锁同款模式）
             console_logger = None
             with self.m_consoleLoggersMutex.gen_rlock():
-                console_logger = self.m_consoleLoggers.get(pkg.m_logger_name)
+                console_logger = self.m_consoleLoggers.get(msg.m_logger_name)
                 if console_logger is None:
                     return Response(ResStatus.eNo,
-                                    "console logger '" + pkg.m_logger_name +
+                                    "console logger '" + msg.m_logger_name +
                                     "' not found")
             # 状态段：条目报逐器门控层真值；proxyOn 在表锁外独立取（proxy 叶子锁独立作用域）
             with self.m_consoleLogProxyMutex:
                 proxy_on = self.m_consoleLogProxy
             return Response(
                 ResStatus.eOk, "ok",
-                LoggerInfo(pkg.m_logger_name, "console", "",
+                LoggerInfo(msg.m_logger_name, "console", "",
                            self.named_console_state(console_logger, proxy_on)))
-        if pkg.m_type == "file":
+        if msg.m_type == "file":
             # 锁内查找拷引用出锁外使用（与 console 分支同款模式）
             file_logger = None
             with self.m_fileLoggersMutex.gen_rlock():
-                file_logger = self.m_fileLoggers.get(pkg.m_logger_name)
+                file_logger = self.m_fileLoggers.get(msg.m_logger_name)
                 if file_logger is None:
                     return Response(ResStatus.eNo,
-                                    "file logger '" + pkg.m_logger_name +
+                                    "file logger '" + msg.m_logger_name +
                                     "' not found")
             # 状态段：条目报文件逐器门控层真值；proxyOn 在表锁外独立取
             # （proxy 叶子锁独立作用域）
@@ -579,12 +579,12 @@ class YomkLogger(YomkService):
                 proxy_on = self.m_fileLogProxy
             return Response(
                 ResStatus.eOk, "ok",
-                LoggerInfo(pkg.m_logger_name, "file", file_logger.get_dir(),
+                LoggerInfo(msg.m_logger_name, "file", file_logger.get_dir(),
                            self.named_file_state(file_logger, proxy_on)))
         return Response(ResStatus.eNo,
-                        "unknown logger type '" + pkg.m_type + "'")
+                        "unknown logger type '" + msg.m_type + "'")
 
-    def list_all(self, pkg):
+    def list_all(self, msg):
         # LoggerState 内嵌每条 LoggerInfo：console 条目报控制台逐器门控层真值
         # （named_console_state 逐条求值），file 条目报文件逐器门控层真值
         # （named_file_state 逐条求值）；
@@ -613,10 +613,10 @@ class YomkLogger(YomkService):
         # msg 恒 "ok"，数据走 data（清单本身即 data）
         return Response(ResStatus.eOk, "ok", LoggerInfoList(loggers))
 
-    def console_global_state(self, pkg):
+    def console_global_state(self, msg):
         # 控制台全局主闸态内省（无参形态同 /all；msg 恒 "ok"，LoggerState 包走 data）
         return Response(ResStatus.eOk, "ok", self.current_console_state())
 
-    def file_global_state(self, pkg):
+    def file_global_state(self, msg):
         # 文件全局主闸态内省（无参形态同 /all；msg 恒 "ok"，LoggerState 包走 data）
         return Response(ResStatus.eOk, "ok", self.current_file_state())

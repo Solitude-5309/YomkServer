@@ -83,16 +83,16 @@ class ConcSrv(YomkService):
         self.install_func("/echo", self.echo, String.TYPE_NAME)
         return 0
 
-    def ping(self, pkg):
+    def ping(self, msg):
         g_hit.append(1)
         return Response(ResStatus.eOk, "pong")
 
-    def echo(self, pkg):
+    def echo(self, msg):
         g_hit.append(1)
-        msg = unpack(pkg, DemoPkg)
+        msg = unpack(msg, DemoPkg)
         if msg is None:
             # 未命中（含空包）统一守卫
-            return Response(ResStatus.eNo, "pkg is null")
+            return Response(ResStatus.eNo, "msg is null")
         return Response(ResStatus.eOk, msg.d)
 
 

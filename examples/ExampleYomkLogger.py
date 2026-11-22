@@ -151,17 +151,17 @@ def log_file_content(path):
 # 返回 True 放行继续框架默认打印。回调在调用方线程同步执行，内部只走文件日志
 # （文件路径不经过代理，无递归），不可再打控制台日志。
 # ---------------------------------------------------------------------------
-def blackbox_proxy(pkg: Log) -> bool:
+def blackbox_proxy(msg: Log) -> bool:
     # WARN/ERROR 关键事件：预拼一行（原文 + tag）转写黑匣子，控制台不再输出
-    if pkg.m_level == Log.eWarn or pkg.m_level == Log.eError:
-        text = f"{pkg.m_log} (tag: {pkg.m_tag})"
-        if pkg.m_level == Log.eWarn:
+    if msg.m_level == Log.eWarn or msg.m_level == Log.eError:
+        text = f"{msg.m_log} (tag: {msg.m_tag})"
+        if msg.m_level == Log.eWarn:
             log().to_sink("blackbox").warn(text)
         else:
             log().to_sink("blackbox").error(text)
         return False
     # DEBUG 噪声：直接消费丢弃
-    if pkg.m_level == Log.eDebug:
+    if msg.m_level == Log.eDebug:
         return False
     # 其余（INFO）：放行，继续框架默认输出
     return True
@@ -170,9 +170,9 @@ def blackbox_proxy(pkg: Log) -> bool:
 # 文件日志代理（场景 3）：拦截 DEBUG 不落盘，其余穿透走默认落盘；与控制台代理
 # 相互独立。回调在调用方线程同步执行，内部不要再写文件日志（同一链路会重入）。
 # ---------------------------------------------------------------------------
-def file_debug_proxy(log_pkg) -> bool:
+def file_debug_proxy(log_msg) -> bool:
     # 仅拦 DEBUG：DEBUG 被拦不落盘，INFO/WARN/ERROR 穿透正常写缓冲
-    return log_pkg.m_level != Log.eDebug
+    return log_msg.m_level != Log.eDebug
 
 # ---------------------------------------------------------------------------
 # 6 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。

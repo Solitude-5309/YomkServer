@@ -5,7 +5,7 @@
 - /move ：4 参注册声明 MoveCmd 元数据与函数说明；内部用成员 request()
           跨服务调用 /TelemetryService/record 留痕，演示调用链与失败传播
 
-服务内部调用其他服务用成员函数 request("/服务名/函数名", pkg)，
+服务内部调用其他服务用成员函数 request("/服务名/函数名", msg)，
 与全局 server().url(u).msg(m).request() 等价，但无需获取全局单例。
 """
 
@@ -31,21 +31,21 @@ class MotionService(YomkService):
         return 0
 
     # 通讯自检：收到字符串原样回显
-    def echo(self, pkg) -> Response:
-        text = unpack(pkg, String)
+    def echo(self, msg) -> Response:
+        text = unpack(msg, String)
         if text is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
         log().tag("arm.motion").info(f'通讯自检回环：收到 "{text.value}"')
         return Response(ResStatus.eOk, "echo success", "echo: " + text.value)
 
     # 运动指令：先跨服务留痕，再返回 MoveResp 强类型到位回执
-    def move(self, pkg) -> Response:
-        cmd = unpack(pkg, MoveCmd)
+    def move(self, msg) -> Response:
+        cmd = unpack(msg, MoveCmd)
         if cmd is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, MoveCmd.TYPE_NAME))
+            return Response(ResStatus.eNo, type_mismatch(msg, MoveCmd.TYPE_NAME))
         log().tag("arm.motion").info(f"运动指令执行：目标 ({cmd.x}, {cmd.y}, {cmd.z})mm，倍率 {cmd.speed_ratio}")
 
-        # 跨服务调用：成员 request() 与 server().url(u).msg(pkg).request() 等价，URL 直达留痕工位；
+        # 跨服务调用：成员 request() 与 server().url(u).msg(msg).request() 等价，URL 直达留痕工位；
         # 留痕是运动的依赖前置，留痕缺失时失败沿调用链传播
         trace_resp = self.request(
             "/TelemetryService/record",

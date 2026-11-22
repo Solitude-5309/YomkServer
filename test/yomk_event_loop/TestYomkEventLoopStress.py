@@ -38,7 +38,7 @@ FAILED = 0
 EXEC_COUNT = []  # 计数 handler 执行总数
 
 def count_handler():
-    def _handler(pkg):
+    def _handler(msg):
         EXEC_COUNT.append(1)
         return Response(ResStatus.eOk, "counted")
     return _handler
@@ -56,7 +56,7 @@ class Gate:
 GATE = Gate()
 
 def gate_handler():
-    def _handler(pkg):
+    def _handler(msg):
         GATE.started.set()
         GATE.release.wait()
         return Response(ResStatus.eOk, "gate done")

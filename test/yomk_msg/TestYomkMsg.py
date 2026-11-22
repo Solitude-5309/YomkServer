@@ -16,7 +16,7 @@ S3. unpack 语义：命中返回原对象、跨类型未命中返回 None、子�
 S4. type_name_of 四态：YomkMsg 实例报 TYPE_NAME、None 报 "null"、类对象报其
     类名（如 "String"/"str"）、其余对象报宿主类名（返回类型名而非句子描述）；
     is_msg_payload / is_msg_subclass 判据真值表（require_msg_payload / unpack / type_name_of 共用；None 属合法空载荷）
-S5. type_mismatch 文案字面：标准格式 "pkg is not <expected>, got '<actual>'"，
+S5. type_mismatch 文案字面：标准格式 "msg is not <expected>, got '<actual>'"，
     expected 传 cls.TYPE_NAME、actual 走 type_name_of 四态
 S6. 框架 msg TYPE_NAME 全查（闭环 2）：22 类改继承 + 6 结构化 List，28 类
     TYPE_NAME 字面逐一断言；Event 的 yomk.event_loop re-export 同一性
@@ -300,18 +300,18 @@ def s4_type_name_of():
 def s5_type_mismatch():
     print("===== S5. type_mismatch 文案字面 =====")
 
-    # 标准格式："pkg is not <expected>, got '<actual>'"
+    # 标准格式："msg is not <expected>, got '<actual>'"
     check(type_mismatch(None, String.TYPE_NAME)
-          == "pkg is not yomk.msgs.String, got 'null'",
+          == "msg is not yomk.msgs.String, got 'null'",
           "None 入参文案")
     check(type_mismatch(Bool(True), String.TYPE_NAME)
-          == "pkg is not yomk.msgs.String, got 'yomk.msgs.Bool'",
+          == "msg is not yomk.msgs.String, got 'yomk.msgs.Bool'",
           "消息实例入参文案（got 侧报 TYPE_NAME）")
     check(type_mismatch("bare", String.TYPE_NAME)
-          == "pkg is not yomk.msgs.String, got 'str'",
+          == "msg is not yomk.msgs.String, got 'str'",
           "体系外对象文案（got 侧报宿主类名，不冒充 null）")
     check(type_mismatch(Int(1), Bool.TYPE_NAME)
-          == "pkg is not yomk.msgs.Bool, got 'yomk.msgs.Int'",
+          == "msg is not yomk.msgs.Bool, got 'yomk.msgs.Int'",
           "期望/实际双侧均为 TYPE_NAME")
 
 

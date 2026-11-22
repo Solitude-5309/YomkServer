@@ -59,11 +59,11 @@ class MyService(YomkService):
         # 功能函数名以 / 开头；第三参声明期望消息类型（一律传 TYPE_NAME）
         self.install_func("/hello", self.hello, String.TYPE_NAME)
 
-    # 功能函数统一签名：(pkg) -> Response；载荷是消息实例，unpack 精确校验
-    def hello(self, pkg):
-        req = unpack(pkg, String)
+    # 功能函数统一签名：(msg) -> Response；载荷是消息实例，unpack 精确校验
+    def hello(self, msg):
+        req = unpack(msg, String)
         if req is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
         return Response(ResStatus.eOk, f"hello {req.value}")
 
 # 2. 初始化框架（自动启动内置服务：Context / FunctionPool / EventLoop / Logger / ServerInfo）
@@ -110,15 +110,15 @@ server().shutdown()
   - `data`：可选的负载消息（任意 Python 对象）。
 - **同步调用**：
   ```python
-  resp = server().url("/服务名/函数名").msg(pkg).request()
+  resp = server().url("/服务名/函数名").msg(msg).request()
   ```
 - **异步调用**：投递后立即返回，回包到达时在回调线程执行：
   ```python
   (server().url("/服务名/函数名")
       .async_(lambda resp: log().info(resp.msg))
-      .msg(pkg).request())
+      .msg(msg).request())
   ```
-- **跨服务调用**：服务实现内部用成员 `self.request(url, pkg)` 调用其他服务（`YomkService` 基类提供，与 `server().url(url).msg(pkg).request()` 裸链等价；见 `examples/services/MotionService.py`）。
+- **跨服务调用**：服务实现内部用成员 `self.request(url, msg)` 调用其他服务（`YomkService` 基类提供，与 `server().url(url).msg(msg).request()` 裸链等价；见 `examples/services/MotionService.py`）。
 - **端点内省描述**：`install_func(name, fn, msg_name, description)` 第三参声明期望消息类型、第四参写功能语义（固定 `# Overview / # Inputs / # Outputs / # Behavior / # Notes` 五章节）；全部内置端点均已填写，经 `srv_info()` 原样读取，见 [内省描述惯例](docs/YomkServer.md#内省描述惯例第四参-description)。
 
 完整可运行演示见 `examples/ExampleYomkService.py`（控制柜一次上电会话 8 个场景：上电自检与工位注册、通讯自检与寻址异常、异步下发、运动调用链、自省读取、工位热替换、工位下线断链传播、收班断电，读运行输出即可理解每个调用）。
@@ -222,7 +222,7 @@ event_loop().loop("TaskLoop").destroy()
 统一函数注册与调度中心，面向过程开发范式，支持运行时注册、更新和热替换，业务逻辑快速迭代：
 
 ```python
-# 注册函数（函数签名：(pkg) -> Response；msg_name 声明期望消息类型——一律传 msg.TYPE_NAME 禁止手写串、description 附函数说明，均仅供内省）
+# 注册函数（函数签名：(msg) -> Response；msg_name 声明期望消息类型——一律传 msg.TYPE_NAME 禁止手写串、description 附函数说明，均仅供内省）
 fn_pool().fn_name("calc").fn(func_v1).install()
 fn_pool().fn_name("greet").fn(greet).msg_name(String.TYPE_NAME).description("向指定的人问好").install()
 

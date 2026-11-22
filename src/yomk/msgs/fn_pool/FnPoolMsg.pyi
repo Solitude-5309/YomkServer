@@ -27,9 +27,9 @@ class Function(YomkMsg):
 
 class CallFunction(YomkMsg):
     name: str
-    pkg: Optional[YomkMsg]
+    msg: Optional[YomkMsg]
 
-    def __init__(self, name: str, pkg: Optional[YomkMsg]) -> None: ...
+    def __init__(self, name: str, msg: Optional[YomkMsg]) -> None: ...
 
 
 class FuncInfoList(YomkMsg):

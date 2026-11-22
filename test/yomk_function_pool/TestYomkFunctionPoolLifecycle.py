@@ -5,7 +5,7 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
 1. CRUD 闭环：REGISTER echo 函数 → CALL 回传消息 → UNREGISTER → CALL eNo
 2. 注册边界：空函数名 / None func 均 eInvalid；重复注册为热替换语义（CALL 走新实现，msg 含 hot-swap）
 3. 注销边界：空名 eInvalid / 未注册名 eNo
-4. 调用边界：空名 eInvalid / 未注册 eNo / pkg=None 原样透传给函数（探针计数）
+4. 调用边界：空名 eInvalid / 未注册 eNo / msg=None 原样透传给函数（探针计数）
 5. 内省：info_names 存活列表包含注册名（注意空表陷阱：须在有存活条目时调用）/ info_name 命中返回结构化 FuncInfo 包
    （msg 恒 ok）与未注册 eNo、空名 eInvalid / info_all 结构化 FuncInfoList 相对计数与字段断言
 6. 无类型/声明类型/类型+说明三种安装形态分发映射：无类型（字段空）vs 声明类型（msg_name 字段）vs
@@ -14,7 +14,7 @@ TestYomkFunctionPoolLifecycle.py —— FunctionPool 模块生命周期与 CRUD 
    用户函数异常穿透直达调用方——测试侧捕获验证 what；随后正常 CALL 验证池存活
 8. 超长名：65536 字符函数名全生命周期（REGISTER/CALL/INFO_NAME/UNREGISTER）eOk 且完整回显
 9. 载荷契约：builder.msg() 传裸值入口 TypeError；裸链传错类型消息包统一 Failed +
-   "pkg is not X, got '<TYPE_NAME>'"（register/call/unregister/name 四端点）
+   "msg is not X, got '<TYPE_NAME>'"（register/call/unregister/name 四端点）
 
 语言形态说明：
 - Function 三形态：Function(name, func) 无类型 / Function(name, func, String.TYPE_NAME)
@@ -40,10 +40,10 @@ from yomk.fn_pool import fn_pool
 PASS = 0
 FAIL = 0
 
-def raw_fn(endpoint, pkg):
+def raw_fn(endpoint, msg):
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息断言经 server 域
     # url/msg/request 裸链直取 Response（端点行为与链式终结一致）
-    return server_api().url("/YomkFunctionPool/" + endpoint).msg(pkg).request()
+    return server_api().url("/YomkFunctionPool/" + endpoint).msg(msg).request()
 
 def check(cond, name):
     global PASS, FAIL
@@ -56,31 +56,31 @@ def check(cond, name):
 
 # ---- 测试装置函数 ----
 
-def echo_func(pkg):
-    # echo：回传入参 pkg（验证 CALL 消息透传）
-    return Response(ResStatus.eOk, "echo", pkg)
+def echo_func(msg):
+    # echo：回传入参 msg（验证 CALL 消息透传）
+    return Response(ResStatus.eOk, "echo", msg)
 
-null_pkg_seen = []  # 探针观测容器（list.append GIL 原子）
+null_msg_seen = []  # 探针观测容器（list.append GIL 原子）
 
-def null_probe_func(pkg):
-    # probe：记录是否收到 None 入参（验证 pkg=None 原样透传）
-    if pkg is None:
-        null_pkg_seen.append(1)
+def null_probe_func(msg):
+    # probe：记录是否收到 None 入参（验证 msg=None 原样透传）
+    if msg is None:
+        null_msg_seen.append(1)
     return Response(ResStatus.eOk, "probe")
 
-def v1_func(pkg):
+def v1_func(msg):
     # 版本函数：区分重复注册更新前的实现
     return Response(ResStatus.eOk, "v1")
 
-def v2_func(pkg):
+def v2_func(msg):
     # 版本函数：区分重复注册更新后的实现
     return Response(ResStatus.eOk, "v2")
 
-def throw_func(pkg):
+def throw_func(msg):
     # 抛异常函数：验证 CALL 链异常穿透契约
     raise RuntimeError("fp_boom")
 
-def alive_func(pkg):
+def alive_func(msg):
     # 正常存活函数
     return Response(ResStatus.eOk, "alive")
 
@@ -138,18 +138,18 @@ check(r == ResStatus.eInvalid, "UNREGISTER 空函数名返回 eInvalid")
 r = fn_pool().fn_name("fp_never_registered").uninstall()
 check(r == ResStatus.eNo, "UNREGISTER 未注册名返回 eNo（not-found 统一 eNo）")
 
-# ============ Section 4: 调用边界与 pkg=None 透传 ============
+# ============ Section 4: 调用边界与 msg=None 透传 ============
 r = fn_pool().fn_name("").msg(String("x")).call()
 check(r.status == ResStatus.eInvalid, "CALL 空函数名返回 eInvalid")
 r = fn_pool().fn_name("fp_never_registered").msg(String("x")).call()
 check(r.status == ResStatus.eNo, "CALL 未注册名返回 eNo（not-found 统一 eNo）")
 
-del null_pkg_seen[:]
+del null_msg_seen[:]
 r = fn_pool().fn_name("fp_probe").fn(null_probe_func).install()
 check(r == ResStatus.eOk, "REGISTER 探针函数返回 eOk")
 r = fn_pool().fn_name("fp_probe").call()
-check(r.status == ResStatus.eOk, "CALL pkg=None 正常执行")
-check(len(null_pkg_seen) == 1, "函数收到 None 入参（pkg 原样透传）")
+check(r.status == ResStatus.eOk, "CALL msg=None 正常执行")
+check(len(null_msg_seen) == 1, "函数收到 None 入参（msg 原样透传）")
 r = fn_pool().fn_name("fp_probe").uninstall()
 check(r == ResStatus.eOk, "清理 fp_probe")
 
@@ -293,19 +293,19 @@ check_type_error(lambda: fn_pool().fn_name("fp_echo").msg(123),
 
 r = raw_fn("register", String("not_a_Function"))
 check(r.status == ResStatus.eNo
-      and r.msg == "pkg is not yomk.msgs.fn_pool.Function, got 'yomk.msgs.String'",
+      and r.msg == "msg is not yomk.msgs.fn_pool.Function, got 'yomk.msgs.String'",
       "REGISTER 错类型消息包返回 eNo + got 侧为全限定 TYPE_NAME")
 r = raw_fn("call", String("not_a_CallFunction"))
 check(r.status == ResStatus.eNo
-      and r.msg == "pkg is not yomk.msgs.fn_pool.CallFunction, got 'yomk.msgs.String'",
+      and r.msg == "msg is not yomk.msgs.fn_pool.CallFunction, got 'yomk.msgs.String'",
       "CALL 错类型消息包返回 eNo + got 侧为全限定 TYPE_NAME")
 r = raw_fn("unregister", Function("fp_x", alive_func))
 check(r.status == ResStatus.eNo
-      and r.msg == "pkg is not yomk.msgs.String, got 'yomk.msgs.fn_pool.Function'",
+      and r.msg == "msg is not yomk.msgs.String, got 'yomk.msgs.fn_pool.Function'",
       "UNREGISTER 错类型消息包返回 eNo + got 侧为全限定 TYPE_NAME")
 r = raw_fn("name", Function("fp_x", alive_func))
 check(r.status == ResStatus.eNo
-      and r.msg == "pkg is not yomk.msgs.String, got 'yomk.msgs.fn_pool.Function'",
+      and r.msg == "msg is not yomk.msgs.String, got 'yomk.msgs.fn_pool.Function'",
       "INFO_NAME 错类型消息包返回 eNo + got 侧为全限定 TYPE_NAME")
 
 # ============ 收尾清理（不污染后续测试的共享池）============

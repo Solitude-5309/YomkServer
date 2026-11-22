@@ -185,20 +185,20 @@ class ArmStationService(YomkService):
         return 0
 
     # 工位状态上报：收到状态文本回执确认
-    def report(self, pkg) -> Response:
-        text = unpack(pkg, String)
+    def report(self, msg) -> Response:
+        text = unpack(msg, String)
         if text is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
         log().tag("arm.station").info(f'工位状态上报：收到 "{text.value}"')
         return Response(
             ResStatus.eOk, "station report received: " + text.value)
 
     # 质量抽检：按件抽检并回执结论
-    def quality_check(self, pkg) -> Response:
-        req = unpack(pkg, QualityCheckReq)
+    def quality_check(self, msg) -> Response:
+        req = unpack(msg, QualityCheckReq)
         if req is None:
             return Response(
-                ResStatus.eNo, type_mismatch(pkg, QualityCheckReq.TYPE_NAME))
+                ResStatus.eNo, type_mismatch(msg, QualityCheckReq.TYPE_NAME))
         log().tag("arm.station").info(f"质量抽检执行：工位 {req.station} 抽检 {req.count} 件")
         return Response(
             ResStatus.eOk,

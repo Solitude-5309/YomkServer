@@ -10,10 +10,10 @@ Python 链对象按值持有、无悬垂风险，但 `log()` 域入口在调用�
 
 | 链 | 终结与返回 |
 |---|---|
-| `server().url(u).msg(pkg)` | `.request()` → `Response`，阻塞至服务应答；`.status()` → 三态 `ResStatus`（失败细节进诊断日志） |
-| `server().url(u).async_(cb)` | 切入异步分面，继续 `.msg(pkg)` 后 `.request()` → `None`：投递到框架内置线程池后立即返回，结果经 `cb` 送达；`cb` 传 `None` 仅投递不取回；`.msg()` 可放 `.async_()` 之前或之后 |
+| `server().url(u).msg(msg)` | `.request()` → `Response`，阻塞至服务应答；`.status()` → 三态 `ResStatus`（失败细节进诊断日志） |
+| `server().url(u).async_(cb)` | 切入异步分面，继续 `.msg(msg)` 后 `.request()` → `None`：投递到框架内置线程池后立即返回，结果经 `cb` 送达；`cb` 传 `None` 仅投递不取回；`.msg()` 可放 `.async_()` 之前或之后 |
 
-`.msg(pkg)` 为任意 Python 对象（消息即普通类，见 [消息包](YomkMsg.md)），缺省为空消息（`None`）。
+`.msg(msg)` 为任意 Python 对象（消息即普通类，见 [消息包](YomkMsg.md)），缺省为空消息（`None`）。
 
 返回值 `Response` 字段：
 
@@ -67,7 +67,7 @@ data 无负载，msg 为问候语。
 同步执行，纯读无副作用。
 
 # Notes
-pkg 非 String → Failed。
+msg 非 String → Failed。
 """
 
 class MyService(YomkService):
@@ -79,11 +79,11 @@ class MyService(YomkService):
         # 四参：期望消息类型（一律传 msg.TYPE_NAME）+ 内省描述（注册即自动弱绑定）
         self.install_func("/hello", self.hello, String.TYPE_NAME, HELLO_DESC)
 
-    def hello(self, pkg):
+    def hello(self, msg):
         # 端点体内精确校验：unpack + type_mismatch（期望/实际双侧均为 TYPE_NAME）
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
-        return Response(ResStatus.eOk, "hello " + pkg.value)
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
+        return Response(ResStatus.eOk, "hello " + msg.value)
 
 server().init()                                  # 框架初始化
 server().srv(MyService).create()                 # 创建并注册服务
@@ -154,7 +154,7 @@ class MyService(YomkService):
 - **deinit() 的四个触发时机**：`srv_name(n).remove()` 删除单个服务、`shutdown()` 关闭全部服务、同名服务被 `add()` 替换（旧服务先置位注销标志并 deinit，新服务随后 init，任意时刻同名服务至多一次活跃生命周期）、忘记关闭时进程退出经 atexit 兜底。覆写 `deinit()` 用于停止线程、注销外部资源。
 - **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃，删除时点框架记 WARN `"service '<名>' deleted, weak-bound callbacks discarded from now on"`（此后弱绑定调用丢弃时另记 ERROR + 契约返回值）；`shutdown()` 走排空语义（拒新 → 排空 → join 异步请求池，再清空服务表逐个 deinit），在途请求安全执行完毕后服务才释放、不置位注销标志；幂等，假定在主线程调用。
 - **关闭后不支持二次 init**：init 进程内幂等由 once 标志把关，`shutdown()` 之后再次 `init()` 不会重建服务器，全部入口回到未初始化守卫态；此时再调 `init()` 补 WARN 诊断 `"server already shut down, init ignored (re-init is not supported)"` 指出实际状态（幂等语义不变，对齐 C++）。**`shutdown()` 置空单例**：门面在 `shutdown()` 时置空单例，`instance()` 返回 `None`，不保留已关闭实例快照。
-- **未初始化守卫（全框架统一约定）**：终结动作返回 `ResStatus.Invalid`（request / status / 各域写与内省终结）或 `-1`（create / add / remove），异步 `.request()` 静默丢弃、回调不触发，类型化读 `get()` 原样返回调用方默认值；守卫消息 `"YomkServer is not initialized"` 经裸链 `server().url(u).msg(pkg).request()` 可查（写路径链式终结收敛为 `ResStatus`，不带 msg）；均记录错误诊断日志，不抛异常。`version()` / `instance()` / `shutdown()` 免初始化安全。
+- **未初始化守卫（全框架统一约定）**：终结动作返回 `ResStatus.Invalid`（request / status / 各域写与内省终结）或 `-1`（create / add / remove），异步 `.request()` 静默丢弃、回调不触发，类型化读 `get()` 原样返回调用方默认值；守卫消息 `"YomkServer is not initialized"` 经裸链 `server().url(u).msg(msg).request()` 可查（写路径链式终结收敛为 `ResStatus`，不带 msg）；均记录错误诊断日志，不抛异常。`version()` / `instance()` / `shutdown()` 免初始化安全。
 - **所有权**：`create()` / `add()` 注册成功后实例交由框架服务表持有，调用方不应再将其作为活跃对象复用；`init()` 失败时框架回滚注销。
 - **服务对 server 为弱引用**（对齐 C++ weak_ptr 模型）：服务存活不阻碍 server 销毁；server 销毁后服务内 `request()` 返 `Failed` + `"server has been destroyed"`，`async_request()` 丢弃并记日志。派生服务读 `self.server` 得到活的 server 或 `None`，语义与旧强引用版一致。
 - **diag 门控**：诊断通道默认只输出 `WARN` 及以上（对齐 C++ 默认行为）。`from yomk import _diag` 后用 `_diag.set_min_level(_diag.TRACE)` 调整进程级阈值、`_diag.enabled(_diag.TRACE)` 做热路径自查；级别常量 TRACE=0 … FATAL=5。热路径建议先 `enabled()` 判断再构造消息字符串（C++ 侧为宏级零构造开销，Python 无法完全复刻）。诊断输出取不到调用点位置时（`.so` 编译调用点无 Python 帧、栈过浅）自动省略位置段，不会因此异常。

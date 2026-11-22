@@ -105,7 +105,7 @@ class ExtensionRequest(YomkMsg):
 1. **端点声明**：`install_func("/echo", self.echo, ExtensionRequest.TYPE_NAME)`
    ——第三参一律传 `msg.TYPE_NAME`，禁止手写字面量；
 2. **端点体内精确校验**（框架不做分发校验，责任在端点作者）：
-   `if unpack(pkg, ExtensionRequest) is None: return Response(eNo, type_mismatch(pkg, ExtensionRequest.TYPE_NAME))`
+   `if unpack(msg, ExtensionRequest) is None: return Response(eNo, type_mismatch(msg, ExtensionRequest.TYPE_NAME))`
    ——失败文案期望/实际双侧均为 TYPE_NAME，零手写；
 3. **调用方构造**：`server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()`
    ——载荷是消息类实例，裸值直发会被精确身份校验拒绝。

@@ -63,10 +63,10 @@ def capture(func):
     with contextlib.redirect_stdout(buf):
         return func(), buf.getvalue()
 
-def raw_logger(url, pkg):
+def raw_logger(url, msg):
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息断言经 server 域
     # url/msg/request 裸链直取 Response（端点行为与链式终结一致）
-    return server_api().url(url).msg(pkg).request()
+    return server_api().url(url).msg(msg).request()
 
 def check_time_format(line):
     return TIME_RE.match(line) is not None
@@ -181,7 +181,7 @@ def main():
     proxy_hits = []
     proxy_state = {"intercept": True}
 
-    def proxy(log_pkg):
+    def proxy(log_msg):
         proxy_hits.append(1)
         return not proxy_state["intercept"]
 
@@ -466,10 +466,10 @@ def main():
     # ============ Section 7: 异常路径（空包 / 错类型包 / 未知端点） ============
     r, out = capture(lambda: server_api().url("/YomkLogger/console_log").request())
     check(r.status == ResStatus.eNo, "console_log 空包返回 eNo")
-    check(r.msg == "pkg is not yomk.msgs.log.Log, got 'null'", "console_log 空包契约消息")
+    check(r.msg == "msg is not yomk.msgs.log.Log, got 'null'", "console_log 空包契约消息")
     r = server_api().url("/YomkLogger/console_log").msg(String("wrong")).request()
     check(r.status == ResStatus.eNo, "console_log 错类型消息包返回 eNo")
-    check(r.msg == "pkg is not yomk.msgs.log.Log, got 'yomk.msgs.String'",
+    check(r.msg == "msg is not yomk.msgs.log.Log, got 'yomk.msgs.String'",
           "console_log 错类型包 got 侧为全限定 TYPE_NAME")
     check(server_api().url("/YomkLogger/file_log").request().status == ResStatus.eNo,
           "file_log 空包返回 eNo")
@@ -620,12 +620,12 @@ def main():
 
     # 8.7 异常路径：空包 / 错类型包（YomkUnPackPkgResponse 契约分支）
     r_null = server_api().url("/YomkLogger/delete_logger").request()
-    check(r_null.status == ResStatus.eNo and r_null.msg == "pkg is not yomk.msgs.String, got 'null'",
+    check(r_null.status == ResStatus.eNo and r_null.msg == "msg is not yomk.msgs.String, got 'null'",
           "S8: delete_logger 空包返回 eNo + 契约消息")
     r_wrong = raw_logger(
         "/YomkLogger/delete_logger", Log(Log.eInfo, "x", "y"))
     check(r_wrong.status == ResStatus.eNo
-          and r_wrong.msg == "pkg is not yomk.msgs.String, got 'yomk.msgs.log.Log'",
+          and r_wrong.msg == "msg is not yomk.msgs.String, got 'yomk.msgs.log.Log'",
           "S8: delete_logger 错类型包（Log）返回 eNo + 契约消息（got 报 Log 的 TYPE_NAME）")
 
     # ============ Section 9: 服务级具名开关与全局态端点（两级主闸并联） ============
@@ -847,7 +847,7 @@ def main():
     file_proxy_hits = []
     file_proxy_state = {"intercept": True}
 
-    def file_proxy(log_pkg):
+    def file_proxy(log_msg):
         file_proxy_hits.append(1)
         return not file_proxy_state["intercept"]
 

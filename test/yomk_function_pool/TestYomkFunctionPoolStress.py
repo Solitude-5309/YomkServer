@@ -52,12 +52,12 @@ def record_baseline(section, ops, elapsed_ms):
 # 测试用函数
 # ============================================================================
 
-def stress_noop_func(pkg):
+def stress_noop_func(msg):
     return Response(ResStatus.eOk, "ok")
 
 s2_exec = []  # 跨线程计数用 list.append（GIL 原子）
 
-def stress_count_func(pkg):
+def stress_count_func(msg):
     s2_exec.append(1)
     return Response(ResStatus.eOk, "ok")
 

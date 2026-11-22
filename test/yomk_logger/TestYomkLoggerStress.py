@@ -413,7 +413,7 @@ def main():
     proxy_hits = []
     proxy_state = {"through": False}
 
-    def lg4_proxy(_log_pkg):
+    def lg4_proxy(_log_msg):
         proxy_hits.append(1)
         return proxy_state["through"]
 

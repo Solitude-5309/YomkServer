@@ -118,9 +118,9 @@ class UmbrellaBoot(YomkBoot):
         return 0
 
 
-def umb_echo(pkg):
+def umb_echo(msg):
     # 注册函数约定返回 Response（与 TestYomkFunctionPoolLifecycle.echo_func 同形）
-    return Response(ResStatus.eOk, "echo", pkg)
+    return Response(ResStatus.eOk, "echo", msg)
 
 
 def main():

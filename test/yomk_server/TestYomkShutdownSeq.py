@@ -71,10 +71,10 @@ class DrainSrv(YomkService):
         g_deinit_count += 1
         g_deinit_deleted = self.deleted()
 
-    def ping(self, pkg):
+    def ping(self, msg):
         return Response(ResStatus.eOk, "pong")
 
-    def work(self, pkg):
+    def work(self, msg):
         return Response(ResStatus.eOk, "work")
 
 
@@ -89,7 +89,7 @@ class SpawnSrv(YomkService):
         self.install_func("/spawn", self.spawn)
         return 0
 
-    def spawn(self, pkg):
+    def spawn(self, msg):
         global g_spawn_exec
         g_spawn_exec += 1
         time.sleep(0.2)

@@ -39,7 +39,7 @@ data 无负载；首次注册 msg "register function success"，同名热替换 
 同步执行，写函数表；注册后即可经 /call 或统一请求通道调用；热替换时 WARN 留痕。
 
 # Notes
-热替换为整条覆盖——用缺省 msg_name/description 重装同名函数会清掉既有元数据；Invalid=name/func 为空；pkg 非 Function → Failed。
+热替换为整条覆盖——用缺省 msg_name/description 重装同名函数会清掉既有元数据；Invalid=name/func 为空；msg 非 Function → Failed。
 """
 FP_UNREGISTER_DESC = """
 # Overview
@@ -55,14 +55,14 @@ data 无负载，msg "unregister function success"。
 同步执行，从函数表移除；未注册时 Failed（非幂等）。
 
 # Notes
-Invalid=函数名为空；注销后 /call 与 /name 均不再命中；pkg 非 String → Failed。
+Invalid=函数名为空；注销后 /call 与 /name 均不再命中；msg 非 String → Failed。
 """
 FP_CALL_DESC = """
 # Overview
 调用函数池中已注册的函数，透传其携带的负载包。
 
 # Inputs
-CallFunction 包：name 函数名；pkg 传给目标函数的消息包（可空，是否接受由目标函数决定）。
+CallFunction 包：name 函数名；msg 传给目标函数的消息包（可空，是否接受由目标函数决定）。
 
 # Outputs
 目标函数的返回值原样回传（不做任何加工；框架约定目标函数返回 Response）。
@@ -103,7 +103,7 @@ data 为 FuncInfo 包（func_name/msg_name/description），msg "ok"。
 同步快照读取，命中即构造结构化包；幂等。
 
 # Notes
-未声明 msg_name/description 的函数两字段为空串；Invalid=函数名为空；Failed=未注册；pkg 非 String → Failed。
+未声明 msg_name/description 的函数两字段为空串；Invalid=函数名为空；Failed=未注册；msg 非 String → Failed。
 """
 FP_ALL_DESC = """
 # Overview

@@ -185,7 +185,7 @@ class YomkService:
                 infos[func_name] = info
         return infos
 
-    def invoke(self, name, pkg):
+    def invoke(self, name, msg):
         """Invoke a registered function; failures are reported only via Response.
 
         调用已注册函数；失败只经 Response 返回，不重复记诊断。
@@ -200,15 +200,15 @@ class YomkService:
             if (name not in self.functions):
                 return Response(ResStatus.eNo, "function not found: " + name)
             func = self.functions[name]
-        return func(pkg)
+        return func(msg)
 
-    def request(self, url, pkg=None):
+    def request(self, url, msg=None):
         """Send a request through the owning server.
 
         经所属 server 发起请求；服务无 server 或 server 已销毁返回 No。
         载荷必须是消息实例或 None，否则入口当场 TypeError。
         """
-        require_msg_payload(pkg, "request()")
+        require_msg_payload(msg, "request()")
         if self._server_ref is None:
             diag_error("service is null, please check service")
             return Response(ResStatus.eNo, "service is null")
@@ -216,15 +216,15 @@ class YomkService:
         if srv is None:
             diag_error("server has been destroyed, request ignored")
             return Response(ResStatus.eNo, "server has been destroyed")
-        return srv.request(url, pkg)
+        return srv.request(url, msg)
 
-    def async_request(self, url, pkg=None, callback=None):
+    def async_request(self, url, msg=None, callback=None):
         """Send a request asynchronously; failures are diagnostic-only.
 
         异步发起请求，无返回值；服务无 server 或 server 已销毁时记诊断并丢弃。
         载荷必须是消息实例或 None，否则入口当场 TypeError。
         """
-        require_msg_payload(pkg, "async_request()")
+        require_msg_payload(msg, "async_request()")
         if self._server_ref is None:
             diag_error("service is null, please check service")
             return
@@ -232,7 +232,7 @@ class YomkService:
         if srv is None:
             diag_error("server has been destroyed, async request ignored")
             return
-        srv.async_request(url, pkg, callback)
+        srv.async_request(url, msg, callback)
 
 
 def _yomk_weak_slot_fill(cb, slot, expected):

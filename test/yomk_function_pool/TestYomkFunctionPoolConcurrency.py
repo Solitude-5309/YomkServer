@@ -45,15 +45,15 @@ s1_ok = []
 s1_inner = []
 s1_outer_ok = []
 
-def s1_probe_func(pkg):
+def s1_probe_func(msg):
     s1_exec.append(1)
     return Response(ResStatus.eOk, "s1_ok")
 
-def s1_inner_func(pkg):
+def s1_inner_func(msg):
     s1_inner.append(1)
     return Response(ResStatus.eOk, "s1_inner_ok")
 
-def s1_outer_func(pkg):
+def s1_outer_func(msg):
     # 嵌套重入：在已注册函数内部再 CALL 另一个已注册函数
     # callFunction 的读锁已释放（锁外调用），此处重新获取读锁安全
     resp = fn_pool().fn_name("c1_inner").call()
@@ -66,11 +66,11 @@ s2_v1 = []
 s2_v2 = []
 s2_total = []
 
-def s2_v1_func(pkg):
+def s2_v1_func(msg):
     s2_v1.append(1)
     return Response(ResStatus.eOk, "v1")
 
-def s2_v2_func(pkg):
+def s2_v2_func(msg):
     s2_v2.append(1)
     return Response(ResStatus.eOk, "v2")
 
@@ -79,7 +79,7 @@ s3_exec = []
 s3_gate_started = threading.Event()
 s3_gate_release = threading.Event()
 
-def s3_gated_func(pkg):
+def s3_gated_func(msg):
     s3_exec.append(1)
     # 此时 callFunction 的读锁已释放，本函数在锁外执行——主线程可安全获取写锁做 unregister
     s3_gate_started.set()
@@ -87,7 +87,7 @@ def s3_gated_func(pkg):
     return Response(ResStatus.eOk, "s3_gated_done")
 
 # S5 用函数
-def s5_probe_func(pkg):
+def s5_probe_func(msg):
     return Response(ResStatus.eOk, "s5_ok")
 
 def main():

@@ -2,7 +2,7 @@
 """
 ExampleYomkFunctionPool —— YomkFunctionPool 动态函数池示例：机械臂产线背景的 6 个场景小示例（面向初学者）
 
-函数池是一个跨模块共享的扁平函数中心：把符合 Response(pkg) 签名的
+函数池是一个跨模块共享的扁平函数中心：把符合 Response(msg) 签名的
 函数按名字注册进池子，之后在任意位置按名字调用——机械臂系统中主控、示教器、
 视觉工位正是这样共享无状态工具函数（负载合计、班次握手、位姿换算），彼此
 无需感知对方实现。同名重复注册即运行时热替换，无需先注销。
@@ -120,18 +120,18 @@ def log_verify(text):
     log().tag("arm.demo").info("[验证] " + text)
 
 # ---------------------------------------------------------------------------
-# 可注册进函数池的工具函数：签名统一为 Response(pkg)，全部无状态。
+# 可注册进函数池的工具函数：签名统一为 Response(msg)，全部无状态。
 # CALL 在调用方线程同步执行，函数体的 arm.tool 日志会先于调用方结果行出现。
 # ---------------------------------------------------------------------------
 
 # 负载合计工具：跨模块共享的无状态计算函数（场景 1 以无元数据形态登记）。
 # 入参为各轴负载消息（StringArray），合计结果同时放进 msg 与 data——调用方两者都能拿到
-def payload_sum(pkg) -> Response:
+def payload_sum(msg) -> Response:
     # 入参守卫：按期望类型解包，None 或类型不符时自动返回 eNo
     # （守卫置于函数入口，判空与拒绝文案同处一地，调用方空参只会收到拒绝不会异常中断，见场景 3）
-    loads = unpack(pkg, StringArray)
+    loads = unpack(msg, StringArray)
     if loads is None:
-        return Response(ResStatus.eNo, type_mismatch(pkg, StringArray.TYPE_NAME))
+        return Response(ResStatus.eNo, type_mismatch(msg, StringArray.TYPE_NAME))
 
     log().tag("arm.tool").info(f"负载合计工具执行：收到 {len(loads.items)} 轴负载（调用方线程同步执行）")
 
@@ -144,10 +144,10 @@ def payload_sum(pkg) -> Response:
         ResStatus.eOk, f"payload={total_kg}kg", str(total_kg))
 
 # 班次握手工具：演示带元数据的登记与调用（场景 2 以类型+说明形态登记，场景 4 被热替换）
-def handshake(pkg) -> Response:
-    name = unpack(pkg, String)
+def handshake(msg) -> Response:
+    name = unpack(msg, String)
     if name is None:
-        return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+        return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
     log().tag("arm.tool").info(f"班次握手工具执行：向 {name.value} 回执问候")
     return Response(ResStatus.eOk, "shift hello, " + name.value)
 
@@ -218,10 +218,10 @@ def show_arm_tool_hot_swap():
         "班中问候口径升级：对已注册名字再次 REGISTER 即热替换函数本体，无需先"
         "注销；msg_name 与说明元数据随新注册整体刷新，随后调用走新实现。")
 
-    def handshake_v2(pkg) -> Response:
-        name = unpack(pkg, String)
+    def handshake_v2(msg) -> Response:
+        name = unpack(msg, String)
         if name is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
         log().tag("arm.tool").info(f"班次握手工具 V2 执行：向 {name.value} 升级问候")
         return Response(ResStatus.eOk, "shift hello V2, " + name.value)
 

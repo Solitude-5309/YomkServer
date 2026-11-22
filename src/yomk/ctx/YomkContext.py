@@ -103,147 +103,147 @@ class YomkContext(YomkService):
                 self.m_customGroup[group_name] = group
         return group, None
 
-    def turn_on_monitor(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
-        group, fail = self.find_group(pkg.value)
+    def turn_on_monitor(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
+        group, fail = self.find_group(msg.value)
         if group is None:
             return fail
         group.turn_on_monitor()
         return Response(ResStatus.eOk, "turn on monitor success")
 
-    def turn_off_monitor(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
-        group, fail = self.find_group(pkg.value)
+    def turn_off_monitor(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
+        group, fail = self.find_group(msg.value)
         if group is None:
             return fail
         group.turn_off_monitor()
         return Response(ResStatus.eOk, "turn off monitor success")
 
-    def set_monitor(self, pkg):
-        if unpack(pkg, ContextMonitor) is None:
+    def set_monitor(self, msg):
+        if unpack(msg, ContextMonitor) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ContextMonitor.TYPE_NAME))
+                            type_mismatch(msg, ContextMonitor.TYPE_NAME))
 
-        group, fail = self.find_group(pkg.group)
+        group, fail = self.find_group(msg.group)
         if group is None:
             return fail
 
         # 返回码映射（约定见 ContextGroup.set_monitor）：0 成功 / 1 key 为空 /
         # 2 monitor_func 为空 / 3 key 不存在；入参非法（键空/回调空）= Invalid
         rc = group.set_monitor(
-            pkg.key,
-            pkg.monitor_func,
-            pkg.async_monitor)
+            msg.key,
+            msg.monitor_func,
+            msg.async_monitor)
         if rc == 1:
             return Response(ResStatus.eInvalid, "set monitor key is empty")
         if rc == 2:
             return Response(
                 ResStatus.eInvalid,
-                "set monitor key '" + pkg.key
+                "set monitor key '" + msg.key
                 + "' failed: monitor function is empty")
         if rc == 3:
             return Response(ResStatus.eNo,
-                            "context key '" + pkg.key + "' does not exist")
+                            "context key '" + msg.key + "' does not exist")
         return Response(ResStatus.eOk, "set context monitor success")
 
-    def set_checker(self, pkg):
-        if unpack(pkg, ContextChecker) is None:
+    def set_checker(self, msg):
+        if unpack(msg, ContextChecker) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ContextChecker.TYPE_NAME))
+                            type_mismatch(msg, ContextChecker.TYPE_NAME))
 
-        group, fail = self.find_group(pkg.group)
+        group, fail = self.find_group(msg.group)
         if group is None:
             return fail
 
         # 返回码映射（约定见 ContextGroup.set_checker）：0 成功 / 1 key 为空 /
         # 2 check_func 为空 / 3 key 不存在；入参非法（键空/回调空）= Invalid
-        rc = group.set_checker(pkg.key, pkg.check_func)
+        rc = group.set_checker(msg.key, msg.check_func)
         if rc == 1:
             return Response(ResStatus.eInvalid, "set checker key is empty")
         if rc == 2:
             return Response(
                 ResStatus.eInvalid,
-                "set checker key '" + pkg.key
+                "set checker key '" + msg.key
                 + "' failed: checkFunc is empty")
         if rc == 3:
             return Response(ResStatus.eNo,
-                            "context key '" + pkg.key + "' does not exist")
+                            "context key '" + msg.key + "' does not exist")
         return Response(ResStatus.eOk, "set checker success")
 
-    def turn_on_checker(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
-        group, fail = self.find_group(pkg.value)
+    def turn_on_checker(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
+        group, fail = self.find_group(msg.value)
         if group is None:
             return fail
         group.turn_on_checker()
         return Response(ResStatus.eOk, "turn on checker success")
 
-    def turn_off_checker(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
-        group, fail = self.find_group(pkg.value)
+    def turn_off_checker(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
+        group, fail = self.find_group(msg.value)
         if group is None:
             return fail
         group.turn_off_checker()
         return Response(ResStatus.eOk, "turn off checker success")
 
-    def create(self, pkg):
-        if unpack(pkg, Context) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Context.TYPE_NAME))
+    def create(self, msg):
+        if unpack(msg, Context) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Context.TYPE_NAME))
 
-        group, fail = self.find_group(pkg.group)
+        group, fail = self.find_group(msg.group)
         if group is None:
             return fail
 
         # 返回码映射（约定见 ContextGroup.create）：0 成功 / 1 key 为空 /
         # 2 value 为空 / 3 key 已存在；入参非法（键/值为空）= Invalid，
         # 业务冲突（已存在）= Failed
-        rc = group.create(pkg.key, pkg.value)
+        rc = group.create(msg.key, msg.value)
         if rc == 1:
             return Response(ResStatus.eInvalid, "context key is empty")
         if rc == 2:
             return Response(
                 ResStatus.eInvalid,
-                "create context key '" + pkg.key + "' failed: value is empty")
+                "create context key '" + msg.key + "' failed: value is empty")
         if rc == 3:
             return Response(ResStatus.eNo,
-                            "context key '" + pkg.key + "' already exists")
+                            "context key '" + msg.key + "' already exists")
         return Response(ResStatus.eOk, "create context success")
 
-    def destroy(self, pkg):
-        if unpack(pkg, ContextGroupKey) is None:
+    def destroy(self, msg):
+        if unpack(msg, ContextGroupKey) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ContextGroupKey.TYPE_NAME))
+                            type_mismatch(msg, ContextGroupKey.TYPE_NAME))
 
-        group, fail = self.find_group(pkg.group)
+        group, fail = self.find_group(msg.group)
         if group is None:
             return fail
 
         # 返回码映射（约定见 ContextGroup.destroy）：0 成功 / 1 key 不存在 /
         # 2 key 为空；入参非法（键空）= Invalid，业务未命中 = Failed
-        rc = group.destroy(pkg.key)
+        rc = group.destroy(msg.key)
         if rc == 2:
             return Response(ResStatus.eInvalid, "context key is empty")
         if rc == 1:
             return Response(ResStatus.eNo,
-                            "context key '" + pkg.key + "' does not exist")
+                            "context key '" + msg.key + "' does not exist")
         return Response(ResStatus.eOk, "destroy context success")
 
-    def get(self, pkg):
-        if unpack(pkg, Context) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Context.TYPE_NAME))
+    def get(self, msg):
+        if unpack(msg, Context) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Context.TYPE_NAME))
 
-        group, fail = self.find_group(pkg.group)
+        group, fail = self.find_group(msg.group)
         if group is None:
             return fail
 
         # 返回码映射（约定见 ContextGroup.get）：0 命中 / 1 key 为空 /
         # 2 key 不存在；未命中 value 已为默认值，msg 注明返回默认值
         # （提示 data 非存储值）
-        rc, value = group.get(pkg.key, pkg.value)
+        rc, value = group.get(msg.key, msg.value)
         if rc == 1:
             return Response(ResStatus.eInvalid,
                             "context key is empty, return default value",
@@ -251,64 +251,64 @@ class YomkContext(YomkService):
         if rc == 2:
             return Response(
                 ResStatus.eNo,
-                "context key '" + pkg.key
+                "context key '" + msg.key
                 + "' does not exist, return default value",
                 value)
         return Response(ResStatus.eOk, "get context success", value)
 
-    def set(self, pkg):
-        if unpack(pkg, Context) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, Context.TYPE_NAME))
+    def set(self, msg):
+        if unpack(msg, Context) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, Context.TYPE_NAME))
 
-        group, fail = self.find_group(pkg.group)
+        group, fail = self.find_group(msg.group)
         if group is None:
             return fail
 
         # 失败文案经 detail 透传（ContextGroup.set 失败时已携带 key 值与
         # 期望/实际类型名，此处无需再分支拼装）；入参非法（键空/value 空，
         # rc 1/5）= Invalid，业务未命中/冲突（2/3/4）= Failed
-        rc, detail = group.set(pkg.key, pkg.value)
+        rc, detail = group.set(msg.key, msg.value)
         if rc == 1 or rc == 5:
             return Response(ResStatus.eInvalid, detail)
         if rc != 0:
             return Response(ResStatus.eNo, detail)
         return Response(ResStatus.eOk, "set context success")
 
-    def groups(self, pkg):
+    def groups(self, msg):
         # 全部组名：main 恒在首位，自定义组按字典序追加（锁内拷出、锁外拼响应）
         groupNames = [self.m_main.name()]
         with self.m_customGroupMutex.gen_rlock():
             groupNames.extend(sorted(self.m_customGroup.keys()))
         return Response(ResStatus.eOk, "ok", StringArray(groupNames))
 
-    def keys(self, pkg):
-        if unpack(pkg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(pkg, String.TYPE_NAME))
-        group, fail = self.find_group(pkg.value)
+    def keys(self, msg):
+        if unpack(msg, String) is None:
+            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
+        group, fail = self.find_group(msg.value)
         if group is None:
             return fail
         return Response(ResStatus.eOk, "ok", StringArray(group.keys()))
 
-    def key_info(self, pkg):
-        if unpack(pkg, ContextGroupKey) is None:
+    def key_info(self, msg):
+        if unpack(msg, ContextGroupKey) is None:
             return Response(ResStatus.eNo,
-                            type_mismatch(pkg, ContextGroupKey.TYPE_NAME))
+                            type_mismatch(msg, ContextGroupKey.TYPE_NAME))
 
-        group, fail = self.find_group(pkg.group)
+        group, fail = self.find_group(msg.group)
         if group is None:
             return fail
 
         # 返回码映射（约定见 ContextGroup.key_info）：0 命中 / 1 key 为空 /
         # 2 key 不存在；入参非法（键空）= Invalid
-        rc, info = group.key_info(pkg.key)
+        rc, info = group.key_info(msg.key)
         if rc == 1:
             return Response(ResStatus.eInvalid, "context key is empty")
         if rc == 2:
             return Response(ResStatus.eNo,
-                            "context key '" + pkg.key + "' does not exist")
+                            "context key '" + msg.key + "' does not exist")
         return Response(ResStatus.eOk, "ok", info)
 
-    def list_all(self, pkg):
+    def list_all(self, msg):
         # 跨组聚合：组 → 键元信息两层结构（与服务全量内省同构的拓扑范式）；
         # main 组条目恒在首位，自定义组按字典序追加（锁内拷出、锁外取快照）
         groups = [ContextGroupInfo(self.m_main.name(), self.m_main.list_all())]

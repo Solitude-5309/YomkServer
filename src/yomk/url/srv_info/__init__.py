@@ -44,7 +44,7 @@ data 为 FuncInfoList 包（func_name 为带 "/" 前缀的函数 url 段），ms
 同步快照读取，先定位服务再取该服务函数表；幂等。
 
 # Notes
-Invalid=服务名为空；服务不存在时按现状契约返回 Succeeded + 空表（不归因失败）；server 已销毁 → Failed；pkg 非 String → Failed。
+Invalid=服务名为空；服务不存在时按现状契约返回 Succeeded + 空表（不归因失败）；server 已销毁 → Failed；msg 非 String → Failed。
 """
 SRV_FUNCTION_DESC = """
 # Overview

@@ -53,10 +53,10 @@ def check(cond, msg):
         print(f"[FAIL] [line {line}] {msg}")
         g_failed += 1
 
-def raw_ctx(endpoint, pkg):
+def raw_ctx(endpoint, msg):
     # 写路径链式终结收敛为 ResStatus（无 msg）；契约消息断言经 server 域
     # url/msg/request 裸链直取 Response（端点行为与链式终结一致）
-    return server().url("/YomkContext/" + endpoint).msg(pkg).request()
+    return server().url("/YomkContext/" + endpoint).msg(msg).request()
 
 def wait_until(
 cond, timeout_ms):

@@ -12,10 +12,10 @@ class Event(YomkMsg):
     事件投递载荷：目标循环、数据、单次处理器与 tag。
     """
 
-    def __init__(self, event_loop_name="", pkg=None, func=None, tag=""):
-        require_msg_payload(pkg, "Event.pkg")
+    def __init__(self, event_loop_name="", msg=None, func=None, tag=""):
+        require_msg_payload(msg, "Event.msg")
         self.m_eventLoopName = event_loop_name
-        self.m_pkg = pkg
+        self.m_msg = msg
         self.m_serviceFunc = func
         self.m_eventId = 0
         self.m_response = None
@@ -25,7 +25,7 @@ class Event(YomkMsg):
     def handle(self):
         if not self.m_serviceFunc:
             return
-        self.m_response = self.m_serviceFunc(self.m_pkg)
+        self.m_response = self.m_serviceFunc(self.m_msg)
 
 
 class EventLoopOpts(YomkMsg):

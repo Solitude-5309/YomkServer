@@ -4,7 +4,7 @@ from yomk.msgs.YomkMsg import YomkMsg
 
 class Event(YomkMsg):
     m_eventLoopName: str
-    m_pkg: Optional[YomkMsg]
+    m_msg: Optional[YomkMsg]
     m_serviceFunc: Optional[Callable[[Any], Any]]
     m_eventId: int
     m_response: Any
@@ -14,7 +14,7 @@ class Event(YomkMsg):
     def __init__(
         self,
         event_loop_name: str = "",
-        pkg: Optional[YomkMsg] = None,
+        msg: Optional[YomkMsg] = None,
         func: Optional[Callable[[Any], Any]] = None,
         tag: str = ""
     ) -> None: ...

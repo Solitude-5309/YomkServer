@@ -69,10 +69,10 @@ class BindSrv(YomkService):
         self.install_func("/installed", self.work_resp)
         return 0
 
-    def work_resp(self, pkg):
+    def work_resp(self, msg):
         return Response(ResStatus.eOk, "alive")
 
-    def macro_work(self, pkg):
+    def macro_work(self, msg):
         self.macro_count += 1
         return Response(ResStatus.eOk, "macro")
 
@@ -89,14 +89,14 @@ def test_alive_callbacks(server):
     cb_void = srv.weak_func(lambda: counts.__setitem__("void", counts["void"] + 1),
                             discard="none")
     cb_resp = srv.weak_func(
-        lambda pkg: (counts.__setitem__("resp", counts["resp"] + 1),
+        lambda msg: (counts.__setitem__("resp", counts["resp"] + 1),
                      Response(ResStatus.eOk, "alive"))[1])
     cb_check = srv.weak_func(
         lambda ctx: (counts.__setitem__("check", counts["check"] + 1),
                      CheckStatus.eReject)[1],
         discard="check")
     cb_int = srv.weak_func(
-        lambda pkg: (counts.__setitem__("int", counts["int"] + 1), 42)[1],
+        lambda msg: (counts.__setitem__("int", counts["int"] + 1), 42)[1],
         discard="none")
     cb_macro = srv.make_macro_cb()
 
@@ -126,14 +126,14 @@ def test_destroy_discard(server):
     cb_void = srv.weak_func(lambda: counts.__setitem__("void", counts["void"] + 1),
                             discard="none")
     cb_resp = srv.weak_func(
-        lambda pkg: (counts.__setitem__("resp", counts["resp"] + 1),
+        lambda msg: (counts.__setitem__("resp", counts["resp"] + 1),
                      Response(ResStatus.eOk, "alive"))[1])
     cb_check = srv.weak_func(
         lambda ctx: (counts.__setitem__("check", counts["check"] + 1),
                      CheckStatus.eReject)[1],
         discard="check")
     cb_int = srv.weak_func(
-        lambda pkg: (counts.__setitem__("int", counts["int"] + 1), 42)[1],
+        lambda msg: (counts.__setitem__("int", counts["int"] + 1), 42)[1],
         discard="none")
     cb_macro = srv.make_macro_cb()
     del srv  # 本地唯一强引用释放：引用计数归零，弱绑定全部失效
@@ -174,7 +174,7 @@ def test_mark_deleted_discard(server):
     cb_void = srv.weak_func(lambda: counts.__setitem__("void", counts["void"] + 1),
                             discard="none")
     cb_resp = srv.weak_func(
-        lambda pkg: (counts.__setitem__("resp", counts["resp"] + 1),
+        lambda msg: (counts.__setitem__("resp", counts["resp"] + 1),
                      Response(ResStatus.eOk, "alive"))[1])
 
     # 测试持 srv 引用不释放，经框架删除置位注销标志（标志层独立于引用计数）；

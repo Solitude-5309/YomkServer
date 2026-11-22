@@ -74,39 +74,39 @@ def require_msg_subclass(cls, who):
                     + type_name_of(cls) + "'")
 
 
-def unpack(pkg, cls):
-    """Return pkg when it matches cls by TYPE_NAME, otherwise None.
+def unpack(msg, cls):
+    """Return msg when it matches cls by TYPE_NAME, otherwise None.
 
-    按 TYPE_NAME 精确比对解包，未命中返回 None，不抛异常；pkg 可为 None 或体系外
+    按 TYPE_NAME 精确比对解包，未命中返回 None，不抛异常；msg 可为 None 或体系外
     对象（无类型边界探测）。cls 必须是具体消息类，否则 ``TypeError``。子类因
     TYPE_NAME 不同不会被当作父类实例命中，这是设计行为。
     """
-    if pkg is None:
+    if msg is None:
         return None
     require_msg_subclass(cls, "unpack")
-    if is_msg_payload(pkg) and type(pkg).TYPE_NAME == cls.TYPE_NAME:
-        return pkg
+    if is_msg_payload(msg) and type(msg).TYPE_NAME == cls.TYPE_NAME:
+        return msg
     return None
 
 
-def type_name_of(pkg):
+def type_name_of(msg):
     """Return the runtime type name of a message, or a descriptive name otherwise.
 
     返回消息的运行期类型名（TYPE_NAME）；None 返回 "null"，类对象返回其类名，
     其余返回宿主类名，从不以 "null" 掩盖误用。对应 C++ ``typeNameOf``。
     """
-    if pkg is None:
+    if msg is None:
         return "null"
-    if is_msg_payload(pkg):
-        return type(pkg).TYPE_NAME
-    if isinstance(pkg, type):
-        return pkg.__name__
-    return type(pkg).__name__
+    if is_msg_payload(msg):
+        return type(msg).TYPE_NAME
+    if isinstance(msg, type):
+        return msg.__name__
+    return type(msg).__name__
 
 
-def type_mismatch(pkg, expected):
+def type_mismatch(msg, expected):
     """Build the standard type-mismatch text, expecting ``cls.TYPE_NAME``.
 
     构造标准类型不符文案；expected 由调用方传 ``cls.TYPE_NAME``。
     """
-    return "pkg is not " + expected + ", got '" + type_name_of(pkg) + "'"
+    return "msg is not " + expected + ", got '" + type_name_of(msg) + "'"

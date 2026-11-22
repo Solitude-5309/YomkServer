@@ -100,9 +100,9 @@ class YomkFunctionPool(YomkService):
                     "function '" + call_func.name + "' is not registered")
             func = entry.func
 
-        return func(call_func.pkg)
+        return func(call_func.msg)
 
-    def funcNames(self, pkg):
+    def funcNames(self, msg):
         # 内省：列出全部注册函数名（读锁内排序，:map 字典序）
         with self.m_functionsMutex.gen_rlock():
             names = sorted(self.m_functions)
@@ -128,7 +128,7 @@ class YomkFunctionPool(YomkService):
 
         return Response(ResStatus.eOk, "ok", info)
 
-    def listAll(self, pkg):
+    def listAll(self, msg):
         # 内省：全量函数元信息，读锁内构造结构化快照列表
         # （msg 恒 "ok"，数据走 data；函数总数由列表长度承载）
         with self.m_functionsMutex.gen_rlock():

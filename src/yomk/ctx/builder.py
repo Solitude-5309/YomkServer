@@ -212,10 +212,10 @@ class ContextBuilder:
                 ContextChecker(self._key, self._checker, self._group)))
         if self._cb_kind == "monitor":
             # 单回调 + 布尔标志：async_monitor 决定同步派发或异步池投递
-            pkg = ContextMonitor(self._key, self._monitor,
+            msg = ContextMonitor(self._key, self._monitor,
                                  self._async_monitor, self._group)
             return _facade.chain_status(
-                _facade.api_request(CTX_SET_MONITOR, pkg))
+                _facade.api_request(CTX_SET_MONITOR, msg))
         diag_error("apply: no checker/monitor accumulated")
         return ResStatus.Invalid
 

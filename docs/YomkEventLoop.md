@@ -25,7 +25,7 @@ server().init()
 
 # 启动事件循环，绑定默认处理函数
 event_loop().loop("TaskLoop").handle_fn(
-    lambda pkg: Response(ResStatus.eOk, "done")
+    lambda msg: Response(ResStatus.eOk, "done")
 ).start()
 
 # 非阻塞投递（走循环默认处理函数；tag 可选，仅内省可见，用于观察队列）
@@ -33,7 +33,7 @@ event_loop().msg(String("task1")).loop("TaskLoop").tag("billing").post()
 
 # 单次事件指定临时处理器（优先于默认处理函数）
 event_loop().msg(String("task2")).loop("TaskLoop").handle_fn(
-    lambda pkg: Response(ResStatus.eOk)
+    lambda msg: Response(ResStatus.eOk)
 ).post()
 
 # 阻塞投递
@@ -53,7 +53,7 @@ event_loop().loop("TaskLoop").destroy()
 - 同一循环内事件按 FIFO 顺序执行，不同循环之间彼此并行。
 - **同名 `start()` 不重建**：复用既有实例并触发其启动（用于停止后续跑），本次累积的 `handle_fn`/`msg_name` **不生效**；仅新循环名会创建循环并绑定默认处理函数。
 - 投递事件未携带 `handle_fn` 时回落到循环默认处理函数；两者皆空则该事件不执行任何回调、直接出队。
-- 失败契约（`eNo`）：循环不存在 `"event loop '<name>' does not exist"`（stop/destroy/post/post_wait/get_info 五处，伴随同文案 WARN 诊断日志）；已停止（未销毁）时投递 `"event loop '<name>' not running, post rejected"`，`post_wait` 同族消息 `"event loop '<name>' not running, post wait rejected"`；裸链载荷类型不符时 `"pkg is not <类型名>, got '<实际类型>'"`（无诊断日志）；链式 `.msg()` 传裸值则是 `TypeError`（入口契约，见 [YomkMsg.md](YomkMsg.md#载荷契约跨边界一律消息实例)）。
+- 失败契约（`eNo`）：循环不存在 `"event loop '<name>' does not exist"`（stop/destroy/post/post_wait/get_info 五处，伴随同文案 WARN 诊断日志）；已停止（未销毁）时投递 `"event loop '<name>' not running, post rejected"`，`post_wait` 同族消息 `"event loop '<name>' not running, post wait rejected"`；裸链载荷类型不符时 `"msg is not <类型名>, got '<实际类型>'"`（无诊断日志）；链式 `.msg()` 传裸值则是 `TypeError`（入口契约，见 [YomkMsg.md](YomkMsg.md#载荷契约跨边界一律消息实例)）。
 - `post()` / `post_wait()` 链式终结收敛为三态 `ResStatus`（仅入队/完成标记，非执行结果）；执行结果体现在处理函数返回值中，需要取回时用裸链 `server().url("/YomkEventLoop/post_wait").msg(Event(...)).request()`——`data` 为该 `Event` 对象（`m_eventId` / `m_response` 携带处理响应），或配合共享上下文中转。
 - 单查 `get_info()` 的 `data` 为 `EventLoopInfo`：`loop_name`、`running`（worker 运行中）、`pending`（积压事件数）、`has_default_func`、`msg_name`、`next_tags`（队列头起最多 n 条 tag，空串保留）。
 - 工作线程内调用 `post_wait` 会触发死锁自检：直接在本线程执行当前事件并返回（诊断日志 `"EventLoop: <loop名> post wait in worker thread detected deadlock..."`，携带循环名）。

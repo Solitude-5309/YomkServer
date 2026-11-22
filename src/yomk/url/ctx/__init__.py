@@ -62,7 +62,7 @@ data 无负载，成功 msg "create context success"。
 同步执行，在组存储写入键值对；非幂等——键已存在时重调必 Failed。
 
 # Notes
-key/value 为空 → Invalid；group 名为空 → Invalid；自定义组不存在时按名惰性创建；pkg 非 Context → Failed。
+key/value 为空 → Invalid；group 名为空 → Invalid；自定义组不存在时按名惰性创建；msg 非 Context → Failed。
 """
 CTX_GET_DESC = """
 # Overview
@@ -78,7 +78,7 @@ data 为键的当前值包；未命中时 data 为请求携带的默认值包（
 同步纯读，不修改组存储；幂等，任意次调用结果一致。
 
 # Notes
-key 为空 → Invalid（仍回默认值）；键不存在 → Failed（仍回默认值）；group 名为空 → Invalid；pkg 非 Context → Failed；调用方须按 status 区分"取到默认值"与"取到现值"。
+key 为空 → Invalid（仍回默认值）；键不存在 → Failed（仍回默认值）；group 名为空 → Invalid；msg 非 Context → Failed；调用方须按 status 区分"取到默认值"与"取到现值"。
 """
 CTX_SET_DESC = """
 # Overview
@@ -110,7 +110,7 @@ data 无负载，成功 msg "turn on checker success"。
 同步执行，组级开关置 True；幂等，重复开启无额外效果。
 
 # Notes
-新建组的 checker 总闸初始为关闭；未装 checker 的键在总闸开启后仍视为放行；group 名为空 → Invalid；pkg 非 String → Failed。
+新建组的 checker 总闸初始为关闭；未装 checker 的键在总闸开启后仍视为放行；group 名为空 → Invalid；msg 非 String → Failed。
 """
 CTX_TURN_OFF_CHECKER_DESC = """
 # Overview
@@ -126,7 +126,7 @@ data 无负载，成功 msg "turn off checker success"。
 同步执行，组级开关置 False；幂等。
 
 # Notes
-仅停用校验，已安装的回调保留——重新开启总闸即恢复；group 名为空 → Invalid；pkg 非 String → Failed。
+仅停用校验，已安装的回调保留——重新开启总闸即恢复；group 名为空 → Invalid；msg 非 String → Failed。
 """
 CTX_SET_CHECKER_DESC = """
 # Overview
@@ -142,7 +142,7 @@ data 无负载，成功 msg "set checker success"。
 同步执行，更新键元数据；每键单回调，重复安装为覆盖（幂等）。
 
 # Notes
-回调仅在组 checker 总闸开启时生效；Invalid=key/check_func 为空；Failed=键不存在；pkg 非 ContextChecker → Failed。
+回调仅在组 checker 总闸开启时生效；Invalid=key/check_func 为空；Failed=键不存在；msg 非 ContextChecker → Failed。
 """
 CTX_TURN_ON_MONITOR_DESC = """
 # Overview
@@ -158,7 +158,7 @@ data 无负载，成功 msg "turn on monitor success"。
 同步执行，组级开关置 True；幂等。
 
 # Notes
-新建组的 monitor 总闸初始为关闭；关闭期间 set 仍成功，仅跳过回调；group 名为空 → Invalid；pkg 非 String → Failed。
+新建组的 monitor 总闸初始为关闭；关闭期间 set 仍成功，仅跳过回调；group 名为空 → Invalid；msg 非 String → Failed。
 """
 CTX_TURN_OFF_MONITOR_DESC = """
 # Overview
@@ -174,7 +174,7 @@ data 无负载，成功 msg "turn off monitor success"。
 同步执行，组级开关置 False；幂等。
 
 # Notes
-仅停用通知，已安装的回调保留——重新开启总闸即恢复；group 名为空 → Invalid；pkg 非 String → Failed。
+仅停用通知，已安装的回调保留——重新开启总闸即恢复；group 名为空 → Invalid；msg 非 String → Failed。
 """
 CTX_SET_MONITOR_DESC = """
 # Overview
@@ -190,7 +190,7 @@ data 无负载，成功 msg "set context monitor success"。
 同步执行，向键的监听列表追加一条；异步形态投递到组监控池（单线程 FIFO，按 set 提交序送达），同步形态在 set 调用线程内执行。
 
 # Notes
-同一键可挂多个监听（重复安装为追加，非覆盖）；回调仅在组 monitor 总闸开启时触发，收到本次 set 的键值快照；Invalid=key/monitor_func 为空；Failed=键不存在；pkg 非 ContextMonitor → Failed。
+同一键可挂多个监听（重复安装为追加，非覆盖）；回调仅在组 monitor 总闸开启时触发，收到本次 set 的键值快照；Invalid=key/monitor_func 为空；Failed=键不存在；msg 非 ContextMonitor → Failed。
 """
 CTX_DESTROY_DESC = """
 # Overview
@@ -206,7 +206,7 @@ data 无负载，成功 msg "destroy context success"。
 同步执行，从组存储移除键；非幂等——键不存在时重调必 Failed。
 
 # Notes
-自定义组本身不会被销毁（组表只增不减）；Invalid=键名为空；Failed=键不存在；pkg 非 ContextGroupKey → Failed。
+自定义组本身不会被销毁（组表只增不减）；Invalid=键名为空；Failed=键不存在；msg 非 ContextGroupKey → Failed。
 """
 CTX_KEYS_DESC = """
 # Overview
@@ -222,7 +222,7 @@ data 为 StringArray 包，msg "ok"。
 同步快照读取，持组读锁拷贝键名；幂等。
 
 # Notes
-组不存在时按名惰性创建并返回空表（不归因失败）；group 名为空 → Invalid；pkg 非 String → Failed。
+组不存在时按名惰性创建并返回空表（不归因失败）；group 名为空 → Invalid；msg 非 String → Failed。
 """
 CTX_KEY_DESC = """
 # Overview
@@ -238,7 +238,7 @@ data 为 ContextKeyInfo 包（key/type_name/checker_on/monitor_count/async_monit
 同步快照读取，持组读锁构造；幂等。
 
 # Notes
-checker_on 报该键是否已装 checker（非组总闸态）；type_name 为值消息包的 TYPE_NAME（全限定，值为 None 时为空串）；Invalid=键名为空；Failed=键不存在；pkg 非 ContextGroupKey → Failed。
+checker_on 报该键是否已装 checker（非组总闸态）；type_name 为值消息包的 TYPE_NAME（全限定，值为 None 时为空串）；Invalid=键名为空；Failed=键不存在；msg 非 ContextGroupKey → Failed。
 """
 CTX_GROUPS_DESC = """
 # Overview

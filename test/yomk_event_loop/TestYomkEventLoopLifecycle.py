@@ -88,7 +88,7 @@ class Gate:
 GATE = Gate()
 
 def gate_handler():
-    def _handler(pkg):
+    def _handler(msg):
         GATE.started.set()
         GATE.release.wait()
         return Response(ResStatus.eOk, "gate done")
@@ -109,7 +109,7 @@ def wait_until(pred, timeout_s):
     return pred()
 
 def counting_handler(tag):
-    def _handler(pkg):
+    def _handler(msg):
         record_order(tag)
         return Response(ResStatus.eOk, "counted: " + tag)
     return _handler
@@ -233,7 +233,7 @@ def section_4():
     loop = EventLoop()
     check(loop.start() == 0, "start 返回 0")
 
-    def record_id(pkg):
+    def record_id(msg):
         record_thread_id()
         return Response(ResStatus.eOk, "id recorded")
 
@@ -282,7 +282,7 @@ def section_6():
     # 防护路径识别 worker 线程后直接执行内层事件，避免自等待死锁
     inner = Event("wb", None, counting_handler("inner"), "inner")
 
-    def outer_handler(pkg):
+    def outer_handler(msg):
         loop.post_wait(inner)
         record_order("outer")
         return Response(ResStatus.eOk, "outer done")
@@ -304,14 +304,14 @@ def section_7():
     check(loop.start() == 0, "start 返回 0")
 
     # Exception 分支：postWait 的 handler 抛出，run() 捕获吞噬后仍触发 waitCallback，postWait 不挂起
-    def thrower(pkg):
+    def thrower(msg):
         raise RuntimeError("boom")
 
     check(loop.post_wait(Event("wb", None, thrower, "thr1")) == 0,
           "handler 抛 Exception 时 postWait 仍返回 0（异常被吞噬）")
 
     # 未知异常分支（非 Exception，以 BaseException 分支承载）
-    def thrower2(pkg):
+    def thrower2(msg):
         raise BaseException("non-exception")
 
     check(loop.post(Event("wb", None, thrower2, "thr2")) == 0, "post 抛未知异常事件返回 0")
