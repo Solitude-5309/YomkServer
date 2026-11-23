@@ -109,24 +109,6 @@ namespace yomk::msgs
 {
 
 /**
- * @brief Runtime type name of a message, null-safe
- * @param msg Message pointer, may be empty
- * @return The message's type name; "null" when msg is empty.
- *         Intended for error messages that report the actual type received
- * @note Unlike Msg::typeName() (zero-allocation std::string_view), this returns an owning
- *       std::string and maps an empty pointer to "null"
- */
-// @zh: 消息的运行时类型名，判空安全
-// @zh: msg 消息指针，可为空
-// @zh: return 类型名；msg 为空返回 "null"。
-// @zh:      用于错误文案报出"实际收到的类型"（具体值原则：期望/实际类型一并输出）
-// @zh: note 与 Msg::typeName()（零分配 std::string_view）不同：本函数返回自持 std::string，空指针返回 "null"
-inline std::string typeNameOf(const YomkMsgPtr& msg)
-{
-    return msg ? std::string(msg->typeName()) : "null";
-}
-
-/**
  * @brief Build the standard type-mismatch message "msg is not <expected>, got '<actual>'"
  * @param msg Message pointer, may be empty
  * @param expected The expected message type name (usually the target message's kTypeName)
@@ -136,10 +118,13 @@ inline std::string typeNameOf(const YomkMsgPtr& msg)
 // @zh: msg 消息指针，可为空
 // @zh: expected 期望的消息类型名（通常是目标消息的 kTypeName）
 // @zh: return 完整不符文案；msg 为空时报实际类型为 "null"。
-// @zh:      typeNameOf(msg) 的常用上层封装，供类型校验失败分支统一返回文案
+// @zh:      实际类型经运行期 typeName() 读取（期望类型由调用方传 kTypeName）
 inline std::string typeMismatch(const YomkMsgPtr& msg, const char* expected)
 {
-    return std::string("msg is not ") + expected + ", got '" + typeNameOf(msg) + "'";
+    // Null-safe actual type name: an empty message reports "null"
+    // @zh: 判空取实际类型名，空消息报 "null"
+    const std::string actual = msg ? std::string(msg->typeName()) : "null";
+    return std::string("msg is not ") + expected + ", got '" + actual + "'";
 }
 
 /**

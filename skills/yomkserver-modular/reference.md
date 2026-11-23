@@ -100,8 +100,8 @@ YOMK_DEFINE_MSG(MyData, MyData, d);   // 生成 yomk::msgs::MyData / MyDataPtr�
   **注意**：模板形参 `A&&...` 无法从花括号初始化列表推导，传聚合对象须带类型：`MyData::shared(MyData{"a", 1})`、`Int32Array::shared(std::vector<std::int32_t>{1,2,3})`。
 - `yomk::msgs::MyData::shared(std::move(data))` — 右值重载移动入包，大对象免拷贝。
 - `yomk::msgs::unpack<yomk::msgs::MyData>(msg)` — 按运行期类型名解包，msg 为空或类型不匹配返回 `nullptr`（不自动 return，调用方手动判空），不抛异常。
-- `yomk::msgs::typeMismatch(msg, yomk::msgs::MyData::kTypeName)` — 标准不符文案 `"msg is not <期望>, got '<实际>'"`（空包实际类型报 `"null"`），`typeNameOf(msg)` 的常用上层封装，判空分支统一用它、不手拼字符串。
-- 运行期类型名 `kTypeName` 为全限定名（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名；是类型身份唯一权威常量（基类纯虚 `typeName()` 直接返回它、`std::string_view` 零分配且不可伪造；`typeNameOf()` 为判空包装（自持 `std::string`，空包返回 `"null"`），用于错误文案展示）。各处声明的"期望消息类型名"（`installFunc` 第三参、`fn_pool().msg_name()`、`event_loop().msg_name()`）一律引用 `T::kTypeName`、禁止手写字符串；仅作内省元数据、不拦截调用。
+- `yomk::msgs::typeMismatch(msg, yomk::msgs::MyData::kTypeName)` — 标准不符文案 `"msg is not <期望>, got '<实际>'"`（内部判空取实际类型，空包报 `"null"`），判空分支统一用它、不手拼字符串。
+- 运行期类型名 `kTypeName` 为全限定名（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名；是类型身份唯一权威常量（基类纯虚 `typeName()` 直接返回它、`std::string_view` 零分配且不可伪造，是运行期反查实际类型的唯一入口；判空与自有 `std::string` 拼接由调用方或 `typeMismatch` 负责）。各处声明的"期望消息类型名"（`installFunc` 第三参、`fn_pool().msg_name()`、`event_loop().msg_name()`）一律引用 `T::kTypeName`、禁止手写字符串；仅作内省元数据、不拦截调用。
 
 **内置标准类型**（成员名均为 `d`，共 30 种）：`Bool`、`Char`、`UChar`、`Byte`、`Int8`、`Uint8`、`Int16`、`Uint16`、`Int32`、`Uint32`、`Int64`、`Uint64`、`Float32`、`Float64`、`String` 及对应 `XxxArray`（如 `StringArray`、`Int32Array`）。
 
