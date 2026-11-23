@@ -154,9 +154,8 @@ int XxxService::init() {
     return 0;
 }
 yomk::payload::Response XxxService::myFunc(YomkMsgPtr msg) {
-    auto data = yomk::msgs::unpack<yomk::msgs::MyData>(msg);  // 解包（失败返回 nullptr，需判空）
-    if (!data) { return {yomk::payload::ResStatus::Failed,
-        yomk::msgs::typeMismatch(msg, yomk::msgs::prj::MyData::kTypeName)}; }
+    auto data = yomk::msgs::unpack<yomk::msgs::MyData>(msg);  // 解包（失败时结果判假，失败原因经 error() 读取）
+    if (!data) { return {yomk::payload::ResStatus::Failed, data.error()}; }
     // 业务逻辑...
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }

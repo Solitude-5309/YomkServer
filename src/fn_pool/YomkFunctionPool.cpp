@@ -29,7 +29,7 @@ yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr msg)
     auto yFunc = yomk::msgs::unpack<yomk::msgs::Function>(msg);
     if (!yFunc)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Function::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yFunc.error()};
     }
     if (yFunc->d.funcName.empty() || yFunc->d.func == nullptr)
     {
@@ -58,7 +58,7 @@ yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr msg)
     auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yFuncName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yFuncName.error()};
     }
     if (yFuncName->d.empty())
     {
@@ -81,7 +81,7 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr msg)
     auto yCallFunc = yomk::msgs::unpack<yomk::msgs::CallFunction>(msg);
     if (!yCallFunc)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::CallFunction::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yCallFunc.error()};
     }
     if (yCallFunc->d.funcName.empty())
     {
@@ -123,7 +123,7 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr msg)
     auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yFuncName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yFuncName.error()};
     }
     if (yFuncName->d.empty())
     {

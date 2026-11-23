@@ -43,7 +43,7 @@ yomk::payload::Response TelemetryService::record(YomkMsgPtr msg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);  // String 为框架内置消息类型
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, str.error()};
     }
     std::ostringstream oss;
     oss << "留痕记录 [实例#" << m_id << "]：" << str->d;

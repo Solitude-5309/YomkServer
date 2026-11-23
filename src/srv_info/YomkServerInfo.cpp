@@ -37,7 +37,7 @@ yomk::payload::Response YomkServerInfo::listFunctions(YomkMsgPtr msg)
     auto ySrvName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!ySrvName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, ySrvName.error()};
     }
     if (ySrvName->d.empty())
     {
@@ -66,7 +66,7 @@ yomk::payload::Response YomkServerInfo::functionInfo(YomkMsgPtr msg)
     auto yUrl = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yUrl)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yUrl.error()};
     }
     const std::string& url = yUrl->d;
     if (url.empty() || url[0] != '/')

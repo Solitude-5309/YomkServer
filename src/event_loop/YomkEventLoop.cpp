@@ -31,7 +31,7 @@ yomk::payload::Response YomkEventLoop::start(YomkMsgPtr msg)
     auto eventloop = yomk::msgs::unpack<yomk::msgs::EventLoop>(msg);
     if (!eventloop)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::EventLoop::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, eventloop.error()};
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(eventloop->d.eventLoopName);
@@ -54,7 +54,7 @@ yomk::payload::Response YomkEventLoop::stop(YomkMsgPtr msg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, str.error()};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
@@ -73,7 +73,7 @@ yomk::payload::Response YomkEventLoop::post(YomkMsgPtr msg)
     auto event = yomk::msgs::unpack<yomk::msgs::Event>(msg);
     if (!event)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Event::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, event.error()};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(event->d.eventLoopName);
@@ -83,7 +83,7 @@ yomk::payload::Response YomkEventLoop::post(YomkMsgPtr msg)
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop '" + event->d.eventLoopName + "' does not exist");
     }
     // 内层返回码映射:0 成功;其余(实际仅 2=循环未运行被拒,事件为空不可达——API 宏总构造有效事件)统一 ResStatus::Failed
-    int rc = itEventLoop->second->post(event);
+    int rc = itEventLoop->second->post(event.msg());
     if (rc != 0)
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop '" + event->d.eventLoopName + "' not running, post rejected");
@@ -97,7 +97,7 @@ yomk::payload::Response YomkEventLoop::postWait(YomkMsgPtr msg)
     auto event = yomk::msgs::unpack<yomk::msgs::Event>(msg);
     if (!event)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Event::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, event.error()};
     }
     std::shared_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(event->d.eventLoopName);
@@ -107,13 +107,13 @@ yomk::payload::Response YomkEventLoop::postWait(YomkMsgPtr msg)
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop '" + event->d.eventLoopName + "' does not exist");
     }
     // 内层返回码映射:0 成功(回传 event 携带执行结果);其余统一 ResStatus::Failed(未入队未执行,不回传)
-    int rc = itEventLoop->second->postWait(event);
+    int rc = itEventLoop->second->postWait(event.msg());
     if (rc != 0)
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop '" + event->d.eventLoopName + "' not running, post wait rejected");
     }
 
-    return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop post wait success", event);
+    return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop post wait success", event.msg());
 }
 
 yomk::payload::Response YomkEventLoop::destroy(YomkMsgPtr msg)
@@ -121,7 +121,7 @@ yomk::payload::Response YomkEventLoop::destroy(YomkMsgPtr msg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, str.error()};
     }
     std::unique_lock<std::shared_mutex> lockEventLoop(m_eventLoopMutex);
     auto itEventLoop = m_eventLoop.find(str->d);
@@ -157,7 +157,7 @@ yomk::payload::Response YomkEventLoop::loopInfo(YomkMsgPtr msg)
     auto query = yomk::msgs::unpack<yomk::msgs::EventLoopQuery>(msg);
     if (!query)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::EventLoopQuery::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, query.error()};
     }
     // 名称按字面量精确匹配,采样数为类型化字段
     const std::string& loopName = query->d.loopName;

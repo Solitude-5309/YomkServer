@@ -61,7 +61,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr msg)
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, logMsg.error()};
     }
     if (logMsg->d.logger.empty())
     {
@@ -146,7 +146,7 @@ yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr msg)
     auto consoleLogProxy = yomk::msgs::unpack<yomk::msgs::ConsoleLogProxy>(msg);
     if (!consoleLogProxy)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::ConsoleLogProxy::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, consoleLogProxy.error()};
     }
     // 与 consoleLog 读侧互斥
     std::lock_guard<std::mutex> proxyLock(m_consoleLogProxyMutex);
@@ -161,7 +161,7 @@ yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr msg)
     auto fileLogProxy = yomk::msgs::unpack<yomk::msgs::FileLogProxy>(msg);
     if (!fileLogProxy)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::FileLogProxy::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, fileLogProxy.error()};
     }
     // 与 fileLog 读侧互斥;语义与 setConsoleLogProxy 对称
     std::lock_guard<std::mutex> proxyLock(m_fileLogProxyMutex);
@@ -176,7 +176,7 @@ yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr msg)
     auto logFile = yomk::msgs::unpack<yomk::msgs::LogFile>(msg);
     if (!logFile)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::LogFile::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, logFile.error()};
     }
 
     // 空名/空目录拒绝:ResStatus::Invalid(参数无效惯例)
@@ -213,7 +213,7 @@ yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr msg)
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, logMsg.error()};
     }
 
     if (logMsg->d.logger.empty())
@@ -284,7 +284,7 @@ yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr msg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, str.error()};
     }
     std::shared_lock<std::shared_mutex> lock(m_fileLoggersMutex);
     auto fileLogger = m_fileLoggers.find(str->d);
@@ -302,7 +302,7 @@ yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr msg)
     auto yName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yName)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, yName.error()};
     }
 
     // 空名拒绝(同 createFileLogger 惯例)
@@ -348,7 +348,7 @@ yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr msg)
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, logMsg.error()};
     }
 
     // 具名请求:逐器门控路径(写第二层,不触碰全局主闸;未命中 ResStatus::Failed 不惰性创建)
@@ -391,7 +391,7 @@ yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr msg)
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, logMsg.error()};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
@@ -474,7 +474,7 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr msg)
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, logMsg.error()};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
@@ -517,7 +517,7 @@ yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr msg)
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Log::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, logMsg.error()};
     }
 
     // 具名请求:逐器门控路径(同 offConsoleLogByLevel)
@@ -600,7 +600,7 @@ yomk::payload::Response YomkLogger::loggers(YomkMsgPtr msg)
     auto type = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!type)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, type.error()};
     }
     std::vector<std::string> names;
     if (type->d == "console")
@@ -630,7 +630,7 @@ yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr msg)
     auto query = yomk::msgs::unpack<yomk::msgs::LoggerQuery>(msg);
     if (!query)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::LoggerQuery::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, query.error()};
     }
     // 按类型单表精确查找:两表允许同名,同名歧义由 type 消除;命中锁内构造结构化快照
     yomk::payload::LoggerInfo info;

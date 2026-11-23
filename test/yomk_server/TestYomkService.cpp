@@ -93,7 +93,7 @@ private:
         auto data = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!data)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, data.error()};
         }
         return {yomk::payload::ResStatus::Succeeded, "echo:" + data->d};
     }

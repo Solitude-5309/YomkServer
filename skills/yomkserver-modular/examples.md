@@ -344,7 +344,7 @@ yomk::payload::Response ConfigService::getConfig(YomkMsgPtr msg)
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed,
-                yomk::msgs::typeMismatch(msg, yomk::msgs::prj::ConfigKey::kTypeName)};
+                data.error()};
     }
 
     auto it = m_configMap.find(data->req.key);
@@ -362,7 +362,7 @@ yomk::payload::Response ConfigService::setConfig(YomkMsgPtr msg)
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed,
-                yomk::msgs::typeMismatch(msg, yomk::msgs::prj::ConfigKeyValue::kTypeName)};
+                data.error()};
     }
 
     m_configMap[data->req.key] = data->req.value;
@@ -635,7 +635,7 @@ yomk::payload::Response UserService::getUser(YomkMsgPtr msg)
     if (!query)
     {
         return {yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(msg, yomk::msgs::prj::UserQuery::kTypeName)};
+            query.error()};
     }
     yomk::log().tag("UserService::getUser").info("query user: ", query->req.userId);
 
@@ -650,7 +650,7 @@ yomk::payload::Response UserService::createUser(YomkMsgPtr msg)
     if (!user)
     {
         return {yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(msg, yomk::msgs::prj::UserInfo::kTypeName)};
+            user.error()};
     }
     yomk::log().tag("UserService::createUser").info("create user: ", user->d.name);
 
@@ -764,7 +764,7 @@ yomk::payload::Response taskHandler(YomkMsgPtr msg)
     if (!taskData)
     {
         return {yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+            taskData.error()};
     }
     yomk::log().tag("TaskHandler").debug("processing in thread: ", std::this_thread::get_id());
     return {yomk::payload::ResStatus::Succeeded, "task done"};
@@ -810,7 +810,7 @@ yomk::payload::Response validateAmount(YomkMsgPtr msg)
     if (!amountStr)
     {
         return {yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+            amountStr.error()};
     }
     double amount = std::stod(amountStr->d);
     if (amount <= 0)

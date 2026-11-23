@@ -35,8 +35,7 @@ yomk::fn_pool().fn_name("calcSum")
     .fn([](YomkMsgPtr msg) {
         auto arr = yomk::msgs::unpack<yomk::msgs::Int32Array>(msg);
         if (!arr)
-            return yomk::payload::Response{yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(msg, yomk::msgs::Int32Array::kTypeName)};
+            return yomk::payload::Response{yomk::payload::ResStatus::Failed, arr.error()};
         int sum = 0;
         for (int v : arr->d) sum += v;
         return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::Int32::shared(sum)};

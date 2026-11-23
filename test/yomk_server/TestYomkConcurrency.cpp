@@ -103,7 +103,7 @@ public:
         auto sp = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!sp)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, sp.error()};
         }
         return {yomk::payload::ResStatus::Succeeded, sp->d};
     }

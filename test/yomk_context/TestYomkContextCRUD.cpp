@@ -169,7 +169,7 @@ int main()
         auto resp = yomk::ctx().keys();
         YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "keys 返回 ResStatus::Succeeded");
         auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.data);
-        YOMK_TEST_CHECK(arr != nullptr, "keys 数据为 StringArray");
+        YOMK_TEST_CHECK(arr, "keys 数据为 StringArray");
         YOMK_TEST_CHECK(arr && arr->d.size() == 2, "keys 返回 2 个 key");
         YOMK_TEST_CHECK(arr && contains(arr->d, "str_key"), "keys 包含 str_key");
         YOMK_TEST_CHECK(arr && contains(arr->d, "int_key"), "keys 包含 int_key");
@@ -181,7 +181,7 @@ int main()
         YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "keyInfo 正常 key 返回 ResStatus::Succeeded");
         YOMK_TEST_CHECK(resp.msg == "ok", "keyInfo 命中 msg 恒为 ok");
         auto info = yomk::msgs::unpack<yomk::msgs::ContextKeyInfo>(resp.data);
-        YOMK_TEST_CHECK(info != nullptr, "keyInfo 数据为 ContextKeyInfo 包");
+        YOMK_TEST_CHECK(info, "keyInfo 数据为 ContextKeyInfo 包");
         YOMK_TEST_CHECK(info && info->d.key == "str_key", "keyInfo 字段 key 一致");
         YOMK_TEST_CHECK(info && info->d.typeName == yomk::msgs::String::kTypeName, "keyInfo 字段 typeName 一致");
         YOMK_TEST_CHECK(info && !info->d.checkerOn, "keyInfo 字段 checkerOn 为 false");
@@ -210,7 +210,7 @@ int main()
         YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "listAll 返回 ResStatus::Succeeded");
         YOMK_TEST_CHECK(resp.msg == "ok", "listAll 成功消息恒为 ok");
         auto arr = yomk::msgs::unpack<yomk::msgs::ContextGroupInfoList>(resp.data);
-        YOMK_TEST_CHECK(arr != nullptr, "listAll 数据为 ContextGroupInfoList");
+        YOMK_TEST_CHECK(arr, "listAll 数据为 ContextGroupInfoList");
         YOMK_TEST_CHECK(arr && arr->d.size() == 1, "listAll 返回 1 个组信息");
         YOMK_TEST_CHECK(arr && arr->d[0].groupName == "main", "listAll 组名为 main");
         // 组内 keys 为 std::map 快照，中序遍历字典序：int_key < str_key；逐字段断言（均未挂 checker/monitor）

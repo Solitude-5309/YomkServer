@@ -1114,11 +1114,11 @@ int main()
         // 条目改报逐器门控层真值后，"全 on" 验证语义迁移至主闸 status()（log_mgr().console().status()）
         auto gsMsg = yomk::msgs::unpack<yomk::msgs::LoggerState>(yomk::log_mgr().console().status().data);
         YOMK_TEST_CHECK(
-            (gsMsg != nullptr && gsMsg->d.debugOn && gsMsg->d.infoOn && gsMsg->d.warnOn &&
+            (gsMsg && gsMsg->d.debugOn && gsMsg->d.infoOn && gsMsg->d.warnOn &&
              gsMsg->d.errorOn && gsMsg->d.proxyOn),
             "S4B: 全局主闸状态全 on（proxy 已在 S1D 安装）");
         auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
-        const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
+        const yomk::payload::LoggerState* st = firstConsoleState(listMsg.msg());
         YOMK_TEST_CHECK(
             (st != nullptr && st->debugOn && st->infoOn && st->warnOn && st->errorOn && st->proxyOn),
             "S4B: ALL 首条 console 条目逐器门控真值全 on（未做具名开关，含 proxyOn）");
@@ -1139,7 +1139,7 @@ int main()
             }
         }
         const bool identical =
-            (listMsg != nullptr && listMsg->d.size() == entries && loggersLines.size() == c &&
+            (listMsg && listMsg->d.size() == entries && loggersLines.size() == c &&
              ac == c && af == f);
         YOMK_TEST_CHECK(identical, "S4B: ALL 与 LOGGERS 数量及类型计数一致（嵌套双锁原子快照）");
 

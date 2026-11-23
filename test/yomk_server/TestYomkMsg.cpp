@@ -145,7 +145,7 @@ int main()
             auto s = yomk::msgs::unpack<yomk::msgs::String>(msg);
             if (!s)
             {
-                return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+                return {yomk::payload::ResStatus::Failed, s.error()};
             }
             return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, s->d);
         };
@@ -191,11 +191,11 @@ int main()
 
         // --- unpack 直接调用：不提前 return（指针 nullptr，调用方手动判空） ---
         auto nullPtr = yomk::msgs::unpack<yomk::msgs::String>(nullptr);
-        YOMK_TEST_CHECK(nullPtr == nullptr, "unpack null msg：不提前返回，指针为 nullptr");
+        YOMK_TEST_CHECK(!nullPtr, "unpack null msg：不提前返回，结果判假");
         auto missPtr = yomk::msgs::unpack<yomk::msgs::String>(missMsg);
-        YOMK_TEST_CHECK(missPtr == nullptr, "unpack 类型名不匹配：指针为 nullptr（后续语句可达）");
+        YOMK_TEST_CHECK(!missPtr, "unpack 类型名不匹配：结果判假（后续语句可达）");
         auto hitPtr = yomk::msgs::unpack<yomk::msgs::String>(okMsg);
-        YOMK_TEST_CHECK(hitPtr != nullptr && hitPtr->d == "hello", "unpack 命中：指针非空且 d 正确");
+        YOMK_TEST_CHECK(hitPtr && hitPtr->d == "hello", "unpack 命中：结果判真且 d 正确");
 
         // --- 名匹配但动态类型不符分支已不存在：typeName() 直接返回各类型的静态 kTypeName，
         //     名字命中即意味着动态类型就是该类型，无需再断言 cast 失败 ---

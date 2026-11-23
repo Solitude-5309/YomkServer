@@ -22,8 +22,7 @@
 | `YOMK_DEFINE_MSG_NS(NS, DataType, MsgName, VarName)` | 同上，但生成类落 `yomk::msgs::NS` 子命名空间、`kTypeName` 为 `"yomk::msgs::NS::MsgName"`；工程/扩展自有消息用它，避免占用 `yomk::msgs` 根（`NS` 为 C++17 嵌套命名空间 token，不得含空格；载荷类型与 NS 或祖先同名时写根限定名 `::` 开头） |
 | `yomk::msgs::MsgName::shared(args...)` | 类内静态工厂，转发构造参数创建 `shared_ptr<MsgName>` 包装的消息包 |
 | `msg->typeName()` | 运行期类型名读取：基类纯虚 `typeName()` 返回各类型静态 `kTypeName`（`std::string_view`，零分配）；期望类型直接用 `T::kTypeName`，反查实际类型用本接口（空包需调用方自行判空） |
-| `yomk::msgs::typeMismatch(msg, expected)` | 标准类型不符文案：`"msg is not <期望类型>, got '<实际类型>'"`（内部判空取实际类型，空包报 `"null"`；`expected` 传目标消息的 `kTypeName`），供 `unpack` 判空分支统一返回 |
-| `yomk::msgs::unpack<yomk::msgs::MsgName>(msg)` | 按消息类型解包模板：返回 `shared_ptr<MsgName>`；msg 为空或类型名不匹配时返回 `nullptr`，不抛异常；失败处理由调用方手写（如 `if (!ptr) return {...}`） |
+| `yomk::msgs::unpack<yomk::msgs::MsgName>(msg)` | 按消息类型解包模板：返回 `UnpackResult<MsgName>`；命中时 `if (r)` 判真、`r->d` 访问载荷；未命中时结果判假，`r.error()` 给出标准文案 `"msg is not <期望类型>, got '<实际类型>'"`（空包报 `"null"`）；不抛异常，失败处理由调用方手写（如 `if (!r) return {...}`）；需把消息指针交给其他接口时取 `r.msg()` |
 
 ## 内置标准类型
 
@@ -48,12 +47,11 @@ YOMK_DEFINE_MSG(UserInfo, UserInfoMsg, d);
 // 2. 构造消息包
 auto msg = yomk::msgs::UserInfoMsg::shared(UserInfo{1001, "Alice"});
 
-// 3. 功能函数中校验并解包（类型不匹配时 info 为 nullptr，需自行判空）
+// 3. 功能函数中校验并解包（类型不匹配时结果判假，失败原因见 info.error()）
 auto info = yomk::msgs::unpack<yomk::msgs::UserInfoMsg>(msg);
 if (!info)
 {
-    return {yomk::payload::ResStatus::Failed,
-        yomk::msgs::typeMismatch(msg, yomk::msgs::UserInfoMsg::kTypeName)};
+    return {yomk::payload::ResStatus::Failed, info.error()};
 }
 return {yomk::payload::ResStatus::Succeeded, "hello " + info->d.name};
 ```
@@ -70,7 +68,7 @@ yomk::fn_pool().fn_name("save").msg(msg).call();                                
 ## 注意事项
 
 - 类型匹配以运行期类型名为准：`kTypeName` 为全限定类型标识（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名。各处声明的"期望消息类型名"——`installFunc("/x", &C::m, yomk::msgs::Msg::kTypeName)` 第三参、`yomk::fn_pool().msg_name(...)`、`yomk::event_loop().msg_name(...)`——一律引用 `T::kTypeName`，**禁止手写消息名字符串**；仅作内省元数据，不拦截调用。
-- `kTypeName` 是类型身份的唯一权威常量；`typeName()` 为基类纯虚函数，直接返回各类型的静态 `kTypeName`（`std::string_view`，零分配、不可伪造），是运行期反查实际类型的唯一入口（判空与自有 `std::string` 拼接由调用方负责，框架内 `typeMismatch` 已封装）；`unpack` 以"`typeName()` 比对 + dynamic_pointer_cast"两步完成解包。
+- `kTypeName` 是类型身份的唯一权威常量；`typeName()` 为基类纯虚函数，直接返回各类型的静态 `kTypeName`（`std::string_view`，零分配、不可伪造），是运行期反查实际类型的唯一入口（判空与自有 `std::string` 拼接由调用方负责，框架内 `unpack` 已封装）；`unpack` 以"`typeName()` 比对 + dynamic_pointer_cast"两步完成解包，失败文案随结果对象的 `error()` 返回。
 - 期望类型名与说明字符串均供自省读取（函数池与函数单查返回 `FuncInfo`：`funcName` / `msgName` / `description`，见 [服务自省](YomkServerInfo.md)）。
 - 上下文类型化读自带同类校验：`yomk::ctx().key(k).msg<MsgName>()...get()` 内部按 `kTypeName` 比对 + 指针转换，与 `unpack` 语义一致。
 

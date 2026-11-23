@@ -112,7 +112,7 @@ int main()
         auto resp = yomk::fn_pool().fn_name("fp_echo").msg(yomk::msgs::String::shared(std::string("hello_fp"))).call();
         YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded, "call() 已注册函数返回 ResStatus::Succeeded");
         auto echoMsg = yomk::msgs::unpack<yomk::msgs::String>(resp.data);
-        YOMK_TEST_CHECK(echoMsg != nullptr && echoMsg->d == "hello_fp", "call() 回传消息解包一致（echo 语义）");
+        YOMK_TEST_CHECK(echoMsg && echoMsg->d == "hello_fp", "call() 回传消息解包一致（echo 语义）");
         YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_echo").uninstall() == yomk::payload::ResStatus::Succeeded, "uninstall() 注销函数返回 ResStatus::Succeeded");
         YOMK_TEST_CHECK(
             yomk::fn_pool().fn_name("fp_echo").msg(yomk::msgs::String::shared(std::string("x"))).call().status == yomk::payload::ResStatus::Failed,
@@ -187,14 +187,14 @@ int main()
                 }
             }
         }
-        YOMK_TEST_CHECK(namesArr != nullptr && namesFound, "list() 列表包含 fp_plain");
+        YOMK_TEST_CHECK(namesArr && namesFound, "list() 列表包含 fp_plain");
 
         // get_info()：结构化返回（FuncInfo 包恒挂）与未注册/空名
         auto infoResp = yomk::fn_pool().fn_name("fp_plain").get_info();
         YOMK_TEST_CHECK(infoResp.status == yomk::payload::ResStatus::Succeeded, "get_info() 已注册名返回 ResStatus::Succeeded");
         YOMK_TEST_CHECK(infoResp.msg == "ok", "get_info() 命中 msg 恒为 ok");
         auto infoPlainResp = yomk::msgs::unpack<yomk::msgs::FuncInfo>(infoResp.data);
-        YOMK_TEST_CHECK(infoPlainResp != nullptr, "get_info() 数据为 FuncInfo 包");
+        YOMK_TEST_CHECK(infoPlainResp, "get_info() 数据为 FuncInfo 包");
         YOMK_TEST_CHECK(infoPlainResp && infoPlainResp->d.funcName == "fp_plain", "get_info() 字段 funcName 一致");
         YOMK_TEST_CHECK(infoPlainResp && infoPlainResp->d.msgName.empty() && infoPlainResp->d.description.empty(),
               "2 参注册 msgName/description 均为空");
@@ -225,7 +225,7 @@ int main()
                 }
             }
         }
-        YOMK_TEST_CHECK(allArr != nullptr && allFound, "all() 列表包含 fp_plain（msgName/description 均空）");
+        YOMK_TEST_CHECK(allArr && allFound, "all() 列表包含 fp_plain（msgName/description 均空）");
         YOMK_TEST_CHECK(yomk::fn_pool().fn_name("fp_count_probe").uninstall() == yomk::payload::ResStatus::Succeeded, "清理 fp_count_probe");
     }
 
@@ -258,7 +258,7 @@ int main()
         YOMK_TEST_CHECK(infoDesc.status == yomk::payload::ResStatus::Succeeded && infoDesc.msg == "ok",
               "4 参注册 get_info() 命中 msg 恒为 ok");
         auto descInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(infoDesc.data);
-        YOMK_TEST_CHECK(descInfo != nullptr, "4 参注册 get_info() 结构化包恒挂");
+        YOMK_TEST_CHECK(descInfo, "4 参注册 get_info() 结构化包恒挂");
         YOMK_TEST_CHECK(descInfo && descInfo->d.funcName == "fp_desc" && descInfo->d.msgName == yomk::msgs::String::kTypeName,
               "4 参注册字段 funcName/msgName 一致");
         YOMK_TEST_CHECK(descInfo && descInfo->d.description == "fp description", "字段 description 承载函数说明");

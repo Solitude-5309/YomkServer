@@ -191,7 +191,7 @@ yomk::payload::Response motionHandle(YomkMsgPtr msg)
     auto cmd = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!cmd)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, cmd.error()};
     }
     std::ostringstream oss;
     oss << "执行运动指令: " << cmd->d << "（循环线程 " << std::this_thread::get_id() << "）";
@@ -219,7 +219,7 @@ yomk::payload::Response teachHandle(YomkMsgPtr msg)
     auto data = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!data)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, data.error()};
     }
     std::ostringstream oss;
     oss << "示教器事件: " << data->d << "（循环线程 " << std::this_thread::get_id() << "）";

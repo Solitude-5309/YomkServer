@@ -506,7 +506,7 @@ int main()
         YOMK_TEST_CHECK(oob.status == yomk::payload::ResStatus::Succeeded, "越界数字 tagCount 返回 ResStatus::Succeeded（不崩溃）");
         YOMK_TEST_CHECK(oob.msg == "ok", "越界数字 tagCount 命中 msg 恒为 ok");
         auto oobInfo = yomk::msgs::unpack<yomk::msgs::EventLoopInfo>(oob.data);
-        YOMK_TEST_CHECK(oobInfo != nullptr, "越界数字 tagCount 解包 EventLoopInfo 成功");
+        YOMK_TEST_CHECK(oobInfo, "越界数字 tagCount 解包 EventLoopInfo 成功");
         YOMK_TEST_CHECK(oobInfo && oobInfo->d.pending == 2, "越界数字串不影响循环状态（pending 仍为 2）");
         YOMK_TEST_CHECK(oobInfo && oobInfo->d.nextTags.size() == 2, "越界数字 tagCount 回退默认 3（队列 2 条全部列出）");
         YOMK_TEST_CHECK(oobInfo && oobInfo->d.nextTags[0] == "c1" && oobInfo->d.nextTags[1] == "c2",
@@ -571,7 +571,7 @@ int main()
                 }
             }
         }
-        YOMK_TEST_CHECK(loopsAliveArr != nullptr && loopsFound, "list() 列表包含 api_loop");
+        YOMK_TEST_CHECK(loopsAliveArr && loopsFound, "list() 列表包含 api_loop");
 
         // all()：结构化 EventLoopInfoList，包含 api_loop 条目
         auto allResp = yomk::event_loop().all();
@@ -589,7 +589,7 @@ int main()
                 }
             }
         }
-        YOMK_TEST_CHECK(allArr != nullptr && allFound, "all() 列表包含 api_loop 条目");
+        YOMK_TEST_CHECK(allArr && allFound, "all() 列表包含 api_loop 条目");
 
         // 空循环名边界：空串为合法 map 键，全生命周期 ResStatus::Succeeded
         YOMK_TEST_CHECK(yomk::event_loop().loop("").handle_fn(nullptr).start() == yomk::payload::ResStatus::Succeeded, "START 空循环名返回 ResStatus::Succeeded");
@@ -628,7 +628,7 @@ int main()
                 }
             }
         }
-        YOMK_TEST_CHECK(loopsArr != nullptr && removed, "销毁后 list() 不再包含 api_loop");
+        YOMK_TEST_CHECK(loopsArr && removed, "销毁后 list() 不再包含 api_loop");
     }
 
     // ============ Section 11: remove("/YomkEventLoop") 残留 loop 收尾与重注册（API 段，P4）============
@@ -652,7 +652,7 @@ int main()
                 }
             }
         }
-        YOMK_TEST_CHECK(srvArr != nullptr && evtLoopGone, "服务表快照不再含 /YomkEventLoop");
+        YOMK_TEST_CHECK(srvArr && evtLoopGone, "服务表快照不再含 /YomkEventLoop");
 
         YOMK_TEST_CHECK(yomk::server().srv<YomkEventLoop>().create() == 0, "create() 无参重注册返回 0（构造函数固定名生效）");
         YOMK_TEST_CHECK(yomk::event_loop().loop("/L2").start() == yomk::payload::ResStatus::Succeeded, "重注册后 start() 恢复可用");

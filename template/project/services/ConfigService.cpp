@@ -75,7 +75,7 @@ yomk::payload::Response ConfigService::getConfig(YomkMsgPtr msg)
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed,
-                yomk::msgs::typeMismatch(msg, yomk::msgs::prj::ConfigKey::kTypeName)};
+                data.error()};
     }
 
     auto it = m_configMap.find(data->req.key);
@@ -93,7 +93,7 @@ yomk::payload::Response ConfigService::setConfig(YomkMsgPtr msg)
     if (!data)
     {
         return {yomk::payload::ResStatus::Failed,
-                yomk::msgs::typeMismatch(msg, yomk::msgs::prj::ConfigKeyValue::kTypeName)};
+                data.error()};
     }
 
     m_configMap[data->req.key] = data->req.value;

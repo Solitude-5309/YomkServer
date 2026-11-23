@@ -88,7 +88,7 @@ yomk::payload::Response YomkContext::create(YomkMsgPtr msg)
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(msg);
     if (!context)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Context::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, context.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(context->d.group, fail);
@@ -118,7 +118,7 @@ yomk::payload::Response YomkContext::destroy(YomkMsgPtr msg)
     auto groupKey = yomk::msgs::unpack<yomk::msgs::ContextGroupKey>(msg);
     if (!groupKey)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::ContextGroupKey::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, groupKey.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(groupKey->d.group, fail);
@@ -146,7 +146,7 @@ yomk::payload::Response YomkContext::get(YomkMsgPtr msg)
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(msg);
     if (!context)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Context::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, context.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(context->d.group, fail);
@@ -174,7 +174,7 @@ yomk::payload::Response YomkContext::set(YomkMsgPtr msg)
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(msg);
     if (!context)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::Context::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, context.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(context->d.group, fail);
@@ -203,7 +203,7 @@ yomk::payload::Response YomkContext::turnOnChecker(YomkMsgPtr msg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, str.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -221,7 +221,7 @@ yomk::payload::Response YomkContext::turnOffChecker(YomkMsgPtr msg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, str.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -239,7 +239,7 @@ yomk::payload::Response YomkContext::turnOnMonitor(YomkMsgPtr msg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, str.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -257,7 +257,7 @@ yomk::payload::Response YomkContext::turnOffMonitor(YomkMsgPtr msg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, str.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -275,7 +275,7 @@ yomk::payload::Response YomkContext::setChecker(YomkMsgPtr msg)
     auto checker = yomk::msgs::unpack<yomk::msgs::ContextChecker>(msg);
     if (!checker)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::ContextChecker::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, checker.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(checker->d.group, fail);
@@ -305,7 +305,7 @@ yomk::payload::Response YomkContext::setMonitor(YomkMsgPtr msg)
     auto monitor = yomk::msgs::unpack<yomk::msgs::ContextMonitor>(msg);
     if (!monitor)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::ContextMonitor::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, monitor.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(monitor->d.group, fail);
@@ -350,7 +350,7 @@ yomk::payload::Response YomkContext::keys(YomkMsgPtr msg)
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, str.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(str->d, fail);
@@ -368,7 +368,7 @@ yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr msg)
     auto groupKey = yomk::msgs::unpack<yomk::msgs::ContextGroupKey>(msg);
     if (!groupKey)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::ContextGroupKey::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, groupKey.error()};
     }
     yomk::payload::Response fail;
     ContextGroup* group = findGroup(groupKey->d.group, fail);

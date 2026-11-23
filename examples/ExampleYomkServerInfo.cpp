@@ -251,7 +251,7 @@ public:
         auto status = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!status)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, status.error()};
         }
         std::ostringstream oss;
         oss << "工位状态上报：收到 \"" << status->d << "\"";
@@ -265,7 +265,7 @@ public:
         auto data = yomk::msgs::unpack<yomk::msgs::QualityCheckReq>(msg);
         if (!data)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::QualityCheckReq::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, data.error()};
         }
         std::ostringstream oss;
         oss << "质量抽检执行：工位 " << data->req.station << " 抽检 " << data->req.count << " 件";

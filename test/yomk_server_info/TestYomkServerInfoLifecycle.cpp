@@ -177,7 +177,7 @@ public:
         auto yText = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!yText)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, yText.error()};
         }
         return {yomk::payload::ResStatus::Succeeded, yText->d};
     }
@@ -328,7 +328,7 @@ int main()
         YOMK_TEST_CHECK(hitTyped.status == yomk::payload::ResStatus::Succeeded && hitTyped.msg == "ok",
               "命中三参函数：ResStatus::Succeeded 且 msg 恒为 ok");
         auto typedInfo = yomk::msgs::unpack<yomk::msgs::FuncInfo>(hitTyped.data);
-        YOMK_TEST_CHECK(typedInfo != nullptr, "命中三参函数：数据为 FuncInfo 包");
+        YOMK_TEST_CHECK(typedInfo, "命中三参函数：数据为 FuncInfo 包");
         YOMK_TEST_CHECK(typedInfo && typedInfo->d.funcName == "/echo" && typedInfo->d.msgName == yomk::msgs::String::kTypeName,
               "命中三参函数字段 funcName/msgName 一致");
 
@@ -383,10 +383,10 @@ int main()
         YOMK_TEST_CHECK(resp.status == yomk::payload::ResStatus::Succeeded && resp.msg == "ok", "/all 返回 ResStatus::Succeeded + ok");
 
         auto list = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(resp.data);
-        YOMK_TEST_CHECK(list != nullptr && !list->d.empty(), "/all 输出非空");
+        YOMK_TEST_CHECK(list && !list->d.empty(), "/all 输出非空");
 
         // FmtSrv 段：按 serviceName 查条目，段内 map 字典序 /echo 在 /ping 前
-        const yomk::payload::ServerServiceInfo* fmt = findServiceInfo(list, "/FmtSrv");
+        const yomk::payload::ServerServiceInfo* fmt = findServiceInfo(list.msg(), "/FmtSrv");
         YOMK_TEST_CHECK(fmt != nullptr, "/all 含 FmtSrv 服务条目");
         YOMK_TEST_CHECK(fmt && fmt->funcs.size() == 2 && fmt->funcs[0].funcName == "/echo" &&
                   fmt->funcs[0].msgName == yomk::msgs::String::kTypeName && fmt->funcs[1].funcName == "/ping" &&
@@ -394,7 +394,7 @@ int main()
               "FmtSrv 段：/echo [String] 与 /ping 字段齐全（map 字典序）");
 
         // 内置 /YomkServerInfo 段：4 端点齐全（/services、/all 无类型，另两个带 [String]）
-        const yomk::payload::ServerServiceInfo* self = findServiceInfo(list, "/YomkServerInfo");
+        const yomk::payload::ServerServiceInfo* self = findServiceInfo(list.msg(), "/YomkServerInfo");
         YOMK_TEST_CHECK(self != nullptr, "/all 含 /YomkServerInfo 服务条目");
         YOMK_TEST_CHECK(findFuncInfo(self, "/services") != nullptr, "内置段含 \"/services\" 条目");
         YOMK_TEST_CHECK(findFuncInfo(self, "/functions") != nullptr &&
@@ -515,7 +515,7 @@ int main()
                   nameIn(unpackStringArray(restored), "/YomkServerInfo"),
               "重注册后自举恢复：/services ResStatus::Succeeded 且含自身");
         auto restoredAll = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(yomk::srv_info().all().data);
-        YOMK_TEST_CHECK(findServiceInfo(restoredAll, "/YomkServerInfo") != nullptr,
+        YOMK_TEST_CHECK(findServiceInfo(restoredAll.msg(), "/YomkServerInfo") != nullptr,
               "重注册后 /all 含自身段（自举查询成功）");
     }
 
@@ -548,7 +548,7 @@ int main()
               "超长名下 URL 二段解析正确（funcName == \"/ping\"）");
 
         auto longAll = yomk::msgs::unpack<yomk::msgs::ServerServiceInfoList>(yomk::srv_info().all().data);
-        const yomk::payload::ServerServiceInfo* longSrv = findServiceInfo(longAll, longName);
+        const yomk::payload::ServerServiceInfo* longSrv = findServiceInfo(longAll.msg(), longName);
         YOMK_TEST_CHECK(longSrv != nullptr, "/all 含超长服务名条目（无截断）");
         YOMK_TEST_CHECK(longSrv && longSrv->funcs.size() == 2 && longSrv->funcs[0].funcName == "/echo" &&
                   longSrv->funcs[0].msgName == yomk::msgs::String::kTypeName && longSrv->funcs[1].funcName == "/ping",

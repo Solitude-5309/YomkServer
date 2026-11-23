@@ -73,11 +73,10 @@ public:
     // 功能函数统一签名：yomk::payload::Response(YomkMsgPtr msg)
     yomk::payload::Response hello(YomkMsgPtr msg)
     {
-        auto data = yomk::msgs::unpack<yomk::msgs::String>(msg); // 类型校验与解包；不匹配时为 nullptr，需自行判空
+        auto data = yomk::msgs::unpack<yomk::msgs::String>(msg); // 类型校验与解包；失败时结果判假，失败原因经 error() 读取
         if (!data)
         {
-            return {yomk::payload::ResStatus::Failed,
-            yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, data.error()};
         }
         return {yomk::payload::ResStatus::Succeeded, "hello " + data->d};
     }
@@ -145,7 +144,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 3. 消息包 (YomkMsg)
 
-服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<yomk/msg/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(msg)` 解包模板做类型校验（msg 为空或类型名不匹配时返回 `nullptr`，失败处理由调用方完成），解包失败的文案统一用 `yomk::msgs::typeMismatch(msg, 消息名::kTypeName)`（内部经 `msg->typeName()` 判空后报出实际类型，空包报 `"null"`）；内置 30 种标量/数组类型位于 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息包位于 `<yomk/server/YomkServerMsg.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msg.h`（对应模块 `*Api.h` 已按需包含）。
+服务与事件循环间传递强类型数据：`YOMK_DEFINE_MSG(DataType, MsgName, VarName)` 宏声明自定义消息（宏、基类与 `unpack` 位于 `<yomk/msg/YomkMsg.h>`；生成类位于 `yomk::msgs`，载荷成员名约定为 `d`），`yomk::msgs::消息名::shared(...)` 构造消息包，`yomk::msgs::unpack<yomk::msgs::消息名>(msg)` 解包模板返回 `UnpackResult`（msg 为空或类型名不匹配时结果判假，`error()` 给出标准文案 `"msg is not <期望类型>, got '<实际类型>'"`，空包报 `"null"`；失败处理由调用方完成）；内置 30 种标量/数组类型位于 `<yomk/msg/YomkStdMsg.h>`，核心载荷消息包位于 `<yomk/server/YomkServerMsg.h>`；模块专属载荷/消息位于 `Yomk{Module}Payload.h` / `Yomk{Module}Msg.h`（对应模块 `*Api.h` 已按需包含）。
 
 详见 [消息包](docs/YomkMsg.md)。
 

@@ -171,7 +171,7 @@ yomk::payload::Response payloadSum(YomkMsgPtr msg)
     auto loads = yomk::msgs::unpack<yomk::msgs::StringArray>(msg);
     if (!loads)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::StringArray::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, loads.error()};
     }
 
     std::ostringstream oss;
@@ -198,7 +198,7 @@ yomk::payload::Response handshake(YomkMsgPtr msg)
     auto worker = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!worker)
     {
-        return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+        return {yomk::payload::ResStatus::Failed, worker.error()};
     }
     std::ostringstream oss;
     oss << "班次握手工具执行：向 " << worker->d << " 回执问候";
@@ -294,7 +294,7 @@ static void showArmToolHotSwap()
         auto worker = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!worker)
         {
-            return {yomk::payload::ResStatus::Failed, yomk::msgs::typeMismatch(msg, yomk::msgs::String::kTypeName)};
+            return {yomk::payload::ResStatus::Failed, worker.error()};
         }
         std::ostringstream oss;
         oss << "班次握手工具 V2 执行：向 " << worker->d << " 升级问候";

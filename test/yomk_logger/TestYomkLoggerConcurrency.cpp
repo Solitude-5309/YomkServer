@@ -707,7 +707,7 @@ int main()
                     while (!g_s3Stop.load(std::memory_order_acquire))
                     {
                         auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
-                        const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
+                        const yomk::payload::LoggerState* st = firstConsoleState(listMsg.msg());
                         if (st && !st->proxyOn)
                         {
                             g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
@@ -1218,7 +1218,7 @@ int main()
                             auto listMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(allResp.data);
                             if (listMsg)
                             {
-                                const yomk::payload::LoggerState* st = firstConsoleState(listMsg);
+                                const yomk::payload::LoggerState* st = firstConsoleState(listMsg.msg());
                                 if (st == nullptr || !st->proxyOn)
                                 {
                                     g_s5BadProxyState.fetch_add(1, std::memory_order_relaxed);
@@ -1477,17 +1477,17 @@ int main()
         // ALL 条目断言保留，验证未做具名开关时逐器真值恒 on（退化性基线）
         auto finalGs = yomk::msgs::unpack<yomk::msgs::LoggerState>(yomk::log_mgr().console().status().data);
         YOMK_TEST_CHECK(
-            (finalGs != nullptr && finalGs->d.debugOn && finalGs->d.infoOn &&
+            (finalGs && finalGs->d.debugOn && finalGs->d.infoOn &&
              finalGs->d.warnOn && finalGs->d.errorOn && finalGs->d.proxyOn),
             "S5: 收尾四级别全 ON 后全局主闸状态全 on（含 S3 已设的 proxyOn）");
         auto finalListMsg = yomk::msgs::unpack<yomk::msgs::LoggerInfoList>(yomk::log_mgr().all().data);
-        const yomk::payload::LoggerState* finalSt = firstConsoleState(finalListMsg);
+        const yomk::payload::LoggerState* finalSt = firstConsoleState(finalListMsg.msg());
         YOMK_TEST_CHECK(
             (finalSt != nullptr && finalSt->debugOn && finalSt->infoOn &&
              finalSt->warnOn && finalSt->errorOn && finalSt->proxyOn),
             "S5: 收尾 ALL 首条 console 条目逐器门控真值全 on（未做具名开关，含 proxyOn）");
         YOMK_TEST_CHECK(
-            finalListMsg != nullptr && finalListMsg->d.size() == finalTotal,
+            finalListMsg && finalListMsg->d.size() == finalTotal,
             "S5: ALL 日志器数 == LOGGERS 行数（" +
                 std::to_string(finalListMsg ? finalListMsg->d.size() : 0) + " vs " +
                 std::to_string(finalTotal) + "）——跨端点最终一致");
