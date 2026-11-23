@@ -7,7 +7,7 @@
 // unpack（null/类型名不匹配均返回 nullptr，命中返回解包指针）、
 // 服务函数级手写判空返回 ResStatus::Failed + 契约消息、手写判空提前 return（标志位观测）、
 // 运行时类型名解包（按包 typeName() 匹配后 dynamic_pointer_cast）
-// S3. Event 结构：默认/三参/四参构造、handle() 有无 serviceFunc、eventId 初值、waitCallback
+// S3. EventOpts 载荷契约：默认构造全空、四参聚合（onDone 缺省空）、五参聚合（onDone 透传可调用）、msgs::EventOpts 包装透传
 // S4. yomk::payload::Response 契约：默认构造、枚举值序（ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1）、双参/三参构造
 // S5. 框架结构体默认值（Log::level 无类内初始化不作值断言）+ 结构体消息包版 typeName 就位
 //
@@ -217,36 +217,35 @@ int main()
         YOMK_TEST_CHECK(tMiss == nullptr, "运行时名不匹配：指针 nullptr");
     }
 
-    // ============ S3. Event 结构契约 ============
-    std::cout << "===== S3. Event 结构契约 =====" << std::endl;
+    // ============ S3. EventOpts 载荷契约 ============
+    std::cout << "===== S3. EventOpts 载荷契约 =====" << std::endl;
     {
-        yomk::payload::Event ev;
-        YOMK_TEST_CHECK(ev.eventLoopName.empty() && ev.msg == nullptr && !ev.serviceFunc,
-              "Event 默认构造：loop 名空/msg 空/func 空");
-        YOMK_TEST_CHECK(ev.eventId == 0 && ev.tag.empty() && ev.response.status == yomk::payload::ResStatus::Invalid && !ev.waitCallback,
-              "Event 默认构造：eventId 0/tag 空/response ResStatus::Invalid/waitCallback 空");
+        yomk::payload::EventOpts opts;
+        YOMK_TEST_CHECK(opts.eventLoopName.empty() && opts.msg == nullptr && !opts.serviceFunc && opts.tag.empty() && !opts.onDone,
+              "EventOpts 默认构造：loop 名空/msg 空/func 空/tag 空/onDone 空");
 
         int handled = 0;
-        yomk::payload::Event ev3("/L1", yomk::msgs::String::shared(std::string("p")),
-                        [&handled](YomkMsgPtr) { ++handled; return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "handled"); });
-        YOMK_TEST_CHECK(ev3.eventLoopName == "/L1" && ev3.msg != nullptr && ev3.eventId == 0 && ev3.tag.empty(),
-              "Event 三参构造：字段透传，eventId 保持 0（入队时由框架分配）");
-        ev3.handle();
-        YOMK_TEST_CHECK(handled == 1 && ev3.response.status == yomk::payload::ResStatus::Succeeded && ev3.response.msg == "handled",
-              "Event handle：执行 serviceFunc 并填充 response");
+        YomkServiceFunc handledFn = [&handled](YomkMsgPtr)
+        {
+            ++handled;
+            return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "handled");
+        };
+        yomk::payload::EventOpts opts4{"/L1", yomk::msgs::String::shared(std::string("p")), handledFn, "tag1"};
+        YOMK_TEST_CHECK(opts4.eventLoopName == "/L1" && opts4.msg != nullptr && opts4.tag == "tag1" && !opts4.onDone,
+              "EventOpts 四参聚合：字段透传，onDone 缺省空（既有源码兼容）");
 
-        yomk::payload::Event ev4("/L2", nullptr, YomkServiceFunc(), "tag1");
-        YOMK_TEST_CHECK(ev4.tag == "tag1" && !ev4.serviceFunc, "Event 四参构造：tag 透传，func 可空");
+        bool doneHit = false;
+        YomkResponseFunc doneCb = [&doneHit](yomk::payload::Response) { doneHit = true; };
+        yomk::payload::EventOpts opts5{"/L2", nullptr, YomkServiceFunc(), "", doneCb};
+        YOMK_TEST_CHECK(!opts5.serviceFunc && opts5.tag.empty() && static_cast<bool>(opts5.onDone),
+              "EventOpts 五参聚合：func 可空，onDone 透传");
+        opts5.onDone({yomk::payload::ResStatus::Succeeded, "ok"});
+        YOMK_TEST_CHECK(doneHit, "EventOpts onDone：可调用");
 
-        yomk::payload::Event evSilent;
-        evSilent.handle();
-        YOMK_TEST_CHECK(evSilent.response.status == yomk::payload::ResStatus::Invalid,
-              "Event 默认 handle：无 serviceFunc 静默，response 不变");
-
-        bool waited = false;
-        ev3.waitCallback = [&waited]() { waited = true; };
-        ev3.waitCallback();
-        YOMK_TEST_CHECK(waited, "Event waitCallback：可赋值并执行");
+        auto packed = yomk::msgs::EventOpts::shared(opts4);
+        YOMK_TEST_CHECK(packed->typeName() == yomk::msgs::EventOpts::kTypeName && packed->d.eventLoopName == "/L1" &&
+                        packed->d.tag == "tag1" && handled == 0,
+              "msgs::EventOpts：shared 包装后类型名与 d 字段透传，不触发处理器");
     }
 
     // ============ S4. yomk::payload::Response 契约 ============

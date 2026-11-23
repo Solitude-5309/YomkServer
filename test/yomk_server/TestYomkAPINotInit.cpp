@@ -221,7 +221,7 @@ int main()
                 yomk::payload::ResStatus::Invalid,
             "msg().loop(name).post() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(
-            yomk::event_loop().msg(yomk::msgs::String::shared(std::string("x"))).loop("/guard_loop").post_wait() ==
+            yomk::event_loop().msg(yomk::msgs::String::shared(std::string("x"))).loop("/guard_loop").post_wait().status ==
                 yomk::payload::ResStatus::Invalid,
             "msg().loop(name).post_wait() 未初始化返回 ResStatus::Invalid");
         YOMK_TEST_CHECK(

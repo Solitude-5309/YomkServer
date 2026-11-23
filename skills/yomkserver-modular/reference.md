@@ -176,13 +176,24 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 | 停止 | `.loop(name)` | `.stop()` → `ResStatus`（停线程**保留队列**） |
 | 销毁 | `.loop(name)` | `.destroy()` → `ResStatus`（停线程 + 清空队列 + 移出循环表，不可续跑） |
 | 非阻塞投递 | `.msg(data).loop(name).handle_fn(fn).tag(t)` | `.post()` → `ResStatus`（仅入队结果）；`handle_fn`/`tag` 可省略 |
-| 阻塞投递 | 同上 | `.post_wait()` → `ResStatus`（阻塞等待事件执行完成） |
+| 异步取结果 | 同上 + `.on_done(cb)` | `.post()` → `ResStatus`；事件执行完毕回调一次，参数即处理函数的 `Response`（回调在循环线程执行，约束见下表） |
+| 阻塞投递 | 同上 | `.post_wait()` → `Response`（阻塞等待执行完成，**返回值即处理函数的执行结果**；与 `.on_done()` 互斥） |
 | 内省 | `.loop(name).tag_count(n)` / — | `.get_info()` 单循环状态 + 队列头 n 条 tag 采样（n 省略 = 3）/ `.list()` 循环名清单 / `.all()` 全量，均 → `Response` |
 
 - **同名 `start()` 不重建**：复用既有实例并触发启动（停止后续跑），本次累积的 `handle_fn`/`msg_name` 不生效；仅新循环名创建并绑定默认处理函数。
-- 投递事件未带 `handle_fn` 时回落循环默认处理函数；两者皆空则事件不执行任何回调直接出队。
-- 失败契约：循环不存在 `Failed` "event loop '{n}' does not exist"；已停止未销毁时投递 `Failed` "event loop '{n}' not running, post rejected"（post_wait 同款 "...post wait rejected"）。
+- 投递事件未带 `handle_fn` 时回落循环默认处理函数；两者皆空则以 `Failed` "event has no handler bound" 终结（`.on_done()` / `post_wait()` 都能收到）。
+- 失败契约：循环不存在 `Failed` "event loop '{n}' does not exist"；已停止未销毁时投递 `Failed` "event loop '{n}' not running, post rejected"（post_wait 同款 "...post wait rejected"）；`destroy()` 丢弃在队事件时等待者 / 回调收到 `Failed` "event loop destroyed, pending event discarded"。
+- 处理函数抛出的异常由框架收敛为 `Failed` "event handler threw: <what>"（记错误日志），循环继续存活、后续事件照常执行。
 - `EventLoopInfo`：`loopName/running/pending/hasDefaultFunc/msgName/nextTags`。
+
+**`.on_done(cb)` 四条硬约束（必须遵守）**：
+
+| 约束 | 违反后果 |
+|---|---|
+| 回调在事件循环的 worker 线程执行：只做轻量处理，不得阻塞，不得在回调内对同一循环 `post_wait()`/`stop()`/`destroy()` | 阻塞即堵住整条队列；worker 线程内自等待由框架检测并降级为就地执行 |
+| 回调不得抛异常（框架 try/catch 记日志，用户仍须自约） | 异常被吞只留日志，业务错误被掩盖 |
+| 捕获对象生命周期须覆盖执行：成员函数用 `weakFunc`，对象用 `weak_ptr` / 值捕获 | 悬垂引用（未定义行为） |
+| 不得与 `post_wait()` 同时使用 | `post_wait()` 返回 `Invalid` "post_wait() takes no on_done(), read the returned Response"，不发请求 |
 
 ## FunctionPool 域（yomk::fn_pool()）
 

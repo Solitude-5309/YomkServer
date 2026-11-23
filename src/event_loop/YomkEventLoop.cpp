@@ -16,8 +16,8 @@ int YomkEventLoop::init()
 {
     installFunc("/start", &YomkEventLoop::start, yomk::msgs::EventLoop::kTypeName, yomk::url::kLoopStartDesc);
     installFunc("/stop", &YomkEventLoop::stop, yomk::msgs::String::kTypeName, yomk::url::kLoopStopDesc);
-    installFunc("/post", &YomkEventLoop::post, yomk::msgs::Event::kTypeName, yomk::url::kLoopPostDesc);
-    installFunc("/post_wait", &YomkEventLoop::postWait, yomk::msgs::Event::kTypeName, yomk::url::kLoopPostWaitDesc);
+    installFunc("/post", &YomkEventLoop::post, yomk::msgs::EventOpts::kTypeName, yomk::url::kLoopPostDesc);
+    installFunc("/post_wait", &YomkEventLoop::postWait, yomk::msgs::EventOpts::kTypeName, yomk::url::kLoopPostWaitDesc);
     installFunc("/destroy", &YomkEventLoop::destroy, yomk::msgs::String::kTypeName, yomk::url::kLoopDestroyDesc);
     // 调试内省接口,端点挂在本服务 funcMap
     installFunc("/loops", &YomkEventLoop::loops, "", yomk::url::kLoopLoopsDesc);
@@ -70,7 +70,7 @@ yomk::payload::Response YomkEventLoop::stop(YomkMsgPtr msg)
 
 yomk::payload::Response YomkEventLoop::post(YomkMsgPtr msg)
 {
-    auto event = yomk::msgs::unpack<yomk::msgs::Event>(msg);
+    auto event = yomk::msgs::unpack<yomk::msgs::EventOpts>(msg);
     if (!event)
     {
         return {yomk::payload::ResStatus::Failed, event.error()};
@@ -82,8 +82,8 @@ yomk::payload::Response YomkEventLoop::post(YomkMsgPtr msg)
         YOMK_DIAG_WARN("event loop '" + event->d.eventLoopName + "' does not exist");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop '" + event->d.eventLoopName + "' does not exist");
     }
-    // 内层返回码映射:0 成功;其余(实际仅 2=循环未运行被拒,事件为空不可达——API 宏总构造有效事件)统一 ResStatus::Failed
-    int rc = itEventLoop->second->post(event.msg());
+    // 内层返回码映射:0 成功;其余(实际仅 2=循环未运行被拒)统一 ResStatus::Failed
+    int rc = itEventLoop->second->post(event->d);
     if (rc != 0)
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop '" + event->d.eventLoopName + "' not running, post rejected");
@@ -94,7 +94,7 @@ yomk::payload::Response YomkEventLoop::post(YomkMsgPtr msg)
 
 yomk::payload::Response YomkEventLoop::postWait(YomkMsgPtr msg)
 {
-    auto event = yomk::msgs::unpack<yomk::msgs::Event>(msg);
+    auto event = yomk::msgs::unpack<yomk::msgs::EventOpts>(msg);
     if (!event)
     {
         return {yomk::payload::ResStatus::Failed, event.error()};
@@ -106,14 +106,16 @@ yomk::payload::Response YomkEventLoop::postWait(YomkMsgPtr msg)
         YOMK_DIAG_WARN("event loop '" + event->d.eventLoopName + "' does not exist");
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop '" + event->d.eventLoopName + "' does not exist");
     }
-    // 内层返回码映射:0 成功(回传 event 携带执行结果);其余统一 ResStatus::Failed(未入队未执行,不回传)
-    int rc = itEventLoop->second->postWait(event.msg());
+    // 内层返回码映射:0 成功(处理函数结果已写入 result);其余(循环未运行被拒)统一 ResStatus::Failed
+    yomk::payload::Response result;
+    int rc = itEventLoop->second->postWait(event->d, result);
     if (rc != 0)
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Failed, "event loop '" + event->d.eventLoopName + "' not running, post wait rejected");
     }
 
-    return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop post wait success", event.msg());
+    // 处理函数的执行结果原样上送(status/msg/data 均来自 handler 或框架异常包装)
+    return result;
 }
 
 yomk::payload::Response YomkEventLoop::destroy(YomkMsgPtr msg)

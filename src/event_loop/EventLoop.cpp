@@ -55,14 +55,14 @@ int EventLoop::stop()
 }
 
 // 销毁:先停止退出工作线程,再清空未执行的排队事件(不可续跑);
-// 清空前逐个触发被丢弃事件的等待回调,释放 postWait 等待者(否则丢弃后其永久挂起);
-// 回调在锁外调用(与 run() 一致)——若持 m_queueMutex 调回调(内部锁 postWait 的 tmpMtx),
-// 与 postWait 持 tmpMtx 调 post()(内部锁 m_queueMutex)构成 ABBA 死锁;
+// 清空前逐个以 Failed 终结被丢弃事件的完成回调,释放 postWait 等待者并让调用方拿到明确失败(而非"成功但无结果");
+// 回调在锁外调用(与 run() 一致)——若持 m_queueMutex 调回调(内部可能锁 postWait 的等待槽),
+// 与 postWait 持等待槽锁调 enqueue()(内部锁 m_queueMutex)构成 ABBA 死锁;
 // 停止态下调用幂等(stop 早退 + 空队列清空为无害空操作),析构与显式销毁可重复进入
 int EventLoop::destroy()
 {
     stop();
-    std::vector<yomk::msgs::EventPtr> discarded;
+    std::vector<EventPtr> discarded;
     {
         std::lock_guard<std::mutex> lock(m_queueMutex);
         while (!m_eventQueue.empty())
@@ -73,34 +73,41 @@ int EventLoop::destroy()
     }
     for (auto& event : discarded)
     {
-        if (event && event->d.waitCallback)
-        {
-            event->d.waitCallback();
-        }
+        finish(event, {yomk::payload::ResStatus::Failed, "event loop destroyed, pending event discarded"});
     }
     return 0;
 }
 
-int EventLoop::post(yomk::msgs::EventPtr event)
+EventPtr EventLoop::makeEvent(const yomk::payload::EventOpts& opts) const
 {
+    EventPtr event = std::make_shared<Event>();
+    event->loopName = opts.eventLoopName;
+    event->msg = opts.msg;
+    event->handler = opts.serviceFunc;
+    event->tag = opts.tag;
+    return event;
+}
+
+int EventLoop::enqueue(EventPtr event, std::uint64_t* outEventId)
+{
+    // 与 postWait 的"检查-入队"间隙对齐:期间循环被停止/销毁则拒绝,避免等待永不被终结的事件(TOCTOU)
     if (!m_running.load())
     {
-        return 2;  // 循环未运行投递被拒,与入队成功(0)/事件为空(1)区分,供上层映射错误码
-    }
-
-    if (!event)
-    {
-        return 1;  // 事件为空不可达(API 宏总构造有效事件),防御守卫仅返回码
+        return 2;
     }
 
     {
         std::lock_guard<std::mutex> lock(m_queueMutex);
-        event->d.eventId = ++m_eventId;
-        if (!event->d.serviceFunc)
+        event->eventId = ++m_eventId;
+        if (!event->handler)
         {
-            event->d.serviceFunc = m_defaultServiceFunc;
+            event->handler = m_defaultServiceFunc;
         }
         m_eventQueue.push(event);
+        if (outEventId)
+        {
+            *outEventId = event->eventId;
+        }
         // 丢失唤醒防护(对齐 stop() 与 YomkSimpleThreadPool::stop 同款先例):notify 若在锁外,
         // worker 可能持锁评估完谓词(读到队空)但尚未入睡,本线程入队+通知从旁边穿过——
         // 通知落在等待开始前不被 pending,worker 睡到下一事件/stop 才醒(事件延迟交付;
@@ -111,16 +118,24 @@ int EventLoop::post(yomk::msgs::EventPtr event)
     return 0;
 }
 
-int EventLoop::postWait(yomk::msgs::EventPtr event)
+int EventLoop::post(const yomk::payload::EventOpts& opts, std::uint64_t* outEventId)
 {
     if (!m_running.load())
     {
-        return 2;  // 循环未运行投递被拒,与入队成功(0)/事件为空(1)区分
+        return 2;  // 循环未运行投递被拒,与入队成功(0)区分,供上层映射错误码
     }
 
-    if (!event)
+    EventPtr event = makeEvent(opts);
+    event->onDone = opts.onDone;  // 异步:搬运用户完成回调(可空=丢弃结果)
+    return enqueue(std::move(event), outEventId);
+}
+
+int EventLoop::postWait(const yomk::payload::EventOpts& opts, yomk::payload::Response& outResponse,
+                        std::uint64_t* outEventId)
+{
+    if (!m_running.load())
     {
-        return 1;  // 事件为空不可达(API 宏总构造有效事件),防御守卫仅返回码
+        return 2;  // 循环未运行投递被拒
     }
 
     // 自 join 防护读取持队列锁:与 start() 持锁 move-assign m_worker 互斥串行,避免无锁并发读写
@@ -129,42 +144,55 @@ int EventLoop::postWait(yomk::msgs::EventPtr event)
         std::lock_guard<std::mutex> lock(m_queueMutex);
         inWorkerThread = (std::this_thread::get_id() == m_worker.get_id());
     }
+
+    EventPtr event = makeEvent(opts);
     if (inWorkerThread)
     {
         YOMK_DIAG_ERROR(
             "EventLoop: " + m_loopName + " post wait in worker thread detected deadlock, directly execute current event "
             "to resolve deadlock");
-        event->d.handle();
+        // 自 join 不等待:就地执行并把结果直接写入调用方变量;此时 onDone 为空,无需终结回调
+        outResponse = execute(event);
+        if (outEventId)
+        {
+            *outEventId = 0;
+        }
         return 0;
     }
 
-    std::condition_variable tmpCv;
-    std::mutex tmpMtx;
-    bool notified = false;
-    // 误报豁免:tmpMtx 同时被 waitCallback 内的 lock_guard 跨线程加锁(lambda 引用捕获,工作线程执行,
-    // cppcheck 同域启发式未跟踪),承担 wait 谓词同步与 destroy-vs-notify 防护,非"同域无效锁"
-    // cppcheck-suppress localMutex
-    std::unique_lock<std::mutex> lock(tmpMtx);
-
-    // notify 在持锁内进行:若在锁外 notify,等待方从 wait 醒来(notified=true)后析构 tmpCv,
-    // 与本线程锁外的 notify_all 无 happens-before 边,构成 destroy-vs-notify 竞态(POSIX UB,TSan 如实报告)
-    event->d.waitCallback = [&tmpCv, &notified, &tmpMtx]()
+    // 同步结果槽:onDone 改绑内部闭包(不搬 opts.onDone),写栈上结果并唤醒等待者;
+    // 捕获的引用在 wait 期间始终有效(事件必被 execute+finish 或 destroy 丢弃终结,两条路径都会调 onDone)
+    struct WaitSlot
     {
-        std::lock_guard<std::mutex> lk(tmpMtx);
-        notified = true;
-        tmpCv.notify_all();
+        yomk::payload::Response response;
+        bool done = false;
+        std::mutex mtx;
+        std::condition_variable cv;
+    };
+    // slot.mtx 同时被 onDone 闭包跨线程加锁(lambda 引用捕获,工作线程执行),
+    // 承担 wait 谓词同步与 destroy-vs-notify 防护,非"同域无效锁"
+    WaitSlot slot;
+    // notify 在持锁内进行:若在锁外 notify,等待方从 wait 醒来(done=true)后析构 slot 的 cv,
+    // 与本线程锁外的 notify_all 无 happens-before 边,构成 destroy-vs-notify 竞态(POSIX UB,TSan 如实报告)
+    event->onDone = [&slot](yomk::payload::Response response)
+    {
+        std::lock_guard<std::mutex> lk(slot.mtx);
+        slot.response = std::move(response);
+        slot.done = true;
+        slot.cv.notify_all();
     };
 
-    // 仅在实际入队成功后才等待:检查与入队之间循环被停止/销毁时 post 返回非零,
-    // 直接返回避免等待一个永不被执行/触发的回调(TOCTOU 分支)
-    int rc = post(event);
+    // 仅在实际入队成功后才等待:检查与入队之间循环被停止/销毁时 enqueue 返回非零,
+    // 直接返回避免等待一个永不被执行/终结的回调(TOCTOU 分支)
+    int rc = enqueue(std::move(event), outEventId);
     if (rc != 0)
     {
         return rc;
     }
 
-    tmpCv.wait(lock, [&notified]() { return notified; });
-
+    std::unique_lock<std::mutex> lock(slot.mtx);
+    slot.cv.wait(lock, [&slot]() { return slot.done; });
+    outResponse = std::move(slot.response);
     return 0;
 }
 
@@ -183,12 +211,57 @@ void EventLoop::infoSnapshot(yomk::payload::EventLoopInfo& info, size_t tagCount
     info.pending = m_eventQueue.size();
     info.hasDefaultFunc = static_cast<bool>(m_defaultServiceFunc);
     info.msgName = m_defaultMsgName;
-    std::queue<yomk::msgs::EventPtr> queueCopy = m_eventQueue;
+    std::queue<EventPtr> queueCopy = m_eventQueue;
     while (!queueCopy.empty() && info.nextTags.size() < tagCount)
     {
         auto event = queueCopy.front();
         queueCopy.pop();
-        info.nextTags.push_back(event ? event->d.tag : "");
+        info.nextTags.push_back(event ? event->tag : "");
+    }
+}
+
+yomk::payload::Response EventLoop::execute(const EventPtr& event) const
+{
+    if (!event || !event->handler)
+    {
+        return {yomk::payload::ResStatus::Failed, "event has no handler bound"};
+    }
+    try
+    {
+        return event->handler(event->msg);
+    }
+    catch (const std::exception& e)
+    {
+        YOMK_DIAG_ERROR(
+            "EventLoop: " + event->loopName + " exec event id: " + std::to_string(event->eventId) + " caught, what: " +
+            std::string(e.what()));
+        return {yomk::payload::ResStatus::Failed, "event handler threw: " + std::string(e.what())};
+    }
+    catch (...)
+    {
+        YOMK_DIAG_ERROR("EventLoop: " + event->loopName + " exec event id: " + std::to_string(event->eventId) +
+                        " caught an unknown exception");
+        return {yomk::payload::ResStatus::Failed, "event handler threw an unknown exception"};
+    }
+}
+
+void EventLoop::finish(const EventPtr& event, yomk::payload::Response result)
+{
+    if (!event || !event->onDone)
+    {
+        return;  // 无等待者/无观察者:结果丢弃(默认异步投递语义)
+    }
+    try
+    {
+        event->onDone(std::move(result));
+    }
+    catch (const std::exception& e)
+    {
+        YOMK_DIAG_ERROR("EventLoop: " + event->loopName + " onDone threw, what: " + std::string(e.what()));
+    }
+    catch (...)
+    {
+        YOMK_DIAG_ERROR("EventLoop: " + event->loopName + " onDone threw an unknown exception");
     }
 }
 
@@ -196,7 +269,7 @@ void EventLoop::run()
 {
     while (m_running.load())
     {
-        yomk::msgs::EventPtr event;
+        EventPtr event;
         {
             std::unique_lock<std::mutex> lock(m_queueMutex);
             m_condition.wait(lock, [this]() { return !m_eventQueue.empty() || !m_running.load(); });
@@ -209,27 +282,11 @@ void EventLoop::run()
         }
         if (!event)
         {
-            continue;  // 事件为空不可达(API 宏总构造有效事件),防御守卫仅跳过
+            continue;  // 事件为空不可达(队列只收 makeEvent 产物),防御守卫仅跳过
         }
 
-        try
-        {
-            event->d.handle();
-        }
-        catch (const std::exception& e)
-        {
-            YOMK_DIAG_ERROR(
-                "EventLoop: " + event->d.eventLoopName + " exec event id: " + std::to_string(event->d.eventId) +
-                " caught, what: " + std::string(e.what()));
-        }
-        catch (...)
-        {
-            YOMK_DIAG_ERROR("EventLoop: unknown exception caught");
-        }
-
-        if (event->d.waitCallback)
-        {
-            event->d.waitCallback();
-        }
+        // 执行与终结分离:结果统一经 finish 交付,onDone 为空则丢弃,非空则回调一次
+        auto result = execute(event);
+        finish(event, std::move(result));
     }
 }

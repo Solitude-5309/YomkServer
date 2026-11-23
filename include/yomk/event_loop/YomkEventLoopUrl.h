@@ -55,32 +55,32 @@ inline constexpr const char* kLoopPostDesc = R"(
 向事件循环投递事件：FIFO 入队后立即返回，由消费线程异步执行。
 
 # Inputs
-Event 包：eventLoopName 目标循环；msg 事件负载；serviceFunc 处理函数（空则用循环默认处理函数）；tag 标签（内省采样用）。
+EventOpts 包：eventLoopName 目标循环；msg 事件负载；serviceFunc 处理函数（空则用循环默认处理函数）；tag 标签（内省采样用）；onDone 可选完成回调（空 = 丢弃执行结果）。
 
 # Outputs
 data 无负载，msg "event loop post success"。
 
 # Behavior
-异步非阻塞：入队即返回；事件由 worker 线程按 FIFO 顺序执行，每次投递各执行一次（非幂等）。
+异步非阻塞：入队即返回；事件由 worker 线程按 FIFO 顺序执行，每次投递各执行一次（非幂等）；onDone 非空时在 worker 线程回调一次。
 
 # Notes
-循环不存在或未运行 → Failed（未入队）；执行结果不回传，需要结果请用 /post_wait；请求消息非 Event → Failed。
+循环不存在或未运行 → Failed（未入队）；执行结果不回传，需要结果请用 /post_wait 或 onDone；onDone 回调内禁止阻塞、禁止同步等待同一循环（会自锁），回调异常由框架捕获记日志，捕获对象生命周期须覆盖回调执行（成员函数用 weakFunc 弱绑定），事件被丢弃时回调同样收到 Failed；请求消息非 EventOpts → Failed。
 )";
 inline constexpr const char* kLoopPostWaitDesc = R"(
 # Overview
 投递事件并阻塞调用线程，直到该事件在消费线程执行完毕。
 
 # Inputs
-Event 包：eventLoopName 目标循环；msg 事件负载；serviceFunc 处理函数（空则用循环默认处理函数）；tag 标签。
+EventOpts 包：eventLoopName 目标循环；msg 事件负载；serviceFunc 处理函数（空则用循环默认处理函数）；tag 标签；onDone 不参与本端点（同步结果经返回值回传，builder 层与 .on_done() 同用直接返回 Invalid）。
 
 # Outputs
-data 为执行后的 Event 包（携带 Response），msg "event loop post wait success"。
+status/msg/data 即处理函数的执行结果（原样透传）；受理失败时为端点自身文案（循环不存在/未运行）。
 
 # Behavior
 同步阻塞：入队后等待执行完成；在目标 worker 线程内调用会被识别为自锁，改为就地执行该事件并 ERROR 留痕；非幂等。
 
 # Notes
-循环不存在或未运行 → Failed（未入队未执行）；循环被 /destroy 丢弃事件时等待者会被唤醒；请求消息非 Event → Failed。
+循环不存在或未运行 → Failed（未入队未执行）；循环被 /destroy 丢弃事件时等待者收到 Failed（"event loop destroyed, pending event discarded"）；请求消息非 EventOpts → Failed。
 )";
 inline constexpr const char* kLoopDestroyDesc = R"(
 # Overview
@@ -93,7 +93,7 @@ String 包，d 为循环名。
 data 无负载，msg "event loop destroy success"。
 
 # Behavior
-同步执行：先 stop 并 join worker，再清空队列；被丢弃事件的等待回调逐个触发，以释放 /post_wait 等待者。
+同步执行：先 stop 并 join worker，再清空队列；被丢弃事件以 Failed 终结各自的完成回调（释放 /post_wait 等待者与 onDone 回调）。
 
 # Notes
 循环不存在 → Failed；销毁后同名需重新 /start 创建新实例；请求消息非 String → Failed。

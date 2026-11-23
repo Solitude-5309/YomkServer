@@ -11,37 +11,18 @@ namespace yomk::payload
 {
 
 /**
- * @brief Event loop execution unit: enqueued on post, executed by handle() on the event loop thread
+ * @brief Event post payload: user-supplied inputs only (loop name, message, one-shot handler, tag, optional completion callback)
+ * @note Runtime state (event id, merged handler) lives in the internal execution unit of the event loop
  */
-// @zh: 事件循环执行单元：投递入队后在事件循环线程 handle() 执行
-struct Event
+// @zh: 事件投递载荷：仅用户输入（循环名 / 消息 / 单次处理器 / tag / 可选完成回调）
+// @zh: note 运行时状态（事件 id、已合并处理器）存放于事件循环内部执行单元
+struct EventOpts
 {
-    virtual ~Event() = default;
-    std::string eventLoopName;
-    YomkMsgPtr msg;
-    YomkServiceFunc serviceFunc;
-    std::uint64_t eventId = 0;
-    Response response;
-    std::function<void()> waitCallback;
-    std::string tag;
-    Event() : eventLoopName(""), msg(nullptr), serviceFunc(nullptr), waitCallback(nullptr), tag("") {}
-    Event(const std::string& eventLoopName, YomkMsgPtr msg, YomkServiceFunc serviceFunc)
-        : eventLoopName(eventLoopName), msg(msg), serviceFunc(serviceFunc), waitCallback(nullptr), tag("")
-    {
-    }
-    Event(const std::string& eventLoopName, YomkMsgPtr msg, YomkServiceFunc serviceFunc, const std::string& tag)
-        : eventLoopName(eventLoopName), msg(msg), serviceFunc(serviceFunc), waitCallback(nullptr), tag(tag)
-    {
-    }
-    /** @brief Execution entry on the event loop thread, derived classes may override to customize behavior */
-    // @zh: 事件循环线程执行入口，派生类可重写定制行为
-    virtual void handle()
-    {
-        if (serviceFunc)
-        {
-            response = serviceFunc(msg);
-        }
-    }
+    std::string eventLoopName;    // 目标循环名
+    YomkMsgPtr msg;               // 事件负载
+    YomkServiceFunc serviceFunc;  // 单次处理器，空则回落循环默认处理函数
+    std::string tag;              // 标签（内省采样用）
+    YomkResponseFunc onDone;      // 异步完成回调，可空；仅 post 生效，与 post_wait 互斥
 };
 
 /** @brief Event loop creation payload (name + default service function) */

@@ -1,10 +1,10 @@
-// YomkEventLoop 线程隔离事件循环示例：机械臂产线班次背景的 8 个场景小示例（面向初学者）
+// YomkEventLoop 线程隔离事件循环示例：机械臂产线班次背景的 9 个场景小示例（面向初学者）
 //
 // 事件循环为特定业务提供一条单线程 FIFO 执行队列：投递进同一循环的
 // 事件按入队顺序在该循环的专用线程中逐个执行，循环之间彼此并行，
 // 适合把"必须串行"的业务（如运动指令序列、示教器操作流水）从锁竞争里解耦出来。
 //
-// 本示例用"机械臂产线一次班次"贯穿 8 个场景：每个场景是一个 showXXX 小函数，
+// 本示例用"机械臂产线一次班次"贯穿 9 个场景：每个场景是一个 showXXX 小函数，
 // 形成独立小闭环（背景铺垫 -> 操作 -> 日志自证），允许组合多个接口；
 // yomk::event_loop() 的 8 个终结 op（start/stop/post/post_wait/destroy/list/get_info/all）无一遗漏。
 //
@@ -23,23 +23,26 @@
 // 连续下发 5 条运动指令：post() 立即返回不阻塞；tag_count(n).get_info() 观察队列
 // 积压与队首 tag 预览；第 1 条指令执行时递归投递 3 条微调指令排到
 // 队尾——消费顺序自证同循环 FIFO。
-// 场景 3 showArmDualLoop       [loop(name).handle_fn(fn).start() / post()]
+// 场景 3 showArmMotionCallback [msg(data).loop(name).on_done(cb).post()]
+// 运动到位回执：异步投递不阻塞调用线程，完成回调在循环线程、事件执行完毕后
+// 被调用一次且收到处理函数的结果；回调四条硬约束见 docs/YomkEventLoop.md。
+// 场景 4 showArmDualLoop       [loop(name).handle_fn(fn).start() / post()]
 // 双循环并行：示教器循环省 msg_name() 累积（默认处理函数、无消息名元数据），
 // 与运动循环同时投递——两循环日志交错、线程 id 不同，同循环 FIFO、
 // 跨循环彼此并行。
-// 场景 4 showArmMotionSyncWait [msg(data).loop(name).post_wait()]
-// 回原点是关键动作：post_wait() 阻塞至事件在循环线程执行完毕才返回
-// （14-4 起 API 仅回 ResStatus——返回即已执行）。
-// 场景 5 showArmTempHandler    [loop(name).handle_fn(fn).post_wait()（临时函数）]
+// 场景 5 showArmMotionSyncWait [msg(data).loop(name).post_wait()]
+// 回原点是关键动作：post_wait() 阻塞至事件在循环线程执行完毕才返回，
+// 返回值即处理函数的执行结果（status/msg 原样透传，语义同 request()）。
+// 场景 6 showArmTempHandler    [loop(name).handle_fn(fn).post_wait()（临时函数）]
 // 紧急巡检例程投递时指定临时处理函数：优先于默认函数，同一循环可
-// 混用两种来源（处理函数返回值不再经 API 回传）。
-// 场景 6 showArmLinePause      [loop(name).stop() / 再 start() 续跑 / post()]
+// 混用两种来源，临时函数的执行结果同样由 post_wait() 返回。
+// 场景 7 showArmLinePause      [loop(name).stop() / 再 start() 续跑 / post()]
 // 班中暂停：stop() 只停线程、保留队列事件；停止后投递被拒；
 // 再次 start() 续跑消化保留事件。
-// 场景 7 showArmDashboard      [list() / loop(name).get_info() / all()]
+// 场景 8 showArmDashboard      [list() / loop(name).get_info() / all()]
 // 产线运维面板：循环名清单、单循环详情（含队列 tag 预览）、
 // 全量导出——框架只回结构化数据，展示格式由用户定义。
-// 场景 8 showArmLineOff        [loop(name).destroy()]
+// 场景 9 showArmLineOff        [loop(name).destroy()]
 // 收班：逐循环 destroy()（停线程并清空队列、移出循环表，不可续跑）；
 // 对已销毁循环的一切操作均返回 ResStatus::Failed（not-found 惯例），清单确认已空。
 //
@@ -47,6 +50,7 @@
 // motionLoop  start() 三累积（motionHandle + String 元数据）  主控运动指令循环
 // teachLoop   start() 省 msg_name（teachHandle，无消息名元数据） 示教器循环
 
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <sstream>
@@ -74,7 +78,7 @@ static void logScene(int n, const std::string& title, const std::string& apis, c
     yomk::log().tag("arm.demo").info("场景背景：" + explain);
 }
 
-// API 结果行（yomk::payload::Response 版）：INFO 查询等仍返回 yomk::payload::Response 的调用打印 status/msg（数据形态各异，由调用处按需展开）。
+// API 结果行（yomk::payload::Response 版）：INFO 查询与 post_wait() 等返回 yomk::payload::Response 的调用打印 status/msg（数据形态各异，由调用处按需展开）。
 // status 三态：0=ResStatus::Succeeded 成功；1=ResStatus::Failed 名字不存在或被拒绝；-1=ResStatus::Invalid 参数无效或未初始化
 static void logResp(const std::string& api, const yomk::payload::Response& resp)
 {
@@ -96,7 +100,7 @@ static void logResp(const std::string& api, const yomk::payload::Response& resp)
     yomk::log().tag("arm.demo").info(oss.str());
 }
 
-// ResStatus 版结果行：EVENTLOOP_API 操作接口 14-4 起 ResStatus 化，直接返回三态
+// ResStatus 版结果行：EVENTLOOP_API 操作接口 14-4 起 ResStatus 化（post_wait() 例外：返回处理函数的执行结果）
 // （失败原因经错误日志承载，无 msg 可打）
 static void logResp(const std::string& api, yomk::payload::ResStatus status)
 {
@@ -110,7 +114,7 @@ static void logResp(const std::string& api, yomk::payload::ResStatus status)
 // 操作是用户视角的业务动作（一个接口调用，或多个接口调用组合成的完整动作），
 // 结果行标注本次接口调用；循环线程执行的日志穿插其间，读者顺着日志读即可
 // 理解，无需回看代码。
-// 14-4：EVENTLOOP_API 操作接口返回 ResStatus，INFO 查询仍返回 yomk::payload::Response，
+// 14-4：EVENTLOOP_API 操作接口返回 ResStatus，INFO 查询与 post_wait() 返回 yomk::payload::Response，
 // 模板化使两类返回各自路由到对应 logResp 重载，调用点零改动
 template <typename F>
 static auto logAction(const std::string& op, const std::string& api, F&& call)
@@ -228,8 +232,8 @@ yomk::payload::Response teachHandle(YomkMsgPtr msg)
 }
 
 // ---------------------------------------------------------------------------
-// 8 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。
-// 循环流转：motionLoop 场景 1 创建、teachLoop 场景 3 创建，场景 8 一并销毁。
+// 9 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。
+// 循环流转：motionLoop 场景 1 创建、teachLoop 场景 4 创建，场景 9 一并销毁。
 // ---------------------------------------------------------------------------
 
 // 场景 1：产线开班，主控模块启动运动指令循环
@@ -305,11 +309,59 @@ static void showArmMotionQueue()
     logVerify("mv1 执行中触发的 fine1..fine3 排到已入队指令之后消费——同循环 FIFO，递归投递不插队");
 }
 
-// 场景 3：双循环并行（示教器独立于主控）
-static void showArmDualLoop()
+// 场景 3：运动到位回执（异步完成回调 .on_done()）
+static void showArmMotionCallback()
 {
     logScene(
         3,
+        "运动到位回执",
+        "msg(data).loop(name).on_done(cb).post()",
+        "异步投递不阻塞调用线程：on_done() 登记的完成回调在循环线程、事件执行完毕之后被调用一次，"
+        "参数即处理函数的执行结果；回调不得阻塞（会堵住整个循环）、须 weak 绑定，"
+        "与 post_wait() 互斥（同时使用返回 Invalid）。");
+
+    std::atomic<int> receiptCount{0};
+    std::atomic<int> receiptStatus{-99};
+    logAction(
+        "下发到位回执指令 moveDone",
+        "POST motionLoop（on_done 回执）",
+        [&]
+        {
+            return yomk::event_loop().msg(yomk::msgs::String::shared("moveDone")).loop("motionLoop").handle_fn(nullptr).tag("moveDone")
+                .on_done(
+                    [&receiptCount, &receiptStatus](yomk::payload::Response result)
+                    {
+                        receiptStatus.store(static_cast<int>(result.status));
+                        receiptCount.fetch_add(1);
+                        yomk::log().tag("arm.motion").info(
+                            "到位回执: status=" + std::to_string(static_cast<int>(result.status)));
+                    })
+                .post();
+        });
+    logVerify("POST 立即返回（只代表入队成功），回执在循环线程执行完毕后才异步到达");
+
+    // 等回执（motionHandle 模拟 200ms 运动耗时，最多轮询 2s）
+    for (int i = 0; i < 200 && receiptCount.load() == 0; ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    logVerify(
+        "回执到达且 status=0(ResStatus::Succeeded)：回调收到处理函数的执行结果（次数=" +
+        std::to_string(receiptCount.load()) + "）");
+
+    // 与 post_wait() 互斥：同时设置返回 Invalid 且不发请求（问题显式暴露，不静默丢弃回调）
+    yomk::payload::Response conflictResp = yomk::event_loop().msg(yomk::msgs::String::shared("moveAgain")).loop("motionLoop")
+                                               .on_done([](yomk::payload::Response) {})
+                                               .post_wait();
+    logResp("loop(motionLoop).on_done(cb).post_wait()", conflictResp);
+    logVerify("on_done() 与 post_wait() 互斥 -> status=-1(ResStatus::Invalid)：不发请求，读 post_wait() 的返回值即可");
+}
+
+// 场景 4：双循环并行（示教器独立于主控）
+static void showArmDualLoop()
+{
+    logScene(
+        4,
         "双循环并行",
         "loop(name).handle_fn(fn).start() / post()",
         "示教器模块独立于主控：teachLoop 省 msg_name() 累积（默认处理函数、无消息名元数据）；"
@@ -337,47 +389,49 @@ static void showArmDualLoop()
     logVerify("arm.motion 与 arm.teach 日志交错出现且线程 id 均不同于主线程——跨循环彼此并行");
 }
 
-// 场景 4：关键指令同步等待（post_wait()）
+// 场景 5：关键指令同步等待（post_wait()）
 static void showArmMotionSyncWait()
 {
     logScene(
-        4,
+        5,
         "关键指令同步等待",
         "msg(data).loop(name).post_wait()",
         "回原点是关键动作，必须确认执行完毕才能继续：post_wait() 阻塞至事件在循环线程"
-        "执行完毕才返回（14-4 起 API 仅回 ResStatus，回传 Event 载荷不再经 API 暴露）。");
+        "执行完毕才返回，返回值即处理函数的执行结果（status/msg/data 原样透传，语义同 request()）。");
 
-    logAction(
+    auto homeResp = logAction(
         "下发回原点指令并等待完成", "loop(motionLoop).post_wait()", [&] { return yomk::event_loop().msg(yomk::msgs::String::shared("goHome")).loop("motionLoop").post_wait(); });
-    logVerify("post_wait() 返回时回原点已在循环线程执行完毕（耗时 200ms）——返回即已执行");
+    logVerify("post_wait() 返回时回原点已在循环线程执行完毕（耗时 200ms）——返回即已执行，"
+              "且 handler 的结果随返回值回传：msg=\"" + homeResp.msg + "\"");
 }
 
-// 场景 5：紧急任务临时处理函数（优先于默认函数）
+// 场景 6：紧急任务临时处理函数（优先于默认函数）
 static void showArmTempHandler()
 {
     logScene(
-        5,
+        6,
         "紧急任务临时处理函数",
         "loop(name).handle_fn(fn).post_wait()（临时函数）",
-        "安全巡检例程无需占用运动处理函数：投递时指定临时处理函数则优先于默认函数"
-        "（14-4 起 API 仅回 ResStatus，处理函数返回值不再经 API 回传）。");
+        "安全巡检例程无需占用运动处理函数：投递时指定临时处理函数则优先于默认函数，"
+        "临时函数的执行结果同样由 post_wait() 返回（可按 msg 区分结果来源）。");
 
     // lambda 先赋给具名变量再传宏：返回值构造含逗号时，
     // 直接内联进宏会让预处理器把逗号误当实参分隔符
     YomkServiceFunc tempHandle = [](YomkMsgPtr) -> yomk::payload::Response { return {yomk::payload::ResStatus::Succeeded, "tempHandle result"}; };
 
-    logAction(
+    auto tempResp = logAction(
         "投递紧急巡检任务（临时函数）",
         "loop(motionLoop).post_wait()（tempHandle）",
         [&] { return yomk::event_loop().msg(yomk::msgs::String::shared("safetyCheck")).loop("motionLoop").handle_fn(tempHandle).post_wait(); });
-    logVerify("临时函数优先于默认函数执行（处理函数返回值不再经 API 回传）：post_wait() 返回即已执行");
+    logVerify("临时函数优先于默认函数执行：返回即已执行，msg=\"" + tempResp.msg +
+              "\" 来自 tempHandle——post_wait() 返回值可直接区分结果来源");
 }
 
-// 场景 6：班中暂停与恢复（stop() / start() 续跑）
+// 场景 7：班中暂停与恢复（stop() / start() 续跑）
 static void showArmLinePause()
 {
     logScene(
-        6,
+        7,
         "班中暂停与恢复",
         "msg(data).loop(name).post() / stop() / start()（续跑）",
         "换班暂停：stop() 只停线程、保留队列事件；停止后投递被拒；再次 start() 续跑消化保留事件。");
@@ -418,11 +472,11 @@ static void showArmLinePause()
     logVerify("续跑后保留事件按 FIFO 消化完毕，pending 归零：stop()/start() 不丢事件");
 }
 
-// 场景 7：产线运维面板巡检
+// 场景 8：产线运维面板巡检
 static void showArmDashboard()
 {
     logScene(
-        7,
+        8,
         "产线运维面板",
         "list() / loop(name).get_info() / all()",
         "运维面板巡检：list() 拉取循环名清单；get_info() 单查循环详情（含队列 tag "
@@ -466,11 +520,11 @@ static void showArmDashboard()
     }
 }
 
-// 场景 8：收班下线（destroy() 与 not-found 惯例）
+// 场景 9：收班下线（destroy() 与 not-found 惯例）
 static void showArmLineOff()
 {
     logScene(
-        8,
+        9,
         "收班销毁",
         "loop(name).destroy()",
         "收班下线全部循环：destroy() 停线程并清空队列、把循环移出循环表，不可续跑；"
@@ -499,11 +553,12 @@ int main(int argc, char* argv[])
     // 初始化框架（事件循环服务 /YomkEventLoop 随之自动启动）
     yomk::server().init();
 
-    yomk::log().tag("arm.demo").info("机械臂产线 x YomkEventLoop 示例：一次班次贯穿 8 个场景，覆盖全部事件循环 API");
+    yomk::log().tag("arm.demo").info("机械臂产线 x YomkEventLoop 示例：一次班次贯穿 9 个场景，覆盖全部事件循环 API");
     yomk::log().tag("arm.demo").info("日志按 tag 分层：arm.demo=叙事与结果 / arm.motion=运动循环线程 / arm.teach=示教循环线程");
 
     showArmLineStart();
     showArmMotionQueue();
+    showArmMotionCallback();
     showArmDualLoop();
     showArmMotionSyncWait();
     showArmTempHandler();

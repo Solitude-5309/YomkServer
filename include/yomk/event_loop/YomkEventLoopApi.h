@@ -24,8 +24,9 @@
  * @par Event post
  * yomk::event_loop().msg(data).loop(name).handle_fn(fn).tag(tag).post()
  * @li msg(data) carries the event data; omitting handle_fn / tag means default (nullptr / "")
- * @li post() posts asynchronously; post_wait() posts synchronously (blocks until the event finishes executing)
+ * @li post() posts asynchronously; post_wait() posts synchronously and returns the handler result
  * @li handle_fn(fn) is a one-shot temporary handler that takes precedence over the default function declared in start()
+ * @li on_done(cb) attaches an optional completion callback to post() only; it runs on the worker thread, must not block, an exception is caught by the framework, captured objects must use weak binding, and it is mutually exclusive with post_wait()
  *
  * @par Introspection
  * @li yomk::event_loop().list(): list of all loop names (StringArray, lexicographic order)
@@ -42,8 +43,9 @@
 // @zh: li yomk::event_loop().loop(name).destroy()：销毁循环并排空队列
 // @zh: par 事件投递
 // @zh: li msg(data) 承载事件数据；handle_fn / tag 省略 = 缺省（nullptr / ""）
-// @zh: li post() 异步投递；post_wait() 同步投递（阻塞等待执行完成）
+// @zh: li post() 异步投递；post_wait() 同步投递并直接返回处理函数结果
 // @zh: li handle_fn(fn) 为单次临时处理器，优先于 start() 声明的默认处理函数
+// @zh: li on_done(cb) 仅为 post() 挂可选完成回调：worker 线程执行、不得阻塞、异常由框架捕获、捕获对象须 weak 绑定，与 post_wait() 互斥
 // @zh: par 内省
 // @zh: li yomk::event_loop().list()：全部循环名清单（StringArray，字典序）
 // @zh: li yomk::event_loop().loop(name).tag_count(n).get_info()：指定循环状态与队列头 n 条 tag 采样（n 省略 = 缺省 3）
@@ -81,6 +83,7 @@ class EventLoopBuilder
     YomkServiceFunc m_fn;              // handle_fn() 累积, start/post 共用(缺省 nullptr)
     YomkMsgPtr m_data;                 // msg() 累积, post/post_wait 用
     std::string m_tag;                 // tag() 累积, post/post_wait 用(缺省 "")
+    YomkResponseFunc m_onDone;         // on_done() 累积, 仅 post 用(缺省空)
     std::size_t m_tagCount = 3;        // tag_count() 累积, get_info 用(与 EventLoopQuery 缺省一致)
 public:
     /**
@@ -149,6 +152,27 @@ public:
         return *this;
     }
     /**
+     * @brief Accumulate an optional completion callback for the asynchronous post() (post_wait() rejects it and returns the result instead)
+     * @param cb Completion callback; empty means nobody cares about the result (default). Hard constraints:
+     * @li runs on the event loop worker thread; must not block, and must not synchronously wait for the same loop (self-deadlock)
+     * @li an exception thrown by the callback is caught and logged by the framework, never propagated
+     * @li captured objects must outlive the callback, otherwise bind with weakFunc (member functions) or weak_ptr (a discarded event also delivers Failed)
+     * @li effective for post() only; combined with post_wait() it returns Invalid and sends no request
+     * @return Reference to self for chaining
+     */
+    // @zh: 累积异步 post() 的可选完成回调（post_wait() 拒绝，结果经返回值）
+    // @zh: cb 完成回调；空 = 无人关心结果（缺省）。四条硬约束：
+    // @zh: li 在事件循环 worker 线程执行；不得阻塞，也不得同步等待同一循环（会自锁）
+    // @zh: li 回调抛出的异常由框架捕获记日志，不向外传播
+    // @zh: li 捕获对象生命周期须覆盖回调执行（成员函数用 weakFunc 弱绑定，对象用 weak_ptr 或值捕获），否则为悬垂引用（事件被丢弃时回调同样收到 Failed）
+    // @zh: li 仅对 post() 生效；与 post_wait() 同时设置返回 Invalid 且不发请求
+    // @zh: return 自身链式引用
+    EventLoopBuilder& on_done(YomkResponseFunc cb)
+    {
+        m_onDone = std::move(cb);
+        return *this;
+    }
+    /**
      * @brief Accumulate the queue-head tag sample count (used by get_info)
      * @param n Sample count, optional = 3
      * @return Reference to self for chaining
@@ -184,28 +208,32 @@ public:
         return yomk::server().url(yomk::url::kLoopStop).msg(yomk::msgs::String::shared(m_name)).status();
     }
     /**
-     * @brief Terminate the chain by posting the event asynchronously (reads msg / loop / handle_fn / tag accumulations)
+     * @brief Terminate the chain by posting the event asynchronously (reads msg / loop / handle_fn / tag / on_done accumulations)
      * @return Tri-state ResStatus (only reflects the enqueue result, not the execution result)
-     * @note Non-blocking
+     * @note Non-blocking; the execution result is delivered to on_done(cb) once, or dropped when no callback is attached
      */
-    // @zh: 异步投递事件终结（读 msg / loop / handle_fn / tag 累积）
+    // @zh: 异步投递事件终结（读 msg / loop / handle_fn / tag / on_done 累积）
     // @zh: return 三态 ResStatus（仅表示入队结果，非执行结果）
-    // @zh: note 非阻塞
+    // @zh: note 非阻塞；执行结果经 on_done(cb) 回调一次，未注册回调则丢弃
     yomk::payload::ResStatus post()
     {
-        return yomk::server().url(yomk::url::kLoopPost).msg(yomk::msgs::Event::shared(yomk::payload::Event(m_name, m_data, m_fn, m_tag))).status();
+        return yomk::server().url(yomk::url::kLoopPost).msg(yomk::msgs::EventOpts::shared(yomk::payload::EventOpts{m_name, m_data, m_fn, m_tag, m_onDone})).status();
     }
     /**
      * @brief Terminate the chain by posting the event synchronously (reads msg / loop / handle_fn / tag accumulations)
-     * @return Tri-state ResStatus
-     * @note Blocks until the event finishes executing
+     * @return Response from the event handler (same semantics as request()); Invalid if on_done() was also set (mutually exclusive)
+     * @note Blocks until the event finishes executing; the handler result comes back through the return value, so on_done() must not be used
      */
     // @zh: 同步投递事件终结（读 msg / loop / handle_fn / tag 累积）
-    // @zh: return 三态 ResStatus
-    // @zh: note 阻塞等待事件执行完成
-    yomk::payload::ResStatus post_wait()
+    // @zh: return 处理函数的执行结果（语义同 request()）；同时设置 on_done() 则返回 Invalid（二者互斥）
+    // @zh: note 阻塞等待事件执行完成；结果经返回值，禁止再用 on_done()
+    yomk::payload::Response post_wait()
     {
-        return yomk::server().url(yomk::url::kLoopPostWait).msg(yomk::msgs::Event::shared(yomk::payload::Event(m_name, m_data, m_fn, m_tag))).status();
+        if (m_onDone)
+        {
+            return {yomk::payload::ResStatus::Invalid, "post_wait() takes no on_done(), read the returned Response"};
+        }
+        return yomk::server().url(yomk::url::kLoopPostWait).msg(yomk::msgs::EventOpts::shared(yomk::payload::EventOpts{m_name, m_data, m_fn, m_tag})).request();
     }
     /**
      * @brief Terminate the chain by destroying the event loop and draining the queue

@@ -345,7 +345,7 @@ YOMK_DEFINE_MSG(数据类, 消息名称, 成员名);  // 在命名空间外定�
 
 1. 每个 Service 只负责单一业务域
 2. 服务间通过 `yomk::server().url(...).request()` 通信，不直接引用
-3. 共享状态用 Context，耗时操作用 EventLoop，公共函数用 FunctionPool
+3. 共享状态用 Context，耗时操作用 EventLoop（异步结果用 `.on_done(cb)`、同步结果用 `.post_wait()` 返回值，二者互斥；回调四条硬约束见 [reference.md](reference.md) EventLoop 域），公共函数用 FunctionPool
 4. 服务成员函数注册到外部子系统（FunctionPool/EventLoop/Context checker·monitor/异步响应）**必须**用 `weakFunc(&Class::Method)` 弱绑定，服务删除后回调自动失效；本服务 funcMap（`installFunc`）已自动弱绑定——判活机制与各回调签名适配见任务二「服务删除与弱绑定回调」与 [reference.md](reference.md) "installFunc / weakFunc"，此处不重复
 5. 载荷/消息包/URL 常量集中 `interfaces/`（ProjectPayload.h + ProjectMsg.h + 按服务分子文件的 XxxUrl.h，installFunc 第三/四参引用），服务实现放 `services/`（按业务分子目录）
 6. 配置路径通过 Context 传递，不用构造参数

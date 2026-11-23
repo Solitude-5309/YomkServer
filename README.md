@@ -162,7 +162,7 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("v")).create();  // �
 
 ### 6. 线程隔离事件循环 (YomkEventLoop)
 
-具名单线程 FIFO 执行队列：`yomk::event_loop().loop(name).start()` 启动，`.msg(data).loop(name).post()` 非阻塞投递 / `.post_wait()` 阻塞投递；同一循环内事件按入队顺序在专用线程中执行，不同循环之间彼此并行；支持停止后续跑与队列积压观测。
+具名单线程 FIFO 执行队列：`yomk::event_loop().loop(name).start()` 启动，`.msg(data).loop(name).post()` 非阻塞投递（可链 `.on_done(cb)` 异步取执行结果）/ `.post_wait()` 阻塞等待并**返回处理函数的执行结果**（二者互斥）；同一循环内事件按入队顺序在专用线程中执行，不同循环之间彼此并行；支持停止后续跑与队列积压观测。
 
 详见 [事件循环](docs/YomkEventLoop.md)。
 

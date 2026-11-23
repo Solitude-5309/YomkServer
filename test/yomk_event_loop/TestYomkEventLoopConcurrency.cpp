@@ -18,7 +18,8 @@
 // 末尾 yomk::server().shutdown() 收尾。测试装置为文件级（TSan-clean 既有验证模式）：计数用原子变量，
 // 执行序列/完成标志向量用文件级互斥量且全部访问持锁（含断言快照）；阻塞门用原子自旋（1ms 粒度休眠），
 // 不用局部 mutex/cv 与 condition_variable::wait_for（本工具链 TSan 已知误报路径）；
-// S1 的 handler 捕获事件裸指针——执行期间 run() 持有 shared_ptr 保证存活，无环引用无泄漏。
+// S1 的 handler 捕获事件号槽（文件级无关的栈外原子）——事件号由入队锁内赋号并经 outEventId 回填，
+// payload::EventOpts 只读后不再有“先建事件再回写处理器/读事件号”的两段式用法。
 //
 // 风格：纯 main() + 失败计数，返回非 0 表示存在失败用例（零第三方依赖）
 
@@ -166,15 +167,26 @@ int main()
         {
             for (int k = 0; k < 40; ++k)
             {
-                auto ev = yomk::msgs::Event::shared(yomk::payload::Event("conc1", nullptr, nullptr, ""));
-                yomk::msgs::Event* raw = ev.get();  // handler 执行期间 run() 持有 shared_ptr，裸指针安全
-                ev->d.serviceFunc = [raw](YomkMsgPtr)
+                // 事件号在入队锁内赋号，post 返回时经 outEventId 回填：handler 捕获原子号槽，
+                // 投递线程 post 返回后写入，worker 取号自旋（投递线程不受 worker 影响，无死锁）
+                auto idSlot = std::make_shared<std::atomic<std::uint64_t>>(0);
+                yomk::payload::EventOpts opts{
+                    "conc1", nullptr,
+                    [idSlot](YomkMsgPtr)
+                    {
+                        std::uint64_t id = 0;
+                        while ((id = idSlot->load()) == 0)
+                        {
+                            std::this_thread::yield();
+                        }
+                        recordExecId(id);
+                        return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
+                    },
+                    ""};
+                std::uint64_t eventId = 0;
+                if (loop.post(opts, &eventId) == 0)
                 {
-                    recordExecId(raw->d.eventId);
-                    return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
-                };
-                if (loop.post(ev) == 0)
-                {
+                    idSlot->store(eventId);
                     postOk.fetch_add(1);
                 }
             }
@@ -221,15 +233,16 @@ int main()
         YOMK_TEST_CHECK(loopB.start() == 0, "S2 loopB start 返回 0");
 
         // loopA 的 worker 被阻塞门占住
-        auto gate = yomk::msgs::Event::shared(yomk::payload::Event("pa", nullptr, gateHandler(), "gate"));
-        YOMK_TEST_CHECK(loopA.post(gate) == 0, "S2 loopA post 阻塞事件返回 0");
+        YOMK_TEST_CHECK(
+            loopA.post(yomk::payload::EventOpts{"pa", nullptr, gateHandler(), "gate"}) == 0,
+            "S2 loopA post 阻塞事件返回 0");
         YOMK_TEST_CHECK(waitGateStarted(2000), "S2 阻塞门已占住 loopA 的工作线程");
 
         // loopB 的事件在 A 阻塞期间完成——若两 loop 共享线程则不可能，此为并行性的确定性证明
         for (int k = 0; k < 5; ++k)
         {
             YOMK_TEST_CHECK(
-                loopB.post(yomk::msgs::Event::shared(yomk::payload::Event("pb", nullptr, countHandler(), ""))) == 0,
+                loopB.post(yomk::payload::EventOpts{"pb", nullptr, countHandler(), ""}) == 0,
                 "S2 loopB post 计数事件返回 0");
         }
         YOMK_TEST_CHECK(
@@ -239,7 +252,7 @@ int main()
         // 释放 loopA：gate 完成后 A 的后续事件恢复执行
         openGate();
         YOMK_TEST_CHECK(
-            loopA.post(yomk::msgs::Event::shared(yomk::payload::Event("pa", nullptr, countHandler(), ""))) == 0,
+            loopA.post(yomk::payload::EventOpts{"pa", nullptr, countHandler(), ""}) == 0,
             "S2 loopA post 后续计数事件返回 0");
         YOMK_TEST_CHECK(
             waitUntil([] { return g_execCount.load() == 6; }, 2000), "S2 释放后 loopA 恢复执行（gate 完成+后续事件）");
@@ -263,13 +276,13 @@ int main()
         {
             for (int k = 0; k < 10; ++k)
             {
-                auto ev = yomk::msgs::Event::shared(yomk::payload::Event("conc3", nullptr, countHandler(), ""));
-                int rc = loop.postWait(ev);
+                yomk::payload::Response resp;
+                int rc = loop.postWait(yomk::payload::EventOpts{"conc3", nullptr, countHandler(), ""}, resp);
                 if (rc == 0)
                 {
                     waitRcOk.fetch_add(1);
                 }
-                if (ev->d.response.status == yomk::payload::ResStatus::Succeeded)
+                if (resp.status == yomk::payload::ResStatus::Succeeded)
                 {
                     waitRespOk.fetch_add(1);
                 }
@@ -312,8 +325,7 @@ int main()
         {
             for (int k = 0; k < 500; ++k)
             {
-                auto ev = yomk::msgs::Event::shared(yomk::payload::Event("conc4", nullptr, countHandler(), ""));
-                if (loop.post(ev) == 0)
+                if (loop.post(yomk::payload::EventOpts{"conc4", nullptr, countHandler(), ""}) == 0)
                 {
                     acceptedPost.fetch_add(1);
                 }
@@ -324,8 +336,8 @@ int main()
         {
             for (int k = 0; k < 100; ++k)
             {
-                auto ev = yomk::msgs::Event::shared(yomk::payload::Event("conc4", nullptr, countHandler(), ""));
-                if (loop.postWait(ev) == 0)
+                yomk::payload::Response ignored;
+                if (loop.postWait(yomk::payload::EventOpts{"conc4", nullptr, countHandler(), ""}, ignored) == 0)
                 {
                     acceptedWait.fetch_add(1);  // 停止态返回 2 被拒：事件未入队不计数，直接投下一个
                 }

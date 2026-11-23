@@ -782,10 +782,18 @@ yomk::event_loop().msg(yomk::msgs::String::shared("task_2")).loop("worker_loop")
     .handle_fn([](YomkMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "one-shot done"}; })
     .post();
 
-// 同步投递（阻塞等待事件执行完成；返回 ResStatus 仅表示受理/完成状态，
-// 执行结果体现在处理函数内部——取回结果写共享 Context 或在处理函数内回调投递）
-yomk::payload::ResStatus rs = yomk::event_loop().msg(yomk::msgs::String::shared("task_3"))
-                                  .loop("worker_loop").post_wait();
+// 异步取结果：on_done 回调在事件执行完毕后调用一次，参数即处理函数的 Response
+// 回调在循环线程执行：只做轻量处理、不得阻塞、不得在回调内对同一循环 post_wait/stop/destroy，
+// 捕获对象生命周期须覆盖执行（成员函数用 weakFunc），且不得与 post_wait() 同时使用
+yomk::event_loop().msg(yomk::msgs::String::shared("task_3")).loop("worker_loop")
+    .on_done([](yomk::payload::Response result) {
+        // 轻量处理 result.status / result.msg（异常与销毁丢弃也经此以 Failed 终结）
+    })
+    .post();
+
+// 同步投递：阻塞等待执行完成，返回值即处理函数的执行结果（status/msg/data 原样透传，语义同 request()）
+yomk::payload::Response result = yomk::event_loop().msg(yomk::msgs::String::shared("task_4"))
+                                     .loop("worker_loop").post_wait();
 
 // 内省：状态 + 队列头 5 条 tag 采样
 yomk::event_loop().loop("worker_loop").tag_count(5).get_info();
@@ -798,7 +806,7 @@ yomk::event_loop().loop("worker_loop").stop();
 yomk::event_loop().loop("worker_loop").destroy();
 ```
 
-失败契约：循环不存在 `Failed` "event loop '{n}' does not exist"；已停止（未销毁）时投递 `Failed` "event loop '{n}' not running, post rejected"（post_wait 同款 "...post wait rejected"）。
+失败契约：循环不存在 `Failed` "event loop '{n}' does not exist"；已停止（未销毁）时投递 `Failed` "event loop '{n}' not running, post rejected"（post_wait 同款 "...post wait rejected"）；`destroy()` 丢弃在队事件时等待者 / 回调收到 `Failed` "event loop destroyed, pending event discarded"；处理函数抛异常收敛为 `Failed` "event handler threw: <what>"（循环继续存活）；`.on_done()` 与 `post_wait()` 互斥（同时设置返回 `Invalid` 且不发请求）。
 
 ## 示例4：FunctionPool 公共函数池
 
