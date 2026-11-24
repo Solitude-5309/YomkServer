@@ -17,20 +17,20 @@ public:
     virtual void deinit() override;
 
 private:
-    yomk::payload::Response create(YomkMsgPtr msg);
-    yomk::payload::Response destroy(YomkMsgPtr msg);
-    yomk::payload::Response get(YomkMsgPtr msg);
-    yomk::payload::Response set(YomkMsgPtr msg);
-    yomk::payload::Response turnOnChecker(YomkMsgPtr msg);
-    yomk::payload::Response turnOffChecker(YomkMsgPtr msg);
-    yomk::payload::Response turnOnMonitor(YomkMsgPtr msg);
-    yomk::payload::Response turnOffMonitor(YomkMsgPtr msg);
-    yomk::payload::Response setChecker(YomkMsgPtr msg);
-    yomk::payload::Response setMonitor(YomkMsgPtr msg);
-    yomk::payload::Response groups(YomkMsgPtr msg);
-    yomk::payload::Response keys(YomkMsgPtr msg);
-    yomk::payload::Response keyInfo(YomkMsgPtr msg);
-    yomk::payload::Response listAll(YomkMsgPtr msg);
+    yomk::payload::Response create(YomkConstMsgPtr msg);
+    yomk::payload::Response destroy(YomkConstMsgPtr msg);
+    yomk::payload::Response get(YomkConstMsgPtr msg);
+    yomk::payload::Response set(YomkConstMsgPtr msg);
+    yomk::payload::Response turnOnChecker(YomkConstMsgPtr msg);
+    yomk::payload::Response turnOffChecker(YomkConstMsgPtr msg);
+    yomk::payload::Response turnOnMonitor(YomkConstMsgPtr msg);
+    yomk::payload::Response turnOffMonitor(YomkConstMsgPtr msg);
+    yomk::payload::Response setChecker(YomkConstMsgPtr msg);
+    yomk::payload::Response setMonitor(YomkConstMsgPtr msg);
+    yomk::payload::Response groups(YomkConstMsgPtr msg);
+    yomk::payload::Response keys(YomkConstMsgPtr msg);
+    yomk::payload::Response keyInfo(YomkConstMsgPtr msg);
+    yomk::payload::Response listAll(YomkConstMsgPtr msg);
 
 private:
     // 组路由辅助:main 组成员直取;自定义组按名惰性自动创建(不支持销毁);

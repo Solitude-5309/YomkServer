@@ -16,7 +16,7 @@ struct Event
 {
     std::uint64_t eventId = 0;  // 入队锁内赋号
     std::string loopName;
-    YomkMsgPtr msg;
+    YomkConstMsgPtr msg;
     YomkServiceFunc handler;    // 入队锁内定稿（已合并默认函数）
     std::string tag;
     YomkResponseFunc onDone;    // 完成回调：空 = 无人关心结果（默认异步）；同步 postWait 由框架注入内部闭包占用该槽

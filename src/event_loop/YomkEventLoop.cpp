@@ -26,7 +26,7 @@ int YomkEventLoop::init()
     return 0;
 }
 
-yomk::payload::Response YomkEventLoop::start(YomkMsgPtr msg)
+yomk::payload::Response YomkEventLoop::start(YomkConstMsgPtr msg)
 {
     auto eventloop = yomk::msgs::unpack<yomk::msgs::EventLoop>(msg);
     if (!eventloop)
@@ -49,7 +49,7 @@ yomk::payload::Response YomkEventLoop::start(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop start success");
 }
 
-yomk::payload::Response YomkEventLoop::stop(YomkMsgPtr msg)
+yomk::payload::Response YomkEventLoop::stop(YomkConstMsgPtr msg)
 {
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
@@ -68,7 +68,7 @@ yomk::payload::Response YomkEventLoop::stop(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop stop success");
 }
 
-yomk::payload::Response YomkEventLoop::post(YomkMsgPtr msg)
+yomk::payload::Response YomkEventLoop::post(YomkConstMsgPtr msg)
 {
     auto event = yomk::msgs::unpack<yomk::msgs::EventOpts>(msg);
     if (!event)
@@ -92,7 +92,7 @@ yomk::payload::Response YomkEventLoop::post(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "event loop post success");
 }
 
-yomk::payload::Response YomkEventLoop::postWait(YomkMsgPtr msg)
+yomk::payload::Response YomkEventLoop::postWait(YomkConstMsgPtr msg)
 {
     auto event = yomk::msgs::unpack<yomk::msgs::EventOpts>(msg);
     if (!event)
@@ -118,7 +118,7 @@ yomk::payload::Response YomkEventLoop::postWait(YomkMsgPtr msg)
     return result;
 }
 
-yomk::payload::Response YomkEventLoop::destroy(YomkMsgPtr msg)
+yomk::payload::Response YomkEventLoop::destroy(YomkConstMsgPtr msg)
 {
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
@@ -140,7 +140,7 @@ yomk::payload::Response YomkEventLoop::destroy(YomkMsgPtr msg)
 }
 
 // 内省:列出全部事件循环名
-yomk::payload::Response YomkEventLoop::loops(YomkMsgPtr msg)
+yomk::payload::Response YomkEventLoop::loops(YomkConstMsgPtr msg)
 {
     std::vector<std::string> loopNames;
     {
@@ -154,7 +154,7 @@ yomk::payload::Response YomkEventLoop::loops(YomkMsgPtr msg)
 }
 
 // 内省:单个事件循环元信息,入参 EventLoopQuery(循环名精确匹配 + tag 采样数,缺省 3)
-yomk::payload::Response YomkEventLoop::loopInfo(YomkMsgPtr msg)
+yomk::payload::Response YomkEventLoop::loopInfo(YomkConstMsgPtr msg)
 {
     auto query = yomk::msgs::unpack<yomk::msgs::EventLoopQuery>(msg);
     if (!query)
@@ -185,7 +185,7 @@ yomk::payload::Response YomkEventLoop::loopInfo(YomkMsgPtr msg)
 }
 
 // 内省:全部事件循环元信息,锁内拷贝快照,锁外逐循环取结构化快照
-yomk::payload::Response YomkEventLoop::listAll(YomkMsgPtr msg)
+yomk::payload::Response YomkEventLoop::listAll(YomkConstMsgPtr msg)
 {
     std::vector<EventLoopPtr> eventLoops;
     std::vector<std::string> loopNames;

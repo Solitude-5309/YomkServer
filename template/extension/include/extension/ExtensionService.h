@@ -15,6 +15,6 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response version(YomkMsgPtr msg);
+    yomk::payload::Response version(YomkConstMsgPtr msg);
 };
 }  // namespace yomk::service::ext

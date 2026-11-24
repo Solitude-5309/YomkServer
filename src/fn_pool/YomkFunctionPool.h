@@ -16,12 +16,12 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response registerFunction(YomkMsgPtr msg);
-    yomk::payload::Response unRegisterFunction(YomkMsgPtr msg);
-    yomk::payload::Response callFunction(YomkMsgPtr msg);
-    yomk::payload::Response funcNames(YomkMsgPtr msg);
-    yomk::payload::Response funcInfo(YomkMsgPtr msg);
-    yomk::payload::Response listAll(YomkMsgPtr msg);
+    yomk::payload::Response registerFunction(YomkConstMsgPtr msg);
+    yomk::payload::Response unRegisterFunction(YomkConstMsgPtr msg);
+    yomk::payload::Response callFunction(YomkConstMsgPtr msg);
+    yomk::payload::Response funcNames(YomkConstMsgPtr msg);
+    yomk::payload::Response funcInfo(YomkConstMsgPtr msg);
+    yomk::payload::Response listAll(YomkConstMsgPtr msg);
 
 private:
     // 池中函数条目:函数本体 + 期望消息类型名 + 函数说明(内省元数据,均可为空)

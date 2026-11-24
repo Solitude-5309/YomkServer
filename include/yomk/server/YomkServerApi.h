@@ -100,9 +100,9 @@ class AsyncRequestBuilder
     friend class RequestBuilder;
     // url 以 string_view 透传, builder 全程不产生拷贝
     std::string_view m_url;
-    YomkMsgPtr m_msg;
+    YomkConstMsgPtr m_msg;
     YomkResponseFunc m_func;
-    AsyncRequestBuilder(std::string_view url, YomkMsgPtr msg, YomkResponseFunc func)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
+    AsyncRequestBuilder(std::string_view url, YomkConstMsgPtr msg, YomkResponseFunc func)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
         : m_url(url), m_msg(std::move(msg)), m_func(std::move(func))
     {
     }
@@ -116,7 +116,7 @@ public:
     // @zh: 累积请求消息
     // @zh: msg 打包后的消息对象，nullptr 为空消息
     // @zh: return 自身链式引用
-    AsyncRequestBuilder& msg(YomkMsgPtr msg)
+    AsyncRequestBuilder& msg(YomkConstMsgPtr msg)
     {
         m_msg = std::move(msg);
         return *this;
@@ -160,7 +160,7 @@ inline bool requireServer()
 class RequestBuilder
 {
     std::string_view m_url;
-    YomkMsgPtr m_msg;
+    YomkConstMsgPtr m_msg;
     // 分面参数: 由累积方法写入, 对应终结动作读取
     std::size_t m_asyncThreadCount = 0;  // async_thread() 累积, init 用(0 = 自动检测)
     std::string m_srvName;               // srv_name() 累积, add/remove 共用
@@ -193,7 +193,7 @@ public:
     // @zh: 累积请求消息
     // @zh: msg 打包后的消息对象（YOMK_DEFINE_MSG 生成的 YomkMsg 派生类指针），nullptr 为空消息
     // @zh: return 自身链式引用
-    RequestBuilder& msg(YomkMsgPtr msg)
+    RequestBuilder& msg(YomkConstMsgPtr msg)
     {
         m_msg = std::move(msg);
         return *this;

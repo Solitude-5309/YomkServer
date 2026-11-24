@@ -64,7 +64,7 @@ static bool nameIn(const std::vector<std::string>& names, const std::string& srv
 
 // 在 ServerServiceInfoList 解包结果中按服务名查找条目（/all 结构化消费 helper）
 static const yomk::payload::ServerServiceInfo* findServiceInfo(
-    const std::shared_ptr<yomk::msgs::ServerServiceInfoList>& list, const std::string& srvName)
+    const std::shared_ptr<const yomk::msgs::ServerServiceInfoList>& list, const std::string& srvName)
 {
     if (!list)
     {
@@ -105,11 +105,7 @@ static std::vector<std::string> unpackStringArray(const yomk::payload::Response&
     {
         return lines;
     }
-    std::shared_ptr<yomk::msgs::StringArray> arr = nullptr;
-    if (resp.data && resp.data->typeName() == yomk::msgs::StringArray::kTypeName)
-    {
-        arr = std::dynamic_pointer_cast<yomk::msgs::StringArray>(resp.data);
-    }
+    auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.data);
     if (arr)
     {
         lines = arr->d;
@@ -125,11 +121,7 @@ static std::vector<yomk::payload::FuncInfo> unpackFuncInfoList(const yomk::paylo
     {
         return funcs;
     }
-    std::shared_ptr<yomk::msgs::FuncInfoList> listMsg = nullptr;
-    if (resp.data && resp.data->typeName() == yomk::msgs::FuncInfoList::kTypeName)
-    {
-        listMsg = std::dynamic_pointer_cast<yomk::msgs::FuncInfoList>(resp.data);
-    }
+    auto listMsg = yomk::msgs::unpack<yomk::msgs::FuncInfoList>(resp.data);
     if (listMsg)
     {
         funcs = listMsg->d;
@@ -166,13 +158,13 @@ public:
         return 0;
     }
 
-    yomk::payload::Response ping(YomkMsgPtr msg)
+    yomk::payload::Response ping(YomkConstMsgPtr msg)
     {
         (void)msg;
         return {yomk::payload::ResStatus::Succeeded, "pong"};
     }
 
-    yomk::payload::Response echo(YomkMsgPtr msg)
+    yomk::payload::Response echo(YomkConstMsgPtr msg)
     {
         auto yText = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!yText)
@@ -196,7 +188,7 @@ public:
         return 0;
     }
 
-    yomk::payload::Response hit(YomkMsgPtr msg)
+    yomk::payload::Response hit(YomkConstMsgPtr msg)
     {
         (void)msg;
         return {yomk::payload::ResStatus::Succeeded, "hit"};

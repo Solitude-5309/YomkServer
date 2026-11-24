@@ -271,7 +271,8 @@ int main()
 
         // 类型化读 get() 特殊形态：守卫返回值即调用方默认值（指针一致）
         std::shared_ptr<yomk::msgs::String> ctxDefault = std::make_shared<yomk::msgs::String>("guard_default");
-        std::shared_ptr<yomk::msgs::String> ctxGot = yomk::ctx().key("guard_key").msg<yomk::msgs::String>().with_default(ctxDefault).get();
+        std::shared_ptr<const yomk::msgs::String> ctxGot =
+            yomk::ctx().key("guard_key").msg<yomk::msgs::String>().with_default(ctxDefault).get();
         YOMK_TEST_CHECK(ctxGot == ctxDefault, "get() 未初始化原样返回调用方默认值");
     }
 

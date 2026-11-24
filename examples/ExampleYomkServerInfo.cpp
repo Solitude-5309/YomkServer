@@ -246,7 +246,7 @@ public:
     }
 
     // 工位状态上报：收到状态文本回执确认
-    yomk::payload::Response report(YomkMsgPtr msg)
+    yomk::payload::Response report(YomkConstMsgPtr msg)
     {
         auto status = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!status)
@@ -260,7 +260,7 @@ public:
     }
 
     // 质量抽检：解包 QualityCheckReq，按件抽检并回执结论
-    yomk::payload::Response qualityCheck(YomkMsgPtr msg)
+    yomk::payload::Response qualityCheck(YomkConstMsgPtr msg)
     {
         auto data = yomk::msgs::unpack<yomk::msgs::QualityCheckReq>(msg);
         if (!data)

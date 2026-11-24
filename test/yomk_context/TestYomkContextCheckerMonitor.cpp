@@ -13,7 +13,8 @@
 // 10. 多同步 monitor 按注册顺序触发
 // 11. 异步 monitor 触发与顺序（单线程池保序）
 // 12. 并发 set 异步保序：锁内入队 ⇒ 末条异步通知收敛到最终值（C1 回归）
-// 13. 异步 monitor 排空（deinit）：shutdown 前排空全部异步任务
+// 13. 只读快照隔离：checker/monitor 收到的是入库 clone 快照，与调用方句柄非同一对象
+// 14. 异步 monitor 排空（deinit）：shutdown 前排空全部异步任务
 //
 // 说明：全程使用 yomk::server().init() 单例拉起内置 /YomkContext；异步排空用例置于末尾并调用 yomk::server().shutdown()
 // （call_once 约束，shutdown 后不可再初始化）；服务删除后重新注册/池重建归 TestYomkContextLifecycle
@@ -28,6 +29,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 #include "yomk/ctx/YomkContextApi.h"
@@ -62,6 +64,9 @@ static std::string g_lastSyncValue;            // 最近一次同步 monitor 看
 static std::vector<std::string> g_order;       // 多同步 monitor 触发顺序
 static std::mutex g_asyncMutex;                // 保护异步顺序记录
 static std::vector<std::string> g_asyncOrder;  // 异步 monitor 到达顺序
+// 只读快照隔离用例：记录 checker/monitor 收到的入库快照对象地址
+static const YomkMsg* g_checkerSeenValue = nullptr;
+static const YomkMsg* g_monitorSeenValue = nullptr;
 
 static void resetGlobals()
 {
@@ -72,6 +77,8 @@ static void resetGlobals()
     g_asyncCalls.store(0);
     g_drainCalls.store(0);
     g_lastSyncValue.clear();
+    g_checkerSeenValue = nullptr;
+    g_monitorSeenValue = nullptr;
     g_order.clear();
     {
         std::lock_guard<std::mutex> lk(g_asyncMutex);
@@ -82,7 +89,7 @@ static void resetGlobals()
 // 从 Context 数据中取出 String value（失败返回空串）
 static std::string contextStringValue(const yomk::payload::Context& ctx)
 {
-    auto sp = std::dynamic_pointer_cast<yomk::msgs::String>(ctx.value);
+    auto sp = yomk::msgs::unpack<yomk::msgs::String>(ctx.value);
     return sp ? sp->d : std::string();
 }
 
@@ -398,7 +405,61 @@ int main()
         yomk::ctx().group().monitor().disable();
     }
 
-    // ============ Section 13: 异步 monitor 排空（deinit），末尾调用 shutdown ============
+    // ============ Section 13: 只读快照隔离（checker/monitor 与调用方句柄非同一对象）============
+    {
+        auto cr = yomk::ctx().key("snap_key").value(yomk::msgs::String::shared(std::string("snap0"))).create();
+        YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "创建 snap_key 成功");
+
+        g_checkerSeenValue = nullptr;
+        g_monitorSeenValue = nullptr;
+        yomk::ctx().key("snap_key").checker_fn([](const yomk::payload::Context& ctx)
+            {
+                // 编译期：ctx.value 为只读指针，解引用结果恒 const（checker 无法篡改待写入值）
+                static_assert(std::is_const_v<std::remove_reference_t<decltype(*ctx.value)>>,
+                    "checker 收到的 ctx.value 必须是只读指针");
+                g_checkerSeenValue = ctx.value.get();
+                return CheckStatus::Accept;
+            }).apply();
+        yomk::ctx().key("snap_key").monitor_fn([](const yomk::payload::Context& ctx)
+            {
+                static_assert(std::is_const_v<std::remove_reference_t<decltype(*ctx.value)>>,
+                    "monitor 收到的 ctx.value 必须是只读指针");
+                g_monitorSeenValue = ctx.value.get();
+            }).apply();
+        yomk::ctx().group().checker().enable();
+        yomk::ctx().group().monitor().enable();
+
+        // 调用方句柄：提交后继续改写，验证读写双向隔离
+        auto handle = yomk::msgs::String::shared(std::string("snap1"));
+        auto setResp = yomk::ctx().key("snap_key").value(handle).set();
+        YOMK_TEST_CHECK(setResp == yomk::payload::ResStatus::Succeeded, "只读快照：set snap_key 成功");
+        YOMK_TEST_CHECK(g_checkerSeenValue != nullptr && g_checkerSeenValue != handle.get(),
+              "只读快照：checker 收到的 value 与 set 入参非同一对象（clone 入表）");
+        YOMK_TEST_CHECK(g_monitorSeenValue != nullptr && g_monitorSeenValue == g_checkerSeenValue,
+              "只读快照：monitor 与 checker 看到的是同一入库快照");
+        YOMK_TEST_CHECK(g_monitorSeenValue != handle.get(), "只读快照：monitor 收到的 value 与 set 入参非同一对象");
+
+        // 入库后改写原句柄，存储与快照都不受影响
+        handle->d = "mutated-after-set";
+        auto got = yomk::ctx().key("snap_key").msg<yomk::msgs::String>().get();
+        YOMK_TEST_CHECK(got && got->d == "snap1", "只读快照：set 后改写原句柄不影响存储");
+        YOMK_TEST_CHECK(got && got.get() == g_checkerSeenValue,
+              "只读快照：get 返回的正是 checker/monitor 看到的入库快照（零拷贝）");
+
+        // 旧快照冻结：再次 set 后，先前快照内容不变（整体替换语义）
+        const YomkMsg* firstSnapshot = g_checkerSeenValue;
+        YOMK_TEST_CHECK(yomk::ctx().key("snap_key").value(yomk::msgs::String::shared(std::string("snap2"))).set() ==
+                            yomk::payload::ResStatus::Succeeded,
+              "只读快照：二次 set 成功");
+        auto frozen = static_cast<const yomk::msgs::String*>(firstSnapshot);
+        YOMK_TEST_CHECK(frozen != nullptr && frozen->d == "snap1", "只读快照：旧快照冻结，内容仍为 snap1");
+
+        yomk::ctx().group().checker().disable();
+        yomk::ctx().group().monitor().disable();
+        YOMK_TEST_CHECK(yomk::ctx().key("snap_key").destroy() == yomk::payload::ResStatus::Succeeded, "清理 snap_key");
+    }
+
+    // ============ Section 14: 异步 monitor 排空（deinit），末尾调用 shutdown ============
     {
         yomk::ctx().group().monitor().enable();
         auto cr = yomk::ctx().key("mon_drain").value(yomk::msgs::String::shared(std::string("d0"))).create();

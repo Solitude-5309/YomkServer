@@ -36,7 +36,7 @@ builder 按值传递、全程 `auto` 接收，仅限单表达式内联使用（�
 |---|---|
 | `status` | `ResStatus::Succeeded (0)`：调用成功；`ResStatus::Failed (1)`：服务端执行失败，含目标服务/函数不存在等 not-found；`ResStatus::Invalid (-1)`：入参非法或服务器未初始化 |
 | `msg` | 状态描述文本 |
-| `data` | 可选的负载消息包（`YomkMsgPtr`） |
+| `data` | 可选的负载消息包（只读 `YomkConstMsgPtr`，`std::shared_ptr<const YomkMsg>`） |
 
 ### 生命周期与服务管理
 
@@ -71,7 +71,7 @@ public:
         installFunc("/hello", &MyService::hello, yomk::msgs::String::kTypeName); // 注册即自动弱绑定
         return 0;
     }
-    yomk::payload::Response hello(YomkMsgPtr msg)
+    yomk::payload::Response hello(YomkConstMsgPtr msg)
     {
         auto data = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!data)
@@ -178,6 +178,7 @@ int MyService::init()
 
 ## 注意事项
 
+- **功能函数签名只读形参**：服务成员函数/事件处理函数/函数池函数统一为 `yomk::payload::Response f(YomkConstMsgPtr msg)`，`Response.data` 也恒为 `YomkConstMsgPtr`；需要修改消息时先 `clone()` 拷出副本再提交，不得尝试写穿入参。
 - **服务名以 `/` 开头**：服务名即 URL 前缀，如 `name("/MyService")`；请求 URL 为 `"/服务名/函数名"`。内置服务 URL 常量化于 `yomk::url` 命名空间，自定义服务的 URL 常量可按同风格追加——请求链一律引用常量（`yomk::server().url(yomk::url::kFpCall)`），不裸写 URL 字符串字面量。
 - **deinit() 的四个触发时机**：`srv_name(n).remove()` 删除单个服务、`shutdown()` 关闭全部服务、同名服务被 `add()` 替换（旧服务先置位注销标志并 deinit，新服务随后 init，任意时刻同名服务至多一次活跃生命周期）、忘记关闭时进程退出经 atexit 兜底。覆写 `virtual void deinit()` 用于停止线程、注销外部资源。
 - **删除即停**：服务删除/同名替换后弱绑定回调立即丢弃；`shutdown()` 走排空语义（拒新 → 排空 → join 异步请求池，再清空服务表逐个 deinit），在途请求安全执行完毕后服务才析构；幂等，假定在主线程调用。

@@ -95,7 +95,7 @@ public:
         g_deinitShutdownCalls.fetch_add(1);
         g_deinitCount.fetch_add(1);
     }
-    yomk::payload::Response ping(YomkMsgPtr)
+    yomk::payload::Response ping(YomkConstMsgPtr)
     {
         return {yomk::payload::ResStatus::Succeeded, "pong"};
     }
@@ -112,7 +112,7 @@ public:
         return 0;
     }
     void deinit() override { g_deinitCount.fetch_add(1); }
-    yomk::payload::Response ping(YomkMsgPtr)
+    yomk::payload::Response ping(YomkConstMsgPtr)
     {
         return {yomk::payload::ResStatus::Succeeded, "peer-pong"};
     }
@@ -132,7 +132,7 @@ public:
             g_rawDeregRet.store(m_server->delService("/SvcGhost"));
         }
     }
-    yomk::payload::Response ping(YomkMsgPtr)
+    yomk::payload::Response ping(YomkConstMsgPtr)
     {
         return {yomk::payload::ResStatus::Succeeded, "ok"};
     }

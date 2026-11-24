@@ -29,29 +29,31 @@ enum class ResStatus
 
 /**
  * @brief Unified response packet: status + text description + data carrier
+ * @note The data carrier is a read-only message view; a handler that needs to modify it must clone()
  */
 // @zh: 统一应答包：状态 + 文字说明 + 数据载体
+// @zh: note 数据载体为只读消息视图；需修改则 clone() 出新对象
 struct Response
 {
     Response() = default;
-    Response(ResStatus status, const std::string& msg = "", YomkMsgPtr d = nullptr)
+    Response(ResStatus status, const std::string& msg = "", YomkConstMsgPtr d = nullptr)
         : status(status), msg(msg), data(d)
     {
     }
     ResStatus status = ResStatus::Invalid;  // 本次请求的状态
     std::string msg;                        // 对状态的说明(不携带返回数据)
-    YomkMsgPtr data = nullptr;              // 携带的返回数据
+    YomkConstMsgPtr data = nullptr;         // 携带的返回数据(只读)
 };
 
 }  // namespace yomk::payload
 
 /**
- * @brief Service function signature: receives the request message, returns a response
+ * @brief Service function signature: receives the read-only request message, returns a response
  * @note Runs on the request worker thread; should have no blocking side effects, the returned Response is the response posted back to the caller
  */
-// @zh: 功能函数签名：接收请求消息，返回响应
+// @zh: 功能函数签名：接收只读请求消息，返回响应
 // @zh: note 在请求工作线程执行；应无阻塞副作用，返回的 Response 即投递给调用方的响应
-using YomkServiceFunc = std::function<yomk::payload::Response(YomkMsgPtr msg)>;
+using YomkServiceFunc = std::function<yomk::payload::Response(YomkConstMsgPtr msg)>;
 /**
  * @brief Async request completion callback: receives the response after an async() request completes
  * @note Runs on the async request thread pool; must not synchronously wait for the same request inside the callback, does not throw

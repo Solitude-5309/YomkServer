@@ -277,6 +277,53 @@ int main()
         YOMK_TEST_CHECK(arr && arr->d.empty(), "keys 全部销毁后返回空数组");
     }
 
+    // ===== 值语义闭环：写入 clone 隔离 / 读取零拷贝快照 / get_copy 回写 =====
+    {
+        // 写入方句柄在 create/set 之后继续被修改，存储不受影响（存储持有 clone 的另一份对象）
+        auto writer = yomk::msgs::String::shared(std::string("first"));
+        YOMK_TEST_CHECK(yomk::ctx().key("immutable_key").value(writer).create() == yomk::payload::ResStatus::Succeeded,
+              "值语义：create immutable_key 成功");
+        auto snapshot = yomk::ctx().key("immutable_key").msg<yomk::msgs::String>().get();
+        YOMK_TEST_CHECK(snapshot && snapshot->d == "first", "值语义：get 返回写入时的值");
+        writer->d = "mutated-by-writer";
+        auto afterMutate = yomk::ctx().key("immutable_key").msg<yomk::msgs::String>().get();
+        YOMK_TEST_CHECK(afterMutate && afterMutate->d == "first", "值语义：改写原句柄不影响存储（create 时 clone）");
+
+        // 读取零拷贝：连续两次 get 返回同一只读快照（RCU）
+        YOMK_TEST_CHECK(snapshot == afterMutate, "值语义：两次 get 返回同一只读快照（零拷贝）");
+
+        // set 语义同上：入参句柄事后改写，读结果不变
+        auto setHandle = yomk::msgs::String::shared(std::string("second"));
+        YOMK_TEST_CHECK(yomk::ctx().key("immutable_key").value(setHandle).set() == yomk::payload::ResStatus::Succeeded,
+              "值语义：set immutable_key 成功");
+        setHandle->d = "mutated-by-set-handle";
+        auto afterSet = yomk::ctx().key("immutable_key").msg<yomk::msgs::String>().get();
+        YOMK_TEST_CHECK(afterSet && afterSet->d == "second", "值语义：set 后改写原句柄不影响存储（clone 隔离）");
+        YOMK_TEST_CHECK(afterSet != snapshot && snapshot && snapshot->d == "first",
+              "值语义：旧快照冻结为不可变快照（整体替换，无撕裂读）");
+
+        // get_copy 值语义：改副本 + set 提交才生效，原地改副本不写穿
+        auto copy = yomk::ctx().key("immutable_key").msg<yomk::msgs::String>().get_copy();
+        YOMK_TEST_CHECK(copy && copy->d == "second", "值语义：get_copy 返回当前值副本");
+        YOMK_TEST_CHECK(copy != afterSet, "值语义：get_copy 返回独立副本（非存储对象）");
+        copy->d = "third";
+        auto beforeSubmit = yomk::ctx().key("immutable_key").msg<yomk::msgs::String>().get();
+        YOMK_TEST_CHECK(beforeSubmit && beforeSubmit->d == "second", "值语义：原地改副本不写穿存储");
+        YOMK_TEST_CHECK(yomk::ctx().key("immutable_key").value(copy).set() == yomk::payload::ResStatus::Succeeded,
+              "值语义：副本改完 set 提交成功");
+        auto afterSubmit = yomk::ctx().key("immutable_key").msg<yomk::msgs::String>().get();
+        YOMK_TEST_CHECK(afterSubmit && afterSubmit->d == "third", "值语义：提交后读取到新值");
+
+        // 未命中：恒返回调用方默认值指针（同一指针）
+        auto missDefault = yomk::msgs::String::shared(std::string("default"));
+        auto miss1 = yomk::ctx().key("no_such_key_2").msg<yomk::msgs::String>().with_default(missDefault).get();
+        auto miss2 = yomk::ctx().key("no_such_key_2").msg<yomk::msgs::String>().with_default(missDefault).get();
+        YOMK_TEST_CHECK(miss1 == missDefault && miss2 == missDefault, "值语义：未命中恒返回同一默认指针");
+
+        YOMK_TEST_CHECK(yomk::ctx().key("immutable_key").destroy() == yomk::payload::ResStatus::Succeeded,
+              "值语义：清理 immutable_key");
+    }
+
     yomk::server().shutdown();
 
     if (g_failed == 0)

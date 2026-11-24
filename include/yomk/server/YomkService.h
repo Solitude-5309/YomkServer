@@ -65,13 +65,13 @@ protected:
     /**
      * @brief Register a member function as a service function (wrapped by weakFunc automatically)
      * @param funcName Routing name ("/" prefix, url = service name + funcName)
-     * @param func Member function pointer, of the form Response f(YomkMsgPtr)
+     * @param func Member function pointer, of the form Response f(YomkConstMsgPtr)
      * @param msgName Expected message type name (for introspection display only, may be empty)
      * @param description Function description (for introspection display only, may be empty)
      */
     // @zh: 注册成员函数为服务功能函数（自动 weakFunc 包装）
     // @zh: funcName 路由名（"/" 前缀，url = 服务名 + funcName）
-    // @zh: func 成员函数指针，形如 Response f(YomkMsgPtr)
+    // @zh: func 成员函数指针，形如 Response f(YomkConstMsgPtr)
     // @zh: msgName 期望消息类型名（仅内省展示，可空）
     // @zh: description 函数说明（仅内省展示，可空）
     template <typename Class, typename Res, typename Arg>
@@ -85,13 +85,13 @@ protected:
     std::map<std::string, yomk::payload::FuncInfo> funcInfos();
     /** @brief Direct call within the service: bypasses URL routing, semantics identical to request() */
     // @zh: 服务内直调：不经 URL 路由，语义同 request()
-    yomk::payload::Response invoke(std::string_view funcName, YomkMsgPtr msg = nullptr);
+    yomk::payload::Response invoke(std::string_view funcName, YomkConstMsgPtr msg = nullptr);
     /** @brief Synchronous request routed via the server (entry for inter-service communication); blocks until the reply */
     // @zh: 经服务器路由的同步请求（服务间通信入口）；阻塞至应答
-    yomk::payload::Response request(std::string_view url, YomkMsgPtr msg = nullptr);
+    yomk::payload::Response request(std::string_view url, YomkConstMsgPtr msg = nullptr);
     /** @brief Asynchronous request routed via the server; callback on completion (may be empty = post only) */
     // @zh: 经服务器路由的异步请求；完成后回调（可为空=仅投递）
-    void asyncRequest(std::string_view url, YomkMsgPtr msg = nullptr, YomkResponseFunc func = nullptr);
+    void asyncRequest(std::string_view url, YomkConstMsgPtr msg = nullptr, YomkResponseFunc func = nullptr);
     template <typename Class, typename Ret, typename Arg>
     auto weakFunc(Ret (Class::*func)(Arg))
     {

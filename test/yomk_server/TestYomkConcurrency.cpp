@@ -48,7 +48,7 @@ static std::atomic<int> g_fired{0};                       // 异步回调到达�
 static std::atomic<int> g_rejected{0};                    // 删除后弱绑定丢弃回调计数
 static std::atomic<int> g_illegal{0};                     // 非法返回值计数
 static std::atomic<int> g_posted{0};                      // 异步投递调用计数
-static std::function<yomk::payload::Response(YomkMsgPtr)> g_weakCb;  // 服务 init 时存下的弱绑定回调
+static std::function<yomk::payload::Response(YomkConstMsgPtr)> g_weakCb;  // 服务 init 时存下的弱绑定回调
 
 static void resetGlobals()
 {
@@ -91,13 +91,13 @@ public:
         return 0;
     }
 
-    yomk::payload::Response ping(YomkMsgPtr)
+    yomk::payload::Response ping(YomkConstMsgPtr)
     {
         ++g_hit;
         return {yomk::payload::ResStatus::Succeeded, "pong"};
     }
 
-    yomk::payload::Response echo(YomkMsgPtr msg)
+    yomk::payload::Response echo(YomkConstMsgPtr msg)
     {
         ++g_hit;
         auto sp = yomk::msgs::unpack<yomk::msgs::String>(msg);

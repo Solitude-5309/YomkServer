@@ -43,27 +43,28 @@
 ## 核心类型
 
 ```cpp
-using YomkMsgPtr = std::shared_ptr<YomkMsg>;  // 消息包基类指针，跨边界统一流转
+using YomkMsgPtr = std::shared_ptr<YomkMsg>;              // 生产侧：自己构造并交出可变指针
+using YomkConstMsgPtr = std::shared_ptr<const YomkMsg>;   // 消费侧：传输/存储/回调/返回值只读
 
 // yomk::payload::Response —— 统一响应（三态状态码）
 struct Response {
-    ResStatus status;   // 本次请求的状态
-    std::string msg;    // 对状态的说明（成功多为 "ok" 或描述文本，失败为契约消息；不携带返回数据）
-    YomkMsgPtr data;    // 携带的返回数据（结构化消息包）
+    ResStatus status;       // 本次请求的状态
+    std::string msg;        // 对状态的说明（成功多为 "ok" 或描述文本，失败为契约消息；不携带返回数据）
+    YomkConstMsgPtr data;   // 携带的返回数据（结构化消息包，只读）
 };
 
-using YomkServiceFunc  = std::function<yomk::payload::Response(YomkMsgPtr msg)>;
+using YomkServiceFunc  = std::function<yomk::payload::Response(YomkConstMsgPtr msg)>;
 using YomkResponseFunc = std::function<void(yomk::payload::Response response)>;
 ```
 
-字段口径固化：返回数据一律放 `data`，`msg` 仅作状态说明。
+字段口径固化：返回数据一律放 `data`，`msg` 仅作状态说明。**生产侧与消费侧分界线**：自己构造消息用 `YomkMsgPtr`（或 `MsgName::shared(...)`）；一旦交给框架，传输字段、存储字段、回调形参与返回值一律是 `YomkConstMsgPtr`。需要修改消息时用 `clone()` 拷出副本再提交（无原地修改存储对象的逃生口）。
 
 **内置数据结构**：
 
 ```cpp
 namespace yomk {
     struct Event {
-        std::string eventLoopName; YomkMsgPtr msg;
+        std::string eventLoopName; YomkConstMsgPtr msg;
         YomkServiceFunc serviceFunc; std::uint64_t eventId;
         yomk::payload::Response response; std::function<void()> waitCallback;
         std::string tag;   // 用户事件标记，post 时可选，仅内省展示
@@ -71,7 +72,7 @@ namespace yomk {
     // logger=日志器名（服务端按其选择/惰性创建）；tag=记录标签（随记录显示 [tag]）
     // LogLevel 为命名空间级 enum class（见 YomkLoggerPayload.h），非 Log 内嵌枚举
     struct Log { payload::LogLevel level; std::string log; std::string logger; std::string tag; };
-    struct Context { std::string key; YomkMsgPtr value; std::string group = "main"; };  // group=key 所属组名（缺省 main）
+    struct Context { std::string key; YomkConstMsgPtr value; std::string group = "main"; };  // group=key 所属组名（缺省 main）
     enum class CheckStatus{Accept, Reject};   // checker 门控结论（定义见 YomkContextPayload.h）
 }
 namespace yomk { struct FuncInfo {           // 功能函数元信息（内省用，定义见 YomkServerInfoPayload.h）
@@ -116,7 +117,7 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 
 **第四参语义描述惯例**（非强制约束，语义澄清，越清晰越好）：描述常量与 URL 常量同置各域 `XxxUrl.h`（URL 常量集中在前、语义描述常量集中在后按序一一对应，命名对称 `<常量名>` 与 `<常量名>Desc`，如 `kCtxCreate` / `kCtxCreateDesc`；URL 常量为 `k` + 域 + 端点，描述常量 `inline constexpr const char*`），installFunc 第四参仅引用常量，安装表一行一端点。一律多行 `R"(...)"` 块，固定五章节且顺序不变：`# Overview`（做什么、语义边界）、`# Inputs`（载荷字段与前置参数）、`# Outputs`（status/msg/data 与回调载荷）、`# Behavior`（同步/异步、阻塞语义、副作用、线程上下文）、`# Notes`（约束、前置条件、线程安全、生命周期陷阱、失败归因）；某章节无内容时保留标题、正文留空。文案必须与实现相符（依据处理函数真实分支写，不确定的分支不写）；失败按三态归因写在 Notes（Invalid=入参非法，Failed=业务未命中/冲突）。框架全部内置端点已按此填写，见 `src/` 各文件描述常量块与 `docs/YomkServer.md`「内省描述惯例」。
 
-弱绑定判活：回调触发时先 `weak_ptr.lock()`，服务已删除则安全丢弃，不会悬垂 `this`。同一 `weakFunc` 是泛型模板，按调用处目标 `std::function` 类型自动适配全部回调签名，丢弃行为按返回类型（所有丢弃分支统一前置记录错误日志 "service has been deleted or unregistered, callback ignored"）：功能函数/FunctionPool/EventLoop（`Response(YomkMsgPtr)` → `Failed`）、异步响应（`void(Response)` → 丢弃）、checker（`CheckStatus(const Context&)` → 放行 `Accept`）、void monitor（→ 丢弃）。其他返回类型 → `Ret{}` 默认值。构造期绑定（init 之前）永久无效。
+弱绑定判活：回调触发时先 `weak_ptr.lock()`，服务已删除则安全丢弃，不会悬垂 `this`。同一 `weakFunc` 是泛型模板，按调用处目标 `std::function` 类型自动适配全部回调签名，丢弃行为按返回类型（所有丢弃分支统一前置记录错误日志 "service has been deleted or unregistered, callback ignored"）：功能函数/FunctionPool/EventLoop（`Response(YomkConstMsgPtr)` → `Failed`）、异步响应（`void(Response)` → 丢弃）、checker（`CheckStatus(const Context&)` → 放行 `Accept`）、void monitor（→ 丢弃）。其他返回类型 → `Ret{}` 默认值。构造期绑定（init 之前）永久无效。
 
 `YomkService` 还提供便捷成员：`invoke(funcName, msg)`（不经 URL 路由直调本服务函数）、`request(url, msg)` / `asyncRequest(url, msg, cb)`（转调 server 域链），以及 `funcInfos()` 本服务元信息。
 
@@ -154,7 +155,8 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 |---|---|---|
 | 创建 | `.key(k).group(g).value(msg)` | `.create()` → `ResStatus`（g 省略 = 缺省组 `"main"`） |
 | 整体替换 | `.key(k).group(g).value(msg)` | `.set()` → `ResStatus` |
-| 类型化读 | `.key(k).group(g).msg<T>()` | `.with_default(d).get()` → `shared_ptr<T>`；`.with_default` 可省略 = 未命中回退 `nullptr` |
+| 类型化读 | `.key(k).group(g).msg<T>()` | `.with_default(d).get()` → `shared_ptr<const T>`（零拷贝只读快照）；`.with_default` 可省略 = 未命中回退 `nullptr` |
+| 读-改-写 | `.key(k).group(g).msg<T>()` | `.get_copy()` → `shared_ptr<T>` 独立副本，改完经 `.value(copy).set()` 提交 |
 | 销毁键 | `.key(k).group(g)` | `.destroy()` → `ResStatus` |
 | 键级校验门控 | `.key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus` |
 | 键级变更监听 | `.key(k).group(g).monitor_fn(fn).async(on)` | `.apply()` → `ResStatus`；`.async(on)` 可省略 = 同步 |
@@ -166,7 +168,7 @@ weakFunc(&Class::Method)                         // 弱绑定成员函数（不�
 - Monitor 仅通知"发生了一次 set"并回传该次键值快照（不保证实时，留存请拷贝；需最新值回调内重读 `get()`）；`.async(true)` 经该组单线程池按 set 提交序保序送达；同步形态锁外即时执行、并发下不保证跨线程序、回调内重入 set 会递归。
 - 组名约定：`.group()` 省略即 `"main"`；空组名 `Invalid` "group name is empty"；非 main 组首次寻址惰性自动创建，组名唯一、**不支持销毁组**，异步监控池每组自持。
 - 写路径失败契约：空键名 `Invalid` "context key is empty"（set 路径 detail 为 "set context key is empty"）；create 值空 `Invalid` "create context key '{k}' failed: value is empty"、键已存在 `Failed` "context key '{k}' already exists"；set 键不存在 `Failed` "context key '{k}' does not exist"、类型不符 `Failed` "context type not match: ..."。入参非法（空名/空值）一律 `Invalid`，运行期状态冲突（已存在/不存在）用 `Failed`。
-- `get()` 返回只读快照，值对象发布后勿原地修改；类型化读按 `kTypeName` 运行期比对，`T` 须为 `YomkMsg` 派生。
+- `get()` 返回 `shared_ptr<const T>`：编译期即无法原地修改；需要修改走 `get_copy()` 拿独立副本，改完 `.value(copy).set()` 提交。写入侧 `create/set` 内部 `clone()` 入表，提交后改写原句柄不影响存储，checker/monitor 拿到的 `ctx.value` 也是同一入库快照。类型化读按 `kTypeName` 运行期比对（`unpack`），`T` 须为 `YomkMsg` 派生。
 
 ## EventLoop 域（yomk::event_loop()）
 

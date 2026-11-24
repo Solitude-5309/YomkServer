@@ -9,6 +9,7 @@
 // 6. 并发 set 触发 sync + async monitor（同步计数确定、异步单线程池计数确定）
 // 7. 同步 monitor 重入安全（monitor 在锁外执行，内层 Context API 不死锁）
 // 8. N7 压力：8 线程 × 12500 ≈ 10 万级混合 Context 操作无崩溃/无挂起
+// 9. 写后原句柄并发改写 × 持续读：读到的一直是入库 clone 快照（值语义隔离）
 //
 // 说明：yomk::server().async_thread(1).init() 拉起单例 /YomkContext，全程经 yomk::ctx() 域链式 op多线程并发路由（真实 API 路径）；
 // 各 section 用独立 key 前缀，末尾 yomk::server().shutdown()（call_once 约束，shutdown 后不可再初始化）；
@@ -504,6 +505,59 @@ int main()
                 tmpGone = false;
         }
         YOMK_TEST_CHECK(tmpGone, "8.5 压力后临时键全部销毁");
+    }
+
+    // ============ Section 9: 写后原句柄并发改写 × 持续读（clone 隔离）============
+    std::cout << "===== 9. 写后并发改写原句柄 × 持续读 =====" << std::endl;
+    {
+        auto cr = yomk::ctx().key("conc_snap").value(yomk::msgs::String::shared(std::string("stable"))).create();
+        YOMK_TEST_CHECK(cr == yomk::payload::ResStatus::Succeeded, "9.1 创建 conc_snap 成功");
+
+        // 写入方句柄：提交后继续被持有，并在读线程读取的同时持续改写
+        auto handle = yomk::msgs::String::shared(std::string("stable"));
+        YOMK_TEST_CHECK(yomk::ctx().key("conc_snap").value(handle).set() == yomk::payload::ResStatus::Succeeded,
+              "9.2 set(conc_snap) 返回 ResStatus::Succeeded");
+
+        std::atomic<bool> stop{false};
+        std::atomic<int> dirtyReads{0};
+        std::atomic<int> readCount{0};
+        std::thread mutator(
+            [&handle, &stop]()
+            {
+                int i = 0;
+                while (!stop.load())
+                {
+                    handle->d = "mutated-" + std::to_string(i++);
+                }
+            });
+        std::vector<std::thread> readers;
+        for (int t = 0; t < 4; ++t)
+        {
+            readers.emplace_back(
+                [&dirtyReads, &readCount, &stop]()
+                {
+                    while (!stop.load())
+                    {
+                        auto v = yomk::ctx().key("conc_snap").msg<yomk::msgs::String>().get();
+                        if (!v || v->d != "stable")
+                        {
+                            ++dirtyReads;
+                        }
+                        ++readCount;
+                    }
+                });
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        stop.store(true);
+        mutator.join();
+        for (auto& r : readers)
+        {
+            r.join();
+        }
+
+        YOMK_TEST_CHECK(readCount.load() > 0, "9.3 读线程完成若干次读取");
+        YOMK_TEST_CHECK(dirtyReads.load() == 0, "9.4 原句柄并发改写期间读到的一直是入库快照（clone 隔离）");
+        YOMK_TEST_CHECK(yomk::ctx().key("conc_snap").destroy() == yomk::payload::ResStatus::Succeeded, "9.5 清理 conc_snap");
     }
 
     yomk::server().shutdown();

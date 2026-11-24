@@ -70,8 +70,8 @@ public:
         return 0; // 返回 0 表示服务初始化成功
     }
 
-    // 功能函数统一签名：yomk::payload::Response(YomkMsgPtr msg)
-    yomk::payload::Response hello(YomkMsgPtr msg)
+    // 功能函数统一签名：yomk::payload::Response(YomkConstMsgPtr msg)（交给框架的消息一律只读）
+    yomk::payload::Response hello(YomkConstMsgPtr msg)
     {
         auto data = yomk::msgs::unpack<yomk::msgs::String>(msg); // 类型校验与解包；失败时结果判假，失败原因经 error() 读取
         if (!data)

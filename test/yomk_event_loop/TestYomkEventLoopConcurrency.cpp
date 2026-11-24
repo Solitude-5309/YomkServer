@@ -58,7 +58,7 @@ static std::atomic<int> g_execCount{0};  // 计数 handler 执行总数（S2/S3/
 
 static YomkServiceFunc countHandler()
 {
-    return [](YomkMsgPtr)
+    return [](YomkConstMsgPtr)
     {
         g_execCount.fetch_add(1);
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "counted");
@@ -99,7 +99,7 @@ static void resetGate()
 
 static YomkServiceFunc gateHandler()
 {
-    return [](YomkMsgPtr)
+    return [](YomkConstMsgPtr)
     {
         g_gateStarted.store(true);
         while (!g_gateRelease.load())
@@ -172,7 +172,7 @@ int main()
                 auto idSlot = std::make_shared<std::atomic<std::uint64_t>>(0);
                 yomk::payload::EventOpts opts{
                     "conc1", nullptr,
-                    [idSlot](YomkMsgPtr)
+                    [idSlot](YomkConstMsgPtr)
                     {
                         std::uint64_t id = 0;
                         while ((id = idSlot->load()) == 0)

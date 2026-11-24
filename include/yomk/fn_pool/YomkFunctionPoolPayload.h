@@ -16,12 +16,12 @@ struct Function
     std::string description;
 };
 
-/** @brief Function call payload (function name + message) */
-// @zh: 功能函数调用载荷（函数名 + 消息包）
+/** @brief Function call payload (function name + read-only message) */
+// @zh: 功能函数调用载荷（函数名 + 只读消息包）
 struct CallFunction
 {
     std::string funcName;
-    YomkMsgPtr msg;
+    YomkConstMsgPtr msg;
 };
 
 }  // namespace yomk::payload

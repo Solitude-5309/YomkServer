@@ -84,7 +84,7 @@ static std::vector<std::string> unpackStringArray(const yomk::payload::Response&
     {
         return names;
     }
-    auto arr = std::dynamic_pointer_cast<yomk::msgs::StringArray>(resp.data);
+    auto arr = yomk::msgs::unpack<yomk::msgs::StringArray>(resp.data);
     if (arr)
     {
         names = arr->d;
@@ -216,7 +216,7 @@ int main()
         bool postOk = true;
         for (int i = 0; i < 100; ++i)
         {
-            if (yomk::event_loop().msg(nullptr).loop("integration_loop").handle_fn([](YomkMsgPtr) { return yomk::payload::Response(yomk::payload::ResStatus::Succeeded); }).post() !=
+            if (yomk::event_loop().msg(nullptr).loop("integration_loop").handle_fn([](YomkConstMsgPtr) { return yomk::payload::Response(yomk::payload::ResStatus::Succeeded); }).post() !=
                 yomk::payload::ResStatus::Succeeded)
             {
                 postOk = false;

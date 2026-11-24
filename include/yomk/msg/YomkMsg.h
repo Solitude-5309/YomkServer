@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 /**
@@ -11,10 +12,13 @@
  *       and naming it manually
  * @note Abstract: each generated class exposes its static kTypeName through typeName(), so the
  *       type name is read from static storage and no per-instance copy is stored
+ * @note clone() is the only way to obtain a modifiable copy: framework storage and callbacks
+ *       only ever hold shared_ptr<const YomkMsg>
  */
 // @zh: 消息类型基类：运行时类型名访问口（kTypeName 比对对象）
 // @zh: note 自定义消息经 YOMK_DEFINE_MSG 宏派生，不直接继承本类手工命名
 // @zh: note 抽象基类：类型名由各生成类的静态 kTypeName 经纯虚 typeName() 取得，实例内不存副本
+// @zh: note clone() 是取得可改副本的唯一途径：框架存储与回调只持有 shared_ptr<const YomkMsg>
 class YomkMsg
 {
 public:
@@ -23,8 +27,12 @@ public:
 
 public:
     virtual std::string_view typeName() const = 0;
+    /** @brief Deep copy of this message, for write-in (context storage, snapshot publishing) */
+    // @zh: 本消息的深拷贝，供写时拷入（context 存储、快照发布）
+    virtual std::shared_ptr<const YomkMsg> clone() const = 0;
 };
-using YomkMsgPtr = std::shared_ptr<YomkMsg>;
+using YomkMsgPtr = std::shared_ptr<YomkMsg>;              // 生产侧：构造消息并交出所有权
+using YomkConstMsgPtr = std::shared_ptr<const YomkMsg>;   // 消费侧：传输/存储/回调只读视图
 
 /**
  * @brief Define a message type: generate the YomkMsg derived class MsgName inside yomk::msgs
@@ -88,10 +96,16 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
     public:                                                                       \
         static constexpr const char* kTypeName = NamePrefix #MsgName;             \
         std::string_view typeName() const override { return kTypeName; }          \
+        static_assert(std::is_copy_constructible<DataType>::value,                \
+            "message payload must be copyable for clone()");                      \
         MsgName() {}                                                              \
         MsgName(const DataType& value) : VarName(value) {}                        \
         MsgName(DataType&& value) : VarName(std::move(value)) {}                  \
         virtual ~MsgName() {}                                                     \
+        std::shared_ptr<const YomkMsg> clone() const override                     \
+        {                                                                         \
+            return std::make_shared<MsgName>(*this);                              \
+        }                                                                         \
                                                                                   \
     public:                                                                       \
         DataType VarName{};                                                       \
@@ -103,6 +117,7 @@ using YomkMsgPtr = std::shared_ptr<YomkMsg>;
         }                                                                         \
     };                                                                            \
     using MsgName##Ptr = std::shared_ptr<MsgName>;                                \
+    using MsgName##ConstPtr = std::shared_ptr<const MsgName>;                     \
     }
 
 namespace yomk::msgs
@@ -110,13 +125,11 @@ namespace yomk::msgs
 
 /**
  * @brief Result of unpack<Msg>: the decoded message plus the failure reason
- * @note Transitional form: the decoded message is only meant for read-only access; write
- *       access will be removed in a later release (replaced by a read-only view plus a
- *       mutableMsg() outlet)
+ * @note Read-only view: the decoded message is always const; modify it by clone() + resubmit
  * @note A data carrier only: no combinators, no error mapping, not a general Result type
  */
 // @zh: unpack<Msg> 的结果：解包出的消息 + 失败原因
-// @zh: note 过渡形态：解包出的消息仅用于只读访问，写能力将在后续版本移除（改为只读视图 + mutableMsg() 出口）
+// @zh: note 只读视图：解包出的消息恒为 const；需要修改请 clone() 出新对象再提交
 // @zh: note 仅作数据载体，不提供组合子/错误映射等通用 Result 能力
 template <class Msg>
 class UnpackResult
@@ -128,9 +141,9 @@ public:
      * @param error Failure reason, empty on success
      */
     // @zh: 由解包指针与失败原因构造（二者其一为空）
-    // @zh: msg 解包出的消息指针，失败时为 nullptr
+    // @zh: msg 解包出的消息只读指针，失败时为 nullptr
     // @zh: error 失败原因，成功时为空
-    UnpackResult(std::shared_ptr<Msg> msg, std::string error)
+    UnpackResult(std::shared_ptr<const Msg> msg, std::string error)
         : m_msg(std::move(msg)), m_error(std::move(error))
     {
     }
@@ -145,27 +158,27 @@ public:
 
     /**
      * @brief Access the decoded payload through the message pointer, e.g. result->d.key
-     * @return The decoded message pointer; never used when the result is false
+     * @return The decoded read-only message pointer; never used when the result is false
      */
     // @zh: 经消息指针访问载荷，如 result->d.key
-    // @zh: return 解包出的消息指针；结果判假时不得使用
-    Msg* operator->() const noexcept { return m_msg.get(); }
+    // @zh: return 解包出的只读消息指针；结果判假时不得使用
+    const Msg* operator->() const noexcept { return m_msg.get(); }
 
     /**
      * @brief The decoded message reference
      * @return Reference to the decoded message (access its payload via d)
      */
-    // @zh: 解包出的消息引用
+    // @zh: 解包出的消息只读引用
     // @zh: return 解包出的消息对象（经 d 访问载荷字段）
-    Msg& operator*() const noexcept { return *m_msg; }
+    const Msg& operator*() const noexcept { return *m_msg; }
 
     /**
-     * @brief The decoded shared pointer, for forwarding to APIs taking shared_ptr<Msg>
-     * @return shared_ptr<Msg>; empty on failure
+     * @brief The decoded shared pointer, for forwarding to APIs taking shared_ptr<const Msg>
+     * @return shared_ptr<const Msg>; empty on failure
      */
-    // @zh: 解包出的共享指针，供需要 shared_ptr<Msg> 的接口转发
-    // @zh: return shared_ptr<Msg>，失败时为空
-    std::shared_ptr<Msg> msg() const noexcept { return m_msg; }
+    // @zh: 解包出的只读共享指针，供需要 shared_ptr<const Msg> 的接口转发
+    // @zh: return shared_ptr<const Msg>，失败时为空
+    std::shared_ptr<const Msg> msg() const noexcept { return m_msg; }
 
     /**
      * @brief The failure reason, meaningful only when the result is false
@@ -176,7 +189,7 @@ public:
     const std::string& error() const noexcept { return m_error; }
 
 private:
-    std::shared_ptr<Msg> m_msg;
+    std::shared_ptr<const Msg> m_msg;
     std::string m_error;
 };
 
@@ -191,15 +204,15 @@ private:
  */
 // @zh: 按运行时类型名解包消息
 // @zh: Msg 目标消息类（YOMK_DEFINE_MSG 生成）
-// @zh: msg 待解包消息指针
+// @zh: msg 待解包消息只读指针（YomkMsgPtr / shared_ptr<T> 隐式转换）
 // @zh: return 结果对象：命中时非空；未命中携带 "msg is not <期望类型>, got '<实际类型>'"（空消息报实际类型为 "null"）
 // @zh: note 判空即用，不抛异常；不符文案在此生成，调用点的期望类型名只写一次
 template <class Msg>
-UnpackResult<Msg> unpack(const YomkMsgPtr& msg)
+UnpackResult<Msg> unpack(const YomkConstMsgPtr& msg)
 {
     if (msg && msg->typeName() == Msg::kTypeName)
     {
-        return {std::dynamic_pointer_cast<Msg>(msg), std::string()};
+        return {std::dynamic_pointer_cast<const Msg>(msg), std::string()};
     }
     // Null-safe actual type name: an empty message reports "null"
     // @zh: 判空取实际类型名，空消息报 "null"

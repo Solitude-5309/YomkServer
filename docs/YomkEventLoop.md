@@ -13,7 +13,7 @@
 - 同一队列内并行处理（设计即串行）
 - 在循环线程内等待或阻塞：处理函数与 `.on_done()` 回调都在循环线程执行，阻塞即堵住整条队列
 
-> 前置概念：[消息包](YomkMsg.md)——事件数据以 `YomkMsgPtr` 流转；服务成员函数注册处理函数须弱绑定（见 [服务总线](YomkServer.md)「弱绑定」）。
+> 前置概念：[消息包](YomkMsg.md)——事件数据以只读 `YomkConstMsgPtr` 流转（生产者侧仍用 `YomkMsgPtr` 构造）；服务成员函数注册处理函数须弱绑定（见 [服务总线](YomkServer.md)「弱绑定」）。
 
 ## 链式语法速查
 
@@ -35,7 +35,7 @@
 yomk::server().init();
 
 // 启动事件循环，绑定默认处理函数
-yomk::event_loop().loop("TaskLoop").handle_fn([](YomkMsgPtr msg) {
+yomk::event_loop().loop("TaskLoop").handle_fn([](YomkConstMsgPtr msg) {
     // 在 TaskLoop 专用线程中顺序执行
     return yomk::payload::Response{yomk::payload::ResStatus::Succeeded};
 }).start();
@@ -53,7 +53,7 @@ yomk::event_loop().msg(yomk::msgs::String::shared("task2")).loop("TaskLoop").tag
 
 // 单次事件指定临时处理器（优先于默认处理函数）
 yomk::event_loop().msg(yomk::msgs::String::shared("task3")).loop("TaskLoop")
-    .handle_fn([](YomkMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded}; })
+    .handle_fn([](YomkConstMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded}; })
     .post();
 
 // 阻塞投递：返回值即处理函数的执行结果（status/msg/data 原样透传，语义同 request()）

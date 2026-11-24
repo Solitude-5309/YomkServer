@@ -256,11 +256,11 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response loadConfig(YomkMsgPtr msg);
-    yomk::payload::Response getConfig(YomkMsgPtr msg);
-    yomk::payload::Response setConfig(YomkMsgPtr msg);
-    yomk::payload::Response reloadConfig(YomkMsgPtr msg);
-    yomk::payload::Response version(YomkMsgPtr msg);
+    yomk::payload::Response loadConfig(YomkConstMsgPtr msg);
+    yomk::payload::Response getConfig(YomkConstMsgPtr msg);
+    yomk::payload::Response setConfig(YomkConstMsgPtr msg);
+    yomk::payload::Response reloadConfig(YomkConstMsgPtr msg);
+    yomk::payload::Response version(YomkConstMsgPtr msg);
 
     std::string m_configPath;
     std::unordered_map<std::string, std::string> m_configMap;
@@ -306,7 +306,7 @@ int ConfigService::init()
     return 0;
 }
 
-yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr msg)
+yomk::payload::Response ConfigService::loadConfig(YomkConstMsgPtr msg)
 {
     // 从 Context 获取配置文件路径
     auto ctxVal = yomk::ctx().key(CTX_CONFIG_PATH).msg<yomk::msgs::String>().with_default(nullptr).get();
@@ -338,7 +338,7 @@ yomk::payload::Response ConfigService::loadConfig(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
-yomk::payload::Response ConfigService::getConfig(YomkMsgPtr msg)
+yomk::payload::Response ConfigService::getConfig(YomkConstMsgPtr msg)
 {
     auto data = yomk::msgs::unpack<yomk::msgs::prj::ConfigKey>(msg);
     if (!data)
@@ -356,7 +356,7 @@ yomk::payload::Response ConfigService::getConfig(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(it->second));
 }
 
-yomk::payload::Response ConfigService::setConfig(YomkMsgPtr msg)
+yomk::payload::Response ConfigService::setConfig(YomkConstMsgPtr msg)
 {
     auto data = yomk::msgs::unpack<yomk::msgs::prj::ConfigKeyValue>(msg);
     if (!data)
@@ -370,13 +370,13 @@ yomk::payload::Response ConfigService::setConfig(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
 }
 
-yomk::payload::Response ConfigService::reloadConfig(YomkMsgPtr msg)
+yomk::payload::Response ConfigService::reloadConfig(YomkConstMsgPtr msg)
 {
     m_configMap.clear();
     return loadConfig(nullptr);
 }
 
-yomk::payload::Response ConfigService::version(YomkMsgPtr msg)
+yomk::payload::Response ConfigService::version(YomkConstMsgPtr msg)
 {
     // 版本号来自 CMake project() 定义的 VERSION，编译期通过 APP_VERSION 宏注入
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(std::string(APP_VERSION)));
@@ -607,8 +607,8 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response getUser(YomkMsgPtr msg);
-    yomk::payload::Response createUser(YomkMsgPtr msg);
+    yomk::payload::Response getUser(YomkConstMsgPtr msg);
+    yomk::payload::Response createUser(YomkConstMsgPtr msg);
 };
 ```
 
@@ -629,7 +629,7 @@ int UserService::init()
     return 0;
 }
 
-yomk::payload::Response UserService::getUser(YomkMsgPtr msg)
+yomk::payload::Response UserService::getUser(YomkConstMsgPtr msg)
 {
     auto query = yomk::msgs::unpack<yomk::msgs::prj::UserQuery>(msg);
     if (!query)
@@ -644,7 +644,7 @@ yomk::payload::Response UserService::getUser(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::UserInfo::shared(info));
 }
 
-yomk::payload::Response UserService::createUser(YomkMsgPtr msg)
+yomk::payload::Response UserService::createUser(YomkConstMsgPtr msg)
 {
     auto user = yomk::msgs::unpack<yomk::msgs::prj::UserInfo>(msg);
     if (!user)
@@ -723,8 +723,12 @@ yomk::ctx().group("main").monitor().enable();
 yomk::ctx().key("config").value(yomk::msgs::String::shared("new_value")).set();  // 通过检查并触发监控
 yomk::ctx().key("config").value(yomk::msgs::String::shared("")).set();            // 被拒绝（Failed "set context key '{k}' rejected by checker"）
 
-// 类型化读（只读快照；未命中回退 with_default 的默认值）
-auto val = yomk::ctx().key("config").msg<yomk::msgs::String>().with_default(nullptr).get();
+// 类型化读（零拷贝只读快照；未命中回退 with_default 的默认值）
+auto val = yomk::ctx().key("config").msg<yomk::msgs::String>().with_default(nullptr).get();  // shared_ptr<const String>
+
+// 读-改-写（值语义）：get_copy() 取独立副本，改完 set 提交；改副本不会写穿存储
+auto copy = yomk::ctx().key("config").msg<yomk::msgs::String>().get_copy();
+if (copy) { copy->d = "patched"; yomk::ctx().key("config").value(copy).set(); }
 ```
 
 checker/monitor 使用**服务成员函数**时必须弱绑定，直接用 `weakFunc(&Class::Method)`（按目标类型自动适配），服务删除后 checker 默认放行、monitor 丢弃：
@@ -743,7 +747,7 @@ int MyService::init() {
 
 - **共同语义**：
   - monitor 仅通知发生了一次 set 事件，并回传该次 set 的键值快照——**不保证快照是最新值**；快照仅回调期有效，需留存请在回调内拷贝 ctx。
-  - **值对象一经 set 发布即只读**：get/monitor 拿到的都别名同一对象；改动请构造新对象再 `.set()`，勿原地修改（否则与并发读竞争、可能崩溃）。
+  - **值对象一经 set 发布即不可变**：`get()` 返回 `shared_ptr<const T>`、monitor 回调收到的是入库 clone 快照，类型系统上即无法原地修改；需要修改请 `get_copy()` 拿独立副本，改完 `.value(copy).set()` 提交。调用方在 set/create 之后继续改写自己的句柄也不影响存储（写时 clone 入表）。
   - 需最新值请在回调内用 `.msg<T>().with_default(...).get()` 重读；校验/拒绝请用 checker，勿用 monitor。
 - **同步（默认，`.async()` 省略或 false）**：
   - 在 set 调用线程上锁外内联执行、通知及时；顺序 set 下按调用序通知，**并发 set 下不保证跨线程顺序**。
@@ -758,7 +762,7 @@ int MyService::init() {
 
 ```cpp
 // 事件处理函数
-yomk::payload::Response taskHandler(YomkMsgPtr msg)
+yomk::payload::Response taskHandler(YomkConstMsgPtr msg)
 {
     auto taskData = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!taskData)
@@ -779,7 +783,7 @@ yomk::event_loop().msg(yomk::msgs::String::shared("task_tagged")).loop("worker_l
 
 // 单次事件指定临时处理器（优先于默认处理函数）
 yomk::event_loop().msg(yomk::msgs::String::shared("task_2")).loop("worker_loop")
-    .handle_fn([](YomkMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "one-shot done"}; })
+    .handle_fn([](YomkConstMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "one-shot done"}; })
     .post();
 
 // 异步取结果：on_done 回调在事件执行完毕后调用一次，参数即处理函数的 Response
@@ -812,7 +816,7 @@ yomk::event_loop().loop("worker_loop").destroy();
 
 ```cpp
 // 定义公共函数
-yomk::payload::Response validateAmount(YomkMsgPtr msg)
+yomk::payload::Response validateAmount(YomkConstMsgPtr msg)
 {
     auto amountStr = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!amountStr)
@@ -1117,7 +1121,7 @@ namespace yomk::payload::ext
 struct ExtTask
 {
     std::string taskName;
-    YomkMsgPtr msg;
+    YomkConstMsgPtr msg;
 };
 }  // namespace yomk::payload::ext
 ```
@@ -1202,7 +1206,7 @@ public:
     virtual int init() override;
 
 private:
-    yomk::payload::Response version(YomkMsgPtr msg);
+    yomk::payload::Response version(YomkConstMsgPtr msg);
 };
 }  // namespace yomk::service::ext
 ```
@@ -1227,7 +1231,7 @@ int ExtensionService::init()
     return 0;
 }
 
-yomk::payload::Response ExtensionService::version(YomkMsgPtr msg)
+yomk::payload::Response ExtensionService::version(YomkConstMsgPtr msg)
 {
     std::string version = "extension v" EXTENSION_VERSION;
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(version));

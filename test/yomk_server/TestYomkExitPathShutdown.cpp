@@ -66,7 +66,7 @@ public:
         g_deinitRemoveRet.store(yomk::server().srv_name("/SvcGhost/ping").remove());
         g_deinitCount.fetch_add(1);
     }
-    yomk::payload::Response ping(YomkMsgPtr)
+    yomk::payload::Response ping(YomkConstMsgPtr)
     {
         return {yomk::payload::ResStatus::Succeeded, "pong"};
     }

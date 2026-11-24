@@ -56,17 +56,19 @@ int YomkLogger::init()
     return 0;
 }
 
-yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::consoleLog(YomkConstMsgPtr msg)
 {
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
     {
         return {yomk::payload::ResStatus::Failed, logMsg.error()};
     }
-    if (logMsg->d.logger.empty())
+    // 请求消息只读：需要补默认值时先拷出值副本，再在副本上改写
+    yomk::payload::Log logData = logMsg->d;
+    if (logData.logger.empty())
     {
         YOMK_DIAG_WARN("console logger name is empty, use main");
-        logMsg->d.logger = "main";
+        logData.logger = "main";
     }
 
     // 锁内拷贝 proxy 快照,锁外调用回调(避免用户回调持锁重入)
@@ -77,7 +79,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr msg)
         proxyEnabled = m_consoleLogProxy;
         proxyFunc = m_consoleLogProxyFunc;
     }
-    if (proxyEnabled && proxyFunc && !proxyFunc(logMsg->d))
+    if (proxyEnabled && proxyFunc && !proxyFunc(logData))
     {
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok");
     }
@@ -86,7 +88,7 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr msg)
     ConsoleLoggerPtr consoleLogger;
     {
         std::shared_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-        auto itLogger = m_consoleLoggers.find(logMsg->d.logger);
+        auto itLogger = m_consoleLoggers.find(logData.logger);
         if (itLogger != m_consoleLoggers.end())
         {
             consoleLogger = itLogger->second;
@@ -95,53 +97,53 @@ yomk::payload::Response YomkLogger::consoleLog(YomkMsgPtr msg)
     if (!consoleLogger)
     {
         std::unique_lock<std::shared_mutex> lock(m_consoleLoggersMutex);
-        auto itLogger = m_consoleLoggers.find(logMsg->d.logger);
+        auto itLogger = m_consoleLoggers.find(logData.logger);
         if (itLogger == m_consoleLoggers.end())
         {
             std::shared_ptr<ConsoleLogger> newLogger = std::make_shared<ConsoleLogger>();
-            newLogger->setName(logMsg->d.logger);
-            itLogger = m_consoleLoggers.emplace(logMsg->d.logger, newLogger).first;
+            newLogger->setName(logData.logger);
+            itLogger = m_consoleLoggers.emplace(logData.logger, newLogger).first;
         }
         consoleLogger = itLogger->second;
     }
 
-    switch (logMsg->d.level)
+    switch (logData.level)
     {
         case LogLevel::Trace:
             if (m_showConsoleTraceLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Trace, logMsg->d.tag, logMsg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Trace, logData.tag, logData.log);
             break;
         case LogLevel::Info:
             if (m_showConsoleInfoLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Info, logMsg->d.tag, logMsg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Info, logData.tag, logData.log);
             break;
         case LogLevel::Warn:
             if (m_showConsoleWarningLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Warn, logMsg->d.tag, logMsg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Warn, logData.tag, logData.log);
             break;
         case LogLevel::Error:
             if (m_showConsoleErrorLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Error, logMsg->d.tag, logMsg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Error, logData.tag, logData.log);
             break;
         case LogLevel::Debug:
             if (m_showConsoleDebugLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Debug, logMsg->d.tag, logMsg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Debug, logData.tag, logData.log);
             break;
         case LogLevel::Fatal:
             if (m_showConsoleFatalLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Fatal, logMsg->d.tag, logMsg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Fatal, logData.tag, logData.log);
             break;
         default:
-            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logMsg->d.level)) + ", fallback to Info");
+            YOMK_DIAG_WARN("unknown log level " + std::to_string(static_cast<int>(logData.level)) + ", fallback to Info");
             if (m_showConsoleInfoLog.load())
-                consoleLogger->log(ConsoleLogger::LogLevel::Info, logMsg->d.tag, logMsg->d.log);
+                consoleLogger->log(ConsoleLogger::LogLevel::Info, logData.tag, logData.log);
             break;
     }
 
     return {yomk::payload::ResStatus::Succeeded, "success"};
 }
 
-yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkConstMsgPtr msg)
 {
     auto consoleLogProxy = yomk::msgs::unpack<yomk::msgs::ConsoleLogProxy>(msg);
     if (!consoleLogProxy)
@@ -156,7 +158,7 @@ yomk::payload::Response YomkLogger::setConsoleLogProxy(YomkMsgPtr msg)
     return {yomk::payload::ResStatus::Succeeded, "success"};
 }
 
-yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::setFileLogProxy(YomkConstMsgPtr msg)
 {
     auto fileLogProxy = yomk::msgs::unpack<yomk::msgs::FileLogProxy>(msg);
     if (!fileLogProxy)
@@ -171,7 +173,7 @@ yomk::payload::Response YomkLogger::setFileLogProxy(YomkMsgPtr msg)
     return {yomk::payload::ResStatus::Succeeded, "success"};
 }
 
-yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::createFileLogger(YomkConstMsgPtr msg)
 {
     auto logFile = yomk::msgs::unpack<yomk::msgs::LogFile>(msg);
     if (!logFile)
@@ -208,7 +210,7 @@ yomk::payload::Response YomkLogger::createFileLogger(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::fileLog(YomkConstMsgPtr msg)
 {
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
@@ -279,7 +281,7 @@ yomk::payload::Response YomkLogger::fileLog(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::writeFileLog(YomkConstMsgPtr msg)
 {
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
@@ -297,7 +299,7 @@ yomk::payload::Response YomkLogger::writeFileLog(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::deleteLogger(YomkConstMsgPtr msg)
 {
     auto yName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yName)
@@ -343,7 +345,7 @@ yomk::payload::Response YomkLogger::deleteLogger(YomkMsgPtr msg)
         "deleted console:" + std::to_string(deletedConsole) + " file:" + std::to_string(deletedFile));
 }
 
-yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkConstMsgPtr msg)
 {
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
@@ -386,7 +388,7 @@ yomk::payload::Response YomkLogger::offConsoleLogByLevel(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::onConsoleLogByLevel(YomkConstMsgPtr msg)
 {
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
@@ -469,7 +471,7 @@ yomk::payload::Response YomkLogger::setNamedConsoleLevel(const std::string& logg
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::offFileLogByLevel(YomkConstMsgPtr msg)
 {
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
@@ -512,7 +514,7 @@ yomk::payload::Response YomkLogger::offFileLogByLevel(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::onFileLogByLevel(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::onFileLogByLevel(YomkConstMsgPtr msg)
 {
     auto logMsg = yomk::msgs::unpack<yomk::msgs::Log>(msg);
     if (!logMsg)
@@ -595,7 +597,7 @@ yomk::payload::Response YomkLogger::setNamedFileLevel(const std::string& loggerN
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "success");
 }
 
-yomk::payload::Response YomkLogger::loggers(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::loggers(YomkConstMsgPtr msg)
 {
     auto type = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!type)
@@ -625,7 +627,7 @@ yomk::payload::Response YomkLogger::loggers(YomkMsgPtr msg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(std::move(names))};
 }
 
-yomk::payload::Response YomkLogger::loggerInfo(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::loggerInfo(YomkConstMsgPtr msg)
 {
     auto query = yomk::msgs::unpack<yomk::msgs::LoggerQuery>(msg);
     if (!query)
@@ -751,7 +753,7 @@ LoggerState YomkLogger::namedFileState(const FileLoggerPtr& fileLogger, bool pro
     return state;
 }
 
-yomk::payload::Response YomkLogger::listAll(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::listAll(YomkConstMsgPtr msg)
 {
     (void)msg;
     // 两个 proxyOn 各自在双表锁外独立取(两把 proxy 叶子锁独立作用域),再传入逐器门控层求值
@@ -794,14 +796,14 @@ yomk::payload::Response YomkLogger::listAll(YomkMsgPtr msg)
 }
 
 // 控制台全局主闸态内省(无参形态同 /all,LoggerState 包走 data)
-yomk::payload::Response YomkLogger::consoleGlobalState(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::consoleGlobalState(YomkConstMsgPtr msg)
 {
     (void)msg;
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::LoggerState::shared(currentConsoleState())};
 }
 
 // 文件全局主闸态内省(无参形态同 /all,LoggerState 包走 data)
-yomk::payload::Response YomkLogger::fileGlobalState(YomkMsgPtr msg)
+yomk::payload::Response YomkLogger::fileGlobalState(YomkConstMsgPtr msg)
 {
     (void)msg;
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::LoggerState::shared(currentFileState())};

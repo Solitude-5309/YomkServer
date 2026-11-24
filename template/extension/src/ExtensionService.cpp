@@ -18,7 +18,7 @@ int ExtensionService::init()
     return 0;
 }
 
-yomk::payload::Response ExtensionService::version(YomkMsgPtr msg)
+yomk::payload::Response ExtensionService::version(YomkConstMsgPtr msg)
 {
     std::string version = "extension v" EXTENSION_VERSION;
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::String::shared(version));

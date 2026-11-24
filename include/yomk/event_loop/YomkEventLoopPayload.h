@@ -19,7 +19,7 @@ namespace yomk::payload
 struct EventOpts
 {
     std::string eventLoopName;    // 目标循环名
-    YomkMsgPtr msg;               // 事件负载
+    YomkConstMsgPtr msg;          // 事件负载(只读)
     YomkServiceFunc serviceFunc;  // 单次处理器，空则回落循环默认处理函数
     std::string tag;              // 标签（内省采样用）
     YomkResponseFunc onDone;      // 异步完成回调，可空；仅 post 生效，与 post_wait 互斥

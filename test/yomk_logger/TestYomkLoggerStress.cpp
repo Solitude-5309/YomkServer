@@ -474,7 +474,7 @@ static uint64_t introspectionRounds(uint64_t entries)
 }
 
 // 从 ALL 清单取首条 console 条目的控制台状态段（无 console 条目返回 nullptr）
-static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListPtr listMsg)
+static const yomk::payload::LoggerState* firstConsoleState(yomk::msgs::LoggerInfoListConstPtr listMsg)
 {
     if (!listMsg)
     {

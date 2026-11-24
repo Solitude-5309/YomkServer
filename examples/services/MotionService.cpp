@@ -16,7 +16,7 @@ int MotionService::init()
     return 0;
 }
 
-yomk::payload::Response MotionService::echo(YomkMsgPtr msg)
+yomk::payload::Response MotionService::echo(YomkConstMsgPtr msg)
 {
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);  // String 为框架内置消息类型
     if (!str)
@@ -29,7 +29,7 @@ yomk::payload::Response MotionService::echo(YomkMsgPtr msg)
     return {yomk::payload::ResStatus::Succeeded, "echo success", yomk::msgs::String::shared("echo: " + str->d)};
 }
 
-yomk::payload::Response MotionService::move(YomkMsgPtr msg)
+yomk::payload::Response MotionService::move(YomkConstMsgPtr msg)
 {
     auto cmdMsg = yomk::msgs::unpack<yomk::msgs::MoveCmd>(msg);
     if (!cmdMsg)

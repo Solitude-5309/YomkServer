@@ -32,7 +32,7 @@ yomk::server().init();
 
 // 注册函数（msg_name/description 可选，仅作内省元数据）
 yomk::fn_pool().fn_name("calcSum")
-    .fn([](YomkMsgPtr msg) {
+    .fn([](YomkConstMsgPtr msg) {
         auto arr = yomk::msgs::unpack<yomk::msgs::Int32Array>(msg);
         if (!arr)
             return yomk::payload::Response{yomk::payload::ResStatus::Failed, arr.error()};

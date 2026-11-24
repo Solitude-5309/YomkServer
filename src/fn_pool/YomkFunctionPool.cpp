@@ -24,7 +24,7 @@ int YomkFunctionPool::init()
     return 0;
 }
 
-yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr msg)
+yomk::payload::Response YomkFunctionPool::registerFunction(YomkConstMsgPtr msg)
 {
     auto yFunc = yomk::msgs::unpack<yomk::msgs::Function>(msg);
     if (!yFunc)
@@ -53,7 +53,7 @@ yomk::payload::Response YomkFunctionPool::registerFunction(YomkMsgPtr msg)
     return {yomk::payload::ResStatus::Succeeded, "register function success"};
 }
 
-yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr msg)
+yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkConstMsgPtr msg)
 {
     auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yFuncName)
@@ -76,7 +76,7 @@ yomk::payload::Response YomkFunctionPool::unRegisterFunction(YomkMsgPtr msg)
     return {yomk::payload::ResStatus::Succeeded, "unregister function success"};
 }
 
-yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr msg)
+yomk::payload::Response YomkFunctionPool::callFunction(YomkConstMsgPtr msg)
 {
     auto yCallFunc = yomk::msgs::unpack<yomk::msgs::CallFunction>(msg);
     if (!yCallFunc)
@@ -104,7 +104,7 @@ yomk::payload::Response YomkFunctionPool::callFunction(YomkMsgPtr msg)
 }
 
 // 内省:列出全部注册函数名
-yomk::payload::Response YomkFunctionPool::funcNames(YomkMsgPtr msg)
+yomk::payload::Response YomkFunctionPool::funcNames(YomkConstMsgPtr msg)
 {
     std::vector<std::string> funcNames;
     {
@@ -118,7 +118,7 @@ yomk::payload::Response YomkFunctionPool::funcNames(YomkMsgPtr msg)
 }
 
 // 内省:单个函数元信息查询,命中返回结构化 FuncInfo 包
-yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr msg)
+yomk::payload::Response YomkFunctionPool::funcInfo(YomkConstMsgPtr msg)
 {
     auto yFuncName = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!yFuncName)
@@ -145,7 +145,7 @@ yomk::payload::Response YomkFunctionPool::funcInfo(YomkMsgPtr msg)
 }
 
 // 内省:全量函数元信息,锁内构造结构化快照(总数由 d.size() 承载)
-yomk::payload::Response YomkFunctionPool::listAll(YomkMsgPtr msg)
+yomk::payload::Response YomkFunctionPool::listAll(YomkConstMsgPtr msg)
 {
     std::vector<yomk::payload::FuncInfo> infos;
     {

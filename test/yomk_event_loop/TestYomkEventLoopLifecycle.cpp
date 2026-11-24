@@ -103,7 +103,7 @@ static void resetGate()
 
 static YomkServiceFunc gateHandler()
 {
-    return [](YomkMsgPtr)
+    return [](YomkConstMsgPtr)
     {
         g_gateStarted.store(true);
         while (!g_gateRelease.load())
@@ -179,7 +179,7 @@ static bool waitUntil(const std::function<bool()>& pred, int timeoutMs)
 // 计数事件处理器：记录执行顺序
 static YomkServiceFunc countingHandler(const std::string& tag)
 {
-    return [tag](YomkMsgPtr)
+    return [tag](YomkConstMsgPtr)
     {
         recordOrder(tag);
         return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "counted: " + tag);
@@ -281,7 +281,7 @@ int main()
         EventLoop loop;
         YOMK_TEST_CHECK(loop.start() == 0, "start 返回 0");
 
-        auto recordId = [](YomkMsgPtr)
+        auto recordId = [](YomkConstMsgPtr)
         {
             recordThreadId();
             return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "id recorded");
@@ -336,7 +336,7 @@ int main()
         yomk::payload::EventOpts outer{
             "wb",
             nullptr,
-            [&loop, inner](YomkMsgPtr)
+            [&loop, inner](YomkConstMsgPtr)
             {
                 yomk::payload::Response ignored;
                 loop.postWait(inner, ignored);
@@ -367,7 +367,7 @@ int main()
 
         // std::exception 分支：postWait 的 handler 抛出，execute 收敛为 Failed 后仍终结等待者，postWait 不挂起
         yomk::payload::EventOpts thrower{
-            "wb", nullptr, [](YomkMsgPtr) -> yomk::payload::Response { throw std::runtime_error("boom"); }, "thr1"};
+            "wb", nullptr, [](YomkConstMsgPtr) -> yomk::payload::Response { throw std::runtime_error("boom"); }, "thr1"};
         yomk::payload::Response throwResp;
         YOMK_TEST_CHECK(loop.postWait(thrower, throwResp) == 0, "handler 抛 std::exception 时 postWait 仍返回 0（异常被收敛）");
         YOMK_TEST_CHECK(throwResp.status == yomk::payload::ResStatus::Failed && throwResp.msg.find("threw") != std::string::npos,
@@ -375,7 +375,7 @@ int main()
 
         // 未知异常分支（非 std::exception）
         yomk::payload::EventOpts thrower2{
-            "wb", nullptr, [](YomkMsgPtr) -> yomk::payload::Response { throw 42; }, "thr2"};
+            "wb", nullptr, [](YomkConstMsgPtr) -> yomk::payload::Response { throw 42; }, "thr2"};
         YOMK_TEST_CHECK(loop.post(thrower2) == 0, "post 抛未知异常事件返回 0");
 
         // 循环存活：后续正常事件仍执行
@@ -823,7 +823,7 @@ int main()
         std::atomic<int> exStatus{-99};
         std::atomic<int> exThrew{0};
         yomk::payload::EventOpts boom{
-            "wb", nullptr, [](YomkMsgPtr) -> yomk::payload::Response { throw std::runtime_error("boom-cb"); }, "od2"};
+            "wb", nullptr, [](YomkConstMsgPtr) -> yomk::payload::Response { throw std::runtime_error("boom-cb"); }, "od2"};
         boom.onDone = [&exHits, &exStatus, &exThrew](yomk::payload::Response r)
         {
             exStatus.store(static_cast<int>(r.status));

@@ -1,6 +1,6 @@
 # YomkContext(共享上下文)
 
-跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步），支持分组隔离与运行期内省。随 `yomk::server().init()` 自动启动。全部操作经链式域入口 `yomk::ctx()`：`key/group/value` 累积定位目标，写路径终结（`create/set/destroy` 等）返回三态 `ResStatus`，类型化读终结 `get()` 返回 `shared_ptr<T>`。
+跨服务强类型键值存储，内置变更前校验门控（Checker）与变更后监听（Monitor，同步/异步），支持分组隔离与运行期内省。随 `yomk::server().init()` 自动启动。全部操作经链式域入口 `yomk::ctx()`：`key/group/value` 累积定位目标，写路径终结（`create/set/destroy` 等）返回三态 `ResStatus`，类型化读终结 `get()` 返回 `shared_ptr<const T>`（零拷贝只读快照），读-改-写用 `get_copy()` 取独立副本后 `.set()` 提交。
 
 ## 适用与不适用
 
@@ -20,7 +20,8 @@
 |---|---|---|
 | 创建 | `yomk::ctx().key(k).group(g).value(msg)` | `.create()` → `ResStatus`（g 省略 = 缺省 `"main"`） |
 | 设置（整体替换） | `yomk::ctx().key(k).group(g).value(msg)` | `.set()` → `ResStatus` |
-| 类型化读 | `yomk::ctx().key(k).group(g).msg<T>()` | `.with_default(d).get()` → `shared_ptr<T>`；`.with_default` 可省略（未命中回退 `nullptr`） |
+| 类型化读 | `yomk::ctx().key(k).group(g).msg<T>()` | `.with_default(d).get()` → `shared_ptr<const T>` 只读快照；`.with_default` 可省略（未命中回退 `nullptr`） |
+| 读-改-写 | 同上（`msg<T>()`） | `.get_copy()` → `shared_ptr<T>` 独立副本，改完经 `.value(copy).set()` 提交 |
 | 销毁键 | `yomk::ctx().key(k).group(g)` | `.destroy()` → `ResStatus` |
 | 键级校验门控 | `yomk::ctx().key(k).group(g).checker_fn(fn)` | `.apply()` → `ResStatus` |
 | 键级变更监听 | `yomk::ctx().key(k).group(g).monitor_fn(fn).async(on)` | `.apply()` → `ResStatus`；`.async(on)` 可省略 = 同步 |
@@ -42,6 +43,13 @@ yomk::ctx().key("config").value(yomk::msgs::String::shared("new_value")).set();
 
 // 2. 类型化读（只读快照；未命中/类型不符/未初始化回退默认值）
 auto val = yomk::ctx().key("config").msg<yomk::msgs::String>().with_default(nullptr).get();
+
+// 2.1 读-改-写：get_copy() 取独立副本，改完 set 提交（改副本不写穿存储）
+auto copy = yomk::ctx().key("config").msg<yomk::msgs::String>().get_copy();
+if (copy) {
+    copy->d = "patched";
+    yomk::ctx().key("config").value(copy).set();
+}
 
 // 3. 变更前校验门控：只能注册到已存在的键；组开关默认关，注册后须显式 enable
 yomk::ctx().key("config").checker_fn([](const yomk::payload::Context& ctx) {
@@ -66,15 +74,17 @@ yomk::ctx().key("config").destroy();                   // 删除键
 
 ## 注意事项
 
-> ⚠️ **Warning**：`get()` 返回只读快照——原地修改与并发读竞争、可能崩溃；改动请构造新消息对象再 `.set()`。
+> ℹ️ **读出口是只读类型**：`get()` 返回 `shared_ptr<const T>`，原地修改在编译期即被拒绝；需要修改用 `get_copy()` 取独立副本，改完经 `.value(copy).set()` 提交（值语义）。
+
+- **写时 clone 入表**：`create/set` 在锁外 `clone()` 出独立快照存入表内，调用方提交后继续改写自己的句柄不影响存储；checker/monitor 收到的 `ctx.value` 就是入库快照，与调用方句柄物理隔离。
 
 - **写路径失败契约**（文案携带具体键名与期望/实际类型名；三态约定：入参非法= `Invalid`，业务未命中/冲突= `Failed`）：`create` 键名为空 `Invalid` "context key is empty"、value 为空 `Invalid` "create context key '<键>' failed: value is empty"、键已存在 `Failed` "context key '<键>' already exists"；`set` 键不存在 `Failed` "context key '<键>' does not exist"、类型不匹配 `Failed` "context type not match: key '<键>' expect '<期望类型>', got '<实际类型>'"、被 checker 拦截 `Failed` "set context key '<键>' rejected by checker"、value 为空 `Invalid` "set context key '<键>' failed: value is empty"。
 - **组名约定**：`.group()` 省略即缺省 `"main"`；空组名 `Invalid` "group name is empty"（入参非法）。非 main 组首次寻址即惰性自动创建（组名唯一、同名寻址复用同组、**不支持销毁组**，组表只增不减），异步监控池每组自持（单线程）。
-- **读取快照勿原地修改**：`get()` 返回只读快照，改动请构造新消息对象再 `.set()`；原地修改与并发读竞争、可能崩溃。
+- **读-改-写三段式**：`get()` 拿只读视图（零拷贝，与存储同一对象）→ `get_copy()` 拿独立副本并修改 → `.value(copy).set()` 提交；`get()` 结果可长期持有，set 之后它仍是冻结的旧快照（整体替换，无撕裂读）。
 - **键级回调注册前提**：`checker_fn`/`monitor_fn` 只能注册到**已存在**的键（键不存在返回 `Failed` "context key '<键>' does not exist"），即先 `create()` 再注册。
 - **Checker 生效条件**：组级开关 ON **且**该键已注册 checker 才参与门控；门控在写锁内执行，**回调内重入 set 会死锁**。
 - **Monitor 执行语义**：`.async(true)` 经该组单线程池按 set 提交序保序送达；同步形态在写锁外即时执行，并发 set 下不保证跨线程序。仅通知"发生了一次 set"并回传该次键值快照，**不保证快照实时性**（读最新值请再走 `get()`）。
-- **类型化读自带校验**：`get()` 按运行期类型名比对 + 指针转换，`T` 须为 `YomkMsg` 派生（`static_assert` 编译期把关）。
+- **类型化读自带校验**：`get()` 经 `unpack<T>(response.data)` 按运行期类型名解包，`T` 须为 `YomkMsg` 派生（`static_assert` 编译期把关）；解包结果恒为 `const`。
 - 服务成员函数注册为 checker/monitor 时须用 `weakFunc(&Class::Method)` 弱绑定，见 [YomkServer.md](YomkServer.md) 弱绑定一节。
 
 ## 内部结构

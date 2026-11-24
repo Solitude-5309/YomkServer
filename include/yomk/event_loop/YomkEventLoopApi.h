@@ -81,7 +81,7 @@ class EventLoopBuilder
     std::string m_name;
     std::string m_msgName;             // msg_name() 累积, start 用(缺省 "")
     YomkServiceFunc m_fn;              // handle_fn() 累积, start/post 共用(缺省 nullptr)
-    YomkMsgPtr m_data;                 // msg() 累积, post/post_wait 用
+    YomkConstMsgPtr m_data;            // msg() 累积, post/post_wait 用
     std::string m_tag;                 // tag() 累积, post/post_wait 用(缺省 "")
     YomkResponseFunc m_onDone;         // on_done() 累积, 仅 post 用(缺省空)
     std::size_t m_tagCount = 3;        // tag_count() 累积, get_info 用(与 EventLoopQuery 缺省一致)
@@ -133,7 +133,7 @@ public:
     // @zh: 累积事件数据（post / post_wait 用）
     // @zh: data 打包后的消息对象
     // @zh: return 自身链式引用
-    EventLoopBuilder& msg(YomkMsgPtr data)
+    EventLoopBuilder& msg(YomkConstMsgPtr data)
     {
         m_data = std::move(data);
         return *this;

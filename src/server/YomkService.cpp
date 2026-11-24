@@ -79,7 +79,7 @@ std::map<std::string, yomk::payload::FuncInfo> YomkService::funcInfos()
     return m_p->funcInfos();
 }
 
-yomk::payload::Response YomkService::invoke(std::string_view funcName, YomkMsgPtr msg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
+yomk::payload::Response YomkService::invoke(std::string_view funcName, YomkConstMsgPtr msg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
     if (!m_p)
     {
@@ -89,7 +89,7 @@ yomk::payload::Response YomkService::invoke(std::string_view funcName, YomkMsgPt
     return m_p->invoke(funcName, msg);
 }
 
-yomk::payload::Response YomkService::request(std::string_view url, YomkMsgPtr msg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
+yomk::payload::Response YomkService::request(std::string_view url, YomkConstMsgPtr msg)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
     if (!m_p)
     {
@@ -99,7 +99,7 @@ yomk::payload::Response YomkService::request(std::string_view url, YomkMsgPtr ms
     return m_p->request(url, msg);
 }
 
-void YomkService::asyncRequest(std::string_view url, YomkMsgPtr msg, YomkResponseFunc func)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
+void YomkService::asyncRequest(std::string_view url, YomkConstMsgPtr msg, YomkResponseFunc func)  // cppcheck-suppress passedByValue ; string_view 16B trivially copyable, by-value is faster
 {
     if (!m_p)
     {

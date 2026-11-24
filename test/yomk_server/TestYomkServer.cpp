@@ -56,7 +56,7 @@ static std::atomic<bool> g_deletedOnDeinit{false};  // deinit 时刻 isDeleted()
 static std::atomic<int> g_pingCount{0};             // /ping 真实执行次数
 static int g_initRet = 0;                           // init 返回值注入：0 成功 / -1 失败
 static int g_initThrow = 0;                         // init 异常注入：0 不抛 / 1 bad_alloc / 2 runtime_error
-static std::function<yomk::payload::Response(YomkMsgPtr)> g_weakCb;  // init 时存下的弱绑定回调（删除即停端到端）
+static std::function<yomk::payload::Response(YomkConstMsgPtr)> g_weakCb;  // init 时存下的弱绑定回调（删除即停端到端）
 
 static void resetGlobals()
 {
@@ -130,12 +130,12 @@ public:
     }
 
 private:
-    yomk::payload::Response ping(YomkMsgPtr msg)
+    yomk::payload::Response ping(YomkConstMsgPtr msg)
     {
         g_pingCount.fetch_add(1);
         return {yomk::payload::ResStatus::Succeeded, "pong"};
     }
-    yomk::payload::Response echo(YomkMsgPtr msg)
+    yomk::payload::Response echo(YomkConstMsgPtr msg)
     {
         auto data = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!data)

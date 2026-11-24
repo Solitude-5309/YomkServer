@@ -6,7 +6,7 @@
 // S2. unpack 模板与运行时类型名解包全分支（错误消息精确断言）：
 // unpack（null/类型名不匹配均返回 nullptr，命中返回解包指针）、
 // 服务函数级手写判空返回 ResStatus::Failed + 契约消息、手写判空提前 return（标志位观测）、
-// 运行时类型名解包（按包 typeName() 匹配后 dynamic_pointer_cast）
+// 运行时类型名解包（按包 typeName() 匹配后 unpack，命中/未命中双分支断言）
 // S3. EventOpts 载荷契约：默认构造全空、四参聚合（onDone 缺省空）、五参聚合（onDone 透传可调用）、msgs::EventOpts 包装透传
 // S4. yomk::payload::Response 契约：默认构造、枚举值序（ResStatus::Invalid=-1/ResStatus::Succeeded=0/ResStatus::Failed=1）、双参/三参构造
 // S5. 框架结构体默认值（Log::level 无类内初始化不作值断言）+ 结构体消息包版 typeName 就位
@@ -20,6 +20,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "yomk/ctx/YomkContextMsg.h"
@@ -29,6 +30,21 @@
 #include "yomk/msg/YomkStdMsg.h"
 
 static int g_failed = 0;
+
+// ---- 编译期契约：clone 交出只读指针、unpack 结果全只读（mutableMsg 逃生口不存在） ----
+// 生产侧（shared_ptr<Msg>）可写；交给框架后一律 shared_ptr<const Msg>
+static_assert(std::is_same_v<decltype(yomk::msgs::String::shared("x")->clone()), YomkConstMsgPtr>,
+    "YomkMsg::clone() 必须返回只读基类指针 YomkConstMsgPtr");
+static_assert(std::is_same_v<yomk::msgs::StringConstPtr, std::shared_ptr<const yomk::msgs::String>>,
+    "宏必须生成 MsgNameConstPtr 只读别名");
+static_assert(std::is_same_v<decltype(yomk::msgs::unpack<yomk::msgs::String>(nullptr).msg()),
+                         std::shared_ptr<const yomk::msgs::String>>,
+    "unpack 结果只读：msg() 返回 shared_ptr<const Msg>");
+static_assert(std::is_const_v<std::remove_reference_t<decltype(*yomk::msgs::unpack<yomk::msgs::String>(nullptr))>>,
+    "unpack 结果只读：operator* 返回 const Msg&");
+static_assert(
+    std::is_const_v<std::remove_pointer_t<decltype(yomk::msgs::unpack<yomk::msgs::String>(nullptr).operator->())>>,
+    "unpack 结果只读：operator-> 返回 const Msg*");
 
 #define YOMK_TEST_CHECK(cond, msg)                                                          \
     do                                                                            \
@@ -140,7 +156,7 @@ int main()
         auto missMsg = yomk::msgs::Int32::shared(1);  // 真实异类型：typeName() 天然返回 Int32 的类型名
 
         // --- unpack + 服务函数级手写判空：失败返回 ResStatus::Failed + 契约消息，命中需手动继续 ---
-        auto unpackResp = [](YomkMsgPtr msg) -> yomk::payload::Response
+        auto unpackResp = [](YomkConstMsgPtr msg) -> yomk::payload::Response
         {
             auto s = yomk::msgs::unpack<yomk::msgs::String>(msg);
             if (!s)
@@ -161,7 +177,7 @@ int main()
 
         // --- unpack + 手写判空提前 return（标志位观测） ---
         bool reached = false;
-        auto unpackVoid = [&](YomkMsgPtr msg)
+        auto unpackVoid = [&](YomkConstMsgPtr msg)
         {
             auto s = yomk::msgs::unpack<yomk::msgs::String>(msg);
             if (!s)
@@ -177,7 +193,7 @@ int main()
         unpackVoid(missMsg);
         YOMK_TEST_CHECK(reached == false, "unpack 类型名不匹配：提前 return");
         std::string voidOut;
-        auto unpackVoidHit = [&](YomkMsgPtr msg)
+        auto unpackVoidHit = [&](YomkConstMsgPtr msg)
         {
             auto s = yomk::msgs::unpack<yomk::msgs::String>(msg);
             if (!s)
@@ -200,21 +216,14 @@ int main()
         // --- 名匹配但动态类型不符分支已不存在：typeName() 直接返回各类型的静态 kTypeName，
         //     名字命中即意味着动态类型就是该类型，无需再断言 cast 失败 ---
 
-        // --- 运行时类型名解包（typeName() 匹配 + dynamic_pointer_cast） ---
-        std::string rtName = yomk::msgs::String::kTypeName;
-        std::shared_ptr<yomk::msgs::String> tHit = nullptr;
-        if (okMsg && okMsg->typeName() == rtName)
-        {
-            tHit = std::dynamic_pointer_cast<yomk::msgs::String>(okMsg);
-        }
-        YOMK_TEST_CHECK(tHit != nullptr && tHit->d == "hello", "运行时名匹配：cast 成功");
-        std::string wrongName = yomk::msgs::Int32::kTypeName;
-        std::shared_ptr<yomk::msgs::String> tMiss = nullptr;
-        if (okMsg && okMsg->typeName() == wrongName)
-        {
-            tMiss = std::dynamic_pointer_cast<yomk::msgs::String>(okMsg);
-        }
-        YOMK_TEST_CHECK(tMiss == nullptr, "运行时名不匹配：指针 nullptr");
+        // --- 运行时类型名解包（typeName() 匹配已内聚到 unpack，命中/未命中统一断言） ---
+        std::shared_ptr<const yomk::msgs::String> tHit = yomk::msgs::unpack<yomk::msgs::String>(okMsg).msg();
+        YOMK_TEST_CHECK(tHit != nullptr && tHit->d == "hello", "运行时名匹配：unpack 命中且值正确");
+        auto tMiss = yomk::msgs::unpack<yomk::msgs::Int32>(okMsg);
+        YOMK_TEST_CHECK(!tMiss, "运行时名不匹配：解包结果判假");
+        YOMK_TEST_CHECK(tMiss.error() == std::string("msg is not ") + yomk::msgs::Int32::kTypeName + ", got '" +
+                                                    yomk::msgs::String::kTypeName + "'",
+              "运行时名不匹配：error() 精确给出期望与实际类型名");
     }
 
     // ============ S3. EventOpts 载荷契约 ============
@@ -225,7 +234,7 @@ int main()
               "EventOpts 默认构造：loop 名空/msg 空/func 空/tag 空/onDone 空");
 
         int handled = 0;
-        YomkServiceFunc handledFn = [&handled](YomkMsgPtr)
+        YomkServiceFunc handledFn = [&handled](YomkConstMsgPtr)
         {
             ++handled;
             return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "handled");

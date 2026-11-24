@@ -21,12 +21,17 @@ enum class CheckStatus
     Reject
 };
 
-/** @brief Context key-value write payload (shared by create/set) */
-// @zh: 上下文键值写载荷（create/set 共用）
+/**
+ * @brief Context key-value payload (create/set write value, get carries the fallback default)
+ * @note value is a read-only message view: the framework clones it on write and returns a
+ *       frozen snapshot on read, so the caller handle never aliases the stored object
+ */
+// @zh: 上下文键值载荷（create/set 携带写入值，get 携带兜底默认值）
+// @zh: note value 为只读消息视图：框架写入时 clone 入表，读取时返回冻结快照，调用方句柄与存储不互为别名
 struct Context
 {
     std::string key;
-    YomkMsgPtr value;
+    YomkConstMsgPtr value;
     std::string group = "main";  // key 所属组名(缺省 main)
 };
 
@@ -85,7 +90,7 @@ struct ContextGroupInfo
  * @note Snapshot timeliness is not guaranteed; the asynchronous form preserves submission order, the synchronous form does not guarantee ordering under concurrency. See ctx().monitor_fn(fn).apply() for details
  */
 // @zh: Context 变更监听回调：仅通知发生了 set 并回传该次快照
-// @zh: ctx 该次 set 的键值快照
+// @zh: ctx 该次 set 的键值只读快照（与存储同一对象，不可写）
 // @zh: note 不保证快照实时性；异步形态按提交序保序，同步形态并发下不保证序。详见 ctx().monitor_fn(fn).apply()
 using YomkContextMonitorFunc = std::function<void(const yomk::payload::Context& ctx)>;
 /**
@@ -95,7 +100,7 @@ using YomkContextMonitorFunc = std::function<void(const yomk::payload::Context& 
  * @note See ctx().checker_fn(fn).apply() for details
  */
 // @zh: Context 校验门控回调：门控 set 是否放行
-// @zh: ctx 待写入的键值
+// @zh: ctx 待写入的键值只读快照（不可篡改待提交值）
 // @zh: return Accept 放行 / Reject 拒绝
 // @zh: note 详见 ctx().checker_fn(fn).apply()
 using YomkContextCheckerFunc = std::function<yomk::payload::CheckStatus(const yomk::payload::Context& ctx)>;

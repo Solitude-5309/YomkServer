@@ -37,10 +37,10 @@ public:
 public:
     void installFunc(const std::string& funcName, YomkServiceFunc func, const std::string& msgName = "",
                      const std::string& description = "");
-    yomk::payload::Response invoke(std::string_view funcName, YomkMsgPtr msg = nullptr);
+    yomk::payload::Response invoke(std::string_view funcName, YomkConstMsgPtr msg = nullptr);
     std::map<std::string, yomk::payload::FuncInfo> funcInfos();
-    yomk::payload::Response request(std::string_view url, YomkMsgPtr msg = nullptr);
-    void asyncRequest(std::string_view url, YomkMsgPtr msg = nullptr, YomkResponseFunc func = nullptr);
+    yomk::payload::Response request(std::string_view url, YomkConstMsgPtr msg = nullptr);
+    void asyncRequest(std::string_view url, YomkConstMsgPtr msg = nullptr, YomkResponseFunc func = nullptr);
 
 protected:
     std::weak_ptr<YomkServer> m_weakServer;

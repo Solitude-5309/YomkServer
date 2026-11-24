@@ -78,7 +78,7 @@ class FnPoolBuilder
     YomkServiceFunc m_fn;    // fn() 累积, install 用
     std::string m_msgName;   // msg_name() 累积, install 用(期望消息类型, 缺省 "")
     std::string m_desc;      // description() 累积, install 用(缺省 "")
-    YomkMsgPtr m_data;       // msg() 累积, call 用
+    YomkConstMsgPtr m_data;  // msg() 累积, call 用
 public:
     /**
      * @brief Target the function name (shared by registration, unregistration, call and single query)
@@ -140,7 +140,7 @@ public:
     // @zh: 累积调用数据（call 用）
     // @zh: data 打包后的消息对象
     // @zh: return 自身链式引用
-    FnPoolBuilder& msg(YomkMsgPtr data)
+    FnPoolBuilder& msg(YomkConstMsgPtr data)
     {
         m_data = std::move(data);
         return *this;

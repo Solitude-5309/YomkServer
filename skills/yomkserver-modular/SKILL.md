@@ -143,7 +143,7 @@ public:
     virtual ~XxxService() {}
     virtual int init() override;
 private:
-    yomk::payload::Response myFunc(YomkMsgPtr msg);
+    yomk::payload::Response myFunc(YomkConstMsgPtr msg);
 };
 
 // .cpp
@@ -153,7 +153,7 @@ int XxxService::init() {
     yomk::log().tag("XxxService::init").info("install func [ /my_func ] to", name());
     return 0;
 }
-yomk::payload::Response XxxService::myFunc(YomkMsgPtr msg) {
+yomk::payload::Response XxxService::myFunc(YomkConstMsgPtr msg) {
     auto data = yomk::msgs::unpack<yomk::msgs::MyData>(msg);  // 解包（失败时结果判假，失败原因经 error() 读取）
     if (!data) { return {yomk::payload::ResStatus::Failed, data.error()}; }
     // 业务逻辑...

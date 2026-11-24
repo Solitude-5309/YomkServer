@@ -34,7 +34,7 @@ const std::string& ContextGroup::name() const
     return m_name;
 }
 
-int ContextGroup::create(const std::string& key, YomkMsgPtr value)
+int ContextGroup::create(const std::string& key, const YomkConstMsgPtr& value)
 {
     if (key.empty())
     {
@@ -47,6 +47,8 @@ int ContextGroup::create(const std::string& key, YomkMsgPtr value)
         return 2;
     }
 
+    // 写时拷入：存储持有独立快照，调用方后续改写自己句柄不影响上下文
+    const YomkConstMsgPtr staged = value->clone();
     {
         std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
         if (m_contexts.find(key) != m_contexts.end())
@@ -57,7 +59,7 @@ int ContextGroup::create(const std::string& key, YomkMsgPtr value)
 
         Context ctx;
         ctx.key = key;
-        ctx.value = value;
+        ctx.value = staged;
         ctx.checker = nullptr;
         ctx.monitors = {};
 
@@ -88,7 +90,7 @@ int ContextGroup::destroy(const std::string& key)
     return 0;
 }
 
-int ContextGroup::get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPtr& value)
+int ContextGroup::get(const std::string& key, const YomkConstMsgPtr& defaultValue, YomkConstMsgPtr& value)
 {
     if (key.empty())
     {
@@ -111,7 +113,7 @@ int ContextGroup::get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPt
     return 0;
 }
 
-int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& detail)
+int ContextGroup::set(const std::string& key, const YomkConstMsgPtr& value, std::string& detail)
 {
     detail = "ok";
     if (key.empty())
@@ -127,10 +129,14 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
         return kSetValueEmpty;
     }
 
+    // 写时拷入（锁外深拷贝）：checker 校验、monitor 通知与入库值统一使用该快照，
+    // 与调用方句柄物理隔离——之后改写原对象不经过框架，也不会绕过 checker/monitor
+    const YomkConstMsgPtr staged = value->clone();
+
     // 本次提交的键值快照:checker 校验与 monitor 通知统一回传该临时对象
     yomk::payload::Context data;
     data.key = key;
-    data.value = value;
+    data.value = staged;
 
     std::unique_lock<std::shared_mutex> lockContexts(m_contextsMutex);
     auto itContext = m_contexts.find(key);
@@ -141,11 +147,11 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
         return kSetKeyNotExist;
     }
 
-    if (itContext->second.value->typeName() != value->typeName())
+    if (itContext->second.value->typeName() != staged->typeName())
     {
         // 具体值原则:期望/实际类型名一并输出,用户一眼定位类型错配
-        YOMK_DIAG_WARN("context type not match: key '" + key + "' expect '" + std::string(itContext->second.value->typeName()) + "', got '" + std::string(value->typeName()) + "'");
-        detail = "context type not match: key '" + key + "' expect '" + std::string(itContext->second.value->typeName()) + "', got '" + std::string(value->typeName()) + "'";
+        YOMK_DIAG_WARN("context type not match: key '" + key + "' expect '" + std::string(itContext->second.value->typeName()) + "', got '" + std::string(staged->typeName()) + "'");
+        detail = "context type not match: key '" + key + "' expect '" + std::string(itContext->second.value->typeName()) + "', got '" + std::string(staged->typeName()) + "'";
         return kSetTypeMismatch;
     }
 
@@ -163,7 +169,7 @@ int ContextGroup::set(const std::string& key, YomkMsgPtr value, std::string& det
     }
 
     itContext->second.value =
-        value;  // 整体替换值对象(非原地改):旧对象不动,先前 get/monitor 持有者即冻结为快照
+        staged;  // 整体替换值对象(非原地改):旧对象不动,先前 get/monitor 持有者即冻结为快照
     std::vector<ContextMonitor> monitors = itContext->second.monitors;
 
     // 异步入队在写锁内完成:入队序 = 提交序;配合单线程 FIFO 池 ⇒ 异步通知恒按 set 提交序送达(并发 set 亦然).

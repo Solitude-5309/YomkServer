@@ -83,7 +83,7 @@ ContextGroup* YomkContext::findGroup(const std::string& groupName, yomk::payload
     return it->second.get();
 }
 
-yomk::payload::Response YomkContext::create(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::create(YomkConstMsgPtr msg)
 {
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(msg);
     if (!context)
@@ -113,7 +113,7 @@ yomk::payload::Response YomkContext::create(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "create context success");
 }
 
-yomk::payload::Response YomkContext::destroy(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::destroy(YomkConstMsgPtr msg)
 {
     auto groupKey = yomk::msgs::unpack<yomk::msgs::ContextGroupKey>(msg);
     if (!groupKey)
@@ -141,7 +141,7 @@ yomk::payload::Response YomkContext::destroy(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "destroy context success");
 }
 
-yomk::payload::Response YomkContext::get(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::get(YomkConstMsgPtr msg)
 {
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(msg);
     if (!context)
@@ -155,7 +155,7 @@ yomk::payload::Response YomkContext::get(YomkMsgPtr msg)
         return fail;
     }
 
-    YomkMsgPtr value;
+    YomkConstMsgPtr value;
     // 返回码映射(约定见 ContextGroup::get):0 命中 / 1 key 为空 / 2 key 不存在;未命中时 value 已被填为默认值
     int rc = group->get(context->d.key, context->d.value, value);
     if (rc == 1)
@@ -169,7 +169,7 @@ yomk::payload::Response YomkContext::get(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "get context success", value);
 }
 
-yomk::payload::Response YomkContext::set(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::set(YomkConstMsgPtr msg)
 {
     auto context = yomk::msgs::unpack<yomk::msgs::Context>(msg);
     if (!context)
@@ -198,7 +198,7 @@ yomk::payload::Response YomkContext::set(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "set context success");
 }
 
-yomk::payload::Response YomkContext::turnOnChecker(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::turnOnChecker(YomkConstMsgPtr msg)
 {
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
@@ -216,7 +216,7 @@ yomk::payload::Response YomkContext::turnOnChecker(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "turn on checker success");
 }
 
-yomk::payload::Response YomkContext::turnOffChecker(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::turnOffChecker(YomkConstMsgPtr msg)
 {
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
@@ -234,7 +234,7 @@ yomk::payload::Response YomkContext::turnOffChecker(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "turn off checker success");
 }
 
-yomk::payload::Response YomkContext::turnOnMonitor(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::turnOnMonitor(YomkConstMsgPtr msg)
 {
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
@@ -252,7 +252,7 @@ yomk::payload::Response YomkContext::turnOnMonitor(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "turn on monitor success");
 }
 
-yomk::payload::Response YomkContext::turnOffMonitor(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::turnOffMonitor(YomkConstMsgPtr msg)
 {
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
@@ -270,7 +270,7 @@ yomk::payload::Response YomkContext::turnOffMonitor(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "turn off monitor success");
 }
 
-yomk::payload::Response YomkContext::setChecker(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::setChecker(YomkConstMsgPtr msg)
 {
     auto checker = yomk::msgs::unpack<yomk::msgs::ContextChecker>(msg);
     if (!checker)
@@ -300,7 +300,7 @@ yomk::payload::Response YomkContext::setChecker(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "set checker success");
 }
 
-yomk::payload::Response YomkContext::setMonitor(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::setMonitor(YomkConstMsgPtr msg)
 {
     auto monitor = yomk::msgs::unpack<yomk::msgs::ContextMonitor>(msg);
     if (!monitor)
@@ -330,7 +330,7 @@ yomk::payload::Response YomkContext::setMonitor(YomkMsgPtr msg)
     return yomk::payload::Response(yomk::payload::ResStatus::Succeeded, "set context monitor success");
 }
 
-yomk::payload::Response YomkContext::groups(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::groups(YomkConstMsgPtr msg)
 {
     // 全部组名:main 恒在首位,自定义组按 map 字典序追加
     std::vector<std::string> groupNames;
@@ -345,7 +345,7 @@ yomk::payload::Response YomkContext::groups(YomkMsgPtr msg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(groupNames)};
 }
 
-yomk::payload::Response YomkContext::keys(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::keys(YomkConstMsgPtr msg)
 {
     auto str = yomk::msgs::unpack<yomk::msgs::String>(msg);
     if (!str)
@@ -363,7 +363,7 @@ yomk::payload::Response YomkContext::keys(YomkMsgPtr msg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::StringArray::shared(keyList)};
 }
 
-yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::keyInfo(YomkConstMsgPtr msg)
 {
     auto groupKey = yomk::msgs::unpack<yomk::msgs::ContextGroupKey>(msg);
     if (!groupKey)
@@ -391,7 +391,7 @@ yomk::payload::Response YomkContext::keyInfo(YomkMsgPtr msg)
     return {yomk::payload::ResStatus::Succeeded, "ok", yomk::msgs::ContextKeyInfo::shared(info)};
 }
 
-yomk::payload::Response YomkContext::listAll(YomkMsgPtr msg)
+yomk::payload::Response YomkContext::listAll(YomkConstMsgPtr msg)
 {
     // 跨组聚合:组 → 键元信息两层结构(对齐 srv_info().all() 的 ServerServiceInfo 范式);
     // main 组条目恒在首位,自定义组按 map 字典序追加(锁内拷指针,锁外取快照)

@@ -207,7 +207,7 @@ static void logKeyInfo(const std::string& api, const yomk::payload::ContextKeyIn
 // CREATE 幂等化封装：键已存在（排他 ResStatus::Failed）视为就绪跳过。
 // 本身即 yomk::ctx().key().create() 的工程化用法：排他 ResStatus::Failed 在正式代码中按"已初始化"
 // 处理而非错误——后启动的模块靠它安全补建自己关心的键。
-static void ensureKey(const std::string& op, const std::string& key, YomkMsgPtr value)
+static void ensureKey(const std::string& op, const std::string& key, YomkConstMsgPtr value)
 {
     auto status = logAction(op, "CREATE " + key, [&] { return yomk::ctx().key(key).value(value).create(); });
     if (status != yomk::payload::ResStatus::Succeeded)
@@ -344,11 +344,11 @@ static void showArmReadStatus()
     yomk::msgs::Float64Ptr ratioFallback = yomk::msgs::Float64::shared(0.0);
 
     logAction("示教器读取速度倍率");
-    yomk::msgs::Float64Ptr ratio = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
+    yomk::msgs::Float64ConstPtr ratio = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
     logGet("arm.speed_ratio", fmtF64(ratio->d), ratio == ratioFallback);
 
     logAction("示教器查询未上线的负载模块");
-    yomk::msgs::Float64Ptr payload = yomk::ctx().key("arm.payload_kg").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
+    yomk::msgs::Float64ConstPtr payload = yomk::ctx().key("arm.payload_kg").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
     logGet("arm.payload_kg", fmtF64(payload->d), payload == ratioFallback);
     logVerify("查询未注册的键 -> 返回兜底默认值 0.0（指针相等），调用方永不拿到空指针");
 }
@@ -366,7 +366,7 @@ static void showArmUpdateStatus()
     // 示教器先前读到的旧快照（0.5）——SET 之后它不应被改动
     yomk::msgs::Float64Ptr ratioFallback = yomk::msgs::Float64::shared(0.0);
     logAction("示教器留存当前倍率快照");
-    yomk::msgs::Float64Ptr oldSnapshot = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
+    yomk::msgs::Float64ConstPtr oldSnapshot = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
     logGet("arm.speed_ratio", fmtF64(oldSnapshot->d), oldSnapshot == ratioFallback);
 
     logAction("切入自动模式", "SET arm.mode", [&] { return yomk::ctx().key("arm.mode").value(yomk::msgs::String::shared("auto")).set(); });
@@ -374,7 +374,7 @@ static void showArmUpdateStatus()
 
     // 新旧快照对比：验证 SET 的整体替换语义（业务结论，不限于单次接口调用）
     logAction("新旧快照对比");
-    yomk::msgs::Float64Ptr fresh = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
+    yomk::msgs::Float64ConstPtr fresh = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
     logGet("arm.speed_ratio 旧快照", fmtF64(oldSnapshot->d), oldSnapshot == ratioFallback);
     logGet("arm.speed_ratio 新快照", fmtF64(fresh->d), fresh == ratioFallback);
     logVerify("SET 整体替换值对象：留存快照保持 0.5 不变，新读取得到 0.8——旧快照即冻结");
@@ -421,7 +421,7 @@ static void showArmGuardSpeedRatio()
         [&] { return yomk::ctx().key("arm.speed_ratio").value(yomk::msgs::Float64::shared(1.2)).set(); });
     logAction("确认被拒后倍率保持不变");
     yomk::msgs::Float64Ptr ratioFallback = yomk::msgs::Float64::shared(0.0);
-    yomk::msgs::Float64Ptr ratio = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
+    yomk::msgs::Float64ConstPtr ratio = yomk::ctx().key("arm.speed_ratio").msg<yomk::msgs::Float64>().with_default(ratioFallback).get();
     logGet("arm.speed_ratio", fmtF64(ratio->d), ratio == ratioFallback);
     logVerify("超限写入 -> ResStatus::Failed(checker reject set context) 且值保持 0.9 未变；arm.guard 日志给出拒绝理由");
 
@@ -613,7 +613,7 @@ static void showArmTaskCleanup()
     // 销毁后行为：GET 回落兜底默认值
     yomk::msgs::StringPtr modeFallback = yomk::msgs::String::shared("unknown");
     logAction("确认销毁后读取回落");
-    yomk::msgs::StringPtr mode = yomk::ctx().key("arm.mode").msg<yomk::msgs::String>().with_default(modeFallback).get();
+    yomk::msgs::StringConstPtr mode = yomk::ctx().key("arm.mode").msg<yomk::msgs::String>().with_default(modeFallback).get();
     logGet("arm.mode", mode ? mode->d : "(null)", mode == modeFallback);
     logVerify("销毁后 GET -> 返回兜底默认值（指针相等），键已消失");
 

@@ -12,6 +12,6 @@ namespace yomk::payload::ext
 struct ExtTask
 {
     std::string taskName;
-    YomkMsgPtr msg;
+    YomkConstMsgPtr msg;
 };
 }  // namespace yomk::payload::ext

@@ -88,7 +88,7 @@ public:
 
 private:
     // String 解包回显：验证 msg 透传往返
-    yomk::payload::Response echo(YomkMsgPtr msg)
+    yomk::payload::Response echo(YomkConstMsgPtr msg)
     {
         auto data = yomk::msgs::unpack<yomk::msgs::String>(msg);
         if (!data)
@@ -97,9 +97,9 @@ private:
         }
         return {yomk::payload::ResStatus::Succeeded, "echo:" + data->d};
     }
-    yomk::payload::Response plain(YomkMsgPtr msg) { return {yomk::payload::ResStatus::Succeeded, "plain"}; }
-    yomk::payload::Response reinstall(YomkMsgPtr msg) { return {yomk::payload::ResStatus::Succeeded, "reinstall"}; }
-    yomk::payload::Response restore(YomkMsgPtr msg) { return {yomk::payload::ResStatus::Succeeded, "restore"}; }
+    yomk::payload::Response plain(YomkConstMsgPtr msg) { return {yomk::payload::ResStatus::Succeeded, "plain"}; }
+    yomk::payload::Response reinstall(YomkConstMsgPtr msg) { return {yomk::payload::ResStatus::Succeeded, "reinstall"}; }
+    yomk::payload::Response restore(YomkConstMsgPtr msg) { return {yomk::payload::ResStatus::Succeeded, "restore"}; }
 };
 
 // 空服务器服务：以 nullptr 构造，验证全部空实现守卫分支（不注册）
@@ -157,11 +157,11 @@ static void testAddServiceWithName()
 static void testInstallFunc(DemoService* demo)
 {
     // 正常路径：运行时追加安装合法名
-    demo->installFunc("/manual", [](YomkMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "manual"}; });
+    demo->installFunc("/manual", [](YomkConstMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "manual"}; });
 
     // 非法名：空串与无 / 开头均被拒
-    demo->installFunc("", [](YomkMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, ""}; });
-    demo->installFunc("no_slash", [](YomkMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, ""}; });
+    demo->installFunc("", [](YomkConstMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, ""}; });
+    demo->installFunc("no_slash", [](YomkConstMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, ""}; });
 
     // 空函数对象：安装被拒（空函数对象守卫）
     demo->installFunc("/null_func", nullptr);
@@ -190,11 +190,11 @@ static void testInstallFunc(DemoService* demo)
           "三参安装说明缺省 description 为空");
 
     // 覆盖语义：四参注册后接两参覆盖 → 类型名与说明均清除；再四参恢复
-    demo->installFunc("/desc", [](YomkMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "manual"}; });
+    demo->installFunc("/desc", [](YomkConstMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "manual"}; });
     infos = demo->funcInfos();
     YOMK_TEST_CHECK(findFuncInfo(infos, "/desc", &msgName, &description) && msgName.empty() && description.empty(),
           "两参覆盖四参注册清除类型名与说明");
-    demo->installFunc("/desc", [](YomkMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "manual"}; }, yomk::msgs::String::kTypeName,
+    demo->installFunc("/desc", [](YomkConstMsgPtr msg) { return yomk::payload::Response{yomk::payload::ResStatus::Succeeded, "manual"}; }, yomk::msgs::String::kTypeName,
                       "demo description");
     infos = demo->funcInfos();
     YOMK_TEST_CHECK(
@@ -248,7 +248,7 @@ static void testNullServerGuards()
 {
     NullSrv srv;
     srv.name("x");                                                         // 不应崩溃（空实现分支）
-    srv.installFunc("/x", [](YomkMsgPtr msg) { return yomk::payload::Response{}; });  // 不应崩溃
+    srv.installFunc("/x", [](YomkConstMsgPtr msg) { return yomk::payload::Response{}; });  // 不应崩溃
     srv.asyncRequest("/SomeService/func");                                 // 不应崩溃
 
     YOMK_TEST_CHECK(srv.name().empty(), "空实现 name() 返回空串");

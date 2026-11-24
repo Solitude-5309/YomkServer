@@ -28,7 +28,7 @@ public:
     struct Context
     {
         std::string key;
-        YomkMsgPtr value;
+        YomkConstMsgPtr value;  // 不可变快照：入库后只整体替换，不原地修改
         YomkContextCheckerFunc checker;
         std::vector<ContextMonitor> monitors;
     };
@@ -45,11 +45,11 @@ public:
 
 public:
     // 返回:0 成功 / 1 key 为空 / 2 value 为空 / 3 key 已存在
-    int create(const std::string& key, YomkMsgPtr value);
+    int create(const std::string& key, const YomkConstMsgPtr& value);
     // 返回:0 成功 / 1 key 不存在 / 2 key 为空
     int destroy(const std::string& key);
     // 命中时 value 填现值,key 为空或未命中时填 defaultValue;返回:0 命中 / 1 key 为空 / 2 key 不存在
-    int get(const std::string& key, YomkMsgPtr defaultValue, YomkMsgPtr& value);
+    int get(const std::string& key, const YomkConstMsgPtr& defaultValue, YomkConstMsgPtr& value);
     // 返回码命名常量(对应下方 set 的返回码注释,取负值无分支故不做 enum;供本文件与 YomkContext 终结三态映射引用)
     static constexpr int kSetOk = 0;
     static constexpr int kSetEmptyKey = 1;
@@ -59,7 +59,7 @@ public:
     static constexpr int kSetValueEmpty = 5;
     // 返回:0 成功 / 1 key 为空 / 2 key 不存在 / 3 类型不匹配 / 4 checker 拒绝 / 5 value 为空
     // 失败时 detail 填具体原因(含 key 值与期望/实际类型名),供 Response 文案直接透传;detail 恒被覆盖(成功填 "ok")
-    int set(const std::string& key, YomkMsgPtr value, std::string& detail);
+    int set(const std::string& key, const YomkConstMsgPtr& value, std::string& detail);
     // 开关无失败分支
     void turnOnChecker();
     void turnOffChecker();
