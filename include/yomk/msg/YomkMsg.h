@@ -27,8 +27,12 @@ public:
 
 public:
     virtual std::string_view typeName() const = 0;
-    /** @brief Deep copy of this message, for write-in (context storage, snapshot publishing) */
-    // @zh: 本消息的深拷贝，供写时拷入（context 存储、快照发布）
+    /** @brief Copy of this message for write-in (context storage, snapshot publishing). The
+     *         generated clone() rebuilds the message via the payload's copy constructor, so the
+     *         copy depth follows the payload's own copy semantics: value members isolate, raw
+     *         pointer/handle members share the pointee unless the payload deep-copies itself */
+    // @zh: 本消息的副本，供写时拷入（context 存储、快照发布）；副本由生成类经载荷拷贝构造重建整条消息得到，
+    // @zh: 拷贝深度跟随载荷自身拷贝语义——值成员天然隔离，裸指针/句柄成员共享底层对象（深拷贝由载荷自定义拷贝构造提供）
     virtual std::shared_ptr<const YomkMsg> clone() const = 0;
 };
 using YomkMsgPtr = std::shared_ptr<YomkMsg>;              // 生产侧：构造消息并交出所有权
@@ -119,6 +123,10 @@ using YomkConstMsgPtr = std::shared_ptr<const YomkMsg>;   // 消费侧：传输/
     using MsgName##Ptr = std::shared_ptr<MsgName>;                                \
     using MsgName##ConstPtr = std::shared_ptr<const MsgName>;                     \
     }
+
+// @zh: 宏生成的 clone() 固定为 make_shared<MsgName>(*this)：整条消息按拷贝构造重建，不调用载荷上任何名为 clone() 的成员函数（写了也无人调用）
+// @zh: 拷贝深度由 DataType 的拷贝构造决定：值成员（标量/string/vector 等）天然隔离；裸指针/句柄成员为浅拷贝，克隆件与原件共享底层对象
+// @zh: 指针成员需深拷贝时在载荷上自定义拷贝构造/拷贝赋值（Rule of Three，保留默认构造，见 docs/YomkMsg.md「载荷拷贝语义」），clone/Context 入库/get_copy 随之自动加深；禁止拷贝则 = delete 载荷拷贝构造，宏内 static_assert(is_copy_constructible) 随即报错
 
 namespace yomk::msgs
 {

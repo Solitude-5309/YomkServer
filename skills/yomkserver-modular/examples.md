@@ -747,7 +747,7 @@ int MyService::init() {
 
 - **共同语义**：
   - monitor 仅通知发生了一次 set 事件，并回传该次 set 的键值快照——**不保证快照是最新值**；快照仅回调期有效，需留存请在回调内拷贝 ctx。
-  - **值对象一经 set 发布即不可变**：`get()` 返回 `shared_ptr<const T>`、monitor 回调收到的是入库 clone 快照，类型系统上即无法原地修改；需要修改请 `get_copy()` 拿独立副本，改完 `.value(copy).set()` 提交。调用方在 set/create 之后继续改写自己的句柄也不影响存储（写时 clone 入表）。
+  - **值对象一经 set 发布即不可变**：`get()` 返回 `shared_ptr<const T>`、monitor 回调收到的是入库 clone 快照，类型系统上即无法原地修改；需要修改请 `get_copy()` 拿独立副本，改完 `.value(copy).set()` 提交。调用方在 set/create 之后继续改写自己的句柄也不影响存储（写时 clone 入表）。`clone()`/入库快照走**载荷拷贝构造**：值成员天然隔离，裸指针/句柄成员浅拷贝共享底层，需深拷贝时先在载荷上自定义拷贝构造/拷贝赋值（见 docs/YomkMsg.md「载荷拷贝语义」）。
   - 需最新值请在回调内用 `.msg<T>().with_default(...).get()` 重读；校验/拒绝请用 checker，勿用 monitor。
 - **同步（默认，`.async()` 省略或 false）**：
   - 在 set 调用线程上锁外内联执行、通知及时；顺序 set 下按调用序通知，**并发 set 下不保证跨线程顺序**。

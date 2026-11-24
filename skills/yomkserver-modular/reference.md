@@ -57,7 +57,7 @@ using YomkServiceFunc  = std::function<yomk::payload::Response(YomkConstMsgPtr m
 using YomkResponseFunc = std::function<void(yomk::payload::Response response)>;
 ```
 
-字段口径固化：返回数据一律放 `data`，`msg` 仅作状态说明。**生产侧与消费侧分界线**：自己构造消息用 `YomkMsgPtr`（或 `MsgName::shared(...)`）；一旦交给框架，传输字段、存储字段、回调形参与返回值一律是 `YomkConstMsgPtr`。需要修改消息时用 `clone()` 拷出副本再提交（无原地修改存储对象的逃生口）。
+字段口径固化：返回数据一律放 `data`，`msg` 仅作状态说明。**生产侧与消费侧分界线**：自己构造消息用 `YomkMsgPtr`（或 `MsgName::shared(...)`）；一旦交给框架，传输字段、存储字段、回调形参与返回值一律是 `YomkConstMsgPtr`。需要修改消息时用 `clone()` 拷出副本再提交（无原地修改存储对象的逃生口；副本隔离深度跟随载荷拷贝语义，指针成员需深拷贝见下「YOMK_DEFINE_MSG 与解包」）。
 
 **内置数据结构**：
 
@@ -100,6 +100,7 @@ YOMK_DEFINE_MSG(MyData, MyData, d);   // 生成 yomk::msgs::MyData / MyDataPtr�
 - `yomk::msgs::MyData::shared(args...)` — 类内静态工厂，转发构造参数 → `shared_ptr` 消息包。
   **注意**：模板形参 `A&&...` 无法从花括号初始化列表推导，传聚合对象须带类型：`MyData::shared(MyData{"a", 1})`、`Int32Array::shared(std::vector<std::int32_t>{1,2,3})`。
 - `yomk::msgs::MyData::shared(std::move(data))` — 右值重载移动入包，大对象免拷贝。
+- `msg->clone()` — `make_shared<MsgName>(*this)` 按拷贝构造整条重建（返回只读 `YomkConstMsgPtr`），**不调用载荷上任何名为 clone() 的成员函数**；隔离深度跟随载荷拷贝构造：值成员（标量/string/vector）天然隔离，裸指针/句柄成员浅拷贝共享底层。指针成员需深拷贝时在载荷上写拷贝构造/拷贝赋值（Rule of Three，保留默认构造——宏里 `DataType VarName{};` 是值初始化），clone/Context 入库/get_copy 随之自动加深；明确不许拷贝就 `= delete` 载荷拷贝构造，宏内 `static_assert(is_copy_constructible)` 即时报错。`void*` 无法深拷贝（无类型/长度信息），需深拷贝用类型化指针+长度或值类型成员。
 - `yomk::msgs::unpack<yomk::msgs::MyData>(msg)` — 按运行期类型名解包，返回 `UnpackResult<MyData>`；msg 为空或类型不匹配时结果判假、`error()` 给出标准文案 `"msg is not <期望>, got '<实际>'"`（内部判空取实际类型，空包报 `"null"`），不抛异常。
 - 结果对象用法：`if (!x)` 语境化判假（`explicit operator bool`，不与 `nullptr` 比较）、`x->字段` / `*x` / `x.msg()` 取成功解出的消息；失败分支统一写 `return {yomk::payload::ResStatus::Failed, x.error()};`，不手拼字符串。
 - 运行期类型名 `kTypeName` 为全限定名（根级 `"yomk::msgs::MsgName"`、NS 形式 `"yomk::msgs::NS::MsgName"`），恒等于 C++ 全限定名；是类型身份唯一权威常量（基类纯虚 `typeName()` 直接返回它、`std::string_view` 零分配且不可伪造，是运行期反查实际类型的唯一入口；判空与自有 `std::string` 拼接由调用方负责）。各处声明的"期望消息类型名"（`installFunc` 第三参、`fn_pool().msg_name()`、`event_loop().msg_name()`）一律引用 `T::kTypeName`、禁止手写字符串；仅作内省元数据、不拦截调用。
