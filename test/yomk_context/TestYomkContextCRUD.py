@@ -137,7 +137,7 @@ def main():
                      "context typed read class requires a concrete YomkMsg subclass, got 'str'",
                      "msg(str) TypeError 文案一致")
     check_type_error(lambda: ctx().key("str_key").msg(String).with_default("fallback"),
-                     "with_default requires 'yomk.msgs.String' or None, got 'str'",
+                     "with_default requires a YomkMsg instance, got 'str'",
                      "with_default 裸值 TypeError 文案一致")
     check_type_error(lambda: ctx().key("str_key").msg(String).with_default(Int(0)),
                      "with_default requires 'yomk.msgs.String' or None, got 'yomk.msgs.Int'",

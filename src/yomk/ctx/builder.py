@@ -82,7 +82,9 @@ class ContextValueBuilder:
         if v is None:
             self._default = None
             return self
-        if is_msg_instance(v) and v.TYPE_NAME == self._cls.TYPE_NAME:
+        # 裸值 / 基类实例先过标准实例守卫；仅类型不符保留期望类型文案
+        require_msg_instance(v, "with_default")
+        if v.TYPE_NAME == self._cls.TYPE_NAME:
             self._default = v
             return self
         raise TypeError("with_default requires '" + self._cls.TYPE_NAME

@@ -25,7 +25,7 @@
 | 函数池调用 | `fn_pool().fn_name(n).msg(msg).call()` | 同上（`msg()` 入口） |
 | 事件循环投递 | `event_loop().msg(msg)` / `Event(..., msg, ...)` | 同上 |
 | 上下文值 | `ctx().key(k).value(msg).create()/.set()` | `TypeError: value() requires a YomkMsg instance, got 'str'` |
-| 上下文兜底 | `ctx().key(k).msg(cls).with_default(msg)` | `TypeError: with_default requires '<cls.TYPE_NAME>' or None, got 'str'` |
+| 上下文兜底 | `ctx().key(k).msg(cls).with_default(msg)` | 裸值：`TypeError: with_default requires a YomkMsg instance, got 'str'`；消息但类型不符：`TypeError: with_default requires '<cls.TYPE_NAME>' or None, got '<其他 TYPE_NAME>'` |
 
 分类口径：入口类型契约违例一律 `TypeError`（调用方编程错误，当场炸出并归因到行）；got 侧由 `unpack` / `require_*` 内部生成——消息报 `TYPE_NAME`、`None` 报 `"null"`、类对象报其类名（如 `"String"`）、其余对象报宿主类名（如 `"str"`）。`ResStatus` 只表运行期业务失败。跨边界收到的消息包类型不符期望时，端点返回 `Failed/eNo` + `r.error` 文案，不抛异常。
 
