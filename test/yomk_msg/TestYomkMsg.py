@@ -146,6 +146,40 @@ def s1_type_name_rules():
     # 基类自身 TYPE_NAME 为空字面量（不参与比对）
     check(YomkMsg.TYPE_NAME == "", "基类 TYPE_NAME 为空")
 
+    # 只读常量：生成后类上重绑定/删除、实例上赋值/删除一律 AttributeError
+    # （对齐 C++ static constexpr；防止实例属性遮蔽类型名）
+    try:
+        String.TYPE_NAME = "override::name"
+        check(False, "类上重绑定 TYPE_NAME 应抛 AttributeError")
+    except AttributeError as e:
+        check(str(e) == "TYPE_NAME is a read-only class constant",
+              "类上重绑定 TYPE_NAME → AttributeError 文案一致")
+
+    try:
+        del String.TYPE_NAME
+        check(False, "类上删除 TYPE_NAME 应抛 AttributeError")
+    except AttributeError as e:
+        check(str(e) == "TYPE_NAME is a read-only class constant",
+              "类上删除 TYPE_NAME → AttributeError 文案一致")
+
+    probe = String("x")
+    try:
+        probe.TYPE_NAME = "hacked.by.instance"
+        check(False, "实例上赋值 TYPE_NAME 应抛 AttributeError")
+    except AttributeError as e:
+        check(str(e) == "TYPE_NAME is a read-only class constant",
+              "实例上赋值 TYPE_NAME → AttributeError 文案一致")
+
+    try:
+        del probe.TYPE_NAME
+        check(False, "实例上删除 TYPE_NAME 应抛 AttributeError")
+    except AttributeError as e:
+        check(str(e) == "TYPE_NAME is a read-only class constant",
+              "实例上删除 TYPE_NAME → AttributeError 文案一致")
+
+    check(probe.TYPE_NAME == String.TYPE_NAME == "yomk.msgs.String",
+          "实例读与类型读均为生成值，未被篡改")
+
 
 # ============ S2. std 类结构契约 ============
 def s2_std_classes():
