@@ -285,10 +285,10 @@ def check_type_error(fn, text, name):
     check(False, name + "（未抛 TypeError）")
 
 check_type_error(lambda: fn_pool().fn_name("fp_echo").msg("bare"),
-                 "msg() requires a YomkMsg instance or None, got 'str'",
+                 "msg() requires a YomkMsg instance, got 'str'",
                  "CALL 裸值入口 TypeError 文案一致")
 check_type_error(lambda: fn_pool().fn_name("fp_echo").msg(123),
-                 "msg() requires a YomkMsg instance or None, got 'int'",
+                 "msg() requires a YomkMsg instance, got 'int'",
                  "CALL 非消息入口 TypeError 文案一致")
 
 r = raw_fn("register", String("not_a_Function"))

@@ -6,7 +6,7 @@
 from yomk.msgs.fn_pool import CallFunction, FuncInfoList, Function
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray
-from yomk.msgs.YomkMsg import require_msg_payload, unpack
+from yomk.msgs.YomkMsg import require_msg_instance, unpack
 from yomk.server import _facade
 from yomk.server.YomkService import _yomk_weak_slot_fill
 from yomk.url.fn_pool import (FP_ALL, FP_CALL, FP_NAME, FP_NAMES,
@@ -53,7 +53,8 @@ class FnPoolBuilder:
         return self
 
     def msg(self, data):
-        require_msg_payload(data, "msg()")
+        if data is not None:
+            require_msg_instance(data, "msg()")
         self._msg = data
         return self
 

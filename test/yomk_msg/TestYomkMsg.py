@@ -14,7 +14,7 @@ S3. unpack 语义：命中判真且 msg 为原对象、未命中判假（跨类�
     非消息类/基类 cls 直接 TypeError（got 侧文案由 unpack 生成）
 S4. 内部取值四态：YomkMsg 实例报 TYPE_NAME、None 报 "null"、类对象报其
     类名（如 "String"/"str"）、其余对象报宿主类名（返回类型名而非句子描述）；
-    is_msg_instance / is_msg_subclass 判据真值表（require_msg_payload / unpack / 内部取值共用；None 由调用方判定）
+    is_msg_instance / is_msg_subclass 判据真值表（require_msg_instance / unpack / 内部取值共用；None 由调用方判定）
 S5. UnpackResult 契约：判真取 msg、判假取 error 的双出口；命中同一实例、
     error 为空串；标准文案四组字面 "msg is not <cls.TYPE_NAME>, got '<actual>'";
     出口只读（赋值即 AttributeError）
@@ -291,7 +291,7 @@ def s3_unpack():
 def s4_type_name_of():
     print("===== S4. 内部取值四态（诊断文案共用） =====")
 
-    # is_msg_instance：require_msg_payload / unpack / 内部取值共用实例判据
+    # is_msg_instance：require_msg_instance / unpack / 内部取值共用实例判据
     check(is_msg_instance(String("x")) is True, "具体消息实例 → True")
     check(is_msg_instance(StringArray(["a"])) is True, "数组实例 → True")
     check(is_msg_instance(None) is False, "None → False（None 由调用方判定）")
@@ -307,7 +307,7 @@ def s4_type_name_of():
     check(is_msg_subclass("str") is False, "非类 → False")
     check(is_msg_subclass(None) is False, "None → False")
 
-    # require_msg_subclass：类域守卫，与 require_msg_payload 成对
+    # require_msg_subclass：类域守卫，与 require_msg_instance 成对
     require_msg_subclass(String, "probe()")
     check(True, "具体消息类 → 不抛")
     try:

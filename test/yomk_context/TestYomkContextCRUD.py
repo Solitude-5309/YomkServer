@@ -131,7 +131,7 @@ def main():
 
     # 类型契约：裸值写入/读类型/默认值在入口当场 TypeError
     check_type_error(lambda: ctx().key("bare").value("bare"),
-                     "value() requires a YomkMsg instance or None, got 'str'",
+                     "value() requires a YomkMsg instance, got 'str'",
                      "value() 裸值 TypeError 文案一致")
     check_type_error(lambda: ctx().key("str_key").msg(str),
                      "context typed read class requires a concrete YomkMsg subclass, got 'str'",

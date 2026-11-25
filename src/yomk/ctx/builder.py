@@ -17,7 +17,7 @@ from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import (
     _yomk_type_name_of,
     is_msg_instance,
-    require_msg_payload,
+    require_msg_instance,
     require_msg_subclass,
     unpack,
 )
@@ -154,7 +154,8 @@ class ContextBuilder:
         return self
 
     def value(self, ctx):
-        require_msg_payload(ctx, "value()")
+        if ctx is not None:
+            require_msg_instance(ctx, "value()")
         self._value = ctx
         return self
 

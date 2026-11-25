@@ -40,7 +40,7 @@ def main():
         try:
             server().url(EXTENSION_ECHO).msg("wrong type")
         except TypeError as e:
-            assert str(e) == "msg() requires a YomkMsg instance or None, got 'str'", e
+            assert str(e) == "msg() requires a YomkMsg instance, got 'str'", e
         else:
             raise AssertionError("msg() 传裸值应抛 TypeError")
 

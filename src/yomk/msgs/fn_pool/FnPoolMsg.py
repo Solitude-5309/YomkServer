@@ -3,7 +3,7 @@
 函数池域消息：注册载荷、调用载荷与内省条目。
 """
 
-from yomk.msgs.YomkMsg import YomkMsg, require_msg_payload
+from yomk.msgs.YomkMsg import YomkMsg, require_msg_instance
 
 
 class FuncInfo(YomkMsg):
@@ -38,7 +38,8 @@ class CallFunction(YomkMsg):
     """
 
     def __init__(self, name, msg):
-        require_msg_payload(msg, "CallFunction.msg")
+        if msg is not None:
+            require_msg_instance(msg, "CallFunction.msg")
         self.name = name
         self.msg = msg
 

@@ -3,7 +3,7 @@
 事件循环域消息：投递事件、启动配置、单查与内省条目。
 """
 
-from yomk.msgs.YomkMsg import YomkMsg, require_msg_payload
+from yomk.msgs.YomkMsg import YomkMsg, require_msg_instance
 
 
 class Event(YomkMsg):
@@ -13,7 +13,8 @@ class Event(YomkMsg):
     """
 
     def __init__(self, event_loop_name="", msg=None, func=None, tag=""):
-        require_msg_payload(msg, "Event.msg")
+        if msg is not None:
+            require_msg_instance(msg, "Event.msg")
         self.m_eventLoopName = event_loop_name
         self.m_msg = msg
         self.m_serviceFunc = func

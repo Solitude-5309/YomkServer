@@ -11,7 +11,7 @@ from readerwriterlock import rwlock
 from yomk.msgs.ctx import CheckStatus
 from yomk.msgs.fn_pool import FuncInfo
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.YomkMsg import require_msg_payload
+from yomk.msgs.YomkMsg import require_msg_instance
 from yomk._diag import error as diag_error
 from yomk._diag import warn as diag_warn
 
@@ -206,9 +206,10 @@ class YomkService:
         """Send a request through the owning server.
 
         经所属 server 发起请求；服务无 server 或 server 已销毁返回 No。
-        载荷必须是消息实例或 None，否则入口当场 TypeError。
+        载荷必须是消息实例或 None；None（空载荷）由调用方先行判断，非实例当场 TypeError。
         """
-        require_msg_payload(msg, "request()")
+        if msg is not None:
+            require_msg_instance(msg, "request()")
         if self._server_ref is None:
             diag_error("service is null, please check service")
             return Response(ResStatus.eNo, "service is null")
@@ -222,9 +223,10 @@ class YomkService:
         """Send a request asynchronously; failures are diagnostic-only.
 
         异步发起请求，无返回值；服务无 server 或 server 已销毁时记诊断并丢弃。
-        载荷必须是消息实例或 None，否则入口当场 TypeError。
+        载荷必须是消息实例或 None；None（空载荷）由调用方先行判断，非实例当场 TypeError。
         """
-        require_msg_payload(msg, "async_request()")
+        if msg is not None:
+            require_msg_instance(msg, "async_request()")
         if self._server_ref is None:
             diag_error("service is null, please check service")
             return

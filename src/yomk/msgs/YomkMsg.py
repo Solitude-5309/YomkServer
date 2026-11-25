@@ -126,15 +126,16 @@ def is_msg_subclass(cls):
             and cls is not YomkMsg)
 
 
-def require_msg_payload(msg, who):
-    """Raise TypeError unless msg is a concrete YomkMsg instance or None.
+def require_msg_instance(msg, who):
+    """Raise TypeError unless msg is a concrete YomkMsg instance.
 
-    类型契约守卫：msg 必须是具体消息实例或 None（空载荷），否则入口当场
-    ``TypeError``。直接基类实例不可用（C++ 侧 YomkMsg 为抽象类），同样拒绝。
+    实例守卫：msg 必须是具体消息实例，否则入口当场 ``TypeError``；``None``
+    不是实例，空载荷由调用方先行判断后再调用本函数。直接基类实例不可用
+    （C++ 侧 YomkMsg 为抽象类），同样拒绝。
     """
-    if msg is None or is_msg_instance(msg):
+    if is_msg_instance(msg):
         return
-    raise TypeError(who + " requires a YomkMsg instance or None, got '"
+    raise TypeError(who + " requires a YomkMsg instance, got '"
                     + _yomk_type_name_of(msg) + "'")
 
 
@@ -142,7 +143,7 @@ def require_msg_subclass(cls, who):
     """Raise TypeError unless cls is a concrete YomkMsg subclass.
 
     类域守卫：cls 必须是具体消息子类，否则当场 ``TypeError``；基类与
-    非类同样拒绝。与 require_msg_payload 成对，分别守类域与载荷入口。
+    非类同样拒绝。与 require_msg_instance 成对，分别守类域与实例入口。
     """
     if is_msg_subclass(cls):
         return
