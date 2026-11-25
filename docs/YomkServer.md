@@ -80,10 +80,11 @@ class MyService(YomkService):
         self.install_func("/hello", self.hello, String.TYPE_NAME, HELLO_DESC)
 
     def hello(self, msg):
-        # 端点体内精确校验：unpack + type_mismatch（期望/实际双侧均为 TYPE_NAME）
-        if unpack(msg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
-        return Response(ResStatus.eOk, "hello " + msg.value)
+        # 端点体内精确校验：unpack 判真取 r.msg、判假取 r.error（文案两侧均为 TYPE_NAME）
+        r = unpack(msg, String)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        return Response(ResStatus.eOk, "hello " + r.msg.value)
 
 server().init()                                  # 框架初始化
 server().srv(MyService).create()                 # 创建并注册服务

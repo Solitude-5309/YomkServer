@@ -32,7 +32,7 @@ srv_info().all()                                 # 全量服务拓扑（服务 �
 
 - 内省域 URL 常量与 C++ `YomkServerInfoUrl.h` 一一对应，从 `yomk.url.srv_info` 导入：`SRV_SERVICES`（`/YomkServerInfo/services`）、`SRV_FUNCTIONS`（`/YomkServerInfo/functions`）、`SRV_FUNCTION`（`/YomkServerInfo/function`）、`SRV_ALL`（`/YomkServerInfo/all`）；同模块另导出各端点对应的 `*_DESC` 内省描述常量；`builder` 内部即用这些常量组链，用户自定义注册亦可直接复用。
 - 诊断契约（经 `yomk._diag` 输出，与 C++ 对齐）：空 `srv_name`、URL 解析失败（无 `/` 前缀、无函数名）、服务未命中走 `WARN`；server 已销毁走 `ERROR`（各 ignored 文案不带句号）；失败路径与载荷类型错配不打诊断。
-- 期望消息类型名通过声明处元数据进入内省：`install_func("/x", fn, Msg.TYPE_NAME)` 第三参（**一律传 `msg.TYPE_NAME`，禁止手写字面量**）、`fn_pool().msg_name(m)`、`event_loop().msg_name(m)`，仅作内省元数据（内省值为全限定 TYPE_NAME），不影响调用；类型校验由端点体内 `unpack` + `type_mismatch` 承担（见 [YomkMsg.md](YomkMsg.md)）。
+- 期望消息类型名通过声明处元数据进入内省：`install_func("/x", fn, Msg.TYPE_NAME)` 第三参（**一律传 `msg.TYPE_NAME`，禁止手写字面量**）、`fn_pool().msg_name(m)`、`event_loop().msg_name(m)`，仅作内省元数据（内省值为全限定 TYPE_NAME），不影响调用；类型校验由端点体内 `unpack` 的结果承担（判真取 `r.msg`、判假取 `r.error`，见 [YomkMsg.md](YomkMsg.md)）。
 - 函数说明通过 `install_func` 第四参或 `fn_pool().description(d)` 声明；内置端点统一采用五章节格式并把常量放在 `yomk.url.<域>` 常量池（`<URL常量名>_DESC`），自定义服务建议沿用同一形态；`srv_info().fn_url(...).get_info()` 与函数池单查 `fn_pool().fn_name(name).get_info()` 命中均返回结构化 `FuncInfo` 包；未命中返回 `Failed`。
 - 各内置模块另有模块级自省链：
 

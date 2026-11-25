@@ -14,8 +14,8 @@ TestYomkService.py —— YomkService 命名/函数注册/调用白盒单元测�
 
 语言机制说明（非功能缺口）：
 - deleted/markDeleted 弱绑定判活不适用：python 功能函数为直接引用，无弱绑定包装层
-- python 消息包一律 YomkMsg 派生并经 unpack 解包，"msg 为空解包失败返回 eNo" 的守卫
-  由测试函数内显式判断承载（消息契约："msg is null"）
+- python 消息包一律 YomkMsg 派生并经 unpack 解包，"判假返回 eNo" 的守卫
+  由测试函数内显式判断承载（失败文案取 r.error："msg is not <DemoPkg TYPE_NAME>, got 'null'"）
 - 空服务器守卫形态：python 无转发层，set_name/install_func/func_infos/invoke 直接作用于本地
   字段/表，仅 request/async_request 保留 server 判空契约。
   本文件第 7 节按 python 现状文档化断言
@@ -78,11 +78,11 @@ class DemoService(YomkService):
         return 0
 
     def echo(self, msg):
-        # DemoPkg 解包回显：未命中（含空包）时函数内守卫返回 eNo
-        msg = unpack(msg, DemoPkg)
-        if msg is None:
-            return Response(ResStatus.eNo, "msg is null")
-        return Response(ResStatus.eOk, "echo:" + msg.d)
+        # DemoPkg 解包回显：判假（含空包）时函数内守卫返回 eNo，文案取 r.error
+        r = unpack(msg, DemoPkg)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        return Response(ResStatus.eOk, "echo:" + r.msg.d)
 
     def plain(self, msg):
         return Response(ResStatus.eOk, "plain")
@@ -199,9 +199,10 @@ def test_invoke(demo):
     check(resp.status == ResStatus.eOk and resp.msg == "echo:hi",
           "invoke 命中，msg 透传回显正确")
 
-    # 命中：msg 为空，函数内解包守卫返回 eNo
+    # 命中：msg 为空，函数内解包守卫返回 eNo（文案由 unpack 生成）
     resp = demo.invoke("/echo", None)
-    check(resp.status == ResStatus.eNo and "msg is null" in resp.msg,
+    check(resp.status == ResStatus.eNo
+          and resp.msg == "msg is not " + DemoPkg.TYPE_NAME + ", got 'null'",
           "invoke 命中但 msg 为空，函数解包守卫返回 eNo")
 
     # 异常路径：空名/无 / 开头返回 eNo + parse error 契约消息

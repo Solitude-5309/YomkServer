@@ -112,11 +112,11 @@ class RouteSrv(YomkService):
         return Response(ResStatus.eOk, "pong")
 
     def echo(self, msg):
-        # DemoPkg 解包回显：未命中（含空包）在函数内守卫返回 eNo
-        msg = unpack(msg, DemoPkg)
-        if msg is None:
-            return Response(ResStatus.eNo, "msg is null")
-        return Response(ResStatus.eOk, "echo:" + msg.d)
+        # DemoPkg 解包回显：判假（含空包）在函数内守卫返回 eNo，文案取 r.error
+        r = unpack(msg, DemoPkg)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        return Response(ResStatus.eOk, "echo:" + r.msg.d)
 
 
 # 1. URL 解析全边界与路由（经公开 request 路径）

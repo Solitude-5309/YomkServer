@@ -35,7 +35,7 @@ template/extension/
 框架的 `yomk/` 与 `yomk/url/` 层是 **PEP 420 命名空间包**（无 `__init__.py`，
 `import yomk` 不加载任何子模块、`yomk.__file__ is None`）；`yomk/msgs/` 层自
 标准工具层起为常规包（有 `__init__.py`，顶层导出 YomkMsg/unpack/
-type_mismatch 与 std 类 9 个）。第三方扩展依赖包合并机制与框架共存，因此：
+UnpackResult 与 std 类 9 个）。第三方扩展依赖包合并机制与框架共存，因此：
 
 - 扩展仓库**不得创建或覆盖** `yomk/__init__.py`、`yomk/msgs/__init__.py` 或
   `yomk/url/__init__.py`（install.sh 安装前会做守卫检查）；
@@ -105,7 +105,7 @@ class ExtensionRequest(YomkMsg):
 1. **端点声明**：`install_func("/echo", self.echo, ExtensionRequest.TYPE_NAME)`
    ——第三参一律传 `msg.TYPE_NAME`，禁止手写字面量；
 2. **端点体内精确校验**（框架不做分发校验，责任在端点作者）：
-   `if unpack(msg, ExtensionRequest) is None: return Response(eNo, type_mismatch(msg, ExtensionRequest.TYPE_NAME))`
-   ——失败文案期望/实际双侧均为 TYPE_NAME，零手写；
+   `r = unpack(msg, ExtensionRequest)` → `if not r: return Response(eNo, r.error)`
+   ——失败文案由 unpack 生成（期望/实际双侧均为 TYPE_NAME），零手写；命中字段取 `r.msg.<field>`
 3. **调用方构造**：`server().url(EXTENSION_ECHO).msg(ExtensionRequest("hi")).request()`
    ——载荷是消息类实例，裸值直发会被精确身份校验拒绝。

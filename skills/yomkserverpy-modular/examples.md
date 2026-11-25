@@ -144,7 +144,7 @@ from yomk.server import YomkService
 from yomk.ctx import ctx
 from yomk.log import log
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.YomkMsg import type_mismatch, unpack
+from yomk.msgs.YomkMsg import unpack
 from yomk.msgs.std_msg import String
 from msgs.YomkMsgs import ConfigKey, ConfigKeyValue
 
@@ -180,14 +180,15 @@ class ConfigService(YomkService):
         return Response(ResStatus.eOk, "ok")
 
     def get_config(self, msg):
-        # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）
-        if unpack(msg, ConfigKey) is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, ConfigKey.TYPE_NAME))
-        tokens = msg.key.split('.')
+        # 端点体内 unpack 判真取 r.msg、判假取 r.error（责任在端点作者，框架不做分发校验）
+        r = unpack(msg, ConfigKey)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        tokens = r.msg.key.split('.')
         current = self.config_json
         for token in tokens:
             if not isinstance(current, dict) or token not in current:
-                return Response(ResStatus.eNo, "key not found: " + msg.key)
+                return Response(ResStatus.eNo, "key not found: " + r.msg.key)
             current = current[token]
 
         if isinstance(current, str):
@@ -197,17 +198,17 @@ class ConfigService(YomkService):
         return Response(ResStatus.eOk, "ok", value)
 
     def set_config(self, msg):
-        if unpack(msg, ConfigKeyValue) is None:
-            return Response(ResStatus.eNo,
-                            type_mismatch(msg, ConfigKeyValue.TYPE_NAME))
-        tokens = msg.key.split('.')
+        r = unpack(msg, ConfigKeyValue)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        tokens = r.msg.key.split('.')
         current = self.config_json
         for token in tokens[:-1]:
             if not isinstance(current, dict):
-                return Response(ResStatus.eNo, "invalid key path: " + msg.key)
+                return Response(ResStatus.eNo, "invalid key path: " + r.msg.key)
             current = current.setdefault(token, {})
-        current[tokens[-1]] = msg.value
-        log().tag("ConfigService::set_config").info("set ", msg.key, " = ", msg.value)
+        current[tokens[-1]] = r.msg.value
+        log().tag("ConfigService::set_config").info("set ", r.msg.key, " = ", r.msg.value)
         return Response(ResStatus.eOk, "ok")
 
     def reload_config(self, msg):
@@ -383,12 +384,13 @@ class UserService(YomkService):
         return 0
 
     def get_user(self, msg):
-        # 端点体精确校验：unpack + type_mismatch（框架不做分发校验，责任在端点作者）
-        if unpack(msg, UserQuery) is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, UserQuery.TYPE_NAME))
-        log().tag("UserService").info("query user: ", msg.user_id)   # 服务体内走日志通道，不用 print
+        # 端点体精确校验：unpack 判真取 r.msg、判假取 r.error（框架不做分发校验，责任在端点作者）
+        r = unpack(msg, UserQuery)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        log().tag("UserService").info("query user: ", r.msg.user_id)   # 服务体内走日志通道，不用 print
         # 业务逻辑...
-        info = UserInfo(msg.user_id, "Alice", 25)
+        info = UserInfo(r.msg.user_id, "Alice", 25)
         return Response(ResStatus.eOk, "ok", info)
 
     def create_user(self, msg):
@@ -546,14 +548,14 @@ event_loop().loop("worker_loop").destroy()
 ## 示例4：FunctionPool 公共函数池
 
 ```python
-from yomk.msgs import IntArray, String, type_mismatch, unpack
+from yomk.msgs import IntArray, String, unpack
 
 def validate_amount(msg) -> Response:
-    text = unpack(msg, String)
-    if text is None:
-        return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
+    r = unpack(msg, String)
+    if not r:
+        return Response(ResStatus.eNo, r.error)
     try:
-        amount = float(text.value)
+        amount = float(r.msg.value)
         if amount <= 0:
             return Response(ResStatus.eNo, "invalid amount")
         return Response(ResStatus.eOk, "valid")
@@ -561,10 +563,10 @@ def validate_amount(msg) -> Response:
         return Response(ResStatus.eNo, "invalid amount")
 
 def calc_sum(msg) -> Response:
-    nums = unpack(msg, IntArray)
-    if nums is None:
-        return Response(ResStatus.eNo, type_mismatch(msg, IntArray.TYPE_NAME))
-    return Response(ResStatus.eOk, "ok", sum(nums.items))
+    r = unpack(msg, IntArray)
+    if not r:
+        return Response(ResStatus.eNo, r.error)
+    return Response(ResStatus.eOk, "ok", sum(r.msg.items))
 
 def calc_sum_v2(msg) -> Response:      # 热替换后的新版本实现
     return calc_sum(msg)
@@ -613,7 +615,7 @@ class PoolUserService(YomkService):
 
 ## 示例5：服务内省（调试）
 
-期望消息类型由 `install_func` 三参形式声明（**一律传 `msg.TYPE_NAME`**，内省值为全限定 TYPE_NAME）、函数说明由四参声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 unpack + type_mismatch 承担，见 docs/YomkMsg.md；说明经 `srv_info().fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）。**全部内置 48 个端点均已预置五章节内省文本**（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`，常量 `<URL>_DESC` 与 URL 同置 `yomk.url.<域>`，字段名按 Python 实际带 `m_` 前缀），`srv_info().all()` 即可读完端点语义；自定义服务建议沿用同一格式。内省查询走独立域入口 `srv_info()`（`from yomk.srv_info import srv_info`）：
+期望消息类型由 `install_func` 三参形式声明（**一律传 `msg.TYPE_NAME`**，内省值为全限定 TYPE_NAME）、函数说明由四参声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 unpack 的结果承担（判真取 `r.msg`、判假取 `r.error`），见 docs/YomkMsg.md；说明经 `srv_info().fn_url(...).get_info()` 结构化包透出；两参写法兼容，内省无类型）。**全部内置 48 个端点均已预置五章节内省文本**（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`，常量 `<URL>_DESC` 与 URL 同置 `yomk.url.<域>`，字段名按 Python 实际带 `m_` 前缀），`srv_info().all()` 即可读完端点语义；自定义服务建议沿用同一格式。内省查询走独立域入口 `srv_info()`（`from yomk.srv_info import srv_info`）：
 
 ```python
 # 五章节内省描述：常量与 URL 常量同置 yomk.url.<域> 常量池
@@ -859,7 +861,7 @@ def extension() -> ExtensionBuilder: ...
 # 调用方推荐优先使用框架封装好的统一请求接口访问本服务：
 #   server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.YomkMsg import type_mismatch, unpack
+from yomk.msgs.YomkMsg import unpack
 from yomk.msgs.extension import ExtensionRequest, ExtensionResponse
 from yomk.log import log
 from yomk.server import YomkService
@@ -879,14 +881,14 @@ class ExtensionService(YomkService):
         return 0
 
     def echo(self, msg):
-        # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）；
-        # 失败文案走 type_mismatch——期望/实际两侧均为 TYPE_NAME，零手写报文名；
+        # 端点体内 unpack 判真取 r.msg、判假取 r.error（责任在端点作者，框架不做分发校验）；
+        # 失败文案由 unpack 生成——期望/实际双侧均为 TYPE_NAME，零手写报文名；
         # 返回框架 Response，强类型回包以 ExtensionResponse 承载在 data 位
-        if unpack(msg, ExtensionRequest) is None:
-            return Response(ResStatus.eNo,
-                            type_mismatch(msg, ExtensionRequest.TYPE_NAME))
+        r = unpack(msg, ExtensionRequest)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
         return Response(ResStatus.eOk, "echo",
-                        ExtensionResponse("ok", "echo", msg.payload))
+                        ExtensionResponse("ok", "echo", r.msg.payload))
 
     def version(self, msg):
         # 版本查询终结（对齐 C++ ExtensionService::version）：版本号单一来源为

@@ -27,7 +27,7 @@
 | 上下文值 | `ctx().key(k).value(msg).create()/.set()` | `TypeError: value() requires a YomkMsg instance or None, got 'str'` |
 | 上下文兜底 | `ctx().key(k).msg(cls).with_default(msg)` | `TypeError: with_default requires '<cls.TYPE_NAME>' or None, got 'str'` |
 
-分类口径：入口类型契约违例一律 `TypeError`（调用方编程错误，当场炸出并归因到行）；got 侧由 `type_mismatch` / `require_*` 内部生成——消息报 `TYPE_NAME`、`None` 报 `"null"`、类对象报其类名（如 `"String"`）、其余对象报宿主类名（如 `"str"`）。`ResStatus` 只表运行期业务失败。跨边界收到的消息包类型不符期望时，端点返回 `Failed/eNo` + `type_mismatch` 文案，不抛异常。
+分类口径：入口类型契约违例一律 `TypeError`（调用方编程错误，当场炸出并归因到行）；got 侧由 `unpack` / `require_*` 内部生成——消息报 `TYPE_NAME`、`None` 报 `"null"`、类对象报其类名（如 `"String"`）、其余对象报宿主类名（如 `"str"`）。`ResStatus` 只表运行期业务失败。跨边界收到的消息包类型不符期望时，端点返回 `Failed/eNo` + `r.error` 文案，不抛异常。
 
 ## API 速查
 
@@ -37,8 +37,8 @@
 | 标准标量/数组 | `String` / `Bool` / `Int` / `Float` / `Bytes`（字段 `value`）；`BoolArray` / `IntArray` / `FloatArray` / `StringArray`（字段 `items`） |
 | 结构化清单 | 各域 List msg（如 `ContextKeyInfoList`、`FuncInfoList`，字段 `items`） |
 | 端点声明 | `self.install_func("/x", self.x, MyMsg.TYPE_NAME)` |
-| 端点体校验 | `if unpack(msg, MyMsg) is None: return Response(eNo, type_mismatch(msg, MyMsg.TYPE_NAME))` |
-| 调用方解包返回 | `unpack(res.data, MyMsg)` → 命中返回对象，未命中 `None` |
+| 端点体校验 | `r = unpack(msg, MyMsg)` → `if not r: return Response(eNo, r.error)`，命中字段取 `r.msg.<field>` |
+| 调用方解包返回 | `unpack(res.data, MyMsg)` → `UnpackResult`：判真取 `r.msg`、判假取 `r.error` |
 | 请求负载 | `server().url(u).msg(MyMsg(...)).request()` |
 
 ## 标准内置集（std 类）
@@ -61,29 +61,32 @@ Python 的 `int` / `float` 不区分位宽，故标量类名为 `Int` / `Float`�
 
 ```python
 def echo(self, msg):
-    if unpack(msg, ExtensionRequest) is None:
-        return Response(ResStatus.eNo, type_mismatch(msg, ExtensionRequest.TYPE_NAME))
-    ...
+    r = unpack(msg, ExtensionRequest)
+    if not r:
+        return Response(ResStatus.eNo, r.error)
+    ...   # 下游一律 r.msg.<field>
 ```
 
 3. **调用方构造**：载荷是消息类实例，裸值直发会被精确身份校验拒绝。
 
-## unpack 语义
+## unpack 语义（返回 `UnpackResult`）
 
-`unpack(msg, cls)`（对齐 C++ `unpack<Msg>` nullptr 语义，判空即用）：
+`unpack(msg, cls)`（对齐 C++ `unpack<Msg>` → `UnpackResult<Msg>`）：解包结果是一个只读结果对象，**判真取 `r.msg`、判假取 `r.error`**，调用方不再手传期望类型名：
 
-- **命中 ⟺ `type(msg)` 就是 cls 本身**（具体消息实例 + TYPE_NAME 精确比对）——不是普通 isinstance 兼容判断：子类必然获得与父类不同的自动 TYPE_NAME，**子类实例解包为父类返回 None 是设计行为**；
-- `msg` 为 `None`、体系外对象或类型不符 → 返回 `None`，不抛异常（端点据此走 `type_mismatch` 拒绝路径）；
-- `cls` 必须是具体 `YomkMsg` 子类（不能是基类本身或体系外类）→ 违例抛 `TypeError`（`unpack requires a concrete YomkMsg subclass, got '<类名>'`），调用方编程错误不当成业务失败。
+- **命中 ⟺ `type(msg)` 就是 cls 本身**（具体消息实例 + TYPE_NAME 精确比对）——不是普通 isinstance 兼容判断：子类必然获得与父类不同的自动 TYPE_NAME，**子类实例解包为父类返回判假结果是设计行为**；
+- `msg` 为 `None`、体系外对象或类型不符 → 结果**判假**（`r.msg is None`），文案已生成在 `r.error`，不抛异常（端点据此直接拒绝）；
+- `cls` 必须是具体 `YomkMsg` 子类（不能是基类本身或体系外类）→ 违例抛 `TypeError`（`unpack requires a concrete YomkMsg subclass, got '<类名>'`），调用方编程错误不当成业务失败；cls 守卫先于命中判断，故 `unpack(None, None)` 也抛 `TypeError`。
 
 `is_msg_instance(v)` / `is_msg_subclass(cls)`（同置 `yomk.msgs.YomkMsg`）：一对形态判据。`is_msg_instance` 判**实例**——仅具体 `YomkMsg` 子类实例为真，`None`（空载荷）、`YomkMsg` 直基类实例、类对象与体系外对象均为假，`None` 的合法性由调用方自行判定，由 `require_msg_payload` / `unpack` / 诊断文案共用；`is_msg_subclass` 判**类域**——只认具体消息子类（类对象本身），基类、非类与体系外类均为假，由 `require_msg_subclass` 与 `unpack` 共用。两处判据不再分散书写。
 
 守卫侧成对提供：`require_msg_payload(v, who)` 守载荷入口（具体实例或 `None`，违例 `TypeError`），`require_msg_subclass(cls, who)` 守类域（具体消息子类，违例 `TypeError`）；`unpack` 的 cls 守卫与 `ctx().key(k).msg(cls)` 均经后者，文案统一为 `"<who> requires a concrete YomkMsg subclass, got '<类名>'"`。
 
-`type_mismatch(msg, expected)`（对齐 C++ `typeMismatch`，与基类/解包/守卫同置 `yomk.msgs.YomkMsg`）：
+`class UnpackResult`（与基类/解包/守卫同置 `yomk.msgs.YomkMsg`，`yomk.msgs` 顶层导出）：
 
-- 构造标准不符文案 `"msg is not <expected>, got '<actual>'"`，expected 由调用方传 `cls.TYPE_NAME`——期望侧为权威 TYPE_NAME；
-- 实际侧四态取值（消息实例 → `TYPE_NAME`；`None` → `"null"`；类对象 → `__name__`；其余 → 宿主类名）判空内置于 `type_mismatch` / `require_*`（对齐 C++ `typeMismatch` 内部判空，不再提供自由函数），用户侧需要类型名时直连只读 `TYPE_NAME`。
+- `bool(r)`：命中为 `True`（`r.msg` 非 `None`），未命中为 `False`——端点统一写 `if not r:`；
+- `r.msg`：命中时为传入实例本身（同一对象，非拷贝）；未命中为 `None`；
+- `r.error`：命中为空串；未命中为标准文案 `"msg is not <cls.TYPE_NAME>, got '<actual>'"`，期望侧取自 `cls.TYPE_NAME`，实际侧四态取值（消息实例 → `TYPE_NAME`；`None` → `"null"`；类对象 → 类名；其余 → 宿主类名）在 `unpack` 内联生成，用户侧需要类型名时直连只读 `TYPE_NAME`；
+- 出口只读：`r.msg = ...` / `r.error = ...` 抛 `AttributeError`（对齐 C++ 只读出口）；`repr` 命中带 msg、未命中带 error。
 
 ## 完整示例（定义 → 声明 → 端点校验 → 调用）
 
@@ -91,7 +94,7 @@ def echo(self, msg):
 from yomk.msgs import YomkMsg
 from yomk.server import YomkService
 from yomk.msgs.server import ResStatus, Response
-from yomk.msgs.YomkMsg import type_mismatch, unpack
+from yomk.msgs.YomkMsg import unpack
 
 # 1. 定义（继承即得 TYPE_NAME）
 class UserInfo(YomkMsg):
@@ -112,14 +115,15 @@ class UserService(YomkService):
 
     # 3. 端点体精确校验（责任在端点作者）
     def register(self, msg):
-        if unpack(msg, UserInfo) is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, UserInfo.TYPE_NAME))
+        r = unpack(msg, UserInfo)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
         return Response(ResStatus.eOk, "hello",
-                        RegisterResp(msg.uid, "hello " + msg.name))
+                        RegisterResp(r.msg.uid, "hello " + r.msg.name))
 
 # 4. 调用方构造与解包
 res = server().url("/UserService/register").msg(UserInfo(1001, "Alice")).request()
-rsp = unpack(res.data, RegisterResp)      # 未命中 None，判空即用
+rsp = unpack(res.data, RegisterResp)      # 判真取 rsp.msg、判假取 rsp.error
 ```
 
 ## 语言设计说明
@@ -133,7 +137,7 @@ rsp = unpack(res.data, RegisterResp)      # 未命中 None，判空即用
 - **声明与内省**：`install_func` 第三参、`fn_pool().msg_name(m)`、`event_loop().msg_name(m)` 的值存入 `FuncInfo.msg_name` 供内省读取（值为全限定 TYPE_NAME），运行期不做拦截（责任模型见上）。
 - 上下文类型化读 `ctx().key(k).msg(cls).with_default(d).get()`：`cls` 必填且须为具体消息类（省略或传体系外类 → `TypeError`）；`d` 必须是同 `TYPE_NAME` 的消息实例或 `None`（违例 → `TypeError`）。`get()` 按 TYPE_NAME 比对，不符记 WARN 并回退 `d`。
 - 事件循环 `post_wait` 的执行结果经事件对象回传：链式终结收敛为 `ResStatus`；需要取回事件 `data`/处理响应时用裸链 `server().url("/YomkEventLoop/post_wait").msg(...).request()`，`data` 为该 `Event` 对象（含 `m_eventId` / `m_response`）。
-- 内省端点返回 List msg（如 `/all` 返 `FuncInfoList`），链式门面读路径已解包、仍返回裸 list；裸链直调时用 `unpack(res.data, XxxList).items` 取清单。
+- 内省端点返回 List msg（如 `/all` 返 `FuncInfoList`），链式门面读路径已解包、仍返回裸 list；裸链直调时先 `r = unpack(res.data, XxxList)`，再取 `r.msg.items`（判假取 `r.error`）。
 
 ## 完整示例
 

@@ -5,7 +5,7 @@ from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.srv_info import ServerServiceInfo, ServerServiceInfoList
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.fn_pool import FuncInfoList
-from yomk.msgs.YomkMsg import type_mismatch, unpack
+from yomk.msgs.YomkMsg import unpack
 from yomk.server import YomkService
 from yomk.url.srv_info import (
     SRV_ALL_DESC,
@@ -57,9 +57,10 @@ class YomkServerInfo(YomkService):
                         StringArray(sorted(server.service_names())))
 
     def list_functions(self, msg):
-        if unpack(msg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
-        srv_name = msg.value
+        r = unpack(msg, String)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        srv_name = r.msg.value
         if not srv_name:
             # 空参误用：WARN 后返 eInvalid
             diag_warn("srvName is empty, please check String.d")
@@ -77,9 +78,10 @@ class YomkServerInfo(YomkService):
         return Response(ResStatus.eOk, "ok", FuncInfoList(funcs))
 
     def function_info(self, msg):
-        if unpack(msg, String) is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
-        url = msg.value
+        r = unpack(msg, String)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        url = r.msg.value
         if not url or url[0] != "/":
             # url 解析失败：WARN + 同串 Response
             diag_warn("url parse error: " + url + ", please start with /")

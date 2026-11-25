@@ -14,8 +14,7 @@
 ## 使用示例
 
 ```python
-from yomk.msgs import IntArray, type_mismatch, unpack
-from yomk.msgs import IntArray, type_mismatch, unpack
+from yomk.msgs import IntArray, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import server
 from yomk.fn_pool import fn_pool
@@ -24,10 +23,10 @@ server().init()
 
 # 注册函数（msg_name 一律传 msg.TYPE_NAME，description 可选，均仅作内省元数据；类型校验由函数体内 unpack 承担，见 docs/YomkMsg.md）
 def calc_sum(msg):
-    nums = unpack(msg, IntArray)
-    if nums is None:
-        return Response(ResStatus.eNo, type_mismatch(msg, IntArray.TYPE_NAME))
-    return Response(ResStatus.eOk, "ok", sum(nums.items))
+    r = unpack(msg, IntArray)
+    if not r:
+        return Response(ResStatus.eNo, r.error)
+    return Response(ResStatus.eOk, "ok", sum(r.msg.items))
 
 fn_pool().fn_name("calcSum").fn(calc_sum) \
     .msg_name(IntArray.TYPE_NAME).description("对整数列表求和").install()

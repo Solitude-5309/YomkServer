@@ -155,38 +155,38 @@ def ensure_key(op, key, value):
 
 # 速度倍率安全门控：倍率是安全关键参数，超过 1.0（100%）有撞机风险，一律拒绝
 def checker_speed_ratio(ctx: Context) -> CheckStatus:
-    # 上下文值一律消息包：按期望类型解包，未命中即类型不符
-    ratio = unpack(ctx.value, Float)
-    if ratio is None:
+    # 上下文值一律消息包：按期望类型解包，判真取 msg、判假即类型不符
+    r = unpack(ctx.value, Float)
+    if not r:
         log().tag("arm.guard").warn(f"checker: {ctx.key} 值不是 Float，无法校验 -> eReject")
         return CheckStatus.eReject
-    if ratio.value > 1.0:
-        log().tag("arm.guard").warn(f"checker: {ctx.key}={fmt_f64(ratio.value)} 超过安全倍率 1.0（撞机风险）-> eReject")
+    if r.msg.value > 1.0:
+        log().tag("arm.guard").warn(f"checker: {ctx.key}={fmt_f64(r.msg.value)} 超过安全倍率 1.0（撞机风险）-> eReject")
         return CheckStatus.eReject
-    log().tag("arm.guard").info(f"checker: {ctx.key}={fmt_f64(ratio.value)} 在安全范围内 -> eAccept")
+    log().tag("arm.guard").info(f"checker: {ctx.key}={fmt_f64(r.msg.value)} 在安全范围内 -> eAccept")
     return CheckStatus.eAccept
 
 # 安全 PLC 的上电告警：伺服电源指令属安全相关事件，收到快照即告警记录
 def monitor_servo_power_alarm(ctx: Context) -> None:
-    power = unpack(ctx.value, Bool)
-    state = "ON" if power is not None and power.value else "OFF"
+    r = unpack(ctx.value, Bool)
+    state = "ON" if r and r.msg.value else "OFF"
     log().tag("arm.watch").warn(f"[告警] 伺服电源指令: {ctx.key}={state}（安全 PLC 收到本次写入快照）")
 
 # 操作黑匣子：记录每一次伺服电源指令的快照，供事后追溯；
 # 与告警回调同批执行，展示 set_monitor 的追加式多播
 def monitor_servo_power_log(ctx: Context) -> None:
-    power = unpack(ctx.value, Bool)
-    state = "ON" if power is not None and power.value else "OFF"
+    r = unpack(ctx.value, Bool)
+    state = "ON" if r and r.msg.value else "OFF"
     log().tag("arm.watch").info(f"[黑匣子] 记录操作: {ctx.key}->{state}（追加式多播：与告警回调按注册序同批执行）")
 
 # 数字孪生位姿上报：async_monitor=True 经单线程池送达（按 set 提交序保序），
 # 执行线程是池线程——上报动作不阻塞运动控制回路
 def monitor_pose_telemetry(ctx: Context) -> None:
-    pose = unpack(ctx.value, FloatArray)
-    if pose is None:
+    r = unpack(ctx.value, FloatArray)
+    if not r:
         log().tag("arm.telemetry").warn(f"上报失败: {ctx.key} 值不是 FloatArray")
         return
-    log().tag("arm.telemetry").info(f"位姿上报: {ctx.key}={fmt_pose(pose.items)}"
+    log().tag("arm.telemetry").info(f"位姿上报: {ctx.key}={fmt_pose(r.msg.items)}"
         f"（池线程 {threading.current_thread().name}，按 set 提交序送达）")
 
 # ---------------------------------------------------------------------------

@@ -56,7 +56,7 @@ import sys
 import threading
 import time
 
-from yomk.msgs import String, type_mismatch, unpack
+from yomk.msgs import String, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import server
 from yomk.event_loop import event_loop
@@ -138,17 +138,17 @@ def log_loop_line(api, loop_name):
 # 模拟 200ms 运动耗时，让队列积压与 FIFO 消费顺序在日志中稳定可见；
 # 第 1 条指令执行时递归投递 3 条微调指令排到队尾——同循环 FIFO 的直观证据
 def motion_handle(msg) -> Response:
-    # 事件载荷一律消息包：按期望类型解包，未命中即类型不符
-    cmd = unpack(msg, String)
-    if cmd is None:
-        return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
-    log().tag("arm.motion").info(f"执行运动指令: {cmd.value}（循环线程 {threading.current_thread().name}）")
+    # 事件载荷一律消息包：按期望类型解包，判真取 msg、判假即类型不符
+    r = unpack(msg, String)
+    if not r:
+        return Response(ResStatus.eNo, r.error)
+    log().tag("arm.motion").info(f"执行运动指令: {r.msg.value}（循环线程 {threading.current_thread().name}）")
 
     time.sleep(0.2)
 
     # 演示处理函数内递归投递：仅 mv1 会追加 3 条微调指令到队尾，
     # 它们排在已入队的 mv2..mv5 之后消费——同循环 FIFO 的直观证据
-    if cmd.value == "mv1":
+    if r.msg.value == "mv1":
         for i in range(1, 4):
             event_loop().msg(String("fine" + str(i))).loop("motionLoop").tag("fine" + str(i)).post()
         log().tag("arm.motion").info("指令 mv1 触发 3 条微调指令，已追加到队列尾部")
@@ -157,10 +157,10 @@ def motion_handle(msg) -> Response:
 
 # 示教器事件处理函数：轻量打印，供双循环并行演示（场景 3 无元数据启动时指定）
 def teach_handle(msg) -> Response:
-    ev = unpack(msg, String)
-    if ev is None:
-        return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
-    log().tag("arm.teach").info(f"示教器事件: {ev.value}（循环线程 {threading.current_thread().name}）")
+    r = unpack(msg, String)
+    if not r:
+        return Response(ResStatus.eNo, r.error)
+    log().tag("arm.teach").info(f"示教器事件: {r.msg.value}（循环线程 {threading.current_thread().name}）")
     return Response(ResStatus.eOk, "teachHandle success")
 
 # ---------------------------------------------------------------------------

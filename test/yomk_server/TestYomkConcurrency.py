@@ -89,11 +89,11 @@ class ConcSrv(YomkService):
 
     def echo(self, msg):
         g_hit.append(1)
-        msg = unpack(msg, DemoPkg)
-        if msg is None:
-            # 未命中（含空包）统一守卫
-            return Response(ResStatus.eNo, "msg is null")
-        return Response(ResStatus.eOk, msg.d)
+        r = unpack(msg, DemoPkg)
+        if not r:
+            # 未命中（含空包）统一守卫，文案取 r.error
+            return Response(ResStatus.eNo, r.error)
+        return Response(ResStatus.eOk, r.msg.d)
 
 
 def register_conc_srv(server, name):

@@ -9,7 +9,7 @@
 与全局 server().url(u).msg(m).request() 等价，但无需获取全局单例。
 """
 
-from yomk.msgs import String, type_mismatch, unpack
+from yomk.msgs import String, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService
 from yomk.log import log
@@ -32,17 +32,18 @@ class MotionService(YomkService):
 
     # 通讯自检：收到字符串原样回显
     def echo(self, msg) -> Response:
-        text = unpack(msg, String)
-        if text is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
-        log().tag("arm.motion").info(f'通讯自检回环：收到 "{text.value}"')
-        return Response(ResStatus.eOk, "echo success", "echo: " + text.value)
+        r = unpack(msg, String)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        log().tag("arm.motion").info(f'通讯自检回环：收到 "{r.msg.value}"')
+        return Response(ResStatus.eOk, "echo success", "echo: " + r.msg.value)
 
     # 运动指令：先跨服务留痕，再返回 MoveResp 强类型到位回执
     def move(self, msg) -> Response:
-        cmd = unpack(msg, MoveCmd)
-        if cmd is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, MoveCmd.TYPE_NAME))
+        r = unpack(msg, MoveCmd)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        cmd = r.msg
         log().tag("arm.motion").info(f"运动指令执行：目标 ({cmd.x}, {cmd.y}, {cmd.z})mm，倍率 {cmd.speed_ratio}")
 
         # 跨服务调用：成员 request() 与 server().url(u).msg(msg).request() 等价，URL 直达留痕工位；

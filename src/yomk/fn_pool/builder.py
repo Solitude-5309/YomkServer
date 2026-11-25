@@ -4,7 +4,7 @@
 """
 
 from yomk.msgs.fn_pool import CallFunction, FuncInfoList, Function
-from yomk.msgs.server import ResStatus
+from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import require_msg_payload, unpack
 from yomk.server import _facade
@@ -84,11 +84,14 @@ class FnPoolBuilder:
     def list(self):
         """Return all registered function names as a plain list.
 
-        返回全部已注册函数名（裸 list）；未初始化返回 Invalid。
+        返回全部已注册函数名（裸 list）；未初始化返回 Invalid，类型不符返回 No。
         """
         res = _facade.api_request(FP_NAMES, None)
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, StringArray).items
+            r = unpack(res.data, StringArray)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
     def get_info(self):
@@ -101,11 +104,14 @@ class FnPoolBuilder:
     def all(self):
         """Return introspection metadata of all functions as a plain list.
 
-        返回全部已注册函数的内省元信息（裸 list）；未初始化返回 Invalid。
+        返回全部已注册函数的内省元信息（裸 list）；未初始化返回 Invalid，类型不符返回 No。
         """
         res = _facade.api_request(FP_ALL, None)
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, FuncInfoList).items
+            r = unpack(res.data, FuncInfoList)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
 

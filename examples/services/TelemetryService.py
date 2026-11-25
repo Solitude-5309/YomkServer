@@ -57,10 +57,9 @@ class TelemetryService(YomkService):
 
     # 留痕功能函数：URL 为 /TelemetryService/record，记录一条运动留痕并回执
     def record(self, msg: Any) -> Response:
-        # 载荷一律消息包：按期望类型解包，None 或类型不符统一拒绝
-        trace = unpack(msg, String)
-        if trace is None:
-            return Response(
-                ResStatus.eNo, " msg is null or msg is not String. ")
-        log().tag("arm.telemetry").info(f"留痕记录 [实例#{self.instance_id}]：{trace.value}")
+        # 载荷一律消息包：按期望类型解包，判真取 msg、判假取 r.error 统一拒绝
+        r = unpack(msg, String)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        log().tag("arm.telemetry").info(f"留痕记录 [实例#{self.instance_id}]：{r.msg.value}")
         return Response(ResStatus.eOk, "trace recorded")

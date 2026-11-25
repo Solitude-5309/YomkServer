@@ -3,7 +3,6 @@
 # 注册（见 test/test_extension.py）；框架只拉起 5 个内置服务。
 # 调用方推荐优先使用框架封装好的统一请求接口访问本服务：
 #   server().url(EXTENSION_ECHO).msg(ExtensionRequest("hello ext")).request()
-from yomk.msgs.std_msg import type_mismatch
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.YomkMsg import unpack
 from yomk.msgs.extension import ExtensionRequest, ExtensionResponse
@@ -25,14 +24,14 @@ class ExtensionService(YomkService):
         return 0
 
     def echo(self, msg):
-        # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）；
-        # 失败文案走 type_mismatch——期望/实际两侧均为 TYPE_NAME，零手写报文名；
+        # 端点体内 unpack 判真取消息、判假取 r.error（责任在端点作者，框架不做分发校验）；
+        # 失败文案已由 unpack 生成——期望/实际双侧均为 TYPE_NAME，零手写报文名；
         # 返回框架 Response，强类型回包以 ExtensionResponse 承载在 data 位
-        if unpack(msg, ExtensionRequest) is None:
-            return Response(ResStatus.eNo,
-                            type_mismatch(msg, ExtensionRequest.TYPE_NAME))
+        r = unpack(msg, ExtensionRequest)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
         return Response(ResStatus.eOk, "echo",
-                        ExtensionResponse("ok", "echo", msg.payload))
+                        ExtensionResponse("ok", "echo", r.msg.payload))
 
     def version(self, msg):
         # 版本查询终结（对齐 C++ ExtensionService::version）：版本号单一来源为

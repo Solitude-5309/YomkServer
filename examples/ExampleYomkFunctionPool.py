@@ -47,7 +47,7 @@ ExampleYomkFunctionPool —— YomkFunctionPool 动态函数池示例：机械�
 
 import sys
 
-from yomk.msgs import String, StringArray, type_mismatch, unpack
+from yomk.msgs import String, StringArray, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import server
 from yomk.fn_pool import fn_pool
@@ -127,15 +127,15 @@ def log_verify(text):
 # 负载合计工具：跨模块共享的无状态计算函数（场景 1 以无元数据形态登记）。
 # 入参为各轴负载消息（StringArray），合计结果同时放进 msg 与 data——调用方两者都能拿到
 def payload_sum(msg) -> Response:
-    # 入参守卫：按期望类型解包，None 或类型不符时自动返回 eNo
-    # （守卫置于函数入口，判空与拒绝文案同处一地，调用方空参只会收到拒绝不会异常中断，见场景 3）
-    loads = unpack(msg, StringArray)
-    if loads is None:
-        return Response(ResStatus.eNo, type_mismatch(msg, StringArray.TYPE_NAME))
+    # 入参守卫：按期望类型解包，判真取 msg、判假取 r.error 并返回 eNo
+    # （守卫置于函数入口，判空/类型不符与拒绝文案同处一地，调用方空参只会收到拒绝不会异常中断，见场景 3）
+    r = unpack(msg, StringArray)
+    if not r:
+        return Response(ResStatus.eNo, r.error)
 
-    log().tag("arm.tool").info(f"负载合计工具执行：收到 {len(loads.items)} 轴负载（调用方线程同步执行）")
+    log().tag("arm.tool").info(f"负载合计工具执行：收到 {len(r.msg.items)} 轴负载（调用方线程同步执行）")
 
-    total_kg = sum(int(load) for load in loads.items)
+    total_kg = sum(int(load) for load in r.msg.items)
 
     log().tag("arm.tool").info(f"负载合计工具完成：payload={total_kg}kg")
 
@@ -145,11 +145,11 @@ def payload_sum(msg) -> Response:
 
 # 班次握手工具：演示带元数据的登记与调用（场景 2 以类型+说明形态登记，场景 4 被热替换）
 def handshake(msg) -> Response:
-    name = unpack(msg, String)
-    if name is None:
-        return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
-    log().tag("arm.tool").info(f"班次握手工具执行：向 {name.value} 回执问候")
-    return Response(ResStatus.eOk, "shift hello, " + name.value)
+    r = unpack(msg, String)
+    if not r:
+        return Response(ResStatus.eNo, r.error)
+    log().tag("arm.tool").info(f"班次握手工具执行：向 {r.msg.value} 回执问候")
+    return Response(ResStatus.eOk, "shift hello, " + r.msg.value)
 
 # ---------------------------------------------------------------------------
 # 6 个场景小示例：每个函数独立小闭环，可单独阅读；main 按产线班次顺序编排。
@@ -219,11 +219,11 @@ def show_arm_tool_hot_swap():
         "注销；msg_name 与说明元数据随新注册整体刷新，随后调用走新实现。")
 
     def handshake_v2(msg) -> Response:
-        name = unpack(msg, String)
-        if name is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
-        log().tag("arm.tool").info(f"班次握手工具 V2 执行：向 {name.value} 升级问候")
-        return Response(ResStatus.eOk, "shift hello V2, " + name.value)
+        r = unpack(msg, String)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        log().tag("arm.tool").info(f"班次握手工具 V2 执行：向 {r.msg.value} 升级问候")
+        return Response(ResStatus.eOk, "shift hello V2, " + r.msg.value)
 
     log_action("热替换班次握手工具 tool.handshake（V2）", "/YomkFunctionPool/register tool.handshake (V2, 带声明类型)",
                lambda: fn_pool().fn_name("tool.handshake").fn(handshake_v2).msg_name(String.TYPE_NAME).install())

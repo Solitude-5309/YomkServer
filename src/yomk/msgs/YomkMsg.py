@@ -1,7 +1,8 @@
-"""Message base class, typed unpacking and type diagnostics.
+"""Message base class, typed unpacking and failure text.
 
-消息基类、类型化解包与类型诊断：TYPE_NAME 继承即得、随重命名自动跟随；unpack 未命中
-返回 None；type_mismatch 生成标准错误文案，实际类型名取值私有化。
+消息基类、类型化解包与失败文案：TYPE_NAME 继承即得、随重命名自动跟随；unpack 返回
+UnpackResult（判真取 msg、判假取 error），标准不符文案由 unpack 生成，实际类型名
+取值私有化。
 """
 
 _READ_ONLY = "TYPE_NAME is a read-only class constant"
@@ -75,6 +76,38 @@ class YomkMsg(metaclass=_YomkMsgMeta):
                                         + "." + cls.__qualname__))
 
 
+class UnpackResult:
+    """Outcome of unpack: the decoded message and the failure reason.
+
+    解包结果：判真时 ``msg`` 为命中消息、``error`` 为空串；判假时 ``msg`` 为 None、
+    ``error`` 为标准文案。对齐 C++ ``UnpackResult<Msg>``——单一对象同时承载解码结果与
+    失败原因，期望类型名只在 ``unpack`` 内书写一次。两个出口均为只读属性（C++ 侧出口
+    恒为 const）。
+    """
+
+    __slots__ = ("_msg", "_error")
+
+    def __init__(self, msg, error):
+        self._msg = msg
+        self._error = error
+
+    def __bool__(self):
+        return self._msg is not None
+
+    @property
+    def msg(self):
+        return self._msg
+
+    @property
+    def error(self):
+        return self._error
+
+    def __repr__(self):
+        if self._msg is not None:
+            return "UnpackResult(msg=" + repr(self._msg) + ")"
+        return "UnpackResult(error=" + repr(self._error) + ")"
+
+
 def is_msg_instance(msg):
     """Return True only for a concrete YomkMsg instance.
 
@@ -118,26 +151,26 @@ def require_msg_subclass(cls, who):
 
 
 def unpack(msg, cls):
-    """Return msg when it matches cls by TYPE_NAME, otherwise None.
+    """Return an UnpackResult carrying the decoded message or the failure reason.
 
-    按 TYPE_NAME 精确比对解包，未命中返回 None，不抛异常；msg 可为 None 或体系外
-    对象（无类型边界探测）。cls 必须是具体消息类，否则 ``TypeError``。子类因
-    TYPE_NAME 不同不会被当作父类实例命中，这是设计行为。
+    按 TYPE_NAME 精确比对解包：命中时结果判真，``msg`` 为传入实例本身；未命中时结果
+    判假，``msg`` 为 None、``error`` 为标准文案（空包报 ``got 'null'``）。不做类型边界
+    探测，msg 可为 None 或体系外对象。cls 必须是具体消息类，否则 ``TypeError``。子类
+    因 TYPE_NAME 不同不会被当作父类实例命中，这是设计行为。
     """
-    if msg is None:
-        return None
     require_msg_subclass(cls, "unpack")
     if is_msg_instance(msg) and type(msg).TYPE_NAME == cls.TYPE_NAME:
-        return msg
-    return None
+        return UnpackResult(msg, "")
+    return UnpackResult(None, "msg is not " + cls.TYPE_NAME
+                        + ", got '" + _yomk_type_name_of(msg) + "'")
 
 
 def _yomk_type_name_of(msg):
     """Return the runtime type name of a message, or a descriptive name otherwise.
 
     内部取值：返回消息的运行期类型名（TYPE_NAME）；None 返回 "null"，类对象返回其类名，
-    其余返回宿主类名，从不以 "null" 掩盖误用。仅供 type_mismatch / require_* 与 ctx
-    诊断文案使用；公开面直连只读 ``TYPE_NAME``，本函数不导出。
+    其余返回宿主类名，从不以 "null" 掩盖误用。仅供 unpack / require_* 与 ctx 诊断文案
+    使用；公开面直连只读 ``TYPE_NAME``，本函数不导出。
     """
     if msg is None:
         return "null"
@@ -146,11 +179,3 @@ def _yomk_type_name_of(msg):
     if isinstance(msg, type):
         return msg.__name__
     return type(msg).__name__
-
-
-def type_mismatch(msg, expected):
-    """Build the standard type-mismatch text, expecting ``cls.TYPE_NAME``.
-
-    构造标准类型不符文案；expected 由调用方传 ``cls.TYPE_NAME``。
-    """
-    return "msg is not " + expected + ", got '" + _yomk_type_name_of(msg) + "'"

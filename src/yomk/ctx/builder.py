@@ -238,14 +238,17 @@ class ContextBuilder:
     def keys(self):
         """Return all key names in the group as a plain list.
 
-        返回组内全部键名（裸 list）；未初始化返回 Invalid。
+        返回组内全部键名（裸 list）；未初始化返回 Invalid，类型不符返回 No。
         """
         guard = self._require_server()
         if guard:
             return guard
         res = _facade.api_request(CTX_KEYS, String(self._group))
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, StringArray).items
+            r = unpack(res.data, StringArray)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
     def info(self):
@@ -261,27 +264,33 @@ class ContextBuilder:
     def groups(self):
         """Return all group names as a plain list.
 
-        返回全部组名（裸 list）；未初始化返回 Invalid。
+        返回全部组名（裸 list）；未初始化返回 Invalid，类型不符返回 No。
         """
         guard = self._require_server()
         if guard:
             return guard
         res = _facade.api_request(CTX_GROUPS, None)
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, StringArray).items
+            r = unpack(res.data, StringArray)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
     def all(self):
         """Return grouped introspection metadata as a plain list.
 
-        返回全部组及其键的内省元信息（裸 list）；未初始化返回 Invalid。
+        返回全部组及其键的内省元信息（裸 list）；未初始化返回 Invalid，类型不符返回 No。
         """
         guard = self._require_server()
         if guard:
             return guard
         res = _facade.api_request(CTX_ALL, None)
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, ContextGroupInfoList).items
+            r = unpack(res.data, ContextGroupInfoList)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
     def msg(self, cls):

@@ -100,8 +100,8 @@ r = fn_pool().fn_name("fp_echo").fn(echo_func).install()
 check(r == ResStatus.eOk, "REGISTER 注册函数返回 eOk")
 r = fn_pool().fn_name("fp_echo").msg(String("hello_fp")).call()
 check(r.status == ResStatus.eOk, "CALL 已注册函数返回 eOk")
-check(unpack(r.data, String) is not None and
-      unpack(r.data, String).value == "hello_fp" and r.msg == "echo",
+hit = unpack(r.data, String)
+check(hit and hit.msg.value == "hello_fp" and r.msg == "echo",
       "CALL 回传消息一致（echo 语义）")
 r = fn_pool().fn_name("fp_echo").uninstall()
 check(r == ResStatus.eOk, "UNREGISTER 注销函数返回 eOk")

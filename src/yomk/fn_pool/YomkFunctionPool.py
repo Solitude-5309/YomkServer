@@ -4,7 +4,7 @@ from yomk._diag import warn as diag_warn
 from yomk.msgs.fn_pool import CallFunction, FuncInfo, FuncInfoList, Function
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray
-from yomk.msgs.YomkMsg import type_mismatch, unpack
+from yomk.msgs.YomkMsg import unpack
 from yomk.server import YomkService
 from yomk.url.fn_pool import (
     FP_ALL_DESC,
@@ -39,36 +39,36 @@ class YomkFunctionPool(YomkService):
     def registerFunction(self, function):
         # 端点载荷形参一律不带类型注解：Cython 会把注解编译为边界 TypeError，
         # 使下方运行时守卫失效（pyi 同理标注 Any）
-        if unpack(function, Function) is None:
-            return Response(ResStatus.eNo,
-                            type_mismatch(function, Function.TYPE_NAME))
+        r = unpack(function, Function)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
 
         # 合一校验：空名或空函数体均视为参数无效；
         # eNo 为 not-found/业务拒绝框架惯例，eInvalid 仅用于参数无效
-        if not function.name or not function.func:
+        if not r.msg.name or not r.msg.func:
             return Response(ResStatus.eInvalid, "funcName or func is empty")
 
         with self.m_functionsMutex.gen_wlock():
-            if function.name in self.m_functions:
+            if r.msg.name in self.m_functions:
                 # 重复名=热替换语义：整对象替换覆盖 func、msg_name、description
                 # 三字段（未在替换对象上声明的元数据即被清除）；WARN 可见 + 同串
                 # Response.msg，误覆盖默认不静默。
-                msg = ("function '" + function.name +
+                msg = ("function '" + r.msg.name +
                        "' already exists, hot-swap to current function")
                 diag_warn(msg)
-                self.m_functions[function.name] = function
+                self.m_functions[r.msg.name] = r.msg
                 return Response(ResStatus.eOk, msg)
-            self.m_functions[function.name] = function
+            self.m_functions[r.msg.name] = r.msg
 
         return Response(ResStatus.eOk, "register function success")
 
     def unRegisterFunction(self, func_name):
         # 注销已注册函数：参数无效 eInvalid、
         # 未注册 eNo（not-found 框架惯例；eInvalid 仅用于参数无效）
-        if unpack(func_name, String) is None:
-            return Response(ResStatus.eNo,
-                            type_mismatch(func_name, String.TYPE_NAME))
-        func_name = func_name.value
+        r = unpack(func_name, String)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        func_name = r.msg.value
         if not func_name:
             return Response(ResStatus.eInvalid, "funcName is empty")
 
@@ -84,23 +84,23 @@ class YomkFunctionPool(YomkService):
         return Response(ResStatus.eOk, "unregister function success")
 
     def callFunction(self, call_func):
-        if unpack(call_func, CallFunction) is None:
-            return Response(ResStatus.eNo,
-                            type_mismatch(call_func, CallFunction.TYPE_NAME))
+        r = unpack(call_func, CallFunction)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
 
-        if not call_func.name:
+        if not r.msg.name:
             return Response(ResStatus.eInvalid, "funcName is empty")
 
         with self.m_functionsMutex.gen_rlock():
-            entry = self.m_functions.get(call_func.name)
+            entry = self.m_functions.get(r.msg.name)
             if entry is None:
                 # 未注册同 unregister:ResStatus::Failed(not-found 框架惯例)
                 return Response(
                     ResStatus.eNo,
-                    "function '" + call_func.name + "' is not registered")
+                    "function '" + r.msg.name + "' is not registered")
             func = entry.func
 
-        return func(call_func.msg)
+        return func(r.msg.msg)
 
     def funcNames(self, msg):
         # 内省：列出全部注册函数名（读锁内排序，:map 字典序）
@@ -110,10 +110,10 @@ class YomkFunctionPool(YomkService):
 
     def funcInfo(self, func_name):
         # 内省：单个函数元信息查询，命中返回结构化 FuncInfo 包（msg 恒 "ok"，数据走 data）
-        if unpack(func_name, String) is None:
-            return Response(ResStatus.eNo,
-                            type_mismatch(func_name, String.TYPE_NAME))
-        func_name = func_name.value
+        r = unpack(func_name, String)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        func_name = r.msg.value
         if not func_name:
             return Response(ResStatus.eInvalid, "funcName is empty")
 

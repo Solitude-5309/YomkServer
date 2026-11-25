@@ -4,7 +4,7 @@
 """
 
 from yomk.msgs.fn_pool import FuncInfoList
-from yomk.msgs.server import ResStatus
+from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.srv_info import ServerServiceInfoList
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import unpack
@@ -47,21 +47,27 @@ class SrvInfoBuilder:
     def services(self):
         """Return all registered service names as a plain list.
 
-        返回全部已注册服务名（裸 list）；服务器已销毁返回 No。
+        返回全部已注册服务名（裸 list）；服务器已销毁返回 No，类型不符返回 No。
         """
         res = _facade.api_request(SRV_SERVICES, None)
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, StringArray).items
+            r = unpack(res.data, StringArray)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
     def functions(self):
         """Return the function list of the accumulated service.
 
-        返回累积服务的函数清单（裸 list）；服务不存在返回空表。
+        返回累积服务的函数清单（裸 list）；服务不存在返回空表，类型不符返回 No。
         """
         res = _facade.api_request(SRV_FUNCTIONS, String(self._srv_name))
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, FuncInfoList).items
+            r = unpack(res.data, FuncInfoList)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
     def get_info(self):
@@ -74,11 +80,14 @@ class SrvInfoBuilder:
     def all(self):
         """Return all services with their functions as a plain list.
 
-        返回全部服务及其函数的内省快照（裸 list）；服务器已销毁返回 No。
+        返回全部服务及其函数的内省快照（裸 list）；服务器已销毁返回 No，类型不符返回 No。
         """
         res = _facade.api_request(SRV_ALL, None)
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, ServerServiceInfoList).items
+            r = unpack(res.data, ServerServiceInfoList)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
 

@@ -4,7 +4,7 @@
 """
 
 from yomk.msgs.event_loop import Event, EventLoopInfoList, EventLoopOpts, EventLoopQuery
-from yomk.msgs.server import ResStatus
+from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import require_msg_payload, unpack
 from yomk.server import _facade
@@ -115,11 +115,14 @@ class EventLoopBuilder:
     def list(self):
         """Return all loop names as a plain list.
 
-        返回全部循环名（裸 list）；未初始化返回 Invalid。
+        返回全部循环名（裸 list）；未初始化返回 Invalid，类型不符返回 No。
         """
         res = _facade.api_request(LOOP_LOOPS, None)
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, StringArray).items
+            r = unpack(res.data, StringArray)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
     def get_info(self):
@@ -133,11 +136,14 @@ class EventLoopBuilder:
     def all(self):
         """Return introspection metadata of all loops as a plain list.
 
-        返回全部循环的内省元信息（裸 list）；未初始化返回 Invalid。
+        返回全部循环的内省元信息（裸 list）；未初始化返回 Invalid，类型不符返回 No。
         """
         res = _facade.api_request(LOOP_ALL, None)
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, EventLoopInfoList).items
+            r = unpack(res.data, EventLoopInfoList)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
 

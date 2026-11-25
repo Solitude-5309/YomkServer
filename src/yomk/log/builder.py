@@ -16,7 +16,7 @@ from yomk.msgs.log import (
     LogFile,
     LoggerQuery,
 )
-from yomk.msgs.server import ResStatus
+from yomk.msgs.server import ResStatus, Response
 from yomk.server import _facade
 from yomk.url.log import (
     LOG_ALL,
@@ -198,7 +198,10 @@ class ConsoleMgrBuilder:
     def list(self):
         res = _facade.api_request(LOG_LOGGERS, String("console"))
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, StringArray).items
+            r = unpack(res.data, StringArray)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
     def get_info(self):
@@ -250,7 +253,10 @@ class FileMgrBuilder:
     def list(self):
         res = _facade.api_request(LOG_LOGGERS, String("file"))
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, StringArray).items
+            r = unpack(res.data, StringArray)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
     def get_info(self):
@@ -333,7 +339,10 @@ class LogMgrBuilder:
     def all(self):
         res = _facade.api_request(LOG_ALL, None)
         if res.status == ResStatus.eOk:
-            res.data = unpack(res.data, LoggerInfoList).items
+            r = unpack(res.data, LoggerInfoList)
+            if not r:
+                return Response(ResStatus.eNo, r.error)
+            res.data = r.msg.items
         return res
 
 

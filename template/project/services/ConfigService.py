@@ -5,7 +5,7 @@ from yomk.ctx import ctx
 from yomk.log import log
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.YomkMsg import unpack
-from yomk.msgs.std_msg import String, type_mismatch
+from yomk.msgs.std_msg import String
 from msgs.YomkMsgs import ConfigKey, ConfigKeyValue
 
 
@@ -40,15 +40,16 @@ class ConfigService(YomkService):
         return Response(ResStatus.eOk, "ok")
 
     def get_config(self, msg):
-        # 端点体内 unpack 精确校验（责任在端点作者，框架不做分发校验）；
-        # 失败文案走 type_mismatch——期望/实际双侧均为 TYPE_NAME，零手写报文名
-        if unpack(msg, ConfigKey) is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, ConfigKey.TYPE_NAME))
-        tokens = msg.key.split('.')
+        # 端点体内 unpack 判真取消息、判假取 r.error（责任在端点作者，框架不做分发校验）；
+        # 失败文案由 unpack 生成——期望/实际双侧均为 TYPE_NAME，零手写报文名
+        r = unpack(msg, ConfigKey)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        tokens = r.msg.key.split('.')
         current = self.config_json
         for token in tokens:
             if not isinstance(current, dict) or token not in current:
-                return Response(ResStatus.eNo, "key not found: " + msg.key)
+                return Response(ResStatus.eNo, "key not found: " + r.msg.key)
             current = current[token]
 
         if isinstance(current, str):
@@ -58,17 +59,17 @@ class ConfigService(YomkService):
         return Response(ResStatus.eOk, "ok", value)
 
     def set_config(self, msg):
-        if unpack(msg, ConfigKeyValue) is None:
-            return Response(ResStatus.eNo,
-                            type_mismatch(msg, ConfigKeyValue.TYPE_NAME))
-        tokens = msg.key.split('.')
+        r = unpack(msg, ConfigKeyValue)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        tokens = r.msg.key.split('.')
         current = self.config_json
         for token in tokens[:-1]:
             if not isinstance(current, dict):
-                return Response(ResStatus.eNo, "invalid key path: " + msg.key)
+                return Response(ResStatus.eNo, "invalid key path: " + r.msg.key)
             current = current.setdefault(token, {})
-        current[tokens[-1]] = msg.value
-        log().tag("ConfigService::set_config").info("set ", msg.key, " = ", msg.value)
+        current[tokens[-1]] = r.msg.value
+        log().tag("ConfigService::set_config").info("set ", r.msg.key, " = ", r.msg.value)
         return Response(ResStatus.eOk, "ok")
 
     def reload_config(self, msg):

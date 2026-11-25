@@ -132,9 +132,11 @@ def main():
     check(yomk.msgs.__file__ is not None,
           "锚点: yomk.msgs 层有 __init__（标准工具层顶层导出）")
     check(callable(getattr(yomk.msgs, "unpack", None))
+          and hasattr(yomk.msgs, "UnpackResult")
           and hasattr(yomk.msgs, "YomkMsg") and hasattr(yomk.msgs, "String")
-          and not hasattr(yomk.msgs, "type_name_of"),
-          "锚点: yomk.msgs 顶层导出标准工具与 std 类，不再导出 type_name_of（直连 TYPE_NAME）")
+          and not hasattr(yomk.msgs, "type_name_of")
+          and not hasattr(yomk.msgs, "type_mismatch"),
+          "锚点: yomk.msgs 顶层导出 unpack/UnpackResult 与 std 类，不再导出 type_name_of/type_mismatch")
 
     anchor_ok = True
     for head_name, (type_name, methods) in EXPECTED_HEADS.items():
@@ -234,9 +236,9 @@ def main():
     check(res.status == ResStatus.eOk and "/umb_echo" in (res.data or []),
           f"S6: list 含 /umb_echo（实际 {res.data!r}）")
     res = fn_pool().fn_name("/umb_echo").msg(String("ping")).call()
-    check(res.status == ResStatus.eOk and res.msg == "echo" and
-          unpack(res.data, String) is not None and
-          unpack(res.data, String).value == "ping",
+    hit = unpack(res.data, String)
+    check(res.status == ResStatus.eOk and res.msg == "echo" and hit
+          and hit.msg.value == "ping",
           f"S6: call 阻塞返回 msg==echo/data 透传（实际 {res.msg!r}/{res.data!r}）")
     res = fn_pool().all()
     check(res.status == ResStatus.eOk and res.data, "S6: all 非空")

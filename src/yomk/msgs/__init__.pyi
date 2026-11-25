@@ -1,5 +1,5 @@
+from yomk.msgs.YomkMsg import UnpackResult as UnpackResult
 from yomk.msgs.YomkMsg import YomkMsg as YomkMsg
-from yomk.msgs.YomkMsg import type_mismatch as type_mismatch
 from yomk.msgs.YomkMsg import unpack as unpack
 from yomk.msgs.std_msg import Bool as Bool
 from yomk.msgs.std_msg import BoolArray as BoolArray

@@ -16,10 +16,10 @@ S5. 框架结构体默认值：Function/CallFunction/Context/
 
 语言机制说明：
 - 消息类继承 YomkMsg 得 TYPE_NAME（闭环 2 起全部框架 msg 类接入），结构契约
-  本文件按类覆盖；TYPE_NAME 字面全查与 unpack/type_mismatch 语义、
+  本文件按类覆盖；TYPE_NAME 字面全查与 unpack/UnpackResult 语义、
   std 类 9 个由 test/yomk_msg/TestYomkMsg.py 承载，两文件分工不重叠
 - 消息包一律 YomkMsg 实例（信封构造的 msg 位置传消息）；TYPE_NAME 字面全查与
-  unpack/type_mismatch 语义、std 类 9 个由 test/yomk_msg/TestYomkMsg.py
+  unpack/UnpackResult 语义、std 类 9 个由 test/yomk_msg/TestYomkMsg.py
   承载，两文件分工不重叠
 - void* 裸指针形态为 C 系语言特有，python 无对应类型，不设对应用例；
   LogFile/Log/ConsoleLogProxy 已随 Logger 模块落地并覆盖断言

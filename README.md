@@ -47,7 +47,7 @@ YomkServerPy 是 YomkServer 的 Python 版本：核心服务逻辑以 Cython 编
 ```python
 from yomk.server import server, YomkService
 from yomk.log import log
-from yomk.msgs import String, type_mismatch, unpack
+from yomk.msgs import String, unpack
 from yomk.msgs.server import ResStatus, Response
 
 # 1. 自定义服务：继承 YomkService，init() 中安装功能函数
@@ -59,12 +59,12 @@ class MyService(YomkService):
         # 功能函数名以 / 开头；第三参声明期望消息类型（一律传 TYPE_NAME）
         self.install_func("/hello", self.hello, String.TYPE_NAME)
 
-    # 功能函数统一签名：(msg) -> Response；载荷是消息实例，unpack 精确校验
+    # 功能函数统一签名：(msg) -> Response；载荷是消息实例，unpack 判真取 msg、判假取 error
     def hello(self, msg):
-        req = unpack(msg, String)
-        if req is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
-        return Response(ResStatus.eOk, f"hello {req.value}")
+        r = unpack(msg, String)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        return Response(ResStatus.eOk, f"hello {r.msg.value}")
 
 # 2. 初始化框架（自动启动内置服务：Context / FunctionPool / EventLoop / Logger / ServerInfo）
 server().init()
@@ -313,7 +313,7 @@ resp = srv_info().fn_url("/MotionService/move").get_info()
 resp = srv_info().all()
 ```
 
-说明：期望消息类型由 `install_func()` 三参形式声明（函数池/事件循环侧为 `.msg_name()` 分面，**一律传 `msg.TYPE_NAME`**，内省值为全限定 TYPE_NAME），自定义函数说明经第四参或 `.description()` 声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 `unpack` + `type_mismatch` 承担，见 [docs/YomkMsg.md](docs/YomkMsg.md)）；自省读的是运行期服务表，注册/删除即时反映到下一次查询。完整可运行演示见 `examples/ExampleYomkServerInfo.py`（四类查询、注册/删除实时视图、关闭后返回值契约）。
+说明：期望消息类型由 `install_func()` 三参形式声明（函数池/事件循环侧为 `.msg_name()` 分面，**一律传 `msg.TYPE_NAME`**，内省值为全限定 TYPE_NAME），自定义函数说明经第四参或 `.description()` 声明（均仅作内省元数据，框架不做分发校验——类型校验由端点体内 `unpack` 的结果承担（判真取 `r.msg`、判假取 `r.error`），见 [docs/YomkMsg.md](docs/YomkMsg.md)）；自省读的是运行期服务表，注册/删除即时反映到下一次查询。完整可运行演示见 `examples/ExampleYomkServerInfo.py`（四类查询、注册/删除实时视图、关闭后返回值契约）。
 
 详见 [服务自省 YomkServerInfo.md](docs/YomkServerInfo.md)。
 
@@ -501,7 +501,7 @@ log().tag("demo").info("started, version =", server().version())
 
 ### 命名空间包形态（PEP 420）
 
-`yomk/` 与 `yomk/url/` 两层是命名空间包：**无 `__init__.py`，`import yomk` 不加载任何子模块，`yomk.__file__ is None`**；七个功能域（`yomk/server` 等）、`yomk/msgs/`（标准工具层常规包：顶层导出 YomkMsg/unpack/type_mismatch 与 std 类 9 个）及其消息子包、`yomk/url/<域>` 常量池子包是普通包。该形态是第三方扩展并入的基础（见 [第三方扩展指南](#第三方扩展指南yomk-命名空间并入)）。
+`yomk/` 与 `yomk/url/` 两层是命名空间包：**无 `__init__.py`，`import yomk` 不加载任何子模块，`yomk.__file__ is None`**；七个功能域（`yomk/server` 等）、`yomk/msgs/`（标准工具层常规包：顶层导出 YomkMsg/unpack/UnpackResult 与 std 类 9 个）及其消息子包、`yomk/url/<域>` 常量池子包是普通包。该形态是第三方扩展并入的基础（见 [第三方扩展指南](#第三方扩展指南yomk-命名空间并入)）。
 
 ### 从 YomkApi 迁移（对照表）
 

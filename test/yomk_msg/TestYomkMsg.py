@@ -10,14 +10,14 @@ S1. TYPE_NAME 生成契约：规则 B 自动生成（父包.限定名）、顶�
     （子类必然获得与父类不同的 TYPE_NAME）
 S2. std 类结构契约：9 个 std 类 TYPE_NAME 字面断言（yomk.msgs.String 等全限定
     形态）、标量字段 value 默认值、数组字段 items 默认值、构造透传
-S3. unpack 语义：命中返回原对象、跨类型未命中返回 None、子类不冒充父类
-    （子类自动 TYPE_NAME 不同）、裸 str 对 String 被拒（精确身份语义）、
-    非消息类/基类 cls 直接 TypeError
+S3. unpack 语义：命中判真且 msg 为原对象、未命中判假（跨类型/子类/裸 str/None）、
+    非消息类/基类 cls 直接 TypeError（got 侧文案由 unpack 生成）
 S4. 内部取值四态：YomkMsg 实例报 TYPE_NAME、None 报 "null"、类对象报其
     类名（如 "String"/"str"）、其余对象报宿主类名（返回类型名而非句子描述）；
     is_msg_instance / is_msg_subclass 判据真值表（require_msg_payload / unpack / 内部取值共用；None 由调用方判定）
-S5. type_mismatch 文案字面：标准格式 "msg is not <expected>, got '<actual>'"，
-    expected 传 cls.TYPE_NAME、actual 走内部取值四态
+S5. UnpackResult 契约：判真取 msg、判假取 error 的双出口；命中同一实例、
+    error 为空串；标准文案四组字面 "msg is not <cls.TYPE_NAME>, got '<actual>'";
+    出口只读（赋值即 AttributeError）
 S6. 框架 msg TYPE_NAME 全查（闭环 2）：22 类改继承 + 6 结构化 List，28 类
     TYPE_NAME 字面逐一断言；Event 的 yomk.event_loop re-export 同一性
 S7. 结构化 List msg 结构契约（闭环 2）：6 类 items 默认/None 归一/透传，
@@ -46,8 +46,8 @@ from yomk.msgs import (
     IntArray,
     String,
     StringArray,
+    UnpackResult,
     YomkMsg,
-    type_mismatch,
     unpack,
 )
 from yomk.msgs.YomkMsg import (
@@ -223,33 +223,41 @@ def s2_std_classes():
     check(StringArray(["a"]).items == ["a"], "StringArray 透传")
 
 
-# ============ S3. unpack 语义 ============
+# ============ S3. unpack 语义（结果对象） ============
 def s3_unpack():
-    print("===== S3. unpack 语义 =====")
+    print("===== S3. unpack 语义（结果对象） =====")
 
     s = String("hit")
 
-    # 命中：返回原对象（同一实例，非拷贝）
-    check(unpack(s, String) is s, "命中返回原对象")
+    # 命中：结果判真，msg 为原对象（同一实例，非拷贝），error 为空串
+    hit = unpack(s, String)
+    check(bool(hit) is True, "命中 → 判真")
+    check(hit.msg is s, "命中 msg 为原对象")
+    check(hit.error == "", "命中 error 为空串")
 
-    # 跨类型未命中：None（对齐 C++ nullptr）
-    check(unpack(Int(1), String) is None, "跨类型未命中 → None")
-    check(unpack(BoolArray([True]), StringArray) is None, "数组跨类型未命中 → None")
+    # 跨类型未命中：判假，msg 为 None
+    miss = unpack(Int(1), String)
+    check(bool(miss) is False, "跨类型未命中 → 判假")
+    check(miss.msg is None, "跨类型未命中 msg 为 None")
+    check(not unpack(BoolArray([True]), StringArray), "数组跨类型未命中 → 判假")
 
     # 子类不冒充父类：子类自动 TYPE_NAME 与父类不同（精确身份匹配）
     class S3SubString(String):
         pass
 
-    check(unpack(S3SubString("sub"), String) is None,
-          "子类实例解包为父类 → None（精确身份匹配）")
-    check(unpack(S3SubString("sub"), S3SubString) is not None,
+    check(not unpack(S3SubString("sub"), String),
+          "子类实例解包为父类 → 判假（精确身份匹配）")
+    check(bool(unpack(S3SubString("sub"), S3SubString)),
           "子类对自身解包命中")
 
     # A 方案精确身份语义：裸 str 不是 String 消息
-    check(unpack("bare", String) is None, "裸 str 对 String 被拒")
+    check(not unpack("bare", String), "裸 str 对 String 被拒")
 
-    # None 入参
-    check(unpack(None, String) is None, "None → None")
+    # None 入参：判假；与 is_msg_instance 的 None 判定无关
+    check(not unpack(None, String), "None → 判假")
+    check(unpack(None, String).error
+          == "msg is not yomk.msgs.String, got 'null'",
+          "None → 空包文案 got 'null'")
 
     # 非消息类/基类不是 unpack 的合法目标：直接 TypeError（无退化 isinstance）
     for cls, name in ((str, "str"), (int, "int"), (YomkMsg, "YomkMsg")):
@@ -269,13 +277,14 @@ def s3_unpack():
         check(str(e) == "unpack requires a concrete YomkMsg subclass, got 'str'",
               "unpack 非类目标 → TypeError 文案一致")
 
-    # None 作目标走内部取值空包态
-    try:
-        unpack("text", None)
-        check(False, "unpack 目标为 None 应抛 TypeError")
-    except TypeError as e:
-        check(str(e) == "unpack requires a concrete YomkMsg subclass, got 'null'",
-              "unpack None 目标 → TypeError 文案一致")
+    # None 作目标走内部取值空包态；入参 None 不再前置短路，同样先校验 cls
+    for arg, who in (("text", "unpack 目标为 None"), (None, "unpack 入参与目标均为 None")):
+        try:
+            unpack(arg, None)
+            check(False, who + " 应抛 TypeError")
+        except TypeError as e:
+            check(str(e) == "unpack requires a concrete YomkMsg subclass, got 'null'",
+                  who + " → TypeError 文案一致")
 
 
 # ============ S4. 内部取值四态（诊断文案共用） ============
@@ -330,23 +339,45 @@ def s4_type_name_of():
     check(_yomk_type_name_of(YomkMsg()) == "YomkMsg", "直接基类实例 → 宿主类名")
 
 
-# ============ S5. type_mismatch 文案字面 ============
-def s5_type_mismatch():
-    print("===== S5. type_mismatch 文案字面 =====")
+# ============ S5. UnpackResult 契约 ============
+def s5_unpack_result():
+    print("===== S5. UnpackResult 契约 =====")
 
-    # 标准格式："msg is not <expected>, got '<actual>'"
-    check(type_mismatch(None, String.TYPE_NAME)
+    s = String("hit")
+    hit = unpack(s, String)
+    check(isinstance(hit, UnpackResult), "命中结果为 UnpackResult")
+    check(bool(hit) is True and hit.msg is s and hit.error == "",
+          "命中：判真 / msg 同一实例 / error 为空串")
+    check(repr(hit).startswith("UnpackResult(msg="),
+          "命中 repr 含 UnpackResult 与 msg")
+
+    miss = unpack(Int(1), String)
+    check(bool(miss) is False and miss.msg is None,
+          "未命中：判假 / msg 为 None")
+    check(repr(miss).startswith("UnpackResult(error="),
+          "未命中 repr 含 UnpackResult 与 error")
+
+    # 标准文案四组：期望侧为 cls.TYPE_NAME，实际侧四态取值
+    check(unpack(None, String).error
           == "msg is not yomk.msgs.String, got 'null'",
-          "None 入参文案")
-    check(type_mismatch(Bool(True), String.TYPE_NAME)
+          "None 入参文案（got 侧 'null'）")
+    check(unpack(Bool(True), String).error
           == "msg is not yomk.msgs.String, got 'yomk.msgs.Bool'",
           "消息实例入参文案（got 侧报 TYPE_NAME）")
-    check(type_mismatch("bare", String.TYPE_NAME)
+    check(unpack("bare", String).error
           == "msg is not yomk.msgs.String, got 'str'",
           "体系外对象文案（got 侧报宿主类名，不冒充 null）")
-    check(type_mismatch(Int(1), Bool.TYPE_NAME)
+    check(unpack(Int(1), Bool).error
           == "msg is not yomk.msgs.Bool, got 'yomk.msgs.Int'",
           "期望/实际双侧均为 TYPE_NAME")
+
+    # 出口只读：赋值即 AttributeError（对齐 C++ 只读出口）
+    for attr, value in (("msg", None), ("error", "x")):
+        try:
+            setattr(hit, attr, value)
+            check(False, f"UnpackResult.{attr} 应只读")
+        except AttributeError:
+            check(True, f"UnpackResult.{attr} 只读 → AttributeError")
 
 
 # ============ S6. 框架 msg TYPE_NAME 全查（闭环 2） ============
@@ -425,7 +456,7 @@ def main():
     s2_std_classes()
     s3_unpack()
     s4_type_name_of()
-    s5_type_mismatch()
+    s5_unpack_result()
     s6_framework_type_names()
     s7_structured_lists()
 

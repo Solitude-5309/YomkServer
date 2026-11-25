@@ -54,7 +54,7 @@ xxx"——操作是用户视角的业务动作，随后结果行标注本次接�
 
 import sys
 
-from yomk.msgs import String, YomkMsg, type_mismatch, unpack
+from yomk.msgs import String, YomkMsg, unpack
 from yomk.msgs.server import ResStatus, Response
 from yomk.server import YomkService, server
 from yomk.srv_info import srv_info
@@ -186,19 +186,19 @@ class ArmStationService(YomkService):
 
     # 工位状态上报：收到状态文本回执确认
     def report(self, msg) -> Response:
-        text = unpack(msg, String)
-        if text is None:
-            return Response(ResStatus.eNo, type_mismatch(msg, String.TYPE_NAME))
-        log().tag("arm.station").info(f'工位状态上报：收到 "{text.value}"')
+        r = unpack(msg, String)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        log().tag("arm.station").info(f'工位状态上报：收到 "{r.msg.value}"')
         return Response(
-            ResStatus.eOk, "station report received: " + text.value)
+            ResStatus.eOk, "station report received: " + r.msg.value)
 
     # 质量抽检：按件抽检并回执结论
     def quality_check(self, msg) -> Response:
-        req = unpack(msg, QualityCheckReq)
-        if req is None:
-            return Response(
-                ResStatus.eNo, type_mismatch(msg, QualityCheckReq.TYPE_NAME))
+        r = unpack(msg, QualityCheckReq)
+        if not r:
+            return Response(ResStatus.eNo, r.error)
+        req = r.msg
         log().tag("arm.station").info(f"质量抽检执行：工位 {req.station} 抽检 {req.count} 件")
         return Response(
             ResStatus.eOk,
