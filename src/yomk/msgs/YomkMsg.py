@@ -1,7 +1,7 @@
 """Message base class, typed unpacking and type diagnostics.
 
 消息基类、类型化解包与类型诊断：TYPE_NAME 继承即得、随重命名自动跟随；unpack 未命中
-返回 None；type_name_of / type_mismatch 生成标准错误文案。
+返回 None；type_mismatch 生成标准错误文案，实际类型名取值私有化。
 """
 
 _READ_ONLY = "TYPE_NAME is a read-only class constant"
@@ -102,7 +102,7 @@ def require_msg_payload(msg, who):
     if is_msg_payload(msg):
         return
     raise TypeError(who + " requires a YomkMsg instance or None, got '"
-                    + type_name_of(msg) + "'")
+                    + _yomk_type_name_of(msg) + "'")
 
 
 def require_msg_subclass(cls, who):
@@ -114,7 +114,7 @@ def require_msg_subclass(cls, who):
     if is_msg_subclass(cls):
         return
     raise TypeError(who + " requires a concrete YomkMsg subclass, got '"
-                    + type_name_of(cls) + "'")
+                    + _yomk_type_name_of(cls) + "'")
 
 
 def unpack(msg, cls):
@@ -132,11 +132,12 @@ def unpack(msg, cls):
     return None
 
 
-def type_name_of(msg):
+def _yomk_type_name_of(msg):
     """Return the runtime type name of a message, or a descriptive name otherwise.
 
-    返回消息的运行期类型名（TYPE_NAME）；None 返回 "null"，类对象返回其类名，
-    其余返回宿主类名，从不以 "null" 掩盖误用。对应 C++ ``typeNameOf``。
+    内部取值：返回消息的运行期类型名（TYPE_NAME）；None 返回 "null"，类对象返回其类名，
+    其余返回宿主类名，从不以 "null" 掩盖误用。仅供 type_mismatch / require_* 与 ctx
+    诊断文案使用；公开面直连只读 ``TYPE_NAME``，本函数不导出。
     """
     if msg is None:
         return "null"
@@ -152,4 +153,4 @@ def type_mismatch(msg, expected):
 
     构造标准类型不符文案；expected 由调用方传 ``cls.TYPE_NAME``。
     """
-    return "msg is not " + expected + ", got '" + type_name_of(msg) + "'"
+    return "msg is not " + expected + ", got '" + _yomk_type_name_of(msg) + "'"

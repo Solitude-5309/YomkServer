@@ -501,7 +501,7 @@ log().tag("demo").info("started, version =", server().version())
 
 ### 命名空间包形态（PEP 420）
 
-`yomk/` 与 `yomk/url/` 两层是命名空间包：**无 `__init__.py`，`import yomk` 不加载任何子模块，`yomk.__file__ is None`**；七个功能域（`yomk/server` 等）、`yomk/msgs/`（标准工具层常规包：顶层导出 YomkMsg/unpack/type_name_of/type_mismatch 与 std 类 9 个）及其消息子包、`yomk/url/<域>` 常量池子包是普通包。该形态是第三方扩展并入的基础（见 [第三方扩展指南](#第三方扩展指南yomk-命名空间并入)）。
+`yomk/` 与 `yomk/url/` 两层是命名空间包：**无 `__init__.py`，`import yomk` 不加载任何子模块，`yomk.__file__ is None`**；七个功能域（`yomk/server` 等）、`yomk/msgs/`（标准工具层常规包：顶层导出 YomkMsg/unpack/type_mismatch 与 std 类 9 个）及其消息子包、`yomk/url/<域>` 常量池子包是普通包。该形态是第三方扩展并入的基础（见 [第三方扩展指南](#第三方扩展指南yomk-命名空间并入)）。
 
 ### 从 YomkApi 迁移（对照表）
 

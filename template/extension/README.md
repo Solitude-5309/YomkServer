@@ -34,7 +34,7 @@ template/extension/
 
 框架的 `yomk/` 与 `yomk/url/` 层是 **PEP 420 命名空间包**（无 `__init__.py`，
 `import yomk` 不加载任何子模块、`yomk.__file__ is None`）；`yomk/msgs/` 层自
-标准工具层起为常规包（有 `__init__.py`，顶层导出 YomkMsg/unpack/type_name_of/
+标准工具层起为常规包（有 `__init__.py`，顶层导出 YomkMsg/unpack/
 type_mismatch 与 std 类 9 个）。第三方扩展依赖包合并机制与框架共存，因此：
 
 - 扩展仓库**不得创建或覆盖** `yomk/__init__.py`、`yomk/msgs/__init__.py` 或

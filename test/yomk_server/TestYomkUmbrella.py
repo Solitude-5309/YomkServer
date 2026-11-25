@@ -133,8 +133,8 @@ def main():
           "锚点: yomk.msgs 层有 __init__（标准工具层顶层导出）")
     check(callable(getattr(yomk.msgs, "unpack", None))
           and hasattr(yomk.msgs, "YomkMsg") and hasattr(yomk.msgs, "String")
-          and callable(getattr(yomk.msgs, "type_name_of", None)),
-          "锚点: yomk.msgs 顶层导出标准工具与 std 类")
+          and not hasattr(yomk.msgs, "type_name_of"),
+          "锚点: yomk.msgs 顶层导出标准工具与 std 类，不再导出 type_name_of（直连 TYPE_NAME）")
 
     anchor_ok = True
     for head_name, (type_name, methods) in EXPECTED_HEADS.items():
