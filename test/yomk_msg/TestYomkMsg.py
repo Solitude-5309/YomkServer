@@ -15,7 +15,7 @@ S3. unpack 语义：命中返回原对象、跨类型未命中返回 None、子�
     非消息类/基类 cls 直接 TypeError
 S4. 内部取值四态：YomkMsg 实例报 TYPE_NAME、None 报 "null"、类对象报其
     类名（如 "String"/"str"）、其余对象报宿主类名（返回类型名而非句子描述）；
-    is_msg_payload / is_msg_subclass 判据真值表（require_msg_payload / unpack / 内部取值共用；None 属合法空载荷）
+    is_msg_instance / is_msg_subclass 判据真值表（require_msg_payload / unpack / 内部取值共用；None 由调用方判定）
 S5. type_mismatch 文案字面：标准格式 "msg is not <expected>, got '<actual>'"，
     expected 传 cls.TYPE_NAME、actual 走内部取值四态
 S6. 框架 msg TYPE_NAME 全查（闭环 2）：22 类改继承 + 6 结构化 List，28 类
@@ -52,7 +52,7 @@ from yomk.msgs import (
 )
 from yomk.msgs.YomkMsg import (
     _yomk_type_name_of,
-    is_msg_payload,
+    is_msg_instance,
     is_msg_subclass,
     require_msg_subclass,
 )
@@ -282,13 +282,13 @@ def s3_unpack():
 def s4_type_name_of():
     print("===== S4. 内部取值四态（诊断文案共用） =====")
 
-    # is_msg_payload：require_msg_payload / unpack / 内部取值共用载荷判据
-    check(is_msg_payload(String("x")) is True, "具体消息实例 → True")
-    check(is_msg_payload(StringArray(["a"])) is True, "数组实例 → True")
-    check(is_msg_payload(None) is True, "None 空载荷 → True")
-    check(is_msg_payload(YomkMsg()) is False, "直基类实例 → False")
-    check(is_msg_payload("bare") is False, "裸 str → False")
-    check(is_msg_payload(String) is False, "类对象 → False")
+    # is_msg_instance：require_msg_payload / unpack / 内部取值共用实例判据
+    check(is_msg_instance(String("x")) is True, "具体消息实例 → True")
+    check(is_msg_instance(StringArray(["a"])) is True, "数组实例 → True")
+    check(is_msg_instance(None) is False, "None → False（None 由调用方判定）")
+    check(is_msg_instance(YomkMsg()) is False, "直基类实例 → False")
+    check(is_msg_instance("bare") is False, "裸 str → False")
+    check(is_msg_instance(String) is False, "类对象 → False")
 
     # is_msg_subclass：require_msg_subclass / unpack 共用的类域判据
     check(is_msg_subclass(String) is True, "具体消息类 → True")

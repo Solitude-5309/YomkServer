@@ -75,13 +75,13 @@ class YomkMsg(metaclass=_YomkMsgMeta):
                                         + "." + cls.__qualname__))
 
 
-def is_msg_payload(msg):
-    """Return True for a concrete YomkMsg instance or None (empty payload).
+def is_msg_instance(msg):
+    """Return True only for a concrete YomkMsg instance.
 
-    载荷判据：具体消息子类实例或 None（空载荷）为真；YomkMsg 直基类实例、
-    类对象与体系外对象为假。与 require_msg_payload 契约同口径。
+    实例判据：仅具体消息子类实例为真；``None``（空载荷）、YomkMsg 直基类实例、
+    类对象与体系外对象均为假。``None`` 的合法性由调用方自行判定。
     """
-    return msg is None or (isinstance(msg, YomkMsg) and type(msg) is not YomkMsg)
+    return isinstance(msg, YomkMsg) and type(msg) is not YomkMsg
 
 
 def is_msg_subclass(cls):
@@ -99,7 +99,7 @@ def require_msg_payload(msg, who):
     类型契约守卫：msg 必须是具体消息实例或 None（空载荷），否则入口当场
     ``TypeError``。直接基类实例不可用（C++ 侧 YomkMsg 为抽象类），同样拒绝。
     """
-    if is_msg_payload(msg):
+    if msg is None or is_msg_instance(msg):
         return
     raise TypeError(who + " requires a YomkMsg instance or None, got '"
                     + _yomk_type_name_of(msg) + "'")
@@ -127,7 +127,7 @@ def unpack(msg, cls):
     if msg is None:
         return None
     require_msg_subclass(cls, "unpack")
-    if is_msg_payload(msg) and type(msg).TYPE_NAME == cls.TYPE_NAME:
+    if is_msg_instance(msg) and type(msg).TYPE_NAME == cls.TYPE_NAME:
         return msg
     return None
 
@@ -141,7 +141,7 @@ def _yomk_type_name_of(msg):
     """
     if msg is None:
         return "null"
-    if is_msg_payload(msg):
+    if is_msg_instance(msg):
         return type(msg).TYPE_NAME
     if isinstance(msg, type):
         return msg.__name__

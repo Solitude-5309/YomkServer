@@ -16,7 +16,7 @@ from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import (
     _yomk_type_name_of,
-    is_msg_payload,
+    is_msg_instance,
     require_msg_payload,
     require_msg_subclass,
     unpack,
@@ -82,8 +82,7 @@ class ContextValueBuilder:
         if v is None:
             self._default = None
             return self
-        if v is not None and is_msg_payload(v) \
-                and v.TYPE_NAME == self._cls.TYPE_NAME:
+        if is_msg_instance(v) and v.TYPE_NAME == self._cls.TYPE_NAME:
             self._default = v
             return self
         raise TypeError("with_default requires '" + self._cls.TYPE_NAME
@@ -106,7 +105,7 @@ class ContextValueBuilder:
         if res.status == ResStatus.eOk:
             if res.data is None:
                 return self._default
-            if res.data is not None and is_msg_payload(res.data) \
+            if is_msg_instance(res.data) \
                     and res.data.TYPE_NAME == self._cls.TYPE_NAME:
                 return res.data
             diag_warn("typed read context key '" + self._key

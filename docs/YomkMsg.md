@@ -76,7 +76,7 @@ def echo(self, msg):
 - `msg` 为 `None`、体系外对象或类型不符 → 返回 `None`，不抛异常（端点据此走 `type_mismatch` 拒绝路径）；
 - `cls` 必须是具体 `YomkMsg` 子类（不能是基类本身或体系外类）→ 违例抛 `TypeError`（`unpack requires a concrete YomkMsg subclass, got '<类名>'`），调用方编程错误不当成业务失败。
 
-`is_msg_payload(v)` / `is_msg_subclass(cls)`（同置 `yomk.msgs.YomkMsg`）：一对形态判据。`is_msg_payload` 判**载荷**——具体 `YomkMsg` 子类实例或 `None`（空载荷）为真，`YomkMsg` 直基类实例、类对象与体系外对象为假，与 `require_msg_payload` 契约同口径，由 `require_msg_payload` / `unpack` / 诊断文案共用；`is_msg_subclass` 判**类域**——只认具体消息子类（类对象本身），基类、非类与体系外类均为假，由 `require_msg_subclass` 与 `unpack` 共用。两处判据不再分散书写。
+`is_msg_instance(v)` / `is_msg_subclass(cls)`（同置 `yomk.msgs.YomkMsg`）：一对形态判据。`is_msg_instance` 判**实例**——仅具体 `YomkMsg` 子类实例为真，`None`（空载荷）、`YomkMsg` 直基类实例、类对象与体系外对象均为假，`None` 的合法性由调用方自行判定，由 `require_msg_payload` / `unpack` / 诊断文案共用；`is_msg_subclass` 判**类域**——只认具体消息子类（类对象本身），基类、非类与体系外类均为假，由 `require_msg_subclass` 与 `unpack` 共用。两处判据不再分散书写。
 
 守卫侧成对提供：`require_msg_payload(v, who)` 守载荷入口（具体实例或 `None`，违例 `TypeError`），`require_msg_subclass(cls, who)` 守类域（具体消息子类，违例 `TypeError`）；`unpack` 的 cls 守卫与 `ctx().key(k).msg(cls)` 均经后者，文案统一为 `"<who> requires a concrete YomkMsg subclass, got '<类名>'"`。
 
