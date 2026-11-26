@@ -15,7 +15,6 @@ from yomk.msgs.ctx import (
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import (
-    _mismatch_text,
     _type_name_of,
     require_msg_instance,
     require_msg_subclass,
@@ -87,9 +86,8 @@ class ContextValueBuilder:
         if v.TYPE_NAME == self._cls.TYPE_NAME:
             self._default = v
             return self
-        raise TypeError(_mismatch_text("with_default requires '"
-                                       + self._cls.TYPE_NAME + "'",
-                                       _type_name_of(v)))
+        raise TypeError("with_default requires '" + self._cls.TYPE_NAME
+                        + "', got '" + _type_name_of(v) + "'")
 
     def get(self):
         """Return the stored value, or the accumulated default when the read misses.

@@ -121,15 +121,6 @@ class UnpackResult:
         return "UnpackResult(error=" + repr(self._error) + ")"
 
 
-def _mismatch_text(subject, actual):
-    """Return the standard mismatch text used by unpack and both guards.
-
-    标准不符文案单点：``<subject>, got '<actual>'``。unpack 以 ``msg is not
-    <TYPE_NAME>`` 为 subject，守卫以 ``<who> requires <期望>`` 为 subject。
-    """
-    return subject + ", got '" + actual + "'"
-
-
 def require_msg_instance(msg, who):
     """Raise TypeError unless msg is a concrete YomkMsg instance.
 
@@ -139,8 +130,8 @@ def require_msg_instance(msg, who):
     """
     if isinstance(msg, YomkMsg):
         return
-    raise TypeError(_mismatch_text(who + " requires a YomkMsg instance",
-                                   _type_name_of(msg)))
+    raise TypeError(who + " requires a YomkMsg instance, got '"
+                    + _type_name_of(msg) + "'")
 
 
 def require_msg_subclass(cls, who):
@@ -153,8 +144,8 @@ def require_msg_subclass(cls, who):
     if (isinstance(cls, type) and issubclass(cls, YomkMsg)
         and cls is not YomkMsg):
         return
-    raise TypeError(_mismatch_text(
-        who + " requires a concrete YomkMsg subclass", _type_name_of(cls)))
+    raise TypeError(who + " requires a concrete YomkMsg subclass, got '"
+                    + _type_name_of(cls) + "'")
 
 
 def unpack(msg, cls):
@@ -168,8 +159,8 @@ def unpack(msg, cls):
     require_msg_subclass(cls, "unpack")
     if isinstance(msg, YomkMsg) and type(msg).TYPE_NAME == cls.TYPE_NAME:
         return UnpackResult(msg, "")
-    return UnpackResult(None, _mismatch_text("msg is not " + cls.TYPE_NAME,
-                                             _type_name_of(msg)))
+    return UnpackResult(None, "msg is not " + cls.TYPE_NAME
+                        + ", got '" + _type_name_of(msg) + "'")
 
 
 def _type_name_of(msg):

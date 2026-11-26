@@ -79,13 +79,13 @@ def echo(self, msg):
 
 基类为**抽象类**（`YomkMsg()` 直接 `TypeError`，对齐 C++ 纯虚基类），因此实例判据退化为语言原语 `isinstance(v, YomkMsg)`，不再需要额外的判据函数；`None`（空载荷）不是实例，其合法性由调用方自行判定。类域判据（只认具体消息子类，基类、非类与体系外类一律拒绝）内联在 `require_msg_subclass` 内部，不单独对外提供非抛判据；`unpack` 的 cls 守卫与 `ctx().key(k).msg(cls)` 均经该守卫。
 
-守卫侧成对提供：`require_msg_instance(v, who)` 守实例入口（基类抽象后 `isinstance` 即完备判据，违例 `TypeError`；`None` 不是实例，空载荷由调用方先判 `is not None` 再调用）——它对应 C++ 入口的静态类型约束，是 Python 侧的运行期补偿；`require_msg_subclass(cls, who)` 守类域（具体消息子类，违例 `TypeError`）；`unpack` 的 cls 守卫与 `ctx().key(k).msg(cls)` 均经后者。两类守卫与 `unpack` 共用同一文案构造器，格式统一为 `"<subject>, got '<actual>'"`（守卫 subject 为 `"<who> requires <期望>"`，unpack 为 `"msg is not <cls.TYPE_NAME>"`）。
+守卫侧成对提供：`require_msg_instance(v, who)` 守实例入口（基类抽象后 `isinstance` 即完备判据，违例 `TypeError`；`None` 不是实例，空载荷由调用方先判 `is not None` 再调用）——它对应 C++ 入口的静态类型约束，是 Python 侧的运行期补偿；`require_msg_subclass(cls, who)` 守类域（具体消息子类，违例 `TypeError`）；`unpack` 的 cls 守卫与 `ctx().key(k).msg(cls)` 均经后者。两类守卫与 `unpack` 的文案格式统一为 `"<subject>, got '<actual>'"`（各处直接拼装：守卫 subject 为 `"<who> requires <期望>"`，unpack 为 `"msg is not <cls.TYPE_NAME>"`）。
 
 `class UnpackResult`（与基类/解包/守卫同置 `yomk.msgs.YomkMsg`，`yomk.msgs` 顶层导出）：
 
 - `bool(r)`：命中为 `True`（`r.msg` 非 `None`），未命中为 `False`——端点统一写 `if not r:`；
 - `r.msg`：命中时为传入实例本身（同一对象，非拷贝）；未命中为 `None`；
-- `r.error`：命中为空串；未命中为标准文案 `"msg is not <cls.TYPE_NAME>, got '<actual>'"`，期望侧取自 `cls.TYPE_NAME`，实际侧四态取值（消息实例 → `TYPE_NAME`；`None` → `"null"`；类对象 → 类名；其余 → 宿主类名）经同一文案构造器生成，用户侧需要类型名时直连只读 `TYPE_NAME`；
+- `r.error`：命中为空串；未命中为标准文案 `"msg is not <cls.TYPE_NAME>, got '<actual>'"`，期望侧取自 `cls.TYPE_NAME`，实际侧四态取值（消息实例 → `TYPE_NAME`；`None` → `"null"`；类对象 → 类名；其余 → 宿主类名）按同一口径拼装，用户侧需要类型名时直连只读 `TYPE_NAME`；
 - 出口只读：`r.msg = ...` / `r.error = ...` 抛 `AttributeError`（对齐 C++ 只读出口）；`repr` 命中带 msg、未命中带 error。
 
 ## 完整示例（定义 → 声明 → 端点校验 → 调用）
