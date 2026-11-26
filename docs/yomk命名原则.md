@@ -7,9 +7,9 @@
 > 核心思想：**命名即契约——看到名字就能推断它所在的层、它的动作语义，以及它与同端点其他层的对应关系。**
 
 ## 1. C++ 基本命名（与主流 C++ 风格一致）
-1. 类型/类 PascalCase：`YomkPlugSysBuilder`；函数与成员函数 camelCase：`installFunc()`。
+1. 类型/类 PascalCase：`FnPoolBuilder`；函数与成员函数 camelCase：`installFunc()`。
 2. 链式 DSL 方法用 snake_case，与普通接口 camelCase 形成层感区分：
-   `plug_sys().plg_name(n).get_info()`。判据是"是否在链式表达式内"，不是"是否用户可见"。
+   `fn_pool().fn_name(n).install()`。判据是"是否在链式表达式内"，不是"是否用户可见"。
 3. 载荷 struct 字段 camelCase：`funcName`、`manifestPath`。
 4. 成员变量 `m_` 前缀；**所有非宏常量一律 `k` 前缀 + PascalCase**——编译期数值、字符串常量、
    URL 常量、语义描述常量、静态数据成员同此一条规则：`m_msgName`、`kTypeName`、`kDigitBufSize`、

@@ -63,11 +63,11 @@ using YomkResponseFunc = std::function<void(yomk::payload::Response response)>;
 
 ```cpp
 namespace yomk {
-    struct Event {
+    struct EventOpts {              // 事件投递用户输入面（内部执行单元 Event 另含 eventId/handler，见 src/event_loop/Event.h）
         std::string eventLoopName; YomkConstMsgPtr msg;
-        YomkServiceFunc serviceFunc; std::uint64_t eventId;
-        yomk::payload::Response response; std::function<void()> waitCallback;
-        std::string tag;   // 用户事件标记，post 时可选，仅内省展示
+        YomkServiceFunc serviceFunc;    // 单次处理器，空则回落循环默认处理函数
+        std::string tag;                // 用户事件标记，post 时可选，仅内省采样展示
+        YomkResponseFunc onDone;        // 异步完成回调，可空；仅 post 生效，与 post_wait 互斥
     };
     // logger=日志器名（服务端按其选择/惰性创建）；tag=记录标签（随记录显示 [tag]）
     // LogLevel 为命名空间级 enum class（见 YomkLoggerPayload.h），非 Log 内嵌枚举
