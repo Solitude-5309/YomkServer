@@ -140,7 +140,7 @@ def main():
                      "with_default requires a YomkMsg instance, got 'str'",
                      "with_default 裸值 TypeError 文案一致")
     check_type_error(lambda: ctx().key("str_key").msg(String).with_default(Int(0)),
-                     "with_default requires 'yomk.msgs.String' or None, got 'yomk.msgs.Int'",
+                     "with_default requires 'yomk.msgs.String', got 'yomk.msgs.Int'",
                      "with_default 类型不符 TypeError 文案一致")
     check(ctx().key("str_key").msg(String).with_default(None).get().value == "world",
           "with_default(None) 合法，命中仍返回现值")

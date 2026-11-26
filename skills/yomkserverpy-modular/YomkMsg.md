@@ -7,7 +7,7 @@
 1. **定义**：消息类必须 `class Xxx(YomkMsg)`（`from yomk.msgs import YomkMsg`）。`TYPE_NAME` 自动生成（最近一级父包 + "." + `__qualname__`，如 `yomk.msgs.ctx.Context`），随重命名自动跟随，**禁止手写**——类体显式定义 `TYPE_NAME` 直接 `TypeError`（对齐 C++ 只能经 `YOMK_DEFINE_MSG` 生成）；生成后即只读常量，类与实例上赋值/删除均抛 `AttributeError`（对齐 C++ `static constexpr`）。
 2. **声明**：`install_func` 第三参一律传 `Xxx.TYPE_NAME`（std 类同规，如 `String.TYPE_NAME`），**禁止手写报文串**（旧写法 `install_func("/x", fn, "Xxx")` 已废弃）。
 3. **校验**：端点体内 `r = unpack(msg, Xxx)` → `if not r: return Response(ResStatus.eNo, r.error)`，命中字段取 `r.msg.<field>`。**框架不做分发校验**（责任在端点作者）；失败文案由 `unpack` 内联生成——期望侧为 TYPE_NAME，实际侧体系内对象报自身 TYPE_NAME、体系外对象报宿主类名（如 `"str"`）。
-4. **载荷**：跨边界（`server().url().msg()` / `self.request()` / `fn_pool().msg()` / `event_loop().msg()` / `Event(...)` / `ctx().value()` / `with_default()`）一律传具体消息实例或 `None`（`None` 合法，由调用方自行判断；守卫 `require_msg_instance` 只认实例）；裸值、`dict`/`list`、体系外对象、`YomkMsg` 基类实例在入口当场 `TypeError`。
+4. **载荷**：跨边界（`server().url().msg()` / `self.request()` / `fn_pool().msg()` / `event_loop().msg()` / `Event(...)` / `ctx().value()` / `with_default()`）一律传具体消息实例或 `None`（`None` 合法，由调用方自行判断；守卫 `require_msg_instance` 只认实例）；裸值、`dict`/`list`、体系外对象在入口当场 `TypeError`（基类抽象不可实例化，不存在基类实例载荷）。
 
 ## unpack 语义速查
 
@@ -18,12 +18,10 @@
 | 子类实例解包为父类 | 判假（子类自动获得不同 TYPE_NAME，精确身份匹配） |
 | `unpack(None, String)` | 判假，`r.error` 为 `got 'null'` 文案 |
 | `unpack(x, 非消息类 / YomkMsg 基类)` | 抛 `TypeError`（`unpack requires a concrete YomkMsg subclass`） |
-| `is_msg_instance(具体消息实例)` | `True`（实例判据，`require_msg_instance`/`unpack`/诊断文案共用） |
-| `is_msg_instance(None / 基类实例 / 类对象 / 裸值)` | `False`（`None` 的合法性由调用方自行判定） |
-| `is_msg_subclass(具体消息类)` | `True`（类域判据，`require_msg_subclass`/`unpack` 共用） |
-| `is_msg_subclass(基类 / 体系外类 / 非类 / None)` | `False` |
+| `YomkMsg()` 直接实例化 | 抛 `TypeError`（基类抽象，对齐 C++ 纯虚基类） |
+| `isinstance(具体消息实例, YomkMsg)` | `True`（基类抽象后即完备实例判据；`None` 为 `False`） |
 | `require_msg_instance(具体消息实例, who)` | 不抛（入口实例守卫；`None` 由调用方先判 `is not None`） |
-| `require_msg_instance(None / 基类实例 / 裸值, who)` | 抛 `TypeError`（`"<who> requires a YomkMsg instance, got '<类名>'"`） |
+| `require_msg_instance(None / 裸值 / 类对象, who)` | 抛 `TypeError`（`"<who> requires a YomkMsg instance, got '<类名>'"`） |
 | `require_msg_subclass(具体消息类, who)` | 不抛（`unpack` 与 `msg(cls)` 的 cls 守卫） |
 | `require_msg_subclass(基类 / 体系外类 / 非类 / None, who)` | 抛 `TypeError`（`"<who> requires a concrete YomkMsg subclass, got '<类名>'"`） |
 

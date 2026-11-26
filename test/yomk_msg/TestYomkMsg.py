@@ -14,7 +14,7 @@ S3. unpack 语义：命中判真且 msg 为原对象、未命中判假（跨类�
     非消息类/基类 cls 直接 TypeError（got 侧文案由 unpack 生成）
 S4. 内部取值四态：YomkMsg 实例报 TYPE_NAME、None 报 "null"、类对象报其
     类名（如 "String"/"str"）、其余对象报宿主类名（返回类型名而非句子描述）；
-    is_msg_instance / is_msg_subclass 判据真值表（require_msg_instance / unpack / 内部取值共用；None 由调用方判定）
+    抽象基类不可直接实例化、require_* 守卫的接受/拒绝面与文案
 S5. UnpackResult 契约：判真取 msg、判假取 error 的双出口；命中同一实例、
     error 为空串；标准文案四组字面 "msg is not <cls.TYPE_NAME>, got '<actual>'";
     出口只读（赋值即 AttributeError）
@@ -28,8 +28,8 @@ S7. 结构化 List msg 结构契约（闭环 2）：6 类 items 默认/None 归�
   的 msg 类 TYPE_NAME 走顶层回退路径（"__main__.Xxx"），本身即回退用例
 - 动态 type() 构造可注入自定义 __module__，用于精确断言规则 B 的父包
   拼接行为
-- 直接基类 YomkMsg 实例不属于可用消息（C++ 抽象类不可实例化），所有
-  消息专用入口一律拒绝
+- 直接基类 YomkMsg 为抽象类（对齐 C++ 纯虚基类不可实例化），YomkMsg() 直接
+  TypeError；实例判据即 isinstance，消息专用入口一律拒绝非实例
 
 风格：纯脚本 + 失败计数，退出码非 0 表示存在失败用例（零第三方依赖）
 """
@@ -51,9 +51,8 @@ from yomk.msgs import (
     unpack,
 )
 from yomk.msgs.YomkMsg import (
-    _yomk_type_name_of,
-    is_msg_instance,
-    is_msg_subclass,
+    _type_name_of,
+    require_msg_instance,
     require_msg_subclass,
 )
 from yomk.msgs.ctx import (
@@ -253,7 +252,7 @@ def s3_unpack():
     # A 方案精确身份语义：裸 str 不是 String 消息
     check(not unpack("bare", String), "裸 str 对 String 被拒")
 
-    # None 入参：判假；与 is_msg_instance 的 None 判定无关
+    # None 入参：判假；实例判据即 isinstance，None 不是实例
     check(not unpack(None, String), "None → 判假")
     check(unpack(None, String).error
           == "msg is not yomk.msgs.String, got 'null'",
@@ -291,52 +290,60 @@ def s3_unpack():
 def s4_type_name_of():
     print("===== S4. 内部取值四态（诊断文案共用） =====")
 
-    # is_msg_instance：require_msg_instance / unpack / 内部取值共用实例判据
-    check(is_msg_instance(String("x")) is True, "具体消息实例 → True")
-    check(is_msg_instance(StringArray(["a"])) is True, "数组实例 → True")
-    check(is_msg_instance(None) is False, "None → False（None 由调用方判定）")
-    check(is_msg_instance(YomkMsg()) is False, "直基类实例 → False")
-    check(is_msg_instance("bare") is False, "裸 str → False")
-    check(is_msg_instance(String) is False, "类对象 → False")
+    # 抽象基类：YomkMsg() 直接 TypeError（对齐 C++ 纯虚基类不可实例化）
+    try:
+        YomkMsg()
+        check(False, "YomkMsg() 应抛 TypeError")
+    except TypeError as e:
+        check(str(e) == "YomkMsg is abstract; "
+                        "instantiate a concrete message class",
+              "YomkMsg() → TypeError 文案一致")
 
-    # is_msg_subclass：require_msg_subclass / unpack 共用的类域判据
-    check(is_msg_subclass(String) is True, "具体消息类 → True")
-    check(is_msg_subclass(StringArray) is True, "数组消息类 → True")
-    check(is_msg_subclass(YomkMsg) is False, "基类 → False")
-    check(is_msg_subclass(str) is False, "体系外类 → False")
-    check(is_msg_subclass("str") is False, "非类 → False")
-    check(is_msg_subclass(None) is False, "None → False")
+    # require_msg_instance：入口实例守卫（None 由调用方先判）
+    require_msg_instance(String("x"), "probe()")
+    check(True, "具体消息实例 → 不抛")
+    for bad, name in ((None, "null"), ("bare", "str"), (String, "String")):
+        try:
+            require_msg_instance(bad, "probe()")
+            check(False, "非实例应抛 TypeError")
+        except TypeError as e:
+            check(str(e) == "probe() requires a YomkMsg instance, got '"
+                            + name + "'",
+                  "非实例 → TypeError 文案一致")
 
     # require_msg_subclass：类域守卫，与 require_msg_instance 成对
-    require_msg_subclass(String, "probe()")
-    check(True, "具体消息类 → 不抛")
-    try:
-        require_msg_subclass(YomkMsg, "probe()")
-        check(False, "基类应抛 TypeError")
-    except TypeError as e:
-        check(str(e) == "probe() requires a concrete YomkMsg subclass, got 'YomkMsg'",
-              "基类 → TypeError 文案一致")
+    for good in (String, StringArray):
+        require_msg_subclass(good, "probe()")
+        check(True, good.__name__ + " → 不抛")
+    for bad, name in ((YomkMsg, "YomkMsg"), (str, "str"),
+                      ("str", "str"), (None, "null")):
+        try:
+            require_msg_subclass(bad, "probe()")
+            check(False, "非具体消息子类应抛 TypeError")
+        except TypeError as e:
+            check(str(e) == "probe() requires a concrete YomkMsg subclass, got '"
+                            + name + "'",
+                  "非具体消息子类 → TypeError 文案一致")
 
     # 第一态：YomkMsg 实例 → TYPE_NAME
-    check(_yomk_type_name_of(String("x")) == "yomk.msgs.String", "消息实例 → TYPE_NAME")
-    check(_yomk_type_name_of(Int(1)) == "yomk.msgs.Int", "Int 实例 → TYPE_NAME")
-    check(_yomk_type_name_of(StringArray(["a"])) == "yomk.msgs.StringArray", "数组实例 → TYPE_NAME")
+    check(_type_name_of(String("x")) == "yomk.msgs.String", "消息实例 → TYPE_NAME")
+    check(_type_name_of(Int(1)) == "yomk.msgs.Int", "Int 实例 → TYPE_NAME")
+    check(_type_name_of(StringArray(["a"])) == "yomk.msgs.StringArray", "数组实例 → TYPE_NAME")
 
     # 第二态：None → "null"（对齐 C++ typeMismatch 的空包语义）
-    check(_yomk_type_name_of(None) == "null", "None → 'null'")
+    check(_type_name_of(None) == "null", "None → 'null'")
 
     # 第三态：类对象 → 类自身名（cls 实参诊断；含消息子类，不报元类名 "type"）
-    check(_yomk_type_name_of(String) == "String", "消息类对象 → 类名")
-    check(_yomk_type_name_of(str) == "str", "内建类对象 → 类名")
-    check(_yomk_type_name_of(YomkMsg) == "YomkMsg", "基类对象 → 类名")
-    check(_yomk_type_name_of(type("Loose", (), {})) == "Loose", "体系外类对象 → 类名")
+    check(_type_name_of(String) == "String", "消息类对象 → 类名")
+    check(_type_name_of(str) == "str", "内建类对象 → 类名")
+    check(_type_name_of(YomkMsg) == "YomkMsg", "基类对象 → 类名")
+    check(_type_name_of(type("Loose", (), {})) == "Loose", "体系外类对象 → 类名")
 
     # 第四态：非类对象 → 宿主类名，不冒充框架类型名或空包
-    check(_yomk_type_name_of("bare") == "str", "裸 str → 宿主类名")
-    check(_yomk_type_name_of(123) == "int", "int → 宿主类名")
-    check(_yomk_type_name_of(["raw"]) == "list", "裸 list → 宿主类名")
-    check(_yomk_type_name_of(lambda: 1) == "function", "函数 → 宿主类名")
-    check(_yomk_type_name_of(YomkMsg()) == "YomkMsg", "直接基类实例 → 宿主类名")
+    check(_type_name_of("bare") == "str", "裸 str → 宿主类名")
+    check(_type_name_of(123) == "int", "int → 宿主类名")
+    check(_type_name_of(["raw"]) == "list", "裸 list → 宿主类名")
+    check(_type_name_of(lambda: 1) == "function", "函数 → 宿主类名")
 
 
 # ============ S5. UnpackResult 契约 ============

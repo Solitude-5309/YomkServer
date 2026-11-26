@@ -33,7 +33,7 @@ description: 基于YomkServerPy框架的模块化Python工程编程。核心理�
 1. **定义**：消息类必须继承 `YomkMsg`（`from yomk.msgs import YomkMsg`）——运行期类型名 `TYPE_NAME` 自动生成、随重命名跟随，**禁止手写**（类体显式定义直接 `TypeError`），生成后只读（类与实例上赋值/删除均抛 `AttributeError`）；标准标量/数组用 std 类（`String`/`Int`/`BoolArray`/... ，定义于 `yomk.msgs.std_msg`）。
 2. **声明**：`install_func` 第三参一律传 `Xxx.TYPE_NAME`（如 `String.TYPE_NAME`），**禁止手写报文串**（旧写法已废弃）；第四参写内省描述——内置端点统一五章节格式（`# Overview/# Inputs/# Outputs/# Behavior/# Notes`），自定义服务建议沿用并把常量放 `yomk.url.<域>` 常量池（见 docs/YomkServer.md「内省描述惯例」）。
 3. **校验**：端点体内 `r = unpack(msg, Xxx)` → `if not r: return Response(ResStatus.eNo, r.error)`——框架不做分发校验，责任在端点作者；失败文案由 `unpack` 内联生成（期望侧 TYPE_NAME，实际侧体系内报 TYPE_NAME、体系外报宿主类名如 `"str"`）。标量字段取值 `r.msg.value`；内省清单取值 `r.msg.items`。
-4. **载荷**：跨边界（`.msg()` / `self.request()` / `fn_pool().msg()` / `event_loop().msg()` / `Event(...)` / `ctx().value()` / `with_default()`）一律传具体消息实例或 `None`；裸值、`dict`/`list`、体系外对象、`YomkMsg` 基类实例在入口当场 `TypeError`。
+4. **载荷**：跨边界（`.msg()` / `self.request()` / `fn_pool().msg()` / `event_loop().msg()` / `Event(...)` / `ctx().value()` / `with_default()`）一律传具体消息实例或 `None`；裸值、`dict`/`list`、体系外对象在入口当场 `TypeError`（基类抽象不可实例化，不存在基类实例载荷）。
 
 ## 任务一：生成工程模板
 

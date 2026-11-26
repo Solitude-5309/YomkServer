@@ -1,8 +1,8 @@
 """Message base class, typed unpacking and failure text.
 
-消息基类、类型化解包与失败文案：TYPE_NAME 继承即得、随重命名自动跟随；unpack 返回
-UnpackResult（判真取 msg、判假取 error），标准不符文案由 unpack 生成，实际类型名
-取值私有化。
+消息基类、类型化解包与失败文案：TYPE_NAME 继承即得、随重命名自动跟随；基类为抽象
+类不可直接实例化（对齐 C++ 纯虚基类），故 ``isinstance`` 即完备实例判据；unpack
+返回 UnpackResult（判真取 msg、判假取 error），标准不符文案经单一构造器生成。
 """
 
 _READ_ONLY = "TYPE_NAME is a read-only class constant"
@@ -29,6 +29,13 @@ class _TypeNameValue:
 
 
 class _YomkMsgMeta(type):
+    # 抽象基类：直接构造 YomkMsg() 即 TypeError，对齐 C++ 纯虚基类不可实例化
+    def __call__(cls, *args, **kwargs):
+        if cls is YomkMsg:
+            raise TypeError("YomkMsg is abstract; "
+                            "instantiate a concrete message class")
+        return super().__call__(*args, **kwargs)
+
     # 类级封印：TYPE_NAME 一经生成，类上重绑定与删除一律 AttributeError
     def __setattr__(cls, name, value):
         if name == "TYPE_NAME" and "TYPE_NAME" in cls.__dict__:
@@ -47,6 +54,12 @@ class YomkMsg(metaclass=_YomkMsgMeta):
     消息基类：子类自动获得全限定运行期类型名，供 unpack 比对与文案使用。
 
     Note:
+        The class is abstract and cannot be instantiated (mirrors the C++
+        pure-virtual base), so ``isinstance(v, YomkMsg)`` is the complete
+        instance predicate; ``YomkMsg()`` raises ``TypeError``.
+        基类为抽象类，不可直接实例化（对齐 C++ 纯虚基类），故
+        ``isinstance(v, YomkMsg)`` 即完备的实例判据，``YomkMsg()`` 直接
+        ``TypeError``。
         ``TYPE_NAME`` is a class constant (PEP 8 upper snake case, no ``k``
         prefix) generated as ``<parent package>.<qualified name>``; it must not
         be written by hand. Defining it in a class body raises ``TypeError``,
@@ -108,47 +121,40 @@ class UnpackResult:
         return "UnpackResult(error=" + repr(self._error) + ")"
 
 
-def is_msg_instance(msg):
-    """Return True only for a concrete YomkMsg instance.
+def _mismatch_text(subject, actual):
+    """Return the standard mismatch text used by unpack and both guards.
 
-    实例判据：仅具体消息子类实例为真；``None``（空载荷）、YomkMsg 直基类实例、
-    类对象与体系外对象均为假。``None`` 的合法性由调用方自行判定。
+    标准不符文案单点：``<subject>, got '<actual>'``。unpack 以 ``msg is not
+    <TYPE_NAME>`` 为 subject，守卫以 ``<who> requires <期望>`` 为 subject。
     """
-    return isinstance(msg, YomkMsg) and type(msg) is not YomkMsg
-
-
-def is_msg_subclass(cls):
-    """Return True only for concrete YomkMsg subclasses.
-
-    类域判据：仅具体消息子类（类对象本身）为真；基类、非类与体系外类均为假。
-    """
-    return (isinstance(cls, type) and issubclass(cls, YomkMsg)
-            and cls is not YomkMsg)
+    return subject + ", got '" + actual + "'"
 
 
 def require_msg_instance(msg, who):
     """Raise TypeError unless msg is a concrete YomkMsg instance.
 
-    实例守卫：msg 必须是具体消息实例，否则入口当场 ``TypeError``；``None``
-    不是实例，空载荷由调用方先行判断后再调用本函数。直接基类实例不可用
-    （C++ 侧 YomkMsg 为抽象类），同样拒绝。
+    实例守卫：msg 必须是具体消息实例（基类抽象，``isinstance`` 即完备判据），
+    否则入口当场 ``TypeError``；``None`` 不是实例，空载荷由调用方先行判断后再
+    调用本函数。对齐 C++ 入口的静态类型约束，是 Python 侧的运行期补偿。
     """
-    if is_msg_instance(msg):
+    if isinstance(msg, YomkMsg):
         return
-    raise TypeError(who + " requires a YomkMsg instance, got '"
-                    + _yomk_type_name_of(msg) + "'")
+    raise TypeError(_mismatch_text(who + " requires a YomkMsg instance",
+                                   _type_name_of(msg)))
 
 
 def require_msg_subclass(cls, who):
     """Raise TypeError unless cls is a concrete YomkMsg subclass.
 
-    类域守卫：cls 必须是具体消息子类，否则当场 ``TypeError``；基类与
-    非类同样拒绝。与 require_msg_instance 成对，分别守类域与实例入口。
+    类域守卫：cls 必须是具体消息子类，否则当场 ``TypeError``；基类、体系外类
+    与非类同样拒绝。与 require_msg_instance 成对，分别守类域与实例入口。
     """
-    if is_msg_subclass(cls):
+    # 类域判据内联：仅具体消息子类（类对象）通过，基类、非类与体系外类一律拒绝
+    if (isinstance(cls, type) and issubclass(cls, YomkMsg)
+        and cls is not YomkMsg):
         return
-    raise TypeError(who + " requires a concrete YomkMsg subclass, got '"
-                    + _yomk_type_name_of(cls) + "'")
+    raise TypeError(_mismatch_text(
+        who + " requires a concrete YomkMsg subclass", _type_name_of(cls)))
 
 
 def unpack(msg, cls):
@@ -160,22 +166,23 @@ def unpack(msg, cls):
     因 TYPE_NAME 不同不会被当作父类实例命中，这是设计行为。
     """
     require_msg_subclass(cls, "unpack")
-    if is_msg_instance(msg) and type(msg).TYPE_NAME == cls.TYPE_NAME:
+    if isinstance(msg, YomkMsg) and type(msg).TYPE_NAME == cls.TYPE_NAME:
         return UnpackResult(msg, "")
-    return UnpackResult(None, "msg is not " + cls.TYPE_NAME
-                        + ", got '" + _yomk_type_name_of(msg) + "'")
+    return UnpackResult(None, _mismatch_text("msg is not " + cls.TYPE_NAME,
+                                             _type_name_of(msg)))
 
 
-def _yomk_type_name_of(msg):
+def _type_name_of(msg):
     """Return the runtime type name of a message, or a descriptive name otherwise.
 
     内部取值：返回消息的运行期类型名（TYPE_NAME）；None 返回 "null"，类对象返回其类名，
     其余返回宿主类名，从不以 "null" 掩盖误用。仅供 unpack / require_* 与 ctx 诊断文案
-    使用；公开面直连只读 ``TYPE_NAME``，本函数不导出。
+    使用；公开面直连只读 ``TYPE_NAME``，本函数不导出。基类抽象后实例分支只可能是具体
+    子类实例，``isinstance`` 即完备判据。
     """
     if msg is None:
         return "null"
-    if is_msg_instance(msg):
+    if isinstance(msg, YomkMsg):
         return type(msg).TYPE_NAME
     if isinstance(msg, type):
         return msg.__name__

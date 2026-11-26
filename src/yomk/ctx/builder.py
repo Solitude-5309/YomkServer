@@ -15,8 +15,8 @@ from yomk.msgs.ctx import (
 from yomk.msgs.server import ResStatus, Response
 from yomk.msgs.std_msg import String, StringArray
 from yomk.msgs.YomkMsg import (
-    _yomk_type_name_of,
-    is_msg_instance,
+    _mismatch_text,
+    _type_name_of,
     require_msg_instance,
     require_msg_subclass,
     unpack,
@@ -82,13 +82,14 @@ class ContextValueBuilder:
         if v is None:
             self._default = None
             return self
-        # 裸值 / 基类实例先过标准实例守卫；仅类型不符保留期望类型文案
+        # 裸值先过实例守卫；类型不符由期望类型单独判定
         require_msg_instance(v, "with_default")
         if v.TYPE_NAME == self._cls.TYPE_NAME:
             self._default = v
             return self
-        raise TypeError("with_default requires '" + self._cls.TYPE_NAME
-                        + "' or None, got '" + _yomk_type_name_of(v) + "'")
+        raise TypeError(_mismatch_text("with_default requires '"
+                                       + self._cls.TYPE_NAME + "'",
+                                       _type_name_of(v)))
 
     def get(self):
         """Return the stored value, or the accumulated default when the read misses.
@@ -107,12 +108,12 @@ class ContextValueBuilder:
         if res.status == ResStatus.eOk:
             if res.data is None:
                 return self._default
-            if is_msg_instance(res.data) \
-                    and res.data.TYPE_NAME == self._cls.TYPE_NAME:
-                return res.data
+            hit = unpack(res.data, self._cls)
+            if hit:
+                return hit.msg
             diag_warn("typed read context key '" + self._key
                       + "' type mismatch, expect '" + self._cls.TYPE_NAME
-                      + "', got '" + _yomk_type_name_of(res.data)
+                      + "', got '" + _type_name_of(res.data)
                       + "', return default value")
             return self._default
         diag_error("get context failed: " + res.msg)
